@@ -34,19 +34,19 @@ export function RightMenuRail({ className = "", items = DEFAULT_ITEMS }: RightMe
   };
 
   return (
-    <div className={cn("fixed top-4 right-6 z-20 text-right", className)}>
+    <div className={cn("fixed top-2 sm:top-4 right-2 sm:right-6 z-20 text-right", className)}>
       {/* Menu Icon Button - Static, no animations */}
       <button
         onClick={toggleMenu}
-        className="flex items-center ml-auto justify-center p-2 rounded-full hover:bg-white/10 transition-colors duration-200 mb-4"
+        className="flex items-center ml-auto justify-center p-1.5 sm:p-2 rounded-full hover:bg-white/10 transition-colors duration-200 mb-3 sm:mb-4"
       >
-        <MenuIcon className="w-6 h-6 text-white" />
+        <MenuIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
       </button>
 
       {/* Menu Items - Animated in/out */}
       {isOpen && (
         <motion.ul
-          className="space-y-3 text-xl font-semibold uppercase tracking-wider"
+          className="space-y-2 sm:space-y-3 text-lg sm:text-xl font-semibold uppercase tracking-wider"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 10 }}
@@ -87,13 +87,13 @@ function MenuItemComponent({ item }: { item: MenuItem }) {
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setHovered(true)}
       onBlur={() => setHovered(false)}
-      className="group relative cursor-pointer px-2 select-none"
+      className="group relative cursor-pointer px-1 sm:px-2 select-none"
       variants={{
-        rest: { zIndex: 0, paddingTop: 3, paddingBottom: 3 },
+        rest: { zIndex: 0, paddingTop: 2, paddingBottom: 2 },
         hover: {
           zIndex: 10,
-          paddingTop: 40,
-          paddingBottom: 4,
+          paddingTop: 30,
+          paddingBottom: 3,
           transition: { type: "spring", stiffness: 420, damping: 28 },
         },
       }}
@@ -102,7 +102,7 @@ function MenuItemComponent({ item }: { item: MenuItem }) {
         <motion.span
           animate={{
             rotate: hovered ? 5 : 0,
-            scale: hovered ? 2.5 : 1,
+            scale: hovered ? 2.2 : 1,
           }}
           transition={{ type: "spring", stiffness: 420, damping: 26 }}
           className={`inline-flex items-center transition-colors duration-100 ${hovered ? hoverColorText : "text-white"}`}

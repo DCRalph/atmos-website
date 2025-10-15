@@ -25,7 +25,7 @@ type Item = {
 };
 
 const items: Item[] = [
-  { label: "Instagram", href: "https://instagram.com/atmos_wlg", Icon: FaInstagram },
+  { label: "Instagram", href: "https://instagram.com/atmos.nz", Icon: FaInstagram },
   { label: "Facebook", href: "https://facebook.com/atmos.nz", Icon: FaFacebook },
   { label: "TikTok", href: "https://tiktok.com/@atmos_tv ", Icon: FaTiktok },
   { label: "YouTube", href: "https://youtube.com/@ATMOS_TV", Icon: FaYoutube },
@@ -36,7 +36,7 @@ const items: Item[] = [
 
 export function SocialLinks({ className = "" }: { className?: string }) {
   return (
-    <nav aria-label="Social links" className={cn("grid grid-cols-1 gap-0 fixed left-3 top-3 z-20", className)}>
+    <nav aria-label="Social links" className={cn("grid grid-cols-1 gap-0 fixed left-2 sm:left-3 top-2 sm:top-3 z-20", className)}>
       {items.map(({ label, href, Icon }, index) => (
         <ShrinkingCircleItem key={label} label={label} href={href} Icon={Icon} index={index} />
       ))}
@@ -66,7 +66,7 @@ function ShrinkingCircleItem({
         <Link
           href={href}
           aria-label={label}
-          className={`group relative grid h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 lg:h-16 lg:w-16 place-items-center border-2 border-white/80 ${index != 0 && "border-t-0"} isolate select-none`}
+          className={`group relative grid h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 lg:h-14 lg:w-14 xl:h-16 xl:w-16 place-items-center border-2 border-white/80 ${index != 0 && "border-t-0"} isolate select-none`}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
           onFocus={() => setHovered(true)}
@@ -93,7 +93,7 @@ function ShrinkingCircleItem({
           />
         </motion.div> */}
 
-          <Icon className="relative z-10 size-6 sm:size-7 md:size-8 lg:size-10 text-black transition-all duration-300 group-hover:scale-125 grayscale invert mix-blend-difference" />
+          <Icon className="relative z-10 size-4 sm:size-5 md:size-6 lg:size-7 xl:size-8 text-black transition-all duration-300 group-hover:scale-125 grayscale invert mix-blend-difference" />
           <span className="sr-only">{label}</span>
 
         </Link>

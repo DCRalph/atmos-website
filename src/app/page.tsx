@@ -3,7 +3,7 @@ import { OpeningAnimation } from "~/app/_components/opening-animation";
 // import { Background } from "~/app/_components/background";
 // import { TopRightBadge } from "~/app/_components/top-right-badge";
 // import { PopSidesBackground } from "~/app/_components/pop-sides-background";
-import { ImageCycleBackground } from "~/app/_components/image-cycle-background";
+import { VideoBackground } from "~/app/_components/video-background";
 import { EmailPopup } from "~/app/_components/email-popup";
 
 import Image from "next/image";
@@ -17,7 +17,7 @@ export default function Home() {
       <EmailPopup />
       <OpeningAnimation />
       {/* <Background /> */}
-      <ImageCycleBackground intervalMs={5000} auto={true} />
+      <VideoBackground />
       {/* <PopSidesBackground /> */}
 
       <SocialLinks className="fixed left-3 top-3 z-20" />

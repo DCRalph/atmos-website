@@ -4,14 +4,13 @@ import { type Metadata } from "next";
 import { Geist } from "next/font/google";
 
 import { TRPCReactProvider } from "~/trpc/react";
-import { SocialLinks } from "~/app/_components/social-links";
 import { RightMenuRail } from "~/app/_components/right-menu-rail";
-import { ScrollingText } from "~/app/_components/top-scroller";
 
 export const metadata: Metadata = {
   title: "Atmos",
   description: "Atmos — sound, culture, nightlife.",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
+  viewport: "width=device-width, initial-scale=1",
 };
 
 const geist = Geist({
@@ -33,7 +32,7 @@ export default function RootLayout({
 
 
           {/* Right menu rail */}
-          <RightMenuRail className="fixed top-4 right-6 z-20 text-right" />
+          <RightMenuRail className="fixed top-2 sm:top-4 right-2 sm:right-6 z-20 text-right" />
 
           {children}
         </TRPCReactProvider>
