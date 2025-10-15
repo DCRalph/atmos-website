@@ -1,10 +1,10 @@
-import { ImageCycleBackground } from "~/app/_components/image-cycle-background";
+import { StaticBackground } from "~/app/_components/static-background";
 import Link from "next/link";
 
 export default function ContactPage() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
-      <ImageCycleBackground intervalMs={5000} auto={true} />
+      <StaticBackground imageSrc="/home/CAGED 2-95.jpg" />
 
       <section className="relative z-10 min-h-screen px-4 py-16 sm:py-24">
 

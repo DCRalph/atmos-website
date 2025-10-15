@@ -1,4 +1,4 @@
-import { ImageCycleBackground } from "~/app/_components/image-cycle-background";
+import { StaticBackground } from "~/app/_components/static-background";
 
 // Example gig data - replace with actual database queries
 const upcomingGigs = [
@@ -63,7 +63,7 @@ const pastGigs = [
 export default function GigsPage() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
-      <ImageCycleBackground intervalMs={5000} auto={true} />
+      <StaticBackground imageSrc="/home/atmos-6.jpg" />
 
       <section className="relative z-10 min-h-screen px-4 py-16 sm:py-24">
         <div className="mx-auto max-w-6xl">

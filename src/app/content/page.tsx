@@ -1,4 +1,4 @@
-import { ImageCycleBackground } from "~/app/_components/image-cycle-background";
+import { StaticBackground } from "~/app/_components/static-background";
 
 type ContentItem = {
   id: number;
@@ -48,7 +48,7 @@ const contentItems: ContentItem[] = [
 export default function ContentPage() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
-      <ImageCycleBackground intervalMs={5000} auto={true} />
+      <StaticBackground imageSrc="/home/atmos-1.jpg" />
 
       <section className="relative z-10 min-h-screen px-4 py-16 sm:py-24">
         <div className="mx-auto max-w-6xl">

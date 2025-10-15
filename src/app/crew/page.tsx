@@ -1,4 +1,4 @@
-import { ImageCycleBackground } from "~/app/_components/image-cycle-background";
+import { StaticBackground } from "~/app/_components/static-background";
 import Link from "next/link";
 import Image from "next/image";
 import { FaInstagram } from "react-icons/fa6";
@@ -72,7 +72,7 @@ const crewMembers: CrewMember[] = [
 export default function CrewPage() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
-      <ImageCycleBackground intervalMs={5000} auto={true} />
+      <StaticBackground imageSrc="/home/atmos-2.jpg" />
 
       <section className="relative z-10 min-h-screen px-4 py-16 sm:py-24">
         <div className="mx-auto max-w-6xl">
