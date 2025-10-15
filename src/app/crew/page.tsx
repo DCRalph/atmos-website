@@ -1,50 +1,9 @@
 import { ImageCycleBackground } from "~/app/_components/image-cycle-background";
 import Link from "next/link";
+import { api } from "~/trpc/server";
 
-// Example crew members - replace with actual data
-const crewMembers = [
-  {
-    id: 1,
-    name: "DJ Alpha",
-    role: "Founder / DJ",
-    bio: "Pioneer of the underground sound, bringing raw energy to every set.",
-    socials: {
-      instagram: "#",
-      soundcloud: "#",
-    },
-  },
-  {
-    id: 2,
-    name: "DJ Beta",
-    role: "Co-Founder / Producer",
-    bio: "Crafting beats that move the crowd and shake the foundation.",
-    socials: {
-      instagram: "#",
-      soundcloud: "#",
-    },
-  },
-  {
-    id: 3,
-    name: "DJ Gamma",
-    role: "Resident DJ",
-    bio: "Master of the mix, blending genres into seamless sonic journeys.",
-    socials: {
-      instagram: "#",
-      soundcloud: "#",
-    },
-  },
-  {
-    id: 4,
-    name: "VJ Delta",
-    role: "Visual Artist",
-    bio: "Transforming sound into sight, creating immersive visual experiences.",
-    socials: {
-      instagram: "#",
-    },
-  },
-];
-
-export default function CrewPage() {
+export default async function CrewPage() {
+  const crewMembers = await api.crew.list();
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
       <ImageCycleBackground intervalMs={5000} auto={true} />
@@ -84,17 +43,17 @@ export default function CrewPage() {
                   <p className="mb-6 text-white/60">{member.bio}</p>
 
                   <div className="flex items-center justify-center gap-4">
-                    {member.socials.instagram && (
+                    {member.instagram && (
                       <a
-                        href={member.socials.instagram}
+                        href={member.instagram}
                         className="text-white/60 hover:text-white transition-colors"
                       >
                         Instagram
                       </a>
                     )}
-                    {member.socials.soundcloud && (
+                    {member.soundcloud && (
                       <a
-                        href={member.socials.soundcloud}
+                        href={member.soundcloud}
                         className="text-white/60 hover:text-white transition-colors"
                       >
                         SoundCloud

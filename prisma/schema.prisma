@@ -18,3 +18,64 @@ model Post {
 
     @@index([name])
 }
+
+enum ContentType {
+  MIX
+  VIDEO
+  PLAYLIST
+}
+
+model Gig {
+  id         Int      @id @default(autoincrement())
+  date       DateTime
+  venue      String
+  city       String
+  time       String
+  ticketLink String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([date])
+}
+
+model CrewMember {
+  id         Int      @id @default(autoincrement())
+  name       String
+  role       String
+  bio        String
+  instagram  String?
+  soundcloud String?
+  photoUrl   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([name])
+}
+
+model ContentItem {
+  id          Int          @id @default(autoincrement())
+  type        ContentType
+  title       String
+  description String
+  date        DateTime
+  link        String
+  featured    Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([date])
+  @@index([type])
+}
+
+model MerchItem {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String
+  priceCents  Int
+  imageUrl    String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([active])
+}

@@ -1,56 +1,12 @@
 import { ImageCycleBackground } from "~/app/_components/image-cycle-background";
 import Link from "next/link";
+import { api } from "~/trpc/server";
 
-// Example gig data - replace with actual database queries
-const upcomingGigs = [
-  {
-    id: 1,
-    date: "2025-10-15",
-    venue: "The Warehouse",
-    city: "Manchester",
-    time: "9:00 PM",
-    ticketLink: "#",
-  },
-  {
-    id: 2,
-    date: "2025-10-22",
-    venue: "Electric Brixton",
-    city: "London",
-    time: "8:30 PM",
-    ticketLink: "#",
-  },
-  {
-    id: 3,
-    date: "2025-11-05",
-    venue: "O2 Academy",
-    city: "Birmingham",
-    time: "9:00 PM",
-    ticketLink: "#",
-  },
-];
-
-const pastGigs = [
-  {
-    id: 1,
-    date: "2025-09-20",
-    venue: "Printworks",
-    city: "London",
-  },
-  {
-    id: 2,
-    date: "2025-09-10",
-    venue: "Warehouse Project",
-    city: "Manchester",
-  },
-  {
-    id: 3,
-    date: "2025-08-25",
-    venue: "Motion",
-    city: "Bristol",
-  },
-];
-
-export default function GigsPage() {
+export default async function GigsPage() {
+  const [upcomingGigs, pastGigs] = await Promise.all([
+    api.gig.listUpcoming(),
+    api.gig.listPast(),
+  ]);
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
       <ImageCycleBackground intervalMs={5000} auto={true} />
@@ -93,12 +49,14 @@ export default function GigsPage() {
                     </div>
                     <p className="text-sm text-white/60">{gig.time}</p>
                   </div>
-                  <a
-                    href={gig.ticketLink}
-                    className="rounded-md bg-white px-6 py-3 text-center font-semibold text-black transition-all hover:bg-white/90"
-                  >
-                    Get Tickets
-                  </a>
+                  {gig.ticketLink ? (
+                    <a
+                      href={gig.ticketLink}
+                      className="rounded-md bg-white px-6 py-3 text-center font-semibold text-black transition-all hover:bg-white/90"
+                    >
+                      Get Tickets
+                    </a>
+                  ) : null}
                 </div>
               ))}
             </div>

@@ -1,43 +1,12 @@
 import { ImageCycleBackground } from "~/app/_components/image-cycle-background";
 import Link from "next/link";
+import { api } from "~/trpc/server";
 
-// Example content - replace with actual data
-const contentItems = [
-  {
-    id: 1,
-    type: "mix",
-    title: "Atmos Mix Vol. 1",
-    description: "Deep house and techno vibes for late night sessions",
-    date: "2025-10-01",
-    link: "#",
-  },
-  {
-    id: 2,
-    type: "video",
-    title: "Behind the Decks",
-    description: "Studio session featuring our latest tracks",
-    date: "2025-09-25",
-    link: "#",
-  },
-  {
-    id: 3,
-    type: "playlist",
-    title: "Atmos Selects",
-    description: "Curated selection of tracks we're playing out right now",
-    date: "2025-09-20",
-    link: "#",
-  },
-  {
-    id: 4,
-    type: "mix",
-    title: "Live @ Printworks",
-    description: "Recording from our recent London show",
-    date: "2025-09-15",
-    link: "#",
-  },
-];
-
-export default function ContentPage() {
+export default async function ContentPage() {
+  const [items, featured] = await Promise.all([
+    api.content.list(),
+    api.content.getFeatured(),
+  ]);
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
       <ImageCycleBackground intervalMs={5000} auto={true} />
@@ -55,7 +24,7 @@ export default function ContentPage() {
           </h1>
 
           <div className="grid gap-6 md:grid-cols-2">
-            {contentItems.map((item) => (
+            {items.map((item) => (
               <a
                 key={item.id}
                 href={item.link}
@@ -90,17 +59,19 @@ export default function ContentPage() {
             <h2 className="mb-8 text-3xl font-bold tracking-wide border-b border-white/20 pb-4">
               Featured
             </h2>
-            <div className="overflow-hidden rounded-lg border border-white/10 bg-white/5 backdrop-blur-sm">
-              <div className="aspect-video w-full bg-white/10 flex items-center justify-center">
-                <span className="text-white/40">Video Player</span>
+            {featured ? (
+              <div className="overflow-hidden rounded-lg border border-white/10 bg-white/5 backdrop-blur-sm">
+                <div className="aspect-video w-full bg-white/10 flex items-center justify-center">
+                  <span className="text-white/40">Featured {featured.type}</span>
+                </div>
+                <div className="p-6">
+                  <h3 className="mb-2 text-2xl font-bold">{featured.title}</h3>
+                  <p className="text-white/60">{featured.description}</p>
+                </div>
               </div>
-              <div className="p-6">
-                <h3 className="mb-2 text-2xl font-bold">Latest Release</h3>
-                <p className="text-white/60">
-                  Our most recent performance captured live
-                </p>
-              </div>
-            </div>
+            ) : (
+              <p className="text-white/60">No featured content yet.</p>
+            )}
           </div>
         </div>
       </section>
