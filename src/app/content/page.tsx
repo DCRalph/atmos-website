@@ -1,8 +1,17 @@
 import { ImageCycleBackground } from "~/app/_components/image-cycle-background";
 import Link from "next/link";
 
+type ContentItem = {
+  id: number;
+  type: string;
+  title: string;
+  description: string;
+  date: string;
+  link: string;
+};
+
 // Example content - replace with actual data
-const contentItems = [
+const contentItems: ContentItem[] = [
   {
     id: 1,
     type: "mix",
@@ -44,11 +53,11 @@ export default function ContentPage() {
 
       <section className="relative z-10 min-h-screen px-4 py-24">
         <div className="mx-auto max-w-6xl">
-          <div className="mb-12">
+          {/* <div className="mb-12">
             <Link href="/" className="text-white/60 hover:text-white transition-colors">
               ← Back
             </Link>
-          </div>
+          </div> */}
 
           <h1 className="mb-12 text-center text-5xl font-bold tracking-wider md:text-7xl">
             CONTENT

@@ -9,7 +9,7 @@ export function OpeningAnimation({
 }: {
   durationMs?: number;
 }) {
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     const hasSeen = false; // disable for testing

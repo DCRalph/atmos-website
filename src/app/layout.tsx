@@ -31,11 +31,9 @@ export default function RootLayout({
             <ScrollingText />
           </div> */}
 
-          {/* Left social rail */}
-          <SocialLinks className="fixed left-3 top-3 z-20" />
 
           {/* Right menu rail */}
-          <RightMenuRail className="fixed bottom-10 right-6 z-20 text-right" />
+          <RightMenuRail className="fixed top-4 right-6 z-20 text-right" />
 
           {children}
         </TRPCReactProvider>

@@ -46,7 +46,7 @@ export function ImageCycleBackground({
   }, [auto, intervalMs]);
 
   return (
-    <div className="pointer-events-none absolute inset-0">
+    <div className="pointer-events-none absolute inset-0 select-none">
       <AnimatePresence mode="wait">
         <motion.div
           key={index}

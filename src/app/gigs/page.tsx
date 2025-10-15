@@ -5,7 +5,7 @@ import Link from "next/link";
 const upcomingGigs = [
   {
     id: 1,
-    date: "2025-10-15",
+    date: "2025-11-7",
     venue: "The Warehouse",
     city: "Manchester",
     time: "9:00 PM",
@@ -17,14 +17,6 @@ const upcomingGigs = [
     venue: "Electric Brixton",
     city: "London",
     time: "8:30 PM",
-    ticketLink: "#",
-  },
-  {
-    id: 3,
-    date: "2025-11-05",
-    venue: "O2 Academy",
-    city: "Birmingham",
-    time: "9:00 PM",
     ticketLink: "#",
   },
 ];
@@ -57,11 +49,11 @@ export default function GigsPage() {
 
       <section className="relative z-10 min-h-screen px-4 py-24">
         <div className="mx-auto max-w-6xl">
-          <div className="mb-12">
+          {/* <div className="mb-12">
             <Link href="/" className="text-white/60 hover:text-white transition-colors">
               ← Back
             </Link>
-          </div>
+          </div> */}
 
           <h1 className="mb-16 text-center text-5xl font-bold tracking-wider md:text-7xl">
             GIGS

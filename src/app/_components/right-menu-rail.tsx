@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { cn } from "~/lib/utils";
+import { MenuIcon } from "lucide-react";
 
 type RightMenuRailProps = {
   className?: string;
@@ -16,22 +17,58 @@ type MenuItem = {
 };
 
 const DEFAULT_ITEMS: MenuItem[] = [
+  { label: "Home", href: "/" },
   { label: "Shop", href: "/merch" },
-  { label: "Content", href: "/content" },
-  { label: "Tour", href: "/gigs" },
+  // { label: "Content", href: "/content" },
+  { label: "Gigs", href: "/gigs" },
   { label: "The Crew", href: "/crew" },
   { label: "Contact Us", href: "/contact" },
 ];
 
 export function RightMenuRail({ className = "", items = DEFAULT_ITEMS }: RightMenuRailProps) {
+
+  const [isOpen, setIsOpen] = useState(false);
+
+  const toggleMenu = () => {
+    setIsOpen(!isOpen);
+  };
+
   return (
-    <aside className={cn("fixed top-6 right-6 z-20 text-right", className)}>
-      <motion.ul layout className="space-y-3 text-xl font-semibold uppercase tracking-wider">
-        {items.map((item) => (
-          <MenuItemComponent key={item.label} item={item} />
-        ))}
-      </motion.ul>
-    </aside>
+    <div className={cn("fixed top-4 right-6 z-20 text-right", className)}>
+      {/* Menu Icon Button - Static, no animations */}
+      <button
+        onClick={toggleMenu}
+        className="flex items-center ml-auto justify-center p-2 rounded-full hover:bg-white/10 transition-colors duration-200 mb-4"
+      >
+        <MenuIcon className="w-6 h-6 text-white" />
+      </button>
+
+      {/* Menu Items - Animated in/out */}
+      {isOpen && (
+        <motion.ul
+          className="space-y-3 text-xl font-semibold uppercase tracking-wider"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 10 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+        >
+          {items.map((item, index) => (
+            <motion.div
+              key={item.label}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{
+                duration: 0.3,
+                delay: index * 0.05,
+                ease: "easeOut"
+              }}
+            >
+              <MenuItemComponent item={item} />
+            </motion.div>
+          ))}
+        </motion.ul>
+      )}
+    </div>
   );
 }
 
@@ -39,7 +76,6 @@ function MenuItemComponent({ item }: { item: MenuItem }) {
   const [hovered, setHovered] = useState(false);
 
   const hoverColorText = "text-red-600"
-  const hoverColorBackground = "bg-red-600"
 
   return (
     <motion.li
@@ -51,7 +87,7 @@ function MenuItemComponent({ item }: { item: MenuItem }) {
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setHovered(true)}
       onBlur={() => setHovered(false)}
-      className="group relative cursor-pointer px-2"
+      className="group relative cursor-pointer px-2 select-none"
       variants={{
         rest: { zIndex: 0, paddingTop: 3, paddingBottom: 3 },
         hover: {
@@ -76,7 +112,7 @@ function MenuItemComponent({ item }: { item: MenuItem }) {
           <span className="ml-2">+</span>
         </motion.span>
       </Link>
-      <motion.span
+      {/* <motion.span
         className={`pointer-events-none absolute right-0 -bottom-1 h-[2px] w-full ${hoverColorBackground}`}
         animate={{
           opacity: hovered ? 1 : 0,
@@ -84,7 +120,7 @@ function MenuItemComponent({ item }: { item: MenuItem }) {
           originX: 1,
         }}
         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-      />
+      /> */}
     </motion.li>
   );
 }

@@ -7,6 +7,7 @@ import { ImageCycleBackground } from "~/app/_components/image-cycle-background";
 import { EmailPopup } from "~/app/_components/email-popup";
 
 import Image from "next/image";
+import { SocialLinks } from "./_components/social-links";
 
 
 
@@ -19,10 +20,8 @@ export default function Home() {
       <ImageCycleBackground intervalMs={5000} auto={true} />
       {/* <PopSidesBackground /> */}
 
-      {/* Top-right Atmos badge */}
-      {/* <div className="absolute right-6 top-6 z-20">
-        <TopRightBadge />
-      </div> */}
+      <SocialLinks className="fixed left-3 top-3 z-20" />
+
 
       {/* Centered title */}
       <section className="relative z-10 flex min-h-screen items-center justify-center px-4">
