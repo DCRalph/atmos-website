@@ -2,6 +2,7 @@ import "~/styles/globals.css";
 
 import { type Metadata } from "next";
 import { Geist } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next"
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { RightMenuRail } from "~/app/_components/right-menu-rail";
@@ -35,6 +36,8 @@ export default function RootLayout({
           <RightMenuRail className="fixed top-2 sm:top-4 right-2 sm:right-6 z-20 text-right" />
 
           {children}
+
+          <Analytics />
         </TRPCReactProvider>
       </body>
     </html>
