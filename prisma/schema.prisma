@@ -67,7 +67,7 @@ model ContentItem {
   @@index([type])
 }
 
-model MerchItem {
+model MerchItem {®
   id          Int      @id @default(autoincrement())
   title       String
   description String
