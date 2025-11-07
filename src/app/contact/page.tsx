@@ -1,5 +1,6 @@
 import { StaticBackground } from "~/app/_components/static-background";
 import Link from "next/link";
+import { ContactForm } from "./_components/contact-form";
 
 export default function ContactPage() {
   return (
@@ -28,66 +29,7 @@ export default function ContactPage() {
                 Got a booking inquiry or collaboration idea. Drop us a
                 line below.
               </h2>
-              <form className="space-y-6">
-                <div>
-                  <label htmlFor="name" className="mb-2 block text-sm font-semibold">
-                    Name
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    className="w-full rounded-md border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/40 backdrop-blur-sm transition-all focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/30"
-                    placeholder="Your name"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="email" className="mb-2 block text-sm font-semibold">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    className="w-full rounded-md border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/40 backdrop-blur-sm transition-all focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/30"
-                    placeholder="your@email.com"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="subject" className="mb-2 block text-sm font-semibold">
-                    Subject
-                  </label>
-                  <input
-                    type="text"
-                    id="subject"
-                    name="subject"
-                    className="w-full rounded-md border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/40 backdrop-blur-sm transition-all focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/30"
-                    placeholder="What's this about?"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="message" className="mb-2 block text-sm font-semibold">
-                    Message
-                  </label>
-                  <textarea
-                    id="message"
-                    name="message"
-                    rows={6}
-                    className="w-full rounded-md border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/40 backdrop-blur-sm transition-all focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/30"
-                    placeholder="Tell us more..."
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full rounded-md bg-white px-6 py-3 font-semibold text-black transition-all hover:bg-white/90"
-                >
-                  Send Message
-                </button>
-              </form>
+              <ContactForm />
             </div>
 
             <div className="flex flex-col gap-6">

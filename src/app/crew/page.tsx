@@ -2,74 +2,10 @@ import { StaticBackground } from "~/app/_components/static-background";
 import Link from "next/link";
 import Image from "next/image";
 import { FaInstagram } from "react-icons/fa6";
+import { api } from "~/trpc/server";
 
-type CrewMember = {
-  id: number;
-  name: string;
-  role: string;
-  socials: {
-    instagram: string;
-    soundcloud: string;
-  };
-  image: string;
-}
-
-// Crew members with their Instagram profiles
-const crewMembers: CrewMember[] = [
-  {
-    id: 1,
-    name: "broderbeats",
-    role: "Producer / DJ",
-    socials: {
-      instagram: "https://www.instagram.com/broderbeats/",
-      soundcloud: "https://soundcloud.com/broderbeats",
-    },
-    image: "/crew_pfp/broderbeats.jpg",
-  },
-  {
-    id: 2,
-    name: "Sunday",
-    role: "DJ / Producer",
-    socials: {
-      instagram: "https://www.instagram.com/probablysunday/",
-      soundcloud: "https://soundcloud.com/djsundaymusic",
-    },
-    image: "/crew_pfp/sunday.jpg",
-  },
-  {
-    id: 3,
-    name: "Special K",
-    role: "DJ / Producer",
-    socials: {
-      instagram: "https://www.instagram.com/specialknz_/",
-      soundcloud: "https://soundcloud.com/devilmcrx292",
-    },
-    image: "/crew_pfp/specialk.jpg",
-  },
-  {
-    id: 4,
-    name: "Taiji",
-    role: "DJ / Producer",
-    socials: {
-      instagram: "https://www.instagram.com/taiji.nz/",
-      soundcloud: "https://soundcloud.com/taiji-730606296",
-    },
-    image: "/crew_pfp/taiji.jpg",
-  },
-  {
-    id: 5,
-    name: "Willonvx",
-    role: "Videographer",
-    socials: {
-      instagram: "https://www.instagram.com/willonvx/",
-      soundcloud: "",
-    },
-    image: "/crew_pfp/willonvx.jpg",
-  },
-
-];
-
-export default function CrewPage() {
+export default async function CrewPage() {
+  const crewMembers = await api.crew.getAll();
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-2.jpg" />
@@ -107,9 +43,9 @@ export default function CrewPage() {
                   </p>
 
                   <div className="flex items-center justify-center gap-3 sm:gap-4 flex-wrap">
-                    {member.socials.instagram && (
+                    {member.instagram && (
                       <Link
-                        href={member.socials.instagram}
+                        href={member.instagram}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-white/60 hover:text-white hover:underline transition-colors flex gap-1 sm:gap-2 items-center text-sm"
@@ -120,9 +56,9 @@ export default function CrewPage() {
                         </>
                       </Link>
                     )}
-                    {member.socials.soundcloud !== "" && (
+                    {member.soundcloud && (
                       <Link
-                        href={member.socials.soundcloud}
+                        href={member.soundcloud}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-white/60 hover:text-white hover:underline transition-colors text-sm"

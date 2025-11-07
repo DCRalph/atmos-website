@@ -6,6 +6,7 @@ import { Analytics } from "@vercel/analytics/next"
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { RightMenuRail } from "~/app/_components/right-menu-rail";
+import { ThemeProvider } from "~/components/theme-provider";
 
 export const metadata: Metadata = {
   title: "Atmos",
@@ -23,22 +24,28 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geist.variable} dark`}>
+    <html lang="en" className={`${geist.variable} dark`} suppressHydrationWarning>
       <body>
-        <TRPCReactProvider>
-          {/* Top navigation scroller */}
-          {/* <div className="fixed left-1/2 top-0 z-20 w-full -translate-x-1/2 max-w-2xl">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          disableTransitionOnChange
+        >
+          <TRPCReactProvider>
+            {/* Top navigation scroller */}
+            {/* <div className="fixed left-1/2 top-0 z-20 w-full -translate-x-1/2 max-w-2xl">
             <ScrollingText />
           </div> */}
 
 
-          {/* Right menu rail */}
-          <RightMenuRail className="fixed top-2 sm:top-4 right-2 sm:right-6 z-20 text-right" />
+            {/* Right menu rail */}
+            <RightMenuRail className="fixed top-2 sm:top-4 right-2 sm:right-6 z-20 text-right" />
 
-          {children}
+            {children}
 
-          <Analytics />
-        </TRPCReactProvider>
+            <Analytics />
+          </TRPCReactProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

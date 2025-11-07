@@ -12,8 +12,12 @@ export function OpeningAnimation({
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    const hasSeen = false; // disable for testing
-    if (hasSeen) return;
+    // const hasSeen = false; // disable for testing
+    const hasSeen = sessionStorage.getItem("def-opening") === "1";
+    if (hasSeen) {
+      setVisible(false);
+      return;
+    }
 
     setVisible(true);
     const t = setTimeout(() => {

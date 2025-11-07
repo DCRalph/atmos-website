@@ -1,33 +1,9 @@
 import { StaticBackground } from "~/app/_components/static-background";
-import Link from "next/link";
 import Image from "next/image";
+import { api } from "~/trpc/server";
 
-type MerchItem = {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  image: string;
-};
-
-const merchItems: MerchItem[] = [
-  {
-    id: 1,
-    name: "Atmos classic oversized tee",
-    description: "Classic oversized Atmos tee. (White)",
-    price: 69.69,
-    image: "/shop/1.jpg",
-  },
-  {
-    id: 2,
-    name: "Atmos classic oversized tee",
-    description: "Classic oversized Atmos tee. (Black)",
-    price: 69.69,
-    image: "/shop/1.jpg",
-  },
-];
-
-export default function MerchPage() {
+export default async function MerchPage() {
+  const merchItems = await api.merch.getAll();
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-46.jpg" />

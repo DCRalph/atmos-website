@@ -1,51 +1,10 @@
 import { StaticBackground } from "~/app/_components/static-background";
+import { api } from "~/trpc/server";
 
-type ContentItem = {
-  id: number;
-  type: string;
-  title: string;
-  description: string;
-  date: string;
-  link: string;
-};
 
-// Example content - replace with actual data
-const contentItems: ContentItem[] = [
-  {
-    id: 1,
-    type: "mix",
-    title: "Atmos Mix Vol. 1",
-    description: "Deep house and techno vibes for late night sessions",
-    date: "2025-10-01",
-    link: "#",
-  },
-  {
-    id: 2,
-    type: "video",
-    title: "Behind the Decks",
-    description: "Studio session featuring our latest tracks",
-    date: "2025-09-25",
-    link: "#",
-  },
-  {
-    id: 3,
-    type: "playlist",
-    title: "Atmos Selects",
-    description: "Curated selection of tracks we're playing out right now",
-    date: "2025-09-20",
-    link: "#",
-  },
-  {
-    id: 4,
-    type: "mix",
-    title: "Live @ Printworks",
-    description: "Recording from our recent London show",
-    date: "2025-09-15",
-    link: "#",
-  },
-];
 
-export default function ContentPage() {
+export default async function ContentPage() {
+  const contentItems = await api.content.getAll();
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-1.jpg" />
@@ -74,7 +33,7 @@ export default function ContentPage() {
                     {item.type}
                   </span>
                   <span className="text-xs sm:text-sm text-white/60">
-                    {new Date(item.date).toLocaleDateString("en-US", {
+                    {item.date.toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
                     })}

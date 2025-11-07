@@ -1,66 +1,13 @@
 import { StaticBackground } from "~/app/_components/static-background";
+import { api } from "~/trpc/server";
 
-// Example gig data - replace with actual database queries
-const upcomingGigs = [
-  {
-    id: 1,
-    date: "Nov 7",
-    title: "Atmos & Frenz presents: broderbeats - Bounce release party",
-    subtitle: "Queens Wharf (secret location)",
-    time: "6:00 PM - 11:00 PM",
-    ticketLink: "#",
-  },
-  // {
-  //   id: 2,
-  //   date: "TBA",
-  //   title: "6 🤲 7",
-  //   subtitle: "Wellington",
-  //   time: "TBA",
-  //   ticketLink: "#",
-  // },
-];
 
-const pastGigs = [
-  {
-    id: 1,
-    date: "Mar 29",
-    title: "Keke (UK) with Poppa Jax, Fine China, Kayseeyuh, Licious",
-    subtitle: "Wellington",
-  },
 
-  {
-    id: 2,
-    date: "Mar 14",
-    title: "Katayanagi twins with Randy Sjafrie, Kayseeyuh, DJ Gooda, Broderbeats, ",
-    subtitle: "Wellington",
-  },
-  {
-    id: 3,
-    date: "Oct 26",
-    title: "Scruz (UK) with Fronta Licious B2B Stargirl, Sunday, Special K",
-    subtitle: "Wellington",
-  },
-  {
-    id: 4,
-    date: "Jun 14",
-    title: "Messie with Swimcapm Jswizzle, E-boy, Kuri",
-    subtitle: "Wellington",
-  },
-  {
-    id: 5,
-    date: "Jun 8",
-    title: "Caged V2 with Kraayjoy, Bidois, Broderbeats, Licious, Tonkus",
-    subtitle: "Wellington",
-  },
-  {
-    id: 6,
-    date: "May 11",
-    title: "Caged V1 with Myelin (US), Shaq, Licious, Special K, Taiji",
-    subtitle: "Wellington",
-  }
-];
-
-export default function GigsPage() {
+export default async function GigsPage() {
+  const [upcomingGigs, pastGigs] = await Promise.all([
+    api.gigs.getUpcoming(),
+    api.gigs.getPast(),
+  ]);
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-6.jpg" />
@@ -91,21 +38,28 @@ export default function GigsPage() {
                   <div className="flex-1">
                     <div className="mb-2 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                       <span className="text-xl sm:text-2xl font-bold">
-                        {gig.date}
+                        {gig.date.toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
                       </span>
                       <div>
                         <h3 className="text-lg sm:text-xl font-semibold">{gig.title}</h3>
                         <p className="text-white/60 text-sm sm:text-base">{gig.subtitle}</p>
                       </div>
                     </div>
-                    <p className="text-xs sm:text-sm text-white/60">{gig.time}</p>
+                    {gig.time && (
+                      <p className="text-xs sm:text-sm text-white/60">{gig.time}</p>
+                    )}
                   </div>
-                  <a
-                    href={gig.ticketLink}
-                    className="rounded-md bg-white px-4 sm:px-6 py-2 sm:py-3 text-center font-semibold text-black transition-all hover:bg-white/90 text-sm sm:text-base"
-                  >
-                    Get Tickets
-                  </a>
+                  {gig.ticketLink && (
+                    <a
+                      href={gig.ticketLink}
+                      className="rounded-md bg-white px-4 sm:px-6 py-2 sm:py-3 text-center font-semibold text-black transition-all hover:bg-white/90 text-sm sm:text-base"
+                    >
+                      Get Tickets
+                    </a>
+                  )}
                 </div>
               ))}
 
@@ -128,7 +82,10 @@ export default function GigsPage() {
                   <h3 className="text-base sm:text-lg font-semibold mb-2">{gig.title}</h3>
                   <p className="text-white/60 text-sm sm:text-base mb-2">{gig.subtitle}</p>
                   <div className="text-lg sm:text-xl font-bold">
-                    {gig.date}
+                    {gig.date.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}
                   </div>
                 </div>
               ))}

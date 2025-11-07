@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "motion/react";
-import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { useState, useMemo } from "react";
 import { cn } from "~/lib/utils";
 import { MenuIcon } from "lucide-react";
+import { api } from "~/trpc/react";
 
 type RightMenuRailProps = {
   className?: string;
@@ -25,13 +26,22 @@ const DEFAULT_ITEMS: MenuItem[] = [
   { label: "Contact Us", href: "/contact" },
 ];
 
-export function RightMenuRail({ className = "", items = DEFAULT_ITEMS }: RightMenuRailProps) {
-
+export function RightMenuRail({ className = "", items }: RightMenuRailProps) {
+  const { data: user } = api.user.me.useQuery();
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleMenu = () => {
     setIsOpen(!isOpen);
   };
+
+  // Build menu items dynamically, adding Admin if user is admin
+  const menuItems = useMemo(() => {
+    const baseItems = items ?? DEFAULT_ITEMS;
+    if (user?.isAdmin) {
+      return [...baseItems, { label: "Admin", href: "/admin" }];
+    }
+    return baseItems;
+  }, [items, user?.isAdmin]);
 
   return (
     <div className={cn("fixed top-2 sm:top-4 right-2 sm:right-6 z-20 text-right", className)}>
@@ -44,35 +54,47 @@ export function RightMenuRail({ className = "", items = DEFAULT_ITEMS }: RightMe
       </button>
 
       {/* Menu Items - Animated in/out */}
-      {isOpen && (
-        <motion.ul
-          className="space-y-2 sm:space-y-3 text-lg sm:text-xl font-semibold uppercase tracking-wider"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 10 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-        >
-          {items.map((item, index) => (
-            <motion.div
-              key={item.label}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{
-                duration: 0.3,
-                delay: index * 0.05,
-                ease: "easeOut"
-              }}
-            >
-              <MenuItemComponent item={item} />
-            </motion.div>
-          ))}
-        </motion.ul>
-      )}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.ul
+            key="menu-list"
+            className="space-y-2 sm:space-y-3 text-lg sm:text-xl font-semibold uppercase tracking-wider"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+          >
+            {menuItems.map((item, index) => (
+              <motion.div
+                key={item.label}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ 
+                  opacity: 0, 
+                  x: 20,
+                  transition: {
+                    duration: 0.2,
+                    delay: (menuItems.length - 1 - index) * 0.03,
+                    ease: "easeIn"
+                  }
+                }}
+                transition={{
+                  duration: 0.3,
+                  delay: index * 0.05,
+                  ease: "easeOut"
+                }}
+              >
+                <MenuItemComponent item={item} setIsOpen={setIsOpen} />
+              </motion.div>
+            ))}
+          </motion.ul>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-function MenuItemComponent({ item }: { item: MenuItem }) {
+function MenuItemComponent({ item, setIsOpen }: { item: MenuItem, setIsOpen: (isOpen: boolean) => void }) {
   const [hovered, setHovered] = useState(false);
 
   const hoverColorText = "text-red-600"
@@ -98,7 +120,7 @@ function MenuItemComponent({ item }: { item: MenuItem }) {
         },
       }}
     >
-      <Link href={item.href} className="inline-block isolate">
+      <Link href={item.href} onClick={() => setIsOpen(false)} className="inline-block isolate">
         <motion.span
           animate={{
             rotate: hovered ? 5 : 0,

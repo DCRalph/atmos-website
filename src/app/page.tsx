@@ -5,6 +5,7 @@ import { OpeningAnimation } from "~/app/_components/opening-animation";
 // import { PopSidesBackground } from "~/app/_components/pop-sides-background";
 import { VideoBackground } from "~/app/_components/video-background";
 import { EmailPopup } from "~/app/_components/email-popup";
+import { LiveGigPopup } from "~/app/_components/live-gig-popup";
 
 import Image from "next/image";
 import { SocialLinks } from "./_components/social-links";
@@ -21,6 +22,7 @@ export default function Home() {
       {/* <PopSidesBackground /> */}
 
       <SocialLinks className="fixed left-3 top-3 z-20" />
+      <LiveGigPopup />
 
 
       {/* Centered title */}
