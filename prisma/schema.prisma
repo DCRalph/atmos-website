@@ -98,15 +98,16 @@ model ContentItem {
 }
 
 model Gig {
-  id          String   @id @default(cuid())
-  date        DateTime
-  title       String
-  subtitle    String
-  time        String?
-  ticketLink  String?
-  isUpcoming  Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String    @id @default(cuid())
+  date         DateTime
+  title        String
+  subtitle     String
+  time         DateTime?
+  gigStartTime DateTime?
+  gigEndTime   DateTime?
+  ticketLink   String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@map("gig")
 }

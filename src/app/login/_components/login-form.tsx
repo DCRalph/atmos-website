@@ -42,6 +42,7 @@ export function LoginForm() {
         }
       );
     } catch (err) {
+      console.error(err);
       setError("An unexpected error occurred");
       setIsLoading(false);
     }
@@ -72,6 +73,7 @@ export function LoginForm() {
         }
       );
     } catch (err) {
+      console.error(err);
       setError("An unexpected error occurred");
       setIsLoading(false);
     }
@@ -87,6 +89,7 @@ export function LoginForm() {
         callbackURL: "/",
       });
     } catch (err) {
+      console.error(err);
       setError("Failed to sign in with Google");
       setIsGoogleLoading(false);
     }

@@ -21,7 +21,7 @@ export function DatePicker({
   onDateChange,
   placeholder = "Pick a date",
   disabled = false,
-  required = false,
+  // required = false,
 }: DatePickerProps) {
   return (
     <Popover>

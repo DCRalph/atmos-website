@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure, adminProcedure } from "~/server/api/trpc";
+import { getTodayRangeStart, getTodayRangeEnd, isGigUpcoming } from "~/lib/date-utils";
 
 export const gigsRouter = createTRPCRouter({
   getAll: publicProcedure.query(async ({ ctx }) => {
@@ -9,35 +10,38 @@ export const gigsRouter = createTRPCRouter({
   }),
 
   getUpcoming: publicProcedure.query(async ({ ctx }) => {
-    return ctx.db.gig.findMany({
-      where: { isUpcoming: true },
+    const allGigs = await ctx.db.gig.findMany({
       orderBy: { date: "asc" },
     });
+    // Filter to only upcoming gigs
+    return allGigs.filter((gig) => isGigUpcoming(gig));
   }),
 
   getPast: publicProcedure.query(async ({ ctx }) => {
-    return ctx.db.gig.findMany({
-      where: { isUpcoming: false },
+    const allGigs = await ctx.db.gig.findMany({
       orderBy: { date: "desc" },
     });
+    // Filter to only past gigs
+    return allGigs.filter((gig) => !isGigUpcoming(gig));
   }),
 
   getToday: publicProcedure.query(async ({ ctx }) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Use UTC time for all comparisons
+    const startDate = getTodayRangeStart();
+    const endDate = getTodayRangeEnd();
 
-    return ctx.db.gig.findMany({
+    const todayGigs = await ctx.db.gig.findMany({
       where: {
         date: {
-          gte: today,
-          lt: tomorrow,
+          gte: startDate,
+          lt: endDate,
         },
-        isUpcoming: true,
       },
       orderBy: { date: "asc" },
     });
+
+    // Filter to only upcoming gigs (gigs that haven't ended yet)
+    return todayGigs.filter((gig) => isGigUpcoming(gig));
   }),
 
   getById: publicProcedure
@@ -54,9 +58,10 @@ export const gigsRouter = createTRPCRouter({
         date: z.date(),
         title: z.string().min(1),
         subtitle: z.string().min(1),
-        time: z.string().optional(),
+        time: z.date().optional(),
+        gigStartTime: z.date().optional(),
+        gigEndTime: z.date().optional(),
         ticketLink: z.string().optional(),
-        isUpcoming: z.boolean().default(true),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -72,9 +77,10 @@ export const gigsRouter = createTRPCRouter({
         date: z.date().optional(),
         title: z.string().min(1).optional(),
         subtitle: z.string().min(1).optional(),
-        time: z.string().optional().nullable(),
+        time: z.date().optional().nullable(),
+        gigStartTime: z.date().optional().nullable(),
+        gigEndTime: z.date().optional().nullable(),
         ticketLink: z.string().optional().nullable(),
-        isUpcoming: z.boolean().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

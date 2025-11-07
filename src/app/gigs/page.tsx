@@ -1,5 +1,6 @@
 import { StaticBackground } from "~/app/_components/static-background";
 import { api } from "~/trpc/server";
+import { formatDate, formatTime } from "~/lib/date-utils";
 
 
 
@@ -38,18 +39,27 @@ export default async function GigsPage() {
                   <div className="flex-1">
                     <div className="mb-2 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                       <span className="text-xl sm:text-2xl font-bold">
-                        {gig.date.toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })}
+                        {formatDate(gig.date)}
                       </span>
                       <div>
                         <h3 className="text-lg sm:text-xl font-semibold">{gig.title}</h3>
                         <p className="text-white/60 text-sm sm:text-base">{gig.subtitle}</p>
                       </div>
                     </div>
-                    {gig.time && (
-                      <p className="text-xs sm:text-sm text-white/60">{gig.time}</p>
+                    {(gig.gigStartTime ?? gig.gigEndTime ?? (typeof gig.time === 'string' ? gig.time : null)) && (
+                      <p className="text-xs sm:text-sm text-white/60">
+                        {gig.gigStartTime && gig.gigEndTime
+                          ? `${formatTime(gig.gigStartTime)} - ${formatTime(gig.gigEndTime)}`
+                          : gig.gigStartTime
+                            ? `Starts at ${formatTime(gig.gigStartTime)}`
+                            : gig.gigEndTime
+                              ? `Ends at ${formatTime(gig.gigEndTime)}`
+                              : typeof gig.time === 'string'
+                                ? gig.time
+                                : gig.time
+                                  ? formatTime(gig.time)
+                                  : ""}
+                      </p>
                     )}
                   </div>
                   {gig.ticketLink && (
@@ -82,10 +92,7 @@ export default async function GigsPage() {
                   <h3 className="text-base sm:text-lg font-semibold mb-2">{gig.title}</h3>
                   <p className="text-white/60 text-sm sm:text-base mb-2">{gig.subtitle}</p>
                   <div className="text-lg sm:text-xl font-bold">
-                    {gig.date.toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })}
+                    {formatDate(gig.date)}
                   </div>
                 </div>
               ))}

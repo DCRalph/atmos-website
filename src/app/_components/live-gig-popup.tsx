@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { api } from "~/trpc/react";
 import { ChevronUp, ChevronDown } from "lucide-react";
+import { formatTime } from "~/lib/date-utils";
 
 export function LiveGigPopup() {
   const { data: todayGigs, isLoading } = api.gigs.getToday.useQuery();
@@ -164,8 +165,21 @@ export function LiveGigPopup() {
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                       <div className="text-sm sm:text-base text-white/60">
                         <span className="font-semibold">Today</span>
-                        {liveGig.time && (
-                          <span className="ml-2">• {liveGig.time}</span>
+                        {(liveGig.gigStartTime ?? liveGig.gigEndTime ?? (typeof liveGig.time === 'string' ? liveGig.time : null)) && (
+                          <span className="ml-2">
+                            •{" "}
+                            {liveGig.gigStartTime && liveGig.gigEndTime
+                              ? `${formatTime(liveGig.gigStartTime)} - ${formatTime(liveGig.gigEndTime)}`
+                              : liveGig.gigStartTime
+                                ? `Starts at ${formatTime(liveGig.gigStartTime)}`
+                                : liveGig.gigEndTime
+                                  ? `Ends at ${formatTime(liveGig.gigEndTime)}`
+                                  : typeof liveGig.time === 'string'
+                                    ? liveGig.time
+                                    : liveGig.time
+                                      ? formatTime(liveGig.time)
+                                      : ""}
+                          </span>
                         )}
                       </div>
                     </div>

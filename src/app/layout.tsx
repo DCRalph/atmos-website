@@ -12,7 +12,6 @@ export const metadata: Metadata = {
   title: "Atmos",
   description: "Atmos — sound, culture, nightlife.",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
-  viewport: "width=device-width, initial-scale=1",
 };
 
 const geist = Geist({

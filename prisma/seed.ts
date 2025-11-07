@@ -114,13 +114,26 @@ const crewMembers: CrewMember[] = [
 ];
 
 // Example gig data - replace with actual database queries
-const upcomingGigs = [
+type GigSeedData = {
+  id: number;
+  date: string;
+  title: string;
+  subtitle: string;
+  time?: string | null;
+  gigStartTime?: string | null;
+  gigEndTime?: string | null;
+  ticketLink?: string | null;
+};
+
+const upcomingGigs: GigSeedData[] = [
   {
     id: 1,
     date: "Nov 7",
     title: "Atmos & Frenz presents: broderbeats - Bounce release party",
     subtitle: "Queens Wharf (secret location)",
-    time: "6:00 PM - 11:00 PM",
+    time: "6:00 PM - 11:00 PM", // Can be a time range string or null
+    gigStartTime: "6:00 PM", // Optional: specific start time
+    gigEndTime: "11:00 PM", // Optional: specific end time
     ticketLink: null,
   },
   // {
@@ -198,9 +211,11 @@ const merchItems: MerchItem[] = [
   },
 ];
 
-// Helper function to parse date strings
+// Helper function to parse date strings and convert to UTC at midnight
 function parseDate(dateStr: string, isUpcoming = false): Date {
-  // Handle "Nov 7" format for upcoming gigs
+  let date: Date;
+
+  // Handle "Nov 7" format
   if (dateStr.includes(" ") && !dateStr.includes("-")) {
     const currentYear = new Date().getFullYear();
     const monthMap: Record<string, number> = {
@@ -217,22 +232,99 @@ function parseDate(dateStr: string, isUpcoming = false): Date {
         const year = isUpcoming && new Date(currentYear, month, day) < new Date()
           ? currentYear + 1
           : currentYear;
-        return new Date(year, month, day);
+        date = new Date(year, month, day);
+      } else {
+        date = new Date();
       }
+    } else {
+      date = new Date();
     }
+  } else if (dateStr.includes("-")) {
+    // Handle "YYYY-MM-DD" format
+    date = new Date(dateStr);
+  } else {
+    // Fallback to current date
+    date = new Date();
   }
 
-  // Handle "YYYY-MM-DD" format
-  if (dateStr.includes("-")) {
-    return new Date(dateStr);
+  // Convert to UTC at midnight
+  return new Date(Date.UTC(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    0, 0, 0, 0
+  ));
+}
+
+// Helper function to parse time strings like "6:00 PM" or "6:00 PM - 11:00 PM"
+function parseTime(timeStr: string | null | undefined, baseDate: Date): Date | null {
+  if (!timeStr || timeStr === "TBA") {
+    return null;
   }
 
-  // Fallback to current date
-  return new Date();
+  // Handle time range like "6:00 PM - 11:00 PM" - take the first time
+  const timePart = timeStr.includes(" - ")
+    ? timeStr.split(" - ")[0]?.trim()
+    : timeStr.trim();
+
+  if (!timePart) {
+    return null;
+  }
+
+  // Parse time like "6:00 PM" or "18:00"
+  const timeRegex = /(\d{1,2}):(\d{2})\s*(AM|PM)?/i;
+  const timeMatch = timeRegex.exec(timePart);
+  if (!timeMatch) {
+    return null;
+  }
+
+  let hours = parseInt(timeMatch[1] ?? "0", 10);
+  const minutes = parseInt(timeMatch[2] ?? "0", 10);
+  const period = timeMatch[3]?.toUpperCase();
+
+  // Convert to 24-hour format
+  if (period === "PM" && hours !== 12) {
+    hours += 12;
+  } else if (period === "AM" && hours === 12) {
+    hours = 0;
+  }
+
+  // Create datetime using the base date with the parsed time
+  // Convert to UTC preserving the local time
+  const localDate = new Date(
+    baseDate.getUTCFullYear(),
+    baseDate.getUTCMonth(),
+    baseDate.getUTCDate(),
+    hours,
+    minutes,
+    0,
+    0
+  );
+
+  // Return as UTC (the Date object represents the correct moment in time)
+  return localDate;
+}
+
+// Helper function to parse start and end times separately
+function parseStartEndTime(
+  startTimeStr: string | null | undefined,
+  endTimeStr: string | null | undefined,
+  baseDate: Date
+): { startTime: Date | null; endTime: Date | null } {
+  return {
+    startTime: startTimeStr ? parseTime(startTimeStr, baseDate) : null,
+    endTime: endTimeStr ? parseTime(endTimeStr, baseDate) : null,
+  };
 }
 
 async function main() {
   console.log("Starting database seed...");
+  // Delete all existing data
+  await prisma.gig.deleteMany();
+  await prisma.crewMember.deleteMany();
+  await prisma.contentItem.deleteMany();
+  await prisma.merchItem.deleteMany();
+  await prisma.contactSubmission.deleteMany();
 
   // Seed ContentItems
   console.log("Seeding content items...");
@@ -267,14 +359,46 @@ async function main() {
   // Seed Upcoming Gigs
   console.log("Seeding upcoming gigs...");
   for (const gig of upcomingGigs) {
+    const gigDate = parseDate(gig.date, true);
+
+    // Parse times - prefer gigStartTime/gigEndTime if provided, otherwise parse from time string
+    let time: Date | null = null;
+    let gigStartTime: Date | null = null;
+    let gigEndTime: Date | null = null;
+
+    if (gig.gigStartTime || gig.gigEndTime) {
+      // Use explicit start/end times if provided
+      const parsed = parseStartEndTime(
+        gig.gigStartTime,
+        gig.gigEndTime,
+        gigDate
+      );
+      gigStartTime = parsed.startTime;
+      gigEndTime = parsed.endTime;
+    } else if (gig.time) {
+      // Parse from time string (e.g., "6:00 PM - 11:00 PM")
+      if (gig.time.includes(" - ")) {
+        const [start, end] = gig.time.split(" - ");
+        const parsed = parseStartEndTime(start, end, gigDate);
+        gigStartTime = parsed.startTime;
+        gigEndTime = parsed.endTime;
+        // Also set time to the start time for backward compatibility
+        time = parsed.startTime;
+      } else {
+        // Single time value
+        time = parseTime(gig.time, gigDate);
+      }
+    }
+
     await prisma.gig.create({
       data: {
-        date: parseDate(gig.date, true),
+        date: gigDate,
         title: gig.title,
         subtitle: gig.subtitle,
-        time: gig.time || null,
+        time,
+        gigStartTime,
+        gigEndTime,
         ticketLink: gig.ticketLink === "#" ? null : (gig.ticketLink ?? null),
-        isUpcoming: true,
       },
     });
   }
@@ -283,14 +407,17 @@ async function main() {
   // Seed Past Gigs
   console.log("Seeding past gigs...");
   for (const gig of pastGigs) {
+    const gigDate = parseDate(gig.date, false);
+
     await prisma.gig.create({
       data: {
-        date: parseDate(gig.date, false),
+        date: gigDate,
         title: gig.title,
         subtitle: gig.subtitle,
         time: null,
+        gigStartTime: null,
+        gigEndTime: null,
         ticketLink: null,
-        isUpcoming: false,
       },
     });
   }
