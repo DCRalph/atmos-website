@@ -10,11 +10,13 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
+    disableSignUp: true,
   },
   socialProviders: {
     google: {
       clientId: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
+      disableSignUp: true,
     },
   },
 
