@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 import { OpeningAnimation } from "~/app/_components/opening-animation";
 import { VideoBackground } from "~/app/_components/video-background";
@@ -10,12 +12,13 @@ import { UndergroundOverlay } from "./_components/underground-overlay";
 import { SocialLinks } from "./_components/social-links";
 import { UserIndicator } from "./_components/user-indicator";
 
-// Toggle for underground UI - set to false for clean/professional look
-const UNDERGROUND_UI_ENABLED = false;
+function HomeContent() {
+  const searchParams = useSearchParams();
+  const UNDERGROUND_UI_ENABLED = searchParams.get("ugui") !== null;
 
-export default function Home() {
+
   return (
-    <main className="min-h-dvh overflow-hidden bg-black text-white">
+    <main className="relative min-h-dvh overflow-hidden bg-black text-white">
       <OpeningAnimation />
       <VideoBackground underground={UNDERGROUND_UI_ENABLED} />
       {UNDERGROUND_UI_ENABLED && <UndergroundOverlay />}
@@ -44,28 +47,37 @@ export default function Home() {
           )}
         </div>
 
-        {/* Corner text elements for underground feel */}
-        {UNDERGROUND_UI_ENABLED && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1.2, duration: 1 }}
-              className="absolute top-8 right-8 hidden md:block text-[10px] uppercase tracking-[0.2em] text-red-500/40 font-mono rotate-90 origin-top-right"
-            >
-              <span className="inline-block">[UNDERGROUND]</span>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1.4, duration: 1 }}
-              className="absolute bottom-8 left-8 hidden md:block text-[10px] uppercase tracking-[0.2em] text-red-500/40 font-mono -rotate-90 origin-bottom-left"
-            >
-              <span className="inline-block">[MEMBERS ONLY]</span>
-            </motion.div>
-          </>
-        )}
       </section>
+
+      {/* Corner text elements for underground feel */}
+      {UNDERGROUND_UI_ENABLED && (
+        <div className="absolute inset-0">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.2, duration: 1 }}
+            className="absolute top-18 -right-22 hidden md:block text-[10px] uppercase tracking-[0.2em] rotate-90 text-red-500/40 font-mono origin-top-left"
+          >
+            <span className="inline-block">[UNDERGROUND]</span>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.4, duration: 1 }}
+            className="absolute bottom-8 left-8 hidden md:block text-[10px] uppercase tracking-[0.2em] text-red-500/40 font-mono -rotate-90 origin-bottom-left"
+          >
+            <span className="inline-block">[MEMBERS ONLY]</span>
+          </motion.div>
+        </div>
+      )}
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense>
+      <HomeContent />
+    </Suspense>
   );
 }

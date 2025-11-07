@@ -42,7 +42,7 @@ export function UserIndicator() {
               {/* <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-semibold">
                 {userInitial}
               </div> */}
-              <span className="hidden sm:inline">{session.user.name ?? session.user.email}</span>
+              <span>{session.user.name ?? session.user.email}</span>
             </div>
           </Button>
         </PopoverTrigger>
