@@ -11,7 +11,7 @@ export default async function AuthErrorPage({
   message = message ?? "An authentication error occurred.";
 
   return (
-    <main className="relative min-h-screen flex items-center justify-center bg-black text-white p-4">
+    <main className="relative min-h-dvh flex items-center justify-center bg-black text-white p-4">
       <Card className="w-full max-w-md bg-black/50 backdrop-blur-sm border-white/20">
         <CardHeader>
           <CardTitle className="text-2xl text-white">Authentication Error</CardTitle>

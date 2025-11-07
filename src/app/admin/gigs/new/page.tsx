@@ -49,7 +49,7 @@ export default function NewGigPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-8">
+    <div className="min-h-dvh bg-background p-8">
       <div className="mx-auto max-w-2xl">
         <div className="mb-6">
           <Link href="/admin" className="text-muted-foreground hover:text-foreground mb-2 inline-block">

@@ -24,10 +24,10 @@ export default async function GigPage({ params }: PageProps) {
   const hasMedia = gig.media && gig.media.length > 0;
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-black text-white">
+    <main className="relative min-h-dvh overflow-hidden bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-6.jpg" />
 
-      <section className="relative z-10 min-h-screen px-4 py-16">
+      <section className="relative z-10 min-h-dvh px-4 py-16">
         <div className="mx-auto max-w-6xl">
           <div className="mb-8">
             <Button

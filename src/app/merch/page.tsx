@@ -5,10 +5,10 @@ import { api } from "~/trpc/server";
 export default async function MerchPage() {
   const merchItems = await api.merch.getAll();
   return (
-    <main className="relative min-h-screen overflow-hidden bg-black text-white">
+    <main className="relative min-h-dvh overflow-hidden bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-46.jpg" />
 
-      <section className="relative z-10 min-h-screen px-4 py-16 sm:py-24">
+      <section className="relative z-10 min-h-dvh px-4 py-16 sm:py-24">
         <div className="mx-auto max-w-6xl">
 
           <h1 className="mb-12 sm:mb-16 text-center text-4xl sm:text-5xl font-bold tracking-wider md:text-7xl">

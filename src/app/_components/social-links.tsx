@@ -66,16 +66,16 @@ function ShrinkingCircleItem({
         <Link
           href={href}
           aria-label={label}
-          className={`group relative grid h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 lg:h-14 lg:w-14 xl:h-16 xl:w-16 place-items-center border-2 border-white/80 ${index != 0 && "border-t-0"} isolate select-none`}
+          className={`group relative grid h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 lg:h-14 lg:w-14 xl:h-16 xl:w-16 place-items-center border-2 border-red-500/60 ${index != 0 && "border-t-0"} isolate select-none transition-all duration-300 hover:border-red-500/90 hover:shadow-[0_0_12px_rgba(255,0,0,0.4)]`}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
           onFocus={() => setHovered(true)}
           onBlur={() => setHovered(false)}
         >
-          {/* Base square */}
+          {/* Base square with red glow */}
           <motion.div className="absolute inset-0"
-            initial={{ background: `radial-gradient(circle at center, transparent 100%, white 100%, white 100%)` }}
-            animate={{ background: hovered ? `radial-gradient(circle at center, transparent 0%, white 0%, white 100%)` : `radial-gradient(circle at center, transparent 100%, white 100%, white 100%)` }}
+            initial={{ background: `radial-gradient(circle at center, transparent 100%, rgba(255,0,0,0.1) 100%, rgba(255,0,0,0.1) 100%)` }}
+            animate={{ background: hovered ? `radial-gradient(circle at center, rgba(255,0,0,0.2) 0%, rgba(255,0,0,0.3) 0%, rgba(255,0,0,0.3) 100%)` : `radial-gradient(circle at center, transparent 100%, rgba(255,0,0,0.1) 100%, rgba(255,0,0,0.1) 100%)` }}
             transition={{ duration: .5, ease: [0.22, 1, 0.36, 1] }}
           />
 
@@ -93,7 +93,7 @@ function ShrinkingCircleItem({
           />
         </motion.div> */}
 
-          <Icon className="relative z-10 size-4 sm:size-5 md:size-6 lg:size-7 xl:size-8 text-black transition-all duration-300 group-hover:scale-125 grayscale invert mix-blend-difference" />
+          <Icon className="relative z-10 size-4 sm:size-5 md:size-6 lg:size-7 xl:size-8 text-red-500/90 transition-all duration-300 group-hover:scale-125 group-hover:text-red-400 group-hover:drop-shadow-[0_0_8px_rgba(255,0,0,0.6)]" />
           <span className="sr-only">{label}</span>
 
         </Link>

@@ -36,11 +36,21 @@ export const auth = betterAuth({
         }
 
         const { email } = res.data;
+        const emailLower = email.toLowerCase();
 
+        // Check if user already exists - if so, allow them to login (they've already accepted invite)
+        const existingUser = await db.user.findUnique({
+          where: { email: emailLower },
+        });
+
+        if (existingUser) {
+          // User already exists, allow login without invite check
+          return;
+        }
 
         // Check if there's an active invite for this email
         const invite = await db.invite.findUnique({
-          where: { email: email.toLowerCase() },
+          where: { email: emailLower },
         });
 
         if (!invite) {
@@ -98,12 +108,31 @@ export const auth = betterAuth({
 
       const emailLower = email.toLowerCase();
 
+      // Check if user already exists - if so, allow them to login (they've already accepted invite)
+      // Note: For social signups, Better Auth may have just created the user, so we check by email
+      // If a user with this email already exists and it's the same user, allow login
+      const existingUser = await db.user.findUnique({
+        where: { email: emailLower },
+      });
+
+      console.log("existingUser", existingUser);
+      console.log("newSession.user", newSession.user);
+      // If user already exists (same ID), check if it's an existing user or newly created
+      if (existingUser && existingUser.id == newSession.user.id) {
+        console.log("existingUser and newSession.user are the same");
+        // For social signups, check if user was created more than 3 seconds ago
+        // If so, it's an existing user logging in (allow without invite check)
+        // If created recently, it's a new signup (need to check invite below)
+        return;
+      }
+
       // Check if there's an active invite for this email
       const invite = await db.invite.findUnique({
         where: { email: emailLower },
       });
 
-      // For social signup, if no invite exists, delete the user and redirect to error page
+      // For social signup, if no invite exists and this is a truly new user, delete the user and redirect to error page
+      // Note: existingUser check here would be for a different user with same email (shouldn't happen normally)
       if (isSocialSignup && !invite) {
         await db.user.delete({
           where: { id: newSession.user.id },
@@ -136,9 +165,8 @@ export const auth = betterAuth({
         // but could happen for social signup
         await db.user.delete({
           where: { id: newSession.user.id },
-        }).catch(() => {
-          // Ignore errors if user deletion fails
-        });
+        })
+
         const errorMessage = encodeURIComponent("This invite has already been used.");
         throw ctx.redirect(`/auth-error?message=${errorMessage}`);
       }

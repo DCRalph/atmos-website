@@ -11,7 +11,7 @@ import { UsersManager } from "./users-manager";
 
 export function AdminDashboard() {
   return (
-    <div className="min-h-screen bg-background p-8">
+    <div className="min-h-dvh bg-background p-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex gap-4">
           <h1 className="text-4xl font-bold text-foreground">Atmos Admin</h1>

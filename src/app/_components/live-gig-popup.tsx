@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { api } from "~/trpc/react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { formatTime } from "~/lib/date-utils";
+import Link from "next/link";
 
 export function LiveGigPopup() {
   const { data: todayGigs, isLoading } = api.gigs.getToday.useQuery();
@@ -13,21 +14,59 @@ export function LiveGigPopup() {
 
   useEffect(() => {
     if (todayGigs && todayGigs.length > 0) {
-      // Show popup after a short delay
-      const timer = setTimeout(() => {
-        setIsOpen(true);
-      }, 2000);
+      const liveGig = todayGigs[0];
+      if (liveGig) {
+        // Check localStorage for saved minimized state for this specific gig
+        const storageKey = `live-gig-minimized-${liveGig.id}`;
+        try {
+          const savedState = localStorage.getItem(storageKey);
+          if (savedState === "true") {
+            setIsMinimized(true);
+          }
+        } catch {
+          // localStorage might not be available, ignore
+        }
 
-      return () => clearTimeout(timer);
+        // Show popup after a short delay
+        const timer = setTimeout(() => {
+          setIsOpen(true);
+        }, 2000);
+
+        return () => clearTimeout(timer);
+      }
     }
   }, [todayGigs]);
 
   const handleMinimize = () => {
     setIsMinimized(true);
+    // Save minimized state to localStorage
+    if (todayGigs && todayGigs.length > 0) {
+      const liveGig = todayGigs[0];
+      if (liveGig) {
+        const storageKey = `live-gig-minimized-${liveGig.id}`;
+        try {
+          localStorage.setItem(storageKey, "true");
+        } catch {
+          // localStorage might not be available, ignore
+        }
+      }
+    }
   };
 
   const handleExpand = () => {
     setIsMinimized(false);
+    // Clear minimized state from localStorage
+    if (todayGigs && todayGigs.length > 0) {
+      const liveGig = todayGigs[0];
+      if (liveGig) {
+        const storageKey = `live-gig-minimized-${liveGig.id}`;
+        try {
+          localStorage.removeItem(storageKey);
+        } catch {
+          // localStorage might not be available, ignore
+        }
+      }
+    }
   };
 
   if (isLoading || !todayGigs || todayGigs.length === 0) {
@@ -126,21 +165,13 @@ export function LiveGigPopup() {
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
                 className="pointer-events-auto relative w-full max-w-2xl overflow-hidden rounded-t-lg border border-red-500/50 bg-black/95 backdrop-blur-md shadow-2xl"
               >
-                {/* Minimize Button */}
-                <button
-                  onClick={handleMinimize}
-                  className="absolute right-3 top-3 z-10 text-white/60 transition-colors hover:text-white"
-                  aria-label="Minimize popup"
-                >
-                  <ChevronDown className="w-5 h-5" />
-                </button>
-
-                {/* Live Badge */}
-                <div className="absolute left-4 top-4 z-10">
+                {/* Top Row: Live Badge, Buttons, and Minimize Button */}
+                <div className="flex items-center justify-between gap-4 p-2 sm:p-4 border-b border-red-500/20">
+                  {/* Live Badge */}
                   <motion.div
                     animate={{ scale: [1, 1.1, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}
-                    className="flex items-center gap-2 rounded-full bg-red-600 px-3 py-1.5"
+                    className="flex items-center gap-2 rounded-full bg-red-600 px-3 py-1.5 flex-shrink-0"
                   >
                     <motion.div
                       animate={{ opacity: [1, 0.5, 1] }}
@@ -151,10 +182,39 @@ export function LiveGigPopup() {
                       Live
                     </span>
                   </motion.div>
+
+                  {/* Buttons */}
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1 justify-end">
+                    <Link
+                      href={`/gigs/${liveGig.id}`}
+                      onClick={() => handleMinimize()}
+                      className="rounded-md border-2 border-red-500/60 bg-transparent px-4 py-2 sm:px-6 sm:py-2.5 text-center text-xs sm:text-sm font-semibold text-white transition-all hover:border-red-500 hover:bg-red-500/10 whitespace-nowrap"
+                    >
+                      View Details
+                    </Link>
+                    {liveGig.ticketLink && (
+                      <a
+                        href={liveGig.ticketLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => handleMinimize()}
+                        className="rounded-md bg-red-600 px-4 py-2 sm:px-6 sm:py-2.5 text-center text-xs sm:text-sm font-semibold text-white transition-all hover:bg-red-700 whitespace-nowrap"
+                      >
+                        Get Tickets
+                      </a>
+                    )}
+                    <button
+                      onClick={handleMinimize}
+                      className="text-white/60 transition-colors hover:text-white p-1 flex-shrink-0"
+                      aria-label="Minimize popup"
+                    >
+                      <ChevronDown className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Content */}
-                <div className="flex flex-col gap-4 p-6 pt-16 sm:p-8 sm:pt-20">
+                <div className="flex flex-col gap-4 p-6 sm:p-8">
                   <div className="flex-1">
                     <h2 className="mb-2 text-2xl sm:text-3xl font-bold tracking-wider text-white">
                       {liveGig.title}
@@ -180,18 +240,6 @@ export function LiveGigPopup() {
                       </div>
                     </div>
                   </div>
-
-                  {liveGig.ticketLink && (
-                    <a
-                      href={liveGig.ticketLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => handleMinimize()}
-                      className="w-full sm:w-auto rounded-md bg-red-600 px-6 py-3 text-center font-semibold text-white transition-all hover:bg-red-700 whitespace-nowrap"
-                    >
-                      Get Tickets
-                    </a>
-                  )}
                 </div>
               </motion.div>
             )}

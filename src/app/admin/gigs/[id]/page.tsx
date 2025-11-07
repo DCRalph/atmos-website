@@ -135,7 +135,7 @@ export default function GigManagementPage({ params }: PageProps) {
 
   if (!gig) {
     return (
-      <div className="min-h-screen bg-background p-8">
+      <div className="min-h-dvh bg-background p-8">
         <div className="mx-auto max-w-7xl">
           <p>Loading...</p>
         </div>
@@ -146,13 +146,15 @@ export default function GigManagementPage({ params }: PageProps) {
   const media = (gig.media as Array<{ id: string; type: "photo" | "video"; url: string; featured: boolean }>) || [];
 
   return (
-    <div className="min-h-screen bg-background p-8">
+    <div className="min-h-dvh bg-background p-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <Link href="/admin" className="text-muted-foreground hover:text-foreground mb-2 inline-block">
-              ← Back to Admin
-            </Link>
+            <Button variant="outline" asChild>
+              <Link href="/admin" className="text-muted-foreground hover:text-foreground mb-2 inline-block">
+                ← Back to Admin
+              </Link>
+            </Button>
             <h1 className="text-4xl font-bold text-foreground">Manage Gig</h1>
             <p className="text-muted-foreground mt-1">{gig.title}</p>
           </div>
