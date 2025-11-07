@@ -10,13 +10,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  USER
+  CREATOR
+  ADMIN
+}
+
 model User {
   id            String    @id
   name          String
   email         String
   emailVerified Boolean   @default(false)
   image         String?
-  isAdmin       Boolean   @default(false)
+  role          UserRole  @default(USER)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now()) @updatedAt
   sessions      Session[]
@@ -71,6 +77,20 @@ model Verification {
   @@map("verification")
 }
 
+model Invite {
+  id        String    @id @default(cuid())
+  email     String
+  role      UserRole  @default(USER)
+  used      Boolean   @default(false)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?   // Optional: track who created the invite
+
+  @@unique([email])
+  @@map("invite")
+}
+
 model CrewMember {
   id          String   @id @default(cuid())
   name        String
@@ -98,18 +118,32 @@ model ContentItem {
 }
 
 model Gig {
-  id           String    @id @default(cuid())
+  id           String      @id @default(cuid())
   date         DateTime
   title        String
   subtitle     String
-  time         DateTime?
+  description  String?
   gigStartTime DateTime?
   gigEndTime   DateTime?
   ticketLink   String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  media        GigMedia[]
 
   @@map("gig")
+}
+
+model GigMedia {
+  id        String   @id @default(cuid())
+  gigId     String
+  gig       Gig      @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  type      String   // "photo" or "video"
+  url       String
+  featured  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("gig_media")
 }
 
 model MerchItem {

@@ -16,7 +16,7 @@ export default async function AdminPage() {
     where: { id: session.user.id },
   });
 
-  if (!user?.isAdmin) {
+  if (user?.role !== "ADMIN") {
     redirect("/login");
   }
 

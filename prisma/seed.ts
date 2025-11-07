@@ -361,8 +361,6 @@ async function main() {
   for (const gig of upcomingGigs) {
     const gigDate = parseDate(gig.date, true);
 
-    // Parse times - prefer gigStartTime/gigEndTime if provided, otherwise parse from time string
-    let time: Date | null = null;
     let gigStartTime: Date | null = null;
     let gigEndTime: Date | null = null;
 
@@ -382,11 +380,6 @@ async function main() {
         const parsed = parseStartEndTime(start, end, gigDate);
         gigStartTime = parsed.startTime;
         gigEndTime = parsed.endTime;
-        // Also set time to the start time for backward compatibility
-        time = parsed.startTime;
-      } else {
-        // Single time value
-        time = parseTime(gig.time, gigDate);
       }
     }
 
@@ -395,7 +388,6 @@ async function main() {
         date: gigDate,
         title: gig.title,
         subtitle: gig.subtitle,
-        time,
         gigStartTime,
         gigEndTime,
         ticketLink: gig.ticketLink === "#" ? null : (gig.ticketLink ?? null),
@@ -414,7 +406,6 @@ async function main() {
         date: gigDate,
         title: gig.title,
         subtitle: gig.subtitle,
-        time: null,
         gigStartTime: null,
         gigEndTime: null,
         ticketLink: null,

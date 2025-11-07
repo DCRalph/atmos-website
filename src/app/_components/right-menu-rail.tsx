@@ -37,11 +37,11 @@ export function RightMenuRail({ className = "", items }: RightMenuRailProps) {
   // Build menu items dynamically, adding Admin if user is admin
   const menuItems = useMemo(() => {
     const baseItems = items ?? DEFAULT_ITEMS;
-    if (user?.isAdmin) {
+    if (user?.role === "ADMIN") {
       return [...baseItems, { label: "Admin", href: "/admin" }];
     }
     return baseItems;
-  }, [items, user?.isAdmin]);
+  }, [items, user?.role]);
 
   return (
     <div className={cn("fixed top-2 sm:top-4 right-2 sm:right-6 z-20 text-right", className)}>
@@ -69,8 +69,8 @@ export function RightMenuRail({ className = "", items }: RightMenuRailProps) {
                 key={item.label}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ 
-                  opacity: 0, 
+                exit={{
+                  opacity: 0,
                   x: 20,
                   transition: {
                     duration: 0.2,

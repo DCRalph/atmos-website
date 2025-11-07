@@ -6,6 +6,7 @@ import { ContentManager } from "./content-manager";
 import { GigsManager } from "./gigs-manager";
 import { MerchManager } from "./merch-manager";
 import { ContactManager } from "./contact-manager";
+import { UsersManager } from "./users-manager";
 
 
 export function AdminDashboard() {
@@ -24,6 +25,7 @@ export function AdminDashboard() {
             <TabsTrigger value="gigs">Gigs</TabsTrigger>
             <TabsTrigger value="merch">Merch</TabsTrigger>
             <TabsTrigger value="contact">Contact Submissions</TabsTrigger>
+            <TabsTrigger value="users">Users</TabsTrigger>
           </TabsList>
 
           <TabsContent value="crew">
@@ -44,6 +46,10 @@ export function AdminDashboard() {
 
           <TabsContent value="contact">
             <ContactManager />
+          </TabsContent>
+
+          <TabsContent value="users">
+            <UsersManager />
           </TabsContent>
         </Tabs>
       </div>

@@ -165,7 +165,7 @@ export function LiveGigPopup() {
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                       <div className="text-sm sm:text-base text-white/60">
                         <span className="font-semibold">Today</span>
-                        {(liveGig.gigStartTime ?? liveGig.gigEndTime ?? (typeof liveGig.time === 'string' ? liveGig.time : null)) && (
+                        {(liveGig.gigStartTime ?? liveGig.gigEndTime) && (
                           <span className="ml-2">
                             •{" "}
                             {liveGig.gigStartTime && liveGig.gigEndTime
@@ -174,11 +174,7 @@ export function LiveGigPopup() {
                                 ? `Starts at ${formatTime(liveGig.gigStartTime)}`
                                 : liveGig.gigEndTime
                                   ? `Ends at ${formatTime(liveGig.gigEndTime)}`
-                                  : typeof liveGig.time === 'string'
-                                    ? liveGig.time
-                                    : liveGig.time
-                                      ? formatTime(liveGig.time)
-                                      : ""}
+                                  : ""}
                           </span>
                         )}
                       </div>

@@ -9,6 +9,7 @@ import { LiveGigPopup } from "~/app/_components/live-gig-popup";
 
 import Image from "next/image";
 import { SocialLinks } from "./_components/social-links";
+import { UserIndicator } from "./_components/user-indicator";
 
 
 
@@ -22,6 +23,7 @@ export default function Home() {
       {/* <PopSidesBackground /> */}
 
       <SocialLinks className="fixed left-3 top-3 z-20" />
+      <UserIndicator />
       <LiveGigPopup />
 
 

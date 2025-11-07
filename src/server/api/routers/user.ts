@@ -12,7 +12,7 @@ export const userRouter = createTRPCRouter({
         id: true,
         name: true,
         email: true,
-        isAdmin: true,
+        role: true,
       },
     });
 

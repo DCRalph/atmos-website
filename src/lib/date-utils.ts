@@ -256,7 +256,6 @@ export function isGigUpcoming(gig: {
   date: Date;
   gigEndTime?: Date | null;
   gigStartTime?: Date | null;
-  time?: Date | null;
 }): boolean {
   const now = getUTCNow();
 
@@ -269,9 +268,6 @@ export function isGigUpcoming(gig: {
   } else if (gig.gigStartTime) {
     // Use start time if available
     gigReferenceDate = gig.gigStartTime;
-  } else if (gig.time) {
-    // Use time field if available
-    gigReferenceDate = gig.time;
   } else {
     // Fall back to date (at end of day)
     gigReferenceDate = new Date(gig.date);
@@ -298,3 +294,11 @@ export function isGigUpcoming(gig: {
   return now >= dayBefore && now < dayAfter5am;
 }
 
+export function isGigPast(gig: {
+  date: Date;
+  gigEndTime?: Date | null;
+  gigStartTime?: Date | null;
+}): boolean {
+  const now = getUTCNow();
+  return now >= (gig.gigEndTime ?? gig.date);
+}

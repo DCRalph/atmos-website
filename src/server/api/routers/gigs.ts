@@ -6,12 +6,28 @@ export const gigsRouter = createTRPCRouter({
   getAll: publicProcedure.query(async ({ ctx }) => {
     return ctx.db.gig.findMany({
       orderBy: { date: "desc" },
+      include: {
+        media: {
+          orderBy: [
+            { featured: "desc" },
+            { createdAt: "asc" }
+          ]
+        }
+      },
     });
   }),
 
   getUpcoming: publicProcedure.query(async ({ ctx }) => {
     const allGigs = await ctx.db.gig.findMany({
       orderBy: { date: "asc" },
+      include: {
+        media: {
+          orderBy: [
+            { featured: "desc" },
+            { createdAt: "asc" }
+          ]
+        }
+      },
     });
     // Filter to only upcoming gigs
     return allGigs.filter((gig) => isGigUpcoming(gig));
@@ -20,6 +36,14 @@ export const gigsRouter = createTRPCRouter({
   getPast: publicProcedure.query(async ({ ctx }) => {
     const allGigs = await ctx.db.gig.findMany({
       orderBy: { date: "desc" },
+      include: {
+        media: {
+          orderBy: [
+            { featured: "desc" },
+            { createdAt: "asc" }
+          ]
+        }
+      },
     });
     // Filter to only past gigs
     return allGigs.filter((gig) => !isGigUpcoming(gig));
@@ -38,6 +62,14 @@ export const gigsRouter = createTRPCRouter({
         },
       },
       orderBy: { date: "asc" },
+      include: {
+        media: {
+          orderBy: [
+            { featured: "desc" },
+            { createdAt: "asc" }
+          ]
+        }
+      },
     });
 
     // Filter to only upcoming gigs (gigs that haven't ended yet)
@@ -49,6 +81,14 @@ export const gigsRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       return ctx.db.gig.findUnique({
         where: { id: input.id },
+        include: {
+          media: {
+            orderBy: [
+              { featured: "desc" },
+              { createdAt: "asc" }
+            ]
+          }
+        },
       });
     }),
 
@@ -58,7 +98,7 @@ export const gigsRouter = createTRPCRouter({
         date: z.date(),
         title: z.string().min(1),
         subtitle: z.string().min(1),
-        time: z.date().optional(),
+        description: z.string().optional(),
         gigStartTime: z.date().optional(),
         gigEndTime: z.date().optional(),
         ticketLink: z.string().optional(),
@@ -77,7 +117,7 @@ export const gigsRouter = createTRPCRouter({
         date: z.date().optional(),
         title: z.string().min(1).optional(),
         subtitle: z.string().min(1).optional(),
-        time: z.date().optional().nullable(),
+        description: z.string().optional().nullable(),
         gigStartTime: z.date().optional().nullable(),
         gigEndTime: z.date().optional().nullable(),
         ticketLink: z.string().optional().nullable(),
@@ -95,6 +135,47 @@ export const gigsRouter = createTRPCRouter({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       return ctx.db.gig.delete({
+        where: { id: input.id },
+      });
+    }),
+
+  // Media management endpoints
+  addMedia: adminProcedure
+    .input(
+      z.object({
+        gigId: z.string(),
+        type: z.enum(["photo", "video"]),
+        url: z.string().url(),
+        featured: z.boolean().default(false),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.gigMedia.create({
+        data: input,
+      });
+    }),
+
+  updateMedia: adminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        type: z.enum(["photo", "video"]).optional(),
+        url: z.string().url().optional(),
+        featured: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      return ctx.db.gigMedia.update({
+        where: { id },
+        data,
+      });
+    }),
+
+  deleteMedia: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.gigMedia.delete({
         where: { id: input.id },
       });
     }),

@@ -129,16 +129,38 @@ export const protectedProcedure = t.procedure.use(timingMiddleware).use(async ({
 });
 
 /**
+ * Creator procedure
+ *
+ * Only accessible to users with CREATOR or ADMIN role.
+ */
+export const creatorProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+  const user = await ctx.db.user.findUnique({
+    where: { id: ctx.session.user.id },
+  });
+
+  if (!user || (user.role !== "CREATOR" && user.role !== "ADMIN")) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Creator or Admin access required" });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      user,
+    },
+  });
+});
+
+/**
  * Admin procedure
  *
- * Only accessible to users with isAdmin flag set to true.
+ * Only accessible to users with ADMIN role.
  */
 export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   const user = await ctx.db.user.findUnique({
     where: { id: ctx.session.user.id },
   });
 
-  if (!user?.isAdmin) {
+  if (!user || user.role !== "ADMIN") {
     throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
   }
 
