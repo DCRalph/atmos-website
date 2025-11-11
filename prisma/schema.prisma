@@ -119,11 +119,10 @@ model ContentItem {
 
 model Gig {
   id           String      @id @default(cuid())
-  date         DateTime
   title        String
   subtitle     String
   description  String?
-  gigStartTime DateTime?
+  gigStartTime DateTime 
   gigEndTime   DateTime?
   ticketLink   String?
   createdAt    DateTime    @default(now())

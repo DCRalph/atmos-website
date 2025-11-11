@@ -2,20 +2,38 @@ import { z } from "zod";
 import { createTRPCRouter, adminProcedure } from "~/server/api/trpc";
 
 export const usersRouter = createTRPCRouter({
-  getAll: adminProcedure.query(async ({ ctx }) => {
-    return ctx.db.user.findMany({
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        emailVerified: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
-  }),
+  getAll: adminProcedure
+    .input(
+      z.object({
+        search: z.string().optional(),
+      }).optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const search = input?.search?.toLowerCase().trim();
+      
+      const where = search
+        ? {
+            OR: [
+              { name: { contains: search, mode: "insensitive" as const } },
+              { email: { contains: search, mode: "insensitive" as const } },
+            ],
+          }
+        : undefined;
+
+      return ctx.db.user.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          emailVerified: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+    }),
 
   updateRole: adminProcedure
     .input(

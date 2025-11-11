@@ -160,7 +160,7 @@ export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
     where: { id: ctx.session.user.id },
   });
 
-  if (!user || user.role !== "ADMIN") {
+  if (user?.role !== "ADMIN") {
     throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
   }
 

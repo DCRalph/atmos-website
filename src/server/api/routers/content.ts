@@ -2,11 +2,30 @@ import { z } from "zod";
 import { createTRPCRouter, publicProcedure, adminProcedure } from "~/server/api/trpc";
 
 export const contentRouter = createTRPCRouter({
-  getAll: publicProcedure.query(async ({ ctx }) => {
-    return ctx.db.contentItem.findMany({
-      orderBy: { date: "desc" },
-    });
-  }),
+  getAll: publicProcedure
+    .input(
+      z.object({
+        search: z.string().optional(),
+      }).optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const search = input?.search?.toLowerCase().trim();
+      
+      const where = search
+        ? {
+            OR: [
+              { type: { contains: search, mode: "insensitive" as const } },
+              { title: { contains: search, mode: "insensitive" as const } },
+              { description: { contains: search, mode: "insensitive" as const } },
+            ],
+          }
+        : undefined;
+
+      return ctx.db.contentItem.findMany({
+        where,
+        orderBy: { date: "desc" },
+      });
+    }),
 
   getById: publicProcedure
     .input(z.object({ id: z.string() }))

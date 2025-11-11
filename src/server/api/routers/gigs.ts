@@ -3,23 +3,42 @@ import { createTRPCRouter, publicProcedure, adminProcedure } from "~/server/api/
 import { getTodayRangeStart, getTodayRangeEnd, isGigUpcoming } from "~/lib/date-utils";
 
 export const gigsRouter = createTRPCRouter({
-  getAll: publicProcedure.query(async ({ ctx }) => {
-    return ctx.db.gig.findMany({
-      orderBy: { date: "desc" },
-      include: {
-        media: {
-          orderBy: [
-            { featured: "desc" },
-            { createdAt: "asc" }
-          ]
-        }
-      },
-    });
-  }),
+  getAll: publicProcedure
+    .input(
+      z.object({
+        search: z.string().optional(),
+      }).optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const search = input?.search?.toLowerCase().trim();
+      
+      const where = search
+        ? {
+            OR: [
+              { title: { contains: search, mode: "insensitive" as const } },
+              { subtitle: { contains: search, mode: "insensitive" as const } },
+              { description: { contains: search, mode: "insensitive" as const } },
+            ],
+          }
+        : undefined;
+
+      return ctx.db.gig.findMany({
+        where,
+        orderBy: { gigStartTime: "desc" },
+        include: {
+          media: {
+            orderBy: [
+              { featured: "desc" },
+              { createdAt: "asc" }
+            ]
+          }
+        },
+      });
+    }),
 
   getUpcoming: publicProcedure.query(async ({ ctx }) => {
     const allGigs = await ctx.db.gig.findMany({
-      orderBy: { date: "asc" },
+      orderBy: { gigStartTime: "asc" },
       include: {
         media: {
           orderBy: [
@@ -35,7 +54,7 @@ export const gigsRouter = createTRPCRouter({
 
   getPast: publicProcedure.query(async ({ ctx }) => {
     const allGigs = await ctx.db.gig.findMany({
-      orderBy: { date: "desc" },
+      orderBy: { gigStartTime: "desc" },
       include: {
         media: {
           orderBy: [
@@ -56,12 +75,12 @@ export const gigsRouter = createTRPCRouter({
 
     const todayGigs = await ctx.db.gig.findMany({
       where: {
-        date: {
+        gigStartTime: {
           gte: startDate,
           lt: endDate,
         },
       },
-      orderBy: { date: "asc" },
+      orderBy: { gigStartTime: "asc" },
       include: {
         media: {
           orderBy: [
@@ -95,11 +114,10 @@ export const gigsRouter = createTRPCRouter({
   create: adminProcedure
     .input(
       z.object({
-        date: z.date(),
         title: z.string().min(1),
         subtitle: z.string().min(1),
         description: z.string().optional(),
-        gigStartTime: z.date().optional(),
+        gigStartTime: z.date(),
         gigEndTime: z.date().optional(),
         ticketLink: z.string().optional(),
       }),
@@ -114,11 +132,10 @@ export const gigsRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.string(),
-        date: z.date().optional(),
         title: z.string().min(1).optional(),
         subtitle: z.string().min(1).optional(),
         description: z.string().optional().nullable(),
-        gigStartTime: z.date().optional().nullable(),
+        gigStartTime: z.date().optional(),
         gigEndTime: z.date().optional().nullable(),
         ticketLink: z.string().optional().nullable(),
       }),

@@ -2,11 +2,29 @@ import { z } from "zod";
 import { createTRPCRouter, publicProcedure, adminProcedure } from "~/server/api/trpc";
 
 export const crewRouter = createTRPCRouter({
-  getAll: publicProcedure.query(async ({ ctx }) => {
-    return ctx.db.crewMember.findMany({
-      orderBy: { createdAt: "asc" },
-    });
-  }),
+  getAll: publicProcedure
+    .input(
+      z.object({
+        search: z.string().optional(),
+      }).optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const search = input?.search?.toLowerCase().trim();
+      
+      const where = search
+        ? {
+            OR: [
+              { name: { contains: search, mode: "insensitive" as const } },
+              { role: { contains: search, mode: "insensitive" as const } },
+            ],
+          }
+        : undefined;
+
+      return ctx.db.crewMember.findMany({
+        where,
+        orderBy: { createdAt: "asc" },
+      });
+    }),
 
   getById: publicProcedure
     .input(z.object({ id: z.string() }))

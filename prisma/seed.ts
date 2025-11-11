@@ -361,7 +361,7 @@ async function main() {
   for (const gig of upcomingGigs) {
     const gigDate = parseDate(gig.date, true);
 
-    let gigStartTime: Date | null = null;
+    // let gigStartTime: Date | null = null;
     let gigEndTime: Date | null = null;
 
     if (gig.gigStartTime || gig.gigEndTime) {
@@ -371,24 +371,24 @@ async function main() {
         gig.gigEndTime,
         gigDate
       );
-      gigStartTime = parsed.startTime;
+      // gigStartTime = parsed.startTime;
       gigEndTime = parsed.endTime;
     } else if (gig.time) {
       // Parse from time string (e.g., "6:00 PM - 11:00 PM")
       if (gig.time.includes(" - ")) {
         const [start, end] = gig.time.split(" - ");
         const parsed = parseStartEndTime(start, end, gigDate);
-        gigStartTime = parsed.startTime;
+        // gigStartTime = parsed.startTime;
         gigEndTime = parsed.endTime;
       }
     }
 
     await prisma.gig.create({
       data: {
-        date: gigDate,
+        // date: gigDate,
         title: gig.title,
         subtitle: gig.subtitle,
-        gigStartTime,
+        gigStartTime: gigDate,
         gigEndTime,
         ticketLink: gig.ticketLink === "#" ? null : (gig.ticketLink ?? null),
       },
@@ -403,10 +403,10 @@ async function main() {
 
     await prisma.gig.create({
       data: {
-        date: gigDate,
+        // date: gigDate,
         title: gig.title,
         subtitle: gig.subtitle,
-        gigStartTime: null,
+        gigStartTime: gigDate,
         gigEndTime: null,
         ticketLink: null,
       },

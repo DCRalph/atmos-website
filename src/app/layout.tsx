@@ -5,8 +5,10 @@ import { Geist } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next"
 
 import { TRPCReactProvider } from "~/trpc/react";
-import { RightMenuRail } from "~/app/_components/right-menu-rail";
 import { ThemeProvider } from "~/components/theme-provider";
+// import { ViewTransitionOverlay } from "~/components/view-transition-overlay";
+// import { AnimatePresence } from "motion/react";
+import { ViewTransition } from "react";
 
 export const metadata: Metadata = {
   title: "Atmos",
@@ -25,26 +27,22 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geist.variable} dark`} suppressHydrationWarning>
       <body>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          disableTransitionOnChange
-        >
-          <TRPCReactProvider>
-            {/* Top navigation scroller */}
-            {/* <div className="fixed left-1/2 top-0 z-20 w-full -translate-x-1/2 max-w-2xl">
-            <ScrollingText />
-          </div> */}
+        <ViewTransition>
+          {/* <AnimatePresence> */}
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            disableTransitionOnChange
+          >
+            <TRPCReactProvider>
 
+              {children}
 
-            {/* Right menu rail */}
-            <RightMenuRail className="fixed top-2 sm:top-4 right-2 sm:right-6 z-20 text-right" />
-
-            {children}
-
-            <Analytics />
-          </TRPCReactProvider>
-        </ThemeProvider>
+              <Analytics />
+            </TRPCReactProvider>
+          </ThemeProvider>
+          {/* </AnimatePresence> */}
+        </ViewTransition>
       </body>
     </html>
   );

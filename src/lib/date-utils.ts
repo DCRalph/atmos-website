@@ -245,34 +245,22 @@ export function getTodayRangeEnd(): Date {
 }
 
 /**
- * Determines if a gig is upcoming based on its date/time.
+ * Determines if a gig is upcoming based on its start/end time.
  * A gig is considered upcoming from the day before it happens
  * until the day after it happens, up until 5am UTC.
  * 
- * @param gig - Gig object with date and optional time fields
+ * @param gig - Gig object with gigStartTime (required) and optional gigEndTime
  * @returns true if the gig is upcoming, false if it's past
  */
 export function isGigUpcoming(gig: {
-  date: Date;
+  gigStartTime: Date;
   gigEndTime?: Date | null;
-  gigStartTime?: Date | null;
 }): boolean {
   const now = getUTCNow();
 
   // Determine the reference date/time for the gig
-  let gigReferenceDate: Date;
-
-  // Use end time if available (most accurate)
-  if (gig.gigEndTime) {
-    gigReferenceDate = gig.gigEndTime;
-  } else if (gig.gigStartTime) {
-    // Use start time if available
-    gigReferenceDate = gig.gigStartTime;
-  } else {
-    // Fall back to date (at end of day)
-    gigReferenceDate = new Date(gig.date);
-    gigReferenceDate.setUTCHours(23, 59, 59, 999);
-  }
+  // Use end time if available (most accurate), otherwise use start time
+  const gigReferenceDate = gig.gigEndTime ?? gig.gigStartTime;
 
   // Calculate the day before the gig (at midnight UTC)
   const dayBefore = new Date(Date.UTC(
@@ -295,10 +283,9 @@ export function isGigUpcoming(gig: {
 }
 
 export function isGigPast(gig: {
-  date: Date;
+  gigStartTime: Date;
   gigEndTime?: Date | null;
-  gigStartTime?: Date | null;
 }): boolean {
   const now = getUTCNow();
-  return now >= (gig.gigEndTime ?? gig.date);
+  return now >= (gig.gigEndTime ?? gig.gigStartTime);
 }
