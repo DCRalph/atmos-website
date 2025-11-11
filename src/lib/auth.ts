@@ -26,7 +26,7 @@ export const auth = betterAuth({
       // Check for invites before allowing signup
       if (ctx.path === "/sign-up/email") {
         const signUpBodySchema = z.object({
-          email: z.string(),
+          email: z.email(),
           name: z.string(),
         });
         const res = signUpBodySchema.safeParse(ctx.body);
@@ -86,7 +86,7 @@ export const auth = betterAuth({
 
       if (isEmailSignup) {
         const signUpBodySchema = z.object({
-          email: z.string().email(),
+          email: z.email(),
           name: z.string(),
         });
         const res = signUpBodySchema.safeParse(ctx.body);
