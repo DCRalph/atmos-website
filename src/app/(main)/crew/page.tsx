@@ -28,7 +28,7 @@ export default function CrewPage() {
             ATMOS is powered by a tight-knit collective of DJs, producers, and creatives who live and breathe the scene in Pōneke
           </p>
 
-          <div className="grid gap-6 sm:gap-8 md:grid-cols-2">
+          <div className="grid gap-6 sm:gap-8 grid-cols-2 md:grid-cols-3">
             {isLoadingCrewMembers ? (
               <div className="flex items-center justify-center">
                 <Loader2 className="w-4 h-4 animate-spin" />

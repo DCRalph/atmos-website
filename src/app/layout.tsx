@@ -5,10 +5,10 @@ import { Geist } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next"
 
 import { TRPCReactProvider } from "~/trpc/react";
-import { ThemeProvider } from "~/components/theme-provider";
-// import { ViewTransitionOverlay } from "~/components/view-transition-overlay";
-// import { AnimatePresence } from "motion/react";
+import { ThemeOverrideProvider } from "~/components/theme-overide-provider";
 import { ViewTransition } from "react";
+
+import NextTopLoader from 'nextjs-toploader';
 
 export const metadata: Metadata = {
   title: "Atmos",
@@ -24,26 +24,23 @@ const geist = Geist({
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+
+
   return (
-    <html lang="en" className={`${geist.variable} dark`} suppressHydrationWarning>
+    <html lang="en" className={`${geist.variable}`} suppressHydrationWarning>
       <body>
         <ViewTransition>
-          {/* <AnimatePresence> */}
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            disableTransitionOnChange
-          >
+          <ThemeOverrideProvider defaultForcedTheme="dark">
             <TRPCReactProvider>
+              <NextTopLoader height={4} showSpinner={false} />
 
               {children}
 
               <Analytics />
             </TRPCReactProvider>
-          </ThemeProvider>
-          {/* </AnimatePresence> */}
+          </ThemeOverrideProvider>
         </ViewTransition>
       </body>
-    </html>
+    </html >
   );
 }

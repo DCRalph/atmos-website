@@ -11,15 +11,15 @@ export const gigsRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const search = input?.search?.toLowerCase().trim();
-      
+
       const where = search
         ? {
-            OR: [
-              { title: { contains: search, mode: "insensitive" as const } },
-              { subtitle: { contains: search, mode: "insensitive" as const } },
-              { description: { contains: search, mode: "insensitive" as const } },
-            ],
-          }
+          OR: [
+            { title: { contains: search, mode: "insensitive" as const } },
+            { subtitle: { contains: search, mode: "insensitive" as const } },
+            { description: { contains: search, mode: "insensitive" as const } },
+          ],
+        }
         : undefined;
 
       return ctx.db.gig.findMany({
@@ -31,7 +31,12 @@ export const gigsRouter = createTRPCRouter({
               { featured: "desc" },
               { createdAt: "asc" }
             ]
-          }
+          },
+          gigTags: {
+            include: {
+              gigTag: true,
+            },
+          },
         },
       });
     }),
@@ -45,7 +50,12 @@ export const gigsRouter = createTRPCRouter({
             { featured: "desc" },
             { createdAt: "asc" }
           ]
-        }
+        },
+        gigTags: {
+          include: {
+            gigTag: true,
+          },
+        },
       },
     });
     // Filter to only upcoming gigs
@@ -61,7 +71,12 @@ export const gigsRouter = createTRPCRouter({
             { featured: "desc" },
             { createdAt: "asc" }
           ]
-        }
+        },
+        gigTags: {
+          include: {
+            gigTag: true,
+          },
+        },
       },
     });
     // Filter to only past gigs
@@ -87,7 +102,12 @@ export const gigsRouter = createTRPCRouter({
             { featured: "desc" },
             { createdAt: "asc" }
           ]
-        }
+        },
+        gigTags: {
+          include: {
+            gigTag: true,
+          },
+        },
       },
     });
 
@@ -106,7 +126,12 @@ export const gigsRouter = createTRPCRouter({
               { featured: "desc" },
               { createdAt: "asc" }
             ]
-          }
+          },
+          gigTags: {
+            include: {
+              gigTag: true,
+            },
+          },
         },
       });
     }),
@@ -194,6 +219,59 @@ export const gigsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       return ctx.db.gigMedia.delete({
         where: { id: input.id },
+      });
+    }),
+
+  // Tag management endpoints
+  assignTag: adminProcedure
+    .input(
+      z.object({
+        gigId: z.string(),
+        tagId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Check if relationship already exists
+      const existing = await ctx.db.gigTagRelationship.findFirst({
+        where: {
+          gigId: input.gigId,
+          gigTagId: input.tagId,
+        },
+      });
+
+      if (existing) {
+        return existing;
+      }
+
+      return ctx.db.gigTagRelationship.create({
+        data: {
+          gigId: input.gigId,
+          gigTagId: input.tagId,
+        },
+      });
+    }),
+
+  removeTag: adminProcedure
+    .input(
+      z.object({
+        gigId: z.string(),
+        tagId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const relationship = await ctx.db.gigTagRelationship.findFirst({
+        where: {
+          gigId: input.gigId,
+          gigTagId: input.tagId,
+        },
+      });
+
+      if (!relationship) {
+        throw new Error("Tag relationship not found");
+      }
+
+      return ctx.db.gigTagRelationship.delete({
+        where: { id: relationship.id },
       });
     }),
 });

@@ -19,7 +19,7 @@ export function CrewMember({
   soundcloud,
 }: CrewMemberProps) {
   return (
-    <div className="group relative overflow-hidden rounded-lg border border-white/10 bg-white/5 p-4 sm:p-6 md:p-8 backdrop-blur-sm transition-all hover:border-white/30 hover:bg-white/10">
+    <div className="group relative overflow-hidden rounded-lg border border-zinc/20 bg-black/20 p-4 sm:p-6 md:p-8 backdrop-blur-sm transition-all hover:border-zinc/50 hover:bg-black/30">
       <div className="mb-4 sm:mb-6 aspect-square w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 relative rounded-full overflow-hidden bg-white/10 mx-auto flex items-center justify-center">
         <Image src={image} alt={name} fill className="object-cover" />
       </div>

@@ -117,6 +117,31 @@ model ContentItem {
   @@map("content_item")
 }
 
+model GigTag {
+  id        String   @id @default(cuid())
+  name      String
+  description String?
+  color     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  gigTags    GigTagRelationship[]
+
+  @@map("gig_tag")
+}
+
+model GigTagRelationship {
+  id        String   @id @default(cuid())
+  gigId     String
+  gigTagId  String
+  gig       Gig      @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  gigTag    GigTag   @relation(fields: [gigTagId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("gig_tag_relationship")
+}
+
 model Gig {
   id           String      @id @default(cuid())
   title        String
@@ -128,6 +153,8 @@ model Gig {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   media        GigMedia[]
+
+  gigTags    GigTagRelationship[]
 
   @@map("gig")
 }

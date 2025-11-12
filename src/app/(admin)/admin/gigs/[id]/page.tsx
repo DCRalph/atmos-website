@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
@@ -13,6 +13,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { utcDateToLocal } from "~/lib/date-utils";
 import Link from "next/link";
 import Image from "next/image";
+import { Loader2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -33,6 +52,12 @@ export default function GigManagementPage({ params }: PageProps) {
   const [mediaType, setMediaType] = useState<"photo" | "video">("photo");
   const [mediaFeatured, setMediaFeatured] = useState(false);
   const [editingMediaId, setEditingMediaId] = useState<string | null>(null);
+  const [tagSearch, setTagSearch] = useState("");
+  const tagSearchInputRef = useRef<HTMLInputElement>(null);
+  const [tagToRemove, setTagToRemove] = useState<{ id: string; name: string } | null>(null);
+  const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
+  const [tagBeingAdded, setTagBeingAdded] = useState<string | null>(null);
+  const [isEditMediaDialogOpen, setIsEditMediaDialogOpen] = useState(false);
 
   const { data: gig, refetch } = api.gigs.getById.useQuery({ id });
   const updateGig = api.gigs.update.useMutation({
@@ -55,6 +80,7 @@ export default function GigManagementPage({ params }: PageProps) {
     onSuccess: async () => {
       await refetch();
       resetMediaForm();
+      setIsEditMediaDialogOpen(false);
     },
   });
   const deleteMedia = api.gigs.deleteMedia.useMutation({
@@ -62,6 +88,25 @@ export default function GigManagementPage({ params }: PageProps) {
       await refetch();
     },
   });
+  const assignTag = api.gigs.assignTag.useMutation({
+    onSuccess: async () => {
+      await refetch();
+      setTagBeingAdded(null);
+    },
+    onError: () => {
+      setTagBeingAdded(null);
+    },
+  });
+  const removeTag = api.gigs.removeTag.useMutation({
+    onSuccess: async () => {
+      await refetch();
+      setIsRemoveDialogOpen(false);
+      setTagToRemove(null);
+    },
+  });
+  const { data: allTags, isLoading: isLoadingTags } = api.gigTags.getAll.useQuery(
+    tagSearch.trim() ? { search: tagSearch } : undefined,
+  );
 
   // Initialize form when gig data loads
   useEffect(() => {
@@ -80,6 +125,7 @@ export default function GigManagementPage({ params }: PageProps) {
     setMediaType("photo");
     setMediaFeatured(false);
     setEditingMediaId(null);
+    setIsEditMediaDialogOpen(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -104,21 +150,12 @@ export default function GigManagementPage({ params }: PageProps) {
     e.preventDefault();
     if (!gig || !mediaUrl) return;
 
-    if (editingMediaId) {
-      updateMedia.mutate({
-        id: editingMediaId,
-        type: mediaType,
-        url: mediaUrl,
-        featured: mediaFeatured,
-      });
-    } else {
-      addMedia.mutate({
-        gigId: gig.id,
-        type: mediaType,
-        url: mediaUrl,
-        featured: mediaFeatured,
-      });
-    }
+    addMedia.mutate({
+      gigId: gig.id,
+      type: mediaType,
+      url: mediaUrl,
+      featured: mediaFeatured,
+    });
   };
 
   const handleEditMedia = (media: { id: string; type: "photo" | "video"; url: string; featured: boolean }) => {
@@ -126,6 +163,7 @@ export default function GigManagementPage({ params }: PageProps) {
     setMediaUrl(media.url);
     setMediaType(media.type);
     setMediaFeatured(media.featured);
+    setIsEditMediaDialogOpen(true);
   };
 
   if (!gig) {
@@ -139,6 +177,11 @@ export default function GigManagementPage({ params }: PageProps) {
   }
 
   const media = (gig.media as Array<{ id: string; type: "photo" | "video"; url: string; featured: boolean }>) || [];
+  const gigTags = (gig.gigTags as Array<{ id: string; gigTag: { id: string; name: string; color: string; description: string | null } }>) || [];
+  const assignedTagIds = new Set(gigTags.map((gt) => gt.gigTag.id));
+
+  // Filter out already assigned tags (client-side filtering only for assigned tags)
+  const availableTags = allTags?.filter((tag) => !assignedTagIds.has(tag.id)) || [];
 
   return (
     <div className="min-h-dvh bg-background p-8">
@@ -286,20 +329,9 @@ export default function GigManagementPage({ params }: PageProps) {
                   />
                   <Label htmlFor="mediaFeatured">Featured</Label>
                 </div>
-                <div className="flex gap-2">
-                  <Button type="submit" disabled={addMedia.isPending || updateMedia.isPending}>
-                    {editingMediaId ? "Update Media" : "Add Media"}
-                  </Button>
-                  {editingMediaId && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={resetMediaForm}
-                    >
-                      Cancel
-                    </Button>
-                  )}
-                </div>
+                <Button type="submit" disabled={addMedia.isPending}>
+                  {addMedia.isPending ? "Adding..." : "Add Media"}
+                </Button>
               </form>
 
               {/* Media List */}
@@ -382,8 +414,251 @@ export default function GigManagementPage({ params }: PageProps) {
               </div>
             </CardContent>
           </Card>
+
+          {/* Tag Management */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Tags</CardTitle>
+              <CardDescription>Assign tags to categorize this gig</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {gigTags.map((gt) => (
+                  <div
+                    key={gt.id}
+                    className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium"
+                    style={{
+                      backgroundColor: `${gt.gigTag.color}20`,
+                      borderColor: gt.gigTag.color,
+                      borderWidth: "1px",
+                      color: gt.gigTag.color,
+                    }}
+                  >
+                    <span>{gt.gigTag.name}</span>
+                    <button
+                      onClick={() => {
+                        setTagToRemove({ id: gt.gigTag.id, name: gt.gigTag.name });
+                        setIsRemoveDialogOpen(true);
+                      }}
+                      disabled={removeTag.isPending}
+                      className="ml-1 hover:opacity-70 disabled:opacity-50"
+                      aria-label={`Remove ${gt.gigTag.name} tag`}
+                    >
+                      {removeTag.isPending && tagToRemove?.id === gt.gigTag.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        "×"
+                      )}
+                    </button>
+                  </div>
+                ))}
+                {gigTags.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No tags assigned</p>
+                )}
+              </div>
+
+              <div className="border-t pt-4">
+                <Label className="mb-2 block">Add Tags</Label>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Search and click tags to assign them to this gig. You can assign multiple tags.
+                </p>
+                {availableTags.length > 0 || isLoadingTags ? (
+                  <>
+                    <div className="mb-3 relative">
+                      <Input
+                        ref={tagSearchInputRef}
+                        placeholder="Search tags by name or description..."
+                        value={tagSearch}
+                        onChange={(e) => setTagSearch(e.target.value)}
+                        className="w-full pr-8"
+                      />
+                      {isLoadingTags && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    {isLoadingTags ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        <span className="ml-2 text-sm text-muted-foreground">Searching...</span>
+                      </div>
+                    ) : availableTags.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {availableTags.map((tag) => (
+                          <Button
+                            key={tag.id}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setTagBeingAdded(tag.id);
+                              assignTag.mutate({
+                                gigId: gig.id,
+                                tagId: tag.id,
+                              });
+                              // Keep focus on input after clicking
+                              setTimeout(() => {
+                                tagSearchInputRef.current?.focus();
+                              }, 0);
+                            }}
+                            disabled={assignTag.isPending && tagBeingAdded === tag.id}
+                            className="flex items-center gap-2"
+                          >
+                            {assignTag.isPending && tagBeingAdded === tag.id ? (
+                              <>
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                <span>Adding...</span>
+                              </>
+                            ) : (
+                              <>
+                                <div
+                                  className="h-3 w-3 rounded border"
+                                  style={{ backgroundColor: tag.color }}
+                                />
+                                <span>{tag.name}</span>
+                              </>
+                            )}
+                          </Button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No tags match your search.
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    All tags are assigned. Create more tags in the Gig Tags section.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
+
+      {/* Remove Tag Confirmation Dialog */}
+      <AlertDialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Tag</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove the tag "{tagToRemove?.name}" from this gig? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removeTag.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (tagToRemove && gig) {
+                  removeTag.mutate({
+                    gigId: gig.id,
+                    tagId: tagToRemove.id,
+                  });
+                }
+              }}
+              disabled={removeTag.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {removeTag.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Removing...
+                </>
+              ) : (
+                "Remove"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit Media Dialog */}
+      <Dialog open={isEditMediaDialogOpen} onOpenChange={setIsEditMediaDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Media</DialogTitle>
+            <DialogDescription>
+              Update the media information for this gig.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!gig || !mediaUrl || !editingMediaId) return;
+              updateMedia.mutate({
+                id: editingMediaId,
+                type: mediaType,
+                url: mediaUrl,
+                featured: mediaFeatured,
+              });
+            }}
+            className="space-y-4"
+          >
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="editMediaType">Media Type</Label>
+              <Select value={mediaType} onValueChange={(value: "photo" | "video") => setMediaType(value)}>
+                <SelectTrigger id="editMediaType">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="photo">Photo</SelectItem>
+                  <SelectItem value="video">Video</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="editMediaUrl">Media URL</Label>
+              <Input
+                id="editMediaUrl"
+                type="url"
+                value={mediaUrl}
+                onChange={(e) => setMediaUrl(e.target.value)}
+                placeholder="https://example.com/image.jpg"
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                Upload your media to a hosting service and paste the URL here
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="editMediaFeatured"
+                checked={mediaFeatured}
+                onChange={(e) => setMediaFeatured(e.target.checked)}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="editMediaFeatured">Featured</Label>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  resetMediaForm();
+                }}
+                disabled={updateMedia.isPending}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={updateMedia.isPending}>
+                {updateMedia.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  "Update Media"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

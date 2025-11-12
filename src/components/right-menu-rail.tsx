@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { useState } from "react";
 import { cn } from "~/lib/utils";
@@ -8,6 +9,7 @@ import { MenuIcon } from "lucide-react";
 
 type RightMenuRailProps = {
   className?: string;
+  variant?: "light" | "black";
 };
 
 type MenuItem = {
@@ -17,6 +19,7 @@ type MenuItem = {
 
 const DEFAULT_ITEMS: MenuItem[] = [
   { label: "Home", href: "/" },
+  { label: "About", href: "/about" },
   { label: "Shop", href: "/merch" },
   // { label: "Content", href: "/content" },
   { label: "Gigs", href: "/gigs" },
@@ -24,9 +27,15 @@ const DEFAULT_ITEMS: MenuItem[] = [
   { label: "Contact Us", href: "/contact" },
 ];
 
-export function RightMenuRail({ className = "" }: RightMenuRailProps) {
+
+export function RightMenuRail({ className = "", variant = "light" }: RightMenuRailProps) {
+  const pathname = usePathname();
+  const isAboutPage = pathname === "/about";
+  variant = isAboutPage ? "black" : variant;
+
   const [isOpen, setIsOpen] = useState(false);
   const [menuItems] = useState(DEFAULT_ITEMS);
+  const isBlackMode = variant === "black";
 
   const toggleMenu = () => {
     setIsOpen(!isOpen);
@@ -38,9 +47,12 @@ export function RightMenuRail({ className = "" }: RightMenuRailProps) {
       {/* Menu Icon Button - Static, no animations */}
       <button
         onClick={toggleMenu}
-        className="flex items-center ml-auto justify-center p-1.5 sm:p-2 rounded-full hover:bg-white/10 transition-colors duration-200 mb-3 sm:mb-4"
+        className={cn(
+          "flex items-center ml-auto justify-center p-1.5 sm:p-2 rounded-full transition-colors duration-200 mb-3 sm:mb-4",
+          isBlackMode ? "hover:bg-black/10" : "hover:bg-white/10"
+        )}
       >
-        <MenuIcon className="size-5 sm:size-6 text-white" />
+        <MenuIcon className={cn("size-5 sm:size-6", isBlackMode ? "text-black" : "text-white")} />
       </button>
 
       {/* Menu Items - Animated in/out */}
@@ -74,7 +86,7 @@ export function RightMenuRail({ className = "" }: RightMenuRailProps) {
                   ease: "easeOut"
                 }}
               >
-                <MenuItemComponent item={item} setIsOpen={setIsOpen} />
+                <MenuItemComponent item={item} setIsOpen={setIsOpen} variant={variant} />
               </motion.div>
             ))}
           </motion.ul>
@@ -84,10 +96,12 @@ export function RightMenuRail({ className = "" }: RightMenuRailProps) {
   );
 }
 
-function MenuItemComponent({ item, setIsOpen }: { item: MenuItem, setIsOpen: (isOpen: boolean) => void }) {
+function MenuItemComponent({ item, setIsOpen, variant = "light" }: { item: MenuItem, setIsOpen: (isOpen: boolean) => void, variant?: "light" | "black" }) {
   const [hovered, setHovered] = useState(false);
+  const isBlackMode = variant === "black";
 
   const hoverColorText = "text-red-600"
+  const defaultTextColor = isBlackMode ? "text-black" : "text-white"
 
   return (
     <motion.li
@@ -117,7 +131,7 @@ function MenuItemComponent({ item, setIsOpen }: { item: MenuItem, setIsOpen: (is
             scale: hovered ? 2.2 : 1,
           }}
           transition={{ type: "spring", stiffness: 420, damping: 26 }}
-          className={`inline-flex items-center transition-colors duration-100 ${hovered ? hoverColorText : "text-white"}`}
+          className={`inline-flex items-center transition-colors duration-100 ${hovered ? hoverColorText : defaultTextColor}`}
           style={{ originX: 1, originY: 1 }}
         >
           {item.label}

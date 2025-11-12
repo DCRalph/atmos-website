@@ -19,8 +19,7 @@ export default function ContactPage() {
           <div className="flex justify-around gap-6 flex-col md:flex-row">
             <div className="rounded-lg border border-white/10 bg-white/5 backdrop-blur-sm p-4 sm:p-6 md:p-8 ">
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 text-center tracking-wide">
-                Got a booking inquiry or collaboration idea. Drop us a
-                line below.
+                Drop us a line below.
               </h2>
               <ContactForm />
             </div>

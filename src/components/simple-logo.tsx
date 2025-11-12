@@ -9,7 +9,7 @@ export function SimpleLogo() {
         src="/logo/atmos-white.png" 
         alt="Atmos Logo" 
         fill 
-        className="object-contain" 
+        className="object-contain drop-shadow-[0_0_30px_rgba(255,255,255,0.5)]" 
       />
     </div>
   );

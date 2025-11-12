@@ -54,7 +54,25 @@ export default async function GigPage({ params }: PageProps) {
             <h1 className="mb-4 text-4xl sm:text-5xl font-bold tracking-wider md:text-6xl">
               {gig.title}
             </h1>
-            <p className="text-xl sm:text-2xl text-white/80 mb-6">{gig.subtitle}</p>
+            <p className="text-xl sm:text-2xl text-white/80 mb-4">{gig.subtitle}</p>
+            {gig.gigTags && (gig.gigTags as Array<{ gigTag: { id: string; name: string; color: string } }>).length > 0 && (
+              <div className="mb-6 flex flex-wrap gap-2">
+                {(gig.gigTags as Array<{ gigTag: { id: string; name: string; color: string } }>).map((gt) => (
+                  <span
+                    key={gt.gigTag.id}
+                    className="rounded-md px-3 py-1 text-sm font-medium"
+                    style={{
+                      backgroundColor: `${gt.gigTag.color}20`,
+                      borderColor: gt.gigTag.color,
+                      borderWidth: "1px",
+                      color: gt.gigTag.color,
+                    }}
+                  >
+                    {gt.gigTag.name}
+                  </span>
+                ))}
+              </div>
+            )}
             {gig.description && (
               <div className="rounded-lg border border-white/10 bg-white/5 p-6 sm:p-8 backdrop-blur-sm">
                 <MarkdownContent content={String(gig.description)} />

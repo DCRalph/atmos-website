@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 
 import { authClient } from "~/lib/auth-client";
@@ -12,11 +12,21 @@ import {
   PopoverTrigger,
 } from "~/components/ui/popover";
 import { api } from "~/trpc/react";
+import { cn } from "~/lib/utils";
 
-export function UserIndicator() {
+type UserIndicatorProps = {
+  variant?: "light" | "black";
+};
+
+export function UserIndicator({ variant = "light" }: UserIndicatorProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const isAboutPage = pathname === "/about";
+  variant = isAboutPage ? "black" : variant;
+
   const { data: user } = api.user.me.useQuery();
   const [open, setOpen] = useState(false);
+  const isBlackMode = variant === "black";
 
   const displayName = useMemo(
     () => user?.name ?? user?.email ?? "Account",
@@ -35,8 +45,12 @@ export function UserIndicator() {
     });
   };
 
+  // return null
+
   if (!user) {
-    return null;
+    return (
+      <></>
+    );
   }
 
   return (
@@ -45,7 +59,10 @@ export function UserIndicator() {
         <PopoverTrigger asChild>
           <Button
             variant="outline"
-            className="flex items-center gap-1.5 rounded-full border-white/15 bg-black/60 px-2.5 py-1 text-[0.7rem] font-medium text-white shadow-sm backdrop-blur-md transition-colors hover:bg-black/80"
+            className={cn(
+              "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.7rem] font-medium shadow-glass! bg-background/70 backdrop-blur-md transition-colors",
+
+            )}
             aria-label="Open account menu"
           >
             <span className="max-w-[110px] truncate">{displayName}</span>

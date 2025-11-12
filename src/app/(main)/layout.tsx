@@ -1,7 +1,11 @@
+"use client";
+
 import { RightMenuRail } from "~/components/right-menu-rail";
 import { UserIndicator } from "~/components/user-indicator";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
+
+
   return (
     <>
       {/* Top navigation scroller */}
@@ -9,11 +13,13 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             <ScrollingText />
           </div> */}
 
+      <UserIndicator />
 
       {/* Right menu rail */}
-      <RightMenuRail className="fixed top-2 sm:top-4 right-2 sm:right-6 z-20 text-right" />
+      <RightMenuRail
+        className="fixed top-2 sm:top-4 right-2 sm:right-6 z-20 text-right"
+      />
 
-      <UserIndicator />
 
       {/* <ViewTransitionOverlay /> */}
       {children}

@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { CrewManager } from "./crew-manager";
 import { ContentManager } from "./content-manager";
 import { GigsManager } from "./gigs-manager";
+import { GigTagsManager } from "./gig-tags-manager";
 import { MerchManager } from "./merch-manager";
 import { ContactManager } from "./contact-manager";
 import { UsersManager } from "./users-manager";
@@ -26,6 +27,7 @@ export function AdminDashboard() {
             <TabsTrigger value="crew">Crew</TabsTrigger>
             <TabsTrigger value="content">Content</TabsTrigger>
             <TabsTrigger value="gigs">Gigs</TabsTrigger>
+            <TabsTrigger value="gig-tags">Gig Tags</TabsTrigger>
             <TabsTrigger value="merch">Merch</TabsTrigger>
             <TabsTrigger value="contact">Contact Submissions</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
@@ -41,6 +43,10 @@ export function AdminDashboard() {
 
           <TabsContent value="gigs">
             <GigsManager />
+          </TabsContent>
+
+          <TabsContent value="gig-tags">
+            <GigTagsManager />
           </TabsContent>
 
           <TabsContent value="merch">

@@ -23,13 +23,13 @@ function HomeContent() {
       <VideoBackground underground={UNDERGROUND_UI_ENABLED} />
       {UNDERGROUND_UI_ENABLED && <UndergroundOverlay />}
 
-      <SocialLinks className="fixed left-3 top-3 z-20" />
+      <SocialLinks className="fixed z-20" />
       {/* <UserIndicator /> */}
       <LiveGigPopup />
 
       {/* Logo section */}
       <section className="relative z-10 flex min-h-dvh items-center justify-center px-4">
-        <div className="text-center w-full max-w-[90vw] sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl">
+        <div className="text-center w-full max-w-[70vw] sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl">
           {UNDERGROUND_UI_ENABLED ? <GlitchLogo /> : <SimpleLogo />}
 
           {/* Underground tagline */}
@@ -45,6 +45,7 @@ function HomeContent() {
               <span className="inline-block animate-pulse">]</span>
             </motion.div>
           )}
+            
         </div>
 
       </section>

@@ -260,7 +260,7 @@ export function isGigUpcoming(gig: {
 
   // Determine the reference date/time for the gig
   // Use end time if available (most accurate), otherwise use start time
-  const gigReferenceDate = gig.gigEndTime ?? gig.gigStartTime;
+  const gigReferenceDate = gig.gigStartTime;
 
   // Calculate the day before the gig (at midnight UTC)
   const dayBefore = new Date(Date.UTC(
@@ -287,5 +287,5 @@ export function isGigPast(gig: {
   gigEndTime?: Date | null;
 }): boolean {
   const now = getUTCNow();
-  return now >= (gig.gigEndTime ?? gig.gigStartTime);
+  return now >= (gig.gigStartTime);
 }

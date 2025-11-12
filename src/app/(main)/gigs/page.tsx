@@ -5,6 +5,7 @@ import { UpcomingGigCard } from "~/components/gigs/upcoming-gig-card";
 import { PastGigCard } from "~/components/gigs/past-gig-card";
 import { api } from "~/trpc/react";
 import { Loader2 } from "lucide-react";
+import { ImageCycleBackground } from "~/components/image-cycle-background";
 
 
 
@@ -13,7 +14,8 @@ export default function GigsPage() {
   const { data: pastGigs, isLoading: isLoadingPastGigs } = api.gigs.getPast.useQuery();
   return (
     <main className="relative min-h-dvh overflow-hidden bg-black text-white">
-      <StaticBackground imageSrc="/home/atmos-6.jpg" />
+      <StaticBackground imageSrc="/home/atmos-46.jpg" />
+      {/* <ImageCycleBackground /> */}
 
       <section className="relative z-10 min-h-dvh px-4 py-16 sm:py-24">
         <div className="mx-auto max-w-6xl">
