@@ -12,6 +12,24 @@ export function LiveGigPopup() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
 
+  const [scrollPosition, setScrollPosition] = useState(0);
+  const [shouldShow, setShouldShow] = useState(false);
+
+  useEffect(() => {
+    const homePageMain = document.getElementById("home-page-main");
+    if (homePageMain) {
+      const handleScroll = () => {
+        const currentScroll = homePageMain.scrollTop;
+        setScrollPosition(currentScroll);
+        setShouldShow(currentScroll > 10);
+      };
+      // Set initial state
+      handleScroll();
+      homePageMain.addEventListener("scroll", handleScroll);
+      return () => homePageMain.removeEventListener("scroll", handleScroll);
+    }
+  }, []);
+
   useEffect(() => {
     if (todayGigs && todayGigs.length > 0) {
       const liveGig = todayGigs[0];
@@ -81,7 +99,7 @@ export function LiveGigPopup() {
 
   return (
     <AnimatePresence>
-      {isOpen && (
+      {isOpen && shouldShow && (
         <motion.div
           key="popup-container"
           initial={{ y: "100%" }}

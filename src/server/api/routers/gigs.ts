@@ -90,10 +90,10 @@ export const gigsRouter = createTRPCRouter({
 
     const todayGigs = await ctx.db.gig.findMany({
       where: {
-        gigStartTime: {
-          gte: startDate,
-          lt: endDate,
-        },
+        // gigStartTime: {
+        //   gte: startDate,
+        //   lt: endDate,
+        // },
       },
       orderBy: { gigStartTime: "asc" },
       include: {
@@ -112,7 +112,8 @@ export const gigsRouter = createTRPCRouter({
     });
 
     // Filter to only upcoming gigs (gigs that haven't ended yet)
-    return todayGigs.filter((gig) => isGigUpcoming(gig));
+    // return todayGigs.filter((gig) => isGigUpcoming(gig));
+    return todayGigs;
   }),
 
   getById: publicProcedure

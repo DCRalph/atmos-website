@@ -54,7 +54,7 @@ export function UserIndicator({ variant = "light" }: UserIndicatorProps) {
   }
 
   return (
-    <div className="fixed left-1/2 top-3 z-30 -translate-x-1/2">
+    <div className="fixed right-3 top-3 z-20 ">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -70,7 +70,7 @@ export function UserIndicator({ variant = "light" }: UserIndicatorProps) {
         </PopoverTrigger>
 
         <PopoverContent
-          align="center"
+          align="end"
           sideOffset={6}
           className="w-56 rounded-xl border border-border/70 bg-background/95 p-2 shadow-xl backdrop-blur"
         >

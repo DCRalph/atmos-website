@@ -1,76 +1,52 @@
 "use client";
 
-import { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { OpeningAnimation } from "~/components/opening-animation";
 import { VideoBackground } from "~/components/video-background";
 import { LiveGigPopup } from "~/components/live-gig-popup";
 import { GlitchLogo } from "~/components/glitch-logo";
 import { SimpleLogo } from "~/components/simple-logo";
-import { UndergroundOverlay } from "~/components/underground-overlay";
 import { SocialLinks } from "~/components/social-links";
+import { MoveDown, Loader2 } from "lucide-react";
+import SlideOverMenu from "~/components/SlideOverMenu";
+import { useIsMobile } from "~/hooks/use-mobile";
 // import { UserIndicator } from "~/components/user-indicator";
+import { Button } from "~/components/ui/button";
+import { UpcomingGigCard } from "~/components/gigs/upcoming-gig-card";
+import { PastGigCard } from "~/components/gigs/past-gig-card";
+import { ContentItem } from "~/components/content/content-item";
+import { api } from "~/trpc/react";
+import { StaticBackground } from "~/components/static-background";
 
 function HomeContent() {
-  const searchParams = useSearchParams();
-  const UNDERGROUND_UI_ENABLED = searchParams.get("ugui") !== null;
 
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const isMobile = useIsMobile();
 
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-black text-white">
-      <OpeningAnimation />
-      <VideoBackground underground={UNDERGROUND_UI_ENABLED} />
-      {UNDERGROUND_UI_ENABLED && <UndergroundOverlay />}
+    <main className="h-dvh overflow-y-scroll overflow-x-hidden bg-black text-white" id="home-page-main">
 
-      <SocialLinks className="fixed z-20" />
-      {/* <UserIndicator /> */}
-      <LiveGigPopup />
+      <HomeTopContent />
 
-      {/* Logo section */}
-      <section className="relative z-10 flex min-h-dvh items-center justify-center px-4">
-        <div className="text-center w-full max-w-[70vw] sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl">
-          {UNDERGROUND_UI_ENABLED ? <GlitchLogo /> : <SimpleLogo />}
 
-          {/* Underground tagline */}
-          {UNDERGROUND_UI_ENABLED && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8, duration: 0.6 }}
-              className="mt-8 text-xs sm:text-sm uppercase tracking-[0.3em] text-red-500/80 font-mono"
-            >
-              <span className="inline-block animate-pulse">[</span>
-              <span className="mx-2">EXCLUSIVE ACCESS</span>
-              <span className="inline-block animate-pulse">]</span>
-            </motion.div>
-          )}
-            
+      {!isMobile ? (
+        <div className="w-full flex">
+          <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isMobile={isMobile} key="1"/>
+          <HomeBottomContent isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} isMobile={isMobile} key="2" />
         </div>
+      ) : (
 
-      </section>
 
-      {/* Corner text elements for underground feel */}
-      {UNDERGROUND_UI_ENABLED && (
-        <div className="absolute inset-0">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.2, duration: 1 }}
-            className="absolute top-18 -right-22 hidden md:block text-[10px] uppercase tracking-[0.2em] rotate-90 text-red-500/40 font-mono origin-top-left"
-          >
-            <span className="inline-block">[UNDERGROUND]</span>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.4, duration: 1 }}
-            className="absolute bottom-8 left-8 hidden md:block text-[10px] uppercase tracking-[0.2em] text-red-500/40 font-mono -rotate-90 origin-bottom-left"
-          >
-            <span className="inline-block">[MEMBERS ONLY]</span>
-          </motion.div>
+        <div className={`transition-transform duration-300 ease-in-out ${isMenuOpen ? "translate-x-64" : "translate-x-0"}`}>
+          <div className="fixed top-0 right-full z-20 h-full w-64">
+            <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isMobile={isMobile} key="3"/>
+          </div>
+          <HomeBottomContent isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} isMobile={isMobile} key="4" />
         </div>
       )}
+
     </main>
   );
 }
@@ -80,5 +56,149 @@ export default function Home() {
     <Suspense>
       <HomeContent />
     </Suspense>
+  );
+}
+
+
+function HomeTopContent() {
+  return (
+    <div className="h-full bg-black relative">
+
+      <OpeningAnimation />
+      {/* <VideoBackground /> */}
+
+      {/* <SocialLinks className="fixed z-20" /> */}
+      <LiveGigPopup />
+
+      {/* Logo section */}
+      <section className="flex min-h-dvh items-center justify-center px-4 z-20">
+        <div className="text-center w-full max-w-[70vw] sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl">
+          {/* <GlitchLogo /> */}
+          <SimpleLogo />
+
+          <h1 className="mt-24 text-3xl  font-bold tracking-wider flex items-center justify-center gap-2 text-white">
+            <MoveDown className="size-6" />
+            Scroll
+            <MoveDown className="size-6" />
+          </h1>
+
+        </div>
+      </section>
+
+      <div className="absolute w-full h-32 z-10 bg-linear-to-t from-black to-transparent bottom-0 left-0" />
+
+    </div>
+  );
+}
+
+function HomeBottomContent({ isMenuOpen, setIsMenuOpen, isMobile }: { isMenuOpen: boolean; setIsMenuOpen: (open: boolean) => void; isMobile: boolean }) {
+  const { data: upcomingGigs, isLoading: isLoadingUpcomingGigs } = api.gigs.getUpcoming.useQuery();
+  const { data: pastGigs, isLoading: isLoadingPastGigs } = api.gigs.getPast.useQuery();
+  const { data: contentItems, isLoading: isLoadingContent } = api.content.getAll.useQuery();
+
+  // Limit past gigs to 6 most recent
+  const recentPastGigs = pastGigs?.slice(0, 6) ?? [];
+  // Limit content items to 3 most recent
+  const recentContentItems = contentItems?.slice(0, 3) ?? [];
+
+  return (
+    <main className="relative flex-1 bg-black text-white min-h-screen ">
+      {/* <StaticBackground imageSrc="/home/atmos-46.jpg" /> */}
+
+      {isMobile && (
+        <nav className="sticky top-0 left-0 right-0 w-full bg-black/50 backdrop-blur h-16 z-50">
+          <div className="flex items-center justify-between">
+            <div className="absolute flex items-center justify-center top-0 left-2 h-16 w-16 z-30">
+              <Button variant="link" className="text-lg uppercase" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+                Menu
+              </Button>
+            </div>
+          </div>
+        </nav>
+      )}
+
+      <section className="relative z-10 min-h-screen px-4 py-16 sm:py-24">
+        <div className="mx-auto max-w-6xl">
+          {/* About Section */}
+          {/* <div className="mb-12 sm:mb-16">
+            <p className="text-sm sm:text-base text-white/50 leading-relaxed max-w-2xl">
+              A collective of DJs, producers, and creatives based in Pōneke (Wellington), New Zealand.
+            </p>
+          </div> */}
+
+          {/* Upcoming Gigs Section */}
+          <div className="mb-16 sm:mb-20">
+            <h2 className="mb-6 sm:mb-8 text-2xl sm:text-3xl font-bold tracking-wide md:text-4xl border-b border-white/20 pb-3 sm:pb-4">
+              Upcoming Gigs
+            </h2>
+            <div className="space-y-4">
+              {isLoadingUpcomingGigs ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-white/60" />
+                </div>
+              ) : upcomingGigs && upcomingGigs.filter((gig) => gig.gigStartTime).length > 0 ? (
+                upcomingGigs
+                  .filter((gig) => gig.gigStartTime)
+                  .map((gig) => (
+                    <UpcomingGigCard key={gig.id} gig={{ ...gig, gigStartTime: gig.gigStartTime! }} />
+                  ))
+              ) : (
+                <p className="text-white/60 text-center py-8">No upcoming gigs scheduled.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Content Items Section */}
+          <div className="mb-16 sm:mb-20">
+            <h2 className="mb-6 sm:mb-8 text-2xl sm:text-3xl font-bold tracking-wide md:text-4xl border-b border-white/20 pb-3 sm:pb-4">
+              Latest Content
+            </h2>
+            <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {isLoadingContent ? (
+                <div className="flex items-center justify-center py-8 col-span-full">
+                  <Loader2 className="w-6 h-6 animate-spin text-white/60" />
+                </div>
+              ) : recentContentItems.length > 0 ? (
+                recentContentItems.map((item) => (
+                  <ContentItem
+                    key={item.id}
+                    id={item.id}
+                    type={item.type}
+                    title={item.title}
+                    description={item.description}
+                    date={item.date}
+                    link={item.link}
+                  />
+                ))
+              ) : (
+                <p className="text-white/60 text-center py-8 col-span-full">No content available.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Past Gigs Section */}
+          <div>
+            <h2 className="mb-6 sm:mb-8 text-2xl sm:text-3xl font-bold tracking-wide md:text-4xl border-b border-white/20 pb-3 sm:pb-4">
+              Recent Gigs
+            </h2>
+            <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {isLoadingPastGigs ? (
+                <div className="flex items-center justify-center py-8 col-span-full">
+                  <Loader2 className="w-6 h-6 animate-spin text-white/60" />
+                </div>
+              ) : recentPastGigs.length > 0 ? (
+                recentPastGigs
+                  .filter((gig) => gig.gigStartTime)
+                  .map((gig) => (
+                    <PastGigCard key={gig.id} gig={{ ...gig, gigStartTime: gig.gigStartTime! }} />
+                  ))
+              ) : (
+                <p className="text-white/60 text-center py-8 col-span-full">No past gigs available.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
   );
 }

@@ -17,12 +17,12 @@ export function GlitchLogo() {
   }, []);
 
   return (
-    <div className="relative w-full aspect-[4/1]">
+    <div className="relative w-full aspect-4/1">
       {/* Base logo */}
       <motion.div
         className="relative w-full h-full"
         animate={glitch ? {
-          x: [0, -2, 2, -1, 1, 0],
+          x: [0, -4, 4, -2, 2, 0],
           filter: [
             "hue-rotate(0deg) brightness(1)",
             "hue-rotate(90deg) brightness(1.2)",
@@ -31,11 +31,10 @@ export function GlitchLogo() {
         } : {}}
         transition={{ duration: 0.15 }}
       >
-        <Image 
-          src="/logo/atmos-white.png" 
-          alt="Atmos Logo" 
-          fill 
-          className="object-contain drop-shadow-[0_0_20px_rgba(255,0,0,0.5)]" 
+        <Image
+          src="/logo/atmos-white.png"
+          alt="Atmos Logo"
+          fill
         />
       </motion.div>
 
@@ -48,10 +47,10 @@ export function GlitchLogo() {
             animate={{ x: [0, -5, 5, 0] }}
             transition={{ duration: 0.15 }}
           >
-            <Image 
-              src="/logo/atmos-white.png" 
-              alt="" 
-              fill 
+            <Image
+              src="/logo/atmos-white.png"
+              alt=""
+              fill
               className="object-contain"
               style={{ filter: "hue-rotate(90deg)" }}
             />
@@ -62,10 +61,10 @@ export function GlitchLogo() {
             animate={{ x: [0, 3, -3, 0] }}
             transition={{ duration: 0.15 }}
           >
-            <Image 
-              src="/logo/atmos-white.png" 
-              alt="" 
-              fill 
+            <Image
+              src="/logo/atmos-white.png"
+              alt=""
+              fill
               className="object-contain"
               style={{ filter: "hue-rotate(-90deg)" }}
             />
@@ -73,18 +72,6 @@ export function GlitchLogo() {
         </>
       )}
 
-      {/* Subtle red glow pulse */}
-      {/* <motion.div
-        className="absolute inset-0 -z-10"
-        animate={{
-          boxShadow: [
-            "0 0 40px rgba(255,0,0,0.3)",
-            "0 0 60px rgba(255,0,0,0.5)",
-            "0 0 40px rgba(255,0,0,0.3)",
-          ],
-        }}
-        transition={{ duration: 2, repeat: Infinity }}
-      /> */}
     </div>
   );
 }
