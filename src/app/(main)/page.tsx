@@ -33,7 +33,7 @@ function HomeContent() {
 
       {!isMobile ? (
         <div className="w-full flex">
-          <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isMobile={isMobile} key="1"/>
+          <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isMobile={isMobile} key="1" />
           <HomeBottomContent isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} isMobile={isMobile} key="2" />
         </div>
       ) : (
@@ -41,7 +41,7 @@ function HomeContent() {
 
         <div className={`transition-transform duration-300 ease-in-out ${isMenuOpen ? "translate-x-64" : "translate-x-0"}`}>
           <div className="fixed top-0 right-full z-20 h-full w-64">
-            <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isMobile={isMobile} key="3"/>
+            <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isMobile={isMobile} key="3" />
           </div>
           <HomeBottomContent isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} isMobile={isMobile} key="4" />
         </div>
@@ -62,21 +62,21 @@ export default function Home() {
 
 function HomeTopContent() {
   return (
-    <div className="h-full bg-black relative">
+    <div className="h-full relative">
 
       <OpeningAnimation />
-      {/* <VideoBackground /> */}
+      <VideoBackground />
 
       {/* <SocialLinks className="fixed z-20" /> */}
       <LiveGigPopup />
 
       {/* Logo section */}
-      <section className="flex min-h-dvh items-center justify-center px-4 z-20">
+      <section className="relative flex min-h-dvh items-center justify-center px-4 z-50">
         <div className="text-center w-full max-w-[70vw] sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl">
           {/* <GlitchLogo /> */}
           <SimpleLogo />
 
-          <h1 className="mt-24 text-3xl  font-bold tracking-wider flex items-center justify-center gap-2 text-white">
+          <h1 className="mt-24 text-3xl font-bold tracking-wider flex items-center justify-center gap-2 text-white">
             <MoveDown className="size-6" />
             Scroll
             <MoveDown className="size-6" />

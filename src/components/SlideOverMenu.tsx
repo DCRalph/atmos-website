@@ -33,6 +33,7 @@ export default function SlideOverMenu({ setIsMenuOpen, isMobile }: SlideOverMenu
             src="/logo/atmos-white.png"
             alt="Atmos Logo"
             fill
+            preload
             className="object-contain"
           />
         </div>

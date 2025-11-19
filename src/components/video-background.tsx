@@ -2,7 +2,7 @@
 
 export function VideoBackground() {
   return (
-    <div className="pointer-events-none absolute inset-0 select-none">
+    <div className="pointer-events-none absolute inset-0 z-0 select-none opacity-50">
       <div className="relative h-dvh w-full">
         <video
           autoPlay
