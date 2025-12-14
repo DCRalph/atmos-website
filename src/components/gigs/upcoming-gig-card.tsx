@@ -2,6 +2,7 @@ import Link from "next/link";
 import { formatDate, formatTime } from "~/lib/date-utils";
 import { Badge } from "~/components/ui/badge";
 import { isLightColor } from "~/lib/utils";
+import { motion } from "framer-motion";
 
 type Gig = {
   id: string;
@@ -19,8 +20,13 @@ type UpcomingGigCardProps = {
 
 export function UpcomingGigCard({ gig }: UpcomingGigCardProps) {
   return (
-    <div
+    <motion.div
       className="group flex shadow-glass flex-col gap-4 rounded-lg border border-white/10 bg-white/5 p-4 sm:p-6 backdrop-blur-sm transition-all hover:border-white/30 hover:bg-white/10 md:flex-row md:items-center md:justify-between"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 10 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+
     >
       <Link href={`/gigs/${gig.id}`} className="flex-1">
         <div className="mb-2 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
@@ -75,7 +81,7 @@ export function UpcomingGigCard({ gig }: UpcomingGigCardProps) {
           </a>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 

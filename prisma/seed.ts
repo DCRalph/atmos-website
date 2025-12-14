@@ -1,6 +1,4 @@
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { db } from '~/server/db'
 
 type ContentItem = {
   id: number;
@@ -320,16 +318,16 @@ function parseStartEndTime(
 async function main() {
   console.log("Starting database seed...");
   // Delete all existing data
-  await prisma.gig.deleteMany();
-  await prisma.crewMember.deleteMany();
-  await prisma.contentItem.deleteMany();
-  await prisma.merchItem.deleteMany();
-  await prisma.contactSubmission.deleteMany();
+  await db.gig.deleteMany();
+  await db.crewMember.deleteMany();
+  await db.contentItem.deleteMany();
+  await db.merchItem.deleteMany();
+  await db.contactSubmission.deleteMany();
 
   // Seed ContentItems
   console.log("Seeding content items...");
   for (const item of contentItems) {
-    await prisma.contentItem.create({
+    await db.contentItem.create({
       data: {
         type: item.type,
         title: item.title,
@@ -344,7 +342,7 @@ async function main() {
   // Seed CrewMembers
   console.log("Seeding crew members...");
   for (const member of crewMembers) {
-    await prisma.crewMember.create({
+    await db.crewMember.create({
       data: {
         name: member.name,
         role: member.role,
@@ -383,7 +381,7 @@ async function main() {
       }
     }
 
-    await prisma.gig.create({
+    await db.gig.create({
       data: {
         // date: gigDate,
         title: gig.title,
@@ -401,7 +399,7 @@ async function main() {
   for (const gig of pastGigs) {
     const gigDate = parseDate(gig.date, false);
 
-    await prisma.gig.create({
+    await db.gig.create({
       data: {
         // date: gigDate,
         title: gig.title,
@@ -417,7 +415,7 @@ async function main() {
   // Seed MerchItems
   console.log("Seeding merch items...");
   for (const item of merchItems) {
-    await prisma.merchItem.create({
+    await db.merchItem.create({
       data: {
         name: item.name,
         description: item.description,
@@ -437,5 +435,5 @@ main()
     process.exit(1);
   })
   .finally(() => {
-    void prisma.$disconnect();
+    void db.$disconnect();
   });

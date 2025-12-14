@@ -42,7 +42,7 @@ export default function SlideOverMenu({ setIsMenuOpen, isMobile }: SlideOverMenu
       {/* Menu buttons */}
       <div className="flex flex-col flex-1 gap-1">
         {MENU_ITEMS.map((item, idx) => (
-          <MenuItemComponent item={item} idx={idx} />
+          <MenuItemComponent item={item} idx={idx} key={item.label} />
         ))}
       </div>
     </div>
@@ -58,7 +58,7 @@ function MenuItemComponent({ item, idx }: { item: MenuItem, idx: number }) {
     <Link
       key={item.label}
       href={item.href}
-      className={`bg-red-600 text-white uppercase font-light text-lg py-2 text-center hover:opacity-90 transition-all tracking-wide`}
+      className={`bg-red-600 text-white uppercase font-light text-lg py-2 pl-8 hover:font-semibold hover:opacity-90 transition-all tracking-wide`}
       style={{
         width: `${width}%`,
         ['--hover-width' as string]: `${hoverWidth}%`

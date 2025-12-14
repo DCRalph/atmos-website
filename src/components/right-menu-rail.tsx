@@ -86,7 +86,7 @@ export function RightMenuRail({ className = "", variant = "light" }: RightMenuRa
                   ease: "easeOut"
                 }}
               >
-                <MenuItemComponent item={item} setIsOpen={setIsOpen} variant={variant} />
+                <MenuItemComponent key={item.label} item={item} setIsOpen={setIsOpen} variant={variant} />
               </motion.div>
             ))}
           </motion.ul>

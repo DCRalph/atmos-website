@@ -32,9 +32,9 @@
     /* Path Aliases */
     "baseUrl": ".",
     "paths": {
-      "~/*": [
-        "./src/*"
-      ]
+      "~/*": ["./src/*"],
+      "~Prisma/*": ["./src/prisma/generated/prisma/*"]
+
     }
   },
   "include": [

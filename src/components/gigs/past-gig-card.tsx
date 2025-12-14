@@ -2,6 +2,7 @@ import Link from "next/link";
 import { formatDate } from "~/lib/date-utils";
 import { Badge } from "~/components/ui/badge";
 import { isLightColor } from "~/lib/utils";
+import { motion } from "framer-motion";
 
 type Gig = {
   id: string;
@@ -18,7 +19,7 @@ type PastGigCardProps = {
 
 export function PastGigCard({ gig }: PastGigCardProps) {
   return (
-    <Link
+    <motion.a
       href={`/gigs/${gig.id}`}
       className="group rounded-lg shadow-glass border border-zinc/20 bg-black/20 p-4 sm:p-6 backdrop-blur-sm transition-all hover:border-zinc/50 hover:bg-black/30"
     >
@@ -50,7 +51,7 @@ export function PastGigCard({ gig }: PastGigCardProps) {
           {gig.media.length} {gig.media.length === 1 ? "media item" : "media items"}
         </p>
       )}
-    </Link>
+    </motion.a>
   );
 }
 

@@ -1,3 +1,5 @@
+import { motion } from "framer-motion";
+
 interface ContentItemProps {
   id: string;
   type: string;
@@ -15,9 +17,19 @@ export function ContentItem({
   link,
 }: ContentItemProps) {
   return (
-    <a
+    <motion.a
       href={link}
       className="group relative overflow-hidden rounded-lg border border-white/10 bg-white/5 p-4 sm:p-6 md:p-8 backdrop-blur-sm transition-all hover:border-white/30 hover:bg-white/10"
+    
+    initial={{ opacity: 0, y: 10 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true, amount: 0.5 }}
+    exit={{ opacity: 0, y: 10 }}
+    transition={{
+      duration: 0.5,
+      ease: "easeOut",
+      delay: 0.18, // add ~180ms delay when entering view
+    }}
     >
       <div className="mb-4 flex items-center justify-between">
         <span className="rounded-full bg-white/10 px-2 sm:px-3 py-1 text-xs font-semibold uppercase tracking-wider">
@@ -39,7 +51,7 @@ export function ContentItem({
       <div className="mt-4 sm:mt-6 flex items-center text-xs sm:text-sm font-semibold text-white/80 group-hover:text-white">
         Play Now →
       </div>
-    </a>
+    </motion.a>
   );
 }
 

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { type GigMedia } from "@prisma/client";
+import { type GigMedia } from "~Prisma/browser";
 
 type MediaGalleryProps = {
   media: GigMedia[];
