@@ -4,11 +4,14 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { db } from "~/server/db";
 import { createAuthMiddleware } from "better-auth/api";
 import { z } from "zod";
+import { cache } from "react";
+import { headers } from "next/headers";
+import { type User } from "~Prisma/client"
 
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
   database: prismaAdapter(db, {
-    provider: "sqlite",
+    provider: "postgresql",
   }),
   emailAndPassword: {
     enabled: true,
@@ -172,4 +175,23 @@ export const auth = betterAuth({
       }
     }),
   },
+});
+
+
+
+export const authServer = cache(async () => {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  let dbUser: User | null = null;
+  if (session) {
+    dbUser = await db.user.findUnique({
+      where: { id: session.user.id },
+    });
+  }
+  return {
+    ...session,
+    user: dbUser,
+  };
 });

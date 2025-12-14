@@ -112,8 +112,8 @@ export const gigsRouter = createTRPCRouter({
     });
 
     // Filter to only upcoming gigs (gigs that haven't ended yet)
-    // return todayGigs.filter((gig) => isGigUpcoming(gig));
-    return todayGigs;
+    return todayGigs.filter((gig) => isGigUpcoming(gig));
+    // return todayGigs;
   }),
 
   getById: publicProcedure

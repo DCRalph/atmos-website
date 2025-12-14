@@ -82,3 +82,8 @@ export type MerchItem = Prisma.MerchItemModel
  * 
  */
 export type ContactSubmission = Prisma.ContactSubmissionModel
+/**
+ * Model NewsletterSubscription
+ * 
+ */
+export type NewsletterSubscription = Prisma.NewsletterSubscriptionModel

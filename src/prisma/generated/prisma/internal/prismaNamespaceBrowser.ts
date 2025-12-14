@@ -63,7 +63,8 @@ export const ModelName = {
   Gig: 'Gig',
   GigMedia: 'GigMedia',
   MerchItem: 'MerchItem',
-  ContactSubmission: 'ContactSubmission'
+  ContactSubmission: 'ContactSubmission',
+  NewsletterSubscription: 'NewsletterSubscription'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -258,6 +259,17 @@ export const ContactSubmissionScalarFieldEnum = {
 } as const
 
 export type ContactSubmissionScalarFieldEnum = (typeof ContactSubmissionScalarFieldEnum)[keyof typeof ContactSubmissionScalarFieldEnum]
+
+
+export const NewsletterSubscriptionScalarFieldEnum = {
+  id: 'id',
+  email: 'email',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  removed: 'removed'
+} as const
+
+export type NewsletterSubscriptionScalarFieldEnum = (typeof NewsletterSubscriptionScalarFieldEnum)[keyof typeof NewsletterSubscriptionScalarFieldEnum]
 
 
 export const SortOrder = {

@@ -8,6 +8,7 @@ import { GigTagsManager } from "./gig-tags-manager";
 import { MerchManager } from "./merch-manager";
 import { ContactManager } from "./contact-manager";
 import { UsersManager } from "./users-manager";
+import { NewsletterManager } from "./newsletter-manager";
 import { authClient } from "~/lib/auth-client";
 
 
@@ -30,6 +31,7 @@ export function AdminDashboard() {
             <TabsTrigger value="gig-tags">Gig Tags</TabsTrigger>
             <TabsTrigger value="merch">Merch</TabsTrigger>
             <TabsTrigger value="contact">Contact Submissions</TabsTrigger>
+            <TabsTrigger value="newsletter">Newsletter</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
           </TabsList>
 
@@ -55,6 +57,10 @@ export function AdminDashboard() {
 
           <TabsContent value="contact">
             <ContactManager />
+          </TabsContent>
+
+          <TabsContent value="newsletter">
+            <NewsletterManager />
           </TabsContent>
 
           <TabsContent value="users">

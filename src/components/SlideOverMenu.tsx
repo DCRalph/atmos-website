@@ -1,5 +1,6 @@
 import Link from "next/link"
 import Image from "next/image"
+import { orbitron } from "~/lib/fonts"
 
 type MenuItem = {
   label: string;
@@ -25,7 +26,10 @@ export default function SlideOverMenu({ setIsMenuOpen, isMobile }: SlideOverMenu
 
 
   return (
-    <div className={`flex flex-col z-50 h-dvh w-64 bg-black/90 border-r border-white/10 sticky top-0 left-0`}>
+    <div className={`flex flex-col z-50 h-dvh w-64 bg-black/90 sticky top-0 left-0`}>
+
+
+
       {/* Logo at top */}
       <div className="flex justify-center items-center px-4 my-8">
         <div className="relative w-full h-16">
@@ -40,7 +44,7 @@ export default function SlideOverMenu({ setIsMenuOpen, isMobile }: SlideOverMenu
       </div>
 
       {/* Menu buttons */}
-      <div className="flex flex-col flex-1 gap-1">
+      <div className={`flex flex-col flex-1 gap-1 ${orbitron.className}`}>
         {MENU_ITEMS.map((item, idx) => (
           <MenuItemComponent item={item} idx={idx} key={item.label} />
         ))}
@@ -49,16 +53,21 @@ export default function SlideOverMenu({ setIsMenuOpen, isMobile }: SlideOverMenu
   )
 }
 
+const getWidth = (idx: number) => {
+  const widths: number[] = [78, 67, 52, 77, 89, 97];
+  return widths[idx % widths.length]!;
+}
+
 function MenuItemComponent({ item, idx }: { item: MenuItem, idx: number }) {
   // Deterministic "random" value based on idx
-  const width = ((idx * 37 + 17) % 51) + 50;
+  const width = getWidth(idx);
   const hoverWidth = width * 1.2;
 
   return (
     <Link
       key={item.label}
       href={item.href}
-      className={`bg-red-600 text-white uppercase font-light text-lg py-2 pl-8 hover:font-semibold hover:opacity-90 transition-all tracking-wide`}
+      className={`bg-red-600 text-white uppercase font-light text-lg py-2 pl-8 tracking-wider hover:font-bold hover:opacity-90 transition-all hover:tracking-widest`}
       style={{
         width: `${width}%`,
         ['--hover-width' as string]: `${hoverWidth}%`
