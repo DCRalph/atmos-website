@@ -14,8 +14,9 @@ export function HomeTopContent() {
       <OpeningAnimation />
       <VideoBackground />
 
-      <SocialLinks className="fixed z-50" />
       <LiveGigPopup />
+      <SocialLinks side="right" />
+
 
       {/* Logo section */}
       <section className="relative flex min-h-dvh items-center justify-center px-4 z-20">

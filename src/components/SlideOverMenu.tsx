@@ -3,8 +3,8 @@
 import Link from "next/link"
 import Image from "next/image"
 import { orbitron } from "~/lib/fonts"
-import { useState } from "react";
 import { usePathname } from "next/navigation";
+import { SocialLinks } from "~/components/social-links";
 
 type MenuItem = {
   label: string;
@@ -30,7 +30,10 @@ interface SlideOverMenuProps {
 export default function SlideOverMenu({ setIsMenuOpen, isHomePage = false }: SlideOverMenuProps) {
 
   return (
-    <div className={`flex flex-col z-50 h-dvh w-64 bg-black ${isHomePage ? "sticky top-0 left-0" : "fixed top-0 left-0"}`}>
+    <div className={`flex relative flex-col z-50 h-dvh w-64 bg-black ${isHomePage ? "sticky top-0 left-0" : "fixed top-0 left-0"}`}>
+
+      <SocialLinks />
+
 
       {/* Logo at top */}
       <div className="flex justify-center items-center px-4 my-8">

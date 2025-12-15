@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { FaInstagram, FaTiktok, FaYoutube } from "react-icons/fa6";
+import { FaInstagram, FaPlus, FaTiktok, FaYoutube } from "react-icons/fa6";
 import { api } from "~/trpc/react";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import { authClient } from "~/lib/auth-client";
+import { usePathname } from "next/navigation";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 const footerLinks = [
   { label: "Home", href: "/" },
@@ -17,9 +19,10 @@ const footerLinks = [
 ] as const;
 
 const footerSocials = [
-  { label: "Instagram", href: "https://instagram.com/atmos.nz", Icon: FaInstagram },
-  { label: "TikTok", href: "https://tiktok.com/@atmos_tv", Icon: FaTiktok },
-  { label: "YouTube", href: "https://youtube.com/@ATMOS_TV", Icon: FaYoutube },
+  { label: "Instagram", href: "https://instagram.com/atmos.nz", Icon: FaInstagram, tooltip: "Instagram" },
+  { label: "TikTok", href: "https://tiktok.com/@atmos_tv", Icon: FaTiktok, tooltip: "TikTok" },
+  { label: "YouTube", href: "https://youtube.com/@ATMOS_TV", Icon: FaYoutube, tooltip: "YouTube" },
+  { label: "Socials", href: "/socials", Icon: FaPlus, tooltip: "Socials" },
 ] as const;
 
 
@@ -65,9 +68,7 @@ export function MainFooter() {
               className="flex w-full flex-wrap items-center justify-center gap-x-5 gap-y-3 text-xs uppercase tracking-wider text-black/70 dark:text-white/70 sm:w-auto sm:justify-center"
             >
               {footerLinks.map((l) => (
-                <Link key={l.href} href={l.href} className="transition-colors hover:text-black dark:hover:text-white">
-                  {l.label}
-                </Link>
+                <FooterLink key={l.href} link={l} />
               ))}
 
               {
@@ -98,16 +99,7 @@ export function MainFooter() {
             {/* <div className="flex flex-col items-center sm:items-end"> */}
             <div className="flex items-center justify-center gap-1">
               {footerSocials.map((s) => (
-                <Link
-                  key={s.href}
-                  href={s.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label={s.label}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-md text-black/70 transition-colors hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 dark:text-white/70 dark:hover:text-white dark:focus-visible:ring-white/30"
-                >
-                  <s.Icon className="h-5 w-5" />
-                </Link>
+                <FooterSocialLink key={s.href} s={s} />
               ))}
             </div>
 
@@ -117,5 +109,45 @@ export function MainFooter() {
         </div>
       </div>
     </footer>
+  );
+}
+
+function FooterLink({ link }: { link: typeof footerLinks[number] }) {
+  const pathname = usePathname();
+  const isActive =
+    link.href === "/"
+      ? pathname === "/"
+      : pathname === link.href || pathname.startsWith(link.href + "/");
+
+  return (
+    <Link key={link.href} href={link.href} className={`${isActive ? "font-bold! underline" : ""} transition-colors hover:text-black dark:hover:text-white`}>
+      {link.label}
+    </Link>
+  );
+}
+
+function FooterSocialLink({ s }: { s: typeof footerSocials[number] }) {
+  const newTab = s.href.includes("https://");
+  const target = newTab ? "_blank" : "_self";
+  const rel = newTab ? "noreferrer" : undefined;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Link
+          key={s.href}
+          href={s.href}
+          target={target}
+          rel={rel}
+          aria-label={s.label}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-md text-black/70 transition-colors hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 dark:text-white/70 dark:hover:text-white dark:focus-visible:ring-white/30"
+        >
+          <s.Icon className="h-5 w-5" />
+        </Link>
+      </TooltipTrigger>
+      <TooltipContent>
+        {s.tooltip}
+      </TooltipContent>
+    </Tooltip>
+
   );
 }

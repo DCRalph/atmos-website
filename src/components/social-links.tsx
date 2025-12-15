@@ -80,12 +80,13 @@ const items: Item[] = [
   // },
 ];
 
-export function SocialLinks({ className = "" }: { className?: string }) {
+export function SocialLinks({ className = "", side = "left" }: { className?: string, side?: "left" | "right" }) {
   return (
     <nav
       aria-label="Social links"
       className={cn(
-        "fixed right-2 sm:right-6 bottom-2 sm:bottom-6 z-30 transition-all duration-300",
+        "absolute bottom-2 sm:bottom-6 z-30 transition-all duration-300",
+        `${side === "left" ? "left-2 sm:left-6 " : "right-2 sm:right-6 "}`,
         "grid grid-cols-1 sm:gap-2",
         className
       )}
