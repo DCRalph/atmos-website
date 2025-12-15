@@ -8,6 +8,7 @@ import Image from "next/image";
 import { authClient } from "~/lib/auth-client";
 import { usePathname } from "next/navigation";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { orbitron } from "~/lib/fonts";
 
 const footerLinks = [
   { label: "Home", href: "/" },
@@ -41,7 +42,7 @@ export function MainFooter() {
 
       <div className="border-t border-black/10 bg-white/75 text-black backdrop-blur-md dark:border-white/10 dark:bg-black/55 dark:text-white">
         <div className="mx-auto max-w-6xl p-4">
-          <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col items-center gap-6 md:flex-row sm:items-center sm:justify-between">
             <Link href="/" aria-label="ATMOS home" className="shrink-0">
               <div className="relative aspect-4/1 w-40 sm:w-48">
                 <Image
@@ -145,7 +146,10 @@ function FooterSocialLink({ s }: { s: typeof footerSocials[number] }) {
         </Link>
       </TooltipTrigger>
       <TooltipContent>
-        {s.tooltip}
+
+        <span className={`font-semibold tracking-wide uppercase ${orbitron.className}`}>
+          {s.tooltip}
+        </span>
       </TooltipContent>
     </Tooltip>
 

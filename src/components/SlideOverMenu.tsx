@@ -30,7 +30,7 @@ interface SlideOverMenuProps {
 export default function SlideOverMenu({ setIsMenuOpen, isHomePage = false }: SlideOverMenuProps) {
 
   return (
-    <div className={`flex relative flex-col z-50 h-dvh w-64 bg-black ${isHomePage ? "sticky top-0 left-0" : "fixed top-0 left-0"}`}>
+    <div className={`flex relative flex-col z-50 h-dvh w-64 bg-zinc-100 dark:bg-zinc-950 border-r border-black/10 dark:border-white/10 ${isHomePage ? "sticky top-0 left-0" : "fixed top-0 left-0"}`}>
 
       <SocialLinks />
 
@@ -43,7 +43,14 @@ export default function SlideOverMenu({ setIsMenuOpen, isHomePage = false }: Sli
             alt="Atmos Logo"
             fill
             preload
-            className="object-contain"
+            className="object-contain dark:block hidden"
+          />
+          <Image
+            src="/logo/atmos-black.png"
+            alt="Atmos Logo"
+            fill
+            preload
+            className="object-contain dark:hidden block"
           />
         </div>
       </div>

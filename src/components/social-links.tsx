@@ -18,6 +18,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "~/components/ui/tooltip";
+import { orbitron } from "~/lib/fonts";
 
 type ColorConfig =
   | string // Single color
@@ -87,7 +88,9 @@ export function SocialLinks({ className = "", side = "left" }: { className?: str
       className={cn(
         "absolute bottom-2 sm:bottom-6 z-30 transition-all duration-300",
         `${side === "left" ? "left-2 sm:left-6 " : "right-2 sm:right-6 "}`,
-        "grid grid-cols-1 sm:gap-2",
+        "grid grid-cols-1",
+        // "sm:gap-2",
+        "gap-2",
         className
       )}
     >
@@ -134,22 +137,22 @@ function SocialItem({
 
   // Get glow color for drop shadow
   const getGlowColor = (config?: ColorConfig): string => {
-    if (!config) return "rgba(255,255,255,0.6)";
+    if (!config) return "rgba(0,0,0,0.4)";
     if (typeof config === "string") return config;
     if (config.type === "gradient") {
       // Use middle color for glow
-      return config.colors[Math.floor(config.colors.length / 2)] ?? config.colors[0] ?? "#FFFFFF";
+      return config.colors[Math.floor(config.colors.length / 2)] ?? config.colors[0] ?? "#000000";
     }
     // For multi-color, use second color or first
-    return config.colors[1] ?? config.colors[0] ?? "#FFFFFF";
+    return config.colors[1] ?? config.colors[0] ?? "#000000";
   };
 
   // Get icon style
   const getIconStyle = (config?: ColorConfig, isHovered?: boolean) => {
     if (!isHovered || !config) {
       return isPrimary
-        ? { color: "white" }
-        : { color: "rgba(255, 255, 255, 0.8)" };
+        ? { color: "currentColor" }
+        : { color: "currentColor", opacity: 0.8 };
     }
 
     if (typeof config === "string") {
@@ -201,7 +204,7 @@ function SocialItem({
               scale: hovered ? 1.35 : 0.9,
               filter: hovered
                 ? `drop-shadow(0 0 8px ${glowColor})`
-                : "drop-shadow(0 0 4px rgba(255,255,255,0.4))",
+                : "drop-shadow(0 0 4px rgba(0,0,0,0.2))",
             }}
             transition={{
               duration: 0.22,
@@ -214,15 +217,17 @@ function SocialItem({
             aria-label={label}
             className={cn(
               "relative flex items-center justify-center",
-              "size-8 sm:size-10",
-              "text-white/80",
+              // "size-8 sm:size-10",
+              "size-10",
+              "text-black/80 dark:text-white/80",
               "transition-colors duration-200",
-              "hover:text-white"
+              "hover:text-black dark:hover:text-white"
             )}
           >
             <Icon
               className={cn(
-                "size-5 sm:size-6 md:size-7",
+                // "size-5 sm:size-6 md:size-7",
+                "size-8",
                 "transition-all duration-200"
               )}
             />
@@ -235,7 +240,7 @@ function SocialItem({
         side="left"
       >
         <div className="flex flex-col leading-tight">
-          <span className=" font-semibold tracking-wide uppercase">
+          <span className={`font-semibold tracking-wide uppercase ${orbitron.className}`}>
             {label}
           </span>
           {/* <span className="text-[9px] text-black/55">{displayUrl}</span> */}

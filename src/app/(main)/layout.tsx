@@ -5,13 +5,14 @@ import { MainFooter } from "~/components/mainFooter";
 import SlideOverMenu from "~/components/SlideOverMenu";
 import { useState } from "react";
 import { useIsMobile } from "~/hooks/use-mobile";
+import { MobileNav } from "~/components/mobile-nav";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isMobile = useIsMobile();
 
   return (
-    <div className="bg-background text-foreground">
+    <div className="bg-background text-foreground h-dvh overflow-x-hidden overflow-y-scroll">
       <UserIndicator />
 
       {/* Give pages breathing room so the fixed footer doesn't cover content */}
@@ -19,6 +20,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isHomePage={true} key="1" />
           {children}
         </div> */}
+
 
       {!isMobile ? (
         <div className="w-full flex">
@@ -32,7 +34,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           <div className="fixed top-0 right-full z-20 h-full w-64">
             <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isHomePage={true} key="3" />
           </div>
-          {children}
+          <div className="flex-1 ">
+            <MobileNav onMenuToggle={() => setIsMenuOpen(!isMenuOpen)} />
+            {children}
+          </div>
         </div>
       )}
 

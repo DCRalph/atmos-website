@@ -7,6 +7,7 @@ import { MainFooter } from "~/components/mainFooter";
 import { UserIndicator } from "~/components/user-indicator";
 import { HomeTopContent } from "~/components/home/home-top-content";
 import { HomeBottomContent } from "~/components/home/home-bottom-content";
+import { MobileNav } from "~/components/mobile-nav";
 
 function HomeContent() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -28,6 +29,8 @@ function HomeContent() {
           <div className="fixed top-0 right-full z-20 h-full w-64">
             <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isHomePage={true} key="3" />
           </div>
+          {isMobile && (<MobileNav onMenuToggle={() => setIsMenuOpen(!isMenuOpen)} />)}
+
           <HomeBottomContent isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} isMobile={isMobile} key="4" />
         </div>
       )}

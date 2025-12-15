@@ -5,6 +5,7 @@ import { NewsletterSection } from "~/components/newsletter/newsletter-section";
 import { UpcomingGigsSection } from "./upcoming-gigs-section";
 import { LatestContentSection } from "./latest-content-section";
 import { RecentGigsSection } from "./recent-gigs-section";
+import { MobileNav } from "../mobile-nav";
 
 type HomeBottomContentProps = {
   isMenuOpen: boolean;
@@ -21,19 +22,8 @@ export function HomeBottomContent({
     <main className="relative flex-1 bg-black text-white min-h-screen ">
       {/* <StaticBackground imageSrc="/home/atmos-46.jpg" /> */}
 
-      {isMobile && (
-        <nav className="sticky top-0 left-0 right-0 w-full bg-black/50 backdrop-blur h-16 z-50">
-          <div className="flex items-center justify-between">
-            <div className="absolute flex items-center justify-center top-0 left-2 h-16 w-16 z-30">
-              <Button variant="link" className="text-lg uppercase" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-                Menu
-              </Button>
-            </div>
-          </div>
-        </nav>
-      )}
 
-      <section className="relative z-10 min-h-screen px-4 py-16 sm:py-24">
+      <section className="relative z-10 min-h-screen px-4 pt-6 pb-16 sm:pb-24">
         <div className="mx-auto max-w-6xl">
           {/* About Section */}
           {/* <div className="mb-12 sm:mb-16">
