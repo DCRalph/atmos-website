@@ -21,32 +21,50 @@ type UpcomingGigCardProps = {
 export function UpcomingGigCard({ gig }: UpcomingGigCardProps) {
   return (
     <motion.div
-      className="group flex shadow-glass flex-col gap-4 rounded-lg border border-white/10 bg-white/5 p-4 sm:p-6 backdrop-blur-sm transition-all hover:border-white/30 hover:bg-white/10 md:flex-row md:items-center md:justify-between"
+      className="group relative overflow-hidden rounded-lg border border-white/10 bg-white/5 p-4 sm:p-6 shadow-glass backdrop-blur-sm transition-all hover:border-white/30 hover:bg-white/10"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-
     >
-      <Link href={`/gigs/${gig.id}`} className="flex-1">
-        <div className="mb-2 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-          <span className="text-xl sm:text-2xl font-bold">
-            {formatDate(gig.gigStartTime)}
-          </span>
-          <div className="flex-1">
-            <h3 className="text-lg sm:text-xl font-semibold">{gig.title}</h3>
-            <p className="text-white/60 text-sm sm:text-base">{gig.subtitle}</p>
+      {/* Link wrapper for the entire card except buttons */}
+      <Link href={`/gigs/${gig.id}`} className="block">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
+          {/* Date/Time Section */}
+          <div className="flex shrink-0 flex-col items-start md:w-32 lg:w-40">
+            <div className="text-2xl font-bold leading-tight md:text-3xl">
+              {formatDate(gig.gigStartTime)}
+            </div>
+            <div className="mt-1 text-sm text-white/60">
+              {gig.gigEndTime
+                ? `${formatTime(gig.gigStartTime)} - ${formatTime(gig.gigEndTime)}`
+                : `${formatTime(gig.gigStartTime)}`}
+            </div>
+          </div>
+
+          {/* Event Details Section */}
+          <div className="flex-1 space-y-3">
+            <div>
+              <h3 className="text-xl font-semibold leading-tight md:text-2xl">
+                {gig.title}
+              </h3>
+              <p className="mt-1 text-sm text-white/60 md:text-base">
+                {gig.subtitle}
+              </p>
+            </div>
+
+            {/* Tags */}
             {gig.gigTags && gig.gigTags.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-2">
                 {gig.gigTags.map((gt) => (
                   <Badge
                     key={gt.gigTag.id}
                     variant="outline"
-                    className="rounded-full"
+                    className="rounded-full text-xs"
                     style={{
-                      backgroundColor: gt.gigTag.color,
+                      backgroundColor: gt.gigTag.color + "20",
                       borderColor: gt.gigTag.color,
-                      color: isLightColor(gt.gigTag.color) ? "black" : "white",
+                      color: gt.gigTag.color,
                     }}
                   >
                     {gt.gigTag.name}
@@ -56,16 +74,13 @@ export function UpcomingGigCard({ gig }: UpcomingGigCardProps) {
             )}
           </div>
         </div>
-        <p className="text-xs sm:text-sm text-white/60">
-          {gig.gigEndTime
-            ? `${formatTime(gig.gigStartTime)} - ${formatTime(gig.gigEndTime)}`
-            : `Starts at ${formatTime(gig.gigStartTime)}`}
-        </p>
       </Link>
-      <div className="flex gap-2">
+
+      {/* Action Buttons */}
+      <div className="mt-6 flex flex-col gap-2 sm:flex-row md:mt-4 md:justify-end">
         <Link
           href={`/gigs/${gig.id}`}
-          className="rounded-md border border-white/30 bg-white/10 px-4 sm:px-6 py-2 sm:py-3 text-center font-semibold text-white transition-all hover:bg-white/20 text-sm sm:text-base"
+          className="flex-1 rounded-lg border border-white/20 bg-white/5 px-4 py-2.5 text-center text-sm font-medium text-white transition-all hover:border-white/40 hover:bg-white/10 sm:flex-none sm:px-6"
         >
           View Details
         </Link>
@@ -74,7 +89,7 @@ export function UpcomingGigCard({ gig }: UpcomingGigCardProps) {
             href={gig.ticketLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-md bg-white px-4 sm:px-6 py-2 sm:py-3 text-center font-semibold text-black transition-all hover:bg-white/90 text-sm sm:text-base"
+            className="flex-1 rounded-lg bg-white px-4 py-2.5 text-center text-sm font-semibold text-black transition-all hover:bg-white/90 sm:flex-none sm:px-6"
             onClick={(e) => e.stopPropagation()}
           >
             Get Tickets
@@ -84,4 +99,3 @@ export function UpcomingGigCard({ gig }: UpcomingGigCardProps) {
     </motion.div>
   );
 }
-

@@ -13,6 +13,7 @@ export function TopRightBadge({ className = "" }: { className?: string }) {
         alt="Atmos Logo"
         fill
         className="object-contain"
+        sizes="(max-width: 640px) 10rem, 12rem"
       />
     </div>
   );

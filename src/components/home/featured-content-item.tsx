@@ -3,6 +3,7 @@
 import { motion } from "motion/react";
 import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 type FeaturedContentItemProps = {
   id: string;
@@ -65,7 +66,7 @@ export function FeaturedContentItem({
           </div>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr] lg:items-end">
+        <div className="flex gap-4 justify-between lg:items-end">
           <div>
             <h3 className="text-2xl font-bold tracking-wide sm:text-3xl md:text-4xl">{title}</h3>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/70 sm:text-base">
@@ -73,7 +74,7 @@ export function FeaturedContentItem({
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-black/20 p-4 sm:p-5">
+          {/* <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-black/20 p-4 sm:p-5">
             <p className="text-xs font-semibold uppercase tracking-wider text-white/60">
               Quick info
             </p>
@@ -104,7 +105,20 @@ export function FeaturedContentItem({
                 <ArrowUpRight className="h-4 w-4" />
               </span>
             </div>
+          </div> */}
+
+
+          <div className="relative max-w-56 flex-1 aspect-square rounded-lg overflow-hidden border border-white/10 bg-black/20 shadow-lg mb-2 lg:mb-0 transition-all hover:border-white/30">
+            <Image
+              src={"https://picsum.photos/300/300"}
+              alt={title + " thumbnail"}
+              width={300}
+              height={300}
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
           </div>
+
         </div>
       </div>
     </motion.a>

@@ -10,6 +10,7 @@ export function SimpleLogo() {
         alt="Atmos Logo"
         fill
         className="object-contain drop-shadow-[0_0_30px_rgba(255,255,255,0.5)]"
+        sizes="(max-width: 640px) 10rem, 12rem"
       />
     </div>
   );

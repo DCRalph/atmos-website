@@ -68,32 +68,38 @@ export const gigsRouter = createTRPCRouter({
     return allGigs;
   }),
 
-  getPast: publicProcedure.query(async ({ ctx }) => {
-    const allGigs = await ctx.db.gig.findMany({
-      where: {
-        gigStartTime: {
-          lt: new Date(),
-        },
-      },
-      orderBy: { gigStartTime: "desc" },
-      include: {
-        media: {
-          orderBy: [
-            { featured: "desc" },
-            { createdAt: "asc" }
-          ]
-        },
-        gigTags: {
-          include: {
-            gigTag: true,
+  getPast: publicProcedure
+    .input(z.object({
+      limit: z.number(),
+    }).optional()
+    )
+    .query(async ({ ctx, input }) => {
+      const allGigs = await ctx.db.gig.findMany({
+        where: {
+          gigStartTime: {
+            lt: new Date(),
           },
         },
-      },
-    });
-    // Filter to only past gigs
-    // return allGigs.filter((gig) => !isGigUpcoming(gig));
-    return allGigs;
-  }),
+        orderBy: { gigStartTime: "desc" },
+        include: {
+          media: {
+            orderBy: [
+              { featured: "desc" },
+              { createdAt: "asc" }
+            ]
+          },
+          gigTags: {
+            include: {
+              gigTag: true,
+            },
+          },
+        },
+        take: input?.limit,
+      });
+      // Filter to only past gigs
+      // return allGigs.filter((gig) => !isGigUpcoming(gig));
+      return allGigs;
+    }),
 
   getToday: publicProcedure.query(async ({ ctx }) => {
     // Use UTC time for all comparisons

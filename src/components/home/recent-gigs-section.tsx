@@ -5,25 +5,43 @@ import { PastGigCard } from "~/components/gigs/past-gig-card";
 import { api } from "~/trpc/react";
 import { orbitron } from "~/lib/fonts";
 import { FeaturedGigCard } from "./featured-gig-card";
+import Link from "next/link";
+import { Button } from "~/components/ui/button";
+import { ArrowUpRight } from "lucide-react";
 
 export function RecentGigsSection() {
-  const { data: pastGigs, isLoading: isLoadingPastGigs } = api.gigs.getPast.useQuery();
+  const { data: pastGigs, isLoading: isLoadingPastGigs } = api.gigs.getPast.useQuery({ limit: 4 });
 
   const sortedPastGigsWithStart = (pastGigs ?? [])
     .filter((gig) => gig.gigStartTime)
     .slice()
     .sort((a, b) => b.gigStartTime!.getTime() - a.gigStartTime!.getTime());
 
-  // Limit past gigs to 6 most recent
-  const recentPastGigs = sortedPastGigsWithStart.slice(0, 6);
-  const latestPastGig = recentPastGigs[0];
-  const otherRecentPastGigs = recentPastGigs.slice(1);
+  // Limit past gigs to 6 most recent;
+  const latestPastGig = sortedPastGigsWithStart[0];
+  const otherRecentPastGigs = sortedPastGigsWithStart.slice(1);
 
   return (
     <div>
-      <h2 className={`mb-6 sm:mb-8 text-2xl sm:text-3xl font-bold tracking-wide md:text-4xl border-b border-white/20 pb-3 sm:pb-4 ${orbitron.className}`}>
+      {/* <h2 className={`mb-6 sm:mb-8 text-2xl sm:text-3xl font-bold tracking-wide md:text-4xl border-b border-white/20 pb-3 sm:pb-4 ${orbitron.className}`}>
         Recent Gigs
-      </h2>
+      </h2> */}
+
+      <div className="mb-6 sm:mb-8 flex items-end justify-between gap-4 border-b border-white/20 pb-3 sm:pb-4">
+        <h2 className={`text-2xl sm:text-3xl font-bold tracking-wide md:text-4xl ${orbitron.className}`}>
+          Recent Gigs
+        </h2>
+        <Link href="/gigs" className="shrink-0">
+          <Button
+            variant="outline"
+            className="h-9 rounded-full border-white/20 bg-white/5 px-4 text-xs font-semibold tracking-wide text-white/90 hover:bg-white/10 hover:text-white"
+          >
+            View all
+            <ArrowUpRight className="ml-1.5 h-4 w-4" />
+          </Button>
+        </Link>
+      </div>
+
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
         {isLoadingPastGigs ? (
           <div className="flex items-center justify-center py-8 col-span-full">

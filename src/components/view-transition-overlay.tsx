@@ -136,6 +136,7 @@ export function ViewTransitionOverlay() {
             fill
             className="object-contain"
             priority
+            sizes="(max-width: 640px) 10rem, 12rem"
           />
         </div>
       </div>

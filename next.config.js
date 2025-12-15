@@ -16,6 +16,10 @@ const config = {
         protocol: "https",
         hostname: "*.w-g.co",
       },
+      {
+        protocol: "https",
+        hostname: "picsum.photos",
+      },
     ],
   },
   // experimental: {

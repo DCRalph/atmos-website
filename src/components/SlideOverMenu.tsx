@@ -44,6 +44,7 @@ export default function SlideOverMenu({ setIsMenuOpen, isHomePage = false }: Sli
             fill
             preload
             className="object-contain dark:block hidden"
+            sizes="(max-width: 640px) 10rem, 12rem"
           />
           <Image
             src="/logo/atmos-black.png"
@@ -51,6 +52,7 @@ export default function SlideOverMenu({ setIsMenuOpen, isHomePage = false }: Sli
             fill
             preload
             className="object-contain dark:hidden block"
+            sizes="(max-width: 640px) 10rem, 12rem"
           />
         </div>
       </div>
