@@ -24,7 +24,7 @@ export default function RootLayout({
 
 
   return (
-    <html lang="en" className={`${montserrat.className}`} suppressHydrationWarning>
+    <html lang="en" className={`${montserrat.className} overflow-x-hidden`} suppressHydrationWarning>
       <body>
         <ViewTransition>
           <ThemeOverrideProvider defaultForcedTheme="dark">

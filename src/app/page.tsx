@@ -29,7 +29,7 @@ function HomeContent() {
           <div className="fixed top-0 right-full z-20 h-full w-64">
             <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isHomePage={true} key="3" />
           </div>
-          {isMobile && (<MobileNav onMenuToggle={() => setIsMenuOpen(!isMenuOpen)} />)}
+          {isMobile && (<MobileNav onMenuToggle={() => setIsMenuOpen(!isMenuOpen)} isMenuOpen={isMenuOpen} />)}
 
           <HomeBottomContent isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} isMobile={isMobile} key="4" />
         </div>

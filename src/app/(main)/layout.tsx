@@ -35,7 +35,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isHomePage={true} key="3" />
           </div>
           <div className="flex-1 ">
-            <MobileNav onMenuToggle={() => setIsMenuOpen(!isMenuOpen)} />
+            <MobileNav onMenuToggle={() => setIsMenuOpen(!isMenuOpen)} isMenuOpen={isMenuOpen} />
             {children}
           </div>
         </div>
