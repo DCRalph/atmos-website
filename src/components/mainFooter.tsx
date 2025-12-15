@@ -47,7 +47,15 @@ export function MainFooter() {
                   fill
                   priority
                   sizes="(max-width: 640px) 10rem, 12rem"
-                  className="object-contain"
+                  className="object-contain dark:block hidden"
+                />
+                <Image
+                  src="/logo/atmos-black.png"
+                  alt="ATMOS Logo"
+                  fill
+                  priority
+                  sizes="(max-width: 640px) 10rem, 12rem"
+                  className="object-contain dark:hidden block"
                 />
               </div>
             </Link>

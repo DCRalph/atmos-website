@@ -25,7 +25,7 @@ export default function AboutPage() {
   }, [setForcedTheme]);
 
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-white text-black">
+    <main className="bg-white text-black">
       {/* Background accents */}
       <div
         aria-hidden="true"

@@ -75,13 +75,13 @@ const socialLinks: SocialLink[] = [
 
 export default function SocialsPage() {
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-black text-white">
+    <main className="bg-black text-white">
       <StaticBackground imageSrc="/home/CAGED 2-95.jpg" />
 
       <section className="relative z-10 min-h-dvh px-4 py-16 sm:py-24">
         <div className="container mx-auto max-w-5xl">
           <div className="mb-12 text-center">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-[0.22em] text-white/90">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white/90">
               FOLLOW ATMOS
             </h1>
             <p className="mt-4 text-sm sm:text-base text-white/60">

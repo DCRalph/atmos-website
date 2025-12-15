@@ -1,6 +1,10 @@
+"use client";
+
 import Link from "next/link"
 import Image from "next/image"
 import { orbitron } from "~/lib/fonts"
+import { useState } from "react";
+import { usePathname } from "next/navigation";
 
 type MenuItem = {
   label: string;
@@ -15,20 +19,18 @@ const MENU_ITEMS: MenuItem[] = [
   { label: "GIGS", href: "/gigs", color: "bg-lime-500" },
   { label: "THE CREW", href: "/crew", color: "bg-cyan-500" },
   { label: "CONTACT US", href: "/contact", color: "bg-gray-400" },
+  { label: "SOCIALS", href: "/socials", color: "bg-green-500" },
 ];
 
 interface SlideOverMenuProps {
   setIsMenuOpen: (isOpen: boolean) => void;
-  isMobile: boolean;
+  isHomePage?: boolean;
 }
 
-export default function SlideOverMenu({ setIsMenuOpen, isMobile }: SlideOverMenuProps) {
-
+export default function SlideOverMenu({ setIsMenuOpen, isHomePage = false }: SlideOverMenuProps) {
 
   return (
-    <div className={`flex flex-col z-50 h-dvh w-64 bg-black/90 sticky top-0 left-0`}>
-
-
+    <div className={`flex flex-col z-50 h-dvh w-64 bg-black ${isHomePage ? "sticky top-0 left-0" : "fixed top-0 left-0"}`}>
 
       {/* Logo at top */}
       <div className="flex justify-center items-center px-4 my-8">
@@ -63,11 +65,18 @@ function MenuItemComponent({ item, idx }: { item: MenuItem, idx: number }) {
   const width = getWidth(idx);
   const hoverWidth = width * 1.2;
 
+  const pathname = usePathname();
+
+  const isActive =
+    item.href === "/"
+      ? pathname === "/"
+      : pathname === item.href || pathname.startsWith(item.href + "/");
+
   return (
     <Link
       key={item.label}
       href={item.href}
-      className={`bg-red-600 text-white uppercase font-light text-lg py-2 pl-8 tracking-wider hover:font-bold hover:opacity-90 transition-all hover:tracking-widest`}
+      className={`${isActive ? "pl-10 font-bold!" : ""} bg-red-600 text-white uppercase font-light text-lg py-2 pl-8 tracking-wider hover:font-bold hover:opacity-90 transition-all hover:tracking-widest`}
       style={{
         width: `${width}%`,
         ['--hover-width' as string]: `${hoverWidth}%`

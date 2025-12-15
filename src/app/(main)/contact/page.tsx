@@ -6,7 +6,7 @@ import { ContactForm } from "~/components/contact/contact-form";
 
 export default function ContactPage() {
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-black text-white">
+    <main className=" bg-black text-white">
       <StaticBackground imageSrc="/home/CAGED 2-95.jpg" />
 
       <section className="relative z-10 min-h-dvh px-4 py-16 sm:py-24">

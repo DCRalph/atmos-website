@@ -13,7 +13,7 @@ export default function GigsPage() {
   const { data: upcomingGigs, isLoading: isLoadingUpcomingGigs } = api.gigs.getUpcoming.useQuery();
   const { data: pastGigs, isLoading: isLoadingPastGigs } = api.gigs.getPast.useQuery();
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-black text-white">
+    <main className="bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-46.jpg" />
       {/* <ImageCycleBackground /> */}
 

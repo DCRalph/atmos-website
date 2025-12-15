@@ -6,6 +6,7 @@ import { OpeningAnimation } from "~/components/opening-animation";
 import { VideoBackground } from "~/components/video-background";
 import { LiveGigPopup } from "~/components/live-gig-popup";
 import { SimpleLogo } from "~/components/simple-logo";
+import { SocialLinks } from "~/components/social-links";
 
 export function HomeTopContent() {
   return (
@@ -13,7 +14,7 @@ export function HomeTopContent() {
       <OpeningAnimation />
       <VideoBackground />
 
-      {/* <SocialLinks className="fixed z-20" /> */}
+      <SocialLinks className="fixed z-50" />
       <LiveGigPopup />
 
       {/* Logo section */}
