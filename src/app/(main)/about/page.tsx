@@ -6,6 +6,7 @@ import { useThemeOverride } from "~/components/theme-overide-provider";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
+import Link from "next/link";
 // import { Separator } from "~/components/ui/separator";
 
 // Optional: simple container utility if you don't already have one
@@ -49,9 +50,11 @@ export default function AboutPage() {
               forward through events, collaborations, and community.
             </p>
             <div className="mt-8 flex items-center justify-center gap-3">
-              <Button size="lg" className="rounded-xl">
-                Get in touch
-              </Button>
+              <Link href="/contact">
+                <Button size="lg" className="rounded-xl">
+                  Get in touch
+                </Button>
+              </Link>
               <Button size="lg" variant="outline" className="rounded-xl">
                 Upcoming events
               </Button>
