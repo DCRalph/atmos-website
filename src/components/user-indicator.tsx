@@ -54,7 +54,7 @@ export function UserIndicator({ variant = "light" }: UserIndicatorProps) {
   }
 
   return (
-    <div className="fixed right-3 top-3 z-20 ">
+    <div className="fixed right-3 top-3 z-999">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -99,6 +99,15 @@ export function UserIndicator({ variant = "light" }: UserIndicatorProps) {
                 className="w-full justify-between"
               >
                 <span>Home</span>
+              </Button>
+            </Link>
+
+            <Link href="/dashboard">
+              <Button
+                variant="ghost"
+                className="w-full justify-between"
+              >
+                <span>Dashboard</span>
               </Button>
             </Link>
 

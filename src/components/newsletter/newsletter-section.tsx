@@ -6,6 +6,7 @@ import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
+import { orbitron } from "~/lib/fonts";
 
 export function NewsletterSection({ className }: { className?: string }) {
   const newsletterSubscribe = api.newsletter.subscribe.useMutation();
@@ -22,7 +23,7 @@ export function NewsletterSection({ className }: { className?: string }) {
     <section className={cn("mt-16 sm:mt-20", className)} aria-labelledby="newsletter-heading">
       <h2
         id="newsletter-heading"
-        className="mb-6 sm:mb-8 text-2xl sm:text-3xl font-bold tracking-wide md:text-4xl border-b border-white/20 pb-3 sm:pb-4"
+        className={`mb-6 sm:mb-8 text-2xl sm:text-3xl font-bold tracking-wide md:text-4xl border-b border-white/20 pb-3 sm:pb-4 ${orbitron.className}`}
       >
         Join the newsletter
       </h2>
