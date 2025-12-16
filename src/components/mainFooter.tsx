@@ -17,6 +17,8 @@ const footerLinks = [
   { label: "Gigs", href: "/gigs" },
   { label: "Crew", href: "/crew" },
   { label: "Contact", href: "/contact" },
+  { label: "Privacy", href: "/privacy" },
+  { label: "Terms", href: "/terms" },
 ] as const;
 
 const footerSocials = [
