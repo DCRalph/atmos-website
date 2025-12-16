@@ -42,7 +42,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         // </div>
 
         <div className="relative">
-          <AnimatePresence initial={false}>
+          <AnimatePresence initial={false} mode="wait">
             {isMenuOpen && (
               <div className="fixed z-50 top-0 left-0">
                 <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isHomePage={true}  />

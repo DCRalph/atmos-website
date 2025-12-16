@@ -74,7 +74,7 @@ export default function SlideOverMenu({ setIsMenuOpen, isHomePage = false }: Sli
       {
         isMobile && (
           <MotionButton
-            className="text-lg uppercase group w-min my-4 mx-4 absolute top-0 left-0"
+            className="text-lg uppercase group w-min my-4 mx-4 absolute top-0 left-0 ease-out"
             onClick={() => setIsMenuOpen(false)}
 
             transition={{
@@ -156,13 +156,18 @@ function MenuItemComponent({
       key={item.label}
       href={item.href}
       className={`${isActive ? "pl-10 font-bold!" : ""
-        } bg-red-600 text-white uppercase font-light text-2xl py-3 pl-8 tracking-wider hover:font-bold hover:bg-red-500 transition-all hover:tracking-widest`}
+        } bg-red-600 text-white uppercase font-light text-2xl py-3 pl-8 tracking-wider hover:font-bold hover:bg-red-500 transition-all ease-out hover:tracking-widest`}
 
       style={{
         width: `${width}%`,
         ["--hover-width" as string]: `${hoverWidth}%`,
       }}
 
+      transition={{
+        duration: 0.3,
+        ease: "easeOut",
+        delay: (idx + 1) * 0.05,
+      }}
 
       variants={{
         hidden: {
@@ -179,14 +184,6 @@ function MenuItemComponent({
       animate="visible"
       exit="hidden"
 
-
-      transition={{
-        duration: 0.3,
-        ease: "easeOut",
-        delay: (idx + 1) * 0.05,
-      }}
-
-
       onMouseEnter={(e) => {
         e.currentTarget.style.width = `${hoverWidth}%`;
       }}
@@ -195,7 +192,6 @@ function MenuItemComponent({
       }}
 
       onClick={closeMenu}
-
     >
       {item.label}
     </MotionLink >
