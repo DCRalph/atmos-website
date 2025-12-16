@@ -35,6 +35,7 @@ export default function AboutPage() {
         <div className="absolute bottom-0 right-0 h-64 w-64 translate-x-16 translate-y-16 rounded-full bg-linear-to-tr from-cyan-200 via-emerald-200 to-lime-200 blur-3xl opacity-40" />
       </div>
 
+
       {/* Hero */}
       <section className="relative z-10 pt-16 sm:pt-24">
         <Container>

@@ -21,13 +21,13 @@ function HomeContent() {
 
       {!isMobile ? (
         <div className="w-full flex">
-          <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isHomePage={true} key="1" />
+          <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isHomePage={true} />
           <HomeBottomContent isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} isMobile={isMobile} key="2" />
         </div>
       ) : (
         <div className={`transition-transform duration-300 ease-in-out ${isMenuOpen ? "translate-x-64" : "translate-x-0"}`}>
           <div className="fixed top-0 right-full z-20 h-full w-64">
-            <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isHomePage={true} key="3" />
+            <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isHomePage={true} />
           </div>
           {isMobile && (<MobileNav onMenuToggle={() => setIsMenuOpen(!isMenuOpen)} isMenuOpen={isMenuOpen} />)}
 
