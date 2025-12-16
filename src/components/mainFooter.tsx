@@ -68,7 +68,7 @@ export function MainFooter() {
 
             <nav
               aria-label="Footer"
-              className="flex w-full flex-wrap items-center justify-center gap-x-5 gap-y-3 text-xs uppercase tracking-wider text-black/70 dark:text-white/70 sm:w-auto sm:justify-center"
+              className="flex w-full flex-wrap items-center justify-center px-8 sm:px-0 gap-x-5 gap-y-3 text-xs uppercase tracking-wider text-black/70 dark:text-white/70 sm:w-auto sm:justify-center"
             >
               {footerLinks.map((l) => (
                 <FooterLink key={l.href} link={l} />
@@ -109,6 +109,15 @@ export function MainFooter() {
 
           </div>
           {/* </div> */}
+        </div>
+
+        {/* Copyright section */}
+        <div className="border-t border-black/10 dark:border-white/10">
+          <div className="mx-auto max-w-6xl px-4 py-3">
+            <p className="text-center text-xs text-black/60 dark:text-white/60">
+              © {year} ATMOS. All rights reserved.
+            </p>
+          </div>
         </div>
       </div>
     </footer>
