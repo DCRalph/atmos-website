@@ -10,10 +10,51 @@ import { montserrat } from "~/lib/fonts";
 
 import NextTopLoader from 'nextjs-toploader';
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+
 export const metadata: Metadata = {
-  title: "Atmos",
+  title: {
+    default: "Atmos",
+    template: "%s | Atmos",
+  },
   description: "Atmos — sound, culture, nightlife.",
-  icons: [{ rel: "icon", url: "/favicon.ico" }],
+  applicationName: "Atmos",
+  keywords: ["Atmos", "sound", "culture", "nightlife", "music", "events"],
+  metadataBase: siteUrl ? new URL(siteUrl) : undefined,
+  alternates: {
+    canonical: "/",
+  },
+  icons: {
+    icon: [
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon.ico", rel: "icon" },
+    ],
+    apple: "/apple-touch-icon.png",
+    shortcut: "/favicon.ico",
+  },
+  openGraph: {
+    title: "Atmos — sound, culture, nightlife.",
+    description: "Atmos — sound, culture, nightlife.",
+    url: "/",
+    siteName: "Atmos",
+    images: [
+      {
+        url: "/home/atmos-1.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Atmos — sound, culture, nightlife.",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Atmos — sound, culture, nightlife.",
+    description: "Atmos — sound, culture, nightlife.",
+    images: ["/home/atmos-1.jpg"],
+  },
 };
 
 
