@@ -12,14 +12,17 @@ import NextTopLoader from 'nextjs-toploader';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
+const description_short = "Atmos Media - Hub";
+const description_long = "Atmos Media - Hub for all things Atmos. We are a media company that creates content for the Atmos brand.";
+
 export const metadata: Metadata = {
   title: {
     default: "Atmos",
     template: "%s | Atmos",
   },
-  description: "Atmos — sound, culture, nightlife.",
+  description: description_long,
   applicationName: "Atmos",
-  keywords: ["Atmos", "sound", "culture", "nightlife", "music", "events"],
+  keywords: ["Atmos", "Atmos Media", "Atmos Hub", "Atmos Media Hub"],
   metadataBase: siteUrl ? new URL(siteUrl) : undefined,
   alternates: {
     canonical: "/",
@@ -34,8 +37,8 @@ export const metadata: Metadata = {
     shortcut: "/favicon.ico",
   },
   openGraph: {
-    title: "Atmos — sound, culture, nightlife.",
-    description: "Atmos — sound, culture, nightlife.",
+    title: "Atmos ",
+    description: description_short,
     url: "/",
     siteName: "Atmos",
     images: [
@@ -43,7 +46,7 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Atmos — sound, culture, nightlife.",
+        alt: description_short,
       },
     ],
     locale: "en_US",
@@ -51,8 +54,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Atmos — sound, culture, nightlife.",
-    description: "Atmos — sound, culture, nightlife.",
+    title: "Atmos ",
+    description: description_short,
     images: ["/og-image.png"],
   },
 };
