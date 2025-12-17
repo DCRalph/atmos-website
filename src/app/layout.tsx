@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     siteName: "Atmos",
     images: [
       {
-        url: "/atmos.png",
+        url: "/og-image.png",
         width: 1200,
         height: 630,
         alt: "Atmos — sound, culture, nightlife.",
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Atmos — sound, culture, nightlife.",
     description: "Atmos — sound, culture, nightlife.",
-    images: ["/atmos.png"],
+    images: ["/og-image.png"],
   },
 };
 
