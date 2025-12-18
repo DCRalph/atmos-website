@@ -67,7 +67,7 @@ export default function GigManagementPage({ params }: PageProps) {
   });
   const deleteGig = api.gigs.delete.useMutation({
     onSuccess: () => {
-      router.push("/admin");
+      router.push("/admin/gigs");
     },
   });
   const addMedia = api.gigs.addMedia.useMutation({
@@ -189,8 +189,8 @@ export default function GigManagementPage({ params }: PageProps) {
         <div className="mb-6 flex items-center justify-between">
           <div>
             <Button variant="outline" asChild>
-              <Link href="/admin" className="text-muted-foreground hover:text-foreground mb-2 inline-block">
-                ← Back to Admin
+              <Link href="/admin/gigs" className="text-muted-foreground hover:text-foreground mb-2 inline-block">
+                ← Back to Gigs
               </Link>
             </Button>
             <h1 className="text-4xl font-bold text-foreground">Manage Gig</h1>

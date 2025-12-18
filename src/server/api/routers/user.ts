@@ -8,12 +8,6 @@ export const userRouter = createTRPCRouter({
 
     const user = await ctx.db.user.findUnique({
       where: { id: ctx.session.user.id },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-      },
     });
 
     return user;

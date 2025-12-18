@@ -47,8 +47,8 @@ export default function NewGigPage() {
     <div className="min-h-dvh bg-background p-8">
       <div className="mx-auto max-w-2xl">
         <div className="mb-6">
-          <Link href="/admin" className="text-muted-foreground hover:text-foreground mb-2 inline-block">
-            ← Back to Admin
+          <Link href="/admin/gigs" className="text-muted-foreground hover:text-foreground mb-2 inline-block">
+            ← Back to Gigs
           </Link>
           <h1 className="text-4xl font-bold text-foreground">Create New Gig</h1>
         </div>
@@ -127,7 +127,7 @@ export default function NewGigPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.push("/admin")}
+                  onClick={() => router.push("/admin/gigs")}
                 >
                   Cancel
                 </Button>

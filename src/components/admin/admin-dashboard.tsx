@@ -1,74 +1,36 @@
 "use client";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import { CrewManager } from "./crew-manager";
-import { ContentManager } from "./content-manager";
-import { GigsManager } from "./gigs-manager";
-import { GigTagsManager } from "./gig-tags-manager";
-import { MerchManager } from "./merch-manager";
-import { ContactManager } from "./contact-manager";
-import { UsersManager } from "./users-manager";
-import { NewsletterManager } from "./newsletter-manager";
-import { authClient } from "~/lib/auth-client";
+import Link from "next/link";
+import { Card, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { AdminSection } from "./admin-section";
 
+const sections = [
+  { title: "Crew", description: "Manage crew members", href: "/admin/crew" },
+  { title: "Content", description: "Manage posts, videos, and more", href: "/admin/content" },
+  { title: "Gigs", description: "Manage upcoming and past gigs", href: "/admin/gigs" },
+  { title: "Gig Tags", description: "Create and manage gig tags", href: "/admin/gig-tags" },
+  { title: "Merch", description: "Manage merchandise listings", href: "/admin/merch" },
+  { title: "Contact", description: "Review contact form submissions", href: "/admin/contact" },
+  { title: "Newsletter", description: "Manage newsletter signups", href: "/admin/newsletter" },
+  { title: "Users", description: "Manage users and roles", href: "/admin/users" },
+];
 
 export function AdminDashboard() {
-  const { data: session } = authClient.useSession();
-
   return (
-    <div className="min-h-dvh bg-background p-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-8 flex gap-4">
-          <h1 className="text-4xl font-bold text-foreground">Atmos Admin</h1>
-          <p className="text-muted-foreground self-end">Logged in as: <span className="font-bold">{session?.user?.name}</span></p>
-        </div>
-
-        <Tabs defaultValue="crew" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="crew">Crew</TabsTrigger>
-            <TabsTrigger value="content">Content</TabsTrigger>
-            <TabsTrigger value="gigs">Gigs</TabsTrigger>
-            <TabsTrigger value="gig-tags">Gig Tags</TabsTrigger>
-            <TabsTrigger value="merch">Merch</TabsTrigger>
-            <TabsTrigger value="contact">Contact Submissions</TabsTrigger>
-            <TabsTrigger value="newsletter">Newsletter</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="crew">
-            <CrewManager />
-          </TabsContent>
-
-          <TabsContent value="content">
-            <ContentManager />
-          </TabsContent>
-
-          <TabsContent value="gigs">
-            <GigsManager />
-          </TabsContent>
-
-          <TabsContent value="gig-tags">
-            <GigTagsManager />
-          </TabsContent>
-
-          <TabsContent value="merch">
-            <MerchManager />
-          </TabsContent>
-
-          <TabsContent value="contact">
-            <ContactManager />
-          </TabsContent>
-
-          <TabsContent value="newsletter">
-            <NewsletterManager />
-          </TabsContent>
-
-          <TabsContent value="users">
-            <UsersManager />
-          </TabsContent>
-        </Tabs>
+    <AdminSection title="Atmos Admin" description="Choose a section from the sidebar, or jump in below.">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {sections.map((s) => (
+          <Link key={s.href} href={s.href} className="block">
+            <Card className="transition-colors hover:bg-muted/50">
+              <CardHeader>
+                <CardTitle>{s.title}</CardTitle>
+                <CardDescription>{s.description}</CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
+        ))}
       </div>
-    </div>
+    </AdminSection>
   );
 }
 

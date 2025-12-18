@@ -10,15 +10,15 @@ export const contentRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const search = input?.search?.toLowerCase().trim();
-      
+
       const where = search
         ? {
-            OR: [
-              { type: { contains: search, mode: "insensitive" as const } },
-              { title: { contains: search, mode: "insensitive" as const } },
-              { description: { contains: search, mode: "insensitive" as const } },
-            ],
-          }
+          OR: [
+            { type: { contains: search, mode: "insensitive" as const } },
+            { title: { contains: search, mode: "insensitive" as const } },
+            { description: { contains: search, mode: "insensitive" as const } },
+          ],
+        }
         : undefined;
 
       return ctx.db.contentItem.findMany({

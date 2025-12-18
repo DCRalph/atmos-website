@@ -10,14 +10,14 @@ export const merchRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const search = input?.search?.toLowerCase().trim();
-      
+
       const where = search
         ? {
-            OR: [
-              { name: { contains: search, mode: "insensitive" as const } },
-              { description: { contains: search, mode: "insensitive" as const } },
-            ],
-          }
+          OR: [
+            { name: { contains: search, mode: "insensitive" as const } },
+            { description: { contains: search, mode: "insensitive" as const } },
+          ],
+        }
         : undefined;
 
       return ctx.db.merchItem.findMany({
