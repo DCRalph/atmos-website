@@ -1,10 +1,7 @@
+"use client";
+
 import { SidebarProvider } from "~/components/ui/sidebar";
-
-// Simple layout wrapper that provides a sidebar and header slots. The `sidebar`
-// and `header` props are expected to be pre-built React nodes (so the caller can
-// pass different sidebar configurations). This keeps layout composition flexible.
-
-
+import { useIsMobile } from "~/hooks/use-mobile";
 interface LayoutWithSideBarHeaderProps {
   children: React.ReactNode;
   sidebar: React.ReactNode;
@@ -12,11 +9,14 @@ interface LayoutWithSideBarHeaderProps {
 }
 
 export function LayoutWithSideBarHeader({ children, sidebar, header: header }: LayoutWithSideBarHeaderProps) {
+
+  const isMobile = useIsMobile();
+
   return (
     <SidebarProvider>
       <div className="bg-sidebar flex h-screen w-full">
         {sidebar}
-        <div className="flex flex-1 flex-col w-full overflow-x-hidden md:mt-2 rounded-none lg:rounded-tl-xl bg-page-background">
+        <div className={`flex flex-1 flex-col w-full overflow-x-hidden rounded-none bg-page-background ${isMobile ? "" : "mt-2 rounded-tl-xl"}`}>
           {header}
           {children}
         </div>

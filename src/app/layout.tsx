@@ -71,7 +71,10 @@ export default function RootLayout({
     <html lang="en" className={`${montserrat.className} overflow-x-hidden`} suppressHydrationWarning>
       <body>
         <ViewTransition>
-          <ThemeOverrideProvider defaultForcedTheme="dark">
+          <ThemeOverrideProvider 
+          // defaultForcedTheme="dark"
+          
+          >
             <TRPCReactProvider>
               <NextTopLoader height={4} showSpinner={false} />
 

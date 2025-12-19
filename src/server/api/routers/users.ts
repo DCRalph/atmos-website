@@ -54,6 +54,33 @@ export const usersRouter = createTRPCRouter({
       });
     }),
 
+  getById: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db.user.findUnique({
+        where: { id: input.id },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          emailVerified: true,
+          image: true,
+          createdAt: true,
+          updatedAt: true,
+          accounts: {
+            select: {
+              id: true,
+              providerId: true,
+              accountId: true,
+              createdAt: true,
+            },
+            orderBy: { createdAt: "desc" },
+          },
+        },
+      });
+    }),
+
   delete: adminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {

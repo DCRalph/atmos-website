@@ -6,6 +6,8 @@ import { cabin } from "~/lib/fonts";
 import { UserDropdown } from "~/components/user-dropdown";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { authClient } from "~/lib/auth-client";
+import { api } from "~/trpc/react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -27,7 +29,7 @@ const baseLabelMap: Record<string, string> = {
   "/admin/contact": "Contact",
   "/admin/newsletter": "Newsletter",
   "/admin/users": "Users",
-  
+
   "/dashboard": "Dashboard",
 };
 
@@ -104,7 +106,29 @@ function buildCrumbs(pathname: string): Crumb[] {
 export function DashboardHeader() {
   const rawPath = usePathname();
   const pathname = normalizePath(rawPath);
+  const { data: session } = authClient.useSession();
+
+  // Check if we're on a user management page (/admin/users/[id])
+  const userManagementMatch = pathname.match(/^\/admin\/users\/([^/]+)$/);
+  const managedUserId = userManagementMatch?.[1];
+
+  // Fetch user data if we're on a user management page
+  const { data: managedUser } = api.users.getById.useQuery(
+    { id: managedUserId ?? "" },
+    { enabled: !!managedUserId }
+  );
+
+  // Build crumbs with dynamic label for user management
   const crumbs = buildCrumbs(pathname);
+
+  // Replace the last crumb label with the managed user's name if available
+  if (managedUser && crumbs.length > 0) {
+    const lastCrumb = crumbs[crumbs.length - 1];
+    if (lastCrumb && pathname.startsWith("/admin/users/") && managedUserId) {
+      lastCrumb.label = managedUser.name;
+    }
+  }
+
   const lastCrumb = crumbs[crumbs.length - 1];
 
   return (
@@ -142,7 +166,17 @@ export function DashboardHeader() {
           </div>
         </div>
 
-        <UserDropdown detailed />
+        <div className="flex items-center gap-4">
+          {session?.user?.name && (
+            <>
+              <span className={`${cabin.className} text-sm text-muted-foreground hidden sm:inline`}>
+                {session.user.name}
+              </span>
+              <Separator orientation="vertical" className="h-6 hidden sm:block" />
+            </>
+          )}
+          <UserDropdown detailed />
+        </div>
       </div>
     </nav>
   );
