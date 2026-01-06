@@ -3,13 +3,13 @@
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
+import { AdminSection } from "~/components/admin/admin-section";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { formatDateInUserTimezone } from "~/lib/date-utils";
-import Link from "next/link";
 import Image from "next/image";
 import {
   AlertDialog,
@@ -62,66 +62,61 @@ export default function UserManagementPage({ params }: PageProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-dvh bg-background p-8">
-        <div className="mx-auto max-w-4xl">
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-muted-foreground">Loading user...</span>
-          </div>
+      <AdminSection
+        title="Manage User"
+        backLink={{ href: "/admin/users", label: "← Back to Users" }}
+        maxWidth="max-w-4xl"
+      >
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-muted-foreground">Loading user...</span>
         </div>
-      </div>
+      </AdminSection>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-dvh bg-background p-8">
-        <div className="mx-auto max-w-4xl">
-          <div className="mb-6">
-            <Button variant="outline" asChild>
-              <Link href="/admin/users">← Back to Users</Link>
-            </Button>
-          </div>
-          <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground">User not found</p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <AdminSection
+        title="Manage User"
+        backLink={{ href: "/admin/users", label: "← Back to Users" }}
+        maxWidth="max-w-4xl"
+      >
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground">User not found</p>
+          </CardContent>
+        </Card>
+      </AdminSection>
     );
   }
 
   const hasRoleChanged = selectedRole !== null && selectedRole !== user.role;
 
   return (
-    <div className="min-h-dvh bg-background p-8">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <Button variant="outline" asChild>
-              <Link href="/admin/users">← Back to Users</Link>
-            </Button>
-            <h1 className="text-4xl font-bold text-foreground mt-4">Manage User</h1>
-            <p className="text-muted-foreground mt-1">{user.name}</p>
-          </div>
-          <Button
-            variant="destructive"
-            onClick={() => setIsDeleteDialogOpen(true)}
-            disabled={deleteUser.isPending}
-          >
-            {deleteUser.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Deleting...
-              </>
-            ) : (
-              "Delete User"
-            )}
-          </Button>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-2">
+    <AdminSection
+      title="Manage User"
+      subtitle={user.name}
+      backLink={{ href: "/admin/users", label: "← Back to Users" }}
+      maxWidth="max-w-4xl"
+      actions={
+        <Button
+          variant="destructive"
+          onClick={() => setIsDeleteDialogOpen(true)}
+          disabled={deleteUser.isPending}
+        >
+          {deleteUser.isPending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Deleting...
+            </>
+          ) : (
+            "Delete User"
+          )}
+        </Button>
+      }
+    >
+      <div className="grid gap-6 lg:grid-cols-2">
           {/* User Details */}
           <Card>
             <CardHeader>
@@ -281,7 +276,6 @@ export default function UserManagementPage({ params }: PageProps) {
             </CardContent>
           </Card>
         </div>
-      </div>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -314,7 +308,7 @@ export default function UserManagementPage({ params }: PageProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </AdminSection>
   );
 }
 

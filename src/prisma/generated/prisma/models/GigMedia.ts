@@ -20,16 +20,28 @@ export type GigMediaModel = runtime.Types.Result.DefaultSelection<Prisma.$GigMed
 
 export type AggregateGigMedia = {
   _count: GigMediaCountAggregateOutputType | null
+  _avg: GigMediaAvgAggregateOutputType | null
+  _sum: GigMediaSumAggregateOutputType | null
   _min: GigMediaMinAggregateOutputType | null
   _max: GigMediaMaxAggregateOutputType | null
+}
+
+export type GigMediaAvgAggregateOutputType = {
+  sortOrder: number | null
+}
+
+export type GigMediaSumAggregateOutputType = {
+  sortOrder: number | null
 }
 
 export type GigMediaMinAggregateOutputType = {
   id: string | null
   gigId: string | null
   type: string | null
+  fileUploadId: string | null
   url: string | null
-  featured: boolean | null
+  section: string | null
+  sortOrder: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -38,8 +50,10 @@ export type GigMediaMaxAggregateOutputType = {
   id: string | null
   gigId: string | null
   type: string | null
+  fileUploadId: string | null
   url: string | null
-  featured: boolean | null
+  section: string | null
+  sortOrder: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -48,20 +62,32 @@ export type GigMediaCountAggregateOutputType = {
   id: number
   gigId: number
   type: number
+  fileUploadId: number
   url: number
-  featured: number
+  section: number
+  sortOrder: number
   createdAt: number
   updatedAt: number
   _all: number
 }
 
 
+export type GigMediaAvgAggregateInputType = {
+  sortOrder?: true
+}
+
+export type GigMediaSumAggregateInputType = {
+  sortOrder?: true
+}
+
 export type GigMediaMinAggregateInputType = {
   id?: true
   gigId?: true
   type?: true
+  fileUploadId?: true
   url?: true
-  featured?: true
+  section?: true
+  sortOrder?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -70,8 +96,10 @@ export type GigMediaMaxAggregateInputType = {
   id?: true
   gigId?: true
   type?: true
+  fileUploadId?: true
   url?: true
-  featured?: true
+  section?: true
+  sortOrder?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -80,8 +108,10 @@ export type GigMediaCountAggregateInputType = {
   id?: true
   gigId?: true
   type?: true
+  fileUploadId?: true
   url?: true
-  featured?: true
+  section?: true
+  sortOrder?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -125,6 +155,18 @@ export type GigMediaAggregateArgs<ExtArgs extends runtime.Types.Extensions.Inter
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
+   * Select which fields to average
+  **/
+  _avg?: GigMediaAvgAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
+   * Select which fields to sum
+  **/
+  _sum?: GigMediaSumAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
    * Select which fields to find the minimum value
   **/
   _min?: GigMediaMinAggregateInputType
@@ -155,6 +197,8 @@ export type GigMediaGroupByArgs<ExtArgs extends runtime.Types.Extensions.Interna
   take?: number
   skip?: number
   _count?: GigMediaCountAggregateInputType | true
+  _avg?: GigMediaAvgAggregateInputType
+  _sum?: GigMediaSumAggregateInputType
   _min?: GigMediaMinAggregateInputType
   _max?: GigMediaMaxAggregateInputType
 }
@@ -163,11 +207,15 @@ export type GigMediaGroupByOutputType = {
   id: string
   gigId: string
   type: string
-  url: string
-  featured: boolean
+  fileUploadId: string | null
+  url: string | null
+  section: string
+  sortOrder: number
   createdAt: Date
   updatedAt: Date
   _count: GigMediaCountAggregateOutputType | null
+  _avg: GigMediaAvgAggregateOutputType | null
+  _sum: GigMediaSumAggregateOutputType | null
   _min: GigMediaMinAggregateOutputType | null
   _max: GigMediaMaxAggregateOutputType | null
 }
@@ -194,8 +242,10 @@ export type GigMediaWhereInput = {
   id?: Prisma.StringFilter<"GigMedia"> | string
   gigId?: Prisma.StringFilter<"GigMedia"> | string
   type?: Prisma.StringFilter<"GigMedia"> | string
-  url?: Prisma.StringFilter<"GigMedia"> | string
-  featured?: Prisma.BoolFilter<"GigMedia"> | boolean
+  fileUploadId?: Prisma.StringNullableFilter<"GigMedia"> | string | null
+  url?: Prisma.StringNullableFilter<"GigMedia"> | string | null
+  section?: Prisma.StringFilter<"GigMedia"> | string
+  sortOrder?: Prisma.IntFilter<"GigMedia"> | number
   createdAt?: Prisma.DateTimeFilter<"GigMedia"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"GigMedia"> | Date | string
   gig?: Prisma.XOR<Prisma.GigScalarRelationFilter, Prisma.GigWhereInput>
@@ -205,8 +255,10 @@ export type GigMediaOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   gigId?: Prisma.SortOrder
   type?: Prisma.SortOrder
-  url?: Prisma.SortOrder
-  featured?: Prisma.SortOrder
+  fileUploadId?: Prisma.SortOrderInput | Prisma.SortOrder
+  url?: Prisma.SortOrderInput | Prisma.SortOrder
+  section?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   gig?: Prisma.GigOrderByWithRelationInput
@@ -219,8 +271,10 @@ export type GigMediaWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.GigMediaWhereInput | Prisma.GigMediaWhereInput[]
   gigId?: Prisma.StringFilter<"GigMedia"> | string
   type?: Prisma.StringFilter<"GigMedia"> | string
-  url?: Prisma.StringFilter<"GigMedia"> | string
-  featured?: Prisma.BoolFilter<"GigMedia"> | boolean
+  fileUploadId?: Prisma.StringNullableFilter<"GigMedia"> | string | null
+  url?: Prisma.StringNullableFilter<"GigMedia"> | string | null
+  section?: Prisma.StringFilter<"GigMedia"> | string
+  sortOrder?: Prisma.IntFilter<"GigMedia"> | number
   createdAt?: Prisma.DateTimeFilter<"GigMedia"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"GigMedia"> | Date | string
   gig?: Prisma.XOR<Prisma.GigScalarRelationFilter, Prisma.GigWhereInput>
@@ -230,13 +284,17 @@ export type GigMediaOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   gigId?: Prisma.SortOrder
   type?: Prisma.SortOrder
-  url?: Prisma.SortOrder
-  featured?: Prisma.SortOrder
+  fileUploadId?: Prisma.SortOrderInput | Prisma.SortOrder
+  url?: Prisma.SortOrderInput | Prisma.SortOrder
+  section?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.GigMediaCountOrderByAggregateInput
+  _avg?: Prisma.GigMediaAvgOrderByAggregateInput
   _max?: Prisma.GigMediaMaxOrderByAggregateInput
   _min?: Prisma.GigMediaMinOrderByAggregateInput
+  _sum?: Prisma.GigMediaSumOrderByAggregateInput
 }
 
 export type GigMediaScalarWhereWithAggregatesInput = {
@@ -246,8 +304,10 @@ export type GigMediaScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"GigMedia"> | string
   gigId?: Prisma.StringWithAggregatesFilter<"GigMedia"> | string
   type?: Prisma.StringWithAggregatesFilter<"GigMedia"> | string
-  url?: Prisma.StringWithAggregatesFilter<"GigMedia"> | string
-  featured?: Prisma.BoolWithAggregatesFilter<"GigMedia"> | boolean
+  fileUploadId?: Prisma.StringNullableWithAggregatesFilter<"GigMedia"> | string | null
+  url?: Prisma.StringNullableWithAggregatesFilter<"GigMedia"> | string | null
+  section?: Prisma.StringWithAggregatesFilter<"GigMedia"> | string
+  sortOrder?: Prisma.IntWithAggregatesFilter<"GigMedia"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"GigMedia"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"GigMedia"> | Date | string
 }
@@ -255,8 +315,10 @@ export type GigMediaScalarWhereWithAggregatesInput = {
 export type GigMediaCreateInput = {
   id?: string
   type: string
-  url: string
-  featured?: boolean
+  fileUploadId?: string | null
+  url?: string | null
+  section?: string
+  sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   gig: Prisma.GigCreateNestedOneWithoutMediaInput
@@ -266,8 +328,10 @@ export type GigMediaUncheckedCreateInput = {
   id?: string
   gigId: string
   type: string
-  url: string
-  featured?: boolean
+  fileUploadId?: string | null
+  url?: string | null
+  section?: string
+  sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -275,8 +339,10 @@ export type GigMediaUncheckedCreateInput = {
 export type GigMediaUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
-  url?: Prisma.StringFieldUpdateOperationsInput | string
-  featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  fileUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  section?: Prisma.StringFieldUpdateOperationsInput | string
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gig?: Prisma.GigUpdateOneRequiredWithoutMediaNestedInput
@@ -286,8 +352,10 @@ export type GigMediaUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   gigId?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
-  url?: Prisma.StringFieldUpdateOperationsInput | string
-  featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  fileUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  section?: Prisma.StringFieldUpdateOperationsInput | string
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -296,8 +364,10 @@ export type GigMediaCreateManyInput = {
   id?: string
   gigId: string
   type: string
-  url: string
-  featured?: boolean
+  fileUploadId?: string | null
+  url?: string | null
+  section?: string
+  sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -305,8 +375,10 @@ export type GigMediaCreateManyInput = {
 export type GigMediaUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
-  url?: Prisma.StringFieldUpdateOperationsInput | string
-  featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  fileUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  section?: Prisma.StringFieldUpdateOperationsInput | string
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -315,8 +387,10 @@ export type GigMediaUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   gigId?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
-  url?: Prisma.StringFieldUpdateOperationsInput | string
-  featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  fileUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  section?: Prisma.StringFieldUpdateOperationsInput | string
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -335,18 +409,26 @@ export type GigMediaCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   gigId?: Prisma.SortOrder
   type?: Prisma.SortOrder
+  fileUploadId?: Prisma.SortOrder
   url?: Prisma.SortOrder
-  featured?: Prisma.SortOrder
+  section?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type GigMediaAvgOrderByAggregateInput = {
+  sortOrder?: Prisma.SortOrder
 }
 
 export type GigMediaMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   gigId?: Prisma.SortOrder
   type?: Prisma.SortOrder
+  fileUploadId?: Prisma.SortOrder
   url?: Prisma.SortOrder
-  featured?: Prisma.SortOrder
+  section?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -355,10 +437,16 @@ export type GigMediaMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   gigId?: Prisma.SortOrder
   type?: Prisma.SortOrder
+  fileUploadId?: Prisma.SortOrder
   url?: Prisma.SortOrder
-  featured?: Prisma.SortOrder
+  section?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type GigMediaSumOrderByAggregateInput = {
+  sortOrder?: Prisma.SortOrder
 }
 
 export type GigMediaCreateNestedManyWithoutGigInput = {
@@ -403,11 +491,21 @@ export type GigMediaUncheckedUpdateManyWithoutGigNestedInput = {
   deleteMany?: Prisma.GigMediaScalarWhereInput | Prisma.GigMediaScalarWhereInput[]
 }
 
+export type IntFieldUpdateOperationsInput = {
+  set?: number
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
+}
+
 export type GigMediaCreateWithoutGigInput = {
   id?: string
   type: string
-  url: string
-  featured?: boolean
+  fileUploadId?: string | null
+  url?: string | null
+  section?: string
+  sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -415,8 +513,10 @@ export type GigMediaCreateWithoutGigInput = {
 export type GigMediaUncheckedCreateWithoutGigInput = {
   id?: string
   type: string
-  url: string
-  featured?: boolean
+  fileUploadId?: string | null
+  url?: string | null
+  section?: string
+  sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -454,8 +554,10 @@ export type GigMediaScalarWhereInput = {
   id?: Prisma.StringFilter<"GigMedia"> | string
   gigId?: Prisma.StringFilter<"GigMedia"> | string
   type?: Prisma.StringFilter<"GigMedia"> | string
-  url?: Prisma.StringFilter<"GigMedia"> | string
-  featured?: Prisma.BoolFilter<"GigMedia"> | boolean
+  fileUploadId?: Prisma.StringNullableFilter<"GigMedia"> | string | null
+  url?: Prisma.StringNullableFilter<"GigMedia"> | string | null
+  section?: Prisma.StringFilter<"GigMedia"> | string
+  sortOrder?: Prisma.IntFilter<"GigMedia"> | number
   createdAt?: Prisma.DateTimeFilter<"GigMedia"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"GigMedia"> | Date | string
 }
@@ -463,8 +565,10 @@ export type GigMediaScalarWhereInput = {
 export type GigMediaCreateManyGigInput = {
   id?: string
   type: string
-  url: string
-  featured?: boolean
+  fileUploadId?: string | null
+  url?: string | null
+  section?: string
+  sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -472,8 +576,10 @@ export type GigMediaCreateManyGigInput = {
 export type GigMediaUpdateWithoutGigInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
-  url?: Prisma.StringFieldUpdateOperationsInput | string
-  featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  fileUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  section?: Prisma.StringFieldUpdateOperationsInput | string
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -481,8 +587,10 @@ export type GigMediaUpdateWithoutGigInput = {
 export type GigMediaUncheckedUpdateWithoutGigInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
-  url?: Prisma.StringFieldUpdateOperationsInput | string
-  featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  fileUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  section?: Prisma.StringFieldUpdateOperationsInput | string
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -490,8 +598,10 @@ export type GigMediaUncheckedUpdateWithoutGigInput = {
 export type GigMediaUncheckedUpdateManyWithoutGigInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
-  url?: Prisma.StringFieldUpdateOperationsInput | string
-  featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  fileUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  section?: Prisma.StringFieldUpdateOperationsInput | string
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -502,8 +612,10 @@ export type GigMediaSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   id?: boolean
   gigId?: boolean
   type?: boolean
+  fileUploadId?: boolean
   url?: boolean
-  featured?: boolean
+  section?: boolean
+  sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   gig?: boolean | Prisma.GigDefaultArgs<ExtArgs>
@@ -513,8 +625,10 @@ export type GigMediaSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   id?: boolean
   gigId?: boolean
   type?: boolean
+  fileUploadId?: boolean
   url?: boolean
-  featured?: boolean
+  section?: boolean
+  sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   gig?: boolean | Prisma.GigDefaultArgs<ExtArgs>
@@ -524,8 +638,10 @@ export type GigMediaSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   id?: boolean
   gigId?: boolean
   type?: boolean
+  fileUploadId?: boolean
   url?: boolean
-  featured?: boolean
+  section?: boolean
+  sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   gig?: boolean | Prisma.GigDefaultArgs<ExtArgs>
@@ -535,13 +651,15 @@ export type GigMediaSelectScalar = {
   id?: boolean
   gigId?: boolean
   type?: boolean
+  fileUploadId?: boolean
   url?: boolean
-  featured?: boolean
+  section?: boolean
+  sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type GigMediaOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "gigId" | "type" | "url" | "featured" | "createdAt" | "updatedAt", ExtArgs["result"]["gigMedia"]>
+export type GigMediaOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "gigId" | "type" | "fileUploadId" | "url" | "section" | "sortOrder" | "createdAt" | "updatedAt", ExtArgs["result"]["gigMedia"]>
 export type GigMediaInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   gig?: boolean | Prisma.GigDefaultArgs<ExtArgs>
 }
@@ -561,8 +679,10 @@ export type $GigMediaPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     id: string
     gigId: string
     type: string
-    url: string
-    featured: boolean
+    fileUploadId: string | null
+    url: string | null
+    section: string
+    sortOrder: number
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["gigMedia"]>
@@ -992,8 +1112,10 @@ export interface GigMediaFieldRefs {
   readonly id: Prisma.FieldRef<"GigMedia", 'String'>
   readonly gigId: Prisma.FieldRef<"GigMedia", 'String'>
   readonly type: Prisma.FieldRef<"GigMedia", 'String'>
+  readonly fileUploadId: Prisma.FieldRef<"GigMedia", 'String'>
   readonly url: Prisma.FieldRef<"GigMedia", 'String'>
-  readonly featured: Prisma.FieldRef<"GigMedia", 'Boolean'>
+  readonly section: Prisma.FieldRef<"GigMedia", 'String'>
+  readonly sortOrder: Prisma.FieldRef<"GigMedia", 'Int'>
   readonly createdAt: Prisma.FieldRef<"GigMedia", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"GigMedia", 'DateTime'>
 }

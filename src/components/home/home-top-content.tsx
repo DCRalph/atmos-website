@@ -10,7 +10,7 @@ import { SocialLinks } from "~/components/social-links";
 
 export function HomeTopContent() {
   return (
-    <div className="h-full relative">
+    <div className="h-full">
       <OpeningAnimation />
       <VideoBackground />
 

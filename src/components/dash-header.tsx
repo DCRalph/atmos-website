@@ -167,14 +167,6 @@ export function DashboardHeader() {
         </div>
 
         <div className="flex items-center gap-4">
-          {session?.user?.name && (
-            <>
-              <span className={`${cabin.className} text-sm text-muted-foreground hidden sm:inline`}>
-                {session.user.name}
-              </span>
-              <Separator orientation="vertical" className="h-6 hidden sm:block" />
-            </>
-          )}
           <UserDropdown detailed />
         </div>
       </div>

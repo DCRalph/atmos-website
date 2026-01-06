@@ -23,14 +23,14 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         </div> */}
 
 
-      {!isMobile ? (
+      {!isMobile ? ( // Desktop layout
         <div className="w-full flex">
           <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isHomePage={true}  />
           <div className="flex-1">
             {children}
           </div>
         </div>
-      ) : (
+      ) : ( // Mobile layout
         // <div className={`transition-transform duration-300 ease-in-out ${isMenuOpen ? "translate-x-64" : "translate-x-0"}`}>
         //   <div className="fixed top-0 right-full z-20 h-full w-64">
         //     <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isHomePage={true} key="3" isOpen={isMenuOpen} />
@@ -44,7 +44,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         <div className="relative">
           <AnimatePresence initial={false} mode="wait">
             {isMenuOpen && (
-              <div className="fixed z-50 top-0 left-0">
+              <div className="fixed z-200 top-0 left-0">
                 <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isHomePage={true}  />
               </div>
             )}

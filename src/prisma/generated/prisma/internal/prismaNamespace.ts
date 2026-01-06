@@ -80,12 +80,12 @@ export type PrismaVersion = {
 }
 
 /**
- * Prisma Client JS version: 7.1.0
- * Query Engine version: ab635e6b9d606fa5c8fb8b1a7f909c3c3c1c98ba
+ * Prisma Client JS version: 7.2.0
+ * Query Engine version: 0c8ef2ce45c83248ab3df073180d5eda9e8be7a3
  */
 export const prismaVersion: PrismaVersion = {
-  client: "7.1.0",
-  engine: "ab635e6b9d606fa5c8fb8b1a7f909c3c3c1c98ba"
+  client: "7.2.0",
+  engine: "0c8ef2ce45c83248ab3df073180d5eda9e8be7a3"
 }
 
 /**
@@ -397,7 +397,8 @@ export const ModelName = {
   GigMedia: 'GigMedia',
   MerchItem: 'MerchItem',
   ContactSubmission: 'ContactSubmission',
-  NewsletterSubscription: 'NewsletterSubscription'
+  NewsletterSubscription: 'NewsletterSubscription',
+  file_upload: 'file_upload'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -413,7 +414,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "invite" | "crewMember" | "contentItem" | "gigTag" | "gigTagRelationship" | "gig" | "gigMedia" | "merchItem" | "contactSubmission" | "newsletterSubscription"
+    modelProps: "user" | "session" | "account" | "verification" | "invite" | "crewMember" | "contentItem" | "gigTag" | "gigTagRelationship" | "gig" | "gigMedia" | "merchItem" | "contactSubmission" | "newsletterSubscription" | "file_upload"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1453,6 +1454,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    file_upload: {
+      payload: Prisma.$file_uploadPayload<ExtArgs>
+      fields: Prisma.file_uploadFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.file_uploadFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$file_uploadPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.file_uploadFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$file_uploadPayload>
+        }
+        findFirst: {
+          args: Prisma.file_uploadFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$file_uploadPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.file_uploadFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$file_uploadPayload>
+        }
+        findMany: {
+          args: Prisma.file_uploadFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$file_uploadPayload>[]
+        }
+        create: {
+          args: Prisma.file_uploadCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$file_uploadPayload>
+        }
+        createMany: {
+          args: Prisma.file_uploadCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.file_uploadCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$file_uploadPayload>[]
+        }
+        delete: {
+          args: Prisma.file_uploadDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$file_uploadPayload>
+        }
+        update: {
+          args: Prisma.file_uploadUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$file_uploadPayload>
+        }
+        deleteMany: {
+          args: Prisma.file_uploadDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.file_uploadUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.file_uploadUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$file_uploadPayload>[]
+        }
+        upsert: {
+          args: Prisma.file_uploadUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$file_uploadPayload>
+        }
+        aggregate: {
+          args: Prisma.File_uploadAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateFile_upload>
+        }
+        groupBy: {
+          args: Prisma.file_uploadGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.File_uploadGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.file_uploadCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.File_uploadCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1635,8 +1710,10 @@ export const GigMediaScalarFieldEnum = {
   id: 'id',
   gigId: 'gigId',
   type: 'type',
+  fileUploadId: 'fileUploadId',
   url: 'url',
-  featured: 'featured',
+  section: 'section',
+  sortOrder: 'sortOrder',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -1679,6 +1756,26 @@ export const NewsletterSubscriptionScalarFieldEnum = {
 } as const
 
 export type NewsletterSubscriptionScalarFieldEnum = (typeof NewsletterSubscriptionScalarFieldEnum)[keyof typeof NewsletterSubscriptionScalarFieldEnum]
+
+
+export const File_uploadScalarFieldEnum = {
+  id: 'id',
+  createdAt: 'createdAt',
+  url: 'url',
+  key: 'key',
+  name: 'name',
+  type: 'type',
+  size: 'size',
+  mimeType: 'mimeType',
+  acl: 'acl',
+  status: 'status',
+  category: 'category',
+  userId: 'userId',
+  for: 'for',
+  forId: 'forId'
+} as const
+
+export type File_uploadScalarFieldEnum = (typeof File_uploadScalarFieldEnum)[keyof typeof File_uploadScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -1761,6 +1858,20 @@ export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaM
 
 
 /**
+ * Reference to a field of type 'Int'
+ */
+export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
+    
+
+
+/**
+ * Reference to a field of type 'Int[]'
+ */
+export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+    
+
+
+/**
  * Reference to a field of type 'Float'
  */
 export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
@@ -1775,16 +1886,30 @@ export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaMode
 
 
 /**
- * Reference to a field of type 'Int'
+ * Reference to a field of type 'FileUploadStatus'
  */
-export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
+export type EnumFileUploadStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'FileUploadStatus'>
     
 
 
 /**
- * Reference to a field of type 'Int[]'
+ * Reference to a field of type 'FileUploadStatus[]'
  */
-export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+export type ListEnumFileUploadStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'FileUploadStatus[]'>
+    
+
+
+/**
+ * Reference to a field of type 'FileCategory'
+ */
+export type EnumFileCategoryFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'FileCategory'>
+    
+
+
+/**
+ * Reference to a field of type 'FileCategory[]'
+ */
+export type ListEnumFileCategoryFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'FileCategory[]'>
     
 
 /**
@@ -1896,6 +2021,7 @@ export type GlobalOmitConfig = {
   merchItem?: Prisma.MerchItemOmit
   contactSubmission?: Prisma.ContactSubmissionOmit
   newsletterSubscription?: Prisma.NewsletterSubscriptionOmit
+  file_upload?: Prisma.file_uploadOmit
 }
 
 /* Types for Logging */

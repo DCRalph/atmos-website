@@ -3,6 +3,7 @@
 import { Button } from "~/components/ui/button";
 import { PanelLeftIcon, X } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 interface MobileNavProps {
   onMenuToggle: () => void;
@@ -27,20 +28,22 @@ export function MobileNav({ onMenuToggle, isMenuOpen }: MobileNavProps) {
 
         {/* Centered Logo */}
         <div className="relative h-10 w-32 sm:w-40">
-          <Image
-            src="/logo/atmos-white.png"
-            alt="Atmos Logo"
-            fill
-            className="object-contain dark:block hidden"
-            sizes="(max-width: 640px) 8rem, 10rem"
-          />
-          <Image
-            src="/logo/atmos-black.png"
-            alt="Atmos Logo"
-            fill
-            className="object-contain dark:hidden block"
-            sizes="(max-width: 640px) 8rem, 10rem"
-          />
+          <Link href="/">
+            <Image
+              src="/logo/atmos-white.png"
+              alt="Atmos Logo"
+              fill
+              className="object-contain dark:block hidden"
+              sizes="(max-width: 640px) 8rem, 10rem"
+            />
+            <Image
+              src="/logo/atmos-black.png"
+              alt="Atmos Logo"
+              fill
+              className="object-contain dark:hidden block"
+              sizes="(max-width: 640px) 8rem, 10rem"
+            />
+          </Link>
         </div>
       </div>
     </nav>

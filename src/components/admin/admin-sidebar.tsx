@@ -61,6 +61,11 @@ const menuItems = [
     icon: Tag,
   },
   {
+    title: "Media Files",
+    url: "/admin/files",
+    icon: FolderOpen,
+  },
+  {
     title: "Merch",
     url: "/admin/merch",
     icon: ShoppingBag,

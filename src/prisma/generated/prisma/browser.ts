@@ -87,3 +87,8 @@ export type ContactSubmission = Prisma.ContactSubmissionModel
  * 
  */
 export type NewsletterSubscription = Prisma.NewsletterSubscriptionModel
+/**
+ * Model file_upload
+ * 
+ */
+export type file_upload = Prisma.file_uploadModel

@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
+import { AdminSection } from "~/components/admin/admin-section";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
-import Link from "next/link";
 
 export default function NewGigPage() {
   const router = useRouter();
@@ -44,16 +44,12 @@ export default function NewGigPage() {
   };
 
   return (
-    <div className="min-h-dvh bg-background p-8">
-      <div className="mx-auto max-w-2xl">
-        <div className="mb-6">
-          <Link href="/admin/gigs" className="text-muted-foreground hover:text-foreground mb-2 inline-block">
-            ← Back to Gigs
-          </Link>
-          <h1 className="text-4xl font-bold text-foreground">Create New Gig</h1>
-        </div>
-
-        <Card>
+    <AdminSection
+      title="Create New Gig"
+      backLink={{ href: "/admin/gigs", label: "← Back to Gigs" }}
+      maxWidth="max-w-2xl"
+    >
+      <Card>
           <CardHeader>
             <CardTitle>Gig Details</CardTitle>
             <CardDescription>Enter the information for the new gig</CardDescription>
@@ -135,8 +131,7 @@ export default function NewGigPage() {
             </form>
           </CardContent>
         </Card>
-      </div>
-    </div>
+    </AdminSection>
   );
 }
 

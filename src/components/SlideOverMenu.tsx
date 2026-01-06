@@ -40,7 +40,7 @@ export default function SlideOverMenu({ setIsMenuOpen, isHomePage = false }: Sli
 
   return (
     // bg-zinc-100 dark:bg-zinc-950 border-r border-black/10 dark:border-white/10
-    <div className={`flex relative flex-col z-50 h-dvh w-64 ${isHomePage ? "sticky top-0 left-0" : "fixed top-0 left-0"}`}>
+    <div className={`flex flex-col z-50 h-dvh w-64 ${isHomePage ? "sticky top-0 left-0" : "fixed top-0 left-0"}`}>
 
       {/* <SocialLinks /> */}
 
@@ -73,37 +73,74 @@ export default function SlideOverMenu({ setIsMenuOpen, isHomePage = false }: Sli
 
       {
         isMobile && (
-          <MotionButton
-            className="text-lg uppercase group w-min my-4 mx-4 absolute top-0 left-0 ease-out"
-            onClick={() => setIsMenuOpen(false)}
+          <>
+            <MotionButton
+              className="text-lg uppercase group w-min my-4 mx-4 cursor-pointer absolute top-0 left-0 ease-out"
+              onClick={() => setIsMenuOpen(false)}
 
-            transition={{
-              duration: 0.3,
-              ease: "easeOut",
-            }}
+              transition={{
+                duration: 0.3,
+                ease: "easeOut",
+              }}
 
-            variants={{
-              hidden: {
-                opacity: 0,
-                x: "-100%",
-                y: "-100%",
-              },
-              visible: {
-                opacity: 1,
-                x: 0,
-                y: 0,
-              },
-            }}
+              variants={{
+                hidden: {
+                  opacity: 0,
+                  x: "-100%",
+                  y: "-100%",
+                },
+                visible: {
+                  opacity: 1,
+                  x: 0,
+                  y: 0,
+                },
+              }}
 
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
 
-          >
-            <X />
-            Menu
-          </MotionButton>
+            >
+              <X />
+              Menu
+            </MotionButton>
+
+            {/* centered logo */}
+            <motion.div className="absolute top-24 left-[50vw] -translate-x-1/2 w-[80vw] h-24"
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              variants={{
+                hidden: { opacity: 0, y: "-100%" },
+                visible: { opacity: 1, y: 0 },
+              }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              <div className="relative w-full h-full">
+                <Image
+                  src="/logo/atmos-white.png"
+                  alt="Atmos Logo"
+                  fill
+                  preload
+                  className="object-contain dark:block hidden"
+                  sizes="(max-width: 640px) 10rem, 12rem"
+                />
+                <Image
+                  src="/logo/atmos-black.png"
+                  alt="Atmos Logo"
+                  fill
+                  preload
+                  className="object-contain dark:hidden block"
+                  sizes="(max-width: 640px) 10rem, 12rem"
+                />
+              </div>
+            </motion.div>
+
+
+          </>
         )}
+
+
 
 
 
@@ -116,6 +153,8 @@ export default function SlideOverMenu({ setIsMenuOpen, isHomePage = false }: Sli
           ))
         }
       </div>
+
+      {/* <SocialLinks side="right" /> */}
 
     </div>
   )

@@ -16,3 +16,27 @@ export const UserRole = {
 } as const
 
 export type UserRole = (typeof UserRole)[keyof typeof UserRole]
+
+
+export const FileUploadStatus = {
+  NO_FILE: 'NO_FILE',
+  UPLOADING: 'UPLOADING',
+  OK: 'OK',
+  SOFT_DELETED: 'SOFT_DELETED',
+  DELETED: 'DELETED',
+  ERRORED: 'ERRORED'
+} as const
+
+export type FileUploadStatus = (typeof FileUploadStatus)[keyof typeof FileUploadStatus]
+
+
+export const FileCategory = {
+  IMAGE: 'IMAGE',
+  VIDEO: 'VIDEO',
+  AUDIO: 'AUDIO',
+  PDF: 'PDF',
+  DOCUMENT: 'DOCUMENT',
+  FILE: 'FILE'
+} as const
+
+export type FileCategory = (typeof FileCategory)[keyof typeof FileCategory]

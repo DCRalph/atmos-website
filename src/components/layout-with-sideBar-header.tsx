@@ -16,7 +16,8 @@ export function LayoutWithSideBarHeader({ children, sidebar, header: header }: L
     <SidebarProvider>
       <div className="bg-sidebar flex h-screen w-full">
         {sidebar}
-        <div className={`flex flex-1 flex-col w-full overflow-x-hidden rounded-none bg-page-background ${isMobile ? "" : "mt-2 rounded-tl-xl"}`}>
+        <div className={`flex flex-1 flex-col w-full overflow-x-hidden rounded-none bg-background ${isMobile ? "" : "mt-2 rounded-tl-xl"}`}>
+          {/* <div className={`flex flex-1 flex-col w-full overflow-x-hidden rounded-none bg-background lg:mt-2 lg:rounded-tl-xl`}> */}
           {header}
           {children}
         </div>

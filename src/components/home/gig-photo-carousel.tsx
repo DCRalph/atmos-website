@@ -8,16 +8,40 @@ import {
   CarouselPrevious,
 } from "~/components/ui/carousel";
 import Image from "next/image";
-import { type GigMedia } from "~Prisma/browser";
+
+type MediaItem = {
+  id: string;
+  type: string;
+  url: string | null;
+  section: string;
+  sortOrder: number;
+  fileUpload?: {
+    id: string;
+    url: string;
+    name: string;
+    mimeType: string;
+  } | null;
+};
 
 type GigPhotoCarouselProps = {
-  media: GigMedia[];
+  media: MediaItem[];
   gigTitle: string;
 };
 
+// Helper to get the displayable URL
+const getMediaUrl = (item: MediaItem): string => {
+  return item.fileUpload?.url ?? item.url ?? "";
+};
+
 export function GigPhotoCarousel({ media, gigTitle }: GigPhotoCarouselProps) {
-  const featuredPhotos = media.filter((m) => m.featured && m.type === "photo");
-  const photosToShow = featuredPhotos.length > 0 ? featuredPhotos : media.filter((m) => m.type === "photo");
+  // Get featured photos first, falling back to gallery photos
+  const featuredPhotos = media
+    .filter((m) => m.section === "featured" && m.type === "photo")
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const galleryPhotos = media
+    .filter((m) => m.section === "gallery" && m.type === "photo")
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const photosToShow = featuredPhotos.length > 0 ? featuredPhotos : galleryPhotos;
 
   if (photosToShow.length === 0) {
     return (
@@ -49,7 +73,7 @@ export function GigPhotoCarousel({ media, gigTitle }: GigPhotoCarouselProps) {
             <CarouselItem key={photo.id} className="pl-2 md:pl-4">
               <div className="relative aspect-video overflow-hidden rounded-lg border border-white/10 bg-black/20">
                 <Image
-                  src={photo.url}
+                  src={getMediaUrl(photo)}
                   alt={`${gigTitle} photo`}
                   fill
                   className="object-cover transition-transform duration-300 group-hover:scale-105"

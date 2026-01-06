@@ -64,7 +64,8 @@ export const ModelName = {
   GigMedia: 'GigMedia',
   MerchItem: 'MerchItem',
   ContactSubmission: 'ContactSubmission',
-  NewsletterSubscription: 'NewsletterSubscription'
+  NewsletterSubscription: 'NewsletterSubscription',
+  file_upload: 'file_upload'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -226,8 +227,10 @@ export const GigMediaScalarFieldEnum = {
   id: 'id',
   gigId: 'gigId',
   type: 'type',
+  fileUploadId: 'fileUploadId',
   url: 'url',
-  featured: 'featured',
+  section: 'section',
+  sortOrder: 'sortOrder',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -270,6 +273,26 @@ export const NewsletterSubscriptionScalarFieldEnum = {
 } as const
 
 export type NewsletterSubscriptionScalarFieldEnum = (typeof NewsletterSubscriptionScalarFieldEnum)[keyof typeof NewsletterSubscriptionScalarFieldEnum]
+
+
+export const File_uploadScalarFieldEnum = {
+  id: 'id',
+  createdAt: 'createdAt',
+  url: 'url',
+  key: 'key',
+  name: 'name',
+  type: 'type',
+  size: 'size',
+  mimeType: 'mimeType',
+  acl: 'acl',
+  status: 'status',
+  category: 'category',
+  userId: 'userId',
+  for: 'for',
+  forId: 'forId'
+} as const
+
+export type File_uploadScalarFieldEnum = (typeof File_uploadScalarFieldEnum)[keyof typeof File_uploadScalarFieldEnum]
 
 
 export const SortOrder = {

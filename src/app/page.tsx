@@ -15,10 +15,12 @@ function HomeContent() {
   const isMobile = useIsMobile();
 
   return (
-    <main className="h-dvh overflow-y-scroll overflow-x-hidden bg-black text-white" id="home-page-main">
+    <main className="h-dvh relative overflow-y-scroll overflow-x-hidden bg-black text-white" id="home-page-main">
       <UserIndicator />
 
-      <HomeTopContent />
+      <div className={`transtion-transform duration-300 ease-out ${isMenuOpen && isMobile ? "scale-95 blur-lg z-30" : ""}`}>
+        <HomeTopContent />
+      </div>
 
       {!isMobile ? (
         <div className="w-full flex">
@@ -38,8 +40,8 @@ function HomeContent() {
         <div className="relative">
           <AnimatePresence initial={false}>
             {isMenuOpen && (
-              <div className="fixed z-50 top-0 left-0">
-                <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isHomePage={true}  />
+              <div className="fixed z-100 top-0 left-0">
+                <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isHomePage={true} />
               </div>
             )}
           </AnimatePresence>

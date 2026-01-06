@@ -5,15 +5,28 @@ import { ArrowUpRight } from "lucide-react";
 import { formatDate } from "~/lib/date-utils";
 import { Badge } from "~/components/ui/badge";
 import { isLightColor } from "~/lib/utils";
-import { type GigMedia } from "~Prisma/browser";
 import { GigPhotoCarousel } from "./gig-photo-carousel";
+
+type MediaItem = {
+  id: string;
+  type: string;
+  url: string | null;
+  section: string;
+  sortOrder: number;
+  fileUpload?: {
+    id: string;
+    url: string;
+    name: string;
+    mimeType: string;
+  } | null;
+};
 
 type Gig = {
   id: string;
   gigStartTime: Date;
   title: string;
   subtitle: string;
-  media?: GigMedia[] | null;
+  media?: MediaItem[] | null;
   gigTags?: Array<{ gigTag: { id: string; name: string; color: string } }> | null;
 };
 

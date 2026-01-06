@@ -1,6 +1,104 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure, adminProcedure } from "~/server/api/trpc";
 import { getTodayRangeStart, getTodayRangeEnd, isGigUpcoming } from "~/lib/date-utils";
+import { uploadBufferToS3, softDeleteFile } from "~/lib/s3Helper";
+import { FileUploadStatus, type GigMedia } from "~Prisma/client";
+
+type FileUploadInfo = {
+  id: string;
+  url: string;
+  name: string;
+  mimeType: string;
+  status: string;
+} | null;
+
+type EnrichedMedia = GigMedia & { fileUpload: FileUploadInfo };
+
+/**
+ * Helper to enrich gig media with file upload data
+ * Uses for="gig_media" and forId=mediaId to find associated files
+ */
+async function enrichMediaWithFileUploads<T extends GigMedia>(
+  db: any,
+  media: T[]
+): Promise<(T & { fileUpload: FileUploadInfo })[]> {
+  const fileUploadIds = media
+    .map((m) => m.fileUploadId)
+    .filter((id): id is string => id !== null);
+
+  if (fileUploadIds.length === 0) {
+    return media.map((m) => ({ ...m, fileUpload: null }));
+  }
+
+  const fileUploads = await db.file_upload.findMany({
+    where: {
+      id: { in: fileUploadIds },
+      status: { notIn: [FileUploadStatus.DELETED, FileUploadStatus.SOFT_DELETED] },
+    },
+    select: {
+      id: true,
+      url: true,
+      name: true,
+      mimeType: true,
+      status: true,
+    },
+  });
+
+  const fileUploadMap = new Map<string, FileUploadInfo>(
+    fileUploads.map((f: any) => [f.id, f])
+  );
+
+  return media.map((m) => ({
+    ...m,
+    fileUpload: m.fileUploadId ? fileUploadMap.get(m.fileUploadId) ?? null : null,
+  }));
+}
+
+/**
+ * Helper to enrich multiple gigs with file upload data
+ */
+async function enrichGigsWithFileUploads<T extends { media: GigMedia[] }>(
+  db: any,
+  gigs: T[]
+): Promise<(Omit<T, 'media'> & { media: EnrichedMedia[] })[]> {
+  // Collect all file upload IDs from all gigs
+  const allFileUploadIds = gigs
+    .flatMap((g) => g.media.map((m) => m.fileUploadId))
+    .filter((id): id is string => id !== null);
+
+  if (allFileUploadIds.length === 0) {
+    return gigs.map((g) => ({
+      ...g,
+      media: g.media.map((m) => ({ ...m, fileUpload: null })),
+    }));
+  }
+
+  const fileUploads = await db.file_upload.findMany({
+    where: {
+      id: { in: allFileUploadIds },
+      status: { notIn: [FileUploadStatus.DELETED, FileUploadStatus.SOFT_DELETED] },
+    },
+    select: {
+      id: true,
+      url: true,
+      name: true,
+      mimeType: true,
+      status: true,
+    },
+  });
+
+  const fileUploadMap = new Map<string, FileUploadInfo>(
+    fileUploads.map((f: any) => [f.id, f])
+  );
+
+  return gigs.map((g) => ({
+    ...g,
+    media: g.media.map((m) => ({
+      ...m,
+      fileUpload: m.fileUploadId ? fileUploadMap.get(m.fileUploadId) ?? null : null,
+    })),
+  }));
+}
 
 export const gigsRouter = createTRPCRouter({
   getAll: publicProcedure
@@ -22,15 +120,16 @@ export const gigsRouter = createTRPCRouter({
         }
         : undefined;
 
-      return ctx.db.gig.findMany({
+      const gigs = await ctx.db.gig.findMany({
         where,
         orderBy: { gigStartTime: "desc" },
         include: {
           media: {
             orderBy: [
-              { featured: "desc" },
+              { section: "asc" },
+              { sortOrder: "asc" },
               { createdAt: "asc" }
-            ]
+            ],
           },
           gigTags: {
             include: {
@@ -39,10 +138,12 @@ export const gigsRouter = createTRPCRouter({
           },
         },
       });
+
+      return enrichGigsWithFileUploads(ctx.db, gigs);
     }),
 
   getUpcoming: publicProcedure.query(async ({ ctx }) => {
-    const allGigs = await ctx.db.gig.findMany({
+    const gigs = await ctx.db.gig.findMany({
       where: {
         gigEndTime: {
           gte: new Date(),
@@ -52,9 +153,10 @@ export const gigsRouter = createTRPCRouter({
       include: {
         media: {
           orderBy: [
-            { featured: "desc" },
+            { section: "asc" },
+            { sortOrder: "asc" },
             { createdAt: "asc" }
-          ]
+          ],
         },
         gigTags: {
           include: {
@@ -63,9 +165,8 @@ export const gigsRouter = createTRPCRouter({
         },
       },
     });
-    // Filter to only upcoming gigs
-    // return allGigs.filter((gig) => isGigUpcoming(gig));
-    return allGigs;
+
+    return enrichGigsWithFileUploads(ctx.db, gigs);
   }),
 
   getPast: publicProcedure
@@ -74,7 +175,7 @@ export const gigsRouter = createTRPCRouter({
     }).optional()
     )
     .query(async ({ ctx, input }) => {
-      const allGigs = await ctx.db.gig.findMany({
+      const gigs = await ctx.db.gig.findMany({
         where: {
           gigStartTime: {
             lt: new Date(),
@@ -84,9 +185,10 @@ export const gigsRouter = createTRPCRouter({
         include: {
           media: {
             orderBy: [
-              { featured: "desc" },
+              { section: "asc" },
+              { sortOrder: "asc" },
               { createdAt: "asc" }
-            ]
+            ],
           },
           gigTags: {
             include: {
@@ -96,9 +198,8 @@ export const gigsRouter = createTRPCRouter({
         },
         take: input?.limit,
       });
-      // Filter to only past gigs
-      // return allGigs.filter((gig) => !isGigUpcoming(gig));
-      return allGigs;
+
+      return enrichGigsWithFileUploads(ctx.db, gigs);
     }),
 
   getToday: publicProcedure.query(async ({ ctx }) => {
@@ -117,9 +218,10 @@ export const gigsRouter = createTRPCRouter({
       include: {
         media: {
           orderBy: [
-            { featured: "desc" },
+            { section: "asc" },
+            { sortOrder: "asc" },
             { createdAt: "asc" }
-          ]
+          ],
         },
         gigTags: {
           include: {
@@ -129,22 +231,24 @@ export const gigsRouter = createTRPCRouter({
       },
     });
 
+    const enrichedGigs = await enrichGigsWithFileUploads(ctx.db, todayGigs);
+
     // Filter to only upcoming gigs (gigs that haven't ended yet)
-    return todayGigs.filter((gig) => isGigUpcoming(gig));
-    // return todayGigs;
+    return enrichedGigs.filter((gig) => isGigUpcoming(gig));
   }),
 
   getById: publicProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      return ctx.db.gig.findUnique({
+      const gig = await ctx.db.gig.findUnique({
         where: { id: input.id },
         include: {
           media: {
             orderBy: [
-              { featured: "desc" },
+              { section: "asc" },
+              { sortOrder: "asc" },
               { createdAt: "asc" }
-            ]
+            ],
           },
           gigTags: {
             include: {
@@ -153,6 +257,11 @@ export const gigsRouter = createTRPCRouter({
           },
         },
       });
+
+      if (!gig) return null;
+
+      const enrichedMedia = await enrichMediaWithFileUploads(ctx.db, gig.media);
+      return { ...gig, media: enrichedMedia };
     }),
 
   create: adminProcedure
@@ -201,44 +310,296 @@ export const gigsRouter = createTRPCRouter({
     }),
 
   // Media management endpoints
+
+  /**
+   * Add media via URL (legacy support)
+   */
   addMedia: adminProcedure
     .input(
       z.object({
         gigId: z.string(),
         type: z.enum(["photo", "video"]),
         url: z.string().url(),
-        featured: z.boolean().default(false),
+        section: z.enum(["featured", "gallery"]).default("gallery"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Get max sort order for section
+      const maxOrder = await ctx.db.gigMedia.aggregate({
+        where: { gigId: input.gigId, section: input.section },
+        _max: { sortOrder: true },
+      });
+
       return ctx.db.gigMedia.create({
-        data: input,
+        data: {
+          gigId: input.gigId,
+          type: input.type,
+          url: input.url,
+          section: input.section,
+          sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
+        },
       });
     }),
 
+  /**
+   * Add media via base64 upload to S3
+   */
+  uploadMedia: adminProcedure
+    .input(
+      z.object({
+        gigId: z.string(),
+        base64: z.string(),
+        name: z.string(),
+        mimeType: z.string(),
+        section: z.enum(["featured", "gallery"]).default("gallery"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Decode base64 to buffer
+      const base64Data = input.base64.replace(/^data:[^;]+;base64,/, "");
+      const buffer = Buffer.from(base64Data, "base64");
+
+      // Determine type from mimeType
+      const type = input.mimeType.startsWith("video/") ? "video" : "photo";
+
+      // Get max sort order for section first
+      const maxOrder = await ctx.db.gigMedia.aggregate({
+        where: { gigId: input.gigId, section: input.section },
+        _max: { sortOrder: true },
+      });
+
+      // Create GigMedia record first to get the ID
+      const media = await ctx.db.gigMedia.create({
+        data: {
+          gigId: input.gigId,
+          type,
+          section: input.section,
+          sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
+        },
+      });
+
+      // Upload to S3 with for="gig_media" and forId=media.id
+      const ext = input.name.split(".").pop() ?? "";
+      const uuid = crypto.randomUUID();
+      const key = `gigs/${input.gigId}/${uuid}${ext ? `.${ext}` : ""}`;
+
+      const uploadResult = await uploadBufferToS3({
+        buffer,
+        key,
+        contentType: input.mimeType,
+        name: input.name,
+        fileType: type,
+        for: "gig_media",
+        forId: media.id,
+        acl: "public-read",
+      });
+
+      // Update GigMedia with the file upload ID
+      const updatedMedia = await ctx.db.gigMedia.update({
+        where: { id: media.id },
+        data: { fileUploadId: uploadResult.record.id },
+      });
+
+      return {
+        ...updatedMedia,
+        fileUpload: {
+          id: uploadResult.record.id,
+          url: uploadResult.url,
+          name: input.name,
+          mimeType: input.mimeType,
+          status: FileUploadStatus.OK,
+        },
+      };
+    }),
+
+  /**
+   * Update media properties
+   */
   updateMedia: adminProcedure
     .input(
       z.object({
         id: z.string(),
         type: z.enum(["photo", "video"]).optional(),
         url: z.string().url().optional(),
-        featured: z.boolean().optional(),
+        section: z.enum(["featured", "gallery"]).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
-      return ctx.db.gigMedia.update({
+
+      // If moving to a new section, get max sort order for that section
+      if (data.section) {
+        const media = await ctx.db.gigMedia.findUnique({ where: { id } });
+        if (media && media.section !== data.section) {
+          const maxOrder = await ctx.db.gigMedia.aggregate({
+            where: { gigId: media.gigId, section: data.section },
+            _max: { sortOrder: true },
+          });
+          const updatedMedia = await ctx.db.gigMedia.update({
+            where: { id },
+            data: {
+              ...data,
+              sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
+            },
+          });
+          const enriched = await enrichMediaWithFileUploads(ctx.db, [updatedMedia]);
+          return enriched[0];
+        }
+      }
+
+      const updatedMedia = await ctx.db.gigMedia.update({
         where: { id },
         data,
       });
+      const enriched = await enrichMediaWithFileUploads(ctx.db, [updatedMedia]);
+      return enriched[0];
     }),
 
+  /**
+   * Delete media (and optionally the S3 file)
+   */
   deleteMedia: adminProcedure
-    .input(z.object({ id: z.string() }))
+    .input(z.object({
+      id: z.string(),
+      deleteFile: z.boolean().default(false),
+    }))
     .mutation(async ({ ctx, input }) => {
+      const media = await ctx.db.gigMedia.findUnique({
+        where: { id: input.id },
+      });
+
+      if (!media) {
+        throw new Error("Media not found");
+      }
+
+      // If deleting the file and there's a linked fileUpload, soft delete it
+      if (input.deleteFile && media.fileUploadId) {
+        await softDeleteFile({ id: media.fileUploadId });
+      }
+
+      // Delete the GigMedia record
       return ctx.db.gigMedia.delete({
         where: { id: input.id },
       });
+    }),
+
+  /**
+   * Reorder media within a section
+   * Accepts an array of media IDs in the desired order
+   */
+  reorderMedia: adminProcedure
+    .input(
+      z.object({
+        gigId: z.string(),
+        section: z.enum(["featured", "gallery"]),
+        mediaIds: z.array(z.string()),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Update sort order for each media item
+      await Promise.all(
+        input.mediaIds.map((id, index) =>
+          ctx.db.gigMedia.update({
+            where: { id },
+            data: { sortOrder: index },
+          })
+        )
+      );
+
+      // Return updated media for the gig
+      const media = await ctx.db.gigMedia.findMany({
+        where: { gigId: input.gigId },
+        orderBy: [
+          { section: "asc" },
+          { sortOrder: "asc" },
+        ],
+      });
+
+      return enrichMediaWithFileUploads(ctx.db, media);
+    }),
+
+  /**
+   * Move media between sections
+   */
+  moveMediaToSection: adminProcedure
+    .input(
+      z.object({
+        mediaId: z.string(),
+        targetSection: z.enum(["featured", "gallery"]),
+        targetIndex: z.number().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const media = await ctx.db.gigMedia.findUnique({
+        where: { id: input.mediaId }
+      });
+
+      if (!media) {
+        throw new Error("Media not found");
+      }
+
+      // Get max sort order for target section
+      const maxOrder = await ctx.db.gigMedia.aggregate({
+        where: { gigId: media.gigId, section: input.targetSection },
+        _max: { sortOrder: true },
+      });
+
+      const newSortOrder = input.targetIndex ?? (maxOrder._max.sortOrder ?? -1) + 1;
+
+      // If inserting at specific index, shift existing items
+      if (input.targetIndex !== undefined) {
+        await ctx.db.gigMedia.updateMany({
+          where: {
+            gigId: media.gigId,
+            section: input.targetSection,
+            sortOrder: { gte: input.targetIndex },
+          },
+          data: {
+            sortOrder: { increment: 1 },
+          },
+        });
+      }
+
+      const updatedMedia = await ctx.db.gigMedia.update({
+        where: { id: input.mediaId },
+        data: {
+          section: input.targetSection,
+          sortOrder: newSortOrder,
+        },
+      });
+
+      const enriched = await enrichMediaWithFileUploads(ctx.db, [updatedMedia]);
+      return enriched[0];
+    }),
+
+  /**
+   * Get media for a gig with proper ordering
+   * Cached endpoint for public display
+   */
+  getMedia: publicProcedure
+    .input(z.object({ gigId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const media = await ctx.db.gigMedia.findMany({
+        where: { gigId: input.gigId },
+        orderBy: [
+          { section: "asc" },
+          { sortOrder: "asc" },
+          { createdAt: "asc" },
+        ],
+      });
+
+      const enrichedMedia = await enrichMediaWithFileUploads(ctx.db, media);
+
+      // Filter out media with deleted files
+      const validMedia = enrichedMedia.filter(
+        (m) => !m.fileUpload || m.fileUpload.status === FileUploadStatus.OK
+      );
+
+      return {
+        featured: validMedia.filter((m) => m.section === "featured"),
+        gallery: validMedia.filter((m) => m.section === "gallery"),
+        all: validMedia,
+      };
     }),
 
   // Tag management endpoints
@@ -294,4 +655,3 @@ export const gigsRouter = createTRPCRouter({
       });
     }),
 });
-

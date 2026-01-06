@@ -162,11 +162,20 @@ model GigMedia {
   gigId     String
   gig       Gig      @relation(fields: [gigId], references: [id], onDelete: Cascade)
   type      String   // "photo" or "video"
-  url       String
-  featured  Boolean  @default(false)
+  
+  // File upload ID (references file_upload.id via for="gig_media", forId=id)
+  fileUploadId String?
+  url          String?   // Legacy field for backwards compatibility
+  
+  // Sorting - separate sort orders for featured and gallery sections
+  section     String   @default("gallery") // "featured" or "gallery"
+  sortOrder   Int      @default(0)         // Sort order within section
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([gigId, section, sortOrder])
+  @@index([fileUploadId])
   @@map("gig_media")
 }
 
@@ -203,4 +212,51 @@ model NewsletterSubscription {
   removed   Boolean   @default(false)
 
   @@map("newsletter_subscription")
+}
+
+enum FileUploadStatus {
+  NO_FILE
+  UPLOADING
+  OK
+  SOFT_DELETED
+  DELETED
+  ERRORED
+}
+
+enum FileCategory {
+  IMAGE
+  VIDEO
+  AUDIO
+  PDF
+  DOCUMENT
+  FILE
+}
+
+model file_upload {
+  id        String  @id @unique @default(uuid())
+  createdAt DateTime @default(now())
+
+  url String @unique
+  key String @unique
+  name String
+  type String
+  size Int
+  mimeType String
+  acl String @default("private")
+  status FileUploadStatus @default(OK)
+
+  category FileCategory @default(FILE)
+
+  userId String?
+
+  for String 
+  forId String
+
+  @@index([url])
+  @@index([key])
+  @@index([name])
+  @@index([type])
+  @@index([createdAt])
+  @@index([size])
+  @@index([for, forId])
 }

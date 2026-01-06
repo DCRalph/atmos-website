@@ -20,6 +20,10 @@ const config = {
         protocol: "https",
         hostname: "picsum.photos",
       },
+      {
+        protocol: "https",
+        hostname: "atmosmedia-temp.s3.ap-southeast-2.amazonaws.com",
+      }
     ],
   },
   // experimental: {
