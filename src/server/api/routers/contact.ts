@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure, adminProcedure } from "~/server/api/trpc";
 
+
 export const contactRouter = createTRPCRouter({
   getAll: adminProcedure
     .input(
@@ -10,16 +11,16 @@ export const contactRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const search = input?.search?.toLowerCase().trim();
-      
+
       const where = search
         ? {
-            OR: [
-              { name: { contains: search, mode: "insensitive" as const } },
-              { email: { contains: search, mode: "insensitive" as const } },
-              { subject: { contains: search, mode: "insensitive" as const } },
-              { message: { contains: search, mode: "insensitive" as const } },
-            ],
-          }
+          OR: [
+            { name: { contains: search, mode: "insensitive" as const } },
+            { email: { contains: search, mode: "insensitive" as const } },
+            { subject: { contains: search, mode: "insensitive" as const } },
+            { message: { contains: search, mode: "insensitive" as const } },
+          ],
+        }
         : undefined;
 
       return ctx.db.contactSubmission.findMany({
@@ -40,14 +41,19 @@ export const contactRouter = createTRPCRouter({
     .input(
       z.object({
         name: z.string().min(1),
-        email: z.string().email(),
-        subject: z.string().min(1),
+        email: z.email(),
+        reason: z.string().min(1).max(32),
         message: z.string().min(1),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       return ctx.db.contactSubmission.create({
-        data: input,
+        data: {
+          name: input.name,
+          email: input.email,
+          subject: input.reason,
+          message: input.message,
+        },
       });
     }),
 

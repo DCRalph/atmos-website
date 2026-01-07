@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { motion } from "motion/react";
-import { ChevronDown, Play, Pause } from "lucide-react";
+import { ChevronDown, Play, Pause, Mouse } from "lucide-react";
 import { OpeningAnimation } from "~/components/opening-animation";
 import { VideoBackground, type VideoBackgroundRef } from "~/components/video-background";
 import { LiveGigPopup } from "~/components/live-gig-popup";
@@ -44,14 +44,14 @@ export function HomeTopContent() {
               // Scroll exactly one viewport of the scroll container to reveal the next section.
               main.scrollTo({ top: main.clientHeight, behavior: "smooth" });
             }}
-            className="group inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white/80 backdrop-blur-sm transition hover:border-white/35 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-0"
+            className="group inline-flex items-center justify-center text-white/80 transition hover:text-white"
           >
-            <ChevronDown className="h-5 w-5 transition-transform duration-200 group-hover:translate-y-0.5" />
+            <Mouse className="h-8 w-8 transition-all duration-200 group-hover:scale-110 group-hover:text-white" />
           </button>
         </motion.div>
 
         {/* Play/Pause Button */}
-        <div className="absolute bottom-10 left-6 z-30">
+        <div className="absolute transition-all bottom-2 left-2 sm:bottom-6 sm:left-6 z-30">
           <button
             onClick={() => videoRef.current?.togglePlayPause()}
             aria-label={isPlaying ? "Pause video" : "Play video"}

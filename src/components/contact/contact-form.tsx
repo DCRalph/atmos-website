@@ -27,7 +27,7 @@ export function ContactForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createSubmission.mutate({ name, email, subject, message });
+    createSubmission.mutate({ name, email, reason: subject, message });
   };
 
   return (
