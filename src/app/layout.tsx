@@ -10,7 +10,7 @@ import { montserrat } from "~/lib/fonts";
 
 import NextTopLoader from 'nextjs-toploader';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL;
 
 const description_short = "Atmos Media - Hub";
 const description_long = "Atmos Media - Hub for all things Atmos. We are a media company that creates content for the Atmos brand.";

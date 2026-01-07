@@ -144,15 +144,6 @@ function SortableMediaItem({
           <Info className="h-3 w-3" />
         </Button>
         <Button
-          variant="secondary"
-          size="sm"
-          className="h-7 w-7 p-0"
-          onClick={() => onMove(item.id, section === "featured" ? "gallery" : "featured")}
-          title={`Move to ${section === "featured" ? "gallery" : "featured"}`}
-        >
-          {section === "featured" ? "↓" : "★"}
-        </Button>
-        <Button
           variant="destructive"
           size="sm"
           className="h-7 w-7 p-0"
