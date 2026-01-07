@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { formatDate, formatTime } from "~/lib/date-utils";
 import { Badge } from "~/components/ui/badge";
-import { isLightColor } from "~/lib/utils";
 import { motion } from "framer-motion";
 
 type Gig = {

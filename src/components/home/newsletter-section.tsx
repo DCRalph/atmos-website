@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Mail, CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
 import { Input } from "~/components/ui/input";
-import { Button } from "~/components/ui/button";
 import { orbitron } from "~/lib/fonts";
 
 export function NewsletterSection({ className }: { className?: string }) {
@@ -29,15 +28,14 @@ export function NewsletterSection({ className }: { className?: string }) {
         Join the newsletter
       </h2> */}
 
-      <div className="mb-6 sm:mb-8 text-2xl sm:text-3xl font-bold tracking-wide md:text-4xl border-b border-white/20 pb-3 sm:pb-4 ${orbitron.className}" />
+      <div className="mb-6 sm:mb-8 border-b-2 border-white/10 pb-3 sm:pb-4" />
 
-      {/* Decorative background elements */}
-      <div className="absolute inset-0 -z-10 overflow-hidden rounded-3xl">
-        <div className="absolute left-1/4 top-0 h-96 w-96 rounded-full bg-white/5 blur-3xl" />
-        <div className="absolute right-1/4 bottom-0 h-96 w-96 rounded-full bg-white/5 blur-3xl" />
-      </div>
 
-      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-linear-to-br from-white/10 via-white/5 to-white/2 p-8 sm:p-12 lg:p-16 backdrop-blur-sm">
+      <div className="group relative overflow-hidden rounded-none border-2 border-white/10 bg-black/90 p-8 sm:p-12 lg:p-16 backdrop-blur-sm transition-all hover:border-accent-muted/50">
+        {/* Red accent bar */}
+        <div className="absolute left-0 top-0 h-2 w-32 bg-accent-muted transition-all group-hover:w-48" />
+        <div className="absolute right-0 top-0 h-2 w-32 bg-accent-muted transition-all group-hover:w-48" />
+
         {/* Content */}
         <div className="mx-auto max-w-3xl text-center">
           {/* Icon and heading */}
@@ -48,7 +46,7 @@ export function NewsletterSection({ className }: { className?: string }) {
           </div> */}
 
           <h3
-            className={`mb-4 text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight ${orbitron.className}`}
+            className={`mb-4 text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight ${orbitron.className}`}
           >
             Stay in the Loop
           </h3>
@@ -65,18 +63,18 @@ export function NewsletterSection({ className }: { className?: string }) {
               transition={{ duration: 0.4 }}
               className="mx-auto max-w-md"
             >
-              <div className="flex flex-col items-center gap-4 rounded-2xl border border-white/20 bg-linear-to-br from-white/10 to-white/5 p-8 backdrop-blur-sm">
+              <div className="flex flex-col items-center gap-4 rounded-none border-2 border-accent-muted/50 bg-black/60 p-8 backdrop-blur-sm">
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
                 >
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/20">
-                    <CheckCircle2 className="h-8 w-8 text-white" />
+                  <div className="flex h-16 w-16 items-center justify-center rounded-none border-2 border-accent-muted bg-accent-muted/20">
+                    <CheckCircle2 className="h-8 w-8 text-accent-muted" />
                   </div>
                 </motion.div>
                 <div className="text-center">
-                  <p className="text-lg font-semibold text-white/90 mb-1">You're all set!</p>
+                  <p className="text-lg font-black uppercase tracking-wide text-white mb-1">You're all set!</p>
                   <p className="text-sm text-white/60">
                     Thanks for joining. We can't wait to share our latest updates with you.
                   </p>
@@ -110,24 +108,23 @@ export function NewsletterSection({ className }: { className?: string }) {
                   onChange={(e) => setEmail(e.target.value)}
                   aria-label="Email address"
                   required
-                  className="flex-1 bg-black/40 border-white/20 text-white placeholder:text-white/40 focus:border-white/40 focus:ring-white/20 h-12 text-base"
+                  className="flex-1 rounded-none border-2 border-white/20 bg-black/60 text-white placeholder:text-white/40 focus:border-accent-muted focus:ring-accent-muted/20 h-12 text-base"
                 />
 
-                <Button
+                <button
                   type="submit"
-                  variant="outline"
                   disabled={newsletterSubscribe.isPending}
-                  className="h-12 border-white/30 bg-white/10 text-white hover:bg-white/20 hover:border-white/40 font-semibold px-6 transition-all"
+                  className="h-12 rounded-none border-2 border-accent-muted bg-accent-muted px-6 text-sm font-black uppercase tracking-wider text-white transition-all hover:bg-[#DC2626] hover:shadow-[0_0_20px_rgba(239,68,68,0.5)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {newsletterSubscribe.isPending ? (
-                    <span className="flex items-center gap-2">
+                    <span className="flex items-center justify-center gap-2">
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                       Joining…
                     </span>
                   ) : (
                     "Subscribe"
                   )}
-                </Button>
+                </button>
               </div>
 
               {message && (

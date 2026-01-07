@@ -193,10 +193,11 @@ export const gigsRouter = createTRPCRouter({
     }),
 
   getUpcoming: publicProcedure.query(async ({ ctx }) => {
+    const now = new Date();
     const gigs = await ctx.db.gig.findMany({
       where: {
         gigEndTime: {
-          gte: new Date(),
+          gte: now,
         },
       },
       orderBy: { gigStartTime: "asc" },
@@ -225,13 +226,15 @@ export const gigsRouter = createTRPCRouter({
     }).optional()
     )
     .query(async ({ ctx, input }) => {
+      const now = new Date();
+
       const gigs = await ctx.db.gig.findMany({
         where: {
-          gigStartTime: {
-            lt: new Date(),
+          gigEndTime: {
+            lt: now,
           },
         },
-        orderBy: { gigStartTime: "desc" },
+        orderBy: { gigEndTime: "desc" },
         include: {
           media: {
             orderBy: [

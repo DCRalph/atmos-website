@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "~/components/ui/button";
-import { NewsletterSection } from "~/components/newsletter/newsletter-section";
+import { NewsletterSection } from "~/components/home/newsletter-section";
 import { UpcomingGigsSection } from "./upcoming-gigs-section";
 import { LatestContentSection } from "./latest-content-section";
 import { RecentGigsSection } from "./recent-gigs-section";

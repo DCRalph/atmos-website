@@ -2,7 +2,6 @@
 
 import { Loader2, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
-import { Button } from "~/components/ui/button";
 import { ContentItem } from "~/components/content/content-item";
 import { api } from "~/trpc/react";
 import { orbitron } from "~/lib/fonts";
@@ -28,18 +27,16 @@ export function LatestContentSection() {
 
   return (
     <div className="mb-16 sm:mb-20">
-      <div className="mb-6 sm:mb-8 flex items-end justify-between gap-4 border-b border-white/20 pb-3 sm:pb-4">
-        <h2 className={`text-2xl sm:text-3xl font-bold tracking-wide md:text-4xl ${orbitron.className}`}>
+      <div className="mb-6 sm:mb-8 flex items-end justify-between gap-4 border-b-2 border-white/10 pb-3 sm:pb-4">
+        <h2 className={`text-2xl sm:text-3xl font-black uppercase tracking-tight md:text-4xl ${orbitron.className}`}>
           Latest Content
         </h2>
-        <Link href="/content" className="shrink-0">
-          <Button
-            variant="outline"
-            className="h-9 rounded-full border-white/20 bg-white/5 px-4 text-xs font-semibold tracking-wide text-white/90 hover:bg-white/10 hover:text-white"
-          >
-            View all
-            <ArrowUpRight className="ml-1.5 h-4 w-4" />
-          </Button>
+        <Link
+          href="/content"
+          className="group flex shrink-0 items-center gap-2 rounded-none border-2 border-white/30 bg-transparent px-4 py-2 text-xs font-black uppercase tracking-wider text-white transition-all hover:border-accent-muted hover:bg-accent-muted/10 hover:text-white"
+        >
+          View all
+          <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
         </Link>
       </div>
 

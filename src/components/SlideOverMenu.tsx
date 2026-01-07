@@ -18,7 +18,7 @@ type MenuItem = {
 
 const MENU_ITEMS: MenuItem[] = [
   { label: "HOME", href: "/", color: "bg-blue-500" },
-  { label: "ABOUT", href: "/about", color: "bg-red-500" },
+  { label: "ABOUT", href: "/about", color: "bg-blue-500" },
   { label: "SHOP", href: "/merch", color: "bg-pink-500" },
   { label: "GIGS", href: "/gigs", color: "bg-lime-500" },
   { label: "THE CREW", href: "/crew", color: "bg-cyan-500" },
@@ -195,7 +195,7 @@ function MenuItemComponent({
       key={item.label}
       href={item.href}
       className={`${isActive ? "pl-10 font-bold!" : ""
-        } bg-red-600 text-white uppercase font-light text-2xl py-3 pl-8 tracking-wider hover:font-bold hover:bg-red-500 transition-all ease-out hover:tracking-widest`}
+        } bg-accent text-white uppercase font-light text-2xl py-3 pl-8 tracking-wider hover:font-bold hover:bg-accent-muted transition-all ease-out hover:tracking-widest`}
 
       style={{
         width: `${width}%`,

@@ -125,7 +125,7 @@ export function LiveGigPopup() {
                   <motion.div
                     animate={{ scale: [1, 1.1, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}
-                    className="flex items-center gap-1.5 rounded-full bg-red-600 px-2 py-1 flex-shrink-0"
+                    className="flex items-center gap-1.5 rounded-full bg-red-600 px-2 py-1 shrink-0"
                   >
                     <motion.div
                       animate={{ opacity: [1, 0.5, 1] }}
@@ -148,7 +148,7 @@ export function LiveGigPopup() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     {liveGig.ticketLink && (
                       <a
                         href={liveGig.ticketLink}
@@ -189,7 +189,7 @@ export function LiveGigPopup() {
                   <motion.div
                     animate={{ scale: [1, 1.1, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}
-                    className="flex items-center gap-2 rounded-full bg-red-600 px-3 py-1.5 flex-shrink-0"
+                    className="flex items-center gap-2 rounded-full bg-red-600 px-3 py-1.5 shrink-0"
                   >
                     <motion.div
                       animate={{ opacity: [1, 0.5, 1] }}
@@ -223,7 +223,7 @@ export function LiveGigPopup() {
                     )}
                     <button
                       onClick={handleMinimize}
-                      className="text-white/60 transition-colors hover:text-white p-1 flex-shrink-0"
+                      className="text-white/60 transition-colors hover:text-white p-1 shrink-0"
                       aria-label="Minimize popup"
                     >
                       <ChevronDown className="w-5 h-5" />
