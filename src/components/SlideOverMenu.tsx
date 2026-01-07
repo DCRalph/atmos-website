@@ -114,7 +114,7 @@ export default function SlideOverMenu({ setIsMenuOpen, isHomePage = false }: Sli
               variants={{
                 hidden: {
                   //  opacity: 1,
-                  y: "-130%"
+                  y: "-150%"
                 },
                 visible: {
                   //  opacity: 1,
