@@ -22,7 +22,7 @@ const config = {
       },
       {
         protocol: "https",
-        hostname: "*.atmosmedia.co.nz",
+        hostname: "atmosmedia.co.nz",
       },
       {
         protocol: "https",
