@@ -247,6 +247,10 @@ model file_upload {
 
   category FileCategory @default(FILE)
 
+  // Image/video dimensions (null for non-media files)
+  width Int?
+  height Int?
+
   userId String?
 
   for String 

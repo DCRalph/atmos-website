@@ -3,6 +3,7 @@ import { createTRPCRouter, publicProcedure, adminProcedure } from "~/server/api/
 import { getTodayRangeStart, getTodayRangeEnd, isGigUpcoming } from "~/lib/date-utils";
 import { uploadBufferToS3, softDeleteFile } from "~/lib/s3Helper";
 import { FileUploadStatus, type GigMedia } from "~Prisma/client";
+import { toWebPMax } from "~/lib/sparpiIage";
 
 type FileUploadInfo = {
   id: string;
@@ -10,6 +11,11 @@ type FileUploadInfo = {
   name: string;
   mimeType: string;
   status: string;
+  size: number;
+  width: number | null;
+  height: number | null;
+  createdAt: Date;
+  uploadedBy: { id: string; name: string; email: string } | null;
 } | null;
 
 type EnrichedMedia = GigMedia & { fileUpload: FileUploadInfo };
@@ -41,11 +47,33 @@ async function enrichMediaWithFileUploads<T extends GigMedia>(
       name: true,
       mimeType: true,
       status: true,
+      size: true,
+      width: true,
+      height: true,
+      createdAt: true,
+      userId: true,
     },
   });
 
+  // Fetch user info for uploads that have a userId
+  const userIds = fileUploads
+    .map((f: any) => f.userId)
+    .filter((id: string | null): id is string => id !== null);
+
+  const users = userIds.length > 0
+    ? await db.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true, email: true },
+    })
+    : [];
+
+  const userMap = new Map(users.map((u: any) => [u.id, u]));
+
   const fileUploadMap = new Map<string, FileUploadInfo>(
-    fileUploads.map((f: any) => [f.id, f])
+    fileUploads.map((f: any) => [f.id, {
+      ...f,
+      uploadedBy: f.userId ? userMap.get(f.userId) ?? null : null,
+    }])
   );
 
   return media.map((m) => ({
@@ -84,11 +112,33 @@ async function enrichGigsWithFileUploads<T extends { media: GigMedia[] }>(
       name: true,
       mimeType: true,
       status: true,
+      size: true,
+      width: true,
+      height: true,
+      createdAt: true,
+      userId: true,
     },
   });
 
+  // Fetch user info for uploads that have a userId
+  const userIds = fileUploads
+    .map((f: any) => f.userId)
+    .filter((id: string | null): id is string => id !== null);
+
+  const users = userIds.length > 0
+    ? await db.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true, email: true },
+    })
+    : [];
+
+  const userMap = new Map(users.map((u: any) => [u.id, u]));
+
   const fileUploadMap = new Map<string, FileUploadInfo>(
-    fileUploads.map((f: any) => [f.id, f])
+    fileUploads.map((f: any) => [f.id, {
+      ...f,
+      uploadedBy: f.userId ? userMap.get(f.userId) ?? null : null,
+    }])
   );
 
   return gigs.map((g) => ({
@@ -359,6 +409,8 @@ export const gigsRouter = createTRPCRouter({
       const base64Data = input.base64.replace(/^data:[^;]+;base64,/, "");
       const buffer = Buffer.from(base64Data, "base64");
 
+      const resized = await toWebPMax(buffer, { maxSizePx: 2048, quality: 80 });
+
       // Determine type from mimeType
       const type = input.mimeType.startsWith("video/") ? "video" : "photo";
 
@@ -384,7 +436,7 @@ export const gigsRouter = createTRPCRouter({
       const key = `gigs/${input.gigId}/${uuid}${ext ? `.${ext}` : ""}`;
 
       const uploadResult = await uploadBufferToS3({
-        buffer,
+        buffer: resized.buffer,
         key,
         contentType: input.mimeType,
         name: input.name,
@@ -392,6 +444,8 @@ export const gigsRouter = createTRPCRouter({
         for: "gig_media",
         forId: media.id,
         acl: "public-read",
+        width: resized.width,
+        height: resized.height,
       });
 
       // Update GigMedia with the file upload ID

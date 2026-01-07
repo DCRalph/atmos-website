@@ -25,6 +25,10 @@ type UploadBufferParams = {
   fileType?: string
   for?: string
   forId?: string
+  /** Image/video width in pixels */
+  width?: number
+  /** Image/video height in pixels */
+  height?: number
 }
 
 let s3Client: S3Client | null = null
@@ -103,6 +107,8 @@ export const uploadBufferToS3 = async (params: UploadBufferParams) => {
       forId: recordForId,
       status: FileUploadStatus.OK,
       acl,
+      width: params.width ?? null,
+      height: params.height ?? null,
     },
   })
 

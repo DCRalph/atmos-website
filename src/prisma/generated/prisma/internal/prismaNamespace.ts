@@ -1770,6 +1770,8 @@ export const File_uploadScalarFieldEnum = {
   acl: 'acl',
   status: 'status',
   category: 'category',
+  width: 'width',
+  height: 'height',
   userId: 'userId',
   for: 'for',
   forId: 'forId'

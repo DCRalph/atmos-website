@@ -28,10 +28,14 @@ export type AggregateFile_upload = {
 
 export type File_uploadAvgAggregateOutputType = {
   size: number | null
+  width: number | null
+  height: number | null
 }
 
 export type File_uploadSumAggregateOutputType = {
   size: number | null
+  width: number | null
+  height: number | null
 }
 
 export type File_uploadMinAggregateOutputType = {
@@ -46,6 +50,8 @@ export type File_uploadMinAggregateOutputType = {
   acl: string | null
   status: $Enums.FileUploadStatus | null
   category: $Enums.FileCategory | null
+  width: number | null
+  height: number | null
   userId: string | null
   for: string | null
   forId: string | null
@@ -63,6 +69,8 @@ export type File_uploadMaxAggregateOutputType = {
   acl: string | null
   status: $Enums.FileUploadStatus | null
   category: $Enums.FileCategory | null
+  width: number | null
+  height: number | null
   userId: string | null
   for: string | null
   forId: string | null
@@ -80,6 +88,8 @@ export type File_uploadCountAggregateOutputType = {
   acl: number
   status: number
   category: number
+  width: number
+  height: number
   userId: number
   for: number
   forId: number
@@ -89,10 +99,14 @@ export type File_uploadCountAggregateOutputType = {
 
 export type File_uploadAvgAggregateInputType = {
   size?: true
+  width?: true
+  height?: true
 }
 
 export type File_uploadSumAggregateInputType = {
   size?: true
+  width?: true
+  height?: true
 }
 
 export type File_uploadMinAggregateInputType = {
@@ -107,6 +121,8 @@ export type File_uploadMinAggregateInputType = {
   acl?: true
   status?: true
   category?: true
+  width?: true
+  height?: true
   userId?: true
   for?: true
   forId?: true
@@ -124,6 +140,8 @@ export type File_uploadMaxAggregateInputType = {
   acl?: true
   status?: true
   category?: true
+  width?: true
+  height?: true
   userId?: true
   for?: true
   forId?: true
@@ -141,6 +159,8 @@ export type File_uploadCountAggregateInputType = {
   acl?: true
   status?: true
   category?: true
+  width?: true
+  height?: true
   userId?: true
   for?: true
   forId?: true
@@ -245,6 +265,8 @@ export type File_uploadGroupByOutputType = {
   acl: string
   status: $Enums.FileUploadStatus
   category: $Enums.FileCategory
+  width: number | null
+  height: number | null
   userId: string | null
   for: string
   forId: string
@@ -285,6 +307,8 @@ export type file_uploadWhereInput = {
   acl?: Prisma.StringFilter<"file_upload"> | string
   status?: Prisma.EnumFileUploadStatusFilter<"file_upload"> | $Enums.FileUploadStatus
   category?: Prisma.EnumFileCategoryFilter<"file_upload"> | $Enums.FileCategory
+  width?: Prisma.IntNullableFilter<"file_upload"> | number | null
+  height?: Prisma.IntNullableFilter<"file_upload"> | number | null
   userId?: Prisma.StringNullableFilter<"file_upload"> | string | null
   for?: Prisma.StringFilter<"file_upload"> | string
   forId?: Prisma.StringFilter<"file_upload"> | string
@@ -302,6 +326,8 @@ export type file_uploadOrderByWithRelationInput = {
   acl?: Prisma.SortOrder
   status?: Prisma.SortOrder
   category?: Prisma.SortOrder
+  width?: Prisma.SortOrderInput | Prisma.SortOrder
+  height?: Prisma.SortOrderInput | Prisma.SortOrder
   userId?: Prisma.SortOrderInput | Prisma.SortOrder
   for?: Prisma.SortOrder
   forId?: Prisma.SortOrder
@@ -322,6 +348,8 @@ export type file_uploadWhereUniqueInput = Prisma.AtLeast<{
   acl?: Prisma.StringFilter<"file_upload"> | string
   status?: Prisma.EnumFileUploadStatusFilter<"file_upload"> | $Enums.FileUploadStatus
   category?: Prisma.EnumFileCategoryFilter<"file_upload"> | $Enums.FileCategory
+  width?: Prisma.IntNullableFilter<"file_upload"> | number | null
+  height?: Prisma.IntNullableFilter<"file_upload"> | number | null
   userId?: Prisma.StringNullableFilter<"file_upload"> | string | null
   for?: Prisma.StringFilter<"file_upload"> | string
   forId?: Prisma.StringFilter<"file_upload"> | string
@@ -339,6 +367,8 @@ export type file_uploadOrderByWithAggregationInput = {
   acl?: Prisma.SortOrder
   status?: Prisma.SortOrder
   category?: Prisma.SortOrder
+  width?: Prisma.SortOrderInput | Prisma.SortOrder
+  height?: Prisma.SortOrderInput | Prisma.SortOrder
   userId?: Prisma.SortOrderInput | Prisma.SortOrder
   for?: Prisma.SortOrder
   forId?: Prisma.SortOrder
@@ -364,6 +394,8 @@ export type file_uploadScalarWhereWithAggregatesInput = {
   acl?: Prisma.StringWithAggregatesFilter<"file_upload"> | string
   status?: Prisma.EnumFileUploadStatusWithAggregatesFilter<"file_upload"> | $Enums.FileUploadStatus
   category?: Prisma.EnumFileCategoryWithAggregatesFilter<"file_upload"> | $Enums.FileCategory
+  width?: Prisma.IntNullableWithAggregatesFilter<"file_upload"> | number | null
+  height?: Prisma.IntNullableWithAggregatesFilter<"file_upload"> | number | null
   userId?: Prisma.StringNullableWithAggregatesFilter<"file_upload"> | string | null
   for?: Prisma.StringWithAggregatesFilter<"file_upload"> | string
   forId?: Prisma.StringWithAggregatesFilter<"file_upload"> | string
@@ -381,6 +413,8 @@ export type file_uploadCreateInput = {
   acl?: string
   status?: $Enums.FileUploadStatus
   category?: $Enums.FileCategory
+  width?: number | null
+  height?: number | null
   userId?: string | null
   for: string
   forId: string
@@ -398,6 +432,8 @@ export type file_uploadUncheckedCreateInput = {
   acl?: string
   status?: $Enums.FileUploadStatus
   category?: $Enums.FileCategory
+  width?: number | null
+  height?: number | null
   userId?: string | null
   for: string
   forId: string
@@ -415,6 +451,8 @@ export type file_uploadUpdateInput = {
   acl?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumFileUploadStatusFieldUpdateOperationsInput | $Enums.FileUploadStatus
   category?: Prisma.EnumFileCategoryFieldUpdateOperationsInput | $Enums.FileCategory
+  width?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  height?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   for?: Prisma.StringFieldUpdateOperationsInput | string
   forId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -432,6 +470,8 @@ export type file_uploadUncheckedUpdateInput = {
   acl?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumFileUploadStatusFieldUpdateOperationsInput | $Enums.FileUploadStatus
   category?: Prisma.EnumFileCategoryFieldUpdateOperationsInput | $Enums.FileCategory
+  width?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  height?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   for?: Prisma.StringFieldUpdateOperationsInput | string
   forId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -449,6 +489,8 @@ export type file_uploadCreateManyInput = {
   acl?: string
   status?: $Enums.FileUploadStatus
   category?: $Enums.FileCategory
+  width?: number | null
+  height?: number | null
   userId?: string | null
   for: string
   forId: string
@@ -466,6 +508,8 @@ export type file_uploadUpdateManyMutationInput = {
   acl?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumFileUploadStatusFieldUpdateOperationsInput | $Enums.FileUploadStatus
   category?: Prisma.EnumFileCategoryFieldUpdateOperationsInput | $Enums.FileCategory
+  width?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  height?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   for?: Prisma.StringFieldUpdateOperationsInput | string
   forId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -483,6 +527,8 @@ export type file_uploadUncheckedUpdateManyInput = {
   acl?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumFileUploadStatusFieldUpdateOperationsInput | $Enums.FileUploadStatus
   category?: Prisma.EnumFileCategoryFieldUpdateOperationsInput | $Enums.FileCategory
+  width?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  height?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   for?: Prisma.StringFieldUpdateOperationsInput | string
   forId?: Prisma.StringFieldUpdateOperationsInput | string
@@ -500,6 +546,8 @@ export type file_uploadCountOrderByAggregateInput = {
   acl?: Prisma.SortOrder
   status?: Prisma.SortOrder
   category?: Prisma.SortOrder
+  width?: Prisma.SortOrder
+  height?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   for?: Prisma.SortOrder
   forId?: Prisma.SortOrder
@@ -507,6 +555,8 @@ export type file_uploadCountOrderByAggregateInput = {
 
 export type file_uploadAvgOrderByAggregateInput = {
   size?: Prisma.SortOrder
+  width?: Prisma.SortOrder
+  height?: Prisma.SortOrder
 }
 
 export type file_uploadMaxOrderByAggregateInput = {
@@ -521,6 +571,8 @@ export type file_uploadMaxOrderByAggregateInput = {
   acl?: Prisma.SortOrder
   status?: Prisma.SortOrder
   category?: Prisma.SortOrder
+  width?: Prisma.SortOrder
+  height?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   for?: Prisma.SortOrder
   forId?: Prisma.SortOrder
@@ -538,6 +590,8 @@ export type file_uploadMinOrderByAggregateInput = {
   acl?: Prisma.SortOrder
   status?: Prisma.SortOrder
   category?: Prisma.SortOrder
+  width?: Prisma.SortOrder
+  height?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   for?: Prisma.SortOrder
   forId?: Prisma.SortOrder
@@ -545,6 +599,8 @@ export type file_uploadMinOrderByAggregateInput = {
 
 export type file_uploadSumOrderByAggregateInput = {
   size?: Prisma.SortOrder
+  width?: Prisma.SortOrder
+  height?: Prisma.SortOrder
 }
 
 export type EnumFileUploadStatusFieldUpdateOperationsInput = {
@@ -553,6 +609,14 @@ export type EnumFileUploadStatusFieldUpdateOperationsInput = {
 
 export type EnumFileCategoryFieldUpdateOperationsInput = {
   set?: $Enums.FileCategory
+}
+
+export type NullableIntFieldUpdateOperationsInput = {
+  set?: number | null
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
 }
 
 
@@ -569,6 +633,8 @@ export type file_uploadSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   acl?: boolean
   status?: boolean
   category?: boolean
+  width?: boolean
+  height?: boolean
   userId?: boolean
   for?: boolean
   forId?: boolean
@@ -586,6 +652,8 @@ export type file_uploadSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   acl?: boolean
   status?: boolean
   category?: boolean
+  width?: boolean
+  height?: boolean
   userId?: boolean
   for?: boolean
   forId?: boolean
@@ -603,6 +671,8 @@ export type file_uploadSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   acl?: boolean
   status?: boolean
   category?: boolean
+  width?: boolean
+  height?: boolean
   userId?: boolean
   for?: boolean
   forId?: boolean
@@ -620,12 +690,14 @@ export type file_uploadSelectScalar = {
   acl?: boolean
   status?: boolean
   category?: boolean
+  width?: boolean
+  height?: boolean
   userId?: boolean
   for?: boolean
   forId?: boolean
 }
 
-export type file_uploadOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "createdAt" | "url" | "key" | "name" | "type" | "size" | "mimeType" | "acl" | "status" | "category" | "userId" | "for" | "forId", ExtArgs["result"]["file_upload"]>
+export type file_uploadOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "createdAt" | "url" | "key" | "name" | "type" | "size" | "mimeType" | "acl" | "status" | "category" | "width" | "height" | "userId" | "for" | "forId", ExtArgs["result"]["file_upload"]>
 
 export type $file_uploadPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "file_upload"
@@ -642,6 +714,8 @@ export type $file_uploadPayload<ExtArgs extends runtime.Types.Extensions.Interna
     acl: string
     status: $Enums.FileUploadStatus
     category: $Enums.FileCategory
+    width: number | null
+    height: number | null
     userId: string | null
     for: string
     forId: string
@@ -1079,6 +1153,8 @@ export interface file_uploadFieldRefs {
   readonly acl: Prisma.FieldRef<"file_upload", 'String'>
   readonly status: Prisma.FieldRef<"file_upload", 'FileUploadStatus'>
   readonly category: Prisma.FieldRef<"file_upload", 'FileCategory'>
+  readonly width: Prisma.FieldRef<"file_upload", 'Int'>
+  readonly height: Prisma.FieldRef<"file_upload", 'Int'>
   readonly userId: Prisma.FieldRef<"file_upload", 'String'>
   readonly for: Prisma.FieldRef<"file_upload", 'String'>
   readonly forId: Prisma.FieldRef<"file_upload", 'String'>

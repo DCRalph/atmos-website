@@ -29,7 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
-import { Loader2, Upload, Trash2, GripVertical, X, ImageIcon, Film } from "lucide-react";
+import { Loader2, Upload, Trash2, GripVertical, X, ImageIcon, Film, Info, Copy, Check, ExternalLink } from "lucide-react";
 import { getMediaDisplayUrl } from "~/lib/media-url";
 
 type MediaItem = {
@@ -44,6 +44,11 @@ type MediaItem = {
     url: string;
     name: string;
     mimeType: string;
+    size: number;
+    width: number | null;
+    height: number | null;
+    createdAt: Date | string;
+    uploadedBy: { id: string; name: string; email: string } | null;
   } | null;
 };
 
@@ -60,6 +65,7 @@ function SortableMediaItem({
   section,
   onDelete,
   onMove,
+  onInfo,
   isDeleting,
 }: {
   item: MediaItem;
@@ -67,6 +73,7 @@ function SortableMediaItem({
   section: "featured" | "gallery";
   onDelete: (id: string) => void;
   onMove: (id: string, targetSection: "featured" | "gallery") => void;
+  onInfo: (item: MediaItem) => void;
   isDeleting: boolean;
 }) {
   const { ref, isDragging } = useSortable({
@@ -92,34 +99,50 @@ function SortableMediaItem({
         <GripVertical className="h-4 w-4 text-white" />
       </div>
 
-      {/* Media Preview */}
-      {isVideo ? (
-        <div className="relative h-full w-full">
-          <video
-            src={url}
-            className="h-full w-full object-cover"
-            muted
-            playsInline
-          />
-          <div className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-1">
-            <Film className="h-3 w-3 text-white" />
+      {/* Media Preview - Clickable to open info */}
+      <button
+        type="button"
+        className="absolute inset-0 z-0 cursor-pointer"
+        onClick={() => onInfo(item)}
+        aria-label="View media details"
+      >
+        {isVideo ? (
+          <div className="relative h-full w-full">
+            <video
+              src={url}
+              className="h-full w-full object-cover"
+              muted
+              playsInline
+            />
+            <div className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-1">
+              <Film className="h-3 w-3 text-white" />
+            </div>
           </div>
-        </div>
-      ) : (
-        <Image
-          src={url}
-          alt="Media preview"
-          fill
-          className="object-cover"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.style.display = "none";
-          }}
-        />
-      )}
+        ) : (
+          <Image
+            src={url}
+            alt="Media preview"
+            fill
+            className="object-cover"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = "none";
+            }}
+          />
+        )}
+      </button>
 
       {/* Actions */}
       <div className="absolute right-2 top-2 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <Button
+          variant="secondary"
+          size="sm"
+          className="h-7 w-7 p-0"
+          onClick={() => onInfo(item)}
+          title="View info"
+        >
+          <Info className="h-3 w-3" />
+        </Button>
         <Button
           variant="secondary"
           size="sm"
@@ -146,7 +169,7 @@ function SortableMediaItem({
 
       {/* File name tooltip */}
       {item.fileUpload?.name && (
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/80 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
           <p className="truncate text-xs text-white">{item.fileUpload.name}</p>
         </div>
       )}
@@ -238,6 +261,8 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
   const [deleteMediaId, setDeleteMediaId] = useState<string | null>(null);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [uploadSection, setUploadSection] = useState<"featured" | "gallery">("gallery");
+  const [infoMedia, setInfoMedia] = useState<MediaItem | null>(null);
+  const [copiedUrl, setCopiedUrl] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const utils = api.useUtils();
@@ -256,11 +281,7 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
   });
 
   const reorderMedia = api.gigs.reorderMedia.useMutation();
-  const moveToSection = api.gigs.moveMediaToSection.useMutation({
-    onSuccess: () => {
-      onRefetch();
-    },
-  });
+  const moveToSection = api.gigs.moveMediaToSection.useMutation();
 
   const handleDragStart = useCallback(() => {
     previousItems.current = items;
@@ -270,6 +291,7 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
     const { source } = event.operation;
     if (source?.type === "column") return;
     setItems((items) => move(items, event));
+    console.log("drag over", event, items);
   }, []);
 
   const handleDragEnd = useCallback(async (event: any) => {
@@ -277,7 +299,8 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
 
     if (event.canceled) {
       if (source?.type === "item") {
-        setItems(previousItems.current);
+        // setItems(previousItems.current);
+        console.log("drag end", event, items);
       }
       return;
     }
@@ -374,6 +397,33 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
     });
   };
 
+  const handleInfo = (item: MediaItem) => {
+    setInfoMedia(item);
+    setCopiedUrl(false);
+  };
+
+  const handleCopyUrl = async (url: string) => {
+    await navigator.clipboard.writeText(url);
+    setCopiedUrl(true);
+    setTimeout(() => setCopiedUrl(false), 2000);
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
+  const formatDate = (date: Date | string) => {
+    const d = typeof date === "string" ? new Date(date) : date;
+    return d.toLocaleString("en-US", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Upload Button */}
@@ -419,6 +469,7 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
                   section="featured"
                   onDelete={handleDelete}
                   onMove={handleMove}
+                  onInfo={handleInfo}
                   isDeleting={deleteMedia.isPending && deleteMediaId === id}
                 />
               );
@@ -442,6 +493,7 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
                   section="gallery"
                   onDelete={handleDelete}
                   onMove={handleMove}
+                  onInfo={handleInfo}
                   isDeleting={deleteMedia.isPending && deleteMediaId === id}
                 />
               );
@@ -582,6 +634,141 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Media Info Dialog */}
+      <Dialog open={!!infoMedia} onOpenChange={(open) => !open && setInfoMedia(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {infoMedia?.type === "video" ? (
+                <Film className="h-5 w-5" />
+              ) : (
+                <ImageIcon className="h-5 w-5" />
+              )}
+              Media Details
+            </DialogTitle>
+            <DialogDescription>
+              Information about this media file
+            </DialogDescription>
+          </DialogHeader>
+
+          {infoMedia && (
+            <div className="max-h-[80vh] space-y-3 overflow-y-auto overflow-x-hidden pr-1">
+              {/* Preview */}
+              <div className="relative aspect-video w-full overflow-hidden rounded-lg border bg-muted">
+                {infoMedia.type === "video" ? (
+                  <video
+                    src={getMediaDisplayUrl(infoMedia)}
+                    className="h-full w-full object-contain"
+                    controls
+                  />
+                ) : (
+                  <Image
+                    src={getMediaDisplayUrl(infoMedia)}
+                    alt={infoMedia.fileUpload?.name ?? "Media preview"}
+                    fill
+                    className="object-contain"
+                  />
+                )}
+              </div>
+
+              {/* Info Grid */}
+              <div className="grid gap-2 text-sm">
+                {/* File Name */}
+                <div className="rounded-lg bg-muted/50 p-2.5">
+                  <p className="text-xs font-medium uppercase text-muted-foreground">Name</p>
+                  <p className="font-medium text-sm break-all">{infoMedia.fileUpload?.name ?? "Unknown"}</p>
+                </div>
+
+                {/* Dimensions, Size & Type */}
+                <div className="grid grid-cols-2 gap-2">
+                  {infoMedia.fileUpload?.width && infoMedia.fileUpload?.height && (
+                    <div className="rounded-lg bg-muted/50 p-2.5">
+                      <p className="text-xs font-medium uppercase text-muted-foreground">Dimensions</p>
+                      <p className="font-medium text-sm">
+                        {infoMedia.fileUpload.width} × {infoMedia.fileUpload.height}
+                      </p>
+                    </div>
+                  )}
+                  <div className="rounded-lg bg-muted/50 p-2.5">
+                    <p className="text-xs font-medium uppercase text-muted-foreground">Size</p>
+                    <p className="font-medium text-sm">
+                      {infoMedia.fileUpload?.size
+                        ? formatFileSize(infoMedia.fileUpload.size)
+                        : "Unknown"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-muted/50 p-2.5">
+                    <p className="text-xs font-medium uppercase text-muted-foreground">Type</p>
+                    <p className="font-medium text-sm">{infoMedia.fileUpload?.mimeType ?? infoMedia.type}</p>
+                  </div>
+                  <div className="rounded-lg bg-muted/50 p-2.5">
+                    <p className="text-xs font-medium uppercase text-muted-foreground">Uploaded</p>
+                    <p className="font-medium text-sm">
+                      {infoMedia.fileUpload?.createdAt
+                        ? formatDate(infoMedia.fileUpload.createdAt)
+                        : "Unknown"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Uploaded By */}
+                {infoMedia.fileUpload?.uploadedBy && (
+                  <div className="rounded-lg bg-muted/50 p-2.5">
+                    <p className="text-xs font-medium uppercase text-muted-foreground">Uploaded By</p>
+                    <p className="font-medium text-sm">{infoMedia.fileUpload.uploadedBy.name}</p>
+                    <p className="text-xs text-muted-foreground">{infoMedia.fileUpload.uploadedBy.email}</p>
+                  </div>
+                )}
+
+                {/* URL */}
+                <div className="rounded-lg bg-muted/50 p-2.5">
+                  <p className="text-xs font-medium uppercase text-muted-foreground">URL</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <code className="min-w-0 flex-1 break-all rounded bg-background px-2 py-1 text-xs">
+                      {getMediaDisplayUrl(infoMedia)}
+                    </code>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 w-7 shrink-0 p-0"
+                      onClick={() => handleCopyUrl(getMediaDisplayUrl(infoMedia))}
+                    >
+                      {copiedUrl ? (
+                        <Check className="h-3 w-3 text-green-500" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 w-7 shrink-0 p-0"
+                      asChild
+                    >
+                      <a href={getMediaDisplayUrl(infoMedia)} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Section & Sort Order */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg bg-muted/50 p-2.5">
+                    <p className="text-xs font-medium uppercase text-muted-foreground">Section</p>
+                    <p className="font-medium text-sm capitalize">{infoMedia.section}</p>
+                  </div>
+                  <div className="rounded-lg bg-muted/50 p-2.5">
+                    <p className="text-xs font-medium uppercase text-muted-foreground">Sort Order</p>
+                    <p className="font-medium text-sm">{infoMedia.sortOrder}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
