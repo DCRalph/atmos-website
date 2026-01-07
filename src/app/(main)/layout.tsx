@@ -2,11 +2,15 @@
 
 import { UserIndicator } from "~/components/user-indicator";
 import { MainFooter } from "~/components/mainFooter";
-import SlideOverMenu from "~/components/SlideOverMenu";
+// import SlideOverMenu from "~/components/SlideOverMenu";
 import { useState } from "react";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { MobileNav } from "~/components/mobile-nav";
 import { AnimatePresence } from "motion/react";
+
+import dynamic from 'next/dynamic';
+
+const SlideOverMenu = dynamic(() => import('~/components/SlideOverMenu'), { ssr: false });
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -25,7 +29,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
       {!isMobile ? ( // Desktop layout
         <div className="w-full flex">
-          <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isHomePage={true}  />
+          <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isHomePage={true} />
           <div className="flex-1">
             {children}
           </div>
@@ -45,12 +49,12 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           <AnimatePresence initial={false} mode="wait">
             {isMenuOpen && (
               <div className="fixed z-200 top-0 left-0">
-                <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isHomePage={true}  />
+                <SlideOverMenu setIsMenuOpen={setIsMenuOpen} isHomePage={true} />
               </div>
             )}
           </AnimatePresence>
 
-          <div className={`transtion-transform duration-300 ease-out ${isMenuOpen ? "scale-95 blur-lg" : ""}`}>
+          <div className={`transtion-transform duration-700 ease-in-out ${isMenuOpen ? "scale-95 blur-lg pointer-events-none" : ""}`}>
             <MobileNav onMenuToggle={() => setIsMenuOpen(!isMenuOpen)} isMenuOpen={isMenuOpen} />
             {children}
           </div>

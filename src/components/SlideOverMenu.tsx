@@ -75,22 +75,22 @@ export default function SlideOverMenu({ setIsMenuOpen, isHomePage = false }: Sli
         isMobile && (
           <>
             <MotionButton
-              className="text-lg uppercase group w-min my-4 mx-4 cursor-pointer absolute top-0 left-0 ease-out"
+              className="text-lg uppercase group w-min cursor-pointer m-4 ease-out"
               onClick={() => setIsMenuOpen(false)}
 
               transition={{
-                duration: 0.3,
-                ease: "easeOut",
+                duration: 0.4,
+                ease: "anticipate",
               }}
 
               variants={{
                 hidden: {
-                  opacity: 0,
-                  x: "-100%",
-                  y: "-100%",
+                  // opacity: 0,
+                  x: "-150%",
+                  y: "-150%",
                 },
                 visible: {
-                  opacity: 1,
+                  // opacity: 1,
                   x: 0,
                   y: 0,
                 },
@@ -106,15 +106,25 @@ export default function SlideOverMenu({ setIsMenuOpen, isHomePage = false }: Sli
             </MotionButton>
 
             {/* centered logo */}
-            <motion.div className="absolute top-24 left-[50vw] -translate-x-1/2 w-[80vw] h-24"
+            <motion.div className="p-4 w-screen h-36"
+
+
+              transition={{ duration: 0.6, ease: "anticipate" }}
+
+              variants={{
+                hidden: {
+                  //  opacity: 1,
+                  y: "-130%"
+                },
+                visible: {
+                  //  opacity: 1,
+                  y: 0
+                },
+              }}
+
               initial="hidden"
               animate="visible"
               exit="hidden"
-              variants={{
-                hidden: { opacity: 0, y: "-100%" },
-                visible: { opacity: 1, y: 0 },
-              }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
             >
               <div className="relative w-full h-full">
                 <Image
@@ -123,7 +133,7 @@ export default function SlideOverMenu({ setIsMenuOpen, isHomePage = false }: Sli
                   fill
                   preload
                   className="object-contain dark:block hidden"
-                  sizes="(max-width: 640px) 10rem, 12rem"
+                  sizes="50vw"
                 />
                 <Image
                   src="/logo/atmos-black.png"
@@ -131,7 +141,7 @@ export default function SlideOverMenu({ setIsMenuOpen, isHomePage = false }: Sli
                   fill
                   preload
                   className="object-contain dark:hidden block"
-                  sizes="(max-width: 640px) 10rem, 12rem"
+                  sizes="50vw"
                 />
               </div>
             </motion.div>
@@ -142,14 +152,13 @@ export default function SlideOverMenu({ setIsMenuOpen, isHomePage = false }: Sli
 
 
 
-
-
       <div
-        className={`flex flex-col ${isMobile ? "justify-center" : "justify-start"} flex-1 gap-1 mt-2 ${orbitron.className} ${isMobile ? "mt-16" : "mt-2"}`}
+        // className={`flex flex-col ${isMobile ? "justify-center" : "justify-start"} flex-1 gap-1 mt-2 ${orbitron.className} ${isMobile ? "mt-16" : "mt-2"}`}
+        className={`flex flex-col flex-1 gap-1 mt-2 ${orbitron.className} ${isMobile ? "mt-6" : "mt-2"}`}
       >
         {
           MENU_ITEMS.map((item, idx) => (
-            <MenuItemComponent closeMenu={() => setIsMenuOpen(false)} item={item} idx={idx} key={item.label} isMobile={isMobile} />
+            <MenuItemComponent closeMenu={() => setIsMenuOpen(false)} item={item} idx={idx} key={item.label + "outer"} isMobile={isMobile} />
           ))
         }
       </div>
@@ -192,29 +201,29 @@ function MenuItemComponent({
 
   return (
     <MotionLink
+
       key={item.label}
       href={item.href}
       className={`${isActive ? "pl-10 font-bold!" : ""
-        } bg-accent text-white uppercase font-light text-2xl py-3 pl-8 tracking-wider hover:font-bold hover:bg-accent-muted transition-all ease-out hover:tracking-widest`}
+        } bg-accent-strong text-white uppercase font-light text-2xl py-3 pl-8 tracking-wider hover:font-bold hover:bg-accent-muted transition-all ease-out hover:tracking-widest`}
 
       style={{
         width: `${width}%`,
-        ["--hover-width" as string]: `${hoverWidth}%`,
       }}
 
       transition={{
-        duration: 0.3,
-        ease: "easeOut",
+        duration: 0.4,
+        ease: "anticipate",
         delay: (idx + 1) * 0.05,
       }}
 
       variants={{
         hidden: {
-          opacity: 0,
+          // opacity: 0.8,
           x: "-100%",
         },
         visible: {
-          opacity: 1,
+          // opacity: 1,
           x: 0,
         },
       }}
