@@ -13,6 +13,7 @@ type MediaItem = {
   url: string | null;
   section: string;
   sortOrder: number;
+  fileUploadId?: string | null;
   fileUpload?: {
     id: string;
     url: string;

@@ -9,12 +9,20 @@ const config = {
   images: {
     remotePatterns: [
       {
+        protocol: "http",
+        hostname: "localhost",
+      },
+      {
         protocol: "https",
         hostname: "*.googleusercontent.com",
       },
       {
         protocol: "https",
         hostname: "*.w-g.co",
+      },
+      {
+        protocol: "https",
+        hostname: "*.atmosmedia.co.nz",
       },
       {
         protocol: "https",

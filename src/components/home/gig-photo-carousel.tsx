@@ -8,6 +8,7 @@ import {
   CarouselPrevious,
 } from "~/components/ui/carousel";
 import Image from "next/image";
+import { getMediaDisplayUrl } from "~/lib/media-url";
 
 type MediaItem = {
   id: string;
@@ -15,6 +16,7 @@ type MediaItem = {
   url: string | null;
   section: string;
   sortOrder: number;
+  fileUploadId?: string | null;
   fileUpload?: {
     id: string;
     url: string;
@@ -26,11 +28,6 @@ type MediaItem = {
 type GigPhotoCarouselProps = {
   media: MediaItem[];
   gigTitle: string;
-};
-
-// Helper to get the displayable URL
-const getMediaUrl = (item: MediaItem): string => {
-  return item.fileUpload?.url ?? item.url ?? "";
 };
 
 export function GigPhotoCarousel({ media, gigTitle }: GigPhotoCarouselProps) {
@@ -73,7 +70,7 @@ export function GigPhotoCarousel({ media, gigTitle }: GigPhotoCarouselProps) {
             <CarouselItem key={photo.id} className="pl-2 md:pl-4">
               <div className="relative aspect-video overflow-hidden rounded-lg border border-white/10 bg-black/20">
                 <Image
-                  src={getMediaUrl(photo)}
+                  src={getMediaDisplayUrl(photo)}
                   alt={`${gigTitle} photo`}
                   fill
                   className="object-cover transition-transform duration-300 group-hover:scale-105"

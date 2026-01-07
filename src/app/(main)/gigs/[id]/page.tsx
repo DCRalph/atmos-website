@@ -1,6 +1,7 @@
 import { api } from "~/trpc/server";
 import GigDetailPage from "./GigDetail";
 import { type Metadata } from "next";
+import { getMediaDisplayUrl } from "~/lib/media-url";
 
 const DEFAULT_OG_IMAGE = "/favicon.ico";
 
@@ -18,7 +19,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const descriptionFromBody = cleanText(gig?.description ? String(gig?.description) : "");
   const description = subtitle || truncate(descriptionFromBody || "Atmos — sound, culture, nightlife.", 160);
 
-  const mediaImage = gig?.media?.find((item) => item.type === "photo")?.url ?? gig?.media?.[0]?.url ?? DEFAULT_OG_IMAGE;
+  const firstPhoto = gig?.media?.find((item) => item.type === "photo") ?? gig?.media?.[0];
+  const mediaImage = firstPhoto ? getMediaDisplayUrl(firstPhoto) : DEFAULT_OG_IMAGE;
   const canonical = `/gigs/${id}`;
 
   return {

@@ -500,3 +500,10 @@ export const deleteFile = async (fileIdOrKey: { id?: string; key?: string }) => 
   return record
 }
 
+
+// ============ URL Builder Functions ============
+// Re-exported from media-url.ts for backwards compatibility
+// Import directly from '~/lib/media-url' for client-side usage
+
+export { buildMediaUrl, buildGigImageUrl, getMediaDisplayUrl } from './media-url'
+

@@ -30,6 +30,7 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 import { Loader2, Upload, Trash2, GripVertical, X, ImageIcon, Film } from "lucide-react";
+import { getMediaDisplayUrl } from "~/lib/media-url";
 
 type MediaItem = {
   id: string;
@@ -37,6 +38,7 @@ type MediaItem = {
   url: string | null;
   section: string;
   sortOrder: number;
+  fileUploadId?: string | null;
   fileUpload: {
     id: string;
     url: string;
@@ -76,15 +78,14 @@ function SortableMediaItem({
     data: { section, item },
   });
 
-  const url = item.fileUpload?.url ?? item.url ?? "";
+  const url = getMediaDisplayUrl(item);
   const isVideo = item.type === "video";
 
   return (
     <div
       ref={ref}
-      className={`group relative aspect-video overflow-hidden rounded-lg border bg-muted transition-all ${
-        isDragging ? "opacity-50 scale-95 ring-2 ring-primary" : "hover:ring-1 hover:ring-primary/50"
-      }`}
+      className={`group relative aspect-video overflow-hidden rounded-lg border bg-muted transition-all ${isDragging ? "opacity-50 scale-95 ring-2 ring-primary" : "hover:ring-1 hover:ring-primary/50"
+        }`}
     >
       {/* Drag Handle */}
       <div className="absolute left-2 top-2 z-10 cursor-grab rounded bg-black/60 p-1 opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing">
@@ -177,9 +178,8 @@ function MediaSection({
   return (
     <Card
       ref={ref}
-      className={`transition-all ${
-        isDropTarget ? "ring-2 ring-primary ring-offset-2" : ""
-      }`}
+      className={`transition-all ${isDropTarget ? "ring-2 ring-primary ring-offset-2" : ""
+        }`}
     >
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
@@ -198,9 +198,8 @@ function MediaSection({
       </CardHeader>
       <CardContent>
         {isEmpty ? (
-          <div className={`flex h-32 items-center justify-center rounded-lg border-2 border-dashed transition-colors ${
-            isDropTarget ? "border-primary bg-primary/5" : "border-muted"
-          }`}>
+          <div className={`flex h-32 items-center justify-center rounded-lg border-2 border-dashed transition-colors ${isDropTarget ? "border-primary bg-primary/5" : "border-muted"
+            }`}>
             <p className="text-sm text-muted-foreground">
               {isDropTarget ? "Drop here" : "Drag items here"}
             </p>
@@ -220,10 +219,10 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
     featured: media.filter((m) => m.section === "featured").sort((a, b) => a.sortOrder - b.sortOrder).map((m) => m.id),
     gallery: media.filter((m) => m.section === "gallery").sort((a, b) => a.sortOrder - b.sortOrder).map((m) => m.id),
   }));
-  
+
   const previousItems = useRef(items);
   const mediaMap = useRef(new Map(media.map((m) => [m.id, m])));
-  
+
   // Update media map when props change
   if (media.length !== mediaMap.current.size || media.some((m) => !mediaMap.current.has(m.id))) {
     mediaMap.current = new Map(media.map((m) => [m.id, m]));
@@ -275,7 +274,7 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
 
   const handleDragEnd = useCallback(async (event: any) => {
     const { source } = event.operation;
-    
+
     if (event.canceled) {
       if (source?.type === "item") {
         setItems(previousItems.current);
