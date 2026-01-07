@@ -1,4 +1,3 @@
-import { type Metadata } from "next";
 import { notFound } from "next/navigation";
 import { StaticBackground } from "~/components/static-background";
 import { api } from "~/trpc/server";
@@ -7,62 +6,13 @@ import { MediaGallery } from "../../../../components/gigs/media-gallery";
 import { MarkdownContent } from "../../../../components/markdown-content";
 import Link from "next/link";
 import { Button } from "~/components/ui/button";
+import { authServer } from "~/lib/auth";
+import { ArrowLeft } from "lucide-react";
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-
-// export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-//   const { id } = params;
-//   const gig = await api.gigs.getById({ id });
-
-//   if (!gig) {
-//     return {
-//       title: "Gig not found | Atmos",
-//       description: "This gig could not be found.",
-//       alternates: { canonical: `/gigs/${id}` },
-//     };
-//   }
-
-//   const baseTitle = gig.title ?? "Gig";
-//   const subtitle = cleanText(gig.subtitle);
-//   const descriptionFromBody = cleanText(gig.description ? String(gig.description) : "");
-//   const description = subtitle || truncate(descriptionFromBody || "Atmos — sound, culture, nightlife.", 160);
-
-//   const mediaImage =
-//     gig.media?.find((item) => item.type === "photo")?.url ?? gig.media?.[0]?.url ?? DEFAULT_OG_IMAGE;
-//   const canonical = `/gigs/${id}`;
-
-//   return {
-//     title: `${baseTitle} | Atmos`,
-//     description,
-//     alternates: { canonical },
-//     openGraph: {
-//       title: `${baseTitle} | Atmos`,
-//       description,
-//       url: canonical,
-//       siteName: "Atmos",
-//       images: mediaImage
-//         ? [
-//             {
-//               url: mediaImage,
-//               width: 1200,
-//               height: 630,
-//               alt: baseTitle,
-//             },
-//           ]
-//         : undefined,
-//       type: "article",
-//     },
-//     twitter: {
-//       card: "summary_large_image",
-//       title: `${baseTitle} | Atmos`,
-//       description,
-//       images: mediaImage ? [mediaImage] : undefined,
-//     },
-//   };
-// }
 
 export default async function GigPage({ params }: PageProps) {
   const { id } = await params;
@@ -71,6 +21,10 @@ export default async function GigPage({ params }: PageProps) {
   if (!gig) {
     notFound();
   }
+
+  // Check if user is admin
+  const { user } = await authServer();
+  const isAdmin = user?.role === "ADMIN";
 
   const upcoming = !isGigPast(gig);
 
@@ -82,7 +36,7 @@ export default async function GigPage({ params }: PageProps) {
 
       <section className="relative z-10 min-h-dvh px-4 py-16">
         <div className="mx-auto max-w-6xl">
-          <div className="mb-8">
+          <div className="mb-8 flex gap-4">
             <Button
               variant="outline"
               size="sm"
@@ -92,9 +46,24 @@ export default async function GigPage({ params }: PageProps) {
                 href="/gigs"
                 className="text-white/60 hover:text-white transition-colors inline-flex items-center gap-2"
               >
-                ← Back to Gigs
+                <ArrowLeft className="w-4 h-4" />
+                Back to Gigs
               </Link>
             </Button>
+            {isAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+              >
+                <Link
+                  href={`/admin/gigs/${id}`}
+                  className="text-white/60 hover:text-white transition-colors inline-flex items-center gap-2"
+                >
+                  Manage Gig
+                </Link>
+              </Button>
+            )}
           </div>
 
           {/* Gig Header */}

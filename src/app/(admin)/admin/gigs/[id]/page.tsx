@@ -148,9 +148,9 @@ export default function GigManagementPage({ params }: PageProps) {
     >
       <div className="space-y-6">
         {/* Top Section: Core Details (left), Date/Time (top right), Tags (bottom right) */}
-        <div className="flex flex-col gap-6 lg:flex-row">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           {/* Core Details - Left Column */}
-          <Card className="flex-1">
+          <Card className="lg:row-span-2">
             <CardHeader>
               <CardTitle>Core Details</CardTitle>
               <CardDescription>Edit the basic information for this gig</CardDescription>
@@ -205,165 +205,162 @@ export default function GigManagementPage({ params }: PageProps) {
             </CardContent>
           </Card>
 
-          {/* Right Column: Date/Time (top) and Tags (bottom) */}
-          <div className="flex flex-1 flex-col gap-6">
-            {/* Date/Time Configuration - Top Right */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Date & Time</CardTitle>
-                <CardDescription>Configure when this gig starts and ends</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="gigStartTime">Gig Start Time *</Label>
-                    <DateTimePicker
-                      date={gigStartTime}
-                      onDateChange={setGigStartTime}
-                      placeholder="Select start time"
-                      showTime={true}
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="gigEndTime">Gig End Time (optional)</Label>
-                    <DateTimePicker
-                      date={gigEndTime}
-                      onDateChange={setGigEndTime}
-                      placeholder="Select end time"
-                      showTime={true}
-                    />
-                  </div>
-                  <Button type="submit" disabled={updateGig.isPending}>
-                    {updateGig.isPending ? "Saving..." : "Save Changes"}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
+          {/* Date/Time Configuration - Top Right */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Date & Time</CardTitle>
+              <CardDescription>Configure when this gig starts and ends</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="gigStartTime">Gig Start Time *</Label>
+                  <DateTimePicker
+                    date={gigStartTime}
+                    onDateChange={setGigStartTime}
+                    placeholder="Select start time"
+                    showTime={true}
+                    required
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="gigEndTime">Gig End Time (optional)</Label>
+                  <DateTimePicker
+                    date={gigEndTime}
+                    onDateChange={setGigEndTime}
+                    placeholder="Select end time"
+                    showTime={true}
+                  />
+                </div>
+                <Button type="submit" disabled={updateGig.isPending}>
+                  {updateGig.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
 
-            {/* Tag Management - Bottom Right */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Tags</CardTitle>
-                <CardDescription>Assign tags to categorize this gig</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  {gigTags.map((gt) => (
-                    <div
-                      key={gt.id}
-                      className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium"
-                      style={{
-                        backgroundColor: `${gt.gigTag.color}20`,
-                        borderColor: gt.gigTag.color,
-                        borderWidth: "1px",
-                        color: gt.gigTag.color,
+          {/* Tag Management - Bottom Right */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Tags</CardTitle>
+              <CardDescription>Assign tags to categorize this gig</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {gigTags.map((gt) => (
+                  <div
+                    key={gt.id}
+                    className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium"
+                    style={{
+                      backgroundColor: `${gt.gigTag.color}20`,
+                      borderColor: gt.gigTag.color,
+                      borderWidth: "1px",
+                      color: gt.gigTag.color,
+                    }}
+                  >
+                    <span>{gt.gigTag.name}</span>
+                    <button
+                      onClick={() => {
+                        setTagToRemove({ id: gt.gigTag.id, name: gt.gigTag.name });
+                        setIsRemoveDialogOpen(true);
                       }}
+                      disabled={removeTag.isPending}
+                      className="ml-1 hover:opacity-70 disabled:opacity-50"
+                      aria-label={`Remove ${gt.gigTag.name} tag`}
                     >
-                      <span>{gt.gigTag.name}</span>
-                      <button
-                        onClick={() => {
-                          setTagToRemove({ id: gt.gigTag.id, name: gt.gigTag.name });
-                          setIsRemoveDialogOpen(true);
-                        }}
-                        disabled={removeTag.isPending}
-                        className="ml-1 hover:opacity-70 disabled:opacity-50"
-                        aria-label={`Remove ${gt.gigTag.name} tag`}
-                      >
-                        {removeTag.isPending && tagToRemove?.id === gt.gigTag.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          "×"
-                        )}
-                      </button>
-                    </div>
-                  ))}
-                  {gigTags.length === 0 && (
-                    <p className="text-sm text-muted-foreground">No tags assigned</p>
-                  )}
-                </div>
-
-                <div className="border-t pt-4">
-                  <Label className="mb-2 block">Add Tags</Label>
-                  <p className="mb-3 text-xs text-muted-foreground">
-                    Search and click tags to assign them to this gig. You can assign multiple tags.
-                  </p>
-                  {availableTags.length > 0 || isLoadingTags ? (
-                    <>
-                      <div className="mb-3 relative">
-                        <Input
-                          ref={tagSearchInputRef}
-                          placeholder="Search tags by name or description..."
-                          value={tagSearch}
-                          onChange={(e) => setTagSearch(e.target.value)}
-                          className="w-full pr-8"
-                        />
-                        {isLoadingTags && (
-                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                          </div>
-                        )}
-                      </div>
-                      {isLoadingTags ? (
-                        <div className="flex items-center justify-center py-4">
-                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                          <span className="ml-2 text-sm text-muted-foreground">Searching...</span>
-                        </div>
-                      ) : availableTags.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                          {availableTags.map((tag) => (
-                            <Button
-                              key={tag.id}
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                setTagBeingAdded(tag.id);
-                                assignTag.mutate({
-                                  gigId: gig.id,
-                                  tagId: tag.id,
-                                });
-                                // Keep focus on input after clicking
-                                setTimeout(() => {
-                                  tagSearchInputRef.current?.focus();
-                                }, 0);
-                              }}
-                              disabled={assignTag.isPending && tagBeingAdded === tag.id}
-                              className="flex items-center gap-2"
-                            >
-                              {assignTag.isPending && tagBeingAdded === tag.id ? (
-                                <>
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                  <span>Adding...</span>
-                                </>
-                              ) : (
-                                <>
-                                  <div
-                                    className="h-3 w-3 rounded border"
-                                    style={{ backgroundColor: tag.color }}
-                                  />
-                                  <span>{tag.name}</span>
-                                </>
-                              )}
-                            </Button>
-                          ))}
-                        </div>
+                      {removeTag.isPending && tagToRemove?.id === gt.gigTag.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
-                        <p className="text-sm text-muted-foreground">
-                          No tags match your search.
-                        </p>
+                        "×"
                       )}
-                    </>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      All tags are assigned. Create more tags in the Gig Tags section.
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                    </button>
+                  </div>
+                ))}
+                {gigTags.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No tags assigned</p>
+                )}
+              </div>
+
+              <div className="border-t pt-4">
+                <Label className="mb-2 block">Add Tags</Label>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Search and click tags to assign them to this gig. You can assign multiple tags.
+                </p>
+                {availableTags.length > 0 || isLoadingTags ? (
+                  <>
+                    <div className="mb-3 relative">
+                      <Input
+                        ref={tagSearchInputRef}
+                        placeholder="Search tags by name or description..."
+                        value={tagSearch}
+                        onChange={(e) => setTagSearch(e.target.value)}
+                        className="w-full pr-8"
+                      />
+                      {isLoadingTags && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    {isLoadingTags ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        <span className="ml-2 text-sm text-muted-foreground">Searching...</span>
+                      </div>
+                    ) : availableTags.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {availableTags.map((tag) => (
+                          <Button
+                            key={tag.id}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setTagBeingAdded(tag.id);
+                              assignTag.mutate({
+                                gigId: gig.id,
+                                tagId: tag.id,
+                              });
+                              // Keep focus on input after clicking
+                              setTimeout(() => {
+                                tagSearchInputRef.current?.focus();
+                              }, 0);
+                            }}
+                            disabled={assignTag.isPending && tagBeingAdded === tag.id}
+                            className="flex items-center gap-2"
+                          >
+                            {assignTag.isPending && tagBeingAdded === tag.id ? (
+                              <>
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                <span>Adding...</span>
+                              </>
+                            ) : (
+                              <>
+                                <div
+                                  className="h-3 w-3 rounded border"
+                                  style={{ backgroundColor: tag.color }}
+                                />
+                                <span>{tag.name}</span>
+                              </>
+                            )}
+                          </Button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No tags match your search.
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    All tags are assigned. Create more tags in the Gig Tags section.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Media Management */}

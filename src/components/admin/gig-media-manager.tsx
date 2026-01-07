@@ -1,16 +1,37 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import { DragDropProvider } from "@dnd-kit/react";
-import { useSortable } from "@dnd-kit/react/sortable";
-import { useDroppable } from "@dnd-kit/react";
-import { move } from "@dnd-kit/helpers";
-import { CollisionPriority } from "@dnd-kit/abstract";
+import { useState, useRef, useEffect, useMemo } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragStartEvent,
+  type DragEndEvent,
+  type DragOverEvent,
+  useDroppable,
+  MeasuringStrategy,
+  closestCenter,
+} from "@dnd-kit/core";
+import { restrictToWindowEdges } from "@dnd-kit/modifiers";
+import {
+  SortableContext,
+  useSortable,
+  rectSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import Image from "next/image";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { Input } from "~/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 import { Label } from "~/components/ui/label";
 import {
   Dialog,
@@ -29,7 +50,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
-import { Loader2, Upload, Trash2, GripVertical, X, ImageIcon, Film, Info, Copy, Check, ExternalLink } from "lucide-react";
+import {
+  Loader2,
+  Upload,
+  Trash2,
+  GripVertical,
+  X,
+  ImageIcon,
+  Film,
+  Info,
+  Copy,
+  Check,
+  ExternalLink,
+  Save,
+  RotateCcw,
+} from "lucide-react";
 import { getMediaDisplayUrl } from "~/lib/media-url";
 
 type MediaItem = {
@@ -58,54 +93,58 @@ type GigMediaManagerProps = {
   onRefetch: () => void;
 };
 
+type SectionItems = {
+  featured: string[];
+  gallery: string[];
+};
+
 // Sortable media item component
 function SortableMediaItem({
   item,
-  index,
-  section,
   onDelete,
-  onMove,
   onInfo,
   isDeleting,
+  isDragOverlay = false,
 }: {
   item: MediaItem;
-  index: number;
-  section: "featured" | "gallery";
   onDelete: (id: string) => void;
-  onMove: (id: string, targetSection: "featured" | "gallery") => void;
   onInfo: (item: MediaItem) => void;
   isDeleting: boolean;
+  isDragOverlay?: boolean;
 }) {
-  const { ref, isDragging } = useSortable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id: item.id,
-    index,
-    type: "item",
-    accept: ["item"],
-    group: section,
-    data: { section, item },
+    data: {
+      type: "media",
+      item,
+      section: item.section,
+    },
   });
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
   const url = getMediaDisplayUrl(item);
   const isVideo = item.type === "video";
 
-  return (
-    <div
-      ref={ref}
-      className={`group relative aspect-video overflow-hidden rounded-lg border bg-muted transition-all ${isDragging ? "opacity-50 scale-95 ring-2 ring-primary" : "hover:ring-1 hover:ring-primary/50"
-        }`}
-    >
-      {/* Drag Handle */}
-      <div className="absolute left-2 top-2 z-10 cursor-grab rounded bg-black/60 p-1 opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing">
-        <GripVertical className="h-4 w-4 text-white" />
-      </div>
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 1 : 0,
+  };
 
-      {/* Media Preview - Clickable to open info */}
-      <button
-        type="button"
-        className="absolute inset-0 z-0 cursor-pointer"
-        onClick={() => onInfo(item)}
-        aria-label="View media details"
-      >
+  // For drag overlay, use simpler styling
+  if (isDragOverlay) {
+    return (
+      <div className="relative aspect-video w-64 overflow-hidden rounded-lg border-2 border-primary bg-muted shadow-2xl">
         {isVideo ? (
           <div className="relative h-full w-full">
             <video
@@ -123,10 +162,85 @@ function SortableMediaItem({
             src={url}
             alt="Media preview"
             fill
+            sizes="256px"
             className="object-cover"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.style.display = "none";
+          />
+        )}
+        {item.fileUpload?.name && (
+          <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/80 to-transparent p-2">
+            <p className="truncate text-xs text-white">{item.fileUpload.name}</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group relative aspect-video overflow-hidden rounded-lg border bg-muted transition-all ${isDragging
+          ? "opacity-50 scale-95 ring-2 ring-primary"
+          : "hover:ring-1 hover:ring-primary/50"
+        }`}
+    >
+      {/* Drag Handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="absolute left-2 top-2 z-10 cursor-grab rounded bg-black/60 p-1 opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing"
+      >
+        <GripVertical className="h-4 w-4 text-white" />
+      </div>
+
+      {/* Placeholder - shown while loading or on error */}
+      {(isLoading || hasError) && (
+        <div className="absolute inset-0 z-0 flex items-center justify-center bg-muted/50">
+          <div className="flex flex-col items-center gap-2 text-muted-foreground">
+            <ImageIcon className="h-12 w-12" />
+            <p className="text-xs">
+              {hasError ? "Failed to load" : "Loading..."}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Media Preview - Clickable to open info */}
+      <button
+        type="button"
+        className="absolute inset-0 z-0 cursor-pointer"
+        onClick={() => onInfo(item)}
+        aria-label="View media details"
+      >
+        {isVideo ? (
+          <div className="relative h-full w-full">
+            <video
+              src={url}
+              className="h-full w-full object-cover"
+              muted
+              playsInline
+              onLoadedData={() => setIsLoading(false)}
+              onError={() => {
+                setIsLoading(false);
+                setHasError(true);
+              }}
+            />
+            <div className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-1">
+              <Film className="h-3 w-3 text-white" />
+            </div>
+          </div>
+        ) : (
+          <Image
+            src={url}
+            alt="Media preview"
+            fill
+            sizes="30vw"
+            className={`object-cover transition-opacity ${isLoading || hasError ? "opacity-0" : "opacity-100"
+              }`}
+            onLoad={() => setIsLoading(false)}
+            onError={() => {
+              setIsLoading(false);
+              setHasError(true);
             }}
           />
         )}
@@ -173,27 +287,39 @@ function MediaSection({
   section,
   title,
   description,
-  children,
-  isEmpty,
+  items,
+  mediaMap,
+  hasChanges,
+  onDelete,
+  onInfo,
+  deleteMediaId,
+  isDeleting,
 }: {
   section: "featured" | "gallery";
   title: string;
   description: string;
-  children: React.ReactNode;
-  isEmpty: boolean;
+  items: string[];
+  mediaMap: Map<string, MediaItem>;
+  hasChanges: boolean;
+  onDelete: (id: string) => void;
+  onInfo: (item: MediaItem) => void;
+  deleteMediaId: string | null;
+  isDeleting: boolean;
 }) {
-  const { ref, isDropTarget } = useDroppable({
+  const { setNodeRef, isOver } = useDroppable({
     id: section,
-    type: "column",
-    accept: ["item"],
-    collisionPriority: CollisionPriority.Low,
+    data: {
+      type: "section",
+      section,
+      accepts: ["media"],
+    },
   });
 
   return (
     <Card
-      ref={ref}
-      className={`transition-all ${isDropTarget ? "ring-2 ring-primary ring-offset-2" : ""
-        }`}
+      ref={setNodeRef}
+      className={`transition-all ${isOver ? "ring-2 ring-primary ring-offset-2" : ""
+        } ${hasChanges ? "ring-2 ring-orange-500" : ""}`}
     >
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
@@ -207,56 +333,126 @@ function MediaSection({
             </span>
           )}
           <CardTitle className="text-lg">{title}</CardTitle>
+          {hasChanges && (
+            <span className="rounded bg-orange-500/20 px-2 py-0.5 text-xs font-medium text-orange-500">
+              Unsaved
+            </span>
+          )}
         </div>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
-        {isEmpty ? (
-          <div className={`flex h-32 items-center justify-center rounded-lg border-2 border-dashed transition-colors ${isDropTarget ? "border-primary bg-primary/5" : "border-muted"
-            }`}>
-            <p className="text-sm text-muted-foreground">
-              {isDropTarget ? "Drop here" : "Drag items here"}
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {children}
-          </div>
-        )}
+        <SortableContext items={items} strategy={rectSortingStrategy}>
+          {items.length === 0 ? (
+            <div
+              className={`flex h-32 items-center justify-center rounded-lg border-2 border-dashed transition-colors ${isOver ? "border-primary bg-primary/5" : "border-muted"
+                }`}
+            >
+              <p className="text-sm text-muted-foreground">
+                {isOver ? "Drop here" : "Drag items here"}
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {items.map((id) => {
+                const item = mediaMap.get(id);
+                if (!item) return null;
+                return (
+                  <SortableMediaItem
+                    key={id}
+                    item={item}
+                    onDelete={onDelete}
+                    onInfo={onInfo}
+                    isDeleting={isDeleting && deleteMediaId === id}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </SortableContext>
       </CardContent>
     </Card>
   );
 }
 
-export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProps) {
-  const [items, setItems] = useState<Record<"featured" | "gallery", string[]>>(() => ({
-    featured: media.filter((m) => m.section === "featured").sort((a, b) => a.sortOrder - b.sortOrder).map((m) => m.id),
-    gallery: media.filter((m) => m.section === "gallery").sort((a, b) => a.sortOrder - b.sortOrder).map((m) => m.id),
-  }));
+export function GigMediaManager({
+  gigId,
+  media,
+  onRefetch,
+}: GigMediaManagerProps) {
+  // Build initial state from props
+  const getInitialItems = (): SectionItems => ({
+    featured: media
+      .filter((m) => m.section === "featured")
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((m) => m.id),
+    gallery: media
+      .filter((m) => m.section === "gallery")
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((m) => m.id),
+  });
 
-  const previousItems = useRef(items);
-  const mediaMap = useRef(new Map(media.map((m) => [m.id, m])));
+  const [items, setItems] = useState<SectionItems>(getInitialItems);
+  const [savedItems, setSavedItems] = useState<SectionItems>(getInitialItems);
+  const [activeItem, setActiveItem] = useState<MediaItem | null>(null);
 
-  // Update media map when props change
-  if (media.length !== mediaMap.current.size || media.some((m) => !mediaMap.current.has(m.id))) {
-    mediaMap.current = new Map(media.map((m) => [m.id, m]));
-    setItems({
-      featured: media.filter((m) => m.section === "featured").sort((a, b) => a.sortOrder - b.sortOrder).map((m) => m.id),
-      gallery: media.filter((m) => m.section === "gallery").sort((a, b) => a.sortOrder - b.sortOrder).map((m) => m.id),
-    });
-  }
+  // Build media map
+  const mediaMap = useMemo(
+    () => new Map(media.map((m) => [m.id, m])),
+    [media]
+  );
+
+  // Reset items when media prop changes (after server sync)
+  useEffect(() => {
+    const newItems = getInitialItems();
+    setItems(newItems);
+    setSavedItems(newItems);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [media]);
+
+  // Check if there are unsaved changes
+  const hasChanges = useMemo(() => {
+    return (
+      JSON.stringify(items.featured) !== JSON.stringify(savedItems.featured) ||
+      JSON.stringify(items.gallery) !== JSON.stringify(savedItems.gallery)
+    );
+  }, [items, savedItems]);
+
+  const hasFeaturedChanges = useMemo(() => {
+    return (
+      JSON.stringify(items.featured) !== JSON.stringify(savedItems.featured)
+    );
+  }, [items.featured, savedItems.featured]);
+
+  const hasGalleryChanges = useMemo(() => {
+    return (
+      JSON.stringify(items.gallery) !== JSON.stringify(savedItems.gallery)
+    );
+  }, [items.gallery, savedItems.gallery]);
 
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [deleteMediaId, setDeleteMediaId] = useState<string | null>(null);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const [uploadSection, setUploadSection] = useState<"featured" | "gallery">("gallery");
+  const [uploadSection, setUploadSection] = useState<"featured" | "gallery">(
+    "gallery"
+  );
   const [infoMedia, setInfoMedia] = useState<MediaItem | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const utils = api.useUtils();
+
+  // Sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
 
   const uploadMedia = api.gigs.uploadMedia.useMutation({
     onSuccess: () => {
@@ -274,52 +470,188 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
   const reorderMedia = api.gigs.reorderMedia.useMutation();
   const moveToSection = api.gigs.moveMediaToSection.useMutation();
 
-  const handleDragStart = useCallback(() => {
-    previousItems.current = items;
-  }, [items]);
+  // Find which section an item is in
+  const findSection = (id: string): "featured" | "gallery" | null => {
+    if (items.featured.includes(id)) return "featured";
+    if (items.gallery.includes(id)) return "gallery";
+    return null;
+  };
 
-  const handleDragOver = useCallback((event: any) => {
-    const { source } = event.operation;
-    if (source?.type === "column") return;
-    setItems((items) => move(items, event));
-    console.log("drag over", event, items);
-  }, []);
-
-  const handleDragEnd = useCallback(async (event: any) => {
-    const { source } = event.operation;
-
-    if (event.canceled) {
-      if (source?.type === "item") {
-        // setItems(previousItems.current);
-        console.log("drag end", event, items);
-      }
-      return;
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const item = mediaMap.get(active.id as string);
+    if (item) {
+      setActiveItem(item);
     }
+  };
 
-    // Save the new order to the database
-    const featured = items.featured;
-    const gallery = items.gallery;
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) return;
 
-    // Check if the item moved between sections
-    const sourceSection = previousItems.current.featured.includes(source.id) ? "featured" : "gallery";
-    const targetSection = items.featured.includes(source.id) ? "featured" : "gallery";
+    const activeId = active.id as string;
+    const overId = over.id as string;
 
-    if (sourceSection !== targetSection) {
-      // Item moved between sections
-      await moveToSection.mutateAsync({
-        mediaId: source.id,
-        targetSection,
-        targetIndex: items[targetSection].indexOf(source.id),
-      });
+    const activeSection = findSection(activeId);
+    let overSection: "featured" | "gallery" | null = null;
+
+    // Check if dropping on a section directly
+    if (overId === "featured" || overId === "gallery") {
+      overSection = overId;
     } else {
-      // Item reordered within same section
-      await reorderMedia.mutateAsync({
-        gigId,
-        section: targetSection,
-        mediaIds: items[targetSection],
+      overSection = findSection(overId);
+    }
+
+    if (!activeSection || !overSection) return;
+
+    // Moving between sections
+    if (activeSection !== overSection) {
+      setItems((prev) => {
+        const activeItems = [...prev[activeSection]];
+        const overItems = [...prev[overSection ?? "gallery"]];
+
+        const activeIndex = activeItems.indexOf(activeId);
+        activeItems.splice(activeIndex, 1);
+
+        // Find insert position
+        let insertIndex = overItems.length;
+        if (overId !== overSection) {
+          const overIndex = overItems.indexOf(overId);
+          if (overIndex !== -1) {
+            insertIndex = overIndex;
+          }
+        }
+
+        overItems.splice(insertIndex, 0, activeId);
+
+        return {
+          ...prev,
+          [activeSection]: activeItems,
+          [overSection ?? "gallery"]: overItems,
+        };
       });
     }
-  }, [items, gigId, moveToSection, reorderMedia]);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveItem(null);
+
+    if (!over) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    if (activeId === overId) return;
+
+    const activeSection = findSection(activeId);
+    let overSection: "featured" | "gallery" | null = null;
+
+    if (overId === "featured" || overId === "gallery") {
+      overSection = overId;
+    } else {
+      overSection = findSection(overId);
+    }
+
+    if (!activeSection || !overSection) return;
+
+    // Reorder within same section
+    if (activeSection === overSection && overId !== overSection) {
+      setItems((prev) => {
+        const sectionItems = [...prev[activeSection]];
+        const oldIndex = sectionItems.indexOf(activeId);
+        const newIndex = sectionItems.indexOf(overId);
+
+        if (oldIndex !== -1 && newIndex !== -1) {
+          return {
+            ...prev,
+            [activeSection]: arrayMove(sectionItems, oldIndex, newIndex),
+          };
+        }
+        return prev;
+      });
+    }
+  };
+
+  const handleDragCancel = () => {
+    setActiveItem(null);
+  };
+
+  // Save changes to server
+  const handleSaveChanges = async () => {
+    setIsSaving(true);
+    try {
+      const promises: Promise<unknown>[] = [];
+
+      // Check for items that moved between sections
+      for (const id of items.featured) {
+        if (savedItems.gallery.includes(id)) {
+          // Item moved from gallery to featured
+          promises.push(
+            moveToSection.mutateAsync({
+              mediaId: id,
+              targetSection: "featured",
+              targetIndex: items.featured.indexOf(id),
+            })
+          );
+        }
+      }
+
+      for (const id of items.gallery) {
+        if (savedItems.featured.includes(id)) {
+          // Item moved from featured to gallery
+          promises.push(
+            moveToSection.mutateAsync({
+              mediaId: id,
+              targetSection: "gallery",
+              targetIndex: items.gallery.indexOf(id),
+            })
+          );
+        }
+      }
+
+      // Wait for section moves first
+      await Promise.all(promises);
+
+      // Then update order for each section
+      const reorderPromises: Promise<unknown>[] = [];
+
+      if (hasFeaturedChanges && items.featured.length > 0) {
+        reorderPromises.push(
+          reorderMedia.mutateAsync({
+            gigId,
+            section: "featured",
+            mediaIds: items.featured,
+          })
+        );
+      }
+
+      if (hasGalleryChanges && items.gallery.length > 0) {
+        reorderPromises.push(
+          reorderMedia.mutateAsync({
+            gigId,
+            section: "gallery",
+            mediaIds: items.gallery,
+          })
+        );
+      }
+
+      await Promise.all(reorderPromises);
+
+      // Update saved state
+      setSavedItems({ ...items });
+      onRefetch();
+    } catch (error) {
+      console.error("Failed to save changes:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Discard changes
+  const handleDiscardChanges = () => {
+    setItems({ ...savedItems });
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -327,7 +659,6 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
       setPendingFiles(files);
       setIsUploadDialogOpen(true);
     }
-    // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -344,7 +675,6 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
         const file = pendingFiles[i];
         if (!file) continue;
 
-        // Convert to base64
         const arrayBuffer = await file.arrayBuffer();
         const base64 = Buffer.from(arrayBuffer).toString("base64");
         const dataUrl = `data:${file.type};base64,${base64}`;
@@ -381,13 +711,6 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
     }
   };
 
-  const handleMove = (mediaId: string, targetSection: "featured" | "gallery") => {
-    moveToSection.mutate({
-      mediaId,
-      targetSection,
-    });
-  };
-
   const handleInfo = (item: MediaItem) => {
     setInfoMedia(item);
     setCopiedUrl(false);
@@ -417,8 +740,8 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
 
   return (
     <div className="space-y-6">
-      {/* Upload Button */}
-      <div className="flex items-center gap-4">
+      {/* Upload Button & Save Controls */}
+      <div className="flex flex-wrap items-center gap-4">
         <input
           ref={fileInputRef}
           type="file"
@@ -431,67 +754,111 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
           <Upload className="mr-2 h-4 w-4" />
           Upload Media
         </Button>
+
+        {hasChanges && (
+          <>
+            <div className="h-6 w-px bg-border" />
+            <Button
+              onClick={handleSaveChanges}
+              disabled={isSaving}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              {isSaving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              Save Changes
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleDiscardChanges}
+              disabled={isSaving}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Discard
+            </Button>
+          </>
+        )}
+
         <p className="text-sm text-muted-foreground">
-          Drag and drop to reorder. Move items between Featured and Gallery sections.
+          {hasChanges
+            ? "You have unsaved changes. Drag items to reorder, then save."
+            : "Drag and drop to reorder. Move items between Featured and Gallery sections."}
         </p>
       </div>
 
+      {/* Unsaved Changes Banner */}
+      {hasChanges && (
+        <div className="flex items-center gap-3 rounded-lg border-2 border-orange-500 bg-orange-500/10 p-4">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-500/20">
+            <Save className="h-4 w-4 text-orange-500" />
+          </div>
+          <div className="flex-1">
+            <p className="font-medium text-orange-500">Unsaved Changes</p>
+            <p className="text-sm text-muted-foreground">
+              You have rearranged media items. Click "Save Changes" to persist
+              your changes.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* DnD Sections */}
-      <DragDropProvider
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+        modifiers={[restrictToWindowEdges]}
+        measuring={{
+          droppable: {
+            strategy: MeasuringStrategy.Always,
+          },
+        }}
       >
         <div className="grid gap-6 lg:grid-cols-1">
           <MediaSection
             section="featured"
             title="Featured Media"
             description="Highlighted media shown prominently on the gig page"
-            isEmpty={items.featured.length === 0}
-          >
-            {items.featured.map((id, index) => {
-              const item = mediaMap.current.get(id);
-              if (!item) return null;
-              return (
-                <SortableMediaItem
-                  key={id}
-                  item={item}
-                  index={index}
-                  section="featured"
-                  onDelete={handleDelete}
-                  onMove={handleMove}
-                  onInfo={handleInfo}
-                  isDeleting={deleteMedia.isPending && deleteMediaId === id}
-                />
-              );
-            })}
-          </MediaSection>
+            items={items.featured}
+            mediaMap={mediaMap}
+            hasChanges={hasFeaturedChanges}
+            onDelete={handleDelete}
+            onInfo={handleInfo}
+            deleteMediaId={deleteMediaId}
+            isDeleting={deleteMedia.isPending}
+          />
 
           <MediaSection
             section="gallery"
             title="Gallery"
             description="Additional media shown in the gallery section"
-            isEmpty={items.gallery.length === 0}
-          >
-            {items.gallery.map((id, index) => {
-              const item = mediaMap.current.get(id);
-              if (!item) return null;
-              return (
-                <SortableMediaItem
-                  key={id}
-                  item={item}
-                  index={index}
-                  section="gallery"
-                  onDelete={handleDelete}
-                  onMove={handleMove}
-                  onInfo={handleInfo}
-                  isDeleting={deleteMedia.isPending && deleteMediaId === id}
-                />
-              );
-            })}
-          </MediaSection>
+            items={items.gallery}
+            mediaMap={mediaMap}
+            hasChanges={hasGalleryChanges}
+            onDelete={handleDelete}
+            onInfo={handleInfo}
+            deleteMediaId={deleteMediaId}
+            isDeleting={deleteMedia.isPending}
+          />
         </div>
-      </DragDropProvider>
+
+        <DragOverlay modifiers={[restrictToWindowEdges]}>
+          {activeItem && (
+            <SortableMediaItem
+              item={activeItem}
+              onDelete={handleDelete}
+              onInfo={handleInfo}
+              isDeleting={false}
+              isDragOverlay
+            />
+          )}
+        </DragOverlay>
+      </DndContext>
 
       {/* Upload Dialog */}
       <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
@@ -499,7 +866,8 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
           <DialogHeader>
             <DialogTitle>Upload Media</DialogTitle>
             <DialogDescription>
-              Upload {pendingFiles.length} file{pendingFiles.length !== 1 ? "s" : ""} to the gig
+              Upload {pendingFiles.length} file
+              {pendingFiles.length !== 1 ? "s" : ""} to the gig
             </DialogDescription>
           </DialogHeader>
 
@@ -507,13 +875,16 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
             {/* File Preview */}
             <div className="grid max-h-60 gap-2 overflow-y-auto rounded-lg border p-2">
               {pendingFiles.map((file, i) => (
-                <div key={i} className="flex items-center gap-3 rounded bg-muted/50 p-2">
+                <div
+                  key={i}
+                  className="flex items-center gap-3 rounded bg-muted/50 p-2"
+                >
                   {file.type.startsWith("image/") ? (
                     <ImageIcon className="h-5 w-5 text-muted-foreground" />
                   ) : (
                     <Film className="h-5 w-5 text-muted-foreground" />
                   )}
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{file.name}</p>
                     <p className="text-xs text-muted-foreground">
                       {(file.size / 1024 / 1024).toFixed(2)} MB
@@ -523,7 +894,11 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
                     variant="ghost"
                     size="sm"
                     className="h-6 w-6 p-0"
-                    onClick={() => setPendingFiles((files) => files.filter((_, idx) => idx !== i))}
+                    onClick={() =>
+                      setPendingFiles((files) =>
+                        files.filter((_, idx) => idx !== i)
+                      )
+                    }
                   >
                     <X className="h-3 w-3" />
                   </Button>
@@ -579,7 +954,10 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
               >
                 Cancel
               </Button>
-              <Button onClick={handleUpload} disabled={isUploading || pendingFiles.length === 0}>
+              <Button
+                onClick={handleUpload}
+                disabled={isUploading || pendingFiles.length === 0}
+              >
                 {isUploading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -588,7 +966,8 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
                 ) : (
                   <>
                     <Upload className="mr-2 h-4 w-4" />
-                    Upload {pendingFiles.length} file{pendingFiles.length !== 1 ? "s" : ""}
+                    Upload {pendingFiles.length} file
+                    {pendingFiles.length !== 1 ? "s" : ""}
                   </>
                 )}
               </Button>
@@ -598,16 +977,22 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteMediaId} onOpenChange={(open) => !open && setDeleteMediaId(null)}>
+      <AlertDialog
+        open={!!deleteMediaId}
+        onOpenChange={(open) => !open && setDeleteMediaId(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Media</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this media? This action cannot be undone.
+              Are you sure you want to delete this media? This action cannot be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteMedia.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteMedia.isPending}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleteMedia.isPending}
@@ -658,6 +1043,7 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
                     src={getMediaDisplayUrl(infoMedia)}
                     alt={infoMedia.fileUpload?.name ?? "Media preview"}
                     fill
+                    sizes="30vw"
                     className="object-contain"
                   />
                 )}
@@ -667,35 +1053,51 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
               <div className="grid gap-2 text-sm">
                 {/* File Name */}
                 <div className="rounded-lg bg-muted/50 p-2.5">
-                  <p className="text-xs font-medium uppercase text-muted-foreground">Name</p>
-                  <p className="font-medium text-sm break-all">{infoMedia.fileUpload?.name ?? "Unknown"}</p>
+                  <p className="text-xs font-medium uppercase text-muted-foreground">
+                    Name
+                  </p>
+                  <p className="break-all text-sm font-medium">
+                    {infoMedia.fileUpload?.name ?? "Unknown"}
+                  </p>
                 </div>
 
                 {/* Dimensions, Size & Type */}
                 <div className="grid grid-cols-2 gap-2">
-                  {infoMedia.fileUpload?.width && infoMedia.fileUpload?.height && (
-                    <div className="rounded-lg bg-muted/50 p-2.5">
-                      <p className="text-xs font-medium uppercase text-muted-foreground">Dimensions</p>
-                      <p className="font-medium text-sm">
-                        {infoMedia.fileUpload.width} × {infoMedia.fileUpload.height}
-                      </p>
-                    </div>
-                  )}
+                  {infoMedia.fileUpload?.width &&
+                    infoMedia.fileUpload?.height && (
+                      <div className="rounded-lg bg-muted/50 p-2.5">
+                        <p className="text-xs font-medium uppercase text-muted-foreground">
+                          Dimensions
+                        </p>
+                        <p className="text-sm font-medium">
+                          {infoMedia.fileUpload.width} ×{" "}
+                          {infoMedia.fileUpload.height}
+                        </p>
+                      </div>
+                    )}
                   <div className="rounded-lg bg-muted/50 p-2.5">
-                    <p className="text-xs font-medium uppercase text-muted-foreground">Size</p>
-                    <p className="font-medium text-sm">
+                    <p className="text-xs font-medium uppercase text-muted-foreground">
+                      Size
+                    </p>
+                    <p className="text-sm font-medium">
                       {infoMedia.fileUpload?.size
                         ? formatFileSize(infoMedia.fileUpload.size)
                         : "Unknown"}
                     </p>
                   </div>
                   <div className="rounded-lg bg-muted/50 p-2.5">
-                    <p className="text-xs font-medium uppercase text-muted-foreground">Type</p>
-                    <p className="font-medium text-sm">{infoMedia.fileUpload?.mimeType ?? infoMedia.type}</p>
+                    <p className="text-xs font-medium uppercase text-muted-foreground">
+                      Type
+                    </p>
+                    <p className="text-sm font-medium">
+                      {infoMedia.fileUpload?.mimeType ?? infoMedia.type}
+                    </p>
                   </div>
                   <div className="rounded-lg bg-muted/50 p-2.5">
-                    <p className="text-xs font-medium uppercase text-muted-foreground">Uploaded</p>
-                    <p className="font-medium text-sm">
+                    <p className="text-xs font-medium uppercase text-muted-foreground">
+                      Uploaded
+                    </p>
+                    <p className="text-sm font-medium">
                       {infoMedia.fileUpload?.createdAt
                         ? formatDate(infoMedia.fileUpload.createdAt)
                         : "Unknown"}
@@ -706,15 +1108,23 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
                 {/* Uploaded By */}
                 {infoMedia.fileUpload?.uploadedBy && (
                   <div className="rounded-lg bg-muted/50 p-2.5">
-                    <p className="text-xs font-medium uppercase text-muted-foreground">Uploaded By</p>
-                    <p className="font-medium text-sm">{infoMedia.fileUpload.uploadedBy.name}</p>
-                    <p className="text-xs text-muted-foreground">{infoMedia.fileUpload.uploadedBy.email}</p>
+                    <p className="text-xs font-medium uppercase text-muted-foreground">
+                      Uploaded By
+                    </p>
+                    <p className="text-sm font-medium">
+                      {infoMedia.fileUpload.uploadedBy.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {infoMedia.fileUpload.uploadedBy.email}
+                    </p>
                   </div>
                 )}
 
                 {/* URL */}
                 <div className="rounded-lg bg-muted/50 p-2.5">
-                  <p className="text-xs font-medium uppercase text-muted-foreground">URL</p>
+                  <p className="text-xs font-medium uppercase text-muted-foreground">
+                    URL
+                  </p>
                   <div className="mt-1 flex items-center gap-2">
                     <code className="min-w-0 flex-1 break-all rounded bg-background px-2 py-1 text-xs">
                       {getMediaDisplayUrl(infoMedia)}
@@ -723,7 +1133,9 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
                       variant="outline"
                       size="sm"
                       className="h-7 w-7 shrink-0 p-0"
-                      onClick={() => handleCopyUrl(getMediaDisplayUrl(infoMedia))}
+                      onClick={() =>
+                        handleCopyUrl(getMediaDisplayUrl(infoMedia))
+                      }
                     >
                       {copiedUrl ? (
                         <Check className="h-3 w-3 text-green-500" />
@@ -737,7 +1149,11 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
                       className="h-7 w-7 shrink-0 p-0"
                       asChild
                     >
-                      <a href={getMediaDisplayUrl(infoMedia)} target="_blank" rel="noopener noreferrer">
+                      <a
+                        href={getMediaDisplayUrl(infoMedia)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         <ExternalLink className="h-3 w-3" />
                       </a>
                     </Button>
@@ -747,12 +1163,18 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
                 {/* Section & Sort Order */}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-lg bg-muted/50 p-2.5">
-                    <p className="text-xs font-medium uppercase text-muted-foreground">Section</p>
-                    <p className="font-medium text-sm capitalize">{infoMedia.section}</p>
+                    <p className="text-xs font-medium uppercase text-muted-foreground">
+                      Section
+                    </p>
+                    <p className="text-sm font-medium capitalize">
+                      {infoMedia.section}
+                    </p>
                   </div>
                   <div className="rounded-lg bg-muted/50 p-2.5">
-                    <p className="text-xs font-medium uppercase text-muted-foreground">Sort Order</p>
-                    <p className="font-medium text-sm">{infoMedia.sortOrder}</p>
+                    <p className="text-xs font-medium uppercase text-muted-foreground">
+                      Sort Order
+                    </p>
+                    <p className="text-sm font-medium">{infoMedia.sortOrder}</p>
                   </div>
                 </div>
               </div>
@@ -763,4 +1185,3 @@ export function GigMediaManager({ gigId, media, onRefetch }: GigMediaManagerProp
     </div>
   );
 }
-

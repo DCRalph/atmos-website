@@ -4,7 +4,27 @@ import { StaticBackground } from "~/components/static-background";
 import { CrewMember } from "~/components/crew/crew-member";
 import Link from "next/link";
 import { api } from "~/trpc/react";
-import { Loader2 } from "lucide-react";
+import { Skeleton } from "~/components/ui/skeleton";
+
+function CrewMemberSkeleton() {
+  return (
+    <div className="group relative overflow-hidden rounded-lg border border-zinc/20 bg-black/20 p-4 sm:p-6 md:p-8 backdrop-blur-sm">
+      <div className="mb-4 sm:mb-6 aspect-square w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 relative rounded-full overflow-hidden bg-white/10 mx-auto flex items-center justify-center">
+        <Skeleton className="w-full h-full rounded-full bg-white/20" />
+      </div>
+
+      <div className="text-center">
+        <Skeleton className="h-6 sm:h-7 w-32 mx-auto mb-2 bg-white/20" />
+        <Skeleton className="h-4 w-24 mx-auto mb-4 sm:mb-6 bg-white/10" />
+
+        <div className="flex items-center justify-center gap-3 sm:gap-4 flex-wrap">
+          <Skeleton className="h-4 w-20 bg-white/10" />
+          <Skeleton className="h-4 w-24 bg-white/10" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function CrewPage() {
   const { data: crewMembers, isLoading: isLoadingCrewMembers } = api.crew.getAll.useQuery();
@@ -30,9 +50,11 @@ export default function CrewPage() {
 
           <div className="grid gap-6 sm:gap-8 grid-cols-2 md:grid-cols-3">
             {isLoadingCrewMembers ? (
-              <div className="flex items-center justify-center">
-                <Loader2 className="w-4 h-4 animate-spin" />
-              </div>
+              <>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <CrewMemberSkeleton key={i} />
+                ))}
+              </>
             ) : (
               crewMembers?.map((member) => (
                 <CrewMember

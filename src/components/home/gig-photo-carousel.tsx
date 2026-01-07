@@ -82,8 +82,10 @@ export function GigPhotoCarousel({ media, gigTitle }: GigPhotoCarouselProps) {
         </CarouselContent>
         {photosToShow.length > 1 && (
           <>
-            <CarouselPrevious className="absolute left-2 top-1/2 h-8 w-8 -translate-y-1/2 border-white/20 bg-black/60 text-white backdrop-blur-sm hover:bg-black/80 hover:border-white/40" />
-            <CarouselNext className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 border-white/20 bg-black/60 text-white backdrop-blur-sm hover:bg-black/80 hover:border-white/40" />
+            <div>
+              <CarouselPrevious className="absolute left-2 top-1/2 h-8 w-8 -translate-y-1/2 border-white/20 bg-black/60 text-white backdrop-blur-sm hover:bg-black/80 hover:border-white/40" />
+              <CarouselNext className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 border-white/20 bg-black/60 text-white backdrop-blur-sm hover:bg-black/80 hover:border-white/40" />
+            </div>
           </>
         )}
       </Carousel>

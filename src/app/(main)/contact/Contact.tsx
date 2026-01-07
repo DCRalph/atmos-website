@@ -16,15 +16,15 @@ export default function ContactPage() {
             HIT US UP
           </h1>
 
-          <div className="flex justify-around gap-6 flex-col md:flex-row">
-            <div className="rounded-lg border border-white/10 bg-white/5 backdrop-blur-sm p-4 sm:p-6 md:p-8 ">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="rounded-lg border border-white/10 bg-white/5 backdrop-blur-sm p-4 sm:p-6 md:p-8">
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 text-center tracking-wide">
                 Drop us a line below.
               </h2>
               <ContactForm />
             </div>
 
-            <div className="flex flex-col gap-6">
+            <div className="grid grid-cols-1 gap-6 content-start">
               <InstagramDM />
               <ProfessionalEnquiries />
             </div>

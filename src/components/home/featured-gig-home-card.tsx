@@ -5,6 +5,8 @@ import { formatDate } from "~/lib/date-utils"
 import { Badge } from "~/components/ui/badge"
 import { isLightColor } from "~/lib/utils"
 import { GigPhotoCarousel } from "./gig-photo-carousel"
+import Link from "next/link"
+import { ArrowUpRight } from "lucide-react"
 
 type MediaItem = {
   id: string
@@ -34,10 +36,10 @@ type FeaturedGigCardProps = {
   gig: Gig
 }
 
+
 export function FeaturedGigHomeCard({ gig }: FeaturedGigCardProps) {
   return (
-    <motion.a
-      href={`/gigs/${gig.id}`}
+    <motion.div
       className="group relative overflow-hidden rounded-none border-2 border-white/10 bg-black/90 p-6 sm:p-8 backdrop-blur-sm transition-all hover:border-accent-muted hover:bg-black hover:shadow-[0_0_25px_rgba(239,68,68,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-muted lg:col-span-3"
       initial={{ opacity: 0, y: 10 }}
       whileInView={{ opacity: 1, y: 0 }}
@@ -62,9 +64,22 @@ export function FeaturedGigHomeCard({ gig }: FeaturedGigCardProps) {
               MOST RECENT
             </span>
           </div>
-          <div className="text-xs font-bold uppercase tracking-wider text-white/60 transition-colors group-hover:text-accent-muted">
-            {formatDate(gig.gigStartTime, "long")}
+
+          <div className="flex items-center gap-4">
+            <div className="text-xs font-bold uppercase tracking-wider text-white/60 transition-colors group-hover:text-accent-muted">
+              {formatDate(gig.gigStartTime, "long")}
+            </div>
+
+            <Link
+              href={`/gigs/${gig.id}`}
+              className="group flex shrink-0 items-center gap-2 rounded-none border-2 border-white/30 bg-transparent px-4 py-2 text-xs font-black uppercase tracking-wider text-white transition-all hover:border-accent-muted hover:bg-accent-muted/10 hover:text-white"
+            >
+              View Details
+              <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </Link>
+
           </div>
+
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr] lg:items-end">
@@ -113,6 +128,6 @@ export function FeaturedGigHomeCard({ gig }: FeaturedGigCardProps) {
           )}
         </div>
       </div>
-    </motion.a>
+    </motion.div>
   )
 }

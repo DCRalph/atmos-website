@@ -25,7 +25,7 @@ export function AdminSection({
 
   return (
     // <div className="p-8">
-      <div className={`p-8 ${maxWidth}`}>
+      <div className={`p-8`}>
         {backLink && (
           <div className="mb-4">
             <Button variant="outline" asChild>
