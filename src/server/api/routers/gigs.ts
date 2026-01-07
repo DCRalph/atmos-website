@@ -3,7 +3,7 @@ import { createTRPCRouter, publicProcedure, adminProcedure } from "~/server/api/
 import { getTodayRangeStart, getTodayRangeEnd, isGigUpcoming } from "~/lib/date-utils";
 import { uploadBufferToS3, softDeleteFile } from "~/lib/s3Helper";
 import { FileUploadStatus, type GigMedia } from "~Prisma/client";
-import { toWebPMax } from "~/lib/sparpiIage";
+import { toWebPMax } from "~/lib/sparpImage";
 
 type FileUploadInfo = {
   id: string;
