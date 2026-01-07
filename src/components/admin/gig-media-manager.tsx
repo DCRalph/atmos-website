@@ -188,9 +188,9 @@ function SortableMediaItem({
       <div
         {...attributes}
         {...listeners}
-        className="absolute left-2 top-2 z-10 cursor-grab rounded bg-black/60 p-1 opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing"
+        className="absolute left-2 top-2 z-10 cursor-grab rounded bg-black/60 p-2 sm:p-1 transition-opacity active:cursor-grabbing"
       >
-        <GripVertical className="h-4 w-4 text-white" />
+        <GripVertical className="h-6 w-6 text-white sm:h-4 sm:w-4" />
       </div>
 
       {/* Placeholder - shown while loading or on error */}

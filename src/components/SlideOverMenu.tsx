@@ -205,7 +205,7 @@ function MenuItemComponent({
       key={item.label}
       href={item.href}
       className={`${isActive ? "pl-10 font-bold!" : ""
-        } bg-accent-strong text-white uppercase font-light text-2xl py-3 pl-8 tracking-wider hover:font-bold hover:bg-accent-muted transition-all ease-out hover:tracking-widest`}
+        }  relative bg-accent-strong text-white uppercase font-light flex items-center text-2xl h-14 pl-8 tracking-wider hover:font-bold hover:bg-accent-muted group transition-all ease-out hover:tracking-widest`}
 
       style={{
         width: `${width}%`,
@@ -241,6 +241,9 @@ function MenuItemComponent({
 
       onClick={closeMenu}
     >
+      <div className="absolute h-14 w-32 right-full top-0 bg-accent-strong" />
+      {/* <div className="absolute h-14 w-14 left-[calc(100%+4px)] top-0 bg-white transition-all opacity-0 group-hover:opacity-100" /> */}
+
       {item.label}
     </MotionLink >
   );

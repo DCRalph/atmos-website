@@ -33,7 +33,7 @@ export function OpeningAnimation({
     <AnimatePresence>
       {visible && (
         <motion.div
-          className="fixed inset-0 z-[999] grid place-items-center"
+          className="fixed inset-0 z-999 grid place-items-center"
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.6 }}
@@ -101,7 +101,7 @@ export function OpeningAnimation({
                       fill
                       className="object-contain"
                       priority
-                      sizes="(max-width: 640px) 10rem, 12rem"
+                      sizes="100vw"
                     />
                   </div>
                 </motion.div>

@@ -1,18 +1,22 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { motion } from "motion/react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Play, Pause } from "lucide-react";
 import { OpeningAnimation } from "~/components/opening-animation";
-import { VideoBackground } from "~/components/video-background";
+import { VideoBackground, type VideoBackgroundRef } from "~/components/video-background";
 import { LiveGigPopup } from "~/components/live-gig-popup";
 import { SimpleLogo } from "~/components/simple-logo";
 import { SocialLinks } from "~/components/social-links";
 
 export function HomeTopContent() {
+  const videoRef = useRef<VideoBackgroundRef>(null);
+  const [isPlaying, setIsPlaying] = useState(true);
+
   return (
     <div className="h-full">
       <OpeningAnimation />
-      <VideoBackground />
+      <VideoBackground ref={videoRef} onStateChange={setIsPlaying} />
 
       <LiveGigPopup />
       <SocialLinks side="right" />
@@ -45,6 +49,28 @@ export function HomeTopContent() {
             <ChevronDown className="h-5 w-5 transition-transform duration-200 group-hover:translate-y-0.5" />
           </button>
         </motion.div>
+
+        {/* Play/Pause Button */}
+        <div className="absolute bottom-10 left-6 z-30">
+          <button
+            onClick={() => videoRef.current?.togglePlayPause()}
+            aria-label={isPlaying ? "Pause video" : "Play video"}
+            className="group flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white/80 backdrop-blur-sm transition-all hover:border-white/35 hover:text-white hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-0"
+          >
+            <motion.div
+              initial={false}
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ duration: 0.3 }}
+              key={isPlaying ? "pause" : "play"}
+            >
+              {isPlaying ? (
+                <Pause className="h-5 w-5" />
+              ) : (
+                <Play className="h-5 w-5 ml-0.5" />
+              )}
+            </motion.div>
+          </button>
+        </div>
       </section>
 
       <div className="absolute w-full h-32 z-10 bg-linear-to-t from-black to-transparent bottom-0 left-0" />
