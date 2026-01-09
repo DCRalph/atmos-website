@@ -54,7 +54,7 @@ export function UserIndicator({ variant = "light" }: UserIndicatorProps) {
   }
 
   return (
-    <div className="fixed right-3 top-3 z-999">
+    <div className="fixed right-3 top-3 z-700">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button

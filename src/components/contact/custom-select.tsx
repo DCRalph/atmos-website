@@ -57,8 +57,8 @@ export function CustomSelect({ options, value, onChange, placeholder = "Select..
                 setIsOpen(false)
               }}
               className={`w-full px-4 py-3 text-left font-mono transition-colors border-b border-white/10 last:border-b-0 ${value === option
-                  ? "bg-red-500 text-black font-bold"
-                  : "text-white hover:bg-red-500/20 hover:text-red-500"
+                ? "bg-red-500 text-black font-bold"
+                : "text-white hover:bg-red-500/20 hover:text-red-500"
                 }`}
             >
               {option}

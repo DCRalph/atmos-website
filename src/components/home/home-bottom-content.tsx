@@ -1,21 +1,15 @@
 "use client";
 
-import { Button } from "~/components/ui/button";
 import { NewsletterSection } from "~/components/home/newsletter-section";
 import { UpcomingGigsSection } from "./upcoming-gigs-section";
 import { LatestContentSection } from "./latest-content-section";
 import { RecentGigsSection } from "./recent-gigs-section";
-import { MobileNav } from "../mobile-nav";
 
 type HomeBottomContentProps = {
-  isMenuOpen: boolean;
-  setIsMenuOpen: (open: boolean) => void;
-  isMobile: boolean;
+  isMobile?: boolean;
 };
 
 export function HomeBottomContent({
-  isMenuOpen,
-  setIsMenuOpen,
   isMobile,
 }: HomeBottomContentProps) {
   return (

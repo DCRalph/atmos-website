@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next"
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { ThemeOverrideProvider } from "~/components/theme-overide-provider";
+import { MobileMenuProvider } from "~/components/mobile-menu-provider";
 import { ViewTransition } from "react";
 import { montserrat } from "~/lib/fonts";
 
@@ -71,16 +72,24 @@ export default function RootLayout({
     <html lang="en" className={`${montserrat.className} overflow-x-hidden`} suppressHydrationWarning>
       <body>
         <ViewTransition>
-          <ThemeOverrideProvider 
+          <ThemeOverrideProvider
           // defaultForcedTheme="dark"
-          
+
           >
             <TRPCReactProvider>
-              <NextTopLoader height={4} showSpinner={false} />
+              <MobileMenuProvider>
+                <NextTopLoader height={4} showSpinner={false} />
 
-              {children}
+                {/* Portal target for mobile menu - rendered above everything */}
+                <div id="mobile-menu-portal" className="fixed inset-0 z-999 pointer-events-none *:pointer-events-auto" />
 
-              <Analytics />
+                {/* App content wrapper - receives blur/scale when menu is open */}
+                <div id="app-content-wrapper" className="transition-all duration-700 ease-out origin-center">
+                  {children}
+                </div>
+
+                <Analytics />
+              </MobileMenuProvider>
             </TRPCReactProvider>
           </ThemeOverrideProvider>
         </ViewTransition>
