@@ -447,9 +447,22 @@ export const gigsRouter = createTRPCRouter({
         for: "gig_media",
         forId: media.id,
         acl: "public-read",
+        userId: ctx.user?.id ?? ctx.session.user.id,
         width: resized.width,
         height: resized.height,
       });
+
+      // If duplicate, delete the created GigMedia record and return warning
+      if (uploadResult.isDuplicate) {
+        await ctx.db.gigMedia.delete({ where: { id: media.id } });
+        return {
+          isDuplicate: true,
+          warning: uploadResult.warning,
+          existingFileId: uploadResult.record.id,
+          existingUrl: uploadResult.url,
+          existingName: uploadResult.record.name,
+        };
+      }
 
       // Update GigMedia with the file upload ID
       const updatedMedia = await ctx.db.gigMedia.update({
@@ -458,6 +471,7 @@ export const gigsRouter = createTRPCRouter({
       });
 
       return {
+        isDuplicate: false,
         ...updatedMedia,
         fileUpload: {
           id: uploadResult.record.id,
@@ -657,6 +671,110 @@ export const gigsRouter = createTRPCRouter({
         gallery: validMedia.filter((m) => m.section === "gallery"),
         all: validMedia,
       };
+    }),
+
+  /**
+   * Get all available uploads that can be added to a gig
+   * Returns file uploads with for="gig_media" that aren't already linked to this gig
+   */
+  getAvailableUploads: adminProcedure
+    .input(z.object({ gigId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      // Get all file upload IDs already linked to this gig
+      const existingMedia = await ctx.db.gigMedia.findMany({
+        where: { gigId: input.gigId },
+        select: { fileUploadId: true },
+      });
+
+      const linkedFileIds = existingMedia
+        .map((m) => m.fileUploadId)
+        .filter((id): id is string => id !== null);
+
+      // Get all file uploads that are images/videos and not already linked
+      const availableUploads = await ctx.db.file_upload.findMany({
+        where: {
+          status: FileUploadStatus.OK,
+          category: { in: ["IMAGE", "VIDEO"] },
+          id: { notIn: linkedFileIds },
+        },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          url: true,
+          name: true,
+          mimeType: true,
+          size: true,
+          width: true,
+          height: true,
+          createdAt: true,
+          category: true,
+          userId: true,
+        },
+      });
+
+      // Fetch user info
+      const userIds = availableUploads
+        .map((f) => f.userId)
+        .filter((id): id is string => id !== null);
+
+      const users = userIds.length > 0
+        ? await ctx.db.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, name: true, email: true },
+        })
+        : [];
+
+      const userMap = new Map(users.map((u) => [u.id, u]));
+
+      return availableUploads.map((f) => ({
+        ...f,
+        uploadedBy: f.userId ? userMap.get(f.userId) ?? null : null,
+      }));
+    }),
+
+  /**
+   * Add an existing file upload to a gig as media
+   */
+  addExistingMedia: adminProcedure
+    .input(
+      z.object({
+        gigId: z.string(),
+        fileUploadId: z.string(),
+        section: z.enum(["featured", "gallery"]).default("gallery"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Get the file upload to determine type
+      const fileUpload = await ctx.db.file_upload.findUnique({
+        where: { id: input.fileUploadId },
+      });
+
+      if (!fileUpload) {
+        throw new Error("File upload not found");
+      }
+
+      // Determine type from mimeType
+      const type = fileUpload.mimeType.startsWith("video/") ? "video" : "photo";
+
+      // Get max sort order for section
+      const maxOrder = await ctx.db.gigMedia.aggregate({
+        where: { gigId: input.gigId, section: input.section },
+        _max: { sortOrder: true },
+      });
+
+      // Create the GigMedia record
+      const media = await ctx.db.gigMedia.create({
+        data: {
+          gigId: input.gigId,
+          type,
+          section: input.section,
+          sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
+          fileUploadId: input.fileUploadId,
+        },
+      });
+
+      const enriched = await enrichMediaWithFileUploads(ctx.db, [media]);
+      return enriched[0];
     }),
 
   // Tag management endpoints

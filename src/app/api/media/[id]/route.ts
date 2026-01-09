@@ -24,8 +24,9 @@ export async function GET(
     const record = await db.file_upload.findUnique({
       where: {
         id,
-        // status: FileUploadStatus.OK,
-        acl: ObjectCannedACL.public_read
+        status: FileUploadStatus.OK,
+        // for: "gig_media",
+        // acl: ObjectCannedACL.public_read
       },
       select: {
         key: true,

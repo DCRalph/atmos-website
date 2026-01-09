@@ -1,21 +1,22 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure, adminProcedure } from "~/server/api/trpc";
 import { uploadBufferToS3, softDeleteFile, deleteFile, limits } from "~/lib/s3Helper";
-import { FileUploadStatus, type file_upload } from "~Prisma/client";
+import { FileUploadStatus, type file_upload, type file_tag } from "~Prisma/client";
 
 // Revalidation time for file queries (5 minutes)
 const FILE_CACHE_SECONDS = 300;
 
 type LinkedEntity = { type: string; id: string; title: string } | null;
-type EnrichedFile = file_upload & { linkedEntity: LinkedEntity };
+type FileTag = { id: string; name: string; description: string | null };
+type EnrichedFile = file_upload & { linkedEntity: LinkedEntity; fileTags: FileTag[] };
 
 /**
  * Helper to enrich files with linked entity info using for/forId
  */
-async function enrichFilesWithLinkedEntities<T extends file_upload>(
+async function enrichFilesWithLinkedEntities<T extends file_upload & { fileTags?: FileTag[] }>(
   db: any,
   files: T[]
-): Promise<(T & { linkedEntity: LinkedEntity })[]> {
+): Promise<(T & { linkedEntity: LinkedEntity; fileTags: FileTag[] })[]> {
   // Group files by their "for" type
   const gigMediaFiles = files.filter((f) => f.for === "gig_media");
   const gigFiles = files.filter((f) => f.for === "gig");
@@ -60,7 +61,7 @@ async function enrichFilesWithLinkedEntities<T extends file_upload>(
       }
     }
 
-    return { ...f, linkedEntity };
+    return { ...f, linkedEntity, fileTags: f.fileTags ?? [] };
   });
 }
 
@@ -73,17 +74,19 @@ export const filesRouter = createTRPCRouter({
     .input(
       z.object({
         limit: z.number().min(1).max(100).default(50),
-        cursor: z.string().optional(),
+        page: z.number().min(1).default(1),
         for: z.string().optional(),
         forId: z.string().optional(),
         status: z.nativeEnum(FileUploadStatus).optional(),
         search: z.string().optional(),
         mimeTypePrefix: z.string().optional(), // e.g., "image/" or "video/"
+        tagIds: z.array(z.string()).optional(), // Filter by tag IDs
       }).optional()
     )
     .query(async ({ ctx, input }) => {
       const limit = input?.limit ?? 50;
-      const cursor = input?.cursor;
+      const page = input?.page ?? 1;
+      const skip = (page - 1) * limit;
 
       const where = {
         ...(input?.for && { for: input.for }),
@@ -98,31 +101,46 @@ export const filesRouter = createTRPCRouter({
             { key: { contains: input.search, mode: "insensitive" as const } },
           ],
         }),
+        // Filter by tags - files must have ALL specified tags
+        ...(input?.tagIds && input.tagIds.length > 0 && {
+          fileTags: {
+            some: {
+              id: { in: input.tagIds },
+            },
+          },
+        }),
         // By default, exclude deleted files
         ...(!input?.status && {
           status: { notIn: [FileUploadStatus.DELETED, FileUploadStatus.SOFT_DELETED] },
         }),
       };
 
-      const files = await ctx.db.file_upload.findMany({
-        where,
-        take: limit + 1,
-        cursor: cursor ? { id: cursor } : undefined,
-        orderBy: { createdAt: "desc" },
-      });
-
-      let nextCursor: string | undefined;
-      if (files.length > limit) {
-        const nextItem = files.pop();
-        nextCursor = nextItem?.id;
-      }
+      const [files, total] = await Promise.all([
+        ctx.db.file_upload.findMany({
+          where,
+          take: limit,
+          skip,
+          orderBy: { createdAt: "desc" },
+          include: {
+            fileTags: {
+              select: { id: true, name: true, description: true },
+            },
+          },
+        }),
+        ctx.db.file_upload.count({ where }),
+      ]);
 
       // Enrich files with linked entity info
       const enrichedFiles = await enrichFilesWithLinkedEntities(ctx.db, files);
 
       return {
         files: enrichedFiles,
-        nextCursor,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
         // Cache hint for client
         _cacheSeconds: FILE_CACHE_SECONDS,
       };
@@ -187,9 +205,10 @@ export const filesRouter = createTRPCRouter({
         for: z.string(),
         forId: z.string(),
         keyPrefix: z.string().optional(),
+        tagIds: z.array(z.string()).optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       // Decode base64 to buffer
       const base64Data = input.base64.replace(/^data:[^;]+;base64,/, "");
       const buffer = Buffer.from(base64Data, "base64");
@@ -213,7 +232,21 @@ export const filesRouter = createTRPCRouter({
         fileType: getFileTypeFromMime(input.mimeType),
         for: input.for,
         forId: input.forId,
+        acl: "private", // Always use private ACL - admins cannot change this
+        userId: ctx.user?.id ?? ctx.session.user.id,
       });
+
+      // Connect tags if provided
+      if (input.tagIds && input.tagIds.length > 0 && !result.isDuplicate) {
+        await ctx.db.file_upload.update({
+          where: { id: result.record.id },
+          data: {
+            fileTags: {
+              connect: input.tagIds.map((id) => ({ id })),
+            },
+          },
+        });
+      }
 
       return result;
     }),
@@ -295,6 +328,169 @@ export const filesRouter = createTRPCRouter({
       })),
     };
   }),
+
+  /**
+   * Update file attributes
+   */
+  updateFile: adminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        name: z.string().optional(),
+        for: z.string().optional(),
+        forId: z.string().optional(),
+        status: z.enum(["NO_FILE", "UPLOADING", "OK", "SOFT_DELETED", "DELETED", "ERRORED"]).optional(),
+        category: z.enum(["IMAGE", "VIDEO", "AUDIO", "PDF", "DOCUMENT", "FILE"]).optional(),
+        tagIds: z.array(z.string()).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, tagIds, ...data } = input;
+
+      const updateData: any = { ...data };
+
+      // Handle tag updates - replace all tags
+      if (tagIds !== undefined) {
+        updateData.fileTags = {
+          set: tagIds.map((tagId) => ({ id: tagId })),
+        };
+      }
+
+      const updated = await ctx.db.file_upload.update({
+        where: { id },
+        data: updateData,
+        include: {
+          fileTags: {
+            select: { id: true, name: true, description: true },
+          },
+        },
+      });
+
+      const enriched = await enrichFilesWithLinkedEntities(ctx.db, [updated]);
+      return enriched[0];
+    }),
+
+  // ============ File Tag Management ============
+
+  /**
+   * Get all file tags
+   */
+  getAllTags: adminProcedure.query(async ({ ctx }) => {
+    return ctx.db.file_tag.findMany({
+      orderBy: { name: "asc" },
+      include: {
+        _count: {
+          select: { fileUploads: true },
+        },
+      },
+    });
+  }),
+
+  /**
+   * Create a new file tag
+   */
+  createTag: adminProcedure
+    .input(
+      z.object({
+        name: z.string().min(1).max(50),
+        description: z.string().max(200).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.file_tag.create({
+        data: input,
+      });
+    }),
+
+  /**
+   * Update a file tag
+   */
+  updateTag: adminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        name: z.string().min(1).max(50).optional(),
+        description: z.string().max(200).optional().nullable(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      return ctx.db.file_tag.update({
+        where: { id },
+        data,
+      });
+    }),
+
+  /**
+   * Delete a file tag
+   */
+  deleteTag: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.file_tag.delete({
+        where: { id: input.id },
+      });
+    }),
+
+  /**
+   * Bulk add tags to multiple files
+   */
+  bulkAddTags: adminProcedure
+    .input(
+      z.object({
+        fileIds: z.array(z.string()),
+        tagIds: z.array(z.string()),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { fileIds, tagIds } = input;
+
+      // Update each file to connect the tags
+      await Promise.all(
+        fileIds.map((fileId) =>
+          ctx.db.file_upload.update({
+            where: { id: fileId },
+            data: {
+              fileTags: {
+                connect: tagIds.map((tagId) => ({ id: tagId })),
+              },
+            },
+          })
+        )
+      );
+
+      return { success: true, filesUpdated: fileIds.length };
+    }),
+
+  /**
+   * Bulk remove tags from multiple files
+   */
+  bulkRemoveTags: adminProcedure
+    .input(
+      z.object({
+        fileIds: z.array(z.string()),
+        tagIds: z.array(z.string()),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { fileIds, tagIds } = input;
+
+      // Update each file to disconnect the tags
+      await Promise.all(
+        fileIds.map((fileId) =>
+          ctx.db.file_upload.update({
+            where: { id: fileId },
+            data: {
+              fileTags: {
+                disconnect: tagIds.map((tagId) => ({ id: tagId })),
+              },
+            },
+          })
+        )
+      );
+
+      return { success: true, filesUpdated: fileIds.length };
+    }),
 });
 
 /**

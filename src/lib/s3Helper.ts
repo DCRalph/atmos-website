@@ -1,4 +1,5 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, type ObjectCannedACL } from '@aws-sdk/client-s3'
+import { createHash } from 'crypto'
 import { db } from '~/server/db'
 import { v4 as uuidv4 } from 'uuid'
 import { env } from '~/env'
@@ -25,10 +26,24 @@ type UploadBufferParams = {
   fileType?: string
   for?: string
   forId?: string
+  /** User ID of the user uploading the file */
+  userId?: string
   /** Image/video width in pixels */
   width?: number
   /** Image/video height in pixels */
   height?: number
+  /** Skip duplicate check (default: false) */
+  skipDuplicateCheck?: boolean
+}
+
+type UploadBufferResult = {
+  url: string
+  key: string
+  record: Awaited<ReturnType<typeof db.file_upload.create>>
+  /** True if this file was already uploaded (duplicate) */
+  isDuplicate: boolean
+  /** Warning message if duplicate was found */
+  warning?: string
 }
 
 let s3Client: S3Client | null = null
@@ -53,6 +68,13 @@ const calcFileSize = (buffer: Buffer) => {
   return buffer.length
 }
 
+/**
+ * Compute SHA-256 hash of a buffer
+ */
+const computeFileHash = (buffer: Buffer): string => {
+  return createHash('sha256').update(buffer).digest('hex')
+}
+
 
 /**
  * Get a simple category for a MIME type
@@ -66,13 +88,37 @@ const getFileCategory = (mimeType: string): FileCategory => {
   return FileCategory.FILE
 }
 
-export const uploadBufferToS3 = async (params: UploadBufferParams) => {
+export const uploadBufferToS3 = async (params: UploadBufferParams): Promise<UploadBufferResult> => {
   const client = getS3Client()
-  const { buffer, key, contentType } = params
+  const { buffer, key, contentType, skipDuplicateCheck = false } = params
 
   const fileSize = calcFileSize(buffer)
   if (fileSize > limits.fileSize) {
     throw new Error(`File size exceeds limit of ${limits.fileSize} bytes`)
+  }
+
+  // Compute file hash for deduplication
+  const hash = computeFileHash(buffer)
+
+  // Check if file with same hash already exists (unless skipped)
+  if (!skipDuplicateCheck) {
+    const existingFile = await db.file_upload.findFirst({
+      where: {
+        hash,
+        status: { in: [FileUploadStatus.OK] },
+      },
+    })
+
+    if (existingFile) {
+      // Return the existing file record with a warning
+      return {
+        url: existingFile.url,
+        key: existingFile.key,
+        record: existingFile,
+        isDuplicate: true,
+        warning: `File already exists: "${existingFile.name}" (uploaded ${existingFile.createdAt.toLocaleDateString()}). Skipping upload.`,
+      }
+    }
   }
 
   const acl = params.acl ?? (env.AWS_S3_ACL as ObjectCannedACL | undefined) ?? 'private'
@@ -103,16 +149,18 @@ export const uploadBufferToS3 = async (params: UploadBufferParams) => {
       size: buffer.length,
       mimeType: contentType,
       category: recordCategory,
+      hash,
       for: recordFor,
       forId: recordForId,
       status: FileUploadStatus.OK,
       acl,
+      userId: params.userId ?? null,
       width: params.width ?? null,
       height: params.height ?? null,
     },
   })
 
-  return { url, key, record }
+  return { url, key, record, isDuplicate: false }
 }
 
 // ============ Multi-file upload types and functions ============
@@ -129,6 +177,8 @@ type MultiUploadFileInput = {
   fileType?: string
   for?: string
   forId?: string
+  /** User ID of the user uploading the file */
+  userId?: string
 }
 
 type MultiUploadSuccess = {
@@ -137,6 +187,10 @@ type MultiUploadSuccess = {
   url: string
   key: string
   record: Awaited<ReturnType<typeof db.file_upload.create>>
+  /** True if this file was already uploaded (duplicate) */
+  isDuplicate: boolean
+  /** Warning message if duplicate was found */
+  warning?: string
 }
 
 type MultiUploadFailure = {
@@ -152,9 +206,13 @@ type MultiUploadSummary = {
   total: number
   successful: number
   failed: number
+  /** Number of files that were duplicates (already uploaded) */
+  duplicates: number
   results: MultiUploadResult[]
   successfulUploads: MultiUploadSuccess[]
   failedUploads: MultiUploadFailure[]
+  /** Uploads that were duplicates (subset of successfulUploads) */
+  duplicateUploads: MultiUploadSuccess[]
 }
 
 type MultiUploadOptions = {
@@ -245,6 +303,7 @@ export const uploadMultipleFilesToS3 = async (
         fileType: file.fileType,
         for: file.for,
         forId: file.forId,
+        userId: file.userId,
       })
 
       const success: MultiUploadSuccess = {
@@ -253,6 +312,8 @@ export const uploadMultipleFilesToS3 = async (
         url: result.url,
         key: result.key,
         record: result.record,
+        isDuplicate: result.isDuplicate,
+        warning: result.warning,
       }
 
       completed++
@@ -295,14 +356,17 @@ export const uploadMultipleFilesToS3 = async (
   const failedUploads = results.filter(
     (r): r is MultiUploadFailure => r.status === 'error'
   )
+  const duplicateUploads = successfulUploads.filter((r) => r.isDuplicate)
 
   return {
     total: files.length,
     successful: successfulUploads.length,
     failed: failedUploads.length,
+    duplicates: duplicateUploads.length,
     results,
     successfulUploads,
     failedUploads,
+    duplicateUploads,
   }
 }
 

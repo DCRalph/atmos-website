@@ -64,6 +64,9 @@ import {
   ExternalLink,
   Save,
   RotateCcw,
+  FolderOpen,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 import { getMediaDisplayUrl } from "~/lib/media-url";
 
@@ -180,8 +183,8 @@ function SortableMediaItem({
       ref={setNodeRef}
       style={style}
       className={`group relative aspect-video overflow-hidden rounded-lg border bg-muted transition-all ${isDragging
-          ? "opacity-50 scale-95 ring-2 ring-primary"
-          : "hover:ring-1 hover:ring-primary/50"
+        ? "opacity-50 scale-95 ring-2 ring-primary"
+        : "hover:ring-1 hover:ring-primary/50"
         }`}
     >
       {/* Drag Handle */}
@@ -441,6 +444,11 @@ export function GigMediaManager({
   const [infoMedia, setInfoMedia] = useState<MediaItem | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSelectDialogOpen, setIsSelectDialogOpen] = useState(false);
+  const [selectedUploads, setSelectedUploads] = useState<Set<string>>(new Set());
+  const [selectSection, setSelectSection] = useState<"featured" | "gallery">("gallery");
+  const [isAddingSelected, setIsAddingSelected] = useState(false);
+  const [uploadWarnings, setUploadWarnings] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const utils = api.useUtils();
@@ -469,6 +477,18 @@ export function GigMediaManager({
 
   const reorderMedia = api.gigs.reorderMedia.useMutation();
   const moveToSection = api.gigs.moveMediaToSection.useMutation();
+
+  // Query for available uploads (only fetch when dialog is open)
+  const { data: availableUploads, isLoading: isLoadingUploads, refetch: refetchUploads } = api.gigs.getAvailableUploads.useQuery(
+    { gigId },
+    { enabled: isSelectDialogOpen }
+  );
+
+  const addExistingMedia = api.gigs.addExistingMedia.useMutation({
+    onSuccess: () => {
+      onRefetch();
+    },
+  });
 
   // Find which section an item is in
   const findSection = (id: string): "featured" | "gallery" | null => {
@@ -669,6 +689,7 @@ export function GigMediaManager({
 
     setIsUploading(true);
     setUploadProgress(0);
+    const warnings: string[] = [];
 
     try {
       for (let i = 0; i < pendingFiles.length; i++) {
@@ -679,7 +700,7 @@ export function GigMediaManager({
         const base64 = Buffer.from(arrayBuffer).toString("base64");
         const dataUrl = `data:${file.type};base64,${base64}`;
 
-        await uploadMedia.mutateAsync({
+        const result = await uploadMedia.mutateAsync({
           gigId,
           base64: dataUrl,
           name: file.name,
@@ -687,11 +708,22 @@ export function GigMediaManager({
           section: uploadSection,
         });
 
+        // Check if this was a duplicate
+        if (result.isDuplicate && result.warning) {
+          warnings.push(result.warning);
+        }
+
         setUploadProgress(((i + 1) / pendingFiles.length) * 100);
       }
 
       setPendingFiles([]);
       setIsUploadDialogOpen(false);
+
+      // Show warnings if any duplicates were found
+      if (warnings.length > 0) {
+        setUploadWarnings(warnings);
+      }
+
       await utils.gigs.getById.invalidate({ id: gigId });
     } catch (error) {
       console.error("Upload failed:", error);
@@ -720,6 +752,46 @@ export function GigMediaManager({
     await navigator.clipboard.writeText(url);
     setCopiedUrl(true);
     setTimeout(() => setCopiedUrl(false), 2000);
+  };
+
+  const handleOpenSelectDialog = () => {
+    setSelectedUploads(new Set());
+    setIsSelectDialogOpen(true);
+    void refetchUploads();
+  };
+
+  const handleToggleUploadSelection = (id: string) => {
+    setSelectedUploads((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleAddSelectedUploads = async () => {
+    if (selectedUploads.size === 0) return;
+
+    setIsAddingSelected(true);
+    try {
+      for (const fileUploadId of selectedUploads) {
+        await addExistingMedia.mutateAsync({
+          gigId,
+          fileUploadId,
+          section: selectSection,
+        });
+      }
+      setSelectedUploads(new Set());
+      setIsSelectDialogOpen(false);
+      await utils.gigs.getById.invalidate({ id: gigId });
+    } catch (error) {
+      console.error("Failed to add selected media:", error);
+    } finally {
+      setIsAddingSelected(false);
+    }
   };
 
   const formatFileSize = (bytes: number) => {
@@ -753,6 +825,10 @@ export function GigMediaManager({
         <Button onClick={() => fileInputRef.current?.click()}>
           <Upload className="mr-2 h-4 w-4" />
           Upload Media
+        </Button>
+        <Button variant="outline" onClick={handleOpenSelectDialog}>
+          <FolderOpen className="mr-2 h-4 w-4" />
+          Select from Uploaded
         </Button>
 
         {hasChanges && (
@@ -1182,6 +1258,203 @@ export function GigMediaManager({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Select from Uploaded Dialog */}
+      <Dialog open={isSelectDialogOpen} onOpenChange={setIsSelectDialogOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FolderOpen className="h-5 w-5" />
+              Select from Uploaded Media
+            </DialogTitle>
+            <DialogDescription>
+              Choose media files that have already been uploaded to S3 to add to this gig
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Section Selection */}
+            <div className="flex flex-col gap-2">
+              <Label>Add to section</Label>
+              <div className="flex gap-2">
+                <Button
+                  variant={selectSection === "featured" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectSection("featured")}
+                >
+                  ★ Featured
+                </Button>
+                <Button
+                  variant={selectSection === "gallery" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectSection("gallery")}
+                >
+                  Gallery
+                </Button>
+              </div>
+            </div>
+
+            {/* Media Grid */}
+            <div className="max-h-[50vh] overflow-y-auto rounded-lg border p-2">
+              {isLoadingUploads ? (
+                <div className="flex h-32 items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : !availableUploads || availableUploads.length === 0 ? (
+                <div className="flex h-32 flex-col items-center justify-center gap-2 text-muted-foreground">
+                  <ImageIcon className="h-8 w-8" />
+                  <p className="text-sm">No available media files found</p>
+                  <p className="text-xs">All uploaded media is already added to this gig</p>
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {availableUploads.map((upload) => {
+                    const isSelected = selectedUploads.has(upload.id);
+                    const isVideo = upload.mimeType.startsWith("video/");
+                    return (
+                      <button
+                        key={upload.id}
+                        type="button"
+                        onClick={() => handleToggleUploadSelection(upload.id)}
+                        className={`group relative aspect-video overflow-hidden rounded-lg border-2 bg-muted transition-all ${isSelected
+                          ? "border-primary ring-2 ring-primary/20"
+                          : "border-transparent hover:border-muted-foreground/30"
+                          }`}
+                      >
+                        {/* Selection indicator */}
+                        <div
+                          className={`absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full transition-all ${isSelected
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-black/50 text-white opacity-0 group-hover:opacity-100"
+                            }`}
+                        >
+                          {isSelected ? (
+                            <CheckCircle2 className="h-4 w-4" />
+                          ) : (
+                            <div className="h-3 w-3 rounded-full border-2 border-white" />
+                          )}
+                        </div>
+
+                        {/* Video indicator */}
+                        {isVideo && (
+                          <div className="absolute bottom-2 left-2 z-10 rounded bg-black/60 px-2 py-1">
+                            <Film className="h-3 w-3 text-white" />
+                          </div>
+                        )}
+
+                        {/* Preview */}
+                        {isVideo ? (
+                          <video
+                            src={upload.url}
+                            className="h-full w-full object-cover"
+                            muted
+                            playsInline
+                          />
+                        ) : (
+                          <Image
+                            src={upload.url}
+                            alt={upload.name}
+                            fill
+                            sizes="200px"
+                            className="object-cover"
+                          />
+                        )}
+
+                        {/* File name tooltip */}
+                        <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/80 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
+                          <p className="truncate text-xs text-white">{upload.name}</p>
+                          <p className="text-xs text-white/70">
+                            {formatFileSize(upload.size)}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Selected count */}
+            {selectedUploads.size > 0 && (
+              <div className="flex items-center gap-2 rounded-lg bg-primary/10 p-3">
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">
+                  {selectedUploads.size} file{selectedUploads.size !== 1 ? "s" : ""} selected
+                </span>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSelectedUploads(new Set());
+                  setIsSelectDialogOpen(false);
+                }}
+                disabled={isAddingSelected}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAddSelectedUploads}
+                disabled={isAddingSelected || selectedUploads.size === 0}
+              >
+                {isAddingSelected ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <Check className="mr-2 h-4 w-4" />
+                    Add {selectedUploads.size > 0 ? selectedUploads.size : ""} Selected
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Duplicate Warnings Dialog */}
+      <AlertDialog
+        open={uploadWarnings.length > 0}
+        onOpenChange={(open) => !open && setUploadWarnings([])}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              Duplicate Files Detected
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  {uploadWarnings.length === 1
+                    ? "The following file was already uploaded and was skipped:"
+                    : `The following ${uploadWarnings.length} files were already uploaded and were skipped:`}
+                </p>
+                <ul className="max-h-40 space-y-1 overflow-y-auto rounded-lg bg-muted p-3">
+                  {uploadWarnings.map((warning, index) => (
+                    <li key={index} className="text-sm">
+                      • {warning}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-sm">
+                  You can use the "Select from Uploaded" button to add existing files to this gig.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setUploadWarnings([])}>
+              Got it
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

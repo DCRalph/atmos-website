@@ -110,6 +110,11 @@ export type ContactSubmission = Prisma.ContactSubmissionModel
  */
 export type NewsletterSubscription = Prisma.NewsletterSubscriptionModel
 /**
+ * Model file_tag
+ * 
+ */
+export type file_tag = Prisma.file_tagModel
+/**
  * Model file_upload
  * 
  */

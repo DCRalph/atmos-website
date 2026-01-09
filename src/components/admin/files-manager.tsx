@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import Image from "next/image";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
@@ -26,6 +26,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
@@ -40,6 +41,8 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 import { Badge } from "~/components/ui/badge";
+import { Checkbox } from "~/components/ui/checkbox";
+import { PaginationControls } from "~/components/ui/pagination-controls";
 import {
   Loader2,
   Search,
@@ -60,6 +63,12 @@ import {
   Copy,
   Check,
   X,
+  Tag,
+  Plus,
+  Save,
+  Pencil,
+  Tags,
+  Minus,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import type { FileUploadStatus } from "~Prisma/client";
@@ -88,6 +97,8 @@ const getFileIcon = (mimeType: string) => {
   return <File className="h-4 w-4" />;
 };
 
+type FileTag = { id: string; name: string; description: string | null };
+
 type FileInfo = {
   id: string;
   url: string;
@@ -102,6 +113,8 @@ type FileInfo = {
   width: number | null;
   height: number | null;
   createdAt: Date | string;
+  acl: string;
+  fileTags: FileTag[];
   linkedEntity: { type: string; id: string; title: string } | null;
 };
 
@@ -109,6 +122,9 @@ export function FilesManager() {
   const [search, setSearch] = useState("");
   const [mimeFilter, setMimeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("active");
+  const [tagFilter, setTagFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 25;
   const [previewFile, setPreviewFile] = useState<{
     url: string;
     name: string;
@@ -121,17 +137,41 @@ export function FilesManager() {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadCategory, setUploadCategory] = useState<string>("general");
+  const [uploadTagIds, setUploadTagIds] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Info dialog state
+  // Info/Edit dialog state
   const [infoFile, setInfoFile] = useState<FileInfo | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editFor, setEditFor] = useState("");
+  const [editForId, setEditForId] = useState("");
+  const [editStatus, setEditStatus] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editTagIds, setEditTagIds] = useState<string[]>([]);
+  const [isSavingFile, setIsSavingFile] = useState(false);
+
+  // Tag management state
+  const [tagDialogOpen, setTagDialogOpen] = useState(false);
+  const [newTagName, setNewTagName] = useState("");
+  const [newTagDescription, setNewTagDescription] = useState("");
+  const [isCreatingTag, setIsCreatingTag] = useState(false);
+  const [deleteTagId, setDeleteTagId] = useState<string | null>(null);
+
+  // Bulk selection state
+  const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
+  const [bulkTagDialogOpen, setBulkTagDialogOpen] = useState(false);
+  const [bulkTagMode, setBulkTagMode] = useState<"add" | "remove">("add");
+  const [bulkTagIds, setBulkTagIds] = useState<string[]>([]);
+  const [isBulkTagging, setIsBulkTagging] = useState(false);
 
   const queryParams = {
-    limit: 50,
+    limit: PAGE_SIZE,
+    page: currentPage,
     search: search || undefined,
     mimeTypePrefix: mimeFilter !== "all" ? mimeFilter : undefined,
     status: statusFilter === "active"
@@ -139,6 +179,7 @@ export function FilesManager() {
       : statusFilter === "deleted"
         ? "SOFT_DELETED" as FileUploadStatus
         : undefined,
+    tagIds: tagFilter !== "all" ? [tagFilter] : undefined,
   };
 
   const {
@@ -147,10 +188,14 @@ export function FilesManager() {
     refetch,
     isFetching,
   } = api.files.getAll.useQuery(queryParams, {
-    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: stats } = api.files.getStats.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: tags, refetch: refetchTags } = api.files.getAllTags.useQuery(undefined, {
     staleTime: 5 * 60 * 1000,
   });
 
@@ -180,6 +225,73 @@ export function FilesManager() {
       void refetch();
     },
   });
+
+  const updateFile = api.files.updateFile.useMutation({
+    onSuccess: () => {
+      void refetch();
+      setIsEditing(false);
+      setInfoFile(null);
+    },
+  });
+
+  const createTag = api.files.createTag.useMutation({
+    onSuccess: () => {
+      void refetchTags();
+      setNewTagName("");
+      setNewTagDescription("");
+      setIsCreatingTag(false);
+    },
+  });
+
+  const deleteTag = api.files.deleteTag.useMutation({
+    onSuccess: () => {
+      void refetchTags();
+      setDeleteTagId(null);
+    },
+  });
+
+  const bulkAddTags = api.files.bulkAddTags.useMutation({
+    onSuccess: () => {
+      void refetch();
+      void refetchTags();
+      setBulkTagDialogOpen(false);
+      setBulkTagIds([]);
+      setSelectedFileIds(new Set());
+    },
+  });
+
+  const bulkRemoveTags = api.files.bulkRemoveTags.useMutation({
+    onSuccess: () => {
+      void refetch();
+      void refetchTags();
+      setBulkTagDialogOpen(false);
+      setBulkTagIds([]);
+      setSelectedFileIds(new Set());
+    },
+  });
+
+  // Initialize edit state when opening file info
+  useEffect(() => {
+    if (infoFile && isEditing) {
+      setEditName(infoFile.name);
+      setEditFor(infoFile.for);
+      setEditForId(infoFile.forId);
+      setEditStatus(infoFile.status);
+      setEditCategory(infoFile.category);
+      setEditTagIds(infoFile.fileTags.map((t) => t.id));
+    }
+  }, [infoFile, isEditing]);
+
+  // Reset to page 1 and clear selection when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+    setSelectedFileIds(new Set());
+  }, [search, mimeFilter, statusFilter, tagFilter]);
+
+  // Clear selection when page changes
+  useEffect(() => {
+    setSelectedFileIds(new Set());
+  }, [currentPage]);
 
   // Upload handlers
   const handleFileSelect = useCallback((files: FileList | null) => {
@@ -219,7 +331,6 @@ export function FilesManager() {
         const file = uploadFiles[i];
         if (!file) continue;
 
-        // Convert file to base64
         const base64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result as string);
@@ -234,21 +345,22 @@ export function FilesManager() {
           for: uploadCategory,
           forId: crypto.randomUUID(),
           keyPrefix: `uploads/${uploadCategory}`,
+          tagIds: uploadTagIds.length > 0 ? uploadTagIds : undefined,
         });
 
         setUploadProgress({ current: i + 1, total: uploadFiles.length });
       }
 
-      // Reset and close dialog on success
       setUploadFiles([]);
       setUploadDialogOpen(false);
+      setUploadTagIds([]);
     } catch (error) {
       console.error("Upload error:", error);
     } finally {
       setIsUploading(false);
       setUploadProgress({ current: 0, total: 0 });
     }
-  }, [uploadFiles, uploadCategory, uploadBase64]);
+  }, [uploadFiles, uploadCategory, uploadTagIds, uploadBase64]);
 
   const copyToClipboard = useCallback(async (text: string, field: string) => {
     await navigator.clipboard.writeText(text);
@@ -274,8 +386,97 @@ export function FilesManager() {
     restore.mutate({ id: fileId });
   }, [restore]);
 
+  const handleSaveFile = useCallback(async () => {
+    if (!infoFile) return;
+    setIsSavingFile(true);
+    try {
+      await updateFile.mutateAsync({
+        id: infoFile.id,
+        name: editName,
+        for: editFor,
+        forId: editForId,
+        status: editStatus as "NO_FILE" | "UPLOADING" | "OK" | "SOFT_DELETED" | "DELETED" | "ERRORED",
+        category: editCategory as "IMAGE" | "VIDEO" | "AUDIO" | "PDF" | "DOCUMENT" | "FILE",
+        tagIds: editTagIds,
+      });
+    } finally {
+      setIsSavingFile(false);
+    }
+  }, [infoFile, editName, editFor, editForId, editStatus, editCategory, editTagIds, updateFile]);
+
+  const handleCreateTag = useCallback(async () => {
+    if (!newTagName.trim()) return;
+    setIsCreatingTag(true);
+    try {
+      await createTag.mutateAsync({
+        name: newTagName.trim(),
+        description: newTagDescription.trim() || undefined,
+      });
+    } finally {
+      setIsCreatingTag(false);
+    }
+  }, [newTagName, newTagDescription, createTag]);
+
+  const toggleTag = useCallback((tagId: string, tagList: string[], setTagList: (tags: string[]) => void) => {
+    if (tagList.includes(tagId)) {
+      setTagList(tagList.filter((id) => id !== tagId));
+    } else {
+      setTagList([...tagList, tagId]);
+    }
+  }, []);
+
   const files = filesData?.files ?? [];
   const isDeleting = softDelete.isPending || permanentDelete.isPending;
+  const hasSelection = selectedFileIds.size > 0;
+  const allSelected = files.length > 0 && selectedFileIds.size === files.length;
+
+  // Selection handlers
+  const toggleFileSelection = useCallback((fileId: string) => {
+    setSelectedFileIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(fileId)) {
+        next.delete(fileId);
+      } else {
+        next.add(fileId);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    const currentFiles = filesData?.files ?? [];
+    if (selectedFileIds.size === currentFiles.length && currentFiles.length > 0) {
+      setSelectedFileIds(new Set());
+    } else {
+      setSelectedFileIds(new Set(currentFiles.map((f) => f.id)));
+    }
+  }, [filesData?.files, selectedFileIds.size]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedFileIds(new Set());
+  }, []);
+
+  const openBulkTagDialog = useCallback((mode: "add" | "remove") => {
+    setBulkTagMode(mode);
+    setBulkTagIds([]);
+    setBulkTagDialogOpen(true);
+  }, []);
+
+  const handleBulkTagAction = useCallback(async () => {
+    if (bulkTagIds.length === 0 || selectedFileIds.size === 0) return;
+
+    setIsBulkTagging(true);
+    try {
+      const fileIds = Array.from(selectedFileIds);
+      if (bulkTagMode === "add") {
+        await bulkAddTags.mutateAsync({ fileIds, tagIds: bulkTagIds });
+      } else {
+        await bulkRemoveTags.mutateAsync({ fileIds, tagIds: bulkTagIds });
+      }
+    } finally {
+      setIsBulkTagging(false);
+    }
+  }, [bulkTagIds, selectedFileIds, bulkTagMode, bulkAddTags, bulkRemoveTags]);
 
   return (
     <div className="space-y-6">
@@ -352,6 +553,14 @@ export function FilesManager() {
             </div>
             <div className="flex gap-2">
               <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setTagDialogOpen(true)}
+              >
+                <Tag className="mr-2 h-4 w-4" />
+                Manage Tags
+              </Button>
+              <Button
                 variant="default"
                 size="sm"
                 onClick={() => setUploadDialogOpen(true)}
@@ -406,20 +615,82 @@ export function FilesManager() {
                 <SelectItem value="all">All</SelectItem>
               </SelectContent>
             </Select>
+
+            <Select value={tagFilter} onValueChange={setTagFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by tag" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Tags</SelectItem>
+                {tags?.map((tag) => (
+                  <SelectItem key={tag.id} value={tag.id}>
+                    <div className="flex items-center gap-2">
+                      <Tag className="h-3 w-3" />
+                      {tag.name}
+                      <span className="text-xs text-muted-foreground">({tag._count.fileUploads})</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+
+          {/* Bulk Actions Bar */}
+          {hasSelection && (
+            <div className="mb-4 flex items-center gap-4 rounded-lg border bg-muted/50 p-3">
+              <div className="flex items-center gap-2">
+                <Tags className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">
+                  {selectedFileIds.size} file{selectedFileIds.size !== 1 ? "s" : ""} selected
+                </span>
+              </div>
+              <div className="h-4 w-px bg-border" />
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openBulkTagDialog("add")}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Tags
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openBulkTagDialog("remove")}
+                >
+                  <Minus className="mr-2 h-4 w-4" />
+                  Remove Tags
+                </Button>
+              </div>
+              <div className="ml-auto">
+                <Button variant="ghost" size="sm" onClick={clearSelection}>
+                  <X className="mr-2 h-4 w-4" />
+                  Clear Selection
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Files Table */}
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
                   <TableHead className="w-12"></TableHead>
                   <TableHead>Name</TableHead>
+                  <TableHead>Tags</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Size</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Uploaded</TableHead>
-                  <TableHead>Linked To</TableHead>
                   <TableHead className="w-24">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -427,20 +698,27 @@ export function FilesManager() {
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
-                      <TableCell colSpan={8}>
+                      <TableCell colSpan={9}>
                         <div className="h-12 w-full animate-pulse rounded bg-muted" />
                       </TableCell>
                     </TableRow>
                   ))
                 ) : files.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                       No files found
                     </TableCell>
                   </TableRow>
                 ) : (
                   files.map((file) => (
-                    <TableRow key={file.id}>
+                    <TableRow key={file.id} className={selectedFileIds.has(file.id) ? "bg-muted/50" : ""}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedFileIds.has(file.id)}
+                          onCheckedChange={() => toggleFileSelection(file.id)}
+                          aria-label={`Select ${file.name}`}
+                        />
+                      </TableCell>
                       <TableCell>
                         <div className="flex h-10 w-10 items-center justify-center rounded bg-muted">
                           {file.mimeType.startsWith("image/") ? (
@@ -467,6 +745,24 @@ export function FilesManager() {
                         </div>
                       </TableCell>
                       <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {file.fileTags.length > 0 ? (
+                            file.fileTags.slice(0, 2).map((tag) => (
+                              <Badge key={tag.id} variant="outline" className="text-xs">
+                                {tag.name}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          )}
+                          {file.fileTags.length > 2 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{file.fileTags.length - 2}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         <Badge variant="outline" className="capitalize">
                           {file.for}
                         </Badge>
@@ -481,25 +777,16 @@ export function FilesManager() {
                         {formatDistanceToNow(new Date(file.createdAt), { addSuffix: true })}
                       </TableCell>
                       <TableCell>
-                        {file.linkedEntity ? (
-                          <a
-                            href={`/admin/${file.linkedEntity.type}s/${file.linkedEntity.id}`}
-                            className="text-sm text-blue-600 hover:underline"
-                          >
-                            {file.linkedEntity.title}
-                          </a>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
                         <div className="flex gap-1">
                           <Button
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0"
-                            onClick={() => setInfoFile(file as FileInfo)}
-                            title="View Info"
+                            onClick={() => {
+                              setInfoFile(file as FileInfo);
+                              setIsEditing(false);
+                            }}
+                            title="View/Edit Info"
                           >
                             <Info className="h-4 w-4" />
                           </Button>
@@ -557,6 +844,16 @@ export function FilesManager() {
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination Controls */}
+          {filesData?.pagination && (
+            <PaginationControls
+              pagination={filesData.pagination}
+              onPageChange={setCurrentPage}
+              isLoading={isFetching}
+              className="mt-4"
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -641,6 +938,7 @@ export function FilesManager() {
           setUploadDialogOpen(open);
           if (!open) {
             setUploadFiles([]);
+            setUploadTagIds([]);
           }
         }
       }}>
@@ -669,6 +967,30 @@ export function FilesManager() {
                   <SelectItem value="content">Content</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Tags Select */}
+            <div className="space-y-2">
+              <Label>Tags (applied to all files)</Label>
+              <div className="flex flex-wrap gap-2 p-3 rounded-md border min-h-[42px]">
+                {tags?.map((tag) => (
+                  <Badge
+                    key={tag.id}
+                    variant={uploadTagIds.includes(tag.id) ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => toggleTag(tag.id, uploadTagIds, setUploadTagIds)}
+                  >
+                    <Tag className="mr-1 h-3 w-3" />
+                    {tag.name}
+                    {uploadTagIds.includes(tag.id) && (
+                      <X className="ml-1 h-3 w-3" />
+                    )}
+                  </Badge>
+                ))}
+                {(!tags || tags.length === 0) && (
+                  <span className="text-sm text-muted-foreground">No tags available</span>
+                )}
+              </div>
             </div>
 
             {/* Drop Zone */}
@@ -780,14 +1102,29 @@ export function FilesManager() {
         </DialogContent>
       </Dialog>
 
-      {/* File Info Dialog */}
-      <Dialog open={!!infoFile} onOpenChange={(open) => !open && setInfoFile(null)}>
+      {/* File Info/Edit Dialog */}
+      <Dialog open={!!infoFile} onOpenChange={(open) => {
+        if (!open) {
+          setInfoFile(null);
+          setIsEditing(false);
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>File Information</DialogTitle>
-            <DialogDescription>
-              Detailed information about this file
-            </DialogDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle>{isEditing ? "Edit File" : "File Information"}</DialogTitle>
+                <DialogDescription>
+                  {isEditing ? "Update file attributes" : "Detailed information about this file"}
+                </DialogDescription>
+              </div>
+              {!isEditing && (
+                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
+              )}
+            </div>
           </DialogHeader>
 
           {infoFile && (
@@ -816,89 +1153,468 @@ export function FilesManager() {
                 )}
               </div>
 
-              {/* Info Grid */}
-              <div className="grid grid-cols-2 gap-4">
-                <InfoRow
-                  label="Name"
-                  value={infoFile.name}
-                  onCopy={() => copyToClipboard(infoFile.name, "name")}
-                  copied={copiedField === "name"}
-                />
-                <InfoRow
-                  label="ID"
-                  value={infoFile.id}
-                  onCopy={() => copyToClipboard(infoFile.id, "id")}
-                  copied={copiedField === "id"}
-                  mono
-                />
-                <InfoRow
-                  label="S3 Key"
-                  value={infoFile.key}
-                  onCopy={() => copyToClipboard(infoFile.key, "key")}
-                  copied={copiedField === "key"}
-                  mono
-                />
-                <InfoRow
-                  label="URL"
-                  value={infoFile.url}
-                  onCopy={() => copyToClipboard(infoFile.url, "url")}
-                  copied={copiedField === "url"}
-                  mono
-                />
-                <InfoRow label="MIME Type" value={infoFile.mimeType} />
-                <InfoRow label="Size" value={formatFileSize(infoFile.size)} />
-                {infoFile.width && infoFile.height && (
-                  <InfoRow label="Dimensions" value={`${infoFile.width} × ${infoFile.height}`} />
-                )}
-                <InfoRow label="Category" value={infoFile.for} />
-                <InfoRow
-                  label="Status"
-                  value={
-                    <Badge variant={FILE_STATUS_LABELS[infoFile.status]?.variant ?? "outline"}>
-                      {FILE_STATUS_LABELS[infoFile.status]?.label ?? infoFile.status}
-                    </Badge>
-                  }
-                />
-                <InfoRow
-                  label="Uploaded"
-                  value={format(new Date(infoFile.createdAt), "PPpp")}
-                />
-                {infoFile.linkedEntity && (
+              {isEditing ? (
+                /* Edit Mode */
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Name</Label>
+                    <Input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>For</Label>
+                      <Select value={editFor} onValueChange={setEditFor}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="general">General</SelectItem>
+                          <SelectItem value="gig">Gig</SelectItem>
+                          <SelectItem value="gig_media">Gig Media</SelectItem>
+                          <SelectItem value="crew">Crew</SelectItem>
+                          <SelectItem value="merch">Merch</SelectItem>
+                          <SelectItem value="content">Content</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>For ID</Label>
+                      <Input
+                        value={editForId}
+                        onChange={(e) => setEditForId(e.target.value)}
+                        placeholder="Entity ID"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Category</Label>
+                      <Select value={editCategory} onValueChange={setEditCategory}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="IMAGE">Image</SelectItem>
+                          <SelectItem value="VIDEO">Video</SelectItem>
+                          <SelectItem value="AUDIO">Audio</SelectItem>
+                          <SelectItem value="PDF">PDF</SelectItem>
+                          <SelectItem value="DOCUMENT">Document</SelectItem>
+                          <SelectItem value="FILE">File</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <Select value={editStatus} onValueChange={setEditStatus}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="OK">OK</SelectItem>
+                          <SelectItem value="UPLOADING">Uploading</SelectItem>
+                          <SelectItem value="SOFT_DELETED">Soft Deleted</SelectItem>
+                          <SelectItem value="DELETED">Deleted</SelectItem>
+                          <SelectItem value="ERRORED">Errored</SelectItem>
+                          <SelectItem value="NO_FILE">No File</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Tags</Label>
+                    <div className="flex flex-wrap gap-2 p-3 rounded-md border min-h-[42px]">
+                      {tags?.map((tag) => (
+                        <Badge
+                          key={tag.id}
+                          variant={editTagIds.includes(tag.id) ? "default" : "outline"}
+                          className="cursor-pointer"
+                          onClick={() => toggleTag(tag.id, editTagIds, setEditTagIds)}
+                        >
+                          <Tag className="mr-1 h-3 w-3" />
+                          {tag.name}
+                          {editTagIds.includes(tag.id) && (
+                            <X className="ml-1 h-3 w-3" />
+                          )}
+                        </Badge>
+                      ))}
+                      {(!tags || tags.length === 0) && (
+                        <span className="text-sm text-muted-foreground">No tags available</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* View Mode */
+                <div className="grid grid-cols-2 gap-4">
                   <InfoRow
-                    label="Linked To"
+                    label="Name"
+                    value={infoFile.name}
+                    onCopy={() => copyToClipboard(infoFile.name, "name")}
+                    copied={copiedField === "name"}
+                  />
+                  <InfoRow
+                    label="ID"
+                    value={infoFile.id}
+                    onCopy={() => copyToClipboard(infoFile.id, "id")}
+                    copied={copiedField === "id"}
+                    mono
+                  />
+                  <InfoRow
+                    label="S3 Key"
+                    value={infoFile.key}
+                    onCopy={() => copyToClipboard(infoFile.key, "key")}
+                    copied={copiedField === "key"}
+                    mono
+                  />
+                  <InfoRow
+                    label="URL"
+                    value={infoFile.url}
+                    onCopy={() => copyToClipboard(infoFile.url, "url")}
+                    copied={copiedField === "url"}
+                    mono
+                  />
+                  <InfoRow label="MIME Type" value={infoFile.mimeType} />
+                  <InfoRow label="Size" value={formatFileSize(infoFile.size)} />
+                  {infoFile.width && infoFile.height && (
+                    <InfoRow label="Dimensions" value={`${infoFile.width} × ${infoFile.height}`} />
+                  )}
+                  <InfoRow label="For" value={infoFile.for} />
+                  <InfoRow
+                    label="For ID"
+                    value={infoFile.forId}
+                    onCopy={() => copyToClipboard(infoFile.forId, "forId")}
+                    copied={copiedField === "forId"}
+                    mono
+                  />
+                  <InfoRow label="Category" value={infoFile.category} />
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Tags</Label>
+                    <div className="flex flex-wrap gap-1">
+                      {infoFile.fileTags.length > 0 ? (
+                        infoFile.fileTags.map((tag) => (
+                          <Badge key={tag.id} variant="outline">
+                            <Tag className="mr-1 h-3 w-3" />
+                            {tag.name}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-sm text-muted-foreground">No tags</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">ACL</Label>
+                    <div className="flex flex-col gap-1">
+                      <Badge variant={infoFile.acl === "public-read" || infoFile.acl === "public-read-write" ? "default" : "secondary"}>
+                        {infoFile.acl === "public-read" ? "Public Read" :
+                          infoFile.acl === "public-read-write" ? "Public Read/Write" :
+                            infoFile.acl === "authenticated-read" ? "Authenticated Read" :
+                              "Private"}
+                      </Badge>
+                      <p className="text-xs text-muted-foreground">
+                        {infoFile.acl === "private" && "Only accessible with credentials"}
+                        {infoFile.acl === "public-read" && "Anyone can read, only owner can write"}
+                        {infoFile.acl === "public-read-write" && "Anyone can read and write"}
+                        {infoFile.acl === "authenticated-read" && "Only authenticated AWS users can read"}
+                      </p>
+                    </div>
+                  </div>
+                  <InfoRow
+                    label="Status"
                     value={
-                      <a
-                        href={`/admin/${infoFile.linkedEntity.type}s/${infoFile.linkedEntity.id}`}
-                        className="text-blue-600 hover:underline"
-                      >
-                        {infoFile.linkedEntity.title}
-                      </a>
+                      <Badge variant={FILE_STATUS_LABELS[infoFile.status]?.variant ?? "outline"}>
+                        {FILE_STATUS_LABELS[infoFile.status]?.label ?? infoFile.status}
+                      </Badge>
                     }
                   />
-                )}
-              </div>
+                  <InfoRow
+                    label="Uploaded"
+                    value={format(new Date(infoFile.createdAt), "PPpp")}
+                  />
+                  {infoFile.linkedEntity && (
+                    <InfoRow
+                      label="Linked To"
+                      value={
+                        <a
+                          href={`/admin/${infoFile.linkedEntity.type}s/${infoFile.linkedEntity.id}`}
+                          className="text-blue-600 hover:underline"
+                        >
+                          {infoFile.linkedEntity.title}
+                        </a>
+                      }
+                    />
+                  )}
+                </div>
+              )}
 
               {/* Actions */}
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" asChild>
-                  <a href={infoFile.url} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    Open in New Tab
-                  </a>
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    setInfoFile(null);
-                    handleDelete(infoFile.id);
-                  }}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </Button>
-              </div>
+              <DialogFooter>
+                {isEditing ? (
+                  <>
+                    <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isSavingFile}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleSaveFile} disabled={isSavingFile}>
+                      {isSavingFile ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Save Changes
+                        </>
+                      )}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="outline" asChild>
+                      <a href={infoFile.url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Open in New Tab
+                      </a>
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        setInfoFile(null);
+                        handleDelete(infoFile.id);
+                      }}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </Button>
+                  </>
+                )}
+              </DialogFooter>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Tag Management Dialog */}
+      <Dialog open={tagDialogOpen} onOpenChange={setTagDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Manage Tags</DialogTitle>
+            <DialogDescription>
+              Create and manage file tags for organizing your uploads
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Create New Tag */}
+            <div className="space-y-3 p-4 rounded-lg border bg-muted/50">
+              <Label className="font-medium">Create New Tag</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Tag name"
+                  value={newTagName}
+                  onChange={(e) => setNewTagName(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={handleCreateTag}
+                  disabled={!newTagName.trim() || isCreatingTag}
+                  size="sm"
+                >
+                  {isCreatingTag ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <Input
+                placeholder="Description (optional)"
+                value={newTagDescription}
+                onChange={(e) => setNewTagDescription(e.target.value)}
+              />
+            </div>
+
+            {/* Existing Tags */}
+            <div className="space-y-2">
+              <Label className="font-medium">Existing Tags</Label>
+              <div className="max-h-[300px] overflow-y-auto space-y-2">
+                {tags?.map((tag) => (
+                  <div
+                    key={tag.id}
+                    className="flex items-center justify-between p-3 rounded-lg border"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Tag className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">{tag.name}</p>
+                        {tag.description && (
+                          <p className="text-xs text-muted-foreground">{tag.description}</p>
+                        )}
+                      </div>
+                      <Badge variant="secondary" className="text-xs">
+                        {tag._count.fileUploads} files
+                      </Badge>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                      onClick={() => setDeleteTagId(tag.id)}
+                      disabled={tag._count.fileUploads > 0}
+                      title={tag._count.fileUploads > 0 ? "Cannot delete tag with files" : "Delete tag"}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                {(!tags || tags.length === 0) && (
+                  <p className="text-center text-muted-foreground py-4">
+                    No tags created yet
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Tag Confirmation */}
+      <AlertDialog open={!!deleteTagId} onOpenChange={(open) => !open && setDeleteTagId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Tag</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this tag? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteTag.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteTagId && deleteTag.mutate({ id: deleteTagId })}
+              disabled={deleteTag.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteTag.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Tag Dialog */}
+      <Dialog open={bulkTagDialogOpen} onOpenChange={(open) => {
+        if (!isBulkTagging) {
+          setBulkTagDialogOpen(open);
+          if (!open) {
+            setBulkTagIds([]);
+          }
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {bulkTagMode === "add" ? (
+                <>
+                  <Plus className="h-5 w-5" />
+                  Add Tags to {selectedFileIds.size} File{selectedFileIds.size !== 1 ? "s" : ""}
+                </>
+              ) : (
+                <>
+                  <Minus className="h-5 w-5" />
+                  Remove Tags from {selectedFileIds.size} File{selectedFileIds.size !== 1 ? "s" : ""}
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {bulkTagMode === "add"
+                ? "Select tags to add to all selected files"
+                : "Select tags to remove from all selected files"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Select Tags</Label>
+              <div className="flex flex-wrap gap-2 p-3 rounded-md border min-h-[100px] max-h-[200px] overflow-y-auto">
+                {tags?.map((tag) => (
+                  <Badge
+                    key={tag.id}
+                    variant={bulkTagIds.includes(tag.id) ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => toggleTag(tag.id, bulkTagIds, setBulkTagIds)}
+                  >
+                    <Tag className="mr-1 h-3 w-3" />
+                    {tag.name}
+                    {bulkTagIds.includes(tag.id) && (
+                      <X className="ml-1 h-3 w-3" />
+                    )}
+                  </Badge>
+                ))}
+                {(!tags || tags.length === 0) && (
+                  <span className="text-sm text-muted-foreground">No tags available</span>
+                )}
+              </div>
+            </div>
+
+            {bulkTagIds.length > 0 && (
+              <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
+                <Tags className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm">
+                  {bulkTagIds.length} tag{bulkTagIds.length !== 1 ? "s" : ""} selected
+                </span>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBulkTagDialogOpen(false)}
+              disabled={isBulkTagging}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleBulkTagAction}
+              disabled={bulkTagIds.length === 0 || isBulkTagging}
+              variant={bulkTagMode === "remove" ? "destructive" : "default"}
+            >
+              {isBulkTagging ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {bulkTagMode === "add" ? "Adding..." : "Removing..."}
+                </>
+              ) : (
+                <>
+                  {bulkTagMode === "add" ? (
+                    <>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Tags
+                    </>
+                  ) : (
+                    <>
+                      <Minus className="mr-2 h-4 w-4" />
+                      Remove Tags
+                    </>
+                  )}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
@@ -912,21 +1628,19 @@ function InfoRow({
   onCopy,
   copied,
   mono,
-  truncate,
 }: {
   label: string;
   value: React.ReactNode;
   onCopy?: () => void;
   copied?: boolean;
   mono?: boolean;
-  truncate?: boolean;
 }) {
   return (
     <div className="space-y-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
       <div className="flex items-center gap-2">
         <span
-          className={`text-sm break-all ${mono ? "font-mono" : ""} ${truncate ? "truncate max-w-[200px]" : ""}`}
+          className={`text-sm break-all ${mono ? "font-mono" : ""}`}
           title={typeof value === "string" ? value : undefined}
         >
           {value}
@@ -949,4 +1663,3 @@ function InfoRow({
     </div>
   );
 }
-

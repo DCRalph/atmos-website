@@ -232,6 +232,18 @@ enum FileCategory {
   FILE
 }
 
+model file_tag {
+  id        String   @id @default(cuid())
+  name      String
+  description String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fileUploads file_upload[]
+
+  @@map("file_tag")
+}
+
 model file_upload {
   id        String  @id @unique @default(uuid())
   createdAt DateTime @default(now())
@@ -246,6 +258,10 @@ model file_upload {
   status FileUploadStatus @default(OK)
 
   category FileCategory @default(FILE)
+
+  fileTags file_tag[]
+
+  hash String?
 
   // Image/video dimensions (null for non-media files)
   width Int?
@@ -263,4 +279,5 @@ model file_upload {
   @@index([createdAt])
   @@index([size])
   @@index([for, forId])
+  @@index([hash])
 }

@@ -65,6 +65,7 @@ export const ModelName = {
   MerchItem: 'MerchItem',
   ContactSubmission: 'ContactSubmission',
   NewsletterSubscription: 'NewsletterSubscription',
+  file_tag: 'file_tag',
   file_upload: 'file_upload'
 } as const
 
@@ -275,6 +276,17 @@ export const NewsletterSubscriptionScalarFieldEnum = {
 export type NewsletterSubscriptionScalarFieldEnum = (typeof NewsletterSubscriptionScalarFieldEnum)[keyof typeof NewsletterSubscriptionScalarFieldEnum]
 
 
+export const File_tagScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  description: 'description',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type File_tagScalarFieldEnum = (typeof File_tagScalarFieldEnum)[keyof typeof File_tagScalarFieldEnum]
+
+
 export const File_uploadScalarFieldEnum = {
   id: 'id',
   createdAt: 'createdAt',
@@ -287,6 +299,7 @@ export const File_uploadScalarFieldEnum = {
   acl: 'acl',
   status: 'status',
   category: 'category',
+  hash: 'hash',
   width: 'width',
   height: 'height',
   userId: 'userId',
