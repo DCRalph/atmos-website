@@ -56,7 +56,7 @@ export function MobileMenuToggle() {
         <div className="relative h-6 w-6 flex items-center justify-center">
           {/* Top bar */}
           <motion.span
-            className="absolute h-0.5 bg-black dark:bg-white origin-center"
+            className="absolute h-[3px] bg-black dark:bg-white origin-center rounded-full"
             variants={topBarVariants}
             animate={isMenuOpen ? "open" : "closed"}
             initial="closed"
@@ -64,7 +64,7 @@ export function MobileMenuToggle() {
           />
           {/* Middle bar */}
           <motion.span
-            className="absolute h-0.5 w-6 bg-black dark:bg-white origin-center"
+            className="absolute h-[3px] w-6 bg-black dark:bg-white origin-center rounded-full"
             variants={middleBarVariants}
             animate={isMenuOpen ? "open" : "closed"}
             initial="closed"
@@ -72,7 +72,7 @@ export function MobileMenuToggle() {
           />
           {/* Bottom bar */}
           <motion.span
-            className="absolute h-0.5 bg-black dark:bg-white origin-center"
+            className="absolute h-[3px] bg-black dark:bg-white origin-center rounded-full"
             variants={bottomBarVariants}
             animate={isMenuOpen ? "open" : "closed"}
             initial="closed"
