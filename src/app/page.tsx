@@ -8,6 +8,7 @@ import { HomeTopContent } from "~/components/home/home-top-content";
 import { HomeBottomContent } from "~/components/home/home-bottom-content";
 import { MobileNav } from "~/components/mobile-nav";
 import { MobileMenuToggle } from "~/components/mobile-menu-toggle";
+import { OpeningAnimation } from "~/components/opening-animation";
 
 import dynamic from 'next/dynamic';
 
@@ -18,6 +19,8 @@ function HomeContent() {
 
   return (
     <main className="h-dvh relative overflow-y-scroll overflow-x-hidden bg-black text-white" id="home-page-main">
+      <OpeningAnimation />
+
       <UserIndicator />
 
       <HomeTopContent />

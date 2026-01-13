@@ -13,7 +13,7 @@ export function OpeningAnimation({
 
   useEffect(() => {
     // const hasSeen = false; // disable for testing
-    const hasSeen = sessionStorage.getItem("def-opening") === "1";
+    const hasSeen = sessionStorage.getItem("def-opening") == "1";
     if (hasSeen) {
       setVisible(false);
       return;

@@ -15,7 +15,6 @@ export function HomeTopContent() {
 
   return (
     <div className="h-full">
-      <OpeningAnimation />
       <VideoBackground ref={videoRef} onStateChange={setIsPlaying} />
 
       <LiveGigPopup />

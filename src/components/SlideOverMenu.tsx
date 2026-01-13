@@ -223,7 +223,7 @@ function renderMenuContent(isHomePage: boolean, isMobile: boolean, setIsMenuOpen
           "flex flex-col flex-1 gap-1",
           orbitron.className,
           !isMobile && "mt-2",
-          isMobile && "items-end mb-24 justify-end",
+          isMobile && "items-end mb-36 justify-end",
         )}
       >
         {MENU_ITEMS.map((item, idx) => {
@@ -297,12 +297,13 @@ function MenuItemComponent({
         href={item.href}
         className={cn(
           uniqueId,
-          "relative text-white uppercase font-light flex items-center text-2xl h-14 tracking-wider hover:font-bold group transition-all ease-out hover:tracking-widest text-nowrap",
+          "relative text-white uppercase font-light flex items-center tracking-wider hover:font-bold group transition-all ease-out hover:tracking-widest text-nowrap",
           isActive && "font-bold!",
           !USE_MENU_COLORS && "bg-accent-strong hover:bg-accent-muted",
           USE_MENU_COLORS && "hover:brightness-90",
+          "h-8 text-xl md:h-14 md:text-2xl",
           !isMobile && "pl-8",
-          isMobile && "justify-end h-8 pr-8 text-xl"
+          isMobile && "justify-end pr-8"
         )}
 
         style={{
@@ -345,8 +346,8 @@ function MenuItemComponent({
         {isMobile && (
           <div
             className={cn(
-              "absolute h-14 w-32 left-full top-0", !USE_MENU_COLORS && "bg-accent-strong",
-              isMobile && "h-8",
+              "absolute  w-32 left-full top-0", !USE_MENU_COLORS && "bg-accent-strong",
+              "h-8 md:h-14",
               // "bg-blue-500"
             )}
             style={USE_MENU_COLORS ? { backgroundColor: item.color } : undefined}

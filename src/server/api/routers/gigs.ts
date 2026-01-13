@@ -284,10 +284,10 @@ export const gigsRouter = createTRPCRouter({
       },
     });
 
-    const enrichedGigs = await enrichGigsWithFileUploads(ctx.db, todayGigs);
+    const filteredGigs = todayGigs.filter((gig) => isGigUpcoming(gig));
+    const enrichedGigs = await enrichGigsWithFileUploads(ctx.db, filteredGigs);
 
-    // Filter to only upcoming gigs (gigs that haven't ended yet)
-    return enrichedGigs.filter((gig) => isGigUpcoming(gig));
+    return enrichedGigs;
   }),
 
   getById: publicProcedure

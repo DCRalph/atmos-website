@@ -102,11 +102,11 @@ export function LiveGigPopup() {
       {isOpen && shouldShow && (
         <motion.div
           key="popup-container"
-          initial={{ y: "100%" }}
+          initial={{ y: "-100%" }}
           animate={{ y: 0 }}
-          exit={{ y: "100%" }}
+          exit={{ y: "-100%" }}
           transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none p-4"
+          className="fixed top-14 left-0 right-0 z-50 flex justify-center pointer-events-none p-4"
         >
           <AnimatePresence mode="wait">
             {isMinimized ? (

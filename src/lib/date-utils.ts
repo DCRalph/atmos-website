@@ -279,6 +279,7 @@ export function isGigUpcoming(gig: {
   ));
 
   // Gig is upcoming if we're between the day before and the day after at 5am
+  // return true;
   return now >= dayBefore && now < dayAfter5am;
 }
 
