@@ -47,7 +47,8 @@ export function MobileMenuToggle() {
 
   return createPortal(
     <motion.div
-      className="fixed z-500 bottom-4 right-4 size-12 flex items-center justify-center bg-white/50 dark:bg-black/50 backdrop-blur-sm rounded-full border border-black/10 dark:border-white/10 hover:bg-white/75 dark:hover:bg-black/75"
+      // className="fixed z-500 bottom-4 right-4 size-12 flex items-center justify-center bg-white/50 dark:bg-black/50 backdrop-blur-sm rounded-full border border-black/10 dark:border-white/10 hover:bg-white/75 dark:hover:bg-black/75"
+      className="fixed z-500 bottom-4 right-4 size-12 flex items-center justify-center "
       whileHover={{ scale: 1.1 }}
       transition={{ duration: 0.3 }}>
       <button

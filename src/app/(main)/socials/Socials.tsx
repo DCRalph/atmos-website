@@ -85,7 +85,7 @@ export default function SocialsPage() {
             <h1 className="text-5xl sm:text-6xl md:text-7xl font-black tracking-[0.15em] text-white mb-4">
               FOLLOW ATMOS
             </h1>
-            <div className="h-1 w-24 bg-red-500 mx-auto mb-6" />
+            <div className="h-1 w-24 bg-accent-strong mx-auto mb-6" />
             <p className="text-base sm:text-lg text-white/60 tracking-wider uppercase font-mono">
               One presence across every platform
             </p>
@@ -124,7 +124,7 @@ function SocialCard({
     >
       <Link href={href} target="_blank" rel="noopener noreferrer" className="group block h-full">
         <div
-          className="relative h-full bg-zinc-950 border-2 border-zinc-800 p-6 transition-all duration-300 hover:border-red-500 hover:shadow-[0_0_30px_rgba(239,68,68,0.3)]"
+          className="relative h-full bg-zinc-950 border-2 border-zinc-800 p-6 transition-all duration-300 hover:border-accent-muted hover:shadow-[0_0_30px_var(--accent-muted)]"
           style={{ "--social-color": color, "--social-color-bg": `${color}15` } as React.CSSProperties}
         >
           {/* Red accent bar on left */}
@@ -143,7 +143,7 @@ function SocialCard({
             <h3 className="text-xl font-black tracking-[0.15em] text-white">{label}</h3>
 
 
-            <div className="text-red-500 opacity-0 group-hover:opacity-100 group-hover:text-(--social-color) transition-all duration-300">
+            <div className="text-accent-strong opacity-0 group-hover:opacity-100 group-hover:text-(--social-color) transition-all duration-300">
               <ExternalLink className="h-5 w-5" />
             </div>
 

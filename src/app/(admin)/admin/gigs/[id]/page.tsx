@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { AdminSection } from "~/components/admin/admin-section";
@@ -134,16 +135,21 @@ export default function GigManagementPage({ params }: PageProps) {
       subtitle={gig.title}
       backLink={{ href: "/admin/gigs", label: "← Back to Gigs" }}
       actions={
-        <Button
-          variant="destructive"
-          onClick={() => {
-            if (confirm("Are you sure you want to delete this gig? This action cannot be undone.")) {
-              deleteGig.mutate({ id: gig.id });
-            }
-          }}
-        >
-          Delete Gig
-        </Button>
+        <>
+          <Button variant="outline" asChild>
+            <Link href={`/gigs/${gig.id}`}>View Gig</Link>
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => {
+              if (confirm("Are you sure you want to delete this gig? This action cannot be undone.")) {
+                deleteGig.mutate({ id: gig.id });
+              }
+            }}
+          >
+            Delete Gig
+          </Button>
+        </>
       }
     >
       <div className="space-y-6">

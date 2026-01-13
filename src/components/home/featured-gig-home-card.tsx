@@ -40,7 +40,7 @@ type FeaturedGigCardProps = {
 export function FeaturedGigHomeCard({ gig }: FeaturedGigCardProps) {
   return (
     <motion.div
-      className="group relative overflow-hidden rounded-none border-2 border-white/10 bg-black/90 p-6 sm:p-8 backdrop-blur-sm transition-all hover:border-accent-muted hover:bg-black hover:shadow-[0_0_25px_rgba(239,68,68,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-muted lg:col-span-3"
+      className="group relative overflow-hidden rounded-none border-2 border-white/10 bg-black/90 p-6 sm:p-8 backdrop-blur-sm transition-all hover:border-accent-muted hover:bg-black hover:shadow-[0_0_25px_var(--accent-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-muted lg:col-span-3"
       initial={{ opacity: 0, y: 10 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.4 }}
@@ -120,7 +120,7 @@ export function FeaturedGigHomeCard({ gig }: FeaturedGigCardProps) {
             <GigPhotoCarousel media={gig.media} gigTitle={gig.title} />
           ) : (
             <div className="flex flex-col gap-3 rounded-none border-2 border-white/10 bg-black/40 p-4 sm:p-5">
-              <p className="text-xs font-black uppercase tracking-widest text-accent-muted">Featured Photos</p>
+              {/* <p className="text-xs font-black uppercase tracking-widest text-accent-muted">Featured Photos</p> */}
               <div className="flex h-32 items-center justify-center rounded-none border-2 border-dashed border-white/20">
                 <p className="text-xs font-bold uppercase tracking-wider text-white/40">No photos available</p>
               </div>

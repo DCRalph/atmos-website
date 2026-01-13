@@ -23,11 +23,11 @@ export function MerchItem({ name, description, price, image }: MerchItemProps) {
       <p className="mb-4 text-xs sm:text-sm text-white/60">
         {description}
       </p>
-      <div className="flex items-center justify-between">
-        <span className="text-base sm:text-lg font-bold">${price}</span>
+      <div className="flex items-center gap-4">
         <button className="rounded-md bg-white px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-black transition-all hover:bg-white/90">
           Add to Cart
         </button>
+        <span className="text-base sm:text-lg font-bold">${price}</span>
       </div>
     </div>
   );

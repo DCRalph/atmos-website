@@ -22,7 +22,7 @@ export function PastGigHomeCard({ gig }: PastGigHomeCardProps) {
   return (
     <motion.a
       href={`/gigs/${gig.id}`}
-      className="group relative  overflow-hidden flex flex-col justify-between gap-2 rounded-none border-2 border-white/10 bg-black/80 p-6 backdrop-blur-sm transition-all hover:border-accent-muted/50 hover:bg-black/90 hover:shadow-[0_0_15px_rgba(239,68,68,0.2)]"
+      className="group relative  overflow-hidden flex flex-col justify-between gap-2 rounded-none border-2 border-white/10 bg-black/80 p-6 backdrop-blur-sm transition-all hover:border-accent-muted/50 hover:bg-black/90 hover:shadow-[0_0_15px_var(--accent-muted)]"
     >
       <div className="absolute right-0 top-0 h-1 w-16 bg-accent-muted opacity-50 transition-all group-hover:w-full group-hover:opacity-100" />
 

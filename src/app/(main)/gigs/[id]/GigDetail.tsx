@@ -1,226 +1,250 @@
-import { notFound } from "next/navigation";
-import { StaticBackground } from "~/components/static-background";
-import { api } from "~/trpc/server";
-import { formatDate, formatTime, isGigPast } from "~/lib/date-utils";
-import { MediaGallery } from "../../../../components/gigs/media-gallery";
-import { MarkdownContent } from "../../../../components/markdown-content";
-import Link from "next/link";
-import { Button } from "~/components/ui/button";
-import { authServer } from "~/lib/auth";
-import { ArrowLeft } from "lucide-react";
+import { notFound } from "next/navigation"
+import { StaticBackground } from "~/components/static-background"
+import { api } from "~/trpc/server"
+import { formatDate, formatTime, isGigPast } from "~/lib/date-utils"
+import { MediaGallery } from "../../../../components/gigs/media-gallery"
+import { MarkdownContent } from "../../../../components/markdown-content"
+import { GigDetailPhotoCarousel } from "../../../../components/gigs/gig-detail-photo-carousel"
+import Link from "next/link"
+import { authServer } from "~/lib/auth"
+import { ArrowLeft, Calendar, Clock, Pencil, Ticket } from "lucide-react"
+import { isLightColor } from "~/lib/utils"
 
 type PageProps = {
-  params: Promise<{ id: string }>;
-};
-
+  params: Promise<{ id: string }>
+}
 
 export default async function GigPage({ params }: PageProps) {
-  const { id } = await params;
-  const gig = await api.gigs.getById({ id });
+  const { id } = await params
+  const gig = await api.gigs.getById({ id })
 
   if (!gig) {
-    notFound();
+    notFound()
   }
 
   // Check if user is admin
-  const { user } = await authServer();
-  const isAdmin = user?.role === "ADMIN";
+  const { user } = await authServer()
+  const isAdmin = user?.role === "ADMIN"
 
-  const upcoming = !isGigPast(gig);
-
-  const hasMedia = gig.media && gig.media.length > 0;
+  const upcoming = !isGigPast(gig)
+  const hasMedia = gig.media && gig.media.length > 0
 
   return (
     <main className="bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-6.jpg" />
 
-      <section className="relative z-10 min-h-dvh px-4 py-16">
+      <section className="relative z-10 min-h-dvh px-4 py-16 sm:py-24">
         <div className="mx-auto max-w-6xl">
+          {/* Navigation */}
           <div className="mb-8 flex gap-4">
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
+            <Link
+              href="/gigs"
+              className="group flex items-center gap-2 rounded-none border-2 border-white/30 bg-transparent px-4 py-2 text-sm font-black uppercase tracking-wider text-white transition-all hover:border-white hover:bg-white/10"
             >
-              <Link
-                href="/gigs"
-                className="text-white/60 hover:text-white transition-colors inline-flex items-center gap-2"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Gigs
-              </Link>
-            </Button>
+              <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+              Back to Gigs
+            </Link>
             {isAdmin && (
-              <Button
-                variant="outline"
-                size="sm"
-                asChild
+              <Link
+                href={`/admin/gigs/${id}`}
+                className="group flex items-center gap-2 rounded-none border-2 border-white/30 bg-transparent px-4 py-2 text-sm font-black uppercase tracking-wider text-white transition-all hover:border-white hover:bg-white/10"
               >
-                <Link
-                  href={`/admin/gigs/${id}`}
-                  className="text-white/60 hover:text-white transition-colors inline-flex items-center gap-2"
-                >
-                  Manage Gig
-                </Link>
-              </Button>
+                <Pencil className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+                Manage Gig
+              </Link>
             )}
           </div>
 
-          {/* Gig Header */}
-          <div className="mb-12">
-            <div className="mb-4">
-              <span className="text-xl sm:text-2xl font-bold text-white/80">
-                {formatDate(gig.gigStartTime, "long")}
-              </span>
+          {/* Gig Header Card */}
+          <div className="mb-8 border-2 border-white/10 bg-black/80 backdrop-blur-sm p-6 sm:p-8 md:p-10 hover:border-accent-muted/50 transition-all relative overflow-hidden group">
+
+            {/* Glow effect */}
+            <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+              <div className="absolute inset-0 bg-linear-to-br from-accent-muted/10 via-transparent to-transparent" />
+              <div className="absolute -right-24 top-0 h-72 w-72 rounded-full bg-accent-muted/20 blur-3xl" />
             </div>
-            <h1 className="mb-4 text-4xl sm:text-5xl font-bold tracking-wider md:text-6xl">
-              {gig.title}
-            </h1>
-            <p className="text-xl sm:text-2xl text-white/80 mb-4">{gig.subtitle}</p>
-            {gig.gigTags && (gig.gigTags as Array<{ gigTag: { id: string; name: string; color: string } }>).length > 0 && (
-              <div className="mb-6 flex flex-wrap gap-2">
-                {(gig.gigTags as Array<{ gigTag: { id: string; name: string; color: string } }>).map((gt) => (
-                  <span
-                    key={gt.gigTag.id}
-                    className="rounded-md px-3 py-1 text-sm font-medium"
-                    style={{
-                      backgroundColor: `${gt.gigTag.color}20`,
-                      borderColor: gt.gigTag.color,
-                      borderWidth: "1px",
-                      color: gt.gigTag.color,
-                    }}
-                  >
-                    {gt.gigTag.name}
+
+            <div className="relative grid gap-6 lg:grid-cols-[1.5fr_1fr] lg:items-start">
+              {/* Left side - Details */}
+              <div>
+                <div className="mb-4 flex items-center gap-2 text-accent-muted">
+                  <Calendar className="w-5 h-5" />
+                  <span className="text-xl sm:text-2xl font-black uppercase tracking-wider">
+                    {formatDate(gig.gigStartTime, "long")}
                   </span>
-                ))}
+                </div>
+
+                <h1 className="mb-4 text-3xl sm:text-4xl md:text-5xl font-black tracking-tight uppercase">
+                  {gig.title}
+                </h1>
+
+                <p className="text-lg sm:text-xl text-white/70 mb-6 font-medium">{gig.subtitle}</p>
+
+                {/* Tags */}
+                {gig.gigTags && (gig.gigTags as Array<{ gigTag: { id: string; name: string; color: string } }>).length > 0 && (
+                  <div className="mb-6 flex flex-wrap gap-2">
+                    {(gig.gigTags as Array<{ gigTag: { id: string; name: string; color: string } }>).map((gt) => (
+                      <span
+                        key={gt.gigTag.id}
+                        className="rounded-none border-2 px-3 py-1 text-sm font-bold uppercase tracking-wide"
+                        style={{
+                          backgroundColor: `${gt.gigTag.color}20`,
+                          borderColor: gt.gigTag.color,
+                          color: isLightColor(gt.gigTag.color) ? "black" : "white",
+                        }}
+                      >
+                        {gt.gigTag.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Description */}
+                {gig.description && (
+                  <div className="border-l-4 border-accent-strong pl-4 py-2">
+                    <MarkdownContent content={String(gig.description)} />
+                  </div>
+                )}
               </div>
-            )}
-            {gig.description && (
-              <div className="rounded-lg border border-white/10 bg-white/5 p-6 sm:p-8 backdrop-blur-sm">
-                <MarkdownContent content={String(gig.description)} />
-              </div>
-            )}
+
+              {/* Right side - Featured Photos Carousel */}
+              {hasMedia ? (
+                <GigDetailPhotoCarousel media={gig.media!} gigTitle={gig.title} />
+              ) : (
+                <div className="flex flex-col gap-3 rounded-none border-2 border-white/10 bg-black/40 p-4 sm:p-5">
+                  {/* <p className="text-xs font-black uppercase tracking-widest text-accent-muted">Featured Photos</p> */}
+                  <div className="flex h-32 items-center justify-center rounded-none border-2 border-dashed border-white/20">
+                    <p className="text-xs font-bold uppercase tracking-wider text-white/40">No photos available</p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Upcoming Gig - Detailed Information */}
+          {/* Event Details Section */}
           {upcoming && (
-            <div className="space-y-8">
-              <div className="rounded-lg border border-white/10 bg-white/5 p-6 sm:p-8 backdrop-blur-sm">
-                <h2 className="mb-6 text-2xl sm:text-3xl font-bold tracking-wide">
-                  Event Details
-                </h2>
-                <div className="space-y-4">
+            <div className="mb-8 border-2 border-white/10 bg-black/80 backdrop-blur-sm p-6 sm:p-8 hover:border-accent-muted/50 transition-all">
+              <h2 className="mb-6 text-2xl sm:text-3xl font-black tracking-wider uppercase border-l-4 border-accent-strong pl-4">
+                Event Details
+              </h2>
+              <div className="space-y-6">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center border-2 border-white/20 bg-black/50">
+                    <Calendar className="h-5 w-5 text-accent-muted" />
+                  </div>
                   <div>
-                    <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-white/60">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-white/60">
                       Date
                     </h3>
-                    <p className="text-lg">{formatDate(gig.gigStartTime, "long")}</p>
+                    <p className="text-lg font-bold">{formatDate(gig.gigStartTime, "long")}</p>
                   </div>
+                </div>
 
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center border-2 border-white/20 bg-black/50">
+                    <Clock className="h-5 w-5 text-accent-muted" />
+                  </div>
                   <div>
-                    <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-white/60">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-white/60">
                       Time
                     </h3>
-                    <p className="text-lg">
+                    <p className="text-lg font-bold">
                       {gig.gigEndTime
                         ? `${formatTime(gig.gigStartTime)} - ${formatTime(gig.gigEndTime)}`
                         : `Starts at ${formatTime(gig.gigStartTime)}`}
                     </p>
                   </div>
+                </div>
 
-                  {gig.ticketLink && (
-                    <div>
-                      <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-white/60">
+                {gig.ticketLink && (
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center border-2 border-white/20 bg-black/50">
+                      <Ticket className="h-5 w-5 text-accent-muted" />
+                    </div>
+                    <div className="flex flex-col">
+                      <h3 className="text-sm font-bold uppercase tracking-wider text-white/60">
                         Tickets
                       </h3>
-                      <a
+                      <Link
                         href={gig.ticketLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-block rounded-md bg-white px-6 py-3 text-center font-semibold text-black transition-all hover:bg-white/90"
+                        className="text-white underline underline-offset-4 hover:text-accent-muted transition-colors"
                       >
-                        Get Tickets
-                      </a>
+                        {gig.ticketLink}
+                      </Link>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* Past Gig Without Media - Show Most Details */}
+          {/* Past Gig Without Media */}
           {!upcoming && !hasMedia && (
-            <div className="space-y-8">
-              <div className="rounded-lg border border-white/10 bg-white/5 p-6 sm:p-8 backdrop-blur-sm">
-                <h2 className="mb-6 text-2xl sm:text-3xl font-bold tracking-wide">
+            <div className="space-y-6">
+              <div className="border-2 border-white/10 bg-black/80 backdrop-blur-sm p-6 sm:p-8 hover:border-accent-muted/50 transition-all">
+                <h2 className="mb-6 text-2xl sm:text-3xl font-black tracking-wider uppercase border-l-4 border-accent-strong pl-4">
                   Event Details
                 </h2>
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-white/60">
-                      Date
-                    </h3>
-                    <p className="text-lg">{formatDate(gig.gigStartTime, "long")}</p>
-                  </div>
-
-                  <div>
-                    <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-white/60">
-                      Time
-                    </h3>
-                    <p className="text-lg">
-                      {gig.gigEndTime
-                        ? `${formatTime(gig.gigStartTime)} - ${formatTime(gig.gigEndTime)}`
-                        : `Started at ${formatTime(gig.gigStartTime)}`}
-                    </p>
-                  </div>
-
-                  {gig.ticketLink && (
-                    <div>
-                      <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-white/60">
-                        Ticket Link
-                      </h3>
-                      <a
-                        href={gig.ticketLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-white/80 hover:text-white underline"
-                      >
-                        View Original Ticket Link
-                      </a>
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center border-2 border-white/20 bg-black/50">
+                      <Calendar className="h-5 w-5 text-accent-muted" />
                     </div>
-                  )}
+                    <div>
+                      <h3 className="text-sm font-bold uppercase tracking-wider text-white/60">
+                        Date
+                      </h3>
+                      <p className="text-lg font-bold">{formatDate(gig.gigStartTime, "long")}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center border-2 border-white/20 bg-black/50">
+                      <Clock className="h-5 w-5 text-accent-muted" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold uppercase tracking-wider text-white/60">
+                        Time
+                      </h3>
+                      <p className="text-lg font-bold">
+                        {gig.gigEndTime
+                          ? `${formatTime(gig.gigStartTime)} - ${formatTime(gig.gigEndTime)}`
+                          : `Started at ${formatTime(gig.gigStartTime)}`}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {/* Coming Soon Message */}
-              <div className="rounded-lg border border-white/10 bg-white/5 p-6 sm:p-8 backdrop-blur-sm text-center">
-                <h2 className="mb-4 text-2xl sm:text-3xl font-bold tracking-wide">
-                  Photos and Videos
+              <div className="border-2 border-white/10 bg-black/80 backdrop-blur-sm p-8 text-center">
+                <h2 className="mb-4 text-2xl sm:text-3xl font-black tracking-wider uppercase">
+                  Photos & Videos
                 </h2>
-                <p className="text-lg text-white/80">Coming Soon</p>
+                <p className="text-lg text-white/60 font-bold uppercase tracking-wider">Coming Soon</p>
               </div>
             </div>
           )}
 
-          {/* Past Gig With Media - Show Media Gallery */}
+          {/* Past Gig With Media */}
           {!upcoming && hasMedia && (
             <div className="space-y-8">
-              <div className="mb-8 rounded-lg border border-white/10 bg-white/5 p-6 sm:p-8 backdrop-blur-sm">
-                <h2 className="mb-4 text-2xl sm:text-3xl font-bold tracking-wide">
+              <div className="border-2 border-white/10 bg-black/80 backdrop-blur-sm p-6 sm:p-8 hover:border-accent-muted/50 transition-all">
+                <h2 className="mb-4 text-2xl sm:text-3xl font-black tracking-wider uppercase border-l-4 border-accent-strong pl-4">
                   Event Details
                 </h2>
-                <div className="space-y-3">
-                  <div>
-                    <span className="text-sm font-semibold uppercase tracking-wide text-white/60">
-                      Date:{" "}
-                    </span>
-                    <span className="text-lg">{formatDate(gig.gigStartTime, "long")}</span>
+                <div className="flex flex-wrap gap-6">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-accent-muted" />
+                    <span className="text-sm font-bold uppercase tracking-wider text-white/60">Date:</span>
+                    <span className="text-base font-bold">{formatDate(gig.gigStartTime, "long")}</span>
                   </div>
-                  <div>
-                    <span className="text-sm font-semibold uppercase tracking-wide text-white/60">
-                      Time:{" "}
-                    </span>
-                    <span className="text-lg">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-accent-muted" />
+                    <span className="text-sm font-bold uppercase tracking-wider text-white/60">Time:</span>
+                    <span className="text-base font-bold">
                       {gig.gigEndTime
                         ? `${formatTime(gig.gigStartTime)} - ${formatTime(gig.gigEndTime)}`
                         : `Started at ${formatTime(gig.gigStartTime)}`}
@@ -235,6 +259,5 @@ export default async function GigPage({ params }: PageProps) {
         </div>
       </section>
     </main>
-  );
+  )
 }
-

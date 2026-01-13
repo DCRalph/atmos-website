@@ -1,40 +1,44 @@
-import Link from "next/link";
-import { formatDate, formatTime } from "~/lib/date-utils";
-import { Badge } from "~/components/ui/badge";
-import { motion } from "framer-motion";
+"use client"
+
+import Link from "next/link"
+import { formatDate, formatTime } from "~/lib/date-utils"
+import { Badge } from "~/components/ui/badge"
+import { motion } from "framer-motion"
 
 type Gig = {
-  id: string;
-  gigStartTime: Date;
-  title: string;
-  subtitle: string;
-  gigEndTime?: Date | null;
-  ticketLink?: string | null;
-  gigTags?: Array<{ gigTag: { id: string; name: string; color: string } }> | null;
-};
+  id: string
+  gigStartTime: Date
+  title: string
+  subtitle: string
+  gigEndTime?: Date | null
+  ticketLink?: string | null
+  gigTags?: Array<{ gigTag: { id: string; name: string; color: string } }> | null
+}
 
 type UpcomingGigCardProps = {
-  gig: Gig;
-};
+  gig: Gig
+}
 
 export function UpcomingGigCard({ gig }: UpcomingGigCardProps) {
   return (
     <motion.div
-      className="group relative overflow-hidden rounded-lg border border-white/10 bg-white/5 p-4 sm:p-6 shadow-glass backdrop-blur-sm transition-all hover:border-white/30 hover:bg-white/10"
+      className="group relative overflow-hidden rounded-none border-2 border-white/10 bg-black/80 p-6 backdrop-blur-sm transition-all hover:border-accent-strong hover:shadow-[0_0_20px_var(--accent-muted)]"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
     >
-      {/* Link wrapper for the entire card except buttons */}
+      {/* Left accent bar */}
+      <div className="absolute left-0 top-0 h-full w-1 bg-accent-strong transition-all group-hover:w-2" />
+
       <Link href={`/gigs/${gig.id}`} className="block">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
+        <div className="flex flex-col gap-6 md:flex-row md:items-start">
           {/* Date/Time Section */}
-          <div className="flex shrink-0 flex-col items-start md:w-32 lg:w-40">
-            <div className="text-2xl font-bold leading-tight md:text-3xl">
+          <div className="flex shrink-0 flex-col items-start md:w-40">
+            <div className="text-4xl font-black uppercase leading-none tracking-tight md:text-5xl text-white">
               {formatDate(gig.gigStartTime)}
             </div>
-            <div className="mt-1 text-sm text-white/60">
+            <div className="mt-2 text-sm font-bold uppercase tracking-wider text-accent-strong">
               {gig.gigEndTime
                 ? `${formatTime(gig.gigStartTime)} - ${formatTime(gig.gigEndTime)}`
                 : `${formatTime(gig.gigStartTime)}`}
@@ -42,14 +46,12 @@ export function UpcomingGigCard({ gig }: UpcomingGigCardProps) {
           </div>
 
           {/* Event Details Section */}
-          <div className="flex-1 space-y-3">
+          <div className="flex-1 space-y-4">
             <div>
-              <h3 className="text-xl font-semibold leading-tight md:text-2xl">
+              <h3 className="text-2xl font-black uppercase leading-tight tracking-tight md:text-3xl text-white">
                 {gig.title}
               </h3>
-              <p className="mt-1 text-sm text-white/60 md:text-base">
-                {gig.subtitle}
-              </p>
+              <p className="mt-2 text-base font-medium text-white/70 md:text-lg">{gig.subtitle}</p>
             </div>
 
             {/* Tags */}
@@ -59,9 +61,9 @@ export function UpcomingGigCard({ gig }: UpcomingGigCardProps) {
                   <Badge
                     key={gt.gigTag.id}
                     variant="outline"
-                    className="rounded-full text-xs"
+                    className="rounded-none border-2 px-3 py-1 text-xs font-bold uppercase tracking-wide"
                     style={{
-                      backgroundColor: gt.gigTag.color + "20",
+                      backgroundColor: gt.gigTag.color + "15",
                       borderColor: gt.gigTag.color,
                       color: gt.gigTag.color,
                     }}
@@ -76,10 +78,10 @@ export function UpcomingGigCard({ gig }: UpcomingGigCardProps) {
       </Link>
 
       {/* Action Buttons */}
-      <div className="mt-6 flex flex-col gap-2 sm:flex-row md:mt-4 md:justify-end">
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row md:justify-end">
         <Link
           href={`/gigs/${gig.id}`}
-          className="flex-1 rounded-lg border border-white/20 bg-white/5 px-4 py-2.5 text-center text-sm font-medium text-white transition-all hover:border-white/40 hover:bg-white/10 sm:flex-none sm:px-6"
+          className="flex-1 rounded-none border-2 border-white/30 bg-transparent px-6 py-3 text-center text-sm font-black uppercase tracking-wider text-white transition-all hover:border-white hover:bg-white/10 sm:flex-none"
         >
           View Details
         </Link>
@@ -88,7 +90,7 @@ export function UpcomingGigCard({ gig }: UpcomingGigCardProps) {
             href={gig.ticketLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 rounded-lg bg-white px-4 py-2.5 text-center text-sm font-semibold text-black transition-all hover:bg-white/90 sm:flex-none sm:px-6"
+            className="flex-1 rounded-none bg-accent-strong px-6 py-3 text-center text-sm font-black uppercase tracking-wider text-white transition-all hover:bg-accent-muted hover:shadow-[0_0_20px_var(--accent-muted)] sm:flex-none"
             onClick={(e) => e.stopPropagation()}
           >
             Get Tickets
@@ -96,5 +98,5 @@ export function UpcomingGigCard({ gig }: UpcomingGigCardProps) {
         )}
       </div>
     </motion.div>
-  );
+  )
 }

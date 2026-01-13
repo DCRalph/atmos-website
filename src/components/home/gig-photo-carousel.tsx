@@ -43,9 +43,9 @@ export function GigPhotoCarousel({ media, gigTitle }: GigPhotoCarouselProps) {
   if (photosToShow.length === 0) {
     return (
       <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-black/20 p-4 sm:p-5">
-        <p className="text-xs font-semibold uppercase tracking-wider text-white/60">
+        {/* <p className="text-xs font-semibold uppercase tracking-wider text-white/60">
           Featured photos
-        </p>
+        </p> */}
         <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-white/20">
           <p className="text-xs text-white/40">No photos available</p>
         </div>
@@ -55,9 +55,9 @@ export function GigPhotoCarousel({ media, gigTitle }: GigPhotoCarouselProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs font-semibold uppercase tracking-wider text-white/60 px-1">
+      {/* <p className="text-xs font-semibold uppercase tracking-wider text-white/60 px-1">
         Featured photos
-      </p>
+      </p> */}
       <Carousel
         opts={{
           align: "start",

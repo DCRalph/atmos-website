@@ -111,7 +111,7 @@ export function ContactForm() {
 
       {/* Name Input */}
       <div>
-        <label htmlFor="name" className="block text-sm font-bold uppercase tracking-wider text-red-500 mb-2">
+        <label htmlFor="name" className="block text-sm font-bold uppercase tracking-wider mb-2">
           Name
         </label>
         <input
@@ -122,18 +122,18 @@ export function ContactForm() {
             setFormData({ ...formData, name: e.target.value })
             clearFieldError("name")
           }}
-          className={`w-full bg-black/50 border-2 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none transition-colors font-mono ${errors.name ? "border-red-500" : "border-white/20"
+          className={`w-full bg-black/50 border-2 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent-strong focus:outline-none focus:shadow-[0_0_15px_var(--accent-muted)] transition-all font-mono ${errors.name ? "border-accent-strong shadow-[0_0_15px_var(--accent-muted)]" : "border-white/20"
             }`}
           placeholder="YOUR NAME"
         />
         {errors.name && (
-          <p className="mt-1 text-sm text-red-400 font-mono">{errors.name}</p>
+          <p className="mt-1 text-sm text-accent-muted font-mono">{errors.name}</p>
         )}
       </div>
 
       {/* Email Input */}
       <div>
-        <label htmlFor="email" className="block text-sm font-bold uppercase tracking-wider text-red-500 mb-2">
+        <label htmlFor="email" className="block text-sm font-bold uppercase tracking-wider mb-2">
           Email
         </label>
         <input
@@ -144,18 +144,18 @@ export function ContactForm() {
             setFormData({ ...formData, email: e.target.value })
             clearFieldError("email")
           }}
-          className={`w-full bg-black/50 border-2 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none transition-colors font-mono ${errors.email ? "border-red-500" : "border-white/20"
+          className={`w-full bg-black/50 border-2 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent-strong focus:outline-none focus:shadow-[0_0_15px_var(--accent-muted)] transition-all font-mono ${errors.email ? "border-accent-strong shadow-[0_0_15px_var(--accent-muted)]" : "border-white/20"
             }`}
           placeholder="YOUR@EMAIL.COM"
         />
         {errors.email && (
-          <p className="mt-1 text-sm text-red-400 font-mono">{errors.email}</p>
+          <p className="mt-1 text-sm text-accent-muted font-mono">{errors.email}</p>
         )}
       </div>
 
       {/* Reason Select */}
       <div>
-        <label htmlFor="reason" className="block text-sm font-bold uppercase tracking-wider text-red-500 mb-2">
+        <label htmlFor="reason" className="block text-sm font-bold uppercase tracking-wider mb-2">
           Reason
         </label>
         <CustomSelect
@@ -169,13 +169,13 @@ export function ContactForm() {
           hasError={!!errors.reason}
         />
         {errors.reason && (
-          <p className="mt-1 text-sm text-red-400 font-mono">{errors.reason}</p>
+          <p className="mt-1 text-sm text-accent-muted font-mono">{errors.reason}</p>
         )}
       </div>
 
       {/* Message Textarea */}
       <div>
-        <label htmlFor="message" className="block text-sm font-bold uppercase tracking-wider text-red-500 mb-2">
+        <label htmlFor="message" className="block text-sm font-bold uppercase tracking-wider mb-2">
           Message
         </label>
         <textarea
@@ -186,12 +186,12 @@ export function ContactForm() {
             setFormData({ ...formData, message: e.target.value })
             clearFieldError("message")
           }}
-          className={`w-full bg-black/50 border-2 px-4 py-3 text-white placeholder:text-white/40 focus:border-red-500 focus:outline-none transition-colors resize-none font-mono ${errors.message ? "border-red-500" : "border-white/20"
+          className={`w-full bg-black/50 border-2 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent-strong focus:outline-none focus:shadow-[0_0_15px_var(--accent-muted)] transition-all resize-none font-mono ${errors.message ? "border-accent-strong shadow-[0_0_15px_var(--accent-muted)]" : "border-white/20"
             }`}
           placeholder="YOUR MESSAGE HERE..."
         />
         {errors.message && (
-          <p className="mt-1 text-sm text-red-400 font-mono">{errors.message}</p>
+          <p className="mt-1 text-sm text-accent-muted font-mono">{errors.message}</p>
         )}
       </div>
 
@@ -199,7 +199,7 @@ export function ContactForm() {
       <button
         type="submit"
         disabled={createContact.isPending}
-        className="w-full bg-red-500 hover:bg-red-600 text-black font-bold uppercase tracking-[0.2em] py-4 px-8 transition-all hover:shadow-[0_0_20px_rgba(239,68,68,0.5)] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
+        className="w-full bg-accent-strong hover:bg-accent-muted text-white font-bold uppercase tracking-[0.2em] py-4 px-8 transition-all hover:shadow-[0_0_20px_var(--accent-muted)] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
       >
         {createContact.isPending ? "Sending..." : "Send Message"}
       </button>

@@ -22,13 +22,13 @@ type UpcomingGigCardProps = {
 export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
   return (
     <motion.div
-      className="group relative overflow-hidden rounded-none border-2 border-white/10 bg-black/90 p-6 backdrop-blur-sm transition-all hover:border-accent-muted hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]"
+      className="group relative overflow-hidden rounded-none border-2 border-white/10 bg-black/90 p-6 backdrop-blur-sm transition-all hover:border-accent-strong hover:shadow-[0_0_20px_var(--accent-muted)]"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
     >
-      <div className="absolute left-0 top-0 h-full w-1 bg-accent-muted transition-all group-hover:w-2" />
+      <div className="absolute left-0 top-0 h-full w-1 bg-accent-strong transition-all group-hover:w-2" />
 
       <Link href={`/gigs/${gig.id}`} className="block">
         <div className="flex flex-col gap-6 md:flex-row md:items-start">
@@ -36,7 +36,7 @@ export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
             <div className="text-4xl font-black uppercase leading-none tracking-tight md:text-5xl text-white">
               {formatDate(gig.gigStartTime)}
             </div>
-            <div className="mt-2 text-sm font-bold uppercase tracking-wider text-accent-muted">
+            <div className="mt-2 text-sm font-bold uppercase tracking-wider text-accent-strong">
               {gig.gigEndTime
                 ? `${formatTime(gig.gigStartTime)} - ${formatTime(gig.gigEndTime)}`
                 : `${formatTime(gig.gigStartTime)}`}
@@ -85,7 +85,7 @@ export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
             href={gig.ticketLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 rounded-none bg-accent-muted px-6 py-3 text-center text-sm font-black uppercase tracking-wider text-white transition-all hover:bg-[#DC2626] hover:shadow-[0_0_20px_rgba(239,68,68,0.5)] sm:flex-none"
+            className="flex-1 rounded-none bg-accent-strong px-6 py-3 text-center text-sm font-black uppercase tracking-wider text-white transition-all hover:bg-accent-muted hover:shadow-[0_0_20px_var(--accent-muted)] sm:flex-none"
             onClick={(e) => e.stopPropagation()}
           >
             Get Tickets

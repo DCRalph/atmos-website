@@ -161,7 +161,7 @@ const BigLinks = ({ links, className }: { links: SocialLink[], className?: strin
           href={link.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="group relative block overflow-hidden border-2 border-white/10 bg-black/90 p-6 transition-all hover:border-accent-muted hover:bg-black hover:shadow-[0_0_25px_rgba(239,68,68,0.3)]"
+          className="group relative block overflow-hidden border-2 border-white/10 bg-black/90 p-6 transition-all hover:border-accent-muted hover:bg-black hover:shadow-[0_0_25px_var(--accent-muted)]"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, delay: 0.2 + (index * 0.1) }}
@@ -218,7 +218,7 @@ const SmallLinks = ({ links, className }: { links: SocialLink[], className?: str
           href={link.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="group relative flex h-16 w-16 items-center justify-center border-2 border-white/10 bg-black/90 transition-all hover:border-accent-muted hover:bg-black hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]"
+          className="group relative flex h-16 w-16 items-center justify-center border-2 border-white/10 bg-black/90 transition-all hover:border-accent-muted hover:bg-black hover:shadow-[0_0_20px_var(--accent-muted)]"
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.3, delay: 0.1 + (index * 0.05) }}
@@ -256,7 +256,7 @@ const UpcomingGigLink = ({ gig }: { gig: UpcomingGig }) => {
       </div>
 
       <div
-        className="group relative block overflow-hidden border-2 border-accent-muted/50 bg-black/90 p-5 transition-all hover:border-accent-muted hover:bg-black hover:shadow-[0_0_30px_rgba(239,68,68,0.4)]"
+        className="group relative block overflow-hidden border-2 border-accent-muted/50 bg-black/90 p-5 transition-all hover:border-accent-muted hover:bg-black hover:shadow-[0_0_30px_var(--accent-muted)]"
       >
         {/* Animated accent bar */}
         <div className="absolute left-0 top-0 h-full w-1.5 bg-accent-muted transition-all group-hover:w-2" />
@@ -313,7 +313,7 @@ const UpcomingGigLink = ({ gig }: { gig: UpcomingGig }) => {
                 href={gig.ticketLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group/ticket relative flex items-center gap-2 overflow-hidden bg-accent-muted px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white transition-all duration-200 hover:bg-accent-muted hover:shadow-[0_0_25px_rgba(239,68,68,0.6)]"
+                className="group/ticket relative flex items-center gap-2 overflow-hidden bg-accent-muted px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white transition-all duration-200 hover:bg-accent-muted hover:shadow-[0_0_25px_var(--accent-muted)]"
               >
                 <Ticket className="relative z-10 h-4 w-4 transition-transform duration-200 group-hover/ticket:rotate-[-8deg] group-hover/ticket:scale-110" />
                 <span className="relative z-10">Tickets</span>

@@ -98,36 +98,37 @@ function SlideOverMenuContent({ isHomePage = false, isMobile }: SlideOverMenuCon
 function renderMenuContent(isHomePage: boolean, isMobile: boolean, setIsMenuOpen: (open: boolean) => void) {
   return (
     <>
-      {/* Logo at top */}
-      {!isMobile &&
-        (
-          <div className="flex justify-center items-center px-4 mt-8 mb-6">
-            <div className="relative w-full h-16">
-              <Image
-                src="/logo/atmos-white.png"
-                alt="Atmos Logo"
-                fill
-                preload
-                className="object-contain dark:block hidden"
-                sizes="(max-width: 640px) 10rem, 12rem"
-              />
-              <Image
-                src="/logo/atmos-black.png"
-                alt="Atmos Logo"
-                fill
-                preload
-                className="object-contain dark:hidden block"
-                sizes="(max-width: 640px) 10rem, 12rem"
-              />
+      <div className="h-screen flex flex-col">
+        {/* Logo at top */}
+        {!isMobile &&
+          (
+            <div className="flex justify-center items-center px-4 mt-8">
+              <div className="relative w-full h-16">
+                <Image
+                  src="/logo/atmos-white.png"
+                  alt="Atmos Logo"
+                  fill
+                  preload
+                  className="object-contain dark:block hidden"
+                  sizes="(max-width: 640px) 10rem, 12rem"
+                />
+                <Image
+                  src="/logo/atmos-black.png"
+                  alt="Atmos Logo"
+                  fill
+                  preload
+                  className="object-contain dark:hidden block"
+                  sizes="(max-width: 640px) 10rem, 12rem"
+                />
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
 
-      {
-        isMobile && (
-          <>
-            {/* <MotionButton
+        {
+          isMobile && (
+            <>
+              {/* <MotionButton
               className="text-lg uppercase group w-min cursor-pointer m-4 ease-out"
               onClick={(e) => {
                 e.stopPropagation();
@@ -161,7 +162,7 @@ function renderMenuContent(isHomePage: boolean, isMobile: boolean, setIsMenuOpen
               Close
             </MotionButton> */}
 
-            {/* <div className="fixed z-500 bottom-4 right-4 size-12 flex items-center justify-center bg-white/50 dark:bg-black/50 backdrop-blur-sm rounded-full hover:bg-white/75 dark:hover:bg-black/75 transition-colors border border-black/10 dark:border-white/10">
+              {/* <div className="fixed z-500 bottom-4 right-4 size-12 flex items-center justify-center bg-white/50 dark:bg-black/50 backdrop-blur-sm rounded-full hover:bg-white/75 dark:hover:bg-black/75 transition-colors border border-black/10 dark:border-white/10">
               <button
                 className="text-lg uppercase text-black dark:text-white group"
                 onClick={() => setIsMenuOpen(false)}
@@ -170,8 +171,8 @@ function renderMenuContent(isHomePage: boolean, isMobile: boolean, setIsMenuOpen
               </button>
             </div> */}
 
-            {/* centered logo */}
-            {/* <motion.div className="p-4 w-screen h-36"
+              {/* centered logo */}
+              {/* <motion.div className="p-4 w-screen h-36"
 
 
               transition={{ duration: 0.6, ease: "anticipate" }}
@@ -212,27 +213,30 @@ function renderMenuContent(isHomePage: boolean, isMobile: boolean, setIsMenuOpen
             </motion.div> */}
 
 
-          </>
-        )}
+            </>
+          )}
 
 
+        <div className="flex flex-col flex-1 justify-around">
 
-      <div
-        // className={`flex flex-col ${isMobile ? "justify-center" : "justify-start"} flex-1 gap-1 mt-2 ${orbitron.className} ${isMobile ? "mt-16" : "mt-2"}`}
-        className={cn(
-          "flex flex-col flex-1 gap-1",
-          orbitron.className,
-          !isMobile && "mt-2",
-          isMobile && "items-end mb-36 justify-end",
-        )}
-      >
-        {MENU_ITEMS.map((item, idx) => {
-          const index = isMobile ? MENU_ITEMS.length - idx - 1 : idx;
-          const width = getWidth(idx, isMobile);
-          return (
-            <MenuItemComponent closeMenu={() => setIsMenuOpen(false)} item={item} idx={index} key={item.label + "outer"} isMobile={isMobile} width={width} />
-          )
-        })}
+          <div
+            className={cn(
+              "flex flex-col  gap-1.5",
+              orbitron.className,
+              !isMobile && "",
+              isMobile && "items-end justify-end",
+            )}
+          >
+            {MENU_ITEMS.map((item, idx) => {
+              const index = isMobile ? MENU_ITEMS.length - idx - 1 : idx;
+              const width = getWidth(idx, isMobile);
+              return (
+                <MenuItemComponent closeMenu={() => setIsMenuOpen(false)} item={item} idx={index} key={item.label + "outer"} isMobile={isMobile} width={width} />
+              )
+            })}
+          </div>
+        </div>
+
       </div>
     </>
   );
@@ -242,7 +246,7 @@ const getWidth = (idx: number, isMobile: boolean) => {
   const widths: number[] = [78, 67, 58, 73, 89, 97];
   let w = widths[idx % widths.length]!;
   if (isMobile) {
-    w += 20;
+    w += 40;
   }
   return w;
 }
@@ -299,11 +303,13 @@ function MenuItemComponent({
           uniqueId,
           "relative text-white uppercase font-light flex items-center tracking-wider hover:font-bold group transition-all ease-out hover:tracking-widest text-nowrap",
           isActive && "font-bold!",
-          !USE_MENU_COLORS && "bg-accent-strong hover:bg-accent-muted",
-          USE_MENU_COLORS && "hover:brightness-90",
-          "h-8 text-xl md:h-14 md:text-2xl",
+          "bg-linear-to-r from-accent-strong via-65% via-accent-strong to-transparent",
+          // !USE_MENU_COLORS && "bg-accent-strong hover:bg-accent-muted",
+          // USE_MENU_COLORS && "hover:brightness-90",
+          "h-8 text-xl md:h-8 md:text-xl",
           !isMobile && "pl-8",
-          isMobile && "justify-end pr-8"
+          isMobile && "justify-end pr-4 bg-linear-to-l to-transparent",
+          // "shadow-glass"
         )}
 
         style={{
