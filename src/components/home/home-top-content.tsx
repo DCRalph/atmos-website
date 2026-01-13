@@ -19,7 +19,7 @@ export function HomeTopContent() {
       <VideoBackground ref={videoRef} onStateChange={setIsPlaying} />
 
       <LiveGigPopup />
-      <SocialLinks side="right" />
+      <SocialLinks side="left" />
 
 
       {/* Logo section */}
@@ -44,14 +44,16 @@ export function HomeTopContent() {
               // Scroll exactly one viewport of the scroll container to reveal the next section.
               main.scrollTo({ top: main.clientHeight, behavior: "smooth" });
             }}
-            className="group inline-flex items-center justify-center text-white/80 transition hover:text-white"
+            className="group flex items-center gap-1 justify-center text-white/80 transition hover:text-white"
           >
-            <Mouse className="h-8 w-8 transition-all duration-200 group-hover:scale-110 group-hover:text-white" />
+            <ChevronDown className="size-6 transition-all duration-200 group-hover:scale-110 group-hover:text-white" strokeWidth={1} />
+            <p className="text-sm">Scroll</p>
+            <ChevronDown className="size-6 transition-all duration-200 group-hover:scale-110 group-hover:text-white" strokeWidth={1} />
           </button>
         </motion.div>
 
         {/* Play/Pause Button */}
-        <div className="absolute transition-all bottom-2 left-2 sm:bottom-6 sm:left-6 z-30">
+        {/* <div className="absolute transition-all bottom-2 left-2 sm:bottom-6 sm:left-6 z-30">
           <button
             onClick={() => videoRef.current?.togglePlayPause()}
             aria-label={isPlaying ? "Pause video" : "Play video"}
@@ -70,7 +72,7 @@ export function HomeTopContent() {
               )}
             </motion.div>
           </button>
-        </div>
+        </div> */}
       </section>
 
       <div className="absolute w-full h-32 z-10 bg-linear-to-t from-black to-transparent bottom-0 left-0" />

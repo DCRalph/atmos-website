@@ -44,7 +44,7 @@ export function MobileMenuProvider({ children }: MobileMenuProviderProps) {
     if (appContent) {
       if (isMenuOpen) {
         appContent.style.transform = "scale(0.95)";
-        appContent.style.filter = "blur(10px)";
+        appContent.style.filter = "blur(5px)";
         appContent.style.pointerEvents = "none";
         appContent.style.userSelect = "none";
       } else {

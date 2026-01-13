@@ -4,6 +4,7 @@ import { UserIndicator } from "~/components/user-indicator";
 import { MainFooter } from "~/components/mainFooter";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { MobileNav } from "~/components/mobile-nav";
+import { MobileMenuToggle } from "~/components/mobile-menu-toggle";
 
 import dynamic from 'next/dynamic';
 
@@ -13,7 +14,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const isMobile = useIsMobile();
 
   return (
-    <div className="bg-background text-foreground h-dvh overflow-x-hidden overflow-y-scroll">
+    <div className="bg-background text-foreground h-dvh w-full overflow-x-hidden overflow-y-scroll">
       <UserIndicator />
 
       {!isMobile ? ( // Desktop layout
@@ -24,13 +25,18 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           </div>
         </div>
       ) : ( // Mobile layout
-        <div className="relative">
-          {/* SlideOverMenu renders through portal on mobile */}
-          <SlideOverMenu isHomePage={true} />
+        <>
+          <div className="relative">
+            {/* SlideOverMenu renders through portal on mobile */}
+            <SlideOverMenu isHomePage={true} />
 
-          <MobileNav />
-          {children}
-        </div>
+            <MobileNav />
+            {children}
+          </div>
+
+          <MobileMenuToggle />
+        </>
+
       )}
 
       <MainFooter />

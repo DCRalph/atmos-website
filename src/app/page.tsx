@@ -7,6 +7,7 @@ import { UserIndicator } from "~/components/user-indicator";
 import { HomeTopContent } from "~/components/home/home-top-content";
 import { HomeBottomContent } from "~/components/home/home-bottom-content";
 import { MobileNav } from "~/components/mobile-nav";
+import { MobileMenuToggle } from "~/components/mobile-menu-toggle";
 
 import dynamic from 'next/dynamic';
 
@@ -33,6 +34,7 @@ function HomeContent() {
 
           <MobileNav />
           <HomeBottomContent isMobile={isMobile} key="4" />
+          <MobileMenuToggle />
         </div>
       )}
 

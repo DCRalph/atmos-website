@@ -83,6 +83,8 @@ export default function RootLayout({
                 {/* Portal target for mobile menu - rendered above everything */}
                 <div id="mobile-menu-portal" className="fixed inset-0 z-999 pointer-events-none *:pointer-events-auto" />
 
+                <div id="mobile-menu-toggle-portal" className="fixed inset-0 z-999 pointer-events-none *:pointer-events-auto" />
+
                 {/* App content wrapper - receives blur/scale when menu is open */}
                 <div id="app-content-wrapper" className="transition-all duration-700 ease-out origin-center">
                   {children}

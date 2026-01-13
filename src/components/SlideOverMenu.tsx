@@ -60,10 +60,44 @@ interface SlideOverMenuContentProps {
 function SlideOverMenuContent({ isHomePage = false, isMobile }: SlideOverMenuContentProps) {
   const { setIsMenuOpen } = useMobileMenu();
 
+  // On mobile, wrap in backdrop overlay
+  if (isMobile) {
+    return (
+      <div
+        className="fixed inset-0"
+        onClick={() => setIsMenuOpen(false)}
+      >
+
+        {/* Menu content */}
+        <div
+          className={cn(
+            "flex flex-col absolute right-0 z-10 h-dvh w-64 items-end",
+          )}
+        >
+          {renderMenuContent(isHomePage, isMobile, setIsMenuOpen)}
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop rendering (unchanged)
   return (
     // bg-zinc-100 dark:bg-zinc-950 border-r border-black/10 dark:border-white/10
-    <div className={`flex flex-col z-50 h-dvh w-64 ${isHomePage && !isMobile ? "sticky top-0 left-0" : isMobile ? "" : "fixed top-0 left-0"}`}>
+    <div
+      className={cn(
+        "flex flex-col z-50 h-dvh w-64",
+        "fixed top-0", // other pages on desktop
+        isHomePage && "sticky", // Home page on desktop
+      )}
+    >
+      {renderMenuContent(isHomePage, isMobile, setIsMenuOpen)}
+    </div>
+  );
+}
 
+function renderMenuContent(isHomePage: boolean, isMobile: boolean, setIsMenuOpen: (open: boolean) => void) {
+  return (
+    <>
       {/* Logo at top */}
       {!isMobile &&
         (
@@ -93,9 +127,12 @@ function SlideOverMenuContent({ isHomePage = false, isMobile }: SlideOverMenuCon
       {
         isMobile && (
           <>
-            <MotionButton
+            {/* <MotionButton
               className="text-lg uppercase group w-min cursor-pointer m-4 ease-out"
-              onClick={() => setIsMenuOpen(false)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMenuOpen(false);
+              }}
 
               transition={{
                 duration: 0.4,
@@ -105,7 +142,7 @@ function SlideOverMenuContent({ isHomePage = false, isMobile }: SlideOverMenuCon
               variants={{
                 hidden: {
                   // opacity: 0,
-                  x: "-150%",
+                  x: isMobile ? "150%" : "-150%",
                   y: "-150%",
                 },
                 visible: {
@@ -121,11 +158,20 @@ function SlideOverMenuContent({ isHomePage = false, isMobile }: SlideOverMenuCon
 
             >
               <X />
-              Menu
-            </MotionButton>
+              Close
+            </MotionButton> */}
+
+            {/* <div className="fixed z-500 bottom-4 right-4 size-12 flex items-center justify-center bg-white/50 dark:bg-black/50 backdrop-blur-sm rounded-full hover:bg-white/75 dark:hover:bg-black/75 transition-colors border border-black/10 dark:border-white/10">
+              <button
+                className="text-lg uppercase text-black dark:text-white group"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <X />
+              </button>
+            </div> */}
 
             {/* centered logo */}
-            <motion.div className="p-4 w-screen h-36"
+            {/* <motion.div className="p-4 w-screen h-36"
 
 
               transition={{ duration: 0.6, ease: "anticipate" }}
@@ -163,7 +209,7 @@ function SlideOverMenuContent({ isHomePage = false, isMobile }: SlideOverMenuCon
                   sizes="50vw"
                 />
               </div>
-            </motion.div>
+            </motion.div> */}
 
 
           </>
@@ -173,17 +219,23 @@ function SlideOverMenuContent({ isHomePage = false, isMobile }: SlideOverMenuCon
 
       <div
         // className={`flex flex-col ${isMobile ? "justify-center" : "justify-start"} flex-1 gap-1 mt-2 ${orbitron.className} ${isMobile ? "mt-16" : "mt-2"}`}
-        className={`flex flex-col flex-1 gap-1 mt-2 ${orbitron.className} ${isMobile ? "mt-6" : "mt-2"}`}
+        className={cn(
+          "flex flex-col flex-1 gap-1",
+          orbitron.className,
+          !isMobile && "mt-2",
+          isMobile && "items-end mb-24 justify-end",
+        )}
       >
-        {
-          MENU_ITEMS.map((item, idx) => (
-            <MenuItemComponent closeMenu={() => setIsMenuOpen(false)} item={item} idx={idx} key={item.label + "outer"} isMobile={isMobile} />
-          ))
-        }
+        {MENU_ITEMS.map((item, idx) => {
+          const index = isMobile ? MENU_ITEMS.length - idx - 1 : idx;
+          const width = getWidth(idx, isMobile);
+          return (
+            <MenuItemComponent closeMenu={() => setIsMenuOpen(false)} item={item} idx={index} key={item.label + "outer"} isMobile={isMobile} width={width} />
+          )
+        })}
       </div>
-
-    </div>
-  )
+    </>
+  );
 }
 
 const getWidth = (idx: number, isMobile: boolean) => {
@@ -211,14 +263,16 @@ function MenuItemComponent({
   closeMenu,
   item,
   idx,
+  width,
   isMobile,
 }: {
   closeMenu: () => void;
   item: MenuItem;
   idx: number;
+  width: number;
   isMobile: boolean;
 }) {
-  const width = getWidth(idx, isMobile);
+  // const width = getWidth(idx, isMobile);
   const hoverWidth = width * 1.2;
 
   const pathname = usePathname();
@@ -243,12 +297,14 @@ function MenuItemComponent({
         href={item.href}
         className={cn(
           uniqueId,
-          "relative text-white uppercase font-light flex items-center text-2xl h-14 pl-8 tracking-wider hover:font-bold group transition-all ease-out hover:tracking-widest",
+          "relative text-white uppercase font-light flex items-center text-2xl h-14 tracking-wider hover:font-bold group transition-all ease-out hover:tracking-widest text-nowrap",
           isActive && "font-bold!",
           !USE_MENU_COLORS && "bg-accent-strong hover:bg-accent-muted",
-          USE_MENU_COLORS && "hover:brightness-90"
+          USE_MENU_COLORS && "hover:brightness-90",
+          !isMobile && "pl-8",
+          isMobile && "justify-end h-8 pr-8 text-xl"
         )}
-        
+
         style={{
           width: `${width}%`,
           backgroundColor: USE_MENU_COLORS ? item.color : undefined,
@@ -264,7 +320,7 @@ function MenuItemComponent({
         variants={{
           hidden: {
             // opacity: 0.8,
-            x: "-100%",
+            x: isMobile ? "100%" : "-100%",
           },
           visible: {
             // opacity: 1,
@@ -276,12 +332,26 @@ function MenuItemComponent({
         animate="visible"
         exit="hidden"
 
-        onClick={closeMenu}
+        onClick={(e) => {
+          e.stopPropagation();
+          closeMenu();
+        }}
       >
-        <div
+        {/* <div
           className={cn("absolute h-14 w-32 right-full top-0", !USE_MENU_COLORS && "bg-accent-strong")}
           style={USE_MENU_COLORS ? { backgroundColor: item.color } : undefined}
-        />
+        /> */}
+
+        {isMobile && (
+          <div
+            className={cn(
+              "absolute h-14 w-32 left-full top-0", !USE_MENU_COLORS && "bg-accent-strong",
+              isMobile && "h-8",
+              // "bg-blue-500"
+            )}
+            style={USE_MENU_COLORS ? { backgroundColor: item.color } : undefined}
+          />
+        )}
         {/* <div className="absolute h-14 w-14 left-[calc(100%+4px)] top-0 bg-white transition-all opacity-0 group-hover:opacity-100" /> */}
 
         {item.label}
