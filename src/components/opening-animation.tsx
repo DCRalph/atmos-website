@@ -70,7 +70,7 @@ export function OpeningAnimation({
                 {Array.from({ length: 4 }).map((_, i) => (
                   <motion.span
                     key={i}
-                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-red-500/60 shadow-[0_0_12px_rgba(255,0,0,0.5),0_0_28px_rgba(255,0,0,0.35)]"
+                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-accent-strong/60 shadow-[0_0_12px_var(--accent-strong),0_0_28px_var(--accent-muted)]"
                     style={{ width: 280, height: 280 }}
                     initial={{ scale: 1, opacity: 0.6 }}
                     animate={{ scale: 2.4, opacity: 0 }}
