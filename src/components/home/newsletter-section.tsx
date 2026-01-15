@@ -146,9 +146,9 @@ export function NewsletterSection({ className }: { className?: string }) {
                     "Subscribe"
                   )}
                 </button>
-                <button onClick={playSubscribeSound}>
+                {/* <button onClick={playSubscribeSound}>
                   test sound
-                </button>
+                </button> */}
               </div>
 
               {message && (
