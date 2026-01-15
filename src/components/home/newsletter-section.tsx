@@ -87,7 +87,7 @@ export function NewsletterSection({ className }: { className?: string }) {
           <h3
             className={`mb-4 text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight ${orbitron.className}`}
           >
-            Enter the <span className="italic-backwards">atmos</span><span className="text-accent-muted italic">phere</span>
+            Enter the <span>atmos</span><span className="text-accent-muted italic">phere</span>
           </h3>
 
           <p className="mb-8 text-base sm:text-lg text-white/70 max-w-2xl mx-auto">
