@@ -28,31 +28,37 @@ export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
   return (
     <AccentGlowCard
       asChild
-      className="bg-black/90 p-6 hover:border-accent-strong hover:shadow-[0_0_20px_var(--accent-muted)]"
+      className="p-6"
     >
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 10 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-      >
 
-        <Link href={`/gigs/${gig.id}`} className="block">
-          <div className="flex flex-col gap-6 md:flex-row md:items-start">
-            {posterUrl && (
-              <div className="relative aspect-3/4 w-full max-w-[240px] overflow-hidden rounded-none border-2 border-white/10 bg-black/20 md:w-32 md:max-w-none">
+        className="flex gap-4 h-full flex-col md:flex-row"
+      >
+        {posterUrl && (
+          <Link href={`/gigs/${gig.id}`} className="hidden md:block">
+            <div className="flex flex-col gap-6 md:flex-row md:items-stretch">
+              <div className="relative min-h-56 w-full shrink-0 overflow-hidden rounded-none border-2 border-white/10 bg-black/20 md:w-48">
                 <Image
                   src={posterUrl}
                   alt={`${gig.title} poster`}
                   fill
-                  sizes="(max-width: 768px) 240px, 128px"
-                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 192px"
+                  className="object-contain"
                 />
               </div>
-            )}
 
+            </div>
+          </Link>
+        )}
+
+        <div className="flex flex-col justify-between gap-4 w-full">
+          <div className="flex flex-1 flex-col gap-6 md:flex-row md:items-start">
             <div className="flex shrink-0 flex-col items-start md:w-40">
-              <div className="text-4xl font-black uppercase leading-none tracking-tight md:text-5xl text-white">
+              <div className="text-4xl font-black uppercase leading-none tracking-tight text-white md:text-5xl">
                 {formatDate(gig.gigStartTime)}
               </div>
               <div className="mt-2 text-sm font-bold uppercase tracking-wider text-accent-strong">
@@ -64,37 +70,57 @@ export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
 
             <div className="flex-1 space-y-4">
               <div>
-                <h3 className="text-2xl font-black uppercase leading-tight tracking-tight md:text-3xl text-white">
+                <h3 className="text-2xl font-black uppercase leading-tight tracking-tight text-white md:text-3xl">
                   {gig.title}
                 </h3>
-                <p className="mt-2 text-base font-medium text-white/70 md:text-lg">{gig.subtitle}</p>
+                <p className="mt-2 text-base font-medium text-white/70 md:text-lg">
+                  {gig.subtitle}
+                </p>
               </div>
 
               {/* <GigTagList gigTags={gig.gigTags} size="sm" /> */}
             </div>
-          </div>
-        </Link>
 
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row md:justify-end">
-          <Link
-            href={`/gigs/${gig.id}`}
-            className="flex-1 rounded-none border-2 border-white/30 bg-transparent px-6 py-3 text-center text-sm font-black uppercase tracking-wider text-white transition-all hover:border-white hover:bg-white/10 sm:flex-none"
-          >
-            View Details
-          </Link>
-          {gig.ticketLink && (
-            <a
-              href={gig.ticketLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 rounded-none bg-accent-strong px-6 py-3 text-center text-sm font-black uppercase tracking-wider text-white transition-all hover:bg-accent-muted hover:shadow-[0_0_20px_var(--accent-muted)] sm:flex-none"
-              onClick={(e) => e.stopPropagation()}
+          </div>
+
+
+          <div className="flex flex-col gap-3 sm:flex-row md:justify-end">
+            <Link
+              href={`/gigs/${gig.id}`}
+              className="flex-1 rounded-none border-2 border-white/30 bg-transparent px-6 py-3 text-center text-sm font-black uppercase tracking-wider text-white transition-all hover:border-white hover:bg-white/10 sm:flex-none"
             >
-              Get Tickets
-            </a>
-          )}
+              View Details
+            </Link>
+            {gig.ticketLink && (
+              <a
+                href={gig.ticketLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 rounded-none bg-accent-strong px-6 py-3 text-center text-sm font-black uppercase tracking-wider text-white transition-all hover:bg-accent-muted hover:shadow-[0_0_20px_var(--accent-muted)] sm:flex-none"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Get Tickets
+              </a>
+            )}
+          </div>
         </div>
+
+        {posterUrl && (
+          <Link href={`/gigs/${gig.id}`} className="block md:hidden">
+            <div className="relative min-h-96  shrink-0 overflow-hidden rounded-none border-2 border-white/10 bg-black/20 w-full">
+              <Image
+                src={posterUrl}
+                alt={`${gig.title} poster`}
+                fill
+                sizes="(max-width: 768px) 100vw, 192px"
+                className="object-contain"
+              />
+            </div>
+
+          </Link>
+        )}
+
       </motion.div>
-    </AccentGlowCard>
+    </AccentGlowCard >
   )
 }

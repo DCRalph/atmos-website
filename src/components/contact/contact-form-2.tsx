@@ -127,7 +127,7 @@ export function ContactForm() {
           placeholder="YOUR NAME"
         />
         {errors.name && (
-          <p className="mt-1 text-sm text-accent-muted font-mono">{errors.name}</p>
+          <p className="mt-1 text-sm text-red-500 font-mono">{errors.name}</p>
         )}
       </div>
 
@@ -149,7 +149,7 @@ export function ContactForm() {
           placeholder="YOUR@EMAIL.COM"
         />
         {errors.email && (
-          <p className="mt-1 text-sm text-accent-muted font-mono">{errors.email}</p>
+          <p className="mt-1 text-sm text-red-500 font-mono">{errors.email}</p>
         )}
       </div>
 
@@ -169,7 +169,7 @@ export function ContactForm() {
           hasError={!!errors.reason}
         />
         {errors.reason && (
-          <p className="mt-1 text-sm text-accent-muted font-mono">{errors.reason}</p>
+          <p className="mt-1 text-sm text-red-500 font-mono">{errors.reason}</p>
         )}
       </div>
 
@@ -191,7 +191,7 @@ export function ContactForm() {
           placeholder="YOUR MESSAGE HERE..."
         />
         {errors.message && (
-          <p className="mt-1 text-sm text-accent-muted font-mono">{errors.message}</p>
+          <p className="mt-1 text-sm text-red-500 font-mono">{errors.message}</p>
         )}
       </div>
 

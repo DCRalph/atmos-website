@@ -14,8 +14,13 @@ export function NewsletterSection({ className }: { className?: string }) {
   const newsletterSubscribe = api.newsletter.subscribe.useMutation();
   const subscribeAudioRef = useRef<HTMLAudioElement | null>(null);
 
+  type FieldErrors = {
+    email?: string;
+  };
+
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const [errors, setErrors] = useState<FieldErrors>({});
   const [message, setMessage] = useState<
     | { type: "success"; text: string }
     | { type: "error"; text: string }
@@ -37,6 +42,25 @@ export function NewsletterSection({ className }: { className?: string }) {
       void audio.play();
     } catch {
       // Non-critical: ignore audio failures.
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: FieldErrors = {};
+
+    if (!email.trim()) {
+      newErrors.email = "Please enter your email";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const clearFieldError = (field: keyof FieldErrors) => {
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
   };
 
@@ -70,7 +94,7 @@ export function NewsletterSection({ className }: { className?: string }) {
           <h3
             className={`mb-4 text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight ${orbitron.className}`}
           >
-            Enter the <span>atmos</span><span className="text-accent-muted italic">phere</span>
+            Enter the <span>atmos</span><span className="text-accent-strong italic">phere</span>
           </h3>
 
           <p className="mb-8 text-base sm:text-lg text-white/70 max-w-2xl mx-auto">
@@ -109,12 +133,14 @@ export function NewsletterSection({ className }: { className?: string }) {
               onSubmit={async (e) => {
                 e.preventDefault();
                 setMessage(null);
+                if (!validateForm()) return;
 
                 try {
-                  await newsletterSubscribe.mutateAsync({ email });
+                  await newsletterSubscribe.mutateAsync({ email: email.trim() });
                   playSubscribeSound();
                   setSubscribed(true);
                   setEmail("");
+                  setErrors({});
                 } catch {
                   setMessage({
                     type: "error",
@@ -123,31 +149,40 @@ export function NewsletterSection({ className }: { className?: string }) {
                 }
               }}
             >
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Input
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  aria-label="Email address"
-                  required
-                  className="flex-1 rounded-none border-2 border-white/20 bg-black/60 text-white placeholder:text-white/40 focus:border-accent-muted focus:ring-accent-muted/20 h-12 text-base"
-                />
+              <div>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Input
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      clearFieldError("email");
+                    }}
+                    aria-label="Email address"
+                    className={cn(
+                      "flex-1 rounded-none border-2 bg-black/60 text-white placeholder:text-white/40 focus:border-accent-muted focus:ring-accent-muted/20 h-12 text-base",
+                      errors.email ? "border-accent-strong shadow-[0_0_15px_var(--accent-muted)]" : "border-white/20",
+                    )}
+                  />
 
-                <button
-                  type="submit"
-                  disabled={newsletterSubscribe.isPending}
-                  className="h-12 rounded-none border-2 border-accent-strong bg-accent-strong px-6 text-sm font-black uppercase tracking-wider text-white transition-all hover:border-accent-muted hover:bg-accent-muted hover:shadow-[0_0_20px_var(--accent-muted)] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {newsletterSubscribe.isPending ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                      Joining…
-                    </span>
-                  ) : (
-                    "Subscribe"
-                  )}
-                </button>
+                  <button
+                    type="submit"
+                    disabled={newsletterSubscribe.isPending}
+                    className="h-12 rounded-none border-2 border-accent-strong bg-accent-strong px-6 text-sm font-black uppercase tracking-wider text-white transition-all hover:border-accent-muted hover:bg-accent-muted hover:shadow-[0_0_20px_var(--accent-muted)] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {newsletterSubscribe.isPending ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                        Joining…
+                      </span>
+                    ) : (
+                      "Subscribe"
+                    )}
+                  </button>
+                </div>
+
+                {errors.email && <p className="mt-2 text-sm text-red-500 font-mono">{errors.email}</p>}
               </div>
 
               {message && (
