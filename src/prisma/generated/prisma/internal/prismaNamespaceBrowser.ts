@@ -176,6 +176,7 @@ export type CrewMemberScalarFieldEnum = (typeof CrewMemberScalarFieldEnum)[keyof
 export const ContentItemScalarFieldEnum = {
   id: 'id',
   type: 'type',
+  linkType: 'linkType',
   title: 'title',
   description: 'description',
   date: 'date',
@@ -218,6 +219,7 @@ export const GigScalarFieldEnum = {
   gigStartTime: 'gigStartTime',
   gigEndTime: 'gigEndTime',
   ticketLink: 'ticketLink',
+  posterFileUploadId: 'posterFileUploadId',
   isFeatured: 'isFeatured',
   featuredSortOrder: 'featuredSortOrder',
   pastSortOrder: 'pastSortOrder',

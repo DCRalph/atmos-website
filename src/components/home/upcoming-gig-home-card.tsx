@@ -51,7 +51,7 @@ export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
               <p className="mt-2 text-base font-medium text-white/70 md:text-lg">{gig.subtitle}</p>
             </div>
 
-            <GigTagList gigTags={gig.gigTags} size="sm" />
+            {/* <GigTagList gigTags={gig.gigTags} size="sm" /> */}
           </div>
         </div>
       </Link>

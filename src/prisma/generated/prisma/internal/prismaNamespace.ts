@@ -1807,6 +1807,7 @@ export type CrewMemberScalarFieldEnum = (typeof CrewMemberScalarFieldEnum)[keyof
 export const ContentItemScalarFieldEnum = {
   id: 'id',
   type: 'type',
+  linkType: 'linkType',
   title: 'title',
   description: 'description',
   date: 'date',
@@ -1849,6 +1850,7 @@ export const GigScalarFieldEnum = {
   gigStartTime: 'gigStartTime',
   gigEndTime: 'gigEndTime',
   ticketLink: 'ticketLink',
+  posterFileUploadId: 'posterFileUploadId',
   isFeatured: 'isFeatured',
   featuredSortOrder: 'featuredSortOrder',
   pastSortOrder: 'pastSortOrder',
@@ -2033,6 +2035,20 @@ export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel
  * Reference to a field of type 'DateTime[]'
  */
 export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime[]'>
+    
+
+
+/**
+ * Reference to a field of type 'ContentLinkType'
+ */
+export type EnumContentLinkTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ContentLinkType'>
+    
+
+
+/**
+ * Reference to a field of type 'ContentLinkType[]'
+ */
+export type ListEnumContentLinkTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ContentLinkType[]'>
     
 
 

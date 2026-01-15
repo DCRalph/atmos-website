@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure, adminProcedure } from "~/server/api/trpc";
 
+const ContentLinkTypeSchema = z.enum(["SOUNDCLOUD_TRACK", "SOUNDCLOUD_PLAYLIST", "OTHER"]);
+
 export const contentRouter = createTRPCRouter({
   getAll: publicProcedure
     .input(
@@ -39,6 +41,7 @@ export const contentRouter = createTRPCRouter({
     .input(
       z.object({
         type: z.string().min(1),
+        linkType: ContentLinkTypeSchema.optional(),
         title: z.string().min(1),
         description: z.string().min(1),
         date: z.date(),
@@ -47,7 +50,10 @@ export const contentRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       return ctx.db.contentItem.create({
-        data: input,
+        data: {
+          ...input,
+          linkType: input.linkType ?? "OTHER",
+        },
       });
     }),
 
@@ -56,6 +62,7 @@ export const contentRouter = createTRPCRouter({
       z.object({
         id: z.string(),
         type: z.string().min(1).optional(),
+        linkType: ContentLinkTypeSchema.optional(),
         title: z.string().min(1).optional(),
         description: z.string().min(1).optional(),
         date: z.date().optional(),

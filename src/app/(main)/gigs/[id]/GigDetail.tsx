@@ -9,6 +9,7 @@ import Link from "next/link"
 import { authServer } from "~/lib/auth"
 import { ArrowLeft, Calendar, Clock, Pencil, Ticket } from "lucide-react"
 import { GigTagList } from "~/components/gig-tag-list"
+import Image from "next/image"
 
 type PageProps = {
   params: Promise<{ id: string }>
@@ -28,6 +29,7 @@ export default async function GigPage({ params }: PageProps) {
 
   const upcoming = !isGigPast(gig)
   const hasMedia = gig.media && gig.media.length > 0
+  const hasPoster = !!gig.posterFileUpload?.url
 
   return (
     <main className="bg-black text-white">
@@ -95,17 +97,30 @@ export default async function GigPage({ params }: PageProps) {
                 )}
               </div>
 
-              {/* Right side - Featured Photos Carousel */}
-              {hasMedia ? (
-                <GigDetailPhotoCarousel media={gig.media!} gigTitle={gig.title} />
-              ) : (
-                <div className="flex flex-col gap-3 rounded-none border-2 border-white/10 bg-black/40 p-4 sm:p-5">
-                  {/* <p className="text-xs font-black uppercase tracking-widest text-accent-muted">Featured Photos</p> */}
-                  <div className="flex h-32 items-center justify-center rounded-none border-2 border-dashed border-white/20">
-                    <p className="text-xs font-bold uppercase tracking-wider text-white/40">No photos available</p>
+              {/* Right side - Poster + Featured Photos Carousel */}
+              <div className="flex flex-col gap-4">
+                {hasPoster && (
+                  <div className="relative aspect-3/4 w-full overflow-hidden rounded-none border-2 border-white/10 bg-black/20 hover:border-accent-muted/50 transition-all">
+                    <Image
+                      src={gig.posterFileUpload!.url}
+                      alt={`${gig.title} poster`}
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 33vw"
+                      className="object-cover transition-transform duration-300 hover:scale-105"
+                    />
                   </div>
-                </div>
-              )}
+                )}
+
+                {hasMedia ? (
+                  <GigDetailPhotoCarousel media={gig.media!} gigTitle={gig.title} />
+                ) : (
+                  <div className="flex flex-col gap-3 rounded-none border-2 border-white/10 bg-black/40 p-4 sm:p-5">
+                    <div className="flex h-32 items-center justify-center rounded-none border-2 border-dashed border-white/20">
+                      <p className="text-xs font-bold uppercase tracking-wider text-white/40">No photos available</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

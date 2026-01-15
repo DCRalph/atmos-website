@@ -55,6 +55,7 @@ export function LatestContentSection() {
               description={latestContentItem.description}
               date={latestContentItem.date}
               link={latestContentItem.link}
+              linkType={latestContentItem.linkType ?? "OTHER"}
               hostname={getHostname(latestContentItem.link)}
             />
 

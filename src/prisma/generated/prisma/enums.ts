@@ -26,6 +26,15 @@ export const HomeGigSection = {
 export type HomeGigSection = (typeof HomeGigSection)[keyof typeof HomeGigSection]
 
 
+export const ContentLinkType = {
+  SOUNDCLOUD_TRACK: 'SOUNDCLOUD_TRACK',
+  SOUNDCLOUD_PLAYLIST: 'SOUNDCLOUD_PLAYLIST',
+  OTHER: 'OTHER'
+} as const
+
+export type ContentLinkType = (typeof ContentLinkType)[keyof typeof ContentLinkType]
+
+
 export const FileUploadStatus = {
   NO_FILE: 'NO_FILE',
   UPLOADING: 'UPLOADING',

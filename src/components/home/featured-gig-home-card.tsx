@@ -1,11 +1,10 @@
 "use client"
 
-import { motion } from "motion/react"
 import { formatDate } from "~/lib/date-utils"
+import { motion } from "framer-motion"
 import { GigPhotoCarousel } from "./gig-photo-carousel"
-import Link from "next/link"
-import { ArrowUpRight } from "lucide-react"
 import { GigTagList } from "~/components/gig-tag-list"
+import Link from "next/link"
 
 type MediaItem = {
   id: string
@@ -35,80 +34,58 @@ type FeaturedGigCardProps = {
   gig: Gig
 }
 
-
 export function FeaturedGigHomeCard({ gig }: FeaturedGigCardProps) {
   return (
     <motion.div
-      className="group relative overflow-hidden rounded-none border-2 border-white/10 bg-black/90 p-6 sm:p-8 backdrop-blur-sm transition-all hover:border-accent-muted hover:bg-black hover:shadow-[0_0_25px_var(--accent-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-muted lg:col-span-3"
-      initial={{ opacity: 0, y: 10 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.4 }}
-      transition={{ duration: 0.45, ease: "easeOut" }}
-      aria-label={`Open most recent gig: ${gig.title}`}
+      className="group relative overflow-hidden flex flex-col justify-between gap-4 rounded-none border-2 border-white/10 bg-black/80 p-6 sm:p-8 backdrop-blur-sm transition-all hover:border-accent-muted/50 hover:bg-black/90 hover:shadow-[0_0_15px_var(--accent-muted)] lg:col-span-3"
+      aria-label={`Featured gig: ${gig.title}`}
     >
-      <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-        <div className="absolute inset-0 bg-linear-to-br from-accent-muted/10 via-transparent to-transparent" />
-        <div className="absolute -right-24 top-0 h-72 w-72 rounded-full bg-accent-muted/20 blur-3xl" />
-      </div>
+      <div className="absolute left-0 top-0 h-full w-1 bg-accent-strong transition-all group-hover:w-2" />
+      {/* <div className="absolute right-0 top-0 h-1 w-16 bg-accent-muted opacity-50 transition-all group-hover:w-full group-hover:opacity-100" /> */}
 
-      <div className="absolute left-0 top-0 h-2 w-32 bg-accent-muted transition-all group-hover:w-48" />
+      <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+        <div className="flex h-full flex-col justify-between gap-4">
+          <h3 className="text-xl font-black uppercase leading-tight tracking-tight text-white sm:text-3xl mb-3">
+            {gig.title}
+          </h3>
 
-      <div className="relative">
-        <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-none bg-accent-muted px-3 py-1.5 text-xs font-black uppercase tracking-widest">
-              FEATURED
-            </span>
-            <span className="rounded-none border-2 border-white/20 bg-black/50 px-3 py-1.5 text-xs font-black uppercase tracking-widest text-white/90">
-              MOST RECENT
-            </span>
-          </div>
 
-          <div className="flex items-center gap-4">
-            <div className="text-xs font-bold uppercase tracking-wider text-white/60 transition-colors group-hover:text-accent-muted">
-              {formatDate(gig.gigStartTime, "long")}
+          <div className="flex justify-between gap-4">
+            <div className="flex flex-col justify-end gap-2">
+              <p className="text-white/60 text-base font-medium">{gig.subtitle}</p>
+
+              <div className="text-2xl font-black uppercase tracking-tight text-accent-muted">
+                {formatDate(gig.gigStartTime)}
+              </div>
+
+              {/* <GigTagList gigTags={gig.gigTags} size="md" max={6} showOverflowCount /> */}
+
+              {/* {gig.media && gig.media.length > 0 && (
+              <p className="text-sm font-bold uppercase tracking-wider text-white/50">
+                {gig.media.length} {gig.media.length === 1 ? "media item" : "media items"}
+              </p>
+            )} */}
+
+
             </div>
 
-            <Link
-              href={`/gigs/${gig.id}`}
-              className="group flex shrink-0 items-center gap-2 rounded-none border-2 border-white/30 bg-transparent px-4 py-2 text-xs font-black uppercase tracking-wider text-white transition-all hover:border-accent-muted hover:bg-accent-muted/10 hover:text-white"
-            >
-              View Details
-              <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-            </Link>
+
+            <div className="flex flex-col gap-2 justify-end">
+              <Link
+                href={`/gigs/${gig.id}`}
+                className="inline-flex items-center gap-2 rounded-none border-2 border-white/30 bg-transparent px-4 py-2 text-xs font-black uppercase tracking-wider text-white transition-all hover:border-accent-muted hover:bg-accent-muted/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-muted"
+                aria-label={`View more about ${gig.title}`}
+              >
+                View more
+              </Link>
+            </div>
 
           </div>
 
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr] lg:items-end">
-          <div>
-            <h3 className="text-2xl font-black uppercase leading-tight tracking-tight sm:text-3xl md:text-4xl">
-              {gig.title}
-            </h3>
-            <p className="mt-3 max-w-2xl text-sm font-medium leading-relaxed text-white/70 sm:text-base">
-              {gig.subtitle}
-            </p>
-
-            <GigTagList
-              gigTags={gig.gigTags}
-              className="mt-5"
-              max={6}
-              size="md"
-              showOverflowCount
-            />
-          </div>
-
-          {gig.media && gig.media.length > 0 ? (
-            <GigPhotoCarousel media={gig.media} gigTitle={gig.title} />
-          ) : (
-            <div className="flex flex-col gap-3 rounded-none border-2 border-white/10 bg-black/40 p-4 sm:p-5">
-              {/* <p className="text-xs font-black uppercase tracking-widest text-accent-muted">Featured Photos</p> */}
-              <div className="flex h-32 items-center justify-center rounded-none border-2 border-dashed border-white/20">
-                <p className="text-xs font-bold uppercase tracking-wider text-white/40">No photos available</p>
-              </div>
-            </div>
-          )}
+        <div className="lg:mt-2">
+          <GigPhotoCarousel media={gig.media ?? []} gigTitle={gig.title} />
         </div>
       </div>
     </motion.div>

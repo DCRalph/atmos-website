@@ -4,6 +4,7 @@ import { NewsletterSection } from "~/components/home/newsletter-section";
 import { UpcomingGigsSection } from "./upcoming-gigs-section";
 import { LatestContentSection } from "./latest-content-section";
 import { RecentGigsSection } from "./recent-gigs-section";
+import { SoundCloudPlayer } from "~/components/soundcloud-player";
 
 type HomeBottomContentProps = {
   isMobile?: boolean;
@@ -28,6 +29,7 @@ export function HomeBottomContent({
 
           <UpcomingGigsSection />
           <LatestContentSection />
+
           <RecentGigsSection />
 
           <NewsletterSection />

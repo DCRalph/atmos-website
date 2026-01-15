@@ -13,7 +13,8 @@ import { Textarea } from "~/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { utcDateToLocal } from "~/lib/date-utils";
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
+import Image from "next/image";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,6 +48,7 @@ export default function GigManagementPage({ params }: PageProps) {
   const [tagBeingAdded, setTagBeingAdded] = useState<string | null>(null);
 
   const { data: gig, refetch } = api.gigs.getById.useQuery({ id });
+  const [isPosterUploading, setIsPosterUploading] = useState(false);
   // const refetch = async () => {
   //   //noop
   // }
@@ -75,6 +77,21 @@ export default function GigManagementPage({ params }: PageProps) {
       await refetch();
       setIsRemoveDialogOpen(false);
       setTagToRemove(null);
+    },
+  });
+
+  const uploadPoster = api.gigs.uploadPoster.useMutation({
+    onSuccess: async () => {
+      await refetch();
+    },
+    onSettled: () => {
+      setIsPosterUploading(false);
+    },
+  });
+
+  const clearPoster = api.gigs.clearPoster.useMutation({
+    onSuccess: async () => {
+      await refetch();
     },
   });
   const { data: allTags, isLoading: isLoadingTags } = api.gigTags.getAll.useQuery(
@@ -277,7 +294,7 @@ export default function GigManagementPage({ params }: PageProps) {
                       {removeTag.isPending && tagToRemove?.id === gt.gigTag.id ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
-                        "×"
+                        <X className="h-3 w-3" />
                       )}
                     </button>
                   </div>
@@ -368,6 +385,90 @@ export default function GigManagementPage({ params }: PageProps) {
             </CardContent>
           </Card>
         </div>
+
+        {/* Poster */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Poster</CardTitle>
+            <CardDescription>Upload a single poster image for this gig</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm text-muted-foreground">
+                {gig.posterFileUpload ? (
+                  <span>
+                    Current poster:{" "}
+                    <span className="font-medium text-foreground">{gig.posterFileUpload.name}</span>
+                  </span>
+                ) : (
+                  <span>No poster uploaded yet.</span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <input
+                  id="gig-poster-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      setIsPosterUploading(true);
+                      const arrayBuffer = await file.arrayBuffer();
+                      const base64 = Buffer.from(arrayBuffer).toString("base64");
+                      const dataUrl = `data:${file.type};base64,${base64}`;
+                      uploadPoster.mutate({
+                        gigId: gig.id,
+                        base64: dataUrl,
+                        name: file.name,
+                        mimeType: file.type,
+                      });
+                    } finally {
+                      e.target.value = "";
+                    }
+                  }}
+                />
+                <Button
+                  onClick={() => {
+                    (document.getElementById("gig-poster-upload") as HTMLInputElement | null)?.click();
+                  }}
+                  disabled={isPosterUploading || uploadPoster.isPending}
+                >
+                  {isPosterUploading || uploadPoster.isPending
+                    ? "Uploading..."
+                    : gig.posterFileUpload
+                      ? "Replace Poster"
+                      : "Upload Poster"}
+                </Button>
+                <Button
+                  variant="destructive"
+                  disabled={!gig.posterFileUpload || clearPoster.isPending}
+                  onClick={() => {
+                    if (!gig.posterFileUpload) return;
+                    if (confirm("Remove the poster? This will also soft-delete the file.")) {
+                      clearPoster.mutate({ gigId: gig.id, deleteFile: true });
+                    }
+                  }}
+                >
+                  {clearPoster.isPending ? "Removing..." : "Remove Poster"}
+                </Button>
+              </div>
+            </div>
+
+            {gig.posterFileUpload?.url && (
+              <div className="relative aspect-3/4 w-full max-w-md overflow-hidden rounded-lg border bg-muted">
+                <Image
+                  src={gig.posterFileUpload.url}
+                  alt={`${gig.title} poster`}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 512px"
+                  className="object-cover"
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Media Management */}
         <Card>

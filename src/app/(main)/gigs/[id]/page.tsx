@@ -19,8 +19,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const descriptionFromBody = cleanText(gig?.description ? String(gig?.description) : "");
   const description = subtitle || truncate(descriptionFromBody || "Atmos — sound, culture, nightlife.", 160);
 
+  const posterImage = gig?.posterFileUpload?.url ?? null;
   const firstPhoto = gig?.media?.find((item) => item.type === "photo") ?? gig?.media?.[0];
-  const mediaImage = firstPhoto ? getMediaDisplayUrl(firstPhoto) : DEFAULT_OG_IMAGE;
+  const mediaImage = posterImage || (firstPhoto ? getMediaDisplayUrl(firstPhoto) : DEFAULT_OG_IMAGE);
   const canonical = `/gigs/${id}`;
 
   return {

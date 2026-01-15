@@ -20,6 +20,41 @@ type FileUploadInfo = {
 
 type EnrichedMedia = GigMedia & { fileUpload: FileUploadInfo };
 
+async function getFileUploadInfoById(db: any, fileUploadId: string | null): Promise<FileUploadInfo> {
+  if (!fileUploadId) return null;
+
+  const fileUpload = await db.file_upload.findUnique({
+    where: { id: fileUploadId },
+    select: {
+      id: true,
+      url: true,
+      name: true,
+      mimeType: true,
+      status: true,
+      size: true,
+      width: true,
+      height: true,
+      createdAt: true,
+      userId: true,
+    },
+  });
+
+  if (!fileUpload) return null;
+  if ([FileUploadStatus.DELETED, FileUploadStatus.SOFT_DELETED].includes(fileUpload.status)) return null;
+
+  const uploadedBy = fileUpload.userId
+    ? await db.user.findUnique({
+      where: { id: fileUpload.userId },
+      select: { id: true, name: true, email: true },
+    })
+    : null;
+
+  return {
+    ...fileUpload,
+    uploadedBy,
+  };
+}
+
 /**
  * Helper to enrich gig media with file upload data
  * Uses for="gig_media" and forId=mediaId to find associated files
@@ -440,7 +475,8 @@ export const gigsRouter = createTRPCRouter({
       if (!gig) return null;
 
       const enrichedMedia = await enrichMediaWithFileUploads(ctx.db, gig.media);
-      return { ...gig, media: enrichedMedia };
+      const posterFileUpload = await getFileUploadInfoById(ctx.db, gig.posterFileUploadId ?? null);
+      return { ...gig, media: enrichedMedia, posterFileUpload };
     }),
 
   create: adminProcedure
@@ -567,7 +603,7 @@ export const gigsRouter = createTRPCRouter({
       const uploadResult = await uploadBufferToS3({
         buffer: resized.buffer,
         key,
-        contentType: input.mimeType,
+        contentType: resized.contentType,
         name: input.name,
         fileType: type,
         for: "gig_media",
@@ -901,6 +937,117 @@ export const gigsRouter = createTRPCRouter({
 
       const enriched = await enrichMediaWithFileUploads(ctx.db, [media]);
       return enriched[0];
+    }),
+
+  // Poster management endpoints
+
+  uploadPoster: adminProcedure
+    .input(
+      z.object({
+        gigId: z.string(),
+        base64: z.string(),
+        name: z.string(),
+        mimeType: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!input.mimeType.startsWith("image/")) {
+        throw new Error("Poster must be an image");
+      }
+
+      const gig = await ctx.db.gig.findUnique({
+        where: { id: input.gigId },
+        select: { id: true, posterFileUploadId: true },
+      });
+      if (!gig) throw new Error("Gig not found");
+
+      const base64Data = input.base64.replace(/^data:[^;]+;base64,/, "");
+      const buffer = Buffer.from(base64Data, "base64");
+      const resized = await toWebPMax(buffer, { maxSizePx: 2048, quality: 80 });
+
+      const uuid = crypto.randomUUID();
+      const key = `gigs/${input.gigId}/poster/${uuid}.webp`;
+
+      const uploadResult = await uploadBufferToS3({
+        buffer: resized.buffer,
+        key,
+        contentType: resized.contentType,
+        name: input.name,
+        fileType: "image",
+        for: "gig",
+        forId: input.gigId,
+        acl: "public-read",
+        userId: ctx.user?.id ?? ctx.session.user.id,
+        width: resized.width,
+        height: resized.height,
+      });
+
+      // If duplicate upload, still allow using it as the poster.
+      const nextPosterFileId = uploadResult.record.id;
+
+      await ctx.db.gig.update({
+        where: { id: input.gigId },
+        data: { posterFileUploadId: nextPosterFileId },
+      });
+
+      // Soft-delete previous poster file (if any and different)
+      if (gig.posterFileUploadId && gig.posterFileUploadId !== nextPosterFileId) {
+        await softDeleteFile({ id: gig.posterFileUploadId });
+      }
+
+      const posterFileUpload = await getFileUploadInfoById(ctx.db, nextPosterFileId);
+      return { posterFileUpload };
+    }),
+
+  setPosterFromUpload: adminProcedure
+    .input(z.object({ gigId: z.string(), fileUploadId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const gig = await ctx.db.gig.findUnique({
+        where: { id: input.gigId },
+        select: { id: true, posterFileUploadId: true },
+      });
+      if (!gig) throw new Error("Gig not found");
+
+      const file = await ctx.db.file_upload.findUnique({
+        where: { id: input.fileUploadId },
+        select: { id: true, status: true, mimeType: true },
+      });
+      if (!file) throw new Error("File upload not found");
+      if (file.status !== FileUploadStatus.OK) throw new Error("File is not available");
+      if (!file.mimeType.startsWith("image/")) throw new Error("Poster must be an image");
+
+      await ctx.db.gig.update({
+        where: { id: input.gigId },
+        data: { posterFileUploadId: input.fileUploadId },
+      });
+
+      if (gig.posterFileUploadId && gig.posterFileUploadId !== input.fileUploadId) {
+        await softDeleteFile({ id: gig.posterFileUploadId });
+      }
+
+      const posterFileUpload = await getFileUploadInfoById(ctx.db, input.fileUploadId);
+      return { posterFileUpload };
+    }),
+
+  clearPoster: adminProcedure
+    .input(z.object({ gigId: z.string(), deleteFile: z.boolean().default(true) }))
+    .mutation(async ({ ctx, input }) => {
+      const gig = await ctx.db.gig.findUnique({
+        where: { id: input.gigId },
+        select: { id: true, posterFileUploadId: true },
+      });
+      if (!gig) throw new Error("Gig not found");
+
+      await ctx.db.gig.update({
+        where: { id: input.gigId },
+        data: { posterFileUploadId: null },
+      });
+
+      if (input.deleteFile && gig.posterFileUploadId) {
+        await softDeleteFile({ id: gig.posterFileUploadId });
+      }
+
+      return { ok: true };
     }),
 
   // Tag management endpoints

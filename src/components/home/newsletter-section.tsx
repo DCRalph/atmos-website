@@ -40,7 +40,7 @@ export function NewsletterSection({ className }: { className?: string }) {
   };
 
   return (
-    <section className={cn("relative mt-16 sm:mt-20", className)} aria-labelledby="newsletter-heading">
+    <section className={cn("relative mt-16 sm:mt-20 ", className)} aria-labelledby="newsletter-heading">
       <audio ref={subscribeAudioRef} preload="auto" src="/subscribe.mp3" />
       {/* <h2
         id="newsletter-heading"
@@ -52,10 +52,13 @@ export function NewsletterSection({ className }: { className?: string }) {
       <div className="mb-6 sm:mb-8 border-b-2 border-white/10 pb-3 sm:pb-4" />
 
 
-      <div className="group relative overflow-hidden rounded-none border-2 border-white/10 bg-black/90 p-8 sm:p-12 lg:p-16 backdrop-blur-sm transition-all hover:border-accent-muted/50">
+      <div className="group relative overflow-hidden rounded-none border-2 border-white/10 bg-black/90 p-8 sm:p-12 lg:p-16 backdrop-blur-sm transition-all hover:border-accent-muted/50 hover:shadow-[0_0_15px_var(--accent-muted)]">
         {/* Red accent bar */}
-        <div className="absolute left-0 top-0 h-2 w-32 bg-accent-muted transition-all group-hover:w-48" />
-        <div className="absolute right-0 top-0 h-2 w-32 bg-accent-muted transition-all group-hover:w-48" />
+        {/* <div className="absolute left-0 top-0 h-2 w-32 bg-accent-muted transition-all group-hover:w-48" />
+        <div className="absolute right-0 top-0 h-2 w-32 bg-accent-muted transition-all group-hover:w-48" /> */}
+
+        <div className="absolute left-1/2 top-1/2 -z-10 -translate-x-1/2 -translate-y-1/2 h-40 w-1/2 bg-white/30 rounded-full blur-3xl"></div>
+
 
         {/* Content */}
         <div className="mx-auto max-w-3xl text-center">

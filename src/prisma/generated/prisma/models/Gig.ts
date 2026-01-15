@@ -44,6 +44,7 @@ export type GigMinAggregateOutputType = {
   gigStartTime: Date | null
   gigEndTime: Date | null
   ticketLink: string | null
+  posterFileUploadId: string | null
   isFeatured: boolean | null
   featuredSortOrder: number | null
   pastSortOrder: number | null
@@ -59,6 +60,7 @@ export type GigMaxAggregateOutputType = {
   gigStartTime: Date | null
   gigEndTime: Date | null
   ticketLink: string | null
+  posterFileUploadId: string | null
   isFeatured: boolean | null
   featuredSortOrder: number | null
   pastSortOrder: number | null
@@ -74,6 +76,7 @@ export type GigCountAggregateOutputType = {
   gigStartTime: number
   gigEndTime: number
   ticketLink: number
+  posterFileUploadId: number
   isFeatured: number
   featuredSortOrder: number
   pastSortOrder: number
@@ -101,6 +104,7 @@ export type GigMinAggregateInputType = {
   gigStartTime?: true
   gigEndTime?: true
   ticketLink?: true
+  posterFileUploadId?: true
   isFeatured?: true
   featuredSortOrder?: true
   pastSortOrder?: true
@@ -116,6 +120,7 @@ export type GigMaxAggregateInputType = {
   gigStartTime?: true
   gigEndTime?: true
   ticketLink?: true
+  posterFileUploadId?: true
   isFeatured?: true
   featuredSortOrder?: true
   pastSortOrder?: true
@@ -131,6 +136,7 @@ export type GigCountAggregateInputType = {
   gigStartTime?: true
   gigEndTime?: true
   ticketLink?: true
+  posterFileUploadId?: true
   isFeatured?: true
   featuredSortOrder?: true
   pastSortOrder?: true
@@ -233,6 +239,7 @@ export type GigGroupByOutputType = {
   gigStartTime: Date
   gigEndTime: Date | null
   ticketLink: string | null
+  posterFileUploadId: string | null
   isFeatured: boolean
   featuredSortOrder: number
   pastSortOrder: number
@@ -271,6 +278,7 @@ export type GigWhereInput = {
   gigStartTime?: Prisma.DateTimeFilter<"Gig"> | Date | string
   gigEndTime?: Prisma.DateTimeNullableFilter<"Gig"> | Date | string | null
   ticketLink?: Prisma.StringNullableFilter<"Gig"> | string | null
+  posterFileUploadId?: Prisma.StringNullableFilter<"Gig"> | string | null
   isFeatured?: Prisma.BoolFilter<"Gig"> | boolean
   featuredSortOrder?: Prisma.IntFilter<"Gig"> | number
   pastSortOrder?: Prisma.IntFilter<"Gig"> | number
@@ -289,6 +297,7 @@ export type GigOrderByWithRelationInput = {
   gigStartTime?: Prisma.SortOrder
   gigEndTime?: Prisma.SortOrderInput | Prisma.SortOrder
   ticketLink?: Prisma.SortOrderInput | Prisma.SortOrder
+  posterFileUploadId?: Prisma.SortOrderInput | Prisma.SortOrder
   isFeatured?: Prisma.SortOrder
   featuredSortOrder?: Prisma.SortOrder
   pastSortOrder?: Prisma.SortOrder
@@ -310,6 +319,7 @@ export type GigWhereUniqueInput = Prisma.AtLeast<{
   gigStartTime?: Prisma.DateTimeFilter<"Gig"> | Date | string
   gigEndTime?: Prisma.DateTimeNullableFilter<"Gig"> | Date | string | null
   ticketLink?: Prisma.StringNullableFilter<"Gig"> | string | null
+  posterFileUploadId?: Prisma.StringNullableFilter<"Gig"> | string | null
   isFeatured?: Prisma.BoolFilter<"Gig"> | boolean
   featuredSortOrder?: Prisma.IntFilter<"Gig"> | number
   pastSortOrder?: Prisma.IntFilter<"Gig"> | number
@@ -328,6 +338,7 @@ export type GigOrderByWithAggregationInput = {
   gigStartTime?: Prisma.SortOrder
   gigEndTime?: Prisma.SortOrderInput | Prisma.SortOrder
   ticketLink?: Prisma.SortOrderInput | Prisma.SortOrder
+  posterFileUploadId?: Prisma.SortOrderInput | Prisma.SortOrder
   isFeatured?: Prisma.SortOrder
   featuredSortOrder?: Prisma.SortOrder
   pastSortOrder?: Prisma.SortOrder
@@ -351,6 +362,7 @@ export type GigScalarWhereWithAggregatesInput = {
   gigStartTime?: Prisma.DateTimeWithAggregatesFilter<"Gig"> | Date | string
   gigEndTime?: Prisma.DateTimeNullableWithAggregatesFilter<"Gig"> | Date | string | null
   ticketLink?: Prisma.StringNullableWithAggregatesFilter<"Gig"> | string | null
+  posterFileUploadId?: Prisma.StringNullableWithAggregatesFilter<"Gig"> | string | null
   isFeatured?: Prisma.BoolWithAggregatesFilter<"Gig"> | boolean
   featuredSortOrder?: Prisma.IntWithAggregatesFilter<"Gig"> | number
   pastSortOrder?: Prisma.IntWithAggregatesFilter<"Gig"> | number
@@ -366,6 +378,7 @@ export type GigCreateInput = {
   gigStartTime: Date | string
   gigEndTime?: Date | string | null
   ticketLink?: string | null
+  posterFileUploadId?: string | null
   isFeatured?: boolean
   featuredSortOrder?: number
   pastSortOrder?: number
@@ -384,6 +397,7 @@ export type GigUncheckedCreateInput = {
   gigStartTime: Date | string
   gigEndTime?: Date | string | null
   ticketLink?: string | null
+  posterFileUploadId?: string | null
   isFeatured?: boolean
   featuredSortOrder?: number
   pastSortOrder?: number
@@ -402,6 +416,7 @@ export type GigUpdateInput = {
   gigStartTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gigEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ticketLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  posterFileUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isFeatured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   featuredSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   pastSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
@@ -420,6 +435,7 @@ export type GigUncheckedUpdateInput = {
   gigStartTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gigEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ticketLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  posterFileUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isFeatured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   featuredSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   pastSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
@@ -438,6 +454,7 @@ export type GigCreateManyInput = {
   gigStartTime: Date | string
   gigEndTime?: Date | string | null
   ticketLink?: string | null
+  posterFileUploadId?: string | null
   isFeatured?: boolean
   featuredSortOrder?: number
   pastSortOrder?: number
@@ -453,6 +470,7 @@ export type GigUpdateManyMutationInput = {
   gigStartTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gigEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ticketLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  posterFileUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isFeatured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   featuredSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   pastSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
@@ -468,6 +486,7 @@ export type GigUncheckedUpdateManyInput = {
   gigStartTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gigEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ticketLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  posterFileUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isFeatured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   featuredSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   pastSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
@@ -488,6 +507,7 @@ export type GigCountOrderByAggregateInput = {
   gigStartTime?: Prisma.SortOrder
   gigEndTime?: Prisma.SortOrder
   ticketLink?: Prisma.SortOrder
+  posterFileUploadId?: Prisma.SortOrder
   isFeatured?: Prisma.SortOrder
   featuredSortOrder?: Prisma.SortOrder
   pastSortOrder?: Prisma.SortOrder
@@ -508,6 +528,7 @@ export type GigMaxOrderByAggregateInput = {
   gigStartTime?: Prisma.SortOrder
   gigEndTime?: Prisma.SortOrder
   ticketLink?: Prisma.SortOrder
+  posterFileUploadId?: Prisma.SortOrder
   isFeatured?: Prisma.SortOrder
   featuredSortOrder?: Prisma.SortOrder
   pastSortOrder?: Prisma.SortOrder
@@ -523,6 +544,7 @@ export type GigMinOrderByAggregateInput = {
   gigStartTime?: Prisma.SortOrder
   gigEndTime?: Prisma.SortOrder
   ticketLink?: Prisma.SortOrder
+  posterFileUploadId?: Prisma.SortOrder
   isFeatured?: Prisma.SortOrder
   featuredSortOrder?: Prisma.SortOrder
   pastSortOrder?: Prisma.SortOrder
@@ -593,6 +615,7 @@ export type GigCreateWithoutGigTagsInput = {
   gigStartTime: Date | string
   gigEndTime?: Date | string | null
   ticketLink?: string | null
+  posterFileUploadId?: string | null
   isFeatured?: boolean
   featuredSortOrder?: number
   pastSortOrder?: number
@@ -610,6 +633,7 @@ export type GigUncheckedCreateWithoutGigTagsInput = {
   gigStartTime: Date | string
   gigEndTime?: Date | string | null
   ticketLink?: string | null
+  posterFileUploadId?: string | null
   isFeatured?: boolean
   featuredSortOrder?: number
   pastSortOrder?: number
@@ -643,6 +667,7 @@ export type GigUpdateWithoutGigTagsInput = {
   gigStartTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gigEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ticketLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  posterFileUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isFeatured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   featuredSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   pastSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
@@ -660,6 +685,7 @@ export type GigUncheckedUpdateWithoutGigTagsInput = {
   gigStartTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gigEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ticketLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  posterFileUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isFeatured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   featuredSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   pastSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
@@ -677,6 +703,7 @@ export type GigCreateWithoutHomeGigPlacementsInput = {
   gigStartTime: Date | string
   gigEndTime?: Date | string | null
   ticketLink?: string | null
+  posterFileUploadId?: string | null
   isFeatured?: boolean
   featuredSortOrder?: number
   pastSortOrder?: number
@@ -694,6 +721,7 @@ export type GigUncheckedCreateWithoutHomeGigPlacementsInput = {
   gigStartTime: Date | string
   gigEndTime?: Date | string | null
   ticketLink?: string | null
+  posterFileUploadId?: string | null
   isFeatured?: boolean
   featuredSortOrder?: number
   pastSortOrder?: number
@@ -727,6 +755,7 @@ export type GigUpdateWithoutHomeGigPlacementsInput = {
   gigStartTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gigEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ticketLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  posterFileUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isFeatured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   featuredSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   pastSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
@@ -744,6 +773,7 @@ export type GigUncheckedUpdateWithoutHomeGigPlacementsInput = {
   gigStartTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gigEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ticketLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  posterFileUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isFeatured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   featuredSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   pastSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
@@ -761,6 +791,7 @@ export type GigCreateWithoutMediaInput = {
   gigStartTime: Date | string
   gigEndTime?: Date | string | null
   ticketLink?: string | null
+  posterFileUploadId?: string | null
   isFeatured?: boolean
   featuredSortOrder?: number
   pastSortOrder?: number
@@ -778,6 +809,7 @@ export type GigUncheckedCreateWithoutMediaInput = {
   gigStartTime: Date | string
   gigEndTime?: Date | string | null
   ticketLink?: string | null
+  posterFileUploadId?: string | null
   isFeatured?: boolean
   featuredSortOrder?: number
   pastSortOrder?: number
@@ -811,6 +843,7 @@ export type GigUpdateWithoutMediaInput = {
   gigStartTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gigEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ticketLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  posterFileUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isFeatured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   featuredSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   pastSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
@@ -828,6 +861,7 @@ export type GigUncheckedUpdateWithoutMediaInput = {
   gigStartTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gigEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ticketLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  posterFileUploadId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isFeatured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   featuredSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   pastSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
@@ -894,6 +928,7 @@ export type GigSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = ru
   gigStartTime?: boolean
   gigEndTime?: boolean
   ticketLink?: boolean
+  posterFileUploadId?: boolean
   isFeatured?: boolean
   featuredSortOrder?: boolean
   pastSortOrder?: boolean
@@ -913,6 +948,7 @@ export type GigSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extension
   gigStartTime?: boolean
   gigEndTime?: boolean
   ticketLink?: boolean
+  posterFileUploadId?: boolean
   isFeatured?: boolean
   featuredSortOrder?: boolean
   pastSortOrder?: boolean
@@ -928,6 +964,7 @@ export type GigSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extension
   gigStartTime?: boolean
   gigEndTime?: boolean
   ticketLink?: boolean
+  posterFileUploadId?: boolean
   isFeatured?: boolean
   featuredSortOrder?: boolean
   pastSortOrder?: boolean
@@ -943,6 +980,7 @@ export type GigSelectScalar = {
   gigStartTime?: boolean
   gigEndTime?: boolean
   ticketLink?: boolean
+  posterFileUploadId?: boolean
   isFeatured?: boolean
   featuredSortOrder?: boolean
   pastSortOrder?: boolean
@@ -950,7 +988,7 @@ export type GigSelectScalar = {
   updatedAt?: boolean
 }
 
-export type GigOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "title" | "subtitle" | "description" | "gigStartTime" | "gigEndTime" | "ticketLink" | "isFeatured" | "featuredSortOrder" | "pastSortOrder" | "createdAt" | "updatedAt", ExtArgs["result"]["gig"]>
+export type GigOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "title" | "subtitle" | "description" | "gigStartTime" | "gigEndTime" | "ticketLink" | "posterFileUploadId" | "isFeatured" | "featuredSortOrder" | "pastSortOrder" | "createdAt" | "updatedAt", ExtArgs["result"]["gig"]>
 export type GigInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   media?: boolean | Prisma.Gig$mediaArgs<ExtArgs>
   gigTags?: boolean | Prisma.Gig$gigTagsArgs<ExtArgs>
@@ -975,6 +1013,7 @@ export type $GigPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
     gigStartTime: Date
     gigEndTime: Date | null
     ticketLink: string | null
+    posterFileUploadId: string | null
     isFeatured: boolean
     featuredSortOrder: number
     pastSortOrder: number
@@ -1413,6 +1452,7 @@ export interface GigFieldRefs {
   readonly gigStartTime: Prisma.FieldRef<"Gig", 'DateTime'>
   readonly gigEndTime: Prisma.FieldRef<"Gig", 'DateTime'>
   readonly ticketLink: Prisma.FieldRef<"Gig", 'String'>
+  readonly posterFileUploadId: Prisma.FieldRef<"Gig", 'String'>
   readonly isFeatured: Prisma.FieldRef<"Gig", 'Boolean'>
   readonly featuredSortOrder: Prisma.FieldRef<"Gig", 'Int'>
   readonly pastSortOrder: Prisma.FieldRef<"Gig", 'Int'>

@@ -10,11 +10,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { DatePicker } from "~/components/ui/date-picker";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 
 export function ContentManager() {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [type, setType] = useState("");
+  const [linkType, setLinkType] = useState<"SOUNDCLOUD_TRACK" | "SOUNDCLOUD_PLAYLIST" | "OTHER">("OTHER");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState<Date | undefined>(undefined);
@@ -47,6 +49,7 @@ export function ContentManager() {
   const resetForm = () => {
     setEditingId(null);
     setType("");
+    setLinkType("OTHER");
     setTitle("");
     setDescription("");
     setDate(undefined);
@@ -56,6 +59,7 @@ export function ContentManager() {
   const handleEdit = (item: NonNullable<typeof contentItems>[0]) => {
     setEditingId(item.id);
     setType(item.type);
+    setLinkType((item.linkType ?? "OTHER") as typeof linkType);
     setTitle(item.title);
     setDescription(item.description);
     setDate(item.date);
@@ -69,6 +73,7 @@ export function ContentManager() {
       updateItem.mutate({
         id: editingId,
         type,
+        linkType,
         title,
         description,
         date: date,
@@ -78,6 +83,7 @@ export function ContentManager() {
       if (!date) return;
       createItem.mutate({
         type,
+        linkType,
         title,
         description,
         date,
@@ -118,6 +124,19 @@ export function ContentManager() {
                     placeholder="mix, video, playlist"
                     required
                   />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label>Link type</Label>
+                  <Select value={linkType} onValueChange={(v) => setLinkType(v as typeof linkType)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select link type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="OTHER">Other</SelectItem>
+                      <SelectItem value="SOUNDCLOUD_TRACK">SoundCloud track</SelectItem>
+                      <SelectItem value="SOUNDCLOUD_PLAYLIST">SoundCloud playlist</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="title">Title</Label>

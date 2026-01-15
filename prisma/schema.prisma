@@ -107,9 +107,16 @@ model CrewMember {
   @@map("crew_member")
 }
 
+enum ContentLinkType {
+  SOUNDCLOUD_TRACK
+  SOUNDCLOUD_PLAYLIST
+  OTHER
+}
+
 model ContentItem {
   id          String   @id @default(cuid())
   type        String
+  linkType    ContentLinkType @default(OTHER)
   title       String
   description String
   date        DateTime
@@ -119,6 +126,8 @@ model ContentItem {
 
   @@map("content_item")
 }
+
+
 
 model GigTag {
   id        String   @id @default(cuid())
@@ -154,6 +163,9 @@ model Gig {
   gigEndTime   DateTime?
   ticketLink   String?
 
+  // Optional "poster" image for this gig (stored as a file_upload record)
+  posterFileUploadId String?
+
   // Home/site ordering controls
   // - `isFeatured`: whether this gig is eligible for the featured slot (used on home + can be reused elsewhere)
   // - `featuredSortOrder`: lower shows earlier among featured gigs
@@ -169,6 +181,7 @@ model Gig {
   gigTags    GigTagRelationship[]
   homeGigPlacements HomeGigPlacement[]
 
+  @@index([posterFileUploadId])
   @@map("gig")
 }
 
