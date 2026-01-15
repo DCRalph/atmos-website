@@ -1807,10 +1807,11 @@ export type CrewMemberScalarFieldEnum = (typeof CrewMemberScalarFieldEnum)[keyof
 export const ContentItemScalarFieldEnum = {
   id: 'id',
   type: 'type',
-  linkType: 'linkType',
   title: 'title',
+  dj: 'dj',
   description: 'description',
   date: 'date',
+  linkType: 'linkType',
   link: 'link',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

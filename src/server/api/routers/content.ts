@@ -19,6 +19,7 @@ export const contentRouter = createTRPCRouter({
             { type: { contains: search, mode: "insensitive" as const } },
             { title: { contains: search, mode: "insensitive" as const } },
             { description: { contains: search, mode: "insensitive" as const } },
+            { dj: { contains: search, mode: "insensitive" as const } },
           ],
         }
         : undefined;
@@ -43,6 +44,7 @@ export const contentRouter = createTRPCRouter({
         type: z.string().min(1),
         linkType: ContentLinkTypeSchema.optional(),
         title: z.string().min(1),
+        dj: z.string().optional(),
         description: z.string().min(1),
         date: z.date(),
         link: z.string().min(1),
@@ -64,6 +66,7 @@ export const contentRouter = createTRPCRouter({
         type: z.string().min(1).optional(),
         linkType: ContentLinkTypeSchema.optional(),
         title: z.string().min(1).optional(),
+        dj: z.string().optional().nullable(),
         description: z.string().min(1).optional(),
         date: z.date().optional(),
         link: z.string().min(1).optional(),

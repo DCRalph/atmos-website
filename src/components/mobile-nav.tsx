@@ -13,7 +13,7 @@ export function MobileNav() {
       {/* Gradient blur - extends below the nav */}
       <GradientBlur
         direction="to-bottom"
-        className="absolute inset-0 z-0 -bottom-16 rotate-180"
+        className="absolute inset-0 z-0 -bottom-14 rotate-180"
       />
 
       {/* Optional: color overlay */}

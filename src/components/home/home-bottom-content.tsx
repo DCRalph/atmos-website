@@ -5,16 +5,19 @@ import { UpcomingGigsSection } from "./upcoming-gigs-section";
 import { LatestContentSection } from "./latest-content-section";
 import { RecentGigsSection } from "./recent-gigs-section";
 import { SoundCloudPlayer } from "~/components/soundcloud-player";
+import { cn } from "~/lib/utils";
 
 type HomeBottomContentProps = {
   isMobile?: boolean;
+  className?: string;
 };
 
 export function HomeBottomContent({
   isMobile,
+  className,
 }: HomeBottomContentProps) {
   return (
-    <main className="relative flex-1 bg-black text-white min-h-screen ">
+    <main className={cn("relative flex-1 bg-black text-white min-h-screen ", className)}>
       {/* <StaticBackground imageSrc="/home/atmos-46.jpg" /> */}
 
 

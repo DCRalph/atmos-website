@@ -18,6 +18,7 @@ export function ContentManager() {
   const [type, setType] = useState("");
   const [linkType, setLinkType] = useState<"SOUNDCLOUD_TRACK" | "SOUNDCLOUD_PLAYLIST" | "OTHER">("OTHER");
   const [title, setTitle] = useState("");
+  const [dj, setDj] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [link, setLink] = useState("");
@@ -51,6 +52,7 @@ export function ContentManager() {
     setType("");
     setLinkType("OTHER");
     setTitle("");
+    setDj("");
     setDescription("");
     setDate(undefined);
     setLink("");
@@ -61,6 +63,7 @@ export function ContentManager() {
     setType(item.type);
     setLinkType((item.linkType ?? "OTHER") as typeof linkType);
     setTitle(item.title);
+    setDj(item.dj ?? "");
     setDescription(item.description);
     setDate(item.date);
     setLink(item.link);
@@ -75,6 +78,7 @@ export function ContentManager() {
         type,
         linkType,
         title,
+        dj: dj || null,
         description,
         date: date,
         link,
@@ -85,6 +89,7 @@ export function ContentManager() {
         type,
         linkType,
         title,
+        dj: dj || undefined,
         description,
         date,
         link,
@@ -126,25 +131,21 @@ export function ContentManager() {
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label>Link type</Label>
-                  <Select value={linkType} onValueChange={(v) => setLinkType(v as typeof linkType)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select link type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="OTHER">Other</SelectItem>
-                      <SelectItem value="SOUNDCLOUD_TRACK">SoundCloud track</SelectItem>
-                      <SelectItem value="SOUNDCLOUD_PLAYLIST">SoundCloud playlist</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex flex-col gap-2">
                   <Label htmlFor="title">Title</Label>
                   <Input
                     id="title"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     required
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="dj">DJ (optional)</Label>
+                  <Input
+                    id="dj"
+                    value={dj}
+                    onChange={(e) => setDj(e.target.value)}
+                    placeholder="DJ name"
                   />
                 </div>
                 <div className="flex flex-col gap-2">
@@ -164,6 +165,19 @@ export function ContentManager() {
                     placeholder="Select a date"
                     required
                   />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label>Link type</Label>
+                  <Select value={linkType} onValueChange={(v) => setLinkType(v as typeof linkType)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select link type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="OTHER">Other</SelectItem>
+                      <SelectItem value="SOUNDCLOUD_TRACK">SoundCloud track</SelectItem>
+                      <SelectItem value="SOUNDCLOUD_PLAYLIST">SoundCloud playlist</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="link">Link</Label>
@@ -186,7 +200,7 @@ export function ContentManager() {
       <CardContent>
         <div className="mb-4">
           <Input
-            placeholder="Search by type, title, or description..."
+            placeholder="Search by type, title, description, or DJ..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-sm"
@@ -197,6 +211,7 @@ export function ContentManager() {
             <TableRow>
               <TableHead>Type</TableHead>
               <TableHead>Title</TableHead>
+              <TableHead>DJ</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -205,7 +220,7 @@ export function ContentManager() {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={`loading-${i}`}>
-                  <TableCell colSpan={4}>
+                  <TableCell colSpan={5}>
                     <div className="h-8 w-full animate-pulse rounded bg-muted" />
                   </TableCell>
                 </TableRow>
@@ -214,6 +229,7 @@ export function ContentManager() {
               <TableRow key={item.id}>
                 <TableCell>{item.type}</TableCell>
                 <TableCell>{item.title}</TableCell>
+                <TableCell>{item.dj || "-"}</TableCell>
                 <TableCell>{item.date.toLocaleDateString()}</TableCell>
                 <TableCell>
                   <div className="flex gap-2">
@@ -241,7 +257,7 @@ export function ContentManager() {
             ))}
             {!isLoading && contentItems?.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                <TableCell colSpan={5} className="text-center text-muted-foreground">
                   {search ? "No content items found" : "No content items yet"}
                 </TableCell>
               </TableRow>

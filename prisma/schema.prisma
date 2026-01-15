@@ -116,10 +116,11 @@ enum ContentLinkType {
 model ContentItem {
   id          String   @id @default(cuid())
   type        String
-  linkType    ContentLinkType @default(OTHER)
   title       String
+  dj          String? 
   description String
   date        DateTime
+  linkType    ContentLinkType @default(OTHER)
   link        String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

@@ -8,6 +8,7 @@ import { cn } from "~/lib/utils";
 import { Input } from "~/components/ui/input";
 import { orbitron } from "~/lib/fonts";
 import { Button } from "~/components/ui/button";
+import { AccentGlowCard } from "~/components/ui/accent-glow-card";
 
 export function NewsletterSection({ className }: { className?: string }) {
   const newsletterSubscribe = api.newsletter.subscribe.useMutation();
@@ -52,13 +53,10 @@ export function NewsletterSection({ className }: { className?: string }) {
       <div className="mb-6 sm:mb-8 border-b-2 border-white/10 pb-3 sm:pb-4" />
 
 
-      <div className="group relative overflow-hidden rounded-none border-2 border-white/10 bg-black/90 p-8 sm:p-12 lg:p-16 backdrop-blur-sm transition-all hover:border-accent-muted/50 hover:shadow-[0_0_15px_var(--accent-muted)]">
+      <AccentGlowCard className="bg-black/90 p-8 sm:p-12 lg:p-16">
         {/* Red accent bar */}
         {/* <div className="absolute left-0 top-0 h-2 w-32 bg-accent-muted transition-all group-hover:w-48" />
         <div className="absolute right-0 top-0 h-2 w-32 bg-accent-muted transition-all group-hover:w-48" /> */}
-
-        <div className="absolute left-1/2 top-1/2 -z-10 -translate-x-1/2 -translate-y-1/2 h-40 w-1/2 bg-white/30 rounded-full blur-3xl"></div>
-
 
         {/* Content */}
         <div className="mx-auto max-w-3xl text-center">
@@ -139,7 +137,7 @@ export function NewsletterSection({ className }: { className?: string }) {
                 <button
                   type="submit"
                   disabled={newsletterSubscribe.isPending}
-                  className="h-12 rounded-none border-2 border-accent-muted bg-accent-muted px-6 text-sm font-black uppercase tracking-wider text-white transition-all hover:bg-[#DC2626] hover:shadow-[0_0_20px_rgba(239,68,68,0.5)] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="h-12 rounded-none border-2 border-accent-strong bg-accent-strong px-6 text-sm font-black uppercase tracking-wider text-white transition-all hover:border-accent-muted hover:bg-accent-muted hover:shadow-[0_0_20px_var(--accent-muted)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {newsletterSubscribe.isPending ? (
                     <span className="flex items-center justify-center gap-2">
@@ -172,7 +170,7 @@ export function NewsletterSection({ className }: { className?: string }) {
             test sound
           </Button> */}
         </div>
-      </div>
+      </AccentGlowCard>
     </section>
   );
 }

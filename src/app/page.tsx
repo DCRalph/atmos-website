@@ -36,7 +36,7 @@ function HomeContent() {
           <SlideOverMenu isHomePage={true} />
 
           <MobileNav />
-          <HomeBottomContent isMobile={isMobile} key="4" />
+          <HomeBottomContent isMobile={isMobile} key="4" className="mt-4" />
           <MobileMenuToggle />
         </div>
       )}

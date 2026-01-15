@@ -40,7 +40,7 @@ export function LatestContentSection() {
         </Link>
       </div>
 
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 grid-cols-2">
         {isLoadingContent ? (
           <div className="flex items-center justify-center py-8 col-span-full">
             <Loader2 className="w-6 h-6 animate-spin text-white/60" />
@@ -49,32 +49,18 @@ export function LatestContentSection() {
           <>
             {/* Featured (most recent) item */}
             <FeaturedContentItem
-              id={latestContentItem.id}
-              type={latestContentItem.type}
-              title={latestContentItem.title}
-              description={latestContentItem.description}
-              date={latestContentItem.date}
-              link={latestContentItem.link}
-              linkType={latestContentItem.linkType ?? "OTHER"}
-              hostname={getHostname(latestContentItem.link)}
+              contentItem={latestContentItem}
+              className="col-span-full"
             />
 
             {/* Remaining recent items */}
-            {otherRecentContentItems.length > 0 ? (
-              <div className="lg:col-span-3 grid gap-4 sm:gap-6 md:grid-cols-2">
-                {otherRecentContentItems.map((item) => (
-                  <ContentItem
-                    key={item.id}
-                    id={item.id}
-                    type={item.type}
-                    title={item.title}
-                    description={item.description}
-                    date={item.date}
-                    link={item.link}
-                  />
-                ))}
-              </div>
-            ) : null}
+            {otherRecentContentItems.length > 0 && otherRecentContentItems.map((item) => (
+              <FeaturedContentItem
+                key={item.id}
+                contentItem={item}
+                className="col-span-full lg:col-span-1"
+              />
+            ))}
           </>
         ) : (
           <p className="text-white/60 text-center py-8 col-span-full">No content available.</p>

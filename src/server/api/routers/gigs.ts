@@ -56,6 +56,70 @@ async function getFileUploadInfoById(db: any, fileUploadId: string | null): Prom
 }
 
 /**
+ * Helper to enrich multiple gigs with poster file upload data
+ */
+async function enrichGigsWithPosterFileUploads<T extends { posterFileUploadId: string | null }>(
+  db: any,
+  gigs: T[],
+): Promise<(T & { posterFileUpload: FileUploadInfo })[]> {
+  const posterFileIds = Array.from(
+    new Set(
+      gigs
+        .map((g) => g.posterFileUploadId)
+        .filter((id): id is string => id !== null),
+    ),
+  );
+
+  if (posterFileIds.length === 0) {
+    return gigs.map((g) => ({ ...g, posterFileUpload: null }));
+  }
+
+  const fileUploads = await db.file_upload.findMany({
+    where: {
+      id: { in: posterFileIds },
+      status: { notIn: [FileUploadStatus.DELETED, FileUploadStatus.SOFT_DELETED] },
+    },
+    select: {
+      id: true,
+      url: true,
+      name: true,
+      mimeType: true,
+      status: true,
+      size: true,
+      width: true,
+      height: true,
+      createdAt: true,
+      userId: true,
+    },
+  });
+
+  const userIds = fileUploads
+    .map((f: any) => f.userId)
+    .filter((id: string | null): id is string => id !== null);
+
+  const users = userIds.length > 0
+    ? await db.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true, email: true },
+    })
+    : [];
+
+  const userMap = new Map(users.map((u: any) => [u.id, u]));
+
+  const posterMap = new Map<string, FileUploadInfo>(
+    fileUploads.map((f: any) => [f.id, {
+      ...f,
+      uploadedBy: f.userId ? userMap.get(f.userId) ?? null : null,
+    }]),
+  );
+
+  return gigs.map((g) => ({
+    ...g,
+    posterFileUpload: g.posterFileUploadId ? posterMap.get(g.posterFileUploadId) ?? null : null,
+  }));
+}
+
+/**
  * Helper to enrich gig media with file upload data
  * Uses for="gig_media" and forId=mediaId to find associated files
  */
@@ -224,7 +288,8 @@ export const gigsRouter = createTRPCRouter({
         },
       });
 
-      return enrichGigsWithFileUploads(ctx.db, gigs);
+      const enriched = await enrichGigsWithFileUploads(ctx.db, gigs);
+      return enrichGigsWithPosterFileUploads(ctx.db, enriched);
     }),
 
   /**
@@ -270,7 +335,8 @@ export const gigsRouter = createTRPCRouter({
         take: Math.max(20, pastLimit + 10),
       });
 
-      const enriched = await enrichGigsWithFileUploads(ctx.db, gigs);
+      const withMediaUploads = await enrichGigsWithFileUploads(ctx.db, gigs);
+      const enriched = await enrichGigsWithPosterFileUploads(ctx.db, withMediaUploads);
 
       const featuredCandidates = enriched.filter((g) => g.isFeatured);
       const featuredGig = featuredCandidates[0] ?? null;
@@ -307,7 +373,8 @@ export const gigsRouter = createTRPCRouter({
       },
     });
 
-    return enrichGigsWithFileUploads(ctx.db, gigs);
+    const enriched = await enrichGigsWithFileUploads(ctx.db, gigs);
+    return enrichGigsWithPosterFileUploads(ctx.db, enriched);
   }),
 
   getPast: publicProcedure
@@ -342,7 +409,8 @@ export const gigsRouter = createTRPCRouter({
         take: input?.limit,
       });
 
-      return enrichGigsWithFileUploads(ctx.db, gigs);
+      const enriched = await enrichGigsWithFileUploads(ctx.db, gigs);
+      return enrichGigsWithPosterFileUploads(ctx.db, enriched);
     }),
 
   /**
@@ -448,7 +516,7 @@ export const gigsRouter = createTRPCRouter({
     const filteredGigs = todayGigs.filter((gig) => isGigUpcoming(gig));
     const enrichedGigs = await enrichGigsWithFileUploads(ctx.db, filteredGigs);
 
-    return enrichedGigs;
+    return enrichGigsWithPosterFileUploads(ctx.db, enrichedGigs);
   }),
 
   getById: publicProcedure

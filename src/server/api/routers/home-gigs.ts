@@ -1,13 +1,52 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure, adminProcedure } from "~/server/api/trpc";
-import { HomeGigSection } from "~Prisma/client";
+import { FileUploadStatus, HomeGigSection } from "~Prisma/client";
 
 const HOME_RECENT_PAST_FEATURED_COUNT = 1;
 const HOME_RECENT_PAST_LIST_COUNT = 2;
 
 const isDefined = <T,>(value: T | null | undefined): value is T =>
   value !== null && value !== undefined;
+
+type PosterInfo = { id: string; url: string; name: string; mimeType: string };
+
+async function enrichGigsWithPosterFileUploads<T extends { posterFileUploadId: string | null }>(
+  db: any,
+  gigs: T[],
+): Promise<(T & { posterFileUpload: { id: string; url: string; name: string; mimeType: string } | null })[]> {
+  const posterIds = Array.from(
+    new Set(
+      gigs
+        .map((g) => g.posterFileUploadId)
+        .filter((id): id is string => id !== null),
+    ),
+  );
+
+  if (posterIds.length === 0) {
+    return gigs.map((g) => ({ ...g, posterFileUpload: null }));
+  }
+
+  const posters = (await db.file_upload.findMany({
+    where: {
+      id: { in: posterIds },
+      status: { notIn: [FileUploadStatus.DELETED, FileUploadStatus.SOFT_DELETED] },
+    },
+    select: {
+      id: true,
+      url: true,
+      name: true,
+      mimeType: true,
+    },
+  })) as PosterInfo[];
+
+  const posterMap = new Map<string, PosterInfo>(posters.map((p) => [p.id, p]));
+
+  return gigs.map((g) => ({
+    ...g,
+    posterFileUpload: g.posterFileUploadId ? posterMap.get(g.posterFileUploadId) ?? null : null,
+  }));
+}
 
 export const homeGigsRouter = createTRPCRouter({
   /**
@@ -133,7 +172,14 @@ export const homeGigsRouter = createTRPCRouter({
     // Ensure output is capped.
     // pastGigs = pastGigs.slice(0, HOME_RECENT_PAST_LIST_COUNT);
 
-    return { featuredGig, pastGigs };
+    const gigsToEnrich = [featuredGig, ...pastGigs].filter(isDefined);
+    const withPosters = await enrichGigsWithPosterFileUploads(ctx.db, gigsToEnrich);
+    const byId = new Map(withPosters.map((g) => [g.id, g]));
+
+    return {
+      featuredGig: featuredGig ? (byId.get(featuredGig.id) ?? featuredGig) : null,
+      pastGigs: pastGigs.map((g) => byId.get(g.id) ?? g),
+    };
   }),
 
   getPlacements: adminProcedure
