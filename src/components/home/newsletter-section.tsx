@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { CheckCircle2 } from "lucide-react";
 import { api } from "~/trpc/react";
@@ -10,7 +10,7 @@ import { orbitron } from "~/lib/fonts";
 
 export function NewsletterSection({ className }: { className?: string }) {
   const newsletterSubscribe = api.newsletter.subscribe.useMutation();
-  const audioCtxRef = useRef<AudioContext | null>(null);
+  const subscribeAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
@@ -20,39 +20,19 @@ export function NewsletterSection({ className }: { className?: string }) {
     | null
   >(null);
 
+  useEffect(() => {
+    // Hint the browser to fetch the audio early.
+    subscribeAudioRef.current?.load();
+  }, []);
+
   const playSubscribeSound = () => {
     try {
-      const AudioContextCtor =
-        window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AudioContextCtor) return;
+      const audio = subscribeAudioRef.current;
+      if (!audio) return;
 
-      const ctx = audioCtxRef.current ?? new AudioContextCtor();
-      audioCtxRef.current = ctx;
-
-      // Ensure context is running (some browsers start suspended)
-      if (ctx.state === "suspended") {
-        void ctx.resume();
-      }
-
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = "triangle";
-
-      const t0 = ctx.currentTime;
-      // A quick “pop” pitch bend.
-      osc.frequency.setValueAtTime(880, t0);
-      osc.frequency.exponentialRampToValueAtTime(440, t0 + 0.08);
-
-      gain.gain.setValueAtTime(0.0001, t0);
-      gain.gain.exponentialRampToValueAtTime(0.12, t0 + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.12);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start(t0);
-      osc.stop(t0 + 0.13);
+      audio.currentTime = 0;
+      audio.volume = 0.9;
+      void audio.play();
     } catch {
       // Non-critical: ignore audio failures.
     }
@@ -60,6 +40,7 @@ export function NewsletterSection({ className }: { className?: string }) {
 
   return (
     <section className={cn("relative mt-16 sm:mt-20", className)} aria-labelledby="newsletter-heading">
+      <audio ref={subscribeAudioRef} preload="auto" src="/subscribe.mp3" />
       {/* <h2
         id="newsletter-heading"
         className={`mb-6 sm:mb-8 text-2xl sm:text-3xl font-bold tracking-wide md:text-4xl border-b border-white/20 pb-3 sm:pb-4 ${orbitron.className}`}
@@ -164,6 +145,9 @@ export function NewsletterSection({ className }: { className?: string }) {
                   ) : (
                     "Subscribe"
                   )}
+                </button>
+                <button onClick={playSubscribeSound}>
+                  test sound
                 </button>
               </div>
 
