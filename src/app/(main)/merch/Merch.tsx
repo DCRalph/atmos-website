@@ -65,10 +65,11 @@ export default function MerchPage() {
                   />
                 ))
               )}
+              
             </div>
 
             {comingSoon ? (
-              <div className="absolute inset-0 z-20 flex items-center justify-center">
+              <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex items-center justify-center">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.96, y: 12 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}

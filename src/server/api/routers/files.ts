@@ -232,7 +232,7 @@ export const filesRouter = createTRPCRouter({
         fileType: getFileTypeFromMime(input.mimeType),
         for: input.for,
         forId: input.forId,
-        acl: "private", // Always use private ACL - admins cannot change this
+        acl: "public-read", // Always use private ACL - admins cannot change this
         userId: ctx.user?.id ?? ctx.session.user.id,
       });
 

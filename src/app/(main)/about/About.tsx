@@ -1,214 +1,182 @@
 "use client";
 
-import { useEffect } from "react";
 import Image from "next/image";
-import { useThemeOverride } from "~/components/theme-overide-provider";
-import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { Badge } from "~/components/ui/badge";
 import Link from "next/link";
-// import { Separator } from "~/components/ui/separator";
-
-// Optional: simple container utility if you don't already have one
-function Container({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 md:px-8">{children}</div>;
-}
 
 export default function AboutPage() {
-  const { setForcedTheme } = useThemeOverride();
-
-  useEffect(() => {
-    setForcedTheme("light");
-    return () => {
-      setForcedTheme(undefined);
-    };
-  }, [setForcedTheme]);
+  // useEffect(() => {
+  //   setForcedTheme("light");
+  //   return () => {
+  //     setForcedTheme(undefined);
+  //   };
+  // }, [setForcedTheme]);
 
   return (
-    <main className="bg-white text-black">
-      {/* Background accents */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 overflow-hidden"
-      >
-        <div className="absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-linear-to-tr from-indigo-300 via-fuchsia-300 to-cyan-200 blur-3xl opacity-40" />
-        <div className="absolute bottom-0 right-0 h-64 w-64 translate-x-16 translate-y-16 rounded-full bg-linear-to-tr from-cyan-200 via-emerald-200 to-lime-200 blur-3xl opacity-40" />
+    <main className=" isolate min-h-dvh bg-black text-black">
+      {/* Dark frame background */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+        <Image
+          src="/home/atmos-2.jpg"
+          alt=""
+          fill
+          priority
+          className="object-cover opacity-40 grayscale"
+          sizes="100vw"
+        />
+        <div className="absolute inset-0 bg-black/65" />
+        <div className="absolute inset-0 bg-radial from-white/10 via-transparent to-transparent" />
       </div>
 
+      <section className="relative z-10 mx-auto w-full max-w-[1160px] px-4 py-10 sm:py-14">
+        <div className="relative overflow-hidden bg-white shadow-2xl ring-1 ring-black/15">
+          {/* Watermark year */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute right-10 top-40 select-none text-[clamp(6rem,20vw,16rem)] font-black leading-none tracking-[-0.08em] text-black/5"
+          >
+            2026
+          </div>
 
-      {/* Hero */}
-      <section className="relative z-10 pt-16 sm:pt-24">
-        <Container>
-          <div className="text-center">
-            <Badge variant="destructive" className="mb-4 rounded-full px-3 py-1">
-              Pōneke / Wellington, Aotearoa
-            </Badge>
-            <h1 className="text-balance text-5xl font-extrabold tracking-tight sm:text-6xl md:text-7xl">
-              WTF is ATMOS
+          {/* Poster top micro-nav */}
+
+
+          <div className="flex justify-center px-6 py-5 sm:px-10 sm:py-6">
+            <Link
+              href="/"
+              className="text-xs font-semibold tracking-[0.38em] text-black"
+            >
+              ATMOS
+            </Link>
+          </div>
+
+
+
+
+          {/* Hero headline */}
+          <div className="px-6 sm:px-10">
+            <h1 className="text-balance pt-2 text-center text-[clamp(3.4rem,10.5vw,8.8rem)] font-black leading-[0.82] tracking-[-0.065em] text-black transform-[scaleX(0.88)]">
+              OUR VISION
             </h1>
-            <p className="mx-auto mt-4 max-w-2xl text-pretty text-base text-gray-600 sm:text-lg">
-              A collective of DJs, producers, and creatives pushing electronic music
-              forward through events, collaborations, and community.
-            </p>
-            <div className="mt-8 flex items-center justify-center gap-3">
-              <Link href="/contact">
-                <Button size="lg" className="rounded-xl">
-                  Get in touch
-                </Button>
-              </Link>
-              <Button size="lg" variant="outline" className="rounded-xl">
-                Upcoming events
-              </Button>
+
+            <div className="mt-3 grid grid-cols-3 items-start gap-3 text-[10px] font-medium tracking-[0.22em] text-black/70">
+              <p className="uppercase">Underground energy</p>
+              <p className="text-center uppercase">Community first</p>
+              <p className="text-right uppercase">Aotearoa sound</p>
             </div>
           </div>
-        </Container>
-        <div className="mt-10">
-          <Container>
-            <div className="relative mx-auto aspect-21/9 w-full overflow-hidden rounded-2xl ring-1 ring-black/10">
-              <Image
-                src="/home/atmos-1.jpg"
-                alt="ATMOS event hero"
-                fill
-                priority
-                className="object-cover"
-                sizes="(max-width: 1024px) 100vw, 1200px"
-              />
+
+          {/* Main poster body */}
+          <div className="grid grid-cols-12 gap-6 px-6 pb-8 pt-10 sm:gap-8 sm:px-10 sm:pb-10">
+            <div className="col-span-12 sm:col-span-7 flex flex-col gap-6">
+              <h2 className="text-left text-[clamp(1.9rem,4.2vw,3.3rem)] font-black leading-[0.9] tracking-[-0.05em] text-black transform-[scaleX(0.92)]">
+                MODERN
+                <br />
+                RAVE CULTURE
+              </h2>
+
+              <div className="mt-5 w-full max-w-[520px] overflow-hidden ring-1 ring-black/10">
+                <div className="relative aspect-video w-full">
+                  <Image
+                    src="/home/atmos-1.jpg"
+                    alt="ATMOS event crowd"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 92vw, 520px"
+                  />
+                </div>
+              </div>
+
+              <p className="mt-4 max-w-[54ch] text-[13px] leading-relaxed tracking-[0.02em] text-black/70">
+                ATMOS is a collective of DJs, producers, and creatives based in Pōneke /
+                Wellington. We build nights that feel cinematic: tight curation, bold
+                sound, and a room that moves as one.
+              </p>
+
+              <div className="mt-5 w-full max-w-[360px] overflow-hidden ring-1 ring-black/10">
+                <div className="relative aspect-4/3 w-full">
+                  <Image
+                    src="/home/atmos-6.jpg"
+                    alt="ATMOS moment"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 80vw, 360px"
+                  />
+                </div>
+              </div>
             </div>
-          </Container>
+
+            <div className="col-span-12 sm:col-span-5 flex flex-col gap-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-black/60">
+                  <p className="mb-2">ATMOS</p>
+                  <p className="text-black/70">Mixes subtly formal + raw.</p>
+                </div>
+                <div className="text-right text-[10px] font-medium uppercase tracking-[0.22em] text-black/60">
+                  <p className="mb-2">We aim</p>
+                  <p className="text-black/70">for intention over noise.</p>
+                </div>
+              </div>
+
+              <div className="mx-auto w-full max-w-[260px] overflow-hidden ring-1 ring-black/10 sm:mx-0 sm:ml-auto">
+                <div className="relative aspect-2/3 w-full">
+                  <Image
+                    src="/home/atmos-2.jpg"
+                    alt="Artist portrait at ATMOS"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 70vw, 260px"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-black/60">
+                  <p className="mb-2">Production</p>
+                  <p className="text-black/70">Traceable by design.</p>
+                </div>
+                <div className="text-right text-[10px] font-medium uppercase tracking-[0.22em] text-black/60">
+                  <p className="mb-2">Respect</p>
+                  <p className="text-black/70">for people + place.</p>
+                </div>
+              </div>
+
+              <div className="grid gap-2 text-[13px] leading-relaxed tracking-[0.02em] text-black/60">
+                <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-black/60">
+                  Notes
+                </p>
+                <p>
+                  Placeholder text: Duis aute irure dolor in reprehenderit in
+                  voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom statement + cutout */}
+          <div className="relative px-6 pb-10 sm:px-10">
+            <div className="flex items-end justify-between gap-6">
+              <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-black/60">
+                Since 1BK
+              </p>
+              <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-black/60">
+                Pōneke, Aotearoa
+              </p>
+            </div>
+
+            <div className="mt-5 grid gap-3 text-[13px] leading-relaxed tracking-[0.02em] text-black/60 sm:max-w-[72ch]">
+              <p>
+                Placeholder text: Excepteur sint occaecat cupidatat non proident, sunt
+                in culpa qui officia deserunt mollit anim id est laborum.
+              </p>
+              <p>
+                Placeholder text: Curabitur non nulla sit amet nisl tempus convallis
+                quis ac lectus. Vivamus suscipit tortor eget felis porttitor volutpat.
+              </p>
+            </div>
+          </div>
+
+
         </div>
-      </section>
-
-      {/* Content sections */}
-      <section className="relative z-10 py-16 sm:py-24">
-        <Container>
-          <div className="grid grid-cols-1 gap-8 md:gap-10">
-            {/* Our Story */}
-            <Card className="overflow-hidden border-gray-200">
-              <div className="grid grid-cols-1 items-stretch gap-6 md:grid-cols-2">
-                <div className="order-2 md:order-1">
-                  <CardHeader className="pb-0">
-                    <CardTitle className="text-3xl sm:text-4xl">Our Story</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-4">
-                    <p className="mb-4 text-base leading-relaxed text-gray-700 sm:text-lg">
-                      ATMOS is a collective of DJs, producers, and creatives based
-                      in Pōneke (Wellington), New Zealand. We’re dedicated to pushing
-                      the boundaries of electronic music and creating unforgettable
-                      experiences for our community.
-                    </p>
-                    <p className="text-base leading-relaxed text-gray-700 sm:text-lg">
-                      From underground warehouse parties to curated events, we bring
-                      together the best talent in the scene to deliver nights that
-                      resonate long after the music stops.
-                    </p>
-                    <div className="mt-6 flex flex-wrap gap-2">
-                      <Badge variant="outline">Warehouse</Badge>
-                      <Badge variant="outline">Curated</Badge>
-                      <Badge variant="outline">Community</Badge>
-                    </div>
-                  </CardContent>
-                </div>
-                <div className="order-1 md:order-2">
-                  <div className="relative h-full min-h-72 overflow-hidden md:min-h-full">
-                    <div className="relative aspect-4/3 w-full overflow-hidden md:h-full md:aspect-auto">
-                      <Image
-                        src="/home/atmos-1.jpg"
-                        alt="ATMOS event"
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 100vw, 50vw"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            {/* Separator accent */}
-            {/* <div className="mx-auto my-2 w-full">
-              <Separator />
-            </div> */}
-
-            {/* Our Mission */}
-            <Card className="overflow-hidden border-gray-200">
-              <div className="grid grid-cols-1 items-stretch gap-6 md:grid-cols-2">
-                <div className="order-2">
-                  <CardHeader className="pb-0">
-                    <CardTitle className="text-3xl sm:text-4xl">Our Mission</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-4">
-                    <p className="mb-4 text-base leading-relaxed text-gray-700 sm:text-lg">
-                      We believe in the power of music to bring people together. Our
-                      mission is to create spaces where artists can express themselves
-                      freely and where audiences can discover new sounds and
-                      experiences.
-                    </p>
-                    <p className="text-base leading-relaxed text-gray-700 sm:text-lg">
-                      Through our events and collaborations, we aim to elevate the
-                      electronic music scene in Aotearoa and connect with like-minded
-                      communities around the world.
-                    </p>
-                  </CardContent>
-                </div>
-                <div className="order-1 md:order-2">
-                  <div className="relative h-full min-h-72 overflow-hidden md:min-h-full">
-                    <div className="relative aspect-4/3 w-full overflow-hidden md:h-full md:aspect-auto">
-                      <Image
-                        src="/home/atmos-2.jpg"
-                        alt="ATMOS collective"
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 100vw, 50vw"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-
-
-            {/* Join The Movement */}
-            <Card className="overflow-hidden border-gray-200">
-              <div className="grid grid-cols-1 items-stretch gap-6 md:grid-cols-2">
-                <div className="order-2 md:order-1">
-                  <div className="relative h-full min-h-72 overflow-hidden md:min-h-full">
-                    <div className="relative aspect-4/3 w-full overflow-hidden md:h-full md:aspect-auto">
-                      <Image
-                        src="/home/atmos-6.jpg"
-                        alt="Join ATMOS"
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 100vw, 50vw"
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="order-1 md:order-2">
-                  <CardHeader className="pb-0">
-                    <CardTitle className="text-3xl sm:text-4xl">
-                      Join The Movement
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-4">
-                    <p className="text-base leading-relaxed text-gray-700 sm:text-lg">
-                      Whether you’re an artist looking to collaborate, a venue
-                      interested in hosting an event, or simply someone who loves good
-                      music, we’d love to hear from you. Get in touch and let’s create
-                      something special together.
-                    </p>
-                    <div className="mt-6 flex flex-wrap gap-3">
-                      <Button className="rounded-xl">Contact us</Button>
-                      <Button variant="outline" className="rounded-xl">
-                        Collaborate
-                      </Button>
-                    </div>
-                  </CardContent>
-                </div>
-              </div>
-            </Card>
-          </div>
-        </Container>
       </section>
     </main>
   );
