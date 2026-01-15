@@ -14,6 +14,11 @@ enum UserRole {
   ADMIN
 }
 
+enum HomeGigSection {
+  FEATURED_RECENT_PAST
+  PAST_RECENT_LIST
+}
+
 model User {
   id            String    @id
   name          String
@@ -148,13 +153,39 @@ model Gig {
   gigStartTime DateTime 
   gigEndTime   DateTime?
   ticketLink   String?
+
+  // Home/site ordering controls
+  // - `isFeatured`: whether this gig is eligible for the featured slot (used on home + can be reused elsewhere)
+  // - `featuredSortOrder`: lower shows earlier among featured gigs
+  // - `pastSortOrder`: lower shows earlier in past gigs lists
+  isFeatured       Boolean @default(false)
+  featuredSortOrder Int    @default(0)
+  pastSortOrder     Int    @default(0)
+
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   media        GigMedia[]
 
   gigTags    GigTagRelationship[]
+  homeGigPlacements HomeGigPlacement[]
 
   @@map("gig")
+}
+
+model HomeGigPlacement {
+  id        String        @id @default(cuid())
+  section   HomeGigSection
+  sortOrder Int           @default(0)
+
+  gigId String
+  gig   Gig @relation(fields: [gigId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([section, gigId])
+  @@index([section, sortOrder])
+  @@map("home_gig_placement")
 }
 
 model GigMedia {

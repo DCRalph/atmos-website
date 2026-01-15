@@ -2,11 +2,10 @@
 
 import { motion } from "motion/react"
 import { formatDate } from "~/lib/date-utils"
-import { Badge } from "~/components/ui/badge"
-import { isLightColor } from "~/lib/utils"
 import { GigPhotoCarousel } from "./gig-photo-carousel"
 import Link from "next/link"
 import { ArrowUpRight } from "lucide-react"
+import { GigTagList } from "~/components/gig-tag-list"
 
 type MediaItem = {
   id: string
@@ -91,29 +90,13 @@ export function FeaturedGigHomeCard({ gig }: FeaturedGigCardProps) {
               {gig.subtitle}
             </p>
 
-            {gig.gigTags && gig.gigTags.length > 0 ? (
-              <div className="mt-5 flex flex-wrap gap-2">
-                {gig.gigTags.slice(0, 6).map((gt) => (
-                  <Badge
-                    key={gt.gigTag.id}
-                    variant="outline"
-                    className="rounded-none border-2 px-3 py-1 font-bold uppercase tracking-wide"
-                    style={{
-                      backgroundColor: gt.gigTag.color + "20",
-                      borderColor: gt.gigTag.color,
-                      color: isLightColor(gt.gigTag.color) ? "black" : "white",
-                    }}
-                  >
-                    {gt.gigTag.name}
-                  </Badge>
-                ))}
-                {gig.gigTags.length > 6 ? (
-                  <span className="rounded-none border-2 border-white/20 bg-black/40 px-3 py-1 text-xs font-black uppercase text-white/70">
-                    +{gig.gigTags.length - 6}
-                  </span>
-                ) : null}
-              </div>
-            ) : null}
+            <GigTagList
+              gigTags={gig.gigTags}
+              className="mt-5"
+              max={6}
+              size="md"
+              showOverflowCount
+            />
           </div>
 
           {gig.media && gig.media.length > 0 ? (

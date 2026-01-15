@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion } from "motion/react";
 import { CheckCircle2 } from "lucide-react";
 import { api } from "~/trpc/react";
@@ -10,6 +10,7 @@ import { orbitron } from "~/lib/fonts";
 
 export function NewsletterSection({ className }: { className?: string }) {
   const newsletterSubscribe = api.newsletter.subscribe.useMutation();
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
@@ -18,6 +19,44 @@ export function NewsletterSection({ className }: { className?: string }) {
     | { type: "error"; text: string }
     | null
   >(null);
+
+  const playSubscribeSound = () => {
+    try {
+      const AudioContextCtor =
+        window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextCtor) return;
+
+      const ctx = audioCtxRef.current ?? new AudioContextCtor();
+      audioCtxRef.current = ctx;
+
+      // Ensure context is running (some browsers start suspended)
+      if (ctx.state === "suspended") {
+        void ctx.resume();
+      }
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "triangle";
+
+      const t0 = ctx.currentTime;
+      // A quick “pop” pitch bend.
+      osc.frequency.setValueAtTime(880, t0);
+      osc.frequency.exponentialRampToValueAtTime(440, t0 + 0.08);
+
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.12, t0 + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.12);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(t0);
+      osc.stop(t0 + 0.13);
+    } catch {
+      // Non-critical: ignore audio failures.
+    }
+  };
 
   return (
     <section className={cn("relative mt-16 sm:mt-20", className)} aria-labelledby="newsletter-heading">
@@ -90,6 +129,7 @@ export function NewsletterSection({ className }: { className?: string }) {
 
                 try {
                   await newsletterSubscribe.mutateAsync({ email });
+                  playSubscribeSound();
                   setSubscribed(true);
                   setEmail("");
                 } catch {

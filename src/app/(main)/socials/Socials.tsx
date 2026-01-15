@@ -7,6 +7,7 @@ import { StaticBackground } from "~/components/static-background"
 import { FaSpotify, FaYoutube, FaInstagram, FaTiktok, FaFacebook, FaSoundcloud } from "react-icons/fa6"
 import { motion } from "motion/react"
 import { ExternalLink } from "lucide-react"
+import { AnimatedPageHeader } from "~/components/animated-page-header"
 
 type SocialLink = {
   label: string
@@ -76,20 +77,10 @@ export default function SocialsPage() {
       <section className="relative z-10 min-h-screen px-4 py-16 sm:py-24">
         <div className="container mx-auto max-w-6xl">
           {/* Header */}
-          <motion.div
-            className="mb-16 text-center"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <h1 className="text-5xl sm:text-6xl md:text-7xl font-black tracking-[0.15em] text-white mb-4">
-              FOLLOW ATMOS
-            </h1>
-            <div className="h-1 w-24 bg-accent-strong mx-auto mb-6" />
-            <p className="text-base sm:text-lg text-white/60 tracking-wider uppercase font-mono">
-              One presence across every platform
-            </p>
-          </motion.div>
+          <AnimatedPageHeader
+            title="FOLLOW ATMOS"
+            subtitle="One presence across every platform"
+          />
 
           {/* Social Cards Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

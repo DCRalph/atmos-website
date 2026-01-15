@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { StaticBackground } from "~/components/static-background";
 import { ContentItem } from "~/components/content/content-item";
 import { api } from "~/trpc/react";
+import { AnimatedPageHeader } from "~/components/animated-page-header";
 
 
 
@@ -15,9 +16,10 @@ export default function ContentPage() {
 
       <section className="relative z-10 min-h-dvh px-4 py-16 sm:py-24">
         <div className="mx-auto max-w-6xl">
-          <h1 className="mb-12 sm:mb-16 text-center text-4xl sm:text-5xl font-bold tracking-wider md:text-7xl">
-            CONTENT
-          </h1>
+          <AnimatedPageHeader
+            title="CONTENT"
+            subtitle="Releases, mixes, and highlights from the Atmos community"
+          />
 
           <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
             {!contentItems?.length ? (

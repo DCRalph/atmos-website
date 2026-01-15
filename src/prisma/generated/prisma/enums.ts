@@ -18,6 +18,14 @@ export const UserRole = {
 export type UserRole = (typeof UserRole)[keyof typeof UserRole]
 
 
+export const HomeGigSection = {
+  FEATURED_RECENT_PAST: 'FEATURED_RECENT_PAST',
+  PAST_RECENT_LIST: 'PAST_RECENT_LIST'
+} as const
+
+export type HomeGigSection = (typeof HomeGigSection)[keyof typeof HomeGigSection]
+
+
 export const FileUploadStatus = {
   NO_FILE: 'NO_FILE',
   UPLOADING: 'UPLOADING',

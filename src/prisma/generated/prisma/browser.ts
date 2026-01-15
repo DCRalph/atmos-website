@@ -68,6 +68,11 @@ export type GigTagRelationship = Prisma.GigTagRelationshipModel
  */
 export type Gig = Prisma.GigModel
 /**
+ * Model HomeGigPlacement
+ * 
+ */
+export type HomeGigPlacement = Prisma.HomeGigPlacementModel
+/**
  * Model GigMedia
  * 
  */

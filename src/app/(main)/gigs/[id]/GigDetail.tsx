@@ -8,7 +8,7 @@ import { GigDetailPhotoCarousel } from "../../../../components/gigs/gig-detail-p
 import Link from "next/link"
 import { authServer } from "~/lib/auth"
 import { ArrowLeft, Calendar, Clock, Pencil, Ticket } from "lucide-react"
-import { isLightColor } from "~/lib/utils"
+import { GigTagList } from "~/components/gig-tag-list"
 
 type PageProps = {
   params: Promise<{ id: string }>
@@ -81,23 +81,11 @@ export default async function GigPage({ params }: PageProps) {
                 <p className="text-lg sm:text-xl text-white/70 mb-6 font-medium">{gig.subtitle}</p>
 
                 {/* Tags */}
-                {gig.gigTags && (gig.gigTags as Array<{ gigTag: { id: string; name: string; color: string } }>).length > 0 && (
-                  <div className="mb-6 flex flex-wrap gap-2">
-                    {(gig.gigTags as Array<{ gigTag: { id: string; name: string; color: string } }>).map((gt) => (
-                      <span
-                        key={gt.gigTag.id}
-                        className="rounded-none border-2 px-3 py-1 text-sm font-bold uppercase tracking-wide"
-                        style={{
-                          backgroundColor: `${gt.gigTag.color}20`,
-                          borderColor: gt.gigTag.color,
-                          color: isLightColor(gt.gigTag.color) ? "black" : "white",
-                        }}
-                      >
-                        {gt.gigTag.name}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                <GigTagList
+                  gigTags={gig.gigTags}
+                  className="mb-6"
+                  size="md"
+                />
 
                 {/* Description */}
                 {gig.description && (

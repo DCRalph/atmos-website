@@ -192,6 +192,61 @@ export const gigsRouter = createTRPCRouter({
       return enrichGigsWithFileUploads(ctx.db, gigs);
     }),
 
+  /**
+   * Home page: get a single "featured" past gig and additional past gigs in admin-defined order.
+   * - Featured gig is chosen from past gigs where `isFeatured=true`, ordered by `featuredSortOrder`.
+   * - Past list excludes the featured gig, ordered by `pastSortOrder`.
+   */
+  getHomePast: publicProcedure
+    .input(
+      z
+        .object({
+          pastLimit: z.number().min(0).max(24).default(2),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const now = new Date();
+      const pastLimit = input?.pastLimit ?? 2;
+
+      // Fetch enough rows to reliably build featured+past lists.
+      const gigs = await ctx.db.gig.findMany({
+        where: {
+          gigEndTime: {
+            lt: now,
+          },
+        },
+        orderBy: [
+          { isFeatured: "desc" },
+          { featuredSortOrder: "asc" },
+          { pastSortOrder: "asc" },
+          { gigEndTime: "desc" },
+        ],
+        include: {
+          media: {
+            orderBy: [{ section: "asc" }, { sortOrder: "asc" }, { createdAt: "asc" }],
+          },
+          gigTags: {
+            include: {
+              gigTag: true,
+            },
+          },
+        },
+        take: Math.max(20, pastLimit + 10),
+      });
+
+      const enriched = await enrichGigsWithFileUploads(ctx.db, gigs);
+
+      const featuredCandidates = enriched.filter((g) => g.isFeatured);
+      const featuredGig = featuredCandidates[0] ?? null;
+
+      const pastGigs = enriched
+        .filter((g) => (featuredGig ? g.id !== featuredGig.id : true))
+        .slice(0, pastLimit);
+
+      return { featuredGig, pastGigs };
+    }),
+
   getUpcoming: publicProcedure.query(async ({ ctx }) => {
     const now = new Date();
     const gigs = await ctx.db.gig.findMany({
@@ -234,7 +289,7 @@ export const gigsRouter = createTRPCRouter({
             lt: now,
           },
         },
-        orderBy: { gigEndTime: "desc" },
+        orderBy: [{ pastSortOrder: "asc" }, { gigEndTime: "desc" }],
         include: {
           media: {
             orderBy: [
@@ -253,6 +308,77 @@ export const gigsRouter = createTRPCRouter({
       });
 
       return enrichGigsWithFileUploads(ctx.db, gigs);
+    }),
+
+  /**
+   * Admin: fetch past gigs with current ordering fields so the UI can reorder them.
+   */
+  getPastForOrdering: adminProcedure.query(async ({ ctx }) => {
+    const now = new Date();
+    return ctx.db.gig.findMany({
+      where: {
+        gigEndTime: { lt: now },
+      },
+      orderBy: [
+        { isFeatured: "desc" },
+        { featuredSortOrder: "asc" },
+        { pastSortOrder: "asc" },
+        { gigEndTime: "desc" },
+      ],
+      select: {
+        id: true,
+        title: true,
+        subtitle: true,
+        gigStartTime: true,
+        gigEndTime: true,
+        isFeatured: true,
+        featuredSortOrder: true,
+        pastSortOrder: true,
+      },
+    });
+  }),
+
+  /**
+   * Admin: persist ordering for featured + past gigs.
+   * Accepts ordered arrays of IDs. Any gig in `featuredGigIds` becomes featured.
+   * Any gig in `pastGigIds` becomes non-featured (and ordered among past).
+   */
+  updateHomeGigOrdering: adminProcedure
+    .input(
+      z.object({
+        featuredGigIds: z.array(z.string()),
+        pastGigIds: z.array(z.string()),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const allIds = [...input.featuredGigIds, ...input.pastGigIds];
+      const unique = new Set(allIds);
+      if (unique.size !== allIds.length) {
+        throw new Error("Duplicate gig IDs in ordering payload");
+      }
+
+      await ctx.db.$transaction([
+        ...input.featuredGigIds.map((id, index) =>
+          ctx.db.gig.update({
+            where: { id },
+            data: {
+              isFeatured: true,
+              featuredSortOrder: index,
+            },
+          }),
+        ),
+        ...input.pastGigIds.map((id, index) =>
+          ctx.db.gig.update({
+            where: { id },
+            data: {
+              isFeatured: false,
+              pastSortOrder: index,
+            },
+          }),
+        ),
+      ]);
+
+      return { ok: true };
     }),
 
   getToday: publicProcedure.query(async ({ ctx }) => {

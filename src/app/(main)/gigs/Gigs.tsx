@@ -5,6 +5,7 @@ import { UpcomingGigCard } from "~/components/gigs/upcoming-gig-card"
 import { PastGigCard } from "~/components/gigs/past-gig-card"
 import { api } from "~/trpc/react"
 import { Loader2 } from "lucide-react"
+import { AnimatedPageHeader } from "~/components/animated-page-header"
 
 export default function GigsPage() {
   const { data: upcomingGigs, isLoading: isLoadingUpcomingGigs } = api.gigs.getUpcoming.useQuery()
@@ -16,9 +17,10 @@ export default function GigsPage() {
 
       <section className="relative z-10 min-h-dvh px-4 py-16 sm:py-24">
         <div className="mx-auto max-w-6xl">
-          <h1 className="mb-12 sm:mb-16 text-center text-4xl sm:text-5xl font-bold tracking-[0.2em] uppercase md:text-7xl">
-            <span className="text-accent-strong">ALL</span> GIGS
-          </h1>
+          <AnimatedPageHeader
+            title="ALL GIGS"
+            subtitle="Upcoming events and past nights from Atmos"
+          />
 
           {/* Upcoming Gigs */}
           <div className="mb-16 sm:mb-20">

@@ -9,16 +9,10 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
 export function RecentGigsSection() {
-  const { data: pastGigs, isLoading: isLoadingPastGigs } = api.gigs.getPast.useQuery({ limit: 3 });
+  const { data, isLoading } = api.homeGigs.getHomeRecent.useQuery();
 
-  const sortedPastGigsWithStart = (pastGigs ?? [])
-    // .filter((gig) => gig.gigStartTime)
-    .slice()
-    .sort((a, b) => b.gigStartTime!.getTime() - a.gigStartTime!.getTime());
-
-  // Limit past gigs to 6 most recent;
-  const latestPastGig = sortedPastGigsWithStart[0];
-  const otherRecentPastGigs = sortedPastGigsWithStart.slice(1);
+  const featuredGig = data?.featuredGig ?? null;
+  const pastGigs = data?.pastGigs ?? [];
 
   return (
     <div>
@@ -40,19 +34,19 @@ export function RecentGigsSection() {
       </div>
 
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
-        {isLoadingPastGigs ? (
+        {isLoading ? (
           <div className="flex items-center justify-center py-8 col-span-full">
             <Loader2 className="w-6 h-6 animate-spin text-white/60" />
           </div>
-        ) : latestPastGig ? (
+        ) : featuredGig ? (
           <>
-            {/* Featured (most recent) gig */}
-            <FeaturedGigHomeCard gig={{ ...latestPastGig, gigStartTime: latestPastGig.gigStartTime! }} />
+            {/* Featured gig (admin-configurable) */}
+            <FeaturedGigHomeCard gig={{ ...featuredGig, gigStartTime: featuredGig.gigStartTime! }} />
 
             {/* Remaining recent gigs */}
-            {otherRecentPastGigs.length > 0 ? (
+            {pastGigs.length > 0 ? (
               <div className="lg:col-span-3 grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-2">
-                {otherRecentPastGigs.map((gig) => (
+                {pastGigs.map((gig: any) => (
                   <PastGigHomeCard key={gig.id} gig={{ ...gig, gigStartTime: gig.gigStartTime! }} />
                 ))}
               </div>

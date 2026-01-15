@@ -1,9 +1,8 @@
 "use client"
 
 import { formatDate } from "~/lib/date-utils"
-import { Badge } from "~/components/ui/badge"
-import { isLightColor } from "~/lib/utils"
 import { motion } from "framer-motion"
+import { GigTagList } from "~/components/gig-tag-list"
 
 type Gig = {
   id: string
@@ -38,24 +37,7 @@ export function PastGigHomeCard({ gig }: PastGigHomeCardProps) {
           {formatDate(gig.gigStartTime)}
         </div>
 
-        {gig.gigTags && gig.gigTags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {gig.gigTags.map((gt) => (
-              <Badge
-                key={gt.gigTag.id}
-                variant="outline"
-                className="rounded-none border-2 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide"
-                style={{
-                  backgroundColor: gt.gigTag.color + "20",
-                  borderColor: gt.gigTag.color,
-                  color: isLightColor(gt.gigTag.color) ? "black" : "white",
-                }}
-              >
-                {gt.gigTag.name}
-              </Badge>
-            ))}
-          </div>
-        )}
+        <GigTagList gigTags={gig.gigTags} size="sm" />
 
         {gig.media && gig.media.length > 0 && (
           <p className="text-sm font-bold uppercase tracking-wider text-white/50">

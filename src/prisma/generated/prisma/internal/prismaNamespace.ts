@@ -394,6 +394,7 @@ export const ModelName = {
   GigTag: 'GigTag',
   GigTagRelationship: 'GigTagRelationship',
   Gig: 'Gig',
+  HomeGigPlacement: 'HomeGigPlacement',
   GigMedia: 'GigMedia',
   MerchItem: 'MerchItem',
   ContactSubmission: 'ContactSubmission',
@@ -415,7 +416,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "invite" | "crewMember" | "contentItem" | "gigTag" | "gigTagRelationship" | "gig" | "gigMedia" | "merchItem" | "contactSubmission" | "newsletterSubscription" | "file_tag" | "file_upload"
+    modelProps: "user" | "session" | "account" | "verification" | "invite" | "crewMember" | "contentItem" | "gigTag" | "gigTagRelationship" | "gig" | "homeGigPlacement" | "gigMedia" | "merchItem" | "contactSubmission" | "newsletterSubscription" | "file_tag" | "file_upload"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1159,6 +1160,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    HomeGigPlacement: {
+      payload: Prisma.$HomeGigPlacementPayload<ExtArgs>
+      fields: Prisma.HomeGigPlacementFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.HomeGigPlacementFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeGigPlacementPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.HomeGigPlacementFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeGigPlacementPayload>
+        }
+        findFirst: {
+          args: Prisma.HomeGigPlacementFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeGigPlacementPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.HomeGigPlacementFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeGigPlacementPayload>
+        }
+        findMany: {
+          args: Prisma.HomeGigPlacementFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeGigPlacementPayload>[]
+        }
+        create: {
+          args: Prisma.HomeGigPlacementCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeGigPlacementPayload>
+        }
+        createMany: {
+          args: Prisma.HomeGigPlacementCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.HomeGigPlacementCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeGigPlacementPayload>[]
+        }
+        delete: {
+          args: Prisma.HomeGigPlacementDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeGigPlacementPayload>
+        }
+        update: {
+          args: Prisma.HomeGigPlacementUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeGigPlacementPayload>
+        }
+        deleteMany: {
+          args: Prisma.HomeGigPlacementDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.HomeGigPlacementUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.HomeGigPlacementUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeGigPlacementPayload>[]
+        }
+        upsert: {
+          args: Prisma.HomeGigPlacementUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeGigPlacementPayload>
+        }
+        aggregate: {
+          args: Prisma.HomeGigPlacementAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateHomeGigPlacement>
+        }
+        groupBy: {
+          args: Prisma.HomeGigPlacementGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.HomeGigPlacementGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.HomeGigPlacementCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.HomeGigPlacementCountAggregateOutputType> | number
+        }
+      }
+    }
     GigMedia: {
       payload: Prisma.$GigMediaPayload<ExtArgs>
       fields: Prisma.GigMediaFieldRefs
@@ -1774,11 +1849,26 @@ export const GigScalarFieldEnum = {
   gigStartTime: 'gigStartTime',
   gigEndTime: 'gigEndTime',
   ticketLink: 'ticketLink',
+  isFeatured: 'isFeatured',
+  featuredSortOrder: 'featuredSortOrder',
+  pastSortOrder: 'pastSortOrder',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
 export type GigScalarFieldEnum = (typeof GigScalarFieldEnum)[keyof typeof GigScalarFieldEnum]
+
+
+export const HomeGigPlacementScalarFieldEnum = {
+  id: 'id',
+  section: 'section',
+  sortOrder: 'sortOrder',
+  gigId: 'gigId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type HomeGigPlacementScalarFieldEnum = (typeof HomeGigPlacementScalarFieldEnum)[keyof typeof HomeGigPlacementScalarFieldEnum]
 
 
 export const GigMediaScalarFieldEnum = {
@@ -1961,6 +2051,20 @@ export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel,
 
 
 /**
+ * Reference to a field of type 'HomeGigSection'
+ */
+export type EnumHomeGigSectionFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'HomeGigSection'>
+    
+
+
+/**
+ * Reference to a field of type 'HomeGigSection[]'
+ */
+export type ListEnumHomeGigSectionFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'HomeGigSection[]'>
+    
+
+
+/**
  * Reference to a field of type 'Float'
  */
 export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
@@ -2106,6 +2210,7 @@ export type GlobalOmitConfig = {
   gigTag?: Prisma.GigTagOmit
   gigTagRelationship?: Prisma.GigTagRelationshipOmit
   gig?: Prisma.GigOmit
+  homeGigPlacement?: Prisma.HomeGigPlacementOmit
   gigMedia?: Prisma.GigMediaOmit
   merchItem?: Prisma.MerchItemOmit
   contactSubmission?: Prisma.ContactSubmissionOmit

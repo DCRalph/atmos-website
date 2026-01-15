@@ -2,8 +2,8 @@
 
 import Link from "next/link"
 import { formatDate, formatTime } from "~/lib/date-utils"
-import { Badge } from "~/components/ui/badge"
 import { motion } from "framer-motion"
+import { GigTagList } from "~/components/gig-tag-list"
 
 type Gig = {
   id: string
@@ -51,24 +51,7 @@ export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
               <p className="mt-2 text-base font-medium text-white/70 md:text-lg">{gig.subtitle}</p>
             </div>
 
-            {gig.gigTags && gig.gigTags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {gig.gigTags.map((gt) => (
-                  <Badge
-                    key={gt.gigTag.id}
-                    variant="outline"
-                    className="rounded-none border-2 px-3 py-1 text-xs font-bold uppercase tracking-wide"
-                    style={{
-                      backgroundColor: gt.gigTag.color + "15",
-                      borderColor: gt.gigTag.color,
-                      color: gt.gigTag.color,
-                    }}
-                  >
-                    {gt.gigTag.name}
-                  </Badge>
-                ))}
-              </div>
-            )}
+            <GigTagList gigTags={gig.gigTags} size="sm" />
           </div>
         </div>
       </Link>

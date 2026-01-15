@@ -61,6 +61,7 @@ export const ModelName = {
   GigTag: 'GigTag',
   GigTagRelationship: 'GigTagRelationship',
   Gig: 'Gig',
+  HomeGigPlacement: 'HomeGigPlacement',
   GigMedia: 'GigMedia',
   MerchItem: 'MerchItem',
   ContactSubmission: 'ContactSubmission',
@@ -217,11 +218,26 @@ export const GigScalarFieldEnum = {
   gigStartTime: 'gigStartTime',
   gigEndTime: 'gigEndTime',
   ticketLink: 'ticketLink',
+  isFeatured: 'isFeatured',
+  featuredSortOrder: 'featuredSortOrder',
+  pastSortOrder: 'pastSortOrder',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
 export type GigScalarFieldEnum = (typeof GigScalarFieldEnum)[keyof typeof GigScalarFieldEnum]
+
+
+export const HomeGigPlacementScalarFieldEnum = {
+  id: 'id',
+  section: 'section',
+  sortOrder: 'sortOrder',
+  gigId: 'gigId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type HomeGigPlacementScalarFieldEnum = (typeof HomeGigPlacementScalarFieldEnum)[keyof typeof HomeGigPlacementScalarFieldEnum]
 
 
 export const GigMediaScalarFieldEnum = {

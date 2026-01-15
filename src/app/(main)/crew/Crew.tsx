@@ -5,6 +5,7 @@ import { CrewMember } from "~/components/crew/crew-member";
 import Link from "next/link";
 import { api } from "~/trpc/react";
 import { Skeleton } from "~/components/ui/skeleton";
+import { AnimatedPageHeader } from "~/components/animated-page-header";
 
 function CrewMemberSkeleton() {
   return (
@@ -40,13 +41,10 @@ export default function CrewPage() {
             </Link>
           </div> */}
 
-          <h1 className="mb-6 sm:mb-8 text-center text-4xl sm:text-5xl font-bold tracking-wider md:text-7xl">
-            THE CREW
-          </h1>
-
-          <p className="mb-12 sm:mb-16 text-center text-base sm:text-lg text-white/60 max-w-2xl mx-auto px-4">
-            ATMOS is powered by a tight-knit collective of DJs, producers, and creatives who live and breathe the scene in Pōneke
-          </p>
+          <AnimatedPageHeader
+            title="THE CREW"
+            subtitle="DJs, producers, and creatives powering Atmos in Pōneke"
+          />
 
           <div className="grid gap-6 sm:gap-8 grid-cols-2 md:grid-cols-3">
             {isLoadingCrewMembers ? (

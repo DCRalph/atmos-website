@@ -3,6 +3,7 @@
 import { StaticBackground } from "~/components/static-background"
 import Link from "next/link"
 import { ContactForm } from "~/components/contact/contact-form-2"
+import { AnimatedPageHeader } from "~/components/animated-page-header"
 
 export default function ContactPage() {
   return (
@@ -11,9 +12,10 @@ export default function ContactPage() {
 
       <section className="relative z-10 min-h-dvh px-4 py-16 sm:py-24">
         <div className="mx-auto container">
-          <h1 className="mb-12 text-center text-5xl font-bold tracking-[0.2em] uppercase md:text-7xl">
-            HIT <span className="text-accent-strong">US</span> UP
-          </h1>
+          <AnimatedPageHeader
+            title="HIT US UP"
+            subtitle="Bookings, collabs, questions—send us a message"
+          />
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <div className="grid grid-cols-1 gap-6 content-start">

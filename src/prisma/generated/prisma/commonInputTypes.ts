@@ -192,6 +192,23 @@ export type IntWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedIntFilter<$PrismaModel>
 }
 
+export type EnumHomeGigSectionFilter<$PrismaModel = never> = {
+  equals?: $Enums.HomeGigSection | Prisma.EnumHomeGigSectionFieldRefInput<$PrismaModel>
+  in?: $Enums.HomeGigSection[] | Prisma.ListEnumHomeGigSectionFieldRefInput<$PrismaModel>
+  notIn?: $Enums.HomeGigSection[] | Prisma.ListEnumHomeGigSectionFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumHomeGigSectionFilter<$PrismaModel> | $Enums.HomeGigSection
+}
+
+export type EnumHomeGigSectionWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.HomeGigSection | Prisma.EnumHomeGigSectionFieldRefInput<$PrismaModel>
+  in?: $Enums.HomeGigSection[] | Prisma.ListEnumHomeGigSectionFieldRefInput<$PrismaModel>
+  notIn?: $Enums.HomeGigSection[] | Prisma.ListEnumHomeGigSectionFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumHomeGigSectionWithAggregatesFilter<$PrismaModel> | $Enums.HomeGigSection
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumHomeGigSectionFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumHomeGigSectionFilter<$PrismaModel>
+}
+
 export type FloatFilter<$PrismaModel = never> = {
   equals?: number | Prisma.FloatFieldRefInput<$PrismaModel>
   in?: number[] | Prisma.ListFloatFieldRefInput<$PrismaModel>
@@ -469,6 +486,23 @@ export type NestedFloatFilter<$PrismaModel = never> = {
   gt?: number | Prisma.FloatFieldRefInput<$PrismaModel>
   gte?: number | Prisma.FloatFieldRefInput<$PrismaModel>
   not?: Prisma.NestedFloatFilter<$PrismaModel> | number
+}
+
+export type NestedEnumHomeGigSectionFilter<$PrismaModel = never> = {
+  equals?: $Enums.HomeGigSection | Prisma.EnumHomeGigSectionFieldRefInput<$PrismaModel>
+  in?: $Enums.HomeGigSection[] | Prisma.ListEnumHomeGigSectionFieldRefInput<$PrismaModel>
+  notIn?: $Enums.HomeGigSection[] | Prisma.ListEnumHomeGigSectionFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumHomeGigSectionFilter<$PrismaModel> | $Enums.HomeGigSection
+}
+
+export type NestedEnumHomeGigSectionWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.HomeGigSection | Prisma.EnumHomeGigSectionFieldRefInput<$PrismaModel>
+  in?: $Enums.HomeGigSection[] | Prisma.ListEnumHomeGigSectionFieldRefInput<$PrismaModel>
+  notIn?: $Enums.HomeGigSection[] | Prisma.ListEnumHomeGigSectionFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumHomeGigSectionWithAggregatesFilter<$PrismaModel> | $Enums.HomeGigSection
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumHomeGigSectionFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumHomeGigSectionFilter<$PrismaModel>
 }
 
 export type NestedFloatWithAggregatesFilter<$PrismaModel = never> = {

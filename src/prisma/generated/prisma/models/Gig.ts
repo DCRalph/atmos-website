@@ -20,8 +20,20 @@ export type GigModel = runtime.Types.Result.DefaultSelection<Prisma.$GigPayload>
 
 export type AggregateGig = {
   _count: GigCountAggregateOutputType | null
+  _avg: GigAvgAggregateOutputType | null
+  _sum: GigSumAggregateOutputType | null
   _min: GigMinAggregateOutputType | null
   _max: GigMaxAggregateOutputType | null
+}
+
+export type GigAvgAggregateOutputType = {
+  featuredSortOrder: number | null
+  pastSortOrder: number | null
+}
+
+export type GigSumAggregateOutputType = {
+  featuredSortOrder: number | null
+  pastSortOrder: number | null
 }
 
 export type GigMinAggregateOutputType = {
@@ -32,6 +44,9 @@ export type GigMinAggregateOutputType = {
   gigStartTime: Date | null
   gigEndTime: Date | null
   ticketLink: string | null
+  isFeatured: boolean | null
+  featuredSortOrder: number | null
+  pastSortOrder: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -44,6 +59,9 @@ export type GigMaxAggregateOutputType = {
   gigStartTime: Date | null
   gigEndTime: Date | null
   ticketLink: string | null
+  isFeatured: boolean | null
+  featuredSortOrder: number | null
+  pastSortOrder: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -56,11 +74,24 @@ export type GigCountAggregateOutputType = {
   gigStartTime: number
   gigEndTime: number
   ticketLink: number
+  isFeatured: number
+  featuredSortOrder: number
+  pastSortOrder: number
   createdAt: number
   updatedAt: number
   _all: number
 }
 
+
+export type GigAvgAggregateInputType = {
+  featuredSortOrder?: true
+  pastSortOrder?: true
+}
+
+export type GigSumAggregateInputType = {
+  featuredSortOrder?: true
+  pastSortOrder?: true
+}
 
 export type GigMinAggregateInputType = {
   id?: true
@@ -70,6 +101,9 @@ export type GigMinAggregateInputType = {
   gigStartTime?: true
   gigEndTime?: true
   ticketLink?: true
+  isFeatured?: true
+  featuredSortOrder?: true
+  pastSortOrder?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -82,6 +116,9 @@ export type GigMaxAggregateInputType = {
   gigStartTime?: true
   gigEndTime?: true
   ticketLink?: true
+  isFeatured?: true
+  featuredSortOrder?: true
+  pastSortOrder?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -94,6 +131,9 @@ export type GigCountAggregateInputType = {
   gigStartTime?: true
   gigEndTime?: true
   ticketLink?: true
+  isFeatured?: true
+  featuredSortOrder?: true
+  pastSortOrder?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -137,6 +177,18 @@ export type GigAggregateArgs<ExtArgs extends runtime.Types.Extensions.InternalAr
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
+   * Select which fields to average
+  **/
+  _avg?: GigAvgAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
+   * Select which fields to sum
+  **/
+  _sum?: GigSumAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
    * Select which fields to find the minimum value
   **/
   _min?: GigMinAggregateInputType
@@ -167,6 +219,8 @@ export type GigGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs
   take?: number
   skip?: number
   _count?: GigCountAggregateInputType | true
+  _avg?: GigAvgAggregateInputType
+  _sum?: GigSumAggregateInputType
   _min?: GigMinAggregateInputType
   _max?: GigMaxAggregateInputType
 }
@@ -179,9 +233,14 @@ export type GigGroupByOutputType = {
   gigStartTime: Date
   gigEndTime: Date | null
   ticketLink: string | null
+  isFeatured: boolean
+  featuredSortOrder: number
+  pastSortOrder: number
   createdAt: Date
   updatedAt: Date
   _count: GigCountAggregateOutputType | null
+  _avg: GigAvgAggregateOutputType | null
+  _sum: GigSumAggregateOutputType | null
   _min: GigMinAggregateOutputType | null
   _max: GigMaxAggregateOutputType | null
 }
@@ -212,10 +271,14 @@ export type GigWhereInput = {
   gigStartTime?: Prisma.DateTimeFilter<"Gig"> | Date | string
   gigEndTime?: Prisma.DateTimeNullableFilter<"Gig"> | Date | string | null
   ticketLink?: Prisma.StringNullableFilter<"Gig"> | string | null
+  isFeatured?: Prisma.BoolFilter<"Gig"> | boolean
+  featuredSortOrder?: Prisma.IntFilter<"Gig"> | number
+  pastSortOrder?: Prisma.IntFilter<"Gig"> | number
   createdAt?: Prisma.DateTimeFilter<"Gig"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Gig"> | Date | string
   media?: Prisma.GigMediaListRelationFilter
   gigTags?: Prisma.GigTagRelationshipListRelationFilter
+  homeGigPlacements?: Prisma.HomeGigPlacementListRelationFilter
 }
 
 export type GigOrderByWithRelationInput = {
@@ -226,10 +289,14 @@ export type GigOrderByWithRelationInput = {
   gigStartTime?: Prisma.SortOrder
   gigEndTime?: Prisma.SortOrderInput | Prisma.SortOrder
   ticketLink?: Prisma.SortOrderInput | Prisma.SortOrder
+  isFeatured?: Prisma.SortOrder
+  featuredSortOrder?: Prisma.SortOrder
+  pastSortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   media?: Prisma.GigMediaOrderByRelationAggregateInput
   gigTags?: Prisma.GigTagRelationshipOrderByRelationAggregateInput
+  homeGigPlacements?: Prisma.HomeGigPlacementOrderByRelationAggregateInput
 }
 
 export type GigWhereUniqueInput = Prisma.AtLeast<{
@@ -243,10 +310,14 @@ export type GigWhereUniqueInput = Prisma.AtLeast<{
   gigStartTime?: Prisma.DateTimeFilter<"Gig"> | Date | string
   gigEndTime?: Prisma.DateTimeNullableFilter<"Gig"> | Date | string | null
   ticketLink?: Prisma.StringNullableFilter<"Gig"> | string | null
+  isFeatured?: Prisma.BoolFilter<"Gig"> | boolean
+  featuredSortOrder?: Prisma.IntFilter<"Gig"> | number
+  pastSortOrder?: Prisma.IntFilter<"Gig"> | number
   createdAt?: Prisma.DateTimeFilter<"Gig"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Gig"> | Date | string
   media?: Prisma.GigMediaListRelationFilter
   gigTags?: Prisma.GigTagRelationshipListRelationFilter
+  homeGigPlacements?: Prisma.HomeGigPlacementListRelationFilter
 }, "id">
 
 export type GigOrderByWithAggregationInput = {
@@ -257,11 +328,16 @@ export type GigOrderByWithAggregationInput = {
   gigStartTime?: Prisma.SortOrder
   gigEndTime?: Prisma.SortOrderInput | Prisma.SortOrder
   ticketLink?: Prisma.SortOrderInput | Prisma.SortOrder
+  isFeatured?: Prisma.SortOrder
+  featuredSortOrder?: Prisma.SortOrder
+  pastSortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.GigCountOrderByAggregateInput
+  _avg?: Prisma.GigAvgOrderByAggregateInput
   _max?: Prisma.GigMaxOrderByAggregateInput
   _min?: Prisma.GigMinOrderByAggregateInput
+  _sum?: Prisma.GigSumOrderByAggregateInput
 }
 
 export type GigScalarWhereWithAggregatesInput = {
@@ -275,6 +351,9 @@ export type GigScalarWhereWithAggregatesInput = {
   gigStartTime?: Prisma.DateTimeWithAggregatesFilter<"Gig"> | Date | string
   gigEndTime?: Prisma.DateTimeNullableWithAggregatesFilter<"Gig"> | Date | string | null
   ticketLink?: Prisma.StringNullableWithAggregatesFilter<"Gig"> | string | null
+  isFeatured?: Prisma.BoolWithAggregatesFilter<"Gig"> | boolean
+  featuredSortOrder?: Prisma.IntWithAggregatesFilter<"Gig"> | number
+  pastSortOrder?: Prisma.IntWithAggregatesFilter<"Gig"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Gig"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Gig"> | Date | string
 }
@@ -287,10 +366,14 @@ export type GigCreateInput = {
   gigStartTime: Date | string
   gigEndTime?: Date | string | null
   ticketLink?: string | null
+  isFeatured?: boolean
+  featuredSortOrder?: number
+  pastSortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   media?: Prisma.GigMediaCreateNestedManyWithoutGigInput
   gigTags?: Prisma.GigTagRelationshipCreateNestedManyWithoutGigInput
+  homeGigPlacements?: Prisma.HomeGigPlacementCreateNestedManyWithoutGigInput
 }
 
 export type GigUncheckedCreateInput = {
@@ -301,10 +384,14 @@ export type GigUncheckedCreateInput = {
   gigStartTime: Date | string
   gigEndTime?: Date | string | null
   ticketLink?: string | null
+  isFeatured?: boolean
+  featuredSortOrder?: number
+  pastSortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   media?: Prisma.GigMediaUncheckedCreateNestedManyWithoutGigInput
   gigTags?: Prisma.GigTagRelationshipUncheckedCreateNestedManyWithoutGigInput
+  homeGigPlacements?: Prisma.HomeGigPlacementUncheckedCreateNestedManyWithoutGigInput
 }
 
 export type GigUpdateInput = {
@@ -315,10 +402,14 @@ export type GigUpdateInput = {
   gigStartTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gigEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ticketLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isFeatured?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  featuredSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  pastSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   media?: Prisma.GigMediaUpdateManyWithoutGigNestedInput
   gigTags?: Prisma.GigTagRelationshipUpdateManyWithoutGigNestedInput
+  homeGigPlacements?: Prisma.HomeGigPlacementUpdateManyWithoutGigNestedInput
 }
 
 export type GigUncheckedUpdateInput = {
@@ -329,10 +420,14 @@ export type GigUncheckedUpdateInput = {
   gigStartTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gigEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ticketLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isFeatured?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  featuredSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  pastSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   media?: Prisma.GigMediaUncheckedUpdateManyWithoutGigNestedInput
   gigTags?: Prisma.GigTagRelationshipUncheckedUpdateManyWithoutGigNestedInput
+  homeGigPlacements?: Prisma.HomeGigPlacementUncheckedUpdateManyWithoutGigNestedInput
 }
 
 export type GigCreateManyInput = {
@@ -343,6 +438,9 @@ export type GigCreateManyInput = {
   gigStartTime: Date | string
   gigEndTime?: Date | string | null
   ticketLink?: string | null
+  isFeatured?: boolean
+  featuredSortOrder?: number
+  pastSortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -355,6 +453,9 @@ export type GigUpdateManyMutationInput = {
   gigStartTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gigEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ticketLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isFeatured?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  featuredSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  pastSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -367,6 +468,9 @@ export type GigUncheckedUpdateManyInput = {
   gigStartTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gigEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ticketLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isFeatured?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  featuredSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  pastSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -384,8 +488,16 @@ export type GigCountOrderByAggregateInput = {
   gigStartTime?: Prisma.SortOrder
   gigEndTime?: Prisma.SortOrder
   ticketLink?: Prisma.SortOrder
+  isFeatured?: Prisma.SortOrder
+  featuredSortOrder?: Prisma.SortOrder
+  pastSortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type GigAvgOrderByAggregateInput = {
+  featuredSortOrder?: Prisma.SortOrder
+  pastSortOrder?: Prisma.SortOrder
 }
 
 export type GigMaxOrderByAggregateInput = {
@@ -396,6 +508,9 @@ export type GigMaxOrderByAggregateInput = {
   gigStartTime?: Prisma.SortOrder
   gigEndTime?: Prisma.SortOrder
   ticketLink?: Prisma.SortOrder
+  isFeatured?: Prisma.SortOrder
+  featuredSortOrder?: Prisma.SortOrder
+  pastSortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -408,8 +523,16 @@ export type GigMinOrderByAggregateInput = {
   gigStartTime?: Prisma.SortOrder
   gigEndTime?: Prisma.SortOrder
   ticketLink?: Prisma.SortOrder
+  isFeatured?: Prisma.SortOrder
+  featuredSortOrder?: Prisma.SortOrder
+  pastSortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type GigSumOrderByAggregateInput = {
+  featuredSortOrder?: Prisma.SortOrder
+  pastSortOrder?: Prisma.SortOrder
 }
 
 export type GigCreateNestedOneWithoutGigTagsInput = {
@@ -424,6 +547,28 @@ export type GigUpdateOneRequiredWithoutGigTagsNestedInput = {
   upsert?: Prisma.GigUpsertWithoutGigTagsInput
   connect?: Prisma.GigWhereUniqueInput
   update?: Prisma.XOR<Prisma.XOR<Prisma.GigUpdateToOneWithWhereWithoutGigTagsInput, Prisma.GigUpdateWithoutGigTagsInput>, Prisma.GigUncheckedUpdateWithoutGigTagsInput>
+}
+
+export type IntFieldUpdateOperationsInput = {
+  set?: number
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
+}
+
+export type GigCreateNestedOneWithoutHomeGigPlacementsInput = {
+  create?: Prisma.XOR<Prisma.GigCreateWithoutHomeGigPlacementsInput, Prisma.GigUncheckedCreateWithoutHomeGigPlacementsInput>
+  connectOrCreate?: Prisma.GigCreateOrConnectWithoutHomeGigPlacementsInput
+  connect?: Prisma.GigWhereUniqueInput
+}
+
+export type GigUpdateOneRequiredWithoutHomeGigPlacementsNestedInput = {
+  create?: Prisma.XOR<Prisma.GigCreateWithoutHomeGigPlacementsInput, Prisma.GigUncheckedCreateWithoutHomeGigPlacementsInput>
+  connectOrCreate?: Prisma.GigCreateOrConnectWithoutHomeGigPlacementsInput
+  upsert?: Prisma.GigUpsertWithoutHomeGigPlacementsInput
+  connect?: Prisma.GigWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.GigUpdateToOneWithWhereWithoutHomeGigPlacementsInput, Prisma.GigUpdateWithoutHomeGigPlacementsInput>, Prisma.GigUncheckedUpdateWithoutHomeGigPlacementsInput>
 }
 
 export type GigCreateNestedOneWithoutMediaInput = {
@@ -448,9 +593,13 @@ export type GigCreateWithoutGigTagsInput = {
   gigStartTime: Date | string
   gigEndTime?: Date | string | null
   ticketLink?: string | null
+  isFeatured?: boolean
+  featuredSortOrder?: number
+  pastSortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   media?: Prisma.GigMediaCreateNestedManyWithoutGigInput
+  homeGigPlacements?: Prisma.HomeGigPlacementCreateNestedManyWithoutGigInput
 }
 
 export type GigUncheckedCreateWithoutGigTagsInput = {
@@ -461,9 +610,13 @@ export type GigUncheckedCreateWithoutGigTagsInput = {
   gigStartTime: Date | string
   gigEndTime?: Date | string | null
   ticketLink?: string | null
+  isFeatured?: boolean
+  featuredSortOrder?: number
+  pastSortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   media?: Prisma.GigMediaUncheckedCreateNestedManyWithoutGigInput
+  homeGigPlacements?: Prisma.HomeGigPlacementUncheckedCreateNestedManyWithoutGigInput
 }
 
 export type GigCreateOrConnectWithoutGigTagsInput = {
@@ -490,9 +643,13 @@ export type GigUpdateWithoutGigTagsInput = {
   gigStartTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gigEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ticketLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isFeatured?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  featuredSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  pastSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   media?: Prisma.GigMediaUpdateManyWithoutGigNestedInput
+  homeGigPlacements?: Prisma.HomeGigPlacementUpdateManyWithoutGigNestedInput
 }
 
 export type GigUncheckedUpdateWithoutGigTagsInput = {
@@ -503,9 +660,97 @@ export type GigUncheckedUpdateWithoutGigTagsInput = {
   gigStartTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gigEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ticketLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isFeatured?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  featuredSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  pastSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   media?: Prisma.GigMediaUncheckedUpdateManyWithoutGigNestedInput
+  homeGigPlacements?: Prisma.HomeGigPlacementUncheckedUpdateManyWithoutGigNestedInput
+}
+
+export type GigCreateWithoutHomeGigPlacementsInput = {
+  id?: string
+  title: string
+  subtitle: string
+  description?: string | null
+  gigStartTime: Date | string
+  gigEndTime?: Date | string | null
+  ticketLink?: string | null
+  isFeatured?: boolean
+  featuredSortOrder?: number
+  pastSortOrder?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  media?: Prisma.GigMediaCreateNestedManyWithoutGigInput
+  gigTags?: Prisma.GigTagRelationshipCreateNestedManyWithoutGigInput
+}
+
+export type GigUncheckedCreateWithoutHomeGigPlacementsInput = {
+  id?: string
+  title: string
+  subtitle: string
+  description?: string | null
+  gigStartTime: Date | string
+  gigEndTime?: Date | string | null
+  ticketLink?: string | null
+  isFeatured?: boolean
+  featuredSortOrder?: number
+  pastSortOrder?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  media?: Prisma.GigMediaUncheckedCreateNestedManyWithoutGigInput
+  gigTags?: Prisma.GigTagRelationshipUncheckedCreateNestedManyWithoutGigInput
+}
+
+export type GigCreateOrConnectWithoutHomeGigPlacementsInput = {
+  where: Prisma.GigWhereUniqueInput
+  create: Prisma.XOR<Prisma.GigCreateWithoutHomeGigPlacementsInput, Prisma.GigUncheckedCreateWithoutHomeGigPlacementsInput>
+}
+
+export type GigUpsertWithoutHomeGigPlacementsInput = {
+  update: Prisma.XOR<Prisma.GigUpdateWithoutHomeGigPlacementsInput, Prisma.GigUncheckedUpdateWithoutHomeGigPlacementsInput>
+  create: Prisma.XOR<Prisma.GigCreateWithoutHomeGigPlacementsInput, Prisma.GigUncheckedCreateWithoutHomeGigPlacementsInput>
+  where?: Prisma.GigWhereInput
+}
+
+export type GigUpdateToOneWithWhereWithoutHomeGigPlacementsInput = {
+  where?: Prisma.GigWhereInput
+  data: Prisma.XOR<Prisma.GigUpdateWithoutHomeGigPlacementsInput, Prisma.GigUncheckedUpdateWithoutHomeGigPlacementsInput>
+}
+
+export type GigUpdateWithoutHomeGigPlacementsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  subtitle?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  gigStartTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  gigEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ticketLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isFeatured?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  featuredSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  pastSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  media?: Prisma.GigMediaUpdateManyWithoutGigNestedInput
+  gigTags?: Prisma.GigTagRelationshipUpdateManyWithoutGigNestedInput
+}
+
+export type GigUncheckedUpdateWithoutHomeGigPlacementsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  subtitle?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  gigStartTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  gigEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  ticketLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isFeatured?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  featuredSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  pastSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  media?: Prisma.GigMediaUncheckedUpdateManyWithoutGigNestedInput
+  gigTags?: Prisma.GigTagRelationshipUncheckedUpdateManyWithoutGigNestedInput
 }
 
 export type GigCreateWithoutMediaInput = {
@@ -516,9 +761,13 @@ export type GigCreateWithoutMediaInput = {
   gigStartTime: Date | string
   gigEndTime?: Date | string | null
   ticketLink?: string | null
+  isFeatured?: boolean
+  featuredSortOrder?: number
+  pastSortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   gigTags?: Prisma.GigTagRelationshipCreateNestedManyWithoutGigInput
+  homeGigPlacements?: Prisma.HomeGigPlacementCreateNestedManyWithoutGigInput
 }
 
 export type GigUncheckedCreateWithoutMediaInput = {
@@ -529,9 +778,13 @@ export type GigUncheckedCreateWithoutMediaInput = {
   gigStartTime: Date | string
   gigEndTime?: Date | string | null
   ticketLink?: string | null
+  isFeatured?: boolean
+  featuredSortOrder?: number
+  pastSortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   gigTags?: Prisma.GigTagRelationshipUncheckedCreateNestedManyWithoutGigInput
+  homeGigPlacements?: Prisma.HomeGigPlacementUncheckedCreateNestedManyWithoutGigInput
 }
 
 export type GigCreateOrConnectWithoutMediaInput = {
@@ -558,9 +811,13 @@ export type GigUpdateWithoutMediaInput = {
   gigStartTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gigEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ticketLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isFeatured?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  featuredSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  pastSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gigTags?: Prisma.GigTagRelationshipUpdateManyWithoutGigNestedInput
+  homeGigPlacements?: Prisma.HomeGigPlacementUpdateManyWithoutGigNestedInput
 }
 
 export type GigUncheckedUpdateWithoutMediaInput = {
@@ -571,9 +828,13 @@ export type GigUncheckedUpdateWithoutMediaInput = {
   gigStartTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gigEndTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   ticketLink?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isFeatured?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  featuredSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  pastSortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gigTags?: Prisma.GigTagRelationshipUncheckedUpdateManyWithoutGigNestedInput
+  homeGigPlacements?: Prisma.HomeGigPlacementUncheckedUpdateManyWithoutGigNestedInput
 }
 
 
@@ -584,11 +845,13 @@ export type GigUncheckedUpdateWithoutMediaInput = {
 export type GigCountOutputType = {
   media: number
   gigTags: number
+  homeGigPlacements: number
 }
 
 export type GigCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   media?: boolean | GigCountOutputTypeCountMediaArgs
   gigTags?: boolean | GigCountOutputTypeCountGigTagsArgs
+  homeGigPlacements?: boolean | GigCountOutputTypeCountHomeGigPlacementsArgs
 }
 
 /**
@@ -615,6 +878,13 @@ export type GigCountOutputTypeCountGigTagsArgs<ExtArgs extends runtime.Types.Ext
   where?: Prisma.GigTagRelationshipWhereInput
 }
 
+/**
+ * GigCountOutputType without action
+ */
+export type GigCountOutputTypeCountHomeGigPlacementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.HomeGigPlacementWhereInput
+}
+
 
 export type GigSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -624,10 +894,14 @@ export type GigSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = ru
   gigStartTime?: boolean
   gigEndTime?: boolean
   ticketLink?: boolean
+  isFeatured?: boolean
+  featuredSortOrder?: boolean
+  pastSortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   media?: boolean | Prisma.Gig$mediaArgs<ExtArgs>
   gigTags?: boolean | Prisma.Gig$gigTagsArgs<ExtArgs>
+  homeGigPlacements?: boolean | Prisma.Gig$homeGigPlacementsArgs<ExtArgs>
   _count?: boolean | Prisma.GigCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["gig"]>
 
@@ -639,6 +913,9 @@ export type GigSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extension
   gigStartTime?: boolean
   gigEndTime?: boolean
   ticketLink?: boolean
+  isFeatured?: boolean
+  featuredSortOrder?: boolean
+  pastSortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["gig"]>
@@ -651,6 +928,9 @@ export type GigSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extension
   gigStartTime?: boolean
   gigEndTime?: boolean
   ticketLink?: boolean
+  isFeatured?: boolean
+  featuredSortOrder?: boolean
+  pastSortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["gig"]>
@@ -663,14 +943,18 @@ export type GigSelectScalar = {
   gigStartTime?: boolean
   gigEndTime?: boolean
   ticketLink?: boolean
+  isFeatured?: boolean
+  featuredSortOrder?: boolean
+  pastSortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type GigOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "title" | "subtitle" | "description" | "gigStartTime" | "gigEndTime" | "ticketLink" | "createdAt" | "updatedAt", ExtArgs["result"]["gig"]>
+export type GigOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "title" | "subtitle" | "description" | "gigStartTime" | "gigEndTime" | "ticketLink" | "isFeatured" | "featuredSortOrder" | "pastSortOrder" | "createdAt" | "updatedAt", ExtArgs["result"]["gig"]>
 export type GigInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   media?: boolean | Prisma.Gig$mediaArgs<ExtArgs>
   gigTags?: boolean | Prisma.Gig$gigTagsArgs<ExtArgs>
+  homeGigPlacements?: boolean | Prisma.Gig$homeGigPlacementsArgs<ExtArgs>
   _count?: boolean | Prisma.GigCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type GigIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -681,6 +965,7 @@ export type $GigPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   objects: {
     media: Prisma.$GigMediaPayload<ExtArgs>[]
     gigTags: Prisma.$GigTagRelationshipPayload<ExtArgs>[]
+    homeGigPlacements: Prisma.$HomeGigPlacementPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -690,6 +975,9 @@ export type $GigPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
     gigStartTime: Date
     gigEndTime: Date | null
     ticketLink: string | null
+    isFeatured: boolean
+    featuredSortOrder: number
+    pastSortOrder: number
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["gig"]>
@@ -1088,6 +1376,7 @@ export interface Prisma__GigClient<T, Null = never, ExtArgs extends runtime.Type
   readonly [Symbol.toStringTag]: "PrismaPromise"
   media<T extends Prisma.Gig$mediaArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Gig$mediaArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$GigMediaPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   gigTags<T extends Prisma.Gig$gigTagsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Gig$gigTagsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$GigTagRelationshipPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  homeGigPlacements<T extends Prisma.Gig$homeGigPlacementsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Gig$homeGigPlacementsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$HomeGigPlacementPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1124,6 +1413,9 @@ export interface GigFieldRefs {
   readonly gigStartTime: Prisma.FieldRef<"Gig", 'DateTime'>
   readonly gigEndTime: Prisma.FieldRef<"Gig", 'DateTime'>
   readonly ticketLink: Prisma.FieldRef<"Gig", 'String'>
+  readonly isFeatured: Prisma.FieldRef<"Gig", 'Boolean'>
+  readonly featuredSortOrder: Prisma.FieldRef<"Gig", 'Int'>
+  readonly pastSortOrder: Prisma.FieldRef<"Gig", 'Int'>
   readonly createdAt: Prisma.FieldRef<"Gig", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Gig", 'DateTime'>
 }
@@ -1559,6 +1851,30 @@ export type Gig$gigTagsArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
   take?: number
   skip?: number
   distinct?: Prisma.GigTagRelationshipScalarFieldEnum | Prisma.GigTagRelationshipScalarFieldEnum[]
+}
+
+/**
+ * Gig.homeGigPlacements
+ */
+export type Gig$homeGigPlacementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the HomeGigPlacement
+   */
+  select?: Prisma.HomeGigPlacementSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the HomeGigPlacement
+   */
+  omit?: Prisma.HomeGigPlacementOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.HomeGigPlacementInclude<ExtArgs> | null
+  where?: Prisma.HomeGigPlacementWhereInput
+  orderBy?: Prisma.HomeGigPlacementOrderByWithRelationInput | Prisma.HomeGigPlacementOrderByWithRelationInput[]
+  cursor?: Prisma.HomeGigPlacementWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.HomeGigPlacementScalarFieldEnum | Prisma.HomeGigPlacementScalarFieldEnum[]
 }
 
 /**
