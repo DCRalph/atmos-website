@@ -14,20 +14,18 @@ import { cn } from "~/lib/utils";
 type MenuItem = {
   label: string;
   href: string;
-  color: string;
 };
 
 const MENU_ITEMS: MenuItem[] = [
-  { label: "HOME", href: "/", color: "#dd0000" },
-  { label: "ABOUT", href: "/about", color: "#00dd00" },
-  { label: "SHOP", href: "/merch", color: "#0000ff" },
-  { label: "GIGS", href: "/gigs", color: "#ff6a00" },
-  { label: "THE CREW", href: "/crew", color: "#ff00ff" },
-  { label: "CONTACT US", href: "/contact", color: "#00ffff" },
-  { label: "SOCIALS", href: "/socials", color: "#ff00ff" },
+  { label: "HOME", href: "/" },
+  { label: "GIGS", href: "/gigs" },
+  { label: "CONTENT", href: "/content" },
+  { label: "ABOUT", href: "/about" },
+  { label: "MERCH", href: "/merch" },
+  { label: "SOCIALS", href: "/socials" },
+  { label: "THE CREW", href: "/crew" },
+  { label: "CONTACT US", href: "/contact" },
 ];
-
-const USE_MENU_COLORS = false;
 
 const MotionLink = motion.create(Link);
 const MotionButton = motion.create(Button);
@@ -229,9 +227,8 @@ function renderMenuContent(isHomePage: boolean, isMobile: boolean, setIsMenuOpen
           >
             {MENU_ITEMS.map((item, idx) => {
               const index = isMobile ? MENU_ITEMS.length - idx - 1 : idx;
-              const width = getWidth(idx, isMobile);
               return (
-                <MenuItemComponent closeMenu={() => setIsMenuOpen(false)} item={item} idx={index} key={item.label + "outer"} isMobile={isMobile} width={width} />
+                <MenuItemComponent closeMenu={() => setIsMenuOpen(false)} item={item} idx={index} key={item.label + "outer"} isMobile={isMobile} />
               )
             })}
           </div>
@@ -242,42 +239,19 @@ function renderMenuContent(isHomePage: boolean, isMobile: boolean, setIsMenuOpen
   );
 }
 
-const getWidth = (idx: number, isMobile: boolean) => {
-  const widths: number[] = [78, 67, 58, 73, 89, 97];
-  let w = widths[idx % widths.length]!;
-  if (isMobile) {
-    w += 40;
-  }
-  return w;
-}
-
-const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result
-    ? {
-      r: parseInt(result[1]!, 16),
-      g: parseInt(result[2]!, 16),
-      b: parseInt(result[3]!, 16),
-    }
-    : null;
-};
-
 
 function MenuItemComponent({
   closeMenu,
   item,
   idx,
-  width,
+  // width,
   isMobile,
 }: {
   closeMenu: () => void;
   item: MenuItem;
   idx: number;
-  width: number;
   isMobile: boolean;
 }) {
-  // const width = getWidth(idx, isMobile);
-  const hoverWidth = width * 1.2;
 
   const pathname = usePathname();
   const isActive =
@@ -289,34 +263,19 @@ function MenuItemComponent({
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{
-        __html: `
-          .${uniqueId}:hover {
-            width: var(--hover-width) !important;
-          }
-        `
-      }} />
       <MotionLink
         key={item.label}
         href={item.href}
         className={cn(
           uniqueId,
-          "relative text-white uppercase font-light flex items-center tracking-wider hover:font-bold group transition-all ease-out hover:tracking-widest text-nowrap",
+          "relative text-white uppercase font-light flex w-fit items-center tracking-wider hover:font-bold group transition-all ease-out hover:tracking-widest text-nowrap",
           isActive && "font-bold!",
           "bg-linear-to-r from-accent-strong via-65% via-accent-strong to-transparent",
-          // !USE_MENU_COLORS && "bg-accent-strong hover:bg-accent-muted",
-          // USE_MENU_COLORS && "hover:brightness-90",
           "h-8 text-xl md:h-8 md:text-xl",
-          !isMobile && "pl-8",
-          isMobile && "justify-end pr-4 bg-linear-to-l to-transparent",
+          !isMobile && "pl-8 pr-10 hover:pr-20",
+          isMobile && "justify-end pr-4 pl-8 hover:pl-16 bg-linear-to-l to-transparent",
           // "shadow-glass"
         )}
-
-        style={{
-          width: `${width}%`,
-          backgroundColor: USE_MENU_COLORS ? item.color : undefined,
-          "--hover-width": `${hoverWidth}%`,
-        } as React.CSSProperties & { "--hover-width": string }}
 
         transition={{
           duration: 0.4,
@@ -352,11 +311,10 @@ function MenuItemComponent({
         {isMobile && (
           <div
             className={cn(
-              "absolute  w-32 left-full top-0", !USE_MENU_COLORS && "bg-accent-strong",
+              "absolute  w-32 left-full top-0 bg-accent-strong",
               "h-8 md:h-14",
               // "bg-blue-500"
             )}
-            style={USE_MENU_COLORS ? { backgroundColor: item.color } : undefined}
           />
         )}
         {/* <div className="absolute h-14 w-14 left-[calc(100%+4px)] top-0 bg-white transition-all opacity-0 group-hover:opacity-100" /> */}

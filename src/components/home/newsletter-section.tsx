@@ -48,11 +48,11 @@ export function NewsletterSection({ className }: { className?: string }) {
           <h3
             className={`mb-4 text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight ${orbitron.className}`}
           >
-            Stay in the Loop
+            Enter the <span className="text-accent-muted">atmos</span>phere
           </h3>
 
           <p className="mb-8 text-base sm:text-lg text-white/70 max-w-2xl mx-auto">
-            Get updates on upcoming gigs, new releases, and Atmos news delivered straight to your inbox.
+            Be the first to here about our next events, get 5% off merch and everuthing else atmos straight to your inbox.
           </p>
 
           {/* Subscription form or success state */}
