@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Play } from "lucide-react";
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
 import { Input } from "~/components/ui/input";
 import { orbitron } from "~/lib/fonts";
+import { Button } from "~/components/ui/button";
 
 export function NewsletterSection({ className }: { className?: string }) {
   const newsletterSubscribe = api.newsletter.subscribe.useMutation();
@@ -31,7 +32,7 @@ export function NewsletterSection({ className }: { className?: string }) {
       if (!audio) return;
 
       audio.currentTime = 0;
-      audio.volume = 0.9;
+      audio.volume = 0.6;
       void audio.play();
     } catch {
       // Non-critical: ignore audio failures.
@@ -146,9 +147,6 @@ export function NewsletterSection({ className }: { className?: string }) {
                     "Subscribe"
                   )}
                 </button>
-                {/* <button onClick={playSubscribeSound}>
-                  test sound
-                </button> */}
               </div>
 
               {message && (
@@ -165,6 +163,11 @@ export function NewsletterSection({ className }: { className?: string }) {
               )}
             </form>
           )}
+
+          {/* <Button className="mt-4" onClick={playSubscribeSound}>
+            <Play className="h-4 w-4" />
+            test sound
+          </Button> */}
         </div>
       </div>
     </section>

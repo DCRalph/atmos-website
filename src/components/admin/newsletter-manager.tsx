@@ -7,15 +7,32 @@ import { Input } from "~/components/ui/input";
 import { Switch } from "~/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { Download } from "lucide-react";
+import { Download, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
 
 export function NewsletterManager() {
   const [search, setSearch] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; email: string } | null>(null);
   const { data: subscriptions, isLoading, refetch } = api.newsletter.getAll.useQuery(
     { search: search || undefined, includeRemoved: true },
   );
   const toggleRemoved = api.newsletter.toggleRemoved.useMutation({
     onSuccess: () => {
+      void refetch();
+    },
+  });
+  const deleteSubscription = api.newsletter.delete.useMutation({
+    onSuccess: () => {
+      setDeleteTarget(null);
       void refetch();
     },
   });
@@ -81,13 +98,14 @@ export function NewsletterManager() {
               <TableHead>Email</TableHead>
               <TableHead>Subscribed Date</TableHead>
               <TableHead>Active</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={`loading-${i}`}>
-                  <TableCell colSpan={3}>
+                  <TableCell colSpan={4}>
                     <div className="h-8 w-full animate-pulse rounded bg-muted" />
                   </TableCell>
                 </TableRow>
@@ -108,17 +126,62 @@ export function NewsletterManager() {
                     disabled={toggleRemoved.isPending}
                   />
                 </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setDeleteTarget({ id: subscription.id, email: subscription.email })}
+                    aria-label={`Delete ${subscription.email}`}
+                    disabled={deleteSubscription.isPending}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
             {!isLoading && subscriptions?.length === 0 && (
               <TableRow>
-                <TableCell colSpan={3} className="text-center text-muted-foreground">
+                <TableCell colSpan={4} className="text-center text-muted-foreground">
                   {search ? "No subscriptions found" : "No subscriptions yet"}
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
+
+        <AlertDialog
+          open={!!deleteTarget}
+          onOpenChange={(open) => {
+            if (!open) setDeleteTarget(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete subscription?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete{" "}
+                <span className="font-medium text-foreground">
+                  {deleteTarget?.email ?? "this email"}
+                </span>{" "}
+                from the newsletter list. This action can’t be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleteSubscription.isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (!deleteTarget) return;
+                  deleteSubscription.mutate({ id: deleteTarget.id });
+                }}
+                disabled={deleteSubscription.isPending}
+                className="bg-destructive text-white hover:bg-destructive/90"
+              >
+                {deleteSubscription.isPending ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );

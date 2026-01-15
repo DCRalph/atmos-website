@@ -69,9 +69,8 @@ export const newsletterRouter = createTRPCRouter({
   delete: adminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.newsletterSubscription.update({
+      return ctx.db.newsletterSubscription.delete({
         where: { id: input.id },
-        data: { removed: true },
       });
     }),
 
