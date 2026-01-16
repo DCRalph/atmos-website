@@ -571,14 +571,6 @@ export type GigUpdateOneRequiredWithoutGigTagsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.GigUpdateToOneWithWhereWithoutGigTagsInput, Prisma.GigUpdateWithoutGigTagsInput>, Prisma.GigUncheckedUpdateWithoutGigTagsInput>
 }
 
-export type IntFieldUpdateOperationsInput = {
-  set?: number
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
-}
-
 export type GigCreateNestedOneWithoutHomeGigPlacementsInput = {
   create?: Prisma.XOR<Prisma.GigCreateWithoutHomeGigPlacementsInput, Prisma.GigUncheckedCreateWithoutHomeGigPlacementsInput>
   connectOrCreate?: Prisma.GigCreateOrConnectWithoutHomeGigPlacementsInput

@@ -6,6 +6,7 @@ import { UserIndicator } from "~/components/user-indicator";
 import { LayoutWithSideBarHeader } from "~/components/layout-with-sideBar-header";
 import { DashboardSideBar } from "~/components/admin/admin-sidebar";
 import { DashboardHeader } from "~/components/dash-header";
+import { UnsavedChangesProvider } from "~/components/admin/unsaved-changes-provider";
 
 export default async function AdminLayout({
   children,
@@ -30,12 +31,14 @@ export default async function AdminLayout({
   return (
     <>
       {/* <UserIndicator /> */}
-      <LayoutWithSideBarHeader
-        sidebar={<DashboardSideBar />}
-        header={<DashboardHeader />}
-      >
-        {children}
-      </LayoutWithSideBarHeader>
+      <UnsavedChangesProvider>
+        <LayoutWithSideBarHeader
+          sidebar={<DashboardSideBar />}
+          header={<DashboardHeader />}
+        >
+          {children}
+        </LayoutWithSideBarHeader>
+      </UnsavedChangesProvider>
     </>
   );
 }

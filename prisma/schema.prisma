@@ -15,8 +15,13 @@ enum UserRole {
 }
 
 enum HomeGigSection {
-  FEATURED_RECENT_PAST
-  PAST_RECENT_LIST
+  FEATURED
+  PAST
+}
+
+enum HomeContentSection {
+  FEATURED
+  PAST
 }
 
 model User {
@@ -125,7 +130,25 @@ model ContentItem {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  homeContentPlacements HomeContentPlacement[]
+
   @@map("content_item")
+}
+
+model HomeContentPlacement {
+  id        String             @id @default(cuid())
+  section   HomeContentSection
+  sortOrder Int                @default(0)
+
+  contentItemId String
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([section, contentItemId])
+  @@index([section, sortOrder])
+  @@map("home_content_placement")
 }
 
 

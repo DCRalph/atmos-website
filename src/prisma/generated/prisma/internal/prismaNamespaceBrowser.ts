@@ -58,6 +58,7 @@ export const ModelName = {
   Invite: 'Invite',
   CrewMember: 'CrewMember',
   ContentItem: 'ContentItem',
+  HomeContentPlacement: 'HomeContentPlacement',
   GigTag: 'GigTag',
   GigTagRelationship: 'GigTagRelationship',
   Gig: 'Gig',
@@ -187,6 +188,18 @@ export const ContentItemScalarFieldEnum = {
 } as const
 
 export type ContentItemScalarFieldEnum = (typeof ContentItemScalarFieldEnum)[keyof typeof ContentItemScalarFieldEnum]
+
+
+export const HomeContentPlacementScalarFieldEnum = {
+  id: 'id',
+  section: 'section',
+  sortOrder: 'sortOrder',
+  contentItemId: 'contentItemId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type HomeContentPlacementScalarFieldEnum = (typeof HomeContentPlacementScalarFieldEnum)[keyof typeof HomeContentPlacementScalarFieldEnum]
 
 
 export const GigTagScalarFieldEnum = {

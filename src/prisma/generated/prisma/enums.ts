@@ -19,11 +19,19 @@ export type UserRole = (typeof UserRole)[keyof typeof UserRole]
 
 
 export const HomeGigSection = {
-  FEATURED_RECENT_PAST: 'FEATURED_RECENT_PAST',
-  PAST_RECENT_LIST: 'PAST_RECENT_LIST'
+  FEATURED: 'FEATURED',
+  PAST: 'PAST'
 } as const
 
 export type HomeGigSection = (typeof HomeGigSection)[keyof typeof HomeGigSection]
+
+
+export const HomeContentSection = {
+  FEATURED: 'FEATURED',
+  PAST: 'PAST'
+} as const
+
+export type HomeContentSection = (typeof HomeContentSection)[keyof typeof HomeContentSection]
 
 
 export const ContentLinkType = {

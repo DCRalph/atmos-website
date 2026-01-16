@@ -18,6 +18,7 @@ import { AccentGlowCard } from "~/components/ui/accent-glow-card";
 import Image from "next/image";
 
 type SocialLink = {
+  media?: "ATMOS SELECTS" | "ATMOS TV" | "ATMOS NZ";
   label: string;
   href: string;
   Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
@@ -29,6 +30,7 @@ type SocialLink = {
 
 const socialLinks: SocialLink[] = [
   {
+    media: "ATMOS NZ",
     label: "INSTAGRAM",
     href: "https://instagram.com/atmos.nz",
     Icon: FaInstagram,
@@ -38,6 +40,7 @@ const socialLinks: SocialLink[] = [
     color: "#E1306C",
   },
   {
+    media: "ATMOS TV",
     label: "TIKTOK",
     href: "https://tiktok.com/@atmos_tv",
     Icon: FaTiktok,
@@ -47,6 +50,7 @@ const socialLinks: SocialLink[] = [
     color: "#00F2EA",
   },
   {
+    media: "ATMOS TV",
     label: "YOUTUBE",
     href: "https://youtube.com/@ATMOS_TV",
     Icon: FaYoutube,
@@ -56,6 +60,7 @@ const socialLinks: SocialLink[] = [
     color: "#FF0000",
   },
   {
+    media: "ATMOS NZ",
     label: "FACEBOOK",
     href: "https://facebook.com/atmos.nz",
     Icon: FaFacebook,
@@ -65,6 +70,7 @@ const socialLinks: SocialLink[] = [
     color: "#1877F2",
   },
   {
+    media: "ATMOS NZ",
     label: "SOUNDCLOUD",
     href: "https://soundcloud.com/atmosmedia",
     Icon: FaSoundcloud,
@@ -74,6 +80,7 @@ const socialLinks: SocialLink[] = [
     color: "#FF5500",
   },
   {
+    media: "ATMOS NZ",
     label: "SPOTIFY",
     href: "https://open.spotify.com/user/31zgkcouzyfpwhb3pfixdpvlfaom?si=a7f5f0fae13e4b1b",
     Icon: FaSpotify,
@@ -110,7 +117,7 @@ export default function SocialsPage() {
 }
 
 function SocialCard({ social, index }: { social: SocialLink; index: number }) {
-  const { label, href, Icon, image, description, username, color } = social;
+  const { media, label, href, Icon, image, description, username, color } = social;
 
   return (
     <motion.div
@@ -141,7 +148,7 @@ function SocialCard({ social, index }: { social: SocialLink; index: number }) {
           <div className="pr-24 md:pr-32">
             {/* ATMOS SELECTS */}
             <h3 className="mb-1 text-sm font-black tracking-wider text-white uppercase">
-              ATMOS SELECTS
+              {media}
             </h3>
 
             {/* Platform name with date */}

@@ -10,6 +10,7 @@ import { usersRouter } from "~/server/api/routers/users";
 import { newsletterRouter } from "~/server/api/routers/newsletter";
 import { filesRouter } from "~/server/api/routers/files";
 import { homeGigsRouter } from "~/server/api/routers/home-gigs";
+import { homeContentRouter } from "~/server/api/routers/home-content";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -23,6 +24,7 @@ export const appRouter = createTRPCRouter({
   gigs: gigsRouter,
   gigTags: gigTagsRouter,
   homeGigs: homeGigsRouter,
+  homeContent: homeContentRouter,
   merch: merchRouter,
   contact: contactRouter,
   newsletter: newsletterRouter,

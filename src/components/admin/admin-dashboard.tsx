@@ -22,6 +22,16 @@ const sections = [
     href: "/admin/gigs",
   },
   {
+    title: "Home Gigs",
+    description: "Manage Home “Recent Gigs” placements",
+    href: "/admin/home-gigs",
+  },
+  {
+    title: "Home Content",
+    description: "Manage Home “Latest Content” placements",
+    href: "/admin/home-content",
+  },
+  {
     title: "Gig Tags",
     description: "Create and manage gig tags",
     href: "/admin/gig-tags",

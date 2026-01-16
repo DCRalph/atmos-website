@@ -6,6 +6,16 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -32,6 +42,10 @@ import {
 export function CrewManager() {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [instagram, setInstagram] = useState("");
@@ -60,6 +74,7 @@ export function CrewManager() {
   });
   const deleteMember = api.crew.delete.useMutation({
     onSuccess: async () => {
+      setDeleteTarget(null);
       await refetch();
     },
   });
@@ -238,15 +253,10 @@ export function CrewManager() {
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={() => {
-                            if (
-                              confirm(
-                                "Are you sure you want to delete this member?",
-                              )
-                            ) {
-                              deleteMember.mutate({ id: member.id });
-                            }
-                          }}
+                          onClick={() =>
+                            setDeleteTarget({ id: member.id, name: member.name })
+                          }
+                          disabled={deleteMember.isPending}
                         >
                           Delete
                         </Button>
@@ -266,6 +276,41 @@ export function CrewManager() {
             )}
           </TableBody>
         </Table>
+
+        <AlertDialog
+          open={!!deleteTarget}
+          onOpenChange={(open) => {
+            if (!open) setDeleteTarget(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete crew member?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete{" "}
+                <span className="text-foreground font-medium">
+                  {deleteTarget?.name ?? "this crew member"}
+                </span>
+                . This action can’t be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleteMember.isPending}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (!deleteTarget) return;
+                  deleteMember.mutate({ id: deleteTarget.id });
+                }}
+                disabled={deleteMember.isPending}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleteMember.isPending ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );

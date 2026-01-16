@@ -7,17 +7,11 @@ import { api } from "~/trpc/react";
 import { orbitron } from "~/lib/fonts";
 
 export function LatestContentSection() {
-  const { data: contentItems, isLoading: isLoadingContent } =
-    api.content.getAll.useQuery();
+  const { data, isLoading: isLoadingContent } =
+    api.homeContent.getHomeLatest.useQuery();
 
-  // Ensure "latest" content is actually the most recent by date
-  const sortedContentItems = (contentItems ?? [])
-    .slice()
-    .sort((a, b) => b.date.getTime() - a.date.getTime());
-  // Limit content items to 3 most recent
-  const recentContentItems = sortedContentItems.slice(0, 3);
-  const latestContentItem = recentContentItems[0];
-  const otherRecentContentItems = recentContentItems.slice(1);
+  const featured = data?.featuredItem ?? null;
+  const list = data?.items ?? [];
 
   return (
     <div className="mb-16 sm:mb-20">
@@ -41,16 +35,14 @@ export function LatestContentSection() {
           <div className="col-span-full flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-white/60" />
           </div>
-        ) : latestContentItem ? (
+        ) : featured ? (
           <>
-            {/* Featured (most recent) item */}
-            <ContentCard featured contentItem={latestContentItem} />
+            {/* Featured */}
+            <ContentCard featured contentItem={featured} />
 
-            {/* Remaining recent items */}
-            {otherRecentContentItems.length > 0 &&
-              otherRecentContentItems.map((item) => (
-                <ContentCard key={item.id} contentItem={item} />
-              ))}
+            {/* Remaining items */}
+            {list.length > 0 &&
+              list.map((item) => <ContentCard key={item.id} contentItem={item} />)}
           </>
         ) : (
           <p className="col-span-full py-8 text-center text-white/60">

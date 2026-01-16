@@ -222,6 +222,7 @@ export type ContentItemWhereInput = {
   link?: Prisma.StringFilter<"ContentItem"> | string
   createdAt?: Prisma.DateTimeFilter<"ContentItem"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ContentItem"> | Date | string
+  homeContentPlacements?: Prisma.HomeContentPlacementListRelationFilter
 }
 
 export type ContentItemOrderByWithRelationInput = {
@@ -235,6 +236,7 @@ export type ContentItemOrderByWithRelationInput = {
   link?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  homeContentPlacements?: Prisma.HomeContentPlacementOrderByRelationAggregateInput
 }
 
 export type ContentItemWhereUniqueInput = Prisma.AtLeast<{
@@ -251,6 +253,7 @@ export type ContentItemWhereUniqueInput = Prisma.AtLeast<{
   link?: Prisma.StringFilter<"ContentItem"> | string
   createdAt?: Prisma.DateTimeFilter<"ContentItem"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ContentItem"> | Date | string
+  homeContentPlacements?: Prisma.HomeContentPlacementListRelationFilter
 }, "id">
 
 export type ContentItemOrderByWithAggregationInput = {
@@ -296,6 +299,7 @@ export type ContentItemCreateInput = {
   link: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  homeContentPlacements?: Prisma.HomeContentPlacementCreateNestedManyWithoutContentItemInput
 }
 
 export type ContentItemUncheckedCreateInput = {
@@ -309,6 +313,7 @@ export type ContentItemUncheckedCreateInput = {
   link: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  homeContentPlacements?: Prisma.HomeContentPlacementUncheckedCreateNestedManyWithoutContentItemInput
 }
 
 export type ContentItemUpdateInput = {
@@ -322,6 +327,7 @@ export type ContentItemUpdateInput = {
   link?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  homeContentPlacements?: Prisma.HomeContentPlacementUpdateManyWithoutContentItemNestedInput
 }
 
 export type ContentItemUncheckedUpdateInput = {
@@ -335,6 +341,7 @@ export type ContentItemUncheckedUpdateInput = {
   link?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  homeContentPlacements?: Prisma.HomeContentPlacementUncheckedUpdateManyWithoutContentItemNestedInput
 }
 
 export type ContentItemCreateManyInput = {
@@ -415,10 +422,126 @@ export type ContentItemMinOrderByAggregateInput = {
   updatedAt?: Prisma.SortOrder
 }
 
+export type ContentItemScalarRelationFilter = {
+  is?: Prisma.ContentItemWhereInput
+  isNot?: Prisma.ContentItemWhereInput
+}
+
 export type EnumContentLinkTypeFieldUpdateOperationsInput = {
   set?: $Enums.ContentLinkType
 }
 
+export type ContentItemCreateNestedOneWithoutHomeContentPlacementsInput = {
+  create?: Prisma.XOR<Prisma.ContentItemCreateWithoutHomeContentPlacementsInput, Prisma.ContentItemUncheckedCreateWithoutHomeContentPlacementsInput>
+  connectOrCreate?: Prisma.ContentItemCreateOrConnectWithoutHomeContentPlacementsInput
+  connect?: Prisma.ContentItemWhereUniqueInput
+}
+
+export type ContentItemUpdateOneRequiredWithoutHomeContentPlacementsNestedInput = {
+  create?: Prisma.XOR<Prisma.ContentItemCreateWithoutHomeContentPlacementsInput, Prisma.ContentItemUncheckedCreateWithoutHomeContentPlacementsInput>
+  connectOrCreate?: Prisma.ContentItemCreateOrConnectWithoutHomeContentPlacementsInput
+  upsert?: Prisma.ContentItemUpsertWithoutHomeContentPlacementsInput
+  connect?: Prisma.ContentItemWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ContentItemUpdateToOneWithWhereWithoutHomeContentPlacementsInput, Prisma.ContentItemUpdateWithoutHomeContentPlacementsInput>, Prisma.ContentItemUncheckedUpdateWithoutHomeContentPlacementsInput>
+}
+
+export type ContentItemCreateWithoutHomeContentPlacementsInput = {
+  id?: string
+  type: string
+  title: string
+  dj?: string | null
+  description: string
+  date: Date | string
+  linkType?: $Enums.ContentLinkType
+  link: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type ContentItemUncheckedCreateWithoutHomeContentPlacementsInput = {
+  id?: string
+  type: string
+  title: string
+  dj?: string | null
+  description: string
+  date: Date | string
+  linkType?: $Enums.ContentLinkType
+  link: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type ContentItemCreateOrConnectWithoutHomeContentPlacementsInput = {
+  where: Prisma.ContentItemWhereUniqueInput
+  create: Prisma.XOR<Prisma.ContentItemCreateWithoutHomeContentPlacementsInput, Prisma.ContentItemUncheckedCreateWithoutHomeContentPlacementsInput>
+}
+
+export type ContentItemUpsertWithoutHomeContentPlacementsInput = {
+  update: Prisma.XOR<Prisma.ContentItemUpdateWithoutHomeContentPlacementsInput, Prisma.ContentItemUncheckedUpdateWithoutHomeContentPlacementsInput>
+  create: Prisma.XOR<Prisma.ContentItemCreateWithoutHomeContentPlacementsInput, Prisma.ContentItemUncheckedCreateWithoutHomeContentPlacementsInput>
+  where?: Prisma.ContentItemWhereInput
+}
+
+export type ContentItemUpdateToOneWithWhereWithoutHomeContentPlacementsInput = {
+  where?: Prisma.ContentItemWhereInput
+  data: Prisma.XOR<Prisma.ContentItemUpdateWithoutHomeContentPlacementsInput, Prisma.ContentItemUncheckedUpdateWithoutHomeContentPlacementsInput>
+}
+
+export type ContentItemUpdateWithoutHomeContentPlacementsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  dj?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.StringFieldUpdateOperationsInput | string
+  date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  linkType?: Prisma.EnumContentLinkTypeFieldUpdateOperationsInput | $Enums.ContentLinkType
+  link?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type ContentItemUncheckedUpdateWithoutHomeContentPlacementsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  dj?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.StringFieldUpdateOperationsInput | string
+  date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  linkType?: Prisma.EnumContentLinkTypeFieldUpdateOperationsInput | $Enums.ContentLinkType
+  link?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+
+/**
+ * Count Type ContentItemCountOutputType
+ */
+
+export type ContentItemCountOutputType = {
+  homeContentPlacements: number
+}
+
+export type ContentItemCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  homeContentPlacements?: boolean | ContentItemCountOutputTypeCountHomeContentPlacementsArgs
+}
+
+/**
+ * ContentItemCountOutputType without action
+ */
+export type ContentItemCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ContentItemCountOutputType
+   */
+  select?: Prisma.ContentItemCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * ContentItemCountOutputType without action
+ */
+export type ContentItemCountOutputTypeCountHomeContentPlacementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.HomeContentPlacementWhereInput
+}
 
 
 export type ContentItemSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -432,6 +555,8 @@ export type ContentItemSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   link?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  homeContentPlacements?: boolean | Prisma.ContentItem$homeContentPlacementsArgs<ExtArgs>
+  _count?: boolean | Prisma.ContentItemCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["contentItem"]>
 
 export type ContentItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -474,10 +599,18 @@ export type ContentItemSelectScalar = {
 }
 
 export type ContentItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "type" | "title" | "dj" | "description" | "date" | "linkType" | "link" | "createdAt" | "updatedAt", ExtArgs["result"]["contentItem"]>
+export type ContentItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  homeContentPlacements?: boolean | Prisma.ContentItem$homeContentPlacementsArgs<ExtArgs>
+  _count?: boolean | Prisma.ContentItemCountOutputTypeDefaultArgs<ExtArgs>
+}
+export type ContentItemIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
+export type ContentItemIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
 
 export type $ContentItemPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "ContentItem"
-  objects: {}
+  objects: {
+    homeContentPlacements: Prisma.$HomeContentPlacementPayload<ExtArgs>[]
+  }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     type: string
@@ -883,6 +1016,7 @@ readonly fields: ContentItemFieldRefs;
  */
 export interface Prisma__ContentItemClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  homeContentPlacements<T extends Prisma.ContentItem$homeContentPlacementsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ContentItem$homeContentPlacementsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$HomeContentPlacementPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -939,6 +1073,10 @@ export type ContentItemFindUniqueArgs<ExtArgs extends runtime.Types.Extensions.I
    */
   omit?: Prisma.ContentItemOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ContentItemInclude<ExtArgs> | null
+  /**
    * Filter, which ContentItem to fetch.
    */
   where: Prisma.ContentItemWhereUniqueInput
@@ -957,6 +1095,10 @@ export type ContentItemFindUniqueOrThrowArgs<ExtArgs extends runtime.Types.Exten
    */
   omit?: Prisma.ContentItemOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ContentItemInclude<ExtArgs> | null
+  /**
    * Filter, which ContentItem to fetch.
    */
   where: Prisma.ContentItemWhereUniqueInput
@@ -974,6 +1116,10 @@ export type ContentItemFindFirstArgs<ExtArgs extends runtime.Types.Extensions.In
    * Omit specific fields from the ContentItem
    */
   omit?: Prisma.ContentItemOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ContentItemInclude<ExtArgs> | null
   /**
    * Filter, which ContentItem to fetch.
    */
@@ -1023,6 +1169,10 @@ export type ContentItemFindFirstOrThrowArgs<ExtArgs extends runtime.Types.Extens
    */
   omit?: Prisma.ContentItemOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ContentItemInclude<ExtArgs> | null
+  /**
    * Filter, which ContentItem to fetch.
    */
   where?: Prisma.ContentItemWhereInput
@@ -1071,6 +1221,10 @@ export type ContentItemFindManyArgs<ExtArgs extends runtime.Types.Extensions.Int
    */
   omit?: Prisma.ContentItemOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ContentItemInclude<ExtArgs> | null
+  /**
    * Filter, which ContentItems to fetch.
    */
   where?: Prisma.ContentItemWhereInput
@@ -1113,6 +1267,10 @@ export type ContentItemCreateArgs<ExtArgs extends runtime.Types.Extensions.Inter
    * Omit specific fields from the ContentItem
    */
   omit?: Prisma.ContentItemOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ContentItemInclude<ExtArgs> | null
   /**
    * The data needed to create a ContentItem.
    */
@@ -1161,6 +1319,10 @@ export type ContentItemUpdateArgs<ExtArgs extends runtime.Types.Extensions.Inter
    * Omit specific fields from the ContentItem
    */
   omit?: Prisma.ContentItemOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ContentItemInclude<ExtArgs> | null
   /**
    * The data needed to update a ContentItem.
    */
@@ -1228,6 +1390,10 @@ export type ContentItemUpsertArgs<ExtArgs extends runtime.Types.Extensions.Inter
    */
   omit?: Prisma.ContentItemOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ContentItemInclude<ExtArgs> | null
+  /**
    * The filter to search for the ContentItem to update in case it exists.
    */
   where: Prisma.ContentItemWhereUniqueInput
@@ -1254,6 +1420,10 @@ export type ContentItemDeleteArgs<ExtArgs extends runtime.Types.Extensions.Inter
    */
   omit?: Prisma.ContentItemOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ContentItemInclude<ExtArgs> | null
+  /**
    * Filter which ContentItem to delete.
    */
   where: Prisma.ContentItemWhereUniqueInput
@@ -1274,6 +1444,30 @@ export type ContentItemDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.I
 }
 
 /**
+ * ContentItem.homeContentPlacements
+ */
+export type ContentItem$homeContentPlacementsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the HomeContentPlacement
+   */
+  select?: Prisma.HomeContentPlacementSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the HomeContentPlacement
+   */
+  omit?: Prisma.HomeContentPlacementOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.HomeContentPlacementInclude<ExtArgs> | null
+  where?: Prisma.HomeContentPlacementWhereInput
+  orderBy?: Prisma.HomeContentPlacementOrderByWithRelationInput | Prisma.HomeContentPlacementOrderByWithRelationInput[]
+  cursor?: Prisma.HomeContentPlacementWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.HomeContentPlacementScalarFieldEnum | Prisma.HomeContentPlacementScalarFieldEnum[]
+}
+
+/**
  * ContentItem without action
  */
 export type ContentItemDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1285,4 +1479,8 @@ export type ContentItemDefaultArgs<ExtArgs extends runtime.Types.Extensions.Inte
    * Omit specific fields from the ContentItem
    */
   omit?: Prisma.ContentItemOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ContentItemInclude<ExtArgs> | null
 }

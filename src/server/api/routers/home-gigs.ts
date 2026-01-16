@@ -78,12 +78,12 @@ export const homeGigsRouter = createTRPCRouter({
 
     const [featuredPlacements, pastPlacements] = await Promise.all([
       ctx.db.homeGigPlacement.findMany({
-        where: { section: HomeGigSection.FEATURED_RECENT_PAST },
+        where: { section: HomeGigSection.FEATURED },
         orderBy: { sortOrder: "asc" },
         select: { gigId: true },
       }),
       ctx.db.homeGigPlacement.findMany({
-        where: { section: HomeGigSection.PAST_RECENT_LIST },
+        where: { section: HomeGigSection.PAST },
         orderBy: { sortOrder: "asc" },
         select: { gigId: true },
       }),
@@ -95,32 +95,32 @@ export const homeGigsRouter = createTRPCRouter({
 
     const gigsFromPlacements = placementIds.length
       ? await ctx.db.gig.findMany({
-          where: {
-            id: { in: placementIds },
-            gigEndTime: { lt: now },
+        where: {
+          id: { in: placementIds },
+          gigEndTime: { lt: now },
+        },
+        include: {
+          media: {
+            orderBy: [
+              { section: "asc" },
+              { sortOrder: "asc" },
+              { createdAt: "asc" },
+            ],
           },
-          include: {
-            media: {
-              orderBy: [
-                { section: "asc" },
-                { sortOrder: "asc" },
-                { createdAt: "asc" },
-              ],
-            },
-            gigTags: {
-              include: { gigTag: true },
-            },
+          gigTags: {
+            include: { gigTag: true },
           },
-        })
+        },
+      })
       : [];
 
     const gigMap = new Map(gigsFromPlacements.map((g) => [g.id, g]));
 
-    // Pick featured from FEATURED_RECENT_PAST placements
+    // Pick featured from FEATURED placements
     let featuredGig =
       featuredIds.map((id) => gigMap.get(id)).find(isDefined) ?? null;
 
-    // Build past list from PAST_RECENT_LIST placements
+    // Build past list from PAST placements
     let pastGigs = pastIds
       .map((id) => gigMap.get(id))
       .filter(isDefined)
@@ -208,7 +208,7 @@ export const homeGigsRouter = createTRPCRouter({
   getPlacements: adminProcedure
     .input(
       z.object({
-        section: z.enum(HomeGigSection),
+        section: z.nativeEnum(HomeGigSection),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -240,7 +240,7 @@ export const homeGigsRouter = createTRPCRouter({
       const gigIds = Array.from(new Set(input.gigIds));
 
       if (
-        input.section === HomeGigSection.FEATURED_RECENT_PAST &&
+        input.section === HomeGigSection.FEATURED &&
         gigIds.length > HOME_RECENT_PAST_FEATURED_COUNT
       ) {
         throw new TRPCError({

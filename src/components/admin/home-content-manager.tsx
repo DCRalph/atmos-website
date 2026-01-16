@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -12,57 +12,32 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  useSortable,
   arrayMove,
+  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  ArrowDown,
-  GripVertical,
-  Loader2,
-  RotateCcw,
-  Save,
-  Search,
-  Star,
-} from "lucide-react";
+import { ArrowDown, GripVertical, Loader2, RotateCcw, Save, Search, Star } from "lucide-react";
 import { api, type RouterOutputs } from "~/trpc/react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
+import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Badge } from "~/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 import { useUnsavedChangesWarning } from "~/hooks/use-unsaved-changes-warning";
 
 const HOME_FEATURED_COUNT = 1;
-const HOME_PAST_SHOWN_COUNT = 4;
+const HOME_LIST_SHOWN_COUNT = 2;
 const RECENT_UNPLACED_COUNT = 5;
 
-type Placement = RouterOutputs["homeGigs"]["getPlacements"][number];
-type GigFromList = RouterOutputs["gigs"]["getAll"][number];
-type GigSummary = NonNullable<Placement["gig"]>;
+type Placement = RouterOutputs["homeContent"]["getPlacements"][number];
+type ContentItemFromList = RouterOutputs["content"]["getAll"][number];
+type ContentSummary = NonNullable<Placement["contentItem"]>;
 
-function isPastGig(g: GigFromList, now: Date) {
-  if (g.gigEndTime) return g.gigEndTime < now;
-  if (g.gigStartTime) return g.gigStartTime < now;
-  return false;
-}
-
-function gigSortTime(g: GigFromList) {
-  const t = g.gigEndTime ?? g.gigStartTime ?? null;
-  return t ? t.getTime() : 0;
-}
-
-function formatGigDateLabel(gig: GigSummary | undefined) {
-  const date = gig?.gigStartTime ?? gig?.gigEndTime ?? null;
+function formatContentDateLabel(item: ContentSummary | undefined) {
+  const date = item?.date ?? null;
   if (!date) return null;
   try {
     return date.toLocaleDateString(undefined, {
@@ -75,22 +50,55 @@ function formatGigDateLabel(gig: GigSummary | undefined) {
   }
 }
 
-function SortableGigRow({
+function removeFromArray(arr: string[], id: string) {
+  const idx = arr.indexOf(id);
+  if (idx === -1) return arr;
+  return [...arr.slice(0, idx), ...arr.slice(idx + 1)];
+}
+
+function findContainerId(id: string, featuredIds: string[], listIds: string[]) {
+  if (id === "featured" || id === "list") return id;
+  if (featuredIds.includes(id)) return "featured";
+  if (listIds.includes(id)) return "list";
+  return null;
+}
+
+function DroppableContainer({
   id,
-  gig,
+  className,
+  children,
+}: {
+  id: "featured" | "list";
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(className, isOver && "ring-primary ring-2 ring-offset-2")}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SortableContentRow({
+  id,
+  item,
   container,
   index,
   onRemove,
   onSetFeatured,
-  onMoveToPast,
+  onMoveToList,
 }: {
   id: string;
-  gig: GigSummary | undefined;
-  container: "featured" | "past";
+  item: ContentSummary | undefined;
+  container: "featured" | "list";
   index?: number;
   onRemove: (id: string) => void;
   onSetFeatured: (id: string) => void;
-  onMoveToPast: (id: string) => void;
+  onMoveToList: (id: string) => void;
 }) {
   const {
     attributes,
@@ -104,6 +112,8 @@ function SortableGigRow({
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
+  const dateLabel = formatContentDateLabel(item);
 
   return (
     <div
@@ -128,31 +138,31 @@ function SortableGigRow({
         </TooltipTrigger>
         <TooltipContent sideOffset={6}>Drag to reorder</TooltipContent>
       </Tooltip>
+
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="truncate font-medium">{gig?.title ?? "Unknown gig"}</p>
+          <p className="truncate font-medium">{item?.title ?? "Unknown content"}</p>
           {container === "featured" ? (
             <Badge variant="secondary">
               <Star className="h-3 w-3" />
               Featured
             </Badge>
-          ) : index !== undefined && index < HOME_PAST_SHOWN_COUNT ? (
+          ) : index !== undefined && index < HOME_LIST_SHOWN_COUNT ? (
             <Badge>Shown on Home</Badge>
           ) : (
             <Badge variant="outline">Overflow</Badge>
           )}
-          {formatGigDateLabel(gig) ? (
-            <span className="text-muted-foreground text-xs">
-              {formatGigDateLabel(gig)}
-            </span>
+          {dateLabel ? (
+            <span className="text-muted-foreground text-xs">{dateLabel}</span>
           ) : null}
         </div>
         <p className="text-muted-foreground truncate text-sm">
-          {gig?.subtitle ?? id}
+          {(item?.type ?? "content") + (item?.dj ? ` · ${item.dj}` : "")}
         </p>
       </div>
+
       <div className="flex items-center gap-2">
-        {container === "past" ? (
+        {container === "list" ? (
           <Button
             type="button"
             variant="ghost"
@@ -168,9 +178,9 @@ function SortableGigRow({
             type="button"
             variant="ghost"
             size="icon-sm"
-            onClick={() => onMoveToPast(id)}
-            aria-label="Move to past list"
-            title="Move to past list"
+            onClick={() => onMoveToList(id)}
+            aria-label="Move to list"
+            title="Move to list"
           >
             <ArrowDown className="h-4 w-4" />
           </Button>
@@ -183,107 +193,95 @@ function SortableGigRow({
   );
 }
 
-function removeFromArray(arr: string[], id: string) {
-  const idx = arr.indexOf(id);
-  if (idx === -1) return arr;
-  return [...arr.slice(0, idx), ...arr.slice(idx + 1)];
-}
-
-function findContainerId(id: string, featuredIds: string[], pastIds: string[]) {
-  if (id === "featured" || id === "past") return id;
-  if (featuredIds.includes(id)) return "featured";
-  if (pastIds.includes(id)) return "past";
-  return null;
-}
-
-function DroppableContainer({
-  id,
-  className,
-  children,
-}: {
-  id: "featured" | "past";
-  className?: string;
-  children: React.ReactNode;
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id });
-  return (
-    <div
-      ref={setNodeRef}
-      className={cn(className, isOver && "ring-primary ring-2 ring-offset-2")}
-    >
-      {children}
-    </div>
-  );
-}
-
-export function HomeGigsManager() {
+export function HomeContentManager() {
   const utils = api.useUtils();
 
   const { data: featuredPlacement, isLoading: isLoadingFeatured } =
-    api.homeGigs.getPlacements.useQuery({ section: "FEATURED" });
-  const { data: pastPlacement, isLoading: isLoadingPast } =
-    api.homeGigs.getPlacements.useQuery({ section: "PAST" });
+    api.homeContent.getPlacements.useQuery({ section: "FEATURED" });
+  const { data: listPlacement, isLoading: isLoadingList } =
+    api.homeContent.getPlacements.useQuery({ section: "PAST" });
 
-  const setPlacements = api.homeGigs.setPlacements.useMutation();
+  const setPlacements = api.homeContent.setPlacements.useMutation();
 
   const [featuredIds, setFeaturedIds] = useState<string[]>([]);
-  const [pastIds, setPastIds] = useState<string[]>([]);
+  const [listIds, setListIds] = useState<string[]>([]);
   const [savedFeaturedIds, setSavedFeaturedIds] = useState<string[]>([]);
-  const [savedPastIds, setSavedPastIds] = useState<string[]>([]);
+  const [savedListIds, setSavedListIds] = useState<string[]>([]);
 
   const [search, setSearch] = useState("");
   const trimmedSearch = search.trim();
 
-  const { data: gigsList, isLoading: isLoadingGigsList } =
-    api.gigs.getAll.useQuery(undefined, { staleTime: 60_000 });
+  const { data: contentList, isLoading: isLoadingContentList } =
+    api.content.getAll.useQuery(undefined, { staleTime: 60_000 });
   const { data: searchResultsRaw, isLoading: isLoadingSearch } =
-    api.gigs.getAll.useQuery(
+    api.content.getAll.useQuery(
       trimmedSearch ? { search: trimmedSearch } : undefined,
       { enabled: !!trimmedSearch },
     );
+
   const [saveError, setSaveError] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
 
-  // Build gig info map from placements + gig list
-  const gigMap = useMemo(() => {
-    const map = new Map<string, GigSummary>();
+  const itemMap = useMemo(() => {
+    const map = new Map<string, ContentSummary>();
 
     for (const p of featuredPlacement ?? []) {
-      if (p.gig) map.set(p.gig.id, p.gig);
+      if (p.contentItem) map.set(p.contentItem.id, p.contentItem);
     }
-    for (const p of pastPlacement ?? []) {
-      if (p.gig) map.set(p.gig.id, p.gig);
+    for (const p of listPlacement ?? []) {
+      if (p.contentItem) map.set(p.contentItem.id, p.contentItem);
     }
-    for (const g of gigsList ?? []) {
-      map.set(g.id, {
-        id: g.id,
-        title: g.title,
-        subtitle: g.subtitle,
-        gigStartTime: g.gigStartTime ?? null,
-        gigEndTime: g.gigEndTime ?? null,
-      } satisfies GigSummary);
+    for (const c of contentList ?? []) {
+      map.set(c.id, {
+        id: c.id,
+        type: c.type,
+        title: c.title,
+        dj: c.dj ?? null,
+        description: c.description,
+        date: c.date,
+        linkType: c.linkType,
+        link: c.link,
+      } satisfies ContentSummary);
     }
 
     return map;
-  }, [featuredPlacement, pastPlacement, gigsList]);
+  }, [featuredPlacement, listPlacement, contentList]);
 
   useEffect(() => {
-    const nextFeatured = (featuredPlacement ?? []).map((p) => p.gigId);
-    const nextPast = (pastPlacement ?? []).map((p) => p.gigId);
+    const nextFeatured = (featuredPlacement ?? []).map((p) => p.contentItemId);
+    const nextList = (listPlacement ?? []).map((p) => p.contentItemId);
 
     setFeaturedIds(nextFeatured.slice(0, HOME_FEATURED_COUNT));
-    setPastIds(nextPast);
+    setListIds(nextList);
     setSavedFeaturedIds(nextFeatured.slice(0, HOME_FEATURED_COUNT));
-    setSavedPastIds(nextPast);
-  }, [featuredPlacement, pastPlacement]);
+    setSavedListIds(nextList);
+  }, [featuredPlacement, listPlacement]);
 
   const hasChanges =
     JSON.stringify(featuredIds) !== JSON.stringify(savedFeaturedIds) ||
-    JSON.stringify(pastIds) !== JSON.stringify(savedPastIds);
+    JSON.stringify(listIds) !== JSON.stringify(savedListIds);
 
   useUnsavedChangesWarning({ enabled: hasChanges });
 
-  const now = useMemo(() => new Date(), []);
+  const isLoading = isLoadingFeatured || isLoadingList;
+  const isSaving = setPlacements.isPending;
+
+  const selectedIds = useMemo(
+    () => new Set<string>([...featuredIds, ...listIds]),
+    [featuredIds, listIds],
+  );
+
+  const recentUnplaced = useMemo(() => {
+    const list = (contentList ?? []).filter((c) => !selectedIds.has(c.id));
+    // content.getAll already returns date desc, but keep it explicit
+    list.sort((a, b) => b.date.getTime() - a.date.getTime());
+    return list.slice(0, RECENT_UNPLACED_COUNT);
+  }, [contentList, selectedIds]);
+
+  const searchResults = useMemo(() => {
+    const list = searchResultsRaw ?? [];
+    return list.slice(0, 25);
+  }, [searchResultsRaw]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -295,78 +293,68 @@ export function HomeGigsManager() {
     const { active, over } = event;
     if (!over) return;
 
-    const activeGigId = active.id as string;
+    const activeId = active.id as string;
     const overId = over.id as string;
 
-    const from = findContainerId(activeGigId, featuredIds, pastIds);
+    const from = findContainerId(activeId, featuredIds, listIds);
     const to =
-      findContainerId(overId, featuredIds, pastIds) ??
-      (overId === "featured" || overId === "past" ? overId : null);
+      findContainerId(overId, featuredIds, listIds) ??
+      (overId === "featured" || overId === "list" ? overId : null);
     if (!from || !to) return;
 
     if (from === to) {
-      // Reorder within container
-      const ids = from === "featured" ? featuredIds : pastIds;
-      const oldIndex = ids.indexOf(activeGigId);
+      const ids = from === "featured" ? featuredIds : listIds;
+      const oldIndex = ids.indexOf(activeId);
       const newIndex = ids.indexOf(overId);
       if (oldIndex === -1 || newIndex === -1) return;
       const next = arrayMove(ids, oldIndex, newIndex);
       if (from === "featured") setFeaturedIds(next);
-      else setPastIds(next);
+      else setListIds(next);
       return;
     }
 
     // Move between containers
-    let nextFeatured = removeFromArray(featuredIds, activeGigId);
-    let nextPast = removeFromArray(pastIds, activeGigId);
-
-    // Remove duplicates across both
-    nextFeatured = removeFromArray(nextFeatured, activeGigId);
-    nextPast = removeFromArray(nextPast, activeGigId);
+    let nextFeatured = removeFromArray(featuredIds, activeId);
+    let nextList = removeFromArray(listIds, activeId);
 
     if (to === "featured") {
       const existing = nextFeatured[0];
-      if (existing && existing !== activeGigId) {
-        nextPast = [existing, ...nextPast];
+      if (existing && existing !== activeId) {
+        nextList = [existing, ...nextList];
       }
-      nextFeatured = [activeGigId];
+      nextFeatured = [activeId];
     } else {
-      const overGigId = overId === "past" ? null : overId;
-      const targetIndex = overGigId ? nextPast.indexOf(overGigId) : -1;
-      if (targetIndex === -1) nextPast = [...nextPast, activeGigId];
+      const overContentId = overId === "list" ? null : overId;
+      const targetIndex = overContentId ? nextList.indexOf(overContentId) : -1;
+      if (targetIndex === -1) nextList = [...nextList, activeId];
       else
-        nextPast = [
-          ...nextPast.slice(0, targetIndex),
-          activeGigId,
-          ...nextPast.slice(targetIndex),
+        nextList = [
+          ...nextList.slice(0, targetIndex),
+          activeId,
+          ...nextList.slice(targetIndex),
         ];
     }
 
     setFeaturedIds(nextFeatured.slice(0, HOME_FEATURED_COUNT));
-    setPastIds(nextPast);
+    setListIds(nextList);
   };
 
   const handleRemove = (id: string) => {
     setFeaturedIds((prev) => removeFromArray(prev, id));
-    setPastIds((prev) => removeFromArray(prev, id));
+    setListIds((prev) => removeFromArray(prev, id));
   };
 
   const setFeatured = (id: string) => {
-    setPastIds((prevPast) => {
-      const nextPast = removeFromArray(
-        removeFromArray(prevPast, id),
-        featuredIds[0] ?? "",
-      );
-      return featuredIds[0] && featuredIds[0] !== id
-        ? [featuredIds[0], ...nextPast]
-        : nextPast;
+    setListIds((prevList) => {
+      const next = removeFromArray(removeFromArray(prevList, id), featuredIds[0] ?? "");
+      return featuredIds[0] && featuredIds[0] !== id ? [featuredIds[0], ...next] : next;
     });
     setFeaturedIds([id]);
   };
 
-  const addToPast = (id: string, where: "start" | "end" = "end") => {
+  const addToList = (id: string, where: "start" | "end" = "end") => {
     setFeaturedIds((prev) => removeFromArray(prev, id));
-    setPastIds((prev) => {
+    setListIds((prev) => {
       const next = removeFromArray(prev, id);
       return where === "start" ? [id, ...next] : [...next, id];
     });
@@ -376,7 +364,7 @@ export function HomeGigsManager() {
     setSaveError(null);
     setLastSavedAt(null);
     setFeaturedIds(savedFeaturedIds);
-    setPastIds(savedPastIds);
+    setListIds(savedListIds);
   };
 
   const handleSave = async () => {
@@ -385,26 +373,22 @@ export function HomeGigsManager() {
       await Promise.all([
         setPlacements.mutateAsync({
           section: "FEATURED",
-          gigIds: featuredIds.slice(0, HOME_FEATURED_COUNT),
+          contentItemIds: featuredIds.slice(0, HOME_FEATURED_COUNT),
         }),
         setPlacements.mutateAsync({
           section: "PAST",
-          gigIds: pastIds,
+          contentItemIds: listIds,
         }),
       ]);
 
       setSavedFeaturedIds(featuredIds.slice(0, HOME_FEATURED_COUNT));
-      setSavedPastIds(pastIds);
+      setSavedListIds(listIds);
       setLastSavedAt(Date.now());
 
       await Promise.all([
-        utils.homeGigs.getPlacements.invalidate({
-          section: "FEATURED",
-        }),
-        utils.homeGigs.getPlacements.invalidate({
-          section: "PAST",
-        }),
-        utils.homeGigs.getHomeRecent.invalidate(),
+        utils.homeContent.getPlacements.invalidate({ section: "FEATURED" }),
+        utils.homeContent.getPlacements.invalidate({ section: "PAST" }),
+        utils.homeContent.getHomeLatest.invalidate(),
       ]);
     } catch (e) {
       setSaveError(
@@ -413,35 +397,15 @@ export function HomeGigsManager() {
     }
   };
 
-  const isLoading = isLoadingFeatured || isLoadingPast;
-  const isSaving = setPlacements.isPending;
-  const selectedIds = useMemo(
-    () => new Set<string>([...featuredIds, ...pastIds]),
-    [featuredIds, pastIds],
-  );
-  const recentUnselectedGigs = useMemo(() => {
-    const list = (gigsList ?? [])
-      .filter((g) => isPastGig(g, now))
-      .filter((g) => !selectedIds.has(g.id))
-      .sort((a, b) => gigSortTime(b) - gigSortTime(a));
-    return list.slice(0, RECENT_UNPLACED_COUNT);
-  }, [gigsList, now, selectedIds]);
-
-  const searchResults = useMemo(() => {
-    const list = (searchResultsRaw ?? []).filter((g) => isPastGig(g, now));
-    return list.slice(0, 20);
-  }, [searchResultsRaw, now]);
-
   return (
     <Card>
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-1">
-            <CardTitle>Home “Recent Gigs”</CardTitle>
+            <CardTitle>Home “Latest Content”</CardTitle>
             <CardDescription>
-              Pick a featured past gig and order the past list. Home shows{" "}
-              {HOME_FEATURED_COUNT} featured + the first {HOME_PAST_SHOWN_COUNT}{" "}
-              items from the past list.
+              Home shows {HOME_FEATURED_COUNT} featured + the first{" "}
+              {HOME_LIST_SHOWN_COUNT} items from the list.
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -506,19 +470,19 @@ export function HomeGigsManager() {
                   <span className="text-muted-foreground text-xs">Shown</span>
                   <Badge
                     variant={
-                      pastIds.length >= HOME_PAST_SHOWN_COUNT
+                      listIds.length >= HOME_LIST_SHOWN_COUNT
                         ? "default"
                         : "secondary"
                     }
                   >
-                    {Math.min(pastIds.length, HOME_PAST_SHOWN_COUNT)}/
-                    {HOME_PAST_SHOWN_COUNT}
+                    {Math.min(listIds.length, HOME_LIST_SHOWN_COUNT)}/
+                    {HOME_LIST_SHOWN_COUNT}
                   </Badge>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-muted-foreground text-xs">Past list</span>
-                  <Badge variant={pastIds.length ? "default" : "secondary"}>
-                    {pastIds.length}
+                  <span className="text-muted-foreground text-xs">List</span>
+                  <Badge variant={listIds.length ? "default" : "secondary"}>
+                    {listIds.length}
                   </Badge>
                 </div>
               </div>
@@ -534,15 +498,18 @@ export function HomeGigsManager() {
                   {featuredIds[0] ? (
                     <div className="flex min-w-0 flex-col">
                       <span className="truncate text-sm font-medium">
-                        {gigMap.get(featuredIds[0])?.title ?? "Unknown gig"}
+                        {itemMap.get(featuredIds[0])?.title ?? "Unknown content"}
                       </span>
                       <span className="text-muted-foreground truncate text-xs">
-                        {gigMap.get(featuredIds[0])?.subtitle ?? featuredIds[0]}
+                        {(itemMap.get(featuredIds[0])?.type ?? "content") +
+                          (itemMap.get(featuredIds[0])?.dj
+                            ? ` · ${itemMap.get(featuredIds[0])?.dj}`
+                            : "")}
                       </span>
                     </div>
                   ) : (
                     <span className="text-muted-foreground text-sm">
-                      No featured gig selected.
+                      No featured content selected.
                     </span>
                   )}
                 </div>
@@ -551,22 +518,25 @@ export function HomeGigsManager() {
               <div className="rounded-md border">
                 <div className="border-b px-3 py-2">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-medium">Past list</span>
+                    <span className="text-sm font-medium">List</span>
                     <Badge variant="secondary">
-                      Slots 2–{HOME_PAST_SHOWN_COUNT + 1}
+                      Slots 2–{HOME_LIST_SHOWN_COUNT + 1}
                     </Badge>
                   </div>
                 </div>
                 <div className="space-y-2 px-3 py-2">
-                  {pastIds.slice(0, HOME_PAST_SHOWN_COUNT).length ? (
-                    pastIds.slice(0, HOME_PAST_SHOWN_COUNT).map((id, idx) => (
+                  {listIds.slice(0, HOME_LIST_SHOWN_COUNT).length ? (
+                    listIds.slice(0, HOME_LIST_SHOWN_COUNT).map((id, idx) => (
                       <div key={id} className="flex items-start justify-between">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">
-                            {gigMap.get(id)?.title ?? "Unknown gig"}
+                            {itemMap.get(id)?.title ?? "Unknown content"}
                           </p>
                           <p className="text-muted-foreground truncate text-xs">
-                            {gigMap.get(id)?.subtitle ?? id}
+                            {(itemMap.get(id)?.type ?? "content") +
+                              (itemMap.get(id)?.dj
+                                ? ` · ${itemMap.get(id)?.dj}`
+                                : "")}
                           </p>
                         </div>
                         <Badge variant="outline">#{idx + 1}</Badge>
@@ -574,8 +544,7 @@ export function HomeGigsManager() {
                     ))
                   ) : (
                     <span className="text-muted-foreground text-sm">
-                      Add at least {HOME_PAST_SHOWN_COUNT} past gigs to populate
-                      Home.
+                      Add at least {HOME_LIST_SHOWN_COUNT} items to populate Home.
                     </span>
                   )}
                 </div>
@@ -600,7 +569,7 @@ export function HomeGigsManager() {
                     Featured
                   </CardTitle>
                   <CardDescription>
-                    Exactly {HOME_FEATURED_COUNT} gig appears as featured.
+                    Exactly {HOME_FEATURED_COUNT} item appears as featured.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -617,19 +586,19 @@ export function HomeGigsManager() {
                       <DroppableContainer id="featured" className="space-y-2">
                         {featuredIds.length === 0 ? (
                           <div className="text-muted-foreground rounded-md border border-dashed p-4 text-sm">
-                            Drop a past gig here, or use “Set featured” from
-                            search results.
+                            Drop an item here, or use “Featured” from the recent
+                            list.
                           </div>
                         ) : (
                           featuredIds.map((id) => (
-                            <SortableGigRow
+                            <SortableContentRow
                               key={id}
                               id={id}
                               container="featured"
-                              gig={gigMap.get(id)}
+                              item={itemMap.get(id)}
                               onRemove={handleRemove}
                               onSetFeatured={setFeatured}
-                              onMoveToPast={(gid) => addToPast(gid, "start")}
+                              onMoveToList={(cid) => addToList(cid, "start")}
                             />
                           ))
                         )}
@@ -641,9 +610,9 @@ export function HomeGigsManager() {
 
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle>Past list</CardTitle>
+                  <CardTitle>List</CardTitle>
                   <CardDescription>
-                    Home shows the first {HOME_PAST_SHOWN_COUNT} items from this
+                    Home shows the first {HOME_LIST_SHOWN_COUNT} items from this
                     list.
                   </CardDescription>
                 </CardHeader>
@@ -655,25 +624,25 @@ export function HomeGigsManager() {
                     </div>
                   ) : (
                     <SortableContext
-                      items={pastIds}
+                      items={listIds}
                       strategy={verticalListSortingStrategy}
                     >
-                      <DroppableContainer id="past" className="space-y-2">
-                        {pastIds.length === 0 ? (
+                      <DroppableContainer id="list" className="space-y-2">
+                        {listIds.length === 0 ? (
                           <div className="text-muted-foreground rounded-md border border-dashed p-4 text-sm">
-                            Drop gigs here to build the past list.
+                            Drop items here to build the list.
                           </div>
                         ) : (
-                          pastIds.map((id, idx) => (
-                            <SortableGigRow
+                          listIds.map((id, idx) => (
+                            <SortableContentRow
                               key={id}
                               id={id}
-                              container="past"
+                              container="list"
                               index={idx}
-                              gig={gigMap.get(id)}
+                              item={itemMap.get(id)}
                               onRemove={handleRemove}
                               onSetFeatured={setFeatured}
-                              onMoveToPast={(gid) => addToPast(gid, "end")}
+                              onMoveToList={(cid) => addToList(cid, "end")}
                             />
                           ))
                         )}
@@ -687,9 +656,9 @@ export function HomeGigsManager() {
             <Card>
               <CardHeader>
                 <div className="space-y-1">
-                  <CardTitle>Add gigs</CardTitle>
+                  <CardTitle>Add content</CardTitle>
                   <CardDescription>
-                    Quickly add gigs, or search to find older ones.
+                    Quickly add recent content, or search to find older ones.
                   </CardDescription>
                 </div>
               </CardHeader>
@@ -697,9 +666,11 @@ export function HomeGigsManager() {
                 <div className="relative">
                   <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                   <Input
-                    placeholder="Search gigs by title, subtitle, or description…"
+                    placeholder="Search content by type, title, description, or DJ…"
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      setSearch(e.target.value)
+                    }
                     className="pl-9"
                   />
                 </div>
@@ -708,7 +679,7 @@ export function HomeGigsManager() {
                   <div className="border-b px-3 py-2">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-medium">
-                        {trimmedSearch ? "Results" : "Recent unplaced gigs"}
+                        {trimmedSearch ? "Results" : "Recent unplaced items"}
                       </span>
                       <Badge variant="outline">
                         {trimmedSearch ? "Search" : `Top ${RECENT_UNPLACED_COUNT}`}
@@ -723,22 +694,22 @@ export function HomeGigsManager() {
                           Searching…
                         </div>
                       ) : searchResults.length ? (
-                        searchResults.map((g) => {
-                          const alreadySelected = selectedIds.has(g.id);
-                          const inFeatured = featuredIds.includes(g.id);
-                          const inPast = pastIds.includes(g.id);
+                        searchResults.map((c) => {
+                          const alreadySelected = selectedIds.has(c.id);
+                          const inFeatured = featuredIds.includes(c.id);
+                          const inList = listIds.includes(c.id);
 
                           return (
                             <div
-                              key={g.id}
+                              key={c.id}
                               className="border-border flex flex-wrap items-center justify-between gap-3 border-b px-3 py-3 last:border-b-0"
                             >
                               <div className="min-w-0">
                                 <p className="truncate text-sm font-medium">
-                                  {g.title}
+                                  {c.title}
                                 </p>
                                 <p className="text-muted-foreground truncate text-xs">
-                                  {g.subtitle}
+                                  {c.type + (c.dj ? ` · ${c.dj}` : "")}
                                 </p>
                               </div>
 
@@ -747,15 +718,15 @@ export function HomeGigsManager() {
                                   <Badge variant="secondary">
                                     {inFeatured
                                       ? "In featured"
-                                      : inPast
-                                        ? "In past list"
+                                      : inList
+                                        ? "In list"
                                         : "Selected"}
                                   </Badge>
                                 ) : null}
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => setFeatured(g.id)}
+                                  onClick={() => setFeatured(c.id)}
                                   disabled={isSaving}
                                 >
                                   <Star className="mr-2 h-4 w-4" />
@@ -763,10 +734,10 @@ export function HomeGigsManager() {
                                 </Button>
                                 <Button
                                   size="sm"
-                                  onClick={() => addToPast(g.id, "end")}
+                                  onClick={() => addToList(c.id, "end")}
                                   disabled={isSaving}
                                 >
-                                  Add to past
+                                  Add to list
                                 </Button>
                               </div>
                             </div>
@@ -774,26 +745,26 @@ export function HomeGigsManager() {
                         })
                       ) : (
                         <div className="text-muted-foreground px-3 py-4 text-sm">
-                          No gigs found.
+                          No content found.
                         </div>
                       )
-                    ) : isLoadingGigsList ? (
+                    ) : isLoadingContentList ? (
                       <div className="text-muted-foreground flex items-center gap-2 px-3 py-4 text-sm">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Loading…
                       </div>
-                    ) : recentUnselectedGigs.length ? (
-                      recentUnselectedGigs.map((g) => (
+                    ) : recentUnplaced.length ? (
+                      recentUnplaced.map((c) => (
                         <div
-                          key={g.id}
+                          key={c.id}
                           className="border-border flex flex-wrap items-center justify-between gap-3 border-b px-3 py-3 last:border-b-0"
                         >
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium">
-                              {g.title}
+                              {c.title}
                             </p>
                             <p className="text-muted-foreground truncate text-xs">
-                              {g.subtitle}
+                              {c.type + (c.dj ? ` · ${c.dj}` : "")}
                             </p>
                           </div>
 
@@ -801,7 +772,7 @@ export function HomeGigsManager() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => setFeatured(g.id)}
+                              onClick={() => setFeatured(c.id)}
                               disabled={isSaving}
                             >
                               <Star className="mr-2 h-4 w-4" />
@@ -809,17 +780,17 @@ export function HomeGigsManager() {
                             </Button>
                             <Button
                               size="sm"
-                              onClick={() => addToPast(g.id, "end")}
+                              onClick={() => addToList(c.id, "end")}
                               disabled={isSaving}
                             >
-                              Add to past
+                              Add to list
                             </Button>
                           </div>
                         </div>
                       ))
                     ) : (
                       <div className="text-muted-foreground px-3 py-4 text-sm">
-                        No unplaced past gigs found.
+                        No unplaced content found.
                       </div>
                     )}
                   </div>
@@ -832,3 +803,4 @@ export function HomeGigsManager() {
     </Card>
   );
 }
+

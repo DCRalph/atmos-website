@@ -61,6 +61,11 @@ const menuItems = [
     icon: CalendarCog,
   },
   {
+    title: "Home Content",
+    url: "/admin/home-content",
+    icon: Activity,
+  },
+  {
     title: "Gig Tags",
     url: "/admin/gig-tags",
     icon: Tag,

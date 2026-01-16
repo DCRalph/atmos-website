@@ -75,6 +75,11 @@ export type CrewMember = Prisma.CrewMemberModel
  */
 export type ContentItem = Prisma.ContentItemModel
 /**
+ * Model HomeContentPlacement
+ * 
+ */
+export type HomeContentPlacement = Prisma.HomeContentPlacementModel
+/**
  * Model GigTag
  * 
  */

@@ -67,6 +67,9 @@ import {
   FolderOpen,
   CheckCircle2,
   AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Star,
 } from "lucide-react";
 import { getMediaDisplayUrl } from "~/lib/media-url";
 
@@ -106,12 +109,22 @@ function SortableMediaItem({
   item,
   onDelete,
   onInfo,
+  onMove,
+  onMoveToSection,
+  currentSection,
+  canMoveBack,
+  canMoveForward,
   isDeleting,
   isDragOverlay = false,
 }: {
   item: MediaItem;
   onDelete: (id: string) => void;
   onInfo: (item: MediaItem) => void;
+  onMove: (id: string, direction: "back" | "forward") => void;
+  onMoveToSection: (id: string, target: "featured" | "gallery") => void;
+  currentSection: "featured" | "gallery";
+  canMoveBack: boolean;
+  canMoveForward: boolean;
   isDeleting: boolean;
   isDragOverlay?: boolean;
 }) {
@@ -255,11 +268,76 @@ function SortableMediaItem({
 
       {/* Actions */}
       <div className="absolute top-2 right-2 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        {currentSection === "gallery" ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onMoveToSection(item.id, "featured");
+            }}
+            title="Move to featured"
+            aria-label="Move to featured"
+          >
+            <Star className="h-3 w-3" />
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onMoveToSection(item.id, "gallery");
+            }}
+            title="Move to gallery"
+            aria-label="Move to gallery"
+          >
+            <ImageIcon className="h-3 w-3" />
+          </Button>
+        )}
         <Button
           variant="secondary"
           size="sm"
           className="h-7 w-7 p-0"
-          onClick={() => onInfo(item)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onMove(item.id, "back");
+          }}
+          disabled={!canMoveBack}
+          title="Move back"
+          aria-label="Move back"
+        >
+          <ChevronLeft className="h-3 w-3" />
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="h-7 w-7 p-0"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onMove(item.id, "forward");
+          }}
+          disabled={!canMoveForward}
+          title="Move forward"
+          aria-label="Move forward"
+        >
+          <ChevronRight className="h-3 w-3" />
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="h-7 w-7 p-0"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onInfo(item);
+          }}
           title="View info"
         >
           <Info className="h-3 w-3" />
@@ -268,7 +346,11 @@ function SortableMediaItem({
           variant="destructive"
           size="sm"
           className="h-7 w-7 p-0"
-          onClick={() => onDelete(item.id)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onDelete(item.id);
+          }}
           disabled={isDeleting}
         >
           {isDeleting ? (
@@ -299,6 +381,8 @@ function MediaSection({
   hasChanges,
   onDelete,
   onInfo,
+  onMove,
+  onMoveToSection,
   deleteMediaId,
   isDeleting,
 }: {
@@ -310,6 +394,8 @@ function MediaSection({
   hasChanges: boolean;
   onDelete: (id: string) => void;
   onInfo: (item: MediaItem) => void;
+  onMove: (id: string, direction: "back" | "forward") => void;
+  onMoveToSection: (id: string, target: "featured" | "gallery") => void;
   deleteMediaId: string | null;
   isDeleting: boolean;
 }) {
@@ -363,7 +449,7 @@ function MediaSection({
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {items.map((id) => {
+              {items.map((id, idx) => {
                 const item = mediaMap.get(id);
                 if (!item) return null;
                 return (
@@ -372,6 +458,11 @@ function MediaSection({
                     item={item}
                     onDelete={onDelete}
                     onInfo={onInfo}
+                    onMove={onMove}
+                    onMoveToSection={onMoveToSection}
+                    currentSection={section}
+                    canMoveBack={idx > 0}
+                    canMoveForward={idx < items.length - 1}
                     isDeleting={isDeleting && deleteMediaId === id}
                   />
                 );
@@ -604,6 +695,47 @@ export function GigMediaManager({
 
   const handleDragCancel = () => {
     setActiveItem(null);
+  };
+
+  const handleMoveInSection = (
+    mediaId: string,
+    direction: "back" | "forward",
+  ) => {
+    const section = findSection(mediaId);
+    if (!section) return;
+
+    setItems((prev) => {
+      const list = [...prev[section]];
+      const from = list.indexOf(mediaId);
+      if (from === -1) return prev;
+
+      const to = direction === "back" ? from - 1 : from + 1;
+      if (to < 0 || to >= list.length) return prev;
+
+      return {
+        ...prev,
+        [section]: arrayMove(list, from, to),
+      };
+    });
+  };
+
+  const handleMoveToSection = (mediaId: string, target: "featured" | "gallery") => {
+    const from = findSection(mediaId);
+    if (!from) return;
+    if (from === target) return;
+
+    setItems((prev) => {
+      const nextFeatured = prev.featured.filter((id) => id !== mediaId);
+      const nextGallery = prev.gallery.filter((id) => id !== mediaId);
+
+      if (target === "featured") {
+        // Put at the start of featured
+        return { featured: [mediaId, ...nextFeatured], gallery: nextGallery };
+      }
+
+      // Put at the start of gallery
+      return { featured: nextFeatured, gallery: [mediaId, ...nextGallery] };
+    });
   };
 
   // Save changes to server
@@ -914,6 +1046,8 @@ export function GigMediaManager({
             hasChanges={hasFeaturedChanges}
             onDelete={handleDelete}
             onInfo={handleInfo}
+            onMove={handleMoveInSection}
+            onMoveToSection={handleMoveToSection}
             deleteMediaId={deleteMediaId}
             isDeleting={deleteMedia.isPending}
           />
@@ -927,6 +1061,8 @@ export function GigMediaManager({
             hasChanges={hasGalleryChanges}
             onDelete={handleDelete}
             onInfo={handleInfo}
+            onMove={handleMoveInSection}
+            onMoveToSection={handleMoveToSection}
             deleteMediaId={deleteMediaId}
             isDeleting={deleteMedia.isPending}
           />
@@ -938,6 +1074,15 @@ export function GigMediaManager({
               item={activeItem}
               onDelete={handleDelete}
               onInfo={handleInfo}
+              onMove={() => {
+                // no-op in drag overlay
+              }}
+              onMoveToSection={() => {
+                // no-op in drag overlay
+              }}
+              currentSection="gallery"
+              canMoveBack={false}
+              canMoveForward={false}
               isDeleting={false}
               isDragOverlay
             />

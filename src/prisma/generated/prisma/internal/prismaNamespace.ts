@@ -391,6 +391,7 @@ export const ModelName = {
   Invite: 'Invite',
   CrewMember: 'CrewMember',
   ContentItem: 'ContentItem',
+  HomeContentPlacement: 'HomeContentPlacement',
   GigTag: 'GigTag',
   GigTagRelationship: 'GigTagRelationship',
   Gig: 'Gig',
@@ -416,7 +417,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "invite" | "crewMember" | "contentItem" | "gigTag" | "gigTagRelationship" | "gig" | "homeGigPlacement" | "gigMedia" | "merchItem" | "contactSubmission" | "newsletterSubscription" | "file_tag" | "file_upload"
+    modelProps: "user" | "session" | "account" | "verification" | "invite" | "crewMember" | "contentItem" | "homeContentPlacement" | "gigTag" | "gigTagRelationship" | "gig" | "homeGigPlacement" | "gigMedia" | "merchItem" | "contactSubmission" | "newsletterSubscription" | "file_tag" | "file_upload"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -935,6 +936,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.ContentItemCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.ContentItemCountAggregateOutputType> | number
+        }
+      }
+    }
+    HomeContentPlacement: {
+      payload: Prisma.$HomeContentPlacementPayload<ExtArgs>
+      fields: Prisma.HomeContentPlacementFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.HomeContentPlacementFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeContentPlacementPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.HomeContentPlacementFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeContentPlacementPayload>
+        }
+        findFirst: {
+          args: Prisma.HomeContentPlacementFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeContentPlacementPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.HomeContentPlacementFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeContentPlacementPayload>
+        }
+        findMany: {
+          args: Prisma.HomeContentPlacementFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeContentPlacementPayload>[]
+        }
+        create: {
+          args: Prisma.HomeContentPlacementCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeContentPlacementPayload>
+        }
+        createMany: {
+          args: Prisma.HomeContentPlacementCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.HomeContentPlacementCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeContentPlacementPayload>[]
+        }
+        delete: {
+          args: Prisma.HomeContentPlacementDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeContentPlacementPayload>
+        }
+        update: {
+          args: Prisma.HomeContentPlacementUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeContentPlacementPayload>
+        }
+        deleteMany: {
+          args: Prisma.HomeContentPlacementDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.HomeContentPlacementUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.HomeContentPlacementUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeContentPlacementPayload>[]
+        }
+        upsert: {
+          args: Prisma.HomeContentPlacementUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HomeContentPlacementPayload>
+        }
+        aggregate: {
+          args: Prisma.HomeContentPlacementAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateHomeContentPlacement>
+        }
+        groupBy: {
+          args: Prisma.HomeContentPlacementGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.HomeContentPlacementGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.HomeContentPlacementCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.HomeContentPlacementCountAggregateOutputType> | number
         }
       }
     }
@@ -1820,6 +1895,18 @@ export const ContentItemScalarFieldEnum = {
 export type ContentItemScalarFieldEnum = (typeof ContentItemScalarFieldEnum)[keyof typeof ContentItemScalarFieldEnum]
 
 
+export const HomeContentPlacementScalarFieldEnum = {
+  id: 'id',
+  section: 'section',
+  sortOrder: 'sortOrder',
+  contentItemId: 'contentItemId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type HomeContentPlacementScalarFieldEnum = (typeof HomeContentPlacementScalarFieldEnum)[keyof typeof HomeContentPlacementScalarFieldEnum]
+
+
 export const GigTagScalarFieldEnum = {
   id: 'id',
   name: 'name',
@@ -2054,6 +2141,20 @@ export type ListEnumContentLinkTypeFieldRefInput<$PrismaModel> = FieldRefInputTy
 
 
 /**
+ * Reference to a field of type 'HomeContentSection'
+ */
+export type EnumHomeContentSectionFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'HomeContentSection'>
+    
+
+
+/**
+ * Reference to a field of type 'HomeContentSection[]'
+ */
+export type ListEnumHomeContentSectionFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'HomeContentSection[]'>
+    
+
+
+/**
  * Reference to a field of type 'Int'
  */
 export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
@@ -2224,6 +2325,7 @@ export type GlobalOmitConfig = {
   invite?: Prisma.InviteOmit
   crewMember?: Prisma.CrewMemberOmit
   contentItem?: Prisma.ContentItemOmit
+  homeContentPlacement?: Prisma.HomeContentPlacementOmit
   gigTag?: Prisma.GigTagOmit
   gigTagRelationship?: Prisma.GigTagRelationshipOmit
   gig?: Prisma.GigOmit
