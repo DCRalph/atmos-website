@@ -46,8 +46,13 @@ export function PastGigHomeCard({
   if (featured) {
     return (
       <AccentGlowCard
-        asChild
-        className="flex flex-col justify-between gap-4 p-6 sm:p-8 lg:col-span-3"
+        className="lg:col-span-3"
+        motionProps={{
+          initial: { opacity: 0, y: "100%" },
+          whileInView: { opacity: 1, y: 0 },
+          viewport: { once: true },
+          transition: { duration: 0.5, ease: "easeOut" },
+        }}
       >
         <MotionLink
           href={`/gigs/${gig.id}`}
@@ -82,7 +87,13 @@ export function PastGigHomeCard({
   }
 
   return (
-    <AccentGlowCard asChild className="flex flex-col justify-between gap-2 p-6">
+    <AccentGlowCard
+      motionProps={{
+        initial: { opacity: 0, y: "100%" },
+        whileInView: { opacity: 1, y: 0 },
+        viewport: { once: true },
+        transition: { duration: 0.5, ease: "easeOut" },
+      }}>
       <MotionLink
         href={`/gigs/${gig.id}`}
         className="flex h-full flex-col justify-between gap-4"

@@ -22,7 +22,7 @@ export function ContentItem({
       className="group relative overflow-hidden rounded-lg border border-white/10 bg-white/5 p-4 backdrop-blur-sm transition-all hover:border-white/30 hover:bg-white/10 sm:p-6 md:p-8"
       initial={{ opacity: 0, y: 10 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.5 }}
+      viewport={{ once: true }}
       exit={{ opacity: 0, y: 10 }}
       transition={{
         duration: 0.5,

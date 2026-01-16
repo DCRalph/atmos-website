@@ -77,7 +77,15 @@ export function NewsletterSection({ className }: { className?: string }) {
 
       <div className="mb-6 border-b-2 border-white/10 pb-3 sm:mb-8 sm:pb-4" />
 
-      <AccentGlowCard className="bg-black/90 p-8 sm:p-12 lg:p-16">
+      <AccentGlowCard
+        // className="bg-black/90 p-8 sm:p-12 lg:p-16"
+        motionProps={{
+          initial: { opacity: 0, scale: 0.5 },
+          whileInView: { opacity: 1, scale: 1 },
+          viewport: { once: true },
+          transition: { duration: .5, ease: "easeOut" },
+        }}
+      >
         {/* Red accent bar */}
         {/* <div className="absolute left-0 top-0 h-2 w-32 bg-accent-muted transition-all group-hover:w-48" />
         <div className="absolute right-0 top-0 h-2 w-32 bg-accent-muted transition-all group-hover:w-48" /> */}

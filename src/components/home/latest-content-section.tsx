@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ContentCard } from "~/components/home/content-card";
 import { api } from "~/trpc/react";
 import { orbitron } from "~/lib/fonts";
+import { motion } from "motion/react";
 
 export function LatestContentSection() {
   const { data, isLoading: isLoadingContent } =
@@ -16,11 +17,16 @@ export function LatestContentSection() {
   return (
     <div className="mb-16 sm:mb-20">
       <div className="mb-6 flex items-end justify-between gap-4 border-b-2 border-white/10 pb-3 sm:mb-8 sm:pb-4">
-        <h2
+        <motion.h2
           className={`text-2xl font-black tracking-tight uppercase sm:text-3xl md:text-4xl ${orbitron.className}`}
+
+          initial={{ opacity: 0, x: "100%" }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
         >
           Latest Content
-        </h2>
+        </motion.h2>
         <Link
           href="/content"
           className="group hover:border-accent-muted hover:bg-accent-muted/10 flex shrink-0 items-center gap-2 rounded-none border-2 border-white/30 bg-transparent px-4 py-2 text-xs font-black tracking-wider text-white uppercase transition-all hover:text-white"
