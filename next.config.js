@@ -34,6 +34,18 @@ const config = {
       },
     ],
   },
+  rewrites: async () => {
+    return [
+      {
+        source: "/fuckoffaddblockers/:match*",
+        destination: "hhttps://atmosmedia.co.nz/_vercel/insights/:match*",
+      },
+      {
+        source: "/fuckoffaddblocker/script.js",
+        destination: "https://atmosmedia.co.nz/_vercel/insights/script.js",
+      },
+    ];
+  },
   // experimental: {
   //   viewTransition: true,
   // },

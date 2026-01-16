@@ -99,7 +99,10 @@ export default function RootLayout({
                   {children}
                 </div>
 
-                <Analytics />
+                <Analytics
+                  endpoint="/fuckoffaddblockers"
+                  scriptSrc="/fuckoffaddblocker/script.js"
+                />
               </MobileMenuProvider>
             </TRPCReactProvider>
           </ThemeOverrideProvider>
