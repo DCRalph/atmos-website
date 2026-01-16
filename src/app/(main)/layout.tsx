@@ -6,11 +6,17 @@ import { useIsMobile } from "~/hooks/use-mobile";
 import { MobileNav } from "~/components/mobile-nav";
 import { MobileMenuToggle } from "~/components/mobile-menu-toggle";
 
-import dynamic from 'next/dynamic';
+import dynamic from "next/dynamic";
 
-const SlideOverMenu = dynamic(() => import('~/components/SlideOverMenu'), { ssr: false });
+const SlideOverMenu = dynamic(() => import("~/components/SlideOverMenu"), {
+  ssr: false,
+});
 
-export default function MainLayout({ children }: { children: React.ReactNode }) {
+export default function MainLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const isMobile = useIsMobile();
 
   return (
@@ -18,13 +24,12 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <UserIndicator />
 
       {!isMobile ? ( // Desktop layout
-        <div className="w-full flex">
+        <div className="flex w-full">
           <SlideOverMenu isHomePage={true} />
-          <div className="flex-1">
-            {children}
-          </div>
+          <div className="flex-1">{children}</div>
         </div>
-      ) : ( // Mobile layout
+      ) : (
+        // Mobile layout
         <>
           <div className="relative">
             {/* SlideOverMenu renders through portal on mobile */}
@@ -36,12 +41,9 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
           <MobileMenuToggle />
         </>
-
       )}
 
       <MainFooter />
-
     </div>
   );
 }
-

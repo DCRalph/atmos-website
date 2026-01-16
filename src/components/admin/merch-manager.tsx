@@ -6,9 +6,29 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "~/components/ui/dialog";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 
 export function MerchManager() {
   const [isOpen, setIsOpen] = useState(false);
@@ -19,9 +39,11 @@ export function MerchManager() {
   const [image, setImage] = useState("");
   const [search, setSearch] = useState("");
 
-  const { data: merchItems, isLoading, refetch } = api.merch.getAll.useQuery(
-    search ? { search } : undefined,
-  );
+  const {
+    data: merchItems,
+    isLoading,
+    refetch,
+  } = api.merch.getAll.useQuery(search ? { search } : undefined);
   const createItem = api.merch.create.useMutation({
     onSuccess: async () => {
       await refetch();
@@ -87,16 +109,21 @@ export function MerchManager() {
             <CardTitle>Merch Items</CardTitle>
             <CardDescription>Manage merchandise items</CardDescription>
           </div>
-          <Dialog open={isOpen} onOpenChange={(open) => {
-            setIsOpen(open);
-            if (!open) resetForm();
-          }}>
+          <Dialog
+            open={isOpen}
+            onOpenChange={(open) => {
+              setIsOpen(open);
+              if (!open) resetForm();
+            }}
+          >
             <DialogTrigger asChild>
               <Button onClick={() => resetForm()}>Add Item</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editingId ? "Edit" : "Add"} Merch Item</DialogTitle>
+                <DialogTitle>
+                  {editingId ? "Edit" : "Add"} Merch Item
+                </DialogTitle>
                 <DialogDescription>
                   {editingId ? "Update" : "Create"} a new merch item
                 </DialogDescription>
@@ -141,7 +168,10 @@ export function MerchManager() {
                     required
                   />
                 </div>
-                <Button type="submit" disabled={createItem.isPending || updateItem.isPending}>
+                <Button
+                  type="submit"
+                  disabled={createItem.isPending || updateItem.isPending}
+                >
                   {editingId ? "Update" : "Create"}
                 </Button>
               </form>
@@ -167,45 +197,52 @@ export function MerchManager() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={`loading-${i}`}>
-                  <TableCell colSpan={3}>
-                    <div className="h-8 w-full animate-pulse rounded bg-muted" />
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : merchItems?.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>{item.name}</TableCell>
-                <TableCell>${item.price.toFixed(2)}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(item)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        if (confirm("Are you sure you want to delete this item?")) {
-                          deleteItem.mutate({ id: item.id });
-                        }
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+            {isLoading
+              ? Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={`loading-${i}`}>
+                    <TableCell colSpan={3}>
+                      <div className="bg-muted h-8 w-full animate-pulse rounded" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              : merchItems?.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>{item.name}</TableCell>
+                    <TableCell>${item.price.toFixed(2)}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(item)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            if (
+                              confirm(
+                                "Are you sure you want to delete this item?",
+                              )
+                            ) {
+                              deleteItem.mutate({ id: item.id });
+                            }
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
             {!isLoading && merchItems?.length === 0 && (
               <TableRow>
-                <TableCell colSpan={3} className="text-center text-muted-foreground">
+                <TableCell
+                  colSpan={3}
+                  className="text-muted-foreground text-center"
+                >
                   {search ? "No merch items found" : "No merch items yet"}
                 </TableCell>
               </TableRow>
@@ -216,4 +253,3 @@ export function MerchManager() {
     </Card>
   );
 }
-

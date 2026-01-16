@@ -19,7 +19,13 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Loader2, Save, RotateCcw, Star } from "lucide-react";
 import { api } from "~/trpc/react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { cn } from "~/lib/utils";
@@ -41,7 +47,14 @@ function SortableGigRow({
   gig: GigSummary | undefined;
   onRemove: (id: string) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -52,13 +65,13 @@ function SortableGigRow({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center gap-3 border border-border bg-background px-3 py-2",
+        "border-border bg-background flex items-center gap-3 border px-3 py-2",
         isDragging && "opacity-70",
       )}
     >
       <button
         type="button"
-        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground"
+        className="text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing"
         aria-label="Drag to reorder"
         {...attributes}
         {...listeners}
@@ -67,7 +80,9 @@ function SortableGigRow({
       </button>
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">{gig?.title ?? "Unknown gig"}</p>
-        <p className="truncate text-sm text-muted-foreground">{gig?.subtitle ?? id}</p>
+        <p className="text-muted-foreground truncate text-sm">
+          {gig?.subtitle ?? id}
+        </p>
       </div>
       <Button variant="outline" size="sm" onClick={() => onRemove(id)}>
         Remove
@@ -102,7 +117,7 @@ function DroppableContainer({
   return (
     <div
       ref={setNodeRef}
-      className={cn(className, isOver && "ring-2 ring-primary ring-offset-2")}
+      className={cn(className, isOver && "ring-primary ring-2 ring-offset-2")}
     >
       {children}
     </div>
@@ -125,9 +140,8 @@ export function HomeGigsManager() {
   const [savedPastIds, setSavedPastIds] = useState<string[]>([]);
 
   const [search, setSearch] = useState("");
-  const { data: searchResults, isLoading: isLoadingSearch } = api.gigs.getAll.useQuery(
-    search.trim() ? { search } : undefined,
-  );
+  const { data: searchResults, isLoading: isLoadingSearch } =
+    api.gigs.getAll.useQuery(search.trim() ? { search } : undefined);
 
   // Build gig info map from placements + search results
   const gigMap = useMemo(() => {
@@ -217,7 +231,12 @@ export function HomeGigsManager() {
       const overGigId = overId === "past" ? null : overId;
       const targetIndex = overGigId ? nextPast.indexOf(overGigId) : -1;
       if (targetIndex === -1) nextPast = [...nextPast, activeGigId];
-      else nextPast = [...nextPast.slice(0, targetIndex), activeGigId, ...nextPast.slice(targetIndex)];
+      else
+        nextPast = [
+          ...nextPast.slice(0, targetIndex),
+          activeGigId,
+          ...nextPast.slice(targetIndex),
+        ];
     }
 
     setFeaturedIds(nextFeatured.slice(0, 1));
@@ -231,8 +250,13 @@ export function HomeGigsManager() {
 
   const setFeatured = (id: string) => {
     setPastIds((prevPast) => {
-      const nextPast = removeFromArray(removeFromArray(prevPast, id), featuredIds[0] ?? "");
-      return featuredIds[0] && featuredIds[0] !== id ? [featuredIds[0], ...nextPast] : nextPast;
+      const nextPast = removeFromArray(
+        removeFromArray(prevPast, id),
+        featuredIds[0] ?? "",
+      );
+      return featuredIds[0] && featuredIds[0] !== id
+        ? [featuredIds[0], ...nextPast]
+        : nextPast;
     });
     setFeaturedIds([id]);
   };
@@ -263,7 +287,9 @@ export function HomeGigsManager() {
     ]);
 
     await Promise.all([
-      utils.homeGigs.getPlacements.invalidate({ section: "FEATURED_RECENT_PAST" }),
+      utils.homeGigs.getPlacements.invalidate({
+        section: "FEATURED_RECENT_PAST",
+      }),
       utils.homeGigs.getPlacements.invalidate({ section: "PAST_RECENT_LIST" }),
       utils.homeGigs.getHomeRecent.invalidate(),
     ]);
@@ -277,12 +303,13 @@ export function HomeGigsManager() {
         <CardHeader>
           <CardTitle>Home “Recent Gigs” placements</CardTitle>
           <CardDescription>
-            Drag to reorder, move between lists, and save. The Home page shows 1 featured gig + 2 past gigs.
+            Drag to reorder, move between lists, and save. The Home page shows 1
+            featured gig + 2 past gigs.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex-1 min-w-[240px]">
+            <div className="min-w-[240px] flex-1">
               <Input
                 placeholder="Search gigs to add…"
                 value={search}
@@ -299,7 +326,11 @@ export function HomeGigsManager() {
                   )}
                   Save
                 </Button>
-                <Button variant="outline" onClick={handleDiscard} disabled={setPlacements.isPending}>
+                <Button
+                  variant="outline"
+                  onClick={handleDiscard}
+                  disabled={setPlacements.isPending}
+                >
                   <RotateCcw className="mr-2 h-4 w-4" />
                   Discard
                 </Button>
@@ -308,20 +339,25 @@ export function HomeGigsManager() {
           </div>
 
           {search.trim() ? (
-            <div className="space-y-2 border border-border p-3">
+            <div className="border-border space-y-2 border p-3">
               <p className="text-sm font-medium">Results</p>
               {isLoadingSearch ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="text-muted-foreground flex items-center gap-2 text-sm">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Searching…
                 </div>
               ) : searchResults?.length ? (
                 <div className="space-y-2">
                   {searchResults.slice(0, 10).map((g) => (
-                    <div key={g.id} className="flex flex-wrap items-center justify-between gap-2 border border-border bg-background px-3 py-2">
+                    <div
+                      key={g.id}
+                      className="border-border bg-background flex flex-wrap items-center justify-between gap-2 border px-3 py-2"
+                    >
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium">{g.title}</p>
-                        <p className="truncate text-sm text-muted-foreground">{g.subtitle}</p>
+                        <p className="text-muted-foreground truncate text-sm">
+                          {g.subtitle}
+                        </p>
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
@@ -341,7 +377,7 @@ export function HomeGigsManager() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No results.</p>
+                <p className="text-muted-foreground text-sm">No results.</p>
               )}
             </div>
           ) : null}
@@ -360,19 +396,24 @@ export function HomeGigsManager() {
                 <Star className="h-5 w-5 text-yellow-500" />
                 Featured (Recent Past)
               </CardTitle>
-              <CardDescription>Exactly 1 gig will be featured on the Home page.</CardDescription>
+              <CardDescription>
+                Exactly 1 gig will be featured on the Home page.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="text-muted-foreground flex items-center gap-2 text-sm">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading…
                 </div>
               ) : (
-                <SortableContext items={featuredIds} strategy={verticalListSortingStrategy}>
+                <SortableContext
+                  items={featuredIds}
+                  strategy={verticalListSortingStrategy}
+                >
                   <DroppableContainer id="featured" className="space-y-2">
                     {featuredIds.length === 0 ? (
-                      <div className="border border-dashed border-border p-4 text-sm text-muted-foreground">
+                      <div className="border-border text-muted-foreground border border-dashed p-4 text-sm">
                         Drop a gig here to set the featured slot.
                       </div>
                     ) : (
@@ -394,19 +435,24 @@ export function HomeGigsManager() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle>Past list</CardTitle>
-              <CardDescription>Home shows the first 2 items from this list.</CardDescription>
+              <CardDescription>
+                Home shows the first 2 items from this list.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="text-muted-foreground flex items-center gap-2 text-sm">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading…
                 </div>
               ) : (
-                <SortableContext items={pastIds} strategy={verticalListSortingStrategy}>
+                <SortableContext
+                  items={pastIds}
+                  strategy={verticalListSortingStrategy}
+                >
                   <DroppableContainer id="past" className="space-y-2">
                     {pastIds.length === 0 ? (
-                      <div className="border border-dashed border-border p-4 text-sm text-muted-foreground">
+                      <div className="border-border text-muted-foreground border border-dashed p-4 text-sm">
                         Drop gigs here to build the past list.
                       </div>
                     ) : (
@@ -429,4 +475,3 @@ export function HomeGigsManager() {
     </div>
   );
 }
-

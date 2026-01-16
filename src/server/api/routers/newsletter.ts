@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure, adminProcedure } from "~/server/api/trpc";
+import {
+  createTRPCRouter,
+  publicProcedure,
+  adminProcedure,
+} from "~/server/api/trpc";
 
 export const newsletterRouter = createTRPCRouter({
   subscribe: publicProcedure

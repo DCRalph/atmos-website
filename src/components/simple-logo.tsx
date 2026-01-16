@@ -4,7 +4,7 @@ import Image from "next/image";
 
 export function SimpleLogo() {
   return (
-    <div className="relative w-full aspect-4/1">
+    <div className="relative aspect-4/1 w-full">
       <Image
         src="/logo/atmos-white.png"
         alt="Atmos Logo"
@@ -15,4 +15,3 @@ export function SimpleLogo() {
     </div>
   );
 }
-

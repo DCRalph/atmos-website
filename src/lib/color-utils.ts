@@ -10,9 +10,9 @@ export function hexToHsv(hex: string): { h: number; s: number; v: number } {
   const normalized =
     cleaned.length === 3
       ? cleaned
-        .split("")
-        .map((c) => c + c)
-        .join("")
+          .split("")
+          .map((c) => c + c)
+          .join("")
       : cleaned;
 
   if (!/^[0-9a-fA-F]{6}$/.test(normalized)) {

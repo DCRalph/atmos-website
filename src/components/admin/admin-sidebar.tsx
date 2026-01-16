@@ -112,19 +112,28 @@ export function DashboardSideBar() {
       <Sidebar collapsible="icon" className="fixed top-0 left-0 border-r-0!">
         <SidebarHeader>
           <div
-            className={`transition-all duration-300 ${isCollapsed ? "" : "p-1"} flex items-center gap-2  absolute w-60`}
+            className={`transition-all duration-300 ${isCollapsed ? "" : "p-1"} absolute flex w-60 items-center gap-2`}
           >
             <div
-              className={`grid ${isCollapsed && !isMobile ? "size-8 mt-3" : "size-11"} place-items-center transition-all duration-300`}
+              className={`grid ${isCollapsed && !isMobile ? "mt-3 size-8" : "size-11"} place-items-center transition-all duration-300`}
             >
-              <Image src="/android-chrome-512x512.png" alt="Atmos Logo" width={128} height={128} />
+              <Image
+                src="/android-chrome-512x512.png"
+                alt="Atmos Logo"
+                width={128}
+                height={128}
+              />
             </div>
-            <div className={`${isCollapsed && !isMobile ? "opacity-0" : "opacity-100"} transition-opacity duration-300`}>
+            <div
+              className={`${isCollapsed && !isMobile ? "opacity-0" : "opacity-100"} transition-opacity duration-300`}
+            >
               <p className="text-lg font-bold">Atmos Admin</p>
             </div>
           </div>
         </SidebarHeader>
-        <SidebarContent className={`no-scrollbar overflow-x-hidden overflow-y-scroll! ${isCollapsed ? "mt-10" : "mt-14"}`}>
+        <SidebarContent
+          className={`no-scrollbar overflow-x-hidden overflow-y-scroll! ${isCollapsed ? "mt-10" : "mt-14"}`}
+        >
           <SidebarGroup>
             <SidebarGroupLabel>Application</SidebarGroupLabel>
             <SidebarMenu>
@@ -162,8 +171,6 @@ export function DashboardSideBar() {
             </SidebarMenu>
           </SidebarGroup>
         </SidebarContent>
-
-
       </Sidebar>
     </div>
   );

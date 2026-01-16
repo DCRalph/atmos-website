@@ -13,11 +13,10 @@ export default async function LoginPage() {
   }
 
   return (
-    <main className="relative min-h-dvh flex items-center justify-center bg-background p-4">
+    <main className="bg-background relative flex min-h-dvh items-center justify-center p-4">
       <div className="w-full max-w-md">
         <LoginForm />
       </div>
     </main>
   );
 }
-

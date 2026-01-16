@@ -1,26 +1,31 @@
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure, adminProcedure } from "~/server/api/trpc";
-
+import {
+  createTRPCRouter,
+  publicProcedure,
+  adminProcedure,
+} from "~/server/api/trpc";
 
 export const contactRouter = createTRPCRouter({
   getAll: adminProcedure
     .input(
-      z.object({
-        search: z.string().optional(),
-      }).optional(),
+      z
+        .object({
+          search: z.string().optional(),
+        })
+        .optional(),
     )
     .query(async ({ ctx, input }) => {
       const search = input?.search?.toLowerCase().trim();
 
       const where = search
         ? {
-          OR: [
-            { name: { contains: search, mode: "insensitive" as const } },
-            { email: { contains: search, mode: "insensitive" as const } },
-            { subject: { contains: search, mode: "insensitive" as const } },
-            { message: { contains: search, mode: "insensitive" as const } },
-          ],
-        }
+            OR: [
+              { name: { contains: search, mode: "insensitive" as const } },
+              { email: { contains: search, mode: "insensitive" as const } },
+              { subject: { contains: search, mode: "insensitive" as const } },
+              { message: { contains: search, mode: "insensitive" as const } },
+            ],
+          }
         : undefined;
 
       return ctx.db.contactSubmission.findMany({
@@ -65,4 +70,3 @@ export const contactRouter = createTRPCRouter({
       });
     }),
 });
-

@@ -25,33 +25,29 @@ export function AdminSection({
 
   return (
     // <div className="p-8">
-      <div className={`p-8`}>
-        {backLink && (
-          <div className="mb-4">
-            <Button variant="outline" asChild>
-              <Link href={backLink.href}>{backLink.label}</Link>
-            </Button>
-          </div>
-        )}
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <h1 className="text-4xl font-bold text-foreground">{title}</h1>
-            {subtitle ? (
-              <p className="text-muted-foreground">{subtitle}</p>
-            ) : null}
-            {description ? (
-              <p className="text-muted-foreground">{description}</p>
-            ) : null}
-          </div>
-          <div className="flex items-center gap-4">
-            {actions}
-          </div>
+    <div className={`p-8`}>
+      {backLink && (
+        <div className="mb-4">
+          <Button variant="outline" asChild>
+            <Link href={backLink.href}>{backLink.label}</Link>
+          </Button>
         </div>
-
-        {children}
+      )}
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-foreground text-4xl font-bold">{title}</h1>
+          {subtitle ? (
+            <p className="text-muted-foreground">{subtitle}</p>
+          ) : null}
+          {description ? (
+            <p className="text-muted-foreground">{description}</p>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-4">{actions}</div>
       </div>
+
+      {children}
+    </div>
     // </div>
   );
 }
-
-

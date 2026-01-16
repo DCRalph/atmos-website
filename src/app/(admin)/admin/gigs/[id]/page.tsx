@@ -10,7 +10,13 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { utcDateToLocal } from "~/lib/date-utils";
 import { Loader2, X } from "lucide-react";
@@ -43,7 +49,10 @@ export default function GigManagementPage({ params }: PageProps) {
   // Tag management state
   const [tagSearch, setTagSearch] = useState("");
   const tagSearchInputRef = useRef<HTMLInputElement>(null);
-  const [tagToRemove, setTagToRemove] = useState<{ id: string; name: string } | null>(null);
+  const [tagToRemove, setTagToRemove] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
   const [tagBeingAdded, setTagBeingAdded] = useState<string | null>(null);
 
@@ -94,9 +103,10 @@ export default function GigManagementPage({ params }: PageProps) {
       await refetch();
     },
   });
-  const { data: allTags, isLoading: isLoadingTags } = api.gigTags.getAll.useQuery(
-    tagSearch.trim() ? { search: tagSearch } : undefined,
-  );
+  const { data: allTags, isLoading: isLoadingTags } =
+    api.gigTags.getAll.useQuery(
+      tagSearch.trim() ? { search: tagSearch } : undefined,
+    );
 
   // Initialize form when gig data loads
   useEffect(() => {
@@ -104,8 +114,12 @@ export default function GigManagementPage({ params }: PageProps) {
       setTitle(gig.title);
       setSubtitle(gig.subtitle);
       setDescription(gig.description ?? "");
-      setGigStartTime(gig.gigStartTime ? utcDateToLocal(gig.gigStartTime) : undefined);
-      setGigEndTime(gig.gigEndTime ? utcDateToLocal(gig.gigEndTime) : undefined);
+      setGigStartTime(
+        gig.gigStartTime ? utcDateToLocal(gig.gigStartTime) : undefined,
+      );
+      setGigEndTime(
+        gig.gigEndTime ? utcDateToLocal(gig.gigEndTime) : undefined,
+      );
       setTicketLink(gig.ticketLink ?? "");
     }
   }, [gig, gigStartTime]);
@@ -115,7 +129,9 @@ export default function GigManagementPage({ params }: PageProps) {
     if (!gigStartTime || !gig) return;
 
     const utcGigStartTime = new Date(gigStartTime.getTime());
-    const utcGigEndTime = gigEndTime ? new Date(gigEndTime.getTime()) : undefined;
+    const utcGigEndTime = gigEndTime
+      ? new Date(gigEndTime.getTime())
+      : undefined;
 
     updateGig.mutate({
       id: gig.id,
@@ -140,11 +156,21 @@ export default function GigManagementPage({ params }: PageProps) {
   }
 
   const media = gig.media ?? [];
-  const gigTags = (gig.gigTags as Array<{ id: string; gigTag: { id: string; name: string; color: string; description: string | null } }>) || [];
+  const gigTags =
+    (gig.gigTags as Array<{
+      id: string;
+      gigTag: {
+        id: string;
+        name: string;
+        color: string;
+        description: string | null;
+      };
+    }>) || [];
   const assignedTagIds = new Set(gigTags.map((gt) => gt.gigTag.id));
 
   // Filter out already assigned tags (client-side filtering only for assigned tags)
-  const availableTags = allTags?.filter((tag) => !assignedTagIds.has(tag.id)) || [];
+  const availableTags =
+    allTags?.filter((tag) => !assignedTagIds.has(tag.id)) || [];
 
   return (
     <AdminSection
@@ -159,7 +185,11 @@ export default function GigManagementPage({ params }: PageProps) {
           <Button
             variant="destructive"
             onClick={() => {
-              if (confirm("Are you sure you want to delete this gig? This action cannot be undone.")) {
+              if (
+                confirm(
+                  "Are you sure you want to delete this gig? This action cannot be undone.",
+                )
+              ) {
                 deleteGig.mutate({ id: gig.id });
               }
             }}
@@ -176,7 +206,9 @@ export default function GigManagementPage({ params }: PageProps) {
           <Card className="lg:row-span-2">
             <CardHeader>
               <CardTitle>Core Details</CardTitle>
-              <CardDescription>Edit the basic information for this gig</CardDescription>
+              <CardDescription>
+                Edit the basic information for this gig
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -207,8 +239,9 @@ export default function GigManagementPage({ params }: PageProps) {
                     placeholder="Enter a description using Markdown formatting..."
                     rows={8}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Supports Markdown formatting (bold, italic, links, lists, etc.)
+                  <p className="text-muted-foreground text-xs">
+                    Supports Markdown formatting (bold, italic, links, lists,
+                    etc.)
                   </p>
                 </div>
                 <div className="flex flex-col gap-2">
@@ -232,7 +265,9 @@ export default function GigManagementPage({ params }: PageProps) {
           <Card>
             <CardHeader>
               <CardTitle>Date & Time</CardTitle>
-              <CardDescription>Configure when this gig starts and ends</CardDescription>
+              <CardDescription>
+                Configure when this gig starts and ends
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -266,7 +301,9 @@ export default function GigManagementPage({ params }: PageProps) {
           <Card>
             <CardHeader>
               <CardTitle>Tags</CardTitle>
-              <CardDescription>Assign tags to categorize this gig</CardDescription>
+              <CardDescription>
+                Assign tags to categorize this gig
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-2">
@@ -284,14 +321,18 @@ export default function GigManagementPage({ params }: PageProps) {
                     <span>{gt.gigTag.name}</span>
                     <button
                       onClick={() => {
-                        setTagToRemove({ id: gt.gigTag.id, name: gt.gigTag.name });
+                        setTagToRemove({
+                          id: gt.gigTag.id,
+                          name: gt.gigTag.name,
+                        });
                         setIsRemoveDialogOpen(true);
                       }}
                       disabled={removeTag.isPending}
                       className="ml-1 hover:opacity-70 disabled:opacity-50"
                       aria-label={`Remove ${gt.gigTag.name} tag`}
                     >
-                      {removeTag.isPending && tagToRemove?.id === gt.gigTag.id ? (
+                      {removeTag.isPending &&
+                      tagToRemove?.id === gt.gigTag.id ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
                         <X className="h-3 w-3" />
@@ -300,18 +341,21 @@ export default function GigManagementPage({ params }: PageProps) {
                   </div>
                 ))}
                 {gigTags.length === 0 && (
-                  <p className="text-sm text-muted-foreground">No tags assigned</p>
+                  <p className="text-muted-foreground text-sm">
+                    No tags assigned
+                  </p>
                 )}
               </div>
 
               <div className="border-t pt-4">
                 <Label className="mb-2 block">Add Tags</Label>
-                <p className="mb-3 text-xs text-muted-foreground">
-                  Search and click tags to assign them to this gig. You can assign multiple tags.
+                <p className="text-muted-foreground mb-3 text-xs">
+                  Search and click tags to assign them to this gig. You can
+                  assign multiple tags.
                 </p>
                 {availableTags.length > 0 || isLoadingTags ? (
                   <>
-                    <div className="mb-3 relative">
+                    <div className="relative mb-3">
                       <Input
                         ref={tagSearchInputRef}
                         placeholder="Search tags by name or description..."
@@ -320,15 +364,17 @@ export default function GigManagementPage({ params }: PageProps) {
                         className="w-full pr-8"
                       />
                       {isLoadingTags && (
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        <div className="absolute top-1/2 right-3 -translate-y-1/2">
+                          <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
                         </div>
                       )}
                     </div>
                     {isLoadingTags ? (
                       <div className="flex items-center justify-center py-4">
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                        <span className="ml-2 text-sm text-muted-foreground">Searching...</span>
+                        <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+                        <span className="text-muted-foreground ml-2 text-sm">
+                          Searching...
+                        </span>
                       </div>
                     ) : availableTags.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
@@ -350,7 +396,9 @@ export default function GigManagementPage({ params }: PageProps) {
                                 tagSearchInputRef.current?.focus();
                               }, 0);
                             }}
-                            disabled={assignTag.isPending && tagBeingAdded === tag.id}
+                            disabled={
+                              assignTag.isPending && tagBeingAdded === tag.id
+                            }
                             className="flex items-center gap-2"
                           >
                             {assignTag.isPending && tagBeingAdded === tag.id ? (
@@ -371,14 +419,15 @@ export default function GigManagementPage({ params }: PageProps) {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-muted-foreground text-sm">
                         No tags match your search.
                       </p>
                     )}
                   </>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
-                    All tags are assigned. Create more tags in the Gig Tags section.
+                  <p className="text-muted-foreground text-sm">
+                    All tags are assigned. Create more tags in the Gig Tags
+                    section.
                   </p>
                 )}
               </div>
@@ -390,15 +439,19 @@ export default function GigManagementPage({ params }: PageProps) {
         <Card>
           <CardHeader>
             <CardTitle>Poster</CardTitle>
-            <CardDescription>Upload a single poster image for this gig</CardDescription>
+            <CardDescription>
+              Upload a single poster image for this gig
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-sm text-muted-foreground">
+              <div className="text-muted-foreground text-sm">
                 {gig.posterFileUpload ? (
                   <span>
                     Current poster:{" "}
-                    <span className="font-medium text-foreground">{gig.posterFileUpload.name}</span>
+                    <span className="text-foreground font-medium">
+                      {gig.posterFileUpload.name}
+                    </span>
                   </span>
                 ) : (
                   <span>No poster uploaded yet.</span>
@@ -416,7 +469,8 @@ export default function GigManagementPage({ params }: PageProps) {
                     try {
                       setIsPosterUploading(true);
                       const arrayBuffer = await file.arrayBuffer();
-                      const base64 = Buffer.from(arrayBuffer).toString("base64");
+                      const base64 =
+                        Buffer.from(arrayBuffer).toString("base64");
                       const dataUrl = `data:${file.type};base64,${base64}`;
                       uploadPoster.mutate({
                         gigId: gig.id,
@@ -431,7 +485,11 @@ export default function GigManagementPage({ params }: PageProps) {
                 />
                 <Button
                   onClick={() => {
-                    (document.getElementById("gig-poster-upload") as HTMLInputElement | null)?.click();
+                    (
+                      document.getElementById(
+                        "gig-poster-upload",
+                      ) as HTMLInputElement | null
+                    )?.click();
                   }}
                   disabled={isPosterUploading || uploadPoster.isPending}
                 >
@@ -446,7 +504,11 @@ export default function GigManagementPage({ params }: PageProps) {
                   disabled={!gig.posterFileUpload || clearPoster.isPending}
                   onClick={() => {
                     if (!gig.posterFileUpload) return;
-                    if (confirm("Remove the poster? This will also soft-delete the file.")) {
+                    if (
+                      confirm(
+                        "Remove the poster? This will also soft-delete the file.",
+                      )
+                    ) {
                       clearPoster.mutate({ gigId: gig.id, deleteFile: true });
                     }
                   }}
@@ -457,7 +519,7 @@ export default function GigManagementPage({ params }: PageProps) {
             </div>
 
             {gig.posterFileUpload?.url && (
-              <div className="relative aspect-3/4 w-full max-w-md overflow-hidden rounded-lg border bg-muted">
+              <div className="bg-muted relative aspect-3/4 w-full max-w-md overflow-hidden rounded-lg border">
                 <Image
                   src={gig.posterFileUpload.url}
                   alt={`${gig.title} poster`}
@@ -474,7 +536,10 @@ export default function GigManagementPage({ params }: PageProps) {
         <Card>
           <CardHeader>
             <CardTitle>Media Management</CardTitle>
-            <CardDescription>Upload and organize photos and videos for this gig. Drag and drop to reorder.</CardDescription>
+            <CardDescription>
+              Upload and organize photos and videos for this gig. Drag and drop
+              to reorder.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <GigMediaManager
@@ -494,16 +559,22 @@ export default function GigManagementPage({ params }: PageProps) {
       </div>
 
       {/* Remove Tag Confirmation Dialog */}
-      <AlertDialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>
+      <AlertDialog
+        open={isRemoveDialogOpen}
+        onOpenChange={setIsRemoveDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove Tag</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove the tag "{tagToRemove?.name}" from this gig? This action cannot be undone.
+              Are you sure you want to remove the tag "{tagToRemove?.name}" from
+              this gig? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={removeTag.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={removeTag.isPending}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (tagToRemove && gig) {
@@ -528,8 +599,6 @@ export default function GigManagementPage({ params }: PageProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
     </AdminSection>
   );
 }
-

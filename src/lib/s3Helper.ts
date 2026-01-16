@@ -1,10 +1,16 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, type ObjectCannedACL } from '@aws-sdk/client-s3'
-import { createHash } from 'crypto'
-import { db } from '~/server/db'
-import { v4 as uuidv4 } from 'uuid'
-import { env } from '~/env'
-import { FileUploadStatus, FileCategory } from '~Prisma/client'
-import type { NextApiResponse } from 'next'
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+  type ObjectCannedACL,
+} from "@aws-sdk/client-s3";
+import { createHash } from "crypto";
+import { db } from "~/server/db";
+import { v4 as uuidv4 } from "uuid";
+import { env } from "~/env";
+import { FileUploadStatus, FileCategory } from "~Prisma/client";
+import type { NextApiResponse } from "next";
 
 export const limits = {
   /** Maximum file size 100MB */
@@ -15,41 +21,41 @@ export const limits = {
   totalSize: 500 * 1024 * 1024,
   /** Maximum concurrent uploads */
   concurrency: 5,
-}
+};
 
 type UploadBufferParams = {
-  buffer: Buffer
-  key: string
-  contentType: string
-  acl?: ObjectCannedACL
-  name?: string
-  fileType?: string
-  for?: string
-  forId?: string
+  buffer: Buffer;
+  key: string;
+  contentType: string;
+  acl?: ObjectCannedACL;
+  name?: string;
+  fileType?: string;
+  for?: string;
+  forId?: string;
   /** User ID of the user uploading the file */
-  userId?: string
+  userId?: string;
   /** Image/video width in pixels */
-  width?: number
+  width?: number;
   /** Image/video height in pixels */
-  height?: number
+  height?: number;
   /** Skip duplicate check (default: false) */
-  skipDuplicateCheck?: boolean
-}
+  skipDuplicateCheck?: boolean;
+};
 
 type UploadBufferResult = {
-  url: string
-  key: string
-  record: Awaited<ReturnType<typeof db.file_upload.create>>
+  url: string;
+  key: string;
+  record: Awaited<ReturnType<typeof db.file_upload.create>>;
   /** True if this file was already uploaded (duplicate) */
-  isDuplicate: boolean
+  isDuplicate: boolean;
   /** Warning message if duplicate was found */
-  warning?: string
-}
+  warning?: string;
+};
 
-let s3Client: S3Client | null = null
+let s3Client: S3Client | null = null;
 
 const getS3Client = () => {
-  if (s3Client) return s3Client
+  if (s3Client) return s3Client;
 
   const client = new S3Client({
     region: env.AWS_REGION,
@@ -59,46 +65,48 @@ const getS3Client = () => {
       accessKeyId: env.AWS_ACCESS_KEY_ID,
       secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
     },
-  })
-  s3Client = client
-  return client
-}
+  });
+  s3Client = client;
+  return client;
+};
 
 const calcFileSize = (buffer: Buffer) => {
-  return buffer.length
-}
+  return buffer.length;
+};
 
 /**
  * Compute SHA-256 hash of a buffer
  */
 const computeFileHash = (buffer: Buffer): string => {
-  return createHash('sha256').update(buffer).digest('hex')
-}
-
+  return createHash("sha256").update(buffer).digest("hex");
+};
 
 /**
  * Get a simple category for a MIME type
  */
 const getFileCategory = (mimeType: string): FileCategory => {
-  if (mimeType.startsWith('image/')) return FileCategory.IMAGE
-  if (mimeType.startsWith('video/')) return FileCategory.VIDEO
-  if (mimeType.startsWith('audio/')) return FileCategory.AUDIO
-  if (mimeType.includes('pdf')) return FileCategory.PDF
-  if (mimeType.includes('document') || mimeType.includes('word')) return FileCategory.DOCUMENT
-  return FileCategory.FILE
-}
+  if (mimeType.startsWith("image/")) return FileCategory.IMAGE;
+  if (mimeType.startsWith("video/")) return FileCategory.VIDEO;
+  if (mimeType.startsWith("audio/")) return FileCategory.AUDIO;
+  if (mimeType.includes("pdf")) return FileCategory.PDF;
+  if (mimeType.includes("document") || mimeType.includes("word"))
+    return FileCategory.DOCUMENT;
+  return FileCategory.FILE;
+};
 
-export const uploadBufferToS3 = async (params: UploadBufferParams): Promise<UploadBufferResult> => {
-  const client = getS3Client()
-  const { buffer, key, contentType, skipDuplicateCheck = false } = params
+export const uploadBufferToS3 = async (
+  params: UploadBufferParams,
+): Promise<UploadBufferResult> => {
+  const client = getS3Client();
+  const { buffer, key, contentType, skipDuplicateCheck = false } = params;
 
-  const fileSize = calcFileSize(buffer)
+  const fileSize = calcFileSize(buffer);
   if (fileSize > limits.fileSize) {
-    throw new Error(`File size exceeds limit of ${limits.fileSize} bytes`)
+    throw new Error(`File size exceeds limit of ${limits.fileSize} bytes`);
   }
 
   // Compute file hash for deduplication
-  const hash = computeFileHash(buffer)
+  const hash = computeFileHash(buffer);
 
   // Check if file with same hash already exists (unless skipped)
   if (!skipDuplicateCheck) {
@@ -107,7 +115,7 @@ export const uploadBufferToS3 = async (params: UploadBufferParams): Promise<Uplo
         hash,
         status: { in: [FileUploadStatus.OK] },
       },
-    })
+    });
 
     if (existingFile) {
       // Return the existing file record with a warning
@@ -117,11 +125,12 @@ export const uploadBufferToS3 = async (params: UploadBufferParams): Promise<Uplo
         record: existingFile,
         isDuplicate: true,
         warning: `File already exists: "${existingFile.name}" (uploaded ${existingFile.createdAt.toLocaleDateString()}). Skipping upload.`,
-      }
+      };
     }
   }
 
-  const acl = params.acl ?? (env.AWS_S3_ACL as ObjectCannedACL | undefined) ?? 'private'
+  const acl =
+    params.acl ?? (env.AWS_S3_ACL as ObjectCannedACL | undefined) ?? "private";
 
   const command = new PutObjectCommand({
     Bucket: env.AWS_S3_BUCKET,
@@ -129,16 +138,16 @@ export const uploadBufferToS3 = async (params: UploadBufferParams): Promise<Uplo
     Body: buffer,
     ContentType: contentType,
     ACL: acl,
-  })
+  });
 
-  await client.send(command)
+  await client.send(command);
 
-  const url = buildPublicUrl(key)
-  const recordFor = params.for ?? 'other'
-  const recordForId = params.forId ?? uuidv4()
-  const recordName = params.name ?? key.split('/').pop() ?? 'file'
-  const recordType = params.fileType ?? 'file'
-  const recordCategory = getFileCategory(contentType)
+  const url = buildPublicUrl(key);
+  const recordFor = params.for ?? "other";
+  const recordForId = params.forId ?? uuidv4();
+  const recordName = params.name ?? key.split("/").pop() ?? "file";
+  const recordType = params.fileType ?? "file";
+  const recordCategory = getFileCategory(contentType);
 
   const record = await db.file_upload.create({
     data: {
@@ -158,83 +167,83 @@ export const uploadBufferToS3 = async (params: UploadBufferParams): Promise<Uplo
       width: params.width ?? null,
       height: params.height ?? null,
     },
-  })
+  });
 
-  return { url, key, record, isDuplicate: false }
-}
+  return { url, key, record, isDuplicate: false };
+};
 
 // ============ Multi-file upload types and functions ============
 
 type MultiUploadFileInput = {
   /** Unique identifier for tracking this file in results */
-  id: string
-  buffer: Buffer
+  id: string;
+  buffer: Buffer;
   /** S3 key (path) for the file */
-  key: string
-  contentType: string
-  acl?: ObjectCannedACL
-  name?: string
-  fileType?: string
-  for?: string
-  forId?: string
+  key: string;
+  contentType: string;
+  acl?: ObjectCannedACL;
+  name?: string;
+  fileType?: string;
+  for?: string;
+  forId?: string;
   /** User ID of the user uploading the file */
-  userId?: string
-}
+  userId?: string;
+};
 
 type MultiUploadSuccess = {
-  id: string
-  status: 'success'
-  url: string
-  key: string
-  record: Awaited<ReturnType<typeof db.file_upload.create>>
+  id: string;
+  status: "success";
+  url: string;
+  key: string;
+  record: Awaited<ReturnType<typeof db.file_upload.create>>;
   /** True if this file was already uploaded (duplicate) */
-  isDuplicate: boolean
+  isDuplicate: boolean;
   /** Warning message if duplicate was found */
-  warning?: string
-}
+  warning?: string;
+};
 
 type MultiUploadFailure = {
-  id: string
-  status: 'error'
-  error: string
-  key: string
-}
+  id: string;
+  status: "error";
+  error: string;
+  key: string;
+};
 
-type MultiUploadResult = MultiUploadSuccess | MultiUploadFailure
+type MultiUploadResult = MultiUploadSuccess | MultiUploadFailure;
 
 type MultiUploadSummary = {
-  total: number
-  successful: number
-  failed: number
+  total: number;
+  successful: number;
+  failed: number;
   /** Number of files that were duplicates (already uploaded) */
-  duplicates: number
-  results: MultiUploadResult[]
-  successfulUploads: MultiUploadSuccess[]
-  failedUploads: MultiUploadFailure[]
+  duplicates: number;
+  results: MultiUploadResult[];
+  successfulUploads: MultiUploadSuccess[];
+  failedUploads: MultiUploadFailure[];
   /** Uploads that were duplicates (subset of successfulUploads) */
-  duplicateUploads: MultiUploadSuccess[]
-}
+  duplicateUploads: MultiUploadSuccess[];
+};
 
 type MultiUploadOptions = {
   /** Maximum concurrent uploads (default: limits.concurrency) */
-  concurrency?: number
+  concurrency?: number;
   /** Callback for progress updates */
   onProgress?: (progress: {
-    completed: number
-    total: number
-    current?: MultiUploadResult
-  }) => void
+    completed: number;
+    total: number;
+    current?: MultiUploadResult;
+  }) => void;
   /** Continue uploading remaining files even if some fail */
-  continueOnError?: boolean
-}
+  continueOnError?: boolean;
+};
 
 /**
  * Upload multiple files to S3 in parallel with controlled concurrency.
- * 
+ *
  * @param files - Array of files to upload
  * @param options - Upload options including concurrency limit and callbacks
  * @returns Summary of upload results including successes and failures
- * 
+ *
  * @example
  * ```ts
  * const results = await uploadMultipleFilesToS3([
@@ -248,49 +257,53 @@ type MultiUploadOptions = {
  */
 export const uploadMultipleFilesToS3 = async (
   files: MultiUploadFileInput[],
-  options: MultiUploadOptions = {}
+  options: MultiUploadOptions = {},
 ): Promise<MultiUploadSummary> => {
   const {
     concurrency = limits.concurrency,
     onProgress,
-    continueOnError = true
-  } = options
+    continueOnError = true,
+  } = options;
 
   // Validate file count
   if (files.length > limits.files) {
-    throw new Error(`Too many files. Maximum allowed: ${limits.files}, received: ${files.length}`)
+    throw new Error(
+      `Too many files. Maximum allowed: ${limits.files}, received: ${files.length}`,
+    );
   }
 
   // Validate total size
-  const totalSize = files.reduce((sum, f) => sum + f.buffer.length, 0)
+  const totalSize = files.reduce((sum, f) => sum + f.buffer.length, 0);
   if (totalSize > limits.totalSize) {
     throw new Error(
-      `Total file size exceeds limit. Maximum: ${formatBytes(limits.totalSize)}, received: ${formatBytes(totalSize)}`
-    )
+      `Total file size exceeds limit. Maximum: ${formatBytes(limits.totalSize)}, received: ${formatBytes(totalSize)}`,
+    );
   }
 
   // Validate individual file sizes
   for (const file of files) {
     if (file.buffer.length > limits.fileSize) {
       throw new Error(
-        `File "${file.name ?? file.key}" exceeds size limit. Maximum: ${formatBytes(limits.fileSize)}, received: ${formatBytes(file.buffer.length)}`
-      )
+        `File "${file.name ?? file.key}" exceeds size limit. Maximum: ${formatBytes(limits.fileSize)}, received: ${formatBytes(file.buffer.length)}`,
+      );
     }
   }
 
-  const results: MultiUploadResult[] = []
-  let completed = 0
-  let shouldStop = false
+  const results: MultiUploadResult[] = [];
+  let completed = 0;
+  let shouldStop = false;
 
   // Process files with controlled concurrency using a semaphore pattern
-  const uploadFile = async (file: MultiUploadFileInput): Promise<MultiUploadResult> => {
+  const uploadFile = async (
+    file: MultiUploadFileInput,
+  ): Promise<MultiUploadResult> => {
     if (shouldStop && !continueOnError) {
       return {
         id: file.id,
-        status: 'error',
-        error: 'Upload cancelled due to previous error',
+        status: "error",
+        error: "Upload cancelled due to previous error",
         key: file.key,
-      }
+      };
     }
 
     try {
@@ -304,59 +317,59 @@ export const uploadMultipleFilesToS3 = async (
         for: file.for,
         forId: file.forId,
         userId: file.userId,
-      })
+      });
 
       const success: MultiUploadSuccess = {
         id: file.id,
-        status: 'success',
+        status: "success",
         url: result.url,
         key: result.key,
         record: result.record,
         isDuplicate: result.isDuplicate,
         warning: result.warning,
-      }
+      };
 
-      completed++
-      onProgress?.({ completed, total: files.length, current: success })
+      completed++;
+      onProgress?.({ completed, total: files.length, current: success });
 
-      return success
+      return success;
     } catch (err) {
       const failure: MultiUploadFailure = {
         id: file.id,
-        status: 'error',
-        error: err instanceof Error ? err.message : 'Unknown error',
+        status: "error",
+        error: err instanceof Error ? err.message : "Unknown error",
         key: file.key,
-      }
+      };
 
       if (!continueOnError) {
-        shouldStop = true
+        shouldStop = true;
       }
 
-      completed++
-      onProgress?.({ completed, total: files.length, current: failure })
+      completed++;
+      onProgress?.({ completed, total: files.length, current: failure });
 
-      return failure
+      return failure;
     }
-  }
+  };
 
   // Process in batches with controlled concurrency
-  const chunks = chunkArray(files, concurrency)
+  const chunks = chunkArray(files, concurrency);
 
   for (const chunk of chunks) {
-    if (shouldStop && !continueOnError) break
+    if (shouldStop && !continueOnError) break;
 
-    const chunkResults = await Promise.all(chunk.map(uploadFile))
-    results.push(...chunkResults)
+    const chunkResults = await Promise.all(chunk.map(uploadFile));
+    results.push(...chunkResults);
   }
 
   // Separate successes and failures
   const successfulUploads = results.filter(
-    (r): r is MultiUploadSuccess => r.status === 'success'
-  )
+    (r): r is MultiUploadSuccess => r.status === "success",
+  );
   const failedUploads = results.filter(
-    (r): r is MultiUploadFailure => r.status === 'error'
-  )
-  const duplicateUploads = successfulUploads.filter((r) => r.isDuplicate)
+    (r): r is MultiUploadFailure => r.status === "error",
+  );
+  const duplicateUploads = successfulUploads.filter((r) => r.isDuplicate);
 
   return {
     total: files.length,
@@ -367,35 +380,35 @@ export const uploadMultipleFilesToS3 = async (
     successfulUploads,
     failedUploads,
     duplicateUploads,
-  }
-}
+  };
+};
 
 /**
  * Helper to chunk an array into smaller arrays
  */
 const chunkArray = <T>(arr: T[], size: number): T[][] => {
-  const chunks: T[][] = []
+  const chunks: T[][] = [];
   for (let i = 0; i < arr.length; i += size) {
-    chunks.push(arr.slice(i, i + size))
+    chunks.push(arr.slice(i, i + size));
   }
-  return chunks
-}
+  return chunks;
+};
 
 /**
  * Format bytes to human readable string
  */
 const formatBytes = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+};
 
 /**
  * Prepare files from FormData for multi-upload.
  * Extracts File objects and converts them to the format needed for uploadMultipleFilesToS3.
- * 
+ *
  * @param formData - FormData containing files
  * @param fieldName - Name of the form field containing files
  * @param keyPrefix - Prefix for S3 keys (e.g., 'uploads/gigs/')
@@ -407,104 +420,110 @@ export const prepareFilesFromFormData = async (
   fieldName: string,
   keyPrefix: string,
   options?: {
-    for?: string
-    forId?: string
-  }
+    for?: string;
+    forId?: string;
+  },
 ): Promise<MultiUploadFileInput[]> => {
-  const files = formData.getAll(fieldName) as File[]
+  const files = formData.getAll(fieldName) as File[];
 
   if (!files.length) {
-    return []
+    return [];
   }
 
-  const prepared: MultiUploadFileInput[] = []
+  const prepared: MultiUploadFileInput[] = [];
 
   for (let i = 0; i < files.length; i++) {
-    const file = files[i]
-    if (!file || !(file instanceof File)) continue
+    const file = files[i];
+    if (!file || !(file instanceof File)) continue;
 
-    const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
-    const ext = file.name.split('.').pop() ?? ''
-    const uniqueId = uuidv4()
-    const key = `${keyPrefix.replace(/\/$/, '')}/${uniqueId}${ext ? `.${ext}` : ''}`
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const ext = file.name.split(".").pop() ?? "";
+    const uniqueId = uuidv4();
+    const key = `${keyPrefix.replace(/\/$/, "")}/${uniqueId}${ext ? `.${ext}` : ""}`;
 
     prepared.push({
       id: uniqueId,
       buffer,
       key,
-      contentType: file.type || 'application/octet-stream',
+      contentType: file.type || "application/octet-stream",
       name: file.name,
       fileType: getFileCategory(file.type),
       for: options?.for,
       forId: options?.forId,
-    })
+    });
   }
 
-  return prepared
-}
-
+  return prepared;
+};
 
 export const buildPublicUrl = (key: string) => {
   if (env.AWS_S3_PUBLIC_URL_BASE) {
-    const base = env.AWS_S3_PUBLIC_URL_BASE.replace(/\/$/, '')
-    return `${base}/${key}`
+    const base = env.AWS_S3_PUBLIC_URL_BASE.replace(/\/$/, "");
+    return `${base}/${key}`;
   }
-  const bucket = env.AWS_S3_BUCKET
-  const region = env.AWS_REGION
-  return `https://${bucket}.s3.${region}.amazonaws.com/${key}`
-}
+  const bucket = env.AWS_S3_BUCKET;
+  const region = env.AWS_REGION;
+  return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+};
 
 export const streamToBuffer = async (stream: NodeJS.ReadableStream) => {
-  const chunks: Uint8Array[] = []
-  let totalLength = 0
+  const chunks: Uint8Array[] = [];
+  let totalLength = 0;
   return await new Promise<Buffer>((resolve, reject) => {
-    stream.on('data', (chunk: any) => {
-      let part: Uint8Array
-      if (typeof chunk === 'string') {
-        part = new Uint8Array(Buffer.from(chunk))
+    stream.on("data", (chunk: any) => {
+      let part: Uint8Array;
+      if (typeof chunk === "string") {
+        part = new Uint8Array(Buffer.from(chunk));
       } else if (chunk instanceof Uint8Array) {
-        part = new Uint8Array(chunk)
+        part = new Uint8Array(chunk);
       } else {
-        part = new Uint8Array(Buffer.from(chunk))
+        part = new Uint8Array(Buffer.from(chunk));
       }
-      chunks.push(part)
-      totalLength += part.length
-    })
-    stream.on('end', () => {
-      const out = new Uint8Array(totalLength)
-      let offset = 0
+      chunks.push(part);
+      totalLength += part.length;
+    });
+    stream.on("end", () => {
+      const out = new Uint8Array(totalLength);
+      let offset = 0;
       for (const c of chunks) {
-        out.set(c, offset)
-        offset += c.length
+        out.set(c, offset);
+        offset += c.length;
       }
-      resolve(Buffer.from(out))
-    })
-    stream.on('error', (err) => reject(err))
-  })
-}
+      resolve(Buffer.from(out));
+    });
+    stream.on("error", (err) => reject(err));
+  });
+};
 
 type GetObjectResult = {
-  stream: NodeJS.ReadableStream
-  contentType: string
-  contentLength?: number
-  lastModified?: string
-  eTag?: string
-}
+  stream: NodeJS.ReadableStream;
+  contentType: string;
+  contentLength?: number;
+  lastModified?: string;
+  eTag?: string;
+};
 
-export const getS3ObjectStream = async (key: string): Promise<GetObjectResult> => {
-  const client = getS3Client()
-  const res = await client.send(new GetObjectCommand({ Bucket: env.AWS_S3_BUCKET, Key: key }))
+export const getS3ObjectStream = async (
+  key: string,
+): Promise<GetObjectResult> => {
+  const client = getS3Client();
+  const res = await client.send(
+    new GetObjectCommand({ Bucket: env.AWS_S3_BUCKET, Key: key }),
+  );
 
-  const stream = res.Body as unknown as NodeJS.ReadableStream
+  const stream = res.Body as unknown as NodeJS.ReadableStream;
   return {
     stream,
-    contentType: res.ContentType ?? 'application/octet-stream',
-    contentLength: typeof res.ContentLength === 'number' ? res.ContentLength : undefined,
-    lastModified: res.LastModified ? new Date(res.LastModified).toUTCString() : undefined,
+    contentType: res.ContentType ?? "application/octet-stream",
+    contentLength:
+      typeof res.ContentLength === "number" ? res.ContentLength : undefined,
+    lastModified: res.LastModified
+      ? new Date(res.LastModified).toUTCString()
+      : undefined,
     eTag: res.ETag ?? undefined,
-  }
-}
+  };
+};
 
 export const getS3FromDbId = async (id: string): Promise<GetObjectResult> => {
   const record = await db.file_upload.findUnique({
@@ -514,66 +533,92 @@ export const getS3FromDbId = async (id: string): Promise<GetObjectResult> => {
     },
     select: {
       key: true,
-    }
-  })
-  if (!record) throw new Error('File not found')
-  return getS3ObjectStream(record.key)
-}
+    },
+  });
+  if (!record) throw new Error("File not found");
+  return getS3ObjectStream(record.key);
+};
 
 export const forwardS3ObjectToReply = async (opts: {
-  key: string
-  res: NextApiResponse
-  asAttachmentName?: string
-  cacheSeconds?: number
+  key: string;
+  res: NextApiResponse;
+  asAttachmentName?: string;
+  cacheSeconds?: number;
 }) => {
-  const { key, res, asAttachmentName, cacheSeconds } = opts
-  const { stream, contentType, contentLength, lastModified, eTag } = await getS3ObjectStream(key)
+  const { key, res, asAttachmentName, cacheSeconds } = opts;
+  const { stream, contentType, contentLength, lastModified, eTag } =
+    await getS3ObjectStream(key);
 
-  res.setHeader('Content-Type', contentType)
-  if (typeof contentLength === 'number') res.setHeader('Content-Length', String(contentLength))
-  if (lastModified) res.setHeader('Last-Modified', lastModified)
-  if (eTag) res.setHeader('ETag', eTag)
-  if (typeof cacheSeconds === 'number') res.setHeader('Cache-Control', `public, max-age=${cacheSeconds}`)
-  if (asAttachmentName) res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(asAttachmentName)}"`)
+  res.setHeader("Content-Type", contentType);
+  if (typeof contentLength === "number")
+    res.setHeader("Content-Length", String(contentLength));
+  if (lastModified) res.setHeader("Last-Modified", lastModified);
+  if (eTag) res.setHeader("ETag", eTag);
+  if (typeof cacheSeconds === "number")
+    res.setHeader("Cache-Control", `public, max-age=${cacheSeconds}`);
+  if (asAttachmentName)
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${encodeURIComponent(asAttachmentName)}"`,
+    );
 
-  return res.send(stream)
-}
+  return res.send(stream);
+};
 
-
-export const softDeleteFile = async (fileIdOrKey: { id?: string; key?: string }) => {
-  const identifier = fileIdOrKey.id ? { id: fileIdOrKey.id } : fileIdOrKey.key ? { key: fileIdOrKey.key } : null
-  if (!identifier) throw new Error('softDeleteFile requires either id or key')
+export const softDeleteFile = async (fileIdOrKey: {
+  id?: string;
+  key?: string;
+}) => {
+  const identifier = fileIdOrKey.id
+    ? { id: fileIdOrKey.id }
+    : fileIdOrKey.key
+      ? { key: fileIdOrKey.key }
+      : null;
+  if (!identifier) throw new Error("softDeleteFile requires either id or key");
 
   const record = await db.file_upload.update({
     where: identifier as any,
     data: { status: FileUploadStatus.SOFT_DELETED },
-  })
+  });
 
-  return record
-}
+  return record;
+};
 
-export const deleteFile = async (fileIdOrKey: { id?: string; key?: string }) => {
-  const identifier = fileIdOrKey.id ? { id: fileIdOrKey.id } : fileIdOrKey.key ? { key: fileIdOrKey.key } : null
-  if (!identifier) throw new Error('deleteFile requires either id or key')
+export const deleteFile = async (fileIdOrKey: {
+  id?: string;
+  key?: string;
+}) => {
+  const identifier = fileIdOrKey.id
+    ? { id: fileIdOrKey.id }
+    : fileIdOrKey.key
+      ? { key: fileIdOrKey.key }
+      : null;
+  if (!identifier) throw new Error("deleteFile requires either id or key");
 
-  const existing = await db.file_upload.findUnique({ where: identifier as any })
-  if (!existing) throw new Error('File not found')
+  const existing = await db.file_upload.findUnique({
+    where: identifier as any,
+  });
+  if (!existing) throw new Error("File not found");
 
-  const client = getS3Client()
-  await client.send(new DeleteObjectCommand({ Bucket: env.AWS_S3_BUCKET, Key: existing.key }))
+  const client = getS3Client();
+  await client.send(
+    new DeleteObjectCommand({ Bucket: env.AWS_S3_BUCKET, Key: existing.key }),
+  );
 
   const record = await db.file_upload.update({
     where: { id: existing.id },
     data: { status: FileUploadStatus.DELETED },
-  })
+  });
 
-  return record
-}
-
+  return record;
+};
 
 // ============ URL Builder Functions ============
 // Re-exported from media-url.ts for backwards compatibility
 // Import directly from '~/lib/media-url' for client-side usage
 
-export { buildMediaUrl, buildGigImageUrl, getMediaDisplayUrl } from './media-url'
-
+export {
+  buildMediaUrl,
+  buildGigImageUrl,
+  getMediaDisplayUrl,
+} from "./media-url";

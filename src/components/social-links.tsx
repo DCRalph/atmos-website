@@ -28,9 +28,7 @@ type ColorConfig =
 type Item = {
   label: string;
   href: string;
-  Icon: React.ComponentType<
-    React.SVGProps<SVGSVGElement> & { size?: number }
-  >;
+  Icon: React.ComponentType<React.SVGProps<SVGSVGElement> & { size?: number }>;
   color?: ColorConfig;
 };
 
@@ -81,17 +79,23 @@ const items: Item[] = [
   // },
 ];
 
-export function SocialLinks({ className = "", side = "left" }: { className?: string, side?: "left" | "right" }) {
+export function SocialLinks({
+  className = "",
+  side = "left",
+}: {
+  className?: string;
+  side?: "left" | "right";
+}) {
   return (
     <nav
       aria-label="Social links"
       className={cn(
-        "absolute bottom-2 sm:bottom-6 z-30 transition-all duration-300",
-        `${side === "left" ? "left-2 sm:left-6 " : "right-2 sm:right-6 "}`,
+        "absolute bottom-2 z-30 transition-all duration-300 sm:bottom-6",
+        `${side === "left" ? "left-2 sm:left-6" : "right-2 sm:right-6"}`,
         "grid grid-cols-1",
         // "sm:gap-2",
         "gap-2",
-        className
+        className,
       )}
     >
       {items.map(({ label, href, Icon, color }, index) => (
@@ -141,7 +145,11 @@ function SocialItem({
     if (typeof config === "string") return config;
     if (config.type === "gradient") {
       // Use middle color for glow
-      return config.colors[Math.floor(config.colors.length / 2)] ?? config.colors[0] ?? "#000000";
+      return (
+        config.colors[Math.floor(config.colors.length / 2)] ??
+        config.colors[0] ??
+        "#000000"
+      );
     }
     // For multi-color, use second color or first
     return config.colors[1] ?? config.colors[0] ?? "#000000";
@@ -197,7 +205,7 @@ function SocialItem({
         >
           {/* Glow only on hover */}
           <motion.div
-            className="absolute inset-0 rounded-full pointer-events-none"
+            className="pointer-events-none absolute inset-0 rounded-full"
             initial={{ opacity: 0, scale: 0.6 }}
             animate={{
               opacity: hovered ? 1 : 0,
@@ -221,14 +229,14 @@ function SocialItem({
               "size-10",
               "text-black/80 dark:text-white/80",
               "transition-colors duration-200",
-              "hover:text-black dark:hover:text-white"
+              "hover:text-black dark:hover:text-white",
             )}
           >
             <Icon
               className={cn(
                 // "size-5 sm:size-6 md:size-7",
                 "size-8",
-                "transition-all duration-200"
+                "transition-all duration-200",
               )}
             />
             <span className="sr-only">{label}</span>
@@ -236,11 +244,11 @@ function SocialItem({
         </motion.div>
       </TooltipTrigger>
 
-      <TooltipContent
-        side="left"
-      >
+      <TooltipContent side="left">
         <div className="flex flex-col leading-tight">
-          <span className={`font-semibold tracking-wide uppercase ${orbitron.className}`}>
+          <span
+            className={`font-semibold tracking-wide uppercase ${orbitron.className}`}
+          >
             {label}
           </span>
           {/* <span className="text-[9px] text-black/55">{displayUrl}</span> */}

@@ -27,7 +27,7 @@ export function ContentCard({
       className={cn(
         "flex flex-col justify-between gap-4 p-6",
         featured ? "col-span-full" : "col-span-full lg:col-span-1",
-        className
+        className,
       )}
     >
       <motion.div
@@ -36,20 +36,20 @@ export function ContentCard({
         viewport={{ once: true, amount: 0.4 }}
         transition={{ duration: 0.45, ease: "easeOut" }}
       >
-
-        <div className={`grid grid-cols-12 gap-6 `}>
+        <div className={`grid grid-cols-12 gap-6`}>
           <div
             className={cn(
               "flex h-full flex-col gap-6",
-              isSoundCloudTrack ? "col-span-full lg:col-span-7" : "col-span-full"
+              isSoundCloudTrack
+                ? "col-span-full lg:col-span-7"
+                : "col-span-full",
             )}
           >
             <div>
-
-              <h3 className="text-xl font-black uppercase leading-tight tracking-tight text-white sm:text-3xl">
+              <h3 className="text-xl leading-tight font-black tracking-tight text-white uppercase sm:text-3xl">
                 {contentItem.title}
               </h3>
-              <div className="text-xs font-bold uppercase tracking-wider text-white/60">
+              <div className="text-xs font-bold tracking-wider text-white/60 uppercase">
                 {contentItem.date.toLocaleDateString("en-US", {
                   weekday: "short",
                   month: "short",
@@ -57,23 +57,19 @@ export function ContentCard({
                   year: "numeric",
                 })}
               </div>
-
             </div>
 
             <div>
               {contentItem.dj && (
-                <h4 className="text-lg font-black uppercase leading-tight tracking-tight text-white sm:text-xl">
-
+                <h4 className="text-lg leading-tight font-black tracking-tight text-white uppercase sm:text-xl">
                   {contentItem.dj}
                 </h4>
               )}
 
-              <p className="text-white/60 text-base font-medium">
+              <p className="text-base font-medium text-white/60">
                 {contentItem.description}
               </p>
             </div>
-
-
           </div>
 
           {isSoundCloudTrack && (

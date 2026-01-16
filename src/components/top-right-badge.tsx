@@ -6,7 +6,7 @@ export function TopRightBadge({ className = "" }: { className?: string }) {
       role="button"
       tabIndex={0}
       aria-label="Atmos badge"
-      className={`relative h-10 w-32 cursor-pointer select-none outline-none transition-transform duration-200 hover:scale-125 ${className}`}
+      className={`relative h-10 w-32 cursor-pointer transition-transform duration-200 outline-none select-none hover:scale-125 ${className}`}
     >
       <Image
         src="/logo/atmos-white.png"
@@ -18,5 +18,3 @@ export function TopRightBadge({ className = "" }: { className?: string }) {
     </div>
   );
 }
-
-

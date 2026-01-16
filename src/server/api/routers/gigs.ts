@@ -1,6 +1,14 @@
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure, adminProcedure } from "~/server/api/trpc";
-import { getTodayRangeStart, getTodayRangeEnd, isGigUpcoming } from "~/lib/date-utils";
+import {
+  createTRPCRouter,
+  publicProcedure,
+  adminProcedure,
+} from "~/server/api/trpc";
+import {
+  getTodayRangeStart,
+  getTodayRangeEnd,
+  isGigUpcoming,
+} from "~/lib/date-utils";
 import { uploadBufferToS3, softDeleteFile } from "~/lib/s3Helper";
 import { FileUploadStatus, type GigMedia } from "~Prisma/client";
 import { toWebPMax } from "~/lib/sparpImage";
@@ -20,7 +28,10 @@ type FileUploadInfo = {
 
 type EnrichedMedia = GigMedia & { fileUpload: FileUploadInfo };
 
-async function getFileUploadInfoById(db: any, fileUploadId: string | null): Promise<FileUploadInfo> {
+async function getFileUploadInfoById(
+  db: any,
+  fileUploadId: string | null,
+): Promise<FileUploadInfo> {
   if (!fileUploadId) return null;
 
   const fileUpload = await db.file_upload.findUnique({
@@ -40,13 +51,18 @@ async function getFileUploadInfoById(db: any, fileUploadId: string | null): Prom
   });
 
   if (!fileUpload) return null;
-  if ([FileUploadStatus.DELETED, FileUploadStatus.SOFT_DELETED].includes(fileUpload.status)) return null;
+  if (
+    [FileUploadStatus.DELETED, FileUploadStatus.SOFT_DELETED].includes(
+      fileUpload.status,
+    )
+  )
+    return null;
 
   const uploadedBy = fileUpload.userId
     ? await db.user.findUnique({
-      where: { id: fileUpload.userId },
-      select: { id: true, name: true, email: true },
-    })
+        where: { id: fileUpload.userId },
+        select: { id: true, name: true, email: true },
+      })
     : null;
 
   return {
@@ -58,10 +74,9 @@ async function getFileUploadInfoById(db: any, fileUploadId: string | null): Prom
 /**
  * Helper to enrich multiple gigs with poster file upload data
  */
-async function enrichGigsWithPosterFileUploads<T extends { posterFileUploadId: string | null }>(
-  db: any,
-  gigs: T[],
-): Promise<(T & { posterFileUpload: FileUploadInfo })[]> {
+async function enrichGigsWithPosterFileUploads<
+  T extends { posterFileUploadId: string | null },
+>(db: any, gigs: T[]): Promise<(T & { posterFileUpload: FileUploadInfo })[]> {
   const posterFileIds = Array.from(
     new Set(
       gigs
@@ -77,7 +92,9 @@ async function enrichGigsWithPosterFileUploads<T extends { posterFileUploadId: s
   const fileUploads = await db.file_upload.findMany({
     where: {
       id: { in: posterFileIds },
-      status: { notIn: [FileUploadStatus.DELETED, FileUploadStatus.SOFT_DELETED] },
+      status: {
+        notIn: [FileUploadStatus.DELETED, FileUploadStatus.SOFT_DELETED],
+      },
     },
     select: {
       id: true,
@@ -97,25 +114,31 @@ async function enrichGigsWithPosterFileUploads<T extends { posterFileUploadId: s
     .map((f: any) => f.userId)
     .filter((id: string | null): id is string => id !== null);
 
-  const users = userIds.length > 0
-    ? await db.user.findMany({
-      where: { id: { in: userIds } },
-      select: { id: true, name: true, email: true },
-    })
-    : [];
+  const users =
+    userIds.length > 0
+      ? await db.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, name: true, email: true },
+        })
+      : [];
 
   const userMap = new Map(users.map((u: any) => [u.id, u]));
 
   const posterMap = new Map<string, FileUploadInfo>(
-    fileUploads.map((f: any) => [f.id, {
-      ...f,
-      uploadedBy: f.userId ? userMap.get(f.userId) ?? null : null,
-    }]),
+    fileUploads.map((f: any) => [
+      f.id,
+      {
+        ...f,
+        uploadedBy: f.userId ? (userMap.get(f.userId) ?? null) : null,
+      },
+    ]),
   );
 
   return gigs.map((g) => ({
     ...g,
-    posterFileUpload: g.posterFileUploadId ? posterMap.get(g.posterFileUploadId) ?? null : null,
+    posterFileUpload: g.posterFileUploadId
+      ? (posterMap.get(g.posterFileUploadId) ?? null)
+      : null,
   }));
 }
 
@@ -125,7 +148,7 @@ async function enrichGigsWithPosterFileUploads<T extends { posterFileUploadId: s
  */
 async function enrichMediaWithFileUploads<T extends GigMedia>(
   db: any,
-  media: T[]
+  media: T[],
 ): Promise<(T & { fileUpload: FileUploadInfo })[]> {
   const fileUploadIds = media
     .map((m) => m.fileUploadId)
@@ -138,7 +161,9 @@ async function enrichMediaWithFileUploads<T extends GigMedia>(
   const fileUploads = await db.file_upload.findMany({
     where: {
       id: { in: fileUploadIds },
-      status: { notIn: [FileUploadStatus.DELETED, FileUploadStatus.SOFT_DELETED] },
+      status: {
+        notIn: [FileUploadStatus.DELETED, FileUploadStatus.SOFT_DELETED],
+      },
     },
     select: {
       id: true,
@@ -159,25 +184,31 @@ async function enrichMediaWithFileUploads<T extends GigMedia>(
     .map((f: any) => f.userId)
     .filter((id: string | null): id is string => id !== null);
 
-  const users = userIds.length > 0
-    ? await db.user.findMany({
-      where: { id: { in: userIds } },
-      select: { id: true, name: true, email: true },
-    })
-    : [];
+  const users =
+    userIds.length > 0
+      ? await db.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, name: true, email: true },
+        })
+      : [];
 
   const userMap = new Map(users.map((u: any) => [u.id, u]));
 
   const fileUploadMap = new Map<string, FileUploadInfo>(
-    fileUploads.map((f: any) => [f.id, {
-      ...f,
-      uploadedBy: f.userId ? userMap.get(f.userId) ?? null : null,
-    }])
+    fileUploads.map((f: any) => [
+      f.id,
+      {
+        ...f,
+        uploadedBy: f.userId ? (userMap.get(f.userId) ?? null) : null,
+      },
+    ]),
   );
 
   return media.map((m) => ({
     ...m,
-    fileUpload: m.fileUploadId ? fileUploadMap.get(m.fileUploadId) ?? null : null,
+    fileUpload: m.fileUploadId
+      ? (fileUploadMap.get(m.fileUploadId) ?? null)
+      : null,
   }));
 }
 
@@ -186,8 +217,8 @@ async function enrichMediaWithFileUploads<T extends GigMedia>(
  */
 async function enrichGigsWithFileUploads<T extends { media: GigMedia[] }>(
   db: any,
-  gigs: T[]
-): Promise<(Omit<T, 'media'> & { media: EnrichedMedia[] })[]> {
+  gigs: T[],
+): Promise<(Omit<T, "media"> & { media: EnrichedMedia[] })[]> {
   // Collect all file upload IDs from all gigs
   const allFileUploadIds = gigs
     .flatMap((g) => g.media.map((m) => m.fileUploadId))
@@ -203,7 +234,9 @@ async function enrichGigsWithFileUploads<T extends { media: GigMedia[] }>(
   const fileUploads = await db.file_upload.findMany({
     where: {
       id: { in: allFileUploadIds },
-      status: { notIn: [FileUploadStatus.DELETED, FileUploadStatus.SOFT_DELETED] },
+      status: {
+        notIn: [FileUploadStatus.DELETED, FileUploadStatus.SOFT_DELETED],
+      },
     },
     select: {
       id: true,
@@ -224,27 +257,33 @@ async function enrichGigsWithFileUploads<T extends { media: GigMedia[] }>(
     .map((f: any) => f.userId)
     .filter((id: string | null): id is string => id !== null);
 
-  const users = userIds.length > 0
-    ? await db.user.findMany({
-      where: { id: { in: userIds } },
-      select: { id: true, name: true, email: true },
-    })
-    : [];
+  const users =
+    userIds.length > 0
+      ? await db.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, name: true, email: true },
+        })
+      : [];
 
   const userMap = new Map(users.map((u: any) => [u.id, u]));
 
   const fileUploadMap = new Map<string, FileUploadInfo>(
-    fileUploads.map((f: any) => [f.id, {
-      ...f,
-      uploadedBy: f.userId ? userMap.get(f.userId) ?? null : null,
-    }])
+    fileUploads.map((f: any) => [
+      f.id,
+      {
+        ...f,
+        uploadedBy: f.userId ? (userMap.get(f.userId) ?? null) : null,
+      },
+    ]),
   );
 
   return gigs.map((g) => ({
     ...g,
     media: g.media.map((m) => ({
       ...m,
-      fileUpload: m.fileUploadId ? fileUploadMap.get(m.fileUploadId) ?? null : null,
+      fileUpload: m.fileUploadId
+        ? (fileUploadMap.get(m.fileUploadId) ?? null)
+        : null,
     })),
   }));
 }
@@ -252,21 +291,25 @@ async function enrichGigsWithFileUploads<T extends { media: GigMedia[] }>(
 export const gigsRouter = createTRPCRouter({
   getAll: publicProcedure
     .input(
-      z.object({
-        search: z.string().optional(),
-      }).optional(),
+      z
+        .object({
+          search: z.string().optional(),
+        })
+        .optional(),
     )
     .query(async ({ ctx, input }) => {
       const search = input?.search?.toLowerCase().trim();
 
       const where = search
         ? {
-          OR: [
-            { title: { contains: search, mode: "insensitive" as const } },
-            { subtitle: { contains: search, mode: "insensitive" as const } },
-            { description: { contains: search, mode: "insensitive" as const } },
-          ],
-        }
+            OR: [
+              { title: { contains: search, mode: "insensitive" as const } },
+              { subtitle: { contains: search, mode: "insensitive" as const } },
+              {
+                description: { contains: search, mode: "insensitive" as const },
+              },
+            ],
+          }
         : undefined;
 
       const gigs = await ctx.db.gig.findMany({
@@ -277,7 +320,7 @@ export const gigsRouter = createTRPCRouter({
             orderBy: [
               { section: "asc" },
               { sortOrder: "asc" },
-              { createdAt: "asc" }
+              { createdAt: "asc" },
             ],
           },
           gigTags: {
@@ -324,7 +367,11 @@ export const gigsRouter = createTRPCRouter({
         ],
         include: {
           media: {
-            orderBy: [{ section: "asc" }, { sortOrder: "asc" }, { createdAt: "asc" }],
+            orderBy: [
+              { section: "asc" },
+              { sortOrder: "asc" },
+              { createdAt: "asc" },
+            ],
           },
           gigTags: {
             include: {
@@ -336,7 +383,10 @@ export const gigsRouter = createTRPCRouter({
       });
 
       const withMediaUploads = await enrichGigsWithFileUploads(ctx.db, gigs);
-      const enriched = await enrichGigsWithPosterFileUploads(ctx.db, withMediaUploads);
+      const enriched = await enrichGigsWithPosterFileUploads(
+        ctx.db,
+        withMediaUploads,
+      );
 
       const featuredCandidates = enriched.filter((g) => g.isFeatured);
       const featuredGig = featuredCandidates[0] ?? null;
@@ -362,7 +412,7 @@ export const gigsRouter = createTRPCRouter({
           orderBy: [
             { section: "asc" },
             { sortOrder: "asc" },
-            { createdAt: "asc" }
+            { createdAt: "asc" },
           ],
         },
         gigTags: {
@@ -378,9 +428,12 @@ export const gigsRouter = createTRPCRouter({
   }),
 
   getPast: publicProcedure
-    .input(z.object({
-      limit: z.number(),
-    }).optional()
+    .input(
+      z
+        .object({
+          limit: z.number(),
+        })
+        .optional(),
     )
     .query(async ({ ctx, input }) => {
       const now = new Date();
@@ -397,7 +450,7 @@ export const gigsRouter = createTRPCRouter({
             orderBy: [
               { section: "asc" },
               { sortOrder: "asc" },
-              { createdAt: "asc" }
+              { createdAt: "asc" },
             ],
           },
           gigTags: {
@@ -502,7 +555,7 @@ export const gigsRouter = createTRPCRouter({
           orderBy: [
             { section: "asc" },
             { sortOrder: "asc" },
-            { createdAt: "asc" }
+            { createdAt: "asc" },
           ],
         },
         gigTags: {
@@ -529,7 +582,7 @@ export const gigsRouter = createTRPCRouter({
             orderBy: [
               { section: "asc" },
               { sortOrder: "asc" },
-              { createdAt: "asc" }
+              { createdAt: "asc" },
             ],
           },
           gigTags: {
@@ -543,7 +596,10 @@ export const gigsRouter = createTRPCRouter({
       if (!gig) return null;
 
       const enrichedMedia = await enrichMediaWithFileUploads(ctx.db, gig.media);
-      const posterFileUpload = await getFileUploadInfoById(ctx.db, gig.posterFileUploadId ?? null);
+      const posterFileUpload = await getFileUploadInfoById(
+        ctx.db,
+        gig.posterFileUploadId ?? null,
+      );
       return { ...gig, media: enrichedMedia, posterFileUpload };
     }),
 
@@ -743,7 +799,9 @@ export const gigsRouter = createTRPCRouter({
               sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
             },
           });
-          const enriched = await enrichMediaWithFileUploads(ctx.db, [updatedMedia]);
+          const enriched = await enrichMediaWithFileUploads(ctx.db, [
+            updatedMedia,
+          ]);
           return enriched[0];
         }
       }
@@ -760,10 +818,12 @@ export const gigsRouter = createTRPCRouter({
    * Delete media (and optionally the S3 file)
    */
   deleteMedia: adminProcedure
-    .input(z.object({
-      id: z.string(),
-      deleteFile: z.boolean().default(false),
-    }))
+    .input(
+      z.object({
+        id: z.string(),
+        deleteFile: z.boolean().default(false),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const media = await ctx.db.gigMedia.findUnique({
         where: { id: input.id },
@@ -803,17 +863,14 @@ export const gigsRouter = createTRPCRouter({
           ctx.db.gigMedia.update({
             where: { id },
             data: { sortOrder: index },
-          })
-        )
+          }),
+        ),
       );
 
       // Return updated media for the gig
       const media = await ctx.db.gigMedia.findMany({
         where: { gigId: input.gigId },
-        orderBy: [
-          { section: "asc" },
-          { sortOrder: "asc" },
-        ],
+        orderBy: [{ section: "asc" }, { sortOrder: "asc" }],
       });
 
       return enrichMediaWithFileUploads(ctx.db, media);
@@ -832,7 +889,7 @@ export const gigsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const media = await ctx.db.gigMedia.findUnique({
-        where: { id: input.mediaId }
+        where: { id: input.mediaId },
       });
 
       if (!media) {
@@ -845,7 +902,8 @@ export const gigsRouter = createTRPCRouter({
         _max: { sortOrder: true },
       });
 
-      const newSortOrder = input.targetIndex ?? (maxOrder._max.sortOrder ?? -1) + 1;
+      const newSortOrder =
+        input.targetIndex ?? (maxOrder._max.sortOrder ?? -1) + 1;
 
       // If inserting at specific index, shift existing items
       if (input.targetIndex !== undefined) {
@@ -893,7 +951,7 @@ export const gigsRouter = createTRPCRouter({
 
       // Filter out media with deleted files
       const validMedia = enrichedMedia.filter(
-        (m) => !m.fileUpload || m.fileUpload.status === FileUploadStatus.OK
+        (m) => !m.fileUpload || m.fileUpload.status === FileUploadStatus.OK,
       );
 
       return {
@@ -947,18 +1005,19 @@ export const gigsRouter = createTRPCRouter({
         .map((f) => f.userId)
         .filter((id): id is string => id !== null);
 
-      const users = userIds.length > 0
-        ? await ctx.db.user.findMany({
-          where: { id: { in: userIds } },
-          select: { id: true, name: true, email: true },
-        })
-        : [];
+      const users =
+        userIds.length > 0
+          ? await ctx.db.user.findMany({
+              where: { id: { in: userIds } },
+              select: { id: true, name: true, email: true },
+            })
+          : [];
 
       const userMap = new Map(users.map((u) => [u.id, u]));
 
       return availableUploads.map((f) => ({
         ...f,
-        uploadedBy: f.userId ? userMap.get(f.userId) ?? null : null,
+        uploadedBy: f.userId ? (userMap.get(f.userId) ?? null) : null,
       }));
     }),
 
@@ -1016,7 +1075,7 @@ export const gigsRouter = createTRPCRouter({
         base64: z.string(),
         name: z.string(),
         mimeType: z.string(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       if (!input.mimeType.startsWith("image/")) {
@@ -1059,11 +1118,17 @@ export const gigsRouter = createTRPCRouter({
       });
 
       // Soft-delete previous poster file (if any and different)
-      if (gig.posterFileUploadId && gig.posterFileUploadId !== nextPosterFileId) {
+      if (
+        gig.posterFileUploadId &&
+        gig.posterFileUploadId !== nextPosterFileId
+      ) {
         await softDeleteFile({ id: gig.posterFileUploadId });
       }
 
-      const posterFileUpload = await getFileUploadInfoById(ctx.db, nextPosterFileId);
+      const posterFileUpload = await getFileUploadInfoById(
+        ctx.db,
+        nextPosterFileId,
+      );
       return { posterFileUpload };
     }),
 
@@ -1081,24 +1146,34 @@ export const gigsRouter = createTRPCRouter({
         select: { id: true, status: true, mimeType: true },
       });
       if (!file) throw new Error("File upload not found");
-      if (file.status !== FileUploadStatus.OK) throw new Error("File is not available");
-      if (!file.mimeType.startsWith("image/")) throw new Error("Poster must be an image");
+      if (file.status !== FileUploadStatus.OK)
+        throw new Error("File is not available");
+      if (!file.mimeType.startsWith("image/"))
+        throw new Error("Poster must be an image");
 
       await ctx.db.gig.update({
         where: { id: input.gigId },
         data: { posterFileUploadId: input.fileUploadId },
       });
 
-      if (gig.posterFileUploadId && gig.posterFileUploadId !== input.fileUploadId) {
+      if (
+        gig.posterFileUploadId &&
+        gig.posterFileUploadId !== input.fileUploadId
+      ) {
         await softDeleteFile({ id: gig.posterFileUploadId });
       }
 
-      const posterFileUpload = await getFileUploadInfoById(ctx.db, input.fileUploadId);
+      const posterFileUpload = await getFileUploadInfoById(
+        ctx.db,
+        input.fileUploadId,
+      );
       return { posterFileUpload };
     }),
 
   clearPoster: adminProcedure
-    .input(z.object({ gigId: z.string(), deleteFile: z.boolean().default(true) }))
+    .input(
+      z.object({ gigId: z.string(), deleteFile: z.boolean().default(true) }),
+    )
     .mutation(async ({ ctx, input }) => {
       const gig = await ctx.db.gig.findUnique({
         where: { id: input.gigId },

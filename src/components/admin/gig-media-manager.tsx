@@ -147,7 +147,7 @@ function SortableMediaItem({
   // For drag overlay, use simpler styling
   if (isDragOverlay) {
     return (
-      <div className="relative aspect-video w-64 overflow-hidden rounded-lg border-2 border-primary bg-muted shadow-2xl">
+      <div className="border-primary bg-muted relative aspect-video w-64 overflow-hidden rounded-lg border-2 shadow-2xl">
         {isVideo ? (
           <div className="relative h-full w-full">
             <video
@@ -170,8 +170,10 @@ function SortableMediaItem({
           />
         )}
         {item.fileUpload?.name && (
-          <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/80 to-transparent p-2">
-            <p className="truncate text-xs text-white">{item.fileUpload.name}</p>
+          <div className="absolute right-0 bottom-0 left-0 bg-linear-to-t from-black/80 to-transparent p-2">
+            <p className="truncate text-xs text-white">
+              {item.fileUpload.name}
+            </p>
           </div>
         )}
       </div>
@@ -182,24 +184,25 @@ function SortableMediaItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group relative aspect-video overflow-hidden rounded-lg border bg-muted transition-all ${isDragging
-        ? "opacity-50 scale-95 ring-2 ring-primary"
-        : "hover:ring-1 hover:ring-primary/50"
-        }`}
+      className={`group bg-muted relative aspect-video overflow-hidden rounded-lg border transition-all ${
+        isDragging
+          ? "ring-primary scale-95 opacity-50 ring-2"
+          : "hover:ring-primary/50 hover:ring-1"
+      }`}
     >
       {/* Drag Handle */}
       <div
         {...attributes}
         {...listeners}
-        className="absolute left-2 top-2 z-10 cursor-grab rounded bg-black/60 p-2 sm:p-1 transition-opacity active:cursor-grabbing"
+        className="absolute top-2 left-2 z-10 cursor-grab rounded bg-black/60 p-2 transition-opacity active:cursor-grabbing sm:p-1"
       >
         <GripVertical className="h-6 w-6 text-white sm:h-4 sm:w-4" />
       </div>
 
       {/* Placeholder - shown while loading or on error */}
       {(isLoading || hasError) && (
-        <div className="absolute inset-0 z-0 flex items-center justify-center bg-muted/50">
-          <div className="flex flex-col items-center gap-2 text-muted-foreground">
+        <div className="bg-muted/50 absolute inset-0 z-0 flex items-center justify-center">
+          <div className="text-muted-foreground flex flex-col items-center gap-2">
             <ImageIcon className="h-12 w-12" />
             <p className="text-xs">
               {hasError ? "Failed to load" : "Loading..."}
@@ -238,8 +241,9 @@ function SortableMediaItem({
             alt="Media preview"
             fill
             sizes="30vw"
-            className={`object-cover transition-opacity ${isLoading || hasError ? "opacity-0" : "opacity-100"
-              }`}
+            className={`object-cover transition-opacity ${
+              isLoading || hasError ? "opacity-0" : "opacity-100"
+            }`}
             onLoad={() => setIsLoading(false)}
             onError={() => {
               setIsLoading(false);
@@ -250,7 +254,7 @@ function SortableMediaItem({
       </button>
 
       {/* Actions */}
-      <div className="absolute right-2 top-2 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+      <div className="absolute top-2 right-2 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
         <Button
           variant="secondary"
           size="sm"
@@ -277,7 +281,7 @@ function SortableMediaItem({
 
       {/* File name tooltip */}
       {item.fileUpload?.name && (
-        <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/80 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="absolute right-0 bottom-0 left-0 bg-linear-to-t from-black/80 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
           <p className="truncate text-xs text-white">{item.fileUpload.name}</p>
         </div>
       )}
@@ -321,8 +325,9 @@ function MediaSection({
   return (
     <Card
       ref={setNodeRef}
-      className={`transition-all ${isOver ? "ring-2 ring-primary ring-offset-2" : ""
-        } ${hasChanges ? "ring-2 ring-orange-500" : ""}`}
+      className={`transition-all ${
+        isOver ? "ring-primary ring-2 ring-offset-2" : ""
+      } ${hasChanges ? "ring-2 ring-orange-500" : ""}`}
     >
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
@@ -331,7 +336,7 @@ function MediaSection({
               ★ Featured
             </span>
           ) : (
-            <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+            <span className="bg-muted text-muted-foreground rounded px-2 py-0.5 text-xs font-medium">
               Gallery
             </span>
           )}
@@ -348,10 +353,11 @@ function MediaSection({
         <SortableContext items={items} strategy={rectSortingStrategy}>
           {items.length === 0 ? (
             <div
-              className={`flex h-32 items-center justify-center rounded-lg border-2 border-dashed transition-colors ${isOver ? "border-primary bg-primary/5" : "border-muted"
-                }`}
+              className={`flex h-32 items-center justify-center rounded-lg border-2 border-dashed transition-colors ${
+                isOver ? "border-primary bg-primary/5" : "border-muted"
+              }`}
             >
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 {isOver ? "Drop here" : "Drag items here"}
               </p>
             </div>
@@ -400,10 +406,7 @@ export function GigMediaManager({
   const [activeItem, setActiveItem] = useState<MediaItem | null>(null);
 
   // Build media map
-  const mediaMap = useMemo(
-    () => new Map(media.map((m) => [m.id, m])),
-    [media]
-  );
+  const mediaMap = useMemo(() => new Map(media.map((m) => [m.id, m])), [media]);
 
   // Reset items when media prop changes (after server sync)
   useEffect(() => {
@@ -428,9 +431,7 @@ export function GigMediaManager({
   }, [items.featured, savedItems.featured]);
 
   const hasGalleryChanges = useMemo(() => {
-    return (
-      JSON.stringify(items.gallery) !== JSON.stringify(savedItems.gallery)
-    );
+    return JSON.stringify(items.gallery) !== JSON.stringify(savedItems.gallery);
   }, [items.gallery, savedItems.gallery]);
 
   const [isUploading, setIsUploading] = useState(false);
@@ -439,14 +440,18 @@ export function GigMediaManager({
   const [deleteMediaId, setDeleteMediaId] = useState<string | null>(null);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [uploadSection, setUploadSection] = useState<"featured" | "gallery">(
-    "gallery"
+    "gallery",
   );
   const [infoMedia, setInfoMedia] = useState<MediaItem | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSelectDialogOpen, setIsSelectDialogOpen] = useState(false);
-  const [selectedUploads, setSelectedUploads] = useState<Set<string>>(new Set());
-  const [selectSection, setSelectSection] = useState<"featured" | "gallery">("gallery");
+  const [selectedUploads, setSelectedUploads] = useState<Set<string>>(
+    new Set(),
+  );
+  const [selectSection, setSelectSection] = useState<"featured" | "gallery">(
+    "gallery",
+  );
   const [isAddingSelected, setIsAddingSelected] = useState(false);
   const [uploadWarnings, setUploadWarnings] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -459,7 +464,7 @@ export function GigMediaManager({
       activationConstraint: {
         distance: 8,
       },
-    })
+    }),
   );
 
   const uploadMedia = api.gigs.uploadMedia.useMutation({
@@ -479,9 +484,13 @@ export function GigMediaManager({
   const moveToSection = api.gigs.moveMediaToSection.useMutation();
 
   // Query for available uploads (only fetch when dialog is open)
-  const { data: availableUploads, isLoading: isLoadingUploads, refetch: refetchUploads } = api.gigs.getAvailableUploads.useQuery(
+  const {
+    data: availableUploads,
+    isLoading: isLoadingUploads,
+    refetch: refetchUploads,
+  } = api.gigs.getAvailableUploads.useQuery(
     { gigId },
-    { enabled: isSelectDialogOpen }
+    { enabled: isSelectDialogOpen },
   );
 
   const addExistingMedia = api.gigs.addExistingMedia.useMutation({
@@ -612,7 +621,7 @@ export function GigMediaManager({
               mediaId: id,
               targetSection: "featured",
               targetIndex: items.featured.indexOf(id),
-            })
+            }),
           );
         }
       }
@@ -625,7 +634,7 @@ export function GigMediaManager({
               mediaId: id,
               targetSection: "gallery",
               targetIndex: items.gallery.indexOf(id),
-            })
+            }),
           );
         }
       }
@@ -642,7 +651,7 @@ export function GigMediaManager({
             gigId,
             section: "featured",
             mediaIds: items.featured,
-          })
+          }),
         );
       }
 
@@ -652,7 +661,7 @@ export function GigMediaManager({
             gigId,
             section: "gallery",
             mediaIds: items.gallery,
-          })
+          }),
         );
       }
 
@@ -833,7 +842,7 @@ export function GigMediaManager({
 
         {hasChanges && (
           <>
-            <div className="h-6 w-px bg-border" />
+            <div className="bg-border h-6 w-px" />
             <Button
               onClick={handleSaveChanges}
               disabled={isSaving}
@@ -857,7 +866,7 @@ export function GigMediaManager({
           </>
         )}
 
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           {hasChanges
             ? "You have unsaved changes. Drag items to reorder, then save."
             : "Drag and drop to reorder. Move items between Featured and Gallery sections."}
@@ -872,7 +881,7 @@ export function GigMediaManager({
           </div>
           <div className="flex-1">
             <p className="font-medium text-orange-500">Unsaved Changes</p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               You have rearranged media items. Click "Save Changes" to persist
               your changes.
             </p>
@@ -953,16 +962,16 @@ export function GigMediaManager({
               {pendingFiles.map((file, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-3 rounded bg-muted/50 p-2"
+                  className="bg-muted/50 flex items-center gap-3 rounded p-2"
                 >
                   {file.type.startsWith("image/") ? (
-                    <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                    <ImageIcon className="text-muted-foreground h-5 w-5" />
                   ) : (
-                    <Film className="h-5 w-5 text-muted-foreground" />
+                    <Film className="text-muted-foreground h-5 w-5" />
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{file.name}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                       {(file.size / 1024 / 1024).toFixed(2)} MB
                     </p>
                   </div>
@@ -972,7 +981,7 @@ export function GigMediaManager({
                     className="h-6 w-6 p-0"
                     onClick={() =>
                       setPendingFiles((files) =>
-                        files.filter((_, idx) => idx !== i)
+                        files.filter((_, idx) => idx !== i),
                       )
                     }
                   >
@@ -1006,13 +1015,13 @@ export function GigMediaManager({
             {/* Upload Progress */}
             {isUploading && (
               <div className="space-y-2">
-                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div className="bg-muted h-2 overflow-hidden rounded-full">
                   <div
-                    className="h-full bg-primary transition-all"
+                    className="bg-primary h-full transition-all"
                     style={{ width: `${uploadProgress}%` }}
                   />
                 </div>
-                <p className="text-center text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-center text-sm">
                   Uploading... {Math.round(uploadProgress)}%
                 </p>
               </div>
@@ -1088,7 +1097,10 @@ export function GigMediaManager({
       </AlertDialog>
 
       {/* Media Info Dialog */}
-      <Dialog open={!!infoMedia} onOpenChange={(open) => !open && setInfoMedia(null)}>
+      <Dialog
+        open={!!infoMedia}
+        onOpenChange={(open) => !open && setInfoMedia(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1105,9 +1117,9 @@ export function GigMediaManager({
           </DialogHeader>
 
           {infoMedia && (
-            <div className="max-h-[80vh] space-y-3 overflow-y-auto overflow-x-hidden pr-1">
+            <div className="max-h-[80vh] space-y-3 overflow-x-hidden overflow-y-auto pr-1">
               {/* Preview */}
-              <div className="relative aspect-video w-full overflow-hidden rounded-lg border bg-muted">
+              <div className="bg-muted relative aspect-video w-full overflow-hidden rounded-lg border">
                 {infoMedia.type === "video" ? (
                   <video
                     src={getMediaDisplayUrl(infoMedia)}
@@ -1128,11 +1140,11 @@ export function GigMediaManager({
               {/* Info Grid */}
               <div className="grid gap-2 text-sm">
                 {/* File Name */}
-                <div className="rounded-lg bg-muted/50 p-2.5">
-                  <p className="text-xs font-medium uppercase text-muted-foreground">
+                <div className="bg-muted/50 rounded-lg p-2.5">
+                  <p className="text-muted-foreground text-xs font-medium uppercase">
                     Name
                   </p>
-                  <p className="break-all text-sm font-medium">
+                  <p className="text-sm font-medium break-all">
                     {infoMedia.fileUpload?.name ?? "Unknown"}
                   </p>
                 </div>
@@ -1141,8 +1153,8 @@ export function GigMediaManager({
                 <div className="grid grid-cols-2 gap-2">
                   {infoMedia.fileUpload?.width &&
                     infoMedia.fileUpload?.height && (
-                      <div className="rounded-lg bg-muted/50 p-2.5">
-                        <p className="text-xs font-medium uppercase text-muted-foreground">
+                      <div className="bg-muted/50 rounded-lg p-2.5">
+                        <p className="text-muted-foreground text-xs font-medium uppercase">
                           Dimensions
                         </p>
                         <p className="text-sm font-medium">
@@ -1151,8 +1163,8 @@ export function GigMediaManager({
                         </p>
                       </div>
                     )}
-                  <div className="rounded-lg bg-muted/50 p-2.5">
-                    <p className="text-xs font-medium uppercase text-muted-foreground">
+                  <div className="bg-muted/50 rounded-lg p-2.5">
+                    <p className="text-muted-foreground text-xs font-medium uppercase">
                       Size
                     </p>
                     <p className="text-sm font-medium">
@@ -1161,16 +1173,16 @@ export function GigMediaManager({
                         : "Unknown"}
                     </p>
                   </div>
-                  <div className="rounded-lg bg-muted/50 p-2.5">
-                    <p className="text-xs font-medium uppercase text-muted-foreground">
+                  <div className="bg-muted/50 rounded-lg p-2.5">
+                    <p className="text-muted-foreground text-xs font-medium uppercase">
                       Type
                     </p>
                     <p className="text-sm font-medium">
                       {infoMedia.fileUpload?.mimeType ?? infoMedia.type}
                     </p>
                   </div>
-                  <div className="rounded-lg bg-muted/50 p-2.5">
-                    <p className="text-xs font-medium uppercase text-muted-foreground">
+                  <div className="bg-muted/50 rounded-lg p-2.5">
+                    <p className="text-muted-foreground text-xs font-medium uppercase">
                       Uploaded
                     </p>
                     <p className="text-sm font-medium">
@@ -1183,26 +1195,26 @@ export function GigMediaManager({
 
                 {/* Uploaded By */}
                 {infoMedia.fileUpload?.uploadedBy && (
-                  <div className="rounded-lg bg-muted/50 p-2.5">
-                    <p className="text-xs font-medium uppercase text-muted-foreground">
+                  <div className="bg-muted/50 rounded-lg p-2.5">
+                    <p className="text-muted-foreground text-xs font-medium uppercase">
                       Uploaded By
                     </p>
                     <p className="text-sm font-medium">
                       {infoMedia.fileUpload.uploadedBy.name}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                       {infoMedia.fileUpload.uploadedBy.email}
                     </p>
                   </div>
                 )}
 
                 {/* URL */}
-                <div className="rounded-lg bg-muted/50 p-2.5">
-                  <p className="text-xs font-medium uppercase text-muted-foreground">
+                <div className="bg-muted/50 rounded-lg p-2.5">
+                  <p className="text-muted-foreground text-xs font-medium uppercase">
                     URL
                   </p>
                   <div className="mt-1 flex items-center gap-2">
-                    <code className="min-w-0 flex-1 break-all rounded bg-background px-2 py-1 text-xs">
+                    <code className="bg-background min-w-0 flex-1 rounded px-2 py-1 text-xs break-all">
                       {getMediaDisplayUrl(infoMedia)}
                     </code>
                     <Button
@@ -1238,16 +1250,16 @@ export function GigMediaManager({
 
                 {/* Section & Sort Order */}
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-lg bg-muted/50 p-2.5">
-                    <p className="text-xs font-medium uppercase text-muted-foreground">
+                  <div className="bg-muted/50 rounded-lg p-2.5">
+                    <p className="text-muted-foreground text-xs font-medium uppercase">
                       Section
                     </p>
                     <p className="text-sm font-medium capitalize">
                       {infoMedia.section}
                     </p>
                   </div>
-                  <div className="rounded-lg bg-muted/50 p-2.5">
-                    <p className="text-xs font-medium uppercase text-muted-foreground">
+                  <div className="bg-muted/50 rounded-lg p-2.5">
+                    <p className="text-muted-foreground text-xs font-medium uppercase">
                       Sort Order
                     </p>
                     <p className="text-sm font-medium">{infoMedia.sortOrder}</p>
@@ -1268,7 +1280,8 @@ export function GigMediaManager({
               Select from Uploaded Media
             </DialogTitle>
             <DialogDescription>
-              Choose media files that have already been uploaded to S3 to add to this gig
+              Choose media files that have already been uploaded to S3 to add to
+              this gig
             </DialogDescription>
           </DialogHeader>
 
@@ -1298,13 +1311,15 @@ export function GigMediaManager({
             <div className="max-h-[50vh] overflow-y-auto rounded-lg border p-2">
               {isLoadingUploads ? (
                 <div className="flex h-32 items-center justify-center">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
                 </div>
               ) : !availableUploads || availableUploads.length === 0 ? (
-                <div className="flex h-32 flex-col items-center justify-center gap-2 text-muted-foreground">
+                <div className="text-muted-foreground flex h-32 flex-col items-center justify-center gap-2">
                   <ImageIcon className="h-8 w-8" />
                   <p className="text-sm">No available media files found</p>
-                  <p className="text-xs">All uploaded media is already added to this gig</p>
+                  <p className="text-xs">
+                    All uploaded media is already added to this gig
+                  </p>
                 </div>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
@@ -1316,17 +1331,19 @@ export function GigMediaManager({
                         key={upload.id}
                         type="button"
                         onClick={() => handleToggleUploadSelection(upload.id)}
-                        className={`group relative aspect-video overflow-hidden rounded-lg border-2 bg-muted transition-all ${isSelected
-                          ? "border-primary ring-2 ring-primary/20"
-                          : "border-transparent hover:border-muted-foreground/30"
-                          }`}
+                        className={`group bg-muted relative aspect-video overflow-hidden rounded-lg border-2 transition-all ${
+                          isSelected
+                            ? "border-primary ring-primary/20 ring-2"
+                            : "hover:border-muted-foreground/30 border-transparent"
+                        }`}
                       >
                         {/* Selection indicator */}
                         <div
-                          className={`absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full transition-all ${isSelected
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-black/50 text-white opacity-0 group-hover:opacity-100"
-                            }`}
+                          className={`absolute top-2 right-2 z-10 flex h-6 w-6 items-center justify-center rounded-full transition-all ${
+                            isSelected
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-black/50 text-white opacity-0 group-hover:opacity-100"
+                          }`}
                         >
                           {isSelected ? (
                             <CheckCircle2 className="h-4 w-4" />
@@ -1361,8 +1378,10 @@ export function GigMediaManager({
                         )}
 
                         {/* File name tooltip */}
-                        <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/80 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
-                          <p className="truncate text-xs text-white">{upload.name}</p>
+                        <div className="absolute right-0 bottom-0 left-0 bg-linear-to-t from-black/80 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
+                          <p className="truncate text-xs text-white">
+                            {upload.name}
+                          </p>
                           <p className="text-xs text-white/70">
                             {formatFileSize(upload.size)}
                           </p>
@@ -1376,10 +1395,11 @@ export function GigMediaManager({
 
             {/* Selected count */}
             {selectedUploads.size > 0 && (
-              <div className="flex items-center gap-2 rounded-lg bg-primary/10 p-3">
-                <CheckCircle2 className="h-4 w-4 text-primary" />
+              <div className="bg-primary/10 flex items-center gap-2 rounded-lg p-3">
+                <CheckCircle2 className="text-primary h-4 w-4" />
                 <span className="text-sm font-medium">
-                  {selectedUploads.size} file{selectedUploads.size !== 1 ? "s" : ""} selected
+                  {selectedUploads.size} file
+                  {selectedUploads.size !== 1 ? "s" : ""} selected
                 </span>
               </div>
             )}
@@ -1408,7 +1428,10 @@ export function GigMediaManager({
                 ) : (
                   <>
                     <Check className="mr-2 h-4 w-4" />
-                    Add {selectedUploads.size > 0 ? selectedUploads.size : ""} Selected
+                    Add {selectedUploads.size > 0
+                      ? selectedUploads.size
+                      : ""}{" "}
+                    Selected
                   </>
                 )}
               </Button>
@@ -1435,7 +1458,7 @@ export function GigMediaManager({
                     ? "The following file was already uploaded and was skipped:"
                     : `The following ${uploadWarnings.length} files were already uploaded and were skipped:`}
                 </p>
-                <ul className="max-h-40 space-y-1 overflow-y-auto rounded-lg bg-muted p-3">
+                <ul className="bg-muted max-h-40 space-y-1 overflow-y-auto rounded-lg p-3">
                   {uploadWarnings.map((warning, index) => (
                     <li key={index} className="text-sm">
                       • {warning}
@@ -1443,7 +1466,8 @@ export function GigMediaManager({
                   ))}
                 </ul>
                 <p className="text-sm">
-                  You can use the "Select from Uploaded" button to add existing files to this gig.
+                  You can use the "Select from Uploaded" button to add existing
+                  files to this gig.
                 </p>
               </div>
             </AlertDialogDescription>

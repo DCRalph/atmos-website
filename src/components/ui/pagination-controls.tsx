@@ -59,7 +59,7 @@ export function PaginationControls({
   return (
     <div className={`flex items-center justify-between ${className}`}>
       {showResultsText ? (
-        <div className="text-sm text-muted-foreground">
+        <div className="text-muted-foreground text-sm">
           Showing <span className="font-medium">{startResult}</span> to{" "}
           <span className="font-medium">{endResult}</span> of{" "}
           <span className="font-medium">{total}</span> results
@@ -89,13 +89,13 @@ export function PaginationControls({
                 max={totalPages}
                 value={page}
                 onChange={handlePageInput}
-                className="w-16 h-8 text-center"
+                className="h-8 w-16 text-center"
                 disabled={isLoading}
               />
               <span>of {totalPages}</span>
             </div>
           ) : (
-            <span className="text-sm text-muted-foreground">
+            <span className="text-muted-foreground text-sm">
               Page {page} of {totalPages}
             </span>
           )}

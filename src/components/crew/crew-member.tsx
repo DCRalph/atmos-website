@@ -19,27 +19,27 @@ export function CrewMember({
   soundcloud,
 }: CrewMemberProps) {
   return (
-    <div className="group relative overflow-hidden rounded-lg border border-zinc/20 bg-black/20 p-4 sm:p-6 md:p-8 backdrop-blur-sm transition-all hover:border-zinc/50 hover:bg-black/30">
-      <div className="mb-4 sm:mb-6 aspect-square w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 relative rounded-full overflow-hidden bg-white/10 mx-auto flex items-center justify-center">
+    <div className="group border-zinc/20 hover:border-zinc/50 relative overflow-hidden rounded-lg border bg-black/20 p-4 backdrop-blur-sm transition-all hover:bg-black/30 sm:p-6 md:p-8">
+      <div className="relative mx-auto mb-4 flex aspect-square h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-white/10 sm:mb-6 sm:h-28 sm:w-28 md:h-32 md:w-32">
         <Image src={image} alt={name} fill className="object-cover" />
       </div>
 
       <div className="text-center">
-        <h3 className="mb-2 text-xl sm:text-2xl font-bold">{name}</h3>
-        <p className="mb-4 sm:mb-6 text-xs sm:text-sm font-semibold uppercase tracking-wider text-white/60">
+        <h3 className="mb-2 text-xl font-bold sm:text-2xl">{name}</h3>
+        <p className="mb-4 text-xs font-semibold tracking-wider text-white/60 uppercase sm:mb-6 sm:text-sm">
           {role}
         </p>
 
-        <div className="flex items-center justify-center gap-3 sm:gap-4 flex-wrap">
+        <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
           {instagram && (
             <Link
               href={instagram}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-white/60 hover:text-white hover:underline transition-colors flex gap-1 sm:gap-2 items-center text-sm"
+              className="flex items-center gap-1 text-sm text-white/60 transition-colors hover:text-white hover:underline sm:gap-2"
             >
               <>
-                <FaInstagram className="w-4 h-4" />
+                <FaInstagram className="h-4 w-4" />
                 <span className="hidden sm:inline">Instagram</span>
               </>
             </Link>
@@ -49,7 +49,7 @@ export function CrewMember({
               href={soundcloud}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-white/60 hover:text-white hover:underline transition-colors text-sm"
+              className="text-sm text-white/60 transition-colors hover:text-white hover:underline"
             >
               SoundCloud
             </Link>
@@ -59,4 +59,3 @@ export function CrewMember({
     </div>
   );
 }
-

@@ -12,12 +12,28 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
     <div className={`prose prose-invert max-w-none ${className ?? ""}`}>
       <ReactMarkdown
         components={{
-          h1: ({ children }) => <h1 className="text-3xl font-bold mb-4">{children}</h1>,
-          h2: ({ children }) => <h2 className="text-2xl font-bold mb-3">{children}</h2>,
-          h3: ({ children }) => <h3 className="text-xl font-bold mb-2">{children}</h3>,
-          p: ({ children }) => <p className="mb-4 text-white/90 leading-relaxed">{children}</p>,
-          ul: ({ children }) => <ul className="list-disc list-inside mb-4 space-y-2 text-white/90">{children}</ul>,
-          ol: ({ children }) => <ol className="list-decimal list-inside mb-4 space-y-2 text-white/90">{children}</ol>,
+          h1: ({ children }) => (
+            <h1 className="mb-4 text-3xl font-bold">{children}</h1>
+          ),
+          h2: ({ children }) => (
+            <h2 className="mb-3 text-2xl font-bold">{children}</h2>
+          ),
+          h3: ({ children }) => (
+            <h3 className="mb-2 text-xl font-bold">{children}</h3>
+          ),
+          p: ({ children }) => (
+            <p className="mb-4 leading-relaxed text-white/90">{children}</p>
+          ),
+          ul: ({ children }) => (
+            <ul className="mb-4 list-inside list-disc space-y-2 text-white/90">
+              {children}
+            </ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="mb-4 list-inside list-decimal space-y-2 text-white/90">
+              {children}
+            </ol>
+          ),
           li: ({ children }) => <li className="ml-4">{children}</li>,
           a: ({ href, children }) => (
             <a
@@ -29,13 +45,17 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
               {children}
             </a>
           ),
-          strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
+          strong: ({ children }) => (
+            <strong className="font-bold text-white">{children}</strong>
+          ),
           em: ({ children }) => <em className="italic">{children}</em>,
           code: ({ children }) => (
-            <code className="bg-white/10 px-1.5 py-0.5 rounded text-sm font-mono">{children}</code>
+            <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-sm">
+              {children}
+            </code>
           ),
           blockquote: ({ children }) => (
-            <blockquote className="border-l-4 border-white/30 pl-4 italic text-white/80 my-4">
+            <blockquote className="my-4 border-l-4 border-white/30 pl-4 text-white/80 italic">
               {children}
             </blockquote>
           ),
@@ -46,4 +66,3 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
     </div>
   );
 }
-

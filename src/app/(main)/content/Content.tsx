@@ -6,12 +6,10 @@ import { ContentItem } from "~/components/content/content-item";
 import { api } from "~/trpc/react";
 import { AnimatedPageHeader } from "~/components/animated-page-header";
 
-
-
 export default function ContentPage() {
   const { data: contentItems } = api.content.getAll.useQuery();
   return (
-    <main className=" bg-black text-white">
+    <main className="bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-1.jpg" />
 
       <section className="relative z-10 min-h-dvh px-4 py-16 sm:py-24">
@@ -24,7 +22,7 @@ export default function ContentPage() {
           <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
             {!contentItems?.length ? (
               <div className="flex items-center justify-center">
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               </div>
             ) : (
               contentItems?.map((item) => (
@@ -43,16 +41,20 @@ export default function ContentPage() {
 
           {/* Featured Video Section */}
           <div className="mt-12 sm:mt-16">
-            <h2 className="mb-6 sm:mb-8 text-2xl sm:text-3xl font-bold tracking-wide border-b border-white/20 pb-3 sm:pb-4">
+            <h2 className="mb-6 border-b border-white/20 pb-3 text-2xl font-bold tracking-wide sm:mb-8 sm:pb-4 sm:text-3xl">
               Featured
             </h2>
             <div className="overflow-hidden rounded-lg border border-white/10 bg-white/5 backdrop-blur-sm">
-              <div className="aspect-video w-full bg-white/10 flex items-center justify-center">
-                <span className="text-white/40 text-sm sm:text-base">Video Player</span>
+              <div className="flex aspect-video w-full items-center justify-center bg-white/10">
+                <span className="text-sm text-white/40 sm:text-base">
+                  Video Player
+                </span>
               </div>
               <div className="p-4 sm:p-6">
-                <h3 className="mb-2 text-lg sm:text-xl md:text-2xl font-bold">Latest Release</h3>
-                <p className="text-sm sm:text-base text-white/60">
+                <h3 className="mb-2 text-lg font-bold sm:text-xl md:text-2xl">
+                  Latest Release
+                </h3>
+                <p className="text-sm text-white/60 sm:text-base">
                   Our most recent performance captured live
                 </p>
               </div>
@@ -63,4 +65,3 @@ export default function ContentPage() {
     </main>
   );
 }
-

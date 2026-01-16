@@ -22,9 +22,7 @@ export function NewsletterSection({ className }: { className?: string }) {
   const [subscribed, setSubscribed] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [message, setMessage] = useState<
-    | { type: "success"; text: string }
-    | { type: "error"; text: string }
-    | null
+    { type: "success"; text: string } | { type: "error"; text: string } | null
   >(null);
 
   useEffect(() => {
@@ -65,7 +63,10 @@ export function NewsletterSection({ className }: { className?: string }) {
   };
 
   return (
-    <section className={cn("relative mt-16 sm:mt-20 ", className)} aria-labelledby="newsletter-heading">
+    <section
+      className={cn("relative mt-16 sm:mt-20", className)}
+      aria-labelledby="newsletter-heading"
+    >
       <audio ref={subscribeAudioRef} preload="auto" src="/subscribe.mp3" />
       {/* <h2
         id="newsletter-heading"
@@ -74,8 +75,7 @@ export function NewsletterSection({ className }: { className?: string }) {
         Join the newsletter
       </h2> */}
 
-      <div className="mb-6 sm:mb-8 border-b-2 border-white/10 pb-3 sm:pb-4" />
-
+      <div className="mb-6 border-b-2 border-white/10 pb-3 sm:mb-8 sm:pb-4" />
 
       <AccentGlowCard className="bg-black/90 p-8 sm:p-12 lg:p-16">
         {/* Red accent bar */}
@@ -91,16 +91,18 @@ export function NewsletterSection({ className }: { className?: string }) {
             </div>
           </div> */}
 
-          <div className="absolute -z-10 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-1/3 w-2/3 blur-3xl bg-white/30" />
+          <div className="absolute top-1/2 left-1/2 -z-10 h-1/3 w-2/3 -translate-x-1/2 -translate-y-1/2 bg-white/30 blur-3xl" />
 
           <h3
-            className={`mb-4 text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight ${orbitron.className}`}
+            className={`mb-4 text-3xl font-black tracking-tight uppercase sm:text-4xl md:text-5xl ${orbitron.className}`}
           >
-            Enter the <span>atmos</span><span className="text-accent-strong italic">phere</span>
+            Enter the <span>atmos</span>
+            <span className="text-accent-strong italic">phere</span>
           </h3>
 
-          <p className="mb-8 text-base sm:text-lg text-white/70 max-w-2xl mx-auto">
-            Get 10% off merch and be the first to find out about our upcoming events.
+          <p className="mx-auto mb-8 max-w-2xl text-base text-white/70 sm:text-lg">
+            Get 10% off merch and be the first to find out about our upcoming
+            events.
           </p>
 
           {/* Subscription form or success state */}
@@ -111,20 +113,23 @@ export function NewsletterSection({ className }: { className?: string }) {
               transition={{ duration: 0.4 }}
               className="mx-auto max-w-md"
             >
-              <div className="flex flex-col items-center gap-4 rounded-none border-2 border-accent-muted/50 bg-black/60 p-8 backdrop-blur-sm">
+              <div className="border-accent-muted/50 flex flex-col items-center gap-4 rounded-none border-2 bg-black/60 p-8 backdrop-blur-sm">
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
                 >
-                  <div className="flex h-16 w-16 items-center justify-center rounded-none border-2 border-accent-muted bg-accent-muted/20">
-                    <CheckCircle2 className="h-8 w-8 text-accent-muted" />
+                  <div className="border-accent-muted bg-accent-muted/20 flex h-16 w-16 items-center justify-center rounded-none border-2">
+                    <CheckCircle2 className="text-accent-muted h-8 w-8" />
                   </div>
                 </motion.div>
                 <div className="text-center">
-                  <p className="text-lg font-black uppercase tracking-wide text-white mb-1">You're all set!</p>
+                  <p className="mb-1 text-lg font-black tracking-wide text-white uppercase">
+                    You're all set!
+                  </p>
                   <p className="text-sm text-white/60">
-                    Thanks for joining. We can't wait to share our latest updates with you.
+                    Thanks for joining. We can't wait to share our latest
+                    updates with you.
                   </p>
                 </div>
               </div>
@@ -138,7 +143,9 @@ export function NewsletterSection({ className }: { className?: string }) {
                 if (!validateForm()) return;
 
                 try {
-                  await newsletterSubscribe.mutateAsync({ email: email.trim() });
+                  await newsletterSubscribe.mutateAsync({
+                    email: email.trim(),
+                  });
                   playSubscribeSound();
                   setSubscribed(true);
                   setEmail("");
@@ -164,15 +171,15 @@ export function NewsletterSection({ className }: { className?: string }) {
                     }}
                     aria-label="Email address"
                     className={cn(
-                      "flex-1 rounded-none border-2 bg-black/60 text-white placeholder:text-white/40 focus:border-accent-muted focus:ring-accent-muted/20 h-16 text-base",
-                      "h-12"
+                      "focus:border-accent-muted focus:ring-accent-muted/20 h-16 flex-1 rounded-none border-2 bg-black/60 text-base text-white placeholder:text-white/40",
+                      "h-12",
                     )}
                   />
 
                   <button
                     type="submit"
                     disabled={newsletterSubscribe.isPending}
-                    className="h-12 rounded-none border-2 border-accent-strong bg-accent-strong px-6 text-sm font-black uppercase tracking-wider text-white transition-all hover:border-accent-muted hover:bg-accent-muted hover:shadow-[0_0_20px_var(--accent-muted)] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="border-accent-strong bg-accent-strong hover:border-accent-muted hover:bg-accent-muted h-12 rounded-none border-2 px-6 text-sm font-black tracking-wider text-white uppercase transition-all hover:shadow-[0_0_20px_var(--accent-muted)] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {newsletterSubscribe.isPending ? (
                       <span className="flex items-center justify-center gap-2">
@@ -185,7 +192,11 @@ export function NewsletterSection({ className }: { className?: string }) {
                   </button>
                 </div>
 
-                {errors.email && <p className="mt-2 text-sm text-red-500 font-mono">{errors.email}</p>}
+                {errors.email && (
+                  <p className="mt-2 font-mono text-sm text-red-500">
+                    {errors.email}
+                  </p>
+                )}
               </div>
 
               {message && (
@@ -193,8 +204,10 @@ export function NewsletterSection({ className }: { className?: string }) {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className={cn(
-                    "mt-4 text-sm text-center",
-                    message.type === "error" ? "text-red-300/90" : "text-white/70",
+                    "mt-4 text-center text-sm",
+                    message.type === "error"
+                      ? "text-red-300/90"
+                      : "text-white/70",
                   )}
                 >
                   {message.text}

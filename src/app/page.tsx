@@ -10,15 +10,20 @@ import { MobileNav } from "~/components/mobile-nav";
 import { MobileMenuToggle } from "~/components/mobile-menu-toggle";
 import { OpeningAnimation } from "~/components/opening-animation";
 
-import dynamic from 'next/dynamic';
+import dynamic from "next/dynamic";
 
-const SlideOverMenu = dynamic(() => import('~/components/SlideOverMenu'), { ssr: false });
+const SlideOverMenu = dynamic(() => import("~/components/SlideOverMenu"), {
+  ssr: false,
+});
 
 function HomeContent() {
   const isMobile = useIsMobile();
 
   return (
-    <main className="h-dvh relative overflow-y-scroll overflow-x-hidden bg-black text-white" id="home-page-main">
+    <main
+      className="relative h-dvh overflow-x-hidden overflow-y-scroll bg-black text-white"
+      id="home-page-main"
+    >
       <OpeningAnimation />
 
       <UserIndicator />
@@ -26,7 +31,7 @@ function HomeContent() {
       <HomeTopContent />
 
       {!isMobile ? (
-        <div className="w-full flex">
+        <div className="flex w-full">
           <SlideOverMenu isHomePage={true} />
           <HomeBottomContent isMobile={isMobile} key="2" />
         </div>

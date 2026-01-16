@@ -106,7 +106,7 @@ export function LiveGigPopup() {
           animate={{ y: 0 }}
           exit={{ y: "-100%" }}
           transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          className="fixed top-14 left-0 right-0 z-50 flex justify-center pointer-events-none p-4"
+          className="pointer-events-none fixed top-14 right-0 left-0 z-50 flex justify-center p-4"
         >
           <AnimatePresence mode="wait">
             {isMinimized ? (
@@ -118,44 +118,44 @@ export function LiveGigPopup() {
                 exit={{ opacity: 0, scale: 0.9, y: 10 }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
                 onClick={handleExpand}
-                className="pointer-events-auto relative w-full max-w-md overflow-hidden rounded-lg border border-red-500/50 bg-black/95 backdrop-blur-md shadow-2xl cursor-pointer hover:border-red-500/80 transition-colors"
+                className="pointer-events-auto relative w-full max-w-md cursor-pointer overflow-hidden rounded-lg border border-red-500/50 bg-black/95 shadow-2xl backdrop-blur-md transition-colors hover:border-red-500/80"
               >
                 <div className="flex items-center gap-3 px-4 py-3">
                   {/* Live Badge */}
                   <motion.div
                     animate={{ scale: [1, 1.1, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}
-                    className="flex items-center gap-1.5 rounded-full bg-red-600 px-2 py-1 shrink-0"
+                    className="flex shrink-0 items-center gap-1.5 rounded-full bg-red-600 px-2 py-1"
                   >
                     <motion.div
                       animate={{ opacity: [1, 0.5, 1] }}
                       transition={{ duration: 1.5, repeat: Infinity }}
                       className="h-1.5 w-1.5 rounded-full bg-white"
                     />
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-white">
+                    <span className="text-[10px] font-bold tracking-wider text-white uppercase">
                       Live
                     </span>
                   </motion.div>
 
                   {/* Gig Info */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold text-white truncate">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-sm font-bold text-white">
                       {liveGig.title}
                     </h3>
-                    <p className="text-xs text-white/60 truncate">
+                    <p className="truncate text-xs text-white/60">
                       {liveGig.subtitle}
                     </p>
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex shrink-0 items-center gap-2">
                     {liveGig.ticketLink && (
                       <a
                         href={liveGig.ticketLink}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-red-700 whitespace-nowrap"
+                        className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-white transition-all hover:bg-red-700"
                       >
                         Tickets
                       </a>
@@ -165,10 +165,10 @@ export function LiveGigPopup() {
                         e.stopPropagation();
                         handleExpand();
                       }}
-                      className="text-white/60 hover:text-white transition-colors p-1"
+                      className="p-1 text-white/60 transition-colors hover:text-white"
                       aria-label="Expand"
                     >
-                      <ChevronUp className="w-4 h-4" />
+                      <ChevronUp className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
@@ -181,32 +181,32 @@ export function LiveGigPopup() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className="pointer-events-auto relative w-full max-w-2xl overflow-hidden rounded-t-lg border border-red-500/50 bg-black/95 backdrop-blur-md shadow-2xl"
+                className="pointer-events-auto relative w-full max-w-2xl overflow-hidden rounded-t-lg border border-red-500/50 bg-black/95 shadow-2xl backdrop-blur-md"
               >
                 {/* Top Row: Live Badge, Buttons, and Minimize Button */}
-                <div className="flex items-center justify-between gap-4 p-2 sm:p-4 border-b border-red-500/20">
+                <div className="flex items-center justify-between gap-4 border-b border-red-500/20 p-2 sm:p-4">
                   {/* Live Badge */}
                   <motion.div
                     animate={{ scale: [1, 1.1, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}
-                    className="flex items-center gap-2 rounded-full bg-red-600 px-3 py-1.5 shrink-0"
+                    className="flex shrink-0 items-center gap-2 rounded-full bg-red-600 px-3 py-1.5"
                   >
                     <motion.div
                       animate={{ opacity: [1, 0.5, 1] }}
                       transition={{ duration: 1.5, repeat: Infinity }}
                       className="h-2 w-2 rounded-full bg-white"
                     />
-                    <span className="text-xs font-bold uppercase tracking-wider text-white">
+                    <span className="text-xs font-bold tracking-wider text-white uppercase">
                       Live
                     </span>
                   </motion.div>
 
                   {/* Buttons */}
-                  <div className="flex items-center gap-2 sm:gap-3 flex-1 justify-end">
+                  <div className="flex flex-1 items-center justify-end gap-2 sm:gap-3">
                     <Link
                       href={`/gigs/${liveGig.id}`}
                       onClick={() => handleMinimize()}
-                      className="rounded-md border-2 border-red-500/60 bg-transparent px-4 py-2 sm:px-6 sm:py-2.5 text-center text-xs sm:text-sm font-semibold text-white transition-all hover:border-red-500 hover:bg-red-500/10 whitespace-nowrap"
+                      className="rounded-md border-2 border-red-500/60 bg-transparent px-4 py-2 text-center text-xs font-semibold whitespace-nowrap text-white transition-all hover:border-red-500 hover:bg-red-500/10 sm:px-6 sm:py-2.5 sm:text-sm"
                     >
                       View Details
                     </Link>
@@ -216,17 +216,17 @@ export function LiveGigPopup() {
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={() => handleMinimize()}
-                        className="rounded-md bg-red-600 px-4 py-2 sm:px-6 sm:py-2.5 text-center text-xs sm:text-sm font-semibold text-white transition-all hover:bg-red-700 whitespace-nowrap"
+                        className="rounded-md bg-red-600 px-4 py-2 text-center text-xs font-semibold whitespace-nowrap text-white transition-all hover:bg-red-700 sm:px-6 sm:py-2.5 sm:text-sm"
                       >
                         Get Tickets
                       </a>
                     )}
                     <button
                       onClick={handleMinimize}
-                      className="text-white/60 transition-colors hover:text-white p-1 shrink-0"
+                      className="shrink-0 p-1 text-white/60 transition-colors hover:text-white"
                       aria-label="Minimize popup"
                     >
-                      <ChevronDown className="w-5 h-5" />
+                      <ChevronDown className="h-5 w-5" />
                     </button>
                   </div>
                 </div>
@@ -234,14 +234,14 @@ export function LiveGigPopup() {
                 {/* Content */}
                 <div className="flex flex-col gap-4 p-6 sm:p-8">
                   <div className="flex-1">
-                    <h2 className="mb-2 text-2xl sm:text-3xl font-bold tracking-wider text-white">
+                    <h2 className="mb-2 text-2xl font-bold tracking-wider text-white sm:text-3xl">
                       {liveGig.title}
                     </h2>
-                    <p className="mb-3 text-base sm:text-lg text-white/80">
+                    <p className="mb-3 text-base text-white/80 sm:text-lg">
                       {liveGig.subtitle}
                     </p>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                      <div className="text-sm sm:text-base text-white/60">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+                      <div className="text-sm text-white/60 sm:text-base">
                         <span className="font-semibold">Today</span>
                         <span className="ml-2">
                           •{" "}
@@ -261,4 +261,3 @@ export function LiveGigPopup() {
     </AnimatePresence>
   );
 }
-

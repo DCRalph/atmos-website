@@ -6,9 +6,29 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "~/components/ui/dialog";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 
 export function GigTagsManager() {
   const [isOpen, setIsOpen] = useState(false);
@@ -79,10 +99,13 @@ export function GigTagsManager() {
             <CardTitle>Gig Tags</CardTitle>
             <CardDescription>Manage tags for categorizing gigs</CardDescription>
           </div>
-          <Dialog open={isOpen} onOpenChange={(open) => {
-            setIsOpen(open);
-            if (!open) resetForm();
-          }}>
+          <Dialog
+            open={isOpen}
+            onOpenChange={(open) => {
+              setIsOpen(open);
+              if (!open) resetForm();
+            }}
+          >
             <DialogTrigger asChild>
               <Button onClick={() => resetForm()}>Add Tag</Button>
             </DialogTrigger>
@@ -132,11 +155,14 @@ export function GigTagsManager() {
                       required
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-muted-foreground text-xs">
                     Choose a color for this tag (used for display)
                   </p>
                 </div>
-                <Button type="submit" disabled={createTag.isPending || updateTag.isPending}>
+                <Button
+                  type="submit"
+                  disabled={createTag.isPending || updateTag.isPending}
+                >
                   {editingId ? "Update" : "Create"}
                 </Button>
               </form>
@@ -155,54 +181,63 @@ export function GigTagsManager() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={`loading-${i}`}>
-                  <TableCell colSpan={4}>
-                    <div className="h-8 w-full animate-pulse rounded bg-muted" />
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : tags?.map((tag) => (
-              <TableRow key={tag.id}>
-                <TableCell className="font-medium">{tag.name}</TableCell>
-                <TableCell>{tag.description || "-"}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="h-6 w-6 rounded border border-border"
-                      style={{ backgroundColor: tag.color }}
-                    />
-                    <span className="text-sm text-muted-foreground">{tag.color}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(tag)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        if (confirm("Are you sure you want to delete this tag?")) {
-                          deleteTag.mutate({ id: tag.id });
-                        }
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+            {isLoading
+              ? Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={`loading-${i}`}>
+                    <TableCell colSpan={4}>
+                      <div className="bg-muted h-8 w-full animate-pulse rounded" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              : tags?.map((tag) => (
+                  <TableRow key={tag.id}>
+                    <TableCell className="font-medium">{tag.name}</TableCell>
+                    <TableCell>{tag.description || "-"}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="border-border h-6 w-6 rounded border"
+                          style={{ backgroundColor: tag.color }}
+                        />
+                        <span className="text-muted-foreground text-sm">
+                          {tag.color}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(tag)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            if (
+                              confirm(
+                                "Are you sure you want to delete this tag?",
+                              )
+                            ) {
+                              deleteTag.mutate({ id: tag.id });
+                            }
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
             {!isLoading && tags?.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                <TableCell
+                  colSpan={4}
+                  className="text-muted-foreground text-center"
+                >
                   No gig tags yet
                 </TableCell>
               </TableRow>
@@ -213,4 +248,3 @@ export function GigTagsManager() {
     </Card>
   );
 }
-

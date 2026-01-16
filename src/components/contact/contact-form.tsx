@@ -33,7 +33,10 @@ export function ContactForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <Label htmlFor="name" className="mb-2 block text-sm font-semibold text-white">
+        <Label
+          htmlFor="name"
+          className="mb-2 block text-sm font-semibold text-white"
+        >
           Name
         </Label>
         <Input
@@ -41,14 +44,17 @@ export function ContactForm() {
           id="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full rounded-md border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/40 backdrop-blur-sm transition-all focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/30"
+          className="w-full rounded-md border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/40 backdrop-blur-sm transition-all focus:border-white/30 focus:ring-1 focus:ring-white/30 focus:outline-none"
           placeholder="Your name"
           required
         />
       </div>
 
       <div>
-        <Label htmlFor="email" className="mb-2 block text-sm font-semibold text-white">
+        <Label
+          htmlFor="email"
+          className="mb-2 block text-sm font-semibold text-white"
+        >
           Email
         </Label>
         <Input
@@ -56,14 +62,17 @@ export function ContactForm() {
           id="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-md border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/40 backdrop-blur-sm transition-all focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/30"
+          className="w-full rounded-md border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/40 backdrop-blur-sm transition-all focus:border-white/30 focus:ring-1 focus:ring-white/30 focus:outline-none"
           placeholder="your@email.com"
           required
         />
       </div>
 
       <div>
-        <Label htmlFor="subject" className="mb-2 block text-sm font-semibold text-white">
+        <Label
+          htmlFor="subject"
+          className="mb-2 block text-sm font-semibold text-white"
+        >
           Subject
         </Label>
         <Input
@@ -71,14 +80,17 @@ export function ContactForm() {
           id="subject"
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
-          className="w-full rounded-md border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/40 backdrop-blur-sm transition-all focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/30"
+          className="w-full rounded-md border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/40 backdrop-blur-sm transition-all focus:border-white/30 focus:ring-1 focus:ring-white/30 focus:outline-none"
           placeholder="What's this about?"
           required
         />
       </div>
 
       <div>
-        <Label htmlFor="message" className="mb-2 block text-sm font-semibold text-white">
+        <Label
+          htmlFor="message"
+          className="mb-2 block text-sm font-semibold text-white"
+        >
           Message
         </Label>
         <Textarea
@@ -86,14 +98,14 @@ export function ContactForm() {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           rows={6}
-          className="w-full rounded-md border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/40 backdrop-blur-sm transition-all focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/30"
+          className="w-full rounded-md border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/40 backdrop-blur-sm transition-all focus:border-white/30 focus:ring-1 focus:ring-white/30 focus:outline-none"
           placeholder="Tell us more..."
           required
         />
       </div>
 
       {submitted && (
-        <div className="rounded-md bg-green-500/20 border border-green-500/50 px-4 py-3 text-green-200 text-sm">
+        <div className="rounded-md border border-green-500/50 bg-green-500/20 px-4 py-3 text-sm text-green-200">
           Message sent successfully!
         </div>
       )}
@@ -108,4 +120,3 @@ export function ContactForm() {
     </form>
   );
 }
-

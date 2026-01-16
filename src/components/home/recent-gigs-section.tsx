@@ -19,13 +19,15 @@ export function RecentGigsSection() {
         Recent Gigs
       </h2> */}
 
-      <div className="mb-6 sm:mb-8 flex items-end justify-between gap-4 border-b-2 border-white/10 pb-3 sm:pb-4">
-        <h2 className={`text-2xl sm:text-3xl font-black uppercase tracking-tight md:text-4xl ${orbitron.className}`}>
+      <div className="mb-6 flex items-end justify-between gap-4 border-b-2 border-white/10 pb-3 sm:mb-8 sm:pb-4">
+        <h2
+          className={`text-2xl font-black tracking-tight uppercase sm:text-3xl md:text-4xl ${orbitron.className}`}
+        >
           Recent Gigs
         </h2>
         <Link
           href="/gigs"
-          className="group flex shrink-0 items-center gap-2 rounded-none border-2 border-white/30 bg-transparent px-4 py-2 text-xs font-black uppercase tracking-wider text-white transition-all hover:border-accent-muted hover:bg-accent-muted/10 hover:text-white"
+          className="group hover:border-accent-muted hover:bg-accent-muted/10 flex shrink-0 items-center gap-2 rounded-none border-2 border-white/30 bg-transparent px-4 py-2 text-xs font-black tracking-wider text-white uppercase transition-all hover:text-white"
         >
           View all
           <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -34,19 +36,16 @@ export function RecentGigsSection() {
 
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
         {isLoading ? (
-          <div className="flex items-center justify-center py-8 col-span-full">
-            <Loader2 className="w-6 h-6 animate-spin text-white/60" />
+          <div className="col-span-full flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-white/60" />
           </div>
         ) : featuredGig ? (
           <>
-            <PastGigHomeCard
-              featured
-              gig={featuredGig}
-            />
+            <PastGigHomeCard featured gig={featuredGig} />
 
             {/* Remaining recent gigs */}
             {pastGigs.length > 0 ? (
-              <div className="lg:col-span-3 grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-2">
+              <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:col-span-3 lg:grid-cols-2">
                 {pastGigs.map((gig: any) => (
                   <PastGigHomeCard key={gig.id} gig={gig} />
                 ))}
@@ -54,7 +53,9 @@ export function RecentGigsSection() {
             ) : null}
           </>
         ) : (
-          <p className="text-white/60 text-center py-8 col-span-full">No past gigs available.</p>
+          <p className="col-span-full py-8 text-center text-white/60">
+            No past gigs available.
+          </p>
         )}
       </div>
     </div>

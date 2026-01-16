@@ -1,20 +1,35 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure, adminProcedure } from "~/server/api/trpc";
+import {
+  createTRPCRouter,
+  publicProcedure,
+  adminProcedure,
+} from "~/server/api/trpc";
 import { FileUploadStatus, HomeGigSection } from "~Prisma/client";
 
 const HOME_RECENT_PAST_FEATURED_COUNT = 1;
 const HOME_RECENT_PAST_LIST_COUNT = 2;
 
-const isDefined = <T,>(value: T | null | undefined): value is T =>
+const isDefined = <T>(value: T | null | undefined): value is T =>
   value !== null && value !== undefined;
 
 type PosterInfo = { id: string; url: string; name: string; mimeType: string };
 
-async function enrichGigsWithPosterFileUploads<T extends { posterFileUploadId: string | null }>(
+async function enrichGigsWithPosterFileUploads<
+  T extends { posterFileUploadId: string | null },
+>(
   db: any,
   gigs: T[],
-): Promise<(T & { posterFileUpload: { id: string; url: string; name: string; mimeType: string } | null })[]> {
+): Promise<
+  (T & {
+    posterFileUpload: {
+      id: string;
+      url: string;
+      name: string;
+      mimeType: string;
+    } | null;
+  })[]
+> {
   const posterIds = Array.from(
     new Set(
       gigs
@@ -30,7 +45,9 @@ async function enrichGigsWithPosterFileUploads<T extends { posterFileUploadId: s
   const posters = (await db.file_upload.findMany({
     where: {
       id: { in: posterIds },
-      status: { notIn: [FileUploadStatus.DELETED, FileUploadStatus.SOFT_DELETED] },
+      status: {
+        notIn: [FileUploadStatus.DELETED, FileUploadStatus.SOFT_DELETED],
+      },
     },
     select: {
       id: true,
@@ -44,7 +61,9 @@ async function enrichGigsWithPosterFileUploads<T extends { posterFileUploadId: s
 
   return gigs.map((g) => ({
     ...g,
-    posterFileUpload: g.posterFileUploadId ? posterMap.get(g.posterFileUploadId) ?? null : null,
+    posterFileUpload: g.posterFileUploadId
+      ? (posterMap.get(g.posterFileUploadId) ?? null)
+      : null,
   }));
 }
 
@@ -76,31 +95,30 @@ export const homeGigsRouter = createTRPCRouter({
 
     const gigsFromPlacements = placementIds.length
       ? await ctx.db.gig.findMany({
-        where: {
-          id: { in: placementIds },
-          gigEndTime: { lt: now },
-        },
-        include: {
-          media: {
-            orderBy: [
-              { section: "asc" },
-              { sortOrder: "asc" },
-              { createdAt: "asc" },
-            ],
+          where: {
+            id: { in: placementIds },
+            gigEndTime: { lt: now },
           },
-          gigTags: {
-            include: { gigTag: true },
+          include: {
+            media: {
+              orderBy: [
+                { section: "asc" },
+                { sortOrder: "asc" },
+                { createdAt: "asc" },
+              ],
+            },
+            gigTags: {
+              include: { gigTag: true },
+            },
           },
-        },
-      })
+        })
       : [];
 
     const gigMap = new Map(gigsFromPlacements.map((g) => [g.id, g]));
 
     // Pick featured from FEATURED_RECENT_PAST placements
-    let featuredGig = featuredIds
-      .map((id) => gigMap.get(id))
-      .find(isDefined) ?? null;
+    let featuredGig =
+      featuredIds.map((id) => gigMap.get(id)).find(isDefined) ?? null;
 
     // Build past list from PAST_RECENT_LIST placements
     let pastGigs = pastIds
@@ -173,11 +191,16 @@ export const homeGigsRouter = createTRPCRouter({
     // pastGigs = pastGigs.slice(0, HOME_RECENT_PAST_LIST_COUNT);
 
     const gigsToEnrich = [featuredGig, ...pastGigs].filter(isDefined);
-    const withPosters = await enrichGigsWithPosterFileUploads(ctx.db, gigsToEnrich);
+    const withPosters = await enrichGigsWithPosterFileUploads(
+      ctx.db,
+      gigsToEnrich,
+    );
     const byId = new Map(withPosters.map((g) => [g.id, g]));
 
     return {
-      featuredGig: featuredGig ? (byId.get(featuredGig.id) ?? featuredGig) : null,
+      featuredGig: featuredGig
+        ? (byId.get(featuredGig.id) ?? featuredGig)
+        : null,
       pastGigs: pastGigs.map((g) => byId.get(g.id) ?? g),
     };
   }),
@@ -259,4 +282,3 @@ export const homeGigsRouter = createTRPCRouter({
       return { ok: true };
     }),
 });
-

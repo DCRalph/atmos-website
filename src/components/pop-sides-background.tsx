@@ -36,7 +36,7 @@ export function PopSidesBackground({
     "/home/atmos-15.jpg",
     "/home/atmos-17.jpg",
     "/home/atmos-46.jpg",
-  ]
+  ];
   const source = images?.length ? images : defaultImages;
 
   const [active, setActive] = useState<ActiveImage[]>([]);
@@ -60,7 +60,19 @@ export function PopSidesBackground({
       const yOffset = (Math.random() - 0.5) * 120; // -60..60px
 
       setActive((prev) => {
-        const next = [...prev, { id, url: nextUrl, xPercent, yPercent, widthPx, heightPx, xOffset, yOffset }];
+        const next = [
+          ...prev,
+          {
+            id,
+            url: nextUrl,
+            xPercent,
+            yPercent,
+            widthPx,
+            heightPx,
+            xOffset,
+            yOffset,
+          },
+        ];
         if (next.length > maxActive) next.shift();
         return next;
       });
@@ -96,9 +108,13 @@ export function PopSidesBackground({
               stiffness: 260,
               damping: 9,
               mass: 0.8,
-              velocity: 2
+              velocity: 2,
             }}
-            exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.3, ease: "easeInOut" } }}
+            exit={{
+              opacity: 0,
+              scale: 0.95,
+              transition: { duration: 0.3, ease: "easeInOut" },
+            }}
           >
             <Image
               src={it.url}
@@ -116,5 +132,3 @@ export function PopSidesBackground({
     </div>
   );
 }
-
-

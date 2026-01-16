@@ -6,17 +6,45 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "~/components/ui/dialog";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 import { DatePicker } from "~/components/ui/date-picker";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 
 export function ContentManager() {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [type, setType] = useState("");
-  const [linkType, setLinkType] = useState<"SOUNDCLOUD_TRACK" | "SOUNDCLOUD_PLAYLIST" | "OTHER">("OTHER");
+  const [linkType, setLinkType] = useState<
+    "SOUNDCLOUD_TRACK" | "SOUNDCLOUD_PLAYLIST" | "OTHER"
+  >("OTHER");
   const [title, setTitle] = useState("");
   const [dj, setDj] = useState("");
   const [description, setDescription] = useState("");
@@ -24,9 +52,11 @@ export function ContentManager() {
   const [link, setLink] = useState("");
   const [search, setSearch] = useState("");
 
-  const { data: contentItems, isLoading, refetch } = api.content.getAll.useQuery(
-    search ? { search } : undefined,
-  );
+  const {
+    data: contentItems,
+    isLoading,
+    refetch,
+  } = api.content.getAll.useQuery(search ? { search } : undefined);
   const createItem = api.content.create.useMutation({
     onSuccess: async () => {
       await refetch();
@@ -103,18 +133,25 @@ export function ContentManager() {
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-2">
             <CardTitle>Content Items</CardTitle>
-            <CardDescription>Manage content items (mixes, videos, playlists)</CardDescription>
+            <CardDescription>
+              Manage content items (mixes, videos, playlists)
+            </CardDescription>
           </div>
-          <Dialog open={isOpen} onOpenChange={(open) => {
-            setIsOpen(open);
-            if (!open) resetForm();
-          }}>
+          <Dialog
+            open={isOpen}
+            onOpenChange={(open) => {
+              setIsOpen(open);
+              if (!open) resetForm();
+            }}
+          >
             <DialogTrigger asChild>
               <Button onClick={() => resetForm()}>Add Content</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editingId ? "Edit" : "Add"} Content Item</DialogTitle>
+                <DialogTitle>
+                  {editingId ? "Edit" : "Add"} Content Item
+                </DialogTitle>
                 <DialogDescription>
                   {editingId ? "Update" : "Create"} a new content item
                 </DialogDescription>
@@ -168,14 +205,21 @@ export function ContentManager() {
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label>Link type</Label>
-                  <Select value={linkType} onValueChange={(v) => setLinkType(v as typeof linkType)}>
+                  <Select
+                    value={linkType}
+                    onValueChange={(v) => setLinkType(v as typeof linkType)}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select link type" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="OTHER">Other</SelectItem>
-                      <SelectItem value="SOUNDCLOUD_TRACK">SoundCloud track</SelectItem>
-                      <SelectItem value="SOUNDCLOUD_PLAYLIST">SoundCloud playlist</SelectItem>
+                      <SelectItem value="SOUNDCLOUD_TRACK">
+                        SoundCloud track
+                      </SelectItem>
+                      <SelectItem value="SOUNDCLOUD_PLAYLIST">
+                        SoundCloud playlist
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -189,7 +233,10 @@ export function ContentManager() {
                     required
                   />
                 </div>
-                <Button type="submit" disabled={createItem.isPending || updateItem.isPending}>
+                <Button
+                  type="submit"
+                  disabled={createItem.isPending || updateItem.isPending}
+                >
                   {editingId ? "Update" : "Create"}
                 </Button>
               </form>
@@ -217,47 +264,54 @@ export function ContentManager() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={`loading-${i}`}>
-                  <TableCell colSpan={5}>
-                    <div className="h-8 w-full animate-pulse rounded bg-muted" />
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : contentItems?.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>{item.type}</TableCell>
-                <TableCell>{item.title}</TableCell>
-                <TableCell>{item.dj || "-"}</TableCell>
-                <TableCell>{item.date.toLocaleDateString()}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(item)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        if (confirm("Are you sure you want to delete this item?")) {
-                          deleteItem.mutate({ id: item.id });
-                        }
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+            {isLoading
+              ? Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={`loading-${i}`}>
+                    <TableCell colSpan={5}>
+                      <div className="bg-muted h-8 w-full animate-pulse rounded" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              : contentItems?.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>{item.type}</TableCell>
+                    <TableCell>{item.title}</TableCell>
+                    <TableCell>{item.dj || "-"}</TableCell>
+                    <TableCell>{item.date.toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(item)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            if (
+                              confirm(
+                                "Are you sure you want to delete this item?",
+                              )
+                            ) {
+                              deleteItem.mutate({ id: item.id });
+                            }
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
             {!isLoading && contentItems?.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell
+                  colSpan={5}
+                  className="text-muted-foreground text-center"
+                >
                   {search ? "No content items found" : "No content items yet"}
                 </TableCell>
               </TableRow>
@@ -268,4 +322,3 @@ export function ContentManager() {
     </Card>
   );
 }
-

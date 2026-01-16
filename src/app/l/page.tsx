@@ -1,19 +1,26 @@
-"use client"
+"use client";
 
-import { motion } from "motion/react"
-import Link from "next/link"
-import { Ticket, Globe, ArrowRight, ExternalLink, Calendar, Clock } from "lucide-react"
-import Image from "next/image"
-import { cn } from "~/lib/utils"
-import { FaFacebook, FaSoundcloud, FaTwitter } from "react-icons/fa6"
-import { FaSpotify } from "react-icons/fa6"
-import { FaYoutube } from "react-icons/fa6"
-import { FaInstagram } from "react-icons/fa6"
+import { motion } from "motion/react";
+import Link from "next/link";
+import {
+  Ticket,
+  Globe,
+  ArrowRight,
+  ExternalLink,
+  Calendar,
+  Clock,
+} from "lucide-react";
+import Image from "next/image";
+import { cn } from "~/lib/utils";
+import { FaFacebook, FaSoundcloud, FaTwitter } from "react-icons/fa6";
+import { FaSpotify } from "react-icons/fa6";
+import { FaYoutube } from "react-icons/fa6";
+import { FaInstagram } from "react-icons/fa6";
 
-import { orbitron } from "~/lib/fonts"
-import { formatDate, formatTime } from "~/lib/date-utils"
+import { orbitron } from "~/lib/fonts";
+import { formatDate, formatTime } from "~/lib/date-utils";
 
-import { api } from "~/trpc/react"
+import { api } from "~/trpc/react";
 
 type SocialLink = {
   platform: string;
@@ -22,7 +29,7 @@ type SocialLink = {
   url: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   color: string;
-}
+};
 
 const bigLinks: SocialLink[] = [
   // {
@@ -41,7 +48,7 @@ const bigLinks: SocialLink[] = [
     icon: Globe,
     color: "#E4405F",
   },
-]
+];
 
 const smallLinks: SocialLink[] = [
   {
@@ -93,36 +100,39 @@ const smallLinks: SocialLink[] = [
     icon: FaTwitter,
     color: "#E4405F",
   },
-]
-
+];
 
 export default function LinksPage() {
-
-  const upcomingGigs = api.gigs.getUpcoming.useQuery()
-
+  const upcomingGigs = api.gigs.getUpcoming.useQuery();
 
   return (
-    <div className="min-h-screen bg-zinc-900 px-4 pt-4 md:pt-12 flex">
-      <div className="mx-auto max-w-xl bg-black rounded-t-xl p-6 flex flex-col gap-4 md:gap-8 grow shadow-glass">
+    <div className="flex min-h-screen bg-zinc-900 px-4 pt-4 md:pt-12">
+      <div className="shadow-glass mx-auto flex max-w-xl grow flex-col gap-4 rounded-t-xl bg-black p-6 md:gap-8">
         {/* Header */}
         <motion.div
-          className="mt-0 md:mt-8 text-center select-none"
+          className="mt-0 text-center select-none md:mt-8"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
           {/* Logo */}
           <div className="mb-6 flex justify-center">
-            <div className="relative pointer-events-none">
+            <div className="pointer-events-none relative">
               {/* <h1 className="text-6xl font-black uppercase tracking-tighter text-white sm:text-7xl">ATMOS</h1> */}
-              <div className="relative w-48 md:w-72 h-16">
-                <Image src="/logo/atmos-white.png" alt="ATMOS Logo" fill sizes="30vw" className="object-contain" />
+              <div className="relative h-16 w-48 md:w-72">
+                <Image
+                  src="/logo/atmos-white.png"
+                  alt="ATMOS Logo"
+                  fill
+                  sizes="30vw"
+                  className="object-contain"
+                />
               </div>
-              <div className="absolute -bottom-3 left-0 h-1 w-full bg-linear-to-r from-accent-muted via-accent-muted to-transparent" />
+              <div className="from-accent-muted via-accent-muted absolute -bottom-3 left-0 h-1 w-full bg-linear-to-r to-transparent" />
             </div>
           </div>
 
-          <p className="text-xs md:text-sm font-bold uppercase tracking-widest text-white/60">
+          <p className="text-xs font-bold tracking-widest text-white/60 uppercase md:text-sm">
             Connect with us everywhere
           </p>
         </motion.div>
@@ -137,22 +147,27 @@ export default function LinksPage() {
 
         {/* Footer */}
         <motion.div
-          className="text-center mt-auto select-none"
+          className="mt-auto text-center select-none"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.8 }}
         >
-          <p className="text-xs font-bold uppercase tracking-widest text-white/40">
+          <p className="text-xs font-bold tracking-widest text-white/40 uppercase">
             © 2026 ATMOS. All rights reserved.
           </p>
         </motion.div>
       </div>
     </div>
-  )
+  );
 }
 
-
-const BigLinks = ({ links, className }: { links: SocialLink[], className?: string }) => {
+const BigLinks = ({
+  links,
+  className,
+}: {
+  links: SocialLink[];
+  className?: string;
+}) => {
   return (
     <div className={cn("space-y-4", className)}>
       {links.map((link, index) => (
@@ -161,38 +176,47 @@ const BigLinks = ({ links, className }: { links: SocialLink[], className?: strin
           href={link.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="group relative block overflow-hidden border-2 border-white/10 bg-black/90 p-6 transition-all hover:border-accent-muted hover:bg-black hover:shadow-[0_0_25px_var(--accent-muted)]"
+          className="group hover:border-accent-muted relative block overflow-hidden border-2 border-white/10 bg-black/90 p-6 transition-all hover:bg-black hover:shadow-[0_0_25px_var(--accent-muted)]"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 + (index * 0.1) }}
+          transition={{ duration: 0.4, delay: 0.2 + index * 0.1 }}
         >
           {/* Red accent bar on left */}
-          <div className="absolute left-0 top-0 h-full w-1 bg-accent-muted opacity-0 transition-all group-hover:w-2 group-hover:opacity-100" />
+          <div className="bg-accent-muted absolute top-0 left-0 h-full w-1 opacity-0 transition-all group-hover:w-2 group-hover:opacity-100" />
 
           {/* Glow effect */}
           <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-            <div className="absolute inset-0 bg-linear-to-r from-accent-muted/5 via-transparent to-transparent" />
+            <div className="from-accent-muted/5 absolute inset-0 bg-linear-to-r via-transparent to-transparent" />
           </div>
 
           <div className="relative flex items-center gap-5">
             {/* Icon */}
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center border-2 border-white/20 bg-black/50 transition-all group-hover:border-accent-muted group-hover:bg-accent-muted/10">
-              <link.icon className="h-6 w-6 text-white transition-colors group-hover:text-accent-muted" />
+            <div className="group-hover:border-accent-muted group-hover:bg-accent-muted/10 flex h-14 w-14 shrink-0 items-center justify-center border-2 border-white/20 bg-black/50 transition-all">
+              <link.icon className="group-hover:text-accent-muted h-6 w-6 text-white transition-colors" />
             </div>
 
             {/* Content */}
-            <div className="flex-1 min-w-0">
-              <h3 className={cn("text-xl font-black uppercase tracking-tight text-white transition-colors group-hover:text-accent-muted sm:text-2xl", orbitron.className)}>
+            <div className="min-w-0 flex-1">
+              <h3
+                className={cn(
+                  "group-hover:text-accent-muted text-xl font-black tracking-tight text-white uppercase transition-colors sm:text-2xl",
+                  orbitron.className,
+                )}
+              >
                 {link.platform}
               </h3>
-              <p className="mt-1 text-xs font-bold uppercase tracking-wider text-white/50">{link.handle}</p>
-              <p className="mt-2 text-sm font-medium text-white/70">{link.description}</p>
+              <p className="mt-1 text-xs font-bold tracking-wider text-white/50 uppercase">
+                {link.handle}
+              </p>
+              <p className="mt-2 text-sm font-medium text-white/70">
+                {link.description}
+              </p>
             </div>
 
             {/* Arrow indicator */}
             <div className="shrink-0 transform transition-transform group-hover:translate-x-1">
               <ExternalLink
-                className="h-6 w-6 text-white/30 transition-colors group-hover:text-accent-muted"
+                className="group-hover:text-accent-muted h-6 w-6 text-white/30 transition-colors"
                 strokeWidth={2.5}
               />
             </div>
@@ -200,11 +224,16 @@ const BigLinks = ({ links, className }: { links: SocialLink[], className?: strin
         </motion.a>
       ))}
     </div>
-  )
-}
+  );
+};
 
-
-const SmallLinks = ({ links, className }: { links: SocialLink[], className?: string }) => {
+const SmallLinks = ({
+  links,
+  className,
+}: {
+  links: SocialLink[];
+  className?: string;
+}) => {
   return (
     <motion.div
       className={cn("flex flex-wrap justify-center gap-3", className)}
@@ -218,28 +247,27 @@ const SmallLinks = ({ links, className }: { links: SocialLink[], className?: str
           href={link.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="group relative flex h-16 w-16 items-center justify-center border-2 border-white/10 bg-black/90 transition-all hover:border-accent-muted hover:bg-black hover:shadow-[0_0_20px_var(--accent-muted)]"
+          className="group hover:border-accent-muted relative flex h-16 w-16 items-center justify-center border-2 border-white/10 bg-black/90 transition-all hover:bg-black hover:shadow-[0_0_20px_var(--accent-muted)]"
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3, delay: 0.1 + (index * 0.05) }}
+          transition={{ duration: 0.3, delay: 0.1 + index * 0.05 }}
           title={link.platform + (link.handle ? ` @${link.handle}` : "")}
         >
-          <link.icon className="h-7 w-7 text-white/70 transition-all group-hover:scale-110 group-hover:text-accent-muted" />
+          <link.icon className="group-hover:text-accent-muted h-7 w-7 text-white/70 transition-all group-hover:scale-110" />
         </motion.a>
       ))}
     </motion.div>
-  )
-}
-
+  );
+};
 
 type UpcomingGig = {
-  id: string
-  gigStartTime: Date
-  gigEndTime?: Date | null
-  title: string
-  subtitle: string
-  ticketLink?: string | null
-}
+  id: string;
+  gigStartTime: Date;
+  gigEndTime?: Date | null;
+  title: string;
+  subtitle: string;
+  ticketLink?: string | null;
+};
 
 const UpcomingGigLink = ({ gig }: { gig: UpcomingGig }) => {
   return (
@@ -250,40 +278,45 @@ const UpcomingGigLink = ({ gig }: { gig: UpcomingGig }) => {
       transition={{ duration: 0.5, delay: 0.15 }}
     >
       <div className="flex items-center gap-2">
-        <div className="h-px flex-1 bg-accent-muted/30" />
-        <span className="text-xs font-black uppercase tracking-widest text-accent-muted">Next Event</span>
-        <div className="h-px flex-1 bg-accent-muted/30" />
+        <div className="bg-accent-muted/30 h-px flex-1" />
+        <span className="text-accent-muted text-xs font-black tracking-widest uppercase">
+          Next Event
+        </span>
+        <div className="bg-accent-muted/30 h-px flex-1" />
       </div>
 
-      <div
-        className="group relative block overflow-hidden border-2 border-accent-muted/50 bg-black/90 p-5 transition-all hover:border-accent-muted hover:bg-black hover:shadow-[0_0_30px_var(--accent-muted)]"
-      >
+      <div className="group border-accent-muted/50 hover:border-accent-muted relative block overflow-hidden border-2 bg-black/90 p-5 transition-all hover:bg-black hover:shadow-[0_0_30px_var(--accent-muted)]">
         {/* Animated accent bar */}
-        <div className="absolute left-0 top-0 h-full w-1.5 bg-accent-muted transition-all group-hover:w-2" />
+        <div className="bg-accent-muted absolute top-0 left-0 h-full w-1.5 transition-all group-hover:w-2" />
 
         {/* Corner accent */}
-        <div className="absolute right-0 top-0 h-8 w-8 overflow-hidden">
-          <div className="absolute right-0 top-0 h-12 w-12 -translate-y-1/2 translate-x-1/2 rotate-45 bg-accent-muted/20 transition-all group-hover:bg-accent-muted/40" />
+        <div className="absolute top-0 right-0 h-8 w-8 overflow-hidden">
+          <div className="bg-accent-muted/20 group-hover:bg-accent-muted/40 absolute top-0 right-0 h-12 w-12 translate-x-1/2 -translate-y-1/2 rotate-45 transition-all" />
         </div>
 
         {/* Glow effect */}
         <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-          <div className="absolute inset-0 bg-linear-to-r from-accent-muted/10 via-transparent to-transparent" />
+          <div className="from-accent-muted/10 absolute inset-0 bg-linear-to-r via-transparent to-transparent" />
         </div>
 
         <div className="relative flex flex-col gap-4">
           {/* Date & Time */}
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-accent-muted">
+            <div className="text-accent-muted flex items-center gap-2">
               {/* <Calendar className="h-4 w-4" /> */}
-              <span className={cn("text-lg font-black uppercase tracking-tight", orbitron.className)}>
+              <span
+                className={cn(
+                  "text-lg font-black tracking-tight uppercase",
+                  orbitron.className,
+                )}
+              >
                 {formatDate(gig.gigStartTime)}
               </span>
             </div>
             {gig.gigEndTime && (
               <div className="flex items-center gap-1.5 text-white/50">
                 {/* <Clock className="h-3.5 w-3.5" /> */}
-                <span className="text-xs font-bold uppercase tracking-wider">
+                <span className="text-xs font-bold tracking-wider uppercase">
                   {formatTime(gig.gigStartTime)} - {formatTime(gig.gigEndTime)}
                 </span>
               </div>
@@ -292,19 +325,28 @@ const UpcomingGigLink = ({ gig }: { gig: UpcomingGig }) => {
 
           {/* Title & Subtitle */}
           <div>
-            <h3 className={cn("text-xl font-black uppercase leading-tight tracking-tight text-white transition-colors group-hover:text-accent-muted sm:text-2xl", orbitron.className)}>
+            <h3
+              className={cn(
+                "group-hover:text-accent-muted text-xl leading-tight font-black tracking-tight text-white uppercase transition-colors sm:text-2xl",
+                orbitron.className,
+              )}
+            >
               {gig.title}
             </h3>
-            <p className="mt-1 text-sm font-medium text-white/60">{gig.subtitle}</p>
+            <p className="mt-1 text-sm font-medium text-white/60">
+              {gig.subtitle}
+            </p>
           </div>
 
           {/* Actions */}
           <div className="flex gap-3">
             <Link
               href={`/gigs/${gig.id}`}
-              className="group/btn relative flex-1 flex items-center justify-center gap-2 overflow-hidden border-2 border-white/30 bg-transparent px-4 py-2.5 text-center text-xs font-black uppercase tracking-wider text-white transition-all duration-200 hover:border-white hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.15)]"
+              className="group/btn relative flex flex-1 items-center justify-center gap-2 overflow-hidden border-2 border-white/30 bg-transparent px-4 py-2.5 text-center text-xs font-black tracking-wider text-white uppercase transition-all duration-200 hover:border-white hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.15)]"
             >
-              <span className="relative z-10 transition-transform duration-200 group-hover/btn:-translate-x-0.5">View Details</span>
+              <span className="relative z-10 transition-transform duration-200 group-hover/btn:-translate-x-0.5">
+                View Details
+              </span>
               <ArrowRight className="relative z-10 h-3.5 w-3.5 transition-transform duration-200 group-hover/btn:translate-x-1" />
             </Link>
 
@@ -313,9 +355,9 @@ const UpcomingGigLink = ({ gig }: { gig: UpcomingGig }) => {
                 href={gig.ticketLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group/ticket relative flex items-center gap-2 overflow-hidden bg-accent-muted px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white transition-all duration-200 hover:bg-accent-muted hover:shadow-[0_0_25px_var(--accent-muted)]"
+                className="group/ticket bg-accent-muted hover:bg-accent-muted relative flex items-center gap-2 overflow-hidden px-5 py-2.5 text-xs font-black tracking-wider text-white uppercase transition-all duration-200 hover:shadow-[0_0_25px_var(--accent-muted)]"
               >
-                <Ticket className="relative z-10 h-4 w-4 transition-transform duration-200 group-hover/ticket:rotate-[-8deg] group-hover/ticket:scale-110" />
+                <Ticket className="relative z-10 h-4 w-4 transition-transform duration-200 group-hover/ticket:scale-110 group-hover/ticket:rotate-[-8deg]" />
                 <span className="relative z-10">Tickets</span>
               </Link>
             )}
@@ -323,5 +365,5 @@ const UpcomingGigLink = ({ gig }: { gig: UpcomingGig }) => {
         </div>
       </div>
     </motion.div>
-  )
-}
+  );
+};

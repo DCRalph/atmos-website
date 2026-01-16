@@ -4,8 +4,21 @@ import { useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/components/ui/table";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 import { formatDateInUserTimezone } from "~/lib/date-utils";
 import Link from "next/link";
 
@@ -45,47 +58,52 @@ export function UsersManager() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {usersLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={`loading-user-${i}`}>
-                  <TableCell colSpan={6}>
-                    <div className="h-8 w-full animate-pulse rounded bg-muted" />
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : users?.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell>{user.name}</TableCell>
-                <TableCell>{user.email}</TableCell>
-                <TableCell>
-                  <span className="rounded bg-muted px-2 py-1 text-xs font-medium capitalize">
-                    {user.role.toLowerCase()}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  {user.emailVerified ? (
-                    <span className="text-green-600 text-sm">Yes</span>
-                  ) : (
-                    <span className="text-muted-foreground text-sm">No</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {formatDateInUserTimezone(user.createdAt, {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </TableCell>
-                <TableCell>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/admin/users/${user.id}`}>Manage</Link>
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+            {usersLoading
+              ? Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={`loading-user-${i}`}>
+                    <TableCell colSpan={6}>
+                      <div className="bg-muted h-8 w-full animate-pulse rounded" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              : users?.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>{user.name}</TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      <span className="bg-muted rounded px-2 py-1 text-xs font-medium capitalize">
+                        {user.role.toLowerCase()}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      {user.emailVerified ? (
+                        <span className="text-sm text-green-600">Yes</span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">
+                          No
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {formatDateInUserTimezone(user.createdAt, {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={`/admin/users/${user.id}`}>Manage</Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
             {!usersLoading && users?.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell
+                  colSpan={6}
+                  className="text-muted-foreground text-center"
+                >
                   {userSearch ? "No users found" : "No users yet"}
                 </TableCell>
               </TableRow>
@@ -96,4 +114,3 @@ export function UsersManager() {
     </Card>
   );
 }
-

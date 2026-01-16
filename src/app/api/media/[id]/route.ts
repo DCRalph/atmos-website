@@ -9,7 +9,7 @@ const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
 
@@ -30,10 +30,11 @@ export async function GET(
       },
       select: {
         key: true,
-      }
-    })
-    if (!record) throw new Error('File not found')
-    const { stream, contentType, contentLength, lastModified, eTag } = await getS3ObjectStream(record.key)
+      },
+    });
+    if (!record) throw new Error("File not found");
+    const { stream, contentType, contentLength, lastModified, eTag } =
+      await getS3ObjectStream(record.key);
 
     // Convert Node.js stream to Web ReadableStream
     const webStream = new ReadableStream({
@@ -78,8 +79,7 @@ export async function GET(
 
     return NextResponse.json(
       { error: "Failed to fetch media" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-

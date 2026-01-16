@@ -48,16 +48,18 @@ export function MobileMenuToggle() {
   return createPortal(
     <motion.div
       // className="fixed z-500 bottom-4 right-4 size-12 flex items-center justify-center bg-white/50 dark:bg-black/50 backdrop-blur-sm rounded-full border border-black/10 dark:border-white/10 hover:bg-white/75 dark:hover:bg-black/75"
-      className="fixed z-500 bottom-4 right-4 size-12 flex items-center justify-center "
+      className="fixed right-4 bottom-4 z-500 flex size-12 items-center justify-center"
       whileHover={{ scale: 1.1 }}
-      transition={{ duration: 0.3 }}>
+      transition={{ duration: 0.3 }}
+    >
       <button
         className="flex h-12 w-12 items-center justify-center"
-        onClick={toggleMenu}>
-        <div className="relative h-6 w-6 flex items-center justify-center">
+        onClick={toggleMenu}
+      >
+        <div className="relative flex h-6 w-6 items-center justify-center">
           {/* Top bar */}
           <motion.span
-            className="absolute h-[3px] bg-black dark:bg-white origin-center rounded-full"
+            className="absolute h-[3px] origin-center rounded-full bg-black dark:bg-white"
             variants={topBarVariants}
             animate={isMenuOpen ? "open" : "closed"}
             initial="closed"
@@ -65,7 +67,7 @@ export function MobileMenuToggle() {
           />
           {/* Middle bar */}
           <motion.span
-            className="absolute h-[3px] w-6 bg-black dark:bg-white origin-center rounded-full"
+            className="absolute h-[3px] w-6 origin-center rounded-full bg-black dark:bg-white"
             variants={middleBarVariants}
             animate={isMenuOpen ? "open" : "closed"}
             initial="closed"
@@ -73,7 +75,7 @@ export function MobileMenuToggle() {
           />
           {/* Bottom bar */}
           <motion.span
-            className="absolute h-[3px] bg-black dark:bg-white origin-center rounded-full"
+            className="absolute h-[3px] origin-center rounded-full bg-black dark:bg-white"
             variants={bottomBarVariants}
             animate={isMenuOpen ? "open" : "closed"}
             initial="closed"
@@ -82,6 +84,6 @@ export function MobileMenuToggle() {
         </div>
       </button>
     </motion.div>,
-    portalContainer
+    portalContainer,
   );
 }

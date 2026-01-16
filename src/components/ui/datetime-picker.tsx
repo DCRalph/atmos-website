@@ -7,7 +7,11 @@ import { Calendar } from "~/components/ui/calendar";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "~/components/ui/popover";
 import { cn } from "~/lib/utils";
 
 interface DateTimePickerProps {
@@ -87,16 +91,18 @@ export function DateTimePicker({
             variant="outline"
             className={cn(
               "w-full justify-start text-left font-normal",
-              !date && "text-muted-foreground"
+              !date && "text-muted-foreground",
             )}
             disabled={disabled}
             type="button"
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
             {date ? (
-              showTime
-                ? format(date, "PPP 'at' HH:mm")
-                : format(date, "PPP")
+              showTime ? (
+                format(date, "PPP 'at' HH:mm")
+              ) : (
+                format(date, "PPP")
+              )
             ) : (
               <span>{placeholder}</span>
             )}
@@ -113,7 +119,7 @@ export function DateTimePicker({
       </Popover>
       {showTime && (
         <div className="flex items-center gap-2">
-          <Label htmlFor="time-input" className="text-sm text-muted-foreground">
+          <Label htmlFor="time-input" className="text-muted-foreground text-sm">
             Time:
           </Label>
           <Input
@@ -129,4 +135,3 @@ export function DateTimePicker({
     </div>
   );
 }
-

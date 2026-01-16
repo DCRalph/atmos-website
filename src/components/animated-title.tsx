@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Anton, Bebas_Neue, Playfair_Display, Orbitron } from "next/font/google";
+import {
+  Anton,
+  Bebas_Neue,
+  Playfair_Display,
+  Orbitron,
+} from "next/font/google";
 
 const anton = Anton({ weight: "400", subsets: ["latin"] });
 const bebas = Bebas_Neue({ weight: "400", subsets: ["latin"] });
@@ -28,15 +33,45 @@ const NEON_COLORS = [
   "#ff2dfc", // hot pink
 ];
 
-export function AnimatedTitle({ text = "ATMOS", intervalMs = 1600 }: { text?: string; intervalMs?: number }) {
+export function AnimatedTitle({
+  text = "ATMOS",
+  intervalMs = 1600,
+}: {
+  text?: string;
+  intervalMs?: number;
+}) {
   const styles = useMemo<StyleConfig[]>(
     () => [
-      { fontClass: bebas.className + " tracking-widest", italic: false, variant: "outline", color: NEON_COLORS[2]!, glow: true },
-      { fontClass: playfair.className, italic: true, variant: "outline", color: NEON_COLORS[1]!, glow: true },
-      { fontClass: orbitron.className, italic: false, variant: "solid", color: NEON_COLORS[3]!, glow: true },
-      { fontClass: anton.className + " tracking-widest", italic: false, variant: "outline", color: "#ffffff", glow: false },
+      {
+        fontClass: bebas.className + " tracking-widest",
+        italic: false,
+        variant: "outline",
+        color: NEON_COLORS[2]!,
+        glow: true,
+      },
+      {
+        fontClass: playfair.className,
+        italic: true,
+        variant: "outline",
+        color: NEON_COLORS[1]!,
+        glow: true,
+      },
+      {
+        fontClass: orbitron.className,
+        italic: false,
+        variant: "solid",
+        color: NEON_COLORS[3]!,
+        glow: true,
+      },
+      {
+        fontClass: anton.className + " tracking-widest",
+        italic: false,
+        variant: "outline",
+        color: "#ffffff",
+        glow: false,
+      },
     ],
-    []
+    [],
   );
 
   const [index, setIndex] = useState(0);
@@ -54,30 +89,28 @@ export function AnimatedTitle({ text = "ATMOS", intervalMs = 1600 }: { text?: st
   const style: React.CSSProperties =
     variant === "outline"
       ? {
-        color: "transparent",
-        WebkitTextStrokeWidth: 2,
-        WebkitTextStrokeColor: color,
-        // textShadow: commonShadow,
-        ...(glow && {
-          textShadow: commonShadow,
-        }),
-      }
+          color: "transparent",
+          WebkitTextStrokeWidth: 2,
+          WebkitTextStrokeColor: color,
+          // textShadow: commonShadow,
+          ...(glow && {
+            textShadow: commonShadow,
+          }),
+        }
       : {
-        color,
-        // textShadow: commonShadow,
-        ...(glow && {
-          textShadow: commonShadow,
-        }),
-      };
+          color,
+          // textShadow: commonShadow,
+          ...(glow && {
+            textShadow: commonShadow,
+          }),
+        };
 
   return (
     <h1
-      className={`${fontClass} ${italic ? "italic" : ""} select-none text-6xl font-extrabold leading-none tracking-tight md:text-8xl`}
+      className={`${fontClass} ${italic ? "italic" : ""} text-6xl leading-none font-extrabold tracking-tight select-none md:text-8xl`}
       style={style}
     >
       {text}
     </h1>
   );
 }
-
-

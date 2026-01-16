@@ -5,9 +5,29 @@ import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "~/components/ui/dialog";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 
 export function CrewManager() {
   const [isOpen, setIsOpen] = useState(false);
@@ -19,9 +39,11 @@ export function CrewManager() {
   const [image, setImage] = useState("");
   const [search, setSearch] = useState("");
 
-  const { data: crewMembers, isLoading, refetch } = api.crew.getAll.useQuery(
-    search ? { search } : undefined,
-  );
+  const {
+    data: crewMembers,
+    isLoading,
+    refetch,
+  } = api.crew.getAll.useQuery(search ? { search } : undefined);
   const createMember = api.crew.create.useMutation({
     onSuccess: async () => {
       await refetch();
@@ -89,18 +111,25 @@ export function CrewManager() {
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-2">
             <CardTitle>Crew Members</CardTitle>
-            <CardDescription>Manage crew members and their information</CardDescription>
+            <CardDescription>
+              Manage crew members and their information
+            </CardDescription>
           </div>
-          <Dialog open={isOpen} onOpenChange={(open) => {
-            setIsOpen(open);
-            if (!open) resetForm();
-          }}>
+          <Dialog
+            open={isOpen}
+            onOpenChange={(open) => {
+              setIsOpen(open);
+              if (!open) resetForm();
+            }}
+          >
             <DialogTrigger asChild>
               <Button onClick={() => resetForm()}>Add Member</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editingId ? "Edit" : "Add"} Crew Member</DialogTitle>
+                <DialogTitle>
+                  {editingId ? "Edit" : "Add"} Crew Member
+                </DialogTitle>
                 <DialogDescription>
                   {editingId ? "Update" : "Create"} a new crew member
                 </DialogDescription>
@@ -152,7 +181,10 @@ export function CrewManager() {
                     required
                   />
                 </div>
-                <Button type="submit" disabled={createMember.isPending || updateMember.isPending}>
+                <Button
+                  type="submit"
+                  disabled={createMember.isPending || updateMember.isPending}
+                >
                   {editingId ? "Update" : "Create"}
                 </Button>
               </form>
@@ -180,47 +212,54 @@ export function CrewManager() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={`loading-${i}`}>
-                  <TableCell colSpan={5}>
-                    <div className="h-8 w-full animate-pulse rounded bg-muted" />
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : crewMembers?.map((member) => (
-              <TableRow key={member.id}>
-                <TableCell>{member.name}</TableCell>
-                <TableCell>{member.role}</TableCell>
-                <TableCell>{member.instagram ? "Yes" : "No"}</TableCell>
-                <TableCell>{member.soundcloud ? "Yes" : "No"}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(member)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        if (confirm("Are you sure you want to delete this member?")) {
-                          deleteMember.mutate({ id: member.id });
-                        }
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+            {isLoading
+              ? Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={`loading-${i}`}>
+                    <TableCell colSpan={5}>
+                      <div className="bg-muted h-8 w-full animate-pulse rounded" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              : crewMembers?.map((member) => (
+                  <TableRow key={member.id}>
+                    <TableCell>{member.name}</TableCell>
+                    <TableCell>{member.role}</TableCell>
+                    <TableCell>{member.instagram ? "Yes" : "No"}</TableCell>
+                    <TableCell>{member.soundcloud ? "Yes" : "No"}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(member)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            if (
+                              confirm(
+                                "Are you sure you want to delete this member?",
+                              )
+                            ) {
+                              deleteMember.mutate({ id: member.id });
+                            }
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
             {!isLoading && crewMembers?.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell
+                  colSpan={5}
+                  className="text-muted-foreground text-center"
+                >
                   {search ? "No crew members found" : "No crew members yet"}
                 </TableCell>
               </TableRow>
@@ -231,4 +270,3 @@ export function CrewManager() {
     </Card>
   );
 }
-

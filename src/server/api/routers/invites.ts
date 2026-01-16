@@ -4,13 +4,15 @@ import { createTRPCRouter, adminProcedure } from "~/server/api/trpc";
 export const invitesRouter = createTRPCRouter({
   getAll: adminProcedure
     .input(
-      z.object({
-        search: z.string().optional(),
-      }).optional(),
+      z
+        .object({
+          search: z.string().optional(),
+        })
+        .optional(),
     )
     .query(async ({ ctx, input }) => {
       const search = input?.search?.toLowerCase().trim();
-      
+
       const where = search
         ? {
             email: { contains: search, mode: "insensitive" as const },
@@ -86,4 +88,3 @@ export const invitesRouter = createTRPCRouter({
       return invite;
     }),
 });
-

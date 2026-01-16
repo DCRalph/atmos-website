@@ -27,8 +27,10 @@ const DEFAULT_ITEMS: MenuItem[] = [
   { label: "Contact Us", href: "/contact" },
 ];
 
-
-export function RightMenuRail({ className = "", variant = "light" }: RightMenuRailProps) {
+export function RightMenuRail({
+  className = "",
+  variant = "light",
+}: RightMenuRailProps) {
   const pathname = usePathname();
   const isAboutPage = pathname === "/about";
   variant = isAboutPage ? "black" : variant;
@@ -41,18 +43,27 @@ export function RightMenuRail({ className = "", variant = "light" }: RightMenuRa
     setIsOpen(!isOpen);
   };
 
-
   return (
-    <div className={cn("fixed top-2 sm:top-4 right-2 sm:right-6 z-20 text-right", className)}>
+    <div
+      className={cn(
+        "fixed top-2 right-2 z-20 text-right sm:top-4 sm:right-6",
+        className,
+      )}
+    >
       {/* Menu Icon Button - Static, no animations */}
       <button
         onClick={toggleMenu}
         className={cn(
-          "flex items-center ml-auto justify-center p-1.5 sm:p-2 rounded-full transition-colors duration-200 mb-3 sm:mb-4",
-          isBlackMode ? "hover:bg-black/10" : "hover:bg-white/10"
+          "mb-3 ml-auto flex items-center justify-center rounded-full p-1.5 transition-colors duration-200 sm:mb-4 sm:p-2",
+          isBlackMode ? "hover:bg-black/10" : "hover:bg-white/10",
         )}
       >
-        <MenuIcon className={cn("size-5 sm:size-6", isBlackMode ? "text-black" : "text-white")} />
+        <MenuIcon
+          className={cn(
+            "size-5 sm:size-6",
+            isBlackMode ? "text-black" : "text-white",
+          )}
+        />
       </button>
 
       {/* Menu Items - Animated in/out */}
@@ -60,7 +71,7 @@ export function RightMenuRail({ className = "", variant = "light" }: RightMenuRa
         {isOpen && (
           <motion.ul
             key="menu-list"
-            className="space-y-2 sm:space-y-3 text-lg sm:text-xl font-semibold uppercase tracking-wider"
+            className="space-y-2 text-lg font-semibold tracking-wider uppercase sm:space-y-3 sm:text-xl"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
@@ -77,16 +88,21 @@ export function RightMenuRail({ className = "", variant = "light" }: RightMenuRa
                   transition: {
                     duration: 0.2,
                     delay: (menuItems.length - 1 - index) * 0.03,
-                    ease: "easeIn"
-                  }
+                    ease: "easeIn",
+                  },
                 }}
                 transition={{
                   duration: 0.3,
                   delay: index * 0.05,
-                  ease: "easeOut"
+                  ease: "easeOut",
                 }}
               >
-                <MenuItemComponent key={item.label} item={item} setIsOpen={setIsOpen} variant={variant} />
+                <MenuItemComponent
+                  key={item.label}
+                  item={item}
+                  setIsOpen={setIsOpen}
+                  variant={variant}
+                />
               </motion.div>
             ))}
           </motion.ul>
@@ -96,12 +112,20 @@ export function RightMenuRail({ className = "", variant = "light" }: RightMenuRa
   );
 }
 
-function MenuItemComponent({ item, setIsOpen, variant = "light" }: { item: MenuItem, setIsOpen: (isOpen: boolean) => void, variant?: "light" | "black" }) {
+function MenuItemComponent({
+  item,
+  setIsOpen,
+  variant = "light",
+}: {
+  item: MenuItem;
+  setIsOpen: (isOpen: boolean) => void;
+  variant?: "light" | "black";
+}) {
   const [hovered, setHovered] = useState(false);
   const isBlackMode = variant === "black";
 
-  const hoverColorText = "text-red-600"
-  const defaultTextColor = isBlackMode ? "text-black" : "text-white"
+  const hoverColorText = "text-red-600";
+  const defaultTextColor = isBlackMode ? "text-black" : "text-white";
 
   return (
     <motion.li
@@ -113,7 +137,7 @@ function MenuItemComponent({ item, setIsOpen, variant = "light" }: { item: MenuI
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setHovered(true)}
       onBlur={() => setHovered(false)}
-      className="group relative cursor-pointer px-1 sm:px-2 select-none"
+      className="group relative cursor-pointer px-1 select-none sm:px-2"
       variants={{
         rest: { zIndex: 0, paddingTop: 2, paddingBottom: 2 },
         hover: {
@@ -124,7 +148,11 @@ function MenuItemComponent({ item, setIsOpen, variant = "light" }: { item: MenuI
         },
       }}
     >
-      <Link href={item.href} onClick={() => setIsOpen(false)} className="inline-block isolate">
+      <Link
+        href={item.href}
+        onClick={() => setIsOpen(false)}
+        className="isolate inline-block"
+      >
         <motion.span
           animate={{
             rotate: hovered ? 5 : 0,
@@ -150,5 +178,3 @@ function MenuItemComponent({ item, setIsOpen, variant = "light" }: { item: MenuI
     </motion.li>
   );
 }
-
-

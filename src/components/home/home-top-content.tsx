@@ -4,7 +4,10 @@ import { useRef, useState } from "react";
 import { motion } from "motion/react";
 import { ChevronDown, Play, Pause, Mouse } from "lucide-react";
 import { OpeningAnimation } from "~/components/opening-animation";
-import { VideoBackground, type VideoBackgroundRef } from "~/components/video-background";
+import {
+  VideoBackground,
+  type VideoBackgroundRef,
+} from "~/components/video-background";
 import { LiveGigPopup } from "~/components/live-gig-popup";
 import { SimpleLogo } from "~/components/simple-logo";
 import { SocialLinks } from "~/components/social-links";
@@ -20,10 +23,9 @@ export function HomeTopContent() {
       <LiveGigPopup />
       <SocialLinks side="left" />
 
-
       {/* Logo section */}
-      <section className="relative flex min-h-dvh items-center justify-center px-4 z-20">
-        <div className="text-center w-full max-w-[70vw] sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl">
+      <section className="relative z-20 flex min-h-dvh items-center justify-center px-4">
+        <div className="w-full max-w-[70vw] text-center sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl">
           {/* <GlitchLogo /> */}
           <SimpleLogo />
         </div>
@@ -43,11 +45,17 @@ export function HomeTopContent() {
               // Scroll exactly one viewport of the scroll container to reveal the next section.
               main.scrollTo({ top: main.clientHeight, behavior: "smooth" });
             }}
-            className="group flex items-center gap-1 justify-center text-white/80 transition hover:text-white"
+            className="group flex items-center justify-center gap-1 text-white/80 transition hover:text-white"
           >
-            <ChevronDown className="size-6 transition-all duration-200 group-hover:scale-110 group-hover:text-white" strokeWidth={1} />
+            <ChevronDown
+              className="size-6 transition-all duration-200 group-hover:scale-110 group-hover:text-white"
+              strokeWidth={1}
+            />
             <p className="text-sm">Scroll</p>
-            <ChevronDown className="size-6 transition-all duration-200 group-hover:scale-110 group-hover:text-white" strokeWidth={1} />
+            <ChevronDown
+              className="size-6 transition-all duration-200 group-hover:scale-110 group-hover:text-white"
+              strokeWidth={1}
+            />
           </button>
         </motion.div>
 
@@ -74,7 +82,7 @@ export function HomeTopContent() {
         </div> */}
       </section>
 
-      <div className="absolute w-full h-32 z-10 bg-linear-to-t from-black to-transparent bottom-0 left-0" />
+      <div className="absolute bottom-0 left-0 z-10 h-32 w-full bg-linear-to-t from-black to-transparent" />
     </div>
   );
 }

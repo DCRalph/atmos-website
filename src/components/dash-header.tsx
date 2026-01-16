@@ -81,15 +81,15 @@ function normalizePath(p?: string): string {
 }
 
 function titleizeSegment(seg: string): string {
-  return seg
-    .replace(/[-_]+/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return seg.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 /**
  * Find a matching smart crumb resolver for a given path
  */
-function findSmartResolver(pathname: string): { resolver: SmartCrumbResolver; id: string } | null {
+function findSmartResolver(
+  pathname: string,
+): { resolver: SmartCrumbResolver; id: string } | null {
   for (const resolver of SMART_CRUMB_RESOLVERS) {
     const match = pathname.match(resolver.pattern);
     if (match?.[1]) {
@@ -104,14 +104,17 @@ function findSmartResolver(pathname: string): { resolver: SmartCrumbResolver; id
  */
 function buildCrumbs(
   pathname: string,
-  smartLabel?: { path: string; label: string; isLoading: boolean }
+  smartLabel?: { path: string; label: string; isLoading: boolean },
 ): Crumb[] {
   if (pathname === "/") return [{ href: "/", label: "Home" }];
 
   const crumbs: Crumb[] = [];
 
   if (pathname.startsWith("/admin")) {
-    crumbs.push({ href: "/admin", label: STATIC_PATH_LABELS["/admin"] ?? "Admin" });
+    crumbs.push({
+      href: "/admin",
+      label: STATIC_PATH_LABELS["/admin"] ?? "Admin",
+    });
 
     if (pathname === "/admin") return crumbs;
 
@@ -153,7 +156,12 @@ function buildCrumbs(
   }
 
   if (pathname.startsWith("/dashboard")) {
-    return [{ href: "/dashboard", label: STATIC_PATH_LABELS["/dashboard"] ?? "Dashboard" }];
+    return [
+      {
+        href: "/dashboard",
+        label: STATIC_PATH_LABELS["/dashboard"] ?? "Dashboard",
+      },
+    ];
   }
 
   // Fallback: generic path -> titleized segments
@@ -176,7 +184,7 @@ function buildCrumbs(
 function useUserCrumb(userId: string | null) {
   const { data, isLoading } = api.users.getById.useQuery(
     { id: userId ?? "" },
-    { enabled: !!userId }
+    { enabled: !!userId },
   );
   return {
     label: data?.name ?? null,
@@ -190,7 +198,7 @@ function useUserCrumb(userId: string | null) {
 function useGigCrumb(gigId: string | null) {
   const { data, isLoading } = api.gigs.getById.useQuery(
     { id: gigId ?? "" },
-    { enabled: !!gigId && gigId !== "new" }
+    { enabled: !!gigId && gigId !== "new" },
   );
   return {
     label: data?.title ?? null,
@@ -269,14 +277,18 @@ export function DashboardHeader() {
           <Separator orientation="vertical" className="h-8! shrink-0" />
           <div className="min-w-0 flex-1 overflow-hidden">
             <Breadcrumb>
-              <BreadcrumbList className="flex-nowrap ">
+              <BreadcrumbList className="flex-nowrap">
                 {crumbs.map((crumb, idx) => {
                   const isLast = idx === crumbs.length - 1;
                   return (
                     <span key={crumb.href} className="contents">
-                      <BreadcrumbItem className={`min-w-0 ${!isLast ? "shrink-0" : ""}`}>
+                      <BreadcrumbItem
+                        className={`min-w-0 ${!isLast ? "shrink-0" : ""}`}
+                      >
                         {isLast ? (
-                          <BreadcrumbPage className={`${cabin.className} text-2xl truncate text-nowrap`}>
+                          <BreadcrumbPage
+                            className={`${cabin.className} truncate text-2xl text-nowrap`}
+                          >
                             {crumb.isLoading ? (
                               <span className="animate-pulse">Loading...</span>
                             ) : (
@@ -285,13 +297,18 @@ export function DashboardHeader() {
                           </BreadcrumbPage>
                         ) : (
                           <BreadcrumbLink asChild>
-                            <Link href={crumb.href} className={`${cabin.className} text-2xl text-nowrap`}>
+                            <Link
+                              href={crumb.href}
+                              className={`${cabin.className} text-2xl text-nowrap`}
+                            >
                               {crumb.label}
                             </Link>
                           </BreadcrumbLink>
                         )}
                       </BreadcrumbItem>
-                      {!isLast ? <BreadcrumbSeparator className="shrink-0" /> : null}
+                      {!isLast ? (
+                        <BreadcrumbSeparator className="shrink-0" />
+                      ) : null}
                     </span>
                   );
                 })}

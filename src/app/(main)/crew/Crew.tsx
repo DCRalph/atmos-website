@@ -9,16 +9,16 @@ import { AnimatedPageHeader } from "~/components/animated-page-header";
 
 function CrewMemberSkeleton() {
   return (
-    <div className="group relative overflow-hidden rounded-lg border border-zinc/20 bg-black/20 p-4 sm:p-6 md:p-8 backdrop-blur-sm">
-      <div className="mb-4 sm:mb-6 aspect-square w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 relative rounded-full overflow-hidden bg-white/10 mx-auto flex items-center justify-center">
-        <Skeleton className="w-full h-full rounded-full bg-white/20" />
+    <div className="group border-zinc/20 relative overflow-hidden rounded-lg border bg-black/20 p-4 backdrop-blur-sm sm:p-6 md:p-8">
+      <div className="relative mx-auto mb-4 flex aspect-square h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-white/10 sm:mb-6 sm:h-28 sm:w-28 md:h-32 md:w-32">
+        <Skeleton className="h-full w-full rounded-full bg-white/20" />
       </div>
 
       <div className="text-center">
-        <Skeleton className="h-6 sm:h-7 w-32 mx-auto mb-2 bg-white/20" />
-        <Skeleton className="h-4 w-24 mx-auto mb-4 sm:mb-6 bg-white/10" />
+        <Skeleton className="mx-auto mb-2 h-6 w-32 bg-white/20 sm:h-7" />
+        <Skeleton className="mx-auto mb-4 h-4 w-24 bg-white/10 sm:mb-6" />
 
-        <div className="flex items-center justify-center gap-3 sm:gap-4 flex-wrap">
+        <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
           <Skeleton className="h-4 w-20 bg-white/10" />
           <Skeleton className="h-4 w-24 bg-white/10" />
         </div>
@@ -28,7 +28,8 @@ function CrewMemberSkeleton() {
 }
 
 export default function CrewPage() {
-  const { data: crewMembers, isLoading: isLoadingCrewMembers } = api.crew.getAll.useQuery();
+  const { data: crewMembers, isLoading: isLoadingCrewMembers } =
+    api.crew.getAll.useQuery();
   return (
     <main className="bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-2.jpg" />
@@ -46,7 +47,7 @@ export default function CrewPage() {
             subtitle="DJs, producers, and creatives powering Atmos in Pōneke"
           />
 
-          <div className="grid gap-6 sm:gap-8 grid-cols-2 md:grid-cols-3">
+          <div className="grid grid-cols-2 gap-6 sm:gap-8 md:grid-cols-3">
             {isLoadingCrewMembers ? (
               <>
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -68,11 +69,11 @@ export default function CrewPage() {
             )}
           </div>
 
-          <div className="mt-16 text-center hidden">
+          <div className="mt-16 hidden text-center">
             <h2 className="mb-6 text-3xl font-bold">Join The Crew</h2>
-            <p className="mb-8 text-white/60 max-w-xl mx-auto">
-              Interested in collaborating or becoming part of Atmos? We&apos;re always looking
-              for talented artists who share our vision.
+            <p className="mx-auto mb-8 max-w-xl text-white/60">
+              Interested in collaborating or becoming part of Atmos? We&apos;re
+              always looking for talented artists who share our vision.
             </p>
             <Link
               href="/contact"
@@ -86,4 +87,3 @@ export default function CrewPage() {
     </main>
   );
 }
-

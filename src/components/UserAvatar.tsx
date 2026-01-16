@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { User } from "lucide-react";
 import React from "react";

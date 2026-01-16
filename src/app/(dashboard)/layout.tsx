@@ -2,12 +2,15 @@
 
 import { UserIndicator } from "~/components/user-indicator";
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <div className="min-h-dvh bg-background text-foreground">
+    <div className="bg-background text-foreground min-h-dvh">
       <UserIndicator />
       {children}
     </div>
   );
 }
-

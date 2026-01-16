@@ -1,7 +1,7 @@
 import "~/styles/globals.css";
 
 import { type Metadata } from "next";
-import { Analytics } from "@vercel/analytics/next"
+import { Analytics } from "@vercel/analytics/next";
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { ThemeOverrideProvider } from "~/components/theme-overide-provider";
@@ -9,12 +9,13 @@ import { MobileMenuProvider } from "~/components/mobile-menu-provider";
 import { ViewTransition } from "react";
 import { montserrat } from "~/lib/fonts";
 
-import NextTopLoader from 'nextjs-toploader';
+import NextTopLoader from "nextjs-toploader";
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL;
 
 const description_short = "Atmos Media - Hub";
-const description_long = "Atmos Media - Hub for all things Atmos. We are a media company that creates content for the Atmos brand.";
+const description_long =
+  "Atmos Media - Hub for all things Atmos. We are a media company that creates content for the Atmos brand.";
 
 export const metadata: Metadata = {
   title: {
@@ -61,32 +62,40 @@ export const metadata: Metadata = {
   },
 };
 
-
-
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-
-
   return (
-    <html lang="en" className={`${montserrat.className} overflow-x-hidden`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${montserrat.className} overflow-x-hidden`}
+      suppressHydrationWarning
+    >
       <body>
         <ViewTransition>
           <ThemeOverrideProvider
           // defaultForcedTheme="dark"
-
           >
             <TRPCReactProvider>
               <MobileMenuProvider>
                 <NextTopLoader height={4} showSpinner={false} />
 
                 {/* Portal target for mobile menu - rendered above everything */}
-                <div id="mobile-menu-portal" className="fixed inset-0 z-999 pointer-events-none *:pointer-events-auto" />
+                <div
+                  id="mobile-menu-portal"
+                  className="pointer-events-none fixed inset-0 z-999 *:pointer-events-auto"
+                />
 
-                <div id="mobile-menu-toggle-portal" className="fixed inset-0 z-999 pointer-events-none *:pointer-events-auto" />
+                <div
+                  id="mobile-menu-toggle-portal"
+                  className="pointer-events-none fixed inset-0 z-999 *:pointer-events-auto"
+                />
 
                 {/* App content wrapper - receives blur/scale when menu is open */}
-                <div id="app-content-wrapper" className="transition-all duration-700 ease-out origin-center">
+                <div
+                  id="app-content-wrapper"
+                  className="origin-center transition-all duration-700 ease-out"
+                >
                   {children}
                 </div>
 
@@ -96,6 +105,6 @@ export default function RootLayout({
           </ThemeOverrideProvider>
         </ViewTransition>
       </body>
-    </html >
+    </html>
   );
 }

@@ -1,4 +1,4 @@
-import { db } from '~/server/db'
+import { db } from "~/server/db";
 
 type ContentItem = {
   id: number;
@@ -54,7 +54,7 @@ type CrewMember = {
     soundcloud: string;
   };
   image: string;
-}
+};
 
 // Crew members with their Instagram profiles
 const crewMembers: CrewMember[] = [
@@ -108,7 +108,6 @@ const crewMembers: CrewMember[] = [
     },
     image: "/crew_pfp/willonvx.jpg",
   },
-
 ];
 
 // Example gig data - replace with actual database queries
@@ -155,7 +154,8 @@ const pastGigs = [
   {
     id: 2,
     date: "Mar 14",
-    title: "Katayanagi twins with Randy Sjafrie, Kayseeyuh, DJ Gooda, Broderbeats, ",
+    title:
+      "Katayanagi twins with Randy Sjafrie, Kayseeyuh, DJ Gooda, Broderbeats, ",
     subtitle: "Wellington",
   },
   {
@@ -181,7 +181,7 @@ const pastGigs = [
     date: "May 11",
     title: "Caged V1 with Myelin (US), Shaq, Licious, Special K, Taiji",
     subtitle: "Wellington",
-  }
+  },
 ];
 
 type MerchItem = {
@@ -217,8 +217,18 @@ function parseDate(dateStr: string, isUpcoming = false): Date {
   if (dateStr.includes(" ") && !dateStr.includes("-")) {
     const currentYear = new Date().getFullYear();
     const monthMap: Record<string, number> = {
-      Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-      Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
+      Jan: 0,
+      Feb: 1,
+      Mar: 2,
+      Apr: 3,
+      May: 4,
+      Jun: 5,
+      Jul: 6,
+      Aug: 7,
+      Sep: 8,
+      Oct: 9,
+      Nov: 10,
+      Dec: 11,
     };
 
     const parts = dateStr.trim().split(" ");
@@ -227,9 +237,10 @@ function parseDate(dateStr: string, isUpcoming = false): Date {
       const day = parseInt(parts[1], 10);
       if (month !== undefined && !isNaN(day)) {
         // For upcoming gigs, if the date has passed this year, use next year
-        const year = isUpcoming && new Date(currentYear, month, day) < new Date()
-          ? currentYear + 1
-          : currentYear;
+        const year =
+          isUpcoming && new Date(currentYear, month, day) < new Date()
+            ? currentYear + 1
+            : currentYear;
         date = new Date(year, month, day);
       } else {
         date = new Date();
@@ -246,16 +257,16 @@ function parseDate(dateStr: string, isUpcoming = false): Date {
   }
 
   // Convert to UTC at midnight
-  return new Date(Date.UTC(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-    0, 0, 0, 0
-  ));
+  return new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0),
+  );
 }
 
 // Helper function to parse time strings like "6:00 PM" or "6:00 PM - 11:00 PM"
-function parseTime(timeStr: string | null | undefined, baseDate: Date): Date | null {
+function parseTime(
+  timeStr: string | null | undefined,
+  baseDate: Date,
+): Date | null {
   if (!timeStr || timeStr === "TBA") {
     return null;
   }
@@ -296,7 +307,7 @@ function parseTime(timeStr: string | null | undefined, baseDate: Date): Date | n
     hours,
     minutes,
     0,
-    0
+    0,
   );
 
   // Return as UTC (the Date object represents the correct moment in time)
@@ -307,7 +318,7 @@ function parseTime(timeStr: string | null | undefined, baseDate: Date): Date | n
 function parseStartEndTime(
   startTimeStr: string | null | undefined,
   endTimeStr: string | null | undefined,
-  baseDate: Date
+  baseDate: Date,
 ): { startTime: Date | null; endTime: Date | null } {
   return {
     startTime: startTimeStr ? parseTime(startTimeStr, baseDate) : null,
@@ -367,7 +378,7 @@ async function main() {
       const parsed = parseStartEndTime(
         gig.gigStartTime,
         gig.gigEndTime,
-        gigDate
+        gigDate,
       );
       // gigStartTime = parsed.startTime;
       gigEndTime = parsed.endTime;

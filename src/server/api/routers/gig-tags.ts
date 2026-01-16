@@ -1,24 +1,36 @@
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure, adminProcedure } from "~/server/api/trpc";
+import {
+  createTRPCRouter,
+  publicProcedure,
+  adminProcedure,
+} from "~/server/api/trpc";
 
 export const gigTagsRouter = createTRPCRouter({
   getAll: publicProcedure
     .input(
-      z.object({
-        search: z.string().optional(),
-      }).optional(),
+      z
+        .object({
+          search: z.string().optional(),
+        })
+        .optional(),
     )
     .query(async ({ ctx, input }) => {
       const search = input?.search?.trim();
-      
-      const where = search && search.length > 0
-        ? {
-            OR: [
-              { name: { contains: search, mode: "insensitive" as const } },
-              { description: { contains: search, mode: "insensitive" as const } },
-            ],
-          }
-        : undefined;
+
+      const where =
+        search && search.length > 0
+          ? {
+              OR: [
+                { name: { contains: search, mode: "insensitive" as const } },
+                {
+                  description: {
+                    contains: search,
+                    mode: "insensitive" as const,
+                  },
+                },
+              ],
+            }
+          : undefined;
 
       return ctx.db.gigTag.findMany({
         where,
@@ -80,4 +92,3 @@ export const gigTagsRouter = createTRPCRouter({
       });
     }),
 });
-

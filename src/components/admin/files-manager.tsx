@@ -6,7 +6,13 @@ import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 import {
   Table,
   TableBody,
@@ -73,7 +79,13 @@ import {
 import { formatDistanceToNow, format } from "date-fns";
 import type { FileUploadStatus } from "~Prisma/client";
 
-const FILE_STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+const FILE_STATUS_LABELS: Record<
+  string,
+  {
+    label: string;
+    variant: "default" | "secondary" | "destructive" | "outline";
+  }
+> = {
   OK: { label: "Active", variant: "default" },
   SOFT_DELETED: { label: "Soft Deleted", variant: "secondary" },
   DELETED: { label: "Deleted", variant: "destructive" },
@@ -139,7 +151,10 @@ export function FilesManager() {
   const [uploadCategory, setUploadCategory] = useState<string>("general");
   const [uploadTagIds, setUploadTagIds] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
+  const [uploadProgress, setUploadProgress] = useState<{
+    current: number;
+    total: number;
+  }>({ current: 0, total: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -163,7 +178,9 @@ export function FilesManager() {
   const [deleteTagId, setDeleteTagId] = useState<string | null>(null);
 
   // Bulk selection state
-  const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
+  const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [bulkTagDialogOpen, setBulkTagDialogOpen] = useState(false);
   const [bulkTagMode, setBulkTagMode] = useState<"add" | "remove">("add");
   const [bulkTagIds, setBulkTagIds] = useState<string[]>([]);
@@ -174,11 +191,12 @@ export function FilesManager() {
     page: currentPage,
     search: search || undefined,
     mimeTypePrefix: mimeFilter !== "all" ? mimeFilter : undefined,
-    status: statusFilter === "active"
-      ? undefined
-      : statusFilter === "deleted"
-        ? "SOFT_DELETED" as FileUploadStatus
-        : undefined,
+    status:
+      statusFilter === "active"
+        ? undefined
+        : statusFilter === "deleted"
+          ? ("SOFT_DELETED" as FileUploadStatus)
+          : undefined,
     tagIds: tagFilter !== "all" ? [tagFilter] : undefined,
   };
 
@@ -195,9 +213,12 @@ export function FilesManager() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: tags, refetch: refetchTags } = api.files.getAllTags.useQuery(undefined, {
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: tags, refetch: refetchTags } = api.files.getAllTags.useQuery(
+    undefined,
+    {
+      staleTime: 5 * 60 * 1000,
+    },
+  );
 
   const softDelete = api.files.softDelete.useMutation({
     onSuccess: () => {
@@ -297,7 +318,7 @@ export function FilesManager() {
   const handleFileSelect = useCallback((files: FileList | null) => {
     if (!files) return;
     const fileArray = Array.from(files);
-    setUploadFiles(prev => [...prev, ...fileArray]);
+    setUploadFiles((prev) => [...prev, ...fileArray]);
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -310,14 +331,17 @@ export function FilesManager() {
     setIsDragging(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    handleFileSelect(e.dataTransfer.files);
-  }, [handleFileSelect]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+      handleFileSelect(e.dataTransfer.files);
+    },
+    [handleFileSelect],
+  );
 
   const removeUploadFile = useCallback((index: number) => {
-    setUploadFiles(prev => prev.filter((_, i) => i !== index));
+    setUploadFiles((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
   const handleUpload = useCallback(async () => {
@@ -368,10 +392,13 @@ export function FilesManager() {
     setTimeout(() => setCopiedField(null), 2000);
   }, []);
 
-  const handleDelete = useCallback((fileId: string, permanent: boolean = false) => {
-    setDeleteFileId(fileId);
-    setDeletePermanently(permanent);
-  }, []);
+  const handleDelete = useCallback(
+    (fileId: string, permanent: boolean = false) => {
+      setDeleteFileId(fileId);
+      setDeletePermanently(permanent);
+    },
+    [],
+  );
 
   const confirmDelete = useCallback(() => {
     if (!deleteFileId) return;
@@ -382,9 +409,12 @@ export function FilesManager() {
     }
   }, [deleteFileId, deletePermanently, permanentDelete, softDelete]);
 
-  const handleRestore = useCallback((fileId: string) => {
-    restore.mutate({ id: fileId });
-  }, [restore]);
+  const handleRestore = useCallback(
+    (fileId: string) => {
+      restore.mutate({ id: fileId });
+    },
+    [restore],
+  );
 
   const handleSaveFile = useCallback(async () => {
     if (!infoFile) return;
@@ -395,14 +425,35 @@ export function FilesManager() {
         name: editName,
         for: editFor,
         forId: editForId,
-        status: editStatus as "NO_FILE" | "UPLOADING" | "OK" | "SOFT_DELETED" | "DELETED" | "ERRORED",
-        category: editCategory as "IMAGE" | "VIDEO" | "AUDIO" | "PDF" | "DOCUMENT" | "FILE",
+        status: editStatus as
+          | "NO_FILE"
+          | "UPLOADING"
+          | "OK"
+          | "SOFT_DELETED"
+          | "DELETED"
+          | "ERRORED",
+        category: editCategory as
+          | "IMAGE"
+          | "VIDEO"
+          | "AUDIO"
+          | "PDF"
+          | "DOCUMENT"
+          | "FILE",
         tagIds: editTagIds,
       });
     } finally {
       setIsSavingFile(false);
     }
-  }, [infoFile, editName, editFor, editForId, editStatus, editCategory, editTagIds, updateFile]);
+  }, [
+    infoFile,
+    editName,
+    editFor,
+    editForId,
+    editStatus,
+    editCategory,
+    editTagIds,
+    updateFile,
+  ]);
 
   const handleCreateTag = useCallback(async () => {
     if (!newTagName.trim()) return;
@@ -417,13 +468,20 @@ export function FilesManager() {
     }
   }, [newTagName, newTagDescription, createTag]);
 
-  const toggleTag = useCallback((tagId: string, tagList: string[], setTagList: (tags: string[]) => void) => {
-    if (tagList.includes(tagId)) {
-      setTagList(tagList.filter((id) => id !== tagId));
-    } else {
-      setTagList([...tagList, tagId]);
-    }
-  }, []);
+  const toggleTag = useCallback(
+    (
+      tagId: string,
+      tagList: string[],
+      setTagList: (tags: string[]) => void,
+    ) => {
+      if (tagList.includes(tagId)) {
+        setTagList(tagList.filter((id) => id !== tagId));
+      } else {
+        setTagList([...tagList, tagId]);
+      }
+    },
+    [],
+  );
 
   const files = filesData?.files ?? [];
   const isDeleting = softDelete.isPending || permanentDelete.isPending;
@@ -445,7 +503,10 @@ export function FilesManager() {
 
   const toggleSelectAll = useCallback(() => {
     const currentFiles = filesData?.files ?? [];
-    if (selectedFileIds.size === currentFiles.length && currentFiles.length > 0) {
+    if (
+      selectedFileIds.size === currentFiles.length &&
+      currentFiles.length > 0
+    ) {
       setSelectedFileIds(new Set());
     } else {
       setSelectedFileIds(new Set(currentFiles.map((f) => f.id)));
@@ -485,7 +546,7 @@ export function FilesManager() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Files</CardTitle>
-            <FileCheck className="h-4 w-4 text-muted-foreground" />
+            <FileCheck className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalFiles ?? 0}</div>
@@ -495,7 +556,7 @@ export function FilesManager() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Size</CardTitle>
-            <HardDrive className="h-4 w-4 text-muted-foreground" />
+            <HardDrive className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -507,7 +568,7 @@ export function FilesManager() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Categories</CardTitle>
-            <FolderOpen className="h-4 w-4 text-muted-foreground" />
+            <FolderOpen className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-1">
@@ -523,7 +584,7 @@ export function FilesManager() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">By Status</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <FileText className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-1">
@@ -574,7 +635,9 @@ export function FilesManager() {
                 onClick={() => void refetch()}
                 disabled={isFetching}
               >
-                <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+                <RefreshCw
+                  className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`}
+                />
                 Refresh
               </Button>
             </div>
@@ -582,8 +645,8 @@ export function FilesManager() {
         </CardHeader>
         <CardContent>
           <div className="mb-4 flex flex-wrap gap-4">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <div className="relative min-w-[200px] flex-1">
+              <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
               <Input
                 placeholder="Search by name or key..."
                 value={search}
@@ -627,7 +690,9 @@ export function FilesManager() {
                     <div className="flex items-center gap-2">
                       <Tag className="h-3 w-3" />
                       {tag.name}
-                      <span className="text-xs text-muted-foreground">({tag._count.fileUploads})</span>
+                      <span className="text-muted-foreground text-xs">
+                        ({tag._count.fileUploads})
+                      </span>
                     </div>
                   </SelectItem>
                 ))}
@@ -637,14 +702,15 @@ export function FilesManager() {
 
           {/* Bulk Actions Bar */}
           {hasSelection && (
-            <div className="mb-4 flex items-center gap-4 rounded-lg border bg-muted/50 p-3">
+            <div className="bg-muted/50 mb-4 flex items-center gap-4 rounded-lg border p-3">
               <div className="flex items-center gap-2">
-                <Tags className="h-4 w-4 text-muted-foreground" />
+                <Tags className="text-muted-foreground h-4 w-4" />
                 <span className="text-sm font-medium">
-                  {selectedFileIds.size} file{selectedFileIds.size !== 1 ? "s" : ""} selected
+                  {selectedFileIds.size} file
+                  {selectedFileIds.size !== 1 ? "s" : ""} selected
                 </span>
               </div>
-              <div className="h-4 w-px bg-border" />
+              <div className="bg-border h-4 w-px" />
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -699,19 +765,27 @@ export function FilesManager() {
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
                       <TableCell colSpan={9}>
-                        <div className="h-12 w-full animate-pulse rounded bg-muted" />
+                        <div className="bg-muted h-12 w-full animate-pulse rounded" />
                       </TableCell>
                     </TableRow>
                   ))
                 ) : files.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                    <TableCell
+                      colSpan={9}
+                      className="text-muted-foreground py-8 text-center"
+                    >
                       No files found
                     </TableCell>
                   </TableRow>
                 ) : (
                   files.map((file) => (
-                    <TableRow key={file.id} className={selectedFileIds.has(file.id) ? "bg-muted/50" : ""}>
+                    <TableRow
+                      key={file.id}
+                      className={
+                        selectedFileIds.has(file.id) ? "bg-muted/50" : ""
+                      }
+                    >
                       <TableCell>
                         <Checkbox
                           checked={selectedFileIds.has(file.id)}
@@ -720,7 +794,7 @@ export function FilesManager() {
                         />
                       </TableCell>
                       <TableCell>
-                        <div className="flex h-10 w-10 items-center justify-center rounded bg-muted">
+                        <div className="bg-muted flex h-10 w-10 items-center justify-center rounded">
                           {file.mimeType.startsWith("image/") ? (
                             <Image
                               src={file.url}
@@ -736,10 +810,16 @@ export function FilesManager() {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className="font-medium truncate max-w-[200px]" title={file.name}>
+                          <span
+                            className="max-w-[200px] truncate font-medium"
+                            title={file.name}
+                          >
                             {file.name}
                           </span>
-                          <span className="text-xs text-muted-foreground truncate max-w-[200px]" title={file.key}>
+                          <span
+                            className="text-muted-foreground max-w-[200px] truncate text-xs"
+                            title={file.key}
+                          >
                             {file.key}
                           </span>
                         </div>
@@ -748,12 +828,18 @@ export function FilesManager() {
                         <div className="flex flex-wrap gap-1">
                           {file.fileTags.length > 0 ? (
                             file.fileTags.slice(0, 2).map((tag) => (
-                              <Badge key={tag.id} variant="outline" className="text-xs">
+                              <Badge
+                                key={tag.id}
+                                variant="outline"
+                                className="text-xs"
+                              >
                                 {tag.name}
                               </Badge>
                             ))
                           ) : (
-                            <span className="text-muted-foreground text-xs">—</span>
+                            <span className="text-muted-foreground text-xs">
+                              —
+                            </span>
                           )}
                           {file.fileTags.length > 2 && (
                             <Badge variant="outline" className="text-xs">
@@ -769,12 +855,20 @@ export function FilesManager() {
                       </TableCell>
                       <TableCell>{formatFileSize(file.size)}</TableCell>
                       <TableCell>
-                        <Badge variant={FILE_STATUS_LABELS[file.status]?.variant ?? "outline"}>
-                          {FILE_STATUS_LABELS[file.status]?.label ?? file.status}
+                        <Badge
+                          variant={
+                            FILE_STATUS_LABELS[file.status]?.variant ??
+                            "outline"
+                          }
+                        >
+                          {FILE_STATUS_LABELS[file.status]?.label ??
+                            file.status}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
-                        {formatDistanceToNow(new Date(file.createdAt), { addSuffix: true })}
+                        {formatDistanceToNow(new Date(file.createdAt), {
+                          addSuffix: true,
+                        })}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
@@ -794,11 +888,13 @@ export function FilesManager() {
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0"
-                            onClick={() => setPreviewFile({
-                              url: file.url,
-                              name: file.name,
-                              mimeType: file.mimeType,
-                            })}
+                            onClick={() =>
+                              setPreviewFile({
+                                url: file.url,
+                                name: file.name,
+                                mimeType: file.mimeType,
+                              })
+                            }
                             title="Preview"
                           >
                             <Eye className="h-4 w-4" />
@@ -810,7 +906,11 @@ export function FilesManager() {
                             asChild
                             title="Open in new tab"
                           >
-                            <a href={file.url} target="_blank" rel="noopener noreferrer">
+                            <a
+                              href={file.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
                               <ExternalLink className="h-4 w-4" />
                             </a>
                           </Button>
@@ -829,7 +929,7 @@ export function FilesManager() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                              className="text-destructive hover:text-destructive h-8 w-8 p-0"
                               onClick={() => handleDelete(file.id)}
                               title="Delete"
                             >
@@ -865,7 +965,7 @@ export function FilesManager() {
             <DialogDescription>File preview</DialogDescription>
           </DialogHeader>
           {previewFile && (
-            <div className="flex items-center justify-center bg-muted rounded-lg p-4 min-h-[300px]">
+            <div className="bg-muted flex min-h-[300px] items-center justify-center rounded-lg p-4">
               {previewFile.mimeType.startsWith("image/") ? (
                 <Image
                   src={previewFile.url}
@@ -881,8 +981,8 @@ export function FilesManager() {
                   className="max-h-[60vh] w-auto rounded"
                 />
               ) : (
-                <div className="text-center text-muted-foreground">
-                  <File className="mx-auto h-16 w-16 mb-2" />
+                <div className="text-muted-foreground text-center">
+                  <File className="mx-auto mb-2 h-16 w-16" />
                   <p>Preview not available</p>
                   <a
                     href={previewFile.url}
@@ -900,7 +1000,10 @@ export function FilesManager() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteFileId} onOpenChange={(open) => !open && setDeleteFileId(null)}>
+      <AlertDialog
+        open={!!deleteFileId}
+        onOpenChange={(open) => !open && setDeleteFileId(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -933,20 +1036,24 @@ export function FilesManager() {
       </AlertDialog>
 
       {/* Upload Dialog */}
-      <Dialog open={uploadDialogOpen} onOpenChange={(open) => {
-        if (!isUploading) {
-          setUploadDialogOpen(open);
-          if (!open) {
-            setUploadFiles([]);
-            setUploadTagIds([]);
+      <Dialog
+        open={uploadDialogOpen}
+        onOpenChange={(open) => {
+          if (!isUploading) {
+            setUploadDialogOpen(open);
+            if (!open) {
+              setUploadFiles([]);
+              setUploadTagIds([]);
+            }
           }
-        }
-      }}>
+        }}
+      >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Upload Files</DialogTitle>
             <DialogDescription>
-              Upload new files to the media library. Drag and drop or click to select files.
+              Upload new files to the media library. Drag and drop or click to
+              select files.
             </DialogDescription>
           </DialogHeader>
 
@@ -972,13 +1079,17 @@ export function FilesManager() {
             {/* Tags Select */}
             <div className="space-y-2">
               <Label>Tags (applied to all files)</Label>
-              <div className="flex flex-wrap gap-2 p-3 rounded-md border min-h-[42px]">
+              <div className="flex min-h-[42px] flex-wrap gap-2 rounded-md border p-3">
                 {tags?.map((tag) => (
                   <Badge
                     key={tag.id}
-                    variant={uploadTagIds.includes(tag.id) ? "default" : "outline"}
+                    variant={
+                      uploadTagIds.includes(tag.id) ? "default" : "outline"
+                    }
                     className="cursor-pointer"
-                    onClick={() => toggleTag(tag.id, uploadTagIds, setUploadTagIds)}
+                    onClick={() =>
+                      toggleTag(tag.id, uploadTagIds, setUploadTagIds)
+                    }
                   >
                     <Tag className="mr-1 h-3 w-3" />
                     {tag.name}
@@ -988,17 +1099,20 @@ export function FilesManager() {
                   </Badge>
                 ))}
                 {(!tags || tags.length === 0) && (
-                  <span className="text-sm text-muted-foreground">No tags available</span>
+                  <span className="text-muted-foreground text-sm">
+                    No tags available
+                  </span>
                 )}
               </div>
             </div>
 
             {/* Drop Zone */}
             <div
-              className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${isDragging
-                ? "border-primary bg-primary/5"
-                : "border-muted-foreground/25 hover:border-primary/50"
-                }`}
+              className={`relative cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
+                isDragging
+                  ? "border-primary bg-primary/5"
+                  : "border-muted-foreground/25 hover:border-primary/50"
+              }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
@@ -1012,11 +1126,11 @@ export function FilesManager() {
                 onChange={(e) => handleFileSelect(e.target.files)}
                 accept="image/*,video/*,audio/*,application/pdf"
               />
-              <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-sm text-muted-foreground">
+              <Upload className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
+              <p className="text-muted-foreground text-sm">
                 Drag and drop files here, or click to select
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-muted-foreground mt-1 text-xs">
                 Images, videos, audio, and PDFs up to 100MB each
               </p>
             </div>
@@ -1025,23 +1139,23 @@ export function FilesManager() {
             {uploadFiles.length > 0 && (
               <div className="space-y-2">
                 <Label>Selected Files ({uploadFiles.length})</Label>
-                <div className="max-h-48 overflow-y-auto space-y-2 rounded-md border p-2">
+                <div className="max-h-48 space-y-2 overflow-y-auto rounded-md border p-2">
                   {uploadFiles.map((file, index) => (
                     <div
                       key={`${file.name}-${index}`}
-                      className="flex items-center justify-between gap-2 rounded-md bg-muted p-2"
+                      className="bg-muted flex items-center justify-between gap-2 rounded-md p-2"
                     >
-                      <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex min-w-0 items-center gap-2">
                         {getFileIcon(file.type)}
-                        <span className="text-sm truncate">{file.name}</span>
-                        <span className="text-xs text-muted-foreground shrink-0">
+                        <span className="truncate text-sm">{file.name}</span>
+                        <span className="text-muted-foreground shrink-0 text-xs">
                           {formatFileSize(file.size)}
                         </span>
                       </div>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 w-6 p-0 shrink-0"
+                        className="h-6 w-6 shrink-0 p-0"
                         onClick={(e) => {
                           e.stopPropagation();
                           removeUploadFile(index);
@@ -1061,12 +1175,16 @@ export function FilesManager() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span>Uploading...</span>
-                  <span>{uploadProgress.current} / {uploadProgress.total}</span>
+                  <span>
+                    {uploadProgress.current} / {uploadProgress.total}
+                  </span>
                 </div>
-                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                <div className="bg-muted h-2 overflow-hidden rounded-full">
                   <div
-                    className="h-full bg-primary transition-all duration-300"
-                    style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                    className="bg-primary h-full transition-all duration-300"
+                    style={{
+                      width: `${(uploadProgress.current / uploadProgress.total) * 100}%`,
+                    }}
                   />
                 </div>
               </div>
@@ -1093,7 +1211,8 @@ export function FilesManager() {
                 ) : (
                   <>
                     <Upload className="mr-2 h-4 w-4" />
-                    Upload {uploadFiles.length > 0 ? `(${uploadFiles.length})` : ""}
+                    Upload{" "}
+                    {uploadFiles.length > 0 ? `(${uploadFiles.length})` : ""}
                   </>
                 )}
               </Button>
@@ -1103,23 +1222,34 @@ export function FilesManager() {
       </Dialog>
 
       {/* File Info/Edit Dialog */}
-      <Dialog open={!!infoFile} onOpenChange={(open) => {
-        if (!open) {
-          setInfoFile(null);
-          setIsEditing(false);
-        }
-      }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <Dialog
+        open={!!infoFile}
+        onOpenChange={(open) => {
+          if (!open) {
+            setInfoFile(null);
+            setIsEditing(false);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center justify-between">
               <div>
-                <DialogTitle>{isEditing ? "Edit File" : "File Information"}</DialogTitle>
+                <DialogTitle>
+                  {isEditing ? "Edit File" : "File Information"}
+                </DialogTitle>
                 <DialogDescription>
-                  {isEditing ? "Update file attributes" : "Detailed information about this file"}
+                  {isEditing
+                    ? "Update file attributes"
+                    : "Detailed information about this file"}
                 </DialogDescription>
               </div>
               {!isEditing && (
-                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditing(true)}
+                >
                   <Pencil className="mr-2 h-4 w-4" />
                   Edit
                 </Button>
@@ -1130,7 +1260,7 @@ export function FilesManager() {
           {infoFile && (
             <div className="space-y-6">
               {/* Preview */}
-              <div className="flex items-center justify-center bg-muted rounded-lg p-4 min-h-[200px]">
+              <div className="bg-muted flex min-h-[200px] items-center justify-center rounded-lg p-4">
                 {infoFile.mimeType.startsWith("image/") ? (
                   <Image
                     src={infoFile.url}
@@ -1146,8 +1276,8 @@ export function FilesManager() {
                     className="max-h-[200px] w-auto rounded"
                   />
                 ) : (
-                  <div className="text-center text-muted-foreground">
-                    <File className="mx-auto h-16 w-16 mb-2" />
+                  <div className="text-muted-foreground text-center">
+                    <File className="mx-auto mb-2 h-16 w-16" />
                     <p>Preview not available</p>
                   </div>
                 )}
@@ -1195,7 +1325,10 @@ export function FilesManager() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Category</Label>
-                      <Select value={editCategory} onValueChange={setEditCategory}>
+                      <Select
+                        value={editCategory}
+                        onValueChange={setEditCategory}
+                      >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -1219,7 +1352,9 @@ export function FilesManager() {
                         <SelectContent>
                           <SelectItem value="OK">OK</SelectItem>
                           <SelectItem value="UPLOADING">Uploading</SelectItem>
-                          <SelectItem value="SOFT_DELETED">Soft Deleted</SelectItem>
+                          <SelectItem value="SOFT_DELETED">
+                            Soft Deleted
+                          </SelectItem>
                           <SelectItem value="DELETED">Deleted</SelectItem>
                           <SelectItem value="ERRORED">Errored</SelectItem>
                           <SelectItem value="NO_FILE">No File</SelectItem>
@@ -1230,13 +1365,17 @@ export function FilesManager() {
 
                   <div className="space-y-2">
                     <Label>Tags</Label>
-                    <div className="flex flex-wrap gap-2 p-3 rounded-md border min-h-[42px]">
+                    <div className="flex min-h-[42px] flex-wrap gap-2 rounded-md border p-3">
                       {tags?.map((tag) => (
                         <Badge
                           key={tag.id}
-                          variant={editTagIds.includes(tag.id) ? "default" : "outline"}
+                          variant={
+                            editTagIds.includes(tag.id) ? "default" : "outline"
+                          }
                           className="cursor-pointer"
-                          onClick={() => toggleTag(tag.id, editTagIds, setEditTagIds)}
+                          onClick={() =>
+                            toggleTag(tag.id, editTagIds, setEditTagIds)
+                          }
                         >
                           <Tag className="mr-1 h-3 w-3" />
                           {tag.name}
@@ -1246,7 +1385,9 @@ export function FilesManager() {
                         </Badge>
                       ))}
                       {(!tags || tags.length === 0) && (
-                        <span className="text-sm text-muted-foreground">No tags available</span>
+                        <span className="text-muted-foreground text-sm">
+                          No tags available
+                        </span>
                       )}
                     </div>
                   </div>
@@ -1284,7 +1425,10 @@ export function FilesManager() {
                   <InfoRow label="MIME Type" value={infoFile.mimeType} />
                   <InfoRow label="Size" value={formatFileSize(infoFile.size)} />
                   {infoFile.width && infoFile.height && (
-                    <InfoRow label="Dimensions" value={`${infoFile.width} × ${infoFile.height}`} />
+                    <InfoRow
+                      label="Dimensions"
+                      value={`${infoFile.width} × ${infoFile.height}`}
+                    />
                   )}
                   <InfoRow label="For" value={infoFile.for} />
                   <InfoRow
@@ -1296,7 +1440,9 @@ export function FilesManager() {
                   />
                   <InfoRow label="Category" value={infoFile.category} />
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Tags</Label>
+                    <Label className="text-muted-foreground text-xs">
+                      Tags
+                    </Label>
                     <div className="flex flex-wrap gap-1">
                       {infoFile.fileTags.length > 0 ? (
                         infoFile.fileTags.map((tag) => (
@@ -1306,32 +1452,54 @@ export function FilesManager() {
                           </Badge>
                         ))
                       ) : (
-                        <span className="text-sm text-muted-foreground">No tags</span>
+                        <span className="text-muted-foreground text-sm">
+                          No tags
+                        </span>
                       )}
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">ACL</Label>
+                    <Label className="text-muted-foreground text-xs">ACL</Label>
                     <div className="flex flex-col gap-1">
-                      <Badge variant={infoFile.acl === "public-read" || infoFile.acl === "public-read-write" ? "default" : "secondary"}>
-                        {infoFile.acl === "public-read" ? "Public Read" :
-                          infoFile.acl === "public-read-write" ? "Public Read/Write" :
-                            infoFile.acl === "authenticated-read" ? "Authenticated Read" :
-                              "Private"}
+                      <Badge
+                        variant={
+                          infoFile.acl === "public-read" ||
+                          infoFile.acl === "public-read-write"
+                            ? "default"
+                            : "secondary"
+                        }
+                      >
+                        {infoFile.acl === "public-read"
+                          ? "Public Read"
+                          : infoFile.acl === "public-read-write"
+                            ? "Public Read/Write"
+                            : infoFile.acl === "authenticated-read"
+                              ? "Authenticated Read"
+                              : "Private"}
                       </Badge>
-                      <p className="text-xs text-muted-foreground">
-                        {infoFile.acl === "private" && "Only accessible with credentials"}
-                        {infoFile.acl === "public-read" && "Anyone can read, only owner can write"}
-                        {infoFile.acl === "public-read-write" && "Anyone can read and write"}
-                        {infoFile.acl === "authenticated-read" && "Only authenticated AWS users can read"}
+                      <p className="text-muted-foreground text-xs">
+                        {infoFile.acl === "private" &&
+                          "Only accessible with credentials"}
+                        {infoFile.acl === "public-read" &&
+                          "Anyone can read, only owner can write"}
+                        {infoFile.acl === "public-read-write" &&
+                          "Anyone can read and write"}
+                        {infoFile.acl === "authenticated-read" &&
+                          "Only authenticated AWS users can read"}
                       </p>
                     </div>
                   </div>
                   <InfoRow
                     label="Status"
                     value={
-                      <Badge variant={FILE_STATUS_LABELS[infoFile.status]?.variant ?? "outline"}>
-                        {FILE_STATUS_LABELS[infoFile.status]?.label ?? infoFile.status}
+                      <Badge
+                        variant={
+                          FILE_STATUS_LABELS[infoFile.status]?.variant ??
+                          "outline"
+                        }
+                      >
+                        {FILE_STATUS_LABELS[infoFile.status]?.label ??
+                          infoFile.status}
                       </Badge>
                     }
                   />
@@ -1359,7 +1527,11 @@ export function FilesManager() {
               <DialogFooter>
                 {isEditing ? (
                   <>
-                    <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isSavingFile}>
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsEditing(false)}
+                      disabled={isSavingFile}
+                    >
                       Cancel
                     </Button>
                     <Button onClick={handleSaveFile} disabled={isSavingFile}>
@@ -1379,7 +1551,11 @@ export function FilesManager() {
                 ) : (
                   <>
                     <Button variant="outline" asChild>
-                      <a href={infoFile.url} target="_blank" rel="noopener noreferrer">
+                      <a
+                        href={infoFile.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         <ExternalLink className="mr-2 h-4 w-4" />
                         Open in New Tab
                       </a>
@@ -1414,7 +1590,7 @@ export function FilesManager() {
 
           <div className="space-y-4">
             {/* Create New Tag */}
-            <div className="space-y-3 p-4 rounded-lg border bg-muted/50">
+            <div className="bg-muted/50 space-y-3 rounded-lg border p-4">
               <Label className="font-medium">Create New Tag</Label>
               <div className="flex gap-2">
                 <Input
@@ -1445,18 +1621,20 @@ export function FilesManager() {
             {/* Existing Tags */}
             <div className="space-y-2">
               <Label className="font-medium">Existing Tags</Label>
-              <div className="max-h-[300px] overflow-y-auto space-y-2">
+              <div className="max-h-[300px] space-y-2 overflow-y-auto">
                 {tags?.map((tag) => (
                   <div
                     key={tag.id}
-                    className="flex items-center justify-between p-3 rounded-lg border"
+                    className="flex items-center justify-between rounded-lg border p-3"
                   >
                     <div className="flex items-center gap-2">
-                      <Tag className="h-4 w-4 text-muted-foreground" />
+                      <Tag className="text-muted-foreground h-4 w-4" />
                       <div>
                         <p className="font-medium">{tag.name}</p>
                         {tag.description && (
-                          <p className="text-xs text-muted-foreground">{tag.description}</p>
+                          <p className="text-muted-foreground text-xs">
+                            {tag.description}
+                          </p>
                         )}
                       </div>
                       <Badge variant="secondary" className="text-xs">
@@ -1466,17 +1644,21 @@ export function FilesManager() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                      className="text-destructive hover:text-destructive h-8 w-8 p-0"
                       onClick={() => setDeleteTagId(tag.id)}
                       disabled={tag._count.fileUploads > 0}
-                      title={tag._count.fileUploads > 0 ? "Cannot delete tag with files" : "Delete tag"}
+                      title={
+                        tag._count.fileUploads > 0
+                          ? "Cannot delete tag with files"
+                          : "Delete tag"
+                      }
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 ))}
                 {(!tags || tags.length === 0) && (
-                  <p className="text-center text-muted-foreground py-4">
+                  <p className="text-muted-foreground py-4 text-center">
                     No tags created yet
                   </p>
                 )}
@@ -1487,18 +1669,26 @@ export function FilesManager() {
       </Dialog>
 
       {/* Delete Tag Confirmation */}
-      <AlertDialog open={!!deleteTagId} onOpenChange={(open) => !open && setDeleteTagId(null)}>
+      <AlertDialog
+        open={!!deleteTagId}
+        onOpenChange={(open) => !open && setDeleteTagId(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Tag</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this tag? This action cannot be undone.
+              Are you sure you want to delete this tag? This action cannot be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteTag.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteTag.isPending}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleteTagId && deleteTag.mutate({ id: deleteTagId })}
+              onClick={() =>
+                deleteTagId && deleteTag.mutate({ id: deleteTagId })
+              }
               disabled={deleteTag.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
@@ -1516,26 +1706,31 @@ export function FilesManager() {
       </AlertDialog>
 
       {/* Bulk Tag Dialog */}
-      <Dialog open={bulkTagDialogOpen} onOpenChange={(open) => {
-        if (!isBulkTagging) {
-          setBulkTagDialogOpen(open);
-          if (!open) {
-            setBulkTagIds([]);
+      <Dialog
+        open={bulkTagDialogOpen}
+        onOpenChange={(open) => {
+          if (!isBulkTagging) {
+            setBulkTagDialogOpen(open);
+            if (!open) {
+              setBulkTagIds([]);
+            }
           }
-        }
-      }}>
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {bulkTagMode === "add" ? (
                 <>
                   <Plus className="h-5 w-5" />
-                  Add Tags to {selectedFileIds.size} File{selectedFileIds.size !== 1 ? "s" : ""}
+                  Add Tags to {selectedFileIds.size} File
+                  {selectedFileIds.size !== 1 ? "s" : ""}
                 </>
               ) : (
                 <>
                   <Minus className="h-5 w-5" />
-                  Remove Tags from {selectedFileIds.size} File{selectedFileIds.size !== 1 ? "s" : ""}
+                  Remove Tags from {selectedFileIds.size} File
+                  {selectedFileIds.size !== 1 ? "s" : ""}
                 </>
               )}
             </DialogTitle>
@@ -1549,11 +1744,13 @@ export function FilesManager() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Select Tags</Label>
-              <div className="flex flex-wrap gap-2 p-3 rounded-md border min-h-[100px] max-h-[200px] overflow-y-auto">
+              <div className="flex max-h-[200px] min-h-[100px] flex-wrap gap-2 overflow-y-auto rounded-md border p-3">
                 {tags?.map((tag) => (
                   <Badge
                     key={tag.id}
-                    variant={bulkTagIds.includes(tag.id) ? "default" : "outline"}
+                    variant={
+                      bulkTagIds.includes(tag.id) ? "default" : "outline"
+                    }
                     className="cursor-pointer"
                     onClick={() => toggleTag(tag.id, bulkTagIds, setBulkTagIds)}
                   >
@@ -1565,16 +1762,19 @@ export function FilesManager() {
                   </Badge>
                 ))}
                 {(!tags || tags.length === 0) && (
-                  <span className="text-sm text-muted-foreground">No tags available</span>
+                  <span className="text-muted-foreground text-sm">
+                    No tags available
+                  </span>
                 )}
               </div>
             </div>
 
             {bulkTagIds.length > 0 && (
-              <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
-                <Tags className="h-4 w-4 text-muted-foreground" />
+              <div className="bg-muted/50 flex items-center gap-2 rounded-lg p-3">
+                <Tags className="text-muted-foreground h-4 w-4" />
                 <span className="text-sm">
-                  {bulkTagIds.length} tag{bulkTagIds.length !== 1 ? "s" : ""} selected
+                  {bulkTagIds.length} tag{bulkTagIds.length !== 1 ? "s" : ""}{" "}
+                  selected
                 </span>
               </div>
             )}
@@ -1637,7 +1837,7 @@ function InfoRow({
 }) {
   return (
     <div className="space-y-1">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Label className="text-muted-foreground text-xs">{label}</Label>
       <div className="flex items-center gap-2">
         <span
           className={`text-sm break-all ${mono ? "font-mono" : ""}`}
@@ -1649,7 +1849,7 @@ function InfoRow({
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 w-6 p-0 shrink-0"
+            className="h-6 w-6 shrink-0 p-0"
             onClick={onCopy}
           >
             {copied ? (

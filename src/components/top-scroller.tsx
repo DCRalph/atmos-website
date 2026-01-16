@@ -60,13 +60,13 @@ export function ScrollingText({
     >
       {/* Left fade overlay */}
       <div
-        className="pointer-events-none absolute left-0 top-0 z-10 h-full bg-gradient-to-r from-black to-transparent"
+        className="pointer-events-none absolute top-0 left-0 z-10 h-full bg-gradient-to-r from-black to-transparent"
         style={{ width: `${fadeWidth}px` }}
       />
 
       {/* Right fade overlay */}
       <div
-        className="pointer-events-none absolute right-0 top-0 z-10 h-full bg-gradient-to-l from-black to-transparent"
+        className="pointer-events-none absolute top-0 right-0 z-10 h-full bg-gradient-to-l from-black to-transparent"
         style={{ width: `${fadeWidth}px` }}
       />
 
@@ -86,7 +86,7 @@ export function ScrollingText({
           <Link
             key={`${item.label}-${index}`}
             href={item.href}
-            className="text-lg font-medium text-white hover:text-white/80 transition-colors"
+            className="text-lg font-medium text-white transition-colors hover:text-white/80"
             style={{ marginRight: `${itemSpacing}px` }}
           >
             {item.label}

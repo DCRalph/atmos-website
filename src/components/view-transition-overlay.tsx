@@ -51,7 +51,12 @@ export function ViewTransitionOverlay() {
       if (!link) return;
 
       const href = link.getAttribute("href");
-      if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) {
+      if (
+        !href ||
+        href.startsWith("#") ||
+        href.startsWith("mailto:") ||
+        href.startsWith("tel:")
+      ) {
         return;
       }
 
@@ -112,8 +117,9 @@ export function ViewTransitionOverlay() {
   return (
     <div
       ref={overlayRef}
-      className={`fixed inset-0 z-[9999] pointer-events-none transition-opacity duration-300 ${isTransitioning ? "opacity-100" : "opacity-0"
-        }`}
+      className={`pointer-events-none fixed inset-0 z-[9999] transition-opacity duration-300 ${
+        isTransitioning ? "opacity-100" : "opacity-0"
+      }`}
       style={{
         viewTransitionName: "view-transition-overlay",
       }}
@@ -123,12 +129,14 @@ export function ViewTransitionOverlay() {
 
       {/* Logo */}
       <div
-        className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${showLogo ? "opacity-100" : "opacity-0"
-          }`}
+        className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${
+          showLogo ? "opacity-100" : "opacity-0"
+        }`}
       >
         <div
-          className={`relative w-64 h-16 sm:w-80 sm:h-20 ${isExploding ? "animate-[logo-explode_0.5s_ease-out_forwards]" : ""
-            }`}
+          className={`relative h-16 w-64 sm:h-20 sm:w-80 ${
+            isExploding ? "animate-[logo-explode_0.5s_ease-out_forwards]" : ""
+          }`}
         >
           <Image
             src="/logo/atmos-white.png"
@@ -143,4 +151,3 @@ export function ViewTransitionOverlay() {
     </div>
   );
 }
-

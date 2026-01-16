@@ -24,9 +24,8 @@ type ImageCycleBackgroundProps = {
 
 export function ImageCycleBackground({
   intervalMs = 5000,
-  auto = true
+  auto = true,
 }: ImageCycleBackgroundProps) {
-
   const [index, setIndex] = useState(0);
 
   // Preload all images on mount
@@ -73,4 +72,3 @@ export function ImageCycleBackground({
     </div>
   );
 }
-

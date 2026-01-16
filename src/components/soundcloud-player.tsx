@@ -77,7 +77,6 @@ export function SoundCloudPlayer({
     return `${base}${full}`;
   }, [resolvedParams, url]);
 
-
   return (
     <iframe
       title={title}
@@ -90,4 +89,3 @@ export function SoundCloudPlayer({
     />
   );
 }
-

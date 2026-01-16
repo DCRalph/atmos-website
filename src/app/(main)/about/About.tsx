@@ -12,7 +12,7 @@ export default function AboutPage() {
   // }, [setForcedTheme]);
 
   return (
-    <main className=" isolate min-h-dvh bg-black text-black">
+    <main className="isolate min-h-dvh bg-black text-black">
       {/* Dark frame background */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
         <Image
@@ -32,13 +32,12 @@ export default function AboutPage() {
           {/* Watermark year */}
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute right-10 top-40 select-none text-[clamp(6rem,20vw,16rem)] font-black leading-none tracking-[-0.08em] text-black/5"
+            className="pointer-events-none absolute top-40 right-10 text-[clamp(6rem,20vw,16rem)] leading-none font-black tracking-[-0.08em] text-black/5 select-none"
           >
             2026
           </div>
 
           {/* Poster top micro-nav */}
-
 
           <div className="flex justify-center px-6 py-5 sm:px-10 sm:py-6">
             <Link
@@ -49,12 +48,9 @@ export default function AboutPage() {
             </Link>
           </div>
 
-
-
-
           {/* Hero headline */}
           <div className="px-6 sm:px-10">
-            <h1 className="text-balance pt-2 text-center text-[clamp(3.4rem,10.5vw,8.8rem)] font-black leading-[0.82] tracking-[-0.065em] text-black transform-[scaleX(0.88)]">
+            <h1 className="transform-[scaleX(0.88)] pt-2 text-center text-[clamp(3.4rem,10.5vw,8.8rem)] leading-[0.82] font-black tracking-[-0.065em] text-balance text-black">
               OUR VISION
             </h1>
 
@@ -66,9 +62,9 @@ export default function AboutPage() {
           </div>
 
           {/* Main poster body */}
-          <div className="grid grid-cols-12 gap-6 px-6 pb-8 pt-10 sm:gap-8 sm:px-10 sm:pb-10">
-            <div className="col-span-12 sm:col-span-7 flex flex-col gap-6">
-              <h2 className="text-left text-[clamp(1.9rem,4.2vw,3.3rem)] font-black leading-[0.9] tracking-[-0.05em] text-black transform-[scaleX(0.92)]">
+          <div className="grid grid-cols-12 gap-6 px-6 pt-10 pb-8 sm:gap-8 sm:px-10 sm:pb-10">
+            <div className="col-span-12 flex flex-col gap-6 sm:col-span-7">
+              <h2 className="transform-[scaleX(0.92)] text-left text-[clamp(1.9rem,4.2vw,3.3rem)] leading-[0.9] font-black tracking-[-0.05em] text-black">
                 MODERN
                 <br />
                 RAVE CULTURE
@@ -87,9 +83,9 @@ export default function AboutPage() {
               </div>
 
               <p className="mt-4 max-w-[54ch] text-[13px] leading-relaxed tracking-[0.02em] text-black/70">
-                ATMOS is a collective of DJs, producers, and creatives based in Pōneke /
-                Wellington. We build nights that feel cinematic: tight curation, bold
-                sound, and a room that moves as one.
+                ATMOS is a collective of DJs, producers, and creatives based in
+                Pōneke / Wellington. We build nights that feel cinematic: tight
+                curation, bold sound, and a room that moves as one.
               </p>
 
               <div className="mt-5 w-full max-w-[360px] overflow-hidden ring-1 ring-black/10">
@@ -105,13 +101,13 @@ export default function AboutPage() {
               </div>
             </div>
 
-            <div className="col-span-12 sm:col-span-5 flex flex-col gap-6">
+            <div className="col-span-12 flex flex-col gap-6 sm:col-span-5">
               <div className="grid grid-cols-2 gap-4">
-                <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-black/60">
+                <div className="text-[10px] font-medium tracking-[0.22em] text-black/60 uppercase">
                   <p className="mb-2">ATMOS</p>
                   <p className="text-black/70">Mixes subtly formal + raw.</p>
                 </div>
-                <div className="text-right text-[10px] font-medium uppercase tracking-[0.22em] text-black/60">
+                <div className="text-right text-[10px] font-medium tracking-[0.22em] text-black/60 uppercase">
                   <p className="mb-2">We aim</p>
                   <p className="text-black/70">for intention over noise.</p>
                 </div>
@@ -130,18 +126,18 @@ export default function AboutPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-black/60">
+                <div className="text-[10px] font-medium tracking-[0.22em] text-black/60 uppercase">
                   <p className="mb-2">Production</p>
                   <p className="text-black/70">Traceable by design.</p>
                 </div>
-                <div className="text-right text-[10px] font-medium uppercase tracking-[0.22em] text-black/60">
+                <div className="text-right text-[10px] font-medium tracking-[0.22em] text-black/60 uppercase">
                   <p className="mb-2">Respect</p>
                   <p className="text-black/70">for people + place.</p>
                 </div>
               </div>
 
               <div className="grid gap-2 text-[13px] leading-relaxed tracking-[0.02em] text-black/60">
-                <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-black/60">
+                <p className="text-[10px] font-medium tracking-[0.22em] text-black/60 uppercase">
                   Notes
                 </p>
                 <p>
@@ -155,27 +151,27 @@ export default function AboutPage() {
           {/* Bottom statement + cutout */}
           <div className="relative px-6 pb-10 sm:px-10">
             <div className="flex items-end justify-between gap-6">
-              <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-black/60">
+              <p className="text-[10px] font-medium tracking-[0.22em] text-black/60 uppercase">
                 Since 1BK
               </p>
-              <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-black/60">
+              <p className="text-[10px] font-medium tracking-[0.22em] text-black/60 uppercase">
                 Pōneke, Aotearoa
               </p>
             </div>
 
             <div className="mt-5 grid gap-3 text-[13px] leading-relaxed tracking-[0.02em] text-black/60 sm:max-w-[72ch]">
               <p>
-                Placeholder text: Excepteur sint occaecat cupidatat non proident, sunt
-                in culpa qui officia deserunt mollit anim id est laborum.
+                Placeholder text: Excepteur sint occaecat cupidatat non
+                proident, sunt in culpa qui officia deserunt mollit anim id est
+                laborum.
               </p>
               <p>
-                Placeholder text: Curabitur non nulla sit amet nisl tempus convallis
-                quis ac lectus. Vivamus suscipit tortor eget felis porttitor volutpat.
+                Placeholder text: Curabitur non nulla sit amet nisl tempus
+                convallis quis ac lectus. Vivamus suscipit tortor eget felis
+                porttitor volutpat.
               </p>
             </div>
           </div>
-
-
         </div>
       </section>
     </main>

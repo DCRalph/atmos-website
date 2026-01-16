@@ -1,10 +1,10 @@
-import * as React from "react"
+import * as React from "react";
 
-import { cn } from "~/lib/utils"
+import { cn } from "~/lib/utils";
 
 type AccentGlowCardProps = React.ComponentProps<"div"> & {
-  asChild?: boolean
-}
+  asChild?: boolean;
+};
 
 export function AccentGlowCard({
   className,
@@ -12,13 +12,12 @@ export function AccentGlowCard({
   children,
   ...props
 }: AccentGlowCardProps) {
-
   return (
     <div
       className={cn(
         [
           // Layout + surface
-          "group relative overflow-hidden rounded-none border-2 border-accent-strong/80 bg-black/80 backdrop-blur-sm",
+          "group border-accent-strong/80 relative overflow-hidden rounded-none border-2 bg-black/80 backdrop-blur-sm",
           "transition-all",
           "p-6",
           // Hover treatment
@@ -33,15 +32,14 @@ export function AccentGlowCard({
           // Small glow bump on hover
           "shadow-[0_0_4px_1px_var(--accent-muted)] hover:shadow-[0_0_15px_3px_var(--accent-muted)]",
         ].join(" "),
-        className
+        className,
       )}
       {...props}
     >
       {/* <> */}
-      <div className="absolute left-0 top-0 h-full w-1 bg-accent-strong/80 group-hover:bg-accent-muted transition-all group-hover:w-2" />
+      <div className="bg-accent-strong/80 group-hover:bg-accent-muted absolute top-0 left-0 h-full w-1 transition-all group-hover:w-2" />
       {children}
       {/* </> */}
     </div>
-  )
+  );
 }
-

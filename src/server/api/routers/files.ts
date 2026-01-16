@@ -1,21 +1,39 @@
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure, adminProcedure } from "~/server/api/trpc";
-import { uploadBufferToS3, softDeleteFile, deleteFile, limits } from "~/lib/s3Helper";
-import { FileUploadStatus, type file_upload, type file_tag } from "~Prisma/client";
+import {
+  createTRPCRouter,
+  publicProcedure,
+  adminProcedure,
+} from "~/server/api/trpc";
+import {
+  uploadBufferToS3,
+  softDeleteFile,
+  deleteFile,
+  limits,
+} from "~/lib/s3Helper";
+import {
+  FileUploadStatus,
+  type file_upload,
+  type file_tag,
+} from "~Prisma/client";
 
 // Revalidation time for file queries (5 minutes)
 const FILE_CACHE_SECONDS = 300;
 
 type LinkedEntity = { type: string; id: string; title: string } | null;
 type FileTag = { id: string; name: string; description: string | null };
-type EnrichedFile = file_upload & { linkedEntity: LinkedEntity; fileTags: FileTag[] };
+type EnrichedFile = file_upload & {
+  linkedEntity: LinkedEntity;
+  fileTags: FileTag[];
+};
 
 /**
  * Helper to enrich files with linked entity info using for/forId
  */
-async function enrichFilesWithLinkedEntities<T extends file_upload & { fileTags?: FileTag[] }>(
+async function enrichFilesWithLinkedEntities<
+  T extends file_upload & { fileTags?: FileTag[] },
+>(
   db: any,
-  files: T[]
+  files: T[],
 ): Promise<(T & { linkedEntity: LinkedEntity; fileTags: FileTag[] })[]> {
   // Group files by their "for" type
   const gigMediaFiles = files.filter((f) => f.for === "gig_media");
@@ -23,26 +41,31 @@ async function enrichFilesWithLinkedEntities<T extends file_upload & { fileTags?
 
   // Fetch linked gig media items
   const gigMediaIds = gigMediaFiles.map((f) => f.forId);
-  const gigMediaItems: Array<{ id: string; gig: { id: string; title: string } | null }> = gigMediaIds.length > 0
-    ? await db.gigMedia.findMany({
-      where: { id: { in: gigMediaIds } },
-      include: {
-        gig: {
-          select: { id: true, title: true },
-        },
-      },
-    })
-    : [];
+  const gigMediaItems: Array<{
+    id: string;
+    gig: { id: string; title: string } | null;
+  }> =
+    gigMediaIds.length > 0
+      ? await db.gigMedia.findMany({
+          where: { id: { in: gigMediaIds } },
+          include: {
+            gig: {
+              select: { id: true, title: true },
+            },
+          },
+        })
+      : [];
   const gigMediaMap = new Map(gigMediaItems.map((m) => [m.id, m]));
 
   // Fetch linked gigs directly
   const gigIds = gigFiles.map((f) => f.forId);
-  const gigs: Array<{ id: string; title: string }> = gigIds.length > 0
-    ? await db.gig.findMany({
-      where: { id: { in: gigIds } },
-      select: { id: true, title: true },
-    })
-    : [];
+  const gigs: Array<{ id: string; title: string }> =
+    gigIds.length > 0
+      ? await db.gig.findMany({
+          where: { id: { in: gigIds } },
+          select: { id: true, title: true },
+        })
+      : [];
   const gigMap = new Map(gigs.map((g) => [g.id, g]));
 
   // Enrich files with linked entity info
@@ -52,7 +75,11 @@ async function enrichFilesWithLinkedEntities<T extends file_upload & { fileTags?
     if (f.for === "gig_media") {
       const mediaItem = gigMediaMap.get(f.forId);
       if (mediaItem?.gig) {
-        linkedEntity = { type: "gig", id: mediaItem.gig.id, title: mediaItem.gig.title };
+        linkedEntity = {
+          type: "gig",
+          id: mediaItem.gig.id,
+          title: mediaItem.gig.title,
+        };
       }
     } else if (f.for === "gig") {
       const gig = gigMap.get(f.forId);
@@ -72,16 +99,18 @@ export const filesRouter = createTRPCRouter({
    */
   getAll: adminProcedure
     .input(
-      z.object({
-        limit: z.number().min(1).max(100).default(50),
-        page: z.number().min(1).default(1),
-        for: z.string().optional(),
-        forId: z.string().optional(),
-        status: z.nativeEnum(FileUploadStatus).optional(),
-        search: z.string().optional(),
-        mimeTypePrefix: z.string().optional(), // e.g., "image/" or "video/"
-        tagIds: z.array(z.string()).optional(), // Filter by tag IDs
-      }).optional()
+      z
+        .object({
+          limit: z.number().min(1).max(100).default(50),
+          page: z.number().min(1).default(1),
+          for: z.string().optional(),
+          forId: z.string().optional(),
+          status: z.nativeEnum(FileUploadStatus).optional(),
+          search: z.string().optional(),
+          mimeTypePrefix: z.string().optional(), // e.g., "image/" or "video/"
+          tagIds: z.array(z.string()).optional(), // Filter by tag IDs
+        })
+        .optional(),
     )
     .query(async ({ ctx, input }) => {
       const limit = input?.limit ?? 50;
@@ -102,16 +131,19 @@ export const filesRouter = createTRPCRouter({
           ],
         }),
         // Filter by tags - files must have ALL specified tags
-        ...(input?.tagIds && input.tagIds.length > 0 && {
-          fileTags: {
-            some: {
-              id: { in: input.tagIds },
+        ...(input?.tagIds &&
+          input.tagIds.length > 0 && {
+            fileTags: {
+              some: {
+                id: { in: input.tagIds },
+              },
             },
-          },
-        }),
+          }),
         // By default, exclude deleted files
         ...(!input?.status && {
-          status: { notIn: [FileUploadStatus.DELETED, FileUploadStatus.SOFT_DELETED] },
+          status: {
+            notIn: [FileUploadStatus.DELETED, FileUploadStatus.SOFT_DELETED],
+          },
         }),
       };
 
@@ -155,7 +187,9 @@ export const filesRouter = createTRPCRouter({
       const file = await ctx.db.file_upload.findUnique({
         where: {
           id: input.id,
-          status: { notIn: [FileUploadStatus.DELETED, FileUploadStatus.SOFT_DELETED] },
+          status: {
+            notIn: [FileUploadStatus.DELETED, FileUploadStatus.SOFT_DELETED],
+          },
         },
       });
 
@@ -174,7 +208,7 @@ export const filesRouter = createTRPCRouter({
       z.object({
         for: z.string(),
         forId: z.string(),
-      })
+      }),
     )
     .query(async ({ ctx, input }) => {
       const files = await ctx.db.file_upload.findMany({
@@ -206,7 +240,7 @@ export const filesRouter = createTRPCRouter({
         forId: z.string(),
         keyPrefix: z.string().optional(),
         tagIds: z.array(z.string()).optional(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       // Decode base64 to buffer
@@ -215,13 +249,16 @@ export const filesRouter = createTRPCRouter({
 
       // Check size limit
       if (buffer.length > limits.fileSize) {
-        throw new Error(`File size exceeds limit of ${limits.fileSize / 1024 / 1024}MB`);
+        throw new Error(
+          `File size exceeds limit of ${limits.fileSize / 1024 / 1024}MB`,
+        );
       }
 
       // Generate key
       const ext = input.name.split(".").pop() ?? "";
       const uuid = crypto.randomUUID();
-      const keyPrefix = input.keyPrefix?.replace(/\/$/, "") ?? `uploads/${input.for}`;
+      const keyPrefix =
+        input.keyPrefix?.replace(/\/$/, "") ?? `uploads/${input.for}`;
       const key = `${keyPrefix}/${uuid}${ext ? `.${ext}` : ""}`;
 
       const result = await uploadBufferToS3({
@@ -339,10 +376,21 @@ export const filesRouter = createTRPCRouter({
         name: z.string().optional(),
         for: z.string().optional(),
         forId: z.string().optional(),
-        status: z.enum(["NO_FILE", "UPLOADING", "OK", "SOFT_DELETED", "DELETED", "ERRORED"]).optional(),
-        category: z.enum(["IMAGE", "VIDEO", "AUDIO", "PDF", "DOCUMENT", "FILE"]).optional(),
+        status: z
+          .enum([
+            "NO_FILE",
+            "UPLOADING",
+            "OK",
+            "SOFT_DELETED",
+            "DELETED",
+            "ERRORED",
+          ])
+          .optional(),
+        category: z
+          .enum(["IMAGE", "VIDEO", "AUDIO", "PDF", "DOCUMENT", "FILE"])
+          .optional(),
         tagIds: z.array(z.string()).optional(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       const { id, tagIds, ...data } = input;
@@ -394,7 +442,7 @@ export const filesRouter = createTRPCRouter({
       z.object({
         name: z.string().min(1).max(50),
         description: z.string().max(200).optional(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       return ctx.db.file_tag.create({
@@ -411,7 +459,7 @@ export const filesRouter = createTRPCRouter({
         id: z.string(),
         name: z.string().min(1).max(50).optional(),
         description: z.string().max(200).optional().nullable(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
@@ -440,7 +488,7 @@ export const filesRouter = createTRPCRouter({
       z.object({
         fileIds: z.array(z.string()),
         tagIds: z.array(z.string()),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       const { fileIds, tagIds } = input;
@@ -455,8 +503,8 @@ export const filesRouter = createTRPCRouter({
                 connect: tagIds.map((tagId) => ({ id: tagId })),
               },
             },
-          })
-        )
+          }),
+        ),
       );
 
       return { success: true, filesUpdated: fileIds.length };
@@ -470,7 +518,7 @@ export const filesRouter = createTRPCRouter({
       z.object({
         fileIds: z.array(z.string()),
         tagIds: z.array(z.string()),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       const { fileIds, tagIds } = input;
@@ -485,8 +533,8 @@ export const filesRouter = createTRPCRouter({
                 disconnect: tagIds.map((tagId) => ({ id: tagId })),
               },
             },
-          })
-        )
+          }),
+        ),
       );
 
       return { success: true, filesUpdated: fileIds.length };
@@ -501,6 +549,7 @@ function getFileTypeFromMime(mimeType: string): string {
   if (mimeType.startsWith("video/")) return "video";
   if (mimeType.startsWith("audio/")) return "audio";
   if (mimeType.includes("pdf")) return "pdf";
-  if (mimeType.includes("document") || mimeType.includes("word")) return "document";
+  if (mimeType.includes("document") || mimeType.includes("word"))
+    return "document";
   return "file";
 }

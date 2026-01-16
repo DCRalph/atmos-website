@@ -10,7 +10,11 @@ type AnimatedPageHeaderProps = {
 
 const easeOutExpo: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
-export function AnimatedPageHeader({ title, subtitle, className }: AnimatedPageHeaderProps) {
+export function AnimatedPageHeader({
+  title,
+  subtitle,
+  className,
+}: AnimatedPageHeaderProps) {
   const letters = title.split("");
 
   return (
@@ -31,7 +35,7 @@ export function AnimatedPageHeader({ title, subtitle, className }: AnimatedPageH
       }}
     >
       <h1
-        className="text-5xl sm:text-6xl md:text-7xl font-black tracking-[0.15em] text-white mb-4"
+        className="mb-4 text-5xl font-black tracking-[0.15em] text-white sm:text-6xl md:text-7xl"
         aria-label={title}
       >
         <span className="sr-only">{title}</span>
@@ -69,7 +73,7 @@ export function AnimatedPageHeader({ title, subtitle, className }: AnimatedPageH
       </h1>
 
       <motion.div
-        className="h-1 w-24 bg-accent-strong mx-auto mb-6"
+        className="bg-accent-strong mx-auto mb-6 h-1 w-24"
         variants={{
           hidden: { opacity: 0, scaleX: 0.6 },
           visible: {
@@ -82,7 +86,7 @@ export function AnimatedPageHeader({ title, subtitle, className }: AnimatedPageH
 
       {subtitle ? (
         <motion.p
-          className="text-base sm:text-lg text-white/60 tracking-wider uppercase font-mono"
+          className="font-mono text-base tracking-wider text-white/60 uppercase sm:text-lg"
           variants={{
             hidden: { opacity: 0, y: -6 },
             visible: {
@@ -98,4 +102,3 @@ export function AnimatedPageHeader({ title, subtitle, className }: AnimatedPageH
     </motion.div>
   );
 }
-

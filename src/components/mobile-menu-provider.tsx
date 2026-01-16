@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence } from "motion/react";
 import { useIsMobile } from "~/hooks/use-mobile";
@@ -30,8 +37,8 @@ export function MobileMenuProvider({ children }: MobileMenuProviderProps) {
   const isMobile = useIsMobile();
 
   useEffect(() => {
-      setIsMenuOpen(false);
-      // console.log("MobileMenuProvider: isMobile", isMobile);
+    setIsMenuOpen(false);
+    // console.log("MobileMenuProvider: isMobile", isMobile);
   }, [isMobile]);
 
   const toggleMenu = useCallback(() => {
@@ -57,7 +64,9 @@ export function MobileMenuProvider({ children }: MobileMenuProviderProps) {
   }, [isMenuOpen]);
 
   return (
-    <MobileMenuContext.Provider value={{ isMenuOpen, setIsMenuOpen, toggleMenu }}>
+    <MobileMenuContext.Provider
+      value={{ isMenuOpen, setIsMenuOpen, toggleMenu }}
+    >
       {children}
     </MobileMenuContext.Provider>
   );
@@ -84,7 +93,6 @@ export function MobileMenuPortal({ children }: MobileMenuPortalProps) {
     <AnimatePresence initial={false} mode="wait">
       {isMenuOpen && children}
     </AnimatePresence>,
-    portalContainer
+    portalContainer,
   );
 }
-

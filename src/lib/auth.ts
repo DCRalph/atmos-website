@@ -6,7 +6,7 @@ import { createAuthMiddleware } from "better-auth/api";
 import { z } from "zod";
 import { cache } from "react";
 import { headers } from "next/headers";
-import { type User } from "~Prisma/client"
+import { type User } from "~Prisma/client";
 
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
@@ -15,13 +15,13 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
-    disableSignUp: false, 
+    disableSignUp: false,
   },
   socialProviders: {
     google: {
       clientId: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
-      disableSignUp: false, 
+      disableSignUp: false,
     },
   },
   // hooks: {
@@ -176,8 +176,6 @@ export const auth = betterAuth({
   //   }),
   // },
 });
-
-
 
 export const authServer = cache(async () => {
   const session = await auth.api.getSession({

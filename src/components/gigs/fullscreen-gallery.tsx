@@ -46,7 +46,7 @@ export function FullscreenGallery({
   }, []);
 
   useEffect(() => {
-    console.log('direction', direction);
+    console.log("direction", direction);
   }, [direction]);
 
   const goToNext = useCallback(() => {
@@ -150,7 +150,7 @@ export function FullscreenGallery({
 
         <button
           onClick={onClose}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-sm transition-all hover:bg-white/20 hover:scale-105"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-sm transition-all hover:scale-105 hover:bg-white/20"
         >
           <X size={20} />
         </button>
@@ -162,7 +162,7 @@ export function FullscreenGallery({
         <button
           onClick={goToPrevious}
           disabled={currentIndex === 0}
-          className="absolute left-2 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-sm transition-all hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed sm:left-4"
+          className="absolute left-2 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-sm transition-all hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-30 sm:left-4"
         >
           <ChevronLeft size={24} />
         </button>
@@ -170,7 +170,7 @@ export function FullscreenGallery({
         <button
           onClick={goToNext}
           disabled={currentIndex === media.length - 1}
-          className="absolute right-2 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-sm transition-all hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed sm:right-4"
+          className="absolute right-2 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-sm transition-all hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-30 sm:right-4"
         >
           <ChevronRight size={24} />
         </button>
@@ -224,7 +224,7 @@ export function FullscreenGallery({
       >
         <div
           ref={thumbnailsRef}
-          className="flex gap-2 overflow-x-auto px-4 py-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20"
+          className="scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20 flex gap-2 overflow-x-auto px-4 py-4"
         >
           {media.map((item, index) => {
             const isActive = index === currentIndex;
@@ -234,10 +234,11 @@ export function FullscreenGallery({
                 onClick={() => goToIndex(index)}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className={`relative shrink-0 overflow-hidden rounded-lg transition-all ${isActive
-                  ? "ring-2 ring-blue-400 ring-offset-2 ring-offset-[#0a1628]"
-                  : "opacity-60 hover:opacity-100"
-                  }`}
+                className={`relative shrink-0 overflow-hidden rounded-lg transition-all ${
+                  isActive
+                    ? "ring-2 ring-blue-400 ring-offset-2 ring-offset-[#0a1628]"
+                    : "opacity-60 hover:opacity-100"
+                }`}
               >
                 <div className="relative h-16 w-24 sm:h-20 sm:w-32">
                   {item.type === "photo" ? (
@@ -258,7 +259,7 @@ export function FullscreenGallery({
                       />
                       <div className="absolute inset-0 flex items-center justify-center bg-black/40">
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
-                          <div className="ml-0.5 h-0 w-0 border-l-8 border-b-[5px] border-t-[5px] border-l-white border-b-transparent border-t-transparent" />
+                          <div className="ml-0.5 h-0 w-0 border-t-[5px] border-b-[5px] border-l-8 border-t-transparent border-b-transparent border-l-white" />
                         </div>
                       </div>
                     </div>
@@ -277,6 +278,6 @@ export function FullscreenGallery({
         </div>
       </motion.div>
     </motion.div>,
-    document.body
+    document.body,
   );
 }

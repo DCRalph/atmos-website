@@ -6,7 +6,13 @@ import { authClient } from "~/lib/auth-client";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
 export function LoginForm() {
@@ -39,7 +45,7 @@ export function LoginForm() {
             setError(ctx.error.message || "Failed to sign in");
             setIsLoading(false);
           },
-        }
+        },
       );
     } catch (err) {
       console.error(err);
@@ -70,7 +76,7 @@ export function LoginForm() {
             setError(ctx.error.message || "Failed to sign up");
             setIsLoading(false);
           },
-        }
+        },
       );
     } catch (err) {
       console.error(err);
@@ -104,8 +110,8 @@ export function LoginForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs 
-          value={isLogin ? "login" : "signup"} 
+        <Tabs
+          value={isLogin ? "login" : "signup"}
           onValueChange={(value) => {
             setIsLogin(value === "login");
             setError(null);
@@ -121,7 +127,7 @@ export function LoginForm() {
           </TabsList>
 
           <TabsContent value="login">
-            <form onSubmit={handleLogin} className="space-y-4 mt-4">
+            <form onSubmit={handleLogin} className="mt-4 space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="login-email">Email</Label>
                 <Input
@@ -147,20 +153,26 @@ export function LoginForm() {
                 />
               </div>
               {error && (
-                <div className="rounded-md bg-destructive/10 border border-destructive/50 px-4 py-3 text-sm text-destructive">
+                <div className="bg-destructive/10 border-destructive/50 text-destructive rounded-md border px-4 py-3 text-sm">
                   {error}
                 </div>
               )}
-              <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading}>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading || isGoogleLoading}
+              >
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
-              
+
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+                  <span className="bg-card text-muted-foreground px-2">
+                    Or continue with
+                  </span>
                 </div>
               </div>
 
@@ -195,7 +207,7 @@ export function LoginForm() {
           </TabsContent>
 
           <TabsContent value="signup">
-            <form onSubmit={handleSignUp} className="space-y-4 mt-4">
+            <form onSubmit={handleSignUp} className="mt-4 space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="signup-name">Name</Label>
                 <Input
@@ -234,20 +246,26 @@ export function LoginForm() {
                 />
               </div>
               {error && (
-                <div className="rounded-md bg-destructive/10 border border-destructive/50 px-4 py-3 text-sm text-destructive">
+                <div className="bg-destructive/10 border-destructive/50 text-destructive rounded-md border px-4 py-3 text-sm">
                   {error}
                 </div>
               )}
-              <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading}>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading || isGoogleLoading}
+              >
                 {isLoading ? "Creating account..." : "Sign Up"}
               </Button>
-              
+
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+                  <span className="bg-card text-muted-foreground px-2">
+                    Or continue with
+                  </span>
                 </div>
               </div>
 
@@ -285,4 +303,3 @@ export function LoginForm() {
     </Card>
   );
 }
-

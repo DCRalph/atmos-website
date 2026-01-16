@@ -8,15 +8,20 @@ interface LayoutWithSideBarHeaderProps {
   header: React.ReactNode;
 }
 
-export function LayoutWithSideBarHeader({ children, sidebar, header: header }: LayoutWithSideBarHeaderProps) {
-
+export function LayoutWithSideBarHeader({
+  children,
+  sidebar,
+  header: header,
+}: LayoutWithSideBarHeaderProps) {
   const isMobile = useIsMobile();
 
   return (
     <SidebarProvider>
       <div className="bg-sidebar flex h-screen w-full">
         {sidebar}
-        <div className={`flex flex-1 flex-col w-full overflow-x-hidden rounded-none bg-background ${isMobile ? "" : "mt-2 rounded-tl-xl"}`}>
+        <div
+          className={`bg-background flex w-full flex-1 flex-col overflow-x-hidden rounded-none ${isMobile ? "" : "mt-2 rounded-tl-xl"}`}
+        >
           {/* <div className={`flex flex-1 flex-col w-full overflow-x-hidden rounded-none bg-background lg:mt-2 lg:rounded-tl-xl`}> */}
           {header}
           {children}

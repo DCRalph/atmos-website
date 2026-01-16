@@ -22,12 +22,26 @@ const footerLinks = [
 ] as const;
 
 const footerSocials = [
-  { label: "Instagram", href: "https://instagram.com/atmos.nz", Icon: FaInstagram, tooltip: "Instagram" },
-  { label: "TikTok", href: "https://tiktok.com/@atmos_tv", Icon: FaTiktok, tooltip: "TikTok" },
-  { label: "YouTube", href: "https://youtube.com/@ATMOS_TV", Icon: FaYoutube, tooltip: "YouTube" },
+  {
+    label: "Instagram",
+    href: "https://instagram.com/atmos.nz",
+    Icon: FaInstagram,
+    tooltip: "Instagram",
+  },
+  {
+    label: "TikTok",
+    href: "https://tiktok.com/@atmos_tv",
+    Icon: FaTiktok,
+    tooltip: "TikTok",
+  },
+  {
+    label: "YouTube",
+    href: "https://youtube.com/@ATMOS_TV",
+    Icon: FaYoutube,
+    tooltip: "YouTube",
+  },
   { label: "Socials", href: "/socials", Icon: FaPlus, tooltip: "Socials" },
 ] as const;
-
 
 export function MainFooter() {
   const year = new Date().getFullYear();
@@ -44,7 +58,7 @@ export function MainFooter() {
 
       <div className="border-t border-black/10 bg-white/75 text-black backdrop-blur-md dark:border-white/10 dark:bg-black/55 dark:text-white">
         <div className="mx-auto max-w-6xl p-4">
-          <div className="flex flex-col items-center gap-6 md:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col items-center gap-6 sm:items-center sm:justify-between md:flex-row">
             <Link href="/" aria-label="ATMOS home" className="shrink-0">
               <div className="relative aspect-4/1 w-40 sm:w-48">
                 <Image
@@ -53,7 +67,7 @@ export function MainFooter() {
                   fill
                   priority
                   sizes="(max-width: 640px) 10rem, 12rem"
-                  className="object-contain dark:block hidden"
+                  className="hidden object-contain dark:block"
                 />
                 <Image
                   src="/logo/atmos-black.png"
@@ -61,42 +75,42 @@ export function MainFooter() {
                   fill
                   priority
                   sizes="(max-width: 640px) 10rem, 12rem"
-                  className="object-contain dark:hidden block"
+                  className="block object-contain dark:hidden"
                 />
               </div>
             </Link>
 
             <nav
               aria-label="Footer"
-              className="flex w-full flex-wrap items-center justify-center px-8 sm:px-0 gap-x-5 gap-y-3 text-xs uppercase tracking-wider text-black/70 dark:text-white/70 sm:w-auto sm:justify-center"
+              className="flex w-full flex-wrap items-center justify-center gap-x-5 gap-y-3 px-8 text-xs tracking-wider text-black/70 uppercase sm:w-auto sm:justify-center sm:px-0 dark:text-white/70"
             >
               {footerLinks.map((l) => (
                 <FooterLink key={l.href} link={l} />
               ))}
 
-              {
-                user && (
-                  <Link href="/dashboard" className="transition-colors hover:text-black dark:hover:text-white">
-                    Dashboard
-                  </Link>
-                )
-              }
+              {user && (
+                <Link
+                  href="/dashboard"
+                  className="transition-colors hover:text-black dark:hover:text-white"
+                >
+                  Dashboard
+                </Link>
+              )}
 
-              {
-                !userLoading &&
-                !user && (
-                  <Link href="/login" className="transition-colors hover:text-black dark:hover:text-white">
-                    Login
-                  </Link>
-                )
-              }
+              {!userLoading && !user && (
+                <Link
+                  href="/login"
+                  className="transition-colors hover:text-black dark:hover:text-white"
+                >
+                  Login
+                </Link>
+              )}
 
               {userLoading && (
                 <div className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
                 </div>
               )}
-
             </nav>
 
             {/* <div className="flex flex-col items-center sm:items-end"> */}
@@ -105,8 +119,6 @@ export function MainFooter() {
                 <FooterSocialLink key={s.href} s={s} />
               ))}
             </div>
-
-
           </div>
           {/* </div> */}
         </div>
@@ -124,7 +136,7 @@ export function MainFooter() {
   );
 }
 
-function FooterLink({ link }: { link: typeof footerLinks[number] }) {
+function FooterLink({ link }: { link: (typeof footerLinks)[number] }) {
   const pathname = usePathname();
   const isActive =
     link.href === "/"
@@ -132,13 +144,17 @@ function FooterLink({ link }: { link: typeof footerLinks[number] }) {
       : pathname === link.href || pathname.startsWith(link.href + "/");
 
   return (
-    <Link key={link.href} href={link.href} className={`${isActive ? "font-bold! underline" : ""} transition-colors hover:text-black dark:hover:text-white`}>
+    <Link
+      key={link.href}
+      href={link.href}
+      className={`${isActive ? "font-bold! underline" : ""} transition-colors hover:text-black dark:hover:text-white`}
+    >
       {link.label}
     </Link>
   );
 }
 
-function FooterSocialLink({ s }: { s: typeof footerSocials[number] }) {
+function FooterSocialLink({ s }: { s: (typeof footerSocials)[number] }) {
   const newTab = s.href.includes("https://");
   const target = newTab ? "_blank" : "_self";
   const rel = newTab ? "noreferrer" : undefined;
@@ -151,18 +167,18 @@ function FooterSocialLink({ s }: { s: typeof footerSocials[number] }) {
           target={target}
           rel={rel}
           aria-label={s.label}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-md text-black/70 transition-colors hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 dark:text-white/70 dark:hover:text-white dark:focus-visible:ring-white/30"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-md text-black/70 transition-colors hover:text-black focus-visible:ring-2 focus-visible:ring-black/30 focus-visible:outline-none dark:text-white/70 dark:hover:text-white dark:focus-visible:ring-white/30"
         >
           <s.Icon className="h-5 w-5" />
         </Link>
       </TooltipTrigger>
       <TooltipContent>
-
-        <span className={`font-semibold tracking-wide uppercase ${orbitron.className}`}>
+        <span
+          className={`font-semibold tracking-wide uppercase ${orbitron.className}`}
+        >
           {s.tooltip}
         </span>
       </TooltipContent>
     </Tooltip>
-
   );
 }

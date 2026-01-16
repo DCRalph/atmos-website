@@ -7,7 +7,11 @@ import { LayoutWithSideBarHeader } from "~/components/layout-with-sideBar-header
 import { DashboardSideBar } from "~/components/admin/admin-sidebar";
 import { DashboardHeader } from "~/components/dash-header";
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
 
@@ -26,7 +30,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <>
       {/* <UserIndicator /> */}
-      <LayoutWithSideBarHeader sidebar={<DashboardSideBar />} header={<DashboardHeader />}  >
+      <LayoutWithSideBarHeader
+        sidebar={<DashboardSideBar />}
+        header={<DashboardHeader />}
+      >
         {children}
       </LayoutWithSideBarHeader>
     </>

@@ -1,14 +1,17 @@
 "use client";
 
-import Link from "next/link"
-import Image from "next/image"
-import { orbitron } from "~/lib/fonts"
+import Link from "next/link";
+import Image from "next/image";
+import { orbitron } from "~/lib/fonts";
 import { usePathname } from "next/navigation";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { motion } from "motion/react";
 import { X } from "lucide-react";
 import { Button } from "~/components/ui/button";
-import { MobileMenuPortal, useMobileMenu } from "~/components/mobile-menu-provider";
+import {
+  MobileMenuPortal,
+  useMobileMenu,
+} from "~/components/mobile-menu-provider";
 import { cn } from "~/lib/utils";
 
 type MenuItem = {
@@ -34,7 +37,9 @@ interface SlideOverMenuProps {
   isHomePage?: boolean;
 }
 
-export default function SlideOverMenu({ isHomePage = false }: SlideOverMenuProps) {
+export default function SlideOverMenu({
+  isHomePage = false,
+}: SlideOverMenuProps) {
   const isMobile = useIsMobile();
 
   // On mobile, render through the portal
@@ -55,21 +60,20 @@ interface SlideOverMenuContentProps {
   isMobile: boolean;
 }
 
-function SlideOverMenuContent({ isHomePage = false, isMobile }: SlideOverMenuContentProps) {
+function SlideOverMenuContent({
+  isHomePage = false,
+  isMobile,
+}: SlideOverMenuContentProps) {
   const { setIsMenuOpen } = useMobileMenu();
 
   // On mobile, wrap in backdrop overlay
   if (isMobile) {
     return (
-      <div
-        className="fixed inset-0"
-        onClick={() => setIsMenuOpen(false)}
-      >
-
+      <div className="fixed inset-0" onClick={() => setIsMenuOpen(false)}>
         {/* Menu content */}
         <div
           className={cn(
-            "flex flex-col absolute right-0 z-10 h-dvh w-64 items-end",
+            "absolute right-0 z-10 flex h-dvh w-64 flex-col items-end",
           )}
         >
           {renderMenuContent(isHomePage, isMobile, setIsMenuOpen)}
@@ -83,7 +87,7 @@ function SlideOverMenuContent({ isHomePage = false, isMobile }: SlideOverMenuCon
     // bg-zinc-100 dark:bg-zinc-950 border-r border-black/10 dark:border-white/10
     <div
       className={cn(
-        "flex flex-col z-50 h-dvh w-64",
+        "z-50 flex h-dvh w-64 flex-col",
         "fixed top-0", // other pages on desktop
         isHomePage && "sticky", // Home page on desktop
       )}
@@ -93,40 +97,41 @@ function SlideOverMenuContent({ isHomePage = false, isMobile }: SlideOverMenuCon
   );
 }
 
-function renderMenuContent(isHomePage: boolean, isMobile: boolean, setIsMenuOpen: (open: boolean) => void) {
+function renderMenuContent(
+  isHomePage: boolean,
+  isMobile: boolean,
+  setIsMenuOpen: (open: boolean) => void,
+) {
   return (
     <>
-      <div className="h-screen flex flex-col">
+      <div className="flex h-screen flex-col">
         {/* Logo at top */}
-        {!isMobile &&
-          (
-            <div className="flex justify-center items-center px-4 mt-8">
-              <div className="relative w-full h-16">
-                <Image
-                  src="/logo/atmos-white.png"
-                  alt="Atmos Logo"
-                  fill
-                  preload
-                  className="object-contain dark:block hidden"
-                  sizes="(max-width: 640px) 10rem, 12rem"
-                />
-                <Image
-                  src="/logo/atmos-black.png"
-                  alt="Atmos Logo"
-                  fill
-                  preload
-                  className="object-contain dark:hidden block"
-                  sizes="(max-width: 640px) 10rem, 12rem"
-                />
-              </div>
+        {!isMobile && (
+          <div className="mt-8 flex items-center justify-center px-4">
+            <div className="relative h-16 w-full">
+              <Image
+                src="/logo/atmos-white.png"
+                alt="Atmos Logo"
+                fill
+                preload
+                className="hidden object-contain dark:block"
+                sizes="(max-width: 640px) 10rem, 12rem"
+              />
+              <Image
+                src="/logo/atmos-black.png"
+                alt="Atmos Logo"
+                fill
+                preload
+                className="block object-contain dark:hidden"
+                sizes="(max-width: 640px) 10rem, 12rem"
+              />
             </div>
-          )}
+          </div>
+        )}
 
-
-        {
-          isMobile && (
-            <>
-              {/* <MotionButton
+        {isMobile && (
+          <>
+            {/* <MotionButton
               className="text-lg uppercase group w-min cursor-pointer m-4 ease-out"
               onClick={(e) => {
                 e.stopPropagation();
@@ -160,7 +165,7 @@ function renderMenuContent(isHomePage: boolean, isMobile: boolean, setIsMenuOpen
               Close
             </MotionButton> */}
 
-              {/* <div className="fixed z-500 bottom-4 right-4 size-12 flex items-center justify-center bg-white/50 dark:bg-black/50 backdrop-blur-sm rounded-full hover:bg-white/75 dark:hover:bg-black/75 transition-colors border border-black/10 dark:border-white/10">
+            {/* <div className="fixed z-500 bottom-4 right-4 size-12 flex items-center justify-center bg-white/50 dark:bg-black/50 backdrop-blur-sm rounded-full hover:bg-white/75 dark:hover:bg-black/75 transition-colors border border-black/10 dark:border-white/10">
               <button
                 className="text-lg uppercase text-black dark:text-white group"
                 onClick={() => setIsMenuOpen(false)}
@@ -169,8 +174,8 @@ function renderMenuContent(isHomePage: boolean, isMobile: boolean, setIsMenuOpen
               </button>
             </div> */}
 
-              {/* centered logo */}
-              {/* <motion.div className="p-4 w-screen h-36"
+            {/* centered logo */}
+            {/* <motion.div className="p-4 w-screen h-36"
 
 
               transition={{ duration: 0.6, ease: "anticipate" }}
@@ -209,17 +214,13 @@ function renderMenuContent(isHomePage: boolean, isMobile: boolean, setIsMenuOpen
                 />
               </div>
             </motion.div> */}
+          </>
+        )}
 
-
-            </>
-          )}
-
-
-        <div className="flex flex-col flex-1 justify-around">
-
+        <div className="flex flex-1 flex-col justify-around">
           <div
             className={cn(
-              "flex flex-col  gap-1.5",
+              "flex flex-col gap-1.5",
               orbitron.className,
               !isMobile && "",
               isMobile && "items-end justify-end",
@@ -228,17 +229,21 @@ function renderMenuContent(isHomePage: boolean, isMobile: boolean, setIsMenuOpen
             {MENU_ITEMS.map((item, idx) => {
               const index = isMobile ? MENU_ITEMS.length - idx - 1 : idx;
               return (
-                <MenuItemComponent closeMenu={() => setIsMenuOpen(false)} item={item} idx={index} key={item.label + "outer"} isMobile={isMobile} />
-              )
+                <MenuItemComponent
+                  closeMenu={() => setIsMenuOpen(false)}
+                  item={item}
+                  idx={index}
+                  key={item.label + "outer"}
+                  isMobile={isMobile}
+                />
+              );
             })}
           </div>
         </div>
-
       </div>
     </>
   );
 }
-
 
 function MenuItemComponent({
   closeMenu,
@@ -252,7 +257,6 @@ function MenuItemComponent({
   idx: number;
   isMobile: boolean;
 }) {
-
   const pathname = usePathname();
   const isActive =
     item.href === "/"
@@ -268,21 +272,20 @@ function MenuItemComponent({
         href={item.href}
         className={cn(
           uniqueId,
-          "relative text-white uppercase font-light flex w-fit items-center tracking-wider hover:font-bold group transition-all ease-out hover:tracking-widest text-nowrap",
+          "group relative flex w-fit items-center font-light tracking-wider text-nowrap text-white uppercase transition-all ease-out hover:font-bold hover:tracking-widest",
           isActive && "font-bold!",
-          "bg-linear-to-r from-accent-strong via-65% via-accent-strong to-transparent",
+          "from-accent-strong via-accent-strong bg-linear-to-r via-65% to-transparent",
           "h-8 text-xl md:h-8 md:text-xl",
-          !isMobile && "pl-8 pr-10 hover:pr-20",
-          isMobile && "justify-end pr-4 pl-8 hover:pl-16 bg-linear-to-l to-transparent",
+          !isMobile && "pr-10 pl-8 hover:pr-20",
+          isMobile &&
+            "justify-end bg-linear-to-l to-transparent pr-4 pl-8 hover:pl-16",
           // "shadow-glass"
         )}
-
         transition={{
           duration: 0.4,
           ease: "anticipate",
           delay: (idx + 1) * 0.05,
         }}
-
         variants={{
           hidden: {
             // opacity: 0.8,
@@ -293,11 +296,9 @@ function MenuItemComponent({
             x: 0,
           },
         }}
-
         initial="hidden"
         animate="visible"
         exit="hidden"
-
         onClick={(e) => {
           e.stopPropagation();
           closeMenu();
@@ -311,7 +312,7 @@ function MenuItemComponent({
         {isMobile && (
           <div
             className={cn(
-              "absolute  w-32 left-full top-0 bg-accent-strong",
+              "bg-accent-strong absolute top-0 left-full w-32",
               "h-8 md:h-14",
               // "bg-blue-500"
             )}
@@ -320,7 +321,7 @@ function MenuItemComponent({
         {/* <div className="absolute h-14 w-14 left-[calc(100%+4px)] top-0 bg-white transition-all opacity-0 group-hover:opacity-100" /> */}
 
         {item.label}
-      </MotionLink >
+      </MotionLink>
     </>
   );
 }

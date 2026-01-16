@@ -6,15 +6,16 @@ export function UndergroundOverlay() {
   return (
     <div className="pointer-events-none fixed inset-0 z-[5]">
       {/* Scanlines */}
-      <div 
+      <div
         className="absolute inset-0 opacity-[0.15]"
         style={{
-          backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,0,0,0.1) 2px, rgba(255,0,0,0.1) 4px)",
+          backgroundImage:
+            "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,0,0,0.1) 2px, rgba(255,0,0,0.1) 4px)",
         }}
       />
 
       {/* Noise texture */}
-      <div 
+      <div
         className="absolute inset-0 opacity-[0.08] mix-blend-overlay"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
@@ -27,12 +28,12 @@ export function UndergroundOverlay() {
 
       {/* Subtle red bars on edges */}
       <motion.div
-        className="absolute left-0 top-0 bottom-0 w-[2px] bg-red-500/40"
+        className="absolute top-0 bottom-0 left-0 w-[2px] bg-red-500/40"
         animate={{ opacity: [0.4, 0.6, 0.4] }}
         transition={{ duration: 2, repeat: Infinity }}
       />
       <motion.div
-        className="absolute right-0 top-0 bottom-0 w-[2px] bg-red-500/40"
+        className="absolute top-0 right-0 bottom-0 w-[2px] bg-red-500/40"
         animate={{ opacity: [0.4, 0.6, 0.4] }}
         transition={{ duration: 2, repeat: Infinity, delay: 1 }}
       />
@@ -45,12 +46,12 @@ export function UndergroundOverlay() {
       />
 
       {/* Diagonal red accent lines */}
-      <div className="absolute top-1/4 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-red-500/30 to-transparent" />
-      <div className="absolute bottom-1/4 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-red-500/30 to-transparent" />
+      <div className="absolute top-1/4 left-0 h-[1px] w-full bg-gradient-to-r from-transparent via-red-500/30 to-transparent" />
+      <div className="absolute bottom-1/4 left-0 h-[1px] w-full bg-gradient-to-r from-transparent via-red-500/30 to-transparent" />
 
       {/* Subtle corner glitch effects */}
       <motion.div
-        className="absolute top-0 left-0 w-32 h-32 bg-red-500/5"
+        className="absolute top-0 left-0 h-32 w-32 bg-red-500/5"
         animate={{
           clipPath: [
             "polygon(0 0, 100% 0, 100% 100%, 0 100%)",
@@ -62,7 +63,7 @@ export function UndergroundOverlay() {
         transition={{ duration: 0.1, repeat: Infinity, repeatDelay: 4 }}
       />
       <motion.div
-        className="absolute bottom-0 right-0 w-32 h-32 bg-red-500/5"
+        className="absolute right-0 bottom-0 h-32 w-32 bg-red-500/5"
         animate={{
           clipPath: [
             "polygon(0 0, 100% 0, 100% 100%, 0 100%)",
@@ -78,7 +79,7 @@ export function UndergroundOverlay() {
       {Array.from({ length: 3 }).map((_, i) => (
         <motion.div
           key={i}
-          className="absolute w-[2px] h-[2px] bg-red-500"
+          className="absolute h-[2px] w-[2px] bg-red-500"
           style={{
             left: `${20 + i * 30}%`,
             top: `${30 + i * 20}%`,
@@ -97,4 +98,3 @@ export function UndergroundOverlay() {
     </div>
   );
 }
-

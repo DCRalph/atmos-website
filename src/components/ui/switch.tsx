@@ -9,7 +9,10 @@ interface SwitchProps extends Omit<React.ComponentProps<"button">, "role"> {
 }
 
 const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
-  ({ className, checked = false, onCheckedChange, disabled, ...props }, ref) => {
+  (
+    { className, checked = false, onCheckedChange, disabled, ...props },
+    ref,
+  ) => {
     return (
       <button
         type="button"
@@ -19,9 +22,9 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
         disabled={disabled}
         ref={ref}
         className={cn(
-          "peer inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-md border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
+          "peer focus-visible:ring-ring focus-visible:ring-offset-background inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-md border-2 border-transparent transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
           checked ? "bg-primary" : "bg-input",
-          className
+          className,
         )}
         onClick={() => {
           if (!disabled && onCheckedChange) {
@@ -32,13 +35,13 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
       >
         <span
           className={cn(
-            "pointer-events-none block h-5 w-5 rounded-sm bg-background shadow-lg ring-0 transition-transform",
-            checked ? "translate-x-4" : "translate-x-0"
+            "bg-background pointer-events-none block h-5 w-5 rounded-sm shadow-lg ring-0 transition-transform",
+            checked ? "translate-x-4" : "translate-x-0",
           )}
         />
       </button>
     );
-  }
+  },
 );
 Switch.displayName = "Switch";
 

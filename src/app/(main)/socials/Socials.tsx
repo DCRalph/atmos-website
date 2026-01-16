@@ -1,24 +1,31 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import Link from "next/link"
-import { StaticBackground } from "~/components/static-background"
-import { FaSpotify, FaYoutube, FaInstagram, FaTiktok, FaFacebook, FaSoundcloud } from "react-icons/fa6"
-import { motion } from "motion/react"
-import { AnimatedPageHeader } from "~/components/animated-page-header"
-import { AccentGlowCard } from "~/components/ui/accent-glow-card"
-import Image from "next/image"
+import Link from "next/link";
+import { StaticBackground } from "~/components/static-background";
+import {
+  FaSpotify,
+  FaYoutube,
+  FaInstagram,
+  FaTiktok,
+  FaFacebook,
+  FaSoundcloud,
+} from "react-icons/fa6";
+import { motion } from "motion/react";
+import { AnimatedPageHeader } from "~/components/animated-page-header";
+import { AccentGlowCard } from "~/components/ui/accent-glow-card";
+import Image from "next/image";
 
 type SocialLink = {
-  label: string
-  href: string
-  Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
-  image?: string
-  description: string
-  username: string
-  color: string
-}
+  label: string;
+  href: string;
+  Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  image?: string;
+  description: string;
+  username: string;
+  color: string;
+};
 
 const socialLinks: SocialLink[] = [
   {
@@ -75,11 +82,11 @@ const socialLinks: SocialLink[] = [
     username: "ATMOS",
     color: "#1DB954",
   },
-]
+];
 
 export default function SocialsPage() {
   return (
-    <main className="bg-black text-white min-h-screen">
+    <main className="min-h-screen bg-black text-white">
       <StaticBackground imageSrc="/home/CAGED 2-95.jpg" />
 
       <section className="relative z-10 min-h-screen px-4 py-16 sm:py-24">
@@ -91,7 +98,7 @@ export default function SocialsPage() {
           />
 
           {/* Social Cards Vertical Stack */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
+          <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2">
             {socialLinks.map((social, index) => (
               <SocialCard key={social.label} social={social} index={index} />
             ))}
@@ -99,17 +106,11 @@ export default function SocialsPage() {
         </div>
       </section>
     </main>
-  )
+  );
 }
 
-function SocialCard({
-  social,
-  index,
-}: {
-  social: SocialLink
-  index: number
-}) {
-  const { label, href, Icon, image, description, username, color } = social
+function SocialCard({ social, index }: { social: SocialLink; index: number }) {
+  const { label, href, Icon, image, description, username, color } = social;
 
   return (
     <motion.div
@@ -121,25 +122,32 @@ function SocialCard({
         ease: [0.22, 1, 0.36, 1],
       }}
     >
-      <Link href={href} target="_blank" rel="noopener noreferrer" className="block">
+      <Link
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block"
+      >
         <AccentGlowCard>
           {/* Logo in top-right corner */}
           <div className="absolute top-6 right-6">
             {image && <Image src={image} alt={label} width={80} height={80} />}
-            {!image && <Icon className="h-16 w-16 md:h-20 md:w-20" style={{ color }} />}
+            {!image && (
+              <Icon className="h-16 w-16 md:h-20 md:w-20" style={{ color }} />
+            )}
           </div>
 
           {/* Content on the left */}
           <div className="pr-24 md:pr-32">
             {/* ATMOS SELECTS */}
-            <h3 className="text-sm font-black tracking-wider text-white uppercase mb-1">
+            <h3 className="mb-1 text-sm font-black tracking-wider text-white uppercase">
               ATMOS SELECTS
             </h3>
 
             {/* Platform name with date */}
-            <div className="flex items-baseline gap-2 mb-3">
+            <div className="mb-3 flex items-baseline gap-2">
               <h4
-                className="text-xl md:text-2xl font-black tracking-wider uppercase"
+                className="text-xl font-black tracking-wider uppercase md:text-2xl"
                 style={{ color }}
               >
                 {label}
@@ -147,10 +155,12 @@ function SocialCard({
             </div>
 
             {/* Description */}
-            <p className="text-sm text-white/90 leading-relaxed">{description}</p>
+            <p className="text-sm leading-relaxed text-white/90">
+              {description}
+            </p>
           </div>
         </AccentGlowCard>
       </Link>
     </motion.div>
-  )
+  );
 }

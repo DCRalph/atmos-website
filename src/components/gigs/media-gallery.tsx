@@ -1,71 +1,71 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Image from "next/image"
-import { AnimatePresence } from "motion/react"
-import { getMediaDisplayUrl } from "~/lib/media-url"
-import { FullscreenGallery } from "./fullscreen-gallery"
+import { useState } from "react";
+import Image from "next/image";
+import { AnimatePresence } from "motion/react";
+import { getMediaDisplayUrl } from "~/lib/media-url";
+import { FullscreenGallery } from "./fullscreen-gallery";
 
 type MediaItem = {
-  id: string
-  type: string
-  url: string | null
-  section: string
-  sortOrder: number
-  fileUploadId?: string | null
+  id: string;
+  type: string;
+  url: string | null;
+  section: string;
+  sortOrder: number;
+  fileUploadId?: string | null;
   fileUpload?: {
-    id: string
-    url: string
-    name: string
-    mimeType: string
-  } | null
-}
+    id: string;
+    url: string;
+    name: string;
+    mimeType: string;
+  } | null;
+};
 
 type MediaGalleryProps = {
-  media: MediaItem[]
-}
+  media: MediaItem[];
+};
 
 export function MediaGallery({ media }: MediaGalleryProps) {
-  const [galleryOpen, setGalleryOpen] = useState(false)
-  const [selectedIndex, setSelectedIndex] = useState(0)
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
   if (media.length === 0) {
-    return null
+    return null;
   }
 
   // Separate featured and regular media, sorted by sortOrder
   const featuredMedia = media
     .filter((item) => item.section === "featured")
-    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
   const regularMedia = media
     .filter((item) => item.section === "gallery")
-    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 
   // Combined media array for the gallery
-  const allMedia = [...featuredMedia, ...regularMedia]
+  const allMedia = [...featuredMedia, ...regularMedia];
 
   const openGallery = (mediaItem: MediaItem) => {
-    const index = allMedia.findIndex((m) => m.id === mediaItem.id)
-    setSelectedIndex(index >= 0 ? index : 0)
-    setGalleryOpen(true)
-  }
+    const index = allMedia.findIndex((m) => m.id === mediaItem.id);
+    setSelectedIndex(index >= 0 ? index : 0);
+    setGalleryOpen(true);
+  };
 
   return (
     <>
       <div className="space-y-8">
         {/* Featured Media Section */}
         {featuredMedia.length > 0 && (
-          <div className="border-2 border-white/10 bg-black/80 backdrop-blur-sm p-6 sm:p-8 hover:border-accent-muted/50 hover:shadow-[0_0_20px_var(--accent-muted)] transition-all">
-            <h3 className="mb-6 text-2xl font-black tracking-wider uppercase border-l-4 border-accent-strong pl-4">
+          <div className="hover:border-accent-muted/50 border-2 border-white/10 bg-black/80 p-6 backdrop-blur-sm transition-all hover:shadow-[0_0_20px_var(--accent-muted)] sm:p-8">
+            <h3 className="border-accent-strong mb-6 border-l-4 pl-4 text-2xl font-black tracking-wider uppercase">
               Featured
             </h3>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {featuredMedia.map((item) => {
-                const url = getMediaDisplayUrl(item)
+                const url = getMediaDisplayUrl(item);
                 return (
                   <div
                     key={item.id}
-                    className="group relative aspect-video cursor-pointer overflow-hidden rounded-none border-2 border-white/10 bg-black/50 transition-all hover:border-accent-muted hover:shadow-[0_0_15px_var(--accent-muted)]"
+                    className="group hover:border-accent-muted relative aspect-video cursor-pointer overflow-hidden rounded-none border-2 border-white/10 bg-black/50 transition-all hover:shadow-[0_0_15px_var(--accent-muted)]"
                     onClick={() => openGallery(item)}
                   >
                     {item.type === "photo" ? (
@@ -85,12 +85,12 @@ export function MediaGallery({ media }: MediaGalleryProps) {
                       />
                     )}
                     <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
-                      <span className="text-white text-sm font-black uppercase tracking-wider">
+                      <span className="text-sm font-black tracking-wider text-white uppercase">
                         {item.type === "photo" ? "View Photo" : "View Video"}
                       </span>
                     </div>
                   </div>
-                )
+                );
               })}
             </div>
           </div>
@@ -98,17 +98,17 @@ export function MediaGallery({ media }: MediaGalleryProps) {
 
         {/* Regular Media Section */}
         {regularMedia.length > 0 && (
-          <div className="border-2 border-white/10 bg-black/80 backdrop-blur-sm p-6 sm:p-8 hover:border-accent-muted/50 hover:shadow-[0_0_20px_var(--accent-muted)] transition-all">
-            <h3 className="mb-6 text-2xl font-black tracking-wider uppercase border-l-4 border-accent-strong pl-4">
+          <div className="hover:border-accent-muted/50 border-2 border-white/10 bg-black/80 p-6 backdrop-blur-sm transition-all hover:shadow-[0_0_20px_var(--accent-muted)] sm:p-8">
+            <h3 className="border-accent-strong mb-6 border-l-4 pl-4 text-2xl font-black tracking-wider uppercase">
               {featuredMedia.length > 0 ? "Gallery" : "Media"}
             </h3>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {regularMedia.map((item) => {
-                const url = getMediaDisplayUrl(item)
+                const url = getMediaDisplayUrl(item);
                 return (
                   <div
                     key={item.id}
-                    className="group relative aspect-video cursor-pointer overflow-hidden rounded-none border-2 border-white/10 bg-black/50 transition-all hover:border-accent-muted hover:shadow-[0_0_15px_var(--accent-muted)]"
+                    className="group hover:border-accent-muted relative aspect-video cursor-pointer overflow-hidden rounded-none border-2 border-white/10 bg-black/50 transition-all hover:shadow-[0_0_15px_var(--accent-muted)]"
                     onClick={() => openGallery(item)}
                   >
                     {item.type === "photo" ? (
@@ -128,12 +128,12 @@ export function MediaGallery({ media }: MediaGalleryProps) {
                       />
                     )}
                     <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
-                      <span className="text-white text-sm font-black uppercase tracking-wider">
+                      <span className="text-sm font-black tracking-wider text-white uppercase">
                         {item.type === "photo" ? "View Photo" : "View Video"}
                       </span>
                     </div>
                   </div>
-                )
+                );
               })}
             </div>
           </div>
@@ -151,5 +151,5 @@ export function MediaGallery({ media }: MediaGalleryProps) {
         )}
       </AnimatePresence>
     </>
-  )
+  );
 }

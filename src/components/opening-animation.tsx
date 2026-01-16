@@ -24,7 +24,7 @@ export function OpeningAnimation({
       setVisible(false);
       try {
         sessionStorage.setItem("def-opening", "1");
-      } catch { }
+      } catch {}
     }, durationMs + 300); // allow extra time for circle reveal
     return () => clearTimeout(t);
   }, [durationMs]);
@@ -70,7 +70,7 @@ export function OpeningAnimation({
                 {Array.from({ length: 4 }).map((_, i) => (
                   <motion.span
                     key={i}
-                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-accent-strong/60 shadow-[0_0_12px_var(--accent-strong),0_0_28px_var(--accent-muted)]"
+                    className="border-accent-strong/60 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 shadow-[0_0_12px_var(--accent-strong),0_0_28px_var(--accent-muted)]"
                     style={{ width: 280, height: 280 }}
                     initial={{ scale: 1, opacity: 0.6 }}
                     animate={{ scale: 2.4, opacity: 0 }}
@@ -85,7 +85,7 @@ export function OpeningAnimation({
                   />
                 ))}
                 <motion.div
-                  className="grid h-48 w-48 sm:h-56 sm:w-56 md:h-64 md:w-64 lg:h-72 lg:w-72 place-items-center"
+                  className="grid h-48 w-48 place-items-center sm:h-56 sm:w-56 md:h-64 md:w-64 lg:h-72 lg:w-72"
                   initial={{ scale: 0.6, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{
@@ -94,7 +94,7 @@ export function OpeningAnimation({
                     delay: 0.3,
                   }}
                 >
-                  <div className="relative w-full h-full p-8">
+                  <div className="relative h-full w-full p-8">
                     <Image
                       src="/logo/atmos-white.png"
                       alt="Atmos"

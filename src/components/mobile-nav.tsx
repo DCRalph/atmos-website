@@ -9,16 +9,16 @@ export function MobileNav() {
   const { isMenuOpen, toggleMenu } = useMobileMenu();
 
   return (
-    <nav className="sticky top-0 left-0 right-0 w-full h-16 z-50">
+    <nav className="sticky top-0 right-0 left-0 z-50 h-16 w-full">
       {/* Gradient blur - extends below the nav */}
       <GradientBlur
         direction="to-bottom"
-        className="absolute inset-0 z-0 -bottom-14 rotate-180"
+        className="absolute inset-0 -bottom-14 z-0 rotate-180"
       />
 
       {/* Optional: color overlay */}
       <div
-        className="absolute inset-0 -bottom-8 bg-white/50 dark:bg-black/30 z-0"
+        className="absolute inset-0 -bottom-8 z-0 bg-white/50 dark:bg-black/30"
         style={{
           mask: "linear-gradient(to bottom, black 50%, transparent 100%)",
           WebkitMask: "linear-gradient(to bottom, black 50%, transparent 100%)",
@@ -26,21 +26,21 @@ export function MobileNav() {
       />
 
       {/* Content */}
-      <div className="relative z-10 flex items-center justify-center h-full px-4">
+      <div className="relative z-10 flex h-full items-center justify-center px-4">
         <div className="relative h-10 w-32 sm:w-40">
           <Link href="/">
             <Image
               src="/logo/atmos-white.png"
               alt="Atmos Logo"
               fill
-              className="object-contain dark:block hidden"
+              className="hidden object-contain dark:block"
               sizes="(max-width: 640px) 8rem, 10rem"
             />
             <Image
               src="/logo/atmos-black.png"
               alt="Atmos Logo"
               fill
-              className="object-contain dark:hidden block"
+              className="block object-contain dark:hidden"
               sizes="(max-width: 640px) 8rem, 10rem"
             />
           </Link>

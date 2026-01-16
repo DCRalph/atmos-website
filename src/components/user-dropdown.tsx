@@ -54,7 +54,11 @@ export function UserDropdown({ detailed = false }) {
             `hover:bg-foreground/10 flex cursor-pointer items-center justify-center gap-3 rounded-md p-2 transition-colors duration-200`,
           )}
         >
-          <UserAvatar src={user?.image ?? null} name={user?.name ?? user?.email} className="h-8 w-8" />
+          <UserAvatar
+            src={user?.image ?? null}
+            name={user?.name ?? user?.email}
+            className="h-8 w-8"
+          />
           {detailed && (
             <div className="hidden flex-col overflow-hidden md:flex">
               {userLoading ? (
@@ -123,10 +127,7 @@ export function UserDropdown({ detailed = false }) {
             </DropdownMenuItem>
 
             <DropdownMenuItem asChild>
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-3 py-2"
-              >
+              <Link href="/dashboard" className="flex items-center gap-3 py-2">
                 <LayoutDashboard className="text-muted-foreground size-4" />
                 <span>Dashboard</span>
               </Link>
@@ -135,19 +136,13 @@ export function UserDropdown({ detailed = false }) {
             {user?.role === "ADMIN" && (
               <>
                 <DropdownMenuItem asChild>
-                  <Link
-                    href="/admin"
-                    className="flex items-center gap-3 py-2"
-                  >
+                  <Link href="/admin" className="flex items-center gap-3 py-2">
                     <Settings2 className="text-muted-foreground size-4" />
                     <span>Admin Dashboard</span>
                   </Link>
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator />
-
-
-
               </>
             )}
 
@@ -157,7 +152,7 @@ export function UserDropdown({ detailed = false }) {
                 href="/account-settings"
                 className="flex items-center gap-3 py-2"
               >
-                <Settings2 className="size-4 text-muted-foreground" />
+                <Settings2 className="text-muted-foreground size-4" />
                 <span>Account Settings</span>
               </Link>
             </DropdownMenuItem>

@@ -30,9 +30,8 @@ export function UserIndicator({ variant = "light" }: UserIndicatorProps) {
 
   const displayName = useMemo(
     () => user?.name ?? user?.email ?? "Account",
-    [user?.name, user?.email]
+    [user?.name, user?.email],
   );
-
 
   const handleLogout = async () => {
     await authClient.signOut({
@@ -48,20 +47,17 @@ export function UserIndicator({ variant = "light" }: UserIndicatorProps) {
   // return null
 
   if (!user) {
-    return (
-      <></>
-    );
+    return <></>;
   }
 
   return (
-    <div className="fixed right-3 top-3 z-700">
+    <div className="fixed top-3 right-3 z-700">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
             className={cn(
-              "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.7rem] font-medium shadow-glass! bg-background/70 backdrop-blur-md transition-colors",
-
+              "shadow-glass! bg-background/70 flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.7rem] font-medium backdrop-blur-md transition-colors",
             )}
             aria-label="Open account menu"
           >
@@ -72,51 +68,40 @@ export function UserIndicator({ variant = "light" }: UserIndicatorProps) {
         <PopoverContent
           align="end"
           sideOffset={6}
-          className="w-56 rounded-xl border border-border/70 bg-background/95 p-2 shadow-xl backdrop-blur"
+          className="border-border/70 bg-background/95 w-56 rounded-xl border p-2 shadow-xl backdrop-blur"
         >
           <div className="flex items-center gap-2.5 px-2">
             {/* <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-[0.6rem] font-semibold uppercase text-primary">
               {initials || "U"}
             </div> */}
             <div className="flex min-w-0 flex-col">
-              <p className="truncate font-medium">
-                {user.name || "Signed in"}
-              </p>
+              <p className="truncate font-medium">{user.name || "Signed in"}</p>
               {user.email && (
-                <p className="truncate text-[0.65rem] text-muted-foreground">
+                <p className="text-muted-foreground truncate text-[0.65rem]">
                   {user.email}
                 </p>
               )}
             </div>
           </div>
 
-          <div className="my-2 h-px bg-border/70" />
+          <div className="bg-border/70 my-2 h-px" />
 
           <div className="flex flex-col gap-1">
             <Link href="/">
-              <Button
-                variant="ghost"
-                className="w-full justify-between"
-              >
+              <Button variant="ghost" className="w-full justify-between">
                 <span>Home</span>
               </Button>
             </Link>
 
             <Link href="/dashboard">
-              <Button
-                variant="ghost"
-                className="w-full justify-between"
-              >
+              <Button variant="ghost" className="w-full justify-between">
                 <span>Dashboard</span>
               </Button>
             </Link>
 
             {user.role === "ADMIN" && (
               <Link href="/admin">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-between"
-                >
+                <Button variant="ghost" className="w-full justify-between">
                   <span>Admin Panel</span>
                   {/* <span className="rounded-full bg-red-500/10 px-1.5 py-px text-[0.55rem] font-semibold text-red-500">
                   Panel

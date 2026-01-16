@@ -17,9 +17,13 @@ export function HomeBottomContent({
   className,
 }: HomeBottomContentProps) {
   return (
-    <main className={cn("relative flex-1 bg-black text-white min-h-screen ", className)}>
+    <main
+      className={cn(
+        "relative min-h-screen flex-1 bg-black text-white",
+        className,
+      )}
+    >
       {/* <StaticBackground imageSrc="/home/atmos-46.jpg" /> */}
-
 
       <section className="relative z-10 min-h-screen px-4 pt-6 pb-16 sm:pb-24">
         <div className="mx-auto max-w-6xl">
