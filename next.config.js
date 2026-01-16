@@ -38,7 +38,7 @@ const config = {
     return [
       {
         source: "/fuckoffaddblockers/:match*",
-        destination: "hhttps://atmosmedia.co.nz/_vercel/insights/:match*",
+        destination: "https://atmosmedia.co.nz/_vercel/insights/:match*",
       },
       {
         source: "/fuckoffaddblocker/script.js",
