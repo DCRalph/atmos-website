@@ -224,10 +224,10 @@ export function NewsletterSection({ className }: { className?: string }) {
             </form>
           )}
 
-          <Button className="mt-4" onClick={playSubscribeSound}>
+          {/* <Button className="mt-4" onClick={playSubscribeSound}>
             <Play className="h-4 w-4" />
             test sound
-          </Button>
+          </Button> */}
         </div>
       </AccentGlowCard>
     </section>
