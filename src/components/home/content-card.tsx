@@ -8,19 +8,28 @@ import { type ContentItem } from "~Prisma/client";
 import { cn } from "~/lib/utils";
 import { AccentGlowCard } from "~/components/ui/accent-glow-card";
 
-type FeaturedContentItemProps = {
+type ContentCardProps = {
   contentItem: ContentItem;
+  featured?: boolean;
   className?: string;
 };
 
-export function FeaturedContentItem({
+export function ContentCard({
   contentItem,
+  featured = false,
   className,
-}: FeaturedContentItemProps) {
+}: ContentCardProps) {
   const isSoundCloudTrack = contentItem.linkType === "SOUNDCLOUD_TRACK";
 
   return (
-    <AccentGlowCard asChild className={cn("flex flex-col justify-between gap-4 p-6", className)}>
+    <AccentGlowCard
+      asChild
+      className={cn(
+        "flex flex-col justify-between gap-4 p-6",
+        featured ? "col-span-full" : "col-span-full lg:col-span-1",
+        className
+      )}
+    >
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         whileInView={{ opacity: 1, y: 0 }}

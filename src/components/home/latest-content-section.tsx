@@ -2,18 +2,11 @@
 
 import { Loader2, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
-import { ContentItem } from "~/components/content/content-item";
+import { ContentCard } from "~/components/home/content-card";
 import { api } from "~/trpc/react";
 import { orbitron } from "~/lib/fonts";
-import { FeaturedContentItem } from "./featured-content-item";
 
-function getHostname(url: string) {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return "";
-  }
-}
+
 
 export function LatestContentSection() {
   const { data: contentItems, isLoading: isLoadingContent } = api.content.getAll.useQuery();
@@ -48,17 +41,16 @@ export function LatestContentSection() {
         ) : latestContentItem ? (
           <>
             {/* Featured (most recent) item */}
-            <FeaturedContentItem
+            <ContentCard
+              featured
               contentItem={latestContentItem}
-              className="col-span-full"
             />
 
             {/* Remaining recent items */}
             {otherRecentContentItems.length > 0 && otherRecentContentItems.map((item) => (
-              <FeaturedContentItem
+              <ContentCard
                 key={item.id}
                 contentItem={item}
-                className="col-span-full lg:col-span-1"
               />
             ))}
           </>

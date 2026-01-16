@@ -18,11 +18,11 @@ export function AccentGlowCard({
       className={cn(
         [
           // Layout + surface
-          "group relative overflow-hidden rounded-none border-2 border-white/10 bg-black/80 backdrop-blur-sm",
+          "group relative overflow-hidden rounded-none border-2 border-accent-strong/80 bg-black/80 backdrop-blur-sm",
           "transition-all",
           "p-6",
           // Hover treatment
-          "hover:border-accent-muted/50 hover:bg-black/90",
+          "hover:border-accent-muted hover:bg-black/90",
           // Soft glow that increases on hover (uses CSS var from globals.css)
           // "before:pointer-events-none before:absolute before:inset-[-35%] before:content-['']",
           // "before:bg-[radial-gradient(circle_at_center,var(--accent-muted)_0%,transparent_60%)] before:blur-3xl",
@@ -38,7 +38,7 @@ export function AccentGlowCard({
       {...props}
     >
       {/* <> */}
-      <div className="absolute left-0 top-0 h-full w-1 bg-accent-strong transition-all group-hover:w-2" />
+      <div className="absolute left-0 top-0 h-full w-1 bg-accent-strong/80 group-hover:bg-accent-muted transition-all group-hover:w-2" />
       {children}
       {/* </> */}
     </div>

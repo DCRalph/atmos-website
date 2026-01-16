@@ -4,7 +4,6 @@ import { Loader2 } from "lucide-react";
 import { PastGigHomeCard } from "./past-gig-home-card";
 import { api } from "~/trpc/react";
 import { orbitron } from "~/lib/fonts";
-import { FeaturedGigHomeCard } from "./featured-gig-home-card";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
@@ -40,14 +39,16 @@ export function RecentGigsSection() {
           </div>
         ) : featuredGig ? (
           <>
-            {/* Featured gig (admin-configurable) */}
-            <FeaturedGigHomeCard gig={{ ...featuredGig, gigStartTime: featuredGig.gigStartTime! }} />
+            <PastGigHomeCard
+              featured
+              gig={featuredGig}
+            />
 
             {/* Remaining recent gigs */}
             {pastGigs.length > 0 ? (
               <div className="lg:col-span-3 grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-2">
                 {pastGigs.map((gig: any) => (
-                  <PastGigHomeCard key={gig.id} gig={{ ...gig, gigStartTime: gig.gigStartTime! }} />
+                  <PastGigHomeCard key={gig.id} gig={gig} />
                 ))}
               </div>
             ) : null}

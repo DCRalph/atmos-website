@@ -91,6 +91,8 @@ export function NewsletterSection({ className }: { className?: string }) {
             </div>
           </div> */}
 
+          <div className="absolute -z-10 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-1/3 w-2/3 blur-3xl bg-white/30" />
+
           <h3
             className={`mb-4 text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight ${orbitron.className}`}
           >
@@ -98,7 +100,7 @@ export function NewsletterSection({ className }: { className?: string }) {
           </h3>
 
           <p className="mb-8 text-base sm:text-lg text-white/70 max-w-2xl mx-auto">
-            Be the first to here about our next events, get 5% off merch and everuthing else atmos straight to your inbox.
+            Get 10% off merch and be the first to find out about our upcoming events.
           </p>
 
           {/* Subscription form or success state */}
@@ -153,6 +155,7 @@ export function NewsletterSection({ className }: { className?: string }) {
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Input
                     type="email"
+                    name="email"
                     placeholder="Enter your email"
                     value={email}
                     onChange={(e) => {
@@ -161,8 +164,8 @@ export function NewsletterSection({ className }: { className?: string }) {
                     }}
                     aria-label="Email address"
                     className={cn(
-                      "flex-1 rounded-none border-2 bg-black/60 text-white placeholder:text-white/40 focus:border-accent-muted focus:ring-accent-muted/20 h-12 text-base",
-                      errors.email ? "border-accent-strong shadow-[0_0_15px_var(--accent-muted)]" : "border-white/20",
+                      "flex-1 rounded-none border-2 bg-black/60 text-white placeholder:text-white/40 focus:border-accent-muted focus:ring-accent-muted/20 h-16 text-base",
+                      "h-12"
                     )}
                   />
 
