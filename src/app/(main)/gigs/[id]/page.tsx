@@ -2,8 +2,10 @@ import { api } from "~/trpc/server";
 import GigDetailPage from "./GigDetail";
 import { type Metadata } from "next";
 import { getMediaDisplayUrl } from "~/lib/media-url";
+import { EventJsonLd, BreadcrumbJsonLd } from "~/components/seo/json-ld";
 
-const DEFAULT_OG_IMAGE = "/favicon.ico";
+const DEFAULT_OG_IMAGE = "/og-image.png";
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://atmosevents.co.nz";
 
 const cleanText = (value?: string | null) =>
   value?.replace(/\s+/g, " ").trim() ?? "";
@@ -26,7 +28,7 @@ export async function generateMetadata({
   );
   const description =
     subtitle ||
-    truncate(descriptionFromBody || "Atmos — sound, culture, nightlife.", 160);
+    truncate(descriptionFromBody || "ATMOS — Wellington electronic music events & club nights.", 160);
 
   const posterImage = gig?.posterFileUpload?.url ?? null;
   const firstPhoto =
@@ -37,26 +39,82 @@ export async function generateMetadata({
   const canonical = `/gigs/${id}`;
 
   return {
-    title: `${baseTitle} | Atmos`,
+    title: baseTitle,
     description,
     alternates: { canonical },
     openGraph: {
-      title: `${baseTitle} | Atmos`,
+      title: `${baseTitle} — Wellington DJ Event | ATMOS`,
       description,
       url: canonical,
-      siteName: "Atmos",
+      siteName: "ATMOS",
       images: mediaImage ? [mediaImage] : undefined,
       type: "article",
     },
     twitter: {
       card: "summary_large_image",
-      title: `${baseTitle} | Atmos`,
+      title: `${baseTitle} — Wellington DJ Event | ATMOS`,
       description,
       images: mediaImage ? [mediaImage] : undefined,
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-video-preview": -1,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
     },
   };
 }
 
-export default function page({ params }: { params: Promise<{ id: string }> }) {
-  return <GigDetailPage params={params} />;
+export default async function page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const gig = await api.gigs.getById({ id });
+
+  // Get image for JSON-LD
+  const posterImage = gig?.posterFileUpload?.url ?? null;
+  const firstPhoto =
+    gig?.media?.find((item) => item.type === "photo") ?? gig?.media?.[0];
+  const mediaImage =
+    posterImage ||
+    (firstPhoto ? getMediaDisplayUrl(firstPhoto) : `${siteUrl}/og-image.png`);
+
+  return (
+    <>
+      {/* JSON-LD Structured Data for Google Rich Results */}
+      {gig && (
+        <>
+          <EventJsonLd
+            name={gig.title}
+            description={
+              gig.subtitle ||
+              gig.description?.toString() ||
+              "Wellington electronic music event by ATMOS"
+            }
+            startDate={gig.gigStartTime}
+            endDate={gig.gigEndTime ?? undefined}
+            venue={{
+              name: gig.subtitle || "Wellington Venue",
+            }}
+            image={mediaImage}
+            ticketUrl={gig.ticketLink ?? undefined}
+            eventStatus="EventScheduled"
+            eventAttendanceMode="OfflineEventAttendanceMode"
+          />
+          <BreadcrumbJsonLd
+            items={[
+              { name: "Home", url: "/" },
+              { name: "Events", url: "/gigs" },
+              { name: gig.title, url: `/gigs/${id}` },
+            ]}
+          />
+        </>
+      )}
+
+      <GigDetailPage params={params} />
+    </>
+  );
 }

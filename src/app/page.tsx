@@ -1,60 +1,69 @@
-"use client";
-
 import { Suspense } from "react";
-import { useIsMobile } from "~/hooks/use-mobile";
-import { MainFooter } from "~/components/mainFooter";
-import { UserIndicator } from "~/components/user-indicator";
-import { HomeTopContent } from "~/components/home/home-top-content";
-import { HomeBottomContent } from "~/components/home/home-bottom-content";
-import { MobileNav } from "~/components/mobile-nav";
-import { MobileMenuToggle } from "~/components/mobile-menu-toggle";
-import { OpeningAnimation } from "~/components/opening-animation";
+import { type Metadata } from "next";
+import { HomePageClient } from "~/components/home/home-page-client";
+import {
+  OrganizationJsonLd,
+  WebSiteJsonLd,
+} from "~/components/seo/json-ld";
 
-import dynamic from "next/dynamic";
-
-const SlideOverMenu = dynamic(() => import("~/components/SlideOverMenu"), {
-  ssr: false,
-});
-
-function HomeContent() {
-  const isMobile = useIsMobile();
-
-  return (
-    <main
-      className="relative h-dvh overflow-x-hidden overflow-y-scroll bg-black text-white"
-      id="home-page-main"
-    >
-      <OpeningAnimation />
-
-      <UserIndicator />
-
-      <HomeTopContent />
-
-      {!isMobile ? (
-        <div className="flex w-full">
-          <SlideOverMenu isHomePage={true} />
-          <HomeBottomContent isMobile={isMobile} key="2" />
-        </div>
-      ) : (
-        <div className="relative">
-          {/* SlideOverMenu renders through portal on mobile */}
-          <SlideOverMenu isHomePage={true} />
-
-          <MobileNav />
-          <HomeBottomContent isMobile={isMobile} key="4" className="mt-4" />
-          <MobileMenuToggle />
-        </div>
-      )}
-
-      <MainFooter />
-    </main>
-  );
-}
+// SEO-optimized metadata for the homepage
+export const metadata: Metadata = {
+  title: "Wellington Electronic Music Events",
+  description:
+    "Discover Wellington's best electronic music events. Curated club nights, underground DJ sets & immersive nightlife in Pōneke. Browse events & get tickets.",
+  keywords: [
+    "wellington electronic music events",
+    "wellington club nights",
+    "wellington dj events",
+    "pōneke nightlife",
+    "underground club night wellington",
+    "techno night wellington",
+    "house music night wellington",
+    "wellington nightlife events",
+    "nz electronic music events",
+    "dance music collective wellington",
+    "electronic music promoter wellington",
+  ],
+  openGraph: {
+    title: "Wellington Electronic Music Events | ATMOS",
+    description:
+      "Wellington's home for curated electronic music events. From underground techno to house, experience immersive club nights featuring local and international DJs. Browse upcoming events, explore our artist roster, and relive past nights through our photo archive.",
+    type: "website",
+    locale: "en_NZ",
+    siteName: "ATMOS",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Wellington Electronic Music Events | ATMOS",
+    description:
+      "Discover Wellington's best electronic music events. Curated club nights, underground DJ sets & immersive nightlife in Pōneke.",
+  },
+  alternates: {
+    canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+};
 
 export default function Home() {
   return (
-    <Suspense>
-      <HomeContent />
-    </Suspense>
+    <>
+      {/* JSON-LD Structured Data for Google Rich Results */}
+      <OrganizationJsonLd />
+      <WebSiteJsonLd />
+
+      <Suspense>
+        <HomePageClient />
+      </Suspense>
+    </>
   );
 }

@@ -13,18 +13,28 @@ import NextTopLoader from "nextjs-toploader";
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL;
 
-const description_short = "Atmos Media - Hub";
+const description_short =
+  "Wellington's curated electronic music events & club nights";
 const description_long =
-  "Atmos Media - Hub for all things Atmos. We are a media company that creates content for the Atmos brand.";
+  "ATMOS — Wellington's home for curated electronic music events. Discover underground club nights, DJ events, and immersive nightlife experiences in Pōneke.";
 
 export const metadata: Metadata = {
   title: {
-    default: "Atmos",
-    template: "%s | Atmos",
+    default: "ATMOS — Wellington Electronic Music Events",
+    template: "%s | ATMOS",
   },
   description: description_long,
-  applicationName: "Atmos",
-  keywords: ["Atmos", "Atmos Media", "Atmos Hub", "Atmos Media Hub"],
+  applicationName: "ATMOS",
+  keywords: [
+    "wellington electronic music events",
+    "wellington club nights",
+    "wellington dj events",
+    "pōneke nightlife",
+    "underground club night wellington",
+    "nz electronic music events",
+    "electronic music promoter wellington",
+    "dance music collective wellington",
+  ],
   metadataBase: siteUrl ? new URL(siteUrl) : undefined,
   alternates: {
     canonical: "/",
@@ -39,27 +49,46 @@ export const metadata: Metadata = {
     shortcut: "/favicon.ico",
   },
   openGraph: {
-    title: "Atmos ",
+    title: "ATMOS — Wellington Electronic Music Events",
     description: description_short,
     url: "/",
-    siteName: "Atmos",
+    siteName: "ATMOS",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: description_short,
+        alt: "ATMOS — Wellington Electronic Music Events & Club Nights",
       },
     ],
-    locale: "en_US",
+    locale: "en_NZ",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Atmos ",
+    title: "ATMOS — Wellington Electronic Music Events",
     description: description_short,
     images: ["/og-image.png"],
   },
+  // Robots directives for Google and other crawlers
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  // Verification tags (add your verification codes here)
+  verification: {
+    google: "wqpr0iOn_-vf0MC-mGnQiWqbZcDjRXTfA5INdAbDbGk",
+    // yandex: "your-yandex-verification-code",
+  },
+  // Category for better classification
+  category: "entertainment",
 };
 
 export default function RootLayout({
