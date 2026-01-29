@@ -11,6 +11,7 @@ import { newsletterRouter } from "~/server/api/routers/newsletter";
 import { filesRouter } from "~/server/api/routers/files";
 import { homeGigsRouter } from "~/server/api/routers/home-gigs";
 import { homeContentRouter } from "~/server/api/routers/home-content";
+import { activityLogsRouter } from "~/server/api/routers/activity-logs";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -32,6 +33,7 @@ export const appRouter = createTRPCRouter({
   invites: invitesRouter,
   users: usersRouter,
   files: filesRouter,
+  activityLogs: activityLogsRouter,
 });
 
 // export type definition of API

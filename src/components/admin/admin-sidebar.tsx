@@ -95,6 +95,11 @@ const menuItems = [
     url: "/admin/users",
     icon: Users,
   },
+  {
+    title: "Activity Logs",
+    url: "/admin/activity-logs",
+    icon: Activity,
+  },
 ];
 
 export function DashboardSideBar() {

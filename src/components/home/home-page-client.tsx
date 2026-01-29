@@ -15,15 +15,21 @@ const SlideOverMenu = dynamic(() => import("~/components/SlideOverMenu"), {
   ssr: false,
 });
 
-export function HomePageClient() {
+type HomePageClientProps = {
+  isBot?: boolean;
+};
+
+export function HomePageClient({ isBot = false }: HomePageClientProps) {
   const isMobile = useIsMobile();
 
   return (
     <main
       className="relative h-dvh overflow-x-hidden overflow-y-scroll bg-black text-white"
       id="home-page-main"
+      data-bot={isBot ? "true" : undefined}
     >
-      <OpeningAnimation />
+      {/* Don't render opening animation for search engine bots */}
+      {!isBot && <OpeningAnimation />}
 
       <UserIndicator />
 

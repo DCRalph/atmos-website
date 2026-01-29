@@ -129,3 +129,8 @@ export type file_tag = Prisma.file_tagModel
  * 
  */
 export type file_upload = Prisma.file_uploadModel
+/**
+ * Model ActivityLog
+ * 
+ */
+export type ActivityLog = Prisma.ActivityLogModel

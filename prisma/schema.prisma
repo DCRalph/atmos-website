@@ -1,3 +1,4 @@
+
 generator client {
   provider = "prisma-client"
   output   = "../src/prisma/generated/prisma"
@@ -25,16 +26,22 @@ enum HomeContentSection {
 }
 
 model User {
-  id            String    @id
-  name          String
-  email         String
-  emailVerified Boolean   @default(false)
-  image         String?
-  role          UserRole  @default(USER)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @default(now()) @updatedAt
-  sessions      Session[]
-  accounts      Account[]
+  id               String        @id
+  name             String
+  email            String
+  emailVerified    Boolean       @default(false)
+  image            String?
+  role             UserRole      @default(USER)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @default(now()) @updatedAt
+  sessions         Session[]
+  accounts         Account[]
+  activities       ActivityLog[] @relation("UserActivities")
+  targetActivities ActivityLog[] @relation("TargetUserActivities")
+
+  banned     Boolean?  @default(false)
+  banReason  String?
+  banExpires DateTime?
 
   @@unique([email])
   @@map("user")
@@ -51,8 +58,11 @@ model Session {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  impersonatedBy String?
+
   @@unique([token])
   @@map("session")
+  @@index([userId])
 }
 
 model Account {
@@ -72,6 +82,7 @@ model Account {
   updatedAt             DateTime  @updatedAt
 
   @@map("account")
+  @@index([userId])
 }
 
 model Verification {
@@ -83,6 +94,7 @@ model Verification {
   updatedAt  DateTime @default(now()) @updatedAt
 
   @@map("verification")
+  @@index([identifier])
 }
 
 model Invite {
@@ -93,21 +105,21 @@ model Invite {
   usedAt    DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  createdBy String?   // Optional: track who created the invite
+  createdBy String? // Optional: track who created the invite
 
   @@unique([email])
   @@map("invite")
 }
 
 model CrewMember {
-  id          String   @id @default(cuid())
-  name        String
-  role        String
-  instagram   String?
-  soundcloud  String?
-  image       String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  name       String
+  role       String
+  instagram  String?
+  soundcloud String?
+  image      String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@map("crew_member")
 }
@@ -119,16 +131,16 @@ enum ContentLinkType {
 }
 
 model ContentItem {
-  id          String   @id @default(cuid())
+  id          String          @id @default(cuid())
   type        String
   title       String
-  dj          String? 
+  dj          String?
   description String
   date        DateTime
   linkType    ContentLinkType @default(OTHER)
   link        String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
   homeContentPlacements HomeContentPlacement[]
 
@@ -151,17 +163,15 @@ model HomeContentPlacement {
   @@map("home_content_placement")
 }
 
-
-
 model GigTag {
-  id        String   @id @default(cuid())
-  name      String
+  id          String   @id @default(cuid())
+  name        String
   description String?
-  color     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  color       String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  gigTags    GigTagRelationship[]
+  gigTags GigTagRelationship[]
 
   @@map("gig_tag")
 }
@@ -179,11 +189,11 @@ model GigTagRelationship {
 }
 
 model Gig {
-  id           String      @id @default(cuid())
+  id           String    @id @default(cuid())
   title        String
   subtitle     String
   description  String?
-  gigStartTime DateTime 
+  gigStartTime DateTime
   gigEndTime   DateTime?
   ticketLink   String?
 
@@ -194,15 +204,15 @@ model Gig {
   // - `isFeatured`: whether this gig is eligible for the featured slot (used on home + can be reused elsewhere)
   // - `featuredSortOrder`: lower shows earlier among featured gigs
   // - `pastSortOrder`: lower shows earlier in past gigs lists
-  isFeatured       Boolean @default(false)
-  featuredSortOrder Int    @default(0)
-  pastSortOrder     Int    @default(0)
+  isFeatured        Boolean @default(false)
+  featuredSortOrder Int     @default(0)
+  pastSortOrder     Int     @default(0)
 
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  media        GigMedia[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  media     GigMedia[]
 
-  gigTags    GigTagRelationship[]
+  gigTags           GigTagRelationship[]
   homeGigPlacements HomeGigPlacement[]
 
   @@index([posterFileUploadId])
@@ -210,12 +220,12 @@ model Gig {
 }
 
 model HomeGigPlacement {
-  id        String        @id @default(cuid())
+  id        String         @id @default(cuid())
   section   HomeGigSection
-  sortOrder Int           @default(0)
+  sortOrder Int            @default(0)
 
   gigId String
-  gig   Gig @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  gig   Gig    @relation(fields: [gigId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -226,21 +236,18 @@ model HomeGigPlacement {
 }
 
 model GigMedia {
-  id        String   @id @default(cuid())
-  gigId     String
-  gig       Gig      @relation(fields: [gigId], references: [id], onDelete: Cascade)
-  type      String   // "photo" or "video"
-  
+  id           String   @id @default(cuid())
+  gigId        String
+  gig          Gig      @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  type         String // "photo" or "video"
   // File upload ID (references file_upload.id via for="gig_media", forId=id)
   fileUploadId String?
-  url          String?   // Legacy field for backwards compatibility
-  
+  url          String? // Legacy field for backwards compatibility
   // Sorting - separate sort orders for featured and gallery sections
-  section     String   @default("gallery") // "featured" or "gallery"
-  sortOrder   Int      @default(0)         // Sort order within section
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  section      String   @default("gallery") // "featured" or "gallery"
+  sortOrder    Int      @default(0) // Sort order within section
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([gigId, section, sortOrder])
   @@index([fileUploadId])
@@ -260,13 +267,13 @@ model MerchItem {
 }
 
 model ContactSubmission {
-  id          String   @id @default(cuid())
-  name        String
-  email       String
-  subject     String
-  message     String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String
+  message   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("contact_submission")
 }
@@ -277,7 +284,7 @@ model NewsletterSubscription {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  removed   Boolean   @default(false)
+  removed Boolean @default(false)
 
   @@map("newsletter_subscription")
 }
@@ -301,11 +308,11 @@ enum FileCategory {
 }
 
 model file_tag {
-  id        String   @id @default(cuid())
-  name      String
+  id          String   @id @default(cuid())
+  name        String
   description String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   fileUploads file_upload[]
 
@@ -313,17 +320,17 @@ model file_tag {
 }
 
 model file_upload {
-  id        String  @id @unique @default(uuid())
+  id        String   @id @unique @default(uuid())
   createdAt DateTime @default(now())
 
-  url String @unique
-  key String @unique
-  name String
-  type String
-  size Int
+  url      String           @unique
+  key      String           @unique
+  name     String
+  type     String
+  size     Int
   mimeType String
-  acl String @default("private")
-  status FileUploadStatus @default(OK)
+  acl      String           @default("private")
+  status   FileUploadStatus @default(OK)
 
   category FileCategory @default(FILE)
 
@@ -332,12 +339,12 @@ model file_upload {
   hash String?
 
   // Image/video dimensions (null for non-media files)
-  width Int?
+  width  Int?
   height Int?
 
   userId String?
 
-  for String 
+  for   String
   forId String
 
   @@index([url])
@@ -348,4 +355,52 @@ model file_upload {
   @@index([size])
   @@index([for, forId])
   @@index([hash])
+}
+
+enum ActivityType {
+  USER_CREATED
+  USER_UPDATED
+  USER_DELETED
+  USER_ROLE_CHANGED
+  USER_BANNED
+  USER_UNBANNED
+  USER_IMPERSONATED
+  INVITE_CREATED
+  INVITE_DELETED
+  GIG_CREATED
+  GIG_UPDATED
+  GIG_DELETED
+  CONTENT_CREATED
+  CONTENT_UPDATED
+  CONTENT_DELETED
+  CREW_MEMBER_CREATED
+  CREW_MEMBER_UPDATED
+  CREW_MEMBER_DELETED
+  FILE_UPLOADED
+  FILE_DELETED
+  LOGIN
+  LOGOUT
+  OTHER
+}
+
+model ActivityLog {
+  id           String       @id @default(cuid())
+  type         ActivityType
+  action       String // Human-readable action description
+  details      String? // JSON string with additional details
+  userId       String? // User who performed the action
+  targetUserId String? // User who was affected (if applicable)
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime     @default(now())
+
+  // Relations
+  user       User? @relation("UserActivities", fields: [userId], references: [id], onDelete: SetNull)
+  targetUser User? @relation("TargetUserActivities", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([targetUserId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("activity_log")
 }

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { cache } from "react";
 import { headers } from "next/headers";
 import { type User } from "~Prisma/client";
+import { admin, lastLoginMethod } from "better-auth/plugins";
 
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
@@ -24,6 +25,10 @@ export const auth = betterAuth({
       disableSignUp: false,
     },
   },
+  plugins: [
+    admin(),
+    lastLoginMethod(),
+  ],
   // hooks: {
   //   before: createAuthMiddleware(async (ctx) => {
   //     // Check for invites before allowing signup

@@ -1,10 +1,12 @@
 import { Suspense } from "react";
 import { type Metadata } from "next";
+import { headers } from "next/headers";
 import { HomePageClient } from "~/components/home/home-page-client";
 import {
   OrganizationJsonLd,
   WebSiteJsonLd,
 } from "~/components/seo/json-ld";
+import { isSearchEngineBot } from "~/lib/bot-detection";
 
 // SEO-optimized metadata for the homepage
 export const metadata: Metadata = {
@@ -54,7 +56,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Home() {
+export default async function Home() {
+  // Detect if the request is from a search engine bot
+  const headersList = await headers();
+  const userAgent = headersList.get("user-agent");
+  const isBot = isSearchEngineBot(userAgent);
+
   return (
     <>
       {/* JSON-LD Structured Data for Google Rich Results */}
@@ -62,7 +69,7 @@ export default function Home() {
       <WebSiteJsonLd />
 
       <Suspense>
-        <HomePageClient />
+        <HomePageClient isBot={isBot} />
       </Suspense>
     </>
   );

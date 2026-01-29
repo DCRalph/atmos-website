@@ -6,7 +6,7 @@ import { MediaGallery } from "../../../../components/gigs/media-gallery";
 import { MarkdownContent } from "../../../../components/markdown-content";
 import { GigDetailPhotoCarousel } from "../../../../components/gigs/gig-detail-photo-carousel";
 import Link from "next/link";
-import { authServer } from "~/lib/auth";
+import { authServer } from "~/server/auth";
 import { ArrowLeft, Calendar, Clock, Pencil, Ticket } from "lucide-react";
 import { GigTagList } from "~/components/gig-tag-list";
 import Image from "next/image";

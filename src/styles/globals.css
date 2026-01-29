@@ -240,3 +240,42 @@
   -ms-transform: scale(1) rotate(0deg) translate(0px, 0px) skew(30deg, 0deg);
   transform: scale(1) rotate(0deg) translate(0px, 0px) skew(30deg, 0deg);
 }
+
+/* SEO Optimization: Ensure all content is visible for search engine bots */
+/* When [data-bot="true"] is present, disable animations and ensure content visibility */
+[data-bot="true"] * {
+  /* Override any initial opacity-0 states from animations */
+  opacity: 1 !important;
+  /* Ensure transforms don't hide content */
+  transform: none !important;
+  /* Disable animation delays */
+  animation-delay: 0s !important;
+  transition-delay: 0s !important;
+  /* Disable transitions and animations */
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Ensure motion components render content immediately for bots */
+/* Target elements with inline styles that might hide content */
+[data-bot="true"] [style*="opacity"] {
+  opacity: 1 !important;
+}
+
+[data-bot="true"] [style*="transform"] {
+  transform: none !important;
+}
+
+/* Disable viewport-based animations for bots */
+[data-bot="true"] [data-while-in-view],
+[data-bot="true"] [data-viewport] {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* Ensure framer-motion components are visible */
+[data-bot="true"] [data-framer-name],
+[data-bot="true"] [data-framer-component-id] {
+  opacity: 1 !important;
+  transform: none !important;
+}

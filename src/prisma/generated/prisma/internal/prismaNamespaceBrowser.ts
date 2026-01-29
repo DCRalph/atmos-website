@@ -68,7 +68,8 @@ export const ModelName = {
   ContactSubmission: 'ContactSubmission',
   NewsletterSubscription: 'NewsletterSubscription',
   file_tag: 'file_tag',
-  file_upload: 'file_upload'
+  file_upload: 'file_upload',
+  ActivityLog: 'ActivityLog'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -95,7 +96,10 @@ export const UserScalarFieldEnum = {
   image: 'image',
   role: 'role',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  banned: 'banned',
+  banReason: 'banReason',
+  banExpires: 'banExpires'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
@@ -109,7 +113,8 @@ export const SessionScalarFieldEnum = {
   updatedAt: 'updatedAt',
   ipAddress: 'ipAddress',
   userAgent: 'userAgent',
-  userId: 'userId'
+  userId: 'userId',
+  impersonatedBy: 'impersonatedBy'
 } as const
 
 export type SessionScalarFieldEnum = (typeof SessionScalarFieldEnum)[keyof typeof SessionScalarFieldEnum]
@@ -340,6 +345,21 @@ export const File_uploadScalarFieldEnum = {
 } as const
 
 export type File_uploadScalarFieldEnum = (typeof File_uploadScalarFieldEnum)[keyof typeof File_uploadScalarFieldEnum]
+
+
+export const ActivityLogScalarFieldEnum = {
+  id: 'id',
+  type: 'type',
+  action: 'action',
+  details: 'details',
+  userId: 'userId',
+  targetUserId: 'targetUserId',
+  ipAddress: 'ipAddress',
+  userAgent: 'userAgent',
+  createdAt: 'createdAt'
+} as const
+
+export type ActivityLogScalarFieldEnum = (typeof ActivityLogScalarFieldEnum)[keyof typeof ActivityLogScalarFieldEnum]
 
 
 export const SortOrder = {
