@@ -1967,6 +1967,7 @@ export const ContentItemScalarFieldEnum = {
   date: 'date',
   linkType: 'linkType',
   link: 'link',
+  platform: 'platform',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

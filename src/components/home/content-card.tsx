@@ -1,7 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
-import { ArrowUpRight } from "lucide-react";
+import Image from "next/image";
 
 import { SoundCloudPlayer } from "~/components/soundcloud-player";
 import { type ContentItem } from "~Prisma/client";
@@ -36,6 +35,12 @@ export function ContentCard({
       }}
     >
 
+      {contentItem.platform && (
+        <div className="absolute top-4 right-4">
+          <PlatformIcon platform={contentItem.platform} size={48} />
+        </div>
+      )}
+
       <div className={`grid grid-cols-12 gap-6`}>
         <div
           className={cn(
@@ -49,6 +54,9 @@ export function ContentCard({
             <h3 className="text-xl leading-tight font-black tracking-tight text-white uppercase sm:text-3xl">
               {contentItem.title}
             </h3>
+            {contentItem.platform && (
+              <PlatformBadge platform={contentItem.platform} />
+            )}
             <div className="text-xs font-bold tracking-wider text-white/60 uppercase">
               {contentItem.date.toLocaleDateString("en-US", {
                 weekday: "short",
@@ -97,5 +105,40 @@ export function ContentCard({
       </div>
 
     </AccentGlowCard>
+  );
+}
+
+
+const platformColorMap = {
+  "Soundcloud": "text-[#ff7700]",
+  "Spotify": "text-[#1DB954]",
+  "YouTube": "text-[#FF0000]",
+};
+
+function PlatformBadge({ platform }: { platform: string }) {
+  const color = platformColorMap[platform as keyof typeof platformColorMap];
+  return (
+    <h3 className={cn(
+      "text-lg leading-tight font-black tracking-tight text-white uppercase sm:text-2xl",
+      color,
+    )}>
+      {platform}
+    </h3>
+  );
+}
+
+const platformIconMap = {
+  "Soundcloud": "/socials/soundcloud_color.png",
+  "Spotify": "/socials/spotify.png",
+  "YouTube": "/socials/youtube.png",
+};
+
+function PlatformIcon({ platform, size = 32 }: { platform: string, size?: number }) {
+  const icon = platformIconMap[platform as keyof typeof platformIconMap];
+
+  if (!icon) return null;
+
+  return (
+    <Image src={icon} alt={platform} width={size} height={size} />
   );
 }

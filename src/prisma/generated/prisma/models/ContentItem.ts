@@ -33,6 +33,7 @@ export type ContentItemMinAggregateOutputType = {
   date: Date | null
   linkType: $Enums.ContentLinkType | null
   link: string | null
+  platform: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -46,6 +47,7 @@ export type ContentItemMaxAggregateOutputType = {
   date: Date | null
   linkType: $Enums.ContentLinkType | null
   link: string | null
+  platform: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -59,6 +61,7 @@ export type ContentItemCountAggregateOutputType = {
   date: number
   linkType: number
   link: number
+  platform: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -74,6 +77,7 @@ export type ContentItemMinAggregateInputType = {
   date?: true
   linkType?: true
   link?: true
+  platform?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -87,6 +91,7 @@ export type ContentItemMaxAggregateInputType = {
   date?: true
   linkType?: true
   link?: true
+  platform?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -100,6 +105,7 @@ export type ContentItemCountAggregateInputType = {
   date?: true
   linkType?: true
   link?: true
+  platform?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -186,6 +192,7 @@ export type ContentItemGroupByOutputType = {
   date: Date
   linkType: $Enums.ContentLinkType
   link: string
+  platform: string | null
   createdAt: Date
   updatedAt: Date
   _count: ContentItemCountAggregateOutputType | null
@@ -220,6 +227,7 @@ export type ContentItemWhereInput = {
   date?: Prisma.DateTimeFilter<"ContentItem"> | Date | string
   linkType?: Prisma.EnumContentLinkTypeFilter<"ContentItem"> | $Enums.ContentLinkType
   link?: Prisma.StringFilter<"ContentItem"> | string
+  platform?: Prisma.StringNullableFilter<"ContentItem"> | string | null
   createdAt?: Prisma.DateTimeFilter<"ContentItem"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ContentItem"> | Date | string
   homeContentPlacements?: Prisma.HomeContentPlacementListRelationFilter
@@ -234,6 +242,7 @@ export type ContentItemOrderByWithRelationInput = {
   date?: Prisma.SortOrder
   linkType?: Prisma.SortOrder
   link?: Prisma.SortOrder
+  platform?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   homeContentPlacements?: Prisma.HomeContentPlacementOrderByRelationAggregateInput
@@ -251,6 +260,7 @@ export type ContentItemWhereUniqueInput = Prisma.AtLeast<{
   date?: Prisma.DateTimeFilter<"ContentItem"> | Date | string
   linkType?: Prisma.EnumContentLinkTypeFilter<"ContentItem"> | $Enums.ContentLinkType
   link?: Prisma.StringFilter<"ContentItem"> | string
+  platform?: Prisma.StringNullableFilter<"ContentItem"> | string | null
   createdAt?: Prisma.DateTimeFilter<"ContentItem"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ContentItem"> | Date | string
   homeContentPlacements?: Prisma.HomeContentPlacementListRelationFilter
@@ -265,6 +275,7 @@ export type ContentItemOrderByWithAggregationInput = {
   date?: Prisma.SortOrder
   linkType?: Prisma.SortOrder
   link?: Prisma.SortOrder
+  platform?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.ContentItemCountOrderByAggregateInput
@@ -284,6 +295,7 @@ export type ContentItemScalarWhereWithAggregatesInput = {
   date?: Prisma.DateTimeWithAggregatesFilter<"ContentItem"> | Date | string
   linkType?: Prisma.EnumContentLinkTypeWithAggregatesFilter<"ContentItem"> | $Enums.ContentLinkType
   link?: Prisma.StringWithAggregatesFilter<"ContentItem"> | string
+  platform?: Prisma.StringNullableWithAggregatesFilter<"ContentItem"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"ContentItem"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"ContentItem"> | Date | string
 }
@@ -297,6 +309,7 @@ export type ContentItemCreateInput = {
   date: Date | string
   linkType?: $Enums.ContentLinkType
   link: string
+  platform?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   homeContentPlacements?: Prisma.HomeContentPlacementCreateNestedManyWithoutContentItemInput
@@ -311,6 +324,7 @@ export type ContentItemUncheckedCreateInput = {
   date: Date | string
   linkType?: $Enums.ContentLinkType
   link: string
+  platform?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   homeContentPlacements?: Prisma.HomeContentPlacementUncheckedCreateNestedManyWithoutContentItemInput
@@ -325,6 +339,7 @@ export type ContentItemUpdateInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   linkType?: Prisma.EnumContentLinkTypeFieldUpdateOperationsInput | $Enums.ContentLinkType
   link?: Prisma.StringFieldUpdateOperationsInput | string
+  platform?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   homeContentPlacements?: Prisma.HomeContentPlacementUpdateManyWithoutContentItemNestedInput
@@ -339,6 +354,7 @@ export type ContentItemUncheckedUpdateInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   linkType?: Prisma.EnumContentLinkTypeFieldUpdateOperationsInput | $Enums.ContentLinkType
   link?: Prisma.StringFieldUpdateOperationsInput | string
+  platform?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   homeContentPlacements?: Prisma.HomeContentPlacementUncheckedUpdateManyWithoutContentItemNestedInput
@@ -353,6 +369,7 @@ export type ContentItemCreateManyInput = {
   date: Date | string
   linkType?: $Enums.ContentLinkType
   link: string
+  platform?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -366,6 +383,7 @@ export type ContentItemUpdateManyMutationInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   linkType?: Prisma.EnumContentLinkTypeFieldUpdateOperationsInput | $Enums.ContentLinkType
   link?: Prisma.StringFieldUpdateOperationsInput | string
+  platform?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -379,6 +397,7 @@ export type ContentItemUncheckedUpdateManyInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   linkType?: Prisma.EnumContentLinkTypeFieldUpdateOperationsInput | $Enums.ContentLinkType
   link?: Prisma.StringFieldUpdateOperationsInput | string
+  platform?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -392,6 +411,7 @@ export type ContentItemCountOrderByAggregateInput = {
   date?: Prisma.SortOrder
   linkType?: Prisma.SortOrder
   link?: Prisma.SortOrder
+  platform?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -405,6 +425,7 @@ export type ContentItemMaxOrderByAggregateInput = {
   date?: Prisma.SortOrder
   linkType?: Prisma.SortOrder
   link?: Prisma.SortOrder
+  platform?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -418,6 +439,7 @@ export type ContentItemMinOrderByAggregateInput = {
   date?: Prisma.SortOrder
   linkType?: Prisma.SortOrder
   link?: Prisma.SortOrder
+  platform?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -454,6 +476,7 @@ export type ContentItemCreateWithoutHomeContentPlacementsInput = {
   date: Date | string
   linkType?: $Enums.ContentLinkType
   link: string
+  platform?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -467,6 +490,7 @@ export type ContentItemUncheckedCreateWithoutHomeContentPlacementsInput = {
   date: Date | string
   linkType?: $Enums.ContentLinkType
   link: string
+  platform?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -496,6 +520,7 @@ export type ContentItemUpdateWithoutHomeContentPlacementsInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   linkType?: Prisma.EnumContentLinkTypeFieldUpdateOperationsInput | $Enums.ContentLinkType
   link?: Prisma.StringFieldUpdateOperationsInput | string
+  platform?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -509,6 +534,7 @@ export type ContentItemUncheckedUpdateWithoutHomeContentPlacementsInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   linkType?: Prisma.EnumContentLinkTypeFieldUpdateOperationsInput | $Enums.ContentLinkType
   link?: Prisma.StringFieldUpdateOperationsInput | string
+  platform?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -553,6 +579,7 @@ export type ContentItemSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   date?: boolean
   linkType?: boolean
   link?: boolean
+  platform?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   homeContentPlacements?: boolean | Prisma.ContentItem$homeContentPlacementsArgs<ExtArgs>
@@ -568,6 +595,7 @@ export type ContentItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   date?: boolean
   linkType?: boolean
   link?: boolean
+  platform?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["contentItem"]>
@@ -581,6 +609,7 @@ export type ContentItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   date?: boolean
   linkType?: boolean
   link?: boolean
+  platform?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["contentItem"]>
@@ -594,11 +623,12 @@ export type ContentItemSelectScalar = {
   date?: boolean
   linkType?: boolean
   link?: boolean
+  platform?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type ContentItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "type" | "title" | "dj" | "description" | "date" | "linkType" | "link" | "createdAt" | "updatedAt", ExtArgs["result"]["contentItem"]>
+export type ContentItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "type" | "title" | "dj" | "description" | "date" | "linkType" | "link" | "platform" | "createdAt" | "updatedAt", ExtArgs["result"]["contentItem"]>
 export type ContentItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   homeContentPlacements?: boolean | Prisma.ContentItem$homeContentPlacementsArgs<ExtArgs>
   _count?: boolean | Prisma.ContentItemCountOutputTypeDefaultArgs<ExtArgs>
@@ -620,6 +650,7 @@ export type $ContentItemPayload<ExtArgs extends runtime.Types.Extensions.Interna
     date: Date
     linkType: $Enums.ContentLinkType
     link: string
+    platform: string | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["contentItem"]>
@@ -1054,6 +1085,7 @@ export interface ContentItemFieldRefs {
   readonly date: Prisma.FieldRef<"ContentItem", 'DateTime'>
   readonly linkType: Prisma.FieldRef<"ContentItem", 'ContentLinkType'>
   readonly link: Prisma.FieldRef<"ContentItem", 'String'>
+  readonly platform: Prisma.FieldRef<"ContentItem", 'String'>
   readonly createdAt: Prisma.FieldRef<"ContentItem", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"ContentItem", 'DateTime'>
 }

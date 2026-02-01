@@ -32,6 +32,7 @@ export const contentRouter = createTRPCRouter({
                 description: { contains: search, mode: "insensitive" as const },
               },
               { dj: { contains: search, mode: "insensitive" as const } },
+              { platform: { contains: search, mode: "insensitive" as const } },
             ],
           }
         : undefined;
@@ -60,6 +61,7 @@ export const contentRouter = createTRPCRouter({
         description: z.string().min(1),
         date: z.date(),
         link: z.string().min(1),
+        platform: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -82,6 +84,7 @@ export const contentRouter = createTRPCRouter({
         description: z.string().min(1).optional(),
         date: z.date().optional(),
         link: z.string().min(1).optional(),
+        platform: z.string().optional().nullable(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

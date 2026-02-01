@@ -50,6 +50,7 @@ export function ContentManager() {
   const [description, setDescription] = useState("");
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [link, setLink] = useState("");
+  const [platform, setPlatform] = useState("");
   const [search, setSearch] = useState("");
 
   const {
@@ -86,6 +87,7 @@ export function ContentManager() {
     setDescription("");
     setDate(undefined);
     setLink("");
+    setPlatform("");
   };
 
   const handleEdit = (item: NonNullable<typeof contentItems>[0]) => {
@@ -97,6 +99,7 @@ export function ContentManager() {
     setDescription(item.description);
     setDate(item.date);
     setLink(item.link);
+    setPlatform(item.platform ?? "");
     setIsOpen(true);
   };
 
@@ -112,6 +115,7 @@ export function ContentManager() {
         description,
         date: date,
         link,
+        platform: platform || null,
       });
     } else {
       if (!date) return;
@@ -123,6 +127,7 @@ export function ContentManager() {
         description,
         date,
         link,
+        platform: platform || undefined,
       });
     }
   };
@@ -174,6 +179,15 @@ export function ContentManager() {
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     required
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="platform">Platform (optional)</Label>
+                  <Input
+                    id="platform"
+                    value={platform}
+                    onChange={(e) => setPlatform(e.target.value)}
+                    placeholder="SoundCloud, Spotify, YouTube, etc."
                   />
                 </div>
                 <div className="flex flex-col gap-2">
@@ -247,7 +261,7 @@ export function ContentManager() {
       <CardContent>
         <div className="mb-4">
           <Input
-            placeholder="Search by type, title, description, or DJ..."
+            placeholder="Search by type, title, description, DJ, or platform..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-sm"
@@ -259,6 +273,7 @@ export function ContentManager() {
               <TableHead>Type</TableHead>
               <TableHead>Title</TableHead>
               <TableHead>DJ</TableHead>
+              <TableHead>Platform</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -266,50 +281,51 @@ export function ContentManager() {
           <TableBody>
             {isLoading
               ? Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={`loading-${i}`}>
-                    <TableCell colSpan={5}>
-                      <div className="bg-muted h-8 w-full animate-pulse rounded" />
-                    </TableCell>
-                  </TableRow>
-                ))
+                <TableRow key={`loading-${i}`}>
+                  <TableCell colSpan={6}>
+                    <div className="bg-muted h-8 w-full animate-pulse rounded" />
+                  </TableCell>
+                </TableRow>
+              ))
               : contentItems?.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.type}</TableCell>
-                    <TableCell>{item.title}</TableCell>
-                    <TableCell>{item.dj || "-"}</TableCell>
-                    <TableCell>{item.date.toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(item)}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => {
-                            if (
-                              confirm(
-                                "Are you sure you want to delete this item?",
-                              )
-                            ) {
-                              deleteItem.mutate({ id: item.id });
-                            }
-                          }}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                <TableRow key={item.id}>
+                  <TableCell>{item.type}</TableCell>
+                  <TableCell>{item.title}</TableCell>
+                  <TableCell>{item.dj || "-"}</TableCell>
+                  <TableCell>{item.platform || "-"}</TableCell>
+                  <TableCell>{item.date.toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(item)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          if (
+                            confirm(
+                              "Are you sure you want to delete this item?",
+                            )
+                          ) {
+                            deleteItem.mutate({ id: item.id });
+                          }
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
             {!isLoading && contentItems?.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={5}
+                  colSpan={6}
                   className="text-muted-foreground text-center"
                 >
                   {search ? "No content items found" : "No content items yet"}

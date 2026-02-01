@@ -43,7 +43,7 @@ export function AccentGlowCard({
             // "after:pointer-events-none after:absolute after:left-0 after:top-0 after:h-full after:w-1 after:content-['']",
             // "after:bg-accent-strong after:transition-all after:duration-300 group-hover:after:w-2",
             // Small glow bump on hover
-            "shadow-[0_0_4px_1px_var(--accent-muted)] hover:shadow-[0_0_15px_3px_var(--accent-muted)]",
+            "shadow-[0_0_4px_1px_var(--accent-strong)] hover:shadow-[0_0_15px_3px_var(--accent-muted)]",
 
             "size-full",
             innerClassName,
