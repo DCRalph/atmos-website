@@ -50,7 +50,7 @@ export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
             />
 
             { posterUrl && (
-              <div className="absolute -inset-4 overflow-hidden -z-20 blur-3xl ">
+              <div className="absolute -inset-2 -bottom-6 sm:bottom-0 sm:-inset-4 overflow-hidden -z-20 blur-xl sm:blur-3xl ">
                 <Image
                   src={posterUrl}
                   alt={`${gig.title} poster`}
