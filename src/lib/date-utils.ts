@@ -152,12 +152,21 @@ export function formatDateInUserTimezone(
  */
 export function formatDate(
   date: Date,
-  format: "short" | "long" = "short",
+  format: "short" | "long" | "extra-short" = "short",
 ): string {
-  const options: Intl.DateTimeFormatOptions =
-    format === "short"
-      ? { month: "short", day: "numeric", year: "numeric" }
-      : { month: "long", day: "numeric", year: "numeric" };
+  let options: Intl.DateTimeFormatOptions = {};
+
+  switch (format) {
+    case "short":
+      options = { month: "short", day: "numeric", year: "numeric" };
+      break;
+    case "long":
+      options = { month: "long", day: "numeric", year: "numeric" };
+      break;
+    case "extra-short":
+      options = { month: "short", day: "numeric" };
+      break;
+  }
 
   return formatDateInUserTimezone(date, options);
 }

@@ -49,7 +49,7 @@ export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
               className="object-cover"
             />
 
-            {!isMobile && posterUrl && (
+            { posterUrl && (
               <div className="absolute -inset-4 overflow-hidden -z-20 blur-3xl ">
                 <Image
                   src={posterUrl}
@@ -69,22 +69,23 @@ export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
       {/* Content below poster */}
       <div className="flex flex-col gap-4 p-4">
         {/* Date */}
-        <div className="flex items-baseline justify-between gap-3">
-          <span className="text-2xl font-black tracking-tight text-white uppercase md:text-3xl">
-            {formatDate(gig.gigStartTime)}
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-2xl font-black leading-tight tracking-tight text-white uppercase md:text-3xl">
+            {gig.title}
+          </h3>
+          <span className="text-lg font-semibold tracking-tight text-white md:text-xl">
+            {formatDate(gig.gigStartTime, "extra-short")}
           </span>
-          <span className="font-bold tracking-wider uppercase">
+          {/* <span className="font-bold tracking-wider uppercase">
             {gig.gigEndTime
               ? `${formatTime(gig.gigStartTime)} - ${formatTime(gig.gigEndTime)}`
               : formatTime(gig.gigStartTime)}
-          </span>
+          </span> */}
         </div>
 
         {/* Title & Subtitle */}
         <div>
-          <h3 className="text-xl font-black leading-tight tracking-tight text-white uppercase md:text-2xl">
-            {gig.title}
-          </h3>
+
           <p className="mt-1 text-sm font-medium text-white/70 md:text-base">
             {gig.subtitle}
           </p>
