@@ -1,29 +1,15 @@
 "use client";
 
-import type React from "react";
-
 import Link from "next/link";
+import Image from "next/image";
 import { StaticBackground } from "~/components/static-background";
-import {
-  FaSpotify,
-  FaYoutube,
-  FaInstagram,
-  FaTiktok,
-  FaFacebook,
-  FaSoundcloud,
-} from "react-icons/fa6";
 import { motion } from "motion/react";
 import { AnimatedPageHeader } from "~/components/animated-page-header";
-import { AccentGlowCard } from "~/components/ui/accent-glow-card";
-import Image from "next/image";
 
 type SocialLink = {
-  media?: "ATMOS SELECTS" | "ATMOS TV" | "ATMOS NZ";
   label: string;
   href: string;
-  Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-  image?: string;
-  description: string;
+  image: string;
   username: string;
   color: string;
 };
@@ -40,62 +26,44 @@ export const links = {
 
 const socialLinks: SocialLink[] = [
   {
-    media: "ATMOS NZ",
     label: "INSTAGRAM",
     href: links.instagram,
-    Icon: FaInstagram,
     image: "/socials/instagram.png",
-    description: "Latest drops, artists, and behind-the-scenes.",
     username: "@atmos.nz",
     color: "#E1306C",
   },
   {
-    media: "ATMOS TV",
     label: "TIKTOK",
     href: links.tiktok,
-    Icon: FaTiktok,
     image: "/socials/tiktok.png",
-    description: "Fast cuts, live moments, and trends.",
     username: "@atmos_tv",
     color: "#00F2EA",
   },
   {
-    media: "ATMOS TV",
     label: "YOUTUBE",
     href: links.youtube,
-    Icon: FaYoutube,
     image: "/socials/youtube.png",
-    description: "Sets, recaps, and long-form visuals.",
     username: "@ATMOS_TV",
     color: "#FF0000",
   },
   {
-    media: "ATMOS NZ",
     label: "FACEBOOK",
     href: links.facebook,
-    Icon: FaFacebook,
     image: "/socials/facebook.png",
-    description: "Announcements and community updates.",
     username: "atmos.nz",
     color: "#1877F2",
   },
   {
-    media: "ATMOS NZ",
     label: "SOUNDCLOUD",
     href: links.soundcloud,
-    Icon: FaSoundcloud,
     image: "/socials/soundcloud.png",
-    description: "Mixes and exclusive audio.",
     username: "atmosmedia",
     color: "#FF5500",
   },
   {
-    media: "ATMOS NZ",
     label: "SPOTIFY",
     href: links.spotify,
-    Icon: FaSpotify,
     image: "/socials/spotify.png",
-    description: "Playlists and curated sounds.",
     username: "ATMOS",
     color: "#1DB954",
   },
@@ -114,10 +82,10 @@ export default function SocialsPage() {
             subtitle="One presence across every platform"
           />
 
-          {/* Social Cards Vertical Stack */}
-          <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2">
+          {/* Social Links Grid */}
+          <div className="mt-12 grid grid-cols-2 gap-8 sm:grid-cols-3 md:gap-12">
             {socialLinks.map((social, index) => (
-              <SocialCard key={social.label} social={social} index={index} />
+              <SocialItem key={social.label} social={social} index={index} />
             ))}
           </div>
         </div>
@@ -126,8 +94,8 @@ export default function SocialsPage() {
   );
 }
 
-function SocialCard({ social, index }: { social: SocialLink; index: number }) {
-  const { media, label, href, Icon, image, description, username, color } = social;
+function SocialItem({ social, index }: { social: SocialLink; index: number }) {
+  const { label, href, image, username, color } = social;
 
   return (
     <motion.div
@@ -138,46 +106,69 @@ function SocialCard({ social, index }: { social: SocialLink; index: number }) {
         delay: index * 0.08,
         ease: [0.22, 1, 0.36, 1],
       }}
+      className="relative"
     >
+      {/* Radial blur behind everything */}
+      <RadialBlur />
+
       <Link
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="block"
+        className="group relative z-10 flex flex-col items-center text-center"
       >
-        <AccentGlowCard>
-          {/* Logo in top-right corner */}
-          <div className="absolute top-6 right-6">
-            {image && <Image src={image} alt={label} width={80} height={80} />}
-            {!image && (
-              <Icon className="h-16 w-16 md:h-20 md:w-20" style={{ color }} />
-            )}
-          </div>
+        {/* Image */}
+        <Image
+          src={image}
+          alt={label}
+          width={64}
+          height={64}
+          className="mb-3 h-12 w-12 object-contain transition-transform duration-300 group-hover:scale-110 sm:h-14 sm:w-14 md:h-16 md:w-16"
+        />
 
-          {/* Content on the left */}
-          <div className="pr-24 md:pr-32">
-            {/* ATMOS SELECTS */}
-            <h3 className="mb-1 text-sm font-black tracking-wider text-white uppercase">
-              {media}
-            </h3>
+        {/* Platform Name */}
+        <h3
+          className="text-sm font-black tracking-wider uppercase sm:text-base"
+          style={{ color }}
+        >
+          {label}
+        </h3>
 
-            {/* Platform name with date */}
-            <div className="mb-3 flex items-baseline gap-2">
-              <h4
-                className="text-xl font-black tracking-wider uppercase md:text-2xl"
-                style={{ color }}
-              >
-                {label}
-              </h4>
-            </div>
-
-            {/* Description */}
-            <p className="text-sm leading-relaxed text-white/90">
-              {description}
-            </p>
-          </div>
-        </AccentGlowCard>
+        {/* Handle */}
+        <p className="mt-1 text-xs text-white/70 sm:text-sm">{username}</p>
       </Link>
     </motion.div>
+  );
+}
+
+function RadialBlur() {
+  // Gradual blur layers - strongest in center, fading to zero at edges
+  // Each layer covers from center to its outer edge, with decreasing blur
+  const layers = [
+    { blur: 16, outer: 20 },
+    { blur: 12, outer: 30 },
+    { blur: 8, outer: 40 },
+    { blur: 5, outer: 50 },
+    { blur: 3, outer: 60 },
+    { blur: 1.5, outer: 75 },
+    { blur: 0.5, outer: 90 },
+  ];
+
+  return (
+    <div className="pointer-events-none absolute -inset-16 sm:-inset-20 md:-inset-24">
+      {layers.map((layer, i) => (
+        <div
+          key={i}
+          className="absolute inset-0"
+          style={{
+            zIndex: layers.length - i,
+            backdropFilter: `blur(${layer.blur}px)`,
+            WebkitBackdropFilter: `blur(${layer.blur}px)`,
+            mask: `radial-gradient(circle, rgba(0,0,0,1) 0%, rgba(0,0,0,1) ${layer.outer * 0.6}%, rgba(0,0,0,0) ${layer.outer}%)`,
+            WebkitMask: `radial-gradient(circle, rgba(0,0,0,1) 0%, rgba(0,0,0,1) ${layer.outer * 0.6}%, rgba(0,0,0,0) ${layer.outer}%)`,
+          }}
+        />
+      ))}
+    </div>
   );
 }
