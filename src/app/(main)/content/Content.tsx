@@ -12,7 +12,7 @@ export default function ContentPage() {
     <main className="bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-1.jpg" />
 
-      <section className="relative z-10 min-h-dvh px-4 py-16 sm:py-24">
+      <section className="relative z-10 min-h-dvh px-4 py-8 sm:py-24">
         <div className="mx-auto max-w-6xl">
           <AnimatedPageHeader
             title="CONTENT"

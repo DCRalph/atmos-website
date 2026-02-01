@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
 
 type AnimatedPageHeaderProps = {
   title: string;
@@ -16,9 +17,63 @@ export function AnimatedPageHeader({
   className,
 }: AnimatedPageHeaderProps) {
   const letters = title.split("");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [fontSize, setFontSize] = useState<string>("4.5rem");
+
+  useEffect(() => {
+    const calculateFontSize = () => {
+      if (!containerRef.current || !textRef.current) return;
+
+      const container = containerRef.current;
+      const text = textRef.current;
+      const containerWidth = container.offsetWidth;
+      
+      const availableWidth = containerWidth - 0;
+
+      if (availableWidth <= 0) return;
+
+      // Binary search for the right font size
+      let minSize = 30; // Minimum size (1.875rem)
+      let maxSize = 72; // Maximum size (4.5rem)
+      let currentSize = maxSize;
+      const tolerance = 0.5;
+
+      while (maxSize - minSize > tolerance) {
+        currentSize = (minSize + maxSize) / 2;
+        text.style.fontSize = `${currentSize}px`;
+        
+        if (text.scrollWidth <= availableWidth) {
+          minSize = currentSize;
+        } else {
+          maxSize = currentSize;
+        }
+      }
+
+      setFontSize(`${minSize}px`);
+    };
+
+    // Use ResizeObserver for better performance
+    const resizeObserver = new ResizeObserver(() => {
+      calculateFontSize();
+    });
+
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    // Initial calculation after a short delay to ensure DOM is ready
+    const timeout = setTimeout(calculateFontSize, 100);
+
+    return () => {
+      resizeObserver.disconnect();
+      clearTimeout(timeout);
+    };
+  }, [title]);
 
   return (
     <motion.div
+      ref={containerRef}
       className={["mb-16 text-center", className].filter(Boolean).join(" ")}
       initial="hidden"
       animate="visible"
@@ -35,13 +90,15 @@ export function AnimatedPageHeader({
       }}
     >
       <h1
-        className="mb-4 text-5xl font-black tracking-[0.15em] text-white sm:text-6xl md:text-7xl"
+        className="mb-4 w-full font-black tracking-[0.15em] text-white"
+        style={{ fontSize }}
         aria-label={title}
       >
         <span className="sr-only">{title}</span>
         <motion.span
+          ref={textRef}
           aria-hidden="true"
-          className="inline-block"
+          className="inline-block whitespace-nowrap"
           variants={{
             hidden: {},
             visible: {
@@ -56,7 +113,7 @@ export function AnimatedPageHeader({
             <motion.span
               // title is small; index key is fine for stable rendering
               key={`${ch}-${idx}`}
-              className="inline-block"
+              className="inline-block tracking-normal"
               variants={{
                 hidden: { opacity: 0, y: -18 },
                 visible: {
@@ -72,7 +129,7 @@ export function AnimatedPageHeader({
         </motion.span>
       </h1>
 
-      <motion.div
+      {/* <motion.div
         className="bg-accent-strong mx-auto mb-6 h-1 w-24"
         variants={{
           hidden: { opacity: 0, scaleX: 0.6 },
@@ -98,7 +155,7 @@ export function AnimatedPageHeader({
         >
           {subtitle}
         </motion.p>
-      ) : null}
+      ) : null} */}
     </motion.div>
   );
 }

@@ -34,7 +34,7 @@ export default function CrewPage() {
     <main className="bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-2.jpg" />
 
-      <section className="relative z-10 min-h-dvh px-4 py-16 sm:py-24">
+      <section className="relative z-10 min-h-dvh px-4 py-8 sm:py-24">
         <div className="mx-auto max-w-6xl">
           {/* <div className="mb-12">
             <Link href="/" className="text-white/60 hover:text-white transition-colors">
