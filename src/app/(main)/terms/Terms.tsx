@@ -23,14 +23,14 @@ export default function TermsPage() {
   }, [setForcedTheme]);
 
   return (
-    <main className="min-h-content bg-white text-black">
+    <main className="min-h-content bg-white text-black h">
       {/* Background accents */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-linear-to-tr from-indigo-300 via-fuchsia-300 to-cyan-200 opacity-40 blur-3xl" />
         <div className="absolute right-0 bottom-0 h-64 w-64 translate-x-16 translate-y-16 rounded-full bg-linear-to-tr from-cyan-200 via-emerald-200 to-lime-200 opacity-40 blur-3xl" />
       </div>
 
-      <section className="relative z-10 px-4 pb-12 pt-4">
+      <section className="relative z-10 px-4 pb-12 pt-12">
         <Container>
           <div className="mb-8">
             <Link
