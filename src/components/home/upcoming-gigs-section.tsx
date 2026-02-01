@@ -15,7 +15,7 @@ export function UpcomingGigsSection() {
       <motion.h2
         initial={{ opacity: 0, x: "100%" }}
         whileInView={{ opacity: 1, x: 0, transition: { duration: 0.5, ease: "easeOut" } }}
-        viewport={{ once: true}}
+        viewport={{ once: true }}
 
         className={`mb-6 border-b-2 border-white/10 pb-3 text-2xl font-black tracking-tight uppercase sm:mb-8 sm:pb-4 sm:text-3xl md:text-4xl ${orbitron.className}`}
       >

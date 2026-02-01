@@ -8,6 +8,7 @@ type AccentGlowCardProps = {
   motionProps?: MotionProps;
   innerClassName?: string;
   children: React.ReactNode;
+  ref?: React.RefObject<HTMLDivElement | null>;
 };
 
 export function AccentGlowCard({
@@ -15,6 +16,7 @@ export function AccentGlowCard({
   motionProps,
   innerClassName,
   children,
+  ref,
   ...props
 }: AccentGlowCardProps) {
   return (
@@ -48,6 +50,7 @@ export function AccentGlowCard({
           ].join(" "),
           // className,
         )}
+        ref={ref}
         {...props}
       >
 

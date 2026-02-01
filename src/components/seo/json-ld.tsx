@@ -1,24 +1,32 @@
 import Script from "next/script";
-
-const siteUrl =
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://atmosevents.co.nz";
+import { links } from "~/app/(main)/socials/Socials";
+import {
+  SITE_NAME,
+  SITE_URL,
+  DESCRIPTION_SHORT,
+  DESCRIPTION_LONG,
+  DEFAULT_OG_IMAGE,
+} from "~/lib/seo-constants";
 
 // Organization structured data
 export function OrganizationJsonLd() {
   const organizationData = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "ATMOS",
+    name: SITE_NAME,
     alternateName: "ATMOS Media",
-    url: siteUrl,
-    logo: `${siteUrl}/logo.png`,
-    description:
-      "Wellington's home for curated electronic music events. Discover underground club nights, DJ events, and immersive nightlife experiences in Pōneke.",
+    url: SITE_URL,
+    logo: `${SITE_URL}/logo.png`,
+    description: DESCRIPTION_LONG,
     sameAs: [
       // Add your social media URLs here
-      // "https://www.instagram.com/atmosevents",
-      // "https://www.facebook.com/atmosevents",
-      // "https://soundcloud.com/atmosevents",
+      links.instagram,
+      links.tiktok,
+      links.youtube,
+      links.facebook,
+      links.soundcloud,
+      links.spotify,
+      links.twitter,
     ],
     address: {
       "@type": "PostalAddress",
@@ -56,16 +64,15 @@ export function WebSiteJsonLd() {
   const websiteData = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "ATMOS",
+    name: SITE_NAME,
     alternateName: "ATMOS Events Wellington",
-    url: siteUrl,
-    description:
-      "Wellington's curated electronic music events & club nights",
+    url: SITE_URL,
+    description: DESCRIPTION_SHORT,
     inLanguage: "en-NZ",
     publisher: {
       "@type": "Organization",
-      name: "ATMOS",
-      url: siteUrl,
+      name: SITE_NAME,
+      url: SITE_URL,
     },
   };
 
@@ -125,22 +132,22 @@ export function EventJsonLd({
       name: venue.name,
       address: venue.address
         ? {
-            "@type": "PostalAddress",
-            streetAddress: venue.address,
-            addressLocality: "Wellington",
-            addressCountry: "NZ",
-          }
+          "@type": "PostalAddress",
+          streetAddress: venue.address,
+          addressLocality: "Wellington",
+          addressCountry: "NZ",
+        }
         : {
-            "@type": "PostalAddress",
-            addressLocality: "Wellington",
-            addressCountry: "NZ",
-          },
+          "@type": "PostalAddress",
+          addressLocality: "Wellington",
+          addressCountry: "NZ",
+        },
     },
-    image: image ?? `${siteUrl}/og-image.png`,
+    image: image ?? `${SITE_URL}${DEFAULT_OG_IMAGE}`,
     organizer: {
       "@type": "Organization",
-      name: "ATMOS",
-      url: siteUrl,
+      name: SITE_NAME,
+      url: SITE_URL,
     },
     ...(ticketUrl && {
       offers: {
@@ -152,11 +159,11 @@ export function EventJsonLd({
     }),
     ...(performers &&
       performers.length > 0 && {
-        performer: performers.map((p) => ({
-          "@type": p.type ?? "Person",
-          name: p.name,
-        })),
-      }),
+      performer: performers.map((p) => ({
+        "@type": p.type ?? "Person",
+        name: p.name,
+      })),
+    }),
   };
 
   return (
@@ -183,7 +190,7 @@ export function BreadcrumbJsonLd({ items }: { items: BreadcrumbItem[] }) {
       "@type": "ListItem",
       position: index + 1,
       name: item.name,
-      item: item.url.startsWith("http") ? item.url : `${siteUrl}${item.url}`,
+      item: item.url.startsWith("http") ? item.url : `${SITE_URL}${item.url}`,
     })),
   };
 
@@ -215,8 +222,8 @@ export function EventListJsonLd({ events }: { events: EventListItem[] }) {
       item: {
         "@type": "MusicEvent",
         name: event.name,
-        url: event.url.startsWith("http") ? event.url : `${siteUrl}${event.url}`,
-        image: event.image ?? `${siteUrl}/og-image.png`,
+        url: event.url.startsWith("http") ? event.url : `${SITE_URL}${event.url}`,
+        image: event.image ?? `${SITE_URL}${DEFAULT_OG_IMAGE}`,
         startDate: event.date.toISOString(),
         location: {
           "@type": "Place",

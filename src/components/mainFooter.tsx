@@ -10,6 +10,8 @@ import { usePathname } from "next/navigation";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { orbitron } from "~/lib/fonts";
 
+import { links } from "~/app/(main)/socials/Socials";
+
 const footerLinks = [
   { label: "Home", href: "/" },
   { label: "About", href: "/about" },
@@ -24,19 +26,19 @@ const footerLinks = [
 const footerSocials = [
   {
     label: "Instagram",
-    href: "https://instagram.com/atmos.nz",
+    href: links.instagram,
     Icon: FaInstagram,
     tooltip: "Instagram",
   },
   {
     label: "TikTok",
-    href: "https://tiktok.com/@atmos_tv",
+    href: links.tiktok,
     Icon: FaTiktok,
     tooltip: "TikTok",
   },
   {
     label: "YouTube",
-    href: "https://youtube.com/@ATMOS_TV",
+    href: links.youtube,
     Icon: FaYoutube,
     tooltip: "YouTube",
   },

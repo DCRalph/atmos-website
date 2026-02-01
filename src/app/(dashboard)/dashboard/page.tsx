@@ -1,6 +1,9 @@
 "use client";
 
+import { Home } from "lucide-react";
+import Link from "next/link";
 import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
 
 export default function DashboardPage() {
   return (
@@ -15,6 +18,12 @@ export default function DashboardPage() {
               <Badge variant="secondary">Beta</Badge>
             </div>
             <p className="text-muted-foreground">Comming soon</p>
+            <Button variant="outline">
+              <Link href="/" className="flex items-center gap-2">
+                <Home className="h-4 w-4" />
+                Home
+              </Link>
+            </Button>
           </div>
         </div>
       </div>

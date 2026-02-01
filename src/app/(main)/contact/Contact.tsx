@@ -4,6 +4,7 @@ import { StaticBackground } from "~/components/static-background";
 import Link from "next/link";
 import { ContactForm } from "~/components/contact/contact-form-2";
 import { AnimatedPageHeader } from "~/components/animated-page-header";
+import { links } from "~/app/(main)/socials/Socials";
 
 export default function ContactPage() {
   return (
@@ -83,7 +84,7 @@ function InstagramDM() {
       <p className="text-left leading-relaxed text-white/70">
         For the quickest response, send us a direct message at{" "}
         <Link
-          href="https://www.instagram.com/atmos.nz"
+          href={links.instagram}
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-accent-muted font-bold transition-colors"

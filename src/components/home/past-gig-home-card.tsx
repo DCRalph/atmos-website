@@ -48,9 +48,9 @@ export function PastGigHomeCard({
       <AccentGlowCard
         className="lg:col-span-3"
         motionProps={{
-          initial: { opacity: 0, y: "100%" },
+          initial: { opacity: 0, y: "200px" },
           whileInView: { opacity: 1, y: 0 },
-          viewport: { once: true },
+          viewport: { once: true, amount: 0.1 },
           transition: { duration: 0.5, ease: "easeOut" },
         }}
       >
@@ -91,7 +91,7 @@ export function PastGigHomeCard({
       motionProps={{
         initial: { opacity: 0, y: "100%" },
         whileInView: { opacity: 1, y: 0 },
-        viewport: { once: true },
+        viewport: { once: true, margin: "50% 0px" },
         transition: { duration: 0.5, ease: "easeOut" },
       }}>
       <MotionLink

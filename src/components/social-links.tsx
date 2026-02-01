@@ -19,6 +19,7 @@ import {
   TooltipTrigger,
 } from "~/components/ui/tooltip";
 import { orbitron } from "~/lib/fonts";
+import { links } from "~/app/(main)/socials/Socials";
 
 type ColorConfig =
   | string // Single color
@@ -36,7 +37,7 @@ const items: Item[] = [
   { label: "All Socials", href: "/socials/", Icon: FaPlus },
   {
     label: "Instagram",
-    href: "https://instagram.com/atmos.nz",
+    href: links.instagram,
     Icon: FaInstagram,
     color: {
       type: "gradient",
@@ -46,7 +47,7 @@ const items: Item[] = [
   },
   {
     label: "TikTok",
-    href: "https://tiktok.com/@atmos_tv",
+    href: links.tiktok,
     Icon: FaTiktok,
     color: {
       type: "multi",
@@ -55,25 +56,25 @@ const items: Item[] = [
   },
   {
     label: "YouTube",
-    href: "https://youtube.com/@ATMOS_TV",
+    href: links.youtube,
     Icon: FaYoutube,
     color: "#FF0000",
   },
   // {
   //   label: "Facebook",
-  //   href: "https://facebook.com/atmos.nz",
+  //   href: links.facebook,
   //   Icon: FaFacebook,
   //   color: "#1877F2",
   // },
   // {
   //   label: "Soundcloud",
-  //   href: "https://soundcloud.com/atmosmedia",
+  //   href: links.soundcloud,
   //   Icon: FaSoundcloud,
   //   color: "#FF3300",
   // },
   // {
   //   label: "Spotify",
-  //   href: "https://open.spotify.com/user/31zgkcouzyfpwhb3pfixdpvlfaom?si=a7f5f0fae13e4b1b",
+  //   href: links.spotify,
   //   Icon: FaSpotify,
   //   color: "#1DB954",
   // },

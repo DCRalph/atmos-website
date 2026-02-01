@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { type Metadata } from "next";
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import { UserIndicator } from "~/components/user-indicator";
@@ -7,6 +8,11 @@ import { LayoutWithSideBarHeader } from "~/components/layout-with-sideBar-header
 import { DashboardSideBar } from "~/components/admin/admin-sidebar";
 import { DashboardHeader } from "~/components/dash-header";
 import { UnsavedChangesProvider } from "~/components/admin/unsaved-changes-provider";
+
+export const metadata: Metadata = {
+  title: { absolute: "Atmos Admin" },
+  robots: { index: false, follow: false },
+};
 
 export default async function AdminLayout({
   children,

@@ -32,9 +32,9 @@ export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
       innerClassName="flex w-full h-full flex-col gap-4 md:flex-row"
       // motionClassName="w-full"
       motionProps={{
-        initial: { opacity: 0, y: "100%" },
+        initial: { opacity: 0, y: "200px" },
         whileInView: { opacity: 1, y: 0 },
-        viewport: { once: true },
+        viewport: { once: true, amount: 0.1 },
         transition: { duration: 0.5, ease: "easeOut" },
       }}
     >

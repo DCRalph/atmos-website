@@ -22,6 +22,8 @@ import { formatDate, formatTime } from "~/lib/date-utils";
 
 import { api } from "~/trpc/react";
 
+import { links } from "~/app/(main)/socials/Socials";
+
 type SocialLink = {
   platform: string;
   handle?: string;
@@ -54,49 +56,49 @@ const smallLinks: SocialLink[] = [
   {
     platform: "Instagram",
     handle: "@atmos.nz",
-    url: "https://instagram.com/atmos.nz",
+    url: links.instagram,
     icon: FaInstagram,
     color: "#E4405F",
   },
   {
     platform: "TikTok",
     handle: "@atmos_tv",
-    url: "https://youtube.com/@ATMOS_TV",
+    url: links.youtube,
     icon: FaYoutube,
     color: "#E4405F",
   },
   {
     platform: "SoundCloud",
     handle: "@atmosmedia",
-    url: "https://soundcloud.com/atmosmedia",
+    url: links.soundcloud,
     icon: FaSoundcloud,
     color: "#E4405F",
   },
   {
     platform: "Spotify",
     handle: "@atmosmedia",
-    url: "https://open.spotify.com/user/31zgkcouzyfpwhb3pfixdpvlfaom?si=a7f5f0fae13e4b1b",
+    url: links.spotify,
     icon: FaSpotify,
     color: "#E4405F",
   },
   {
     platform: "YouTube",
     handle: "@ATMOS_TV",
-    url: "https://youtube.com/@ATMOS_TV",
+    url: links.youtube,
     icon: FaYoutube,
     color: "#E44405F",
   },
   {
     platform: "Facebook",
     handle: "@atmosmedia",
-    url: "https://facebook.com/atmosmedia",
+    url: links.facebook,
     icon: FaFacebook,
     color: "#E4405F",
   },
   {
     platform: "Twitter",
     handle: "@atmosmedia",
-    url: "https://twitter.com/atmosmedia",
+    url: links.twitter,
     icon: FaTwitter,
     color: "#E4405F",
   },

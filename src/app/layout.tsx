@@ -10,84 +10,47 @@ import { ViewTransition } from "react";
 import { montserrat } from "~/lib/fonts";
 
 import NextTopLoader from "nextjs-toploader";
-
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL;
-
-const description_short =
-  "Wellington's curated electronic music events & club nights";
-const description_long =
-  "ATMOS — Wellington's home for curated electronic music events. Discover underground club nights, DJ events, and immersive nightlife experiences in Pōneke.";
+import {
+  SITE_NAME,
+  SITE_TAGLINE,
+  SITE_NAME_FULL,
+  SITE_URL,
+  DESCRIPTION_SHORT,
+  DESCRIPTION_LONG,
+  COMMON_KEYWORDS,
+  DEFAULT_ROBOTS,
+  DEFAULT_OPENGRAPH,
+  DEFAULT_TWITTER,
+  VERIFICATION,
+  ICONS,
+} from "~/lib/seo-constants";
 
 export const metadata: Metadata = {
   title: {
-    default: "ATMOS — Wellington Electronic Music Events",
-    template: "%s | ATMOS",
+    default: SITE_NAME_FULL,
+    template: `%s | ${SITE_NAME}`,
   },
-  description: description_long,
-  applicationName: "ATMOS",
-  keywords: [
-    "wellington electronic music events",
-    "wellington club nights",
-    "wellington dj events",
-    "pōneke nightlife",
-    "underground club night wellington",
-    "nz electronic music events",
-    "electronic music promoter wellington",
-    "dance music collective wellington",
-  ],
-  metadataBase: siteUrl ? new URL(siteUrl) : undefined,
+  description: DESCRIPTION_LONG,
+  applicationName: SITE_NAME,
+  keywords: [...COMMON_KEYWORDS],
+  metadataBase: SITE_URL ? new URL(SITE_URL) : undefined,
   alternates: {
     canonical: "/",
   },
-  icons: {
-    icon: [
-      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
-      { url: "/favicon.ico", rel: "icon" },
-    ],
-    apple: "/apple-touch-icon.png",
-    shortcut: "/favicon.ico",
-  },
+  icons: ICONS,
   openGraph: {
-    title: "ATMOS — Wellington Electronic Music Events",
-    description: description_short,
+    ...DEFAULT_OPENGRAPH,
+    title: SITE_NAME_FULL,
+    description: DESCRIPTION_SHORT,
     url: "/",
-    siteName: "ATMOS",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "ATMOS — Wellington Electronic Music Events & Club Nights",
-      },
-    ],
-    locale: "en_NZ",
-    type: "website",
   },
   twitter: {
-    card: "summary_large_image",
-    title: "ATMOS — Wellington Electronic Music Events",
-    description: description_short,
-    images: ["/og-image.png"],
+    ...DEFAULT_TWITTER,
+    title: SITE_NAME_FULL,
+    description: DESCRIPTION_SHORT,
   },
-  // Robots directives for Google and other crawlers
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-    },
-  },
-  // Verification tags (add your verification codes here)
-  verification: {
-    google: "wqpr0iOn_-vf0MC-mGnQiWqbZcDjRXTfA5INdAbDbGk",
-    // yandex: "your-yandex-verification-code",
-  },
-  // Category for better classification
+  robots: DEFAULT_ROBOTS,
+  verification: VERIFICATION,
   category: "entertainment",
 };
 

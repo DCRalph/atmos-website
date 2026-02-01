@@ -28,11 +28,21 @@ type SocialLink = {
   color: string;
 };
 
+export const links = {
+  instagram: "https://instagram.com/atmos.nz",
+  tiktok: "https://tiktok.com/@atmos_tv",
+  youtube: "https://youtube.com/@ATMOS_TV",
+  facebook: "https://facebook.com/atmos.nz",
+  soundcloud: "https://soundcloud.com/atmosmedia",
+  spotify: "https://open.spotify.com/user/31zgkcouzyfpwhb3pfixdpvlfaom?si=a7f5f0fae13e4b1b",
+  twitter: "https://twitter.com/atmosmedia"
+} as const;
+
 const socialLinks: SocialLink[] = [
   {
     media: "ATMOS NZ",
     label: "INSTAGRAM",
-    href: "https://instagram.com/atmos.nz",
+    href: links.instagram,
     Icon: FaInstagram,
     image: "/socials/instagram.png",
     description: "Latest drops, artists, and behind-the-scenes.",
@@ -42,7 +52,7 @@ const socialLinks: SocialLink[] = [
   {
     media: "ATMOS TV",
     label: "TIKTOK",
-    href: "https://tiktok.com/@atmos_tv",
+    href: links.tiktok,
     Icon: FaTiktok,
     image: "/socials/tiktok.png",
     description: "Fast cuts, live moments, and trends.",
@@ -52,7 +62,7 @@ const socialLinks: SocialLink[] = [
   {
     media: "ATMOS TV",
     label: "YOUTUBE",
-    href: "https://youtube.com/@ATMOS_TV",
+    href: links.youtube,
     Icon: FaYoutube,
     image: "/socials/youtube.png",
     description: "Sets, recaps, and long-form visuals.",
@@ -62,7 +72,7 @@ const socialLinks: SocialLink[] = [
   {
     media: "ATMOS NZ",
     label: "FACEBOOK",
-    href: "https://facebook.com/atmos.nz",
+    href: links.facebook,
     Icon: FaFacebook,
     image: "/socials/facebook.png",
     description: "Announcements and community updates.",
@@ -72,7 +82,7 @@ const socialLinks: SocialLink[] = [
   {
     media: "ATMOS NZ",
     label: "SOUNDCLOUD",
-    href: "https://soundcloud.com/atmosmedia",
+    href: links.soundcloud,
     Icon: FaSoundcloud,
     image: "/socials/soundcloud.png",
     description: "Mixes and exclusive audio.",
@@ -82,7 +92,7 @@ const socialLinks: SocialLink[] = [
   {
     media: "ATMOS NZ",
     label: "SPOTIFY",
-    href: "https://open.spotify.com/user/31zgkcouzyfpwhb3pfixdpvlfaom?si=a7f5f0fae13e4b1b",
+    href: links.spotify,
     Icon: FaSpotify,
     image: "/socials/spotify.png",
     description: "Playlists and curated sounds.",
