@@ -9,10 +9,10 @@ import { AnimatedPageHeader } from "~/components/animated-page-header";
 export default function ContentPage() {
   const { data: contentItems } = api.content.getAll.useQuery();
   return (
-    <main className="bg-black text-white">
+    <main className="min-h-content bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-1.jpg" />
 
-      <section className="relative z-10 min-h-dvh px-4 py-8 sm:py-16">
+      <section className="relative z-10 px-4 pb-12 pt-4">
         <div className="mx-auto max-w-6xl">
           <AnimatedPageHeader
             title="CONTENT"

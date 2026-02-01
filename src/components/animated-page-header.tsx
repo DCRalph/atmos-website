@@ -56,7 +56,7 @@ export function AnimatedPageHeader({
   return (
     <motion.div
       ref={containerRef}
-      className={cn("mb-16 relative", className)}
+      className={cn("mb-4 relative", className)}
       initial="hidden"
       animate="visible"
       variants={{
@@ -84,7 +84,7 @@ export function AnimatedPageHeader({
         <motion.span
           ref={textRef}
           aria-hidden="true"
-          className="whitespace-nowrap flex"
+          className="whitespace-nowrap flex scale-y-150"
           variants={{
             hidden: {},
             visible: {

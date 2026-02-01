@@ -8,10 +8,10 @@ import { links } from "~/app/(main)/socials/Socials";
 
 export default function ContactPage() {
   return (
-    <main className="bg-black text-white">
+    <main className="min-h-content bg-black text-white">
       <StaticBackground imageSrc="/home/CAGED 2-95.jpg" />
 
-      <section className="relative z-10 min-h-dvh px-4 py-8 sm:py-16">
+      <section className="relative z-10 px-4 pb-12 pt-4">
         <div className="container mx-auto">
           <AnimatedPageHeader
             title="HIT US UP"

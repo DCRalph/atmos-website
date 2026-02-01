@@ -30,10 +30,10 @@ export default function MerchPage() {
   const comingSoon = true;
 
   return (
-    <main className="bg-black text-white">
+    <main className="min-h-content bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-46.jpg" />
 
-      <section className="relative z-10 min-h-dvh px-4 py-8 sm:py-16">
+      <section className="relative z-10 px-4 pb-12 pt-4">
         <div className="mx-auto max-w-6xl">
           <AnimatedPageHeader
             title="MERCH"

@@ -279,3 +279,13 @@
   opacity: 1 !important;
   transform: none !important;
 }
+
+.min-h-content {
+  min-height: calc(100dvh - 4rem);
+}
+
+@media (max-width: 768px) {
+  .min-h-content {
+    min-height: calc(100dvh);
+  }
+}

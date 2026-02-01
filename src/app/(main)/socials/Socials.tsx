@@ -71,10 +71,10 @@ const socialLinks: SocialLink[] = [
 
 export default function SocialsPage() {
   return (
-    <main className="min-h-screen bg-black text-white">
+    <main className="min-h-content bg-black text-white">
       <StaticBackground imageSrc="/home/CAGED 2-95.jpg" />
 
-      <section className="relative z-10 min-h-screen px-4 py-16 sm:py-24">
+      <section className="relative z-10 px-4 pb-12 pt-4">
         <div className="container mx-auto max-w-4xl">
           {/* Header */}
           <AnimatedPageHeader
