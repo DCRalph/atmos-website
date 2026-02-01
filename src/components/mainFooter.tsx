@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { orbitron } from "~/lib/fonts";
 
 import { links } from "~/app/(main)/socials/Socials";
+import { GradientBlur } from "./gradient-blur";
 
 const footerLinks = [
   { label: "Home", href: "/" },
@@ -54,11 +55,13 @@ export function MainFooter() {
   };
 
   return (
-    <footer className="w-full">
+    <footer className="w-full relative">
       {/* top highlight line */}
-      <div className="h-px w-full bg-linear-to-r from-transparent via-black/20 to-transparent dark:via-white/35" />
+      {/* <div className="h-px w-full bg-linear-to-r from-transparent via-black/20 to-transparent dark:via-white/35" /> */}
 
-      <div className="border-t border-black/10 bg-white/75 text-black backdrop-blur-md dark:border-white/10 dark:bg-black/55 dark:text-white">
+      {/* <div className="border-t border-black/10 bg-white/75 text-black backdrop-blur-md dark:border-white/10 dark:bg-black/55 dark:text-white"> */}
+      <div className="bg-white/75 text-black dark:bg-black/55 dark:text-white z-10">
+      {/* <div className="text-black dark:text-white z-10"> */}
         <div className="mx-auto max-w-6xl p-4">
           <div className="flex flex-col items-center gap-6 sm:items-center sm:justify-between md:flex-row">
             <Link href="/" aria-label="ATMOS home" className="shrink-0">
@@ -126,13 +129,13 @@ export function MainFooter() {
         </div>
 
         {/* Copyright section */}
-        <div className="border-t border-black/10 dark:border-white/10">
-          <div className="mx-auto max-w-6xl px-4 py-3">
-            <p className="text-center text-xs text-black/60 dark:text-white/60">
-              © {year} ATMOS. All rights reserved.
-            </p>
-          </div>
+        {/* <div className="border-t border-black/10 dark:border-white/10"> */}
+        <div className="mx-auto max-w-6xl px-4 py-3">
+          <p className="text-center text-xs">
+            © {year} ATMOS. All rights reserved.
+          </p>
         </div>
+        {/* </div> */}
       </div>
     </footer>
   );

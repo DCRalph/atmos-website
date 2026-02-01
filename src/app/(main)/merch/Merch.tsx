@@ -33,7 +33,7 @@ export default function MerchPage() {
     <main className="bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-46.jpg" />
 
-      <section className="relative z-10 min-h-dvh px-4 py-8 sm:py-24">
+      <section className="relative z-10 min-h-dvh px-4 py-8 sm:py-16">
         <div className="mx-auto max-w-6xl">
           <AnimatedPageHeader
             title="MERCH"

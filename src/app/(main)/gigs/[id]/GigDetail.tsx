@@ -35,7 +35,7 @@ export default async function GigPage({ params }: PageProps) {
     <main className="bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-6.jpg" />
 
-      <section className="relative z-10 min-h-dvh px-4 py-8 sm:py-24">
+      <section className="relative z-10 min-h-dvh px-4 py-8 sm:py-16">
         <div className="mx-auto max-w-6xl">
           {/* Navigation */}
           <div className="mb-8 flex gap-4">

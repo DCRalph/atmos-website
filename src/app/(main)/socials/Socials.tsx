@@ -78,7 +78,7 @@ export default function SocialsPage() {
         <div className="container mx-auto max-w-4xl">
           {/* Header */}
           <AnimatedPageHeader
-            title="FOLLOW ATMOS"
+            title="SOCIALS"
             subtitle="One presence across every platform"
           />
 

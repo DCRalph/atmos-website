@@ -2,13 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { CheckCircle2, Play } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
 import { Input } from "~/components/ui/input";
 import { orbitron } from "~/lib/fonts";
-import { Button } from "~/components/ui/button";
-import { AccentGlowCard } from "~/components/ui/accent-glow-card";
 
 export function NewsletterSection({ className }: { className?: string }) {
   const newsletterSubscribe = api.newsletter.subscribe.useMutation();
@@ -64,7 +62,7 @@ export function NewsletterSection({ className }: { className?: string }) {
 
   return (
     <section
-      className={cn("relative mt-16 sm:mt-20", className)}
+      className={cn("relative mt-16 sm:mt-24", className)}
       aria-labelledby="newsletter-heading"
     >
       <audio ref={subscribeAudioRef} preload="auto" src="/subscribe.mp3" />
@@ -75,21 +73,15 @@ export function NewsletterSection({ className }: { className?: string }) {
         Join the newsletter
       </h2> */}
 
-      <div className="mb-6 border-b-2 border-white/10 pb-3 sm:mb-8 sm:pb-4" />
+      {/* <div className="mb-6 border-b-2 border-white/10 pb-3 sm:mb-8 sm:pb-4" /> */}
 
-      <AccentGlowCard
-        // className="bg-black/90 p-8 sm:p-12 lg:p-16"
-        motionProps={{
-          initial: { opacity: 0, scale: 0.5 },
-          whileInView: { opacity: 1, scale: 1 },
-          viewport: { once: true, margin: "50% 0px" },
-          transition: { duration: .5, ease: "easeOut" },
-        }}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.5 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: true, margin: "50% 0px" }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="relative"
       >
-        {/* Red accent bar */}
-        {/* <div className="absolute left-0 top-0 h-2 w-32 bg-accent-muted transition-all group-hover:w-48" />
-        <div className="absolute right-0 top-0 h-2 w-32 bg-accent-muted transition-all group-hover:w-48" /> */}
-
         {/* Content */}
         <div className="mx-auto max-w-3xl text-center">
           {/* Icon and heading */}
@@ -229,7 +221,7 @@ export function NewsletterSection({ className }: { className?: string }) {
             test sound
           </Button> */}
         </div>
-      </AccentGlowCard>
+      </motion.div>
     </section>
   );
 }

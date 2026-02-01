@@ -2,6 +2,9 @@
 
 import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import { cn } from "~/lib/utils";
+import { useIsMobile } from "~/hooks/use-mobile";
+import { teko } from "~/lib/fonts";
 
 type AnimatedPageHeaderProps = {
   title: string;
@@ -19,62 +22,41 @@ export function AnimatedPageHeader({
   const letters = title.split("");
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
-  const [fontSize, setFontSize] = useState<string>("4.5rem");
+  const [fontSize, setFontSize] = useState<string>("5.5rem");
+  const isMobile = useIsMobile();
 
   useEffect(() => {
+    if (!isMobile || !textRef.current) return;
+
     const calculateFontSize = () => {
-      if (!containerRef.current || !textRef.current) return;
-
-      const container = containerRef.current;
       const text = textRef.current;
-      const containerWidth = container.offsetWidth;
-      
-      const availableWidth = containerWidth - 0;
+      if (!text) return;
 
-      if (availableWidth <= 0) return;
+      const viewportWidth = window.innerWidth;
+      const baseFontSize = 200;
 
-      // Binary search for the right font size
-      let minSize = 30; // Minimum size (1.875rem)
-      let maxSize = 72; // Maximum size (4.5rem)
-      let currentSize = maxSize;
-      const tolerance = 0.5;
+      // Temporarily set base size to measure
+      text.style.fontSize = `${baseFontSize}px`;
+      const textWidth = text.scrollWidth;
 
-      while (maxSize - minSize > tolerance) {
-        currentSize = (minSize + maxSize) / 2;
-        text.style.fontSize = `${currentSize}px`;
-        
-        if (text.scrollWidth <= availableWidth) {
-          minSize = currentSize;
-        } else {
-          maxSize = currentSize;
-        }
-      }
+      // Reset inline style so it inherits from parent
+      text.style.fontSize = "";
 
-      setFontSize(`${minSize}px`);
+      // Calculate scaled font size
+      const scaledSize = (viewportWidth / textWidth) * baseFontSize;
+      setFontSize(`${scaledSize}px`);
     };
 
-    // Use ResizeObserver for better performance
-    const resizeObserver = new ResizeObserver(() => {
-      calculateFontSize();
-    });
+    calculateFontSize();
 
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-
-    // Initial calculation after a short delay to ensure DOM is ready
-    const timeout = setTimeout(calculateFontSize, 100);
-
-    return () => {
-      resizeObserver.disconnect();
-      clearTimeout(timeout);
-    };
-  }, [title]);
+    window.addEventListener("resize", calculateFontSize);
+    return () => window.removeEventListener("resize", calculateFontSize);
+  }, [isMobile, title]);
 
   return (
     <motion.div
       ref={containerRef}
-      className={["mb-16 text-center", className].filter(Boolean).join(" ")}
+      className={cn("mb-16 relative", className)}
       initial="hidden"
       animate="visible"
       variants={{
@@ -90,7 +72,11 @@ export function AnimatedPageHeader({
       }}
     >
       <h1
-        className="mb-4 w-full font-black tracking-[0.15em] text-white"
+        className={cn(
+          "mb-4 w-full font-black tracking-[0.15em] text-white flex justify-center",
+          teko.className,
+          isMobile && "w-screen -translate-x-4"
+        )}
         style={{ fontSize }}
         aria-label={title}
       >
@@ -98,20 +84,18 @@ export function AnimatedPageHeader({
         <motion.span
           ref={textRef}
           aria-hidden="true"
-          className="inline-block whitespace-nowrap"
+          className="whitespace-nowrap flex"
           variants={{
             hidden: {},
             visible: {
               transition: {
                 staggerChildren: 0.01,
-                // delayChildren: 0.05,
               },
             },
           }}
         >
           {letters.map((ch, idx) => (
             <motion.span
-              // title is small; index key is fine for stable rendering
               key={`${ch}-${idx}`}
               className="inline-block tracking-normal"
               variants={{
@@ -128,34 +112,6 @@ export function AnimatedPageHeader({
           ))}
         </motion.span>
       </h1>
-
-      {/* <motion.div
-        className="bg-accent-strong mx-auto mb-6 h-1 w-24"
-        variants={{
-          hidden: { opacity: 0, scaleX: 0.6 },
-          visible: {
-            opacity: 1,
-            scaleX: 1,
-            transition: { duration: 0.45, ease: easeOutExpo, delay: 0.1 },
-          },
-        }}
-      />
-
-      {subtitle ? (
-        <motion.p
-          className="font-mono text-base tracking-wider text-white/60 uppercase sm:text-lg"
-          variants={{
-            hidden: { opacity: 0, y: -6 },
-            visible: {
-              opacity: 1,
-              y: 0,
-              transition: { duration: 0.45, ease: easeOutExpo, delay: 0.15 },
-            },
-          }}
-        >
-          {subtitle}
-        </motion.p>
-      ) : null} */}
     </motion.div>
   );
 }
