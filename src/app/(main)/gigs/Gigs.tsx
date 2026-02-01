@@ -20,7 +20,7 @@ export default function GigsPage() {
       <section className="relative z-10 px-4 pb-12 pt-4">
         <div className="mx-auto max-w-6xl">
           <AnimatedPageHeader
-            title="ALL GIGS"
+            title="GIGS & EVENTS"
             subtitle="Upcoming events and past nights from Atmos"
           />
 

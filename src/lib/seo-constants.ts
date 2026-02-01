@@ -3,19 +3,19 @@ import { type Metadata } from "next";
 /* -------------------------------------------------------------------------- */
 /*                                  Constants                                 */
 /* -------------------------------------------------------------------------- */
-
 export const SITE_NAME = "ATMOS";
-export const SITE_TAGLINE = "Wellington Electronic Music Events";
+export const SITE_TAGLINE = "Immersive electronic music events in Pōneke";
 export const SITE_NAME_FULL = `${SITE_NAME} — ${SITE_TAGLINE}`;
 
 export const SITE_URL =
   process.env.NEXT_PUBLIC_APP_URL ?? "https://atmosmedia.co.nz";
 
 export const DESCRIPTION_SHORT =
-  "Wellington's curated electronic music events & club nights";
+  "Immersive curated music experiences in Pōneke";
 
 export const DESCRIPTION_LONG =
-  "ATMOS — Wellington's home for curated electronic music events. Discover underground club nights, DJ events, and immersive nightlife experiences in Pōneke.";
+  "Gig tickets, weekly radio show, merch drops, dive into the galleries from our past events. Everything Atmos - all in one place";
+
 
 /** Formats a page title with the site name suffix for OG/Twitter (which don't use Next.js template) */
 export const formatFullTitle = (title: string) => `${title} | ${SITE_NAME}`;
