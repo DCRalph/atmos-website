@@ -37,6 +37,7 @@ export type HomeContentSection = (typeof HomeContentSection)[keyof typeof HomeCo
 export const ContentLinkType = {
   SOUNDCLOUD_TRACK: 'SOUNDCLOUD_TRACK',
   SOUNDCLOUD_PLAYLIST: 'SOUNDCLOUD_PLAYLIST',
+  YOUTUBE_VIDEO: 'YOUTUBE_VIDEO',
   OTHER: 'OTHER'
 } as const
 

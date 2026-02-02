@@ -1969,8 +1969,8 @@ export const ContentItemScalarFieldEnum = {
   date: 'date',
   platform: 'platform',
   link: 'link',
-  embedUrl: 'embedUrl',
-  linkType: 'linkType'
+  linkType: 'linkType',
+  embedUrl: 'embedUrl'
 } as const
 
 export type ContentItemScalarFieldEnum = (typeof ContentItemScalarFieldEnum)[keyof typeof ContentItemScalarFieldEnum]

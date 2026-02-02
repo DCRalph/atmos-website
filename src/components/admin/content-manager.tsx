@@ -43,7 +43,7 @@ export function ContentManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [type, setType] = useState("");
   const [linkType, setLinkType] = useState<
-    "SOUNDCLOUD_TRACK" | "SOUNDCLOUD_PLAYLIST" | "OTHER"
+    "SOUNDCLOUD_TRACK" | "SOUNDCLOUD_PLAYLIST" | "YOUTUBE_VIDEO" | "OTHER"
   >("OTHER");
   const [title, setTitle] = useState("");
   const [dj, setDj] = useState("");
@@ -239,6 +239,9 @@ export function ContentManager() {
                       <SelectItem value="SOUNDCLOUD_PLAYLIST">
                         SoundCloud playlist
                       </SelectItem>
+                      <SelectItem value="YOUTUBE_VIDEO">
+                        YouTube video
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -253,25 +256,37 @@ export function ContentManager() {
                       linkType === "SOUNDCLOUD_TRACK" ||
                       linkType === "SOUNDCLOUD_PLAYLIST"
                         ? "SoundCloud track/playlist URL"
+                        : linkType === "YOUTUBE_VIDEO"
+                          ? "YouTube video URL"
                         : "Content URL"
                     }
                     required
                   />
                 </div>
                 {(linkType === "SOUNDCLOUD_TRACK" ||
-                  linkType === "SOUNDCLOUD_PLAYLIST") && (
+                  linkType === "SOUNDCLOUD_PLAYLIST" ||
+                  linkType === "YOUTUBE_VIDEO") && (
                   <div className="flex flex-col gap-2">
-                    <Label htmlFor="embedUrl">Embed URL (optional)</Label>
+                    <Label htmlFor="embedUrl">
+                      {linkType === "YOUTUBE_VIDEO"
+                        ? "YouTube video ID (optional)"
+                        : "Embed URL (optional)"}
+                    </Label>
                     <Input
                       id="embedUrl"
-                      type="url"
+                      type={linkType === "YOUTUBE_VIDEO" ? "text" : "url"}
                       value={embedUrl}
                       onChange={(e) => setEmbedUrl(e.target.value)}
-                      placeholder="SoundCloud embed URL for the player"
+                      placeholder={
+                        linkType === "YOUTUBE_VIDEO"
+                          ? "YouTube video ID (e.g. dQw4w9WgXcQ)"
+                          : "SoundCloud embed URL for the player"
+                      }
                     />
                     <p className="text-muted-foreground text-xs">
-                      If provided, this URL will be used for the SoundCloud
-                      player embed. Otherwise, the Link URL will be used.
+                      {linkType === "YOUTUBE_VIDEO"
+                        ? "If provided, this ID will be used for the YouTube embed."
+                        : "If provided, this URL will be used for the SoundCloud player embed. Otherwise, the Link URL will be used."}
                     </p>
                   </div>
                 )}

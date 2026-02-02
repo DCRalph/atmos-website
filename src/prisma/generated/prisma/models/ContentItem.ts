@@ -35,8 +35,8 @@ export type ContentItemMinAggregateOutputType = {
   date: Date | null
   platform: string | null
   link: string | null
-  embedUrl: string | null
   linkType: $Enums.ContentLinkType | null
+  embedUrl: string | null
 }
 
 export type ContentItemMaxAggregateOutputType = {
@@ -50,8 +50,8 @@ export type ContentItemMaxAggregateOutputType = {
   date: Date | null
   platform: string | null
   link: string | null
-  embedUrl: string | null
   linkType: $Enums.ContentLinkType | null
+  embedUrl: string | null
 }
 
 export type ContentItemCountAggregateOutputType = {
@@ -65,8 +65,8 @@ export type ContentItemCountAggregateOutputType = {
   date: number
   platform: number
   link: number
-  embedUrl: number
   linkType: number
+  embedUrl: number
   _all: number
 }
 
@@ -82,8 +82,8 @@ export type ContentItemMinAggregateInputType = {
   date?: true
   platform?: true
   link?: true
-  embedUrl?: true
   linkType?: true
+  embedUrl?: true
 }
 
 export type ContentItemMaxAggregateInputType = {
@@ -97,8 +97,8 @@ export type ContentItemMaxAggregateInputType = {
   date?: true
   platform?: true
   link?: true
-  embedUrl?: true
   linkType?: true
+  embedUrl?: true
 }
 
 export type ContentItemCountAggregateInputType = {
@@ -112,8 +112,8 @@ export type ContentItemCountAggregateInputType = {
   date?: true
   platform?: true
   link?: true
-  embedUrl?: true
   linkType?: true
+  embedUrl?: true
   _all?: true
 }
 
@@ -200,8 +200,8 @@ export type ContentItemGroupByOutputType = {
   date: Date
   platform: string | null
   link: string
-  embedUrl: string | null
   linkType: $Enums.ContentLinkType
+  embedUrl: string | null
   _count: ContentItemCountAggregateOutputType | null
   _min: ContentItemMinAggregateOutputType | null
   _max: ContentItemMaxAggregateOutputType | null
@@ -236,8 +236,8 @@ export type ContentItemWhereInput = {
   date?: Prisma.DateTimeFilter<"ContentItem"> | Date | string
   platform?: Prisma.StringNullableFilter<"ContentItem"> | string | null
   link?: Prisma.StringFilter<"ContentItem"> | string
-  embedUrl?: Prisma.StringNullableFilter<"ContentItem"> | string | null
   linkType?: Prisma.EnumContentLinkTypeFilter<"ContentItem"> | $Enums.ContentLinkType
+  embedUrl?: Prisma.StringNullableFilter<"ContentItem"> | string | null
   homeContentPlacements?: Prisma.HomeContentPlacementListRelationFilter
 }
 
@@ -252,8 +252,8 @@ export type ContentItemOrderByWithRelationInput = {
   date?: Prisma.SortOrder
   platform?: Prisma.SortOrderInput | Prisma.SortOrder
   link?: Prisma.SortOrder
-  embedUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   linkType?: Prisma.SortOrder
+  embedUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   homeContentPlacements?: Prisma.HomeContentPlacementOrderByRelationAggregateInput
 }
 
@@ -271,8 +271,8 @@ export type ContentItemWhereUniqueInput = Prisma.AtLeast<{
   date?: Prisma.DateTimeFilter<"ContentItem"> | Date | string
   platform?: Prisma.StringNullableFilter<"ContentItem"> | string | null
   link?: Prisma.StringFilter<"ContentItem"> | string
-  embedUrl?: Prisma.StringNullableFilter<"ContentItem"> | string | null
   linkType?: Prisma.EnumContentLinkTypeFilter<"ContentItem"> | $Enums.ContentLinkType
+  embedUrl?: Prisma.StringNullableFilter<"ContentItem"> | string | null
   homeContentPlacements?: Prisma.HomeContentPlacementListRelationFilter
 }, "id">
 
@@ -287,8 +287,8 @@ export type ContentItemOrderByWithAggregationInput = {
   date?: Prisma.SortOrder
   platform?: Prisma.SortOrderInput | Prisma.SortOrder
   link?: Prisma.SortOrder
-  embedUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   linkType?: Prisma.SortOrder
+  embedUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.ContentItemCountOrderByAggregateInput
   _max?: Prisma.ContentItemMaxOrderByAggregateInput
   _min?: Prisma.ContentItemMinOrderByAggregateInput
@@ -308,8 +308,8 @@ export type ContentItemScalarWhereWithAggregatesInput = {
   date?: Prisma.DateTimeWithAggregatesFilter<"ContentItem"> | Date | string
   platform?: Prisma.StringNullableWithAggregatesFilter<"ContentItem"> | string | null
   link?: Prisma.StringWithAggregatesFilter<"ContentItem"> | string
-  embedUrl?: Prisma.StringNullableWithAggregatesFilter<"ContentItem"> | string | null
   linkType?: Prisma.EnumContentLinkTypeWithAggregatesFilter<"ContentItem"> | $Enums.ContentLinkType
+  embedUrl?: Prisma.StringNullableWithAggregatesFilter<"ContentItem"> | string | null
 }
 
 export type ContentItemCreateInput = {
@@ -323,8 +323,8 @@ export type ContentItemCreateInput = {
   date: Date | string
   platform?: string | null
   link: string
-  embedUrl?: string | null
   linkType?: $Enums.ContentLinkType
+  embedUrl?: string | null
   homeContentPlacements?: Prisma.HomeContentPlacementCreateNestedManyWithoutContentItemInput
 }
 
@@ -339,8 +339,8 @@ export type ContentItemUncheckedCreateInput = {
   date: Date | string
   platform?: string | null
   link: string
-  embedUrl?: string | null
   linkType?: $Enums.ContentLinkType
+  embedUrl?: string | null
   homeContentPlacements?: Prisma.HomeContentPlacementUncheckedCreateNestedManyWithoutContentItemInput
 }
 
@@ -355,8 +355,8 @@ export type ContentItemUpdateInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   platform?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   link?: Prisma.StringFieldUpdateOperationsInput | string
-  embedUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   linkType?: Prisma.EnumContentLinkTypeFieldUpdateOperationsInput | $Enums.ContentLinkType
+  embedUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homeContentPlacements?: Prisma.HomeContentPlacementUpdateManyWithoutContentItemNestedInput
 }
 
@@ -371,8 +371,8 @@ export type ContentItemUncheckedUpdateInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   platform?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   link?: Prisma.StringFieldUpdateOperationsInput | string
-  embedUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   linkType?: Prisma.EnumContentLinkTypeFieldUpdateOperationsInput | $Enums.ContentLinkType
+  embedUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homeContentPlacements?: Prisma.HomeContentPlacementUncheckedUpdateManyWithoutContentItemNestedInput
 }
 
@@ -387,8 +387,8 @@ export type ContentItemCreateManyInput = {
   date: Date | string
   platform?: string | null
   link: string
-  embedUrl?: string | null
   linkType?: $Enums.ContentLinkType
+  embedUrl?: string | null
 }
 
 export type ContentItemUpdateManyMutationInput = {
@@ -402,8 +402,8 @@ export type ContentItemUpdateManyMutationInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   platform?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   link?: Prisma.StringFieldUpdateOperationsInput | string
-  embedUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   linkType?: Prisma.EnumContentLinkTypeFieldUpdateOperationsInput | $Enums.ContentLinkType
+  embedUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ContentItemUncheckedUpdateManyInput = {
@@ -417,8 +417,8 @@ export type ContentItemUncheckedUpdateManyInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   platform?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   link?: Prisma.StringFieldUpdateOperationsInput | string
-  embedUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   linkType?: Prisma.EnumContentLinkTypeFieldUpdateOperationsInput | $Enums.ContentLinkType
+  embedUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ContentItemCountOrderByAggregateInput = {
@@ -432,8 +432,8 @@ export type ContentItemCountOrderByAggregateInput = {
   date?: Prisma.SortOrder
   platform?: Prisma.SortOrder
   link?: Prisma.SortOrder
-  embedUrl?: Prisma.SortOrder
   linkType?: Prisma.SortOrder
+  embedUrl?: Prisma.SortOrder
 }
 
 export type ContentItemMaxOrderByAggregateInput = {
@@ -447,8 +447,8 @@ export type ContentItemMaxOrderByAggregateInput = {
   date?: Prisma.SortOrder
   platform?: Prisma.SortOrder
   link?: Prisma.SortOrder
-  embedUrl?: Prisma.SortOrder
   linkType?: Prisma.SortOrder
+  embedUrl?: Prisma.SortOrder
 }
 
 export type ContentItemMinOrderByAggregateInput = {
@@ -462,8 +462,8 @@ export type ContentItemMinOrderByAggregateInput = {
   date?: Prisma.SortOrder
   platform?: Prisma.SortOrder
   link?: Prisma.SortOrder
-  embedUrl?: Prisma.SortOrder
   linkType?: Prisma.SortOrder
+  embedUrl?: Prisma.SortOrder
 }
 
 export type ContentItemScalarRelationFilter = {
@@ -500,8 +500,8 @@ export type ContentItemCreateWithoutHomeContentPlacementsInput = {
   date: Date | string
   platform?: string | null
   link: string
-  embedUrl?: string | null
   linkType?: $Enums.ContentLinkType
+  embedUrl?: string | null
 }
 
 export type ContentItemUncheckedCreateWithoutHomeContentPlacementsInput = {
@@ -515,8 +515,8 @@ export type ContentItemUncheckedCreateWithoutHomeContentPlacementsInput = {
   date: Date | string
   platform?: string | null
   link: string
-  embedUrl?: string | null
   linkType?: $Enums.ContentLinkType
+  embedUrl?: string | null
 }
 
 export type ContentItemCreateOrConnectWithoutHomeContentPlacementsInput = {
@@ -546,8 +546,8 @@ export type ContentItemUpdateWithoutHomeContentPlacementsInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   platform?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   link?: Prisma.StringFieldUpdateOperationsInput | string
-  embedUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   linkType?: Prisma.EnumContentLinkTypeFieldUpdateOperationsInput | $Enums.ContentLinkType
+  embedUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ContentItemUncheckedUpdateWithoutHomeContentPlacementsInput = {
@@ -561,8 +561,8 @@ export type ContentItemUncheckedUpdateWithoutHomeContentPlacementsInput = {
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   platform?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   link?: Prisma.StringFieldUpdateOperationsInput | string
-  embedUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   linkType?: Prisma.EnumContentLinkTypeFieldUpdateOperationsInput | $Enums.ContentLinkType
+  embedUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 
@@ -607,8 +607,8 @@ export type ContentItemSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   date?: boolean
   platform?: boolean
   link?: boolean
-  embedUrl?: boolean
   linkType?: boolean
+  embedUrl?: boolean
   homeContentPlacements?: boolean | Prisma.ContentItem$homeContentPlacementsArgs<ExtArgs>
   _count?: boolean | Prisma.ContentItemCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["contentItem"]>
@@ -624,8 +624,8 @@ export type ContentItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   date?: boolean
   platform?: boolean
   link?: boolean
-  embedUrl?: boolean
   linkType?: boolean
+  embedUrl?: boolean
 }, ExtArgs["result"]["contentItem"]>
 
 export type ContentItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -639,8 +639,8 @@ export type ContentItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   date?: boolean
   platform?: boolean
   link?: boolean
-  embedUrl?: boolean
   linkType?: boolean
+  embedUrl?: boolean
 }, ExtArgs["result"]["contentItem"]>
 
 export type ContentItemSelectScalar = {
@@ -654,11 +654,11 @@ export type ContentItemSelectScalar = {
   date?: boolean
   platform?: boolean
   link?: boolean
-  embedUrl?: boolean
   linkType?: boolean
+  embedUrl?: boolean
 }
 
-export type ContentItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "createdAt" | "updatedAt" | "type" | "title" | "dj" | "description" | "date" | "platform" | "link" | "embedUrl" | "linkType", ExtArgs["result"]["contentItem"]>
+export type ContentItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "createdAt" | "updatedAt" | "type" | "title" | "dj" | "description" | "date" | "platform" | "link" | "linkType" | "embedUrl", ExtArgs["result"]["contentItem"]>
 export type ContentItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   homeContentPlacements?: boolean | Prisma.ContentItem$homeContentPlacementsArgs<ExtArgs>
   _count?: boolean | Prisma.ContentItemCountOutputTypeDefaultArgs<ExtArgs>
@@ -682,8 +682,8 @@ export type $ContentItemPayload<ExtArgs extends runtime.Types.Extensions.Interna
     date: Date
     platform: string | null
     link: string
-    embedUrl: string | null
     linkType: $Enums.ContentLinkType
+    embedUrl: string | null
   }, ExtArgs["result"]["contentItem"]>
   composites: {}
 }
@@ -1118,8 +1118,8 @@ export interface ContentItemFieldRefs {
   readonly date: Prisma.FieldRef<"ContentItem", 'DateTime'>
   readonly platform: Prisma.FieldRef<"ContentItem", 'String'>
   readonly link: Prisma.FieldRef<"ContentItem", 'String'>
-  readonly embedUrl: Prisma.FieldRef<"ContentItem", 'String'>
   readonly linkType: Prisma.FieldRef<"ContentItem", 'ContentLinkType'>
+  readonly embedUrl: Prisma.FieldRef<"ContentItem", 'String'>
 }
     
 

@@ -8,6 +8,7 @@ import {
 const ContentLinkTypeSchema = z.enum([
   "SOUNDCLOUD_TRACK",
   "SOUNDCLOUD_PLAYLIST",
+  "YOUTUBE_VIDEO",
   "OTHER",
 ]);
 

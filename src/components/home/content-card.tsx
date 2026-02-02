@@ -3,6 +3,7 @@
 import Image from "next/image";
 
 import { SoundCloudPlayer } from "~/components/soundcloud-player";
+import { YouTubePlayer } from "~/components/youtube-player";
 import { type ContentItem } from "~Prisma/client";
 import { cn } from "~/lib/utils";
 import { AccentGlowCard } from "~/components/ui/accent-glow-card";
@@ -22,6 +23,11 @@ export function ContentCard({
     contentItem.linkType === "SOUNDCLOUD_TRACK" ||
     contentItem.linkType === "SOUNDCLOUD_PLAYLIST";
   const soundCloudUrl = contentItem.embedUrl;
+  const isYouTubeVideo = contentItem.linkType === "YOUTUBE_VIDEO";
+  const youtubeVideoId = contentItem.embedUrl;
+  const hasFeaturedEmbed =
+    featured &&
+    ((isSoundCloud && soundCloudUrl) || (isYouTubeVideo && youtubeVideoId));
 
   return (
     <AccentGlowCard
@@ -48,7 +54,7 @@ export function ContentCard({
         <div
           className={cn(
             "flex h-full flex-col gap-6",
-            isSoundCloud && soundCloudUrl
+            hasFeaturedEmbed
               ? "col-span-full lg:col-span-7"
               : "col-span-full",
           )}
@@ -83,7 +89,7 @@ export function ContentCard({
           </div>
         </div>
 
-        {isSoundCloud && soundCloudUrl && (
+        {isSoundCloud && soundCloudUrl && featured && (
           <div className="col-span-full lg:col-span-5 mt-auto">
             <div className="overflow-hidden rounded-none border-2 border-white/10 bg-black/60">
               <SoundCloudPlayer
@@ -101,6 +107,16 @@ export function ContentCard({
                   single_active: false,
                   visual: true,
                 }}
+              />
+            </div>
+          </div>
+        )}
+        {isYouTubeVideo && youtubeVideoId && featured && (
+          <div className="col-span-full lg:col-span-5 mt-auto">
+            <div className="overflow-hidden rounded-none border-2 border-white/10 bg-black/60">
+              <YouTubePlayer
+                videoId={youtubeVideoId}
+                title={contentItem.title}
               />
             </div>
           </div>

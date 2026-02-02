@@ -1,4 +1,5 @@
 import "~/styles/globals.css";
+import "react-lite-youtube-embed/dist/LiteYouTubeEmbed.css";
 
 import { type Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
