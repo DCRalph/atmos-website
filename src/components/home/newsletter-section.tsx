@@ -91,7 +91,7 @@ export function NewsletterSection({ className }: { className?: string }) {
             </div>
           </div> */}
 
-          <div className="absolute top-1/2 left-1/2 -z-10 h-1/3 w-2/3 -translate-x-1/2 -translate-y-1/2 bg-white/30 blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 -z-10 h-1/2 w-2/3 -translate-x-1/2 -translate-y-1/2 bg-white/30 blur-3xl" />
 
           <h3
             className={`mb-4 text-3xl font-black tracking-tight uppercase sm:text-4xl md:text-5xl ${orbitron.className}`}

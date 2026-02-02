@@ -62,6 +62,7 @@ export const contentRouter = createTRPCRouter({
         date: z.date(),
         link: z.string().min(1),
         platform: z.string().optional(),
+        embedUrl: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -85,6 +86,7 @@ export const contentRouter = createTRPCRouter({
         date: z.date().optional(),
         link: z.string().min(1).optional(),
         platform: z.string().optional().nullable(),
+        embedUrl: z.string().optional().nullable(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

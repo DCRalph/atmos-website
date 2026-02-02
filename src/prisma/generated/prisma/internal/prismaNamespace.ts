@@ -1960,16 +1960,17 @@ export type CrewMemberScalarFieldEnum = (typeof CrewMemberScalarFieldEnum)[keyof
 
 export const ContentItemScalarFieldEnum = {
   id: 'id',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
   type: 'type',
   title: 'title',
   dj: 'dj',
   description: 'description',
   date: 'date',
-  linkType: 'linkType',
-  link: 'link',
   platform: 'platform',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  link: 'link',
+  embedUrl: 'embedUrl',
+  linkType: 'linkType'
 } as const
 
 export type ContentItemScalarFieldEnum = (typeof ContentItemScalarFieldEnum)[keyof typeof ContentItemScalarFieldEnum]

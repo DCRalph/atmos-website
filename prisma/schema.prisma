@@ -132,16 +132,21 @@ enum ContentLinkType {
 
 model ContentItem {
   id          String          @id @default(cuid())
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
   type        String
   title       String
   dj          String?
   description String
   date        DateTime
-  linkType    ContentLinkType @default(OTHER)
-  link        String
+
   platform    String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+
+  link        String
+  linkType    ContentLinkType @default(OTHER)
+  embedUrl    String?
+  
 
   homeContentPlacements HomeContentPlacement[]
 

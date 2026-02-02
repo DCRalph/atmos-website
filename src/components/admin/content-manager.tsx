@@ -50,6 +50,7 @@ export function ContentManager() {
   const [description, setDescription] = useState("");
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [link, setLink] = useState("");
+  const [embedUrl, setEmbedUrl] = useState("");
   const [platform, setPlatform] = useState("");
   const [search, setSearch] = useState("");
 
@@ -87,6 +88,7 @@ export function ContentManager() {
     setDescription("");
     setDate(undefined);
     setLink("");
+    setEmbedUrl("");
     setPlatform("");
   };
 
@@ -99,6 +101,7 @@ export function ContentManager() {
     setDescription(item.description);
     setDate(item.date);
     setLink(item.link);
+    setEmbedUrl(item.embedUrl ?? "");
     setPlatform(item.platform ?? "");
     setIsOpen(true);
   };
@@ -116,6 +119,7 @@ export function ContentManager() {
         date: date,
         link,
         platform: platform || null,
+        embedUrl: embedUrl || null,
       });
     } else {
       if (!date) return;
@@ -128,6 +132,7 @@ export function ContentManager() {
         date,
         link,
         platform: platform || undefined,
+        embedUrl: embedUrl || undefined,
       });
     }
   };
@@ -152,7 +157,7 @@ export function ContentManager() {
             <DialogTrigger asChild>
               <Button onClick={() => resetForm()}>Add Content</Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {editingId ? "Edit" : "Add"} Content Item
@@ -244,9 +249,32 @@ export function ContentManager() {
                     type="url"
                     value={link}
                     onChange={(e) => setLink(e.target.value)}
+                    placeholder={
+                      linkType === "SOUNDCLOUD_TRACK" ||
+                      linkType === "SOUNDCLOUD_PLAYLIST"
+                        ? "SoundCloud track/playlist URL"
+                        : "Content URL"
+                    }
                     required
                   />
                 </div>
+                {(linkType === "SOUNDCLOUD_TRACK" ||
+                  linkType === "SOUNDCLOUD_PLAYLIST") && (
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="embedUrl">Embed URL (optional)</Label>
+                    <Input
+                      id="embedUrl"
+                      type="url"
+                      value={embedUrl}
+                      onChange={(e) => setEmbedUrl(e.target.value)}
+                      placeholder="SoundCloud embed URL for the player"
+                    />
+                    <p className="text-muted-foreground text-xs">
+                      If provided, this URL will be used for the SoundCloud
+                      player embed. Otherwise, the Link URL will be used.
+                    </p>
+                  </div>
+                )}
                 <Button
                   type="submit"
                   disabled={createItem.isPending || updateItem.isPending}
