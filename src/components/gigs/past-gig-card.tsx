@@ -1,19 +1,12 @@
 "use client";
 
-import { formatDate } from "~/lib/date-utils";
+import { formatDate, formatTime } from "~/lib/date-utils";
 import { motion } from "framer-motion";
-import { GigTagList } from "~/components/gig-tag-list";
+import Image from "next/image";
 
-type Gig = {
-  id: string;
-  gigStartTime: Date;
-  title: string;
-  subtitle: string;
-  media?: Array<unknown> | null;
-  gigTags?: Array<{
-    gigTag: { id: string; name: string; color: string };
-  }> | null;
-};
+import { type RouterOutputs } from "~/trpc/react";
+
+type Gig = RouterOutputs["gigs"]["getToday"][number];
 
 type PastGigCardProps = {
   gig: Gig;
@@ -23,30 +16,42 @@ export function PastGigCard({ gig }: PastGigCardProps) {
   return (
     <motion.a
       href={`/gigs/${gig.id}`}
-      className="group hover:border-accent-muted/50 relative flex flex-col justify-between gap-2 overflow-hidden rounded-none border-2 border-white/10 bg-black/80 p-6 backdrop-blur-sm transition-all hover:bg-black/90 hover:shadow-[0_0_15px_var(--accent-muted)]"
+      className="group hover:border-accent-muted/50 relative flex flex-col justify-between overflow-hidden rounded-none border-2 border-white/10 bg-black/80 backdrop-blur-sm transition-all hover:bg-black/90 hover:shadow-[0_0_15px_var(--accent-muted)]"
     >
-      {/* Top accent bar */}
-      <div className="bg-accent-muted absolute top-0 right-0 h-1 w-16 opacity-50 transition-all group-hover:w-full group-hover:opacity-100" />
+      {gig.posterFileUpload && (
+        <div className="w-full">
+          <Image
+            src={gig.posterFileUpload.url}
+            alt={`${gig.title} poster`}
+            width={gig.posterFileUpload.width ?? 1000}
+            height={gig.posterFileUpload.height ?? 1500}
+            sizes="100vw"
+            className="block w-full h-auto bg-black/20 transition-transform duration-300 hover:scale-105"
+          />
+        </div>
+      )}
 
-      <h3 className="mb-3 text-xl leading-tight font-black tracking-tight text-white uppercase sm:text-2xl">
-        {gig.title}
-      </h3>
-
-      <div className="flex flex-col gap-2">
-        <p className="text-base font-medium text-white/60">{gig.subtitle}</p>
-
-        <div className="text-accent-muted text-2xl font-black tracking-tight uppercase">
-          {formatDate(gig.gigStartTime)}
+      <div className="border-t border-white/10 bg-black/95">
+      
+        <div className="flex items-center justify-between gap-3 px-3 py-2">
+          <h3 className="text-xs font-black tracking-wider text-white uppercase sm:text-sm">
+            {gig.title}
+          </h3>
         </div>
 
-        <GigTagList gigTags={gig.gigTags} size="sm" />
+        <div className="grid grid-cols-3 border-t border-white/10 text-[11px] font-semibold tracking-wider text-white/70 uppercase">
 
-        {gig.media && gig.media.length > 0 && (
-          <p className="text-sm font-bold tracking-wider text-white/50 uppercase">
-            {gig.media.length}{" "}
-            {gig.media.length === 1 ? "media item" : "media items"}
-          </p>
-        )}
+          <div className="border-white/10 px-3 py-2 sm:border-r flex items-center justify-center">
+            {gig.subtitle}
+          </div>
+
+          <div className="border-white/10 px-3 py-2 sm:border-r flex items-center justify-center">
+            {formatDate(gig.gigStartTime)}
+          </div>
+
+          <div className="px-3 py-2 flex items-center justify-center">{formatTime(gig.gigStartTime)}</div>
+
+        </div>
       </div>
     </motion.a>
   );

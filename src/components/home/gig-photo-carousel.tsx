@@ -92,10 +92,8 @@ export function GigPhotoCarousel({
 
   if (photosToShow.length === 0) {
     return (
-      <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-black/20 p-4 sm:p-5">
-        <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-white/20">
-          <p className="text-xs text-white/40">No photos available</p>
-        </div>
+      <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-white/20">
+        <p className="text-xs text-white/40">No photos available</p>
       </div>
     );
   }

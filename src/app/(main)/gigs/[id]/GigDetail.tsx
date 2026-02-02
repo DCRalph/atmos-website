@@ -1,13 +1,14 @@
-import { notFound } from "next/navigation";
+"use client";
+
+import { use } from "react";
 import { StaticBackground } from "~/components/static-background";
-import { api } from "~/trpc/server";
+import { api } from "~/trpc/react";
 import { formatDate, formatTime, isGigPast } from "~/lib/date-utils";
 import { MediaGallery } from "../../../../components/gigs/media-gallery";
 import { MarkdownContent } from "../../../../components/markdown-content";
-import { GigDetailPhotoCarousel } from "../../../../components/gigs/gig-detail-photo-carousel";
 import Link from "next/link";
-import { authServer } from "~/server/auth";
-import { ArrowLeft, Calendar, Clock, Pencil, Ticket } from "lucide-react";
+import { authClient } from "~/lib/auth-client";
+import { ArrowLeft, Calendar, Clock, Loader2, Pencil, Ticket } from "lucide-react";
 import { GigTagList } from "~/components/gig-tag-list";
 import Image from "next/image";
 
@@ -15,17 +16,46 @@ type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-export default async function GigPage({ params }: PageProps) {
-  const { id } = await params;
-  const gig = await api.gigs.getById({ id });
+export default function GigPage({ params }: PageProps) {
+  const { id } = use(params);
+  const { data: gig, isLoading } = api.gigs.getById.useQuery({ id });
+  const { data: session } = authClient.useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
 
-  if (!gig) {
-    notFound();
+  if (isLoading) {
+    return (
+      <main className="bg-black text-white">
+        <StaticBackground imageSrc="/home/atmos-6.jpg" />
+        <section className="relative z-10 min-h-dvh px-4 pb-8 pt-2">
+          <div className="mx-auto max-w-6xl">
+            <div className="flex items-center justify-center border-2 border-white/10 bg-black/80 py-12 backdrop-blur-sm">
+              <Loader2 className="text-accent-muted h-6 w-6 animate-spin" />
+            </div>
+          </div>
+        </section>
+      </main>
+    );
   }
 
-  // Check if user is admin
-  const { user } = await authServer();
-  const isAdmin = user?.role === "ADMIN";
+  if (!gig) {
+    return (
+      <main className="bg-black text-white">
+        <StaticBackground imageSrc="/home/atmos-6.jpg" />
+        <section className="relative z-10 min-h-dvh px-4 pb-8 pt-2">
+          <div className="mx-auto max-w-6xl">
+            <div className="border-2 border-white/10 bg-black/80 p-8 text-center backdrop-blur-sm">
+              <h2 className="text-2xl font-black tracking-wider uppercase sm:text-3xl">
+                Gig not found
+              </h2>
+              <p className="mt-2 text-sm text-white/60">
+                The event you are looking for may have been removed.
+              </p>
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   const upcoming = !isGigPast(gig);
   const hasMedia = gig.media && gig.media.length > 0;
@@ -108,20 +138,7 @@ export default async function GigPage({ params }: PageProps) {
                   </div>
                 )}
 
-                {hasMedia ? (
-                  <GigDetailPhotoCarousel
-                    media={gig.media!}
-                    gigTitle={gig.title}
-                  />
-                ) : (
-                  <div className="flex flex-col gap-3 rounded-none border-2 border-white/10 bg-black/40 p-4 sm:p-5">
-                    <div className="flex h-32 items-center justify-center rounded-none border-2 border-dashed border-white/20">
-                      <p className="text-xs font-bold tracking-wider text-white/40 uppercase">
-                        No photos available
-                      </p>
-                    </div>
-                  </div>
-                )}
+
               </div>
             </div>
           </div>
