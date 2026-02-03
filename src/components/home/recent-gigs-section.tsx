@@ -51,7 +51,7 @@ export function RecentGigsSection() {
 
             {/* Remaining recent gigs */}
             {pastGigs.length > 0 ? (
-              <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:col-span-3 lg:grid-cols-2">
+              <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:col-span-3 lg:grid-cols-2">
                 {pastGigs.map((gig: any) => (
                   <PastGigHomeCard key={gig.id} gig={gig} />
                 ))}

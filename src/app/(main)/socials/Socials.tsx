@@ -75,10 +75,7 @@ export default function SocialsPage() {
     <main className="min-h-content bg-black text-white">
       <StaticBackground imageSrc="/home/CAGED 2-95.jpg" />
 
-      <MainPageSection
-        className="px-4 pt-4"
-        containerClassName="container mx-auto max-w-4xl"
-      >
+      <MainPageSection>
         {/* Header */}
         <AnimatedPageHeader
           title="SOCIALS"
@@ -86,7 +83,7 @@ export default function SocialsPage() {
         />
 
         {/* Social Links Grid */}
-        <div className="mt-12 grid grid-cols-2 gap-8 sm:grid-cols-3 md:gap-12">
+        <div className="mt-18 grid grid-cols-2 gap-8 sm:grid-cols-3 md:gap-12 max-w-4xl mx-auto">
           {socialLinks.map((social, index) => (
             <SocialItem key={social.label} social={social} index={index} />
           ))}

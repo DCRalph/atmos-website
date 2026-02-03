@@ -18,7 +18,7 @@ export default function ContentPage() {
     <main className="min-h-content bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-1.jpg" />
 
-      <MainPageSection className="px-4 pb-16 pt-6 sm:pt-8">
+      <MainPageSection>
         <AnimatedPageHeader
           title="CONTENT"
           subtitle="Releases, mixes, and highlights from the Atmos community"

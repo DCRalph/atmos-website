@@ -12,7 +12,7 @@ export default function ContactPage() {
     <main className="min-h-content bg-black text-white">
       <StaticBackground imageSrc="/home/CAGED 2-95.jpg" />
 
-      <MainPageSection className="px-4 pt-4" containerClassName="container mx-auto">
+      <MainPageSection>
         <AnimatedPageHeader
           title="HIT US UP"
           subtitle="Bookings, collabs, questions—send us a message"

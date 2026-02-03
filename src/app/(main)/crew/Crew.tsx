@@ -35,7 +35,7 @@ export default function CrewPage() {
     <main className="min-h-content bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-2.jpg" />
 
-      <MainPageSection className="px-4 pt-4">
+      <MainPageSection>
         {/* <div className="mb-12">
           <Link href="/" className="text-white/60 hover:text-white transition-colors">
             ← Back

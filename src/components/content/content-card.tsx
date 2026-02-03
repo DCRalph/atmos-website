@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 
 import { SoundCloudPlayer } from "~/components/soundcloud-player";
 import { YouTubePlayer } from "~/components/youtube-player";
@@ -30,19 +31,25 @@ export function ContentCard({
     ((isSoundCloud && soundCloudUrl) || (isYouTubeVideo && youtubeVideoId));
 
   return (
-    <AccentGlowCard
+    <Link
+      href={contentItem.link}
+      target="_blank"
+      rel="noopener noreferrer"
       className={cn(
-        // "flex flex-col justify-between gap-4 p-6",
+        "block",
         featured ? "col-span-full" : "col-span-full lg:col-span-1",
         className,
       )}
-      // motionProps={{
-      //   initial: { opacity: 0, y: "200px" },
-      //   whileInView: { opacity: 1, y: 0 },
-      //   viewport: { once: true, amount: 0.1 },
-      //   transition: { duration: 0.5, ease: "easeOut" },
-      // }}
     >
+      <AccentGlowCard
+        className="cursor-pointer"
+        // motionProps={{
+        //   initial: { opacity: 0, y: "200px" },
+        //   whileInView: { opacity: 1, y: 0 },
+        //   viewport: { once: true, amount: 0.1 },
+        //   transition: { duration: 0.5, ease: "easeOut" },
+        // }}
+      >
 
       {contentItem.platform && (
         <div className="absolute top-4 right-4">
@@ -90,7 +97,10 @@ export function ContentCard({
         </div>
 
         {isSoundCloud && soundCloudUrl && featured && (
-          <div className="col-span-full lg:col-span-5 mt-auto">
+          <div
+            className="col-span-full lg:col-span-5 mt-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="overflow-hidden rounded-none border-2 border-white/10 bg-black/60">
               <SoundCloudPlayer
                 url={soundCloudUrl}
@@ -112,7 +122,10 @@ export function ContentCard({
           </div>
         )}
         {isYouTubeVideo && youtubeVideoId && featured && (
-          <div className="col-span-full lg:col-span-5 mt-auto">
+          <div
+            className="col-span-full lg:col-span-5 mt-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="overflow-hidden rounded-none border-2 border-white/10 bg-black/60">
               <YouTubePlayer
                 videoId={youtubeVideoId}
@@ -123,7 +136,8 @@ export function ContentCard({
         )}
       </div>
 
-    </AccentGlowCard>
+      </AccentGlowCard>
+    </Link>
   );
 }
 

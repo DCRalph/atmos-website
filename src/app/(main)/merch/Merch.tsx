@@ -34,7 +34,7 @@ export default function MerchPage() {
     <main className="min-h-content bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-46.jpg" />
 
-      <MainPageSection className="px-4 pt-4">
+      <MainPageSection>
         <AnimatedPageHeader
           title="MERCH"
           subtitle="Limited drops and Atmos staples"
