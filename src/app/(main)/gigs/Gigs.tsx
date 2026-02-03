@@ -81,6 +81,7 @@ export default function GigsPage() {
                 <PastGigCard
                   key={gig.id}
                   gig={{ ...gig, gigStartTime: gig.gigStartTime! }}
+                  upcomming
                 />
               ))}
             </div>

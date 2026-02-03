@@ -11,11 +11,12 @@ type Gig = RouterOutputs["gigs"]["getToday"][number];
 
 type PastGigCardProps = {
   gig: Gig;
+  upcomming?: boolean;
 };
 
 const MotionLink = motion.create(Link);
 
-export function PastGigCard({ gig }: PastGigCardProps) {
+export function PastGigCard({ gig, upcomming = false }: PastGigCardProps) {
   const isTba = gig.mode === "TO_BE_ANNOUNCED";
   const displayTitle = isTba ? "TBA..." : gig.title;
 
@@ -32,11 +33,10 @@ export function PastGigCard({ gig }: PastGigCardProps) {
             width={gig.posterFileUpload.width ?? 1000}
             height={gig.posterFileUpload.height ?? 1500}
             sizes="100vw"
-            className={`block h-auto w-full bg-black/20 ${
-              isTba
+            className={`block h-auto w-full bg-black/20 ${isTba
                 ? "blur-md"
                 : "transition-transform duration-300 hover:scale-105"
-            }`}
+              }`}
           />
           {isTba && (
             <div className="absolute inset-0 flex items-center justify-center">
@@ -64,7 +64,7 @@ export function PastGigCard({ gig }: PastGigCardProps) {
             </div>
 
             <div className="border-white/10 flex items-center justify-center border-r-0 px-3 py-2 md:border-r-2">
-              {formatDate(gig.gigStartTime)}
+              {formatDate(gig.gigStartTime, upcomming ? "extra-short" : "short")}
             </div>
 
             <div className="hidden items-center justify-center px-3 py-2 md:flex">
