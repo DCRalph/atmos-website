@@ -73,9 +73,9 @@ export function AnimatedPageHeader({
     >
       <h1
         className={cn(
-          "mb-4 mt-4 w-full font-black tracking-[0.15em] text-white flex justify-center",
+          "mb-4 w-full font-black tracking-[0.15em] text-white flex justify-center",
           teko.className,
-          isMobile && "w-screen scale-x-[1.03] -translate-x-4"
+          isMobile && "w-screen scale-x-[1.04] translate-x-[-2%]"
         )}
         style={{
           fontSize,

@@ -10,7 +10,7 @@ import {
   isGigUpcoming,
 } from "~/lib/date-utils";
 import { uploadBufferToS3, softDeleteFile } from "~/lib/s3Helper";
-import { FileUploadStatus, type GigMedia } from "~Prisma/client";
+import { FileUploadStatus, GigMode, type GigMedia } from "~Prisma/client";
 import { toWebPMax } from "~/lib/sparpImage";
 
 type FileUploadInfo = {
@@ -27,6 +27,30 @@ type FileUploadInfo = {
 } | null;
 
 type EnrichedMedia = GigMedia & { fileUpload: FileUploadInfo };
+
+const TBA_TITLE = "TBA...";
+
+type SessionLike = { user?: { role?: string | null } } | null;
+
+const isAdminSession = (ctx: { session?: SessionLike }) =>
+  ctx.session?.user?.role === "ADMIN";
+
+const redactGigForPublic = <T extends { mode?: GigMode }>(gig: T) => {
+  if (gig.mode !== GigMode.TO_BE_ANNOUNCED) return gig;
+  return {
+    ...gig,
+    title: TBA_TITLE,
+    subtitle: "",
+    shortDescription: "",
+    longDescription: null,
+    ticketLink: null,
+    gigTags: [],
+    media: [],
+  };
+};
+
+const redactGigsForPublic = <T extends { mode?: GigMode }>(gigs: T[]) =>
+  gigs.map(redactGigForPublic);
 
 async function getFileUploadInfoById(
   db: any,
@@ -60,9 +84,9 @@ async function getFileUploadInfoById(
 
   const uploadedBy = fileUpload.userId
     ? await db.user.findUnique({
-        where: { id: fileUpload.userId },
-        select: { id: true, name: true, email: true },
-      })
+      where: { id: fileUpload.userId },
+      select: { id: true, name: true, email: true },
+    })
     : null;
 
   return {
@@ -117,9 +141,9 @@ async function enrichGigsWithPosterFileUploads<
   const users =
     userIds.length > 0
       ? await db.user.findMany({
-          where: { id: { in: userIds } },
-          select: { id: true, name: true, email: true },
-        })
+        where: { id: { in: userIds } },
+        select: { id: true, name: true, email: true },
+      })
       : [];
 
   const userMap = new Map(users.map((u: any) => [u.id, u]));
@@ -187,9 +211,9 @@ async function enrichMediaWithFileUploads<T extends GigMedia>(
   const users =
     userIds.length > 0
       ? await db.user.findMany({
-          where: { id: { in: userIds } },
-          select: { id: true, name: true, email: true },
-        })
+        where: { id: { in: userIds } },
+        select: { id: true, name: true, email: true },
+      })
       : [];
 
   const userMap = new Map(users.map((u: any) => [u.id, u]));
@@ -260,9 +284,9 @@ async function enrichGigsWithFileUploads<T extends { media: GigMedia[] }>(
   const users =
     userIds.length > 0
       ? await db.user.findMany({
-          where: { id: { in: userIds } },
-          select: { id: true, name: true, email: true },
-        })
+        where: { id: { in: userIds } },
+        select: { id: true, name: true, email: true },
+      })
       : [];
 
   const userMap = new Map(users.map((u: any) => [u.id, u]));
@@ -302,14 +326,23 @@ export const gigsRouter = createTRPCRouter({
 
       const where = search
         ? {
-            OR: [
-              { title: { contains: search, mode: "insensitive" as const } },
-              { subtitle: { contains: search, mode: "insensitive" as const } },
-              {
-                description: { contains: search, mode: "insensitive" as const },
+          OR: [
+            { title: { contains: search, mode: "insensitive" as const } },
+            { subtitle: { contains: search, mode: "insensitive" as const } },
+            {
+              shortDescription: {
+                contains: search,
+                mode: "insensitive" as const,
               },
-            ],
-          }
+            },
+            {
+              longDescription: {
+                contains: search,
+                mode: "insensitive" as const,
+              },
+            },
+          ],
+        }
         : undefined;
 
       const gigs = await ctx.db.gig.findMany({
@@ -332,7 +365,8 @@ export const gigsRouter = createTRPCRouter({
       });
 
       const enriched = await enrichGigsWithFileUploads(ctx.db, gigs);
-      return enrichGigsWithPosterFileUploads(ctx.db, enriched);
+      const withPosters = await enrichGigsWithPosterFileUploads(ctx.db, enriched);
+      return isAdminSession(ctx) ? withPosters : redactGigsForPublic(withPosters);
     }),
 
   /**
@@ -395,7 +429,14 @@ export const gigsRouter = createTRPCRouter({
         .filter((g) => (featuredGig ? g.id !== featuredGig.id : true))
         .slice(0, pastLimit);
 
-      return { featuredGig, pastGigs };
+      if (isAdminSession(ctx)) {
+        return { featuredGig, pastGigs };
+      }
+
+      return {
+        featuredGig: featuredGig ? redactGigForPublic(featuredGig) : null,
+        pastGigs: redactGigsForPublic(pastGigs),
+      };
     }),
 
   getUpcoming: publicProcedure.query(async ({ ctx }) => {
@@ -424,7 +465,8 @@ export const gigsRouter = createTRPCRouter({
     });
 
     const enriched = await enrichGigsWithFileUploads(ctx.db, gigs);
-    return enrichGigsWithPosterFileUploads(ctx.db, enriched);
+    const withPosters = await enrichGigsWithPosterFileUploads(ctx.db, enriched);
+    return isAdminSession(ctx) ? withPosters : redactGigsForPublic(withPosters);
   }),
 
   getPast: publicProcedure
@@ -463,7 +505,8 @@ export const gigsRouter = createTRPCRouter({
       });
 
       const enriched = await enrichGigsWithFileUploads(ctx.db, gigs);
-      return enrichGigsWithPosterFileUploads(ctx.db, enriched);
+      const withPosters = await enrichGigsWithPosterFileUploads(ctx.db, enriched);
+      return isAdminSession(ctx) ? withPosters : redactGigsForPublic(withPosters);
     }),
 
   /**
@@ -568,8 +611,12 @@ export const gigsRouter = createTRPCRouter({
 
     const filteredGigs = todayGigs.filter((gig) => isGigUpcoming(gig));
     const enrichedGigs = await enrichGigsWithFileUploads(ctx.db, filteredGigs);
+    const withPosters = await enrichGigsWithPosterFileUploads(
+      ctx.db,
+      enrichedGigs,
+    );
 
-    return enrichGigsWithPosterFileUploads(ctx.db, enrichedGigs);
+    return isAdminSession(ctx) ? withPosters : redactGigsForPublic(withPosters);
   }),
 
   getById: publicProcedure
@@ -600,7 +647,8 @@ export const gigsRouter = createTRPCRouter({
         ctx.db,
         gig.posterFileUploadId ?? null,
       );
-      return { ...gig, media: enrichedMedia, posterFileUpload };
+      const result = { ...gig, media: enrichedMedia, posterFileUpload };
+      return isAdminSession(ctx) ? result : redactGigForPublic(result);
     }),
 
   create: adminProcedure
@@ -608,7 +656,9 @@ export const gigsRouter = createTRPCRouter({
       z.object({
         title: z.string().min(1),
         subtitle: z.string().min(1),
-        description: z.string().optional(),
+        shortDescription: z.string().min(1),
+        longDescription: z.string().optional(),
+        mode: z.nativeEnum(GigMode).optional(),
         gigStartTime: z.date(),
         gigEndTime: z.date().optional(),
         ticketLink: z.string().optional(),
@@ -626,7 +676,9 @@ export const gigsRouter = createTRPCRouter({
         id: z.string(),
         title: z.string().min(1).optional(),
         subtitle: z.string().min(1).optional(),
-        description: z.string().optional().nullable(),
+        shortDescription: z.string().optional().nullable(),
+        longDescription: z.string().optional().nullable(),
+        mode: z.enum(GigMode).optional(),
         gigStartTime: z.date().optional(),
         gigEndTime: z.date().optional().nullable(),
         ticketLink: z.string().optional().nullable(),
@@ -938,6 +990,15 @@ export const gigsRouter = createTRPCRouter({
   getMedia: publicProcedure
     .input(z.object({ gigId: z.string() }))
     .query(async ({ ctx, input }) => {
+      const gig = await ctx.db.gig.findUnique({
+        where: { id: input.gigId },
+        select: { mode: true },
+      });
+
+      if (gig?.mode === GigMode.TO_BE_ANNOUNCED && !isAdminSession(ctx)) {
+        return { featured: [], gallery: [], all: [] };
+      }
+
       const media = await ctx.db.gigMedia.findMany({
         where: { gigId: input.gigId },
         orderBy: [
@@ -1008,9 +1069,9 @@ export const gigsRouter = createTRPCRouter({
       const users =
         userIds.length > 0
           ? await ctx.db.user.findMany({
-              where: { id: { in: userIds } },
-              select: { id: true, name: true, email: true },
-            })
+            where: { id: { in: userIds } },
+            select: { id: true, name: true, email: true },
+          })
           : [];
 
       const userMap = new Map(users.map((u) => [u.id, u]));

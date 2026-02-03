@@ -3,6 +3,7 @@ import sharp from "sharp";
 export type WebPCompressionOptions = {
   maxSizePx?: number;
   quality?: number; // 1-100
+  blur?: number;
 };
 
 // Resize so that the larger side <= maxSizePx, preserve aspect ratio, then convert to WebP
@@ -35,10 +36,15 @@ export const toWebPMax = async (
   }
 
   // Use sharp to resize and convert to webp
-  const output = await image
+  let sharpImage = image
     .resize({ width, height, fit: "cover", withoutEnlargement: true })
     .webp({ quality })
-    .toBuffer();
+
+  if (opts.blur) {
+    sharpImage = sharpImage.blur(opts.blur)
+  }
+
+  const output = await sharpImage.toBuffer();
 
   return {
     buffer: output,

@@ -1,16 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { formatDate, formatTime } from "~/lib/date-utils";
+import { formatDate } from "~/lib/date-utils";
 import { motion } from "motion/react";
 import Image from "next/image";
-import { useIsMobile } from "~/hooks/use-mobile";
 
 type Gig = {
   id: string;
   gigStartTime: Date;
   title: string;
   subtitle: string;
+  shortDescription?: string | null;
+  mode?: "NORMAL" | "TO_BE_ANNOUNCED";
   gigEndTime?: Date | null;
   ticketLink?: string | null;
   posterFileUpload?: { url: string } | null;
@@ -25,7 +26,8 @@ type UpcomingGigCardProps = {
 
 export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
   const posterUrl = gig.posterFileUpload?.url ?? null;
-  const isMobile = useIsMobile();
+  const isTba = gig.mode === "TO_BE_ANNOUNCED";
+  const displayTitle = isTba ? "TBA..." : gig.title;
 
   return (
     <motion.div
@@ -43,17 +45,25 @@ export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
           <div className="relative aspect-3/4 w-full bg-black/20">
             <Image
               src={posterUrl}
-              alt={`${gig.title} poster`}
+              alt={isTba ? "TBA poster" : `${gig.title} poster`}
               fill
               sizes="(max-width: 768px) 100vw, 600px"
-              className="object-cover"
+              className={isTba ? "object-cover blur-md" : "object-cover"}
             />
 
-            { posterUrl && (
+            {isTba && (
+              <div className="absolute inset-0 flex items-center justify-center z-10">
+                <h3 className="text-5xl md:text-7xl font-black tracking-tight text-white uppercase drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]">
+                  TBA...
+                </h3>
+              </div>
+            )}
+
+            { posterUrl && !isTba && (
               <div className="absolute -inset-2 -bottom-6 sm:bottom-0 sm:-inset-4 overflow-hidden -z-20 blur-2xl sm:blur-3xl ">
                 <Image
                   src={posterUrl}
-                  alt={`${gig.title} poster`}
+                  alt={`${displayTitle} poster`}
                   fill
                   sizes="(max-width: 768px) 100vw, 600px"
                   className="object-cover"
@@ -69,48 +79,53 @@ export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
       {/* Content below poster */}
       <div className="flex flex-col gap-4 p-4">
         {/* Date */}
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="text-2xl font-black leading-tight tracking-tight text-white uppercase md:text-3xl">
-            {gig.title}
-          </h3>
-          <span className="text-lg font-semibold tracking-tight text-white md:text-xl">
-            {formatDate(gig.gigStartTime, "extra-short")}
-          </span>
-          {/* <span className="font-bold tracking-wider uppercase">
-            {gig.gigEndTime
-              ? `${formatTime(gig.gigStartTime)} - ${formatTime(gig.gigEndTime)}`
-              : formatTime(gig.gigStartTime)}
-          </span> */}
-        </div>
+        {!isTba && (
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="text-2xl font-black leading-tight tracking-tight text-white uppercase md:text-3xl">
+              {displayTitle}
+            </h3>
+            <span className="text-lg font-semibold tracking-tight text-white md:text-xl">
+              {formatDate(gig.gigStartTime, "extra-short")}
+            </span>
+            {/* <span className="font-bold tracking-wider uppercase">
+              {gig.gigEndTime
+                ? `${formatTime(gig.gigStartTime)} - ${formatTime(gig.gigEndTime)}`
+                : formatTime(gig.gigStartTime)}
+            </span> */}
+          </div>
+        )}
 
         {/* Title & Subtitle */}
-        <div>
-
-          <p className="mt-1 text-sm font-medium text-white/70 md:text-base">
-            {gig.subtitle}
-          </p>
-        </div>
+        {!isTba && (
+          <div>
+            <p className="mt-1 text-sm font-medium text-white/70 md:text-base">
+              {gig.shortDescription ?? gig.subtitle}
+            </p>
+          </div>
+        )}
 
         {/* Buttons - side by side */}
-        <div className="flex gap-3">
-          <Link
-            href={`/gigs/${gig.id}`}
-            className="flex-1 inline-flex items-center justify-center rounded-none border-2 border-white/30 bg-transparent px-4 py-2 text-xs font-black tracking-wider text-white uppercase transition-all hover:border-accent-muted hover:bg-accent-muted/10 hover:text-white"
-          >
-            View Details
-          </Link>
-          {gig.ticketLink && (
-            <a
-              href={gig.ticketLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 inline-flex items-center justify-center border-accent-strong bg-accent-strong hover:border-accent-muted hover:bg-accent-muted h-12 rounded-none border-2 px-6 text-sm font-black tracking-wider text-white uppercase transition-all hover:shadow-[0_0_20px_var(--accent-muted)] disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={(e) => e.stopPropagation()}
+        {!isTba && (
+          <div className="flex gap-3">
+            <Link
+              href={`/gigs/${gig.id}`}
+              className="flex-1 inline-flex items-center justify-center rounded-none border-2 border-white/30 bg-transparent px-4 py-2 text-xs font-black tracking-wider text-white uppercase transition-all hover:border-accent-muted hover:bg-accent-muted/10 hover:text-white"
             >
-              Get Tickets
-            </a>
-          )}
-        </div>
+              View Details
+            </Link>
+            {gig.ticketLink && (
+              <a
+                href={gig.ticketLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 inline-flex items-center justify-center border-accent-strong bg-accent-strong hover:border-accent-muted hover:bg-accent-muted h-12 rounded-none border-2 px-6 text-sm font-black tracking-wider text-white uppercase transition-all hover:shadow-[0_0_20px_var(--accent-muted)] disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Get Tickets
+              </a>
+            )}
+          </div>
+        )}
       </div>
     </motion.div>
   );

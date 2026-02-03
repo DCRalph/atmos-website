@@ -9,6 +9,14 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
+import { GigMode } from "~Prisma/browser";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -21,7 +29,9 @@ export default function NewGigPage() {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [shortDescription, setShortDescription] = useState("");
+  const [longDescription, setLongDescription] = useState("");
+  const [mode, setMode] = useState<GigMode>(GigMode.NORMAL);
   const [gigStartTime, setGigStartTime] = useState<Date | undefined>(undefined);
   const [gigEndTime, setGigEndTime] = useState<Date | undefined>(undefined);
   const [ticketLink, setTicketLink] = useState("");
@@ -44,7 +54,9 @@ export default function NewGigPage() {
     createGig.mutate({
       title,
       subtitle,
-      description: description.trim() || undefined,
+      shortDescription: shortDescription.trim(),
+      longDescription: longDescription.trim() || undefined,
+      mode,
       gigStartTime: utcGigStartTime,
       gigEndTime: utcGigEndTime,
       ticketLink: ticketLink.trim() || undefined,
@@ -85,16 +97,47 @@ export default function NewGigPage() {
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="description">Description (Markdown)</Label>
+              <Label htmlFor="shortDescription">Short Description</Label>
               <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                id="shortDescription"
+                value={shortDescription}
+                onChange={(e) => setShortDescription(e.target.value)}
+                placeholder="Short summary for cards..."
+                rows={3}
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="longDescription">Long Description (Markdown)</Label>
+              <Textarea
+                id="longDescription"
+                value={longDescription}
+                onChange={(e) => setLongDescription(e.target.value)}
                 placeholder="Enter a description using Markdown formatting..."
                 rows={8}
               />
               <p className="text-muted-foreground text-xs">
                 Supports Markdown formatting (bold, italic, links, lists, etc.)
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label>Mode</Label>
+              <Select
+                value={mode}
+                onValueChange={(value) => setMode(value as GigMode)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={GigMode.NORMAL}>Normal</SelectItem>
+                  <SelectItem value={GigMode.TO_BE_ANNOUNCED}>
+                    To Be Announced
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-muted-foreground text-xs">
+                To Be Announced hides details and shows a blurred poster.
               </p>
             </div>
             <div className="flex flex-col gap-2">

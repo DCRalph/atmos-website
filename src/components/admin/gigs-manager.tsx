@@ -44,7 +44,7 @@ export function GigsManager() {
       <CardContent>
         <div className="mb-4">
           <Input
-            placeholder="Search by title, subtitle, or description..."
+            placeholder="Search by title, subtitle, or short/long description..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-sm"

@@ -25,6 +25,11 @@ enum HomeContentSection {
   PAST
 }
 
+enum GigMode {
+  NORMAL
+  TO_BE_ANNOUNCED
+}
+
 model User {
   id               String        @id
   name             String
@@ -199,7 +204,9 @@ model Gig {
   id           String    @id @default(cuid())
   title        String
   subtitle     String
-  description  String?
+  shortDescription String?
+  longDescription  String?  @map("description")
+  mode         GigMode  @default(NORMAL)
   gigStartTime DateTime
   gigEndTime   DateTime?
   ticketLink   String?

@@ -2015,7 +2015,9 @@ export const GigScalarFieldEnum = {
   id: 'id',
   title: 'title',
   subtitle: 'subtitle',
-  description: 'description',
+  shortDescription: 'shortDescription',
+  longDescription: 'longDescription',
+  mode: 'mode',
   gigStartTime: 'gigStartTime',
   gigEndTime: 'gigEndTime',
   ticketLink: 'ticketLink',
@@ -2261,6 +2263,20 @@ export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'In
  * Reference to a field of type 'Int[]'
  */
 export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+    
+
+
+/**
+ * Reference to a field of type 'GigMode'
+ */
+export type EnumGigModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'GigMode'>
+    
+
+
+/**
+ * Reference to a field of type 'GigMode[]'
+ */
+export type ListEnumGigModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'GigMode[]'>
     
 
 

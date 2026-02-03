@@ -23,12 +23,15 @@ export async function generateMetadata({
   const { id } = await params;
   const gig = await api.gigs.getById({ id });
 
-  const baseTitle = gig?.title ?? "Gig";
-  const subtitle = cleanText(gig?.subtitle);
+  const isTba = gig?.mode === "TO_BE_ANNOUNCED";
+  const baseTitle = isTba ? "TBA..." : gig?.title ?? "Gig";
+  const subtitle = cleanText(isTba ? "" : gig?.subtitle);
+  const shortDescription = cleanText(isTba ? "" : gig?.shortDescription);
   const descriptionFromBody = cleanText(
-    gig?.description ? String(gig?.description) : "",
+    gig?.longDescription ? String(gig?.longDescription) : "",
   );
   const description =
+    shortDescription ||
     subtitle ||
     truncate(
       descriptionFromBody || `ATMOS — ${DESCRIPTION_SHORT}`,
@@ -49,6 +52,7 @@ export async function generateMetadata({
 export default async function page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const gig = await api.gigs.getById({ id });
+  const isTba = gig?.mode === "TO_BE_ANNOUNCED";
 
   // Get image for JSON-LD
   const posterImage = gig?.posterFileUpload?.url ?? null;
@@ -61,13 +65,13 @@ export default async function page({ params }: { params: Promise<{ id: string }>
   return (
     <>
       {/* JSON-LD Structured Data for Google Rich Results */}
-      {gig && (
+      {gig && !isTba && (
         <>
           <EventJsonLd
             name={gig.title}
             description={
               gig.subtitle ||
-              gig.description?.toString() ||
+              gig.longDescription?.toString() ||
               "Wellington electronic music event by ATMOS"
             }
             startDate={gig.gigStartTime}

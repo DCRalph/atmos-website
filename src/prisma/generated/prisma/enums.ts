@@ -34,6 +34,14 @@ export const HomeContentSection = {
 export type HomeContentSection = (typeof HomeContentSection)[keyof typeof HomeContentSection]
 
 
+export const GigMode = {
+  NORMAL: 'NORMAL',
+  TO_BE_ANNOUNCED: 'TO_BE_ANNOUNCED'
+} as const
+
+export type GigMode = (typeof GigMode)[keyof typeof GigMode]
+
+
 export const ContentLinkType = {
   SOUNDCLOUD_TRACK: 'SOUNDCLOUD_TRACK',
   SOUNDCLOUD_PLAYLIST: 'SOUNDCLOUD_PLAYLIST',

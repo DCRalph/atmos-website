@@ -5,6 +5,7 @@ import Image from "next/image";
 import { StaticBackground } from "~/components/static-background";
 import { motion } from "motion/react";
 import { AnimatedPageHeader } from "~/components/animated-page-header";
+import { MainPageSection } from "~/components/main-page-section";
 
 type SocialLink = {
   label: string;
@@ -74,22 +75,23 @@ export default function SocialsPage() {
     <main className="min-h-content bg-black text-white">
       <StaticBackground imageSrc="/home/CAGED 2-95.jpg" />
 
-      <section className="relative z-10 px-4 pb-12 pt-4">
-        <div className="container mx-auto max-w-4xl">
-          {/* Header */}
-          <AnimatedPageHeader
-            title="SOCIALS"
-            subtitle="One presence across every platform"
-          />
+      <MainPageSection
+        className="px-4 pt-4"
+        containerClassName="container mx-auto max-w-4xl"
+      >
+        {/* Header */}
+        <AnimatedPageHeader
+          title="SOCIALS"
+          subtitle="One presence across every platform"
+        />
 
-          {/* Social Links Grid */}
-          <div className="mt-12 grid grid-cols-2 gap-8 sm:grid-cols-3 md:gap-12">
-            {socialLinks.map((social, index) => (
-              <SocialItem key={social.label} social={social} index={index} />
-            ))}
-          </div>
+        {/* Social Links Grid */}
+        <div className="mt-12 grid grid-cols-2 gap-8 sm:grid-cols-3 md:gap-12">
+          {socialLinks.map((social, index) => (
+            <SocialItem key={social.label} social={social} index={index} />
+          ))}
         </div>
-      </section>
+      </MainPageSection>
     </main>
   );
 }

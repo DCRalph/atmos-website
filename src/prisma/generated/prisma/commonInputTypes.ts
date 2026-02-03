@@ -239,6 +239,23 @@ export type IntWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedIntFilter<$PrismaModel>
 }
 
+export type EnumGigModeFilter<$PrismaModel = never> = {
+  equals?: $Enums.GigMode | Prisma.EnumGigModeFieldRefInput<$PrismaModel>
+  in?: $Enums.GigMode[] | Prisma.ListEnumGigModeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.GigMode[] | Prisma.ListEnumGigModeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumGigModeFilter<$PrismaModel> | $Enums.GigMode
+}
+
+export type EnumGigModeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.GigMode | Prisma.EnumGigModeFieldRefInput<$PrismaModel>
+  in?: $Enums.GigMode[] | Prisma.ListEnumGigModeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.GigMode[] | Prisma.ListEnumGigModeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumGigModeWithAggregatesFilter<$PrismaModel> | $Enums.GigMode
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumGigModeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumGigModeFilter<$PrismaModel>
+}
+
 export type EnumHomeGigSectionFilter<$PrismaModel = never> = {
   equals?: $Enums.HomeGigSection | Prisma.EnumHomeGigSectionFieldRefInput<$PrismaModel>
   in?: $Enums.HomeGigSection[] | Prisma.ListEnumHomeGigSectionFieldRefInput<$PrismaModel>
@@ -597,6 +614,23 @@ export type NestedFloatFilter<$PrismaModel = never> = {
   gt?: number | Prisma.FloatFieldRefInput<$PrismaModel>
   gte?: number | Prisma.FloatFieldRefInput<$PrismaModel>
   not?: Prisma.NestedFloatFilter<$PrismaModel> | number
+}
+
+export type NestedEnumGigModeFilter<$PrismaModel = never> = {
+  equals?: $Enums.GigMode | Prisma.EnumGigModeFieldRefInput<$PrismaModel>
+  in?: $Enums.GigMode[] | Prisma.ListEnumGigModeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.GigMode[] | Prisma.ListEnumGigModeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumGigModeFilter<$PrismaModel> | $Enums.GigMode
+}
+
+export type NestedEnumGigModeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.GigMode | Prisma.EnumGigModeFieldRefInput<$PrismaModel>
+  in?: $Enums.GigMode[] | Prisma.ListEnumGigModeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.GigMode[] | Prisma.ListEnumGigModeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumGigModeWithAggregatesFilter<$PrismaModel> | $Enums.GigMode
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumGigModeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumGigModeFilter<$PrismaModel>
 }
 
 export type NestedEnumHomeGigSectionFilter<$PrismaModel = never> = {

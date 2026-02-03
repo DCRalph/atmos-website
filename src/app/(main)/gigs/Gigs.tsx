@@ -1,11 +1,13 @@
 "use client";
 
 import { StaticBackground } from "~/components/static-background";
-import { UpcomingGigCard } from "~/components/gigs/upcoming-gig-card";
 import { PastGigCard } from "~/components/gigs/past-gig-card";
 import { api } from "~/trpc/react";
 import { Loader2 } from "lucide-react";
 import { AnimatedPageHeader } from "~/components/animated-page-header";
+import { MainPageSection } from "~/components/main-page-section";
+import { useMemo } from "react";
+import { isGigPast } from "~/lib/date-utils";
 
 export default function GigsPage() {
   const { data: upcomingGigs, isLoading: isLoadingUpcomingGigs } =
@@ -13,81 +15,65 @@ export default function GigsPage() {
   const { data: pastGigs, isLoading: isLoadingPastGigs } =
     api.gigs.getPast.useQuery();
 
+  const allGigs = useMemo(() => {
+    const upcoming = (upcomingGigs ?? []).filter((gig) => gig.gigStartTime);
+    const past = (pastGigs ?? []).filter((gig) => gig.gigStartTime);
+
+    // Sort upcoming by start time ascending (soonest first)
+    const sortedUpcoming = [...upcoming].sort((a, b) => {
+      const aTime = a.gigStartTime!.getTime();
+      const bTime = b.gigStartTime!.getTime();
+      return aTime - bTime;
+    });
+
+    // Sort past by end time descending (most recent first)
+    const sortedPast = [...past].sort((a, b) => {
+      const aTime = (a.gigEndTime ?? a.gigStartTime!)!.getTime();
+      const bTime = (b.gigEndTime ?? b.gigStartTime!)!.getTime();
+      return bTime - aTime;
+    });
+
+    return [...sortedUpcoming, ...sortedPast];
+  }, [upcomingGigs, pastGigs]);
+
+  const isLoading = isLoadingUpcomingGigs || isLoadingPastGigs;
+
   return (
     <main className="min-h-content bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-46.jpg" />
 
-      <section className="relative z-10 px-4 pb-12 pt-4">
-        <div className="mx-auto max-w-6xl">
-          <AnimatedPageHeader
-            title="GIGS & EVENTS"
-            subtitle="Upcoming events and past nights from Atmos"
-          />
+      <MainPageSection>
+        <AnimatedPageHeader
+          title="GIGS & EVENTS"
+          subtitle="Upcoming events and past nights from Atmos"
+        />
 
-          {/* Upcoming Gigs */}
-          <div className="mb-16 sm:mb-20">
-            <h2 className="border-accent-strong mb-6 border-l-4 pl-4 text-2xl font-black tracking-wider uppercase sm:mb-8 sm:text-3xl md:text-4xl">
-              Upcoming Gigs
-            </h2>
-            <div className="space-y-4">
-              {isLoadingUpcomingGigs ? (
-                <div className="flex items-center justify-center border-2 border-white/10 bg-black/80 py-12 backdrop-blur-sm">
-                  <Loader2 className="text-accent-muted h-6 w-6 animate-spin" />
-                </div>
-              ) : upcomingGigs &&
-                upcomingGigs.filter((gig) => gig.gigStartTime).length > 0 ? (
-                upcomingGigs
-                  .filter((gig) => gig.gigStartTime)
-                  .map((gig) => (
-                    <UpcomingGigCard
-                      key={gig.id}
-                      gig={{ ...gig, gigStartTime: gig.gigStartTime! }}
-                    />
-                  ))
-              ) : (
-                <div className="border-2 border-white/10 bg-black/80 p-8 text-center backdrop-blur-sm">
-                  <p className="font-bold tracking-wider text-white/60 uppercase">
-                    No upcoming gigs
-                  </p>
-                  <p className="mt-2 text-sm text-white/40">
-                    Check back soon for new events
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Past Gigs */}
-          <div>
-            <h2 className="border-accent-strong mb-6 border-l-4 pl-4 text-2xl font-black tracking-wider uppercase sm:mb-8 sm:text-3xl md:text-4xl">
-              Past Gigs
-            </h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {isLoadingPastGigs ? (
-                <div className="col-span-full flex items-center justify-center border-2 border-white/10 bg-black/80 py-12 backdrop-blur-sm">
-                  <Loader2 className="text-accent-muted h-6 w-6 animate-spin" />
-                </div>
-              ) : pastGigs &&
-                pastGigs.filter((gig) => gig.gigStartTime).length > 0 ? (
-                pastGigs
-                  .filter((gig) => gig.gigStartTime)
-                  .map((gig) => (
-                    <PastGigCard
-                      key={gig.id}
-                      gig={{ ...gig, gigStartTime: gig.gigStartTime! }}
-                    />
-                  ))
-              ) : (
-                <div className="col-span-full border-2 border-white/10 bg-black/80 p-8 text-center backdrop-blur-sm">
-                  <p className="font-bold tracking-wider text-white/60 uppercase">
-                    No past gigs yet
-                  </p>
-                </div>
-              )}
-            </div>
+        <div>
+          <div className="grid grid-cols-2 gap-2 md:gap-4 lg:grid-cols-3">
+            {isLoading ? (
+              <div className="col-span-full flex items-center justify-center border-2 border-white/10 bg-black/80 py-12 backdrop-blur-sm">
+                <Loader2 className="text-accent-muted h-6 w-6 animate-spin" />
+              </div>
+            ) : allGigs.length > 0 ? (
+              allGigs.map((gig) => (
+                <PastGigCard
+                  key={gig.id}
+                  gig={{ ...gig, gigStartTime: gig.gigStartTime! }}
+                />
+              ))
+            ) : (
+              <div className="col-span-full border-2 border-white/10 bg-black/80 p-8 text-center backdrop-blur-sm">
+                <p className="font-bold tracking-wider text-white/60 uppercase">
+                  No gigs available
+                </p>
+                <p className="mt-2 text-sm text-white/40">
+                  Check back soon for new events
+                </p>
+              </div>
+            )}
           </div>
         </div>
-      </section>
+      </MainPageSection>
     </main>
   );
 }
