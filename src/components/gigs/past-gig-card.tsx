@@ -60,7 +60,7 @@ export function PastGigCard({ gig }: PastGigCardProps) {
         {!isTba && (
           <div className="grid grid-cols-2 border-t-2 border-white/10 text-center text-[10px] font-semibold tracking-wider text-white/70 uppercase md:grid-cols-3 md:text-sm">
             <div className="border-white/10 flex items-center justify-center border-r-2 px-3 py-2">
-              {gig.shortDescription || gig.subtitle}
+              {gig.subtitle}
             </div>
 
             <div className="border-white/10 flex items-center justify-center border-r-0 px-3 py-2 md:border-r-2">
