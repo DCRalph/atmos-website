@@ -31,9 +31,9 @@ export default function ContentPage() {
             >
               Latest Drops
             </h2>
-            <p className="mt-2 max-w-2xl text-sm text-white/50 sm:text-base">
+            {/* <p className="mt-2 max-w-2xl text-sm text-white/50 sm:text-base">
               Tap into the newest mixes, live captures, and community releases.
-            </p>
+            </p> */}
           </div>
           <div className="flex items-center gap-3 text-xs font-bold tracking-wider text-white/50 uppercase">
             {contentItems && (
