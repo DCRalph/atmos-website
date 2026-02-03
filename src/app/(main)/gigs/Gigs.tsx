@@ -58,11 +58,11 @@ export default function GigsPage() {
               Tap into the newest mixes, live captures, and community releases.
             </p> */}
           </div>
-          <div className="flex items-center gap-3 text-xs font-bold tracking-wider text-white/50 uppercase">
+          {/* <div className="flex items-center gap-3 text-xs font-bold tracking-wider text-white/50 uppercase">
             {sortedUpcoming.length > 0 && (
               <span className="text-white/70">{sortedUpcoming.length} items</span>
             )}
-          </div>
+          </div> */}
         </div>
 
         {/* Upcoming Gigs */}
@@ -100,11 +100,11 @@ export default function GigsPage() {
               Tap into the newest mixes, live captures, and community releases.
             </p> */}
           </div>
-          <div className="flex items-center gap-3 text-xs font-bold tracking-wider text-white/50 uppercase">
+          {/* <div className="flex items-center gap-3 text-xs font-bold tracking-wider text-white/50 uppercase">
             {sortedPast.length > 0 && (
               <span className="text-white/70">{sortedPast.length} items</span>
             )}
-          </div>
+          </div> */}
         </div>
 
 
