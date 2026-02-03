@@ -35,11 +35,11 @@ export default function ContentPage() {
               Tap into the newest mixes, live captures, and community releases.
             </p> */}
           </div>
-          <div className="flex items-center gap-3 text-xs font-bold tracking-wider text-white/50 uppercase">
+          {/* <div className="flex items-center gap-3 text-xs font-bold tracking-wider text-white/50 uppercase">
             {contentItems && (
               <span className="text-white/70">{contentItems.length} items</span>
             )}
-          </div>
+          </div> */}
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
