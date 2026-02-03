@@ -1,13 +1,14 @@
-import PrivacyPage from "./Privacy";
-import { type Metadata } from "next";
-import { createPageMetadata } from "~/lib/seo-constants";
+"use client";
 
-export const metadata: Metadata = createPageMetadata("privacy", {
-  alternates: {
-    canonical: "/privacy",
-  },
-});
+import PrivacyPage from "./Privacy";
+import { usePageMetadata } from "~/hooks/use-page-metadata";
+import { SITE_URL } from "~/lib/seo-constants";
 
 export default function page() {
+  usePageMetadata({
+    title: "Privacy",
+    canonical: `${SITE_URL}/privacy`,
+  });
+
   return <PrivacyPage />;
 }

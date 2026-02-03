@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "~/lib/utils";
 import { useIsMobile } from "~/hooks/use-mobile";
@@ -54,68 +54,70 @@ export function AnimatedPageHeader({
   }, [isMobile, title]);
 
   return (
-    <motion.div
-      ref={containerRef}
-      className={cn("mb-4 relative", className)}
-      initial="hidden"
-      animate="visible"
-      variants={{
-        hidden: { opacity: 0 },
-        visible: {
-          opacity: 1,
-          transition: {
-            duration: 0.35,
-            ease: easeOutExpo,
-            when: "beforeChildren",
-          },
-        },
-      }}
-    >
-      <h1
-        className={cn(
-          "mb-4 w-full font-black tracking-[0.15em] text-white flex justify-center",
-          teko.className,
-          isMobile && "w-screen scale-x-[1.04] translate-x-[-2%]"
-        )}
-        style={{
-          fontSize,
-          textShadow:
-            "0 0 20px rgba(255, 255, 255, 0.4), 0 0 40px rgba(255, 255, 255, 0.2)",
-        }}
-        aria-label={title}
-      >
-        <span className="sr-only">{title}</span>
-        <motion.span
-          ref={textRef}
-          aria-hidden="true"
-          className="whitespace-nowrap flex scale-y-150"
-          variants={{
-            hidden: {},
-            visible: {
-              transition: {
-                staggerChildren: 0.01,
-              },
+    <AnimatePresence mode="sync">
+      <motion.div
+        ref={containerRef}
+        className={cn("mb-4 relative", className)}
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: { opacity: 0 },
+          visible: {
+            opacity: 1,
+            transition: {
+              duration: 0.35,
+              ease: easeOutExpo,
+              when: "beforeChildren",
             },
+          },
+        }}
+      >
+        <h1
+          className={cn(
+            "mb-4 w-full font-black tracking-[0.15em] text-white flex justify-center",
+            teko.className,
+            isMobile && "w-screen scale-x-[1.04] translate-x-[-2%]"
+          )}
+          style={{
+            fontSize,
+            textShadow:
+              "0 0 20px rgba(255, 255, 255, 0.4), 0 0 40px rgba(255, 255, 255, 0.2)",
           }}
+          aria-label={title}
         >
-          {letters.map((ch, idx) => (
-            <motion.span
-              key={`${ch}-${idx}`}
-              className="inline-block tracking-normal"
-              variants={{
-                hidden: { opacity: 0, y: -18 },
-                visible: {
-                  opacity: 1,
-                  y: 0,
-                  transition: { duration: 0.55, ease: easeOutExpo },
+          <span className="sr-only">{title}</span>
+          <motion.span
+            ref={textRef}
+            aria-hidden="true"
+            className="whitespace-nowrap flex scale-y-150"
+            variants={{
+              hidden: {},
+              visible: {
+                transition: {
+                  staggerChildren: 0.01,
                 },
-              }}
-            >
-              {ch === " " ? "\u00A0" : ch}
-            </motion.span>
-          ))}
-        </motion.span>
-      </h1>
-    </motion.div>
+              },
+            }}
+          >
+            {letters.map((ch, idx) => (
+              <motion.span
+                key={`${ch}-${idx}`}
+                className="inline-block tracking-normal"
+                variants={{
+                  hidden: { opacity: 0, y: -18 },
+                  visible: {
+                    opacity: 1,
+                    y: 0,
+                    transition: { duration: 0.55, ease: easeOutExpo },
+                  },
+                }}
+              >
+                {ch === " " ? "\u00A0" : ch}
+              </motion.span>
+            ))}
+          </motion.span>
+        </h1>
+      </motion.div>
+    </AnimatePresence>
   );
 }

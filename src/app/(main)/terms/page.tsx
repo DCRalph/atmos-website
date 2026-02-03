@@ -1,13 +1,14 @@
-import TermsPage from "./Terms";
-import { type Metadata } from "next";
-import { createPageMetadata } from "~/lib/seo-constants";
+"use client";
 
-export const metadata: Metadata = createPageMetadata("terms", {
-  alternates: {
-    canonical: "/terms",
-  },
-});
+import TermsPage from "./Terms";
+import { usePageMetadata } from "~/hooks/use-page-metadata";
+import { SITE_URL } from "~/lib/seo-constants";
 
 export default function page() {
+  usePageMetadata({
+    title: "Terms",
+    canonical: `${SITE_URL}/terms`,
+  });
+
   return <TermsPage />;
 }

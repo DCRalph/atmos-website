@@ -1,13 +1,14 @@
-import MerchPage from "./Merch";
-import { type Metadata } from "next";
-import { createPageMetadata } from "~/lib/seo-constants";
+"use client";
 
-export const metadata: Metadata = createPageMetadata("merch", {
-  alternates: {
-    canonical: "/merch",
-  },
-});
+import MerchPage from "./Merch";
+import { usePageMetadata } from "~/hooks/use-page-metadata";
+import { SITE_URL } from "~/lib/seo-constants";
 
 export default function page() {
+  usePageMetadata({
+    title: "Merch",
+    canonical: `${SITE_URL}/merch`,
+  });
+
   return <MerchPage />;
 }

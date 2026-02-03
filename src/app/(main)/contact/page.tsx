@@ -1,13 +1,14 @@
-import ContactPage from "./Contact";
-import { type Metadata } from "next";
-import { createPageMetadata } from "~/lib/seo-constants";
+"use client";
 
-export const metadata: Metadata = createPageMetadata("contact", {
-  alternates: {
-    canonical: "/contact",
-  },
-});
+import ContactPage from "./Contact";
+import { usePageMetadata } from "~/hooks/use-page-metadata";
+import { SITE_URL } from "~/lib/seo-constants";
 
 export default function page() {
+  usePageMetadata({
+    title: "Contact",
+    canonical: `${SITE_URL}/contact`,
+  });
+
   return <ContactPage />;
 }

@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 
 import { type RouterOutputs } from "~/trpc/react";
+import Link from "next/link";
 
 type Gig = RouterOutputs["gigs"]["getToday"][number];
 
@@ -12,12 +13,14 @@ type PastGigCardProps = {
   gig: Gig;
 };
 
+const MotionLink = motion.create(Link);
+
 export function PastGigCard({ gig }: PastGigCardProps) {
   const isTba = gig.mode === "TO_BE_ANNOUNCED";
   const displayTitle = isTba ? "TBA..." : gig.title;
 
   return (
-    <motion.a
+    <MotionLink
       href={`/gigs/${gig.id}`}
       className="group hover:border-accent-muted/50 relative flex flex-col justify-between overflow-hidden rounded-none border-2 border-white/10 bg-black/80 backdrop-blur-sm transition-all hover:bg-black/90 hover:shadow-[0_0_15px_var(--accent-muted)]"
     >
@@ -70,6 +73,6 @@ export function PastGigCard({ gig }: PastGigCardProps) {
           </div>
         )}
       </div>
-    </motion.a>
+    </MotionLink>
   );
 }

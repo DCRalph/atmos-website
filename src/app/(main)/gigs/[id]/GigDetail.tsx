@@ -68,7 +68,7 @@ export default function GigPage({ params }: PageProps) {
       <main className="bg-black text-white">
         <StaticBackground imageSrc="/home/atmos-6.jpg" />
 
-        <section className="relative z-10 min-h-dvh px-4 pb-8 pt-2">
+        <section className="relative z-10 min-h-dvh px-4 py-10">
           <div className="mx-auto max-w-6xl">
             <div className="mb-8 flex gap-4">
               <Link
@@ -124,7 +124,7 @@ export default function GigPage({ params }: PageProps) {
     <main className="bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-6.jpg" />
 
-      <section className="relative z-10 min-h-dvh px-4 pb-8 pt-2">
+      <section className="relative z-10 min-h-dvh px-4 py-10">
         <div className="mx-auto max-w-6xl">
           {/* Navigation */}
           <div className="mb-8 flex gap-4">

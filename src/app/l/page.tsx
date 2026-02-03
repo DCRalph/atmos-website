@@ -163,6 +163,8 @@ export default function LinksPage() {
   );
 }
 
+const MotionLink = motion.create(Link);
+
 const BigLinks = ({
   links,
   className,
@@ -173,7 +175,7 @@ const BigLinks = ({
   return (
     <div className={cn("space-y-4", className)}>
       {links.map((link, index) => (
-        <motion.a
+        <MotionLink
           key={link.platform}
           href={link.url}
           target="_blank"
@@ -223,7 +225,7 @@ const BigLinks = ({
               />
             </div>
           </div>
-        </motion.a>
+        </MotionLink>
       ))}
     </div>
   );
@@ -244,7 +246,7 @@ const SmallLinks = ({
       transition={{ duration: 0.4, delay: 0.1 }}
     >
       {links.map((link, index) => (
-        <motion.a
+        <MotionLink
           key={link.platform}
           href={link.url}
           target="_blank"
@@ -256,7 +258,7 @@ const SmallLinks = ({
           title={link.platform + (link.handle ? ` @${link.handle}` : "")}
         >
           <link.icon className="group-hover:text-accent-muted h-7 w-7 text-white/70 transition-all group-hover:scale-110" />
-        </motion.a>
+        </MotionLink>
       ))}
     </motion.div>
   );
@@ -269,6 +271,7 @@ type UpcomingGig = {
   title: string;
   subtitle: string;
   ticketLink?: string | null;
+  posterFileUpload?: { url: string } | null;
 };
 
 const UpcomingGigLink = ({ gig }: { gig: UpcomingGig }) => {
@@ -301,68 +304,84 @@ const UpcomingGigLink = ({ gig }: { gig: UpcomingGig }) => {
           <div className="from-accent-muted/10 absolute inset-0 bg-linear-to-r via-transparent to-transparent" />
         </div>
 
-        <div className="relative flex flex-col gap-4">
-          {/* Date & Time */}
-          <div className="flex items-center gap-4">
-            <div className="text-accent-muted flex items-center gap-2">
-              {/* <Calendar className="h-4 w-4" /> */}
-              <span
+        <div className="relative flex gap-4">
+          {/* Poster on the left */}
+          {gig.posterFileUpload?.url && (
+            <div className="relative h-32 w-24 shrink-0 overflow-hidden border-2 border-white/10 bg-black/20 transition-all group-hover:border-accent-muted/50 sm:h-40 sm:w-28">
+              <Image
+                src={gig.posterFileUpload.url}
+                alt={`${gig.title} poster`}
+                fill
+                sizes="(max-width: 640px) 96px, 112px"
+                className="object-cover transition-transform duration-300 group-hover:scale-105"
+              />
+            </div>
+          )}
+
+          {/* Content on the right */}
+          <div className="flex min-w-0 flex-1 flex-col gap-4">
+            {/* Date & Time */}
+            <div className="flex items-center gap-4">
+              <div className="text-accent-muted flex items-center gap-2">
+                {/* <Calendar className="h-4 w-4" /> */}
+                <span
+                  className={cn(
+                    "text-lg font-black tracking-tight uppercase",
+                    orbitron.className,
+                  )}
+                >
+                  {formatDate(gig.gigStartTime)}
+                </span>
+              </div>
+              {gig.gigEndTime && (
+                <div className="flex items-center gap-1.5 text-white/50">
+                  {/* <Clock className="h-3.5 w-3.5" /> */}
+                  <span className="text-xs font-bold tracking-wider uppercase">
+                    {formatTime(gig.gigStartTime)} - {formatTime(gig.gigEndTime)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Title & Subtitle */}
+            <div>
+              <h3
                 className={cn(
-                  "text-lg font-black tracking-tight uppercase",
+                  "group-hover:text-accent-muted text-xl leading-tight font-black tracking-tight text-white uppercase transition-colors sm:text-2xl",
                   orbitron.className,
                 )}
               >
-                {formatDate(gig.gigStartTime)}
-              </span>
+                {gig.title}
+              </h3>
+              <p className="mt-1 text-sm font-medium text-white/60">
+                {gig.subtitle}
+              </p>
             </div>
-            {gig.gigEndTime && (
-              <div className="flex items-center gap-1.5 text-white/50">
-                {/* <Clock className="h-3.5 w-3.5" /> */}
-                <span className="text-xs font-bold tracking-wider uppercase">
-                  {formatTime(gig.gigStartTime)} - {formatTime(gig.gigEndTime)}
-                </span>
-              </div>
-            )}
-          </div>
 
-          {/* Title & Subtitle */}
-          <div>
-            <h3
-              className={cn(
-                "group-hover:text-accent-muted text-xl leading-tight font-black tracking-tight text-white uppercase transition-colors sm:text-2xl",
-                orbitron.className,
-              )}
-            >
-              {gig.title}
-            </h3>
-            <p className="mt-1 text-sm font-medium text-white/60">
-              {gig.subtitle}
-            </p>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3">
-            <Link
-              href={`/gigs/${gig.id}`}
-              className="group/btn relative flex flex-1 items-center justify-center gap-2 overflow-hidden border-2 border-white/30 bg-transparent px-4 py-2.5 text-center text-xs font-black tracking-wider text-white uppercase transition-all duration-200 hover:border-white hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.15)]"
-            >
-              <span className="relative z-10 transition-transform duration-200 group-hover/btn:-translate-x-0.5">
-                View Details
-              </span>
-              <ArrowRight className="relative z-10 h-3.5 w-3.5 transition-transform duration-200 group-hover/btn:translate-x-1" />
-            </Link>
-
-            {gig.ticketLink && (
+            {/* Actions */}
+            <div className="flex gap-3">
               <Link
-                href={gig.ticketLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group/ticket bg-accent-muted hover:bg-accent-muted relative flex items-center gap-2 overflow-hidden px-5 py-2.5 text-xs font-black tracking-wider text-white uppercase transition-all duration-200 hover:shadow-[0_0_25px_var(--accent-muted)]"
+                href={`/gigs/${gig.id}`}
+                className="group/btn relative flex flex-1 items-center justify-center gap-2 overflow-hidden border-2 border-white/30 bg-transparent px-4 py-2.5 text-center text-xs font-black tracking-wider text-white uppercase transition-all duration-200 hover:border-white hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.15)]"
               >
-                <Ticket className="relative z-10 h-4 w-4 transition-transform duration-200 group-hover/ticket:scale-110 group-hover/ticket:rotate-[-8deg]" />
-                <span className="relative z-10">Tickets</span>
+                <span className="relative z-10 transition-transform duration-200 group-hover/btn:-translate-x-0.5">
+                  View Details
+                </span>
+                <ArrowRight className="relative z-10 h-3.5 w-3.5 transition-transform duration-200 group-hover/btn:translate-x-1" />
               </Link>
-            )}
+
+              {gig.ticketLink && (
+                <Link
+                  href={gig.ticketLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group/ticket bg-accent-muted hover:bg-accent-muted relative flex items-center gap-2 overflow-hidden px-5 py-2.5 text-xs font-black tracking-wider text-white uppercase transition-all duration-200 hover:shadow-[0_0_25px_var(--accent-muted)]"
+                >
+                  <Ticket className="relative z-10 h-4 w-4 transition-transform duration-200 group-hover/ticket:scale-110 group-hover/ticket:rotate-[-8deg]" />
+                  <span className="relative z-10">Tickets</span>
+                </Link>
+              )}
+            </div>
           </div>
         </div>
       </div>

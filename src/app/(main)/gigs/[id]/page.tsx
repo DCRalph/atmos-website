@@ -1,12 +1,16 @@
-import { api } from "~/trpc/server";
+"use client";
+
+import { use } from "react";
 import GigDetailPage from "./GigDetail";
-import { type Metadata } from "next";
-import { getMediaDisplayUrl } from "~/lib/media-url";
 import { EventJsonLd, BreadcrumbJsonLd } from "~/components/seo/json-ld";
+import { usePageMetadata } from "~/hooks/use-page-metadata";
+import { api } from "~/trpc/react";
+import { getMediaDisplayUrl } from "~/lib/media-url";
 import {
   DEFAULT_OG_IMAGE,
   DESCRIPTION_SHORT,
-  createGigMetadata,
+  SITE_NAME,
+  SITE_URL,
 } from "~/lib/seo-constants";
 
 const cleanText = (value?: string | null) =>
@@ -15,13 +19,9 @@ const cleanText = (value?: string | null) =>
 const truncate = (value: string, length: number) =>
   value.length > length ? `${value.slice(0, length - 1)}…` : value;
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}): Promise<Metadata> {
-  const { id } = await params;
-  const gig = await api.gigs.getById({ id });
+export default function page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const { data: gig } = api.gigs.getById.useQuery({ id });
 
   const isTba = gig?.mode === "TO_BE_ANNOUNCED";
   const baseTitle = isTba ? "TBA..." : gig?.title ?? "Gig";
@@ -44,23 +44,16 @@ export async function generateMetadata({
   const mediaImage =
     posterImage ||
     (firstPhoto ? getMediaDisplayUrl(firstPhoto) : DEFAULT_OG_IMAGE);
-  const canonical = `/gigs/${id}`;
+  const canonical = `${SITE_URL}/gigs/${id}`;
+  const fullTitle = `${baseTitle} | Gig | ${SITE_NAME}`;
 
-  return createGigMetadata(baseTitle, description, mediaImage, canonical);
-}
-
-export default async function page({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const gig = await api.gigs.getById({ id });
-  const isTba = gig?.mode === "TO_BE_ANNOUNCED";
-
-  // Get image for JSON-LD
-  const posterImage = gig?.posterFileUpload?.url ?? null;
-  const firstPhoto =
-    gig?.media?.find((item) => item.type === "photo") ?? gig?.media?.[0];
-  const mediaImage =
-    posterImage ||
-    (firstPhoto ? getMediaDisplayUrl(firstPhoto) : DEFAULT_OG_IMAGE);
+  // Set up page metadata
+  usePageMetadata({
+    title: fullTitle,
+    description,
+    image: mediaImage,
+    canonical,
+  });
 
   return (
     <>

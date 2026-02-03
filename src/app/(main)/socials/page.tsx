@@ -1,13 +1,14 @@
-import SocialsPage from "./Socials";
-import { type Metadata } from "next";
-import { createPageMetadata } from "~/lib/seo-constants";
+"use client";
 
-export const metadata: Metadata = createPageMetadata("socials", {
-  alternates: {
-    canonical: "/socials",
-  },
-});
+import SocialsPage from "./Socials";
+import { usePageMetadata } from "~/hooks/use-page-metadata";
+import { SITE_URL } from "~/lib/seo-constants";
 
 export default function page() {
+  usePageMetadata({
+    title: "Socials",
+    canonical: `${SITE_URL}/socials`,
+  });
+
   return <SocialsPage />;
 }

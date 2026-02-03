@@ -1,13 +1,14 @@
-import ContentPage from "./Content";
-import { type Metadata } from "next";
-import { createPageMetadata } from "~/lib/seo-constants";
+"use client";
 
-export const metadata: Metadata = createPageMetadata("content", {
-  alternates: {
-    canonical: "/content",
-  },
-});
+import ContentPage from "./Content";
+import { usePageMetadata } from "~/hooks/use-page-metadata";
+import { SITE_URL } from "~/lib/seo-constants";
 
 export default function page() {
+  usePageMetadata({
+    title: "Content",
+    canonical: `${SITE_URL}/content`,
+  });
+
   return <ContentPage />;
 }
