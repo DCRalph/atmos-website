@@ -17,7 +17,7 @@ export function YouTubePlayer({
 }: YouTubePlayerProps) {
   return (
     <div className={cn("w-full", className)}>
-      <LiteYouTubeEmbed id={videoId} title={title} />
+      <LiteYouTubeEmbed id={videoId} title={title} params="rel=0" />
     </div>
   );
 }

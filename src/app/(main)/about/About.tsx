@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { YouTubePlayer } from "~/components/youtube-player";
 
 export default function AboutPage() {
   // useEffect(() => {
@@ -88,14 +89,11 @@ export default function AboutPage() {
                 curation, bold sound, and a room that moves as one.
               </p>
 
-              <div className="mt-5 w-full max-w-[360px] overflow-hidden ring-1 ring-black/10">
-                <div className="relative aspect-4/3 w-full">
-                  <Image
-                    src="/home/atmos-6.jpg"
-                    alt="ATMOS moment"
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 640px) 80vw, 360px"
+              <div className="mt-5 w-full overflow-hidden ring-1 ring-black/10">
+                <div className="relative aspect-video w-full">
+                  <YouTubePlayer
+                    videoId="EU9f34HOTiI"
+                    title="ATMOS moment"
                   />
                 </div>
               </div>
