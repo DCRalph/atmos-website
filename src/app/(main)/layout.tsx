@@ -31,12 +31,14 @@ export default function MainLayout({
       ) : (
         // Mobile layout
         <>
-          <div className="relative">
+          <div className="">
             {/* SlideOverMenu renders through portal on mobile */}
             <SlideOverMenu isHomePage={true} />
 
             <MobileNav />
             {children}
+            {/* <div className="flex-1">{children}</div> */}
+
           </div>
 
           <MobileMenuToggle />

@@ -37,7 +37,7 @@ const isAdminSession = (ctx: { session?: SessionLike }) =>
 
 const redactGigForPublic = <T extends { mode?: GigMode }>(gig: T) => {
   if (gig.mode !== GigMode.TO_BE_ANNOUNCED) return gig;
-  return {
+  const redacted = {
     ...gig,
     title: TBA_TITLE,
     subtitle: "",
@@ -47,6 +47,13 @@ const redactGigForPublic = <T extends { mode?: GigMode }>(gig: T) => {
     gigTags: [],
     media: [],
   };
+  if ("gigStartTime" in gig) {
+    (redacted as { gigStartTime?: Date }).gigStartTime = new Date(0);
+  }
+  if ("gigEndTime" in gig) {
+    (redacted as { gigEndTime?: Date | null }).gigEndTime = null;
+  }
+  return redacted;
 };
 
 const redactGigsForPublic = <T extends { mode?: GigMode }>(gigs: T[]) =>

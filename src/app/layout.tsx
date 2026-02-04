@@ -73,7 +73,6 @@ export default function RootLayout({
               <MobileMenuProvider>
                 <NextTopLoader height={4} showSpinner={false} />
 
-                {/* Portal target for mobile menu - rendered above everything */}
                 <div
                   id="mobile-menu-portal"
                   className="pointer-events-none fixed inset-0 z-999 *:pointer-events-auto"
@@ -84,7 +83,6 @@ export default function RootLayout({
                   className="pointer-events-none fixed inset-0 z-999 *:pointer-events-auto"
                 />
 
-                {/* App content wrapper - receives blur/scale when menu is open */}
                 <div
                   id="app-content-wrapper"
                   className="origin-center transition-all duration-700 ease-out"

@@ -2,14 +2,7 @@
 
 import { motion } from "motion/react";
 import Link from "next/link";
-import {
-  Ticket,
-  Globe,
-  ArrowRight,
-  ExternalLink,
-  Calendar,
-  Clock,
-} from "lucide-react";
+import { Ticket, Globe, ArrowRight, ExternalLink } from "lucide-react";
 import Image from "next/image";
 import { cn } from "~/lib/utils";
 import { FaFacebook, FaSoundcloud, FaTwitter } from "react-icons/fa6";
@@ -20,7 +13,7 @@ import { FaInstagram } from "react-icons/fa6";
 import { orbitron } from "~/lib/fonts";
 import { formatDate, formatTime } from "~/lib/date-utils";
 
-import { api } from "~/trpc/react";
+import { api, type RouterOutputs } from "~/trpc/react";
 
 import { links } from "~/app/(main)/socials/Socials";
 
@@ -264,17 +257,12 @@ const SmallLinks = ({
   );
 };
 
-type UpcomingGig = {
-  id: string;
-  gigStartTime: Date;
-  gigEndTime?: Date | null;
-  title: string;
-  subtitle: string;
-  ticketLink?: string | null;
-  posterFileUpload?: { url: string } | null;
-};
+type UpcomingGig = RouterOutputs["gigs"]["getUpcoming"][number];
 
 const UpcomingGigLink = ({ gig }: { gig: UpcomingGig }) => {
+  const isTba = gig.mode === "TO_BE_ANNOUNCED";
+  const displayTitle = isTba ? "TBA..." : gig.title;
+
   return (
     <motion.div
       className="space-y-3"
@@ -310,38 +298,54 @@ const UpcomingGigLink = ({ gig }: { gig: UpcomingGig }) => {
             <div className="relative h-32 w-24 shrink-0 overflow-hidden border-2 border-white/10 bg-black/20 transition-all group-hover:border-accent-muted/50 sm:h-40 sm:w-28">
               <Image
                 src={gig.posterFileUpload.url}
-                alt={`${gig.title} poster`}
+                alt={isTba ? "TBA poster" : `${gig.title} poster`}
                 fill
                 sizes="(max-width: 640px) 96px, 112px"
-                className="object-cover transition-transform duration-300 group-hover:scale-105"
+                className={cn(
+                  "object-cover transition-transform duration-300 group-hover:scale-105",
+                  isTba && "blur-md",
+                )}
               />
+              {isTba && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-2xl font-black tracking-wider text-white uppercase">
+                    TBA...
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
           {/* Content on the right */}
           <div className="flex min-w-0 flex-1 flex-col gap-4">
             {/* Date & Time */}
-            <div className="flex items-center gap-4">
-              <div className="text-accent-muted flex items-center gap-2">
-                {/* <Calendar className="h-4 w-4" /> */}
-                <span
-                  className={cn(
-                    "text-lg font-black tracking-tight uppercase",
-                    orbitron.className,
-                  )}
-                >
-                  {formatDate(gig.gigStartTime)}
-                </span>
+            {isTba ? (
+              <div className="text-xs font-bold tracking-widest text-white/60 uppercase">
+                Details coming soon
               </div>
-              {gig.gigEndTime && (
-                <div className="flex items-center gap-1.5 text-white/50">
-                  {/* <Clock className="h-3.5 w-3.5" /> */}
-                  <span className="text-xs font-bold tracking-wider uppercase">
-                    {formatTime(gig.gigStartTime)} - {formatTime(gig.gigEndTime)}
+            ) : (
+              <div className="flex items-center gap-4">
+                <div className="text-accent-muted flex items-center gap-2">
+                  {/* <Calendar className="h-4 w-4" /> */}
+                  <span
+                    className={cn(
+                      "text-lg font-black tracking-tight uppercase",
+                      orbitron.className,
+                    )}
+                  >
+                    {formatDate(gig.gigStartTime)}
                   </span>
                 </div>
-              )}
-            </div>
+                {gig.gigEndTime && (
+                  <div className="flex items-center gap-1.5 text-white/50">
+                    {/* <Clock className="h-3.5 w-3.5" /> */}
+                    <span className="text-xs font-bold tracking-wider uppercase">
+                      {formatTime(gig.gigStartTime)} - {formatTime(gig.gigEndTime)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Title & Subtitle */}
             <div>
@@ -351,37 +355,41 @@ const UpcomingGigLink = ({ gig }: { gig: UpcomingGig }) => {
                   orbitron.className,
                 )}
               >
-                {gig.title}
+                {displayTitle}
               </h3>
-              <p className="mt-1 text-sm font-medium text-white/60">
-                {gig.subtitle}
-              </p>
+              {!isTba && gig.subtitle && (
+                <p className="mt-1 text-sm font-medium text-white/60">
+                  {gig.subtitle}
+                </p>
+              )}
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3">
-              <Link
-                href={`/gigs/${gig.id}`}
-                className="group/btn relative flex flex-1 items-center justify-center gap-2 overflow-hidden border-2 border-white/30 bg-transparent px-4 py-2.5 text-center text-xs font-black tracking-wider text-white uppercase transition-all duration-200 hover:border-white hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.15)]"
-              >
-                <span className="relative z-10 transition-transform duration-200 group-hover/btn:-translate-x-0.5">
-                  View Details
-                </span>
-                <ArrowRight className="relative z-10 h-3.5 w-3.5 transition-transform duration-200 group-hover/btn:translate-x-1" />
-              </Link>
-
-              {gig.ticketLink && (
+            {!isTba && (
+              <div className="flex gap-3">
                 <Link
-                  href={gig.ticketLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group/ticket bg-accent-muted hover:bg-accent-muted relative flex items-center gap-2 overflow-hidden px-5 py-2.5 text-xs font-black tracking-wider text-white uppercase transition-all duration-200 hover:shadow-[0_0_25px_var(--accent-muted)]"
+                  href={`/gigs/${gig.id}`}
+                  className="group/btn relative flex flex-1 items-center justify-center gap-2 overflow-hidden border-2 border-white/30 bg-transparent px-4 py-2.5 text-center text-xs font-black tracking-wider text-white uppercase transition-all duration-200 hover:border-white hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.15)]"
                 >
-                  <Ticket className="relative z-10 h-4 w-4 transition-transform duration-200 group-hover/ticket:scale-110 group-hover/ticket:rotate-[-8deg]" />
-                  <span className="relative z-10">Tickets</span>
+                  <span className="relative z-10 transition-transform duration-200 group-hover/btn:-translate-x-0.5">
+                    View Details
+                  </span>
+                  <ArrowRight className="relative z-10 h-3.5 w-3.5 transition-transform duration-200 group-hover/btn:translate-x-1" />
                 </Link>
-              )}
-            </div>
+
+                {gig.ticketLink && (
+                  <Link
+                    href={gig.ticketLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group/ticket bg-accent-muted hover:bg-accent-muted relative flex items-center gap-2 overflow-hidden px-5 py-2.5 text-xs font-black tracking-wider text-white uppercase transition-all duration-200 hover:shadow-[0_0_25px_var(--accent-muted)]"
+                  >
+                    <Ticket className="relative z-10 h-4 w-4 transition-transform duration-200 group-hover/ticket:scale-110 group-hover/ticket:rotate-[-8deg]" />
+                    <span className="relative z-10">Tickets</span>
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -232,11 +232,12 @@ export function PastGigHomeCard({
   gig,
   featured = false,
 }: PastGigHomeCardProps) {
+
   if (featured) {
     return (
       <AccentGlowCard
-        className="lg:col-span-3"
-        innerClassName="p-4 md:p-6"
+        className="lg:col-span-3 w-full lg:w-9/12 mx-auto"
+        innerClassName="p-2 md:p-4"
         motionProps={{
           initial: { opacity: 0, y: "200px" },
           whileInView: { opacity: 1, y: 0 },
@@ -248,30 +249,22 @@ export function PastGigHomeCard({
           href={`/gigs/${gig.id}`}
           className="flex h-full flex-col justify-between gap-4"
         >
-          <div className="lg:mt-2">
+          {/* <div className=""> */}
             <GigPhotoCarousel media={gig.media ?? []} gigTitle={gig.title} />
-          </div>
+          {/* </div> */}
 
-          <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-            <div className="flex h-full flex-col justify-between gap-4">
-              <h3 className="mb-3 text-xl leading-tight font-black tracking-tight text-white uppercase sm:text-3xl">
-                {gig.title}
-              </h3>
+          <div className="flex w-full flex-col gap-3 lg:gap-4">
+            <h3 className="text-xl leading-tight font-black tracking-tight text-white uppercase sm:text-2xl lg:text-3xl">
+              {gig.title}
+            </h3>
 
-              <div className="flex justify-between gap-4">
-                <div className="flex flex-col justify-end">
-                  <p className="text-base font-medium text-white/60">
-                    {gig.subtitle}
-                  </p>
+            <p className="text-base font-medium text-white/60 lg:text-lg">
+              {gig.subtitle}
+            </p>
 
-                  <div className="text-accent-muted text-2xl font-black tracking-tight uppercase">
-                    {formatDate(gig.gigStartTime)}
-                  </div>
-                </div>
-              </div>
+            <div className="text-accent-muted text-2xl font-black tracking-tight uppercase lg:text-3xl">
+              {formatDate(gig.gigStartTime)}
             </div>
-
-
           </div>
         </MotionLink>
       </AccentGlowCard>
@@ -280,7 +273,7 @@ export function PastGigHomeCard({
 
   return (
     <AccentGlowCard
-      innerClassName="p-3 md:p-6"
+      innerClassName="p-2 md:p-4"
 
       motionProps={{
         initial: { opacity: 0, y: "100%" },
@@ -290,41 +283,35 @@ export function PastGigHomeCard({
       }}>
       <MotionLink
         href={`/gigs/${gig.id}`}
-        className="flex h-full flex-col gap-3"
+        className="flex h-full flex-col gap-4 md:h-full lg:gap-6"
       >
-        <div className="w-full sm:w-5/12">
-          <GigPhotoCarousel
-            media={gig.media ?? []}
-            gigTitle={gig.title}
-            variant="default"
-          />
+        <div className="order-2 flex min-w-0 flex-col gap-3 lg:order-1 lg:basis-1/3 lg:gap-4">
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="text-md leading-tight font-black tracking-tight text-white uppercase sm:text-xl md:text-2xl">
+              {gig.title}
+            </h3>
+
+          </div>
+
         </div>
 
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="text-md leading-tight font-black tracking-tight text-white uppercase sm:text-2xl">
-            {gig.title}
-          </h3>
-
-          {/* <Link
-            href={`/gigs/${gig.id}`}
-            className="inline-flex items-center gap-2 rounded-none border-2 border-white/30 bg-transparent px-4 py-2 text-xs font-black uppercase tracking-wider text-white transition-all hover:border-accent-muted hover:bg-accent-muted/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-muted"
-            aria-label={`View details for ${gig.title}`}
-          >
-            <ExternalLink className="h-4 w-4" />
-          </Link> */}
-        </div>
-
-        <div className="flex flex-col gap-4 mt-auto sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex min-w-0 flex-1 flex-col justify-end">
-            <p className="text-xs md:text-base font-medium text-white/60">
+        <div className="order-1 flex flex-col gap-4 lg:order-2 lg:basis-2/3 lg:grid lg:grid-cols-12 lg:items-stretch lg:gap-6">
+          <div className="order-2 flex min-w-0 flex-col justify-end lg:order-0 lg:col-span-5">
+            <p className="text-xs lg:text-base font-medium text-white/60">
               {gig.subtitle}
             </p>
 
-            <div className="text-accent-muted text-sm md:text-2xl font-black tracking-tight uppercase">
+            <div className="text-accent-muted text-sm lg:text-xl font-black tracking-tight uppercase">
               {formatDate(gig.gigStartTime)}
             </div>
+          </div>
 
-            {/* <GigTagList gigTags={gig.gigTags} size="sm" /> */}
+          <div className="order-1 w-full lg:order-0 mt-auto lg:col-span-7">
+            <GigPhotoCarousel
+              media={gig.media ?? []}
+              gigTitle={gig.title}
+              variant="default"
+            />
           </div>
         </div>
       </MotionLink>
