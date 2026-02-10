@@ -1,5 +1,6 @@
 "use client";
 
+import posthog from "posthog-js";
 import { StaticBackground } from "~/components/static-background";
 import Link from "next/link";
 import { ContactForm } from "~/components/contact/contact-form-2";
@@ -56,6 +57,9 @@ function ProfessionalEnquiries() {
           <a
             href="tel:+64274726850"
             className="hover:text-accent-muted font-mono transition-colors"
+            onClick={() =>
+              posthog.capture("contact_link_clicked", { type: "phone" })
+            }
           >
             +64 27 472 6850
           </a>
@@ -65,6 +69,9 @@ function ProfessionalEnquiries() {
           <a
             href="mailto:finn@atmos-wlg.com"
             className="hover:text-accent-muted font-mono break-all transition-colors"
+            onClick={() =>
+              posthog.capture("contact_link_clicked", { type: "email" })
+            }
           >
             finn@atmos-wlg.com
           </a>
@@ -87,6 +94,9 @@ function InstagramDM() {
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-accent-muted font-bold transition-colors"
+          onClick={() =>
+            posthog.capture("contact_link_clicked", { type: "instagram" })
+          }
         >
           @atmos.nz
         </Link>

@@ -1,4 +1,7 @@
+"use client";
+
 import Image from "next/image";
+import posthog from "posthog-js";
 
 interface MerchItemProps {
   id: string;
@@ -8,7 +11,13 @@ interface MerchItemProps {
   image: string;
 }
 
-export function MerchItem({ name, description, price, image }: MerchItemProps) {
+export function MerchItem({
+  id,
+  name,
+  description,
+  price,
+  image,
+}: MerchItemProps) {
   return (
     <div className="group relative flex h-full flex-col overflow-hidden rounded-none border-2 border-white/10 bg-black/80 backdrop-blur-sm transition-all hover:border-accent-muted/50 hover:bg-black/90 hover:shadow-[0_0_15px_var(--accent-muted)]">
       <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden border-b-2 border-white/10 bg-black/70">
@@ -36,7 +45,17 @@ export function MerchItem({ name, description, price, image }: MerchItemProps) {
           <span className="text-base font-bold tracking-wide text-white sm:text-lg">
             ${price}
           </span>
-          <button className="border-white/20 text-white/90 hover:border-white/50 hover:text-white rounded-none border-2 px-3 py-1.5 text-xs font-semibold tracking-widest uppercase transition-all sm:px-4 sm:py-2">
+          <button
+            type="button"
+            className="border-white/20 text-white/90 hover:border-white/50 hover:text-white rounded-none border-2 px-3 py-1.5 text-xs font-semibold tracking-widest uppercase transition-all sm:px-4 sm:py-2"
+            onClick={() =>
+              posthog.capture("merch_add_to_cart_clicked", {
+                merch_item_id: id,
+                merch_item_name: name,
+                price,
+              })
+            }
+          >
             Add to Cart
           </button>
         </div>

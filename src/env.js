@@ -32,6 +32,9 @@ export const env = createEnv({
 
   client: {
     NEXT_PUBLIC_APP_URL: z.string().url(),
+
+    NEXT_PUBLIC_POSTHOG_KEY: z.string(),
+    NEXT_PUBLIC_POSTHOG_HOST: z.string().url(),
   },
 
   runtimeEnv: {
@@ -52,6 +55,9 @@ export const env = createEnv({
     AWS_S3_ENDPOINT: process.env.AWS_S3_ENDPOINT,
     AWS_S3_ACL: process.env.AWS_S3_ACL,
     AWS_S3_PUBLIC_URL_BASE: process.env.AWS_S3_PUBLIC_URL_BASE,
+
+    NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
+    NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
   },
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
   emptyStringAsUndefined: true,

@@ -3,6 +3,7 @@
 import type React from "react";
 
 import { useState } from "react";
+import posthog from "posthog-js";
 import { CustomSelect } from "./custom-select";
 import { api } from "~/trpc/react";
 
@@ -35,7 +36,10 @@ export function ContactForm() {
   >("idle");
 
   const createContact = api.contact.create.useMutation({
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      posthog.capture("contact_form_submitted", {
+        reason: variables.reason,
+      });
       setSubmitStatus("success");
       setFormData({ name: "", email: "", message: "" });
       setSelectedReason("");

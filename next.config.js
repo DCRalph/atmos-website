@@ -44,11 +44,17 @@ const config = {
         source: "/fuckoffaddblocker/script.js",
         destination: "https://atmosmedia.co.nz/_vercel/insights/script.js",
       },
+      {
+        source: '/ph/static/:path*',
+        destination: 'https://us-assets.i.posthog.com/static/:path*',
+      },
+      {
+        source: '/ph/:path*',
+        destination: 'https://us.i.posthog.com/:path*',
+      },
     ];
   },
-  // experimental: {
-  //   viewTransition: true,
-  // },
+  skipTrailingSlashRedirect: true,
 };
 
 export default config;

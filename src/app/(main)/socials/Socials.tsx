@@ -1,5 +1,6 @@
 "use client";
 
+import posthog from "posthog-js";
 import Link from "next/link";
 import Image from "next/image";
 import { StaticBackground } from "~/components/static-background";
@@ -115,6 +116,9 @@ function SocialItem({ social, index }: { social: SocialLink; index: number }) {
         target="_blank"
         rel="noopener noreferrer"
         className="group relative z-10 flex flex-col items-center text-center"
+        onClick={() =>
+          posthog.capture("social_link_clicked", { platform: label })
+        }
       >
         {/* Image */}
         <Image

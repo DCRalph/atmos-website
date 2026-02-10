@@ -1,6 +1,7 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect } from "react";
+import posthog from "posthog-js";
 import { StaticBackground } from "~/components/static-background";
 import { api } from "~/trpc/react";
 import { formatDate, formatTime, isGigPast } from "~/lib/date-utils";
@@ -21,6 +22,19 @@ export default function GigPage({ params }: PageProps) {
   const { data: gig, isLoading } = api.gigs.getById.useQuery({ id });
   const { data: session } = authClient.useSession();
   const isAdmin = session?.user?.role === "ADMIN";
+
+  useEffect(() => {
+    if (!gig) return;
+    const isTba = gig.mode === "TO_BE_ANNOUNCED";
+    const displayTitle = isTba ? "TBA..." : gig.title;
+    const upcoming = !isGigPast(gig);
+    posthog.capture("gig_detail_viewed", {
+      gig_id: gig.id,
+      gig_title: displayTitle,
+      upcoming,
+      is_tba: isTba,
+    });
+  }, [gig]);
 
   if (isLoading) {
     return (
@@ -253,6 +267,12 @@ export default function GigPage({ params }: PageProps) {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="hover:text-accent-muted text-white underline underline-offset-4 transition-colors"
+                        onClick={() =>
+                          posthog.capture("ticket_link_clicked", {
+                            gig_id: gig.id,
+                            gig_title: gig.title,
+                          })
+                        }
                       >
                         {gig.ticketLink}
                       </Link>

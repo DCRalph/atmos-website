@@ -3,6 +3,7 @@
 import { formatDate, formatTime } from "~/lib/date-utils";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import posthog from "posthog-js";
 
 import { type RouterOutputs } from "~/trpc/react";
 import Link from "next/link";
@@ -24,6 +25,13 @@ export function PastGigCard({ gig, upcomming = false }: PastGigCardProps) {
     <MotionLink
       href={`/gigs/${gig.id}`}
       className="group hover:border-accent-muted/50 relative flex flex-col justify-between overflow-hidden rounded-none border-2 border-white/10 bg-black/80 backdrop-blur-sm transition-all hover:bg-black/90 hover:shadow-[0_0_15px_var(--accent-muted)]"
+      onClick={() =>
+        posthog.capture("gig_card_clicked", {
+          gig_id: gig.id,
+          gig_title: displayTitle,
+          upcoming: upcomming ?? false,
+        })
+      }
     >
       {gig.posterFileUpload && (
         <div className="relative w-full h-full flex items-center justify-center">
