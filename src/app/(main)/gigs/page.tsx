@@ -8,7 +8,7 @@ import { SITE_URL } from "~/lib/seo-constants";
 export default function page() {
   usePageMetadata({
     title: "Events",
-    description: "Discover upcoming electronic music events in Wellington. Browse curated club nights, DJ sets, and immersive nightlife experiences.",
+    description: "Immersive curated electronic music events in Pōneke",
     canonical: `${SITE_URL}/gigs`,
   });
 

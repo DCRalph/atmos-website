@@ -131,28 +131,24 @@ export const PAGE_METADATA = {
   // Homepage uses absolute title (no template suffix)
   home: {
     title: { absolute: SITE_NAME_FULL },
-    description:
-      "Discover Wellington's best electronic music events. Curated club nights, underground DJ sets & immersive nightlife in Pōneke.",
+    description: DESCRIPTION_SHORT,
     keywords: COMMON_KEYWORDS as unknown as string[],
     openGraph: {
       ...DEFAULT_OPENGRAPH,
       title: SITE_NAME_FULL,
-      description:
-        "Discover Wellington's best electronic music events. Curated club nights, underground DJ sets & immersive nightlife in Pōneke.",
+      description: DESCRIPTION_SHORT
     },
     twitter: {
       ...DEFAULT_TWITTER,
       title: SITE_NAME_FULL,
-      description:
-        "Discover Wellington's best electronic music events. Curated club nights, underground DJ sets & immersive nightlife in Pōneke.",
+      description: DESCRIPTION_SHORT
     },
   },
 
   gigs: basePage({
     title: "Events",
-    ogTitle: "Wellington DJ Events & Club Nights | ATMOS",
-    description:
-      "Discover upcoming electronic music events in Wellington. Browse curated club nights, DJ sets, and immersive nightlife experiences.",
+    // ogTitle: "Immersive curated electronic music events in Pōneke | ATMOS",
+    description: DESCRIPTION_LONG,
     keywords: [
       "wellington dj events",
       "wellington club nights",
@@ -167,16 +163,14 @@ export const PAGE_METADATA = {
 
   about: basePage({
     title: "About",
-    ogTitle: "About ATMOS — Wellington Electronic Music Collective",
-    description:
-      "ATMOS is Wellington's electronic music promoter & collective. We curate underground club nights and immersive DJ events in Pōneke.",
+    // ogTitle: "About ATMOS — Wellington Electronic Music Collective",
+    description: DESCRIPTION_LONG,
   }),
 
   crew: basePage({
     title: "Crew",
     ogTitle: "Wellington DJs & Artists | ATMOS",
-    description:
-      "Meet the ATMOS crew — Wellington's finest DJs, producers, and electronic music artists from the Pōneke underground scene.",
+    // description:
   }),
 
   contact: basePage({ title: "Contact" }),
