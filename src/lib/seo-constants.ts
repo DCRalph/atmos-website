@@ -4,8 +4,8 @@ import { type Metadata } from "next";
 /*                                  Constants                                 */
 /* -------------------------------------------------------------------------- */
 export const SITE_NAME = "ATMOS";
-export const SITE_TAGLINE = "Immersive electronic music events in Pōneke";
-export const SITE_NAME_FULL = `${SITE_NAME} — ${SITE_TAGLINE}`;
+export const SITE_TAGLINE = "Electronic music events in Pōneke";
+export const SITE_NAME_FULL = `${SITE_NAME} electronic music events in Pōneke`;
 
 export const SITE_URL =
   process.env.NEXT_PUBLIC_APP_URL ?? "https://atmosmedia.co.nz";
@@ -28,7 +28,7 @@ export const OG_IMAGE = {
   url: DEFAULT_OG_IMAGE,
   width: 1200,
   height: 630,
-  alt: `${SITE_NAME} — ${SITE_TAGLINE} & Club Nights`,
+  alt: `${SITE_NAME} electronic music events in Pōneke`,
 } as const;
 
 /* -------------------------------------------------------------------------- */
