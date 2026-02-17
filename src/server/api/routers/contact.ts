@@ -4,6 +4,7 @@ import {
   publicProcedure,
   adminProcedure,
 } from "~/server/api/trpc";
+import { sendEmail } from "~/server/utils/email";
 
 export const contactRouter = createTRPCRouter({
   getAll: adminProcedure
@@ -52,7 +53,7 @@ export const contactRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.contactSubmission.create({
+      const submission = await ctx.db.contactSubmission.create({
         data: {
           name: input.name,
           email: input.email,
@@ -60,6 +61,39 @@ export const contactRouter = createTRPCRouter({
           message: input.message,
         },
       });
+
+      // Send email notification
+      try {
+        const notificationEmailSetting = await ctx.db.keyValueStore.findUnique({
+          where: { key: "contactFormNotification" },
+        });
+
+        if (notificationEmailSetting?.value) {
+          await sendEmail({
+            to: notificationEmailSetting.value,
+            subject: `New Contact Submission: ${input.reason}`,
+            text: `A new contact form submission has been received.\n\n` +
+              `From: ${input.name} <${input.email}>\n` +
+              `Reason: ${input.reason}\n\n` +
+              `Message:\n${input.message}`,
+            html: `
+              <h1>New Contact Submission</h1>
+              <p><strong>From:</strong> ${input.name} &lt;${input.email}&gt;</p>
+              <p><strong>Reason:</strong> ${input.reason}</p>
+              <p><strong>Message:</strong></p>
+              <div style="white-space: pre-wrap; background: #f4f4f4; padding: 1rem; border-radius: 4px;">
+                ${input.message}
+              </div>
+              <br/>
+              <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/contact">View all submissions in Admin Dashboard</a></p>
+            `,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to send contact notification email:", error);
+      }
+
+      return submission;
     }),
 
   delete: adminProcedure
