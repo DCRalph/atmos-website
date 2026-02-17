@@ -1,4 +1,5 @@
 import { type Metadata } from "next";
+import { env } from "~/env";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Constants                                 */
@@ -8,7 +9,7 @@ export const SITE_TAGLINE = "Electronic music events in Pōneke";
 export const SITE_NAME_FULL = `${SITE_NAME} electronic music events in Pōneke`;
 
 export const SITE_URL =
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://atmosmedia.co.nz";
+  env.NEXT_PUBLIC_APP_URL ?? "https://atmosmedia.co.nz";
 
 export const DESCRIPTION_SHORT =
   "Immersive curated music experiences in Pōneke";

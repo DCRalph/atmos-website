@@ -69,7 +69,10 @@ export const ModelName = {
   NewsletterSubscription: 'NewsletterSubscription',
   file_tag: 'file_tag',
   file_upload: 'file_upload',
-  ActivityLog: 'ActivityLog'
+  GearItem: 'GearItem',
+  Rental: 'Rental',
+  ActivityLog: 'ActivityLog',
+  KeyValueStore: 'KeyValueStore'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -78,12 +81,12 @@ export type ModelName = (typeof ModelName)[keyof typeof ModelName]
  * Enums
  */
 
-export const TransactionIsolationLevel = {
+export const TransactionIsolationLevel = runtime.makeStrictEnum({
   ReadUncommitted: 'ReadUncommitted',
   ReadCommitted: 'ReadCommitted',
   RepeatableRead: 'RepeatableRead',
   Serializable: 'Serializable'
-} as const
+} as const)
 
 export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof typeof TransactionIsolationLevel]
 
@@ -351,6 +354,34 @@ export const File_uploadScalarFieldEnum = {
 export type File_uploadScalarFieldEnum = (typeof File_uploadScalarFieldEnum)[keyof typeof File_uploadScalarFieldEnum]
 
 
+export const GearItemScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  description: 'description',
+  price: 'price',
+  image: 'image',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type GearItemScalarFieldEnum = (typeof GearItemScalarFieldEnum)[keyof typeof GearItemScalarFieldEnum]
+
+
+export const RentalScalarFieldEnum = {
+  id: 'id',
+  gearItemId: 'gearItemId',
+  userName: 'userName',
+  contactInfo: 'contactInfo',
+  startDate: 'startDate',
+  endDate: 'endDate',
+  status: 'status',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type RentalScalarFieldEnum = (typeof RentalScalarFieldEnum)[keyof typeof RentalScalarFieldEnum]
+
+
 export const ActivityLogScalarFieldEnum = {
   id: 'id',
   type: 'type',
@@ -364,6 +395,16 @@ export const ActivityLogScalarFieldEnum = {
 } as const
 
 export type ActivityLogScalarFieldEnum = (typeof ActivityLogScalarFieldEnum)[keyof typeof ActivityLogScalarFieldEnum]
+
+
+export const KeyValueStoreScalarFieldEnum = {
+  key: 'key',
+  value: 'value',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type KeyValueStoreScalarFieldEnum = (typeof KeyValueStoreScalarFieldEnum)[keyof typeof KeyValueStoreScalarFieldEnum]
 
 
 export const SortOrder = {

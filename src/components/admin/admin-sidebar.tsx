@@ -100,6 +100,16 @@ const menuItems = [
     url: "/admin/activity-logs",
     icon: Activity,
   },
+  {
+    title: "Rentals",
+    url: "/admin/rentals",
+    icon: ShoppingBag,
+  },
+  {
+    title: "Settings",
+    url: "/admin/settings",
+    icon: CalendarCog,
+  },
 ];
 
 export function DashboardSideBar() {

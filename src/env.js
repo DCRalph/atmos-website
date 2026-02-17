@@ -28,6 +28,13 @@ export const env = createEnv({
       ])
       .optional(),
     AWS_S3_PUBLIC_URL_BASE: z.string().url().optional(), // Optional CDN/public base URL
+
+    // SMTP
+    SMTP_HOST: z.string().optional(),
+    SMTP_PORT: z.string().optional(),
+    SMTP_USER: z.string().optional(),
+    SMTP_PASS: z.string().optional(),
+    SMTP_FROM: z.string().optional(),
   },
 
   client: {
@@ -55,6 +62,12 @@ export const env = createEnv({
     AWS_S3_ENDPOINT: process.env.AWS_S3_ENDPOINT,
     AWS_S3_ACL: process.env.AWS_S3_ACL,
     AWS_S3_PUBLIC_URL_BASE: process.env.AWS_S3_PUBLIC_URL_BASE,
+
+    SMTP_HOST: process.env.SMTP_HOST,
+    SMTP_PORT: process.env.SMTP_PORT,
+    SMTP_USER: process.env.SMTP_USER,
+    SMTP_PASS: process.env.SMTP_PASS,
+    SMTP_FROM: process.env.SMTP_FROM,
 
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,

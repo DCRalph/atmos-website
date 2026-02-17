@@ -1,8 +1,9 @@
 import { type MetadataRoute } from "next";
 import { db } from "~/server/db";
+import { env } from "~/env";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://atmosmedia.co.nz";
+  const siteUrl = env.NEXT_PUBLIC_APP_URL ?? "https://atmosmedia.co.nz";
 
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [

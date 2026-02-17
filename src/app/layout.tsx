@@ -11,6 +11,7 @@ import { ViewTransition } from "react";
 import { montserrat } from "~/lib/fonts";
 
 import NextTopLoader from "nextjs-toploader";
+import { Toaster } from "sonner";
 import {
   SITE_NAME,
   SITE_TAGLINE,
@@ -89,6 +90,8 @@ export default function RootLayout({
                 >
                   {children}
                 </div>
+
+                <Toaster richColors position="bottom-right" />
 
                 <Analytics
                   endpoint="/fuckoffaddblockers"

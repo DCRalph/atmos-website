@@ -1,3 +1,4 @@
+import { env } from "~/env";
 /**
  * Client-safe media URL helper functions.
  * These can be imported and used in both server and client components.
@@ -9,7 +10,7 @@
  */
 const getAppUrl = (): string => {
   // NEXT_PUBLIC_APP_URL is available on both client and server
-  const url = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const url = env.NEXT_PUBLIC_APP_URL ?? "";
   return url.replace(/\/$/, "");
 };
 

@@ -76,6 +76,15 @@ export const FileCategory = {
 export type FileCategory = (typeof FileCategory)[keyof typeof FileCategory]
 
 
+export const RentalStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED'
+} as const
+
+export type RentalStatus = (typeof RentalStatus)[keyof typeof RentalStatus]
+
+
 export const ActivityType = {
   USER_CREATED: 'USER_CREATED',
   USER_UPDATED: 'USER_UPDATED',
@@ -95,6 +104,14 @@ export const ActivityType = {
   CREW_MEMBER_CREATED: 'CREW_MEMBER_CREATED',
   CREW_MEMBER_UPDATED: 'CREW_MEMBER_UPDATED',
   CREW_MEMBER_DELETED: 'CREW_MEMBER_DELETED',
+  GEAR_CREATED: 'GEAR_CREATED',
+  GEAR_UPDATED: 'GEAR_UPDATED',
+  GEAR_DELETED: 'GEAR_DELETED',
+  RENTAL_CREATED: 'RENTAL_CREATED',
+  RENTAL_UPDATED: 'RENTAL_UPDATED',
+  RENTAL_DELETED: 'RENTAL_DELETED',
+  RENTAL_APPROVED: 'RENTAL_APPROVED',
+  RENTAL_REJECTED: 'RENTAL_REJECTED',
   FILE_UPLOADED: 'FILE_UPLOADED',
   FILE_DELETED: 'FILE_DELETED',
   LOGIN: 'LOGIN',

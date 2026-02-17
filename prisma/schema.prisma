@@ -371,6 +371,40 @@ model file_upload {
   @@index([hash])
 }
 
+enum RentalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model GearItem {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  image       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  rentals     Rental[]
+
+  @@map("gear_item")
+}
+
+model Rental {
+  id          String       @id @default(cuid())
+  gearItemId  String
+  gearItem    GearItem     @relation(fields: [gearItemId], references: [id], onDelete: Cascade)
+  userName    String
+  contactInfo String
+  startDate   DateTime
+  endDate     DateTime
+  status      RentalStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("rental")
+}
+
 enum ActivityType {
   USER_CREATED
   USER_UPDATED
@@ -390,6 +424,14 @@ enum ActivityType {
   CREW_MEMBER_CREATED
   CREW_MEMBER_UPDATED
   CREW_MEMBER_DELETED
+  GEAR_CREATED
+  GEAR_UPDATED
+  GEAR_DELETED
+  RENTAL_CREATED
+  RENTAL_UPDATED
+  RENTAL_DELETED
+  RENTAL_APPROVED
+  RENTAL_REJECTED
   FILE_UPLOADED
   FILE_DELETED
   LOGIN
@@ -417,4 +459,14 @@ model ActivityLog {
   @@index([type])
   @@index([createdAt])
   @@map("activity_log")
+}
+
+model KeyValueStore {
+  key       String   @id
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("key_value_store")
+  @@index([key])
 }

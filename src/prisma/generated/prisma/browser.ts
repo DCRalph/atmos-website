@@ -108,7 +108,22 @@ export type file_tag = Prisma.file_tagModel
  */
 export type file_upload = Prisma.file_uploadModel
 /**
+ * Model GearItem
+ * 
+ */
+export type GearItem = Prisma.GearItemModel
+/**
+ * Model Rental
+ * 
+ */
+export type Rental = Prisma.RentalModel
+/**
  * Model ActivityLog
  * 
  */
 export type ActivityLog = Prisma.ActivityLogModel
+/**
+ * Model KeyValueStore
+ * 
+ */
+export type KeyValueStore = Prisma.KeyValueStoreModel
