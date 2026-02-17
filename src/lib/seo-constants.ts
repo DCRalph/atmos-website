@@ -22,7 +22,7 @@ export const formatFullTitle = (title: string) => `${title} | ${SITE_NAME}`;
 
 /*                                   Images                                   */
 
-export const DEFAULT_OG_IMAGE = "/og-image.png";
+export const DEFAULT_OG_IMAGE = "/og-image-new.png";
 
 export const OG_IMAGE = {
   url: DEFAULT_OG_IMAGE,
