@@ -18,9 +18,9 @@ const footerLinks = [
   { label: "About", href: "/about" },
   { label: "Merch", href: "/merch" },
   { label: "Gigs", href: "/gigs" },
-  { label: "Rentals", href: "/rentals" },
   { label: "Crew", href: "/crew" },
   { label: "Contact", href: "/contact" },
+  { label: "Equipment", href: "/equipment" },
   { label: "Privacy", href: "/privacy" },
   { label: "Terms", href: "/terms" },
 ] as const;

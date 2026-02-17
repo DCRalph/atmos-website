@@ -34,7 +34,7 @@ import {
 import { cn } from "~/lib/utils";
 import type { CalendarDay } from "react-day-picker";
 
-export function RentalCalendar() {
+export function EquipmentCalendar() {
   const [selectedGearIds, setSelectedGearIds] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined;
