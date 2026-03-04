@@ -109,7 +109,7 @@ function SocialItem({ social, index }: { social: SocialLink; index: number }) {
       className="relative"
     >
       {/* Radial blur behind everything */}
-      <RadialBlur />
+      {/* <RadialBlur /> */}
 
       <Link
         href={href}

@@ -20,7 +20,7 @@ export default function MainLayout({
   const isMobile = useIsMobile();
 
   return (
-    <div className="bg-background text-foreground h-dvh w-full overflow-x-hidden overflow-y-scroll">
+    <div id="main-layout-container" className="bg-background text-foreground h-dvh w-full overflow-x-hidden overflow-y-scroll">
       <UserIndicator />
 
       {!isMobile ? ( // Desktop layout
@@ -31,7 +31,7 @@ export default function MainLayout({
       ) : (
         // Mobile layout
         <>
-          <div className="">
+          <div>
             {/* SlideOverMenu renders through portal on mobile */}
             <SlideOverMenu isHomePage={true} />
 
