@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { AnimatePresence } from "motion/react";
 import { getMediaDisplayUrl } from "~/lib/media-url";
+import useMasonry from "~/hooks/useMasonry";
 import { FullscreenGallery } from "./fullscreen-gallery";
 
 type MediaItem = {
@@ -18,6 +19,8 @@ type MediaItem = {
     url: string;
     name: string;
     mimeType: string;
+    width?: number | null;
+    height?: number | null;
   } | null;
 };
 
@@ -28,6 +31,7 @@ type MediaGalleryProps = {
 export function MediaGallery({ media }: MediaGalleryProps) {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const masonryRef = useMasonry(media.length);
 
   if (media.length === 0) {
     return null;
@@ -102,13 +106,26 @@ export function MediaGallery({ media }: MediaGalleryProps) {
             <h3 className="border-accent-strong mb-6 border-l-4 pl-4 text-2xl font-black tracking-wider uppercase">
               {featuredMedia.length > 0 ? "Gallery" : "Media"}
             </h3>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div
+              ref={masonryRef}
+              className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            >
               {regularMedia.map((item) => {
                 const url = getMediaDisplayUrl(item);
+                const itemAspectRatio =
+                  item.type === "photo"
+                    ? item.fileUpload?.width && item.fileUpload?.height
+                      ? `${item.fileUpload.width} / ${item.fileUpload.height}`
+                      : "4 / 3"
+                    : undefined;
+
                 return (
                   <div
                     key={item.id}
-                    className="group hover:border-accent-muted relative aspect-video cursor-pointer overflow-hidden rounded-none border-2 border-white/10 bg-black/50 transition-all hover:shadow-[0_0_15px_var(--accent-muted)]"
+                    className={`group hover:border-accent-muted relative cursor-pointer overflow-hidden rounded-none border-2 border-white/10 bg-black/50 transition-all hover:shadow-[0_0_15px_var(--accent-muted)] ${
+                      item.type === "photo" ? "" : "aspect-video"
+                    }`}
+                    style={itemAspectRatio ? { aspectRatio: itemAspectRatio } : undefined}
                     onClick={() => openGallery(item)}
                   >
                     {item.type === "photo" ? (

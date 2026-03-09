@@ -20,7 +20,7 @@ export function HomeTopContent() {
     <div className="h-full">
       <VideoBackground ref={videoRef} onStateChange={setIsPlaying} />
 
-      <LiveGigPopup />
+      {/* <LiveGigPopup /> */}
       <SocialLinks side="left" />
 
       {/* Logo section */}
