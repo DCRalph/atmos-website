@@ -1,6 +1,6 @@
 "use client"
 
-import { motion, useScroll, useTransform } from "framer-motion"
+import { motion, useScroll, useTransform } from "motion/react"
 import { useRef } from "react"
 import { useMainLayoutScrollContainer } from "~/hooks/use-main-layout-scroll-container"
 
@@ -10,7 +10,7 @@ export function ClosingSection() {
   const { scrollYProgress } = useScroll({
     container: containerRef,
     target: ref,
-    offset: ["start end", "end start"],
+    offset: ["start end", "end end"],
   })
 
   const opacity = useTransform(scrollYProgress, [0, 0.8], [0, 1])
@@ -21,8 +21,6 @@ export function ClosingSection() {
 
   return (
     <section ref={ref} className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        <motion.div className="fixed top-7 left-0 right-0 h-[4px] z-9999 bg-white" style={{ scaleX: scrollYProgress, originX: 0 }} />
-     
       {/* Background */}
       <motion.div
         className="absolute inset-0 z-0"

@@ -1,6 +1,6 @@
 "use client"
 
-import { motion, useScroll, useTransform } from "framer-motion"
+import { motion, useScroll, useTransform } from "motion/react"
 import { useRef } from "react"
 import { useMainLayoutScrollContainer } from "~/hooks/use-main-layout-scroll-container"
 
@@ -22,8 +22,6 @@ export function ExperienceSection() {
 
   return (
     <section ref={ref} className="relative py-40 md:py-56 overflow-hidden">
-        <motion.div className="fixed top-2 left-0 right-0 h-[4px] z-9999 bg-white" style={{ scaleX: scrollYProgress, originX: 0 }} />
-
       {/* Large background text */}
       <motion.div
         className="absolute inset-0 flex items-center justify-center pointer-events-none select-none"

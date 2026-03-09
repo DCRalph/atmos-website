@@ -1,10 +1,12 @@
 "use client";
 
+import { useRef } from "react";
 import { UserIndicator } from "~/components/user-indicator";
 import { MainFooter } from "~/components/mainFooter";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { MobileNav } from "~/components/mobile-nav";
 import { MobileMenuToggle } from "~/components/mobile-menu-toggle";
+import { ScrollContainerProvider } from "~/components/scroll-container-provider";
 
 import dynamic from "next/dynamic";
 
@@ -18,9 +20,11 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   const isMobile = useIsMobile();
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div id="main-layout-container" className="bg-background text-foreground h-dvh w-full overflow-x-hidden overflow-y-scroll">
+    <ScrollContainerProvider scrollRef={scrollRef}>
+    <div ref={scrollRef} id="main-layout-container" className="bg-background text-foreground h-dvh w-full overflow-x-hidden overflow-y-scroll">
       <UserIndicator />
 
       {!isMobile ? ( // Desktop layout
@@ -47,5 +51,6 @@ export default function MainLayout({
 
       <MainFooter />
     </div>
+    </ScrollContainerProvider>
   );
 }

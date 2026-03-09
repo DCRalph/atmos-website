@@ -1,6 +1,6 @@
 "use client"
 
-import { motion, useScroll, useTransform } from "framer-motion"
+import { motion, useScroll, useTransform } from "motion/react"
 import { useRef } from "react"
 import { useMainLayoutScrollContainer } from "~/hooks/use-main-layout-scroll-container"
 
@@ -21,8 +21,6 @@ export function SpacesSection() {
 
   return (
     <section ref={ref} className="relative py-32 md:py-48 px-6 md:px-8 overflow-hidden">
-        <motion.div className="fixed top-6 left-0 right-0 h-[4px] z-9999 bg-white" style={{ scaleX: scrollYProgress, originX: 0 }} />
-
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-12 md:gap-20 items-center">
         {/* Image */}
         <motion.div

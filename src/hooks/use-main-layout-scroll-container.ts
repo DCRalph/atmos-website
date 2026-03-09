@@ -1,35 +1,16 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useContext } from "react"
+import { ScrollContainerContext } from "~/components/scroll-container-provider"
 
 export function useMainLayoutScrollContainer() {
-  const containerRef = useRef<HTMLElement | null>(null)
-  const [isReady, setIsReady] = useState(false)
+  const containerRef = useContext(ScrollContainerContext)
 
-  useEffect(() => {
-    let rafId: number | null = null
+  if (!containerRef) {
+    throw new Error(
+      "useMainLayoutScrollContainer must be used within a ScrollContainerProvider"
+    )
+  }
 
-    const resolveContainer = () => {
-      const next = document.getElementById("main-layout-container")
-      if (!next) {
-        rafId = requestAnimationFrame(resolveContainer)
-        return
-      }
-
-      if (containerRef.current !== next) {
-        containerRef.current = next
-        setIsReady(true)
-      }
-    }
-
-    resolveContainer()
-
-    return () => {
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId)
-      }
-    }
-  }, [])
-
-  return { containerRef, isReady }
+  return { containerRef }
 }

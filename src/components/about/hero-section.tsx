@@ -1,6 +1,6 @@
 "use client"
 
-import { motion, useScroll, useTransform } from "framer-motion"
+import { motion, useScroll, useTransform } from "motion/react"
 import { useRef } from "react"
 import { useMainLayoutScrollContainer } from "~/hooks/use-main-layout-scroll-container"
 
@@ -20,11 +20,8 @@ export function HeroSection() {
   const overlayOpacity = useTransform(scrollYProgress, [0, 0.7], [0.35, 0.65])
 
   return (
-    <section ref={ref} className="relative h-screen flex items-center justify-center overflow-hidden">
+    <section ref={ref} className="relative h-[80vh] flex items-center justify-center overflow-hidden">
       {/* Background image with parallax */}
-      
-      <motion.div className="fixed top-1 left-0 right-0 h-[4px] z-9999 bg-white" style={{ scaleX: scrollYProgress, originX: 0 }} />
-      
       <motion.div
         className="absolute inset-0 z-0"
         style={{ y: backgroundY }}

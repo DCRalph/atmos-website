@@ -1,6 +1,6 @@
 "use client"
 
-import { motion, useScroll, useTransform } from "framer-motion"
+import { motion, useScroll, useTransform } from "motion/react"
 import { useRef } from "react"
 import { useMainLayoutScrollContainer } from "~/hooks/use-main-layout-scroll-container"
 
@@ -22,8 +22,6 @@ export function ImageRevealSection() {
 
   return (
     <section ref={ref} className="relative py-8 px-6 md:px-8">
-        <motion.div className="fixed top-3 left-0 right-0 h-[4px] z-9999 bg-white" style={{ scaleX: scrollYProgress, originX: 0 }} />
-
       <div className="max-w-6xl mx-auto">
         <motion.div
           className="mb-8 flex flex-col gap-3 md:mb-10 md:flex-row md:items-end md:justify-between"
