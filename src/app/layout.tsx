@@ -62,7 +62,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${montserrat.className} overflow-x-hidden`}
+      className={`${montserrat.className} overflow-x-hidden antialiased`}
       suppressHydrationWarning
     >
       <body>
