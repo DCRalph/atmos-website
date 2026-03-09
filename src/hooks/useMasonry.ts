@@ -55,6 +55,9 @@ const useMasonry = <T = unknown>(
     items.forEach((item) => {
       // Find the shortest column
       const shortestColumn = columnHeights.indexOf(Math.min(...columnHeights));
+      
+      // Guard against invalid index (should never happen, but TypeScript needs this)
+      if (shortestColumn === -1 || shortestColumn >= columnHeights.length) return;
 
       // Calculate position
       const x = shortestColumn * (columnWidth + gap);
@@ -67,7 +70,8 @@ const useMasonry = <T = unknown>(
       item.style.width = `${columnWidth}px`;
 
       // Update column height
-      columnHeights[shortestColumn] += item.offsetHeight + gap;
+      columnHeights[shortestColumn] =
+        (columnHeights[shortestColumn] ?? 0) + item.offsetHeight + gap;
     });
 
     // Set container height to the tallest column
