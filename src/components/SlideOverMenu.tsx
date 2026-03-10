@@ -23,7 +23,7 @@ const MENU_ITEMS: MenuItem[] = [
   { label: "HOME", href: "/" },
   { label: "GIGS", href: "/gigs" },
   { label: "CONTENT", href: "/content" },
-  // { label: "ABOUT", href: "/about" },
+  { label: "ABOUT", href: "/about" },
   { label: "MERCH", href: "/merch" },
   { label: "SOCIALS", href: "/socials" },
   { label: "THE CREW", href: "/crew" },

@@ -321,11 +321,11 @@ export function TextConversation() {
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
         >
-          <p className="mb-2 text-xs uppercase tracking-[0.3em] text-muted-foreground md:mb-3 md:text-sm">
+          {/* <p className="mb-2 text-xs uppercase tracking-[0.3em] text-muted-foreground md:mb-3 md:text-sm">
             The Escape
-          </p>
-          <h2 className="font-serif text-2xl font-bold tracking-tight text-foreground md:text-4xl">
-            The world is loud. Atmos is the off switch.
+          </p> */}
+          <h2 className=" text-2xl font-bold tracking-tight text-foreground md:text-4xl">
+            {"There\u2019s a lot going on. Leave it at the door."}
           </h2>
         </motion.div>
 

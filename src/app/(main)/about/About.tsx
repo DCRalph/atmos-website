@@ -19,7 +19,7 @@ export default function AboutPage() {
       <ImageRevealSection />
       <TextConversation />
       <StickyStatement />
-      <SpacesSection />
+      {/* <SpacesSection /> */}
       <ClosingSection />
     </main>
   )

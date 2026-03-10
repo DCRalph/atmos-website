@@ -5,7 +5,7 @@ import { useRef } from "react"
 import { useMainLayoutScrollContainer } from "~/hooks/use-main-layout-scroll-container"
 
 const words =
-  "Sound doesn\u2019t work without sight. Light doesn\u2019t work without shadow. We bring it all together to create a singular, immersive atmosphere.".split(
+  `We design every element sound, light, space to work as one. When it all comes together, that's the atmosphere.`.split(
     " "
   )
 
@@ -24,7 +24,7 @@ export function StickyStatement() {
   return (
     <section ref={sectionRef} className={sectionHeightClass}>
       <div className="sticky top-0 flex h-screen items-center justify-center px-4 md:px-8">
-        <p className="max-w-4xl text-center text-3xl font-bold leading-tight tracking-tight font-serif md:text-5xl lg:text-6xl">
+        <p className="max-w-4xl text-center text-3xl font-bold leading-tight tracking-tight md:text-5xl lg:text-6xl">
           {words.map((word, i) => {
             const start = i / words.length;
             const end = start + 1 / words.length;
