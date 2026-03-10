@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -75,6 +76,11 @@ export function CrewManager() {
   const deleteMember = api.crew.delete.useMutation({
     onSuccess: async () => {
       setDeleteTarget(null);
+      await refetch();
+    },
+  });
+  const moveMember = api.crew.move.useMutation({
+    onSuccess: async () => {
       await refetch();
     },
   });
@@ -216,6 +222,11 @@ export function CrewManager() {
             className="max-w-sm"
           />
         </div>
+        {search ? (
+          <p className="text-muted-foreground mb-4 text-sm">
+            Clear search to reorder crew members.
+          </p>
+        ) : null}
         <Table>
           <TableHeader>
             <TableRow>
@@ -235,7 +246,7 @@ export function CrewManager() {
                     </TableCell>
                   </TableRow>
                 ))
-              : crewMembers?.map((member) => (
+              : crewMembers?.map((member, index) => (
                   <TableRow key={member.id}>
                     <TableCell>{member.name}</TableCell>
                     <TableCell>{member.role}</TableCell>
@@ -245,8 +256,42 @@ export function CrewManager() {
                       <div className="flex gap-2">
                         <Button
                           variant="outline"
+                          size="icon-sm"
+                          onClick={() =>
+                            moveMember.mutate({ id: member.id, direction: "up" })
+                          }
+                          disabled={
+                            Boolean(search) || moveMember.isPending || index === 0
+                          }
+                          aria-label={`Move ${member.name} up`}
+                          title="Move up"
+                        >
+                          <ArrowUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          onClick={() =>
+                            moveMember.mutate({
+                              id: member.id,
+                              direction: "down",
+                            })
+                          }
+                          disabled={
+                            Boolean(search) ||
+                            moveMember.isPending ||
+                            index === (crewMembers?.length ?? 1) - 1
+                          }
+                          aria-label={`Move ${member.name} down`}
+                          title="Move down"
+                        >
+                          <ArrowDown className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
                           size="sm"
                           onClick={() => handleEdit(member)}
+                          disabled={moveMember.isPending}
                         >
                           Edit
                         </Button>
@@ -256,7 +301,7 @@ export function CrewManager() {
                           onClick={() =>
                             setDeleteTarget({ id: member.id, name: member.name })
                           }
-                          disabled={deleteMember.isPending}
+                          disabled={deleteMember.isPending || moveMember.isPending}
                         >
                           Delete
                         </Button>

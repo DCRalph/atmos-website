@@ -175,6 +175,7 @@ export const CrewMemberScalarFieldEnum = {
   instagram: 'instagram',
   soundcloud: 'soundcloud',
   image: 'image',
+  sortOrder: 'sortOrder',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

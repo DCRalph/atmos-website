@@ -378,7 +378,7 @@ export default function GigManagementPage({ params }: PageProps) {
                       aria-label={`Remove ${gt.gigTag.name} tag`}
                     >
                       {removeTag.isPending &&
-                      tagToRemove?.id === gt.gigTag.id ? (
+                        tagToRemove?.id === gt.gigTag.id ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
                         <X className="h-3 w-3" />
@@ -603,6 +603,7 @@ export default function GigManagementPage({ params }: PageProps) {
           </CardContent>
         </Card>
       </div>
+
 
       {/* Remove Tag Confirmation Dialog */}
       <AlertDialog

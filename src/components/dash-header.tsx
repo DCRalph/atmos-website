@@ -269,6 +269,8 @@ export function DashboardHeader() {
   // Build crumbs with dynamic label support
   const crumbs = buildCrumbs(pathname, smartLabel ?? undefined);
 
+  // return null
+
   return (
     <nav className="bg-background/90 sticky top-0 z-50 h-16 w-full border-b backdrop-blur-sm">
       <div className="flex h-16 w-full items-center justify-between gap-4 px-4 lg:px-6">

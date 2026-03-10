@@ -497,7 +497,7 @@ export default function GigPage({ params }: PageProps) {
               alt={`${displayTitle} poster`}
               fill
               priority
-              className="object-cover blur-md absolute inset-0"
+              className="object-cover blur-2xl absolute inset-0"
               sizes="100vw"
             />
             {!isTba && (
