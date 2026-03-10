@@ -20,8 +20,18 @@ export type CrewMemberModel = runtime.Types.Result.DefaultSelection<Prisma.$Crew
 
 export type AggregateCrewMember = {
   _count: CrewMemberCountAggregateOutputType | null
+  _avg: CrewMemberAvgAggregateOutputType | null
+  _sum: CrewMemberSumAggregateOutputType | null
   _min: CrewMemberMinAggregateOutputType | null
   _max: CrewMemberMaxAggregateOutputType | null
+}
+
+export type CrewMemberAvgAggregateOutputType = {
+  sortOrder: number | null
+}
+
+export type CrewMemberSumAggregateOutputType = {
+  sortOrder: number | null
 }
 
 export type CrewMemberMinAggregateOutputType = {
@@ -31,6 +41,7 @@ export type CrewMemberMinAggregateOutputType = {
   instagram: string | null
   soundcloud: string | null
   image: string | null
+  sortOrder: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -42,6 +53,7 @@ export type CrewMemberMaxAggregateOutputType = {
   instagram: string | null
   soundcloud: string | null
   image: string | null
+  sortOrder: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -53,11 +65,20 @@ export type CrewMemberCountAggregateOutputType = {
   instagram: number
   soundcloud: number
   image: number
+  sortOrder: number
   createdAt: number
   updatedAt: number
   _all: number
 }
 
+
+export type CrewMemberAvgAggregateInputType = {
+  sortOrder?: true
+}
+
+export type CrewMemberSumAggregateInputType = {
+  sortOrder?: true
+}
 
 export type CrewMemberMinAggregateInputType = {
   id?: true
@@ -66,6 +87,7 @@ export type CrewMemberMinAggregateInputType = {
   instagram?: true
   soundcloud?: true
   image?: true
+  sortOrder?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -77,6 +99,7 @@ export type CrewMemberMaxAggregateInputType = {
   instagram?: true
   soundcloud?: true
   image?: true
+  sortOrder?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -88,6 +111,7 @@ export type CrewMemberCountAggregateInputType = {
   instagram?: true
   soundcloud?: true
   image?: true
+  sortOrder?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -131,6 +155,18 @@ export type CrewMemberAggregateArgs<ExtArgs extends runtime.Types.Extensions.Int
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
+   * Select which fields to average
+  **/
+  _avg?: CrewMemberAvgAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
+   * Select which fields to sum
+  **/
+  _sum?: CrewMemberSumAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
    * Select which fields to find the minimum value
   **/
   _min?: CrewMemberMinAggregateInputType
@@ -161,6 +197,8 @@ export type CrewMemberGroupByArgs<ExtArgs extends runtime.Types.Extensions.Inter
   take?: number
   skip?: number
   _count?: CrewMemberCountAggregateInputType | true
+  _avg?: CrewMemberAvgAggregateInputType
+  _sum?: CrewMemberSumAggregateInputType
   _min?: CrewMemberMinAggregateInputType
   _max?: CrewMemberMaxAggregateInputType
 }
@@ -172,9 +210,12 @@ export type CrewMemberGroupByOutputType = {
   instagram: string | null
   soundcloud: string | null
   image: string
+  sortOrder: number
   createdAt: Date
   updatedAt: Date
   _count: CrewMemberCountAggregateOutputType | null
+  _avg: CrewMemberAvgAggregateOutputType | null
+  _sum: CrewMemberSumAggregateOutputType | null
   _min: CrewMemberMinAggregateOutputType | null
   _max: CrewMemberMaxAggregateOutputType | null
 }
@@ -204,6 +245,7 @@ export type CrewMemberWhereInput = {
   instagram?: Prisma.StringNullableFilter<"CrewMember"> | string | null
   soundcloud?: Prisma.StringNullableFilter<"CrewMember"> | string | null
   image?: Prisma.StringFilter<"CrewMember"> | string
+  sortOrder?: Prisma.IntFilter<"CrewMember"> | number
   createdAt?: Prisma.DateTimeFilter<"CrewMember"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"CrewMember"> | Date | string
 }
@@ -215,6 +257,7 @@ export type CrewMemberOrderByWithRelationInput = {
   instagram?: Prisma.SortOrderInput | Prisma.SortOrder
   soundcloud?: Prisma.SortOrderInput | Prisma.SortOrder
   image?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -229,6 +272,7 @@ export type CrewMemberWhereUniqueInput = Prisma.AtLeast<{
   instagram?: Prisma.StringNullableFilter<"CrewMember"> | string | null
   soundcloud?: Prisma.StringNullableFilter<"CrewMember"> | string | null
   image?: Prisma.StringFilter<"CrewMember"> | string
+  sortOrder?: Prisma.IntFilter<"CrewMember"> | number
   createdAt?: Prisma.DateTimeFilter<"CrewMember"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"CrewMember"> | Date | string
 }, "id">
@@ -240,11 +284,14 @@ export type CrewMemberOrderByWithAggregationInput = {
   instagram?: Prisma.SortOrderInput | Prisma.SortOrder
   soundcloud?: Prisma.SortOrderInput | Prisma.SortOrder
   image?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.CrewMemberCountOrderByAggregateInput
+  _avg?: Prisma.CrewMemberAvgOrderByAggregateInput
   _max?: Prisma.CrewMemberMaxOrderByAggregateInput
   _min?: Prisma.CrewMemberMinOrderByAggregateInput
+  _sum?: Prisma.CrewMemberSumOrderByAggregateInput
 }
 
 export type CrewMemberScalarWhereWithAggregatesInput = {
@@ -257,6 +304,7 @@ export type CrewMemberScalarWhereWithAggregatesInput = {
   instagram?: Prisma.StringNullableWithAggregatesFilter<"CrewMember"> | string | null
   soundcloud?: Prisma.StringNullableWithAggregatesFilter<"CrewMember"> | string | null
   image?: Prisma.StringWithAggregatesFilter<"CrewMember"> | string
+  sortOrder?: Prisma.IntWithAggregatesFilter<"CrewMember"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"CrewMember"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"CrewMember"> | Date | string
 }
@@ -268,6 +316,7 @@ export type CrewMemberCreateInput = {
   instagram?: string | null
   soundcloud?: string | null
   image: string
+  sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -279,6 +328,7 @@ export type CrewMemberUncheckedCreateInput = {
   instagram?: string | null
   soundcloud?: string | null
   image: string
+  sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -290,6 +340,7 @@ export type CrewMemberUpdateInput = {
   instagram?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   soundcloud?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   image?: Prisma.StringFieldUpdateOperationsInput | string
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -301,6 +352,7 @@ export type CrewMemberUncheckedUpdateInput = {
   instagram?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   soundcloud?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   image?: Prisma.StringFieldUpdateOperationsInput | string
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -312,6 +364,7 @@ export type CrewMemberCreateManyInput = {
   instagram?: string | null
   soundcloud?: string | null
   image: string
+  sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -323,6 +376,7 @@ export type CrewMemberUpdateManyMutationInput = {
   instagram?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   soundcloud?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   image?: Prisma.StringFieldUpdateOperationsInput | string
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -334,6 +388,7 @@ export type CrewMemberUncheckedUpdateManyInput = {
   instagram?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   soundcloud?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   image?: Prisma.StringFieldUpdateOperationsInput | string
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -345,8 +400,13 @@ export type CrewMemberCountOrderByAggregateInput = {
   instagram?: Prisma.SortOrder
   soundcloud?: Prisma.SortOrder
   image?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type CrewMemberAvgOrderByAggregateInput = {
+  sortOrder?: Prisma.SortOrder
 }
 
 export type CrewMemberMaxOrderByAggregateInput = {
@@ -356,6 +416,7 @@ export type CrewMemberMaxOrderByAggregateInput = {
   instagram?: Prisma.SortOrder
   soundcloud?: Prisma.SortOrder
   image?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -367,8 +428,21 @@ export type CrewMemberMinOrderByAggregateInput = {
   instagram?: Prisma.SortOrder
   soundcloud?: Prisma.SortOrder
   image?: Prisma.SortOrder
+  sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type CrewMemberSumOrderByAggregateInput = {
+  sortOrder?: Prisma.SortOrder
+}
+
+export type IntFieldUpdateOperationsInput = {
+  set?: number
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
 }
 
 
@@ -380,6 +454,7 @@ export type CrewMemberSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   instagram?: boolean
   soundcloud?: boolean
   image?: boolean
+  sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["crewMember"]>
@@ -391,6 +466,7 @@ export type CrewMemberSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   instagram?: boolean
   soundcloud?: boolean
   image?: boolean
+  sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["crewMember"]>
@@ -402,6 +478,7 @@ export type CrewMemberSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   instagram?: boolean
   soundcloud?: boolean
   image?: boolean
+  sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["crewMember"]>
@@ -413,11 +490,12 @@ export type CrewMemberSelectScalar = {
   instagram?: boolean
   soundcloud?: boolean
   image?: boolean
+  sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type CrewMemberOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "role" | "instagram" | "soundcloud" | "image" | "createdAt" | "updatedAt", ExtArgs["result"]["crewMember"]>
+export type CrewMemberOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "role" | "instagram" | "soundcloud" | "image" | "sortOrder" | "createdAt" | "updatedAt", ExtArgs["result"]["crewMember"]>
 
 export type $CrewMemberPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "CrewMember"
@@ -429,6 +507,7 @@ export type $CrewMemberPayload<ExtArgs extends runtime.Types.Extensions.Internal
     instagram: string | null
     soundcloud: string | null
     image: string
+    sortOrder: number
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["crewMember"]>
@@ -860,6 +939,7 @@ export interface CrewMemberFieldRefs {
   readonly instagram: Prisma.FieldRef<"CrewMember", 'String'>
   readonly soundcloud: Prisma.FieldRef<"CrewMember", 'String'>
   readonly image: Prisma.FieldRef<"CrewMember", 'String'>
+  readonly sortOrder: Prisma.FieldRef<"CrewMember", 'Int'>
   readonly createdAt: Prisma.FieldRef<"CrewMember", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"CrewMember", 'DateTime'>
 }

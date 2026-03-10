@@ -2176,6 +2176,7 @@ export const CrewMemberScalarFieldEnum = {
   instagram: 'instagram',
   soundcloud: 'soundcloud',
   image: 'image',
+  sortOrder: 'sortOrder',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -2488,6 +2489,20 @@ export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaM
 
 
 /**
+ * Reference to a field of type 'Int'
+ */
+export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
+    
+
+
+/**
+ * Reference to a field of type 'Int[]'
+ */
+export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+    
+
+
+/**
  * Reference to a field of type 'ContentLinkType'
  */
 export type EnumContentLinkTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ContentLinkType'>
@@ -2512,20 +2527,6 @@ export type EnumHomeContentSectionFieldRefInput<$PrismaModel> = FieldRefInputTyp
  * Reference to a field of type 'HomeContentSection[]'
  */
 export type ListEnumHomeContentSectionFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'HomeContentSection[]'>
-    
-
-
-/**
- * Reference to a field of type 'Int'
- */
-export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
-    
-
-
-/**
- * Reference to a field of type 'Int[]'
- */
-export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
     
 
 

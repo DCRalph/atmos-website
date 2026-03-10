@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
   createTRPCRouter,
@@ -28,7 +29,7 @@ export const crewRouter = createTRPCRouter({
 
       return ctx.db.crewMember.findMany({
         where,
-        orderBy: { createdAt: "asc" },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
       });
     }),
 
@@ -51,8 +52,15 @@ export const crewRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const { _max } = await ctx.db.crewMember.aggregate({
+        _max: { sortOrder: true },
+      });
+
       return ctx.db.crewMember.create({
-        data: input,
+        data: {
+          ...input,
+          sortOrder: (_max.sortOrder ?? -1) + 1,
+        },
       });
     }),
 
@@ -73,6 +81,54 @@ export const crewRouter = createTRPCRouter({
         where: { id },
         data,
       });
+    }),
+
+  move: adminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        direction: z.enum(["up", "down"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const crewMembers = await ctx.db.crewMember.findMany({
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: { id: true },
+      });
+
+      const currentIndex = crewMembers.findIndex((member) => member.id === input.id);
+      if (currentIndex === -1) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Crew member not found.",
+        });
+      }
+
+      const targetIndex =
+        input.direction === "up" ? currentIndex - 1 : currentIndex + 1;
+
+      if (targetIndex < 0 || targetIndex >= crewMembers.length) {
+        return { ok: true };
+      }
+
+      const reorderedMembers = [...crewMembers];
+      const [movedMember] = reorderedMembers.splice(currentIndex, 1);
+      if (!movedMember) {
+        return { ok: true };
+      }
+
+      reorderedMembers.splice(targetIndex, 0, movedMember);
+
+      await ctx.db.$transaction(
+        reorderedMembers.map((member, index) =>
+          ctx.db.crewMember.update({
+            where: { id: member.id },
+            data: { sortOrder: index },
+          }),
+        ),
+      );
+
+      return { ok: true };
     }),
 
   delete: adminProcedure

@@ -17,7 +17,7 @@ export function LayoutWithSideBarHeader({
 
   return (
     <SidebarProvider>
-      <div className="bg-sidebar flex h-screen w-full">
+      <div className="bg-sidebar flex h-screen w-full overflow-hidden">
         {sidebar}
         <div
           className={`bg-background flex w-full flex-1 flex-col overflow-x-hidden rounded-none ${isMobile ? "" : "mt-2 rounded-tl-xl"}`}

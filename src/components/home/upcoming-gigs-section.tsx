@@ -21,7 +21,7 @@ export function UpcomingGigsSection() {
       >
         Upcoming Gigs
       </motion.h2>
-      <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {isLoadingUpcomingGigs ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-white/60" />

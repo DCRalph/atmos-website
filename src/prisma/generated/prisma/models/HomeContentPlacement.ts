@@ -435,14 +435,6 @@ export type EnumHomeContentSectionFieldUpdateOperationsInput = {
   set?: $Enums.HomeContentSection
 }
 
-export type IntFieldUpdateOperationsInput = {
-  set?: number
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
-}
-
 export type HomeContentPlacementCreateWithoutContentItemInput = {
   id?: string
   section: $Enums.HomeContentSection

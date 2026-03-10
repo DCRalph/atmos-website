@@ -71,16 +71,10 @@ function ComingSoonOverlay() {
             Coming Soon
           </span>
 
-          {/* Title */}
-          <h2
-            className="mt-6 text-2xl font-black tracking-tight text-white uppercase sm:text-3xl"
-          >
-            Atmos Merch is on the Way
-          </h2>
 
           {/* Description */}
           <p
-            className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-white/60 sm:text-base"
+            className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-white sm:text-base"
           >
             We're putting the finishing touches on our store. Join the
             newsletter to be first in line for the drop.
