@@ -485,7 +485,7 @@ export default function GigPage({ params }: PageProps) {
   return (
     <main ref={containerRef} className="relative min-h-screen bg-black text-white">
       {/* Hero Section - Full viewport immersive */}
-      <section ref={heroRef} className="relative h-screen overflow-hidden">
+      <section ref={heroRef} className="relative h-[90vh] overflow-hidden">
         {/* Background Poster with Parallax */}
         {hasPoster && (
           <motion.div
@@ -514,13 +514,20 @@ export default function GigPage({ params }: PageProps) {
           </motion.div>
         )}
 
-        {/* linear Overlays */}
-        <motion.div
-          className="absolute inset-0 z-10 bg-black"
-          style={{ opacity: overlayOpacity }}
-        />
-        <div className="absolute inset-0 z-10 bg-linear-to-t from-black via-black/20 to-transparent" />
-        <div className="absolute inset-0 z-10 bg-linear-to-r from-black/60 via-transparent to-transparent" />
+        {/* linear Overlays (lighter for TBA) */}
+        {!isTba && (
+          <>
+            <motion.div
+              className="absolute inset-0 z-10 bg-black"
+              style={{ opacity: overlayOpacity }}
+            />
+            <div className="absolute inset-0 z-10 bg-linear-to-t from-black via-black/20 to-transparent" />
+            <div className="absolute inset-0 z-10 bg-linear-to-r from-black/60 via-transparent to-transparent" />
+          </>
+        )}
+        {isTba && (
+          <div className="absolute inset-0 z-10 bg-black/40" />
+        )}
 
         {/* Navigation - Floating */}
         <motion.div
@@ -555,82 +562,97 @@ export default function GigPage({ params }: PageProps) {
           style={{ y: titleY, opacity: contentOpacity }}
         >
           <div className="mx-auto w-full max-w-7xl">
-            {/* Title */}
-            <motion.h1
-              custom={0}
-              initial="hidden"
-              animate="visible"
-              variants={fadeInUp}
-              className="mb-4 max-w-4xl text-5xl font-black tracking-tight uppercase sm:text-6xl md:text-7xl lg:text-8xl"
-            >
-              <span className="bg-linear-to-r from-white via-white to-white/60 bg-clip-text text-transparent">
-                {displayTitle}
-              </span>
-            </motion.h1>
-
-            {/* Subtitle */}
-            {gig.subtitle && (
-              <motion.p
-                custom={1}
+            {isTba ? (
+              /* TBA Content */
+              <motion.h1
+                custom={0}
                 initial="hidden"
                 animate="visible"
                 variants={fadeInUp}
-                className="mb-5 max-w-2xl text-lg text-white/70 sm:text-xl md:text-2xl"
+                className="text-6xl font-black tracking-tight uppercase sm:text-7xl md:text-8xl lg:text-9xl"
               >
-                {gig.subtitle}
-              </motion.p>
-            )}
-
-            {/* Inline event meta */}
-            {!isTba && (
-              <motion.div
-                custom={2}
-                initial="hidden"
-                animate="visible"
-                variants={fadeInUp}
-                className="mb-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/60"
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5 text-white/40" />
-                  {formatDate(gig.gigStartTime, "long")}
+                <span className="bg-linear-to-r from-white via-white to-white/60 bg-clip-text text-transparent">
+                  TBA...
                 </span>
-
-                {upcoming && (
-                  <>
-                    <span className="text-white/20">|</span>
-                    <span className="inline-flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5 text-white/40" />
-                      {gig.gigEndTime
-                        ? `${formatTime(gig.gigStartTime)} – ${formatTime(gig.gigEndTime)}`
-                        : `Starts at ${formatTime(gig.gigStartTime)}`}
-                    </span>
-                  </>
-                )}
-              </motion.div>
-            )}
-
-            {/* Tags + ticket CTA */}
-            <motion.div
-              custom={3}
-              initial="hidden"
-              animate="visible"
-              variants={fadeInUp}
-              className="flex flex-wrap items-center gap-4"
-            >
-              <GigTagList gigTags={gig.gigTags} size="md" />
-
-              {gig.ticketLink && upcoming && (
-                <Link
-                  href={gig.ticketLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group relative inline-flex items-center gap-2 overflow-hidden bg-accent-strong px-5 py-2 text-sm font-black tracking-wider text-white uppercase transition-all hover:bg-accent-muted hover:shadow-[0_0_20px_var(--accent-muted)]"
+              </motion.h1>
+            ) : (
+              <>
+                {/* Title */}
+                <motion.h1
+                  custom={0}
+                  initial="hidden"
+                  animate="visible"
+                  variants={fadeInUp}
+                  className="mb-4 max-w-4xl text-5xl font-black tracking-tight uppercase sm:text-6xl md:text-7xl lg:text-8xl"
                 >
-                  <Ticket className="h-4 w-4" />
-                  Get Tickets
-                </Link>
-              )}
-            </motion.div>
+                  <span className="bg-linear-to-r from-white via-white to-white/60 bg-clip-text text-transparent">
+                    {displayTitle}
+                  </span>
+                </motion.h1>
+
+                {/* Subtitle */}
+                {gig.subtitle && (
+                  <motion.p
+                    custom={1}
+                    initial="hidden"
+                    animate="visible"
+                    variants={fadeInUp}
+                    className="mb-5 max-w-2xl text-lg text-white/70 sm:text-xl md:text-2xl"
+                  >
+                    {gig.subtitle}
+                  </motion.p>
+                )}
+
+                {/* Inline event meta */}
+                <motion.div
+                  custom={2}
+                  initial="hidden"
+                  animate="visible"
+                  variants={fadeInUp}
+                  className="mb-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/60"
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-white/40" />
+                    {formatDate(gig.gigStartTime, "long")}
+                  </span>
+
+                  {upcoming && (
+                    <>
+                      <span className="text-white/20">|</span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <Clock className="h-3.5 w-3.5 text-white/40" />
+                        {gig.gigEndTime
+                          ? `${formatTime(gig.gigStartTime)} – ${formatTime(gig.gigEndTime)}`
+                          : `Starts at ${formatTime(gig.gigStartTime)}`}
+                      </span>
+                    </>
+                  )}
+                </motion.div>
+
+                {/* Tags + ticket CTA */}
+                <motion.div
+                  custom={3}
+                  initial="hidden"
+                  animate="visible"
+                  variants={fadeInUp}
+                  className="flex flex-wrap items-center gap-4"
+                >
+                  <GigTagList gigTags={gig.gigTags} size="md" />
+
+                  {gig.ticketLink && upcoming && (
+                    <Link
+                      href={gig.ticketLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group relative inline-flex items-center gap-2 overflow-hidden bg-accent-strong px-5 py-2 text-sm font-black tracking-wider text-white uppercase transition-all hover:bg-accent-muted hover:shadow-[0_0_20px_var(--accent-muted)]"
+                    >
+                      <Ticket className="h-4 w-4" />
+                      Get Tickets
+                    </Link>
+                  )}
+                </motion.div>
+              </>
+            )}
           </div>
         </motion.div>
 
@@ -655,35 +677,37 @@ export default function GigPage({ params }: PageProps) {
       </section>
 
       {/* Content Section */}
-      <section className="relative z-20 bg-linear-to-b from-transparent via-black to-black">
-        <div className="mx-auto max-w-7xl px-4 pb-24">
-          {/* Description */}
-          {gig.longDescription && (
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.6 }}
-              className="mx-auto max-w-3xl"
-            >
-              <MarkdownContent content={String(gig.longDescription)} />
-            </motion.div>
-          )}
+      {!isTba && (
+        <section className="relative z-20 bg-linear-to-b from-transparent via-black to-black">
+          <div className="mx-auto max-w-7xl px-4 pb-24">
+            {/* Description */}
+            {gig.longDescription && (
+              <motion.div
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 0.6 }}
+                className="mx-auto max-w-3xl"
+              >
+                <MarkdownContent content={String(gig.longDescription)} />
+              </motion.div>
+            )}
 
-          {/* Past gig media gallery */}
-          {!upcoming && hasMedia && (
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.6 }}
-              className="mt-16"
-            >
-              <MediaGallery media={gig.media} gigTitle={gig.title} />
-            </motion.div>
-          )}
-        </div>
-      </section>
+            {/* Past gig media gallery */}
+            {!upcoming && hasMedia && (
+              <motion.div
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 0.6 }}
+                className="mt-16"
+              >
+                <MediaGallery media={gig.media} gigTitle={gig.title} />
+              </motion.div>
+            )}
+          </div>
+        </section>
+      )}
     </main>
   );
 }
