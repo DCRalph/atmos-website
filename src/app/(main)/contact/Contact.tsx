@@ -67,13 +67,13 @@ function ProfessionalEnquiries() {
         <div className="flex gap-2">
           <span className="font-bold tracking-wider uppercase">Email:</span>
           <a
-            href="mailto:finn@atmos-wlg.com"
+            href="mailto:finn@atmosmedia.co.nz"
             className="hover:text-accent-muted font-mono break-all transition-colors"
             onClick={() =>
               posthog.capture("contact_link_clicked", { type: "email" })
             }
           >
-            finn@atmos-wlg.com
+            finn@atmosmedia.co.nz
           </a>
         </div>
       </div>
