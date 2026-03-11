@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect } from "react";
 import { formatDate } from "~/lib/date-utils";
 import { motion } from "motion/react";
 import Image from "next/image";
+import { api } from "~/trpc/react";
 
 type Gig = {
   id: string;
@@ -28,6 +31,19 @@ export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
   const posterUrl = gig.posterFileUpload?.url ?? null;
   const isTba = gig.mode === "TO_BE_ANNOUNCED";
   const displayTitle = isTba ? "TBA..." : gig.title;
+  const posterLayoutId = `gig-poster-${gig.id}`;
+  const utils = api.useUtils();
+  const router = useRouter();
+  const gigHref = `/gigs/${gig.id}`;
+
+  const prefetchGig = useCallback(() => {
+    void router.prefetch(gigHref);
+    void utils.gigs.getById.prefetch({ id: gig.id });
+  }, [gig.id, gigHref, router, utils.gigs.getById]);
+
+  useEffect(() => {
+    prefetchGig();
+  }, [prefetchGig]);
 
   return (
     <motion.div
@@ -41,8 +57,18 @@ export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
 
       {/* Poster - full width on mobile, side on desktop */}
       {posterUrl && (
-        <Link href={`/gigs/${gig.id}`} className="block shadow-2xl">
-          <div className="relative aspect-3/4 w-full bg-black/20">
+        <Link
+          href={gigHref}
+          className="block shadow-2xl"
+          onMouseEnter={prefetchGig}
+          onFocus={prefetchGig}
+          onTouchStart={prefetchGig}
+        >
+          <motion.div
+            layoutId={posterLayoutId}
+            transition={{ type: "spring", stiffness: 260, damping: 28 }}
+            className="relative aspect-3/4 w-full overflow-hidden bg-black/20"
+          >
             <Image
               src={posterUrl}
               alt={isTba ? "TBA poster" : `${gig.title} poster`}
@@ -59,7 +85,7 @@ export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
               </div>
             )}
 
-            { posterUrl && !isTba && (
+            {posterUrl && !isTba && (
               <div className="absolute -inset-2 -bottom-6 sm:bottom-0 sm:-inset-4 overflow-hidden -z-20 blur-2xl sm:blur-3xl ">
                 <Image
                   src={posterUrl}
@@ -72,7 +98,7 @@ export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
               </div>
             )}
 
-          </div>
+          </motion.div>
         </Link>
       )}
 
@@ -108,8 +134,11 @@ export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
         {!isTba && (
           <div className="flex gap-3">
             <Link
-              href={`/gigs/${gig.id}`}
+              href={gigHref}
               className="flex-1 inline-flex items-center justify-center rounded-none border-2 border-white/30 bg-transparent px-4 py-2 text-xs font-black tracking-wider text-white uppercase transition-all hover:border-accent-muted hover:bg-accent-muted/10 hover:text-white"
+              onMouseEnter={prefetchGig}
+              onFocus={prefetchGig}
+              onTouchStart={prefetchGig}
             >
               View Details
             </Link>

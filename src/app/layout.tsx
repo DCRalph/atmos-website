@@ -7,6 +7,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { TRPCReactProvider } from "~/trpc/react";
 import { ThemeOverrideProvider } from "~/components/theme-overide-provider";
 import { MobileMenuProvider } from "~/components/mobile-menu-provider";
+import { LayoutGroupProvider } from "~/components/layout-group-provider";
 import { ViewTransition } from "react";
 import { montserrat } from "~/lib/fonts";
 
@@ -67,39 +68,41 @@ export default function RootLayout({
     >
       <body>
         <ViewTransition>
-          <ThemeOverrideProvider
-          // defaultForcedTheme="dark"
-          >
-            <TRPCReactProvider>
-              <MobileMenuProvider>
-                <NextTopLoader height={4} showSpinner={false} />
+          <LayoutGroupProvider>
+            <ThemeOverrideProvider
+            // defaultForcedTheme="dark"
+            >
+              <TRPCReactProvider>
+                <MobileMenuProvider>
+                  <NextTopLoader height={4} showSpinner={false} />
 
-                <div
-                  id="mobile-menu-portal"
-                  className="pointer-events-none fixed inset-0 z-999 *:pointer-events-auto"
-                />
+                  <div
+                    id="mobile-menu-portal"
+                    className="pointer-events-none fixed inset-0 z-999 *:pointer-events-auto"
+                  />
 
-                <div
-                  id="mobile-menu-toggle-portal"
-                  className="pointer-events-none fixed inset-0 z-999 *:pointer-events-auto"
-                />
+                  <div
+                    id="mobile-menu-toggle-portal"
+                    className="pointer-events-none fixed inset-0 z-999 *:pointer-events-auto"
+                  />
 
-                <div
-                  id="app-content-wrapper"
-                  className="origin-center transition-all duration-700 ease-out"
-                >
-                  {children}
-                </div>
+                  <div
+                    id="app-content-wrapper"
+                    className="origin-center transition-all duration-700 ease-out"
+                  >
+                    {children}
+                  </div>
 
-                <Toaster richColors position="bottom-right" />
+                  <Toaster richColors position="bottom-right" />
 
-                <Analytics
-                  endpoint="/fuckoffaddblockers"
-                  scriptSrc="/fuckoffaddblocker/script.js"
-                />
-              </MobileMenuProvider>
-            </TRPCReactProvider>
-          </ThemeOverrideProvider>
+                  <Analytics
+                    endpoint="/fuckoffaddblockers"
+                    scriptSrc="/fuckoffaddblocker/script.js"
+                  />
+                </MobileMenuProvider>
+              </TRPCReactProvider>
+            </ThemeOverrideProvider>
+          </LayoutGroupProvider>
         </ViewTransition>
       </body>
     </html>

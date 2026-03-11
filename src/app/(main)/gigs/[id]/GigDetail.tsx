@@ -378,7 +378,7 @@
 "use client";
 
 import { use, useRef } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useScroll, useTransform } from "motion/react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -464,13 +464,14 @@ export default function GigPage({ params }: PageProps) {
 
   const isTba = gig.mode === "TO_BE_ANNOUNCED";
   const displayTitle = isTba ? "TBA..." : gig.title;
+  const posterLayoutId = `gig-poster-${gig.id}`;
   const hasMedia =
     gig.mode !== "TO_BE_ANNOUNCED" &&
     !!gig.media &&
     gig.media.length > 0;
 
   const fadeInUp = {
-    hidden: { opacity: 0, y: 30 },
+    hidden: { opacity: 0, y: "30%" },
     visible: (i: number) => ({
       opacity: 1,
       y: 0,
@@ -500,17 +501,24 @@ export default function GigPage({ params }: PageProps) {
               className="object-cover blur-2xl absolute inset-0"
               sizes="100vw"
             />
-            {!isTba && (
-              <Image
-                src={gig.posterFileUpload!.url}
-                alt={`${displayTitle} poster`}
-                fill
-                priority
-                className={`object-contain pb-48`}
-                sizes="100vw"
-              />
-            )}
+          </motion.div>
+        )}
 
+        {hasPoster && (
+          <motion.div
+            layoutId={posterLayoutId}
+            transition={{ type: "spring", stiffness: 260, damping: 28 }}
+            className="pointer-events-none absolute inset-0 z-10"
+            style={{ y: posterY, scale: posterScale }}
+          >
+            <Image
+              src={gig.posterFileUpload!.url}
+              alt={`${displayTitle} poster`}
+              fill
+              priority
+              className={isTba ? "object-contain blur-md pb-48" : "object-contain pb-48"}
+              sizes="100vw"
+            />
           </motion.div>
         )}
 
