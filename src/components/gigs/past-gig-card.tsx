@@ -1,11 +1,13 @@
 "use client";
 
 import { formatDate, formatTime } from "~/lib/date-utils";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
+import { useCallback, useEffect } from "react";
 
-import { type RouterOutputs } from "~/trpc/react";
+import { api, type RouterOutputs } from "~/trpc/react";
 import Link from "next/link";
 
 type Gig = RouterOutputs["gigs"]["getToday"][number];
@@ -20,11 +22,27 @@ const MotionLink = motion.create(Link);
 export function PastGigCard({ gig, upcomming = false }: PastGigCardProps) {
   const isTba = gig.mode === "TO_BE_ANNOUNCED";
   const displayTitle = isTba ? "TBA..." : gig.title;
+  const posterLayoutId = `gig-poster-${gig.id}`;
+  const utils = api.useUtils();
+  const router = useRouter();
+  const gigHref = `/gigs/${gig.id}`;
+
+  const prefetchGig = useCallback(() => {
+    void router.prefetch(gigHref);
+    void utils.gigs.getById.prefetch({ id: gig.id });
+  }, [gig.id, gigHref, router, utils.gigs.getById]);
+
+  useEffect(() => {
+    prefetchGig();
+  }, [prefetchGig]);
 
   return (
     <MotionLink
-      href={`/gigs/${gig.id}`}
+      href={gigHref}
       className="group hover:border-accent-muted/50 relative flex flex-col justify-between overflow-hidden rounded-none border-2 border-white/10 bg-black/80 backdrop-blur-sm transition-all hover:bg-black/90 hover:shadow-[0_0_15px_var(--accent-muted)]"
+      onMouseEnter={prefetchGig}
+      onFocus={prefetchGig}
+      onTouchStart={prefetchGig}
       onClick={() =>
         posthog.capture("gig_card_clicked", {
           gig_id: gig.id,
@@ -34,7 +52,11 @@ export function PastGigCard({ gig, upcomming = false }: PastGigCardProps) {
       }
     >
       {gig.posterFileUpload && (
-        <div className="relative w-full h-full flex items-center justify-center">
+        <motion.div
+          layoutId={posterLayoutId}
+          transition={{ type: "spring", stiffness: 260, damping: 28 }}
+          className="relative flex h-full w-full items-center justify-center"
+        >
           <Image
             src={gig.posterFileUpload.url}
             alt={isTba ? "TBA poster" : `${gig.title} poster`}
@@ -53,7 +75,7 @@ export function PastGigCard({ gig, upcomming = false }: PastGigCardProps) {
               </h3>
             </div>
           )}
-        </div>
+        </motion.div>
       )}
 
       <div className="border-t border-white/10 bg-black/95">

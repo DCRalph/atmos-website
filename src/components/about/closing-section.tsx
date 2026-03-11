@@ -1,6 +1,7 @@
 "use client"
 
 import { motion, useScroll, useTransform } from "motion/react"
+import Image from "next/image"
 import { useRef } from "react"
 import { useMainLayoutScrollContainer } from "~/hooks/use-main-layout-scroll-container"
 
@@ -36,49 +37,28 @@ export function ClosingSection() {
       </motion.div>
 
       <motion.div
-        className="relative z-10 flex flex-col items-center gap-10 px-6 text-center"
+        className="relative z-10 flex flex-col items-center gap-16 px-6 text-center"
         style={{ scale, opacity, y }}
       >
-        <motion.p
-          className="text-xs tracking-[0.5em] uppercase text-white/30"
-        >
-          This is Atmos
-        </motion.p>
 
+
+        <Image
+          src="/logo/atmos-white.png"
+          alt="Atmos"
+          width={200}
+          height={48}
+          className="h-12 md:h-20 w-auto"
+        />
         <motion.h2
-          className="text-5xl md:text-7xl lg:text-8xl font-serif font-bold tracking-tighter text-white"
+          className="text-sm md:text-xl font-bold tracking-tighter italic text-white"
         >
-          Feel it.
+          XOXO
         </motion.h2>
 
-        <motion.div
-          className="w-16 h-px bg-white/15"
-        />
 
-        <motion.p
-          className="max-w-sm text-base text-white/45 leading-relaxed tracking-wide"
-        >
-          Follow us for upcoming events and find out where we surface next.
-        </motion.p>
-
-        <motion.a
-          href="#"
-          className="mt-2 px-8 py-3.5 border border-white/20 text-xs tracking-[0.25em] uppercase text-white/80 hover:bg-white hover:text-black transition-all duration-500 ease-out"
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-        >
-          Get in touch
-        </motion.a>
       </motion.div>
 
-      {/* Footer */}
-      <motion.div
-        className="absolute bottom-0 inset-x-0 z-10 flex items-center justify-between px-8 py-8"
-        style={{ opacity: footerOpacity }}
-      >
-        <span className="text-[10px] text-white/25 tracking-[0.3em] uppercase">Atmos</span>
-        <span className="text-[10px] text-white/25 tracking-wider">Poneke, NZ</span>
-      </motion.div>
+
     </section>
   )
 }

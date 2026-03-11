@@ -55,13 +55,13 @@ export function SpacesSection() {
           <motion.p
             className="text-lg text-muted-foreground leading-relaxed mb-6"
           >
-            {"We don\u2019t stop at four walls. You\u2019ll find us in the basements, the warehouses, and the spaces Poneke forgot existed."}
+            {"We work with existing venues but we also use spaces you wouldn\u2019t expect. Basements, warehouses, places around Poneke that most people walk past without a second look."}
           </motion.p>
 
           <motion.p
             className="text-lg text-muted-foreground leading-relaxed"
           >
-            Atmos is a collective of likeminded souls. No ego, no judgment, just vibes. A safe harbour to be yourself.
+            {"Everyone\u2019s welcome. No pretension, no pressure. Just a good environment with good people around you."}
           </motion.p>
         </motion.div>
       </div>

@@ -27,7 +27,7 @@ export function ExperienceSection() {
         className="absolute inset-0 flex items-center justify-center pointer-events-none select-none"
         style={{ y: textY }}
       >
-        <span className="text-[clamp(6rem,20vw,16rem)] font-serif font-bold text-foreground/3 leading-none tracking-tighter whitespace-nowrap">
+        <span className="text-[clamp(6rem,20vw,16rem)] font-bold text-foreground/3 leading-none tracking-tighter whitespace-nowrap">
           EXPERIENCE
         </span>
       </motion.div>
@@ -37,14 +37,14 @@ export function ExperienceSection() {
           className="text-sm tracking-[0.3em] uppercase text-muted-foreground mb-8"
           style={{ opacity: eyebrowOpacity }}
         >
-          Our Philosophy
+          What We Do
         </motion.p>
 
         <motion.h2
-          className="text-4xl md:text-6xl lg:text-7xl font-serif font-bold tracking-tight leading-[1.05] mb-12 text-balance"
+          className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] mb-12 text-balance"
           style={{ opacity: titleOpacity, y: titleY }}
         >
-          Experience over everything.
+          Atmosphere over everything.
         </motion.h2>
 
         <motion.div
@@ -54,13 +54,9 @@ export function ExperienceSection() {
           <motion.p
             className="text-lg md:text-xl text-muted-foreground leading-relaxed flex-1"
           >
-            In a city known for its culture, we're pushing the walls out. We take the venues you know and strip them of their identity, replacing it with a cohesive synergy of sound and light.
+            {"We take venues you know and reshape them into something different. Sound, light, and design working together to create an environment not just a show."}
           </motion.p>
-          <motion.p
-            className="text-lg md:text-xl text-muted-foreground leading-relaxed flex-1"
-          >
-            We curate spaces where the boundary between the music, the lighting, and the crowd disappears. Sound doesn't work without sight. Light doesn't work without shadow. We bring it all together.
-          </motion.p>
+
         </motion.div>
       </div>
     </section>

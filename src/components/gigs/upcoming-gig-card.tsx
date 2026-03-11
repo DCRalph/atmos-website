@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect } from "react";
 import { formatDate, formatTime } from "~/lib/date-utils";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { GigTagList } from "~/components/gig-tag-list";
 import Image from "next/image";
 import { MarkdownContent } from "~/components/markdown-content";
 
-import { type RouterOutputs } from "~/trpc/react";
+import { api, type RouterOutputs } from "~/trpc/react";
 
 type Gig = RouterOutputs["gigs"]["getToday"][number];
 
@@ -18,6 +20,19 @@ type UpcomingGigCardProps = {
 export function UpcomingGigCard({ gig }: UpcomingGigCardProps) {
   const isTba = gig.mode === "TO_BE_ANNOUNCED";
   const displayTitle = isTba ? "TBA..." : gig.title;
+  const posterLayoutId = `gig-poster-${gig.id}`;
+  const utils = api.useUtils();
+  const router = useRouter();
+  const gigHref = `/gigs/${gig.id}`;
+
+  const prefetchGig = useCallback(() => {
+    void router.prefetch(gigHref);
+    void utils.gigs.getById.prefetch({ id: gig.id });
+  }, [gig.id, gigHref, router, utils.gigs.getById]);
+
+  useEffect(() => {
+    prefetchGig();
+  }, [prefetchGig]);
 
   return (
     <motion.div
@@ -27,10 +42,20 @@ export function UpcomingGigCard({ gig }: UpcomingGigCardProps) {
       exit={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
     >
-      <Link href={`/gigs/${gig.id}`} className="block">
+      <Link
+        href={gigHref}
+        className="block"
+        onMouseEnter={prefetchGig}
+        onFocus={prefetchGig}
+        onTouchStart={prefetchGig}
+      >
         <div className="flex flex-col gap-5 h-full md:flex-row md:items-start">
           {gig.posterFileUpload?.url && (
-            <div className="relative w-full overflow-hidden bg-black/20 md:w-1/2">
+            <motion.div
+              layoutId={posterLayoutId}
+              transition={{ type: "spring", stiffness: 260, damping: 28 }}
+              className="relative w-full overflow-hidden bg-black/20 md:w-1/2"
+            >
               <Image
                 src={gig.posterFileUpload.url}
                 alt={isTba ? "TBA poster" : `${gig.title} poster`}
@@ -50,7 +75,7 @@ export function UpcomingGigCard({ gig }: UpcomingGigCardProps) {
                   </h3>
                 </div>
               )}
-            </div>
+            </motion.div>
           )}
 
 
@@ -97,8 +122,11 @@ export function UpcomingGigCard({ gig }: UpcomingGigCardProps) {
       {!isTba && (
         <div className="mt-5 flex flex-col gap-2 border-t border-white/10 bg-black/95 px-3 py-2 sm:flex-row sm:items-center sm:justify-end">
           <Link
-            href={`/gigs/${gig.id}`}
+            href={gigHref}
             className="flex-1 rounded-none border-2 border-white/30 bg-transparent px-3 py-2 text-center text-[11px] font-black tracking-wider text-white uppercase transition-all hover:border-white hover:bg-white/10 sm:flex-none"
+            onMouseEnter={prefetchGig}
+            onFocus={prefetchGig}
+            onTouchStart={prefetchGig}
           >
             View Details
           </Link>

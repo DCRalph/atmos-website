@@ -15,7 +15,7 @@ import { GradientBlur } from "./gradient-blur";
 
 const footerLinks = [
   { label: "Home", href: "/" },
-  // { label: "About", href: "/about" },
+  { label: "About", href: "/about" },
   { label: "Merch", href: "/merch" },
   { label: "Gigs", href: "/gigs" },
   { label: "Crew", href: "/crew" },
