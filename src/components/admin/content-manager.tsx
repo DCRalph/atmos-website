@@ -4,8 +4,6 @@ import { useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import { Textarea } from "~/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -15,36 +13,22 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "~/components/ui/dialog";
-import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import { DatePicker } from "~/components/ui/date-picker";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
+  ContentItemDialog,
+  type ContentLinkType,
+} from "~/components/admin/content-item-dialog";
 
 export function ContentManager() {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [type, setType] = useState("");
-  const [linkType, setLinkType] = useState<
-    "SOUNDCLOUD_TRACK" | "SOUNDCLOUD_PLAYLIST" | "YOUTUBE_VIDEO" | "OTHER"
-  >("OTHER");
+  const [linkType, setLinkType] = useState<ContentLinkType>("OTHER");
   const [title, setTitle] = useState("");
   const [dj, setDj] = useState("");
   const [description, setDescription] = useState("");
@@ -147,158 +131,35 @@ export function ContentManager() {
               Manage content items (mixes, videos, playlists)
             </CardDescription>
           </div>
-          <Dialog
+          <ContentItemDialog
             open={isOpen}
+            editingId={editingId}
+            type={type}
+            linkType={linkType}
+            title={title}
+            dj={dj}
+            description={description}
+            date={date}
+            link={link}
+            embedUrl={embedUrl}
+            platform={platform}
+            isPending={createItem.isPending || updateItem.isPending}
             onOpenChange={(open) => {
               setIsOpen(open);
               if (!open) resetForm();
             }}
-          >
-            <DialogTrigger asChild>
-              <Button onClick={() => resetForm()}>Add Content</Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingId ? "Edit" : "Add"} Content Item
-                </DialogTitle>
-                <DialogDescription>
-                  {editingId ? "Update" : "Create"} a new content item
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="type">Type</Label>
-                  <Input
-                    id="type"
-                    value={type}
-                    onChange={(e) => setType(e.target.value)}
-                    placeholder="mix, video, playlist"
-                    required
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="title">Title</Label>
-                  <Input
-                    id="title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="platform">Platform (optional)</Label>
-                  <Input
-                    id="platform"
-                    value={platform}
-                    onChange={(e) => setPlatform(e.target.value)}
-                    placeholder="SoundCloud, Spotify, YouTube, etc."
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="dj">DJ (optional)</Label>
-                  <Input
-                    id="dj"
-                    value={dj}
-                    onChange={(e) => setDj(e.target.value)}
-                    placeholder="DJ name"
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="date">Date</Label>
-                  <DatePicker
-                    date={date}
-                    onDateChange={setDate}
-                    placeholder="Select a date"
-                    required
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label>Link type</Label>
-                  <Select
-                    value={linkType}
-                    onValueChange={(v) => setLinkType(v as typeof linkType)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select link type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="OTHER">Other</SelectItem>
-                      <SelectItem value="SOUNDCLOUD_TRACK">
-                        SoundCloud track
-                      </SelectItem>
-                      <SelectItem value="SOUNDCLOUD_PLAYLIST">
-                        SoundCloud playlist
-                      </SelectItem>
-                      <SelectItem value="YOUTUBE_VIDEO">
-                        YouTube video
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="link">Link</Label>
-                  <Input
-                    id="link"
-                    type="url"
-                    value={link}
-                    onChange={(e) => setLink(e.target.value)}
-                    placeholder={
-                      linkType === "SOUNDCLOUD_TRACK" ||
-                      linkType === "SOUNDCLOUD_PLAYLIST"
-                        ? "SoundCloud track/playlist URL"
-                        : linkType === "YOUTUBE_VIDEO"
-                          ? "YouTube video URL"
-                        : "Content URL"
-                    }
-                    required
-                  />
-                </div>
-                {(linkType === "SOUNDCLOUD_TRACK" ||
-                  linkType === "SOUNDCLOUD_PLAYLIST" ||
-                  linkType === "YOUTUBE_VIDEO") && (
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="embedUrl">
-                      {linkType === "YOUTUBE_VIDEO"
-                        ? "YouTube video ID (optional)"
-                        : "Embed URL (optional)"}
-                    </Label>
-                    <Input
-                      id="embedUrl"
-                      type={linkType === "YOUTUBE_VIDEO" ? "text" : "url"}
-                      value={embedUrl}
-                      onChange={(e) => setEmbedUrl(e.target.value)}
-                      placeholder={
-                        linkType === "YOUTUBE_VIDEO"
-                          ? "YouTube video ID (e.g. dQw4w9WgXcQ)"
-                          : "SoundCloud embed URL for the player"
-                      }
-                    />
-                    <p className="text-muted-foreground text-xs">
-                      {linkType === "YOUTUBE_VIDEO"
-                        ? "If provided, this ID will be used for the YouTube embed."
-                        : "If provided, this URL will be used for the SoundCloud player embed. Otherwise, the Link URL will be used."}
-                    </p>
-                  </div>
-                )}
-                <Button
-                  type="submit"
-                  disabled={createItem.isPending || updateItem.isPending}
-                >
-                  {editingId ? "Update" : "Create"}
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+            onResetForm={resetForm}
+            onSubmit={handleSubmit}
+            onTypeChange={setType}
+            onLinkTypeChange={setLinkType}
+            onTitleChange={setTitle}
+            onDjChange={setDj}
+            onDescriptionChange={setDescription}
+            onDateChange={setDate}
+            onLinkChange={setLink}
+            onEmbedUrlChange={setEmbedUrl}
+            onPlatformChange={setPlatform}
+          />
         </div>
       </CardHeader>
       <CardContent>
