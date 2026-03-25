@@ -42,6 +42,11 @@ const sections = [
     href: "/admin/merch",
   },
   {
+    title: "Shopify",
+    description: "Sync Shopify products into the site cache",
+    href: "/admin/shopify",
+  },
+  {
     title: "Contact",
     description: "Review contact form submissions",
     href: "/admin/contact",

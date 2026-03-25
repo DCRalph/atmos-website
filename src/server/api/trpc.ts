@@ -25,7 +25,10 @@ import { auth } from "~/server/auth";
  *
  * @see https://trpc.io/docs/server/context
  */
-export const createTRPCContext = async (opts: { headers: Headers }) => {
+export const createTRPCContext = async (opts: {
+  headers: Headers;
+  resHeaders?: Headers;
+}) => {
   const session = await auth.api.getSession({ headers: opts.headers });
   return {
     db,

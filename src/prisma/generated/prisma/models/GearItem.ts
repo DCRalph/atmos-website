@@ -1196,6 +1196,11 @@ export type GearItemFindManyArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * Skip the first `n` GearItems.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of GearItems.
+   */
   distinct?: Prisma.GearItemScalarFieldEnum | Prisma.GearItemScalarFieldEnum[]
 }
 

@@ -25,6 +25,7 @@ import {
   FolderOpen,
   Tag,
   ShoppingBag,
+  Store,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -81,6 +82,11 @@ const menuItems = [
     icon: ShoppingBag,
   },
   {
+    title: "Shopify",
+    url: "/admin/shopify",
+    icon: Store,
+  },
+  {
     title: "Contact",
     url: "/admin/contact",
     icon: Mail,
@@ -129,69 +135,69 @@ export function DashboardSideBar() {
 
   return (
     // <div className="relative h-screen">
-      <Sidebar collapsible="icon" className="fixed top-0 left-0 border-r-0!">
-        <SidebarHeader>
-          <div
-            className={`transition-all duration-300 ${isCollapsed ? "" : "p-1"} absolute flex w-60 items-center gap-2`}
-          >
-            <div
-              className={`grid ${isCollapsed && !isMobile ? "mt-3 size-8" : "size-11"} place-items-center transition-all duration-300`}
-            >
-              <Image
-                src="/android-chrome-512x512.png"
-                alt="Atmos Logo"
-                width={128}
-                height={128}
-              />
-            </div>
-            <div
-              className={`${isCollapsed && !isMobile ? "opacity-0" : "opacity-100"} transition-opacity duration-300`}
-            >
-              <p className="text-lg font-bold">Atmos Admin</p>
-            </div>
-          </div>
-        </SidebarHeader>
-        <SidebarContent
-          className={`no-scrollbar overflow-x-hidden overflow-y-scroll! ${isCollapsed ? "mt-10" : "mt-14"}`}
+    <Sidebar collapsible="icon" className="fixed top-0 left-0 border-r-0!">
+      <SidebarHeader>
+        <div
+          className={`transition-all duration-300 ${isCollapsed ? "" : "p-1"} absolute flex w-60 items-center gap-2`}
         >
-          <SidebarGroup>
-            <SidebarGroupLabel>Application</SidebarGroupLabel>
-            <SidebarMenu>
-              {!session ? (
-                // Loading state
-                <>
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <SidebarMenuItem key={i}>
-                      <div className="flex items-center gap-2 px-2 py-2">
-                        <Skeleton className="size-4 rounded" />
-                        {!isCollapsed && (
-                          <Skeleton className="h-4 w-32 rounded" />
-                        )}
-                      </div>
-                    </SidebarMenuItem>
-                  ))}
-                </>
-              ) : (
-                // Loaded state
-                menuItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive(item.url)}
-                      tooltip={item.title}
-                    >
-                      <Link href={item.url}>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
+          <div
+            className={`grid ${isCollapsed && !isMobile ? "mt-3 size-8" : "size-11"} place-items-center transition-all duration-300`}
+          >
+            <Image
+              src="/android-chrome-512x512.png"
+              alt="Atmos Logo"
+              width={128}
+              height={128}
+            />
+          </div>
+          <div
+            className={`${isCollapsed && !isMobile ? "opacity-0" : "opacity-100"} transition-opacity duration-300`}
+          >
+            <p className="text-lg font-bold">Atmos Admin</p>
+          </div>
+        </div>
+      </SidebarHeader>
+      <SidebarContent
+        className={`no-scrollbar overflow-x-hidden overflow-y-scroll! ${isCollapsed ? "mt-10" : "mt-14"}`}
+      >
+        <SidebarGroup>
+          <SidebarGroupLabel>Application</SidebarGroupLabel>
+          <SidebarMenu>
+            {!session ? (
+              // Loading state
+              <>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <SidebarMenuItem key={i}>
+                    <div className="flex items-center gap-2 px-2 py-2">
+                      <Skeleton className="size-4 rounded" />
+                      {!isCollapsed && (
+                        <Skeleton className="h-4 w-32 rounded" />
+                      )}
+                    </div>
                   </SidebarMenuItem>
-                ))
-              )}
-            </SidebarMenu>
-          </SidebarGroup>
-        </SidebarContent>
-      </Sidebar>
+                ))}
+              </>
+            ) : (
+              // Loaded state
+              menuItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item.url)}
+                    tooltip={item.title}
+                  >
+                    <Link href={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))
+            )}
+          </SidebarMenu>
+        </SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
     // </div>
   );
 }

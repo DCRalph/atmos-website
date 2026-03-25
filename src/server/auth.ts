@@ -2,11 +2,9 @@ import { betterAuth } from "better-auth";
 import { env } from "~/env";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { db } from "~/server/db";
-import { createAuthMiddleware } from "better-auth/api";
-import { z } from "zod";
-import { cache } from "react";
-import { headers } from "next/headers";
-import { type User } from "~Prisma/client";
+// import { createAuthMiddleware } from "better-auth/api";
+// import { z } from "zod";
+import { adminAc, userAc } from "better-auth/plugins/admin/access";
 import { admin, lastLoginMethod } from "better-auth/plugins";
 
 export const auth = betterAuth({
@@ -24,7 +22,15 @@ export const auth = betterAuth({
     },
   },
   plugins: [
-    admin(),
+    admin({
+      defaultRole: "USER",
+      adminRoles: ["ADMIN"],
+      roles: {
+        ADMIN: adminAc,
+        USER: userAc,
+        CREATOR: userAc,
+      },
+    }),
     lastLoginMethod(),
   ],
   // hooks: {
@@ -178,21 +184,4 @@ export const auth = betterAuth({
   //     }
   //   }),
   // },
-});
-
-export const authServer = cache(async () => {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  let dbUser: User | null = null;
-  if (session) {
-    dbUser = await db.user.findUnique({
-      where: { id: session.user.id },
-    });
-  }
-  return {
-    ...session,
-    user: dbUser,
-  };
 });

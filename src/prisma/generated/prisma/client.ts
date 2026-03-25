@@ -112,6 +112,11 @@ export type GigMedia = Prisma.GigMediaModel
  */
 export type MerchItem = Prisma.MerchItemModel
 /**
+ * Model ShopifyProductCache
+ * Cached Shopify Storefront products; populated by admin sync.
+ */
+export type ShopifyProductCache = Prisma.ShopifyProductCacheModel
+/**
  * Model ContactSubmission
  * 
  */

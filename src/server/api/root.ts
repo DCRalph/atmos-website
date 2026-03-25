@@ -14,6 +14,7 @@ import { homeContentRouter } from "~/server/api/routers/home-content";
 import { activityLogsRouter } from "~/server/api/routers/activity-logs";
 import { rentalsRouter } from "~/server/api/routers/rentals";
 import { settingsRouter } from "~/server/api/routers/settings";
+import { shopifyRouter } from "~/server/api/routers/shopify";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -38,6 +39,7 @@ export const appRouter = createTRPCRouter({
   activityLogs: activityLogsRouter,
   rentals: rentalsRouter,
   settings: settingsRouter,
+  shopify: shopifyRouter,
 });
 
 // export type definition of API

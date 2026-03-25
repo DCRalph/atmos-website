@@ -926,6 +926,11 @@ export type KeyValueStoreFindManyArgs<ExtArgs extends runtime.Types.Extensions.I
    * Skip the first `n` KeyValueStores.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of KeyValueStores.
+   */
   distinct?: Prisma.KeyValueStoreScalarFieldEnum | Prisma.KeyValueStoreScalarFieldEnum[]
 }
 

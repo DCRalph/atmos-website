@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useState } from "react";
 import { cn } from "~/lib/utils";
 import { MenuIcon } from "lucide-react";
+import { orbitron } from "~/lib/fonts";
 
 type RightMenuRailProps = {
   className?: string;
@@ -19,7 +20,7 @@ type MenuItem = {
 
 const DEFAULT_ITEMS: MenuItem[] = [
   { label: "Home", href: "/" },
-  { label: "About", href: "/about" },
+  // { label: "About", href: "/about" },
   { label: "Shop", href: "/merch" },
   // { label: "Content", href: "/content" },
   { label: "Gigs", href: "/gigs" },
@@ -32,8 +33,8 @@ export function RightMenuRail({
   variant = "light",
 }: RightMenuRailProps) {
   const pathname = usePathname();
-  const isAboutPage = pathname === "/about";
-  variant = isAboutPage ? "black" : variant;
+  // const isAboutPage = pathname === "/about";
+  // variant = isAboutPage ? "black" : variant;
 
   const [isOpen, setIsOpen] = useState(false);
   const [menuItems] = useState(DEFAULT_ITEMS);
@@ -46,7 +47,7 @@ export function RightMenuRail({
   return (
     <div
       className={cn(
-        "fixed top-2 right-2 z-20 text-right sm:top-4 sm:right-6",
+        "fixed top-2 right-2 z-100 text-right sm:top-4 sm:right-6",
         className,
       )}
     >
@@ -71,7 +72,7 @@ export function RightMenuRail({
         {isOpen && (
           <motion.ul
             key="menu-list"
-            className="space-y-2 text-lg font-semibold tracking-wider uppercase sm:space-y-3 sm:text-xl"
+            className={cn("space-y-1 text-lg font-black tracking-wider uppercase sm:text-3xl", orbitron.className)}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}

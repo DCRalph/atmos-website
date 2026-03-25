@@ -1621,6 +1621,11 @@ export type file_uploadFindManyArgs<ExtArgs extends runtime.Types.Extensions.Int
    * Skip the first `n` file_uploads.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of file_uploads.
+   */
   distinct?: Prisma.File_uploadScalarFieldEnum | Prisma.File_uploadScalarFieldEnum[]
 }
 

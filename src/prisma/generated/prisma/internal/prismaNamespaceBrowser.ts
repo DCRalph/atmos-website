@@ -65,6 +65,7 @@ export const ModelName = {
   HomeGigPlacement: 'HomeGigPlacement',
   GigMedia: 'GigMedia',
   MerchItem: 'MerchItem',
+  ShopifyProductCache: 'ShopifyProductCache',
   ContactSubmission: 'ContactSubmission',
   NewsletterSubscription: 'NewsletterSubscription',
   file_tag: 'file_tag',
@@ -295,6 +296,26 @@ export const MerchItemScalarFieldEnum = {
 } as const
 
 export type MerchItemScalarFieldEnum = (typeof MerchItemScalarFieldEnum)[keyof typeof MerchItemScalarFieldEnum]
+
+
+export const ShopifyProductCacheScalarFieldEnum = {
+  id: 'id',
+  shopifyProductId: 'shopifyProductId',
+  handle: 'handle',
+  variantId: 'variantId',
+  title: 'title',
+  description: 'description',
+  price: 'price',
+  currencyCode: 'currencyCode',
+  imageUrl: 'imageUrl',
+  variantsJson: 'variantsJson',
+  sortOrder: 'sortOrder',
+  syncedAt: 'syncedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ShopifyProductCacheScalarFieldEnum = (typeof ShopifyProductCacheScalarFieldEnum)[keyof typeof ShopifyProductCacheScalarFieldEnum]
 
 
 export const ContactSubmissionScalarFieldEnum = {

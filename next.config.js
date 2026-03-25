@@ -32,6 +32,14 @@ const config = {
         protocol: "https",
         hostname: "atmosmedia-temp.s3.ap-southeast-2.amazonaws.com",
       },
+      {
+        protocol: "https",
+        hostname: "cdn.shopify.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.myshopify.com",
+      },
     ],
   },
   rewrites: async () => {

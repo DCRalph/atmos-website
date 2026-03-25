@@ -281,6 +281,28 @@ model MerchItem {
   @@map("merch_item")
 }
 
+/// Cached Shopify Storefront products; populated by admin sync.
+model ShopifyProductCache {
+  id               String   @id @default(cuid())
+  shopifyProductId String   @unique
+  handle           String
+  variantId        String?
+  title            String
+  description      String
+  price            Float
+  currencyCode     String
+  imageUrl         String?
+  /// JSON array of variants from Storefront API (stored as string for reliable Prisma/DB support)
+  variantsJson     String?  @db.Text
+  sortOrder        Int      @default(0)
+  syncedAt         DateTime
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([sortOrder])
+  @@map("shopify_product_cache")
+}
+
 model ContactSubmission {
   id        String   @id @default(cuid())
   name      String

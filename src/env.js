@@ -35,13 +35,20 @@ export const env = createEnv({
     SMTP_USER: z.string().optional(),
     SMTP_PASS: z.string().optional(),
     SMTP_FROM: z.string().optional(),
-  },
 
+    // Shopify
+    SHOPIFY_STORE_DOMAIN: z.string(),
+    SHOPIFY_PRIVATE_ACCESS_TOKEN: z.string(),
+    SHOPIFY_COLLECTION_HANDLE: z.string().optional(),
+  },
+  
   client: {
     NEXT_PUBLIC_APP_URL: z.string().url(),
-
+    
     NEXT_PUBLIC_POSTHOG_KEY: z.string(),
     NEXT_PUBLIC_POSTHOG_HOST: z.string().url(),
+    
+    NEXT_PUBLIC_SHOPIFY_PUBLIC_ACCESS_TOKEN: z.string(),
   },
 
   runtimeEnv: {
@@ -71,6 +78,11 @@ export const env = createEnv({
 
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+
+    SHOPIFY_STORE_DOMAIN: process.env.SHOPIFY_STORE_DOMAIN,
+    NEXT_PUBLIC_SHOPIFY_PUBLIC_ACCESS_TOKEN: process.env.NEXT_PUBLIC_SHOPIFY_PUBLIC_ACCESS_TOKEN,
+    SHOPIFY_PRIVATE_ACCESS_TOKEN: process.env.SHOPIFY_PRIVATE_ACCESS_TOKEN,
+    SHOPIFY_COLLECTION_HANDLE: process.env.SHOPIFY_COLLECTION_HANDLE,
   },
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
   emptyStringAsUndefined: true,

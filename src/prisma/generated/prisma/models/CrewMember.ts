@@ -1118,6 +1118,11 @@ export type CrewMemberFindManyArgs<ExtArgs extends runtime.Types.Extensions.Inte
    * Skip the first `n` CrewMembers.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of CrewMembers.
+   */
   distinct?: Prisma.CrewMemberScalarFieldEnum | Prisma.CrewMemberScalarFieldEnum[]
 }
 

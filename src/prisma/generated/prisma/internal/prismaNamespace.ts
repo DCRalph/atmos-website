@@ -80,12 +80,12 @@ export type PrismaVersion = {
 }
 
 /**
- * Prisma Client JS version: 7.4.2
- * Query Engine version: 94a226be1cf2967af2541cca5529f0f7ba866919
+ * Prisma Client JS version: 7.5.0
+ * Query Engine version: 280c870be64f457428992c43c1f6d557fab6e29e
  */
 export const prismaVersion: PrismaVersion = {
-  client: "7.4.2",
-  engine: "94a226be1cf2967af2541cca5529f0f7ba866919"
+  client: "7.5.0",
+  engine: "280c870be64f457428992c43c1f6d557fab6e29e"
 }
 
 /**
@@ -398,6 +398,7 @@ export const ModelName = {
   HomeGigPlacement: 'HomeGigPlacement',
   GigMedia: 'GigMedia',
   MerchItem: 'MerchItem',
+  ShopifyProductCache: 'ShopifyProductCache',
   ContactSubmission: 'ContactSubmission',
   NewsletterSubscription: 'NewsletterSubscription',
   file_tag: 'file_tag',
@@ -421,7 +422,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "invite" | "crewMember" | "contentItem" | "homeContentPlacement" | "gigTag" | "gigTagRelationship" | "gig" | "homeGigPlacement" | "gigMedia" | "merchItem" | "contactSubmission" | "newsletterSubscription" | "file_tag" | "file_upload" | "gearItem" | "rental" | "activityLog" | "keyValueStore"
+    modelProps: "user" | "session" | "account" | "verification" | "invite" | "crewMember" | "contentItem" | "homeContentPlacement" | "gigTag" | "gigTagRelationship" | "gig" | "homeGigPlacement" | "gigMedia" | "merchItem" | "shopifyProductCache" | "contactSubmission" | "newsletterSubscription" | "file_tag" | "file_upload" | "gearItem" | "rental" | "activityLog" | "keyValueStore"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1461,6 +1462,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    ShopifyProductCache: {
+      payload: Prisma.$ShopifyProductCachePayload<ExtArgs>
+      fields: Prisma.ShopifyProductCacheFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ShopifyProductCacheFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShopifyProductCachePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ShopifyProductCacheFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShopifyProductCachePayload>
+        }
+        findFirst: {
+          args: Prisma.ShopifyProductCacheFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShopifyProductCachePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ShopifyProductCacheFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShopifyProductCachePayload>
+        }
+        findMany: {
+          args: Prisma.ShopifyProductCacheFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShopifyProductCachePayload>[]
+        }
+        create: {
+          args: Prisma.ShopifyProductCacheCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShopifyProductCachePayload>
+        }
+        createMany: {
+          args: Prisma.ShopifyProductCacheCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ShopifyProductCacheCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShopifyProductCachePayload>[]
+        }
+        delete: {
+          args: Prisma.ShopifyProductCacheDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShopifyProductCachePayload>
+        }
+        update: {
+          args: Prisma.ShopifyProductCacheUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShopifyProductCachePayload>
+        }
+        deleteMany: {
+          args: Prisma.ShopifyProductCacheDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ShopifyProductCacheUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ShopifyProductCacheUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShopifyProductCachePayload>[]
+        }
+        upsert: {
+          args: Prisma.ShopifyProductCacheUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShopifyProductCachePayload>
+        }
+        aggregate: {
+          args: Prisma.ShopifyProductCacheAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateShopifyProductCache>
+        }
+        groupBy: {
+          args: Prisma.ShopifyProductCacheGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ShopifyProductCacheGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ShopifyProductCacheCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ShopifyProductCacheCountAggregateOutputType> | number
+        }
+      }
+    }
     ContactSubmission: {
       payload: Prisma.$ContactSubmissionPayload<ExtArgs>
       fields: Prisma.ContactSubmissionFieldRefs
@@ -2298,6 +2373,26 @@ export const MerchItemScalarFieldEnum = {
 export type MerchItemScalarFieldEnum = (typeof MerchItemScalarFieldEnum)[keyof typeof MerchItemScalarFieldEnum]
 
 
+export const ShopifyProductCacheScalarFieldEnum = {
+  id: 'id',
+  shopifyProductId: 'shopifyProductId',
+  handle: 'handle',
+  variantId: 'variantId',
+  title: 'title',
+  description: 'description',
+  price: 'price',
+  currencyCode: 'currencyCode',
+  imageUrl: 'imageUrl',
+  variantsJson: 'variantsJson',
+  sortOrder: 'sortOrder',
+  syncedAt: 'syncedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ShopifyProductCacheScalarFieldEnum = (typeof ShopifyProductCacheScalarFieldEnum)[keyof typeof ShopifyProductCacheScalarFieldEnum]
+
+
 export const ContactSubmissionScalarFieldEnum = {
   id: 'id',
   name: 'name',
@@ -2736,6 +2831,7 @@ export type GlobalOmitConfig = {
   homeGigPlacement?: Prisma.HomeGigPlacementOmit
   gigMedia?: Prisma.GigMediaOmit
   merchItem?: Prisma.MerchItemOmit
+  shopifyProductCache?: Prisma.ShopifyProductCacheOmit
   contactSubmission?: Prisma.ContactSubmissionOmit
   newsletterSubscription?: Prisma.NewsletterSubscriptionOmit
   file_tag?: Prisma.file_tagOmit

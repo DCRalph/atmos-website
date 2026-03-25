@@ -27,6 +27,7 @@ import {
   VERIFICATION,
   ICONS,
 } from "~/lib/seo-constants";
+import { RightMenuRail } from "~/components/right-menu-rail";
 
 export const metadata: Metadata = {
   title: {
@@ -90,6 +91,8 @@ export default function RootLayout({
                     id="app-content-wrapper"
                     className="origin-center transition-all duration-700 ease-out"
                   >
+
+                    {/* <RightMenuRail/> */}
                     {children}
                   </div>
 

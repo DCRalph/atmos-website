@@ -2,17 +2,11 @@
 
 import { StaticBackground } from "~/components/static-background";
 import { MerchItem } from "~/components/merch/merch-item";
+import { MerchCartDrawer } from "~/components/merch/merch-cart-drawer";
 import { api } from "~/trpc/react";
 import { Skeleton } from "~/components/ui/skeleton";
-import { motion, AnimatePresence } from "motion/react";
 import { AnimatedPageHeader } from "~/components/animated-page-header";
 import { MainPageSection } from "~/components/main-page-section";
-import { ShoppingBag } from "lucide-react";
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Toggle this to enable/disable the "Coming Soon" overlay
-const COMING_SOON = true;
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 function MerchItemSkeleton() {
   return (
@@ -36,94 +30,69 @@ function MerchItemSkeleton() {
   );
 }
 
-function ComingSoonOverlay() {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 sm:px-8"
-    >
-      {/* Darkened backdrop */}
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
-
-      {/* Content card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ delay: 0.1, duration: 0.4, ease: "easeOut" }}
-        className="relative z-20 w-full max-w-lg"
-      >
-        <div className="relative overflow-hidden rounded-none border-2 border-white/15 bg-black/90 p-8 text-center backdrop-blur-xl shadow-[0_0_30px_rgba(0,0,0,0.55)] sm:p-12">
-
-
-          {/* Icon */}
-          <div
-            className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-none border-2 border-white/20 bg-black/70"
-          >
-            <ShoppingBag className="h-8 w-8 text-white/80" />
-          </div>
-
-          {/* Badge */}
-          <span
-            className="inline-block border-2 border-white/20 bg-black/70 px-4 py-1.5 text-xs font-bold tracking-[0.35em] text-white/90 uppercase"
-          >
-            Coming Soon
-          </span>
-
-
-          {/* Description */}
-          <p
-            className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-white sm:text-base"
-          >
-            We're putting the finishing touches on our store. Join the
-            newsletter to be first in line for the drop.
-          </p>
-
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
 export default function MerchPage() {
-  const { data: merchItems, isLoading: isLoadingMerchItems } =
-    api.merch.getAll.useQuery();
+  const {
+    data: shopifyProducts,
+    isLoading: isLoadingProducts,
+    isError: isErrorProducts,
+    error: productsError,
+  } = api.shopify.getProducts.useQuery();
 
   return (
     <main className="min-h-content bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-46.jpg" />
 
       <MainPageSection>
-        <AnimatedPageHeader
-          title="MERCH"
-          subtitle="Limited drops and Atmos staples"
-        />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <AnimatedPageHeader
+            title="MERCH"
+            subtitle="Limited drops and Atmos staples"
+          />
+          <div className="shrink-0 sm:pt-2">
+            <MerchCartDrawer />
+          </div>
+        </div>
 
         <div className="relative">
-          {/* Product grid */}
-          <div
-            className={`grid gap-4 transition-all duration-500 sm:gap-6 md:grid-cols-2 lg:grid-cols-3`}
-            aria-hidden={COMING_SOON}
-          >
-            {isLoadingMerchItems
+          <div className="grid gap-4 transition-all duration-500 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {isLoadingProducts
               ? Array.from({ length: 6 }).map((_, i) => (
                   <MerchItemSkeleton key={i} />
                 ))
-              : merchItems?.map((item) => (
+              : shopifyProducts?.map((product) => (
                   <MerchItem
-                    key={item.id}
-                    id={item.id}
-                    name={item.name}
-                    description={item.description}
-                    price={item.price}
-                    image={item.image}
+                    key={product.id}
+                    id={product.id}
+                    name={product.title}
+                    description={product.description}
+                    defaultPrice={product.price}
+                    image={product.image}
+                    handle={product.handle}
+                    currencyCode={product.currencyCode}
+                    variants={product.variants}
+                    productHref={`/merch/${encodeURIComponent(product.handle)}`}
                   />
                 ))}
           </div>
 
-          {/* Coming soon overlay */}
-          <AnimatePresence>{COMING_SOON && <ComingSoonOverlay />}</AnimatePresence>
+          {!isLoadingProducts &&
+            !isErrorProducts &&
+            shopifyProducts?.length === 0 && (
+              <div className="mt-6 rounded-none border-2 border-white/10 bg-black/70 p-4 text-center text-sm text-white/70 sm:p-6 sm:text-base">
+                No products in the catalog yet. An admin can run a sync from{" "}
+                <span className="text-white/90">Admin → Shopify</span> when the
+                store is ready.
+              </div>
+            )}
+
+          {isErrorProducts && (
+            <div className="mt-6 rounded-none border-2 border-red-500/40 bg-red-500/10 p-4 text-center text-sm text-red-100 sm:p-6 sm:text-base">
+              <p className="font-semibold">Could not load the merch catalog.</p>
+              <p className="mt-2 text-red-100/80">
+                {productsError?.message ?? "Please try again later."}
+              </p>
+            </div>
+          )}
         </div>
       </MainPageSection>
     </main>

@@ -1,7 +1,7 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createTRPCRouter, adminProcedure } from "~/server/api/trpc";
 import { auth } from "~/server/auth";
-import { headers } from "next/headers";
 import { logUserActivity, getRequestMetadata } from "~/server/utils/activity-log";
 import { ActivityType } from "~Prisma/client";
 
@@ -19,11 +19,11 @@ export const usersRouter = createTRPCRouter({
 
       const where = search
         ? {
-            OR: [
-              { name: { contains: search, mode: "insensitive" as const } },
-              { email: { contains: search, mode: "insensitive" as const } },
-            ],
-          }
+          OR: [
+            { name: { contains: search, mode: "insensitive" as const } },
+            { email: { contains: search, mode: "insensitive" as const } },
+          ],
+        }
         : undefined;
 
       const users = await ctx.db.user.findMany({
@@ -38,6 +38,9 @@ export const usersRouter = createTRPCRouter({
           createdAt: true,
           updatedAt: true,
           image: true,
+          banned: true,
+          banReason: true,
+          banExpires: true,
         },
       });
 
@@ -47,12 +50,8 @@ export const usersRouter = createTRPCRouter({
         users.map(async (user) => {
           let lastLoginMethod = null;
           let lastLoginAt = null;
-          let banned = false;
-          let bannedReason = null;
-          let bannedAt = null;
 
           try {
-            // Try to get last login method from Better Auth (table may not exist yet)
             // @ts-expect-error - Better Auth plugin table, may not exist in Prisma types yet
             const lastLogin = await ctx.db.lastLoginMethod?.findUnique({
               where: { userId: user.id },
@@ -66,25 +65,13 @@ export const usersRouter = createTRPCRouter({
               lastLoginMethod = lastLogin.method ?? null;
               lastLoginAt = lastLogin.updatedAt ?? null;
             }
-
-            // Try to check if user is banned (table may not exist yet)
-            // @ts-expect-error - Better Auth plugin table, may not exist in Prisma types yet
-            const bannedUser = await ctx.db.bannedUser?.findUnique({
-              where: { userId: user.id },
-              select: {
-                reason: true,
-                bannedAt: true,
-              },
-            }).catch(() => null);
-
-            if (bannedUser) {
-              banned = true;
-              bannedReason = bannedUser.reason ?? null;
-              bannedAt = bannedUser.bannedAt ?? null;
-            }
           } catch {
-            // Tables don't exist yet, use defaults
+            // Table may not exist yet
           }
+
+          const banned = Boolean(user.banned);
+          const bannedReason = user.banReason ?? null;
+          const bannedAt = null;
 
           return {
             ...user,
@@ -154,6 +141,9 @@ export const usersRouter = createTRPCRouter({
           image: true,
           createdAt: true,
           updatedAt: true,
+          banned: true,
+          banReason: true,
+          banExpires: true,
           accounts: {
             select: {
               id: true,
@@ -170,13 +160,8 @@ export const usersRouter = createTRPCRouter({
         return null;
       }
 
-      // Get last login method
-      // Note: Better Auth plugin tables may not exist yet, so we handle errors gracefully
       let lastLoginMethod = null;
       let lastLoginAt = null;
-      let banned = false;
-      let bannedReason = null;
-      let bannedAt = null;
 
       try {
         // @ts-expect-error - Better Auth plugin table, may not exist in Prisma types yet
@@ -192,24 +177,13 @@ export const usersRouter = createTRPCRouter({
           lastLoginMethod = lastLogin.method ?? null;
           lastLoginAt = lastLogin.updatedAt ?? null;
         }
-
-        // @ts-expect-error - Better Auth plugin table, may not exist in Prisma types yet
-        const bannedUser = await ctx.db.bannedUser?.findUnique({
-          where: { userId: user.id },
-          select: {
-            reason: true,
-            bannedAt: true,
-          },
-        }).catch(() => null);
-
-        if (bannedUser) {
-          banned = true;
-          bannedReason = bannedUser.reason ?? null;
-          bannedAt = bannedUser.bannedAt ?? null;
-        }
       } catch {
-        // Tables might not exist yet
+        // Table might not exist yet
       }
+
+      const banned = Boolean(user.banned);
+      const bannedReason = user.banReason ?? null;
+      const bannedAt = null;
 
       return {
         ...user,
@@ -263,124 +237,77 @@ export const usersRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Prevent admins from banning themselves
-      if (input.id === ctx.session.user.id) {
-        throw new Error("You cannot ban your own account");
-      }
-
-      // Get user info for logging
-      const targetUser = await ctx.db.user.findUnique({
-        where: { id: input.id },
-        select: { name: true, email: true },
+      await auth.api.banUser({
+        body: {
+          userId: input.id,
+          banReason: input.reason,
+        },
+        headers: ctx.headers,
       });
 
-      // Use Better Auth admin API to ban user (with type assertion)
-      const headersList = await headers();
-      
-      // @ts-expect-error - Better Auth admin API types may not be fully available
-      const result = await auth.api.admin?.banUser({
-        userId: input.id,
-        reason: input.reason,
-        headers: headersList,
-      }).catch(async () => {
-        // Fallback: create banned user record directly if API not available
-        // @ts-expect-error - Better Auth plugin table, may not exist in Prisma types yet
-        return await ctx.db.bannedUser?.create({
-          data: {
-            userId: input.id,
-            reason: input.reason ?? null,
-            bannedAt: new Date(),
-          },
-        }).catch(() => null);
-      });
-
-      // Log the activity
       await logUserActivity(
         ActivityType.USER_BANNED,
-        `Banned user ${targetUser?.name ?? targetUser?.email ?? input.id}${input.reason ? `: ${input.reason}` : ""}`,
+        `Banned user ${input.id}`,
         ctx.session.user.id,
         input.id,
-        {
-          reason: input.reason,
-          bannedUser: targetUser?.name ?? targetUser?.email ?? input.id,
-        },
+        input.reason ? { reason: input.reason } : undefined,
       );
 
-      return result;
+      return { ok: true as const };
     }),
 
   unban: adminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      // Get user info for logging
-      const targetUser = await ctx.db.user.findUnique({
-        where: { id: input.id },
-        select: { name: true, email: true },
+      await auth.api.unbanUser({
+        body: { userId: input.id },
+        headers: ctx.headers,
       });
 
-      const headersList = await headers();
-      
-      // Use Better Auth admin API to unban user (with type assertion)
-      // @ts-expect-error - Better Auth admin API types may not be fully available
-      const result = await auth.api.admin?.unbanUser({
-        userId: input.id,
-        headers: headersList,
-      }).catch(async () => {
-        // Fallback: delete banned user record directly if API not available
-        // @ts-expect-error - Better Auth plugin table, may not exist in Prisma types yet
-        return await ctx.db.bannedUser?.delete({
-          where: { userId: input.id },
-        }).catch(() => null);
-      });
-
-      // Log the activity
       await logUserActivity(
         ActivityType.USER_UNBANNED,
-        `Unbanned user ${targetUser?.name ?? targetUser?.email ?? input.id}`,
+        `Unbanned user ${input.id}`,
         ctx.session.user.id,
         input.id,
-        {
-          unbannedUser: targetUser?.name ?? targetUser?.email ?? input.id,
-        },
       );
 
-      return result;
+      return { ok: true as const };
     }),
 
   impersonate: adminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      // Prevent admins from impersonating themselves
       if (input.id === ctx.session.user.id) {
-        throw new Error("You cannot impersonate yourself");
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "You cannot impersonate yourself",
+        });
+      }
+      if (!ctx.resHeaders) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Impersonation requires browser request context",
+        });
       }
 
-      // Get user info for logging
-      const targetUser = await ctx.db.user.findUnique({
-        where: { id: input.id },
-        select: { name: true, email: true },
+      const result = await auth.api.impersonateUser({
+        body: { userId: input.id },
+        headers: ctx.headers,
+        returnHeaders: true,
       });
 
-      const headersList = await headers();
-      
-      // Use Better Auth admin API to impersonate user (with type assertion)
-      // @ts-expect-error - Better Auth admin API types may not be fully available
-      const result = await auth.api.admin?.impersonateUser({
-        userId: input.id,
-        headers: headersList,
-      });
+      const cookies = result.headers.getSetCookie?.() ?? [];
+      for (const cookie of cookies) {
+        ctx.resHeaders.append("Set-Cookie", cookie);
+      }
 
-      // Log the activity
       await logUserActivity(
         ActivityType.USER_IMPERSONATED,
-        `Impersonated user ${targetUser?.name ?? targetUser?.email ?? input.id}`,
+        `Started impersonating user ${input.id}`,
         ctx.session.user.id,
         input.id,
-        {
-          impersonatedUser: targetUser?.name ?? targetUser?.email ?? input.id,
-        },
       );
 
-      return result;
+      return { ok: true as const };
     }),
 });
