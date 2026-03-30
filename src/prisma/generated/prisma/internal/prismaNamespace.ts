@@ -404,6 +404,8 @@ export const ModelName = {
   file_tag: 'file_tag',
   file_upload: 'file_upload',
   GearItem: 'GearItem',
+  GearPackage: 'GearPackage',
+  GearPackageItem: 'GearPackageItem',
   Rental: 'Rental',
   ActivityLog: 'ActivityLog',
   KeyValueStore: 'KeyValueStore'
@@ -422,7 +424,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "invite" | "crewMember" | "contentItem" | "homeContentPlacement" | "gigTag" | "gigTagRelationship" | "gig" | "homeGigPlacement" | "gigMedia" | "merchItem" | "shopifyProductCache" | "contactSubmission" | "newsletterSubscription" | "file_tag" | "file_upload" | "gearItem" | "rental" | "activityLog" | "keyValueStore"
+    modelProps: "user" | "session" | "account" | "verification" | "invite" | "crewMember" | "contentItem" | "homeContentPlacement" | "gigTag" | "gigTagRelationship" | "gig" | "homeGigPlacement" | "gigMedia" | "merchItem" | "shopifyProductCache" | "contactSubmission" | "newsletterSubscription" | "file_tag" | "file_upload" | "gearItem" | "gearPackage" | "gearPackageItem" | "rental" | "activityLog" | "keyValueStore"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1906,6 +1908,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    GearPackage: {
+      payload: Prisma.$GearPackagePayload<ExtArgs>
+      fields: Prisma.GearPackageFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.GearPackageFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackagePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.GearPackageFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackagePayload>
+        }
+        findFirst: {
+          args: Prisma.GearPackageFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackagePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.GearPackageFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackagePayload>
+        }
+        findMany: {
+          args: Prisma.GearPackageFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackagePayload>[]
+        }
+        create: {
+          args: Prisma.GearPackageCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackagePayload>
+        }
+        createMany: {
+          args: Prisma.GearPackageCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.GearPackageCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackagePayload>[]
+        }
+        delete: {
+          args: Prisma.GearPackageDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackagePayload>
+        }
+        update: {
+          args: Prisma.GearPackageUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackagePayload>
+        }
+        deleteMany: {
+          args: Prisma.GearPackageDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.GearPackageUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.GearPackageUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackagePayload>[]
+        }
+        upsert: {
+          args: Prisma.GearPackageUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackagePayload>
+        }
+        aggregate: {
+          args: Prisma.GearPackageAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateGearPackage>
+        }
+        groupBy: {
+          args: Prisma.GearPackageGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.GearPackageGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.GearPackageCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.GearPackageCountAggregateOutputType> | number
+        }
+      }
+    }
+    GearPackageItem: {
+      payload: Prisma.$GearPackageItemPayload<ExtArgs>
+      fields: Prisma.GearPackageItemFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.GearPackageItemFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackageItemPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.GearPackageItemFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackageItemPayload>
+        }
+        findFirst: {
+          args: Prisma.GearPackageItemFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackageItemPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.GearPackageItemFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackageItemPayload>
+        }
+        findMany: {
+          args: Prisma.GearPackageItemFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackageItemPayload>[]
+        }
+        create: {
+          args: Prisma.GearPackageItemCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackageItemPayload>
+        }
+        createMany: {
+          args: Prisma.GearPackageItemCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.GearPackageItemCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackageItemPayload>[]
+        }
+        delete: {
+          args: Prisma.GearPackageItemDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackageItemPayload>
+        }
+        update: {
+          args: Prisma.GearPackageItemUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackageItemPayload>
+        }
+        deleteMany: {
+          args: Prisma.GearPackageItemDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.GearPackageItemUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.GearPackageItemUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackageItemPayload>[]
+        }
+        upsert: {
+          args: Prisma.GearPackageItemUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GearPackageItemPayload>
+        }
+        aggregate: {
+          args: Prisma.GearPackageItemAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateGearPackageItem>
+        }
+        groupBy: {
+          args: Prisma.GearPackageItemGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.GearPackageItemGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.GearPackageItemCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.GearPackageItemCountAggregateOutputType> | number
+        }
+      }
+    }
     Rental: {
       payload: Prisma.$RentalPayload<ExtArgs>
       fields: Prisma.RentalFieldRefs
@@ -2454,8 +2604,9 @@ export type File_uploadScalarFieldEnum = (typeof File_uploadScalarFieldEnum)[key
 export const GearItemScalarFieldEnum = {
   id: 'id',
   name: 'name',
+  shortName: 'shortName',
   description: 'description',
-  price: 'price',
+  quantity: 'quantity',
   image: 'image',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -2464,9 +2615,35 @@ export const GearItemScalarFieldEnum = {
 export type GearItemScalarFieldEnum = (typeof GearItemScalarFieldEnum)[keyof typeof GearItemScalarFieldEnum]
 
 
+export const GearPackageScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  shortName: 'shortName',
+  description: 'description',
+  price: 'price',
+  image: 'image',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type GearPackageScalarFieldEnum = (typeof GearPackageScalarFieldEnum)[keyof typeof GearPackageScalarFieldEnum]
+
+
+export const GearPackageItemScalarFieldEnum = {
+  id: 'id',
+  gearPackageId: 'gearPackageId',
+  gearItemId: 'gearItemId',
+  quantity: 'quantity',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type GearPackageItemScalarFieldEnum = (typeof GearPackageItemScalarFieldEnum)[keyof typeof GearPackageItemScalarFieldEnum]
+
+
 export const RentalScalarFieldEnum = {
   id: 'id',
-  gearItemId: 'gearItemId',
+  packageId: 'packageId',
   userName: 'userName',
   contactInfo: 'contactInfo',
   startDate: 'startDate',
@@ -2837,6 +3014,8 @@ export type GlobalOmitConfig = {
   file_tag?: Prisma.file_tagOmit
   file_upload?: Prisma.file_uploadOmit
   gearItem?: Prisma.GearItemOmit
+  gearPackage?: Prisma.GearPackageOmit
+  gearPackageItem?: Prisma.GearPackageItemOmit
   rental?: Prisma.RentalOmit
   activityLog?: Prisma.ActivityLogOmit
   keyValueStore?: Prisma.KeyValueStoreOmit

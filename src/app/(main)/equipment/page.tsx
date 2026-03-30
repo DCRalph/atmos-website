@@ -4,7 +4,7 @@ import { type Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Equipment",
-  description: "Rent professional audio and event gear from ATMOS.",
+  description: "Rent professional audio and event packages from ATMOS.",
 };
 
 export default function EquipmentPage() {
@@ -15,7 +15,7 @@ export default function EquipmentPage() {
           Equipment
         </h1>
         <p className="mt-4 text-xl text-muted-foreground">
-          Professional gear for your next event. Check availability and request a booking below.
+          Professional rental packages for your next event. Check availability and request a booking below.
         </p>
       </div>
 

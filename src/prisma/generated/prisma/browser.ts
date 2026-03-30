@@ -118,6 +118,16 @@ export type file_upload = Prisma.file_uploadModel
  */
 export type GearItem = Prisma.GearItemModel
 /**
+ * Model GearPackage
+ * 
+ */
+export type GearPackage = Prisma.GearPackageModel
+/**
+ * Model GearPackageItem
+ * 
+ */
+export type GearPackageItem = Prisma.GearPackageItemModel
+/**
  * Model Rental
  * 
  */

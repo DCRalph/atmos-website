@@ -401,22 +401,53 @@ enum RentalStatus {
 }
 
 model GearItem {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  price       Float
-  image       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  rentals     Rental[]
+  id           String            @id @default(cuid())
+  name         String
+  shortName    String?
+  description  String?
+  quantity     Int               @default(1)
+  image        String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  packageItems GearPackageItem[]
 
   @@map("gear_item")
 }
 
+model GearPackage {
+  id          String            @id @default(cuid())
+  name        String
+  shortName   String?
+  description String?
+  price       Float
+  image       String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  items       GearPackageItem[]
+  rentals     Rental[]
+
+  @@map("gear_package")
+}
+
+model GearPackageItem {
+  id            String      @id @default(cuid())
+  gearPackageId String
+  gearItemId    String
+  quantity      Int
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  gearPackage   GearPackage @relation(fields: [gearPackageId], references: [id], onDelete: Cascade)
+  gearItem      GearItem    @relation(fields: [gearItemId], references: [id], onDelete: Cascade)
+
+  @@unique([gearPackageId, gearItemId])
+  @@index([gearItemId])
+  @@map("gear_package_item")
+}
+
 model Rental {
   id          String       @id @default(cuid())
-  gearItemId  String
-  gearItem    GearItem     @relation(fields: [gearItemId], references: [id], onDelete: Cascade)
+  packageId   String
+  gearPackage GearPackage  @relation(fields: [packageId], references: [id], onDelete: Cascade)
   userName    String
   contactInfo String
   startDate   DateTime
@@ -450,6 +481,9 @@ enum ActivityType {
   GEAR_CREATED
   GEAR_UPDATED
   GEAR_DELETED
+  PACKAGE_CREATED
+  PACKAGE_UPDATED
+  PACKAGE_DELETED
   RENTAL_CREATED
   RENTAL_UPDATED
   RENTAL_DELETED

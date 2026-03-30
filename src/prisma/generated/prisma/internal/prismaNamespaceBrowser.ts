@@ -71,6 +71,8 @@ export const ModelName = {
   file_tag: 'file_tag',
   file_upload: 'file_upload',
   GearItem: 'GearItem',
+  GearPackage: 'GearPackage',
+  GearPackageItem: 'GearPackageItem',
   Rental: 'Rental',
   ActivityLog: 'ActivityLog',
   KeyValueStore: 'KeyValueStore'
@@ -379,8 +381,9 @@ export type File_uploadScalarFieldEnum = (typeof File_uploadScalarFieldEnum)[key
 export const GearItemScalarFieldEnum = {
   id: 'id',
   name: 'name',
+  shortName: 'shortName',
   description: 'description',
-  price: 'price',
+  quantity: 'quantity',
   image: 'image',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -389,9 +392,35 @@ export const GearItemScalarFieldEnum = {
 export type GearItemScalarFieldEnum = (typeof GearItemScalarFieldEnum)[keyof typeof GearItemScalarFieldEnum]
 
 
+export const GearPackageScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  shortName: 'shortName',
+  description: 'description',
+  price: 'price',
+  image: 'image',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type GearPackageScalarFieldEnum = (typeof GearPackageScalarFieldEnum)[keyof typeof GearPackageScalarFieldEnum]
+
+
+export const GearPackageItemScalarFieldEnum = {
+  id: 'id',
+  gearPackageId: 'gearPackageId',
+  gearItemId: 'gearItemId',
+  quantity: 'quantity',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type GearPackageItemScalarFieldEnum = (typeof GearPackageItemScalarFieldEnum)[keyof typeof GearPackageItemScalarFieldEnum]
+
+
 export const RentalScalarFieldEnum = {
   id: 'id',
-  gearItemId: 'gearItemId',
+  packageId: 'packageId',
   userName: 'userName',
   contactInfo: 'contactInfo',
   startDate: 'startDate',
