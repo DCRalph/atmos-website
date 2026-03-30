@@ -24,6 +24,7 @@ export function UserIndicator({ variant = "light" }: UserIndicatorProps) {
   const isAboutPage = pathname === "/about";
   variant = isAboutPage ? "black" : variant;
 
+  const utils = api.useUtils();
   const { data: user } = api.user.me.useQuery();
   const [open, setOpen] = useState(false);
   const isBlackMode = variant === "black";
@@ -36,8 +37,9 @@ export function UserIndicator({ variant = "light" }: UserIndicatorProps) {
   const handleLogout = async () => {
     await authClient.signOut({
       fetchOptions: {
-        onSuccess: () => {
+        onSuccess: async () => {
           setOpen(false);
+          await utils.user.me.invalidate();
           router.refresh();
         },
       },
