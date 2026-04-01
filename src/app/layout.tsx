@@ -8,6 +8,7 @@ import { TRPCReactProvider } from "~/trpc/react";
 import { ThemeOverrideProvider } from "~/components/theme-overide-provider";
 import { MobileMenuProvider } from "~/components/mobile-menu-provider";
 import { LayoutGroupProvider } from "~/components/layout-group-provider";
+import { MerchCartProvider } from "~/components/merch/merch-cart-provider";
 import { ViewTransition } from "react";
 import { montserrat } from "~/lib/fonts";
 
@@ -74,35 +75,37 @@ export default function RootLayout({
             // defaultForcedTheme="dark"
             >
               <TRPCReactProvider>
-                <MobileMenuProvider>
-                  <NextTopLoader height={4} showSpinner={false} />
+                <MerchCartProvider>
+                  <MobileMenuProvider>
+                    <NextTopLoader height={4} showSpinner={false} />
 
-                  <div
-                    id="mobile-menu-portal"
-                    className="pointer-events-none fixed inset-0 z-999 *:pointer-events-auto"
-                  />
+                    <div
+                      id="mobile-menu-portal"
+                      className="pointer-events-none fixed inset-0 z-999 *:pointer-events-auto"
+                    />
 
-                  <div
-                    id="mobile-menu-toggle-portal"
-                    className="pointer-events-none fixed inset-0 z-999 *:pointer-events-auto"
-                  />
+                    <div
+                      id="mobile-menu-toggle-portal"
+                      className="pointer-events-none fixed inset-0 z-999 *:pointer-events-auto"
+                    />
 
-                  <div
-                    id="app-content-wrapper"
-                    className="origin-center transition-all duration-700 ease-out"
-                  >
+                    <div
+                      id="app-content-wrapper"
+                      className="origin-center transition-all duration-700 ease-out"
+                    >
 
-                    {/* <RightMenuRail/> */}
-                    {children}
-                  </div>
+                      {/* <RightMenuRail/> */}
+                      {children}
+                    </div>
 
-                  <Toaster richColors position="bottom-right" />
+                    <Toaster richColors position="bottom-right" />
 
-                  <Analytics
-                    endpoint="/fuckoffaddblockers"
-                    scriptSrc="/fuckoffaddblocker/script.js"
-                  />
-                </MobileMenuProvider>
+                    <Analytics
+                      endpoint="/fuckoffaddblockers"
+                      scriptSrc="/fuckoffaddblocker/script.js"
+                    />
+                  </MobileMenuProvider>
+                </MerchCartProvider>
               </TRPCReactProvider>
             </ThemeOverrideProvider>
           </LayoutGroupProvider>

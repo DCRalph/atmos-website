@@ -7,6 +7,7 @@ import { api } from "~/trpc/react";
 import { Skeleton } from "~/components/ui/skeleton";
 import { AnimatedPageHeader } from "~/components/animated-page-header";
 import { MainPageSection } from "~/components/main-page-section";
+import { EmailPopup } from "~/components/email-popup";
 
 function MerchItemSkeleton() {
   return (
@@ -41,25 +42,33 @@ export default function MerchPage() {
   return (
     <main className="min-h-content bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-46.jpg" />
+      
+      <EmailPopup />
 
       <MainPageSection>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <AnimatedPageHeader
-            title="MERCH"
-            subtitle="Limited drops and Atmos staples"
-          />
-          <div className="shrink-0 sm:pt-2">
-            <MerchCartDrawer />
+        {/*
+          Grid keeps the cart in column 2 beside the full-height main column so
+          position:sticky works while scrolling the product grid (short parents break sticky).
+        */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-6">
+          <div className="min-w-0 space-y-4 lg:col-start-1 lg:row-start-1">
+            <AnimatedPageHeader
+              title="MERCH"
+              subtitle="Limited drops and Atmos staples"
+            />
           </div>
-        </div>
 
-        <div className="relative">
-          <div className="grid gap-4 transition-all duration-500 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {isLoadingProducts
-              ? Array.from({ length: 6 }).map((_, i) => (
+          <aside className="justify-self-end lg:sticky lg:top-4 lg:z-30 lg:col-start-2 lg:row-start-1 lg:row-end-3 lg:self-start">
+            <MerchCartDrawer />
+          </aside>
+
+          <div className="relative min-w-0 lg:col-start-1 lg:row-start-2">
+            <div className="grid gap-4 transition-all duration-500 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {isLoadingProducts
+                ? Array.from({ length: 6 }).map((_, i) => (
                   <MerchItemSkeleton key={i} />
                 ))
-              : shopifyProducts?.map((product) => (
+                : shopifyProducts?.map((product) => (
                   <MerchItem
                     key={product.id}
                     id={product.id}
@@ -73,26 +82,27 @@ export default function MerchPage() {
                     productHref={`/merch/${encodeURIComponent(product.handle)}`}
                   />
                 ))}
-          </div>
+            </div>
 
-          {!isLoadingProducts &&
-            !isErrorProducts &&
-            shopifyProducts?.length === 0 && (
-              <div className="mt-6 rounded-none border-2 border-white/10 bg-black/70 p-4 text-center text-sm text-white/70 sm:p-6 sm:text-base">
-                No products in the catalog yet. An admin can run a sync from{" "}
-                <span className="text-white/90">Admin → Shopify</span> when the
-                store is ready.
+            {!isLoadingProducts &&
+              !isErrorProducts &&
+              shopifyProducts?.length === 0 && (
+                <div className="mt-6 rounded-none border-2 border-white/10 bg-black/70 p-4 text-center text-sm text-white/70 sm:p-6 sm:text-base">
+                  No products in the catalog yet. An admin can run a sync from{" "}
+                  <span className="text-white/90">Admin → Shopify</span> when the
+                  store is ready.
+                </div>
+              )}
+
+            {isErrorProducts && (
+              <div className="mt-6 rounded-none border-2 border-red-500/40 bg-red-500/10 p-4 text-center text-sm text-red-100 sm:p-6 sm:text-base">
+                <p className="font-semibold">Could not load the merch catalog.</p>
+                <p className="mt-2 text-red-100/80">
+                  {productsError?.message ?? "Please try again later."}
+                </p>
               </div>
             )}
-
-          {isErrorProducts && (
-            <div className="mt-6 rounded-none border-2 border-red-500/40 bg-red-500/10 p-4 text-center text-sm text-red-100 sm:p-6 sm:text-base">
-              <p className="font-semibold">Could not load the merch catalog.</p>
-              <p className="mt-2 text-red-100/80">
-                {productsError?.message ?? "Please try again later."}
-              </p>
-            </div>
-          )}
+          </div>
         </div>
       </MainPageSection>
     </main>

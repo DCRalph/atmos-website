@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import { useMerchCart } from "~/components/merch/merch-cart-provider";
 
 type MerchProductDetailProps = {
   handle: string;
@@ -26,13 +27,19 @@ type MerchProductDetailProps = {
 
 export function MerchProductDetail({ handle }: MerchProductDetailProps) {
   const decodedHandle = decodeURIComponent(handle);
-  const utils = api.useUtils();
+  const { addItem, items } = useMerchCart();
   const { data: product, isLoading, isError, error } =
     api.shopify.getProductByHandle.useQuery({
       handle: decodedHandle,
     });
-  const { data: cart } = api.shopify.getCart.useQuery();
-
+  const checkoutMutation = api.shopify.createCheckout.useMutation({
+    onSuccess: ({ checkoutUrl }) => {
+      window.location.assign(checkoutUrl);
+    },
+    onError: (err) => {
+      toast.error(err.message ?? "Could not start checkout");
+    },
+  });
   const [selectedId, setSelectedId] = useState<string>("");
 
   const variants = product?.variants ?? [];
@@ -43,22 +50,11 @@ export function MerchProductDetail({ handle }: MerchProductDetailProps) {
     return candidate;
   }, [variants, selectedId]);
 
-  const addMutation = api.shopify.addCartLines.useMutation({
-    onSuccess: () => {
-      void utils.shopify.getCart.invalidate();
-      toast.success("Added to cart");
-    },
-    onError: (err) => {
-      toast.error(err.message ?? "Could not add to cart");
-    },
-  });
-
   const price = selected?.price ?? product?.price ?? 0;
   const currency = selected?.currencyCode ?? product?.currencyCode ?? "USD";
   const displayImage =
     selected?.imageUrl ?? product?.image ?? "/home/atmos-46.jpg";
-  const canAdd =
-    !!selected?.id && selected.availableForSale && !addMutation.isPending;
+  const canAdd = !!selected?.id && selected.availableForSale;
 
   const formattedPrice = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -71,18 +67,25 @@ export function MerchProductDetail({ handle }: MerchProductDetailProps) {
     <main className="min-h-content bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-46.jpg" />
       <MainPageSection>
-        <div className="flex items-center justify-between gap-3">
-          <Link
-            href="/merch"
-            className="inline-flex items-center gap-2 text-sm text-white/80 transition-colors hover:text-white"
-          >
-            <ArrowLeft className="size-4" />
-            Back to merch
-          </Link>
-          <MerchCartDrawer />
-        </div>
+        {/*
+          Sticky cart needs a tall sibling column; mobile keeps cart in the top bar.
+        */}
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+          <div className="min-w-0 flex-1 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <Link
+                href="/merch"
+                className="inline-flex items-center gap-2 text-sm text-white/80 transition-colors hover:text-white"
+              >
+                <ArrowLeft className="size-4" />
+                Back to merch
+              </Link>
+              <div className="lg:hidden">
+                <MerchCartDrawer />
+              </div>
+            </div>
 
-        <AnimatedPageHeader title="PRODUCT" subtitle="Variants and checkout" />
+            <AnimatedPageHeader title="PRODUCT" subtitle="Variants and checkout" />
 
         {isLoading ? (
           <div className="rounded-none border-2 border-white/10 bg-black/70 p-6 text-white/70">
@@ -162,7 +165,18 @@ export function MerchProductDetail({ handle }: MerchProductDetailProps) {
                   disabled={!canAdd}
                   onClick={() => {
                     if (!selected?.id) return;
-                    addMutation.mutate({ merchandiseId: selected.id, quantity: 1 });
+                    addItem({
+                      merchandiseId: selected.id,
+                      quantity: 1,
+                      productId: product.id,
+                      productHandle: product.handle,
+                      productTitle: product.title,
+                      variantTitle: selected.title,
+                      imageUrl: displayImage,
+                      unitPrice: price,
+                      currencyCode: currency,
+                    });
+                    toast.success("Added to cart");
                     posthog.capture("merch_add_to_cart_detail", {
                       merch_item_id: product.id,
                       merch_item_name: product.title,
@@ -172,18 +186,39 @@ export function MerchProductDetail({ handle }: MerchProductDetailProps) {
                     });
                   }}
                 >
-                  {addMutation.isPending ? "Adding..." : "Add to cart"}
+                  Add to cart
                 </Button>
               </div>
 
-              {cart?.checkoutUrl ? (
-                <Button asChild variant="outline" className="w-full">
-                  <a href={cart.checkoutUrl}>Checkout</a>
+              {items.length > 0 ? (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  type="button"
+                  disabled={checkoutMutation.isPending}
+                  onClick={() =>
+                    checkoutMutation.mutate({
+                      lines: items.map((item) => ({
+                        merchandiseId: item.merchandiseId,
+                        quantity: item.quantity,
+                        productHandle: item.productHandle,
+                        variantTitle: item.variantTitle,
+                      })),
+                    })
+                  }
+                >
+                  {checkoutMutation.isPending ? "Preparing checkout..." : "Checkout"}
                 </Button>
               ) : null}
             </div>
           </div>
         ) : null}
+          </div>
+
+          <aside className="hidden shrink-0 lg:sticky lg:top-4 lg:z-30 lg:block lg:self-start">
+            <MerchCartDrawer />
+          </aside>
+        </div>
       </MainPageSection>
     </main>
   );

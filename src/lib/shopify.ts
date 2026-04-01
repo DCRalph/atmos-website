@@ -111,6 +111,14 @@ const productsQuery = `
   }
 `;
 
+const productByHandleQuery = `
+  query ProductByHandle($handle: String!) {
+    product(handle: $handle) {
+      ${productNodeFields}
+    }
+  }
+`;
+
 function getStoreDomain(): string {
   return env.SHOPIFY_STORE_DOMAIN.trim();
 }
@@ -275,6 +283,30 @@ export async function fetchStorefrontProducts(
   }
 
   return out;
+}
+
+export async function fetchStorefrontProductByHandle(
+  handle: string,
+): Promise<StorefrontProduct | null> {
+  const trimmedHandle = handle.trim();
+  if (!trimmedHandle) {
+    return null;
+  }
+
+  const client = getStorefrontClient();
+  const { data, errors } = await client.request<{
+    product?: unknown;
+  }>(productByHandleQuery, {
+    variables: { handle: trimmedHandle },
+  });
+
+  assertNoErrors("Shopify product query", errors);
+
+  if (!data?.product) {
+    return null;
+  }
+
+  return mapProduct(data.product);
 }
 
 /* --- Cart (Storefront API) --- */

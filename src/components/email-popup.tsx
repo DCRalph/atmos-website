@@ -1,136 +1,223 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { X, CheckCircle2 } from "lucide-react";
+import { api } from "~/trpc/react";
+import { Input } from "~/components/ui/input";
+import { cn } from "~/lib/utils";
+import { orbitron } from "~/lib/fonts";
+
+const STORAGE_KEY = "atmosEmailPopupSeen";
 
 export function EmailPopup() {
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const subscribeAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const subscribe = api.newsletter.subscribe.useMutation();
 
   useEffect(() => {
-    // Check if user has already seen or dismissed the popup
-    // const hasSeenPopup = localStorage.getItem("atmosEmailPopupSeen");
-    const hasSeenPopup = false;
-
-    if (!hasSeenPopup) {
-      // Show popup after 5 seconds
-      const timer = setTimeout(() => {
-        setIsOpen(true);
-      }, 5000);
-
-      return () => clearTimeout(timer);
-    }
+    subscribeAudioRef.current?.load();
   }, []);
+
+  const playSubscribeSound = () => {
+    try {
+      const audio = subscribeAudioRef.current;
+      if (!audio) return;
+      audio.currentTime = 0;
+      audio.volume = 0.6;
+      void audio.play();
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+
+    try {
+      if (
+        typeof window !== "undefined" &&
+        localStorage.getItem(STORAGE_KEY) === "true"
+      ) {
+        return;
+      }
+    } catch {
+      // localStorage blocked — still offer popup
+    }
+
+    timer = setTimeout(() => {
+      if (!cancelled) setIsOpen(true);
+    }, 5000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, []);
+
+  const markSeen = () => {
+    try {
+      localStorage.setItem(STORAGE_KEY, "true");
+    } catch {
+      // ignore
+    }
+  };
 
   const handleClose = () => {
     setIsClosing(true);
-
-    // Wait for animation to complete before hiding
     setTimeout(() => {
       setIsOpen(false);
       setIsClosing(false);
-      localStorage.setItem("atmosEmailPopupSeen", "true");
-    }, 400); // Match animation duration
+      markSeen();
+    }, 400);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const validateEmail = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return "Please enter your email";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      return "Please enter a valid email address";
+    }
+    return null;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setEmailError(null);
 
-    // Here you would typically send the email to your backend
-    console.log("Subscribing email:", email);
+    const err = validateEmail(email);
+    if (err) {
+      setEmailError(err);
+      return;
+    }
 
-    setIsSubmitted(true);
-
-    // Close popup after 2 seconds
-    setTimeout(() => {
-      handleClose();
-    }, 2000);
+    try {
+      await subscribe.mutateAsync({ email: email.trim() });
+      playSubscribeSound();
+      setIsSubmitted(true);
+      setEmail("");
+      setTimeout(() => {
+        handleClose();
+      }, 2200);
+    } catch {
+      setEmailError("Couldn't subscribe right now — please try again.");
+    }
   };
 
   if (!isOpen) return null;
 
   return (
     <div
-      className={`pointer-events-none fixed right-0 bottom-0 left-0 z-50 flex justify-center p-4 transition-transform duration-500 ease-out ${
-        isClosing ? "translate-y-full" : "translate-y-0"
-      }`}
+      className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="email-popup-title"
     >
-      <div className="pointer-events-auto relative w-full max-w-2xl overflow-hidden rounded-t-lg border border-white/20 bg-black/95 shadow-2xl backdrop-blur-md">
+      <audio ref={subscribeAudioRef} preload="auto" src="/subscribe.mp3" />
+
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/80"
+        aria-label="Dismiss newsletter"
+        onClick={handleClose}
+      />
+
+      <div
+        className={cn(
+          "pointer-events-auto relative z-10 w-full max-w-2xl overflow-hidden rounded-none border-2 border-white/10 bg-black text-white shadow-[0_0_30px_rgba(72,49,149,0.35)] transition-transform duration-500 ease-out",
+          isClosing ? "translate-y-full" : "translate-y-0",
+        )}
+      >
         <button
+          type="button"
           onClick={handleClose}
-          className="absolute top-3 right-3 z-10 text-white/60 transition-colors hover:text-white"
-          aria-label="Close popup"
+          className="absolute top-3 right-3 z-10 rounded-none p-1.5 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+          aria-label="Close"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
+          <X className="size-5" />
         </button>
 
         {!isSubmitted ? (
-          <div className="flex flex-col items-center gap-4 p-4 md:flex-row md:p-6">
-            <div className="flex-1 text-center md:text-left">
-              <h2 className="mb-1 text-xl font-bold tracking-wider text-white md:text-2xl">
-                JOIN THE ATMOSPHERE
+          <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-end sm:gap-6 sm:p-6">
+            <div className="min-w-0 flex-1 text-center sm:text-left">
+              <p className="text-[10px] font-semibold tracking-[0.3em] text-white/50 uppercase">
+                Newsletter
+              </p>
+              <h2
+                id="email-popup-title"
+                className={cn(
+                  "mt-2 text-2xl font-black tracking-tight text-white uppercase sm:text-3xl",
+                  orbitron.className,
+                )}
+              >
+                Join the{" "}
+                <span className="text-accent-strong italic">atmosphere</span>
               </h2>
-              <p className="text-sm text-white/60">
-                Get exclusive updates on gigs, mixes, and releases.
+              <p className="mt-2 text-sm text-white/60">
+                Gigs, mixes, merch drops — straight to your inbox.
               </p>
             </div>
 
             <form
-              onSubmit={handleSubmit}
-              className="flex w-full gap-2 md:w-auto"
+              onSubmit={(e) => void handleSubmit(e)}
+              className="flex w-full flex-col gap-2 sm:max-w-md sm:flex-row sm:items-stretch"
             >
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                required
-                className="flex-1 rounded-md border border-white/20 bg-white/5 px-4 py-2 text-sm text-white placeholder-white/40 backdrop-blur-sm transition-all focus:border-white/40 focus:ring-1 focus:ring-white/20 focus:outline-none md:w-64"
-              />
+              <div className="min-w-0 flex-1">
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (emailError) setEmailError(null);
+                  }}
+                  placeholder="Enter your email"
+                  autoComplete="email"
+                  disabled={subscribe.isPending}
+                  aria-invalid={Boolean(emailError)}
+                  className={cn(
+                    "focus:border-accent-muted focus:ring-accent-muted/20 h-12 rounded-none border-2 bg-black/60 text-white placeholder:text-white/40",
+                    emailError && "border-red-500/60",
+                  )}
+                />
+                {emailError && (
+                  <p className="mt-1.5 text-left text-xs text-red-300/90">
+                    {emailError}
+                  </p>
+                )}
+              </div>
 
               <button
                 type="submit"
-                className="rounded-md bg-white px-6 py-2 text-sm font-semibold whitespace-nowrap text-black transition-all hover:bg-white/90"
+                disabled={subscribe.isPending}
+                className="border-accent-strong bg-accent-strong hover:border-accent-muted hover:bg-accent-muted h-12 shrink-0 rounded-none border-2 px-6 text-xs font-black tracking-wider text-white uppercase transition-all hover:shadow-[0_0_20px_var(--accent-muted)] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Subscribe
+                {subscribe.isPending ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    Joining…
+                  </span>
+                ) : (
+                  "Subscribe"
+                )}
               </button>
             </form>
           </div>
         ) : (
-          <div className="flex items-center justify-center gap-3 p-4 md:p-6">
-            <svg
-              className="h-6 w-6 flex-shrink-0 text-green-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
+          <div className="flex flex-col items-center gap-4 p-6 sm:flex-row sm:justify-center sm:text-left">
+            <div className="border-accent-muted bg-accent-muted/20 flex size-14 shrink-0 items-center justify-center border-2">
+              <CheckCircle2 className="text-accent-muted size-8" />
+            </div>
             <div>
-              <h3 className="text-lg font-bold text-white">
-                Welcome to the Atmosphere!
+              <h3 className="text-lg font-black tracking-wide text-white uppercase">
+                You&apos;re in
               </h3>
-              <p className="text-sm text-white/60">
-                Check your inbox to confirm.
+              <p className="mt-1 text-sm text-white/60">
+                Thanks — we&apos;ll be in touch with updates soon.
               </p>
             </div>
           </div>

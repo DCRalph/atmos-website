@@ -13,8 +13,8 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import type { CachedVariant } from "~/lib/shopify";
-import { api } from "~/trpc/react";
 import { toast } from "sonner";
+import { useMerchCart } from "~/components/merch/merch-cart-provider";
 
 interface MerchItemProps {
   id: string;
@@ -39,7 +39,7 @@ export function MerchItem({
   currencyCode = "USD",
   productHref,
 }: MerchItemProps) {
-  const utils = api.useUtils();
+  const { addItem } = useMerchCart();
   const [selectedId, setSelectedId] = useState(variants[0]?.id ?? "");
 
   const selected = useMemo(() => {
@@ -47,16 +47,6 @@ export function MerchItem({
     const v = variants.find((x) => x.id === selectedId);
     return v ?? variants[0];
   }, [variants, selectedId]);
-
-  const addMutation = api.shopify.addCartLines.useMutation({
-    onSuccess: () => {
-      void utils.shopify.getCart.invalidate();
-      toast.success("Added to cart");
-    },
-    onError: (err) => {
-      toast.error(err.message ?? "Could not add to cart");
-    },
-  });
 
   const displayImage = selected?.imageUrl ?? image ?? "/home/atmos-46.jpg";
   const price = selected?.price ?? defaultPrice;
@@ -72,8 +62,7 @@ export function MerchItem({
   const canAdd =
     variants.length > 0 &&
     selected?.availableForSale &&
-    !!selected?.id &&
-    !addMutation.isPending;
+    !!selected?.id;
 
   return (
     <div className="group relative flex h-full flex-col overflow-hidden rounded-none border-2 border-white/10 bg-black/80 backdrop-blur-sm transition-all hover:border-accent-muted/50 hover:bg-black/90 hover:shadow-[0_0_15px_var(--accent-muted)]">
@@ -145,10 +134,18 @@ export function MerchItem({
               }
               onClick={() => {
                 if (!selected?.id) return;
-                addMutation.mutate({
+                addItem({
                   merchandiseId: selected.id,
                   quantity: 1,
+                  productId: id,
+                  productHandle: handle,
+                  productTitle: name,
+                  variantTitle: selected.title,
+                  imageUrl: displayImage,
+                  unitPrice: price,
+                  currencyCode: cur,
                 });
+                toast.success("Added to cart");
                 posthog.capture("merch_add_to_cart", {
                   merch_item_id: id,
                   merch_item_name: name,
@@ -158,7 +155,7 @@ export function MerchItem({
                 });
               }}
             >
-              {addMutation.isPending ? "Adding…" : "Add to cart"}
+              Add to cart
             </Button>
           </div>
           <Button asChild variant="outline" size="sm" className="w-full">
