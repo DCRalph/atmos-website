@@ -186,7 +186,7 @@ export type RentalGroupByOutputType = {
   _max: RentalMaxAggregateOutputType | null
 }
 
-type GetRentalGroupByPayload<T extends RentalGroupByArgs> = Prisma.PrismaPromise<
+export type GetRentalGroupByPayload<T extends RentalGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<RentalGroupByOutputType, T['by']> &
       {

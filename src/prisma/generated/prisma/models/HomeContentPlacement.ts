@@ -199,7 +199,7 @@ export type HomeContentPlacementGroupByOutputType = {
   _max: HomeContentPlacementMaxAggregateOutputType | null
 }
 
-type GetHomeContentPlacementGroupByPayload<T extends HomeContentPlacementGroupByArgs> = Prisma.PrismaPromise<
+export type GetHomeContentPlacementGroupByPayload<T extends HomeContentPlacementGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<HomeContentPlacementGroupByOutputType, T['by']> &
       {

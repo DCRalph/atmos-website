@@ -220,7 +220,7 @@ export type CrewMemberGroupByOutputType = {
   _max: CrewMemberMaxAggregateOutputType | null
 }
 
-type GetCrewMemberGroupByPayload<T extends CrewMemberGroupByArgs> = Prisma.PrismaPromise<
+export type GetCrewMemberGroupByPayload<T extends CrewMemberGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<CrewMemberGroupByOutputType, T['by']> &
       {

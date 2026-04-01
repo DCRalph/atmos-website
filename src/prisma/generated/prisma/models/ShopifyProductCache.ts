@@ -259,7 +259,7 @@ export type ShopifyProductCacheGroupByOutputType = {
   _max: ShopifyProductCacheMaxAggregateOutputType | null
 }
 
-type GetShopifyProductCacheGroupByPayload<T extends ShopifyProductCacheGroupByArgs> = Prisma.PrismaPromise<
+export type GetShopifyProductCacheGroupByPayload<T extends ShopifyProductCacheGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<ShopifyProductCacheGroupByOutputType, T['by']> &
       {

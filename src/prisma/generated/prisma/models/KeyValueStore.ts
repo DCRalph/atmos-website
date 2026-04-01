@@ -151,7 +151,7 @@ export type KeyValueStoreGroupByOutputType = {
   _max: KeyValueStoreMaxAggregateOutputType | null
 }
 
-type GetKeyValueStoreGroupByPayload<T extends KeyValueStoreGroupByArgs> = Prisma.PrismaPromise<
+export type GetKeyValueStoreGroupByPayload<T extends KeyValueStoreGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<KeyValueStoreGroupByOutputType, T['by']> &
       {

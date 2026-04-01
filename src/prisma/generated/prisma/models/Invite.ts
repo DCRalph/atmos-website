@@ -179,7 +179,7 @@ export type InviteGroupByOutputType = {
   _max: InviteMaxAggregateOutputType | null
 }
 
-type GetInviteGroupByPayload<T extends InviteGroupByArgs> = Prisma.PrismaPromise<
+export type GetInviteGroupByPayload<T extends InviteGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<InviteGroupByOutputType, T['by']> &
       {

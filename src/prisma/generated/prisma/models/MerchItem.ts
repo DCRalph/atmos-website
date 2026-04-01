@@ -206,7 +206,7 @@ export type MerchItemGroupByOutputType = {
   _max: MerchItemMaxAggregateOutputType | null
 }
 
-type GetMerchItemGroupByPayload<T extends MerchItemGroupByArgs> = Prisma.PrismaPromise<
+export type GetMerchItemGroupByPayload<T extends MerchItemGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<MerchItemGroupByOutputType, T['by']> &
       {

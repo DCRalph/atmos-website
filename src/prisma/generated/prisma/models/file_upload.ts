@@ -284,7 +284,7 @@ export type File_uploadGroupByOutputType = {
   _max: File_uploadMaxAggregateOutputType | null
 }
 
-type GetFile_uploadGroupByPayload<T extends file_uploadGroupByArgs> = Prisma.PrismaPromise<
+export type GetFile_uploadGroupByPayload<T extends file_uploadGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<File_uploadGroupByOutputType, T['by']> &
       {

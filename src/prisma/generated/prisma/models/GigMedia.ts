@@ -220,7 +220,7 @@ export type GigMediaGroupByOutputType = {
   _max: GigMediaMaxAggregateOutputType | null
 }
 
-type GetGigMediaGroupByPayload<T extends GigMediaGroupByArgs> = Prisma.PrismaPromise<
+export type GetGigMediaGroupByPayload<T extends GigMediaGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<GigMediaGroupByOutputType, T['by']> &
       {

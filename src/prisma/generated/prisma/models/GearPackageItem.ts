@@ -199,7 +199,7 @@ export type GearPackageItemGroupByOutputType = {
   _max: GearPackageItemMaxAggregateOutputType | null
 }
 
-type GetGearPackageItemGroupByPayload<T extends GearPackageItemGroupByArgs> = Prisma.PrismaPromise<
+export type GetGearPackageItemGroupByPayload<T extends GearPackageItemGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<GearPackageItemGroupByOutputType, T['by']> &
       {
