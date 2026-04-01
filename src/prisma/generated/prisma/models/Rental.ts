@@ -20,8 +20,26 @@ export type RentalModel = runtime.Types.Result.DefaultSelection<Prisma.$RentalPa
 
 export type AggregateRental = {
   _count: RentalCountAggregateOutputType | null
+  _avg: RentalAvgAggregateOutputType | null
+  _sum: RentalSumAggregateOutputType | null
   _min: RentalMinAggregateOutputType | null
   _max: RentalMaxAggregateOutputType | null
+}
+
+export type RentalAvgAggregateOutputType = {
+  baseDailyPrice: number | null
+  discountDailyAmount: number | null
+  discountedDailyPrice: number | null
+  estimatedTotalPrice: number | null
+  appliedDiscountValue: number | null
+}
+
+export type RentalSumAggregateOutputType = {
+  baseDailyPrice: number | null
+  discountDailyAmount: number | null
+  discountedDailyPrice: number | null
+  estimatedTotalPrice: number | null
+  appliedDiscountValue: number | null
 }
 
 export type RentalMinAggregateOutputType = {
@@ -32,6 +50,15 @@ export type RentalMinAggregateOutputType = {
   startDate: Date | null
   endDate: Date | null
   status: $Enums.RentalStatus | null
+  baseDailyPrice: number | null
+  discountDailyAmount: number | null
+  discountedDailyPrice: number | null
+  estimatedTotalPrice: number | null
+  appliedDiscountRuleId: string | null
+  appliedDiscountName: string | null
+  appliedDiscountMode: $Enums.DiscountRuleMode | null
+  appliedDiscountType: $Enums.DiscountType | null
+  appliedDiscountValue: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -44,6 +71,15 @@ export type RentalMaxAggregateOutputType = {
   startDate: Date | null
   endDate: Date | null
   status: $Enums.RentalStatus | null
+  baseDailyPrice: number | null
+  discountDailyAmount: number | null
+  discountedDailyPrice: number | null
+  estimatedTotalPrice: number | null
+  appliedDiscountRuleId: string | null
+  appliedDiscountName: string | null
+  appliedDiscountMode: $Enums.DiscountRuleMode | null
+  appliedDiscountType: $Enums.DiscountType | null
+  appliedDiscountValue: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -56,11 +92,36 @@ export type RentalCountAggregateOutputType = {
   startDate: number
   endDate: number
   status: number
+  baseDailyPrice: number
+  discountDailyAmount: number
+  discountedDailyPrice: number
+  estimatedTotalPrice: number
+  appliedDiscountRuleId: number
+  appliedDiscountName: number
+  appliedDiscountMode: number
+  appliedDiscountType: number
+  appliedDiscountValue: number
   createdAt: number
   updatedAt: number
   _all: number
 }
 
+
+export type RentalAvgAggregateInputType = {
+  baseDailyPrice?: true
+  discountDailyAmount?: true
+  discountedDailyPrice?: true
+  estimatedTotalPrice?: true
+  appliedDiscountValue?: true
+}
+
+export type RentalSumAggregateInputType = {
+  baseDailyPrice?: true
+  discountDailyAmount?: true
+  discountedDailyPrice?: true
+  estimatedTotalPrice?: true
+  appliedDiscountValue?: true
+}
 
 export type RentalMinAggregateInputType = {
   id?: true
@@ -70,6 +131,15 @@ export type RentalMinAggregateInputType = {
   startDate?: true
   endDate?: true
   status?: true
+  baseDailyPrice?: true
+  discountDailyAmount?: true
+  discountedDailyPrice?: true
+  estimatedTotalPrice?: true
+  appliedDiscountRuleId?: true
+  appliedDiscountName?: true
+  appliedDiscountMode?: true
+  appliedDiscountType?: true
+  appliedDiscountValue?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -82,6 +152,15 @@ export type RentalMaxAggregateInputType = {
   startDate?: true
   endDate?: true
   status?: true
+  baseDailyPrice?: true
+  discountDailyAmount?: true
+  discountedDailyPrice?: true
+  estimatedTotalPrice?: true
+  appliedDiscountRuleId?: true
+  appliedDiscountName?: true
+  appliedDiscountMode?: true
+  appliedDiscountType?: true
+  appliedDiscountValue?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -94,6 +173,15 @@ export type RentalCountAggregateInputType = {
   startDate?: true
   endDate?: true
   status?: true
+  baseDailyPrice?: true
+  discountDailyAmount?: true
+  discountedDailyPrice?: true
+  estimatedTotalPrice?: true
+  appliedDiscountRuleId?: true
+  appliedDiscountName?: true
+  appliedDiscountMode?: true
+  appliedDiscountType?: true
+  appliedDiscountValue?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -137,6 +225,18 @@ export type RentalAggregateArgs<ExtArgs extends runtime.Types.Extensions.Interna
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
+   * Select which fields to average
+  **/
+  _avg?: RentalAvgAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
+   * Select which fields to sum
+  **/
+  _sum?: RentalSumAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
    * Select which fields to find the minimum value
   **/
   _min?: RentalMinAggregateInputType
@@ -167,21 +267,34 @@ export type RentalGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalA
   take?: number
   skip?: number
   _count?: RentalCountAggregateInputType | true
+  _avg?: RentalAvgAggregateInputType
+  _sum?: RentalSumAggregateInputType
   _min?: RentalMinAggregateInputType
   _max?: RentalMaxAggregateInputType
 }
 
 export type RentalGroupByOutputType = {
   id: string
-  packageId: string
+  packageId: string | null
   userName: string
   contactInfo: string
   startDate: Date
   endDate: Date
   status: $Enums.RentalStatus
+  baseDailyPrice: number
+  discountDailyAmount: number
+  discountedDailyPrice: number
+  estimatedTotalPrice: number
+  appliedDiscountRuleId: string | null
+  appliedDiscountName: string | null
+  appliedDiscountMode: $Enums.DiscountRuleMode | null
+  appliedDiscountType: $Enums.DiscountType | null
+  appliedDiscountValue: number | null
   createdAt: Date
   updatedAt: Date
   _count: RentalCountAggregateOutputType | null
+  _avg: RentalAvgAggregateOutputType | null
+  _sum: RentalSumAggregateOutputType | null
   _min: RentalMinAggregateOutputType | null
   _max: RentalMaxAggregateOutputType | null
 }
@@ -206,28 +319,50 @@ export type RentalWhereInput = {
   OR?: Prisma.RentalWhereInput[]
   NOT?: Prisma.RentalWhereInput | Prisma.RentalWhereInput[]
   id?: Prisma.StringFilter<"Rental"> | string
-  packageId?: Prisma.StringFilter<"Rental"> | string
+  packageId?: Prisma.StringNullableFilter<"Rental"> | string | null
   userName?: Prisma.StringFilter<"Rental"> | string
   contactInfo?: Prisma.StringFilter<"Rental"> | string
   startDate?: Prisma.DateTimeFilter<"Rental"> | Date | string
   endDate?: Prisma.DateTimeFilter<"Rental"> | Date | string
   status?: Prisma.EnumRentalStatusFilter<"Rental"> | $Enums.RentalStatus
+  baseDailyPrice?: Prisma.FloatFilter<"Rental"> | number
+  discountDailyAmount?: Prisma.FloatFilter<"Rental"> | number
+  discountedDailyPrice?: Prisma.FloatFilter<"Rental"> | number
+  estimatedTotalPrice?: Prisma.FloatFilter<"Rental"> | number
+  appliedDiscountRuleId?: Prisma.StringNullableFilter<"Rental"> | string | null
+  appliedDiscountName?: Prisma.StringNullableFilter<"Rental"> | string | null
+  appliedDiscountMode?: Prisma.EnumDiscountRuleModeNullableFilter<"Rental"> | $Enums.DiscountRuleMode | null
+  appliedDiscountType?: Prisma.EnumDiscountTypeNullableFilter<"Rental"> | $Enums.DiscountType | null
+  appliedDiscountValue?: Prisma.FloatNullableFilter<"Rental"> | number | null
   createdAt?: Prisma.DateTimeFilter<"Rental"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Rental"> | Date | string
-  gearPackage?: Prisma.XOR<Prisma.GearPackageScalarRelationFilter, Prisma.GearPackageWhereInput>
+  gearPackage?: Prisma.XOR<Prisma.GearPackageNullableScalarRelationFilter, Prisma.GearPackageWhereInput> | null
+  rentalItems?: Prisma.RentalItemListRelationFilter
+  appliedDiscountRule?: Prisma.XOR<Prisma.DiscountRuleNullableScalarRelationFilter, Prisma.DiscountRuleWhereInput> | null
 }
 
 export type RentalOrderByWithRelationInput = {
   id?: Prisma.SortOrder
-  packageId?: Prisma.SortOrder
+  packageId?: Prisma.SortOrderInput | Prisma.SortOrder
   userName?: Prisma.SortOrder
   contactInfo?: Prisma.SortOrder
   startDate?: Prisma.SortOrder
   endDate?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  baseDailyPrice?: Prisma.SortOrder
+  discountDailyAmount?: Prisma.SortOrder
+  discountedDailyPrice?: Prisma.SortOrder
+  estimatedTotalPrice?: Prisma.SortOrder
+  appliedDiscountRuleId?: Prisma.SortOrderInput | Prisma.SortOrder
+  appliedDiscountName?: Prisma.SortOrderInput | Prisma.SortOrder
+  appliedDiscountMode?: Prisma.SortOrderInput | Prisma.SortOrder
+  appliedDiscountType?: Prisma.SortOrderInput | Prisma.SortOrder
+  appliedDiscountValue?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   gearPackage?: Prisma.GearPackageOrderByWithRelationInput
+  rentalItems?: Prisma.RentalItemOrderByRelationAggregateInput
+  appliedDiscountRule?: Prisma.DiscountRuleOrderByWithRelationInput
 }
 
 export type RentalWhereUniqueInput = Prisma.AtLeast<{
@@ -235,30 +370,52 @@ export type RentalWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.RentalWhereInput | Prisma.RentalWhereInput[]
   OR?: Prisma.RentalWhereInput[]
   NOT?: Prisma.RentalWhereInput | Prisma.RentalWhereInput[]
-  packageId?: Prisma.StringFilter<"Rental"> | string
+  packageId?: Prisma.StringNullableFilter<"Rental"> | string | null
   userName?: Prisma.StringFilter<"Rental"> | string
   contactInfo?: Prisma.StringFilter<"Rental"> | string
   startDate?: Prisma.DateTimeFilter<"Rental"> | Date | string
   endDate?: Prisma.DateTimeFilter<"Rental"> | Date | string
   status?: Prisma.EnumRentalStatusFilter<"Rental"> | $Enums.RentalStatus
+  baseDailyPrice?: Prisma.FloatFilter<"Rental"> | number
+  discountDailyAmount?: Prisma.FloatFilter<"Rental"> | number
+  discountedDailyPrice?: Prisma.FloatFilter<"Rental"> | number
+  estimatedTotalPrice?: Prisma.FloatFilter<"Rental"> | number
+  appliedDiscountRuleId?: Prisma.StringNullableFilter<"Rental"> | string | null
+  appliedDiscountName?: Prisma.StringNullableFilter<"Rental"> | string | null
+  appliedDiscountMode?: Prisma.EnumDiscountRuleModeNullableFilter<"Rental"> | $Enums.DiscountRuleMode | null
+  appliedDiscountType?: Prisma.EnumDiscountTypeNullableFilter<"Rental"> | $Enums.DiscountType | null
+  appliedDiscountValue?: Prisma.FloatNullableFilter<"Rental"> | number | null
   createdAt?: Prisma.DateTimeFilter<"Rental"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Rental"> | Date | string
-  gearPackage?: Prisma.XOR<Prisma.GearPackageScalarRelationFilter, Prisma.GearPackageWhereInput>
+  gearPackage?: Prisma.XOR<Prisma.GearPackageNullableScalarRelationFilter, Prisma.GearPackageWhereInput> | null
+  rentalItems?: Prisma.RentalItemListRelationFilter
+  appliedDiscountRule?: Prisma.XOR<Prisma.DiscountRuleNullableScalarRelationFilter, Prisma.DiscountRuleWhereInput> | null
 }, "id">
 
 export type RentalOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
-  packageId?: Prisma.SortOrder
+  packageId?: Prisma.SortOrderInput | Prisma.SortOrder
   userName?: Prisma.SortOrder
   contactInfo?: Prisma.SortOrder
   startDate?: Prisma.SortOrder
   endDate?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  baseDailyPrice?: Prisma.SortOrder
+  discountDailyAmount?: Prisma.SortOrder
+  discountedDailyPrice?: Prisma.SortOrder
+  estimatedTotalPrice?: Prisma.SortOrder
+  appliedDiscountRuleId?: Prisma.SortOrderInput | Prisma.SortOrder
+  appliedDiscountName?: Prisma.SortOrderInput | Prisma.SortOrder
+  appliedDiscountMode?: Prisma.SortOrderInput | Prisma.SortOrder
+  appliedDiscountType?: Prisma.SortOrderInput | Prisma.SortOrder
+  appliedDiscountValue?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.RentalCountOrderByAggregateInput
+  _avg?: Prisma.RentalAvgOrderByAggregateInput
   _max?: Prisma.RentalMaxOrderByAggregateInput
   _min?: Prisma.RentalMinOrderByAggregateInput
+  _sum?: Prisma.RentalSumOrderByAggregateInput
 }
 
 export type RentalScalarWhereWithAggregatesInput = {
@@ -266,12 +423,21 @@ export type RentalScalarWhereWithAggregatesInput = {
   OR?: Prisma.RentalScalarWhereWithAggregatesInput[]
   NOT?: Prisma.RentalScalarWhereWithAggregatesInput | Prisma.RentalScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"Rental"> | string
-  packageId?: Prisma.StringWithAggregatesFilter<"Rental"> | string
+  packageId?: Prisma.StringNullableWithAggregatesFilter<"Rental"> | string | null
   userName?: Prisma.StringWithAggregatesFilter<"Rental"> | string
   contactInfo?: Prisma.StringWithAggregatesFilter<"Rental"> | string
   startDate?: Prisma.DateTimeWithAggregatesFilter<"Rental"> | Date | string
   endDate?: Prisma.DateTimeWithAggregatesFilter<"Rental"> | Date | string
   status?: Prisma.EnumRentalStatusWithAggregatesFilter<"Rental"> | $Enums.RentalStatus
+  baseDailyPrice?: Prisma.FloatWithAggregatesFilter<"Rental"> | number
+  discountDailyAmount?: Prisma.FloatWithAggregatesFilter<"Rental"> | number
+  discountedDailyPrice?: Prisma.FloatWithAggregatesFilter<"Rental"> | number
+  estimatedTotalPrice?: Prisma.FloatWithAggregatesFilter<"Rental"> | number
+  appliedDiscountRuleId?: Prisma.StringNullableWithAggregatesFilter<"Rental"> | string | null
+  appliedDiscountName?: Prisma.StringNullableWithAggregatesFilter<"Rental"> | string | null
+  appliedDiscountMode?: Prisma.EnumDiscountRuleModeNullableWithAggregatesFilter<"Rental"> | $Enums.DiscountRuleMode | null
+  appliedDiscountType?: Prisma.EnumDiscountTypeNullableWithAggregatesFilter<"Rental"> | $Enums.DiscountType | null
+  appliedDiscountValue?: Prisma.FloatNullableWithAggregatesFilter<"Rental"> | number | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Rental"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Rental"> | Date | string
 }
@@ -283,21 +449,41 @@ export type RentalCreateInput = {
   startDate: Date | string
   endDate: Date | string
   status?: $Enums.RentalStatus
+  baseDailyPrice?: number
+  discountDailyAmount?: number
+  discountedDailyPrice?: number
+  estimatedTotalPrice?: number
+  appliedDiscountName?: string | null
+  appliedDiscountMode?: $Enums.DiscountRuleMode | null
+  appliedDiscountType?: $Enums.DiscountType | null
+  appliedDiscountValue?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  gearPackage: Prisma.GearPackageCreateNestedOneWithoutRentalsInput
+  gearPackage?: Prisma.GearPackageCreateNestedOneWithoutRentalsInput
+  rentalItems?: Prisma.RentalItemCreateNestedManyWithoutRentalInput
+  appliedDiscountRule?: Prisma.DiscountRuleCreateNestedOneWithoutAppliedRentalsInput
 }
 
 export type RentalUncheckedCreateInput = {
   id?: string
-  packageId: string
+  packageId?: string | null
   userName: string
   contactInfo: string
   startDate: Date | string
   endDate: Date | string
   status?: $Enums.RentalStatus
+  baseDailyPrice?: number
+  discountDailyAmount?: number
+  discountedDailyPrice?: number
+  estimatedTotalPrice?: number
+  appliedDiscountRuleId?: string | null
+  appliedDiscountName?: string | null
+  appliedDiscountMode?: $Enums.DiscountRuleMode | null
+  appliedDiscountType?: $Enums.DiscountType | null
+  appliedDiscountValue?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  rentalItems?: Prisma.RentalItemUncheckedCreateNestedManyWithoutRentalInput
 }
 
 export type RentalUpdateInput = {
@@ -307,31 +493,60 @@ export type RentalUpdateInput = {
   startDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   status?: Prisma.EnumRentalStatusFieldUpdateOperationsInput | $Enums.RentalStatus
+  baseDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountDailyAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountedDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  estimatedTotalPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  appliedDiscountName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  appliedDiscountMode?: Prisma.NullableEnumDiscountRuleModeFieldUpdateOperationsInput | $Enums.DiscountRuleMode | null
+  appliedDiscountType?: Prisma.NullableEnumDiscountTypeFieldUpdateOperationsInput | $Enums.DiscountType | null
+  appliedDiscountValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  gearPackage?: Prisma.GearPackageUpdateOneRequiredWithoutRentalsNestedInput
+  gearPackage?: Prisma.GearPackageUpdateOneWithoutRentalsNestedInput
+  rentalItems?: Prisma.RentalItemUpdateManyWithoutRentalNestedInput
+  appliedDiscountRule?: Prisma.DiscountRuleUpdateOneWithoutAppliedRentalsNestedInput
 }
 
 export type RentalUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  packageId?: Prisma.StringFieldUpdateOperationsInput | string
+  packageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   userName?: Prisma.StringFieldUpdateOperationsInput | string
   contactInfo?: Prisma.StringFieldUpdateOperationsInput | string
   startDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   status?: Prisma.EnumRentalStatusFieldUpdateOperationsInput | $Enums.RentalStatus
+  baseDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountDailyAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountedDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  estimatedTotalPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  appliedDiscountRuleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  appliedDiscountName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  appliedDiscountMode?: Prisma.NullableEnumDiscountRuleModeFieldUpdateOperationsInput | $Enums.DiscountRuleMode | null
+  appliedDiscountType?: Prisma.NullableEnumDiscountTypeFieldUpdateOperationsInput | $Enums.DiscountType | null
+  appliedDiscountValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rentalItems?: Prisma.RentalItemUncheckedUpdateManyWithoutRentalNestedInput
 }
 
 export type RentalCreateManyInput = {
   id?: string
-  packageId: string
+  packageId?: string | null
   userName: string
   contactInfo: string
   startDate: Date | string
   endDate: Date | string
   status?: $Enums.RentalStatus
+  baseDailyPrice?: number
+  discountDailyAmount?: number
+  discountedDailyPrice?: number
+  estimatedTotalPrice?: number
+  appliedDiscountRuleId?: string | null
+  appliedDiscountName?: string | null
+  appliedDiscountMode?: $Enums.DiscountRuleMode | null
+  appliedDiscountType?: $Enums.DiscountType | null
+  appliedDiscountValue?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -343,18 +558,35 @@ export type RentalUpdateManyMutationInput = {
   startDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   status?: Prisma.EnumRentalStatusFieldUpdateOperationsInput | $Enums.RentalStatus
+  baseDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountDailyAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountedDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  estimatedTotalPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  appliedDiscountName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  appliedDiscountMode?: Prisma.NullableEnumDiscountRuleModeFieldUpdateOperationsInput | $Enums.DiscountRuleMode | null
+  appliedDiscountType?: Prisma.NullableEnumDiscountTypeFieldUpdateOperationsInput | $Enums.DiscountType | null
+  appliedDiscountValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type RentalUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  packageId?: Prisma.StringFieldUpdateOperationsInput | string
+  packageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   userName?: Prisma.StringFieldUpdateOperationsInput | string
   contactInfo?: Prisma.StringFieldUpdateOperationsInput | string
   startDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   status?: Prisma.EnumRentalStatusFieldUpdateOperationsInput | $Enums.RentalStatus
+  baseDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountDailyAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountedDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  estimatedTotalPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  appliedDiscountRuleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  appliedDiscountName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  appliedDiscountMode?: Prisma.NullableEnumDiscountRuleModeFieldUpdateOperationsInput | $Enums.DiscountRuleMode | null
+  appliedDiscountType?: Prisma.NullableEnumDiscountTypeFieldUpdateOperationsInput | $Enums.DiscountType | null
+  appliedDiscountValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -377,8 +609,25 @@ export type RentalCountOrderByAggregateInput = {
   startDate?: Prisma.SortOrder
   endDate?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  baseDailyPrice?: Prisma.SortOrder
+  discountDailyAmount?: Prisma.SortOrder
+  discountedDailyPrice?: Prisma.SortOrder
+  estimatedTotalPrice?: Prisma.SortOrder
+  appliedDiscountRuleId?: Prisma.SortOrder
+  appliedDiscountName?: Prisma.SortOrder
+  appliedDiscountMode?: Prisma.SortOrder
+  appliedDiscountType?: Prisma.SortOrder
+  appliedDiscountValue?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type RentalAvgOrderByAggregateInput = {
+  baseDailyPrice?: Prisma.SortOrder
+  discountDailyAmount?: Prisma.SortOrder
+  discountedDailyPrice?: Prisma.SortOrder
+  estimatedTotalPrice?: Prisma.SortOrder
+  appliedDiscountValue?: Prisma.SortOrder
 }
 
 export type RentalMaxOrderByAggregateInput = {
@@ -389,6 +638,15 @@ export type RentalMaxOrderByAggregateInput = {
   startDate?: Prisma.SortOrder
   endDate?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  baseDailyPrice?: Prisma.SortOrder
+  discountDailyAmount?: Prisma.SortOrder
+  discountedDailyPrice?: Prisma.SortOrder
+  estimatedTotalPrice?: Prisma.SortOrder
+  appliedDiscountRuleId?: Prisma.SortOrder
+  appliedDiscountName?: Prisma.SortOrder
+  appliedDiscountMode?: Prisma.SortOrder
+  appliedDiscountType?: Prisma.SortOrder
+  appliedDiscountValue?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -401,8 +659,30 @@ export type RentalMinOrderByAggregateInput = {
   startDate?: Prisma.SortOrder
   endDate?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  baseDailyPrice?: Prisma.SortOrder
+  discountDailyAmount?: Prisma.SortOrder
+  discountedDailyPrice?: Prisma.SortOrder
+  estimatedTotalPrice?: Prisma.SortOrder
+  appliedDiscountRuleId?: Prisma.SortOrder
+  appliedDiscountName?: Prisma.SortOrder
+  appliedDiscountMode?: Prisma.SortOrder
+  appliedDiscountType?: Prisma.SortOrder
+  appliedDiscountValue?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type RentalSumOrderByAggregateInput = {
+  baseDailyPrice?: Prisma.SortOrder
+  discountDailyAmount?: Prisma.SortOrder
+  discountedDailyPrice?: Prisma.SortOrder
+  estimatedTotalPrice?: Prisma.SortOrder
+  appliedDiscountValue?: Prisma.SortOrder
+}
+
+export type RentalScalarRelationFilter = {
+  is?: Prisma.RentalWhereInput
+  isNot?: Prisma.RentalWhereInput
 }
 
 export type RentalCreateNestedManyWithoutGearPackageInput = {
@@ -451,6 +731,78 @@ export type EnumRentalStatusFieldUpdateOperationsInput = {
   set?: $Enums.RentalStatus
 }
 
+export type NullableEnumDiscountRuleModeFieldUpdateOperationsInput = {
+  set?: $Enums.DiscountRuleMode | null
+}
+
+export type NullableEnumDiscountTypeFieldUpdateOperationsInput = {
+  set?: $Enums.DiscountType | null
+}
+
+export type NullableFloatFieldUpdateOperationsInput = {
+  set?: number | null
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
+}
+
+export type RentalCreateNestedOneWithoutRentalItemsInput = {
+  create?: Prisma.XOR<Prisma.RentalCreateWithoutRentalItemsInput, Prisma.RentalUncheckedCreateWithoutRentalItemsInput>
+  connectOrCreate?: Prisma.RentalCreateOrConnectWithoutRentalItemsInput
+  connect?: Prisma.RentalWhereUniqueInput
+}
+
+export type RentalUpdateOneRequiredWithoutRentalItemsNestedInput = {
+  create?: Prisma.XOR<Prisma.RentalCreateWithoutRentalItemsInput, Prisma.RentalUncheckedCreateWithoutRentalItemsInput>
+  connectOrCreate?: Prisma.RentalCreateOrConnectWithoutRentalItemsInput
+  upsert?: Prisma.RentalUpsertWithoutRentalItemsInput
+  connect?: Prisma.RentalWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.RentalUpdateToOneWithWhereWithoutRentalItemsInput, Prisma.RentalUpdateWithoutRentalItemsInput>, Prisma.RentalUncheckedUpdateWithoutRentalItemsInput>
+}
+
+export type RentalCreateNestedManyWithoutAppliedDiscountRuleInput = {
+  create?: Prisma.XOR<Prisma.RentalCreateWithoutAppliedDiscountRuleInput, Prisma.RentalUncheckedCreateWithoutAppliedDiscountRuleInput> | Prisma.RentalCreateWithoutAppliedDiscountRuleInput[] | Prisma.RentalUncheckedCreateWithoutAppliedDiscountRuleInput[]
+  connectOrCreate?: Prisma.RentalCreateOrConnectWithoutAppliedDiscountRuleInput | Prisma.RentalCreateOrConnectWithoutAppliedDiscountRuleInput[]
+  createMany?: Prisma.RentalCreateManyAppliedDiscountRuleInputEnvelope
+  connect?: Prisma.RentalWhereUniqueInput | Prisma.RentalWhereUniqueInput[]
+}
+
+export type RentalUncheckedCreateNestedManyWithoutAppliedDiscountRuleInput = {
+  create?: Prisma.XOR<Prisma.RentalCreateWithoutAppliedDiscountRuleInput, Prisma.RentalUncheckedCreateWithoutAppliedDiscountRuleInput> | Prisma.RentalCreateWithoutAppliedDiscountRuleInput[] | Prisma.RentalUncheckedCreateWithoutAppliedDiscountRuleInput[]
+  connectOrCreate?: Prisma.RentalCreateOrConnectWithoutAppliedDiscountRuleInput | Prisma.RentalCreateOrConnectWithoutAppliedDiscountRuleInput[]
+  createMany?: Prisma.RentalCreateManyAppliedDiscountRuleInputEnvelope
+  connect?: Prisma.RentalWhereUniqueInput | Prisma.RentalWhereUniqueInput[]
+}
+
+export type RentalUpdateManyWithoutAppliedDiscountRuleNestedInput = {
+  create?: Prisma.XOR<Prisma.RentalCreateWithoutAppliedDiscountRuleInput, Prisma.RentalUncheckedCreateWithoutAppliedDiscountRuleInput> | Prisma.RentalCreateWithoutAppliedDiscountRuleInput[] | Prisma.RentalUncheckedCreateWithoutAppliedDiscountRuleInput[]
+  connectOrCreate?: Prisma.RentalCreateOrConnectWithoutAppliedDiscountRuleInput | Prisma.RentalCreateOrConnectWithoutAppliedDiscountRuleInput[]
+  upsert?: Prisma.RentalUpsertWithWhereUniqueWithoutAppliedDiscountRuleInput | Prisma.RentalUpsertWithWhereUniqueWithoutAppliedDiscountRuleInput[]
+  createMany?: Prisma.RentalCreateManyAppliedDiscountRuleInputEnvelope
+  set?: Prisma.RentalWhereUniqueInput | Prisma.RentalWhereUniqueInput[]
+  disconnect?: Prisma.RentalWhereUniqueInput | Prisma.RentalWhereUniqueInput[]
+  delete?: Prisma.RentalWhereUniqueInput | Prisma.RentalWhereUniqueInput[]
+  connect?: Prisma.RentalWhereUniqueInput | Prisma.RentalWhereUniqueInput[]
+  update?: Prisma.RentalUpdateWithWhereUniqueWithoutAppliedDiscountRuleInput | Prisma.RentalUpdateWithWhereUniqueWithoutAppliedDiscountRuleInput[]
+  updateMany?: Prisma.RentalUpdateManyWithWhereWithoutAppliedDiscountRuleInput | Prisma.RentalUpdateManyWithWhereWithoutAppliedDiscountRuleInput[]
+  deleteMany?: Prisma.RentalScalarWhereInput | Prisma.RentalScalarWhereInput[]
+}
+
+export type RentalUncheckedUpdateManyWithoutAppliedDiscountRuleNestedInput = {
+  create?: Prisma.XOR<Prisma.RentalCreateWithoutAppliedDiscountRuleInput, Prisma.RentalUncheckedCreateWithoutAppliedDiscountRuleInput> | Prisma.RentalCreateWithoutAppliedDiscountRuleInput[] | Prisma.RentalUncheckedCreateWithoutAppliedDiscountRuleInput[]
+  connectOrCreate?: Prisma.RentalCreateOrConnectWithoutAppliedDiscountRuleInput | Prisma.RentalCreateOrConnectWithoutAppliedDiscountRuleInput[]
+  upsert?: Prisma.RentalUpsertWithWhereUniqueWithoutAppliedDiscountRuleInput | Prisma.RentalUpsertWithWhereUniqueWithoutAppliedDiscountRuleInput[]
+  createMany?: Prisma.RentalCreateManyAppliedDiscountRuleInputEnvelope
+  set?: Prisma.RentalWhereUniqueInput | Prisma.RentalWhereUniqueInput[]
+  disconnect?: Prisma.RentalWhereUniqueInput | Prisma.RentalWhereUniqueInput[]
+  delete?: Prisma.RentalWhereUniqueInput | Prisma.RentalWhereUniqueInput[]
+  connect?: Prisma.RentalWhereUniqueInput | Prisma.RentalWhereUniqueInput[]
+  update?: Prisma.RentalUpdateWithWhereUniqueWithoutAppliedDiscountRuleInput | Prisma.RentalUpdateWithWhereUniqueWithoutAppliedDiscountRuleInput[]
+  updateMany?: Prisma.RentalUpdateManyWithWhereWithoutAppliedDiscountRuleInput | Prisma.RentalUpdateManyWithWhereWithoutAppliedDiscountRuleInput[]
+  deleteMany?: Prisma.RentalScalarWhereInput | Prisma.RentalScalarWhereInput[]
+}
+
 export type RentalCreateWithoutGearPackageInput = {
   id?: string
   userName: string
@@ -458,8 +810,18 @@ export type RentalCreateWithoutGearPackageInput = {
   startDate: Date | string
   endDate: Date | string
   status?: $Enums.RentalStatus
+  baseDailyPrice?: number
+  discountDailyAmount?: number
+  discountedDailyPrice?: number
+  estimatedTotalPrice?: number
+  appliedDiscountName?: string | null
+  appliedDiscountMode?: $Enums.DiscountRuleMode | null
+  appliedDiscountType?: $Enums.DiscountType | null
+  appliedDiscountValue?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  rentalItems?: Prisma.RentalItemCreateNestedManyWithoutRentalInput
+  appliedDiscountRule?: Prisma.DiscountRuleCreateNestedOneWithoutAppliedRentalsInput
 }
 
 export type RentalUncheckedCreateWithoutGearPackageInput = {
@@ -469,8 +831,18 @@ export type RentalUncheckedCreateWithoutGearPackageInput = {
   startDate: Date | string
   endDate: Date | string
   status?: $Enums.RentalStatus
+  baseDailyPrice?: number
+  discountDailyAmount?: number
+  discountedDailyPrice?: number
+  estimatedTotalPrice?: number
+  appliedDiscountRuleId?: string | null
+  appliedDiscountName?: string | null
+  appliedDiscountMode?: $Enums.DiscountRuleMode | null
+  appliedDiscountType?: $Enums.DiscountType | null
+  appliedDiscountValue?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  rentalItems?: Prisma.RentalItemUncheckedCreateNestedManyWithoutRentalInput
 }
 
 export type RentalCreateOrConnectWithoutGearPackageInput = {
@@ -504,14 +876,191 @@ export type RentalScalarWhereInput = {
   OR?: Prisma.RentalScalarWhereInput[]
   NOT?: Prisma.RentalScalarWhereInput | Prisma.RentalScalarWhereInput[]
   id?: Prisma.StringFilter<"Rental"> | string
-  packageId?: Prisma.StringFilter<"Rental"> | string
+  packageId?: Prisma.StringNullableFilter<"Rental"> | string | null
   userName?: Prisma.StringFilter<"Rental"> | string
   contactInfo?: Prisma.StringFilter<"Rental"> | string
   startDate?: Prisma.DateTimeFilter<"Rental"> | Date | string
   endDate?: Prisma.DateTimeFilter<"Rental"> | Date | string
   status?: Prisma.EnumRentalStatusFilter<"Rental"> | $Enums.RentalStatus
+  baseDailyPrice?: Prisma.FloatFilter<"Rental"> | number
+  discountDailyAmount?: Prisma.FloatFilter<"Rental"> | number
+  discountedDailyPrice?: Prisma.FloatFilter<"Rental"> | number
+  estimatedTotalPrice?: Prisma.FloatFilter<"Rental"> | number
+  appliedDiscountRuleId?: Prisma.StringNullableFilter<"Rental"> | string | null
+  appliedDiscountName?: Prisma.StringNullableFilter<"Rental"> | string | null
+  appliedDiscountMode?: Prisma.EnumDiscountRuleModeNullableFilter<"Rental"> | $Enums.DiscountRuleMode | null
+  appliedDiscountType?: Prisma.EnumDiscountTypeNullableFilter<"Rental"> | $Enums.DiscountType | null
+  appliedDiscountValue?: Prisma.FloatNullableFilter<"Rental"> | number | null
   createdAt?: Prisma.DateTimeFilter<"Rental"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Rental"> | Date | string
+}
+
+export type RentalCreateWithoutRentalItemsInput = {
+  id?: string
+  userName: string
+  contactInfo: string
+  startDate: Date | string
+  endDate: Date | string
+  status?: $Enums.RentalStatus
+  baseDailyPrice?: number
+  discountDailyAmount?: number
+  discountedDailyPrice?: number
+  estimatedTotalPrice?: number
+  appliedDiscountName?: string | null
+  appliedDiscountMode?: $Enums.DiscountRuleMode | null
+  appliedDiscountType?: $Enums.DiscountType | null
+  appliedDiscountValue?: number | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  gearPackage?: Prisma.GearPackageCreateNestedOneWithoutRentalsInput
+  appliedDiscountRule?: Prisma.DiscountRuleCreateNestedOneWithoutAppliedRentalsInput
+}
+
+export type RentalUncheckedCreateWithoutRentalItemsInput = {
+  id?: string
+  packageId?: string | null
+  userName: string
+  contactInfo: string
+  startDate: Date | string
+  endDate: Date | string
+  status?: $Enums.RentalStatus
+  baseDailyPrice?: number
+  discountDailyAmount?: number
+  discountedDailyPrice?: number
+  estimatedTotalPrice?: number
+  appliedDiscountRuleId?: string | null
+  appliedDiscountName?: string | null
+  appliedDiscountMode?: $Enums.DiscountRuleMode | null
+  appliedDiscountType?: $Enums.DiscountType | null
+  appliedDiscountValue?: number | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type RentalCreateOrConnectWithoutRentalItemsInput = {
+  where: Prisma.RentalWhereUniqueInput
+  create: Prisma.XOR<Prisma.RentalCreateWithoutRentalItemsInput, Prisma.RentalUncheckedCreateWithoutRentalItemsInput>
+}
+
+export type RentalUpsertWithoutRentalItemsInput = {
+  update: Prisma.XOR<Prisma.RentalUpdateWithoutRentalItemsInput, Prisma.RentalUncheckedUpdateWithoutRentalItemsInput>
+  create: Prisma.XOR<Prisma.RentalCreateWithoutRentalItemsInput, Prisma.RentalUncheckedCreateWithoutRentalItemsInput>
+  where?: Prisma.RentalWhereInput
+}
+
+export type RentalUpdateToOneWithWhereWithoutRentalItemsInput = {
+  where?: Prisma.RentalWhereInput
+  data: Prisma.XOR<Prisma.RentalUpdateWithoutRentalItemsInput, Prisma.RentalUncheckedUpdateWithoutRentalItemsInput>
+}
+
+export type RentalUpdateWithoutRentalItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userName?: Prisma.StringFieldUpdateOperationsInput | string
+  contactInfo?: Prisma.StringFieldUpdateOperationsInput | string
+  startDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  endDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  status?: Prisma.EnumRentalStatusFieldUpdateOperationsInput | $Enums.RentalStatus
+  baseDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountDailyAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountedDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  estimatedTotalPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  appliedDiscountName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  appliedDiscountMode?: Prisma.NullableEnumDiscountRuleModeFieldUpdateOperationsInput | $Enums.DiscountRuleMode | null
+  appliedDiscountType?: Prisma.NullableEnumDiscountTypeFieldUpdateOperationsInput | $Enums.DiscountType | null
+  appliedDiscountValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  gearPackage?: Prisma.GearPackageUpdateOneWithoutRentalsNestedInput
+  appliedDiscountRule?: Prisma.DiscountRuleUpdateOneWithoutAppliedRentalsNestedInput
+}
+
+export type RentalUncheckedUpdateWithoutRentalItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  packageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  userName?: Prisma.StringFieldUpdateOperationsInput | string
+  contactInfo?: Prisma.StringFieldUpdateOperationsInput | string
+  startDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  endDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  status?: Prisma.EnumRentalStatusFieldUpdateOperationsInput | $Enums.RentalStatus
+  baseDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountDailyAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountedDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  estimatedTotalPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  appliedDiscountRuleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  appliedDiscountName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  appliedDiscountMode?: Prisma.NullableEnumDiscountRuleModeFieldUpdateOperationsInput | $Enums.DiscountRuleMode | null
+  appliedDiscountType?: Prisma.NullableEnumDiscountTypeFieldUpdateOperationsInput | $Enums.DiscountType | null
+  appliedDiscountValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type RentalCreateWithoutAppliedDiscountRuleInput = {
+  id?: string
+  userName: string
+  contactInfo: string
+  startDate: Date | string
+  endDate: Date | string
+  status?: $Enums.RentalStatus
+  baseDailyPrice?: number
+  discountDailyAmount?: number
+  discountedDailyPrice?: number
+  estimatedTotalPrice?: number
+  appliedDiscountName?: string | null
+  appliedDiscountMode?: $Enums.DiscountRuleMode | null
+  appliedDiscountType?: $Enums.DiscountType | null
+  appliedDiscountValue?: number | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  gearPackage?: Prisma.GearPackageCreateNestedOneWithoutRentalsInput
+  rentalItems?: Prisma.RentalItemCreateNestedManyWithoutRentalInput
+}
+
+export type RentalUncheckedCreateWithoutAppliedDiscountRuleInput = {
+  id?: string
+  packageId?: string | null
+  userName: string
+  contactInfo: string
+  startDate: Date | string
+  endDate: Date | string
+  status?: $Enums.RentalStatus
+  baseDailyPrice?: number
+  discountDailyAmount?: number
+  discountedDailyPrice?: number
+  estimatedTotalPrice?: number
+  appliedDiscountName?: string | null
+  appliedDiscountMode?: $Enums.DiscountRuleMode | null
+  appliedDiscountType?: $Enums.DiscountType | null
+  appliedDiscountValue?: number | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  rentalItems?: Prisma.RentalItemUncheckedCreateNestedManyWithoutRentalInput
+}
+
+export type RentalCreateOrConnectWithoutAppliedDiscountRuleInput = {
+  where: Prisma.RentalWhereUniqueInput
+  create: Prisma.XOR<Prisma.RentalCreateWithoutAppliedDiscountRuleInput, Prisma.RentalUncheckedCreateWithoutAppliedDiscountRuleInput>
+}
+
+export type RentalCreateManyAppliedDiscountRuleInputEnvelope = {
+  data: Prisma.RentalCreateManyAppliedDiscountRuleInput | Prisma.RentalCreateManyAppliedDiscountRuleInput[]
+  skipDuplicates?: boolean
+}
+
+export type RentalUpsertWithWhereUniqueWithoutAppliedDiscountRuleInput = {
+  where: Prisma.RentalWhereUniqueInput
+  update: Prisma.XOR<Prisma.RentalUpdateWithoutAppliedDiscountRuleInput, Prisma.RentalUncheckedUpdateWithoutAppliedDiscountRuleInput>
+  create: Prisma.XOR<Prisma.RentalCreateWithoutAppliedDiscountRuleInput, Prisma.RentalUncheckedCreateWithoutAppliedDiscountRuleInput>
+}
+
+export type RentalUpdateWithWhereUniqueWithoutAppliedDiscountRuleInput = {
+  where: Prisma.RentalWhereUniqueInput
+  data: Prisma.XOR<Prisma.RentalUpdateWithoutAppliedDiscountRuleInput, Prisma.RentalUncheckedUpdateWithoutAppliedDiscountRuleInput>
+}
+
+export type RentalUpdateManyWithWhereWithoutAppliedDiscountRuleInput = {
+  where: Prisma.RentalScalarWhereInput
+  data: Prisma.XOR<Prisma.RentalUpdateManyMutationInput, Prisma.RentalUncheckedUpdateManyWithoutAppliedDiscountRuleInput>
 }
 
 export type RentalCreateManyGearPackageInput = {
@@ -521,6 +1070,15 @@ export type RentalCreateManyGearPackageInput = {
   startDate: Date | string
   endDate: Date | string
   status?: $Enums.RentalStatus
+  baseDailyPrice?: number
+  discountDailyAmount?: number
+  discountedDailyPrice?: number
+  estimatedTotalPrice?: number
+  appliedDiscountRuleId?: string | null
+  appliedDiscountName?: string | null
+  appliedDiscountMode?: $Enums.DiscountRuleMode | null
+  appliedDiscountType?: $Enums.DiscountType | null
+  appliedDiscountValue?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -532,8 +1090,18 @@ export type RentalUpdateWithoutGearPackageInput = {
   startDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   status?: Prisma.EnumRentalStatusFieldUpdateOperationsInput | $Enums.RentalStatus
+  baseDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountDailyAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountedDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  estimatedTotalPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  appliedDiscountName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  appliedDiscountMode?: Prisma.NullableEnumDiscountRuleModeFieldUpdateOperationsInput | $Enums.DiscountRuleMode | null
+  appliedDiscountType?: Prisma.NullableEnumDiscountTypeFieldUpdateOperationsInput | $Enums.DiscountType | null
+  appliedDiscountValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rentalItems?: Prisma.RentalItemUpdateManyWithoutRentalNestedInput
+  appliedDiscountRule?: Prisma.DiscountRuleUpdateOneWithoutAppliedRentalsNestedInput
 }
 
 export type RentalUncheckedUpdateWithoutGearPackageInput = {
@@ -543,8 +1111,18 @@ export type RentalUncheckedUpdateWithoutGearPackageInput = {
   startDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   status?: Prisma.EnumRentalStatusFieldUpdateOperationsInput | $Enums.RentalStatus
+  baseDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountDailyAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountedDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  estimatedTotalPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  appliedDiscountRuleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  appliedDiscountName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  appliedDiscountMode?: Prisma.NullableEnumDiscountRuleModeFieldUpdateOperationsInput | $Enums.DiscountRuleMode | null
+  appliedDiscountType?: Prisma.NullableEnumDiscountTypeFieldUpdateOperationsInput | $Enums.DiscountType | null
+  appliedDiscountValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rentalItems?: Prisma.RentalItemUncheckedUpdateManyWithoutRentalNestedInput
 }
 
 export type RentalUncheckedUpdateManyWithoutGearPackageInput = {
@@ -554,10 +1132,130 @@ export type RentalUncheckedUpdateManyWithoutGearPackageInput = {
   startDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   status?: Prisma.EnumRentalStatusFieldUpdateOperationsInput | $Enums.RentalStatus
+  baseDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountDailyAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountedDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  estimatedTotalPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  appliedDiscountRuleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  appliedDiscountName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  appliedDiscountMode?: Prisma.NullableEnumDiscountRuleModeFieldUpdateOperationsInput | $Enums.DiscountRuleMode | null
+  appliedDiscountType?: Prisma.NullableEnumDiscountTypeFieldUpdateOperationsInput | $Enums.DiscountType | null
+  appliedDiscountValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
+export type RentalCreateManyAppliedDiscountRuleInput = {
+  id?: string
+  packageId?: string | null
+  userName: string
+  contactInfo: string
+  startDate: Date | string
+  endDate: Date | string
+  status?: $Enums.RentalStatus
+  baseDailyPrice?: number
+  discountDailyAmount?: number
+  discountedDailyPrice?: number
+  estimatedTotalPrice?: number
+  appliedDiscountName?: string | null
+  appliedDiscountMode?: $Enums.DiscountRuleMode | null
+  appliedDiscountType?: $Enums.DiscountType | null
+  appliedDiscountValue?: number | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type RentalUpdateWithoutAppliedDiscountRuleInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userName?: Prisma.StringFieldUpdateOperationsInput | string
+  contactInfo?: Prisma.StringFieldUpdateOperationsInput | string
+  startDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  endDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  status?: Prisma.EnumRentalStatusFieldUpdateOperationsInput | $Enums.RentalStatus
+  baseDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountDailyAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountedDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  estimatedTotalPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  appliedDiscountName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  appliedDiscountMode?: Prisma.NullableEnumDiscountRuleModeFieldUpdateOperationsInput | $Enums.DiscountRuleMode | null
+  appliedDiscountType?: Prisma.NullableEnumDiscountTypeFieldUpdateOperationsInput | $Enums.DiscountType | null
+  appliedDiscountValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  gearPackage?: Prisma.GearPackageUpdateOneWithoutRentalsNestedInput
+  rentalItems?: Prisma.RentalItemUpdateManyWithoutRentalNestedInput
+}
+
+export type RentalUncheckedUpdateWithoutAppliedDiscountRuleInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  packageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  userName?: Prisma.StringFieldUpdateOperationsInput | string
+  contactInfo?: Prisma.StringFieldUpdateOperationsInput | string
+  startDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  endDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  status?: Prisma.EnumRentalStatusFieldUpdateOperationsInput | $Enums.RentalStatus
+  baseDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountDailyAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountedDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  estimatedTotalPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  appliedDiscountName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  appliedDiscountMode?: Prisma.NullableEnumDiscountRuleModeFieldUpdateOperationsInput | $Enums.DiscountRuleMode | null
+  appliedDiscountType?: Prisma.NullableEnumDiscountTypeFieldUpdateOperationsInput | $Enums.DiscountType | null
+  appliedDiscountValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  rentalItems?: Prisma.RentalItemUncheckedUpdateManyWithoutRentalNestedInput
+}
+
+export type RentalUncheckedUpdateManyWithoutAppliedDiscountRuleInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  packageId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  userName?: Prisma.StringFieldUpdateOperationsInput | string
+  contactInfo?: Prisma.StringFieldUpdateOperationsInput | string
+  startDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  endDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  status?: Prisma.EnumRentalStatusFieldUpdateOperationsInput | $Enums.RentalStatus
+  baseDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountDailyAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  discountedDailyPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  estimatedTotalPrice?: Prisma.FloatFieldUpdateOperationsInput | number
+  appliedDiscountName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  appliedDiscountMode?: Prisma.NullableEnumDiscountRuleModeFieldUpdateOperationsInput | $Enums.DiscountRuleMode | null
+  appliedDiscountType?: Prisma.NullableEnumDiscountTypeFieldUpdateOperationsInput | $Enums.DiscountType | null
+  appliedDiscountValue?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+
+/**
+ * Count Type RentalCountOutputType
+ */
+
+export type RentalCountOutputType = {
+  rentalItems: number
+}
+
+export type RentalCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  rentalItems?: boolean | RentalCountOutputTypeCountRentalItemsArgs
+}
+
+/**
+ * RentalCountOutputType without action
+ */
+export type RentalCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the RentalCountOutputType
+   */
+  select?: Prisma.RentalCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * RentalCountOutputType without action
+ */
+export type RentalCountOutputTypeCountRentalItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.RentalItemWhereInput
+}
 
 
 export type RentalSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -568,9 +1266,21 @@ export type RentalSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   startDate?: boolean
   endDate?: boolean
   status?: boolean
+  baseDailyPrice?: boolean
+  discountDailyAmount?: boolean
+  discountedDailyPrice?: boolean
+  estimatedTotalPrice?: boolean
+  appliedDiscountRuleId?: boolean
+  appliedDiscountName?: boolean
+  appliedDiscountMode?: boolean
+  appliedDiscountType?: boolean
+  appliedDiscountValue?: boolean
   createdAt?: boolean
   updatedAt?: boolean
-  gearPackage?: boolean | Prisma.GearPackageDefaultArgs<ExtArgs>
+  gearPackage?: boolean | Prisma.Rental$gearPackageArgs<ExtArgs>
+  rentalItems?: boolean | Prisma.Rental$rentalItemsArgs<ExtArgs>
+  appliedDiscountRule?: boolean | Prisma.Rental$appliedDiscountRuleArgs<ExtArgs>
+  _count?: boolean | Prisma.RentalCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["rental"]>
 
 export type RentalSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -581,9 +1291,19 @@ export type RentalSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   startDate?: boolean
   endDate?: boolean
   status?: boolean
+  baseDailyPrice?: boolean
+  discountDailyAmount?: boolean
+  discountedDailyPrice?: boolean
+  estimatedTotalPrice?: boolean
+  appliedDiscountRuleId?: boolean
+  appliedDiscountName?: boolean
+  appliedDiscountMode?: boolean
+  appliedDiscountType?: boolean
+  appliedDiscountValue?: boolean
   createdAt?: boolean
   updatedAt?: boolean
-  gearPackage?: boolean | Prisma.GearPackageDefaultArgs<ExtArgs>
+  gearPackage?: boolean | Prisma.Rental$gearPackageArgs<ExtArgs>
+  appliedDiscountRule?: boolean | Prisma.Rental$appliedDiscountRuleArgs<ExtArgs>
 }, ExtArgs["result"]["rental"]>
 
 export type RentalSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -594,9 +1314,19 @@ export type RentalSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   startDate?: boolean
   endDate?: boolean
   status?: boolean
+  baseDailyPrice?: boolean
+  discountDailyAmount?: boolean
+  discountedDailyPrice?: boolean
+  estimatedTotalPrice?: boolean
+  appliedDiscountRuleId?: boolean
+  appliedDiscountName?: boolean
+  appliedDiscountMode?: boolean
+  appliedDiscountType?: boolean
+  appliedDiscountValue?: boolean
   createdAt?: boolean
   updatedAt?: boolean
-  gearPackage?: boolean | Prisma.GearPackageDefaultArgs<ExtArgs>
+  gearPackage?: boolean | Prisma.Rental$gearPackageArgs<ExtArgs>
+  appliedDiscountRule?: boolean | Prisma.Rental$appliedDiscountRuleArgs<ExtArgs>
 }, ExtArgs["result"]["rental"]>
 
 export type RentalSelectScalar = {
@@ -607,34 +1337,59 @@ export type RentalSelectScalar = {
   startDate?: boolean
   endDate?: boolean
   status?: boolean
+  baseDailyPrice?: boolean
+  discountDailyAmount?: boolean
+  discountedDailyPrice?: boolean
+  estimatedTotalPrice?: boolean
+  appliedDiscountRuleId?: boolean
+  appliedDiscountName?: boolean
+  appliedDiscountMode?: boolean
+  appliedDiscountType?: boolean
+  appliedDiscountValue?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type RentalOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "packageId" | "userName" | "contactInfo" | "startDate" | "endDate" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["rental"]>
+export type RentalOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "packageId" | "userName" | "contactInfo" | "startDate" | "endDate" | "status" | "baseDailyPrice" | "discountDailyAmount" | "discountedDailyPrice" | "estimatedTotalPrice" | "appliedDiscountRuleId" | "appliedDiscountName" | "appliedDiscountMode" | "appliedDiscountType" | "appliedDiscountValue" | "createdAt" | "updatedAt", ExtArgs["result"]["rental"]>
 export type RentalInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  gearPackage?: boolean | Prisma.GearPackageDefaultArgs<ExtArgs>
+  gearPackage?: boolean | Prisma.Rental$gearPackageArgs<ExtArgs>
+  rentalItems?: boolean | Prisma.Rental$rentalItemsArgs<ExtArgs>
+  appliedDiscountRule?: boolean | Prisma.Rental$appliedDiscountRuleArgs<ExtArgs>
+  _count?: boolean | Prisma.RentalCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type RentalIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  gearPackage?: boolean | Prisma.GearPackageDefaultArgs<ExtArgs>
+  gearPackage?: boolean | Prisma.Rental$gearPackageArgs<ExtArgs>
+  appliedDiscountRule?: boolean | Prisma.Rental$appliedDiscountRuleArgs<ExtArgs>
 }
 export type RentalIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  gearPackage?: boolean | Prisma.GearPackageDefaultArgs<ExtArgs>
+  gearPackage?: boolean | Prisma.Rental$gearPackageArgs<ExtArgs>
+  appliedDiscountRule?: boolean | Prisma.Rental$appliedDiscountRuleArgs<ExtArgs>
 }
 
 export type $RentalPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Rental"
   objects: {
-    gearPackage: Prisma.$GearPackagePayload<ExtArgs>
+    gearPackage: Prisma.$GearPackagePayload<ExtArgs> | null
+    rentalItems: Prisma.$RentalItemPayload<ExtArgs>[]
+    appliedDiscountRule: Prisma.$DiscountRulePayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
-    packageId: string
+    packageId: string | null
     userName: string
     contactInfo: string
     startDate: Date
     endDate: Date
     status: $Enums.RentalStatus
+    baseDailyPrice: number
+    discountDailyAmount: number
+    discountedDailyPrice: number
+    estimatedTotalPrice: number
+    appliedDiscountRuleId: string | null
+    appliedDiscountName: string | null
+    appliedDiscountMode: $Enums.DiscountRuleMode | null
+    appliedDiscountType: $Enums.DiscountType | null
+    appliedDiscountValue: number | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["rental"]>
@@ -1031,7 +1786,9 @@ readonly fields: RentalFieldRefs;
  */
 export interface Prisma__RentalClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
-  gearPackage<T extends Prisma.GearPackageDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.GearPackageDefaultArgs<ExtArgs>>): Prisma.Prisma__GearPackageClient<runtime.Types.Result.GetResult<Prisma.$GearPackagePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  gearPackage<T extends Prisma.Rental$gearPackageArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Rental$gearPackageArgs<ExtArgs>>): Prisma.Prisma__GearPackageClient<runtime.Types.Result.GetResult<Prisma.$GearPackagePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  rentalItems<T extends Prisma.Rental$rentalItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Rental$rentalItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RentalItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  appliedDiscountRule<T extends Prisma.Rental$appliedDiscountRuleArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Rental$appliedDiscountRuleArgs<ExtArgs>>): Prisma.Prisma__DiscountRuleClient<runtime.Types.Result.GetResult<Prisma.$DiscountRulePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1068,6 +1825,15 @@ export interface RentalFieldRefs {
   readonly startDate: Prisma.FieldRef<"Rental", 'DateTime'>
   readonly endDate: Prisma.FieldRef<"Rental", 'DateTime'>
   readonly status: Prisma.FieldRef<"Rental", 'RentalStatus'>
+  readonly baseDailyPrice: Prisma.FieldRef<"Rental", 'Float'>
+  readonly discountDailyAmount: Prisma.FieldRef<"Rental", 'Float'>
+  readonly discountedDailyPrice: Prisma.FieldRef<"Rental", 'Float'>
+  readonly estimatedTotalPrice: Prisma.FieldRef<"Rental", 'Float'>
+  readonly appliedDiscountRuleId: Prisma.FieldRef<"Rental", 'String'>
+  readonly appliedDiscountName: Prisma.FieldRef<"Rental", 'String'>
+  readonly appliedDiscountMode: Prisma.FieldRef<"Rental", 'DiscountRuleMode'>
+  readonly appliedDiscountType: Prisma.FieldRef<"Rental", 'DiscountType'>
+  readonly appliedDiscountValue: Prisma.FieldRef<"Rental", 'Float'>
   readonly createdAt: Prisma.FieldRef<"Rental", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Rental", 'DateTime'>
 }
@@ -1468,6 +2234,68 @@ export type RentalDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * Limit how many Rentals to delete.
    */
   limit?: number
+}
+
+/**
+ * Rental.gearPackage
+ */
+export type Rental$gearPackageArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the GearPackage
+   */
+  select?: Prisma.GearPackageSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the GearPackage
+   */
+  omit?: Prisma.GearPackageOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.GearPackageInclude<ExtArgs> | null
+  where?: Prisma.GearPackageWhereInput
+}
+
+/**
+ * Rental.rentalItems
+ */
+export type Rental$rentalItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the RentalItem
+   */
+  select?: Prisma.RentalItemSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the RentalItem
+   */
+  omit?: Prisma.RentalItemOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.RentalItemInclude<ExtArgs> | null
+  where?: Prisma.RentalItemWhereInput
+  orderBy?: Prisma.RentalItemOrderByWithRelationInput | Prisma.RentalItemOrderByWithRelationInput[]
+  cursor?: Prisma.RentalItemWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.RentalItemScalarFieldEnum | Prisma.RentalItemScalarFieldEnum[]
+}
+
+/**
+ * Rental.appliedDiscountRule
+ */
+export type Rental$appliedDiscountRuleArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the DiscountRule
+   */
+  select?: Prisma.DiscountRuleSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the DiscountRule
+   */
+  omit?: Prisma.DiscountRuleOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DiscountRuleInclude<ExtArgs> | null
+  where?: Prisma.DiscountRuleWhereInput
 }
 
 /**

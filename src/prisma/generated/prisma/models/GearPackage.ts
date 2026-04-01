@@ -434,6 +434,11 @@ export type GearPackageScalarRelationFilter = {
   isNot?: Prisma.GearPackageWhereInput
 }
 
+export type GearPackageNullableScalarRelationFilter = {
+  is?: Prisma.GearPackageWhereInput | null
+  isNot?: Prisma.GearPackageWhereInput | null
+}
+
 export type GearPackageCreateNestedOneWithoutItemsInput = {
   create?: Prisma.XOR<Prisma.GearPackageCreateWithoutItemsInput, Prisma.GearPackageUncheckedCreateWithoutItemsInput>
   connectOrCreate?: Prisma.GearPackageCreateOrConnectWithoutItemsInput
@@ -454,10 +459,12 @@ export type GearPackageCreateNestedOneWithoutRentalsInput = {
   connect?: Prisma.GearPackageWhereUniqueInput
 }
 
-export type GearPackageUpdateOneRequiredWithoutRentalsNestedInput = {
+export type GearPackageUpdateOneWithoutRentalsNestedInput = {
   create?: Prisma.XOR<Prisma.GearPackageCreateWithoutRentalsInput, Prisma.GearPackageUncheckedCreateWithoutRentalsInput>
   connectOrCreate?: Prisma.GearPackageCreateOrConnectWithoutRentalsInput
   upsert?: Prisma.GearPackageUpsertWithoutRentalsInput
+  disconnect?: Prisma.GearPackageWhereInput | boolean
+  delete?: Prisma.GearPackageWhereInput | boolean
   connect?: Prisma.GearPackageWhereUniqueInput
   update?: Prisma.XOR<Prisma.XOR<Prisma.GearPackageUpdateToOneWithWhereWithoutRentalsInput, Prisma.GearPackageUpdateWithoutRentalsInput>, Prisma.GearPackageUncheckedUpdateWithoutRentalsInput>
 }

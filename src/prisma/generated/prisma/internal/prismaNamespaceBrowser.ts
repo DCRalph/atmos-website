@@ -74,6 +74,9 @@ export const ModelName = {
   GearPackage: 'GearPackage',
   GearPackageItem: 'GearPackageItem',
   Rental: 'Rental',
+  RentalItem: 'RentalItem',
+  DiscountRule: 'DiscountRule',
+  DiscountRuleRequirement: 'DiscountRuleRequirement',
   ActivityLog: 'ActivityLog',
   KeyValueStore: 'KeyValueStore'
 } as const
@@ -384,6 +387,7 @@ export const GearItemScalarFieldEnum = {
   shortName: 'shortName',
   description: 'description',
   quantity: 'quantity',
+  price: 'price',
   image: 'image',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -426,11 +430,59 @@ export const RentalScalarFieldEnum = {
   startDate: 'startDate',
   endDate: 'endDate',
   status: 'status',
+  baseDailyPrice: 'baseDailyPrice',
+  discountDailyAmount: 'discountDailyAmount',
+  discountedDailyPrice: 'discountedDailyPrice',
+  estimatedTotalPrice: 'estimatedTotalPrice',
+  appliedDiscountRuleId: 'appliedDiscountRuleId',
+  appliedDiscountName: 'appliedDiscountName',
+  appliedDiscountMode: 'appliedDiscountMode',
+  appliedDiscountType: 'appliedDiscountType',
+  appliedDiscountValue: 'appliedDiscountValue',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
 export type RentalScalarFieldEnum = (typeof RentalScalarFieldEnum)[keyof typeof RentalScalarFieldEnum]
+
+
+export const RentalItemScalarFieldEnum = {
+  id: 'id',
+  rentalId: 'rentalId',
+  gearItemId: 'gearItemId',
+  quantity: 'quantity',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type RentalItemScalarFieldEnum = (typeof RentalItemScalarFieldEnum)[keyof typeof RentalItemScalarFieldEnum]
+
+
+export const DiscountRuleScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  isActive: 'isActive',
+  discountMode: 'discountMode',
+  discountType: 'discountType',
+  discountValue: 'discountValue',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type DiscountRuleScalarFieldEnum = (typeof DiscountRuleScalarFieldEnum)[keyof typeof DiscountRuleScalarFieldEnum]
+
+
+export const DiscountRuleRequirementScalarFieldEnum = {
+  id: 'id',
+  discountRuleId: 'discountRuleId',
+  gearItemId: 'gearItemId',
+  requiredQty: 'requiredQty',
+  discountValue: 'discountValue',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type DiscountRuleRequirementScalarFieldEnum = (typeof DiscountRuleRequirementScalarFieldEnum)[keyof typeof DiscountRuleRequirementScalarFieldEnum]
 
 
 export const ActivityLogScalarFieldEnum = {

@@ -400,16 +400,29 @@ enum RentalStatus {
   REJECTED
 }
 
+enum DiscountType {
+  FIXED_AMOUNT
+  PERCENTAGE
+}
+
+enum DiscountRuleMode {
+  TOTAL
+  PER_ITEM
+}
+
 model GearItem {
-  id           String            @id @default(cuid())
-  name         String
-  shortName    String?
-  description  String?
-  quantity     Int               @default(1)
-  image        String?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  packageItems GearPackageItem[]
+  id                   String                    @id @default(cuid())
+  name                 String
+  shortName            String?
+  description          String?
+  quantity             Int                       @default(1)
+  price                Float                     @default(0)
+  image                String?
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  packageItems         GearPackageItem[]
+  rentalItems          RentalItem[]
+  discountRequirements DiscountRuleRequirement[]
 
   @@map("gear_item")
 }
@@ -445,18 +458,75 @@ model GearPackageItem {
 }
 
 model Rental {
-  id          String       @id @default(cuid())
-  packageId   String
-  gearPackage GearPackage  @relation(fields: [packageId], references: [id], onDelete: Cascade)
-  userName    String
-  contactInfo String
-  startDate   DateTime
-  endDate     DateTime
-  status      RentalStatus @default(PENDING)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id                    String        @id @default(cuid())
+  packageId             String?
+  gearPackage           GearPackage?  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  userName              String
+  contactInfo           String
+  startDate             DateTime
+  endDate               DateTime
+  status                RentalStatus  @default(PENDING)
+  baseDailyPrice        Float         @default(0)
+  discountDailyAmount   Float         @default(0)
+  discountedDailyPrice  Float         @default(0)
+  estimatedTotalPrice   Float         @default(0)
+  appliedDiscountRuleId String?
+  appliedDiscountName   String?
+  appliedDiscountMode   DiscountRuleMode?
+  appliedDiscountType   DiscountType?
+  appliedDiscountValue  Float?
+  rentalItems           RentalItem[]
+  appliedDiscountRule   DiscountRule? @relation(fields: [appliedDiscountRuleId], references: [id], onDelete: SetNull)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
 
   @@map("rental")
+}
+
+model RentalItem {
+  id         String   @id @default(cuid())
+  rentalId   String
+  gearItemId String
+  quantity   Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  rental     Rental   @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+  gearItem   GearItem @relation(fields: [gearItemId], references: [id], onDelete: Cascade)
+
+  @@unique([rentalId, gearItemId])
+  @@index([gearItemId])
+  @@map("rental_item")
+}
+
+model DiscountRule {
+  id              String                    @id @default(cuid())
+  name            String
+  isActive        Boolean                   @default(true)
+  discountMode    DiscountRuleMode          @default(TOTAL)
+  discountType    DiscountType
+  discountValue   Float                     @default(0)
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+  requirements    DiscountRuleRequirement[]
+  appliedRentals  Rental[]
+
+  @@map("discount_rule")
+}
+
+model DiscountRuleRequirement {
+  id             String       @id @default(cuid())
+  discountRuleId String
+  gearItemId     String
+  requiredQty    Int
+  discountValue  Float      @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  discountRule   DiscountRule @relation(fields: [discountRuleId], references: [id], onDelete: Cascade)
+  gearItem       GearItem     @relation(fields: [gearItemId], references: [id], onDelete: Cascade)
+
+  @@unique([discountRuleId, gearItemId])
+  @@index([gearItemId])
+  @@map("discount_rule_requirement")
 }
 
 enum ActivityType {
@@ -489,6 +559,9 @@ enum ActivityType {
   RENTAL_DELETED
   RENTAL_APPROVED
   RENTAL_REJECTED
+  DISCOUNT_RULE_CREATED
+  DISCOUNT_RULE_UPDATED
+  DISCOUNT_RULE_DELETED
   FILE_UPLOADED
   FILE_DELETED
   LOGIN

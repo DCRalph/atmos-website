@@ -133,6 +133,21 @@ export type GearPackageItem = Prisma.GearPackageItemModel
  */
 export type Rental = Prisma.RentalModel
 /**
+ * Model RentalItem
+ * 
+ */
+export type RentalItem = Prisma.RentalItemModel
+/**
+ * Model DiscountRule
+ * 
+ */
+export type DiscountRule = Prisma.DiscountRuleModel
+/**
+ * Model DiscountRuleRequirement
+ * 
+ */
+export type DiscountRuleRequirement = Prisma.DiscountRuleRequirementModel
+/**
  * Model ActivityLog
  * 
  */

@@ -368,6 +368,31 @@ export type EnumRentalStatusFilter<$PrismaModel = never> = {
   not?: Prisma.NestedEnumRentalStatusFilter<$PrismaModel> | $Enums.RentalStatus
 }
 
+export type EnumDiscountRuleModeNullableFilter<$PrismaModel = never> = {
+  equals?: $Enums.DiscountRuleMode | Prisma.EnumDiscountRuleModeFieldRefInput<$PrismaModel> | null
+  in?: $Enums.DiscountRuleMode[] | Prisma.ListEnumDiscountRuleModeFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.DiscountRuleMode[] | Prisma.ListEnumDiscountRuleModeFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumDiscountRuleModeNullableFilter<$PrismaModel> | $Enums.DiscountRuleMode | null
+}
+
+export type EnumDiscountTypeNullableFilter<$PrismaModel = never> = {
+  equals?: $Enums.DiscountType | Prisma.EnumDiscountTypeFieldRefInput<$PrismaModel> | null
+  in?: $Enums.DiscountType[] | Prisma.ListEnumDiscountTypeFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.DiscountType[] | Prisma.ListEnumDiscountTypeFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumDiscountTypeNullableFilter<$PrismaModel> | $Enums.DiscountType | null
+}
+
+export type FloatNullableFilter<$PrismaModel = never> = {
+  equals?: number | Prisma.FloatFieldRefInput<$PrismaModel> | null
+  in?: number[] | Prisma.ListFloatFieldRefInput<$PrismaModel> | null
+  notIn?: number[] | Prisma.ListFloatFieldRefInput<$PrismaModel> | null
+  lt?: number | Prisma.FloatFieldRefInput<$PrismaModel>
+  lte?: number | Prisma.FloatFieldRefInput<$PrismaModel>
+  gt?: number | Prisma.FloatFieldRefInput<$PrismaModel>
+  gte?: number | Prisma.FloatFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedFloatNullableFilter<$PrismaModel> | number | null
+}
+
 export type EnumRentalStatusWithAggregatesFilter<$PrismaModel = never> = {
   equals?: $Enums.RentalStatus | Prisma.EnumRentalStatusFieldRefInput<$PrismaModel>
   in?: $Enums.RentalStatus[] | Prisma.ListEnumRentalStatusFieldRefInput<$PrismaModel>
@@ -376,6 +401,76 @@ export type EnumRentalStatusWithAggregatesFilter<$PrismaModel = never> = {
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumRentalStatusFilter<$PrismaModel>
   _max?: Prisma.NestedEnumRentalStatusFilter<$PrismaModel>
+}
+
+export type EnumDiscountRuleModeNullableWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.DiscountRuleMode | Prisma.EnumDiscountRuleModeFieldRefInput<$PrismaModel> | null
+  in?: $Enums.DiscountRuleMode[] | Prisma.ListEnumDiscountRuleModeFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.DiscountRuleMode[] | Prisma.ListEnumDiscountRuleModeFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumDiscountRuleModeNullableWithAggregatesFilter<$PrismaModel> | $Enums.DiscountRuleMode | null
+  _count?: Prisma.NestedIntNullableFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumDiscountRuleModeNullableFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumDiscountRuleModeNullableFilter<$PrismaModel>
+}
+
+export type EnumDiscountTypeNullableWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.DiscountType | Prisma.EnumDiscountTypeFieldRefInput<$PrismaModel> | null
+  in?: $Enums.DiscountType[] | Prisma.ListEnumDiscountTypeFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.DiscountType[] | Prisma.ListEnumDiscountTypeFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumDiscountTypeNullableWithAggregatesFilter<$PrismaModel> | $Enums.DiscountType | null
+  _count?: Prisma.NestedIntNullableFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumDiscountTypeNullableFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumDiscountTypeNullableFilter<$PrismaModel>
+}
+
+export type FloatNullableWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: number | Prisma.FloatFieldRefInput<$PrismaModel> | null
+  in?: number[] | Prisma.ListFloatFieldRefInput<$PrismaModel> | null
+  notIn?: number[] | Prisma.ListFloatFieldRefInput<$PrismaModel> | null
+  lt?: number | Prisma.FloatFieldRefInput<$PrismaModel>
+  lte?: number | Prisma.FloatFieldRefInput<$PrismaModel>
+  gt?: number | Prisma.FloatFieldRefInput<$PrismaModel>
+  gte?: number | Prisma.FloatFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedFloatNullableWithAggregatesFilter<$PrismaModel> | number | null
+  _count?: Prisma.NestedIntNullableFilter<$PrismaModel>
+  _avg?: Prisma.NestedFloatNullableFilter<$PrismaModel>
+  _sum?: Prisma.NestedFloatNullableFilter<$PrismaModel>
+  _min?: Prisma.NestedFloatNullableFilter<$PrismaModel>
+  _max?: Prisma.NestedFloatNullableFilter<$PrismaModel>
+}
+
+export type EnumDiscountRuleModeFilter<$PrismaModel = never> = {
+  equals?: $Enums.DiscountRuleMode | Prisma.EnumDiscountRuleModeFieldRefInput<$PrismaModel>
+  in?: $Enums.DiscountRuleMode[] | Prisma.ListEnumDiscountRuleModeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.DiscountRuleMode[] | Prisma.ListEnumDiscountRuleModeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumDiscountRuleModeFilter<$PrismaModel> | $Enums.DiscountRuleMode
+}
+
+export type EnumDiscountTypeFilter<$PrismaModel = never> = {
+  equals?: $Enums.DiscountType | Prisma.EnumDiscountTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.DiscountType[] | Prisma.ListEnumDiscountTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.DiscountType[] | Prisma.ListEnumDiscountTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumDiscountTypeFilter<$PrismaModel> | $Enums.DiscountType
+}
+
+export type EnumDiscountRuleModeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.DiscountRuleMode | Prisma.EnumDiscountRuleModeFieldRefInput<$PrismaModel>
+  in?: $Enums.DiscountRuleMode[] | Prisma.ListEnumDiscountRuleModeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.DiscountRuleMode[] | Prisma.ListEnumDiscountRuleModeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumDiscountRuleModeWithAggregatesFilter<$PrismaModel> | $Enums.DiscountRuleMode
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumDiscountRuleModeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumDiscountRuleModeFilter<$PrismaModel>
+}
+
+export type EnumDiscountTypeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.DiscountType | Prisma.EnumDiscountTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.DiscountType[] | Prisma.ListEnumDiscountTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.DiscountType[] | Prisma.ListEnumDiscountTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumDiscountTypeWithAggregatesFilter<$PrismaModel> | $Enums.DiscountType
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumDiscountTypeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumDiscountTypeFilter<$PrismaModel>
 }
 
 export type EnumActivityTypeFilter<$PrismaModel = never> = {
@@ -751,6 +846,20 @@ export type NestedEnumRentalStatusFilter<$PrismaModel = never> = {
   not?: Prisma.NestedEnumRentalStatusFilter<$PrismaModel> | $Enums.RentalStatus
 }
 
+export type NestedEnumDiscountRuleModeNullableFilter<$PrismaModel = never> = {
+  equals?: $Enums.DiscountRuleMode | Prisma.EnumDiscountRuleModeFieldRefInput<$PrismaModel> | null
+  in?: $Enums.DiscountRuleMode[] | Prisma.ListEnumDiscountRuleModeFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.DiscountRuleMode[] | Prisma.ListEnumDiscountRuleModeFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumDiscountRuleModeNullableFilter<$PrismaModel> | $Enums.DiscountRuleMode | null
+}
+
+export type NestedEnumDiscountTypeNullableFilter<$PrismaModel = never> = {
+  equals?: $Enums.DiscountType | Prisma.EnumDiscountTypeFieldRefInput<$PrismaModel> | null
+  in?: $Enums.DiscountType[] | Prisma.ListEnumDiscountTypeFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.DiscountType[] | Prisma.ListEnumDiscountTypeFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumDiscountTypeNullableFilter<$PrismaModel> | $Enums.DiscountType | null
+}
+
 export type NestedEnumRentalStatusWithAggregatesFilter<$PrismaModel = never> = {
   equals?: $Enums.RentalStatus | Prisma.EnumRentalStatusFieldRefInput<$PrismaModel>
   in?: $Enums.RentalStatus[] | Prisma.ListEnumRentalStatusFieldRefInput<$PrismaModel>
@@ -759,6 +868,76 @@ export type NestedEnumRentalStatusWithAggregatesFilter<$PrismaModel = never> = {
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumRentalStatusFilter<$PrismaModel>
   _max?: Prisma.NestedEnumRentalStatusFilter<$PrismaModel>
+}
+
+export type NestedEnumDiscountRuleModeNullableWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.DiscountRuleMode | Prisma.EnumDiscountRuleModeFieldRefInput<$PrismaModel> | null
+  in?: $Enums.DiscountRuleMode[] | Prisma.ListEnumDiscountRuleModeFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.DiscountRuleMode[] | Prisma.ListEnumDiscountRuleModeFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumDiscountRuleModeNullableWithAggregatesFilter<$PrismaModel> | $Enums.DiscountRuleMode | null
+  _count?: Prisma.NestedIntNullableFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumDiscountRuleModeNullableFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumDiscountRuleModeNullableFilter<$PrismaModel>
+}
+
+export type NestedEnumDiscountTypeNullableWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.DiscountType | Prisma.EnumDiscountTypeFieldRefInput<$PrismaModel> | null
+  in?: $Enums.DiscountType[] | Prisma.ListEnumDiscountTypeFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.DiscountType[] | Prisma.ListEnumDiscountTypeFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumDiscountTypeNullableWithAggregatesFilter<$PrismaModel> | $Enums.DiscountType | null
+  _count?: Prisma.NestedIntNullableFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumDiscountTypeNullableFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumDiscountTypeNullableFilter<$PrismaModel>
+}
+
+export type NestedFloatNullableWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: number | Prisma.FloatFieldRefInput<$PrismaModel> | null
+  in?: number[] | Prisma.ListFloatFieldRefInput<$PrismaModel> | null
+  notIn?: number[] | Prisma.ListFloatFieldRefInput<$PrismaModel> | null
+  lt?: number | Prisma.FloatFieldRefInput<$PrismaModel>
+  lte?: number | Prisma.FloatFieldRefInput<$PrismaModel>
+  gt?: number | Prisma.FloatFieldRefInput<$PrismaModel>
+  gte?: number | Prisma.FloatFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedFloatNullableWithAggregatesFilter<$PrismaModel> | number | null
+  _count?: Prisma.NestedIntNullableFilter<$PrismaModel>
+  _avg?: Prisma.NestedFloatNullableFilter<$PrismaModel>
+  _sum?: Prisma.NestedFloatNullableFilter<$PrismaModel>
+  _min?: Prisma.NestedFloatNullableFilter<$PrismaModel>
+  _max?: Prisma.NestedFloatNullableFilter<$PrismaModel>
+}
+
+export type NestedEnumDiscountRuleModeFilter<$PrismaModel = never> = {
+  equals?: $Enums.DiscountRuleMode | Prisma.EnumDiscountRuleModeFieldRefInput<$PrismaModel>
+  in?: $Enums.DiscountRuleMode[] | Prisma.ListEnumDiscountRuleModeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.DiscountRuleMode[] | Prisma.ListEnumDiscountRuleModeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumDiscountRuleModeFilter<$PrismaModel> | $Enums.DiscountRuleMode
+}
+
+export type NestedEnumDiscountTypeFilter<$PrismaModel = never> = {
+  equals?: $Enums.DiscountType | Prisma.EnumDiscountTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.DiscountType[] | Prisma.ListEnumDiscountTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.DiscountType[] | Prisma.ListEnumDiscountTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumDiscountTypeFilter<$PrismaModel> | $Enums.DiscountType
+}
+
+export type NestedEnumDiscountRuleModeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.DiscountRuleMode | Prisma.EnumDiscountRuleModeFieldRefInput<$PrismaModel>
+  in?: $Enums.DiscountRuleMode[] | Prisma.ListEnumDiscountRuleModeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.DiscountRuleMode[] | Prisma.ListEnumDiscountRuleModeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumDiscountRuleModeWithAggregatesFilter<$PrismaModel> | $Enums.DiscountRuleMode
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumDiscountRuleModeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumDiscountRuleModeFilter<$PrismaModel>
+}
+
+export type NestedEnumDiscountTypeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.DiscountType | Prisma.EnumDiscountTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.DiscountType[] | Prisma.ListEnumDiscountTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.DiscountType[] | Prisma.ListEnumDiscountTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumDiscountTypeWithAggregatesFilter<$PrismaModel> | $Enums.DiscountType
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumDiscountTypeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumDiscountTypeFilter<$PrismaModel>
 }
 
 export type NestedEnumActivityTypeFilter<$PrismaModel = never> = {

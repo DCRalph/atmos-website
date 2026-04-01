@@ -407,6 +407,9 @@ export const ModelName = {
   GearPackage: 'GearPackage',
   GearPackageItem: 'GearPackageItem',
   Rental: 'Rental',
+  RentalItem: 'RentalItem',
+  DiscountRule: 'DiscountRule',
+  DiscountRuleRequirement: 'DiscountRuleRequirement',
   ActivityLog: 'ActivityLog',
   KeyValueStore: 'KeyValueStore'
 } as const
@@ -424,7 +427,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "invite" | "crewMember" | "contentItem" | "homeContentPlacement" | "gigTag" | "gigTagRelationship" | "gig" | "homeGigPlacement" | "gigMedia" | "merchItem" | "shopifyProductCache" | "contactSubmission" | "newsletterSubscription" | "file_tag" | "file_upload" | "gearItem" | "gearPackage" | "gearPackageItem" | "rental" | "activityLog" | "keyValueStore"
+    modelProps: "user" | "session" | "account" | "verification" | "invite" | "crewMember" | "contentItem" | "homeContentPlacement" | "gigTag" | "gigTagRelationship" | "gig" | "homeGigPlacement" | "gigMedia" | "merchItem" | "shopifyProductCache" | "contactSubmission" | "newsletterSubscription" | "file_tag" | "file_upload" | "gearItem" | "gearPackage" | "gearPackageItem" | "rental" | "rentalItem" | "discountRule" | "discountRuleRequirement" | "activityLog" | "keyValueStore"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2130,6 +2133,228 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    RentalItem: {
+      payload: Prisma.$RentalItemPayload<ExtArgs>
+      fields: Prisma.RentalItemFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.RentalItemFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RentalItemPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.RentalItemFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RentalItemPayload>
+        }
+        findFirst: {
+          args: Prisma.RentalItemFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RentalItemPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.RentalItemFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RentalItemPayload>
+        }
+        findMany: {
+          args: Prisma.RentalItemFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RentalItemPayload>[]
+        }
+        create: {
+          args: Prisma.RentalItemCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RentalItemPayload>
+        }
+        createMany: {
+          args: Prisma.RentalItemCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.RentalItemCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RentalItemPayload>[]
+        }
+        delete: {
+          args: Prisma.RentalItemDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RentalItemPayload>
+        }
+        update: {
+          args: Prisma.RentalItemUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RentalItemPayload>
+        }
+        deleteMany: {
+          args: Prisma.RentalItemDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.RentalItemUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.RentalItemUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RentalItemPayload>[]
+        }
+        upsert: {
+          args: Prisma.RentalItemUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RentalItemPayload>
+        }
+        aggregate: {
+          args: Prisma.RentalItemAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateRentalItem>
+        }
+        groupBy: {
+          args: Prisma.RentalItemGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RentalItemGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.RentalItemCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RentalItemCountAggregateOutputType> | number
+        }
+      }
+    }
+    DiscountRule: {
+      payload: Prisma.$DiscountRulePayload<ExtArgs>
+      fields: Prisma.DiscountRuleFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.DiscountRuleFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRulePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.DiscountRuleFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRulePayload>
+        }
+        findFirst: {
+          args: Prisma.DiscountRuleFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRulePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.DiscountRuleFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRulePayload>
+        }
+        findMany: {
+          args: Prisma.DiscountRuleFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRulePayload>[]
+        }
+        create: {
+          args: Prisma.DiscountRuleCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRulePayload>
+        }
+        createMany: {
+          args: Prisma.DiscountRuleCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.DiscountRuleCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRulePayload>[]
+        }
+        delete: {
+          args: Prisma.DiscountRuleDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRulePayload>
+        }
+        update: {
+          args: Prisma.DiscountRuleUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRulePayload>
+        }
+        deleteMany: {
+          args: Prisma.DiscountRuleDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.DiscountRuleUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.DiscountRuleUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRulePayload>[]
+        }
+        upsert: {
+          args: Prisma.DiscountRuleUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRulePayload>
+        }
+        aggregate: {
+          args: Prisma.DiscountRuleAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateDiscountRule>
+        }
+        groupBy: {
+          args: Prisma.DiscountRuleGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DiscountRuleGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.DiscountRuleCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DiscountRuleCountAggregateOutputType> | number
+        }
+      }
+    }
+    DiscountRuleRequirement: {
+      payload: Prisma.$DiscountRuleRequirementPayload<ExtArgs>
+      fields: Prisma.DiscountRuleRequirementFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.DiscountRuleRequirementFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRuleRequirementPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.DiscountRuleRequirementFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRuleRequirementPayload>
+        }
+        findFirst: {
+          args: Prisma.DiscountRuleRequirementFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRuleRequirementPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.DiscountRuleRequirementFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRuleRequirementPayload>
+        }
+        findMany: {
+          args: Prisma.DiscountRuleRequirementFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRuleRequirementPayload>[]
+        }
+        create: {
+          args: Prisma.DiscountRuleRequirementCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRuleRequirementPayload>
+        }
+        createMany: {
+          args: Prisma.DiscountRuleRequirementCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.DiscountRuleRequirementCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRuleRequirementPayload>[]
+        }
+        delete: {
+          args: Prisma.DiscountRuleRequirementDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRuleRequirementPayload>
+        }
+        update: {
+          args: Prisma.DiscountRuleRequirementUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRuleRequirementPayload>
+        }
+        deleteMany: {
+          args: Prisma.DiscountRuleRequirementDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.DiscountRuleRequirementUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.DiscountRuleRequirementUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRuleRequirementPayload>[]
+        }
+        upsert: {
+          args: Prisma.DiscountRuleRequirementUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiscountRuleRequirementPayload>
+        }
+        aggregate: {
+          args: Prisma.DiscountRuleRequirementAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateDiscountRuleRequirement>
+        }
+        groupBy: {
+          args: Prisma.DiscountRuleRequirementGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DiscountRuleRequirementGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.DiscountRuleRequirementCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DiscountRuleRequirementCountAggregateOutputType> | number
+        }
+      }
+    }
     ActivityLog: {
       payload: Prisma.$ActivityLogPayload<ExtArgs>
       fields: Prisma.ActivityLogFieldRefs
@@ -2607,6 +2832,7 @@ export const GearItemScalarFieldEnum = {
   shortName: 'shortName',
   description: 'description',
   quantity: 'quantity',
+  price: 'price',
   image: 'image',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -2649,11 +2875,59 @@ export const RentalScalarFieldEnum = {
   startDate: 'startDate',
   endDate: 'endDate',
   status: 'status',
+  baseDailyPrice: 'baseDailyPrice',
+  discountDailyAmount: 'discountDailyAmount',
+  discountedDailyPrice: 'discountedDailyPrice',
+  estimatedTotalPrice: 'estimatedTotalPrice',
+  appliedDiscountRuleId: 'appliedDiscountRuleId',
+  appliedDiscountName: 'appliedDiscountName',
+  appliedDiscountMode: 'appliedDiscountMode',
+  appliedDiscountType: 'appliedDiscountType',
+  appliedDiscountValue: 'appliedDiscountValue',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
 export type RentalScalarFieldEnum = (typeof RentalScalarFieldEnum)[keyof typeof RentalScalarFieldEnum]
+
+
+export const RentalItemScalarFieldEnum = {
+  id: 'id',
+  rentalId: 'rentalId',
+  gearItemId: 'gearItemId',
+  quantity: 'quantity',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type RentalItemScalarFieldEnum = (typeof RentalItemScalarFieldEnum)[keyof typeof RentalItemScalarFieldEnum]
+
+
+export const DiscountRuleScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  isActive: 'isActive',
+  discountMode: 'discountMode',
+  discountType: 'discountType',
+  discountValue: 'discountValue',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type DiscountRuleScalarFieldEnum = (typeof DiscountRuleScalarFieldEnum)[keyof typeof DiscountRuleScalarFieldEnum]
+
+
+export const DiscountRuleRequirementScalarFieldEnum = {
+  id: 'id',
+  discountRuleId: 'discountRuleId',
+  gearItemId: 'gearItemId',
+  requiredQty: 'requiredQty',
+  discountValue: 'discountValue',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type DiscountRuleRequirementScalarFieldEnum = (typeof DiscountRuleRequirementScalarFieldEnum)[keyof typeof DiscountRuleRequirementScalarFieldEnum]
 
 
 export const ActivityLogScalarFieldEnum = {
@@ -2887,6 +3161,34 @@ export type ListEnumRentalStatusFieldRefInput<$PrismaModel> = FieldRefInputType<
 
 
 /**
+ * Reference to a field of type 'DiscountRuleMode'
+ */
+export type EnumDiscountRuleModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DiscountRuleMode'>
+    
+
+
+/**
+ * Reference to a field of type 'DiscountRuleMode[]'
+ */
+export type ListEnumDiscountRuleModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DiscountRuleMode[]'>
+    
+
+
+/**
+ * Reference to a field of type 'DiscountType'
+ */
+export type EnumDiscountTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DiscountType'>
+    
+
+
+/**
+ * Reference to a field of type 'DiscountType[]'
+ */
+export type ListEnumDiscountTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DiscountType[]'>
+    
+
+
+/**
  * Reference to a field of type 'ActivityType'
  */
 export type EnumActivityTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ActivityType'>
@@ -3017,6 +3319,9 @@ export type GlobalOmitConfig = {
   gearPackage?: Prisma.GearPackageOmit
   gearPackageItem?: Prisma.GearPackageItemOmit
   rental?: Prisma.RentalOmit
+  rentalItem?: Prisma.RentalItemOmit
+  discountRule?: Prisma.DiscountRuleOmit
+  discountRuleRequirement?: Prisma.DiscountRuleRequirementOmit
   activityLog?: Prisma.ActivityLogOmit
   keyValueStore?: Prisma.KeyValueStoreOmit
 }

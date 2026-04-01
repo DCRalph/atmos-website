@@ -1,4 +1,4 @@
-import { EquipmentCalendar } from "~/components/equipment/equipment-calendar";
+import { EquipmentBooking } from "~/components/equipment/equipment-booking";
 import { orbitron } from "~/lib/fonts";
 import { type Metadata } from "next";
 
@@ -19,7 +19,7 @@ export default function EquipmentPage() {
         </p>
       </div>
 
-      <EquipmentCalendar />
+      <EquipmentBooking />
     </div>
   );
 }

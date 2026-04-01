@@ -85,6 +85,22 @@ export const RentalStatus = {
 export type RentalStatus = (typeof RentalStatus)[keyof typeof RentalStatus]
 
 
+export const DiscountType = {
+  FIXED_AMOUNT: 'FIXED_AMOUNT',
+  PERCENTAGE: 'PERCENTAGE'
+} as const
+
+export type DiscountType = (typeof DiscountType)[keyof typeof DiscountType]
+
+
+export const DiscountRuleMode = {
+  TOTAL: 'TOTAL',
+  PER_ITEM: 'PER_ITEM'
+} as const
+
+export type DiscountRuleMode = (typeof DiscountRuleMode)[keyof typeof DiscountRuleMode]
+
+
 export const ActivityType = {
   USER_CREATED: 'USER_CREATED',
   USER_UPDATED: 'USER_UPDATED',
@@ -115,6 +131,9 @@ export const ActivityType = {
   RENTAL_DELETED: 'RENTAL_DELETED',
   RENTAL_APPROVED: 'RENTAL_APPROVED',
   RENTAL_REJECTED: 'RENTAL_REJECTED',
+  DISCOUNT_RULE_CREATED: 'DISCOUNT_RULE_CREATED',
+  DISCOUNT_RULE_UPDATED: 'DISCOUNT_RULE_UPDATED',
+  DISCOUNT_RULE_DELETED: 'DISCOUNT_RULE_DELETED',
   FILE_UPLOADED: 'FILE_UPLOADED',
   FILE_DELETED: 'FILE_DELETED',
   LOGIN: 'LOGIN',
