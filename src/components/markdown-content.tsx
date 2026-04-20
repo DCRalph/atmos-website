@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import clsx from "clsx";
 
@@ -8,6 +9,8 @@ type MarkdownContentProps = {
   className?: string;
   size?: "sm" | "md" | "lg";
 };
+
+const INSTAGRAM_PILL_TITLE = "instagram-pill";
 
 const sizeScale = {
   sm: {
@@ -39,12 +42,72 @@ const sizeScale = {
   },
 } as const;
 
+const pillScale = {
+  sm: {
+    wrapper: "gap-1 px-2.5 py-0.5 text-xs",
+    icon: "h-3.5 w-3.5",
+  },
+  md: {
+    wrapper: "gap-1.5 px-3 py-0.5 text-sm",
+    icon: "h-4 w-4",
+  },
+  lg: {
+    wrapper: "gap-2 px-3.5 py-1 text-base",
+    icon: "h-4.5 w-4.5",
+  },
+} as const;
+
+function normalizeInstagramHref(target: string) {
+  const trimmedTarget = target.trim();
+
+  if (/^https?:\/\//i.test(trimmedTarget)) {
+    try {
+      const url = new URL(trimmedTarget);
+      if (
+        url.hostname === "instagram.com" ||
+        url.hostname === "www.instagram.com"
+      ) {
+        return url.toString();
+      }
+    } catch {
+      return null;
+    }
+
+    return null;
+  }
+
+  const handle = trimmedTarget.replace(/^@/, "").replace(/\/+$/, "");
+
+  if (!/^[a-zA-Z0-9._]+$/.test(handle)) {
+    return null;
+  }
+
+  return `https://instagram.com/${handle}`;
+}
+
+function transformInstagramPills(content: string) {
+  return content.replace(
+    /@\[(.+?)\]\((.+?)\)/g,
+    (match, label: string, target: string) => {
+      const href = normalizeInstagramHref(target);
+
+      if (!href) {
+        return match;
+      }
+
+      return `[${label}](${href} "${INSTAGRAM_PILL_TITLE}")`;
+    }
+  );
+}
+
 export function MarkdownContent({
   content,
   className,
   size = "md",
 }: MarkdownContentProps) {
   const s = sizeScale[size];
+  const pill = pillScale[size];
+  const transformedContent = transformInstagramPills(content);
 
   return (
     <div className={clsx("prose prose-invert max-w-none", className)}>
@@ -85,15 +148,37 @@ export function MarkdownContent({
             </ol>
           ),
           li: ({ children }) => <li className={clsx("ml-4", s.li)}>{children}</li>,
-          a: ({ href, children }) => (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={clsx("text-white underline hover:text-white/80", s.p)}
-            >
-              {children}
-            </a>
+          a: ({ href, title, children }) => (
+            title === INSTAGRAM_PILL_TITLE ? (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={clsx(
+                  "inline-flex items-center rounded-full border border-pink-400/40 bg-pink-500/10 font-semibold text-pink-100 no-underline transition-colors hover:border-pink-300/70 hover:bg-pink-500/20 hover:text-white",
+                  pill.wrapper
+                )}
+              >
+                <Image
+                  src="/socials/instagram.png"
+                  alt=""
+                  aria-hidden="true"
+                  width={16}
+                  height={16}
+                  className={clsx("shrink-0 object-contain", pill.icon)}
+                />
+                <span>{children}</span>
+              </a>
+            ) : (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={clsx("text-white underline hover:text-white/80", s.p)}
+              >
+                {children}
+              </a>
+            )
           ),
           strong: ({ children }) => (
             <strong className={clsx("font-bold text-white", s.p)}>
@@ -123,7 +208,7 @@ export function MarkdownContent({
           ),
         }}
       >
-        {content}
+        {transformedContent}
       </ReactMarkdown>
     </div>
   );
