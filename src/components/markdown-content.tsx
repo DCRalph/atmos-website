@@ -3,6 +3,12 @@
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import clsx from "clsx";
+import {
+  SOCIAL_PLATFORMS,
+  detectPlatformFromUrl,
+  getPlatformFromPillTitle,
+  type SocialPlatform,
+} from "~/lib/social-pills";
 
 type MarkdownContentProps = {
   content: string;
@@ -10,7 +16,7 @@ type MarkdownContentProps = {
   size?: "sm" | "md" | "lg";
 };
 
-const INSTAGRAM_PILL_TITLE = "instagram-pill";
+const SOCIAL_PILL_TITLES = new Set(SOCIAL_PLATFORMS.map((p) => p.pillTitle));
 
 const sizeScale = {
   sm: {
@@ -57,45 +63,34 @@ const pillScale = {
   },
 } as const;
 
-function normalizeInstagramHref(target: string) {
-  const trimmedTarget = target.trim();
+function resolvePillForTarget(target: string): {
+  href: string;
+  platform: SocialPlatform;
+} | null {
+  const trimmed = target.trim();
+  if (!trimmed) return null;
 
-  if (/^https?:\/\//i.test(trimmedTarget)) {
-    try {
-      const url = new URL(trimmedTarget);
-      if (
-        url.hostname === "instagram.com" ||
-        url.hostname === "www.instagram.com"
-      ) {
-        return url.toString();
-      }
-    } catch {
-      return null;
-    }
-
-    return null;
+  const platformFromUrl = detectPlatformFromUrl(trimmed);
+  if (platformFromUrl) {
+    return { href: trimmed, platform: platformFromUrl };
   }
 
-  const handle = trimmedTarget.replace(/^@/, "").replace(/\/+$/, "");
-
-  if (!/^[a-zA-Z0-9._]+$/.test(handle)) {
-    return null;
-  }
-
-  return `https://instagram.com/${handle}`;
+  // Handles are ambiguous across platforms; assume Instagram for bare handles
+  // to preserve historical behavior of @[name](handle) syntax.
+  const instagram = SOCIAL_PLATFORMS.find((p) => p.id === "instagram");
+  if (!instagram) return null;
+  const normalized = instagram.normalizeInput(trimmed);
+  if (!normalized) return null;
+  return { href: normalized, platform: instagram };
 }
 
-function transformInstagramPills(content: string) {
+function transformSocialPills(content: string) {
   return content.replace(
     /@\[(.+?)\]\((.+?)\)/g,
     (match, label: string, target: string) => {
-      const href = normalizeInstagramHref(target);
-
-      if (!href) {
-        return match;
-      }
-
-      return `[${label}](${href} "${INSTAGRAM_PILL_TITLE}")`;
+      const resolved = resolvePillForTarget(target);
+      if (!resolved) return match;
+      return `[${label}](${resolved.href} "${resolved.platform.pillTitle}")`;
     }
   );
 }
@@ -107,7 +102,7 @@ export function MarkdownContent({
 }: MarkdownContentProps) {
   const s = sizeScale[size];
   const pill = pillScale[size];
-  const transformedContent = transformInstagramPills(content);
+  const transformedContent = transformSocialPills(content);
 
   return (
     <div className={clsx("prose prose-invert max-w-none", className)}>
@@ -148,28 +143,37 @@ export function MarkdownContent({
             </ol>
           ),
           li: ({ children }) => <li className={clsx("ml-4", s.li)}>{children}</li>,
-          a: ({ href, title, children }) => (
-            title === INSTAGRAM_PILL_TITLE ? (
-              <a
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={clsx(
-                  "inline-flex items-center rounded-full border border-pink-400/40 bg-pink-500/10 font-semibold text-pink-100 no-underline transition-colors hover:border-pink-300/70 hover:bg-pink-500/20 hover:text-white",
-                  pill.wrapper
-                )}
-              >
-                <Image
-                  src="/socials/instagram.png"
-                  alt=""
-                  aria-hidden="true"
-                  width={16}
-                  height={16}
-                  className={clsx("shrink-0 object-contain", pill.icon)}
-                />
-                <span>{children}</span>
-              </a>
-            ) : (
+          a: ({ href, title, children }) => {
+            const pillPlatform =
+              title && SOCIAL_PILL_TITLES.has(title)
+                ? getPlatformFromPillTitle(title) ??
+                  (href ? detectPlatformFromUrl(href) : null)
+                : null;
+            if (pillPlatform) {
+              return (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={clsx(
+                    "inline-flex items-center rounded-full border font-semibold no-underline transition-colors",
+                    pillPlatform.pillClassName,
+                    pill.wrapper
+                  )}
+                >
+                  <Image
+                    src={pillPlatform.iconSrc}
+                    alt=""
+                    aria-hidden="true"
+                    width={16}
+                    height={16}
+                    className={clsx("shrink-0 object-contain", pill.icon)}
+                  />
+                  <span>{children}</span>
+                </a>
+              );
+            }
+            return (
               <a
                 href={href}
                 target="_blank"
@@ -178,8 +182,8 @@ export function MarkdownContent({
               >
                 {children}
               </a>
-            )
-          ),
+            );
+          },
           strong: ({ children }) => (
             <strong className={clsx("font-bold text-white", s.p)}>
               {children}
