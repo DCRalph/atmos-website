@@ -394,7 +394,7 @@ import {
 import { api } from "~/trpc/react";
 import { formatDate, formatTime, isGigPast } from "~/lib/date-utils";
 import { GigTagList } from "~/components/gig-tag-list";
-import { LexicalContent } from "~/components/lexical-content";
+import { LexicalContent } from "~/components/lexical";
 import { MediaGallery } from "~/components/gigs/media-gallery";
 import { buildMediaUrl } from "~/lib/media-url";
 

@@ -1,26 +1,9 @@
-/**
- * `SocialPillLinkNode` — a `LinkNode` subclass that renders as a stylised
- * "social pill" (icon + handle, platform colour) when its `title` attribute
- * matches one of the registered social platforms. Regular links (no pill
- * title) keep standard `LinkNode` appearance.
- *
- * Implementation notes:
- *   - Lexical requires subclass replacements to use a unique `getType()` so
- *     we register this class as `"social-pill-link"`. On serialisation,
- *     every `LinkNode` instance that flows through the editor is promoted
- *     to a `SocialPillLinkNode` (see {@link SOCIAL_PILL_LINK_REPLACEMENT}),
- *     which means the stored JSON `type` becomes `"social-pill-link"` for
- *     new writes.
- *   - Existing documents stored with `type: "link"` deserialise fine: the
- *     registry looks up `LinkNode.importJSON`, which calls `$createLinkNode`,
- *     which runs through `$applyNodeReplacement` and returns a
- *     `SocialPillLinkNode`. Pill styling is then applied at render time
- *     based on the node's `title`.
- *   - Pill styling itself lives in `createDOM`/`updateDOM`; the icon is
- *     prepended as an unmanaged DOM child (`setDOMUnmanaged`) so Lexical's
- *     reconciler doesn't strip it when it diffs the node's text children.
- */
 "use client";
+
+// `LinkNode` subclass that renders as a branded "social pill" when its stored
+// `title` matches a registered social platform. Paired with `LinkNode` via
+// `SOCIAL_PILL_LINK_REPLACEMENT` so every link flowing through the editor is
+// promoted to this class and pill styling stays consistent.
 
 import { LinkNode, type LinkAttributes } from "@lexical/link";
 import {
@@ -101,9 +84,7 @@ function applyPillStyling(
   anchor.classList.add(
     ...platform.pillClassName.split(" ").filter(Boolean),
   );
-  // The underlying `title` attribute stores the pill marker
-  // (e.g. `atmos-social-pill:instagram`). Hide it so users don't see a
-  // tooltip with an internal identifier.
+  // Hide the raw pill marker (`*-pill`) so users don't see an internal title.
   anchor.removeAttribute("title");
 
   if (existingIcon) {
@@ -123,6 +104,8 @@ function applyPillStyling(
   icon.alt = "";
   icon.setAttribute("aria-hidden", "true");
   icon.setAttribute("contenteditable", "false");
+  // `setDOMUnmanaged` prevents Lexical's reconciler from stripping the icon
+  // when it diffs the node's text children.
   setDOMUnmanaged(icon);
   anchor.insertBefore(icon, anchor.firstChild);
 }
@@ -174,8 +157,7 @@ export class SocialPillLinkNode extends LinkNode {
     config: EditorConfig,
   ): HTMLAnchorElement | HTMLSpanElement {
     const dom = super.createDOM(config);
-    const platform = resolvePlatform(this.getURL(), this.getTitle());
-    applyPillStyling(dom, platform);
+    applyPillStyling(dom, resolvePlatform(this.getURL(), this.getTitle()));
     return dom;
   }
 
@@ -185,8 +167,7 @@ export class SocialPillLinkNode extends LinkNode {
     config: EditorConfig,
   ): boolean {
     const updated = super.updateDOM(prevNode, anchor, config);
-    const platform = resolvePlatform(this.getURL(), this.getTitle());
-    applyPillStyling(anchor, platform);
+    applyPillStyling(anchor, resolvePlatform(this.getURL(), this.getTitle()));
     return updated;
   }
 }
@@ -204,13 +185,8 @@ export function $isSocialPillLinkNode(
   return node instanceof SocialPillLinkNode;
 }
 
-/**
- * Node replacement entry to register alongside `LinkNode` in a
- * `LexicalComposer` config. Promotes every `LinkNode` instance (created via
- * `$createLinkNode`, parsed from stored JSON, imported from HTML, etc.) to a
- * `SocialPillLinkNode` so pill styling is applied automatically. Must be
- * paired with `LinkNode` and `SocialPillLinkNode` in the `nodes` array.
- */
+/** Promotes every `LinkNode` (created in-editor or parsed from JSON/HTML) to
+ * a `SocialPillLinkNode` so pill styling is applied automatically. */
 export const SOCIAL_PILL_LINK_REPLACEMENT: LexicalNodeReplacement = {
   replace: LinkNode,
   with: (node: LinkNode) =>

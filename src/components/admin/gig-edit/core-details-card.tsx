@@ -23,7 +23,7 @@ import {
 import { Loader2 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { GigMode } from "~Prisma/browser";
-import { LexicalRichTextEditor } from "~/components/admin/lexical-rich-text-editor";
+import { LexicalRichTextEditor } from "~/components/lexical";
 import type { SerializedEditorState } from "lexical";
 import {
   SaveStatusPill,

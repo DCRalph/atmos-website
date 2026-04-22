@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { SoundCloudPlayer } from "~/components/soundcloud-player";
 import { YouTubePlayer } from "~/components/youtube-player";
-import { LexicalContent } from "~/components/lexical-content";
+import { LexicalContent } from "~/components/lexical";
 import { buildMediaUrl } from "~/lib/media-url";
 import { type CreatorBlockTypeName } from "./block-types";
 
