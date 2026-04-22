@@ -7,6 +7,7 @@ import { api } from "~/trpc/react";
 import { Skeleton } from "~/components/ui/skeleton";
 import { AnimatedPageHeader } from "~/components/animated-page-header";
 import { MainPageSection } from "~/components/main-page-section";
+import { resolveCrewDisplay } from "~/lib/crew-display";
 
 function CrewMemberSkeleton() {
   return (
@@ -55,22 +56,21 @@ export default function CrewPage() {
               ))}
             </>
           ) : (
-            crewMembers?.map((member) => (
-              <CrewMember
-                key={member.id}
-                id={member.id}
-                name={member.name}
-                role={member.role}
-                image={member.image}
-                instagram={member.instagram}
-                soundcloud={member.soundcloud}
-                profileHandle={
-                  member.creatorProfile?.isPublished
-                    ? member.creatorProfile.handle
-                    : null
-                }
-              />
-            ))
+            crewMembers?.map((member) => {
+              const d = resolveCrewDisplay(member);
+              return (
+                <CrewMember
+                  key={d.id}
+                  id={d.id}
+                  name={d.name}
+                  role={d.role}
+                  image={d.image}
+                  instagram={d.instagram}
+                  soundcloud={d.soundcloud}
+                  profileHandle={d.profileHandle}
+                />
+              );
+            })
           )}
         </div>
 

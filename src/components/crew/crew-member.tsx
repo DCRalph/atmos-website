@@ -1,13 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, User } from "lucide-react";
 import { FaInstagram } from "react-icons/fa6";
 
 interface CrewMemberProps {
   id: string;
   name: string;
-  role: string;
-  image: string;
+  role?: string | null;
+  image?: string | null;
   instagram?: string | null;
   soundcloud?: string | null;
   profileHandle?: string | null;
@@ -22,18 +22,29 @@ export function CrewMember({
   profileHandle,
 }: CrewMemberProps) {
   const profileHref = profileHandle ? `/@${profileHandle}` : null;
+  const initial = name.trim().slice(0, 1).toUpperCase() || "?";
 
   return (
     <div className="group border-zinc/20 hover:border-zinc/50 relative overflow-hidden rounded-lg border bg-black/20 p-4 backdrop-blur-sm transition-all hover:bg-black/30 sm:p-6 md:p-8">
       <div className="relative mx-auto mb-4 flex aspect-square h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-white/10 sm:mb-6 sm:h-28 sm:w-28 md:h-32 md:w-32">
-        <Image src={image} alt={name} fill className="object-cover" />
+        {image ? (
+          <Image src={image} alt={name} fill className="object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-white/70">
+            {initial || <User className="h-8 w-8 text-white/60" />}
+          </div>
+        )}
       </div>
 
       <div className="text-center">
         <h3 className="mb-2 text-xl font-bold sm:text-2xl">{name}</h3>
-        <p className="mb-4 text-xs font-semibold tracking-wider text-white/60 uppercase sm:mb-6 sm:text-sm">
-          {role}
-        </p>
+        {role ? (
+          <p className="mb-4 text-xs font-semibold tracking-wider text-white/60 uppercase sm:mb-6 sm:text-sm">
+            {role}
+          </p>
+        ) : (
+          <div className="mb-4 sm:mb-6" />
+        )}
 
         <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
           {instagram && (

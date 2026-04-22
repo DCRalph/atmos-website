@@ -3,7 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Search, ExternalLink, Loader2, Link2, Unlink, Trash2 } from "lucide-react";
+import {
+  Plus,
+  Search,
+  ExternalLink,
+  Loader2,
+  Link2,
+  Unlink,
+  Trash2,
+  ShieldCheck,
+} from "lucide-react";
 import { api } from "~/trpc/react";
 import { LinkUserDialog, type LinkUserTarget } from "~/components/admin/link-user-dialog";
 import { Button } from "~/components/ui/button";
@@ -81,6 +90,10 @@ export function CreatorProfilesManager() {
     search: search || undefined,
     claimStatus: filter === "ALL" ? undefined : filter,
   });
+  const pendingClaims = api.creatorProfiles.listClaimRequests.useQuery({
+    status: "PENDING",
+  });
+  const pendingClaimCount = pendingClaims.data?.length ?? 0;
 
   const deleteProfile = api.creatorProfiles.deleteProfile.useMutation({
     onSuccess: () => {
@@ -103,10 +116,23 @@ export function CreatorProfilesManager() {
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle>Profiles</CardTitle>
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create profile
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" asChild>
+                <Link href="/admin/creator-profiles/claims">
+                  <ShieldCheck className="mr-2 h-4 w-4" />
+                  Claim requests
+                  {pendingClaimCount > 0 && (
+                    <Badge variant="destructive" className="ml-2">
+                      {pendingClaimCount}
+                    </Badge>
+                  )}
+                </Link>
+              </Button>
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create profile
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">

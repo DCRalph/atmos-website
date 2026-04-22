@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowDown, ArrowUp, Link2, Unlink } from "lucide-react";
+import { ArrowDown, ArrowUp, Info, Link2, Unlink } from "lucide-react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { resolveCrewDisplay } from "~/lib/crew-display";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -116,10 +117,10 @@ export function CrewManager() {
   const handleEdit = (member: NonNullable<typeof crewMembers>[0]) => {
     setEditingId(member.id);
     setName(member.name);
-    setRole(member.role);
+    setRole(member.role ?? "");
     setInstagram(member.instagram ?? "");
     setSoundcloud(member.soundcloud ?? "");
-    setImage(member.image);
+    setImage(member.image ?? "");
     setCreatorProfileId(member.creatorProfile?.id ?? null);
     setCreatorProfileHandle(member.creatorProfile?.handle ?? null);
     setProfileQuery("");
@@ -132,19 +133,19 @@ export function CrewManager() {
       updateMember.mutate({
         id: editingId,
         name,
-        role,
+        role: role || null,
         instagram: instagram || null,
         soundcloud: soundcloud || null,
-        image,
+        image: image || null,
         creatorProfileId: creatorProfileId ?? null,
       });
     } else {
       createMember.mutate({
         name,
-        role,
-        instagram: instagram || undefined,
-        soundcloud: soundcloud || undefined,
-        image,
+        role: role || null,
+        instagram: instagram || null,
+        soundcloud: soundcloud || null,
+        image: image || null,
         creatorProfileId: creatorProfileId ?? null,
       });
     }
@@ -185,8 +186,36 @@ export function CrewManager() {
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
+                {creatorProfileId && (
+                  <div className="rounded-md border border-blue-500/40 bg-blue-500/5 p-3 text-xs">
+                    <div className="mb-1 flex items-center gap-1.5 font-medium">
+                      <Info className="h-3.5 w-3.5" />
+                      Linked to{" "}
+                      <Link
+                        href={`/admin/creator-profiles/${creatorProfileId}`}
+                        target="_blank"
+                        className="font-mono hover:underline"
+                      >
+                        @{creatorProfileHandle ?? creatorProfileId}
+                      </Link>
+                    </div>
+                    <p className="text-muted-foreground">
+                      Name, role (tagline), Instagram, SoundCloud and image are
+                      pulled from the profile when set there. The values below
+                      act as fallbacks for any fields the profile doesn&apos;t
+                      have.
+                    </p>
+                  </div>
+                )}
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="name">Name</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="name">Name</Label>
+                    {creatorProfileId && (
+                      <span className="text-muted-foreground text-xs">
+                        Fallback — profile&apos;s display name is used if set
+                      </span>
+                    )}
+                  </div>
                   <Input
                     id="name"
                     value={name}
@@ -195,16 +224,29 @@ export function CrewManager() {
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="role">Role</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="role">Role / tagline</Label>
+                    <span className="text-muted-foreground text-xs">
+                      {creatorProfileId
+                        ? "Fallback — profile's tagline is used if set"
+                        : "Optional"}
+                    </span>
+                  </div>
                   <Input
                     id="role"
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
-                    required
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="instagram">Instagram URL</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="instagram">Instagram URL</Label>
+                    {creatorProfileId && (
+                      <span className="text-muted-foreground text-xs">
+                        Fallback — profile&apos;s Instagram social is used if set
+                      </span>
+                    )}
+                  </div>
                   <Input
                     id="instagram"
                     type="url"
@@ -213,7 +255,14 @@ export function CrewManager() {
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="soundcloud">SoundCloud URL</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="soundcloud">SoundCloud URL</Label>
+                    {creatorProfileId && (
+                      <span className="text-muted-foreground text-xs">
+                        Fallback — profile&apos;s SoundCloud social is used if set
+                      </span>
+                    )}
+                  </div>
                   <Input
                     id="soundcloud"
                     type="url"
@@ -222,13 +271,19 @@ export function CrewManager() {
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="image">Image Path</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="image">Image Path</Label>
+                    <span className="text-muted-foreground text-xs">
+                      {creatorProfileId
+                        ? "Fallback — profile's avatar is used if set"
+                        : "Required when no profile is linked"}
+                    </span>
+                  </div>
                   <Input
                     id="image"
                     value={image}
                     onChange={(e) => setImage(e.target.value)}
                     placeholder="/crew_pfp/example.jpg"
-                    required
                   />
                 </div>
                 <div className="flex flex-col gap-2">
@@ -310,6 +365,12 @@ export function CrewManager() {
                     </>
                   )}
                 </div>
+                {(createMember.error ?? updateMember.error) && (
+                  <p className="text-destructive text-sm">
+                    {createMember.error?.message ??
+                      updateMember.error?.message}
+                  </p>
+                )}
                 <Button
                   type="submit"
                   disabled={createMember.isPending || updateMember.isPending}
@@ -355,12 +416,39 @@ export function CrewManager() {
                     </TableCell>
                   </TableRow>
                 ))
-              : crewMembers?.map((member, index) => (
+              : crewMembers?.map((member, index) => {
+                  const d = resolveCrewDisplay(member);
+                  const linkedBadge = (src: "profile" | "member" | "none") =>
+                    src === "profile" ? (
+                      <span className="text-muted-foreground ml-1 text-[10px] tracking-wide uppercase">
+                        from profile
+                      </span>
+                    ) : null;
+                  return (
                   <TableRow key={member.id}>
-                    <TableCell>{member.name}</TableCell>
-                    <TableCell>{member.role}</TableCell>
-                    <TableCell>{member.instagram ? "Yes" : "No"}</TableCell>
-                    <TableCell>{member.soundcloud ? "Yes" : "No"}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span>{d.name}</span>
+                        {d.source.name === "profile" &&
+                          d.name !== member.name && (
+                            <span className="text-muted-foreground text-[10px] tracking-wide uppercase">
+                              crew row: {member.name}
+                            </span>
+                          )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span>{d.role}</span>
+                      {linkedBadge(d.source.role)}
+                    </TableCell>
+                    <TableCell>
+                      {d.instagram ? "Yes" : "No"}
+                      {linkedBadge(d.source.instagram)}
+                    </TableCell>
+                    <TableCell>
+                      {d.soundcloud ? "Yes" : "No"}
+                      {linkedBadge(d.source.soundcloud)}
+                    </TableCell>
                     <TableCell>
                       {member.creatorProfile ? (
                         <div className="flex items-center gap-1">
@@ -446,7 +534,8 @@ export function CrewManager() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
             {!isLoading && crewMembers?.length === 0 && (
               <TableRow>
                 <TableCell

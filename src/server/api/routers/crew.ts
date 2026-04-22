@@ -14,8 +14,14 @@ const creatorProfileInclude = {
       id: true,
       handle: true,
       displayName: true,
+      tagline: true,
       avatarFileId: true,
       isPublished: true,
+      socials: {
+        orderBy: { sortOrder: "asc" as const },
+        select: { platform: true, url: true },
+      },
+      user: { select: { id: true, name: true, email: true, image: true } },
     },
   },
 } as const;
@@ -61,10 +67,10 @@ export const crewRouter = createTRPCRouter({
     .input(
       z.object({
         name: z.string().min(1),
-        role: z.string().min(1),
-        instagram: z.string().optional(),
-        soundcloud: z.string().optional(),
-        image: z.string().min(1),
+        role: z.string().nullish(),
+        instagram: z.string().nullish(),
+        soundcloud: z.string().nullish(),
+        image: z.string().nullish(),
         creatorProfileId: z.string().nullish(),
       }),
     )
@@ -85,11 +91,21 @@ export const crewRouter = createTRPCRouter({
             message: "Creator profile not found.",
           });
         }
+      } else if (!rest.image) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "An image path is required when a crew member isn't linked to a creator profile.",
+        });
       }
 
       return ctx.db.crewMember.create({
         data: {
-          ...rest,
+          name: rest.name,
+          role: rest.role?.trim() || null,
+          instagram: rest.instagram?.trim() || null,
+          soundcloud: rest.soundcloud?.trim() || null,
+          image: rest.image?.trim() || null,
           creatorProfileId: creatorProfileId ?? null,
           sortOrder: (_max.sortOrder ?? -1) + 1,
         },
@@ -102,10 +118,10 @@ export const crewRouter = createTRPCRouter({
       z.object({
         id: z.string(),
         name: z.string().min(1).optional(),
-        role: z.string().min(1).optional(),
-        instagram: z.string().optional().nullable(),
-        soundcloud: z.string().optional().nullable(),
-        image: z.string().min(1).optional(),
+        role: z.string().nullish(),
+        instagram: z.string().nullish(),
+        soundcloud: z.string().nullish(),
+        image: z.string().nullish(),
         creatorProfileId: z.string().nullish(),
       }),
     )
@@ -123,10 +139,41 @@ export const crewRouter = createTRPCRouter({
           });
         }
       }
+      // If caller is clearing the link *and* not providing an image, make sure
+      // we don't end up with a crew row that has neither a profile nor an image.
+      if (
+        creatorProfileId === null &&
+        data.image !== undefined &&
+        !data.image
+      ) {
+        const existing = await ctx.db.crewMember.findUnique({
+          where: { id },
+          select: { image: true, creatorProfileId: true },
+        });
+        if (existing && !existing.image) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "An image path is required when a crew member isn't linked to a creator profile.",
+          });
+        }
+      }
       return ctx.db.crewMember.update({
         where: { id },
         data: {
-          ...data,
+          ...(data.name !== undefined ? { name: data.name } : {}),
+          ...(data.role !== undefined
+            ? { role: data.role?.trim() || null }
+            : {}),
+          ...(data.instagram !== undefined
+            ? { instagram: data.instagram?.trim() || null }
+            : {}),
+          ...(data.soundcloud !== undefined
+            ? { soundcloud: data.soundcloud?.trim() || null }
+            : {}),
+          ...(data.image !== undefined
+            ? { image: data.image?.trim() || null }
+            : {}),
           ...(creatorProfileId !== undefined
             ? { creatorProfileId: creatorProfileId ?? null }
             : {}),

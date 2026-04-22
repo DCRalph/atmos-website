@@ -152,10 +152,10 @@ model Invite {
 model CrewMember {
   id               String   @id @default(cuid())
   name             String
-  role             String
+  role             String?
   instagram        String?
   soundcloud       String?
-  image            String
+  image            String?
   sortOrder        Int      @default(0)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

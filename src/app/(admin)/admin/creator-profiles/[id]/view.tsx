@@ -127,9 +127,11 @@ export function AdminEditCreatorProfileView({ id }: { id: string }) {
                   className="border-border/70 bg-background inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5"
                 >
                   <span className="font-medium">{m.name}</span>
-                  <span className="text-muted-foreground text-xs">
-                    {m.role}
-                  </span>
+                  {m.role && (
+                    <span className="text-muted-foreground text-xs">
+                      {m.role}
+                    </span>
+                  )}
                 </span>
               ))}
               <Link

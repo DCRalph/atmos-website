@@ -212,10 +212,10 @@ export type CrewMemberGroupByArgs<ExtArgs extends runtime.Types.Extensions.Inter
 export type CrewMemberGroupByOutputType = {
   id: string
   name: string
-  role: string
+  role: string | null
   instagram: string | null
   soundcloud: string | null
-  image: string
+  image: string | null
   sortOrder: number
   createdAt: Date
   updatedAt: Date
@@ -248,10 +248,10 @@ export type CrewMemberWhereInput = {
   NOT?: Prisma.CrewMemberWhereInput | Prisma.CrewMemberWhereInput[]
   id?: Prisma.StringFilter<"CrewMember"> | string
   name?: Prisma.StringFilter<"CrewMember"> | string
-  role?: Prisma.StringFilter<"CrewMember"> | string
+  role?: Prisma.StringNullableFilter<"CrewMember"> | string | null
   instagram?: Prisma.StringNullableFilter<"CrewMember"> | string | null
   soundcloud?: Prisma.StringNullableFilter<"CrewMember"> | string | null
-  image?: Prisma.StringFilter<"CrewMember"> | string
+  image?: Prisma.StringNullableFilter<"CrewMember"> | string | null
   sortOrder?: Prisma.IntFilter<"CrewMember"> | number
   createdAt?: Prisma.DateTimeFilter<"CrewMember"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"CrewMember"> | Date | string
@@ -262,10 +262,10 @@ export type CrewMemberWhereInput = {
 export type CrewMemberOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
-  role?: Prisma.SortOrder
+  role?: Prisma.SortOrderInput | Prisma.SortOrder
   instagram?: Prisma.SortOrderInput | Prisma.SortOrder
   soundcloud?: Prisma.SortOrderInput | Prisma.SortOrder
-  image?: Prisma.SortOrder
+  image?: Prisma.SortOrderInput | Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -279,10 +279,10 @@ export type CrewMemberWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.CrewMemberWhereInput[]
   NOT?: Prisma.CrewMemberWhereInput | Prisma.CrewMemberWhereInput[]
   name?: Prisma.StringFilter<"CrewMember"> | string
-  role?: Prisma.StringFilter<"CrewMember"> | string
+  role?: Prisma.StringNullableFilter<"CrewMember"> | string | null
   instagram?: Prisma.StringNullableFilter<"CrewMember"> | string | null
   soundcloud?: Prisma.StringNullableFilter<"CrewMember"> | string | null
-  image?: Prisma.StringFilter<"CrewMember"> | string
+  image?: Prisma.StringNullableFilter<"CrewMember"> | string | null
   sortOrder?: Prisma.IntFilter<"CrewMember"> | number
   createdAt?: Prisma.DateTimeFilter<"CrewMember"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"CrewMember"> | Date | string
@@ -293,10 +293,10 @@ export type CrewMemberWhereUniqueInput = Prisma.AtLeast<{
 export type CrewMemberOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
-  role?: Prisma.SortOrder
+  role?: Prisma.SortOrderInput | Prisma.SortOrder
   instagram?: Prisma.SortOrderInput | Prisma.SortOrder
   soundcloud?: Prisma.SortOrderInput | Prisma.SortOrder
-  image?: Prisma.SortOrder
+  image?: Prisma.SortOrderInput | Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -314,10 +314,10 @@ export type CrewMemberScalarWhereWithAggregatesInput = {
   NOT?: Prisma.CrewMemberScalarWhereWithAggregatesInput | Prisma.CrewMemberScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"CrewMember"> | string
   name?: Prisma.StringWithAggregatesFilter<"CrewMember"> | string
-  role?: Prisma.StringWithAggregatesFilter<"CrewMember"> | string
+  role?: Prisma.StringNullableWithAggregatesFilter<"CrewMember"> | string | null
   instagram?: Prisma.StringNullableWithAggregatesFilter<"CrewMember"> | string | null
   soundcloud?: Prisma.StringNullableWithAggregatesFilter<"CrewMember"> | string | null
-  image?: Prisma.StringWithAggregatesFilter<"CrewMember"> | string
+  image?: Prisma.StringNullableWithAggregatesFilter<"CrewMember"> | string | null
   sortOrder?: Prisma.IntWithAggregatesFilter<"CrewMember"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"CrewMember"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"CrewMember"> | Date | string
@@ -327,10 +327,10 @@ export type CrewMemberScalarWhereWithAggregatesInput = {
 export type CrewMemberCreateInput = {
   id?: string
   name: string
-  role: string
+  role?: string | null
   instagram?: string | null
   soundcloud?: string | null
-  image: string
+  image?: string | null
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -340,10 +340,10 @@ export type CrewMemberCreateInput = {
 export type CrewMemberUncheckedCreateInput = {
   id?: string
   name: string
-  role: string
+  role?: string | null
   instagram?: string | null
   soundcloud?: string | null
-  image: string
+  image?: string | null
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -353,10 +353,10 @@ export type CrewMemberUncheckedCreateInput = {
 export type CrewMemberUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  role?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   instagram?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   soundcloud?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  image?: Prisma.StringFieldUpdateOperationsInput | string
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -366,10 +366,10 @@ export type CrewMemberUpdateInput = {
 export type CrewMemberUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  role?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   instagram?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   soundcloud?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  image?: Prisma.StringFieldUpdateOperationsInput | string
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -379,10 +379,10 @@ export type CrewMemberUncheckedUpdateInput = {
 export type CrewMemberCreateManyInput = {
   id?: string
   name: string
-  role: string
+  role?: string | null
   instagram?: string | null
   soundcloud?: string | null
-  image: string
+  image?: string | null
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -392,10 +392,10 @@ export type CrewMemberCreateManyInput = {
 export type CrewMemberUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  role?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   instagram?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   soundcloud?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  image?: Prisma.StringFieldUpdateOperationsInput | string
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -404,10 +404,10 @@ export type CrewMemberUpdateManyMutationInput = {
 export type CrewMemberUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  role?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   instagram?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   soundcloud?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  image?: Prisma.StringFieldUpdateOperationsInput | string
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -524,10 +524,10 @@ export type CrewMemberUncheckedUpdateManyWithoutCreatorProfileNestedInput = {
 export type CrewMemberCreateWithoutCreatorProfileInput = {
   id?: string
   name: string
-  role: string
+  role?: string | null
   instagram?: string | null
   soundcloud?: string | null
-  image: string
+  image?: string | null
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -536,10 +536,10 @@ export type CrewMemberCreateWithoutCreatorProfileInput = {
 export type CrewMemberUncheckedCreateWithoutCreatorProfileInput = {
   id?: string
   name: string
-  role: string
+  role?: string | null
   instagram?: string | null
   soundcloud?: string | null
-  image: string
+  image?: string | null
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -577,10 +577,10 @@ export type CrewMemberScalarWhereInput = {
   NOT?: Prisma.CrewMemberScalarWhereInput | Prisma.CrewMemberScalarWhereInput[]
   id?: Prisma.StringFilter<"CrewMember"> | string
   name?: Prisma.StringFilter<"CrewMember"> | string
-  role?: Prisma.StringFilter<"CrewMember"> | string
+  role?: Prisma.StringNullableFilter<"CrewMember"> | string | null
   instagram?: Prisma.StringNullableFilter<"CrewMember"> | string | null
   soundcloud?: Prisma.StringNullableFilter<"CrewMember"> | string | null
-  image?: Prisma.StringFilter<"CrewMember"> | string
+  image?: Prisma.StringNullableFilter<"CrewMember"> | string | null
   sortOrder?: Prisma.IntFilter<"CrewMember"> | number
   createdAt?: Prisma.DateTimeFilter<"CrewMember"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"CrewMember"> | Date | string
@@ -590,10 +590,10 @@ export type CrewMemberScalarWhereInput = {
 export type CrewMemberCreateManyCreatorProfileInput = {
   id?: string
   name: string
-  role: string
+  role?: string | null
   instagram?: string | null
   soundcloud?: string | null
-  image: string
+  image?: string | null
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -602,10 +602,10 @@ export type CrewMemberCreateManyCreatorProfileInput = {
 export type CrewMemberUpdateWithoutCreatorProfileInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  role?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   instagram?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   soundcloud?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  image?: Prisma.StringFieldUpdateOperationsInput | string
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -614,10 +614,10 @@ export type CrewMemberUpdateWithoutCreatorProfileInput = {
 export type CrewMemberUncheckedUpdateWithoutCreatorProfileInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  role?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   instagram?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   soundcloud?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  image?: Prisma.StringFieldUpdateOperationsInput | string
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -626,10 +626,10 @@ export type CrewMemberUncheckedUpdateWithoutCreatorProfileInput = {
 export type CrewMemberUncheckedUpdateManyWithoutCreatorProfileInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  role?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   instagram?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   soundcloud?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  image?: Prisma.StringFieldUpdateOperationsInput | string
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -711,10 +711,10 @@ export type $CrewMemberPayload<ExtArgs extends runtime.Types.Extensions.Internal
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     name: string
-    role: string
+    role: string | null
     instagram: string | null
     soundcloud: string | null
-    image: string
+    image: string | null
     sortOrder: number
     createdAt: Date
     updatedAt: Date
