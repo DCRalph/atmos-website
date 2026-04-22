@@ -23,8 +23,10 @@ import {
   ContentItemDialog,
   type ContentLinkType,
 } from "~/components/admin/content-item-dialog";
+import { useConfirm } from "~/components/confirm-provider";
 
 export function ContentManager() {
+  const confirm = useConfirm();
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [type, setType] = useState("");
@@ -210,12 +212,14 @@ export function ContentManager() {
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => {
-                          if (
-                            confirm(
-                              "Are you sure you want to delete this item?",
-                            )
-                          ) {
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: "Delete item",
+                            description: "Are you sure you want to delete this item? This action cannot be undone.",
+                            confirmLabel: "Delete",
+                            variant: "destructive",
+                          });
+                          if (ok) {
                             deleteItem.mutate({ id: item.id });
                           }
                         }}

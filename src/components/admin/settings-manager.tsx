@@ -24,8 +24,10 @@ import {
 import { Label } from "~/components/ui/label";
 import { Loader2, Plus, Trash2, Edit2 } from "lucide-react";
 import { toast } from "sonner";
+import { useConfirm } from "~/components/confirm-provider";
 
 export function SettingsManager() {
+  const confirm = useConfirm();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [key, setKey] = useState("");
@@ -180,12 +182,14 @@ export function SettingsManager() {
                         variant="ghost"
                         size="icon"
                         className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => {
-                          if (
-                            confirm(
-                              `Are you sure you want to delete ${setting.key}?`,
-                            )
-                          ) {
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: "Delete setting",
+                            description: `Are you sure you want to delete ${setting.key}? This action cannot be undone.`,
+                            confirmLabel: "Delete",
+                            variant: "destructive",
+                          });
+                          if (ok) {
                             deleteMutation.mutate({ key: setting.key });
                           }
                         }}

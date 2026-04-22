@@ -9,6 +9,7 @@ import { ThemeOverrideProvider } from "~/components/theme-overide-provider";
 import { MobileMenuProvider } from "~/components/mobile-menu-provider";
 import { LayoutGroupProvider } from "~/components/layout-group-provider";
 import { MerchCartProvider } from "~/components/merch/merch-cart-provider";
+import { ConfirmProvider } from "~/components/confirm-provider";
 import { ViewTransition } from "react";
 import { montserrat } from "~/lib/fonts";
 
@@ -77,6 +78,8 @@ export default function RootLayout({
               <TRPCReactProvider>
                 <MerchCartProvider>
                   <MobileMenuProvider>
+                    <ConfirmProvider>
+
                     <NextTopLoader height={4} showSpinner={false} />
 
                     <div
@@ -104,6 +107,7 @@ export default function RootLayout({
                       endpoint="/fuckoffaddblockers"
                       scriptSrc="/fuckoffaddblocker/script.js"
                     />
+                    </ConfirmProvider>
                   </MobileMenuProvider>
                 </MerchCartProvider>
               </TRPCReactProvider>

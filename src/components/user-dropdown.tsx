@@ -105,7 +105,7 @@ export function UserDropdown({ detailed = false }) {
                     {user.email}
                   </span>
                 )}
-                {user.role === "ADMIN" && (
+                {user.roles?.some((r) => r.role === "ADMIN") && (
                   <span className="text-primary mt-1 flex items-center gap-1 text-xs font-medium">
                     <Shield className="size-3" />
                     Admin
@@ -133,7 +133,7 @@ export function UserDropdown({ detailed = false }) {
               </Link>
             </DropdownMenuItem>
 
-            {user?.role === "ADMIN" && (
+            {user?.roles?.some((r) => r.role === "ADMIN") && (
               <>
                 <DropdownMenuItem asChild>
                   <Link href="/admin" className="flex items-center gap-3 py-2">

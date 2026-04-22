@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { ArrowDown, ArrowUp, Link2, Unlink } from "lucide-react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -52,6 +53,11 @@ export function CrewManager() {
   const [instagram, setInstagram] = useState("");
   const [soundcloud, setSoundcloud] = useState("");
   const [image, setImage] = useState("");
+  const [creatorProfileId, setCreatorProfileId] = useState<string | null>(null);
+  const [creatorProfileHandle, setCreatorProfileHandle] = useState<string | null>(
+    null,
+  );
+  const [profileQuery, setProfileQuery] = useState("");
   const [search, setSearch] = useState("");
 
   const {
@@ -84,6 +90,16 @@ export function CrewManager() {
       await refetch();
     },
   });
+  const linkCreatorProfile = api.crew.linkCreatorProfile.useMutation({
+    onSuccess: async () => {
+      await refetch();
+    },
+  });
+
+  const profileSearch = api.creatorProfiles.listAll.useQuery(
+    profileQuery ? { search: profileQuery } : undefined,
+    { enabled: isOpen && profileQuery.length > 0 },
+  );
 
   const resetForm = () => {
     setEditingId(null);
@@ -92,6 +108,9 @@ export function CrewManager() {
     setInstagram("");
     setSoundcloud("");
     setImage("");
+    setCreatorProfileId(null);
+    setCreatorProfileHandle(null);
+    setProfileQuery("");
   };
 
   const handleEdit = (member: NonNullable<typeof crewMembers>[0]) => {
@@ -101,6 +120,9 @@ export function CrewManager() {
     setInstagram(member.instagram ?? "");
     setSoundcloud(member.soundcloud ?? "");
     setImage(member.image);
+    setCreatorProfileId(member.creatorProfile?.id ?? null);
+    setCreatorProfileHandle(member.creatorProfile?.handle ?? null);
+    setProfileQuery("");
     setIsOpen(true);
   };
 
@@ -114,6 +136,7 @@ export function CrewManager() {
         instagram: instagram || null,
         soundcloud: soundcloud || null,
         image,
+        creatorProfileId: creatorProfileId ?? null,
       });
     } else {
       createMember.mutate({
@@ -122,9 +145,15 @@ export function CrewManager() {
         instagram: instagram || undefined,
         soundcloud: soundcloud || undefined,
         image,
+        creatorProfileId: creatorProfileId ?? null,
       });
     }
   };
+
+  const profileOptions = useMemo(() => {
+    const results = profileSearch.data ?? [];
+    return results.filter((p) => p.id !== creatorProfileId);
+  }, [profileSearch.data, creatorProfileId]);
 
   return (
     <Card>
@@ -202,6 +231,85 @@ export function CrewManager() {
                     required
                   />
                 </div>
+                <div className="flex flex-col gap-2">
+                  <Label>Creator profile (optional)</Label>
+                  {creatorProfileId ? (
+                    <div className="flex items-center justify-between rounded-md border p-2">
+                      <div className="flex items-center gap-2">
+                        <Link2 className="text-muted-foreground h-4 w-4" />
+                        <Link
+                          href={`/admin/creator-profiles/${creatorProfileId}`}
+                          className="text-sm font-medium hover:underline"
+                          target="_blank"
+                        >
+                          @{creatorProfileHandle ?? creatorProfileId}
+                        </Link>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setCreatorProfileId(null);
+                          setCreatorProfileHandle(null);
+                        }}
+                      >
+                        <Unlink className="mr-1.5 h-3.5 w-3.5" /> Remove
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <Input
+                        placeholder="Search profiles by handle or name…"
+                        value={profileQuery}
+                        onChange={(e) => setProfileQuery(e.target.value)}
+                      />
+                      {profileQuery && (
+                        <div className="max-h-48 overflow-y-auto rounded-md border">
+                          {profileSearch.isLoading ? (
+                            <div className="text-muted-foreground px-3 py-3 text-sm">
+                              Searching…
+                            </div>
+                          ) : profileOptions.length === 0 ? (
+                            <div className="text-muted-foreground px-3 py-3 text-sm">
+                              No profiles match.
+                            </div>
+                          ) : (
+                            profileOptions.map((p) => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => {
+                                  setCreatorProfileId(p.id);
+                                  setCreatorProfileHandle(p.handle);
+                                  setProfileQuery("");
+                                }}
+                                className="hover:bg-accent/30 flex w-full items-center justify-between px-3 py-2 text-left"
+                              >
+                                <div>
+                                  <div className="text-sm font-medium">
+                                    @{p.handle}
+                                  </div>
+                                  <div className="text-muted-foreground text-xs">
+                                    {p.displayName}
+                                  </div>
+                                </div>
+                                {p.user ? (
+                                  <span className="text-muted-foreground text-xs">
+                                    {p.user.name}
+                                  </span>
+                                ) : null}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                      <p className="text-muted-foreground text-xs">
+                        Links this crew card to a creator profile page.
+                      </p>
+                    </>
+                  )}
+                </div>
                 <Button
                   type="submit"
                   disabled={createMember.isPending || updateMember.isPending}
@@ -234,6 +342,7 @@ export function CrewManager() {
               <TableHead>Role</TableHead>
               <TableHead>Instagram</TableHead>
               <TableHead>SoundCloud</TableHead>
+              <TableHead>Creator profile</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -241,7 +350,7 @@ export function CrewManager() {
             {isLoading
               ? Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={`loading-${i}`}>
-                    <TableCell colSpan={5}>
+                    <TableCell colSpan={6}>
                       <div className="bg-muted h-8 w-full animate-pulse rounded" />
                     </TableCell>
                   </TableRow>
@@ -252,6 +361,35 @@ export function CrewManager() {
                     <TableCell>{member.role}</TableCell>
                     <TableCell>{member.instagram ? "Yes" : "No"}</TableCell>
                     <TableCell>{member.soundcloud ? "Yes" : "No"}</TableCell>
+                    <TableCell>
+                      {member.creatorProfile ? (
+                        <div className="flex items-center gap-1">
+                          <Link
+                            href={`/admin/creator-profiles/${member.creatorProfile.id}`}
+                            className="text-primary font-mono text-sm hover:underline"
+                          >
+                            @{member.creatorProfile.handle}
+                          </Link>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() =>
+                              linkCreatorProfile.mutate({
+                                id: member.id,
+                                creatorProfileId: null,
+                              })
+                            }
+                            disabled={linkCreatorProfile.isPending}
+                            aria-label={`Unlink creator profile from ${member.name}`}
+                            title="Unlink creator profile"
+                          >
+                            <Unlink className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Button
@@ -312,7 +450,7 @@ export function CrewManager() {
             {!isLoading && crewMembers?.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={5}
+                  colSpan={6}
                   className="text-muted-foreground text-center"
                 >
                   {search ? "No crew members found" : "No crew members yet"}

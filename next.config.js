@@ -44,6 +44,13 @@ const config = {
   },
   rewrites: async () => {
     return [
+      // Creator public profiles: /@[handle] -> /creator/[handle]
+      // We can't use "@" directly in App Router folder names because that
+      // syntax is reserved for parallel routes.
+      {
+        source: "/@:handle",
+        destination: "/creator/:handle",
+      },
       {
         source: "/fuckoffaddblockers/:match*",
         destination: "https://atmosmedia.co.nz/_vercel/insights/:match*",

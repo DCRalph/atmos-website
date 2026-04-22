@@ -23,6 +23,11 @@ export * from './enums';
  */
 export type User = Prisma.UserModel
 /**
+ * Model UserRoleAssignment
+ * 
+ */
+export type UserRoleAssignment = Prisma.UserRoleAssignmentModel
+/**
  * Model Session
  * 
  */
@@ -72,6 +77,31 @@ export type GigTagRelationship = Prisma.GigTagRelationshipModel
  * 
  */
 export type Gig = Prisma.GigModel
+/**
+ * Model CreatorProfile
+ * 
+ */
+export type CreatorProfile = Prisma.CreatorProfileModel
+/**
+ * Model CreatorBlock
+ * 
+ */
+export type CreatorBlock = Prisma.CreatorBlockModel
+/**
+ * Model CreatorSocial
+ * 
+ */
+export type CreatorSocial = Prisma.CreatorSocialModel
+/**
+ * Model CreatorClaimRequest
+ * 
+ */
+export type CreatorClaimRequest = Prisma.CreatorClaimRequestModel
+/**
+ * Model GigCreator
+ * 
+ */
+export type GigCreator = Prisma.GigCreatorModel
 /**
  * Model HomeGigPlacement
  * 

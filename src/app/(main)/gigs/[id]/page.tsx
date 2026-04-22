@@ -27,16 +27,10 @@ export default function page({ params }: { params: Promise<{ id: string }> }) {
   const baseTitle = isTba ? "TBA..." : gig?.title ?? "Gig";
   const subtitle = cleanText(isTba ? "" : gig?.subtitle);
   const shortDescription = cleanText(isTba ? "" : gig?.shortDescription);
-  const descriptionFromBody = cleanText(
-    gig?.longDescription ? String(gig?.longDescription) : "",
-  );
   const description =
     shortDescription ||
     subtitle ||
-    truncate(
-      descriptionFromBody || `ATMOS — ${DESCRIPTION_SHORT}`,
-      160,
-    );
+    truncate(`ATMOS — ${DESCRIPTION_SHORT}`, 160);
 
   const posterImage = gig?.posterFileUpload?.url ?? null;
   const firstPhoto =
@@ -63,8 +57,8 @@ export default function page({ params }: { params: Promise<{ id: string }> }) {
           <EventJsonLd
             name={gig.title}
             description={
+              gig.shortDescription ||
               gig.subtitle ||
-              gig.longDescription?.toString() ||
               "Wellington electronic music event by ATMOS"
             }
             startDate={gig.gigStartTime}

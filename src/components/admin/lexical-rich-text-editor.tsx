@@ -8,75 +8,90 @@ import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { LinkPlugin } from "@lexical/react/LexicalLinkPlugin";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
-import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
 import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
-  $convertFromMarkdownString,
-  $convertToMarkdownString,
-  TRANSFORMERS,
-  type Transformer,
-  type TextMatchTransformer,
-} from "@lexical/markdown";
-import {
-  $createLinkNode,
   $isLinkNode,
-  LinkNode,
   TOGGLE_LINK_COMMAND,
+  LinkNode,
   type LinkNode as LinkNodeType,
 } from "@lexical/link";
 import {
-  HeadingNode,
-  QuoteNode,
   $createHeadingNode,
   $createQuoteNode,
+  HeadingNode,
+  QuoteNode,
   type HeadingTagType,
 } from "@lexical/rich-text";
-import { CodeNode, CodeHighlightNode } from "@lexical/code-core";
 import {
-  ListNode,
-  ListItemNode,
   INSERT_ORDERED_LIST_COMMAND,
   INSERT_UNORDERED_LIST_COMMAND,
   REMOVE_LIST_COMMAND,
   $isListNode,
+  ListNode,
+  ListItemNode,
 } from "@lexical/list";
-import { $setBlocksType } from "@lexical/selection";
+import { CodeNode, CodeHighlightNode } from "@lexical/code-core";
+import {
+  SocialPillLinkNode,
+  SOCIAL_PILL_LINK_REPLACEMENT,
+} from "~/components/admin/social-pill-node";
+import {
+  $setBlocksType,
+  $patchStyleText,
+  $getSelectionStyleValueForProperty,
+} from "@lexical/selection";
 import { $findMatchingParent, mergeRegister } from "@lexical/utils";
 import {
   $createParagraphNode,
   $createTextNode,
   $getRoot,
   $getSelection,
+  $isElementNode,
   $isRangeSelection,
   $isRootOrShadowRoot,
   $setSelection,
   CAN_REDO_COMMAND,
   CAN_UNDO_COMMAND,
   COMMAND_PRIORITY_CRITICAL,
+  FORMAT_ELEMENT_COMMAND,
   FORMAT_TEXT_COMMAND,
   REDO_COMMAND,
   SELECTION_CHANGE_COMMAND,
   UNDO_COMMAND,
   type BaseSelection,
+  type ElementFormatType,
   type EditorState,
   type LexicalEditor,
+  type SerializedEditorState,
+  type TextFormatType,
 } from "lexical";
 import {
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
   Bold,
-  Italic,
+  Check,
   Code,
+  Eraser,
   ExternalLink,
   Heading1,
   Heading2,
   Heading3,
+  Heading4,
+  Italic,
   Link2,
   List as ListIcon,
   ListOrdered,
+  Palette,
   Pencil,
   Quote,
   Redo2,
+  Strikethrough,
   Trash2,
+  Type,
+  Underline,
   Undo2,
 } from "lucide-react";
 import Image from "next/image";
@@ -91,57 +106,124 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "~/components/ui/popover";
 import { cn } from "~/lib/utils";
 import {
   SOCIAL_PLATFORMS,
   detectPlatformFromUrl,
   getPlatform,
   getPlatformFromPillTitle,
-  isSocialPillTitle,
   resolvePillPlatform,
   type SocialPlatform,
   type SocialPlatformId,
 } from "~/lib/social-pills";
 
-const SOCIAL_PILL_IMPORT_REGEX = /@\[([^\]]+)\]\(([^)\s]+)\)/;
-const SOCIAL_PILL_SHORTCUT_REGEX = /@\[([^\]]+)\]\(([^)\s]+)\)$/;
+/** Shared Lexical node set used by the editor and `LexicalContent`. */
+export const LEXICAL_NODES = [
+  HeadingNode,
+  QuoteNode,
+  ListNode,
+  ListItemNode,
+  LinkNode,
+  SocialPillLinkNode,
+  SOCIAL_PILL_LINK_REPLACEMENT,
+  CodeNode,
+  CodeHighlightNode,
+];
 
-const SOCIAL_PILL_TRANSFORMER: TextMatchTransformer = {
-  dependencies: [LinkNode],
-  export: (node, exportChildren) => {
-    if (!$isLinkNode(node)) return null;
-    if (!isSocialPillTitle(node.getTitle())) return null;
-    const text = exportChildren(node);
-    return `@[${text}](${node.getURL()})`;
-  },
-  importRegExp: SOCIAL_PILL_IMPORT_REGEX,
-  regExp: SOCIAL_PILL_SHORTCUT_REGEX,
-  replace: (textNode, match) => {
-    const label = match[1] ?? "";
-    const url = match[2] ?? "";
-    if (!url) return;
-    const platform = detectPlatformFromUrl(url);
-    const title = platform?.pillTitle ?? SOCIAL_PLATFORMS[0]!.pillTitle;
-    const linkNode = $createLinkNode(url, { title });
-    const linkText = $createTextNode(label);
-    linkNode.append(linkText);
-    textNode.replace(linkNode);
-  },
-  trigger: ")",
-  type: "text-match",
+type FontFamilyOption = {
+  id: string;
+  label: string;
+  stack: string;
 };
 
-export const MARKDOWN_TRANSFORMERS: Transformer[] = [
-  SOCIAL_PILL_TRANSFORMER,
-  ...TRANSFORMERS,
+const FONT_FAMILIES: FontFamilyOption[] = [
+  {
+    id: "sans",
+    label: "Sans serif",
+    stack:
+      'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  },
+  {
+    id: "serif",
+    label: "Serif",
+    stack: 'Georgia, Cambria, "Times New Roman", Times, serif',
+  },
+  {
+    id: "script",
+    label: "Script",
+    stack:
+      '"Segoe Script", "Brush Script MT", "Lucida Handwriting", cursive',
+  },
+  {
+    id: "display",
+    label: "Display",
+    stack:
+      'Impact, "Arial Black", "Helvetica Neue", Haettenschweiler, "Franklin Gothic Bold", sans-serif',
+  },
+  {
+    id: "mono",
+    label: "Mono",
+    stack:
+      'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+  },
 ];
+
+type ColorPreset = {
+  label: string;
+  value: string;
+};
+
+const COLOR_PRESETS: ColorPreset[] = [
+  { label: "Red", value: "#ef4444" },
+  { label: "Orange", value: "#f97316" },
+  { label: "Amber", value: "#f59e0b" },
+  { label: "Yellow", value: "#eab308" },
+  { label: "Lime", value: "#84cc16" },
+  { label: "Green", value: "#22c55e" },
+  { label: "Emerald", value: "#10b981" },
+  { label: "Teal", value: "#14b8a6" },
+  { label: "Cyan", value: "#06b6d4" },
+  { label: "Sky", value: "#0ea5e9" },
+  { label: "Blue", value: "#3b82f6" },
+  { label: "Indigo", value: "#6366f1" },
+  { label: "Violet", value: "#8b5cf6" },
+  { label: "Purple", value: "#a855f7" },
+  { label: "Fuchsia", value: "#d946ef" },
+  { label: "Pink", value: "#ec4899" },
+  { label: "Rose", value: "#f43f5e" },
+  { label: "White", value: "#ffffff" },
+  { label: "Gray", value: "#9ca3af" },
+  { label: "Black", value: "#000000" },
+];
+
+function findFontFamilyMatch(raw: string): FontFamilyOption | null {
+  if (!raw) return null;
+  const normalized = raw.toLowerCase().replace(/\s+/g, "");
+  for (const f of FONT_FAMILIES) {
+    const stackNormalized = f.stack.toLowerCase().replace(/\s+/g, "");
+    if (normalized === stackNormalized) return f;
+    const firstFamily = f.stack
+      .split(",")[0]
+      ?.trim()
+      .replace(/^["']|["']$/g, "")
+      .toLowerCase();
+    if (firstFamily && raw.toLowerCase().includes(firstFamily)) return f;
+  }
+  return null;
+}
 
 const theme = {
   paragraph: "mb-2 leading-relaxed text-foreground",
   heading: {
-    h1: "text-2xl font-bold mb-3 mt-4 text-foreground",
-    h2: "text-xl font-bold mb-2 mt-3 text-foreground",
-    h3: "text-lg font-bold mb-2 mt-3 text-foreground",
+    h1: "text-5xl font-bold mb-4 mt-5 text-foreground tracking-tight",
+    h2: "text-3xl font-bold mb-3 mt-4 text-foreground tracking-tight",
+    h3: "text-2xl font-bold mb-2 mt-3 text-foreground",
+    h4: "text-lg font-bold mb-2 mt-3 text-foreground",
   },
   list: {
     ul: "list-disc ml-6 mb-2 space-y-1",
@@ -229,6 +311,7 @@ type BlockType =
   | "h1"
   | "h2"
   | "h3"
+  | "h4"
   | "quote"
   | "ul"
   | "ol";
@@ -279,9 +362,14 @@ function Toolbar({ onRequestLinkDialog }: Toolbarprops) {
   const [editor] = useLexicalComposerContext();
   const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
+  const [isUnderline, setIsUnderline] = useState(false);
+  const [isStrikethrough, setIsStrikethrough] = useState(false);
   const [isCode, setIsCode] = useState(false);
   const [isLink, setIsLink] = useState(false);
   const [blockType, setBlockType] = useState<BlockType>("paragraph");
+  const [align, setAlign] = useState<ElementFormatType>("");
+  const [fontFamilyRaw, setFontFamilyRaw] = useState<string>("");
+  const [fontColor, setFontColor] = useState<string>("");
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
@@ -291,6 +379,8 @@ function Toolbar({ onRequestLinkDialog }: Toolbarprops) {
 
     setIsBold(selection.hasFormat("bold"));
     setIsItalic(selection.hasFormat("italic"));
+    setIsUnderline(selection.hasFormat("underline"));
+    setIsStrikethrough(selection.hasFormat("strikethrough"));
     setIsCode(selection.hasFormat("code"));
 
     const anchorNode = selection.anchor.getNode();
@@ -304,6 +394,19 @@ function Toolbar({ onRequestLinkDialog }: Toolbarprops) {
 
     const linkParent = $findMatchingParent(anchorNode, $isLinkNode);
     setIsLink(Boolean(linkParent));
+
+    if ($isElementNode(element)) {
+      setAlign(element.getFormatType() ?? "");
+    } else {
+      setAlign("");
+    }
+
+    setFontFamilyRaw(
+      $getSelectionStyleValueForProperty(selection, "font-family", ""),
+    );
+    setFontColor(
+      $getSelectionStyleValueForProperty(selection, "color", ""),
+    );
 
     if ($isListNode(element)) {
       const type = element.getListType();
@@ -407,6 +510,66 @@ function Toolbar({ onRequestLinkDialog }: Toolbarprops) {
     }
   };
 
+  const setAlignment = (value: ElementFormatType) => {
+    editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, value);
+  };
+
+  const applyStyle = (styles: Record<string, string | null>) => {
+    editor.update(() => {
+      const selection = $getSelection();
+      if (!$isRangeSelection(selection)) return;
+      $patchStyleText(selection, styles);
+    });
+  };
+
+  const setFontFamily = (stack: string) => {
+    applyStyle({ "font-family": stack });
+  };
+
+  const clearFontFamily = () => {
+    applyStyle({ "font-family": null });
+  };
+
+  const setTextColor = (color: string) => {
+    applyStyle({ color });
+  };
+
+  const clearTextColor = () => {
+    applyStyle({ color: null });
+  };
+
+  const clearFormatting = () => {
+    editor.update(() => {
+      const selection = $getSelection();
+      if (!$isRangeSelection(selection)) return;
+      const formats: TextFormatType[] = [
+        "bold",
+        "italic",
+        "underline",
+        "strikethrough",
+        "code",
+        "subscript",
+        "superscript",
+        "highlight",
+      ];
+      for (const format of formats) {
+        if (selection.hasFormat(format)) {
+          selection.formatText(format);
+        }
+      }
+      $patchStyleText(selection, {
+        "font-family": null,
+        color: null,
+        "background-color": null,
+      });
+      if (blockType !== "paragraph") {
+        $setBlocksType(selection, () => $createParagraphNode());
+      }
+    });
+  };
+
+  const activeFontFamily = findFontFamilyMatch(fontFamilyRaw);
+
   const openLinkDialog = () => {
     editor.getEditorState().read(() => {
       const selection = $getSelection();
@@ -478,6 +641,22 @@ function Toolbar({ onRequestLinkDialog }: Toolbarprops) {
         <Italic className="h-4 w-4" />
       </ToolbarButton>
       <ToolbarButton
+        title="Underline"
+        active={isUnderline}
+        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "underline")}
+      >
+        <Underline className="h-4 w-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        title="Strikethrough"
+        active={isStrikethrough}
+        onClick={() =>
+          editor.dispatchCommand(FORMAT_TEXT_COMMAND, "strikethrough")
+        }
+      >
+        <Strikethrough className="h-4 w-4" />
+      </ToolbarButton>
+      <ToolbarButton
         title="Inline code"
         active={isCode}
         onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "code")}
@@ -506,6 +685,13 @@ function Toolbar({ onRequestLinkDialog }: Toolbarprops) {
       >
         <Heading3 className="h-4 w-4" />
       </ToolbarButton>
+      <ToolbarButton
+        title="Heading 4"
+        active={blockType === "h4"}
+        onClick={() => formatHeading("h4")}
+      >
+        <Heading4 className="h-4 w-4" />
+      </ToolbarButton>
       <ToolbarSeparator />
       <ToolbarButton
         title="Bulleted list"
@@ -530,13 +716,286 @@ function Toolbar({ onRequestLinkDialog }: Toolbarprops) {
       </ToolbarButton>
       <ToolbarSeparator />
       <ToolbarButton
+        title="Align left"
+        active={align === "left" || align === "" || align === "start"}
+        onClick={() => setAlignment("left")}
+      >
+        <AlignLeft className="h-4 w-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        title="Align center"
+        active={align === "center"}
+        onClick={() => setAlignment("center")}
+      >
+        <AlignCenter className="h-4 w-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        title="Align right"
+        active={align === "right" || align === "end"}
+        onClick={() => setAlignment("right")}
+      >
+        <AlignRight className="h-4 w-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        title="Justify"
+        active={align === "justify"}
+        onClick={() => setAlignment("justify")}
+      >
+        <AlignJustify className="h-4 w-4" />
+      </ToolbarButton>
+      <ToolbarSeparator />
+      <FontFamilyPopover
+        active={activeFontFamily}
+        onSelect={setFontFamily}
+        onClear={clearFontFamily}
+      />
+      <TextColorPopover
+        activeColor={fontColor}
+        onSelect={setTextColor}
+        onClear={clearTextColor}
+      />
+      <ToolbarSeparator />
+      <ToolbarButton
         title={isLink ? "Edit link" : "Insert link"}
         active={isLink}
         onClick={openLinkDialog}
       >
         <Link2 className="h-4 w-4" />
       </ToolbarButton>
+      <ToolbarButton title="Clear formatting" onClick={clearFormatting}>
+        <Eraser className="h-4 w-4" />
+      </ToolbarButton>
     </div>
+  );
+}
+
+type FontFamilyPopoverProps = {
+  active: FontFamilyOption | null;
+  onSelect: (stack: string) => void;
+  onClear: () => void;
+};
+
+function FontFamilyPopover({
+  active,
+  onSelect,
+  onClear,
+}: FontFamilyPopoverProps) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          title="Font family"
+          aria-label="Font family"
+          onMouseDown={(e) => e.preventDefault()}
+          className={cn(
+            "h-8 gap-1.5 px-2 text-xs",
+            active && "bg-accent text-accent-foreground",
+          )}
+        >
+          <Type className="h-4 w-4" />
+          <span className="hidden max-w-22 truncate sm:inline">
+            {active?.label ?? "Font"}
+          </span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-56 p-1"
+        onMouseDown={(e) => e.preventDefault()}
+      >
+        <div className="flex flex-col">
+          <button
+            type="button"
+            onClick={() => {
+              onClear();
+              setOpen(false);
+            }}
+            className={cn(
+              "hover:bg-accent hover:text-accent-foreground flex items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-left text-xs",
+              !active && "bg-accent text-accent-foreground",
+            )}
+          >
+            <span className="text-muted-foreground">Default</span>
+            {!active ? <Check className="h-3.5 w-3.5" /> : null}
+          </button>
+          <div className="bg-border my-1 h-px" aria-hidden />
+          {FONT_FAMILIES.map((f) => {
+            const isActive = active?.id === f.id;
+            return (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => {
+                  onSelect(f.stack);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "hover:bg-accent hover:text-accent-foreground flex items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-left text-sm",
+                  isActive && "bg-accent text-accent-foreground",
+                )}
+                style={{ fontFamily: f.stack }}
+              >
+                <span>{f.label}</span>
+                {isActive ? <Check className="h-3.5 w-3.5" /> : null}
+              </button>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function normalizeColor(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+type TextColorPopoverProps = {
+  activeColor: string;
+  onSelect: (color: string) => void;
+  onClear: () => void;
+};
+
+function TextColorPopover({
+  activeColor,
+  onSelect,
+  onClear,
+}: TextColorPopoverProps) {
+  const [open, setOpen] = useState(false);
+  const [customColor, setCustomColor] = useState<string>(
+    activeColor || "#ffffff",
+  );
+
+  useEffect(() => {
+    if (activeColor) setCustomColor(activeColor);
+  }, [activeColor]);
+
+  const active = normalizeColor(activeColor);
+  const matchedPreset = COLOR_PRESETS.find(
+    (p) => normalizeColor(p.value) === active,
+  );
+  const swatchStyle = activeColor
+    ? { backgroundColor: activeColor }
+    : undefined;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          title="Text color"
+          aria-label="Text color"
+          onMouseDown={(e) => e.preventDefault()}
+          className={cn(
+            "relative h-8 w-8",
+            activeColor && "bg-accent text-accent-foreground",
+          )}
+        >
+          <Palette className="h-4 w-4" />
+          <span
+            aria-hidden
+            className="border-background absolute right-0.5 bottom-0.5 h-2 w-2 rounded-full border"
+            style={
+              swatchStyle ?? {
+                backgroundImage:
+                  "linear-gradient(45deg, #ef4444 0 25%, #f59e0b 25% 50%, #22c55e 50% 75%, #3b82f6 75%)",
+              }
+            }
+          />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-60 p-3"
+        onMouseDown={(e) => e.preventDefault()}
+      >
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+              Text color
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                onClear();
+                setOpen(false);
+              }}
+              className="text-muted-foreground hover:text-foreground text-xs"
+            >
+              Reset
+            </button>
+          </div>
+          <div className="grid grid-cols-10 gap-1.5">
+            {COLOR_PRESETS.map((preset) => {
+              const isActive =
+                matchedPreset?.value === preset.value;
+              return (
+                <button
+                  key={preset.value}
+                  type="button"
+                  title={preset.label}
+                  aria-label={preset.label}
+                  onClick={() => {
+                    onSelect(preset.value);
+                    setOpen(false);
+                  }}
+                  className={cn(
+                    "ring-border hover:ring-foreground/40 relative h-5 w-5 rounded-full ring-1 transition-all",
+                    isActive && "ring-foreground ring-2",
+                  )}
+                  style={{ backgroundColor: preset.value }}
+                >
+                  {isActive ? (
+                    <Check
+                      className={cn(
+                        "absolute inset-0 m-auto h-3 w-3",
+                        preset.value === "#ffffff" ||
+                          preset.value === "#eab308" ||
+                          preset.value === "#f59e0b"
+                          ? "text-black"
+                          : "text-white",
+                      )}
+                    />
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+          <label className="flex items-center gap-2">
+            <span className="text-muted-foreground text-xs">Custom</span>
+            <input
+              type="color"
+              value={customColor || "#ffffff"}
+              onChange={(e) => {
+                setCustomColor(e.target.value);
+                onSelect(e.target.value);
+              }}
+              className="border-input h-7 w-10 cursor-pointer rounded border bg-transparent p-0"
+            />
+            <Input
+              value={customColor}
+              onChange={(e) => setCustomColor(e.target.value)}
+              onBlur={() => {
+                if (/^#?[0-9a-fA-F]{3,8}$/.test(customColor)) {
+                  const normalized = customColor.startsWith("#")
+                    ? customColor
+                    : `#${customColor}`;
+                  onSelect(normalized);
+                }
+              }}
+              placeholder="#ffffff"
+              className="h-7 flex-1 font-mono text-xs"
+            />
+          </label>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -1028,11 +1487,48 @@ function FloatingLinkToolbar({
   );
 }
 
-type MarkdownValueRef = { current: string };
+/**
+ * Accepts anything we might reasonably receive as stored Lexical content —
+ * a `SerializedEditorState` object (preferred), a stringified JSON
+ * representation, `null`, `undefined`, or a Prisma `JsonValue`. Invalid
+ * shapes are normalized to `null` and the editor seeds an empty paragraph.
+ */
+export type LexicalEditorValue = unknown;
+
+function isLexicalStateObject(v: unknown): v is SerializedEditorState {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    "root" in (v as Record<string, unknown>)
+  );
+}
+
+function normalizeLexicalValue(
+  value: LexicalEditorValue,
+): SerializedEditorState | null {
+  if (value == null) return null;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      return isLexicalStateObject(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  return isLexicalStateObject(value) ? value : null;
+}
+
+export const LEXICAL_EDITOR_NODES = LEXICAL_NODES;
+
+export const LEXICAL_EDITOR_THEME = theme;
+
+type ValueRef = { current: string };
 
 type ExternalValuePluginProps = {
-  value: string;
-  lastEmittedRef: MarkdownValueRef;
+  value: LexicalEditorValue;
+  lastEmittedRef: ValueRef;
 };
 
 function ExternalValuePlugin({
@@ -1041,97 +1537,131 @@ function ExternalValuePlugin({
 }: ExternalValuePluginProps) {
   const [editor] = useLexicalComposerContext();
 
+  const normalized = normalizeLexicalValue(value);
+  const fingerprint = normalized ? JSON.stringify(normalized) : "";
+
   useEffect(() => {
-    if (value === lastEmittedRef.current) return;
-    lastEmittedRef.current = value;
+    if (fingerprint === lastEmittedRef.current) return;
+    lastEmittedRef.current = fingerprint;
+    if (normalized) {
+      try {
+        const parsed = editor.parseEditorState(normalized);
+        editor.setEditorState(parsed, { tag: "history-merge" });
+        return;
+      } catch (err) {
+        console.error("Failed to parse Lexical editor state:", err);
+      }
+    }
     editor.update(
       () => {
-        $convertFromMarkdownString(value, MARKDOWN_TRANSFORMERS);
+        const root = $getRoot();
+        root.clear();
+        root.append($createParagraphNode());
       },
       { tag: "history-merge" },
     );
-  }, [editor, value, lastEmittedRef]);
+    // `normalized` is derived from `value` + `fingerprint`; depending on both
+    // avoids recomputing the object identity on every render.
+  }, [editor, fingerprint, normalized, lastEmittedRef]);
 
   return null;
 }
 
-type LexicalMarkdownEditorProps = {
-  value: string;
-  onChange: (markdown: string) => void;
+type LexicalRichTextEditorProps = {
+  /**
+   * Serialized Lexical editor state. Accepts either a `SerializedEditorState`
+   * object (preferred — e.g. straight from a Prisma `Json` column) or a JSON
+   * string representation. `null` / `undefined` / empty seeds an empty
+   * paragraph.
+   */
+  value: LexicalEditorValue;
+  /**
+   * Called whenever the content changes, with the full `SerializedEditorState`
+   * object (ready to be stored in a Prisma `Json` column).
+   */
+  onChange: (state: SerializedEditorState) => void;
   placeholder?: string;
   ariaLabel?: string;
   className?: string;
   minHeight?: string;
+  showToolbar?: boolean;
+  namespace?: string;
+  autoFocus?: boolean;
+  contentClassName?: string;
+  onFocus?: () => void;
+  /**
+   * When true, the editor body fills its flex parent vertically and its
+   * contents scroll within. Use this inside fixed-height containers.
+   */
+  fillParent?: boolean;
 };
 
-export function LexicalMarkdownEditor({
+export function LexicalRichTextEditor({
   value,
   onChange,
   placeholder = "Start typing...",
   ariaLabel = "Rich text editor",
   className,
   minHeight = "12rem",
-}: LexicalMarkdownEditorProps) {
-  const lastEmittedRef = useRef<string>(value);
+  showToolbar = true,
+  namespace = "lexical-editor",
+  autoFocus = false,
+  contentClassName,
+  onFocus,
+  fillParent = false,
+}: LexicalRichTextEditorProps) {
+  const initialNormalized = normalizeLexicalValue(value);
+  const lastEmittedRef = useRef<string>(
+    initialNormalized ? JSON.stringify(initialNormalized) : "",
+  );
   const editorWrapperRef = useRef<HTMLDivElement | null>(null);
   const [linkDialog, setLinkDialog] = useState<LinkDialogState>({
     open: false,
   });
 
   const initialConfig = {
-    namespace: "gig-long-description",
+    namespace,
     onError: (error: Error) => {
       console.error("Lexical error:", error);
     },
-    theme,
-    nodes: [
-      HeadingNode,
-      QuoteNode,
-      ListNode,
-      ListItemNode,
-      LinkNode,
-      CodeNode,
-      CodeHighlightNode,
-    ],
-    editorState: () => {
-      if (value) {
-        $convertFromMarkdownString(value, MARKDOWN_TRANSFORMERS);
-      } else {
-        const root = $getRoot();
-        if (root.getChildrenSize() === 0) {
-          root.append($createParagraphNode());
-        }
-      }
-    },
+    theme: LEXICAL_EDITOR_THEME,
+    nodes: LEXICAL_EDITOR_NODES,
+    // Lexical's `editorState` accepts a JSON string or an updater function;
+    // serialize our `SerializedEditorState` for it.
+    editorState: initialNormalized
+      ? JSON.stringify(initialNormalized)
+      : () => {
+          const root = $getRoot();
+          if (root.getChildrenSize() === 0) {
+            root.append($createParagraphNode());
+          }
+        },
   };
 
   const handleChange = useCallback(
     (editorState: EditorState, _editor: LexicalEditor, tags: Set<string>) => {
       if (tags.has("history-merge")) return;
-      editorState.read(() => {
-        const markdown = $convertToMarkdownString(
-          MARKDOWN_TRANSFORMERS,
-          undefined,
-          true,
-        );
-        if (markdown === lastEmittedRef.current) return;
-        lastEmittedRef.current = markdown;
-        onChange(markdown);
-      });
+      const state = editorState.toJSON();
+      const fingerprint = JSON.stringify(state);
+      if (fingerprint === lastEmittedRef.current) return;
+      lastEmittedRef.current = fingerprint;
+      onChange(state);
     },
     [onChange],
   );
 
   return (
-    <div className={cn("flex flex-col", className)}>
+    <div className={cn("flex flex-col", className)} onFocus={onFocus}>
       <LexicalComposer initialConfig={initialConfig}>
-        <Toolbar
-          onRequestLinkDialog={(next) => setLinkDialog(next)}
-        />
+        {showToolbar ? (
+          <Toolbar onRequestLinkDialog={(next) => setLinkDialog(next)} />
+        ) : null}
         <div
           ref={editorWrapperRef}
           className={cn(
-            "border-input bg-background focus-within:border-ring focus-within:ring-ring/50 relative rounded-b-md border shadow-xs transition-colors focus-within:ring-[3px]",
+            "border-input bg-background focus-within:border-ring focus-within:ring-ring/50 relative border shadow-xs transition-colors focus-within:ring-[3px]",
+            showToolbar ? "rounded-b-md" : "rounded-md",
+            fillParent && "flex-1 min-h-0 overflow-hidden",
           )}
         >
           <RichTextPlugin
@@ -1144,7 +1674,10 @@ export function LexicalMarkdownEditor({
                     {placeholder}
                   </div>
                 }
-                className="min-w-0 px-3 py-3 text-sm outline-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+                className={cn(
+                  "min-w-0 px-3 py-3 text-sm outline-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+                  contentClassName,
+                )}
                 style={{ minHeight }}
               />
             }
@@ -1153,7 +1686,6 @@ export function LexicalMarkdownEditor({
           <HistoryPlugin />
           <ListPlugin />
           <LinkPlugin />
-          <MarkdownShortcutPlugin transformers={MARKDOWN_TRANSFORMERS} />
           <OnChangePlugin
             onChange={handleChange}
             ignoreHistoryMergeTagChange
@@ -1163,6 +1695,7 @@ export function LexicalMarkdownEditor({
             value={value}
             lastEmittedRef={lastEmittedRef}
           />
+          {autoFocus ? <AutoFocusOnMount /> : null}
           <FloatingLinkToolbar
             containerRef={editorWrapperRef}
             onRequestLinkDialog={(next) => setLinkDialog(next)}
@@ -1175,4 +1708,12 @@ export function LexicalMarkdownEditor({
       </LexicalComposer>
     </div>
   );
+}
+
+function AutoFocusOnMount() {
+  const [editor] = useLexicalComposerContext();
+  useEffect(() => {
+    editor.focus();
+  }, [editor]);
+  return null;
 }

@@ -1,12 +1,12 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { AdminSection } from "~/components/admin/admin-section";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { Checkbox } from "~/components/ui/checkbox";
 import {
   Card,
   CardContent,
@@ -14,13 +14,6 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
 import { formatDateInUserTimezone } from "~/lib/date-utils";
 import Image from "next/image";
 import {
@@ -33,27 +26,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "~/components/ui/dialog";
 import { Badge } from "~/components/ui/badge";
 import {
   Loader2,
-  Ban,
-  Unlock,
-  Shield,
   CheckCircle2,
   XCircle,
-  Mail,
   Calendar,
   Clock,
 } from "lucide-react";
 import { UserActivityLogs } from "~/components/admin/user-activity-logs";
+import { useConfirm } from "~/components/confirm-provider";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -69,13 +51,20 @@ function titleizeProvider(providerId: string): string {
 function getLoginMethodBadge(method: string | null) {
   if (!method) return null;
 
-  const methodMap: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
+  const methodMap: Record<
+    string,
+    { label: string; variant: "default" | "secondary" | "outline" }
+  > = {
     email: { label: "Email", variant: "default" },
     google: { label: "Google", variant: "secondary" },
     github: { label: "GitHub", variant: "outline" },
   };
 
-  const config = methodMap[method.toLowerCase()] ?? { label: method, variant: "outline" as const };
+  const config =
+    methodMap[method.toLowerCase()] ?? {
+      label: method,
+      variant: "outline" as const,
+    };
 
   return (
     <Badge variant={config.variant} className="text-xs">
@@ -84,23 +73,23 @@ function getLoginMethodBadge(method: string | null) {
   );
 }
 
+type RoleName = "USER" | "CREATOR" | "ADMIN";
+const ALL_ROLES: RoleName[] = ["USER", "CREATOR", "ADMIN"];
+
 export default function UserManagementPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
-  const [selectedRole, setSelectedRole] = useState<
-    "USER" | "CREATOR" | "ADMIN" | null
-  >(null);
+  const confirm = useConfirm();
+  const [selectedRoles, setSelectedRoles] = useState<Set<RoleName> | null>(
+    null,
+  );
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isBanDialogOpen, setIsBanDialogOpen] = useState(false);
-  const [isUnbanDialogOpen, setIsUnbanDialogOpen] = useState(false);
-  const [isImpersonateDialogOpen, setIsImpersonateDialogOpen] = useState(false);
-  const [banReason, setBanReason] = useState("");
 
   const { data: user, isLoading, refetch } = api.users.getById.useQuery({ id });
-  const updateRole = api.users.updateRole.useMutation({
+  const setRoles = api.users.setRoles.useMutation({
     onSuccess: async () => {
       await refetch();
-      setSelectedRole(null);
+      setSelectedRoles(null);
     },
   });
   const deleteUser = api.users.delete.useMutation({
@@ -108,33 +97,17 @@ export default function UserManagementPage({ params }: PageProps) {
       router.push("/admin/users");
     },
   });
-  const banUser = api.users.ban.useMutation({
-    onSuccess: async () => {
-      setIsBanDialogOpen(false);
-      setBanReason("");
-      await refetch();
-    },
-  });
-  const unbanUser = api.users.unban.useMutation({
-    onSuccess: async () => {
-      setIsUnbanDialogOpen(false);
-      await refetch();
-    },
-  });
-  const impersonateUser = api.users.impersonate.useMutation({
-    onSuccess: () => {
-      setIsImpersonateDialogOpen(false);
-      router.push("/");
-      router.refresh();
-    },
-  });
 
-  // Initialize role when user data loads
+  const userRoles = useMemo<RoleName[]>(() => {
+    if (!user) return [];
+    return user.roles?.map((r) => r.role as RoleName) ?? [];
+  }, [user]);
+
   useEffect(() => {
-    if (user && selectedRole === null) {
-      setSelectedRole(user.role);
+    if (user && selectedRoles === null) {
+      setSelectedRoles(new Set(userRoles));
     }
-  }, [user, selectedRole]);
+  }, [user, selectedRoles, userRoles]);
 
   if (isLoading) {
     return (
@@ -167,7 +140,21 @@ export default function UserManagementPage({ params }: PageProps) {
     );
   }
 
-  const hasRoleChanged = selectedRole !== null && selectedRole !== user.role;
+  const currentRolesSet = new Set(userRoles);
+  const nextRolesSet = selectedRoles ?? currentRolesSet;
+  const hasRolesChanged =
+    selectedRoles !== null &&
+    (nextRolesSet.size !== currentRolesSet.size ||
+      [...nextRolesSet].some((r) => !currentRolesSet.has(r)));
+
+  function toggleRole(role: RoleName, checked: boolean) {
+    setSelectedRoles((prev) => {
+      const base = new Set(prev ?? currentRolesSet);
+      if (checked) base.add(role);
+      else base.delete(role);
+      return base;
+    });
+  }
 
   return (
     <AdminSection
@@ -177,35 +164,6 @@ export default function UserManagementPage({ params }: PageProps) {
       maxWidth="max-w-4xl"
       actions={
         <div className="flex gap-2">
-          {user.banned ? (
-            <Button
-              variant="outline"
-              onClick={() => setIsUnbanDialogOpen(true)}
-              disabled={unbanUser.isPending}
-              className="border-green-600 text-green-600 hover:bg-green-50"
-            >
-              <Unlock className="mr-2 h-4 w-4" />
-              {unbanUser.isPending ? "Unbanning..." : "Unban User"}
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              onClick={() => setIsBanDialogOpen(true)}
-              disabled={banUser.isPending}
-              className="border-red-600 text-red-600 hover:bg-red-50"
-            >
-              <Ban className="mr-2 h-4 w-4" />
-              Ban User
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            onClick={() => setIsImpersonateDialogOpen(true)}
-            disabled={impersonateUser.isPending}
-          >
-            <Shield className="mr-2 h-4 w-4" />
-            Impersonate
-          </Button>
           <Button
             variant="destructive"
             onClick={() => setIsDeleteDialogOpen(true)}
@@ -249,35 +207,6 @@ export default function UserManagementPage({ params }: PageProps) {
             </div>
 
             <div className="space-y-2">
-              <Label>Status</Label>
-              <div>
-                {user.banned ? (
-                  <Badge variant="destructive" className="text-xs">
-                    <Ban className="mr-1 h-3 w-3" />
-                    Banned
-                    {user.bannedReason && (
-                      <span className="ml-1">({user.bannedReason})</span>
-                    )}
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="text-xs text-green-600">
-                    <CheckCircle2 className="mr-1 h-3 w-3" />
-                    Active
-                  </Badge>
-                )}
-                {user.bannedAt && (
-                  <p className="text-muted-foreground mt-1 text-xs">
-                    Banned on: {formatDateInUserTimezone(user.bannedAt, {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-2">
               <Label>Email Verified</Label>
               <div>
                 {user.emailVerified ? (
@@ -312,14 +241,16 @@ export default function UserManagementPage({ params }: PageProps) {
                     )}
                   </>
                 ) : (
-                  <span className="text-muted-foreground text-sm">Never logged in</span>
+                  <span className="text-muted-foreground text-sm">
+                    Never logged in
+                  </span>
                 )}
               </div>
             </div>
 
             <div className="space-y-2">
               <Label>Account Created</Label>
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <div className="text-muted-foreground flex items-center gap-1 text-sm">
                 <Calendar className="h-3 w-3" />
                 {formatDateInUserTimezone(user.createdAt, {
                   year: "numeric",
@@ -333,7 +264,7 @@ export default function UserManagementPage({ params }: PageProps) {
 
             <div className="space-y-2">
               <Label>Last Updated</Label>
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <div className="text-muted-foreground flex items-center gap-1 text-sm">
                 <Clock className="h-3 w-3" />
                 {formatDateInUserTimezone(user.updatedAt, {
                   year: "numeric",
@@ -351,52 +282,67 @@ export default function UserManagementPage({ params }: PageProps) {
         <Card>
           <CardHeader>
             <CardTitle>Role Management</CardTitle>
-            <CardDescription>Change the user's role</CardDescription>
+            <CardDescription>
+              A user can hold multiple roles simultaneously (e.g. both Admin
+              and Creator).
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="role">Role</Label>
-              <Select
-                value={selectedRole ?? user.role}
-                onValueChange={(value: "USER" | "CREATOR" | "ADMIN") =>
-                  setSelectedRole(value)
-                }
-                disabled={updateRole.isPending}
-              >
-                <SelectTrigger id="role">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="USER">User</SelectItem>
-                  <SelectItem value="CREATOR">Creator</SelectItem>
-                  <SelectItem value="ADMIN">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-muted-foreground text-xs">
-                Select a role and click "Update Role" to save changes
-              </p>
+            <div className="flex flex-col gap-3">
+              {ALL_ROLES.map((role) => {
+                const checked = nextRolesSet.has(role);
+                return (
+                  <label
+                    key={role}
+                    className="hover:bg-accent/30 flex cursor-pointer items-center gap-3 rounded-md border p-3"
+                  >
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={(v) => toggleRole(role, Boolean(v))}
+                      disabled={setRoles.isPending}
+                    />
+                    <div className="flex flex-col">
+                      <span className="font-medium">{role}</span>
+                      <span className="text-muted-foreground text-xs">
+                        {role === "USER"
+                          ? "Base access — signed-in user."
+                          : role === "CREATOR"
+                            ? "Can own/edit their creator profile."
+                            : "Full admin dashboard access."}
+                      </span>
+                    </div>
+                  </label>
+                );
+              })}
             </div>
 
-            {hasRoleChanged && (
+            {hasRolesChanged && (
               <Button
-                onClick={() => {
-                  if (
-                    selectedRole &&
-                    confirm(`Change ${user.name}'s role to ${selectedRole}?`)
-                  ) {
-                    updateRole.mutate({ id: user.id, role: selectedRole });
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: "Update roles",
+                    description: `Update ${user.name}'s roles to: ${
+                      [...nextRolesSet].join(", ") || "(none)"
+                    }?`,
+                    confirmLabel: "Update",
+                  });
+                  if (ok) {
+                    setRoles.mutate({
+                      id: user.id,
+                      roles: [...nextRolesSet],
+                    });
                   }
                 }}
-                disabled={updateRole.isPending}
+                disabled={setRoles.isPending}
                 className="w-full"
               >
-                {updateRole.isPending ? (
+                {setRoles.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Updating...
                   </>
                 ) : (
-                  "Update Role"
+                  "Save Roles"
                 )}
               </Button>
             )}
@@ -458,111 +404,6 @@ export default function UserManagementPage({ params }: PageProps) {
           <UserActivityLogs userId={user.id} />
         </div>
       </div>
-
-      {/* Ban Dialog */}
-      <Dialog open={isBanDialogOpen} onOpenChange={setIsBanDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Ban User</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to ban {user.name}? They will not be able to access the platform.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Reason (optional)</Label>
-              <Input
-                placeholder="Enter ban reason..."
-                value={banReason}
-                onChange={(e) => setBanReason(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsBanDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                banUser.mutate({ id: user.id, reason: banReason || undefined });
-              }}
-              disabled={banUser.isPending}
-            >
-              {banUser.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Banning...
-                </>
-              ) : (
-                "Ban User"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Unban Dialog */}
-      <AlertDialog open={isUnbanDialogOpen} onOpenChange={setIsUnbanDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Unban User</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to unban {user.name}? They will regain access to the platform.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={unbanUser.isPending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                unbanUser.mutate({ id: user.id });
-              }}
-              disabled={unbanUser.isPending}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              {unbanUser.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Unbanning...
-                </>
-              ) : (
-                "Unban User"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Impersonate Dialog */}
-      <AlertDialog open={isImpersonateDialogOpen} onOpenChange={setIsImpersonateDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Impersonate User</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to impersonate {user.name}? You will be logged in as this user.
-              Make sure to log out when you're done.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={impersonateUser.isPending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                impersonateUser.mutate({ id: user.id });
-              }}
-              disabled={impersonateUser.isPending}
-            >
-              {impersonateUser.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Impersonating...
-                </>
-              ) : (
-                "Impersonate"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog

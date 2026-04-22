@@ -27,8 +27,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "~/components/ui/dialog";
+import { useConfirm } from "~/components/confirm-provider";
 
 export function ContactManager() {
+  const confirm = useConfirm();
   const [search, setSearch] = useState("");
   const {
     data: submissions,
@@ -126,12 +128,14 @@ export function ContactManager() {
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={() => {
-                            if (
-                              confirm(
-                                "Are you sure you want to delete this submission?",
-                              )
-                            ) {
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: "Delete submission",
+                              description: "Are you sure you want to delete this submission? This action cannot be undone.",
+                              confirmLabel: "Delete",
+                              variant: "destructive",
+                            });
+                            if (ok) {
                               deleteSubmission.mutate({ id: submission.id });
                             }
                           }}

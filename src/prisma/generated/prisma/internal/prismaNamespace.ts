@@ -385,6 +385,7 @@ type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRe
 
 export const ModelName = {
   User: 'User',
+  UserRoleAssignment: 'UserRoleAssignment',
   Session: 'Session',
   Account: 'Account',
   Verification: 'Verification',
@@ -395,6 +396,11 @@ export const ModelName = {
   GigTag: 'GigTag',
   GigTagRelationship: 'GigTagRelationship',
   Gig: 'Gig',
+  CreatorProfile: 'CreatorProfile',
+  CreatorBlock: 'CreatorBlock',
+  CreatorSocial: 'CreatorSocial',
+  CreatorClaimRequest: 'CreatorClaimRequest',
+  GigCreator: 'GigCreator',
   HomeGigPlacement: 'HomeGigPlacement',
   GigMedia: 'GigMedia',
   MerchItem: 'MerchItem',
@@ -427,7 +433,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "invite" | "crewMember" | "contentItem" | "homeContentPlacement" | "gigTag" | "gigTagRelationship" | "gig" | "homeGigPlacement" | "gigMedia" | "merchItem" | "shopifyProductCache" | "contactSubmission" | "newsletterSubscription" | "file_tag" | "file_upload" | "gearItem" | "gearPackage" | "gearPackageItem" | "rental" | "rentalItem" | "discountRule" | "discountRuleRequirement" | "activityLog" | "keyValueStore"
+    modelProps: "user" | "userRoleAssignment" | "session" | "account" | "verification" | "invite" | "crewMember" | "contentItem" | "homeContentPlacement" | "gigTag" | "gigTagRelationship" | "gig" | "creatorProfile" | "creatorBlock" | "creatorSocial" | "creatorClaimRequest" | "gigCreator" | "homeGigPlacement" | "gigMedia" | "merchItem" | "shopifyProductCache" | "contactSubmission" | "newsletterSubscription" | "file_tag" | "file_upload" | "gearItem" | "gearPackage" | "gearPackageItem" | "rental" | "rentalItem" | "discountRule" | "discountRuleRequirement" | "activityLog" | "keyValueStore"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -502,6 +508,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.UserCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.UserCountAggregateOutputType> | number
+        }
+      }
+    }
+    UserRoleAssignment: {
+      payload: Prisma.$UserRoleAssignmentPayload<ExtArgs>
+      fields: Prisma.UserRoleAssignmentFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.UserRoleAssignmentFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserRoleAssignmentPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.UserRoleAssignmentFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserRoleAssignmentPayload>
+        }
+        findFirst: {
+          args: Prisma.UserRoleAssignmentFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserRoleAssignmentPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.UserRoleAssignmentFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserRoleAssignmentPayload>
+        }
+        findMany: {
+          args: Prisma.UserRoleAssignmentFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserRoleAssignmentPayload>[]
+        }
+        create: {
+          args: Prisma.UserRoleAssignmentCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserRoleAssignmentPayload>
+        }
+        createMany: {
+          args: Prisma.UserRoleAssignmentCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.UserRoleAssignmentCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserRoleAssignmentPayload>[]
+        }
+        delete: {
+          args: Prisma.UserRoleAssignmentDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserRoleAssignmentPayload>
+        }
+        update: {
+          args: Prisma.UserRoleAssignmentUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserRoleAssignmentPayload>
+        }
+        deleteMany: {
+          args: Prisma.UserRoleAssignmentDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.UserRoleAssignmentUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.UserRoleAssignmentUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserRoleAssignmentPayload>[]
+        }
+        upsert: {
+          args: Prisma.UserRoleAssignmentUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$UserRoleAssignmentPayload>
+        }
+        aggregate: {
+          args: Prisma.UserRoleAssignmentAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateUserRoleAssignment>
+        }
+        groupBy: {
+          args: Prisma.UserRoleAssignmentGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.UserRoleAssignmentGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.UserRoleAssignmentCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.UserRoleAssignmentCountAggregateOutputType> | number
         }
       }
     }
@@ -1242,6 +1322,376 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.GigCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.GigCountAggregateOutputType> | number
+        }
+      }
+    }
+    CreatorProfile: {
+      payload: Prisma.$CreatorProfilePayload<ExtArgs>
+      fields: Prisma.CreatorProfileFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.CreatorProfileFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfilePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.CreatorProfileFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfilePayload>
+        }
+        findFirst: {
+          args: Prisma.CreatorProfileFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfilePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.CreatorProfileFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfilePayload>
+        }
+        findMany: {
+          args: Prisma.CreatorProfileFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfilePayload>[]
+        }
+        create: {
+          args: Prisma.CreatorProfileCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfilePayload>
+        }
+        createMany: {
+          args: Prisma.CreatorProfileCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.CreatorProfileCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfilePayload>[]
+        }
+        delete: {
+          args: Prisma.CreatorProfileDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfilePayload>
+        }
+        update: {
+          args: Prisma.CreatorProfileUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfilePayload>
+        }
+        deleteMany: {
+          args: Prisma.CreatorProfileDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.CreatorProfileUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.CreatorProfileUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfilePayload>[]
+        }
+        upsert: {
+          args: Prisma.CreatorProfileUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfilePayload>
+        }
+        aggregate: {
+          args: Prisma.CreatorProfileAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateCreatorProfile>
+        }
+        groupBy: {
+          args: Prisma.CreatorProfileGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CreatorProfileGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.CreatorProfileCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CreatorProfileCountAggregateOutputType> | number
+        }
+      }
+    }
+    CreatorBlock: {
+      payload: Prisma.$CreatorBlockPayload<ExtArgs>
+      fields: Prisma.CreatorBlockFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.CreatorBlockFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorBlockPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.CreatorBlockFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorBlockPayload>
+        }
+        findFirst: {
+          args: Prisma.CreatorBlockFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorBlockPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.CreatorBlockFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorBlockPayload>
+        }
+        findMany: {
+          args: Prisma.CreatorBlockFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorBlockPayload>[]
+        }
+        create: {
+          args: Prisma.CreatorBlockCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorBlockPayload>
+        }
+        createMany: {
+          args: Prisma.CreatorBlockCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.CreatorBlockCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorBlockPayload>[]
+        }
+        delete: {
+          args: Prisma.CreatorBlockDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorBlockPayload>
+        }
+        update: {
+          args: Prisma.CreatorBlockUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorBlockPayload>
+        }
+        deleteMany: {
+          args: Prisma.CreatorBlockDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.CreatorBlockUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.CreatorBlockUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorBlockPayload>[]
+        }
+        upsert: {
+          args: Prisma.CreatorBlockUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorBlockPayload>
+        }
+        aggregate: {
+          args: Prisma.CreatorBlockAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateCreatorBlock>
+        }
+        groupBy: {
+          args: Prisma.CreatorBlockGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CreatorBlockGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.CreatorBlockCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CreatorBlockCountAggregateOutputType> | number
+        }
+      }
+    }
+    CreatorSocial: {
+      payload: Prisma.$CreatorSocialPayload<ExtArgs>
+      fields: Prisma.CreatorSocialFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.CreatorSocialFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorSocialPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.CreatorSocialFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorSocialPayload>
+        }
+        findFirst: {
+          args: Prisma.CreatorSocialFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorSocialPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.CreatorSocialFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorSocialPayload>
+        }
+        findMany: {
+          args: Prisma.CreatorSocialFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorSocialPayload>[]
+        }
+        create: {
+          args: Prisma.CreatorSocialCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorSocialPayload>
+        }
+        createMany: {
+          args: Prisma.CreatorSocialCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.CreatorSocialCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorSocialPayload>[]
+        }
+        delete: {
+          args: Prisma.CreatorSocialDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorSocialPayload>
+        }
+        update: {
+          args: Prisma.CreatorSocialUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorSocialPayload>
+        }
+        deleteMany: {
+          args: Prisma.CreatorSocialDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.CreatorSocialUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.CreatorSocialUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorSocialPayload>[]
+        }
+        upsert: {
+          args: Prisma.CreatorSocialUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorSocialPayload>
+        }
+        aggregate: {
+          args: Prisma.CreatorSocialAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateCreatorSocial>
+        }
+        groupBy: {
+          args: Prisma.CreatorSocialGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CreatorSocialGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.CreatorSocialCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CreatorSocialCountAggregateOutputType> | number
+        }
+      }
+    }
+    CreatorClaimRequest: {
+      payload: Prisma.$CreatorClaimRequestPayload<ExtArgs>
+      fields: Prisma.CreatorClaimRequestFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.CreatorClaimRequestFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorClaimRequestPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.CreatorClaimRequestFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorClaimRequestPayload>
+        }
+        findFirst: {
+          args: Prisma.CreatorClaimRequestFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorClaimRequestPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.CreatorClaimRequestFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorClaimRequestPayload>
+        }
+        findMany: {
+          args: Prisma.CreatorClaimRequestFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorClaimRequestPayload>[]
+        }
+        create: {
+          args: Prisma.CreatorClaimRequestCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorClaimRequestPayload>
+        }
+        createMany: {
+          args: Prisma.CreatorClaimRequestCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.CreatorClaimRequestCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorClaimRequestPayload>[]
+        }
+        delete: {
+          args: Prisma.CreatorClaimRequestDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorClaimRequestPayload>
+        }
+        update: {
+          args: Prisma.CreatorClaimRequestUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorClaimRequestPayload>
+        }
+        deleteMany: {
+          args: Prisma.CreatorClaimRequestDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.CreatorClaimRequestUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.CreatorClaimRequestUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorClaimRequestPayload>[]
+        }
+        upsert: {
+          args: Prisma.CreatorClaimRequestUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorClaimRequestPayload>
+        }
+        aggregate: {
+          args: Prisma.CreatorClaimRequestAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateCreatorClaimRequest>
+        }
+        groupBy: {
+          args: Prisma.CreatorClaimRequestGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CreatorClaimRequestGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.CreatorClaimRequestCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CreatorClaimRequestCountAggregateOutputType> | number
+        }
+      }
+    }
+    GigCreator: {
+      payload: Prisma.$GigCreatorPayload<ExtArgs>
+      fields: Prisma.GigCreatorFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.GigCreatorFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GigCreatorPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.GigCreatorFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GigCreatorPayload>
+        }
+        findFirst: {
+          args: Prisma.GigCreatorFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GigCreatorPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.GigCreatorFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GigCreatorPayload>
+        }
+        findMany: {
+          args: Prisma.GigCreatorFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GigCreatorPayload>[]
+        }
+        create: {
+          args: Prisma.GigCreatorCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GigCreatorPayload>
+        }
+        createMany: {
+          args: Prisma.GigCreatorCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.GigCreatorCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GigCreatorPayload>[]
+        }
+        delete: {
+          args: Prisma.GigCreatorDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GigCreatorPayload>
+        }
+        update: {
+          args: Prisma.GigCreatorUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GigCreatorPayload>
+        }
+        deleteMany: {
+          args: Prisma.GigCreatorDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.GigCreatorUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.GigCreatorUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GigCreatorPayload>[]
+        }
+        upsert: {
+          args: Prisma.GigCreatorUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GigCreatorPayload>
+        }
+        aggregate: {
+          args: Prisma.GigCreatorAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateGigCreator>
+        }
+        groupBy: {
+          args: Prisma.GigCreatorGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.GigCreatorGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.GigCreatorCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.GigCreatorCountAggregateOutputType> | number
         }
       }
     }
@@ -2548,15 +2998,22 @@ export const UserScalarFieldEnum = {
   email: 'email',
   emailVerified: 'emailVerified',
   image: 'image',
-  role: 'role',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt',
-  banned: 'banned',
-  banReason: 'banReason',
-  banExpires: 'banExpires'
+  updatedAt: 'updatedAt'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
+
+
+export const UserRoleAssignmentScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  role: 'role',
+  createdAt: 'createdAt',
+  createdBy: 'createdBy'
+} as const
+
+export type UserRoleAssignmentScalarFieldEnum = (typeof UserRoleAssignmentScalarFieldEnum)[keyof typeof UserRoleAssignmentScalarFieldEnum]
 
 
 export const SessionScalarFieldEnum = {
@@ -2567,8 +3024,7 @@ export const SessionScalarFieldEnum = {
   updatedAt: 'updatedAt',
   ipAddress: 'ipAddress',
   userAgent: 'userAgent',
-  userId: 'userId',
-  impersonatedBy: 'impersonatedBy'
+  userId: 'userId'
 } as const
 
 export type SessionScalarFieldEnum = (typeof SessionScalarFieldEnum)[keyof typeof SessionScalarFieldEnum]
@@ -2628,7 +3084,8 @@ export const CrewMemberScalarFieldEnum = {
   image: 'image',
   sortOrder: 'sortOrder',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  creatorProfileId: 'creatorProfileId'
 } as const
 
 export type CrewMemberScalarFieldEnum = (typeof CrewMemberScalarFieldEnum)[keyof typeof CrewMemberScalarFieldEnum]
@@ -2692,7 +3149,7 @@ export const GigScalarFieldEnum = {
   title: 'title',
   subtitle: 'subtitle',
   shortDescription: 'shortDescription',
-  longDescription: 'longDescription',
+  descriptionLexical: 'descriptionLexical',
   mode: 'mode',
   gigStartTime: 'gigStartTime',
   gigEndTime: 'gigEndTime',
@@ -2706,6 +3163,85 @@ export const GigScalarFieldEnum = {
 } as const
 
 export type GigScalarFieldEnum = (typeof GigScalarFieldEnum)[keyof typeof GigScalarFieldEnum]
+
+
+export const CreatorProfileScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  createdByAdminId: 'createdByAdminId',
+  claimStatus: 'claimStatus',
+  handle: 'handle',
+  displayName: 'displayName',
+  tagline: 'tagline',
+  bio: 'bio',
+  avatarFileId: 'avatarFileId',
+  bannerFileId: 'bannerFileId',
+  accentColor: 'accentColor',
+  theme: 'theme',
+  isPublished: 'isPublished',
+  gridCols: 'gridCols',
+  rowHeightPx: 'rowHeightPx',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CreatorProfileScalarFieldEnum = (typeof CreatorProfileScalarFieldEnum)[keyof typeof CreatorProfileScalarFieldEnum]
+
+
+export const CreatorBlockScalarFieldEnum = {
+  id: 'id',
+  profileId: 'profileId',
+  type: 'type',
+  x: 'x',
+  y: 'y',
+  w: 'w',
+  h: 'h',
+  data: 'data',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CreatorBlockScalarFieldEnum = (typeof CreatorBlockScalarFieldEnum)[keyof typeof CreatorBlockScalarFieldEnum]
+
+
+export const CreatorSocialScalarFieldEnum = {
+  id: 'id',
+  profileId: 'profileId',
+  platform: 'platform',
+  url: 'url',
+  label: 'label',
+  sortOrder: 'sortOrder'
+} as const
+
+export type CreatorSocialScalarFieldEnum = (typeof CreatorSocialScalarFieldEnum)[keyof typeof CreatorSocialScalarFieldEnum]
+
+
+export const CreatorClaimRequestScalarFieldEnum = {
+  id: 'id',
+  profileId: 'profileId',
+  requestingUserId: 'requestingUserId',
+  message: 'message',
+  status: 'status',
+  decidedByAdminId: 'decidedByAdminId',
+  decidedAt: 'decidedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CreatorClaimRequestScalarFieldEnum = (typeof CreatorClaimRequestScalarFieldEnum)[keyof typeof CreatorClaimRequestScalarFieldEnum]
+
+
+export const GigCreatorScalarFieldEnum = {
+  id: 'id',
+  gigId: 'gigId',
+  creatorProfileId: 'creatorProfileId',
+  role: 'role',
+  sortOrder: 'sortOrder',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type GigCreatorScalarFieldEnum = (typeof GigCreatorScalarFieldEnum)[keyof typeof GigCreatorScalarFieldEnum]
 
 
 export const HomeGigPlacementScalarFieldEnum = {
@@ -2963,6 +3499,21 @@ export const SortOrder = {
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
 
 
+export const NullableJsonNullValueInput = {
+  DbNull: DbNull,
+  JsonNull: JsonNull
+} as const
+
+export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
+
+
 export const QueryMode = {
   default: 'default',
   insensitive: 'insensitive'
@@ -2977,6 +3528,15 @@ export const NullsOrder = {
 } as const
 
 export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
+
+
+export const JsonNullValueFilter = {
+  DbNull: DbNull,
+  JsonNull: JsonNull,
+  AnyNull: AnyNull
+} as const
+
+export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
 
 
 
@@ -3007,20 +3567,6 @@ export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel,
 
 
 /**
- * Reference to a field of type 'UserRole'
- */
-export type EnumUserRoleFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'UserRole'>
-    
-
-
-/**
- * Reference to a field of type 'UserRole[]'
- */
-export type ListEnumUserRoleFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'UserRole[]'>
-    
-
-
-/**
  * Reference to a field of type 'DateTime'
  */
 export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime'>
@@ -3031,6 +3577,20 @@ export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel
  * Reference to a field of type 'DateTime[]'
  */
 export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime[]'>
+    
+
+
+/**
+ * Reference to a field of type 'UserRole'
+ */
+export type EnumUserRoleFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'UserRole'>
+    
+
+
+/**
+ * Reference to a field of type 'UserRole[]'
+ */
+export type ListEnumUserRoleFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'UserRole[]'>
     
 
 
@@ -3077,6 +3637,20 @@ export type ListEnumHomeContentSectionFieldRefInput<$PrismaModel> = FieldRefInpu
 
 
 /**
+ * Reference to a field of type 'Json'
+ */
+export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
+    
+
+
+/**
+ * Reference to a field of type 'QueryMode'
+ */
+export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
+    
+
+
+/**
  * Reference to a field of type 'GigMode'
  */
 export type EnumGigModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'GigMode'>
@@ -3087,6 +3661,34 @@ export type EnumGigModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaMo
  * Reference to a field of type 'GigMode[]'
  */
 export type ListEnumGigModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'GigMode[]'>
+    
+
+
+/**
+ * Reference to a field of type 'ClaimStatus'
+ */
+export type EnumClaimStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ClaimStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'ClaimStatus[]'
+ */
+export type ListEnumClaimStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ClaimStatus[]'>
+    
+
+
+/**
+ * Reference to a field of type 'CreatorBlockType'
+ */
+export type EnumCreatorBlockTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CreatorBlockType'>
+    
+
+
+/**
+ * Reference to a field of type 'CreatorBlockType[]'
+ */
+export type ListEnumCreatorBlockTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CreatorBlockType[]'>
     
 
 
@@ -3297,6 +3899,7 @@ export type PrismaClientOptions = ({
 }
 export type GlobalOmitConfig = {
   user?: Prisma.UserOmit
+  userRoleAssignment?: Prisma.UserRoleAssignmentOmit
   session?: Prisma.SessionOmit
   account?: Prisma.AccountOmit
   verification?: Prisma.VerificationOmit
@@ -3307,6 +3910,11 @@ export type GlobalOmitConfig = {
   gigTag?: Prisma.GigTagOmit
   gigTagRelationship?: Prisma.GigTagRelationshipOmit
   gig?: Prisma.GigOmit
+  creatorProfile?: Prisma.CreatorProfileOmit
+  creatorBlock?: Prisma.CreatorBlockOmit
+  creatorSocial?: Prisma.CreatorSocialOmit
+  creatorClaimRequest?: Prisma.CreatorClaimRequestOmit
+  gigCreator?: Prisma.GigCreatorOmit
   homeGigPlacement?: Prisma.HomeGigPlacementOmit
   gigMedia?: Prisma.GigMediaOmit
   merchItem?: Prisma.MerchItemOmit

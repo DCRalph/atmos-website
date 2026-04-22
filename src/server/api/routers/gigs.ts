@@ -12,6 +12,35 @@ import {
 import { uploadBufferToS3, softDeleteFile } from "~/lib/s3Helper";
 import { FileUploadStatus, GigMode, type GigMedia } from "~Prisma/client";
 import { toWebPMax } from "~/lib/sparpImage";
+import { userHasRole } from "~/server/utils/roles";
+import type { SerializedEditorState } from "lexical";
+import { Prisma } from "~Prisma/client";
+
+/**
+ * A serialized Lexical editor state. We only check that the value is an
+ * object with a `root` key at the boundary; Lexical itself enforces the full
+ * schema when it parses the content back into the editor.
+ */
+const LEXICAL_STATE_SCHEMA = z.custom<SerializedEditorState>(
+  (val) =>
+    typeof val === "object" &&
+    val !== null &&
+    "root" in (val as Record<string, unknown>),
+  { message: "Invalid Lexical editor state" },
+);
+
+/**
+ * Convert a user-supplied Lexical state (or explicit null) into a value
+ * Prisma accepts for a nullable `Json` column. `undefined` means "leave
+ * untouched" and is passed through.
+ */
+function toLexicalJsonInput(
+  value: SerializedEditorState | null | undefined,
+): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return Prisma.JsonNull;
+  return value as unknown as Prisma.InputJsonValue;
+}
 
 type FileUploadInfo = {
   id: string;
@@ -30,10 +59,20 @@ type EnrichedMedia = GigMedia & { fileUpload: FileUploadInfo };
 
 const TBA_TITLE = "TBA...";
 
-type SessionLike = { user?: { role?: string | null } } | null;
+type GigsContext = {
+  session?: { user?: { id: string } } | null;
+  db: typeof import("~/server/db").db;
+};
 
-const isAdminSession = (ctx: { session?: SessionLike }) =>
-  ctx.session?.user?.role === "ADMIN";
+const isAdminSession = async (ctx: GigsContext): Promise<boolean> => {
+  const userId = ctx.session?.user?.id;
+  if (!userId) return false;
+  const user = await ctx.db.user.findUnique({
+    where: { id: userId },
+    select: { roles: { select: { role: true } } },
+  });
+  return user ? userHasRole(user, "ADMIN") : false;
+};
 
 const redactGigForPublic = <T extends { mode?: GigMode }>(gig: T) => {
   if (gig.mode !== GigMode.TO_BE_ANNOUNCED) return gig;
@@ -42,7 +81,7 @@ const redactGigForPublic = <T extends { mode?: GigMode }>(gig: T) => {
     title: TBA_TITLE,
     subtitle: "",
     shortDescription: "",
-    longDescription: null,
+    descriptionLexical: null,
     ticketLink: null,
     gigTags: [],
     media: [],
@@ -342,12 +381,6 @@ export const gigsRouter = createTRPCRouter({
                 mode: "insensitive" as const,
               },
             },
-            {
-              longDescription: {
-                contains: search,
-                mode: "insensitive" as const,
-              },
-            },
           ],
         }
         : undefined;
@@ -373,7 +406,7 @@ export const gigsRouter = createTRPCRouter({
 
       const enriched = await enrichGigsWithFileUploads(ctx.db, gigs);
       const withPosters = await enrichGigsWithPosterFileUploads(ctx.db, enriched);
-      return isAdminSession(ctx) ? withPosters : redactGigsForPublic(withPosters);
+      return (await isAdminSession(ctx)) ? withPosters : redactGigsForPublic(withPosters);
     }),
 
   /**
@@ -436,7 +469,7 @@ export const gigsRouter = createTRPCRouter({
         .filter((g) => (featuredGig ? g.id !== featuredGig.id : true))
         .slice(0, pastLimit);
 
-      if (isAdminSession(ctx)) {
+      if ((await isAdminSession(ctx))) {
         return { featuredGig, pastGigs };
       }
 
@@ -473,7 +506,7 @@ export const gigsRouter = createTRPCRouter({
 
     const enriched = await enrichGigsWithFileUploads(ctx.db, gigs);
     const withPosters = await enrichGigsWithPosterFileUploads(ctx.db, enriched);
-    return isAdminSession(ctx) ? withPosters : redactGigsForPublic(withPosters);
+    return (await isAdminSession(ctx)) ? withPosters : redactGigsForPublic(withPosters);
   }),
 
   getPast: publicProcedure
@@ -513,7 +546,7 @@ export const gigsRouter = createTRPCRouter({
 
       const enriched = await enrichGigsWithFileUploads(ctx.db, gigs);
       const withPosters = await enrichGigsWithPosterFileUploads(ctx.db, enriched);
-      return isAdminSession(ctx) ? withPosters : redactGigsForPublic(withPosters);
+      return (await isAdminSession(ctx)) ? withPosters : redactGigsForPublic(withPosters);
     }),
 
   /**
@@ -623,7 +656,7 @@ export const gigsRouter = createTRPCRouter({
       enrichedGigs,
     );
 
-    return isAdminSession(ctx) ? withPosters : redactGigsForPublic(withPosters);
+    return (await isAdminSession(ctx)) ? withPosters : redactGigsForPublic(withPosters);
   }),
 
   getById: publicProcedure
@@ -644,6 +677,22 @@ export const gigsRouter = createTRPCRouter({
               gigTag: true,
             },
           },
+          gigCreators: {
+            orderBy: { sortOrder: "asc" },
+            include: {
+              creatorProfile: {
+                select: {
+                  id: true,
+                  handle: true,
+                  displayName: true,
+                  avatarFileId: true,
+                  tagline: true,
+                  isPublished: true,
+                  claimStatus: true,
+                },
+              },
+            },
+          },
         },
       });
 
@@ -655,7 +704,7 @@ export const gigsRouter = createTRPCRouter({
         gig.posterFileUploadId ?? null,
       );
       const result = { ...gig, media: enrichedMedia, posterFileUpload };
-      return isAdminSession(ctx) ? result : redactGigForPublic(result);
+      return (await isAdminSession(ctx)) ? result : redactGigForPublic(result);
     }),
 
   create: adminProcedure
@@ -664,7 +713,7 @@ export const gigsRouter = createTRPCRouter({
         title: z.string().min(1),
         subtitle: z.string().min(1),
         shortDescription: z.string().min(1),
-        longDescription: z.string().optional(),
+        descriptionLexical: LEXICAL_STATE_SCHEMA.optional().nullable(),
         mode: z.nativeEnum(GigMode).optional(),
         gigStartTime: z.date(),
         gigEndTime: z.date().optional(),
@@ -672,8 +721,12 @@ export const gigsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const { descriptionLexical, ...rest } = input;
       return ctx.db.gig.create({
-        data: input,
+        data: {
+          ...rest,
+          descriptionLexical: toLexicalJsonInput(descriptionLexical),
+        },
       });
     }),
 
@@ -684,7 +737,7 @@ export const gigsRouter = createTRPCRouter({
         title: z.string().min(1).optional(),
         subtitle: z.string().min(1).optional(),
         shortDescription: z.string().optional().nullable(),
-        longDescription: z.string().optional().nullable(),
+        descriptionLexical: LEXICAL_STATE_SCHEMA.optional().nullable(),
         mode: z.enum(GigMode).optional(),
         gigStartTime: z.date().optional(),
         gigEndTime: z.date().optional().nullable(),
@@ -692,10 +745,13 @@ export const gigsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { id, ...data } = input;
+      const { id, descriptionLexical, ...rest } = input;
       return ctx.db.gig.update({
         where: { id },
-        data,
+        data: {
+          ...rest,
+          descriptionLexical: toLexicalJsonInput(descriptionLexical),
+        },
       });
     }),
 
@@ -1002,7 +1058,7 @@ export const gigsRouter = createTRPCRouter({
         select: { mode: true },
       });
 
-      if (gig?.mode === GigMode.TO_BE_ANNOUNCED && !isAdminSession(ctx)) {
+      if (gig?.mode === GigMode.TO_BE_ANNOUNCED && !(await isAdminSession(ctx))) {
         return { featured: [], gallery: [], all: [] };
       }
 

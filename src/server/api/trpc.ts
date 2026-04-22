@@ -12,6 +12,7 @@ import { ZodError } from "zod";
 
 import { db } from "~/server/db";
 import { auth } from "~/server/auth";
+import { userHasRole } from "~/server/utils/roles";
 
 /**
  * 1. CONTEXT
@@ -142,9 +143,10 @@ export const creatorProcedure = protectedProcedure.use(
   async ({ ctx, next }) => {
     const user = await ctx.db.user.findUnique({
       where: { id: ctx.session.user.id },
+      include: { roles: true },
     });
 
-    if (!user || (user.role !== "CREATOR" && user.role !== "ADMIN")) {
+    if (!user || (!userHasRole(user, "CREATOR") && !userHasRole(user, "ADMIN"))) {
       throw new TRPCError({
         code: "FORBIDDEN",
         message: "Creator or Admin access required",
@@ -168,9 +170,10 @@ export const creatorProcedure = protectedProcedure.use(
 export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   const user = await ctx.db.user.findUnique({
     where: { id: ctx.session.user.id },
+    include: { roles: true },
   });
 
-  if (user?.role !== "ADMIN") {
+  if (!user || !userHasRole(user, "ADMIN")) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Admin access required",

@@ -26,6 +26,7 @@ import {
   Tag,
   ShoppingBag,
   Store,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -102,6 +103,11 @@ const menuItems = [
     icon: Users,
   },
   {
+    title: "Creator Profiles",
+    url: "/admin/creator-profiles",
+    icon: Sparkles,
+  },
+  {
     title: "Activity Logs",
     url: "/admin/activity-logs",
     icon: Activity,
@@ -123,6 +129,7 @@ export function DashboardSideBar() {
   const pathname = usePathname();
   const { state, isMobile } = useSidebar();
   const [isCollapsed, setIsCollapsed] = useState(state === "collapsed");
+  const visibleMenuItems = menuItems;
 
   useEffect(() => {
     setIsCollapsed(state === "collapsed");
@@ -179,7 +186,7 @@ export function DashboardSideBar() {
               </>
             ) : (
               // Loaded state
-              menuItems.map((item) => (
+              visibleMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild

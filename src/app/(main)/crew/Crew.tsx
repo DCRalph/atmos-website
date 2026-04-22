@@ -64,6 +64,11 @@ export default function CrewPage() {
                 image={member.image}
                 instagram={member.instagram}
                 soundcloud={member.soundcloud}
+                profileHandle={
+                  member.creatorProfile?.isPublished
+                    ? member.creatorProfile.handle
+                    : null
+                }
               />
             ))
           )}

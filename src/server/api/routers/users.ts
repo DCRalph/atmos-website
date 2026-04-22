@@ -1,8 +1,8 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createTRPCRouter, adminProcedure } from "~/server/api/trpc";
-import { auth } from "~/server/auth";
-import { logUserActivity, getRequestMetadata } from "~/server/utils/activity-log";
+import { logUserActivity } from "~/server/utils/activity-log";
+import { addUserRole, removeUserRole } from "~/server/utils/roles";
 import { ActivityType } from "~Prisma/client";
 
 export const usersRouter = createTRPCRouter({
@@ -33,14 +33,11 @@ export const usersRouter = createTRPCRouter({
           id: true,
           name: true,
           email: true,
-          role: true,
+          roles: { select: { role: true } },
           emailVerified: true,
           createdAt: true,
           updatedAt: true,
           image: true,
-          banned: true,
-          banReason: true,
-          banExpires: true,
         },
       });
 
@@ -69,17 +66,10 @@ export const usersRouter = createTRPCRouter({
             // Table may not exist yet
           }
 
-          const banned = Boolean(user.banned);
-          const bannedReason = user.banReason ?? null;
-          const bannedAt = null;
-
           return {
             ...user,
             lastLoginMethod,
             lastLoginAt,
-            banned,
-            bannedReason,
-            bannedAt,
           };
         }),
       );
@@ -87,7 +77,7 @@ export const usersRouter = createTRPCRouter({
       return usersWithLastLogin;
     }),
 
-  updateRole: adminProcedure
+  addRole: adminProcedure
     .input(
       z.object({
         id: z.string(),
@@ -95,36 +85,106 @@ export const usersRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Prevent admins from removing their own admin role
-      if (input.id === ctx.session.user.id && input.role !== "ADMIN") {
-        throw new Error("You cannot remove your own admin role");
-      }
-
-      // Get current user role for logging
       const targetUser = await ctx.db.user.findUnique({
         where: { id: input.id },
-        select: { role: true, name: true, email: true },
+        select: { name: true, email: true },
       });
 
-      const result = await ctx.db.user.update({
-        where: { id: input.id },
-        data: { role: input.role },
+      await addUserRole(input.id, input.role, {
+        createdBy: ctx.session.user.id,
       });
 
-      // Log the activity
-      const metadata = await getRequestMetadata();
       await logUserActivity(
-        ActivityType.USER_ROLE_CHANGED,
-        `Changed ${targetUser?.name ?? targetUser?.email ?? input.id}'s role from ${targetUser?.role ?? "unknown"} to ${input.role}`,
+        ActivityType.USER_ROLE_ADDED,
+        `Added role ${input.role} to ${targetUser?.name ?? targetUser?.email ?? input.id}`,
         ctx.session.user.id,
         input.id,
-        {
-          oldRole: targetUser?.role,
-          newRole: input.role,
-        },
+        { role: input.role },
       );
 
-      return result;
+      return { ok: true as const };
+    }),
+
+  removeRole: adminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        role: z.enum(["USER", "CREATOR", "ADMIN"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.id === ctx.session.user.id && input.role === "ADMIN") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "You cannot remove your own admin role",
+        });
+      }
+
+      const targetUser = await ctx.db.user.findUnique({
+        where: { id: input.id },
+        select: { name: true, email: true },
+      });
+
+      await removeUserRole(input.id, input.role);
+
+      await logUserActivity(
+        ActivityType.USER_ROLE_REMOVED,
+        `Removed role ${input.role} from ${targetUser?.name ?? targetUser?.email ?? input.id}`,
+        ctx.session.user.id,
+        input.id,
+        { role: input.role },
+      );
+
+      return { ok: true as const };
+    }),
+
+  setRoles: adminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        roles: z.array(z.enum(["USER", "CREATOR", "ADMIN"])),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (
+        input.id === ctx.session.user.id &&
+        !input.roles.includes("ADMIN")
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "You cannot remove your own admin role",
+        });
+      }
+
+      const current = await ctx.db.userRoleAssignment.findMany({
+        where: { userId: input.id },
+        select: { role: true },
+      });
+      const currentSet = new Set(current.map((c) => c.role));
+      const nextSet = new Set(input.roles);
+
+      for (const role of nextSet) {
+        if (!currentSet.has(role)) {
+          await addUserRole(input.id, role, {
+            createdBy: ctx.session.user.id,
+          });
+        }
+      }
+      for (const role of currentSet) {
+        if (!nextSet.has(role)) {
+          await removeUserRole(input.id, role);
+        }
+      }
+
+      await logUserActivity(
+        ActivityType.USER_ROLE_CHANGED,
+        `Updated roles for ${input.id}`,
+        ctx.session.user.id,
+        input.id,
+        { roles: input.roles },
+      );
+
+      return { ok: true as const };
     }),
 
   getById: adminProcedure
@@ -136,14 +196,11 @@ export const usersRouter = createTRPCRouter({
           id: true,
           name: true,
           email: true,
-          role: true,
+          roles: { select: { role: true } },
           emailVerified: true,
           image: true,
           createdAt: true,
           updatedAt: true,
-          banned: true,
-          banReason: true,
-          banExpires: true,
           accounts: {
             select: {
               id: true,
@@ -181,17 +238,10 @@ export const usersRouter = createTRPCRouter({
         // Table might not exist yet
       }
 
-      const banned = Boolean(user.banned);
-      const bannedReason = user.banReason ?? null;
-      const bannedAt = null;
-
       return {
         ...user,
         lastLoginMethod,
         lastLoginAt,
-        banned,
-        bannedReason,
-        bannedAt,
       };
     }),
 
@@ -227,87 +277,5 @@ export const usersRouter = createTRPCRouter({
       );
 
       return result;
-    }),
-
-  ban: adminProcedure
-    .input(
-      z.object({
-        id: z.string(),
-        reason: z.string().optional(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      await auth.api.banUser({
-        body: {
-          userId: input.id,
-          banReason: input.reason,
-        },
-        headers: ctx.headers,
-      });
-
-      await logUserActivity(
-        ActivityType.USER_BANNED,
-        `Banned user ${input.id}`,
-        ctx.session.user.id,
-        input.id,
-        input.reason ? { reason: input.reason } : undefined,
-      );
-
-      return { ok: true as const };
-    }),
-
-  unban: adminProcedure
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      await auth.api.unbanUser({
-        body: { userId: input.id },
-        headers: ctx.headers,
-      });
-
-      await logUserActivity(
-        ActivityType.USER_UNBANNED,
-        `Unbanned user ${input.id}`,
-        ctx.session.user.id,
-        input.id,
-      );
-
-      return { ok: true as const };
-    }),
-
-  impersonate: adminProcedure
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      if (input.id === ctx.session.user.id) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "You cannot impersonate yourself",
-        });
-      }
-      if (!ctx.resHeaders) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Impersonation requires browser request context",
-        });
-      }
-
-      const result = await auth.api.impersonateUser({
-        body: { userId: input.id },
-        headers: ctx.headers,
-        returnHeaders: true,
-      });
-
-      const cookies = result.headers.getSetCookie?.() ?? [];
-      for (const cookie of cookies) {
-        ctx.resHeaders.append("Set-Cookie", cookie);
-      }
-
-      await logUserActivity(
-        ActivityType.USER_IMPERSONATED,
-        `Started impersonating user ${input.id}`,
-        ctx.session.user.id,
-        input.id,
-      );
-
-      return { ok: true as const };
     }),
 });

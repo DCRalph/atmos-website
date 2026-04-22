@@ -392,11 +392,11 @@ import {
   Loader2,
 } from "lucide-react";
 import { api } from "~/trpc/react";
-import { authClient } from "~/lib/auth-client";
 import { formatDate, formatTime, isGigPast } from "~/lib/date-utils";
 import { GigTagList } from "~/components/gig-tag-list";
-import { MarkdownContent } from "~/components/markdown-content";
+import { LexicalContent } from "~/components/lexical-content";
 import { MediaGallery } from "~/components/gigs/media-gallery";
+import { buildMediaUrl } from "~/lib/media-url";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -405,8 +405,9 @@ type PageProps = {
 export default function GigPage({ params }: PageProps) {
   const { id } = use(params);
   const { data: gig, isLoading } = api.gigs.getById.useQuery({ id });
-  const { data: session } = authClient.useSession();
-  const isAdmin = session?.user?.role === "ADMIN";
+  const { data: viewerUser } = api.user.me.useQuery();
+  const isAdmin =
+    viewerUser?.roles?.some((r) => r.role === "ADMIN") ?? false;
 
   const upcoming = gig ? !isGigPast(gig) : true;
   const hasPoster = !!gig?.posterFileUpload?.url;
@@ -635,6 +636,51 @@ export default function GigPage({ params }: PageProps) {
                       </span>
                     </>
                   )}
+
+                  {gig.gigCreators && gig.gigCreators.length > 0 && (
+                    <>
+                      <span className="text-white/20">|</span>
+                      <div className="group/lineup flex items-center">
+                        {gig.gigCreators.map((gc, i) => {
+                          const cp = gc.creatorProfile;
+                          const avatar = cp.avatarFileId
+                            ? buildMediaUrl(cp.avatarFileId)
+                            : null;
+                          return (
+                            <Link
+                              key={gc.id}
+                              href={`/@${cp.handle}`}
+                              aria-label={cp.displayName}
+                              className={`group/avatar relative block h-8 w-8 transition-[margin-left,transform,z-index] duration-300 ease-out hover:z-20 ${
+                                i === 0
+                                  ? "ml-0"
+                                  : "-ml-2 group-hover/lineup:ml-1"
+                              }`}
+                            >
+                              <div className="relative h-8 w-8 overflow-hidden rounded-full bg-white/10 ring-2 ring-black transition-all group-hover/avatar:ring-white/70">
+                                {avatar ? (
+                                  <Image
+                                    src={avatar}
+                                    alt={cp.displayName}
+                                    fill
+                                    sizes="32px"
+                                    className="object-cover"
+                                  />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center text-[11px] font-black text-white/60">
+                                    {cp.displayName.slice(0, 1).toUpperCase()}
+                                  </div>
+                                )}
+                              </div>
+                              <span className="pointer-events-none absolute top-full left-1/2 z-30 mt-2 -translate-x-1/2 translate-y-1 whitespace-nowrap border border-white/15 bg-black/90 px-2 py-1 text-[10px] font-bold tracking-wider text-white uppercase opacity-0 shadow-lg backdrop-blur-md transition-all duration-200 group-hover/avatar:translate-y-0 group-hover/avatar:opacity-100">
+                                {cp.displayName}
+                              </span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
                 </motion.div>
 
                 {/* Tags + ticket CTA */}
@@ -689,7 +735,7 @@ export default function GigPage({ params }: PageProps) {
         <section className="relative z-20 bg-linear-to-b from-transparent via-black to-black">
           <div className="mx-auto max-w-7xl px-4 pb-24">
             {/* Description */}
-            {gig.longDescription && (
+            {gig.descriptionLexical && (
               <motion.div
                 initial={{ opacity: 0, y: 40 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -697,7 +743,11 @@ export default function GigPage({ params }: PageProps) {
                 transition={{ duration: 0.6 }}
                 className="mx-auto max-w-3xl"
               >
-                <MarkdownContent content={String(gig.longDescription)} />
+                <LexicalContent
+                  value={gig.descriptionLexical}
+                  namespace={`gig-description-${gig.id}`}
+                  contentClassName="prose prose-invert max-w-none"
+                />
               </motion.div>
             )}
 

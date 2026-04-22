@@ -52,6 +52,7 @@ export const AnyNull = runtime.AnyNull
 
 export const ModelName = {
   User: 'User',
+  UserRoleAssignment: 'UserRoleAssignment',
   Session: 'Session',
   Account: 'Account',
   Verification: 'Verification',
@@ -62,6 +63,11 @@ export const ModelName = {
   GigTag: 'GigTag',
   GigTagRelationship: 'GigTagRelationship',
   Gig: 'Gig',
+  CreatorProfile: 'CreatorProfile',
+  CreatorBlock: 'CreatorBlock',
+  CreatorSocial: 'CreatorSocial',
+  CreatorClaimRequest: 'CreatorClaimRequest',
+  GigCreator: 'GigCreator',
   HomeGigPlacement: 'HomeGigPlacement',
   GigMedia: 'GigMedia',
   MerchItem: 'MerchItem',
@@ -103,15 +109,22 @@ export const UserScalarFieldEnum = {
   email: 'email',
   emailVerified: 'emailVerified',
   image: 'image',
-  role: 'role',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt',
-  banned: 'banned',
-  banReason: 'banReason',
-  banExpires: 'banExpires'
+  updatedAt: 'updatedAt'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
+
+
+export const UserRoleAssignmentScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  role: 'role',
+  createdAt: 'createdAt',
+  createdBy: 'createdBy'
+} as const
+
+export type UserRoleAssignmentScalarFieldEnum = (typeof UserRoleAssignmentScalarFieldEnum)[keyof typeof UserRoleAssignmentScalarFieldEnum]
 
 
 export const SessionScalarFieldEnum = {
@@ -122,8 +135,7 @@ export const SessionScalarFieldEnum = {
   updatedAt: 'updatedAt',
   ipAddress: 'ipAddress',
   userAgent: 'userAgent',
-  userId: 'userId',
-  impersonatedBy: 'impersonatedBy'
+  userId: 'userId'
 } as const
 
 export type SessionScalarFieldEnum = (typeof SessionScalarFieldEnum)[keyof typeof SessionScalarFieldEnum]
@@ -183,7 +195,8 @@ export const CrewMemberScalarFieldEnum = {
   image: 'image',
   sortOrder: 'sortOrder',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  creatorProfileId: 'creatorProfileId'
 } as const
 
 export type CrewMemberScalarFieldEnum = (typeof CrewMemberScalarFieldEnum)[keyof typeof CrewMemberScalarFieldEnum]
@@ -247,7 +260,7 @@ export const GigScalarFieldEnum = {
   title: 'title',
   subtitle: 'subtitle',
   shortDescription: 'shortDescription',
-  longDescription: 'longDescription',
+  descriptionLexical: 'descriptionLexical',
   mode: 'mode',
   gigStartTime: 'gigStartTime',
   gigEndTime: 'gigEndTime',
@@ -261,6 +274,85 @@ export const GigScalarFieldEnum = {
 } as const
 
 export type GigScalarFieldEnum = (typeof GigScalarFieldEnum)[keyof typeof GigScalarFieldEnum]
+
+
+export const CreatorProfileScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  createdByAdminId: 'createdByAdminId',
+  claimStatus: 'claimStatus',
+  handle: 'handle',
+  displayName: 'displayName',
+  tagline: 'tagline',
+  bio: 'bio',
+  avatarFileId: 'avatarFileId',
+  bannerFileId: 'bannerFileId',
+  accentColor: 'accentColor',
+  theme: 'theme',
+  isPublished: 'isPublished',
+  gridCols: 'gridCols',
+  rowHeightPx: 'rowHeightPx',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CreatorProfileScalarFieldEnum = (typeof CreatorProfileScalarFieldEnum)[keyof typeof CreatorProfileScalarFieldEnum]
+
+
+export const CreatorBlockScalarFieldEnum = {
+  id: 'id',
+  profileId: 'profileId',
+  type: 'type',
+  x: 'x',
+  y: 'y',
+  w: 'w',
+  h: 'h',
+  data: 'data',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CreatorBlockScalarFieldEnum = (typeof CreatorBlockScalarFieldEnum)[keyof typeof CreatorBlockScalarFieldEnum]
+
+
+export const CreatorSocialScalarFieldEnum = {
+  id: 'id',
+  profileId: 'profileId',
+  platform: 'platform',
+  url: 'url',
+  label: 'label',
+  sortOrder: 'sortOrder'
+} as const
+
+export type CreatorSocialScalarFieldEnum = (typeof CreatorSocialScalarFieldEnum)[keyof typeof CreatorSocialScalarFieldEnum]
+
+
+export const CreatorClaimRequestScalarFieldEnum = {
+  id: 'id',
+  profileId: 'profileId',
+  requestingUserId: 'requestingUserId',
+  message: 'message',
+  status: 'status',
+  decidedByAdminId: 'decidedByAdminId',
+  decidedAt: 'decidedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CreatorClaimRequestScalarFieldEnum = (typeof CreatorClaimRequestScalarFieldEnum)[keyof typeof CreatorClaimRequestScalarFieldEnum]
+
+
+export const GigCreatorScalarFieldEnum = {
+  id: 'id',
+  gigId: 'gigId',
+  creatorProfileId: 'creatorProfileId',
+  role: 'role',
+  sortOrder: 'sortOrder',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type GigCreatorScalarFieldEnum = (typeof GigCreatorScalarFieldEnum)[keyof typeof GigCreatorScalarFieldEnum]
 
 
 export const HomeGigPlacementScalarFieldEnum = {
@@ -518,6 +610,21 @@ export const SortOrder = {
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
 
 
+export const NullableJsonNullValueInput = {
+  DbNull: DbNull,
+  JsonNull: JsonNull
+} as const
+
+export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
+
+
 export const QueryMode = {
   default: 'default',
   insensitive: 'insensitive'
@@ -532,4 +639,13 @@ export const NullsOrder = {
 } as const
 
 export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
+
+
+export const JsonNullValueFilter = {
+  DbNull: DbNull,
+  JsonNull: JsonNull,
+  AnyNull: AnyNull
+} as const
+
+export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
 

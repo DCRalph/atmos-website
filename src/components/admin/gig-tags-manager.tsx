@@ -29,8 +29,10 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import { useConfirm } from "~/components/confirm-provider";
 
 export function GigTagsManager() {
+  const confirm = useConfirm();
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -216,12 +218,14 @@ export function GigTagsManager() {
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={() => {
-                            if (
-                              confirm(
-                                "Are you sure you want to delete this tag?",
-                              )
-                            ) {
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: "Delete tag",
+                              description: "Are you sure you want to delete this tag? This action cannot be undone.",
+                              confirmLabel: "Delete",
+                              variant: "destructive",
+                            });
+                            if (ok) {
                               deleteTag.mutate({ id: tag.id });
                             }
                           }}

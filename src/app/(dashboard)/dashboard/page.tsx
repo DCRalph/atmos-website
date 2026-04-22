@@ -1,9 +1,10 @@
 "use client";
 
-import { Home } from "lucide-react";
+import { Home, User as UserIcon } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 
 export default function DashboardPage() {
   return (
@@ -17,8 +18,10 @@ export default function DashboardPage() {
               </h1>
               <Badge variant="secondary">Beta</Badge>
             </div>
-            <p className="text-muted-foreground">Comming soon</p>
-            <Button variant="outline">
+            <p className="text-muted-foreground">
+              Manage your creator profile, content, and social links.
+            </p>
+            <Button variant="outline" asChild>
               <Link href="/" className="flex items-center gap-2">
                 <Home className="h-4 w-4" />
                 Home
@@ -26,6 +29,23 @@ export default function DashboardPage() {
             </Button>
           </div>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <UserIcon className="h-5 w-5" /> Your profile
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-muted-foreground text-sm">
+              Build a fully customizable profile page with music embeds,
+              galleries, links, and more.
+            </p>
+            <Button asChild>
+              <Link href="/dashboard/profile">Open profile builder</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

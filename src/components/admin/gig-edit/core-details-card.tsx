@@ -23,7 +23,8 @@ import {
 import { Loader2 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { GigMode } from "~Prisma/browser";
-import { LexicalMarkdownEditor } from "~/components/admin/lexical-markdown-editor";
+import { LexicalRichTextEditor } from "~/components/admin/lexical-rich-text-editor";
+import type { SerializedEditorState } from "lexical";
 import {
   SaveStatusPill,
   useSaveStatus,
@@ -35,7 +36,7 @@ type CoreDetailsCardProps = {
     title: string;
     subtitle: string;
     shortDescription: string | null;
-    longDescription: string | null;
+    descriptionLexical: unknown;
     mode: GigMode | null;
     ticketLink: string | null;
   };
@@ -56,9 +57,10 @@ export function CoreDetailsCard({
   const [shortDescription, setShortDescription] = useState(
     gig.shortDescription ?? "",
   );
-  const [longDescription, setLongDescription] = useState(
-    gig.longDescription ?? "",
-  );
+  const [descriptionLexical, setDescriptionLexical] =
+    useState<SerializedEditorState | null>(
+      (gig.descriptionLexical as SerializedEditorState | null) ?? null,
+    );
   const [mode, setMode] = useState<GigMode>(gig.mode ?? GigMode.NORMAL);
   const [ticketLink, setTicketLink] = useState(gig.ticketLink ?? "");
 
@@ -66,7 +68,9 @@ export function CoreDetailsCard({
     setTitle(gig.title);
     setSubtitle(gig.subtitle);
     setShortDescription(gig.shortDescription ?? "");
-    setLongDescription(gig.longDescription ?? "");
+    setDescriptionLexical(
+      (gig.descriptionLexical as SerializedEditorState | null) ?? null,
+    );
     setMode(gig.mode ?? GigMode.NORMAL);
     setTicketLink(gig.ticketLink ?? "");
   }, [
@@ -74,7 +78,7 @@ export function CoreDetailsCard({
     gig.title,
     gig.subtitle,
     gig.shortDescription,
-    gig.longDescription,
+    gig.descriptionLexical,
     gig.mode,
     gig.ticketLink,
   ]);
@@ -108,7 +112,7 @@ export function CoreDetailsCard({
       title: title.trim(),
       subtitle: subtitle.trim(),
       shortDescription: shortDescription.trim(),
-      longDescription: longDescription.trim() || null,
+      descriptionLexical: descriptionLexical ?? null,
       mode,
       ticketLink: ticketLink.trim() || null,
     });
@@ -164,12 +168,13 @@ export function CoreDetailsCard({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label>Long Description</Label>
-            <LexicalMarkdownEditor
-              value={longDescription}
-              onChange={handleChange(setLongDescription)}
+            <Label>Description</Label>
+            <LexicalRichTextEditor
+              value={descriptionLexical}
+              onChange={handleChange(setDescriptionLexical)}
+              namespace={`gig-description-${gig.id}`}
               placeholder="Describe the gig, line-up, venue info..."
-              ariaLabel="Long description"
+              ariaLabel="Description"
               minHeight="14rem"
             />
           </div>

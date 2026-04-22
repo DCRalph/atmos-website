@@ -29,8 +29,10 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import { useConfirm } from "~/components/confirm-provider";
 
 export function MerchManager() {
+  const confirm = useConfirm();
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -221,12 +223,14 @@ export function MerchManager() {
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={() => {
-                            if (
-                              confirm(
-                                "Are you sure you want to delete this item?",
-                              )
-                            ) {
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: "Delete item",
+                              description: "Are you sure you want to delete this item? This action cannot be undone.",
+                              confirmLabel: "Delete",
+                              variant: "destructive",
+                            });
+                            if (ok) {
                               deleteItem.mutate({ id: item.id });
                             }
                           }}

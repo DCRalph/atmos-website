@@ -43,6 +43,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Checkbox } from "~/components/ui/checkbox";
+import { useConfirm } from "~/components/confirm-provider";
 
 const DISCOUNT_TYPE = {
   FIXED_AMOUNT: "FIXED_AMOUNT",
@@ -115,6 +116,7 @@ function createEmptyDiscountRule(): DiscountRuleForm {
 }
 
 export function GearRentalManager() {
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState("requests");
   const [isAddingInventoryItem, setIsAddingInventoryItem] = useState(false);
   const [isAddingPackage, setIsAddingPackage] = useState(false);
@@ -391,8 +393,14 @@ export function GearRentalManager() {
                           </Button>
                         </>
                       )}
-                      <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-destructive" onClick={() => {
-                        if (confirm("Delete this rental record?")) {
+                      <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-destructive" onClick={async () => {
+                        const ok = await confirm({
+                          title: "Delete rental record",
+                          description: "Delete this rental record? This action cannot be undone.",
+                          confirmLabel: "Delete",
+                          variant: "destructive",
+                        });
+                        if (ok) {
                           deleteRental.mutate({ id: rental.id });
                         }
                       }}>
@@ -699,8 +707,14 @@ export function GearRentalManager() {
                         size="sm"
                         variant="ghost"
                         className="text-muted-foreground hover:text-destructive"
-                        onClick={() => {
-                          if (confirm(`Delete ${item.name}? This will remove it from any packages using it.`)) {
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: "Delete inventory item",
+                            description: `Delete ${item.name}? This will remove it from any packages using it.`,
+                            confirmLabel: "Delete",
+                            variant: "destructive",
+                          });
+                          if (ok) {
                             deleteInventoryItem.mutate({ id: item.id });
                           }
                         }
@@ -1049,8 +1063,14 @@ export function GearRentalManager() {
                         size="sm"
                         variant="ghost"
                         className="text-muted-foreground hover:text-destructive"
-                        onClick={() => {
-                          if (confirm(`Delete ${gearPackage.name}? This will also remove any rentals for it.`)) {
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: "Delete package",
+                            description: `Delete ${gearPackage.name}? This will also remove any rentals for it.`,
+                            confirmLabel: "Delete",
+                            variant: "destructive",
+                          });
+                          if (ok) {
                             deletePackage.mutate({ id: gearPackage.id });
                           }
                         }}
@@ -1268,8 +1288,14 @@ export function GearRentalManager() {
                         size="sm"
                         variant="ghost"
                         className="text-muted-foreground hover:text-destructive"
-                        onClick={() => {
-                          if (confirm(`Delete ${rule.name}?`)) {
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: "Delete discount rule",
+                            description: `Delete ${rule.name}? This action cannot be undone.`,
+                            confirmLabel: "Delete",
+                            variant: "destructive",
+                          });
+                          if (ok) {
                             deleteDiscountRule.mutate({ id: rule.id });
                           }
                         }}

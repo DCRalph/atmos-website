@@ -29,6 +29,7 @@ import { CoreDetailsCard } from "~/components/admin/gig-edit/core-details-card";
 import { DateTimeCard } from "~/components/admin/gig-edit/date-time-card";
 import { TagsCard } from "~/components/admin/gig-edit/tags-card";
 import { PosterCard } from "~/components/admin/gig-edit/poster-card";
+import { CreatorsCard } from "~/components/admin/gig-edit/creators-card";
 import { SaveStatusPill } from "~/components/admin/gig-edit/save-status";
 
 type PageProps = {
@@ -167,7 +168,7 @@ export default function GigManagementPage({ params }: PageProps) {
               title: gig.title,
               subtitle: gig.subtitle,
               shortDescription: gig.shortDescription,
-              longDescription: gig.longDescription,
+              descriptionLexical: gig.descriptionLexical,
               mode: gig.mode,
               ticketLink: gig.ticketLink,
             }}
@@ -189,6 +190,25 @@ export default function GigManagementPage({ params }: PageProps) {
           <TagsCard
             gigId={gig.id}
             gigTags={gigTags}
+            onSaved={handleRefetch}
+          />
+        </div>
+
+        <div className="xl:col-span-12">
+          <CreatorsCard
+            gigId={gig.id}
+            gigCreators={(gig.gigCreators ?? []).map((gc) => ({
+              id: gc.id,
+              role: gc.role,
+              sortOrder: gc.sortOrder,
+              creatorProfile: {
+                id: gc.creatorProfile.id,
+                handle: gc.creatorProfile.handle,
+                displayName: gc.creatorProfile.displayName,
+                avatarFileId: gc.creatorProfile.avatarFileId,
+                claimStatus: gc.creatorProfile.claimStatus,
+              },
+            }))}
             onSaved={handleRefetch}
           />
         </div>

@@ -10,7 +10,7 @@ export type SocialPlatform = {
   id: SocialPlatformId;
   name: string;
   iconSrc: string;
-  /** Title attribute stored on the link in both markdown and Lexical state. */
+  /** Title attribute stored on the Lexical link node to tag it as a social pill. */
   pillTitle: string;
   /** Hostnames (without `www.`) that identify URLs belonging to this platform. */
   hosts: readonly string[];
@@ -20,7 +20,7 @@ export type SocialPlatform = {
   inputPlaceholder: string;
   /** Help text describing the accepted input format. */
   inputHelp?: string;
-  /** Pill styling used by the public markdown renderer. */
+  /** Pill styling used by the public pill renderer. */
   pillClassName: string;
   /** Convert a raw input (handle or URL) into a canonical URL. */
   normalizeInput: (input: string) => string | null;
@@ -264,12 +264,6 @@ export function getPlatformFromPillTitle(
 ): SocialPlatform | null {
   if (!title) return null;
   return PLATFORM_BY_PILL_TITLE.get(title) ?? null;
-}
-
-export function isSocialPillTitle(
-  title: string | null | undefined,
-): boolean {
-  return Boolean(title && PLATFORM_BY_PILL_TITLE.has(title));
 }
 
 /**

@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import type { SerializedEditorState } from "lexical";
 import { api } from "~/trpc/react";
 import { AdminSection } from "~/components/admin/admin-section";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
+import { LexicalRichTextEditor } from "~/components/admin/lexical-rich-text-editor";
 import {
   Select,
   SelectContent,
@@ -30,7 +32,8 @@ export default function NewGigPage() {
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [shortDescription, setShortDescription] = useState("");
-  const [longDescription, setLongDescription] = useState("");
+  const [descriptionLexical, setDescriptionLexical] =
+    useState<SerializedEditorState | null>(null);
   const [mode, setMode] = useState<GigMode>(GigMode.NORMAL);
   const [gigStartTime, setGigStartTime] = useState<Date | undefined>(undefined);
   const [gigEndTime, setGigEndTime] = useState<Date | undefined>(undefined);
@@ -55,7 +58,7 @@ export default function NewGigPage() {
       title,
       subtitle,
       shortDescription: shortDescription.trim(),
-      longDescription: longDescription.trim() || undefined,
+      descriptionLexical: descriptionLexical ?? null,
       mode,
       gigStartTime: utcGigStartTime,
       gigEndTime: utcGigEndTime,
@@ -108,17 +111,15 @@ export default function NewGigPage() {
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="longDescription">Long Description (Markdown)</Label>
-              <Textarea
-                id="longDescription"
-                value={longDescription}
-                onChange={(e) => setLongDescription(e.target.value)}
-                placeholder="Enter a description using Markdown formatting..."
-                rows={8}
+              <Label>Description</Label>
+              <LexicalRichTextEditor
+                value={descriptionLexical}
+                onChange={setDescriptionLexical}
+                namespace="new-gig-description"
+                placeholder="Describe the gig, line-up, venue info..."
+                ariaLabel="Description"
+                minHeight="14rem"
               />
-              <p className="text-muted-foreground text-xs">
-                Supports Markdown formatting (bold, italic, links, lists, etc.)
-              </p>
             </div>
             <div className="flex flex-col gap-2">
               <Label>Mode</Label>

@@ -15,6 +15,30 @@ enum UserRole {
   ADMIN
 }
 
+enum ClaimStatus {
+  ACTIVE
+  UNCLAIMED
+  PENDING_CLAIM
+}
+
+enum CreatorBlockType {
+  HEADING
+  RICH_TEXT
+  IMAGE
+  GALLERY
+  SOUNDCLOUD_TRACK
+  SOUNDCLOUD_PLAYLIST
+  YOUTUBE_VIDEO
+  SPOTIFY_EMBED
+  SOCIAL_LINKS
+  LINK_LIST
+  GIG_LIST
+  CONTENT_LIST
+  DIVIDER
+  SPACER
+  CUSTOM_EMBED
+}
+
 enum HomeGigSection {
   FEATURED
   PAST
@@ -36,20 +60,31 @@ model User {
   email            String
   emailVerified    Boolean       @default(false)
   image            String?
-  role             UserRole      @default(USER)
+  roles            UserRoleAssignment[]
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @default(now()) @updatedAt
   sessions         Session[]
   accounts         Account[]
   activities       ActivityLog[] @relation("UserActivities")
   targetActivities ActivityLog[] @relation("TargetUserActivities")
-
-  banned     Boolean?  @default(false)
-  banReason  String?
-  banExpires DateTime?
+  creatorProfile   CreatorProfile?
+  creatorClaimRequests CreatorClaimRequest[] @relation("ClaimRequestingUser")
 
   @@unique([email])
   @@map("user")
+}
+
+model UserRoleAssignment {
+  id        String   @id @default(cuid())
+  userId    String
+  role      UserRole
+  createdAt DateTime @default(now())
+  createdBy String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@index([role])
+  @@map("user_role_assignment")
 }
 
 model Session {
@@ -62,8 +97,6 @@ model Session {
   userAgent String?
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  impersonatedBy String?
 
   @@unique([token])
   @@map("session")
@@ -117,16 +150,22 @@ model Invite {
 }
 
 model CrewMember {
-  id         String   @id @default(cuid())
-  name       String
-  role       String
-  instagram  String?
-  soundcloud String?
-  image      String
-  sortOrder  Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id               String   @id @default(cuid())
+  name             String
+  role             String
+  instagram        String?
+  soundcloud       String?
+  image            String
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
+  // Optional link to a creator profile. When set, the crew card on the public
+  // page becomes clickable and links to the profile.
+  creatorProfileId String?
+  creatorProfile   CreatorProfile? @relation(fields: [creatorProfileId], references: [id], onDelete: SetNull)
+
+  @@index([creatorProfileId])
   @@map("crew_member")
 }
 
@@ -206,7 +245,10 @@ model Gig {
   title        String
   subtitle     String
   shortDescription String?
-  longDescription  String?  @map("description")
+  /// Rich description stored as a serialized Lexical editor state
+  /// (`SerializedEditorState`). Replaces the old markdown `description`
+  /// column — see `prisma/migrate-gig-descriptions-lexical.ts` history.
+  descriptionLexical Json?
   mode         GigMode  @default(NORMAL)
   gigStartTime DateTime
   gigEndTime   DateTime?
@@ -229,9 +271,110 @@ model Gig {
 
   gigTags           GigTagRelationship[]
   homeGigPlacements HomeGigPlacement[]
+  gigCreators       GigCreator[]
 
   @@index([posterFileUploadId])
   @@map("gig")
+}
+
+model CreatorProfile {
+  id               String       @id @default(cuid())
+  userId           String?      @unique
+  createdByAdminId String?
+  claimStatus      ClaimStatus  @default(ACTIVE)
+  handle           String       @unique
+  displayName      String
+  tagline          String?
+  bio              String?      @db.Text
+  avatarFileId     String?
+  bannerFileId     String?
+  accentColor      String?
+  theme            String?
+  isPublished      Boolean      @default(false)
+  gridCols         Int          @default(12)
+  rowHeightPx      Int          @default(60)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  user          User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+  blocks        CreatorBlock[]
+  socials       CreatorSocial[]
+  gigCreators   GigCreator[]
+  crewMembers   CrewMember[]
+  claimRequests CreatorClaimRequest[]
+
+  @@index([claimStatus])
+  @@map("creator_profile")
+}
+
+model CreatorBlock {
+  id        String           @id @default(cuid())
+  profileId String
+  type      CreatorBlockType
+  x         Int
+  y         Int
+  w         Int
+  h         Int
+  data      Json
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  profile CreatorProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, y, x])
+  @@map("creator_block")
+}
+
+model CreatorSocial {
+  id        String  @id @default(cuid())
+  profileId String
+  platform  String
+  url       String
+  label     String?
+  sortOrder Int     @default(0)
+
+  profile CreatorProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, sortOrder])
+  @@map("creator_social")
+}
+
+model CreatorClaimRequest {
+  id               String    @id @default(cuid())
+  profileId        String
+  requestingUserId String
+  message          String?
+  status           String    @default("PENDING")
+  decidedByAdminId String?
+  decidedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  profile        CreatorProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  requestingUser User           @relation("ClaimRequestingUser", fields: [requestingUserId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([requestingUserId])
+  @@index([status])
+  @@map("creator_claim_request")
+}
+
+model GigCreator {
+  id               String   @id @default(cuid())
+  gigId            String
+  creatorProfileId String
+  role             String?
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  gig            Gig            @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  creatorProfile CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([gigId, creatorProfileId])
+  @@index([creatorProfileId])
+  @@index([gigId, sortOrder])
+  @@map("gig_creator")
 }
 
 model HomeGigPlacement {
@@ -534,9 +677,6 @@ enum ActivityType {
   USER_UPDATED
   USER_DELETED
   USER_ROLE_CHANGED
-  USER_BANNED
-  USER_UNBANNED
-  USER_IMPERSONATED
   INVITE_CREATED
   INVITE_DELETED
   GIG_CREATED
@@ -548,6 +688,8 @@ enum ActivityType {
   CREW_MEMBER_CREATED
   CREW_MEMBER_UPDATED
   CREW_MEMBER_DELETED
+  CREW_MEMBER_PROFILE_LINKED
+  CREW_MEMBER_PROFILE_UNLINKED
   GEAR_CREATED
   GEAR_UPDATED
   GEAR_DELETED
@@ -566,6 +708,23 @@ enum ActivityType {
   FILE_DELETED
   LOGIN
   LOGOUT
+  USER_ROLE_ADDED
+  USER_ROLE_REMOVED
+  CREATOR_PROFILE_CREATED
+  CREATOR_PROFILE_UPDATED
+  CREATOR_PROFILE_PUBLISHED
+  CREATOR_PROFILE_UNPUBLISHED
+  CREATOR_PROFILE_DELETED
+  CREATOR_PROFILE_LINKED
+  CREATOR_PROFILE_UNLINKED
+  CREATOR_BLOCK_CREATED
+  CREATOR_BLOCK_UPDATED
+  CREATOR_BLOCK_DELETED
+  CREATOR_CLAIM_REQUESTED
+  CREATOR_CLAIM_APPROVED
+  CREATOR_CLAIM_REJECTED
+  GIG_CREATOR_ADDED
+  GIG_CREATOR_REMOVED
   OTHER
 }
 

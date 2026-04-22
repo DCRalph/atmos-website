@@ -28,9 +28,12 @@ export default async function AdminLayout({
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },
+    include: { roles: true },
   });
 
-  if (user?.role !== "ADMIN") {
+  const isAdmin = user?.roles?.some((r) => r.role === "ADMIN") ?? false;
+
+  if (!isAdmin) {
     redirect("/login");
   }
 

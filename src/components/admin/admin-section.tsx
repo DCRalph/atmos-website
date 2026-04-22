@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Button } from "~/components/ui/button";
-import { authClient } from "~/lib/auth-client";
 
 export function AdminSection({
   title,
@@ -21,8 +20,6 @@ export function AdminSection({
   maxWidth?: "max-w-2xl" | "max-w-4xl" | "max-w-7xl";
   children: React.ReactNode;
 }) {
-  const { data: session } = authClient.useSession();
-
   return (
     // <div className="p-8">
     <div className={`p-8`}>

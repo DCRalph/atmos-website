@@ -44,6 +44,7 @@ export type CrewMemberMinAggregateOutputType = {
   sortOrder: number | null
   createdAt: Date | null
   updatedAt: Date | null
+  creatorProfileId: string | null
 }
 
 export type CrewMemberMaxAggregateOutputType = {
@@ -56,6 +57,7 @@ export type CrewMemberMaxAggregateOutputType = {
   sortOrder: number | null
   createdAt: Date | null
   updatedAt: Date | null
+  creatorProfileId: string | null
 }
 
 export type CrewMemberCountAggregateOutputType = {
@@ -68,6 +70,7 @@ export type CrewMemberCountAggregateOutputType = {
   sortOrder: number
   createdAt: number
   updatedAt: number
+  creatorProfileId: number
   _all: number
 }
 
@@ -90,6 +93,7 @@ export type CrewMemberMinAggregateInputType = {
   sortOrder?: true
   createdAt?: true
   updatedAt?: true
+  creatorProfileId?: true
 }
 
 export type CrewMemberMaxAggregateInputType = {
@@ -102,6 +106,7 @@ export type CrewMemberMaxAggregateInputType = {
   sortOrder?: true
   createdAt?: true
   updatedAt?: true
+  creatorProfileId?: true
 }
 
 export type CrewMemberCountAggregateInputType = {
@@ -114,6 +119,7 @@ export type CrewMemberCountAggregateInputType = {
   sortOrder?: true
   createdAt?: true
   updatedAt?: true
+  creatorProfileId?: true
   _all?: true
 }
 
@@ -213,6 +219,7 @@ export type CrewMemberGroupByOutputType = {
   sortOrder: number
   createdAt: Date
   updatedAt: Date
+  creatorProfileId: string | null
   _count: CrewMemberCountAggregateOutputType | null
   _avg: CrewMemberAvgAggregateOutputType | null
   _sum: CrewMemberSumAggregateOutputType | null
@@ -248,6 +255,8 @@ export type CrewMemberWhereInput = {
   sortOrder?: Prisma.IntFilter<"CrewMember"> | number
   createdAt?: Prisma.DateTimeFilter<"CrewMember"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"CrewMember"> | Date | string
+  creatorProfileId?: Prisma.StringNullableFilter<"CrewMember"> | string | null
+  creatorProfile?: Prisma.XOR<Prisma.CreatorProfileNullableScalarRelationFilter, Prisma.CreatorProfileWhereInput> | null
 }
 
 export type CrewMemberOrderByWithRelationInput = {
@@ -260,6 +269,8 @@ export type CrewMemberOrderByWithRelationInput = {
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  creatorProfileId?: Prisma.SortOrderInput | Prisma.SortOrder
+  creatorProfile?: Prisma.CreatorProfileOrderByWithRelationInput
 }
 
 export type CrewMemberWhereUniqueInput = Prisma.AtLeast<{
@@ -275,6 +286,8 @@ export type CrewMemberWhereUniqueInput = Prisma.AtLeast<{
   sortOrder?: Prisma.IntFilter<"CrewMember"> | number
   createdAt?: Prisma.DateTimeFilter<"CrewMember"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"CrewMember"> | Date | string
+  creatorProfileId?: Prisma.StringNullableFilter<"CrewMember"> | string | null
+  creatorProfile?: Prisma.XOR<Prisma.CreatorProfileNullableScalarRelationFilter, Prisma.CreatorProfileWhereInput> | null
 }, "id">
 
 export type CrewMemberOrderByWithAggregationInput = {
@@ -287,6 +300,7 @@ export type CrewMemberOrderByWithAggregationInput = {
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  creatorProfileId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.CrewMemberCountOrderByAggregateInput
   _avg?: Prisma.CrewMemberAvgOrderByAggregateInput
   _max?: Prisma.CrewMemberMaxOrderByAggregateInput
@@ -307,6 +321,7 @@ export type CrewMemberScalarWhereWithAggregatesInput = {
   sortOrder?: Prisma.IntWithAggregatesFilter<"CrewMember"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"CrewMember"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"CrewMember"> | Date | string
+  creatorProfileId?: Prisma.StringNullableWithAggregatesFilter<"CrewMember"> | string | null
 }
 
 export type CrewMemberCreateInput = {
@@ -319,6 +334,7 @@ export type CrewMemberCreateInput = {
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  creatorProfile?: Prisma.CreatorProfileCreateNestedOneWithoutCrewMembersInput
 }
 
 export type CrewMemberUncheckedCreateInput = {
@@ -331,6 +347,7 @@ export type CrewMemberUncheckedCreateInput = {
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  creatorProfileId?: string | null
 }
 
 export type CrewMemberUpdateInput = {
@@ -343,6 +360,7 @@ export type CrewMemberUpdateInput = {
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  creatorProfile?: Prisma.CreatorProfileUpdateOneWithoutCrewMembersNestedInput
 }
 
 export type CrewMemberUncheckedUpdateInput = {
@@ -355,6 +373,7 @@ export type CrewMemberUncheckedUpdateInput = {
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  creatorProfileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type CrewMemberCreateManyInput = {
@@ -367,6 +386,7 @@ export type CrewMemberCreateManyInput = {
   sortOrder?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  creatorProfileId?: string | null
 }
 
 export type CrewMemberUpdateManyMutationInput = {
@@ -391,6 +411,7 @@ export type CrewMemberUncheckedUpdateManyInput = {
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  creatorProfileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type CrewMemberCountOrderByAggregateInput = {
@@ -403,6 +424,7 @@ export type CrewMemberCountOrderByAggregateInput = {
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  creatorProfileId?: Prisma.SortOrder
 }
 
 export type CrewMemberAvgOrderByAggregateInput = {
@@ -419,6 +441,7 @@ export type CrewMemberMaxOrderByAggregateInput = {
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  creatorProfileId?: Prisma.SortOrder
 }
 
 export type CrewMemberMinOrderByAggregateInput = {
@@ -431,10 +454,21 @@ export type CrewMemberMinOrderByAggregateInput = {
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  creatorProfileId?: Prisma.SortOrder
 }
 
 export type CrewMemberSumOrderByAggregateInput = {
   sortOrder?: Prisma.SortOrder
+}
+
+export type CrewMemberListRelationFilter = {
+  every?: Prisma.CrewMemberWhereInput
+  some?: Prisma.CrewMemberWhereInput
+  none?: Prisma.CrewMemberWhereInput
+}
+
+export type CrewMemberOrderByRelationAggregateInput = {
+  _count?: Prisma.SortOrder
 }
 
 export type IntFieldUpdateOperationsInput = {
@@ -443,6 +477,162 @@ export type IntFieldUpdateOperationsInput = {
   decrement?: number
   multiply?: number
   divide?: number
+}
+
+export type CrewMemberCreateNestedManyWithoutCreatorProfileInput = {
+  create?: Prisma.XOR<Prisma.CrewMemberCreateWithoutCreatorProfileInput, Prisma.CrewMemberUncheckedCreateWithoutCreatorProfileInput> | Prisma.CrewMemberCreateWithoutCreatorProfileInput[] | Prisma.CrewMemberUncheckedCreateWithoutCreatorProfileInput[]
+  connectOrCreate?: Prisma.CrewMemberCreateOrConnectWithoutCreatorProfileInput | Prisma.CrewMemberCreateOrConnectWithoutCreatorProfileInput[]
+  createMany?: Prisma.CrewMemberCreateManyCreatorProfileInputEnvelope
+  connect?: Prisma.CrewMemberWhereUniqueInput | Prisma.CrewMemberWhereUniqueInput[]
+}
+
+export type CrewMemberUncheckedCreateNestedManyWithoutCreatorProfileInput = {
+  create?: Prisma.XOR<Prisma.CrewMemberCreateWithoutCreatorProfileInput, Prisma.CrewMemberUncheckedCreateWithoutCreatorProfileInput> | Prisma.CrewMemberCreateWithoutCreatorProfileInput[] | Prisma.CrewMemberUncheckedCreateWithoutCreatorProfileInput[]
+  connectOrCreate?: Prisma.CrewMemberCreateOrConnectWithoutCreatorProfileInput | Prisma.CrewMemberCreateOrConnectWithoutCreatorProfileInput[]
+  createMany?: Prisma.CrewMemberCreateManyCreatorProfileInputEnvelope
+  connect?: Prisma.CrewMemberWhereUniqueInput | Prisma.CrewMemberWhereUniqueInput[]
+}
+
+export type CrewMemberUpdateManyWithoutCreatorProfileNestedInput = {
+  create?: Prisma.XOR<Prisma.CrewMemberCreateWithoutCreatorProfileInput, Prisma.CrewMemberUncheckedCreateWithoutCreatorProfileInput> | Prisma.CrewMemberCreateWithoutCreatorProfileInput[] | Prisma.CrewMemberUncheckedCreateWithoutCreatorProfileInput[]
+  connectOrCreate?: Prisma.CrewMemberCreateOrConnectWithoutCreatorProfileInput | Prisma.CrewMemberCreateOrConnectWithoutCreatorProfileInput[]
+  upsert?: Prisma.CrewMemberUpsertWithWhereUniqueWithoutCreatorProfileInput | Prisma.CrewMemberUpsertWithWhereUniqueWithoutCreatorProfileInput[]
+  createMany?: Prisma.CrewMemberCreateManyCreatorProfileInputEnvelope
+  set?: Prisma.CrewMemberWhereUniqueInput | Prisma.CrewMemberWhereUniqueInput[]
+  disconnect?: Prisma.CrewMemberWhereUniqueInput | Prisma.CrewMemberWhereUniqueInput[]
+  delete?: Prisma.CrewMemberWhereUniqueInput | Prisma.CrewMemberWhereUniqueInput[]
+  connect?: Prisma.CrewMemberWhereUniqueInput | Prisma.CrewMemberWhereUniqueInput[]
+  update?: Prisma.CrewMemberUpdateWithWhereUniqueWithoutCreatorProfileInput | Prisma.CrewMemberUpdateWithWhereUniqueWithoutCreatorProfileInput[]
+  updateMany?: Prisma.CrewMemberUpdateManyWithWhereWithoutCreatorProfileInput | Prisma.CrewMemberUpdateManyWithWhereWithoutCreatorProfileInput[]
+  deleteMany?: Prisma.CrewMemberScalarWhereInput | Prisma.CrewMemberScalarWhereInput[]
+}
+
+export type CrewMemberUncheckedUpdateManyWithoutCreatorProfileNestedInput = {
+  create?: Prisma.XOR<Prisma.CrewMemberCreateWithoutCreatorProfileInput, Prisma.CrewMemberUncheckedCreateWithoutCreatorProfileInput> | Prisma.CrewMemberCreateWithoutCreatorProfileInput[] | Prisma.CrewMemberUncheckedCreateWithoutCreatorProfileInput[]
+  connectOrCreate?: Prisma.CrewMemberCreateOrConnectWithoutCreatorProfileInput | Prisma.CrewMemberCreateOrConnectWithoutCreatorProfileInput[]
+  upsert?: Prisma.CrewMemberUpsertWithWhereUniqueWithoutCreatorProfileInput | Prisma.CrewMemberUpsertWithWhereUniqueWithoutCreatorProfileInput[]
+  createMany?: Prisma.CrewMemberCreateManyCreatorProfileInputEnvelope
+  set?: Prisma.CrewMemberWhereUniqueInput | Prisma.CrewMemberWhereUniqueInput[]
+  disconnect?: Prisma.CrewMemberWhereUniqueInput | Prisma.CrewMemberWhereUniqueInput[]
+  delete?: Prisma.CrewMemberWhereUniqueInput | Prisma.CrewMemberWhereUniqueInput[]
+  connect?: Prisma.CrewMemberWhereUniqueInput | Prisma.CrewMemberWhereUniqueInput[]
+  update?: Prisma.CrewMemberUpdateWithWhereUniqueWithoutCreatorProfileInput | Prisma.CrewMemberUpdateWithWhereUniqueWithoutCreatorProfileInput[]
+  updateMany?: Prisma.CrewMemberUpdateManyWithWhereWithoutCreatorProfileInput | Prisma.CrewMemberUpdateManyWithWhereWithoutCreatorProfileInput[]
+  deleteMany?: Prisma.CrewMemberScalarWhereInput | Prisma.CrewMemberScalarWhereInput[]
+}
+
+export type CrewMemberCreateWithoutCreatorProfileInput = {
+  id?: string
+  name: string
+  role: string
+  instagram?: string | null
+  soundcloud?: string | null
+  image: string
+  sortOrder?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type CrewMemberUncheckedCreateWithoutCreatorProfileInput = {
+  id?: string
+  name: string
+  role: string
+  instagram?: string | null
+  soundcloud?: string | null
+  image: string
+  sortOrder?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type CrewMemberCreateOrConnectWithoutCreatorProfileInput = {
+  where: Prisma.CrewMemberWhereUniqueInput
+  create: Prisma.XOR<Prisma.CrewMemberCreateWithoutCreatorProfileInput, Prisma.CrewMemberUncheckedCreateWithoutCreatorProfileInput>
+}
+
+export type CrewMemberCreateManyCreatorProfileInputEnvelope = {
+  data: Prisma.CrewMemberCreateManyCreatorProfileInput | Prisma.CrewMemberCreateManyCreatorProfileInput[]
+  skipDuplicates?: boolean
+}
+
+export type CrewMemberUpsertWithWhereUniqueWithoutCreatorProfileInput = {
+  where: Prisma.CrewMemberWhereUniqueInput
+  update: Prisma.XOR<Prisma.CrewMemberUpdateWithoutCreatorProfileInput, Prisma.CrewMemberUncheckedUpdateWithoutCreatorProfileInput>
+  create: Prisma.XOR<Prisma.CrewMemberCreateWithoutCreatorProfileInput, Prisma.CrewMemberUncheckedCreateWithoutCreatorProfileInput>
+}
+
+export type CrewMemberUpdateWithWhereUniqueWithoutCreatorProfileInput = {
+  where: Prisma.CrewMemberWhereUniqueInput
+  data: Prisma.XOR<Prisma.CrewMemberUpdateWithoutCreatorProfileInput, Prisma.CrewMemberUncheckedUpdateWithoutCreatorProfileInput>
+}
+
+export type CrewMemberUpdateManyWithWhereWithoutCreatorProfileInput = {
+  where: Prisma.CrewMemberScalarWhereInput
+  data: Prisma.XOR<Prisma.CrewMemberUpdateManyMutationInput, Prisma.CrewMemberUncheckedUpdateManyWithoutCreatorProfileInput>
+}
+
+export type CrewMemberScalarWhereInput = {
+  AND?: Prisma.CrewMemberScalarWhereInput | Prisma.CrewMemberScalarWhereInput[]
+  OR?: Prisma.CrewMemberScalarWhereInput[]
+  NOT?: Prisma.CrewMemberScalarWhereInput | Prisma.CrewMemberScalarWhereInput[]
+  id?: Prisma.StringFilter<"CrewMember"> | string
+  name?: Prisma.StringFilter<"CrewMember"> | string
+  role?: Prisma.StringFilter<"CrewMember"> | string
+  instagram?: Prisma.StringNullableFilter<"CrewMember"> | string | null
+  soundcloud?: Prisma.StringNullableFilter<"CrewMember"> | string | null
+  image?: Prisma.StringFilter<"CrewMember"> | string
+  sortOrder?: Prisma.IntFilter<"CrewMember"> | number
+  createdAt?: Prisma.DateTimeFilter<"CrewMember"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"CrewMember"> | Date | string
+  creatorProfileId?: Prisma.StringNullableFilter<"CrewMember"> | string | null
+}
+
+export type CrewMemberCreateManyCreatorProfileInput = {
+  id?: string
+  name: string
+  role: string
+  instagram?: string | null
+  soundcloud?: string | null
+  image: string
+  sortOrder?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type CrewMemberUpdateWithoutCreatorProfileInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  instagram?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  soundcloud?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  image?: Prisma.StringFieldUpdateOperationsInput | string
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type CrewMemberUncheckedUpdateWithoutCreatorProfileInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  instagram?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  soundcloud?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  image?: Prisma.StringFieldUpdateOperationsInput | string
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type CrewMemberUncheckedUpdateManyWithoutCreatorProfileInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  instagram?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  soundcloud?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  image?: Prisma.StringFieldUpdateOperationsInput | string
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 
@@ -457,6 +647,8 @@ export type CrewMemberSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  creatorProfileId?: boolean
+  creatorProfile?: boolean | Prisma.CrewMember$creatorProfileArgs<ExtArgs>
 }, ExtArgs["result"]["crewMember"]>
 
 export type CrewMemberSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -469,6 +661,8 @@ export type CrewMemberSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Ex
   sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  creatorProfileId?: boolean
+  creatorProfile?: boolean | Prisma.CrewMember$creatorProfileArgs<ExtArgs>
 }, ExtArgs["result"]["crewMember"]>
 
 export type CrewMemberSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -481,6 +675,8 @@ export type CrewMemberSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
   sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  creatorProfileId?: boolean
+  creatorProfile?: boolean | Prisma.CrewMember$creatorProfileArgs<ExtArgs>
 }, ExtArgs["result"]["crewMember"]>
 
 export type CrewMemberSelectScalar = {
@@ -493,13 +689,25 @@ export type CrewMemberSelectScalar = {
   sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  creatorProfileId?: boolean
 }
 
-export type CrewMemberOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "role" | "instagram" | "soundcloud" | "image" | "sortOrder" | "createdAt" | "updatedAt", ExtArgs["result"]["crewMember"]>
+export type CrewMemberOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "role" | "instagram" | "soundcloud" | "image" | "sortOrder" | "createdAt" | "updatedAt" | "creatorProfileId", ExtArgs["result"]["crewMember"]>
+export type CrewMemberInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  creatorProfile?: boolean | Prisma.CrewMember$creatorProfileArgs<ExtArgs>
+}
+export type CrewMemberIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  creatorProfile?: boolean | Prisma.CrewMember$creatorProfileArgs<ExtArgs>
+}
+export type CrewMemberIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  creatorProfile?: boolean | Prisma.CrewMember$creatorProfileArgs<ExtArgs>
+}
 
 export type $CrewMemberPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "CrewMember"
-  objects: {}
+  objects: {
+    creatorProfile: Prisma.$CreatorProfilePayload<ExtArgs> | null
+  }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     name: string
@@ -510,6 +718,7 @@ export type $CrewMemberPayload<ExtArgs extends runtime.Types.Extensions.Internal
     sortOrder: number
     createdAt: Date
     updatedAt: Date
+    creatorProfileId: string | null
   }, ExtArgs["result"]["crewMember"]>
   composites: {}
 }
@@ -904,6 +1113,7 @@ readonly fields: CrewMemberFieldRefs;
  */
 export interface Prisma__CrewMemberClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  creatorProfile<T extends Prisma.CrewMember$creatorProfileArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CrewMember$creatorProfileArgs<ExtArgs>>): Prisma.Prisma__CreatorProfileClient<runtime.Types.Result.GetResult<Prisma.$CreatorProfilePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -942,6 +1152,7 @@ export interface CrewMemberFieldRefs {
   readonly sortOrder: Prisma.FieldRef<"CrewMember", 'Int'>
   readonly createdAt: Prisma.FieldRef<"CrewMember", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"CrewMember", 'DateTime'>
+  readonly creatorProfileId: Prisma.FieldRef<"CrewMember", 'String'>
 }
     
 
@@ -958,6 +1169,10 @@ export type CrewMemberFindUniqueArgs<ExtArgs extends runtime.Types.Extensions.In
    * Omit specific fields from the CrewMember
    */
   omit?: Prisma.CrewMemberOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CrewMemberInclude<ExtArgs> | null
   /**
    * Filter, which CrewMember to fetch.
    */
@@ -977,6 +1192,10 @@ export type CrewMemberFindUniqueOrThrowArgs<ExtArgs extends runtime.Types.Extens
    */
   omit?: Prisma.CrewMemberOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CrewMemberInclude<ExtArgs> | null
+  /**
    * Filter, which CrewMember to fetch.
    */
   where: Prisma.CrewMemberWhereUniqueInput
@@ -994,6 +1213,10 @@ export type CrewMemberFindFirstArgs<ExtArgs extends runtime.Types.Extensions.Int
    * Omit specific fields from the CrewMember
    */
   omit?: Prisma.CrewMemberOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CrewMemberInclude<ExtArgs> | null
   /**
    * Filter, which CrewMember to fetch.
    */
@@ -1043,6 +1266,10 @@ export type CrewMemberFindFirstOrThrowArgs<ExtArgs extends runtime.Types.Extensi
    */
   omit?: Prisma.CrewMemberOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CrewMemberInclude<ExtArgs> | null
+  /**
    * Filter, which CrewMember to fetch.
    */
   where?: Prisma.CrewMemberWhereInput
@@ -1090,6 +1317,10 @@ export type CrewMemberFindManyArgs<ExtArgs extends runtime.Types.Extensions.Inte
    * Omit specific fields from the CrewMember
    */
   omit?: Prisma.CrewMemberOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CrewMemberInclude<ExtArgs> | null
   /**
    * Filter, which CrewMembers to fetch.
    */
@@ -1139,6 +1370,10 @@ export type CrewMemberCreateArgs<ExtArgs extends runtime.Types.Extensions.Intern
    */
   omit?: Prisma.CrewMemberOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CrewMemberInclude<ExtArgs> | null
+  /**
    * The data needed to create a CrewMember.
    */
   data: Prisma.XOR<Prisma.CrewMemberCreateInput, Prisma.CrewMemberUncheckedCreateInput>
@@ -1172,6 +1407,10 @@ export type CrewMemberCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Exte
    */
   data: Prisma.CrewMemberCreateManyInput | Prisma.CrewMemberCreateManyInput[]
   skipDuplicates?: boolean
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CrewMemberIncludeCreateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1186,6 +1425,10 @@ export type CrewMemberUpdateArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * Omit specific fields from the CrewMember
    */
   omit?: Prisma.CrewMemberOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CrewMemberInclude<ExtArgs> | null
   /**
    * The data needed to update a CrewMember.
    */
@@ -1238,6 +1481,10 @@ export type CrewMemberUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Exte
    * Limit how many CrewMembers to update.
    */
   limit?: number
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CrewMemberIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1252,6 +1499,10 @@ export type CrewMemberUpsertArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * Omit specific fields from the CrewMember
    */
   omit?: Prisma.CrewMemberOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CrewMemberInclude<ExtArgs> | null
   /**
    * The filter to search for the CrewMember to update in case it exists.
    */
@@ -1279,6 +1530,10 @@ export type CrewMemberDeleteArgs<ExtArgs extends runtime.Types.Extensions.Intern
    */
   omit?: Prisma.CrewMemberOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CrewMemberInclude<ExtArgs> | null
+  /**
    * Filter which CrewMember to delete.
    */
   where: Prisma.CrewMemberWhereUniqueInput
@@ -1299,6 +1554,25 @@ export type CrewMemberDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.In
 }
 
 /**
+ * CrewMember.creatorProfile
+ */
+export type CrewMember$creatorProfileArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the CreatorProfile
+   */
+  select?: Prisma.CreatorProfileSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the CreatorProfile
+   */
+  omit?: Prisma.CreatorProfileOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CreatorProfileInclude<ExtArgs> | null
+  where?: Prisma.CreatorProfileWhereInput
+}
+
+/**
  * CrewMember without action
  */
 export type CrewMemberDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1310,4 +1584,8 @@ export type CrewMemberDefaultArgs<ExtArgs extends runtime.Types.Extensions.Inter
    * Omit specific fields from the CrewMember
    */
   omit?: Prisma.CrewMemberOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CrewMemberInclude<ExtArgs> | null
 }

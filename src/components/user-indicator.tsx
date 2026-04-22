@@ -101,7 +101,7 @@ export function UserIndicator({ variant = "light" }: UserIndicatorProps) {
               </Button>
             </Link>
 
-            {user.role === "ADMIN" && (
+            {user.roles?.some((r) => r.role === "ADMIN") && (
               <Link href="/admin">
                 <Button variant="ghost" className="w-full justify-between">
                   <span>Admin Panel</span>

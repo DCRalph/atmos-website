@@ -15,6 +15,9 @@ import { activityLogsRouter } from "~/server/api/routers/activity-logs";
 import { rentalsRouter } from "~/server/api/routers/rentals";
 import { settingsRouter } from "~/server/api/routers/settings";
 import { shopifyRouter } from "~/server/api/routers/shopify";
+import { creatorProfilesRouter } from "~/server/api/routers/creator-profiles";
+import { gigCreatorsRouter } from "~/server/api/routers/gig-creators";
+import { featureFlagsRouter } from "~/server/api/routers/feature-flags";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -40,6 +43,9 @@ export const appRouter = createTRPCRouter({
   rentals: rentalsRouter,
   settings: settingsRouter,
   shopify: shopifyRouter,
+  creatorProfiles: creatorProfilesRouter,
+  gigCreators: gigCreatorsRouter,
+  featureFlags: featureFlagsRouter,
 });
 
 // export type definition of API

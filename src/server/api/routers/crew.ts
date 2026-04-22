@@ -5,6 +5,20 @@ import {
   publicProcedure,
   adminProcedure,
 } from "~/server/api/trpc";
+import { logUserActivity } from "~/server/utils/activity-log";
+import { ActivityType } from "~Prisma/client";
+
+const creatorProfileInclude = {
+  creatorProfile: {
+    select: {
+      id: true,
+      handle: true,
+      displayName: true,
+      avatarFileId: true,
+      isPublished: true,
+    },
+  },
+} as const;
 
 export const crewRouter = createTRPCRouter({
   getAll: publicProcedure
@@ -30,6 +44,7 @@ export const crewRouter = createTRPCRouter({
       return ctx.db.crewMember.findMany({
         where,
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        include: creatorProfileInclude,
       });
     }),
 
@@ -38,6 +53,7 @@ export const crewRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       return ctx.db.crewMember.findUnique({
         where: { id: input.id },
+        include: creatorProfileInclude,
       });
     }),
 
@@ -49,6 +65,7 @@ export const crewRouter = createTRPCRouter({
         instagram: z.string().optional(),
         soundcloud: z.string().optional(),
         image: z.string().min(1),
+        creatorProfileId: z.string().nullish(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -56,11 +73,27 @@ export const crewRouter = createTRPCRouter({
         _max: { sortOrder: true },
       });
 
+      const { creatorProfileId, ...rest } = input;
+      if (creatorProfileId) {
+        const profile = await ctx.db.creatorProfile.findUnique({
+          where: { id: creatorProfileId },
+          select: { id: true },
+        });
+        if (!profile) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Creator profile not found.",
+          });
+        }
+      }
+
       return ctx.db.crewMember.create({
         data: {
-          ...input,
+          ...rest,
+          creatorProfileId: creatorProfileId ?? null,
           sortOrder: (_max.sortOrder ?? -1) + 1,
         },
+        include: creatorProfileInclude,
       });
     }),
 
@@ -73,14 +106,102 @@ export const crewRouter = createTRPCRouter({
         instagram: z.string().optional().nullable(),
         soundcloud: z.string().optional().nullable(),
         image: z.string().min(1).optional(),
+        creatorProfileId: z.string().nullish(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { id, ...data } = input;
+      const { id, creatorProfileId, ...data } = input;
+      if (creatorProfileId) {
+        const profile = await ctx.db.creatorProfile.findUnique({
+          where: { id: creatorProfileId },
+          select: { id: true },
+        });
+        if (!profile) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Creator profile not found.",
+          });
+        }
+      }
       return ctx.db.crewMember.update({
         where: { id },
-        data,
+        data: {
+          ...data,
+          ...(creatorProfileId !== undefined
+            ? { creatorProfileId: creatorProfileId ?? null }
+            : {}),
+        },
+        include: creatorProfileInclude,
       });
+    }),
+
+  /**
+   * Link a creator profile to a crew member. Pass `creatorProfileId: null`
+   * to unlink.
+   */
+  linkCreatorProfile: adminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        creatorProfileId: z.string().nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const member = await ctx.db.crewMember.findUnique({
+        where: { id: input.id },
+        select: { id: true, name: true, creatorProfileId: true },
+      });
+      if (!member) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Crew member not found.",
+        });
+      }
+      let profileHandle: string | null = null;
+      if (input.creatorProfileId) {
+        const profile = await ctx.db.creatorProfile.findUnique({
+          where: { id: input.creatorProfileId },
+          select: { id: true, handle: true },
+        });
+        if (!profile) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Creator profile not found.",
+          });
+        }
+        profileHandle = profile.handle;
+      }
+      const updated = await ctx.db.crewMember.update({
+        where: { id: input.id },
+        data: { creatorProfileId: input.creatorProfileId },
+        include: creatorProfileInclude,
+      });
+      if (input.creatorProfileId) {
+        await logUserActivity(
+          ActivityType.CREW_MEMBER_PROFILE_LINKED,
+          `Linked crew member ${member.name} to creator profile @${
+            profileHandle ?? input.creatorProfileId
+          }`,
+          ctx.session.user.id,
+          undefined,
+          {
+            crewMemberId: member.id,
+            creatorProfileId: input.creatorProfileId,
+          },
+        );
+      } else if (member.creatorProfileId) {
+        await logUserActivity(
+          ActivityType.CREW_MEMBER_PROFILE_UNLINKED,
+          `Unlinked creator profile from crew member ${member.name}`,
+          ctx.session.user.id,
+          undefined,
+          {
+            crewMemberId: member.id,
+            previousCreatorProfileId: member.creatorProfileId,
+          },
+        );
+      }
+      return updated;
     }),
 
   move: adminProcedure

@@ -4,8 +4,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { db } from "~/server/db";
 // import { createAuthMiddleware } from "better-auth/api";
 // import { z } from "zod";
-import { adminAc, userAc } from "better-auth/plugins/admin/access";
-import { admin, lastLoginMethod } from "better-auth/plugins";
+import { lastLoginMethod } from "better-auth/plugins";
 
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
@@ -21,18 +20,7 @@ export const auth = betterAuth({
       clientSecret: env.GOOGLE_CLIENT_SECRET,
     },
   },
-  plugins: [
-    admin({
-      defaultRole: "USER",
-      adminRoles: ["ADMIN"],
-      roles: {
-        ADMIN: adminAc,
-        USER: userAc,
-        CREATOR: userAc,
-      },
-    }),
-    lastLoginMethod(),
-  ],
+  plugins: [lastLoginMethod()],
   // hooks: {
   //   before: createAuthMiddleware(async (ctx) => {
   //     // Check for invites before allowing signup
