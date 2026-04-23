@@ -70,7 +70,7 @@ const profileDataSchema = z.object({
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)
     .nullish(),
-  theme: z.string().max(40).nullish(),
+  themeId: z.string().nullish(),
   gridCols: z.number().int().min(4).max(24).optional(),
   rowHeightPx: z.number().int().min(20).max(200).optional(),
 });
@@ -159,6 +159,7 @@ export const creatorProfilesRouter = createTRPCRouter({
         include: {
           blocks: { orderBy: [{ y: "asc" }, { x: "asc" }] },
           socials: { orderBy: { sortOrder: "asc" } },
+          themeRef: true,
           gigCreators: {
             orderBy: { sortOrder: "asc" },
             include: {
@@ -189,6 +190,7 @@ export const creatorProfilesRouter = createTRPCRouter({
       include: {
         blocks: { orderBy: [{ y: "asc" }, { x: "asc" }] },
         socials: { orderBy: { sortOrder: "asc" } },
+        themeRef: true,
       },
     });
     return profile;
@@ -244,6 +246,7 @@ export const creatorProfilesRouter = createTRPCRouter({
         include: {
           blocks: { orderBy: [{ y: "asc" }, { x: "asc" }] },
           socials: { orderBy: { sortOrder: "asc" } },
+          themeRef: true,
           user: { select: { id: true, name: true, email: true, image: true } },
           crewMembers: {
             orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
@@ -312,7 +315,10 @@ export const creatorProfilesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { profileId } = await resolveTargetProfileId(ctx, input.profileId);
+      const { profileId, isAdmin } = await resolveTargetProfileId(
+        ctx,
+        input.profileId,
+      );
       if (input.data.handle) {
         const clash = await ctx.db.creatorProfile.findFirst({
           where: { handle: input.data.handle, NOT: { id: profileId } },
@@ -322,6 +328,29 @@ export const creatorProfilesRouter = createTRPCRouter({
           throw new TRPCError({
             code: "CONFLICT",
             message: "Handle is already taken",
+          });
+        }
+      }
+      if (input.data.themeId) {
+        const theme = await ctx.db.creatorProfileTheme.findUnique({
+          where: { id: input.data.themeId },
+          select: { ownerUserId: true, isPublic: true, isSystem: true },
+        });
+        if (!theme) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Theme not found",
+          });
+        }
+        const readable =
+          theme.isPublic ||
+          theme.isSystem ||
+          isAdmin ||
+          theme.ownerUserId === ctx.session.user.id;
+        if (!readable) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You cannot use this theme",
           });
         }
       }
@@ -410,6 +439,65 @@ export const creatorProfilesRouter = createTRPCRouter({
         { profileId, avatarFileId: newFileId },
       );
       return { avatarFileId: newFileId };
+    }),
+
+  /**
+   * Upload an image used inside a profile (theme background or block image).
+   * Kept separate from `uploadAvatar` because it does not update a dedicated
+   * FK on `CreatorProfile` — the resulting `file_upload.id` is stored inside
+   * theme tokens JSON or block data JSON by the caller.
+   */
+  uploadProfileImage: protectedProcedure
+    .input(
+      z.object({
+        profileId: z.string().optional(),
+        base64: z.string(),
+        name: z.string(),
+        mimeType: z.string(),
+        kind: z.enum(["theme_bg", "block_image"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { profileId } = await resolveTargetProfileId(ctx, input.profileId);
+      if (!input.mimeType.startsWith("image/")) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Upload must be an image file",
+        });
+      }
+      const base64Data = input.base64.replace(/^data:[^;]+;base64,/, "");
+      const buffer = Buffer.from(base64Data, "base64");
+      if (buffer.length > limits.fileSize) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Image is too large (max ${limits.fileSize / 1024 / 1024}MB before processing)`,
+        });
+      }
+      // Background images should preserve more detail; block images are
+      // typically displayed at smaller sizes.
+      const maxSizePx = input.kind === "theme_bg" ? 2048 : 1600;
+      const resized = await toWebPMax(buffer, {
+        maxSizePx,
+        quality: 82,
+      });
+      const id = randomUUID();
+      const folder =
+        input.kind === "theme_bg" ? "theme-bg" : "block-image";
+      const key = `creator-profiles/${profileId}/${folder}-${id}.webp`;
+      const uploadResult = await uploadBufferToS3({
+        buffer: resized.buffer,
+        key,
+        contentType: resized.contentType,
+        name: `${input.name.replace(/\.[^/.]+$/, "") || folder}.webp`,
+        fileType: "photo",
+        for: `creator_profile_${input.kind}`,
+        forId: profileId,
+        acl: "public-read",
+        userId: ctx.session.user.id,
+        width: resized.width,
+        height: resized.height,
+      });
+      return { fileId: uploadResult.record.id };
     }),
 
   clearAvatar: protectedProcedure

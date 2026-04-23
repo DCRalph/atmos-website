@@ -61,7 +61,7 @@ export const BLOCK_TYPES: BlockTypeDefinition[] = [
     description: "Single image",
     defaultW: 6,
     defaultH: 6,
-    defaultData: { url: "", alt: "" },
+    defaultData: { fileId: null as string | null, alt: "" },
   },
   {
     type: "GALLERY",
@@ -69,7 +69,7 @@ export const BLOCK_TYPES: BlockTypeDefinition[] = [
     description: "Multiple images grid",
     defaultW: 12,
     defaultH: 6,
-    defaultData: { urls: [] as string[] },
+    defaultData: { fileIds: [] as string[] },
   },
   {
     type: "SOUNDCLOUD_TRACK",

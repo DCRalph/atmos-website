@@ -311,13 +311,6 @@ export type EnumClaimStatusWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedEnumClaimStatusFilter<$PrismaModel>
 }
 
-export type EnumCreatorBlockTypeFilter<$PrismaModel = never> = {
-  equals?: $Enums.CreatorBlockType | Prisma.EnumCreatorBlockTypeFieldRefInput<$PrismaModel>
-  in?: $Enums.CreatorBlockType[] | Prisma.ListEnumCreatorBlockTypeFieldRefInput<$PrismaModel>
-  notIn?: $Enums.CreatorBlockType[] | Prisma.ListEnumCreatorBlockTypeFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedEnumCreatorBlockTypeFilter<$PrismaModel> | $Enums.CreatorBlockType
-}
-
 export type JsonFilter<$PrismaModel = never> =
 | Prisma.PatchUndefined<
     Prisma.Either<Required<JsonFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonFilterBase<$PrismaModel>>, 'path'>>,
@@ -340,16 +333,6 @@ export type JsonFilterBase<$PrismaModel = never> = {
   gt?: runtime.InputJsonValue | Prisma.JsonFieldRefInput<$PrismaModel>
   gte?: runtime.InputJsonValue | Prisma.JsonFieldRefInput<$PrismaModel>
   not?: runtime.InputJsonValue | Prisma.JsonFieldRefInput<$PrismaModel> | Prisma.JsonNullValueFilter
-}
-
-export type EnumCreatorBlockTypeWithAggregatesFilter<$PrismaModel = never> = {
-  equals?: $Enums.CreatorBlockType | Prisma.EnumCreatorBlockTypeFieldRefInput<$PrismaModel>
-  in?: $Enums.CreatorBlockType[] | Prisma.ListEnumCreatorBlockTypeFieldRefInput<$PrismaModel>
-  notIn?: $Enums.CreatorBlockType[] | Prisma.ListEnumCreatorBlockTypeFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedEnumCreatorBlockTypeWithAggregatesFilter<$PrismaModel> | $Enums.CreatorBlockType
-  _count?: Prisma.NestedIntFilter<$PrismaModel>
-  _min?: Prisma.NestedEnumCreatorBlockTypeFilter<$PrismaModel>
-  _max?: Prisma.NestedEnumCreatorBlockTypeFilter<$PrismaModel>
 }
 
 export type JsonWithAggregatesFilter<$PrismaModel = never> =
@@ -377,6 +360,23 @@ export type JsonWithAggregatesFilterBase<$PrismaModel = never> = {
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedJsonFilter<$PrismaModel>
   _max?: Prisma.NestedJsonFilter<$PrismaModel>
+}
+
+export type EnumCreatorBlockTypeFilter<$PrismaModel = never> = {
+  equals?: $Enums.CreatorBlockType | Prisma.EnumCreatorBlockTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.CreatorBlockType[] | Prisma.ListEnumCreatorBlockTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.CreatorBlockType[] | Prisma.ListEnumCreatorBlockTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumCreatorBlockTypeFilter<$PrismaModel> | $Enums.CreatorBlockType
+}
+
+export type EnumCreatorBlockTypeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.CreatorBlockType | Prisma.EnumCreatorBlockTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.CreatorBlockType[] | Prisma.ListEnumCreatorBlockTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.CreatorBlockType[] | Prisma.ListEnumCreatorBlockTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumCreatorBlockTypeWithAggregatesFilter<$PrismaModel> | $Enums.CreatorBlockType
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumCreatorBlockTypeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumCreatorBlockTypeFilter<$PrismaModel>
 }
 
 export type EnumHomeGigSectionFilter<$PrismaModel = never> = {
@@ -896,23 +896,6 @@ export type NestedEnumClaimStatusWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedEnumClaimStatusFilter<$PrismaModel>
 }
 
-export type NestedEnumCreatorBlockTypeFilter<$PrismaModel = never> = {
-  equals?: $Enums.CreatorBlockType | Prisma.EnumCreatorBlockTypeFieldRefInput<$PrismaModel>
-  in?: $Enums.CreatorBlockType[] | Prisma.ListEnumCreatorBlockTypeFieldRefInput<$PrismaModel>
-  notIn?: $Enums.CreatorBlockType[] | Prisma.ListEnumCreatorBlockTypeFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedEnumCreatorBlockTypeFilter<$PrismaModel> | $Enums.CreatorBlockType
-}
-
-export type NestedEnumCreatorBlockTypeWithAggregatesFilter<$PrismaModel = never> = {
-  equals?: $Enums.CreatorBlockType | Prisma.EnumCreatorBlockTypeFieldRefInput<$PrismaModel>
-  in?: $Enums.CreatorBlockType[] | Prisma.ListEnumCreatorBlockTypeFieldRefInput<$PrismaModel>
-  notIn?: $Enums.CreatorBlockType[] | Prisma.ListEnumCreatorBlockTypeFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedEnumCreatorBlockTypeWithAggregatesFilter<$PrismaModel> | $Enums.CreatorBlockType
-  _count?: Prisma.NestedIntFilter<$PrismaModel>
-  _min?: Prisma.NestedEnumCreatorBlockTypeFilter<$PrismaModel>
-  _max?: Prisma.NestedEnumCreatorBlockTypeFilter<$PrismaModel>
-}
-
 export type NestedJsonFilter<$PrismaModel = never> =
 | Prisma.PatchUndefined<
     Prisma.Either<Required<NestedJsonFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonFilterBase<$PrismaModel>>, 'path'>>,
@@ -935,6 +918,23 @@ export type NestedJsonFilterBase<$PrismaModel = never> = {
   gt?: runtime.InputJsonValue | Prisma.JsonFieldRefInput<$PrismaModel>
   gte?: runtime.InputJsonValue | Prisma.JsonFieldRefInput<$PrismaModel>
   not?: runtime.InputJsonValue | Prisma.JsonFieldRefInput<$PrismaModel> | Prisma.JsonNullValueFilter
+}
+
+export type NestedEnumCreatorBlockTypeFilter<$PrismaModel = never> = {
+  equals?: $Enums.CreatorBlockType | Prisma.EnumCreatorBlockTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.CreatorBlockType[] | Prisma.ListEnumCreatorBlockTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.CreatorBlockType[] | Prisma.ListEnumCreatorBlockTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumCreatorBlockTypeFilter<$PrismaModel> | $Enums.CreatorBlockType
+}
+
+export type NestedEnumCreatorBlockTypeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.CreatorBlockType | Prisma.EnumCreatorBlockTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.CreatorBlockType[] | Prisma.ListEnumCreatorBlockTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.CreatorBlockType[] | Prisma.ListEnumCreatorBlockTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumCreatorBlockTypeWithAggregatesFilter<$PrismaModel> | $Enums.CreatorBlockType
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumCreatorBlockTypeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumCreatorBlockTypeFilter<$PrismaModel>
 }
 
 export type NestedEnumHomeGigSectionFilter<$PrismaModel = never> = {

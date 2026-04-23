@@ -64,6 +64,7 @@ export const ModelName = {
   GigTagRelationship: 'GigTagRelationship',
   Gig: 'Gig',
   CreatorProfile: 'CreatorProfile',
+  CreatorProfileTheme: 'CreatorProfileTheme',
   CreatorBlock: 'CreatorBlock',
   CreatorSocial: 'CreatorSocial',
   CreatorClaimRequest: 'CreatorClaimRequest',
@@ -288,7 +289,7 @@ export const CreatorProfileScalarFieldEnum = {
   avatarFileId: 'avatarFileId',
   bannerFileId: 'bannerFileId',
   accentColor: 'accentColor',
-  theme: 'theme',
+  themeId: 'themeId',
   isPublished: 'isPublished',
   gridCols: 'gridCols',
   rowHeightPx: 'rowHeightPx',
@@ -297,6 +298,23 @@ export const CreatorProfileScalarFieldEnum = {
 } as const
 
 export type CreatorProfileScalarFieldEnum = (typeof CreatorProfileScalarFieldEnum)[keyof typeof CreatorProfileScalarFieldEnum]
+
+
+export const CreatorProfileThemeScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  description: 'description',
+  ownerUserId: 'ownerUserId',
+  isPublic: 'isPublic',
+  isSystem: 'isSystem',
+  tokens: 'tokens',
+  blockOverrides: 'blockOverrides',
+  createdByAdminId: 'createdByAdminId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CreatorProfileThemeScalarFieldEnum = (typeof CreatorProfileThemeScalarFieldEnum)[keyof typeof CreatorProfileThemeScalarFieldEnum]
 
 
 export const CreatorBlockScalarFieldEnum = {

@@ -205,6 +205,7 @@ export type UserWhereInput = {
   targetActivities?: Prisma.ActivityLogListRelationFilter
   creatorProfile?: Prisma.XOR<Prisma.CreatorProfileNullableScalarRelationFilter, Prisma.CreatorProfileWhereInput> | null
   creatorClaimRequests?: Prisma.CreatorClaimRequestListRelationFilter
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeListRelationFilter
 }
 
 export type UserOrderByWithRelationInput = {
@@ -222,6 +223,7 @@ export type UserOrderByWithRelationInput = {
   targetActivities?: Prisma.ActivityLogOrderByRelationAggregateInput
   creatorProfile?: Prisma.CreatorProfileOrderByWithRelationInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestOrderByRelationAggregateInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeOrderByRelationAggregateInput
 }
 
 export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -242,6 +244,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   targetActivities?: Prisma.ActivityLogListRelationFilter
   creatorProfile?: Prisma.XOR<Prisma.CreatorProfileNullableScalarRelationFilter, Prisma.CreatorProfileWhereInput> | null
   creatorClaimRequests?: Prisma.CreatorClaimRequestListRelationFilter
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeListRelationFilter
 }, "id" | "email">
 
 export type UserOrderByWithAggregationInput = {
@@ -285,6 +288,7 @@ export type UserCreateInput = {
   targetActivities?: Prisma.ActivityLogCreateNestedManyWithoutTargetUserInput
   creatorProfile?: Prisma.CreatorProfileCreateNestedOneWithoutUserInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestCreateNestedManyWithoutRequestingUserInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeCreateNestedManyWithoutOwnerInput
 }
 
 export type UserUncheckedCreateInput = {
@@ -302,6 +306,7 @@ export type UserUncheckedCreateInput = {
   targetActivities?: Prisma.ActivityLogUncheckedCreateNestedManyWithoutTargetUserInput
   creatorProfile?: Prisma.CreatorProfileUncheckedCreateNestedOneWithoutUserInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestUncheckedCreateNestedManyWithoutRequestingUserInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type UserUpdateInput = {
@@ -319,6 +324,7 @@ export type UserUpdateInput = {
   targetActivities?: Prisma.ActivityLogUpdateManyWithoutTargetUserNestedInput
   creatorProfile?: Prisma.CreatorProfileUpdateOneWithoutUserNestedInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestUpdateManyWithoutRequestingUserNestedInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUpdateManyWithoutOwnerNestedInput
 }
 
 export type UserUncheckedUpdateInput = {
@@ -336,6 +342,7 @@ export type UserUncheckedUpdateInput = {
   targetActivities?: Prisma.ActivityLogUncheckedUpdateManyWithoutTargetUserNestedInput
   creatorProfile?: Prisma.CreatorProfileUncheckedUpdateOneWithoutUserNestedInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestUncheckedUpdateManyWithoutRequestingUserNestedInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUncheckedUpdateManyWithoutOwnerNestedInput
 }
 
 export type UserCreateManyInput = {
@@ -482,6 +489,22 @@ export type UserUpdateOneWithoutCreatorProfileNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutCreatorProfileInput, Prisma.UserUpdateWithoutCreatorProfileInput>, Prisma.UserUncheckedUpdateWithoutCreatorProfileInput>
 }
 
+export type UserCreateNestedOneWithoutOwnedCreatorThemesInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutOwnedCreatorThemesInput, Prisma.UserUncheckedCreateWithoutOwnedCreatorThemesInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutOwnedCreatorThemesInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneWithoutOwnedCreatorThemesNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutOwnedCreatorThemesInput, Prisma.UserUncheckedCreateWithoutOwnedCreatorThemesInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutOwnedCreatorThemesInput
+  upsert?: Prisma.UserUpsertWithoutOwnedCreatorThemesInput
+  disconnect?: Prisma.UserWhereInput | boolean
+  delete?: Prisma.UserWhereInput | boolean
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutOwnedCreatorThemesInput, Prisma.UserUpdateWithoutOwnedCreatorThemesInput>, Prisma.UserUncheckedUpdateWithoutOwnedCreatorThemesInput>
+}
+
 export type UserCreateNestedOneWithoutCreatorClaimRequestsInput = {
   create?: Prisma.XOR<Prisma.UserCreateWithoutCreatorClaimRequestsInput, Prisma.UserUncheckedCreateWithoutCreatorClaimRequestsInput>
   connectOrCreate?: Prisma.UserCreateOrConnectWithoutCreatorClaimRequestsInput
@@ -542,6 +565,7 @@ export type UserCreateWithoutRolesInput = {
   targetActivities?: Prisma.ActivityLogCreateNestedManyWithoutTargetUserInput
   creatorProfile?: Prisma.CreatorProfileCreateNestedOneWithoutUserInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestCreateNestedManyWithoutRequestingUserInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeCreateNestedManyWithoutOwnerInput
 }
 
 export type UserUncheckedCreateWithoutRolesInput = {
@@ -558,6 +582,7 @@ export type UserUncheckedCreateWithoutRolesInput = {
   targetActivities?: Prisma.ActivityLogUncheckedCreateNestedManyWithoutTargetUserInput
   creatorProfile?: Prisma.CreatorProfileUncheckedCreateNestedOneWithoutUserInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestUncheckedCreateNestedManyWithoutRequestingUserInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type UserCreateOrConnectWithoutRolesInput = {
@@ -590,6 +615,7 @@ export type UserUpdateWithoutRolesInput = {
   targetActivities?: Prisma.ActivityLogUpdateManyWithoutTargetUserNestedInput
   creatorProfile?: Prisma.CreatorProfileUpdateOneWithoutUserNestedInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestUpdateManyWithoutRequestingUserNestedInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUpdateManyWithoutOwnerNestedInput
 }
 
 export type UserUncheckedUpdateWithoutRolesInput = {
@@ -606,6 +632,7 @@ export type UserUncheckedUpdateWithoutRolesInput = {
   targetActivities?: Prisma.ActivityLogUncheckedUpdateManyWithoutTargetUserNestedInput
   creatorProfile?: Prisma.CreatorProfileUncheckedUpdateOneWithoutUserNestedInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestUncheckedUpdateManyWithoutRequestingUserNestedInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUncheckedUpdateManyWithoutOwnerNestedInput
 }
 
 export type UserCreateWithoutSessionsInput = {
@@ -622,6 +649,7 @@ export type UserCreateWithoutSessionsInput = {
   targetActivities?: Prisma.ActivityLogCreateNestedManyWithoutTargetUserInput
   creatorProfile?: Prisma.CreatorProfileCreateNestedOneWithoutUserInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestCreateNestedManyWithoutRequestingUserInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeCreateNestedManyWithoutOwnerInput
 }
 
 export type UserUncheckedCreateWithoutSessionsInput = {
@@ -638,6 +666,7 @@ export type UserUncheckedCreateWithoutSessionsInput = {
   targetActivities?: Prisma.ActivityLogUncheckedCreateNestedManyWithoutTargetUserInput
   creatorProfile?: Prisma.CreatorProfileUncheckedCreateNestedOneWithoutUserInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestUncheckedCreateNestedManyWithoutRequestingUserInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type UserCreateOrConnectWithoutSessionsInput = {
@@ -670,6 +699,7 @@ export type UserUpdateWithoutSessionsInput = {
   targetActivities?: Prisma.ActivityLogUpdateManyWithoutTargetUserNestedInput
   creatorProfile?: Prisma.CreatorProfileUpdateOneWithoutUserNestedInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestUpdateManyWithoutRequestingUserNestedInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUpdateManyWithoutOwnerNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSessionsInput = {
@@ -686,6 +716,7 @@ export type UserUncheckedUpdateWithoutSessionsInput = {
   targetActivities?: Prisma.ActivityLogUncheckedUpdateManyWithoutTargetUserNestedInput
   creatorProfile?: Prisma.CreatorProfileUncheckedUpdateOneWithoutUserNestedInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestUncheckedUpdateManyWithoutRequestingUserNestedInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUncheckedUpdateManyWithoutOwnerNestedInput
 }
 
 export type UserCreateWithoutAccountsInput = {
@@ -702,6 +733,7 @@ export type UserCreateWithoutAccountsInput = {
   targetActivities?: Prisma.ActivityLogCreateNestedManyWithoutTargetUserInput
   creatorProfile?: Prisma.CreatorProfileCreateNestedOneWithoutUserInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestCreateNestedManyWithoutRequestingUserInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeCreateNestedManyWithoutOwnerInput
 }
 
 export type UserUncheckedCreateWithoutAccountsInput = {
@@ -718,6 +750,7 @@ export type UserUncheckedCreateWithoutAccountsInput = {
   targetActivities?: Prisma.ActivityLogUncheckedCreateNestedManyWithoutTargetUserInput
   creatorProfile?: Prisma.CreatorProfileUncheckedCreateNestedOneWithoutUserInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestUncheckedCreateNestedManyWithoutRequestingUserInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type UserCreateOrConnectWithoutAccountsInput = {
@@ -750,6 +783,7 @@ export type UserUpdateWithoutAccountsInput = {
   targetActivities?: Prisma.ActivityLogUpdateManyWithoutTargetUserNestedInput
   creatorProfile?: Prisma.CreatorProfileUpdateOneWithoutUserNestedInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestUpdateManyWithoutRequestingUserNestedInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUpdateManyWithoutOwnerNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAccountsInput = {
@@ -766,6 +800,7 @@ export type UserUncheckedUpdateWithoutAccountsInput = {
   targetActivities?: Prisma.ActivityLogUncheckedUpdateManyWithoutTargetUserNestedInput
   creatorProfile?: Prisma.CreatorProfileUncheckedUpdateOneWithoutUserNestedInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestUncheckedUpdateManyWithoutRequestingUserNestedInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUncheckedUpdateManyWithoutOwnerNestedInput
 }
 
 export type UserCreateWithoutCreatorProfileInput = {
@@ -782,6 +817,7 @@ export type UserCreateWithoutCreatorProfileInput = {
   activities?: Prisma.ActivityLogCreateNestedManyWithoutUserInput
   targetActivities?: Prisma.ActivityLogCreateNestedManyWithoutTargetUserInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestCreateNestedManyWithoutRequestingUserInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeCreateNestedManyWithoutOwnerInput
 }
 
 export type UserUncheckedCreateWithoutCreatorProfileInput = {
@@ -798,6 +834,7 @@ export type UserUncheckedCreateWithoutCreatorProfileInput = {
   activities?: Prisma.ActivityLogUncheckedCreateNestedManyWithoutUserInput
   targetActivities?: Prisma.ActivityLogUncheckedCreateNestedManyWithoutTargetUserInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestUncheckedCreateNestedManyWithoutRequestingUserInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type UserCreateOrConnectWithoutCreatorProfileInput = {
@@ -830,6 +867,7 @@ export type UserUpdateWithoutCreatorProfileInput = {
   activities?: Prisma.ActivityLogUpdateManyWithoutUserNestedInput
   targetActivities?: Prisma.ActivityLogUpdateManyWithoutTargetUserNestedInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestUpdateManyWithoutRequestingUserNestedInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUpdateManyWithoutOwnerNestedInput
 }
 
 export type UserUncheckedUpdateWithoutCreatorProfileInput = {
@@ -845,6 +883,91 @@ export type UserUncheckedUpdateWithoutCreatorProfileInput = {
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput
   activities?: Prisma.ActivityLogUncheckedUpdateManyWithoutUserNestedInput
   targetActivities?: Prisma.ActivityLogUncheckedUpdateManyWithoutTargetUserNestedInput
+  creatorClaimRequests?: Prisma.CreatorClaimRequestUncheckedUpdateManyWithoutRequestingUserNestedInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUncheckedUpdateManyWithoutOwnerNestedInput
+}
+
+export type UserCreateWithoutOwnedCreatorThemesInput = {
+  id: string
+  name: string
+  email: string
+  emailVerified?: boolean
+  image?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  roles?: Prisma.UserRoleAssignmentCreateNestedManyWithoutUserInput
+  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput
+  accounts?: Prisma.AccountCreateNestedManyWithoutUserInput
+  activities?: Prisma.ActivityLogCreateNestedManyWithoutUserInput
+  targetActivities?: Prisma.ActivityLogCreateNestedManyWithoutTargetUserInput
+  creatorProfile?: Prisma.CreatorProfileCreateNestedOneWithoutUserInput
+  creatorClaimRequests?: Prisma.CreatorClaimRequestCreateNestedManyWithoutRequestingUserInput
+}
+
+export type UserUncheckedCreateWithoutOwnedCreatorThemesInput = {
+  id: string
+  name: string
+  email: string
+  emailVerified?: boolean
+  image?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  roles?: Prisma.UserRoleAssignmentUncheckedCreateNestedManyWithoutUserInput
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput
+  accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput
+  activities?: Prisma.ActivityLogUncheckedCreateNestedManyWithoutUserInput
+  targetActivities?: Prisma.ActivityLogUncheckedCreateNestedManyWithoutTargetUserInput
+  creatorProfile?: Prisma.CreatorProfileUncheckedCreateNestedOneWithoutUserInput
+  creatorClaimRequests?: Prisma.CreatorClaimRequestUncheckedCreateNestedManyWithoutRequestingUserInput
+}
+
+export type UserCreateOrConnectWithoutOwnedCreatorThemesInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutOwnedCreatorThemesInput, Prisma.UserUncheckedCreateWithoutOwnedCreatorThemesInput>
+}
+
+export type UserUpsertWithoutOwnedCreatorThemesInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutOwnedCreatorThemesInput, Prisma.UserUncheckedUpdateWithoutOwnedCreatorThemesInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutOwnedCreatorThemesInput, Prisma.UserUncheckedCreateWithoutOwnedCreatorThemesInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutOwnedCreatorThemesInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutOwnedCreatorThemesInput, Prisma.UserUncheckedUpdateWithoutOwnedCreatorThemesInput>
+}
+
+export type UserUpdateWithoutOwnedCreatorThemesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  roles?: Prisma.UserRoleAssignmentUpdateManyWithoutUserNestedInput
+  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput
+  accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput
+  activities?: Prisma.ActivityLogUpdateManyWithoutUserNestedInput
+  targetActivities?: Prisma.ActivityLogUpdateManyWithoutTargetUserNestedInput
+  creatorProfile?: Prisma.CreatorProfileUpdateOneWithoutUserNestedInput
+  creatorClaimRequests?: Prisma.CreatorClaimRequestUpdateManyWithoutRequestingUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutOwnedCreatorThemesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  roles?: Prisma.UserRoleAssignmentUncheckedUpdateManyWithoutUserNestedInput
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput
+  accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput
+  activities?: Prisma.ActivityLogUncheckedUpdateManyWithoutUserNestedInput
+  targetActivities?: Prisma.ActivityLogUncheckedUpdateManyWithoutTargetUserNestedInput
+  creatorProfile?: Prisma.CreatorProfileUncheckedUpdateOneWithoutUserNestedInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestUncheckedUpdateManyWithoutRequestingUserNestedInput
 }
 
@@ -862,6 +985,7 @@ export type UserCreateWithoutCreatorClaimRequestsInput = {
   activities?: Prisma.ActivityLogCreateNestedManyWithoutUserInput
   targetActivities?: Prisma.ActivityLogCreateNestedManyWithoutTargetUserInput
   creatorProfile?: Prisma.CreatorProfileCreateNestedOneWithoutUserInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeCreateNestedManyWithoutOwnerInput
 }
 
 export type UserUncheckedCreateWithoutCreatorClaimRequestsInput = {
@@ -878,6 +1002,7 @@ export type UserUncheckedCreateWithoutCreatorClaimRequestsInput = {
   activities?: Prisma.ActivityLogUncheckedCreateNestedManyWithoutUserInput
   targetActivities?: Prisma.ActivityLogUncheckedCreateNestedManyWithoutTargetUserInput
   creatorProfile?: Prisma.CreatorProfileUncheckedCreateNestedOneWithoutUserInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type UserCreateOrConnectWithoutCreatorClaimRequestsInput = {
@@ -910,6 +1035,7 @@ export type UserUpdateWithoutCreatorClaimRequestsInput = {
   activities?: Prisma.ActivityLogUpdateManyWithoutUserNestedInput
   targetActivities?: Prisma.ActivityLogUpdateManyWithoutTargetUserNestedInput
   creatorProfile?: Prisma.CreatorProfileUpdateOneWithoutUserNestedInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUpdateManyWithoutOwnerNestedInput
 }
 
 export type UserUncheckedUpdateWithoutCreatorClaimRequestsInput = {
@@ -926,6 +1052,7 @@ export type UserUncheckedUpdateWithoutCreatorClaimRequestsInput = {
   activities?: Prisma.ActivityLogUncheckedUpdateManyWithoutUserNestedInput
   targetActivities?: Prisma.ActivityLogUncheckedUpdateManyWithoutTargetUserNestedInput
   creatorProfile?: Prisma.CreatorProfileUncheckedUpdateOneWithoutUserNestedInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUncheckedUpdateManyWithoutOwnerNestedInput
 }
 
 export type UserCreateWithoutActivitiesInput = {
@@ -942,6 +1069,7 @@ export type UserCreateWithoutActivitiesInput = {
   targetActivities?: Prisma.ActivityLogCreateNestedManyWithoutTargetUserInput
   creatorProfile?: Prisma.CreatorProfileCreateNestedOneWithoutUserInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestCreateNestedManyWithoutRequestingUserInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeCreateNestedManyWithoutOwnerInput
 }
 
 export type UserUncheckedCreateWithoutActivitiesInput = {
@@ -958,6 +1086,7 @@ export type UserUncheckedCreateWithoutActivitiesInput = {
   targetActivities?: Prisma.ActivityLogUncheckedCreateNestedManyWithoutTargetUserInput
   creatorProfile?: Prisma.CreatorProfileUncheckedCreateNestedOneWithoutUserInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestUncheckedCreateNestedManyWithoutRequestingUserInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type UserCreateOrConnectWithoutActivitiesInput = {
@@ -979,6 +1108,7 @@ export type UserCreateWithoutTargetActivitiesInput = {
   activities?: Prisma.ActivityLogCreateNestedManyWithoutUserInput
   creatorProfile?: Prisma.CreatorProfileCreateNestedOneWithoutUserInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestCreateNestedManyWithoutRequestingUserInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeCreateNestedManyWithoutOwnerInput
 }
 
 export type UserUncheckedCreateWithoutTargetActivitiesInput = {
@@ -995,6 +1125,7 @@ export type UserUncheckedCreateWithoutTargetActivitiesInput = {
   activities?: Prisma.ActivityLogUncheckedCreateNestedManyWithoutUserInput
   creatorProfile?: Prisma.CreatorProfileUncheckedCreateNestedOneWithoutUserInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestUncheckedCreateNestedManyWithoutRequestingUserInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUncheckedCreateNestedManyWithoutOwnerInput
 }
 
 export type UserCreateOrConnectWithoutTargetActivitiesInput = {
@@ -1027,6 +1158,7 @@ export type UserUpdateWithoutActivitiesInput = {
   targetActivities?: Prisma.ActivityLogUpdateManyWithoutTargetUserNestedInput
   creatorProfile?: Prisma.CreatorProfileUpdateOneWithoutUserNestedInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestUpdateManyWithoutRequestingUserNestedInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUpdateManyWithoutOwnerNestedInput
 }
 
 export type UserUncheckedUpdateWithoutActivitiesInput = {
@@ -1043,6 +1175,7 @@ export type UserUncheckedUpdateWithoutActivitiesInput = {
   targetActivities?: Prisma.ActivityLogUncheckedUpdateManyWithoutTargetUserNestedInput
   creatorProfile?: Prisma.CreatorProfileUncheckedUpdateOneWithoutUserNestedInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestUncheckedUpdateManyWithoutRequestingUserNestedInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUncheckedUpdateManyWithoutOwnerNestedInput
 }
 
 export type UserUpsertWithoutTargetActivitiesInput = {
@@ -1070,6 +1203,7 @@ export type UserUpdateWithoutTargetActivitiesInput = {
   activities?: Prisma.ActivityLogUpdateManyWithoutUserNestedInput
   creatorProfile?: Prisma.CreatorProfileUpdateOneWithoutUserNestedInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestUpdateManyWithoutRequestingUserNestedInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUpdateManyWithoutOwnerNestedInput
 }
 
 export type UserUncheckedUpdateWithoutTargetActivitiesInput = {
@@ -1086,6 +1220,7 @@ export type UserUncheckedUpdateWithoutTargetActivitiesInput = {
   activities?: Prisma.ActivityLogUncheckedUpdateManyWithoutUserNestedInput
   creatorProfile?: Prisma.CreatorProfileUncheckedUpdateOneWithoutUserNestedInput
   creatorClaimRequests?: Prisma.CreatorClaimRequestUncheckedUpdateManyWithoutRequestingUserNestedInput
+  ownedCreatorThemes?: Prisma.CreatorProfileThemeUncheckedUpdateManyWithoutOwnerNestedInput
 }
 
 
@@ -1100,6 +1235,7 @@ export type UserCountOutputType = {
   activities: number
   targetActivities: number
   creatorClaimRequests: number
+  ownedCreatorThemes: number
 }
 
 export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1109,6 +1245,7 @@ export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   activities?: boolean | UserCountOutputTypeCountActivitiesArgs
   targetActivities?: boolean | UserCountOutputTypeCountTargetActivitiesArgs
   creatorClaimRequests?: boolean | UserCountOutputTypeCountCreatorClaimRequestsArgs
+  ownedCreatorThemes?: boolean | UserCountOutputTypeCountOwnedCreatorThemesArgs
 }
 
 /**
@@ -1163,6 +1300,13 @@ export type UserCountOutputTypeCountCreatorClaimRequestsArgs<ExtArgs extends run
   where?: Prisma.CreatorClaimRequestWhereInput
 }
 
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountOwnedCreatorThemesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.CreatorProfileThemeWhereInput
+}
+
 
 export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -1179,6 +1323,7 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   targetActivities?: boolean | Prisma.User$targetActivitiesArgs<ExtArgs>
   creatorProfile?: boolean | Prisma.User$creatorProfileArgs<ExtArgs>
   creatorClaimRequests?: boolean | Prisma.User$creatorClaimRequestsArgs<ExtArgs>
+  ownedCreatorThemes?: boolean | Prisma.User$ownedCreatorThemesArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -1221,6 +1366,7 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   targetActivities?: boolean | Prisma.User$targetActivitiesArgs<ExtArgs>
   creatorProfile?: boolean | Prisma.User$creatorProfileArgs<ExtArgs>
   creatorClaimRequests?: boolean | Prisma.User$creatorClaimRequestsArgs<ExtArgs>
+  ownedCreatorThemes?: boolean | Prisma.User$ownedCreatorThemesArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -1236,6 +1382,7 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     targetActivities: Prisma.$ActivityLogPayload<ExtArgs>[]
     creatorProfile: Prisma.$CreatorProfilePayload<ExtArgs> | null
     creatorClaimRequests: Prisma.$CreatorClaimRequestPayload<ExtArgs>[]
+    ownedCreatorThemes: Prisma.$CreatorProfileThemePayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1646,6 +1793,7 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   targetActivities<T extends Prisma.User$targetActivitiesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$targetActivitiesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ActivityLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   creatorProfile<T extends Prisma.User$creatorProfileArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$creatorProfileArgs<ExtArgs>>): Prisma.Prisma__CreatorProfileClient<runtime.Types.Result.GetResult<Prisma.$CreatorProfilePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   creatorClaimRequests<T extends Prisma.User$creatorClaimRequestsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$creatorClaimRequestsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CreatorClaimRequestPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  ownedCreatorThemes<T extends Prisma.User$ownedCreatorThemesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$ownedCreatorThemesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CreatorProfileThemePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2235,6 +2383,30 @@ export type User$creatorClaimRequestsArgs<ExtArgs extends runtime.Types.Extensio
   take?: number
   skip?: number
   distinct?: Prisma.CreatorClaimRequestScalarFieldEnum | Prisma.CreatorClaimRequestScalarFieldEnum[]
+}
+
+/**
+ * User.ownedCreatorThemes
+ */
+export type User$ownedCreatorThemesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the CreatorProfileTheme
+   */
+  select?: Prisma.CreatorProfileThemeSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the CreatorProfileTheme
+   */
+  omit?: Prisma.CreatorProfileThemeOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CreatorProfileThemeInclude<ExtArgs> | null
+  where?: Prisma.CreatorProfileThemeWhereInput
+  orderBy?: Prisma.CreatorProfileThemeOrderByWithRelationInput | Prisma.CreatorProfileThemeOrderByWithRelationInput[]
+  cursor?: Prisma.CreatorProfileThemeWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.CreatorProfileThemeScalarFieldEnum | Prisma.CreatorProfileThemeScalarFieldEnum[]
 }
 
 /**

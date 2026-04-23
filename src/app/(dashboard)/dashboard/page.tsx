@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, User as UserIcon } from "lucide-react";
+import { Home, Palette, User as UserIcon } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -30,22 +30,41 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UserIcon className="h-5 w-5" /> Your profile
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-muted-foreground text-sm">
-              Build a fully customizable profile page with music embeds,
-              galleries, links, and more.
-            </p>
-            <Button asChild>
-              <Link href="/dashboard/profile">Open profile builder</Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserIcon className="h-5 w-5" /> Your profile
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-muted-foreground text-sm">
+                Build a fully customizable profile page with music embeds,
+                galleries, links, and more.
+              </p>
+              <Button asChild>
+                <Link href="/dashboard/profile">Open profile builder</Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Palette className="h-5 w-5" /> Themes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-muted-foreground text-sm">
+                Create and customize themes for your profile, or browse public
+                themes made by others.
+              </p>
+              <Button variant="outline" asChild>
+                <Link href="/dashboard/themes">Manage themes</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

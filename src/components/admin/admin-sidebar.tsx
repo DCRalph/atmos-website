@@ -27,6 +27,7 @@ import {
   ShoppingBag,
   Store,
   Sparkles,
+  Palette,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -106,6 +107,11 @@ const menuItems = [
     title: "Creator Profiles",
     url: "/admin/creator-profiles",
     icon: Sparkles,
+  },
+  {
+    title: "Creator Themes",
+    url: "/admin/creator-themes",
+    icon: Palette,
   },
   {
     title: "Activity Logs",

@@ -83,6 +83,11 @@ export type Gig = Prisma.GigModel
  */
 export type CreatorProfile = Prisma.CreatorProfileModel
 /**
+ * Model CreatorProfileTheme
+ * 
+ */
+export type CreatorProfileTheme = Prisma.CreatorProfileThemeModel
+/**
  * Model CreatorBlock
  * 
  */

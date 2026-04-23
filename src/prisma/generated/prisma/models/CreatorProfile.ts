@@ -48,7 +48,7 @@ export type CreatorProfileMinAggregateOutputType = {
   avatarFileId: string | null
   bannerFileId: string | null
   accentColor: string | null
-  theme: string | null
+  themeId: string | null
   isPublished: boolean | null
   gridCols: number | null
   rowHeightPx: number | null
@@ -68,7 +68,7 @@ export type CreatorProfileMaxAggregateOutputType = {
   avatarFileId: string | null
   bannerFileId: string | null
   accentColor: string | null
-  theme: string | null
+  themeId: string | null
   isPublished: boolean | null
   gridCols: number | null
   rowHeightPx: number | null
@@ -88,7 +88,7 @@ export type CreatorProfileCountAggregateOutputType = {
   avatarFileId: number
   bannerFileId: number
   accentColor: number
-  theme: number
+  themeId: number
   isPublished: number
   gridCols: number
   rowHeightPx: number
@@ -120,7 +120,7 @@ export type CreatorProfileMinAggregateInputType = {
   avatarFileId?: true
   bannerFileId?: true
   accentColor?: true
-  theme?: true
+  themeId?: true
   isPublished?: true
   gridCols?: true
   rowHeightPx?: true
@@ -140,7 +140,7 @@ export type CreatorProfileMaxAggregateInputType = {
   avatarFileId?: true
   bannerFileId?: true
   accentColor?: true
-  theme?: true
+  themeId?: true
   isPublished?: true
   gridCols?: true
   rowHeightPx?: true
@@ -160,7 +160,7 @@ export type CreatorProfileCountAggregateInputType = {
   avatarFileId?: true
   bannerFileId?: true
   accentColor?: true
-  theme?: true
+  themeId?: true
   isPublished?: true
   gridCols?: true
   rowHeightPx?: true
@@ -267,7 +267,7 @@ export type CreatorProfileGroupByOutputType = {
   avatarFileId: string | null
   bannerFileId: string | null
   accentColor: string | null
-  theme: string | null
+  themeId: string | null
   isPublished: boolean
   gridCols: number
   rowHeightPx: number
@@ -310,13 +310,14 @@ export type CreatorProfileWhereInput = {
   avatarFileId?: Prisma.StringNullableFilter<"CreatorProfile"> | string | null
   bannerFileId?: Prisma.StringNullableFilter<"CreatorProfile"> | string | null
   accentColor?: Prisma.StringNullableFilter<"CreatorProfile"> | string | null
-  theme?: Prisma.StringNullableFilter<"CreatorProfile"> | string | null
+  themeId?: Prisma.StringNullableFilter<"CreatorProfile"> | string | null
   isPublished?: Prisma.BoolFilter<"CreatorProfile"> | boolean
   gridCols?: Prisma.IntFilter<"CreatorProfile"> | number
   rowHeightPx?: Prisma.IntFilter<"CreatorProfile"> | number
   createdAt?: Prisma.DateTimeFilter<"CreatorProfile"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"CreatorProfile"> | Date | string
   user?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
+  themeRef?: Prisma.XOR<Prisma.CreatorProfileThemeNullableScalarRelationFilter, Prisma.CreatorProfileThemeWhereInput> | null
   blocks?: Prisma.CreatorBlockListRelationFilter
   socials?: Prisma.CreatorSocialListRelationFilter
   gigCreators?: Prisma.GigCreatorListRelationFilter
@@ -336,13 +337,14 @@ export type CreatorProfileOrderByWithRelationInput = {
   avatarFileId?: Prisma.SortOrderInput | Prisma.SortOrder
   bannerFileId?: Prisma.SortOrderInput | Prisma.SortOrder
   accentColor?: Prisma.SortOrderInput | Prisma.SortOrder
-  theme?: Prisma.SortOrderInput | Prisma.SortOrder
+  themeId?: Prisma.SortOrderInput | Prisma.SortOrder
   isPublished?: Prisma.SortOrder
   gridCols?: Prisma.SortOrder
   rowHeightPx?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
+  themeRef?: Prisma.CreatorProfileThemeOrderByWithRelationInput
   blocks?: Prisma.CreatorBlockOrderByRelationAggregateInput
   socials?: Prisma.CreatorSocialOrderByRelationAggregateInput
   gigCreators?: Prisma.GigCreatorOrderByRelationAggregateInput
@@ -365,13 +367,14 @@ export type CreatorProfileWhereUniqueInput = Prisma.AtLeast<{
   avatarFileId?: Prisma.StringNullableFilter<"CreatorProfile"> | string | null
   bannerFileId?: Prisma.StringNullableFilter<"CreatorProfile"> | string | null
   accentColor?: Prisma.StringNullableFilter<"CreatorProfile"> | string | null
-  theme?: Prisma.StringNullableFilter<"CreatorProfile"> | string | null
+  themeId?: Prisma.StringNullableFilter<"CreatorProfile"> | string | null
   isPublished?: Prisma.BoolFilter<"CreatorProfile"> | boolean
   gridCols?: Prisma.IntFilter<"CreatorProfile"> | number
   rowHeightPx?: Prisma.IntFilter<"CreatorProfile"> | number
   createdAt?: Prisma.DateTimeFilter<"CreatorProfile"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"CreatorProfile"> | Date | string
   user?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
+  themeRef?: Prisma.XOR<Prisma.CreatorProfileThemeNullableScalarRelationFilter, Prisma.CreatorProfileThemeWhereInput> | null
   blocks?: Prisma.CreatorBlockListRelationFilter
   socials?: Prisma.CreatorSocialListRelationFilter
   gigCreators?: Prisma.GigCreatorListRelationFilter
@@ -391,7 +394,7 @@ export type CreatorProfileOrderByWithAggregationInput = {
   avatarFileId?: Prisma.SortOrderInput | Prisma.SortOrder
   bannerFileId?: Prisma.SortOrderInput | Prisma.SortOrder
   accentColor?: Prisma.SortOrderInput | Prisma.SortOrder
-  theme?: Prisma.SortOrderInput | Prisma.SortOrder
+  themeId?: Prisma.SortOrderInput | Prisma.SortOrder
   isPublished?: Prisma.SortOrder
   gridCols?: Prisma.SortOrder
   rowHeightPx?: Prisma.SortOrder
@@ -419,7 +422,7 @@ export type CreatorProfileScalarWhereWithAggregatesInput = {
   avatarFileId?: Prisma.StringNullableWithAggregatesFilter<"CreatorProfile"> | string | null
   bannerFileId?: Prisma.StringNullableWithAggregatesFilter<"CreatorProfile"> | string | null
   accentColor?: Prisma.StringNullableWithAggregatesFilter<"CreatorProfile"> | string | null
-  theme?: Prisma.StringNullableWithAggregatesFilter<"CreatorProfile"> | string | null
+  themeId?: Prisma.StringNullableWithAggregatesFilter<"CreatorProfile"> | string | null
   isPublished?: Prisma.BoolWithAggregatesFilter<"CreatorProfile"> | boolean
   gridCols?: Prisma.IntWithAggregatesFilter<"CreatorProfile"> | number
   rowHeightPx?: Prisma.IntWithAggregatesFilter<"CreatorProfile"> | number
@@ -438,13 +441,13 @@ export type CreatorProfileCreateInput = {
   avatarFileId?: string | null
   bannerFileId?: string | null
   accentColor?: string | null
-  theme?: string | null
   isPublished?: boolean
   gridCols?: number
   rowHeightPx?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   user?: Prisma.UserCreateNestedOneWithoutCreatorProfileInput
+  themeRef?: Prisma.CreatorProfileThemeCreateNestedOneWithoutProfilesInput
   blocks?: Prisma.CreatorBlockCreateNestedManyWithoutProfileInput
   socials?: Prisma.CreatorSocialCreateNestedManyWithoutProfileInput
   gigCreators?: Prisma.GigCreatorCreateNestedManyWithoutCreatorProfileInput
@@ -464,7 +467,7 @@ export type CreatorProfileUncheckedCreateInput = {
   avatarFileId?: string | null
   bannerFileId?: string | null
   accentColor?: string | null
-  theme?: string | null
+  themeId?: string | null
   isPublished?: boolean
   gridCols?: number
   rowHeightPx?: number
@@ -488,13 +491,13 @@ export type CreatorProfileUpdateInput = {
   avatarFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bannerFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accentColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  theme?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPublished?: Prisma.BoolFieldUpdateOperationsInput | boolean
   gridCols?: Prisma.IntFieldUpdateOperationsInput | number
   rowHeightPx?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneWithoutCreatorProfileNestedInput
+  themeRef?: Prisma.CreatorProfileThemeUpdateOneWithoutProfilesNestedInput
   blocks?: Prisma.CreatorBlockUpdateManyWithoutProfileNestedInput
   socials?: Prisma.CreatorSocialUpdateManyWithoutProfileNestedInput
   gigCreators?: Prisma.GigCreatorUpdateManyWithoutCreatorProfileNestedInput
@@ -514,7 +517,7 @@ export type CreatorProfileUncheckedUpdateInput = {
   avatarFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bannerFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accentColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  theme?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  themeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPublished?: Prisma.BoolFieldUpdateOperationsInput | boolean
   gridCols?: Prisma.IntFieldUpdateOperationsInput | number
   rowHeightPx?: Prisma.IntFieldUpdateOperationsInput | number
@@ -539,7 +542,7 @@ export type CreatorProfileCreateManyInput = {
   avatarFileId?: string | null
   bannerFileId?: string | null
   accentColor?: string | null
-  theme?: string | null
+  themeId?: string | null
   isPublished?: boolean
   gridCols?: number
   rowHeightPx?: number
@@ -558,7 +561,6 @@ export type CreatorProfileUpdateManyMutationInput = {
   avatarFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bannerFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accentColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  theme?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPublished?: Prisma.BoolFieldUpdateOperationsInput | boolean
   gridCols?: Prisma.IntFieldUpdateOperationsInput | number
   rowHeightPx?: Prisma.IntFieldUpdateOperationsInput | number
@@ -578,7 +580,7 @@ export type CreatorProfileUncheckedUpdateManyInput = {
   avatarFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bannerFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accentColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  theme?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  themeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPublished?: Prisma.BoolFieldUpdateOperationsInput | boolean
   gridCols?: Prisma.IntFieldUpdateOperationsInput | number
   rowHeightPx?: Prisma.IntFieldUpdateOperationsInput | number
@@ -603,7 +605,7 @@ export type CreatorProfileCountOrderByAggregateInput = {
   avatarFileId?: Prisma.SortOrder
   bannerFileId?: Prisma.SortOrder
   accentColor?: Prisma.SortOrder
-  theme?: Prisma.SortOrder
+  themeId?: Prisma.SortOrder
   isPublished?: Prisma.SortOrder
   gridCols?: Prisma.SortOrder
   rowHeightPx?: Prisma.SortOrder
@@ -628,7 +630,7 @@ export type CreatorProfileMaxOrderByAggregateInput = {
   avatarFileId?: Prisma.SortOrder
   bannerFileId?: Prisma.SortOrder
   accentColor?: Prisma.SortOrder
-  theme?: Prisma.SortOrder
+  themeId?: Prisma.SortOrder
   isPublished?: Prisma.SortOrder
   gridCols?: Prisma.SortOrder
   rowHeightPx?: Prisma.SortOrder
@@ -648,7 +650,7 @@ export type CreatorProfileMinOrderByAggregateInput = {
   avatarFileId?: Prisma.SortOrder
   bannerFileId?: Prisma.SortOrder
   accentColor?: Prisma.SortOrder
-  theme?: Prisma.SortOrder
+  themeId?: Prisma.SortOrder
   isPublished?: Prisma.SortOrder
   gridCols?: Prisma.SortOrder
   rowHeightPx?: Prisma.SortOrder
@@ -659,6 +661,16 @@ export type CreatorProfileMinOrderByAggregateInput = {
 export type CreatorProfileSumOrderByAggregateInput = {
   gridCols?: Prisma.SortOrder
   rowHeightPx?: Prisma.SortOrder
+}
+
+export type CreatorProfileListRelationFilter = {
+  every?: Prisma.CreatorProfileWhereInput
+  some?: Prisma.CreatorProfileWhereInput
+  none?: Prisma.CreatorProfileWhereInput
+}
+
+export type CreatorProfileOrderByRelationAggregateInput = {
+  _count?: Prisma.SortOrder
 }
 
 export type CreatorProfileScalarRelationFilter = {
@@ -716,6 +728,48 @@ export type CreatorProfileUpdateOneWithoutCrewMembersNestedInput = {
 
 export type EnumClaimStatusFieldUpdateOperationsInput = {
   set?: $Enums.ClaimStatus
+}
+
+export type CreatorProfileCreateNestedManyWithoutThemeRefInput = {
+  create?: Prisma.XOR<Prisma.CreatorProfileCreateWithoutThemeRefInput, Prisma.CreatorProfileUncheckedCreateWithoutThemeRefInput> | Prisma.CreatorProfileCreateWithoutThemeRefInput[] | Prisma.CreatorProfileUncheckedCreateWithoutThemeRefInput[]
+  connectOrCreate?: Prisma.CreatorProfileCreateOrConnectWithoutThemeRefInput | Prisma.CreatorProfileCreateOrConnectWithoutThemeRefInput[]
+  createMany?: Prisma.CreatorProfileCreateManyThemeRefInputEnvelope
+  connect?: Prisma.CreatorProfileWhereUniqueInput | Prisma.CreatorProfileWhereUniqueInput[]
+}
+
+export type CreatorProfileUncheckedCreateNestedManyWithoutThemeRefInput = {
+  create?: Prisma.XOR<Prisma.CreatorProfileCreateWithoutThemeRefInput, Prisma.CreatorProfileUncheckedCreateWithoutThemeRefInput> | Prisma.CreatorProfileCreateWithoutThemeRefInput[] | Prisma.CreatorProfileUncheckedCreateWithoutThemeRefInput[]
+  connectOrCreate?: Prisma.CreatorProfileCreateOrConnectWithoutThemeRefInput | Prisma.CreatorProfileCreateOrConnectWithoutThemeRefInput[]
+  createMany?: Prisma.CreatorProfileCreateManyThemeRefInputEnvelope
+  connect?: Prisma.CreatorProfileWhereUniqueInput | Prisma.CreatorProfileWhereUniqueInput[]
+}
+
+export type CreatorProfileUpdateManyWithoutThemeRefNestedInput = {
+  create?: Prisma.XOR<Prisma.CreatorProfileCreateWithoutThemeRefInput, Prisma.CreatorProfileUncheckedCreateWithoutThemeRefInput> | Prisma.CreatorProfileCreateWithoutThemeRefInput[] | Prisma.CreatorProfileUncheckedCreateWithoutThemeRefInput[]
+  connectOrCreate?: Prisma.CreatorProfileCreateOrConnectWithoutThemeRefInput | Prisma.CreatorProfileCreateOrConnectWithoutThemeRefInput[]
+  upsert?: Prisma.CreatorProfileUpsertWithWhereUniqueWithoutThemeRefInput | Prisma.CreatorProfileUpsertWithWhereUniqueWithoutThemeRefInput[]
+  createMany?: Prisma.CreatorProfileCreateManyThemeRefInputEnvelope
+  set?: Prisma.CreatorProfileWhereUniqueInput | Prisma.CreatorProfileWhereUniqueInput[]
+  disconnect?: Prisma.CreatorProfileWhereUniqueInput | Prisma.CreatorProfileWhereUniqueInput[]
+  delete?: Prisma.CreatorProfileWhereUniqueInput | Prisma.CreatorProfileWhereUniqueInput[]
+  connect?: Prisma.CreatorProfileWhereUniqueInput | Prisma.CreatorProfileWhereUniqueInput[]
+  update?: Prisma.CreatorProfileUpdateWithWhereUniqueWithoutThemeRefInput | Prisma.CreatorProfileUpdateWithWhereUniqueWithoutThemeRefInput[]
+  updateMany?: Prisma.CreatorProfileUpdateManyWithWhereWithoutThemeRefInput | Prisma.CreatorProfileUpdateManyWithWhereWithoutThemeRefInput[]
+  deleteMany?: Prisma.CreatorProfileScalarWhereInput | Prisma.CreatorProfileScalarWhereInput[]
+}
+
+export type CreatorProfileUncheckedUpdateManyWithoutThemeRefNestedInput = {
+  create?: Prisma.XOR<Prisma.CreatorProfileCreateWithoutThemeRefInput, Prisma.CreatorProfileUncheckedCreateWithoutThemeRefInput> | Prisma.CreatorProfileCreateWithoutThemeRefInput[] | Prisma.CreatorProfileUncheckedCreateWithoutThemeRefInput[]
+  connectOrCreate?: Prisma.CreatorProfileCreateOrConnectWithoutThemeRefInput | Prisma.CreatorProfileCreateOrConnectWithoutThemeRefInput[]
+  upsert?: Prisma.CreatorProfileUpsertWithWhereUniqueWithoutThemeRefInput | Prisma.CreatorProfileUpsertWithWhereUniqueWithoutThemeRefInput[]
+  createMany?: Prisma.CreatorProfileCreateManyThemeRefInputEnvelope
+  set?: Prisma.CreatorProfileWhereUniqueInput | Prisma.CreatorProfileWhereUniqueInput[]
+  disconnect?: Prisma.CreatorProfileWhereUniqueInput | Prisma.CreatorProfileWhereUniqueInput[]
+  delete?: Prisma.CreatorProfileWhereUniqueInput | Prisma.CreatorProfileWhereUniqueInput[]
+  connect?: Prisma.CreatorProfileWhereUniqueInput | Prisma.CreatorProfileWhereUniqueInput[]
+  update?: Prisma.CreatorProfileUpdateWithWhereUniqueWithoutThemeRefInput | Prisma.CreatorProfileUpdateWithWhereUniqueWithoutThemeRefInput[]
+  updateMany?: Prisma.CreatorProfileUpdateManyWithWhereWithoutThemeRefInput | Prisma.CreatorProfileUpdateManyWithWhereWithoutThemeRefInput[]
+  deleteMany?: Prisma.CreatorProfileScalarWhereInput | Prisma.CreatorProfileScalarWhereInput[]
 }
 
 export type CreatorProfileCreateNestedOneWithoutBlocksInput = {
@@ -785,12 +839,12 @@ export type CreatorProfileCreateWithoutUserInput = {
   avatarFileId?: string | null
   bannerFileId?: string | null
   accentColor?: string | null
-  theme?: string | null
   isPublished?: boolean
   gridCols?: number
   rowHeightPx?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  themeRef?: Prisma.CreatorProfileThemeCreateNestedOneWithoutProfilesInput
   blocks?: Prisma.CreatorBlockCreateNestedManyWithoutProfileInput
   socials?: Prisma.CreatorSocialCreateNestedManyWithoutProfileInput
   gigCreators?: Prisma.GigCreatorCreateNestedManyWithoutCreatorProfileInput
@@ -809,7 +863,7 @@ export type CreatorProfileUncheckedCreateWithoutUserInput = {
   avatarFileId?: string | null
   bannerFileId?: string | null
   accentColor?: string | null
-  theme?: string | null
+  themeId?: string | null
   isPublished?: boolean
   gridCols?: number
   rowHeightPx?: number
@@ -849,12 +903,12 @@ export type CreatorProfileUpdateWithoutUserInput = {
   avatarFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bannerFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accentColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  theme?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPublished?: Prisma.BoolFieldUpdateOperationsInput | boolean
   gridCols?: Prisma.IntFieldUpdateOperationsInput | number
   rowHeightPx?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  themeRef?: Prisma.CreatorProfileThemeUpdateOneWithoutProfilesNestedInput
   blocks?: Prisma.CreatorBlockUpdateManyWithoutProfileNestedInput
   socials?: Prisma.CreatorSocialUpdateManyWithoutProfileNestedInput
   gigCreators?: Prisma.GigCreatorUpdateManyWithoutCreatorProfileNestedInput
@@ -873,7 +927,7 @@ export type CreatorProfileUncheckedUpdateWithoutUserInput = {
   avatarFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bannerFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accentColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  theme?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  themeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPublished?: Prisma.BoolFieldUpdateOperationsInput | boolean
   gridCols?: Prisma.IntFieldUpdateOperationsInput | number
   rowHeightPx?: Prisma.IntFieldUpdateOperationsInput | number
@@ -897,13 +951,13 @@ export type CreatorProfileCreateWithoutCrewMembersInput = {
   avatarFileId?: string | null
   bannerFileId?: string | null
   accentColor?: string | null
-  theme?: string | null
   isPublished?: boolean
   gridCols?: number
   rowHeightPx?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   user?: Prisma.UserCreateNestedOneWithoutCreatorProfileInput
+  themeRef?: Prisma.CreatorProfileThemeCreateNestedOneWithoutProfilesInput
   blocks?: Prisma.CreatorBlockCreateNestedManyWithoutProfileInput
   socials?: Prisma.CreatorSocialCreateNestedManyWithoutProfileInput
   gigCreators?: Prisma.GigCreatorCreateNestedManyWithoutCreatorProfileInput
@@ -922,7 +976,7 @@ export type CreatorProfileUncheckedCreateWithoutCrewMembersInput = {
   avatarFileId?: string | null
   bannerFileId?: string | null
   accentColor?: string | null
-  theme?: string | null
+  themeId?: string | null
   isPublished?: boolean
   gridCols?: number
   rowHeightPx?: number
@@ -961,13 +1015,13 @@ export type CreatorProfileUpdateWithoutCrewMembersInput = {
   avatarFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bannerFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accentColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  theme?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPublished?: Prisma.BoolFieldUpdateOperationsInput | boolean
   gridCols?: Prisma.IntFieldUpdateOperationsInput | number
   rowHeightPx?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneWithoutCreatorProfileNestedInput
+  themeRef?: Prisma.CreatorProfileThemeUpdateOneWithoutProfilesNestedInput
   blocks?: Prisma.CreatorBlockUpdateManyWithoutProfileNestedInput
   socials?: Prisma.CreatorSocialUpdateManyWithoutProfileNestedInput
   gigCreators?: Prisma.GigCreatorUpdateManyWithoutCreatorProfileNestedInput
@@ -986,7 +1040,7 @@ export type CreatorProfileUncheckedUpdateWithoutCrewMembersInput = {
   avatarFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bannerFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accentColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  theme?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  themeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPublished?: Prisma.BoolFieldUpdateOperationsInput | boolean
   gridCols?: Prisma.IntFieldUpdateOperationsInput | number
   rowHeightPx?: Prisma.IntFieldUpdateOperationsInput | number
@@ -996,6 +1050,103 @@ export type CreatorProfileUncheckedUpdateWithoutCrewMembersInput = {
   socials?: Prisma.CreatorSocialUncheckedUpdateManyWithoutProfileNestedInput
   gigCreators?: Prisma.GigCreatorUncheckedUpdateManyWithoutCreatorProfileNestedInput
   claimRequests?: Prisma.CreatorClaimRequestUncheckedUpdateManyWithoutProfileNestedInput
+}
+
+export type CreatorProfileCreateWithoutThemeRefInput = {
+  id?: string
+  createdByAdminId?: string | null
+  claimStatus?: $Enums.ClaimStatus
+  handle: string
+  displayName: string
+  tagline?: string | null
+  bio?: string | null
+  avatarFileId?: string | null
+  bannerFileId?: string | null
+  accentColor?: string | null
+  isPublished?: boolean
+  gridCols?: number
+  rowHeightPx?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  user?: Prisma.UserCreateNestedOneWithoutCreatorProfileInput
+  blocks?: Prisma.CreatorBlockCreateNestedManyWithoutProfileInput
+  socials?: Prisma.CreatorSocialCreateNestedManyWithoutProfileInput
+  gigCreators?: Prisma.GigCreatorCreateNestedManyWithoutCreatorProfileInput
+  crewMembers?: Prisma.CrewMemberCreateNestedManyWithoutCreatorProfileInput
+  claimRequests?: Prisma.CreatorClaimRequestCreateNestedManyWithoutProfileInput
+}
+
+export type CreatorProfileUncheckedCreateWithoutThemeRefInput = {
+  id?: string
+  userId?: string | null
+  createdByAdminId?: string | null
+  claimStatus?: $Enums.ClaimStatus
+  handle: string
+  displayName: string
+  tagline?: string | null
+  bio?: string | null
+  avatarFileId?: string | null
+  bannerFileId?: string | null
+  accentColor?: string | null
+  isPublished?: boolean
+  gridCols?: number
+  rowHeightPx?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  blocks?: Prisma.CreatorBlockUncheckedCreateNestedManyWithoutProfileInput
+  socials?: Prisma.CreatorSocialUncheckedCreateNestedManyWithoutProfileInput
+  gigCreators?: Prisma.GigCreatorUncheckedCreateNestedManyWithoutCreatorProfileInput
+  crewMembers?: Prisma.CrewMemberUncheckedCreateNestedManyWithoutCreatorProfileInput
+  claimRequests?: Prisma.CreatorClaimRequestUncheckedCreateNestedManyWithoutProfileInput
+}
+
+export type CreatorProfileCreateOrConnectWithoutThemeRefInput = {
+  where: Prisma.CreatorProfileWhereUniqueInput
+  create: Prisma.XOR<Prisma.CreatorProfileCreateWithoutThemeRefInput, Prisma.CreatorProfileUncheckedCreateWithoutThemeRefInput>
+}
+
+export type CreatorProfileCreateManyThemeRefInputEnvelope = {
+  data: Prisma.CreatorProfileCreateManyThemeRefInput | Prisma.CreatorProfileCreateManyThemeRefInput[]
+  skipDuplicates?: boolean
+}
+
+export type CreatorProfileUpsertWithWhereUniqueWithoutThemeRefInput = {
+  where: Prisma.CreatorProfileWhereUniqueInput
+  update: Prisma.XOR<Prisma.CreatorProfileUpdateWithoutThemeRefInput, Prisma.CreatorProfileUncheckedUpdateWithoutThemeRefInput>
+  create: Prisma.XOR<Prisma.CreatorProfileCreateWithoutThemeRefInput, Prisma.CreatorProfileUncheckedCreateWithoutThemeRefInput>
+}
+
+export type CreatorProfileUpdateWithWhereUniqueWithoutThemeRefInput = {
+  where: Prisma.CreatorProfileWhereUniqueInput
+  data: Prisma.XOR<Prisma.CreatorProfileUpdateWithoutThemeRefInput, Prisma.CreatorProfileUncheckedUpdateWithoutThemeRefInput>
+}
+
+export type CreatorProfileUpdateManyWithWhereWithoutThemeRefInput = {
+  where: Prisma.CreatorProfileScalarWhereInput
+  data: Prisma.XOR<Prisma.CreatorProfileUpdateManyMutationInput, Prisma.CreatorProfileUncheckedUpdateManyWithoutThemeRefInput>
+}
+
+export type CreatorProfileScalarWhereInput = {
+  AND?: Prisma.CreatorProfileScalarWhereInput | Prisma.CreatorProfileScalarWhereInput[]
+  OR?: Prisma.CreatorProfileScalarWhereInput[]
+  NOT?: Prisma.CreatorProfileScalarWhereInput | Prisma.CreatorProfileScalarWhereInput[]
+  id?: Prisma.StringFilter<"CreatorProfile"> | string
+  userId?: Prisma.StringNullableFilter<"CreatorProfile"> | string | null
+  createdByAdminId?: Prisma.StringNullableFilter<"CreatorProfile"> | string | null
+  claimStatus?: Prisma.EnumClaimStatusFilter<"CreatorProfile"> | $Enums.ClaimStatus
+  handle?: Prisma.StringFilter<"CreatorProfile"> | string
+  displayName?: Prisma.StringFilter<"CreatorProfile"> | string
+  tagline?: Prisma.StringNullableFilter<"CreatorProfile"> | string | null
+  bio?: Prisma.StringNullableFilter<"CreatorProfile"> | string | null
+  avatarFileId?: Prisma.StringNullableFilter<"CreatorProfile"> | string | null
+  bannerFileId?: Prisma.StringNullableFilter<"CreatorProfile"> | string | null
+  accentColor?: Prisma.StringNullableFilter<"CreatorProfile"> | string | null
+  themeId?: Prisma.StringNullableFilter<"CreatorProfile"> | string | null
+  isPublished?: Prisma.BoolFilter<"CreatorProfile"> | boolean
+  gridCols?: Prisma.IntFilter<"CreatorProfile"> | number
+  rowHeightPx?: Prisma.IntFilter<"CreatorProfile"> | number
+  createdAt?: Prisma.DateTimeFilter<"CreatorProfile"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"CreatorProfile"> | Date | string
 }
 
 export type CreatorProfileCreateWithoutBlocksInput = {
@@ -1009,13 +1160,13 @@ export type CreatorProfileCreateWithoutBlocksInput = {
   avatarFileId?: string | null
   bannerFileId?: string | null
   accentColor?: string | null
-  theme?: string | null
   isPublished?: boolean
   gridCols?: number
   rowHeightPx?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   user?: Prisma.UserCreateNestedOneWithoutCreatorProfileInput
+  themeRef?: Prisma.CreatorProfileThemeCreateNestedOneWithoutProfilesInput
   socials?: Prisma.CreatorSocialCreateNestedManyWithoutProfileInput
   gigCreators?: Prisma.GigCreatorCreateNestedManyWithoutCreatorProfileInput
   crewMembers?: Prisma.CrewMemberCreateNestedManyWithoutCreatorProfileInput
@@ -1034,7 +1185,7 @@ export type CreatorProfileUncheckedCreateWithoutBlocksInput = {
   avatarFileId?: string | null
   bannerFileId?: string | null
   accentColor?: string | null
-  theme?: string | null
+  themeId?: string | null
   isPublished?: boolean
   gridCols?: number
   rowHeightPx?: number
@@ -1073,13 +1224,13 @@ export type CreatorProfileUpdateWithoutBlocksInput = {
   avatarFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bannerFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accentColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  theme?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPublished?: Prisma.BoolFieldUpdateOperationsInput | boolean
   gridCols?: Prisma.IntFieldUpdateOperationsInput | number
   rowHeightPx?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneWithoutCreatorProfileNestedInput
+  themeRef?: Prisma.CreatorProfileThemeUpdateOneWithoutProfilesNestedInput
   socials?: Prisma.CreatorSocialUpdateManyWithoutProfileNestedInput
   gigCreators?: Prisma.GigCreatorUpdateManyWithoutCreatorProfileNestedInput
   crewMembers?: Prisma.CrewMemberUpdateManyWithoutCreatorProfileNestedInput
@@ -1098,7 +1249,7 @@ export type CreatorProfileUncheckedUpdateWithoutBlocksInput = {
   avatarFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bannerFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accentColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  theme?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  themeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPublished?: Prisma.BoolFieldUpdateOperationsInput | boolean
   gridCols?: Prisma.IntFieldUpdateOperationsInput | number
   rowHeightPx?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1121,13 +1272,13 @@ export type CreatorProfileCreateWithoutSocialsInput = {
   avatarFileId?: string | null
   bannerFileId?: string | null
   accentColor?: string | null
-  theme?: string | null
   isPublished?: boolean
   gridCols?: number
   rowHeightPx?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   user?: Prisma.UserCreateNestedOneWithoutCreatorProfileInput
+  themeRef?: Prisma.CreatorProfileThemeCreateNestedOneWithoutProfilesInput
   blocks?: Prisma.CreatorBlockCreateNestedManyWithoutProfileInput
   gigCreators?: Prisma.GigCreatorCreateNestedManyWithoutCreatorProfileInput
   crewMembers?: Prisma.CrewMemberCreateNestedManyWithoutCreatorProfileInput
@@ -1146,7 +1297,7 @@ export type CreatorProfileUncheckedCreateWithoutSocialsInput = {
   avatarFileId?: string | null
   bannerFileId?: string | null
   accentColor?: string | null
-  theme?: string | null
+  themeId?: string | null
   isPublished?: boolean
   gridCols?: number
   rowHeightPx?: number
@@ -1185,13 +1336,13 @@ export type CreatorProfileUpdateWithoutSocialsInput = {
   avatarFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bannerFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accentColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  theme?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPublished?: Prisma.BoolFieldUpdateOperationsInput | boolean
   gridCols?: Prisma.IntFieldUpdateOperationsInput | number
   rowHeightPx?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneWithoutCreatorProfileNestedInput
+  themeRef?: Prisma.CreatorProfileThemeUpdateOneWithoutProfilesNestedInput
   blocks?: Prisma.CreatorBlockUpdateManyWithoutProfileNestedInput
   gigCreators?: Prisma.GigCreatorUpdateManyWithoutCreatorProfileNestedInput
   crewMembers?: Prisma.CrewMemberUpdateManyWithoutCreatorProfileNestedInput
@@ -1210,7 +1361,7 @@ export type CreatorProfileUncheckedUpdateWithoutSocialsInput = {
   avatarFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bannerFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accentColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  theme?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  themeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPublished?: Prisma.BoolFieldUpdateOperationsInput | boolean
   gridCols?: Prisma.IntFieldUpdateOperationsInput | number
   rowHeightPx?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1233,13 +1384,13 @@ export type CreatorProfileCreateWithoutClaimRequestsInput = {
   avatarFileId?: string | null
   bannerFileId?: string | null
   accentColor?: string | null
-  theme?: string | null
   isPublished?: boolean
   gridCols?: number
   rowHeightPx?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   user?: Prisma.UserCreateNestedOneWithoutCreatorProfileInput
+  themeRef?: Prisma.CreatorProfileThemeCreateNestedOneWithoutProfilesInput
   blocks?: Prisma.CreatorBlockCreateNestedManyWithoutProfileInput
   socials?: Prisma.CreatorSocialCreateNestedManyWithoutProfileInput
   gigCreators?: Prisma.GigCreatorCreateNestedManyWithoutCreatorProfileInput
@@ -1258,7 +1409,7 @@ export type CreatorProfileUncheckedCreateWithoutClaimRequestsInput = {
   avatarFileId?: string | null
   bannerFileId?: string | null
   accentColor?: string | null
-  theme?: string | null
+  themeId?: string | null
   isPublished?: boolean
   gridCols?: number
   rowHeightPx?: number
@@ -1297,13 +1448,13 @@ export type CreatorProfileUpdateWithoutClaimRequestsInput = {
   avatarFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bannerFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accentColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  theme?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPublished?: Prisma.BoolFieldUpdateOperationsInput | boolean
   gridCols?: Prisma.IntFieldUpdateOperationsInput | number
   rowHeightPx?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneWithoutCreatorProfileNestedInput
+  themeRef?: Prisma.CreatorProfileThemeUpdateOneWithoutProfilesNestedInput
   blocks?: Prisma.CreatorBlockUpdateManyWithoutProfileNestedInput
   socials?: Prisma.CreatorSocialUpdateManyWithoutProfileNestedInput
   gigCreators?: Prisma.GigCreatorUpdateManyWithoutCreatorProfileNestedInput
@@ -1322,7 +1473,7 @@ export type CreatorProfileUncheckedUpdateWithoutClaimRequestsInput = {
   avatarFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bannerFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accentColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  theme?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  themeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPublished?: Prisma.BoolFieldUpdateOperationsInput | boolean
   gridCols?: Prisma.IntFieldUpdateOperationsInput | number
   rowHeightPx?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1345,13 +1496,13 @@ export type CreatorProfileCreateWithoutGigCreatorsInput = {
   avatarFileId?: string | null
   bannerFileId?: string | null
   accentColor?: string | null
-  theme?: string | null
   isPublished?: boolean
   gridCols?: number
   rowHeightPx?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   user?: Prisma.UserCreateNestedOneWithoutCreatorProfileInput
+  themeRef?: Prisma.CreatorProfileThemeCreateNestedOneWithoutProfilesInput
   blocks?: Prisma.CreatorBlockCreateNestedManyWithoutProfileInput
   socials?: Prisma.CreatorSocialCreateNestedManyWithoutProfileInput
   crewMembers?: Prisma.CrewMemberCreateNestedManyWithoutCreatorProfileInput
@@ -1370,7 +1521,7 @@ export type CreatorProfileUncheckedCreateWithoutGigCreatorsInput = {
   avatarFileId?: string | null
   bannerFileId?: string | null
   accentColor?: string | null
-  theme?: string | null
+  themeId?: string | null
   isPublished?: boolean
   gridCols?: number
   rowHeightPx?: number
@@ -1409,13 +1560,13 @@ export type CreatorProfileUpdateWithoutGigCreatorsInput = {
   avatarFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bannerFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accentColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  theme?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPublished?: Prisma.BoolFieldUpdateOperationsInput | boolean
   gridCols?: Prisma.IntFieldUpdateOperationsInput | number
   rowHeightPx?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneWithoutCreatorProfileNestedInput
+  themeRef?: Prisma.CreatorProfileThemeUpdateOneWithoutProfilesNestedInput
   blocks?: Prisma.CreatorBlockUpdateManyWithoutProfileNestedInput
   socials?: Prisma.CreatorSocialUpdateManyWithoutProfileNestedInput
   crewMembers?: Prisma.CrewMemberUpdateManyWithoutCreatorProfileNestedInput
@@ -1434,7 +1585,7 @@ export type CreatorProfileUncheckedUpdateWithoutGigCreatorsInput = {
   avatarFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bannerFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accentColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  theme?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  themeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isPublished?: Prisma.BoolFieldUpdateOperationsInput | boolean
   gridCols?: Prisma.IntFieldUpdateOperationsInput | number
   rowHeightPx?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1444,6 +1595,92 @@ export type CreatorProfileUncheckedUpdateWithoutGigCreatorsInput = {
   socials?: Prisma.CreatorSocialUncheckedUpdateManyWithoutProfileNestedInput
   crewMembers?: Prisma.CrewMemberUncheckedUpdateManyWithoutCreatorProfileNestedInput
   claimRequests?: Prisma.CreatorClaimRequestUncheckedUpdateManyWithoutProfileNestedInput
+}
+
+export type CreatorProfileCreateManyThemeRefInput = {
+  id?: string
+  userId?: string | null
+  createdByAdminId?: string | null
+  claimStatus?: $Enums.ClaimStatus
+  handle: string
+  displayName: string
+  tagline?: string | null
+  bio?: string | null
+  avatarFileId?: string | null
+  bannerFileId?: string | null
+  accentColor?: string | null
+  isPublished?: boolean
+  gridCols?: number
+  rowHeightPx?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type CreatorProfileUpdateWithoutThemeRefInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  createdByAdminId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  claimStatus?: Prisma.EnumClaimStatusFieldUpdateOperationsInput | $Enums.ClaimStatus
+  handle?: Prisma.StringFieldUpdateOperationsInput | string
+  displayName?: Prisma.StringFieldUpdateOperationsInput | string
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bannerFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accentColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isPublished?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  gridCols?: Prisma.IntFieldUpdateOperationsInput | number
+  rowHeightPx?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user?: Prisma.UserUpdateOneWithoutCreatorProfileNestedInput
+  blocks?: Prisma.CreatorBlockUpdateManyWithoutProfileNestedInput
+  socials?: Prisma.CreatorSocialUpdateManyWithoutProfileNestedInput
+  gigCreators?: Prisma.GigCreatorUpdateManyWithoutCreatorProfileNestedInput
+  crewMembers?: Prisma.CrewMemberUpdateManyWithoutCreatorProfileNestedInput
+  claimRequests?: Prisma.CreatorClaimRequestUpdateManyWithoutProfileNestedInput
+}
+
+export type CreatorProfileUncheckedUpdateWithoutThemeRefInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdByAdminId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  claimStatus?: Prisma.EnumClaimStatusFieldUpdateOperationsInput | $Enums.ClaimStatus
+  handle?: Prisma.StringFieldUpdateOperationsInput | string
+  displayName?: Prisma.StringFieldUpdateOperationsInput | string
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bannerFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accentColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isPublished?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  gridCols?: Prisma.IntFieldUpdateOperationsInput | number
+  rowHeightPx?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  blocks?: Prisma.CreatorBlockUncheckedUpdateManyWithoutProfileNestedInput
+  socials?: Prisma.CreatorSocialUncheckedUpdateManyWithoutProfileNestedInput
+  gigCreators?: Prisma.GigCreatorUncheckedUpdateManyWithoutCreatorProfileNestedInput
+  crewMembers?: Prisma.CrewMemberUncheckedUpdateManyWithoutCreatorProfileNestedInput
+  claimRequests?: Prisma.CreatorClaimRequestUncheckedUpdateManyWithoutProfileNestedInput
+}
+
+export type CreatorProfileUncheckedUpdateManyWithoutThemeRefInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdByAdminId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  claimStatus?: Prisma.EnumClaimStatusFieldUpdateOperationsInput | $Enums.ClaimStatus
+  handle?: Prisma.StringFieldUpdateOperationsInput | string
+  displayName?: Prisma.StringFieldUpdateOperationsInput | string
+  tagline?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bannerFileId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accentColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isPublished?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  gridCols?: Prisma.IntFieldUpdateOperationsInput | number
+  rowHeightPx?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 
@@ -1525,13 +1762,14 @@ export type CreatorProfileSelect<ExtArgs extends runtime.Types.Extensions.Intern
   avatarFileId?: boolean
   bannerFileId?: boolean
   accentColor?: boolean
-  theme?: boolean
+  themeId?: boolean
   isPublished?: boolean
   gridCols?: boolean
   rowHeightPx?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.CreatorProfile$userArgs<ExtArgs>
+  themeRef?: boolean | Prisma.CreatorProfile$themeRefArgs<ExtArgs>
   blocks?: boolean | Prisma.CreatorProfile$blocksArgs<ExtArgs>
   socials?: boolean | Prisma.CreatorProfile$socialsArgs<ExtArgs>
   gigCreators?: boolean | Prisma.CreatorProfile$gigCreatorsArgs<ExtArgs>
@@ -1552,13 +1790,14 @@ export type CreatorProfileSelectCreateManyAndReturn<ExtArgs extends runtime.Type
   avatarFileId?: boolean
   bannerFileId?: boolean
   accentColor?: boolean
-  theme?: boolean
+  themeId?: boolean
   isPublished?: boolean
   gridCols?: boolean
   rowHeightPx?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.CreatorProfile$userArgs<ExtArgs>
+  themeRef?: boolean | Prisma.CreatorProfile$themeRefArgs<ExtArgs>
 }, ExtArgs["result"]["creatorProfile"]>
 
 export type CreatorProfileSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1573,13 +1812,14 @@ export type CreatorProfileSelectUpdateManyAndReturn<ExtArgs extends runtime.Type
   avatarFileId?: boolean
   bannerFileId?: boolean
   accentColor?: boolean
-  theme?: boolean
+  themeId?: boolean
   isPublished?: boolean
   gridCols?: boolean
   rowHeightPx?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.CreatorProfile$userArgs<ExtArgs>
+  themeRef?: boolean | Prisma.CreatorProfile$themeRefArgs<ExtArgs>
 }, ExtArgs["result"]["creatorProfile"]>
 
 export type CreatorProfileSelectScalar = {
@@ -1594,7 +1834,7 @@ export type CreatorProfileSelectScalar = {
   avatarFileId?: boolean
   bannerFileId?: boolean
   accentColor?: boolean
-  theme?: boolean
+  themeId?: boolean
   isPublished?: boolean
   gridCols?: boolean
   rowHeightPx?: boolean
@@ -1602,9 +1842,10 @@ export type CreatorProfileSelectScalar = {
   updatedAt?: boolean
 }
 
-export type CreatorProfileOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "createdByAdminId" | "claimStatus" | "handle" | "displayName" | "tagline" | "bio" | "avatarFileId" | "bannerFileId" | "accentColor" | "theme" | "isPublished" | "gridCols" | "rowHeightPx" | "createdAt" | "updatedAt", ExtArgs["result"]["creatorProfile"]>
+export type CreatorProfileOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "createdByAdminId" | "claimStatus" | "handle" | "displayName" | "tagline" | "bio" | "avatarFileId" | "bannerFileId" | "accentColor" | "themeId" | "isPublished" | "gridCols" | "rowHeightPx" | "createdAt" | "updatedAt", ExtArgs["result"]["creatorProfile"]>
 export type CreatorProfileInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.CreatorProfile$userArgs<ExtArgs>
+  themeRef?: boolean | Prisma.CreatorProfile$themeRefArgs<ExtArgs>
   blocks?: boolean | Prisma.CreatorProfile$blocksArgs<ExtArgs>
   socials?: boolean | Prisma.CreatorProfile$socialsArgs<ExtArgs>
   gigCreators?: boolean | Prisma.CreatorProfile$gigCreatorsArgs<ExtArgs>
@@ -1614,15 +1855,18 @@ export type CreatorProfileInclude<ExtArgs extends runtime.Types.Extensions.Inter
 }
 export type CreatorProfileIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.CreatorProfile$userArgs<ExtArgs>
+  themeRef?: boolean | Prisma.CreatorProfile$themeRefArgs<ExtArgs>
 }
 export type CreatorProfileIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.CreatorProfile$userArgs<ExtArgs>
+  themeRef?: boolean | Prisma.CreatorProfile$themeRefArgs<ExtArgs>
 }
 
 export type $CreatorProfilePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "CreatorProfile"
   objects: {
     user: Prisma.$UserPayload<ExtArgs> | null
+    themeRef: Prisma.$CreatorProfileThemePayload<ExtArgs> | null
     blocks: Prisma.$CreatorBlockPayload<ExtArgs>[]
     socials: Prisma.$CreatorSocialPayload<ExtArgs>[]
     gigCreators: Prisma.$GigCreatorPayload<ExtArgs>[]
@@ -1641,7 +1885,7 @@ export type $CreatorProfilePayload<ExtArgs extends runtime.Types.Extensions.Inte
     avatarFileId: string | null
     bannerFileId: string | null
     accentColor: string | null
-    theme: string | null
+    themeId: string | null
     isPublished: boolean
     gridCols: number
     rowHeightPx: number
@@ -2042,6 +2286,7 @@ readonly fields: CreatorProfileFieldRefs;
 export interface Prisma__CreatorProfileClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   user<T extends Prisma.CreatorProfile$userArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CreatorProfile$userArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  themeRef<T extends Prisma.CreatorProfile$themeRefArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CreatorProfile$themeRefArgs<ExtArgs>>): Prisma.Prisma__CreatorProfileThemeClient<runtime.Types.Result.GetResult<Prisma.$CreatorProfileThemePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   blocks<T extends Prisma.CreatorProfile$blocksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CreatorProfile$blocksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CreatorBlockPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   socials<T extends Prisma.CreatorProfile$socialsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CreatorProfile$socialsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CreatorSocialPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   gigCreators<T extends Prisma.CreatorProfile$gigCreatorsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CreatorProfile$gigCreatorsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$GigCreatorPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -2087,7 +2332,7 @@ export interface CreatorProfileFieldRefs {
   readonly avatarFileId: Prisma.FieldRef<"CreatorProfile", 'String'>
   readonly bannerFileId: Prisma.FieldRef<"CreatorProfile", 'String'>
   readonly accentColor: Prisma.FieldRef<"CreatorProfile", 'String'>
-  readonly theme: Prisma.FieldRef<"CreatorProfile", 'String'>
+  readonly themeId: Prisma.FieldRef<"CreatorProfile", 'String'>
   readonly isPublished: Prisma.FieldRef<"CreatorProfile", 'Boolean'>
   readonly gridCols: Prisma.FieldRef<"CreatorProfile", 'Int'>
   readonly rowHeightPx: Prisma.FieldRef<"CreatorProfile", 'Int'>
@@ -2510,6 +2755,25 @@ export type CreatorProfile$userArgs<ExtArgs extends runtime.Types.Extensions.Int
    */
   include?: Prisma.UserInclude<ExtArgs> | null
   where?: Prisma.UserWhereInput
+}
+
+/**
+ * CreatorProfile.themeRef
+ */
+export type CreatorProfile$themeRefArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the CreatorProfileTheme
+   */
+  select?: Prisma.CreatorProfileThemeSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the CreatorProfileTheme
+   */
+  omit?: Prisma.CreatorProfileThemeOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CreatorProfileThemeInclude<ExtArgs> | null
+  where?: Prisma.CreatorProfileThemeWhereInput
 }
 
 /**

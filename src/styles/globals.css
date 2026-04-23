@@ -289,3 +289,42 @@
     min-height: calc(100dvh);
   }
 }
+
+/* --------------------------------------------------------------------------
+ * Creator profile theming
+ *
+ * The public creator page sets a set of `--creator-*` CSS variables on a
+ * root wrapper, then each block wrapper re-sets them (merged with
+ * per-block-type overrides) via `.creator-block`. These rules turn the
+ * variables into real visual effects so individual blocks don't need to
+ * know about the theme system.
+ * ------------------------------------------------------------------------ */
+
+.creator-page h1,
+.creator-page h2,
+.creator-page h3,
+.creator-page h4 {
+  font-family: var(--creator-heading-font, inherit);
+  font-weight: var(--creator-heading-weight, 700);
+  letter-spacing: var(--creator-letter-spacing, 0);
+  color: var(--creator-heading-color, inherit);
+}
+
+.creator-page a {
+  color: var(--creator-link, inherit);
+  transition: color 120ms ease;
+}
+.creator-page a:hover {
+  color: var(--creator-link-hover, var(--creator-link, inherit));
+}
+
+.creator-block {
+  background: var(--creator-block-bg, transparent);
+  color: var(--creator-block-fg, inherit);
+  border-color: var(--creator-block-border, transparent);
+  border-width: var(--creator-block-border-width, 0);
+  border-style: solid;
+  border-radius: var(--creator-block-radius, 0);
+  box-shadow: var(--creator-block-shadow, none);
+  padding: var(--creator-block-padding-y, 0) var(--creator-block-padding-x, 0);
+}

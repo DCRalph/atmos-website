@@ -55,6 +55,7 @@ import {
   type CreatorBlockTypeName,
 } from "./block-types";
 import { useUnsavedChangesWarning } from "~/hooks/use-unsaved-changes-warning";
+import { ThemePicker } from "~/components/creator-themes/theme-picker";
 
 type Props = {
   /** When provided (admin mode), edits this specific profile. */
@@ -71,7 +72,14 @@ type Profile = {
   avatarFileId: string | null;
   bannerFileId: string | null;
   accentColor: string | null;
-  theme: string | null;
+  themeId: string | null;
+  themeRef: {
+    id: string;
+    name: string;
+    isPublic: boolean;
+    isSystem: boolean;
+    ownerUserId: string | null;
+  } | null;
   isPublished: boolean;
   gridCols: number;
   rowHeightPx: number;
@@ -125,7 +133,7 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
       | "tagline"
       | "bio"
       | "accentColor"
-      | "theme"
+      | "themeId"
       | "avatarFileId"
       | "bannerFileId"
     > | null
@@ -147,7 +155,7 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
         tagline: profile.tagline,
         bio: profile.bio,
         accentColor: profile.accentColor,
-        theme: profile.theme,
+        themeId: profile.themeId,
         avatarFileId: profile.avatarFileId,
         bannerFileId: profile.bannerFileId,
       });
@@ -307,7 +315,7 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
         tagline: identity.tagline ?? null,
         bio: identity.bio ?? null,
         accentColor: identity.accentColor ?? null,
-        theme: identity.theme ?? null,
+        themeId: identity.themeId ?? null,
         avatarFileId: identity.avatarFileId ?? null,
         bannerFileId: identity.bannerFileId ?? null,
       },
@@ -432,6 +440,7 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
               {selectedBlock ? (
                 <BlockInspector
                   block={selectedBlock}
+                  profileId={mutationProfileIdArg}
                   onChange={(nb) => {
                     setBlocks(
                       blocks.map((b) => (b.id === nb.id ? nb : b)),
@@ -613,8 +622,48 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
                 }
               />
             </div>
+            <div className="space-y-2">
+              <Label>Theme</Label>
+              <div className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm">
+                    {profile.themeRef?.name ?? "No theme selected"}
+                  </div>
+                  <div className="text-muted-foreground text-xs">
+                    {profile.themeRef?.isSystem
+                      ? "Starter theme"
+                      : profile.themeRef?.isPublic
+                        ? "Public theme"
+                        : profile.themeRef
+                          ? "Private theme"
+                          : "Defaults will be used"}
+                  </div>
+                </div>
+                {profile.themeRef &&
+                  profile.themeRef.ownerUserId === profile.userId && (
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/dashboard/themes/${profile.themeRef.id}`}>
+                        Edit this theme
+                      </Link>
+                    </Button>
+                  )}
+              </div>
+              <div className="rounded-md border p-2">
+                <ThemePicker
+                  selectedThemeId={identity.themeId}
+                  onSelect={(id) =>
+                    setIdentity({ ...identity, themeId: id })
+                  }
+                  currentUserId={profile.userId ?? undefined}
+                />
+              </div>
+            </div>
             <div className="space-y-1">
-              <Label>Accent color</Label>
+              <Label>Accent color override (optional)</Label>
+              <p className="text-muted-foreground text-xs">
+                Overrides the accent color from the selected theme. Leave blank
+                to use the theme's accent.
+              </p>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -637,6 +686,17 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
                   }
                   placeholder="#6366f1"
                 />
+                {identity.accentColor && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setIdentity({ ...identity, accentColor: null })
+                    }
+                  >
+                    Clear
+                  </Button>
+                )}
               </div>
             </div>
             {updateProfile.error && (

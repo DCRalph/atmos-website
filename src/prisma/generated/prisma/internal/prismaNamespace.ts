@@ -397,6 +397,7 @@ export const ModelName = {
   GigTagRelationship: 'GigTagRelationship',
   Gig: 'Gig',
   CreatorProfile: 'CreatorProfile',
+  CreatorProfileTheme: 'CreatorProfileTheme',
   CreatorBlock: 'CreatorBlock',
   CreatorSocial: 'CreatorSocial',
   CreatorClaimRequest: 'CreatorClaimRequest',
@@ -433,7 +434,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userRoleAssignment" | "session" | "account" | "verification" | "invite" | "crewMember" | "contentItem" | "homeContentPlacement" | "gigTag" | "gigTagRelationship" | "gig" | "creatorProfile" | "creatorBlock" | "creatorSocial" | "creatorClaimRequest" | "gigCreator" | "homeGigPlacement" | "gigMedia" | "merchItem" | "shopifyProductCache" | "contactSubmission" | "newsletterSubscription" | "file_tag" | "file_upload" | "gearItem" | "gearPackage" | "gearPackageItem" | "rental" | "rentalItem" | "discountRule" | "discountRuleRequirement" | "activityLog" | "keyValueStore"
+    modelProps: "user" | "userRoleAssignment" | "session" | "account" | "verification" | "invite" | "crewMember" | "contentItem" | "homeContentPlacement" | "gigTag" | "gigTagRelationship" | "gig" | "creatorProfile" | "creatorProfileTheme" | "creatorBlock" | "creatorSocial" | "creatorClaimRequest" | "gigCreator" | "homeGigPlacement" | "gigMedia" | "merchItem" | "shopifyProductCache" | "contactSubmission" | "newsletterSubscription" | "file_tag" | "file_upload" | "gearItem" | "gearPackage" | "gearPackageItem" | "rental" | "rentalItem" | "discountRule" | "discountRuleRequirement" | "activityLog" | "keyValueStore"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1396,6 +1397,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.CreatorProfileCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.CreatorProfileCountAggregateOutputType> | number
+        }
+      }
+    }
+    CreatorProfileTheme: {
+      payload: Prisma.$CreatorProfileThemePayload<ExtArgs>
+      fields: Prisma.CreatorProfileThemeFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.CreatorProfileThemeFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfileThemePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.CreatorProfileThemeFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfileThemePayload>
+        }
+        findFirst: {
+          args: Prisma.CreatorProfileThemeFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfileThemePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.CreatorProfileThemeFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfileThemePayload>
+        }
+        findMany: {
+          args: Prisma.CreatorProfileThemeFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfileThemePayload>[]
+        }
+        create: {
+          args: Prisma.CreatorProfileThemeCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfileThemePayload>
+        }
+        createMany: {
+          args: Prisma.CreatorProfileThemeCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.CreatorProfileThemeCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfileThemePayload>[]
+        }
+        delete: {
+          args: Prisma.CreatorProfileThemeDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfileThemePayload>
+        }
+        update: {
+          args: Prisma.CreatorProfileThemeUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfileThemePayload>
+        }
+        deleteMany: {
+          args: Prisma.CreatorProfileThemeDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.CreatorProfileThemeUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.CreatorProfileThemeUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfileThemePayload>[]
+        }
+        upsert: {
+          args: Prisma.CreatorProfileThemeUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CreatorProfileThemePayload>
+        }
+        aggregate: {
+          args: Prisma.CreatorProfileThemeAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateCreatorProfileTheme>
+        }
+        groupBy: {
+          args: Prisma.CreatorProfileThemeGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CreatorProfileThemeGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.CreatorProfileThemeCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CreatorProfileThemeCountAggregateOutputType> | number
         }
       }
     }
@@ -3177,7 +3252,7 @@ export const CreatorProfileScalarFieldEnum = {
   avatarFileId: 'avatarFileId',
   bannerFileId: 'bannerFileId',
   accentColor: 'accentColor',
-  theme: 'theme',
+  themeId: 'themeId',
   isPublished: 'isPublished',
   gridCols: 'gridCols',
   rowHeightPx: 'rowHeightPx',
@@ -3186,6 +3261,23 @@ export const CreatorProfileScalarFieldEnum = {
 } as const
 
 export type CreatorProfileScalarFieldEnum = (typeof CreatorProfileScalarFieldEnum)[keyof typeof CreatorProfileScalarFieldEnum]
+
+
+export const CreatorProfileThemeScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  description: 'description',
+  ownerUserId: 'ownerUserId',
+  isPublic: 'isPublic',
+  isSystem: 'isSystem',
+  tokens: 'tokens',
+  blockOverrides: 'blockOverrides',
+  createdByAdminId: 'createdByAdminId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CreatorProfileThemeScalarFieldEnum = (typeof CreatorProfileThemeScalarFieldEnum)[keyof typeof CreatorProfileThemeScalarFieldEnum]
 
 
 export const CreatorBlockScalarFieldEnum = {
@@ -3911,6 +4003,7 @@ export type GlobalOmitConfig = {
   gigTagRelationship?: Prisma.GigTagRelationshipOmit
   gig?: Prisma.GigOmit
   creatorProfile?: Prisma.CreatorProfileOmit
+  creatorProfileTheme?: Prisma.CreatorProfileThemeOmit
   creatorBlock?: Prisma.CreatorBlockOmit
   creatorSocial?: Prisma.CreatorSocialOmit
   creatorClaimRequest?: Prisma.CreatorClaimRequestOmit

@@ -70,6 +70,7 @@ model User {
   targetActivities ActivityLog[] @relation("TargetUserActivities")
   creatorProfile   CreatorProfile?
   creatorClaimRequests CreatorClaimRequest[] @relation("ClaimRequestingUser")
+  ownedCreatorThemes CreatorProfileTheme[] @relation("OwnedCreatorThemes")
 
   @@unique([email])
   @@map("user")
@@ -290,7 +291,7 @@ model CreatorProfile {
   avatarFileId     String?
   bannerFileId     String?
   accentColor      String?
-  theme            String?
+  themeId          String?
   isPublished      Boolean      @default(false)
   gridCols         Int          @default(12)
   rowHeightPx      Int          @default(60)
@@ -298,6 +299,7 @@ model CreatorProfile {
   updatedAt        DateTime     @updatedAt
 
   user          User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+  themeRef      CreatorProfileTheme?  @relation(fields: [themeId], references: [id], onDelete: SetNull)
   blocks        CreatorBlock[]
   socials       CreatorSocial[]
   gigCreators   GigCreator[]
@@ -305,7 +307,29 @@ model CreatorProfile {
   claimRequests CreatorClaimRequest[]
 
   @@index([claimStatus])
+  @@index([themeId])
   @@map("creator_profile")
+}
+
+model CreatorProfileTheme {
+  id               String   @id @default(cuid())
+  name             String
+  description      String?
+  ownerUserId      String?
+  owner            User?    @relation("OwnedCreatorThemes", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  isPublic         Boolean  @default(false)
+  isSystem         Boolean  @default(false)
+  tokens           Json
+  blockOverrides   Json     @default("{}")
+  createdByAdminId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  profiles CreatorProfile[]
+
+  @@index([ownerUserId])
+  @@index([isPublic, isSystem])
+  @@map("creator_profile_theme")
 }
 
 model CreatorBlock {
@@ -724,6 +748,12 @@ enum ActivityType {
   CREATOR_CLAIM_REQUESTED
   CREATOR_CLAIM_APPROVED
   CREATOR_CLAIM_REJECTED
+  CREATOR_THEME_CREATED
+  CREATOR_THEME_UPDATED
+  CREATOR_THEME_DELETED
+  CREATOR_THEME_PUBLISHED
+  CREATOR_THEME_UNPUBLISHED
+  CREATOR_THEME_DUPLICATED
   GIG_CREATOR_ADDED
   GIG_CREATOR_REMOVED
   OTHER
