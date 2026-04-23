@@ -10,6 +10,7 @@ export type CreatorBlockTypeName =
   | "SOCIAL_LINKS"
   | "LINK_LIST"
   | "GIG_LIST"
+  | "PAST_GIGS"
   | "CONTENT_LIST"
   | "DIVIDER"
   | "SPACER"
@@ -125,6 +126,18 @@ export const BLOCK_TYPES: BlockTypeDefinition[] = [
     defaultW: 12,
     defaultH: 6,
     defaultData: { source: "auto", gigIds: [] as string[] },
+  },
+  {
+    type: "PAST_GIGS",
+    label: "Past gigs",
+    description: "Auto-pulled highlight of gigs you played",
+    defaultW: 12,
+    defaultH: 5,
+    defaultData: {
+      title: "Past gigs",
+      includeUpcoming: false,
+      showRole: true,
+    },
   },
   {
     type: "CONTENT_LIST",

@@ -76,7 +76,7 @@ export function CrewMember({
               href={profileHref}
               className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-4 py-1.5 text-xs font-semibold tracking-wider text-white/80 uppercase transition-all hover:border-white/60 hover:bg-white/10 hover:text-white sm:text-sm"
             >
-              View more
+              View profile
               <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </Link>
           </div>

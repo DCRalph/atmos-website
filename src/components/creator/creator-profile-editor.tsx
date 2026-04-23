@@ -40,7 +40,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import { SOCIAL_PLATFORMS, type SocialPlatform } from "~/lib/social-pills";
+import {
+  SOCIAL_PLATFORMS,
+  matchSocialPlatform,
+  type SocialPlatform,
+} from "~/lib/social-pills";
 import {
   AddBlockPopover,
   CreatorGridEditor,
@@ -664,22 +668,6 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-/**
- * Look up a registered `SocialPlatform` for a stored `platform` string
- * (case-insensitive, matches both the id and the display name). Returns
- * `null` for custom/unknown platforms (e.g. Bluesky) so callers can treat
- * them as free-form.
- */
-export function matchSocialPlatform(platform: string): SocialPlatform | null {
-  const needle = platform.trim().toLowerCase();
-  if (!needle) return null;
-  return (
-    SOCIAL_PLATFORMS.find(
-      (p) => p.id === needle || p.name.toLowerCase() === needle,
-    ) ?? null
   );
 }
 

@@ -8,6 +8,8 @@ import { YouTubePlayer } from "~/components/youtube-player";
 import { LexicalContent } from "~/components/lexical";
 import { buildMediaUrl } from "~/lib/media-url";
 import { type CreatorBlockTypeName } from "./block-types";
+import { PastGigsBlock } from "./past-gigs-block";
+import { SocialLinksBlock } from "./social-links-block";
 
 export type PublicBlock = {
   id: string;
@@ -246,27 +248,7 @@ export function BlockRenderer({
       );
     }
     case "SOCIAL_LINKS":
-      return (
-        <div className="flex flex-wrap gap-2">
-          {(socials ?? []).map((s, i) => (
-            <Link
-              key={i}
-              href={s.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-accent hover:bg-accent/80 rounded-full px-4 py-2 text-sm"
-              style={accent ? { color: accent } : undefined}
-            >
-              {s.label ?? s.platform}
-            </Link>
-          ))}
-          {(!socials || socials.length === 0) && (
-            <span className="text-muted-foreground text-sm">
-              No socials configured
-            </span>
-          )}
-        </div>
-      );
+      return <SocialLinksBlock socials={socials ?? []} accent={accent} />;
     case "LINK_LIST": {
       const links = getArray<{ label: string; url: string }>(
         block.data,
@@ -332,6 +314,25 @@ export function BlockRenderer({
             </Link>
           ))}
         </div>
+      );
+    }
+    case "PAST_GIGS": {
+      const titleOverride = getString(block.data, "title") || undefined;
+      const includeUpcoming =
+        block.data.includeUpcoming === true ||
+        block.data.includeUpcoming === "true";
+      const showRoleVal = block.data.showRole;
+      const showRole = showRoleVal === undefined ? true : showRoleVal === true;
+      return (
+        <PastGigsBlock
+          attributions={gigAttributions ?? []}
+          title={titleOverride}
+          includeUpcoming={includeUpcoming}
+          showRole={showRole}
+          blockW={block.w}
+          blockH={block.h}
+          accent={accent}
+        />
       );
     }
     case "CONTENT_LIST":

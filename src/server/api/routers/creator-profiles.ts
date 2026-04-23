@@ -44,6 +44,7 @@ const blockInputSchema = z.object({
     "SOCIAL_LINKS",
     "LINK_LIST",
     "GIG_LIST",
+    "PAST_GIGS",
     "CONTENT_LIST",
     "DIVIDER",
     "SPACER",

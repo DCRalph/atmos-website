@@ -255,6 +255,63 @@ export function BlockInspector({ block, onChange }: Props) {
           </p>
         </div>
       );
+    case "PAST_GIGS": {
+      const includeUpcoming = block.data.includeUpcoming === true;
+      const showRole =
+        block.data.showRole === undefined ? true : block.data.showRole === true;
+      const title = dataField(block, "title");
+      return (
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label>Section title</Label>
+            <Input
+              value={title}
+              onChange={(e) =>
+                onChange(updateData(block, "title", e.target.value))
+              }
+              placeholder="Past gigs"
+            />
+          </div>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={includeUpcoming}
+              onChange={(e) =>
+                onChange(updateData(block, "includeUpcoming", e.target.checked))
+              }
+            />
+            <span>
+              Include upcoming gigs
+              <span className="text-muted-foreground block text-xs">
+                By default only gigs that have already happened are shown.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={showRole}
+              onChange={(e) =>
+                onChange(updateData(block, "showRole", e.target.checked))
+              }
+            />
+            <span>
+              Show your role
+              <span className="text-muted-foreground block text-xs">
+                Displays the role you were credited with on each gig.
+              </span>
+            </span>
+          </label>
+          <p className="text-muted-foreground text-xs">
+            Auto-pulled from gigs you've been added to in the lineup. Up to 3
+            are shown in the block (fewer for smaller sizes) — the rest appear
+            when visitors click "View all".
+          </p>
+        </div>
+      );
+    }
     case "CONTENT_LIST":
       return (
         <p className="text-muted-foreground text-sm">

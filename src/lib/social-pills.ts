@@ -249,6 +249,34 @@ export function getPlatform(id: SocialPlatformId): SocialPlatform {
   return platform;
 }
 
+/**
+ * Look up a registered `SocialPlatform` for a stored `platform` string
+ * (case-insensitive, matches both the id and the display name). Returns
+ * `null` for custom/unknown platforms (e.g. Bluesky) so callers can treat
+ * them as free-form.
+ */
+export function matchSocialPlatform(platform: string): SocialPlatform | null {
+  const needle = platform.trim().toLowerCase();
+  if (!needle) return null;
+  return (
+    SOCIAL_PLATFORMS.find(
+      (p) => p.id === needle || p.name.toLowerCase() === needle,
+    ) ?? null
+  );
+}
+
+/**
+ * Resolve a platform using the stored platform name first, and falling back
+ * to inferring from the URL. Useful when rendering stored socials where the
+ * `platform` field might be a free-form label or empty.
+ */
+export function resolveSocialPlatform(
+  platform: string,
+  url: string,
+): SocialPlatform | null {
+  return matchSocialPlatform(platform) ?? detectPlatformFromUrl(url);
+}
+
 export function detectPlatformFromUrl(url: string): SocialPlatform | null {
   const parsed = parseUrl(url);
   if (!parsed) return null;
