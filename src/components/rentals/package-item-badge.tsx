@@ -12,6 +12,7 @@ type PackageItemBadgeProps = {
   itemName: string;
   shortName?: string | null;
   description?: string | null;
+  note?: string | null;
   variant?: "default" | "secondary" | "destructive" | "outline";
   className?: string;
 };
@@ -21,6 +22,7 @@ export function PackageItemBadge({
   itemName,
   shortName,
   description,
+  note,
   variant = "outline",
   className,
 }: PackageItemBadgeProps) {
@@ -41,7 +43,7 @@ export function PackageItemBadge({
           {/* <div className="text-[10px] font-semibold tracking-[0.18em] text-white/60">
             Item
           </div> */}
-          <div className="text-sm font-semibold leading-tight">
+          <div className="text-sm leading-tight font-semibold">
             {quantity}x {itemName}
           </div>
           {shortName && shortName !== itemName && (
@@ -50,6 +52,14 @@ export function PackageItemBadge({
           {description && (
             <div className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-xs leading-relaxed text-white/80">
               {description}
+            </div>
+          )}
+          {note && (
+            <div className="rounded-lg border border-white/10 bg-white/10 px-2.5 py-2 text-xs leading-relaxed text-white">
+              <div className="mb-1 text-[10px] font-semibold tracking-[0.16em] text-white/60 uppercase">
+                Note
+              </div>
+              <div>{note}</div>
             </div>
           )}
         </div>

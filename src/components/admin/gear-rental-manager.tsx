@@ -61,6 +61,7 @@ type InventoryItemForm = {
   name: string;
   shortName: string;
   description: string;
+  note: string;
   quantity: number;
   price: number;
 };
@@ -88,6 +89,7 @@ function createEmptyInventoryItem(): InventoryItemForm {
     name: "",
     shortName: "",
     description: "",
+    note: "",
     quantity: 1,
     price: 0,
   };
@@ -120,7 +122,9 @@ export function GearRentalManager() {
   const [activeTab, setActiveTab] = useState("requests");
   const [isAddingInventoryItem, setIsAddingInventoryItem] = useState(false);
   const [isAddingPackage, setIsAddingPackage] = useState(false);
-  const [newInventoryItem, setNewInventoryItem] = useState(createEmptyInventoryItem());
+  const [newInventoryItem, setNewInventoryItem] = useState(
+    createEmptyInventoryItem(),
+  );
   const [editingInventoryItem, setEditingInventoryItem] = useState<
     | (InventoryItemForm & {
         id: string;
@@ -135,7 +139,9 @@ export function GearRentalManager() {
     | null
   >(null);
   const [isAddingDiscountRule, setIsAddingDiscountRule] = useState(false);
-  const [newDiscountRule, setNewDiscountRule] = useState(createEmptyDiscountRule());
+  const [newDiscountRule, setNewDiscountRule] = useState(
+    createEmptyDiscountRule(),
+  );
   const [editingDiscountRule, setEditingDiscountRule] = useState<
     | (DiscountRuleForm & {
         id: string;
@@ -293,7 +299,9 @@ export function GearRentalManager() {
     );
   };
 
-  const openEditPackage = (gearPackage: NonNullable<typeof packages>[number]) => {
+  const openEditPackage = (
+    gearPackage: NonNullable<typeof packages>[number],
+  ) => {
     setEditingPackage({
       id: gearPackage.id,
       name: gearPackage.name,
@@ -342,76 +350,118 @@ export function GearRentalManager() {
                 {rentalsLoading ? (
                   <TableRow>
                     <TableCell colSpan={8} className="py-8 text-center">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+                      <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                   </TableRow>
-                ) : rentals?.map((rental) => (
-                  <TableRow key={rental.id}>
-                    <TableCell className="font-medium">{rental.userName}</TableCell>
-                    <TableCell className="text-xs">{rental.contactInfo}</TableCell>
-                    <TableCell>
-                      {rental.gearPackage?.name ?? "Individual Items"}
-                    </TableCell>
-                    <TableCell className="max-w-[280px] whitespace-normal">
-                      <div className="flex flex-wrap gap-1">
-                        {(rental.rentalItems.length > 0
-                          ? rental.rentalItems
-                          : rental.gearPackage?.items ?? []
-                        ).map((item) => (
-                          <PackageItemBadge
-                            key={item.id}
-                            quantity={item.quantity}
-                            itemName={item.gearItem.name}
-                            shortName={item.gearItem.shortName}
-                            description={item.gearItem.description}
-                            className="text-[10px]"
-                          />
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {format(new Date(rental.startDate), "MMM d, yyyy")} - {format(new Date(rental.endDate), "MMM d, yyyy")}
-                    </TableCell>
-                    <TableCell className="text-xs">${rental.estimatedTotalPrice}</TableCell>
-                    <TableCell>
-                      <Badge variant={
-                        rental.status === "APPROVED" ? "outline" : 
-                        rental.status === "REJECTED" ? "destructive" : 
-                        "default"
-                      } className={rental.status === "APPROVED" ? "text-green-500 border-green-500/50" : ""}>
-                        {rental.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      {rental.status === "PENDING" && (
-                        <>
-                          <Button size="sm" variant="outline" className="text-green-500" onClick={() => approveRental.mutate({ id: rental.id })}>
-                            <Check className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="outline" className="text-red-500" onClick={() => rejectRental.mutate({ id: rental.id })}>
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                      <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-destructive" onClick={async () => {
-                        const ok = await confirm({
-                          title: "Delete rental record",
-                          description: "Delete this rental record? This action cannot be undone.",
-                          confirmLabel: "Delete",
-                          variant: "destructive",
-                        });
-                        if (ok) {
-                          deleteRental.mutate({ id: rental.id });
-                        }
-                      }}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                ) : (
+                  rentals?.map((rental) => (
+                    <TableRow key={rental.id}>
+                      <TableCell className="font-medium">
+                        {rental.userName}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {rental.contactInfo}
+                      </TableCell>
+                      <TableCell>
+                        {rental.gearPackage?.name ?? "Individual Items"}
+                      </TableCell>
+                      <TableCell className="max-w-[280px] whitespace-normal">
+                        <div className="flex flex-wrap gap-1">
+                          {(rental.rentalItems.length > 0
+                            ? rental.rentalItems
+                            : (rental.gearPackage?.items ?? [])
+                          ).map((item) => (
+                            <PackageItemBadge
+                              key={item.id}
+                              quantity={item.quantity}
+                              itemName={item.gearItem.name}
+                              shortName={item.gearItem.shortName}
+                              description={item.gearItem.description}
+                              note={item.gearItem.note}
+                              className="text-[10px]"
+                            />
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {format(new Date(rental.startDate), "MMM d, yyyy")} -{" "}
+                        {format(new Date(rental.endDate), "MMM d, yyyy")}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        ${rental.estimatedTotalPrice}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            rental.status === "APPROVED"
+                              ? "outline"
+                              : rental.status === "REJECTED"
+                                ? "destructive"
+                                : "default"
+                          }
+                          className={
+                            rental.status === "APPROVED"
+                              ? "border-green-500/50 text-green-500"
+                              : ""
+                          }
+                        >
+                          {rental.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="space-x-2 text-right">
+                        {rental.status === "PENDING" && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-green-500"
+                              onClick={() =>
+                                approveRental.mutate({ id: rental.id })
+                              }
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-500"
+                              onClick={() =>
+                                rejectRental.mutate({ id: rental.id })
+                              }
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: "Delete rental record",
+                              description:
+                                "Delete this rental record? This action cannot be undone.",
+                              confirmLabel: "Delete",
+                              variant: "destructive",
+                            });
+                            if (ok) {
+                              deleteRental.mutate({ id: rental.id });
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
                 {!rentalsLoading && rentals?.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                    <TableCell
+                      colSpan={8}
+                      className="text-muted-foreground py-8 text-center"
+                    >
                       No rental requests yet.
                     </TableCell>
                   </TableRow>
@@ -431,7 +481,10 @@ export function GearRentalManager() {
                 Manage the underlying stock counts that packages consume.
               </CardDescription>
             </div>
-            <Dialog open={isAddingInventoryItem} onOpenChange={setIsAddingInventoryItem}>
+            <Dialog
+              open={isAddingInventoryItem}
+              onOpenChange={setIsAddingInventoryItem}
+            >
               <DialogTrigger asChild>
                 <Button size="sm">
                   <Plus className="mr-2 h-4 w-4" />
@@ -488,6 +541,20 @@ export function GearRentalManager() {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="note">Optional Note</Label>
+                    <Textarea
+                      id="note"
+                      value={newInventoryItem.note}
+                      onChange={(e) =>
+                        setNewInventoryItem({
+                          ...newInventoryItem,
+                          note: e.target.value,
+                        })
+                      }
+                      placeholder="Shown to customers when this item is selected."
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="quantity">Quantity On Hand</Label>
                     <Input
                       id="quantity"
@@ -519,22 +586,33 @@ export function GearRentalManager() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddingInventoryItem(false)}>Cancel</Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsAddingInventoryItem(false)}
+                  >
+                    Cancel
+                  </Button>
                   <Button
                     onClick={() =>
                       createInventoryItem.mutate({
                         name: newInventoryItem.name,
                         shortName: newInventoryItem.shortName || undefined,
                         description: newInventoryItem.description || undefined,
+                        note: newInventoryItem.note || undefined,
                         quantity: newInventoryItem.quantity,
                         price: newInventoryItem.price,
                       })
                     }
                     disabled={
-                      createInventoryItem.isPending || !newInventoryItem.name.trim()
+                      createInventoryItem.isPending ||
+                      !newInventoryItem.name.trim()
                     }
                   >
-                    {createInventoryItem.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Item"}
+                    {createInventoryItem.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Save Item"
+                    )}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -591,6 +669,20 @@ export function GearRentalManager() {
                       />
                     </div>
                     <div className="space-y-2">
+                      <Label htmlFor="edit-note">Optional Note</Label>
+                      <Textarea
+                        id="edit-note"
+                        value={editingInventoryItem.note}
+                        onChange={(e) =>
+                          setEditingInventoryItem({
+                            ...editingInventoryItem,
+                            note: e.target.value,
+                          })
+                        }
+                        placeholder="Shown to customers when this item is selected."
+                      />
+                    </div>
+                    <div className="space-y-2">
                       <Label htmlFor="edit-quantity">Quantity On Hand</Label>
                       <Input
                         id="edit-quantity"
@@ -623,7 +715,12 @@ export function GearRentalManager() {
                   </div>
                 )}
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setEditingInventoryItem(null)}>Cancel</Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setEditingInventoryItem(null)}
+                  >
+                    Cancel
+                  </Button>
                   <Button
                     onClick={() =>
                       editingInventoryItem &&
@@ -631,14 +728,20 @@ export function GearRentalManager() {
                         id: editingInventoryItem.id,
                         name: editingInventoryItem.name,
                         shortName: editingInventoryItem.shortName || undefined,
-                        description: editingInventoryItem.description || undefined,
+                        description:
+                          editingInventoryItem.description || undefined,
+                        note: editingInventoryItem.note || undefined,
                         quantity: editingInventoryItem.quantity,
                         price: editingInventoryItem.price,
                       })
                     }
                     disabled={updateInventoryItem.isPending}
                   >
-                    {updateInventoryItem.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
+                    {updateInventoryItem.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Save Changes"
+                    )}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -650,6 +753,7 @@ export function GearRentalManager() {
                   <TableHead>Name</TableHead>
                   <TableHead>Short Name</TableHead>
                   <TableHead>Description</TableHead>
+                  <TableHead>Note</TableHead>
                   <TableHead>Quantity</TableHead>
                   <TableHead>Price/Day</TableHead>
                   <TableHead>Used In Packages</TableHead>
@@ -659,75 +763,91 @@ export function GearRentalManager() {
               <TableBody>
                 {inventoryLoading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+                    <TableCell colSpan={8} className="py-8 text-center">
+                      <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                   </TableRow>
-                ) : inventory?.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell className="text-xs uppercase text-muted-foreground">
-                      {item.shortName ?? "—"}
-                    </TableCell>
-                    <TableCell className="max-w-[300px] truncate text-sm">{item.description}</TableCell>
-                    <TableCell>{item.quantity}</TableCell>
-                    <TableCell>${item.price}</TableCell>
-                    <TableCell className="max-w-[220px] whitespace-normal">
-                      <div className="flex flex-wrap gap-1">
-                        {item.packageItems.length > 0 ? (
-                          item.packageItems.map((packageItem) => (
-                            <Badge key={packageItem.id} variant="outline" className="text-[10px]">
-                              {packageItem.gearPackage.name}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Not used yet</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-muted-foreground hover:text-primary"
-                        onClick={() =>
-                          setEditingInventoryItem({
-                            id: item.id,
-                            name: item.name,
-                            shortName: item.shortName ?? "",
-                            description: item.description ?? "",
-                            quantity: item.quantity,
-                            price: item.price,
-                          })
-                        }
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-muted-foreground hover:text-destructive"
-                        onClick={async () => {
-                          const ok = await confirm({
-                            title: "Delete inventory item",
-                            description: `Delete ${item.name}? This will remove it from any packages using it.`,
-                            confirmLabel: "Delete",
-                            variant: "destructive",
-                          });
-                          if (ok) {
-                            deleteInventoryItem.mutate({ id: item.id });
+                ) : (
+                  inventory?.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs uppercase">
+                        {item.shortName ?? "—"}
+                      </TableCell>
+                      <TableCell className="max-w-[300px] truncate text-sm">
+                        {item.description}
+                      </TableCell>
+                      <TableCell className="max-w-[300px] truncate text-sm">
+                        {item.note ?? "—"}
+                      </TableCell>
+                      <TableCell>{item.quantity}</TableCell>
+                      <TableCell>${item.price}</TableCell>
+                      <TableCell className="max-w-[220px] whitespace-normal">
+                        <div className="flex flex-wrap gap-1">
+                          {item.packageItems.length > 0 ? (
+                            item.packageItems.map((packageItem) => (
+                              <Badge
+                                key={packageItem.id}
+                                variant="outline"
+                                className="text-[10px]"
+                              >
+                                {packageItem.gearPackage.name}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-muted-foreground text-xs">
+                              Not used yet
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="space-x-2 text-right">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-muted-foreground hover:text-primary"
+                          onClick={() =>
+                            setEditingInventoryItem({
+                              id: item.id,
+                              name: item.name,
+                              shortName: item.shortName ?? "",
+                              description: item.description ?? "",
+                              note: item.note ?? "",
+                              quantity: item.quantity,
+                              price: item.price,
+                            })
                           }
-                        }
-                      }
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: "Delete inventory item",
+                              description: `Delete ${item.name}? This will remove it from any packages using it.`,
+                              confirmLabel: "Delete",
+                              variant: "destructive",
+                            });
+                            if (ok) {
+                              deleteInventoryItem.mutate({ id: item.id });
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
                 {!inventoryLoading && inventory?.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell
+                      colSpan={8}
+                      className="text-muted-foreground py-8 text-center"
+                    >
                       No inventory items yet.
                     </TableCell>
                   </TableRow>
@@ -759,8 +879,8 @@ export function GearRentalManager() {
                 <DialogHeader>
                   <DialogTitle>Add Rental Package</DialogTitle>
                   <DialogDescription>
-                    Set the package price, then choose how many of each inventory
-                    item the package uses.
+                    Set the package price, then choose how many of each
+                    inventory item the package uses.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
@@ -821,9 +941,9 @@ export function GearRentalManager() {
                   <div className="space-y-3 rounded-lg border p-4">
                     <div>
                       <Label>Included Inventory</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Set a quantity above 0 for each inventory item included in
-                        this package.
+                      <p className="text-muted-foreground text-sm">
+                        Set a quantity above 0 for each inventory item included
+                        in this package.
                       </p>
                     </div>
                     <div className="space-y-3">
@@ -834,7 +954,7 @@ export function GearRentalManager() {
                         >
                           <div>
                             <div className="font-medium">{item.name}</div>
-                            <div className="text-xs text-muted-foreground">
+                            <div className="text-muted-foreground text-xs">
                               On hand: {item.quantity}
                               {item.shortName ? ` • ${item.shortName}` : ""}
                             </div>
@@ -859,16 +979,27 @@ export function GearRentalManager() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddingPackage(false)}>Cancel</Button>
                   <Button
-                    onClick={() => createPackage.mutate(buildPackagePayload(newPackage))}
+                    variant="outline"
+                    onClick={() => setIsAddingPackage(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() =>
+                      createPackage.mutate(buildPackagePayload(newPackage))
+                    }
                     disabled={
                       createPackage.isPending ||
                       !newPackage.name.trim() ||
                       !packageHasItems(newPackage)
                     }
                   >
-                    {createPackage.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Package"}
+                    {createPackage.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Save Package"
+                    )}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -900,7 +1031,9 @@ export function GearRentalManager() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="edit-package-short-name">Short Name</Label>
+                        <Label htmlFor="edit-package-short-name">
+                          Short Name
+                        </Label>
                         <Input
                           id="edit-package-short-name"
                           value={editingPackage.shortName}
@@ -914,7 +1047,9 @@ export function GearRentalManager() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="edit-package-description">Description</Label>
+                      <Label htmlFor="edit-package-description">
+                        Description
+                      </Label>
                       <Textarea
                         id="edit-package-description"
                         value={editingPackage.description}
@@ -927,7 +1062,9 @@ export function GearRentalManager() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="edit-package-price">Daily Price ($)</Label>
+                      <Label htmlFor="edit-package-price">
+                        Daily Price ($)
+                      </Label>
                       <Input
                         id="edit-package-price"
                         type="number"
@@ -944,7 +1081,7 @@ export function GearRentalManager() {
                     <div className="space-y-3 rounded-lg border p-4">
                       <div>
                         <Label>Included Inventory</Label>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-muted-foreground text-sm">
                           Update how many units of each inventory item this
                           package consumes.
                         </p>
@@ -957,7 +1094,7 @@ export function GearRentalManager() {
                           >
                             <div>
                               <div className="font-medium">{item.name}</div>
-                              <div className="text-xs text-muted-foreground">
+                              <div className="text-muted-foreground text-xs">
                                 On hand: {item.quantity}
                                 {item.shortName ? ` • ${item.shortName}` : ""}
                               </div>
@@ -965,13 +1102,16 @@ export function GearRentalManager() {
                             <Input
                               type="number"
                               min={0}
-                              value={editingPackage.itemQuantities[item.id] ?? 0}
+                              value={
+                                editingPackage.itemQuantities[item.id] ?? 0
+                              }
                               onChange={(e) =>
                                 setEditingPackage({
                                   ...editingPackage,
                                   itemQuantities: {
                                     ...editingPackage.itemQuantities,
-                                    [item.id]: parseInt(e.target.value, 10) || 0,
+                                    [item.id]:
+                                      parseInt(e.target.value, 10) || 0,
                                   },
                                 })
                               }
@@ -983,7 +1123,12 @@ export function GearRentalManager() {
                   </div>
                 )}
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setEditingPackage(null)}>Cancel</Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setEditingPackage(null)}
+                  >
+                    Cancel
+                  </Button>
                   <Button
                     onClick={() =>
                       editingPackage &&
@@ -999,7 +1144,11 @@ export function GearRentalManager() {
                       !packageHasItems(editingPackage)
                     }
                   >
-                    {updatePackage.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
+                    {updatePackage.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Save Changes"
+                    )}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -1022,67 +1171,73 @@ export function GearRentalManager() {
                       <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                   </TableRow>
-                ) : packages?.map((gearPackage) => (
-                  <TableRow key={gearPackage.id}>
-                    <TableCell className="font-medium">
-                      <div>{gearPackage.name}</div>
-                      {gearPackage.description && (
-                        <div className="max-w-[240px] truncate text-xs text-muted-foreground">
-                          {gearPackage.description}
+                ) : (
+                  packages?.map((gearPackage) => (
+                    <TableRow key={gearPackage.id}>
+                      <TableCell className="font-medium">
+                        <div>{gearPackage.name}</div>
+                        {gearPackage.description && (
+                          <div className="text-muted-foreground max-w-[240px] truncate text-xs">
+                            {gearPackage.description}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-xs uppercase">
+                        {gearPackage.shortName ?? "—"}
+                      </TableCell>
+                      <TableCell>${gearPackage.price}</TableCell>
+                      <TableCell className="max-w-[320px] whitespace-normal">
+                        <div className="flex flex-wrap gap-1">
+                          {gearPackage.items.map((item) => (
+                            <PackageItemBadge
+                              key={item.id}
+                              quantity={item.quantity}
+                              itemName={item.gearItem.name}
+                              shortName={item.gearItem.shortName}
+                              description={item.gearItem.description}
+                              note={item.gearItem.note}
+                              className="text-[10px]"
+                            />
+                          ))}
                         </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-xs uppercase text-muted-foreground">
-                      {gearPackage.shortName ?? "—"}
-                    </TableCell>
-                    <TableCell>${gearPackage.price}</TableCell>
-                    <TableCell className="max-w-[320px] whitespace-normal">
-                      <div className="flex flex-wrap gap-1">
-                        {gearPackage.items.map((item) => (
-                          <PackageItemBadge
-                            key={item.id}
-                            quantity={item.quantity}
-                            itemName={item.gearItem.name}
-                            shortName={item.gearItem.shortName}
-                            description={item.gearItem.description}
-                            className="text-[10px]"
-                          />
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="space-x-2 text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-muted-foreground hover:text-primary"
-                        onClick={() => openEditPackage(gearPackage)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-muted-foreground hover:text-destructive"
-                        onClick={async () => {
-                          const ok = await confirm({
-                            title: "Delete package",
-                            description: `Delete ${gearPackage.name}? This will also remove any rentals for it.`,
-                            confirmLabel: "Delete",
-                            variant: "destructive",
-                          });
-                          if (ok) {
-                            deletePackage.mutate({ id: gearPackage.id });
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell className="space-x-2 text-right">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-muted-foreground hover:text-primary"
+                          onClick={() => openEditPackage(gearPackage)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: "Delete package",
+                              description: `Delete ${gearPackage.name}? This will also remove any rentals for it.`,
+                              confirmLabel: "Delete",
+                              variant: "destructive",
+                            });
+                            if (ok) {
+                              deletePackage.mutate({ id: gearPackage.id });
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
                 {!packagesLoading && packages?.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                    <TableCell
+                      colSpan={5}
+                      className="text-muted-foreground py-8 text-center"
+                    >
                       No rental packages yet.
                     </TableCell>
                   </TableRow>
@@ -1103,7 +1258,10 @@ export function GearRentalManager() {
                 discount for individual-item rentals.
               </CardDescription>
             </div>
-            <Dialog open={isAddingDiscountRule} onOpenChange={setIsAddingDiscountRule}>
+            <Dialog
+              open={isAddingDiscountRule}
+              onOpenChange={setIsAddingDiscountRule}
+            >
               <DialogTrigger asChild>
                 <Button size="sm">
                   <Plus className="mr-2 h-4 w-4" />
@@ -1123,12 +1281,17 @@ export function GearRentalManager() {
                   setForm={setNewDiscountRule}
                 />
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddingDiscountRule(false)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsAddingDiscountRule(false)}
+                  >
                     Cancel
                   </Button>
                   <Button
                     onClick={() =>
-                      createDiscountRule.mutate(buildDiscountRulePayload(newDiscountRule))
+                      createDiscountRule.mutate(
+                        buildDiscountRulePayload(newDiscountRule),
+                      )
                     }
                     disabled={
                       createDiscountRule.isPending ||
@@ -1173,7 +1336,10 @@ export function GearRentalManager() {
                   />
                 )}
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setEditingDiscountRule(null)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setEditingDiscountRule(null)}
+                  >
                     Cancel
                   </Button>
                   <Button
@@ -1220,94 +1386,104 @@ export function GearRentalManager() {
                       <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                   </TableRow>
-                ) : discountRules?.map((rule) => (
-                  <TableRow key={rule.id}>
-                    <TableCell className="font-medium">{rule.name}</TableCell>
-                    <TableCell>
-                      <Badge variant={rule.isActive ? "default" : "secondary"}>
-                        {rule.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {rule.discountMode === DISCOUNT_MODE.TOTAL ? "Total" : "Per Item"}
-                    </TableCell>
-                    <TableCell>
-                      {rule.discountMode === DISCOUNT_MODE.TOTAL
-                        ? rule.discountType === DISCOUNT_TYPE.FIXED_AMOUNT
-                          ? `$${rule.discountValue} off/day`
-                          : `${rule.discountValue}% off/day`
-                        : rule.discountType === DISCOUNT_TYPE.FIXED_AMOUNT
-                          ? "Per-item dollar discount"
-                          : "Per-item percentage discount"}
-                    </TableCell>
-                    <TableCell className="max-w-[320px] whitespace-normal">
-                      <div className="flex flex-wrap gap-1">
-                        {rule.requirements.map((item) => (
-                          <PackageItemBadge
-                            key={item.id}
-                            quantity={item.requiredQty}
-                            itemName={item.gearItem.name}
-                            shortName={item.gearItem.shortName}
-                            description={item.gearItem.description}
-                            className="text-[10px]"
-                          />
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="space-x-2 text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-muted-foreground hover:text-primary"
-                        onClick={() =>
-                          setEditingDiscountRule({
-                            id: rule.id,
-                            name: rule.name,
-                            isActive: rule.isActive,
-                            discountMode: rule.discountMode,
-                            discountType: rule.discountType,
-                            discountValue: rule.discountValue,
-                            requirementQuantities: Object.fromEntries(
-                              rule.requirements.map((item) => [
-                                item.gearItemId,
-                                item.requiredQty,
-                              ]),
-                            ),
-                            requirementDiscountValues: Object.fromEntries(
-                              rule.requirements.map((item) => [
-                                item.gearItemId,
-                                item.discountValue,
-                              ]),
-                            ),
-                          })
-                        }
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-muted-foreground hover:text-destructive"
-                        onClick={async () => {
-                          const ok = await confirm({
-                            title: "Delete discount rule",
-                            description: `Delete ${rule.name}? This action cannot be undone.`,
-                            confirmLabel: "Delete",
-                            variant: "destructive",
-                          });
-                          if (ok) {
-                            deleteDiscountRule.mutate({ id: rule.id });
+                ) : (
+                  discountRules?.map((rule) => (
+                    <TableRow key={rule.id}>
+                      <TableCell className="font-medium">{rule.name}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={rule.isActive ? "default" : "secondary"}
+                        >
+                          {rule.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {rule.discountMode === DISCOUNT_MODE.TOTAL
+                          ? "Total"
+                          : "Per Item"}
+                      </TableCell>
+                      <TableCell>
+                        {rule.discountMode === DISCOUNT_MODE.TOTAL
+                          ? rule.discountType === DISCOUNT_TYPE.FIXED_AMOUNT
+                            ? `$${rule.discountValue} off/day`
+                            : `${rule.discountValue}% off/day`
+                          : rule.discountType === DISCOUNT_TYPE.FIXED_AMOUNT
+                            ? "Per-item dollar discount"
+                            : "Per-item percentage discount"}
+                      </TableCell>
+                      <TableCell className="max-w-[320px] whitespace-normal">
+                        <div className="flex flex-wrap gap-1">
+                          {rule.requirements.map((item) => (
+                            <PackageItemBadge
+                              key={item.id}
+                              quantity={item.requiredQty}
+                              itemName={item.gearItem.name}
+                              shortName={item.gearItem.shortName}
+                              description={item.gearItem.description}
+                              note={item.gearItem.note}
+                              className="text-[10px]"
+                            />
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="space-x-2 text-right">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-muted-foreground hover:text-primary"
+                          onClick={() =>
+                            setEditingDiscountRule({
+                              id: rule.id,
+                              name: rule.name,
+                              isActive: rule.isActive,
+                              discountMode: rule.discountMode,
+                              discountType: rule.discountType,
+                              discountValue: rule.discountValue,
+                              requirementQuantities: Object.fromEntries(
+                                rule.requirements.map((item) => [
+                                  item.gearItemId,
+                                  item.requiredQty,
+                                ]),
+                              ),
+                              requirementDiscountValues: Object.fromEntries(
+                                rule.requirements.map((item) => [
+                                  item.gearItemId,
+                                  item.discountValue,
+                                ]),
+                              ),
+                            })
                           }
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: "Delete discount rule",
+                              description: `Delete ${rule.name}? This action cannot be undone.`,
+                              confirmLabel: "Delete",
+                              variant: "destructive",
+                            });
+                            if (ok) {
+                              deleteDiscountRule.mutate({ id: rule.id });
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
                 {!discountRulesLoading && discountRules?.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                    <TableCell
+                      colSpan={6}
+                      className="text-muted-foreground py-8 text-center"
+                    >
                       No discount rules yet.
                     </TableCell>
                   </TableRow>
@@ -1351,10 +1527,20 @@ function DiscountRuleEditor({
       const rowDiscount = discountPerUnit * qty;
       const rowFinal = Math.max(rowBase - rowDiscount, 0);
 
-      return { item, qty, rowBase, rowDiscount, rowFinal, perItemDiscountValue };
+      return {
+        item,
+        qty,
+        rowBase,
+        rowDiscount,
+        rowFinal,
+        perItemDiscountValue,
+      };
     });
 
-  const originalSubtotal = requirementRows.reduce((sum, row) => sum + row.rowBase, 0);
+  const originalSubtotal = requirementRows.reduce(
+    (sum, row) => sum + row.rowBase,
+    0,
+  );
   const totalModeDiscount =
     form.discountMode === DISCOUNT_MODE.TOTAL
       ? form.discountType === DISCOUNT_TYPE.FIXED_AMOUNT
@@ -1394,8 +1580,12 @@ function DiscountRuleEditor({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={DISCOUNT_MODE.TOTAL}>Total Discount</SelectItem>
-              <SelectItem value={DISCOUNT_MODE.PER_ITEM}>Per Item Discount</SelectItem>
+              <SelectItem value={DISCOUNT_MODE.TOTAL}>
+                Total Discount
+              </SelectItem>
+              <SelectItem value={DISCOUNT_MODE.PER_ITEM}>
+                Per Item Discount
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -1414,8 +1604,12 @@ function DiscountRuleEditor({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={DISCOUNT_TYPE.FIXED_AMOUNT}>Dollar Off</SelectItem>
-              <SelectItem value={DISCOUNT_TYPE.PERCENTAGE}>Percent Off</SelectItem>
+              <SelectItem value={DISCOUNT_TYPE.FIXED_AMOUNT}>
+                Dollar Off
+              </SelectItem>
+              <SelectItem value={DISCOUNT_TYPE.PERCENTAGE}>
+                Percent Off
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -1434,7 +1628,9 @@ function DiscountRuleEditor({
             id="rule-value"
             type="number"
             min={0}
-            max={form.discountType === DISCOUNT_TYPE.PERCENTAGE ? 100 : undefined}
+            max={
+              form.discountType === DISCOUNT_TYPE.PERCENTAGE ? 100 : undefined
+            }
             value={form.discountValue}
             disabled={form.discountMode === DISCOUNT_MODE.PER_ITEM}
             onChange={(e) =>
@@ -1446,7 +1642,7 @@ function DiscountRuleEditor({
           />
         </div>
         <div className="space-y-2 rounded-lg border p-3">
-          <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+          <Label className="text-muted-foreground text-xs tracking-wider uppercase">
             Active Rule
           </Label>
           <div className="flex items-center gap-2">
@@ -1465,10 +1661,10 @@ function DiscountRuleEditor({
 
       <div className="rounded-lg border p-3 text-sm">
         <div className="font-semibold">Realtime Preview</div>
-        <div className="mt-2 grid gap-1 text-muted-foreground">
+        <div className="text-muted-foreground mt-2 grid gap-1">
           <div>Original subtotal: ${originalSubtotal.toFixed(2)}</div>
           <div>Discount: -${previewDiscount.toFixed(2)}</div>
-          <div className="font-semibold text-foreground">
+          <div className="text-foreground font-semibold">
             Preview total: ${previewFinal.toFixed(2)}
           </div>
         </div>
@@ -1477,7 +1673,7 @@ function DiscountRuleEditor({
       <div className="space-y-3 rounded-lg border p-4">
         <div>
           <Label>Item Requirements</Label>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Set required quantity above 0 for each item included in this rule.
             Per-item mode also lets you define item-level discounts.
           </p>
@@ -1490,7 +1686,7 @@ function DiscountRuleEditor({
             >
               <div>
                 <div className="font-medium">{item.name}</div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-muted-foreground text-xs">
                   On hand: {item.quantity} • ${item.price}/day
                   {item.shortName ? ` • ${item.shortName}` : ""}
                 </div>
@@ -1512,7 +1708,11 @@ function DiscountRuleEditor({
               <Input
                 type="number"
                 min={0}
-                max={form.discountType === DISCOUNT_TYPE.PERCENTAGE ? 100 : undefined}
+                max={
+                  form.discountType === DISCOUNT_TYPE.PERCENTAGE
+                    ? 100
+                    : undefined
+                }
                 value={form.requirementDiscountValues[item.id] ?? 0}
                 disabled={form.discountMode !== DISCOUNT_MODE.PER_ITEM}
                 onChange={(e) =>
@@ -1526,11 +1726,12 @@ function DiscountRuleEditor({
                 }
               />
               {(form.requirementQuantities[item.id] ?? 0) > 0 && (
-                <div className="text-xs text-muted-foreground sm:col-span-3">
+                <div className="text-muted-foreground text-xs sm:col-span-3">
                   {(() => {
                     const qty = form.requirementQuantities[item.id] ?? 0;
                     const rowBase = item.price * qty;
-                    const perItemValue = form.requirementDiscountValues[item.id] ?? 0;
+                    const perItemValue =
+                      form.requirementDiscountValues[item.id] ?? 0;
                     const discountPerUnit =
                       form.discountMode === DISCOUNT_MODE.PER_ITEM
                         ? form.discountType === DISCOUNT_TYPE.FIXED_AMOUNT

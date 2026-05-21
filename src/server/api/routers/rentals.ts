@@ -25,6 +25,7 @@ const inventoryItemInputSchema = z.object({
   name: z.string().trim().min(1),
   shortName: z.string().trim().optional(),
   description: z.string().trim().optional(),
+  note: z.string().trim().optional(),
   quantity: z.number().int().min(0),
   price: z.number().min(0),
   image: z.string().trim().optional(),
@@ -54,8 +55,8 @@ const discountRuleBaseSchema = z.object({
   requirements: z.array(discountRuleRequirementInputSchema).min(1),
 });
 
-const discountRuleInputSchema = discountRuleBaseSchema
-  .superRefine((input, ctx) => {
+const discountRuleInputSchema = discountRuleBaseSchema.superRefine(
+  (input, ctx) => {
     const seen = new Set<string>();
 
     for (const requirement of input.requirements) {
@@ -71,7 +72,10 @@ const discountRuleInputSchema = discountRuleBaseSchema
       seen.add(requirement.gearItemId);
     }
 
-    if (input.discountType === DiscountType.PERCENTAGE && input.discountValue > 100) {
+    if (
+      input.discountType === DiscountType.PERCENTAGE &&
+      input.discountValue > 100
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Percentage discounts cannot exceed 100%.",
@@ -79,7 +83,10 @@ const discountRuleInputSchema = discountRuleBaseSchema
       });
     }
 
-    if (input.discountMode === DiscountRuleMode.TOTAL && input.discountValue <= 0) {
+    if (
+      input.discountMode === DiscountRuleMode.TOTAL &&
+      input.discountValue <= 0
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Total discount rules must have a discount value above 0.",
@@ -115,14 +122,17 @@ const discountRuleInputSchema = discountRuleBaseSchema
         }
       }
     }
-  });
+  },
+);
 
 const discountRuleUpdateInputSchema = z
   .object({
     id: z.string().min(1),
     name: z.string().trim().min(1).optional(),
     isActive: z.boolean().optional(),
-    discountMode: z.enum([DiscountRuleMode.TOTAL, DiscountRuleMode.PER_ITEM]).optional(),
+    discountMode: z
+      .enum([DiscountRuleMode.TOTAL, DiscountRuleMode.PER_ITEM])
+      .optional(),
     discountType: z
       .enum([DiscountType.FIXED_AMOUNT, DiscountType.PERCENTAGE])
       .optional(),
@@ -137,7 +147,8 @@ const discountRuleUpdateInputSchema = z
         if (seen.has(requirement.gearItemId)) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: "Discount rule requirements cannot contain duplicate items.",
+            message:
+              "Discount rule requirements cannot contain duplicate items.",
             path: ["requirements"],
           });
           break;
@@ -173,7 +184,10 @@ const discountRuleUpdateInputSchema = z
       });
     }
 
-    if (input.discountMode === DiscountRuleMode.PER_ITEM && input.requirements) {
+    if (
+      input.discountMode === DiscountRuleMode.PER_ITEM &&
+      input.requirements
+    ) {
       const hasPerItemDiscount = input.requirements.some(
         (requirement) => requirement.discountValue > 0,
       );
@@ -310,6 +324,7 @@ type IncludedGearItem = {
   name: string;
   shortName: string | null;
   description: string | null;
+  note: string | null;
   quantity: number;
   price: number;
   image: string | null;
@@ -481,7 +496,9 @@ function eachDayKeyInRange(startDate: Date, endDate: Date) {
 }
 
 function getNumDays(startDate: Date, endDate: Date) {
-  return differenceInCalendarDays(startOfDay(endDate), startOfDay(startDate)) + 1;
+  return (
+    differenceInCalendarDays(startOfDay(endDate), startOfDay(startDate)) + 1
+  );
 }
 
 function getDuplicateIds(values: string[]) {
@@ -490,11 +507,16 @@ function getDuplicateIds(values: string[]) {
   );
 }
 
-function normalizeSelectedItems(items: Array<{ gearItemId: string; quantity: number }>) {
+function normalizeSelectedItems(
+  items: Array<{ gearItemId: string; quantity: number }>,
+) {
   const quantities = new Map<string, number>();
 
   for (const item of items) {
-    quantities.set(item.gearItemId, (quantities.get(item.gearItemId) ?? 0) + item.quantity);
+    quantities.set(
+      item.gearItemId,
+      (quantities.get(item.gearItemId) ?? 0) + item.quantity,
+    );
   }
 
   return Array.from(quantities.entries())
@@ -548,20 +570,21 @@ function buildAvailabilityByItem(
   startDate: Date,
   endDate: Date,
 ) {
-  const availabilityByItem: Record<string, AvailabilityEntry> = Object.fromEntries(
-    inventoryItems.map((item) => [
-      item.id,
-      {
-        gearItemId: item.id,
-        name: item.name,
-        shortName: item.shortName,
-        totalQuantity: item.quantity,
-        bookedQuantity: 0,
-        remainingQuantity: item.quantity,
-        price: item.price,
-      },
-    ]),
-  );
+  const availabilityByItem: Record<string, AvailabilityEntry> =
+    Object.fromEntries(
+      inventoryItems.map((item) => [
+        item.id,
+        {
+          gearItemId: item.id,
+          name: item.name,
+          shortName: item.shortName,
+          totalQuantity: item.quantity,
+          bookedQuantity: 0,
+          remainingQuantity: item.quantity,
+          price: item.price,
+        },
+      ]),
+    );
 
   for (const dateKey of eachDayKeyInRange(startDate, endDate)) {
     const dayUsage = usageByDate.get(dateKey) ?? new Map<string, number>();
@@ -610,7 +633,9 @@ function getSelectionAvailability(
 }
 
 function formatLineItems(items: SelectionLineItem[]) {
-  return items.map((item) => `${item.quantity}x ${item.gearItem.name}`).join(", ");
+  return items
+    .map((item) => `${item.quantity}x ${item.gearItem.name}`)
+    .join(", ");
 }
 
 function formatDiscountRuleSummary(rule: IncludedDiscountRule) {
@@ -644,7 +669,10 @@ function applyRuleToItems(
   selectedItems: SelectionLineItem[],
 ): { discountAmount: number; itemPricing: ItemPricingBreakdown[] } {
   const requirementByItemId = new Map(
-    rule.requirements.map((requirement) => [requirement.gearItemId, requirement]),
+    rule.requirements.map((requirement) => [
+      requirement.gearItemId,
+      requirement,
+    ]),
   );
 
   const itemPricing = selectedItems.map((item) => {
@@ -705,7 +733,10 @@ function selectBestDiscountRule(
   rules: IncludedDiscountRule[],
   selectedItems: SelectionLineItem[],
   baseDailyPrice: number,
-): { selectedDiscount: SelectedDiscount | null; itemPricing: ItemPricingBreakdown[] } {
+): {
+  selectedDiscount: SelectedDiscount | null;
+  itemPricing: ItemPricingBreakdown[];
+} {
   if (baseDailyPrice <= 0 || selectedItems.length === 0) {
     return {
       selectedDiscount: null,
@@ -828,7 +859,9 @@ async function getOverlappingApprovedRentals(
   return (await ctx.db.rental.findMany({
     where: {
       status: RentalStatus.APPROVED,
-      id: options?.excludeRentalId ? { not: options.excludeRentalId } : undefined,
+      id: options?.excludeRentalId
+        ? { not: options.excludeRentalId }
+        : undefined,
       startDate: { lte: endDate },
       endDate: { gte: startDate },
     },
@@ -959,7 +992,10 @@ async function getSelectionQuote(
   );
   const appliedDiscount = discountResult.selectedDiscount;
   const discountDailyAmount = appliedDiscount?.discountAmount ?? 0;
-  const discountedDailyPrice = Math.max(baseDailyPrice - discountDailyAmount, 0);
+  const discountedDailyPrice = Math.max(
+    baseDailyPrice - discountDailyAmount,
+    0,
+  );
 
   return {
     mode: "ITEMS",
@@ -1072,7 +1108,8 @@ export const rentalsRouter = createTRPCRouter({
       const quote = await assertSelectionAvailabilityOrThrow(ctx, input);
       const rental = await ctx.db.rental.create({
         data: {
-          packageId: quote.mode === "PACKAGE" ? quote.gearPackage.id : undefined,
+          packageId:
+            quote.mode === "PACKAGE" ? quote.gearPackage.id : undefined,
           userName: input.userName,
           contactInfo: input.contactInfo,
           startDate: input.startDate,
@@ -1447,7 +1484,8 @@ export const rentalsRouter = createTRPCRouter({
         if (duplicateIds.length > 0) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Discount rule requirements cannot contain duplicate items.",
+            message:
+              "Discount rule requirements cannot contain duplicate items.",
           });
         }
 

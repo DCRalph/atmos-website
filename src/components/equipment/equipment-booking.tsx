@@ -42,10 +42,12 @@ type BookingMode = "PACKAGE" | "ITEMS";
 
 export function EquipmentBooking() {
   const [mode, setMode] = useState<BookingMode>("PACKAGE");
-  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
-  const [selectedItemQuantities, setSelectedItemQuantities] = useState<Record<string, number>>(
-    {},
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(
+    null,
   );
+  const [selectedItemQuantities, setSelectedItemQuantities] = useState<
+    Record<string, number>
+  >({});
   const [dateRange, setDateRange] = useState<DateRange>({
     from: undefined,
     to: undefined,
@@ -72,14 +74,16 @@ export function EquipmentBooking() {
   );
 
   const hasDateRange = !!dateRange.from && !!dateRange.to;
-  const quoteEnabled = mode === "PACKAGE" ? !!selectedPackageId : selectedItems.length > 0;
+  const quoteEnabled =
+    mode === "PACKAGE" ? !!selectedPackageId : selectedItems.length > 0;
   const previewStartDate = dateRange.from ?? startOfDay(new Date());
   const previewEndDate = dateRange.to ?? startOfDay(new Date());
 
   const { data: quote } = api.rentals.quoteRentalSelection.useQuery(
     {
       mode,
-      packageId: mode === "PACKAGE" ? (selectedPackageId ?? undefined) : undefined,
+      packageId:
+        mode === "PACKAGE" ? (selectedPackageId ?? undefined) : undefined,
       items: mode === "ITEMS" ? selectedItems : [],
       startDate: previewStartDate,
       endDate: previewEndDate,
@@ -88,13 +92,12 @@ export function EquipmentBooking() {
   );
 
   const selectedPackage =
-    packages?.find((gearPackage) => gearPackage.id === selectedPackageId) ?? null;
+    packages?.find((gearPackage) => gearPackage.id === selectedPackageId) ??
+    null;
 
   const itemPricingById = useMemo(
     () =>
-      new Map(
-        (quote?.itemPricing ?? []).map((row) => [row.gearItemId, row]),
-      ),
+      new Map((quote?.itemPricing ?? []).map((row) => [row.gearItemId, row])),
     [quote?.itemPricing],
   );
 
@@ -162,7 +165,9 @@ export function EquipmentBooking() {
     const dayRentals = getRentalsForDate(date);
     if (dayRentals.length > 0) {
       setFocusedBookings((prev) =>
-        prev && isSameDay(prev.date, date) ? null : { date, rentals: dayRentals },
+        prev && isSameDay(prev.date, date)
+          ? null
+          : { date, rentals: dayRentals },
       );
     } else {
       setFocusedBookings(null);
@@ -192,7 +197,13 @@ export function EquipmentBooking() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dateRange.from || !dateRange.to || !userName.trim() || !contactInfo.trim()) return;
+    if (
+      !dateRange.from ||
+      !dateRange.to ||
+      !userName.trim() ||
+      !contactInfo.trim()
+    )
+      return;
 
     if (mode === "PACKAGE") {
       if (!selectedPackageId || quote?.available !== true) return;
@@ -219,8 +230,13 @@ export function EquipmentBooking() {
     });
   };
 
-  const totalSelectedCount = selectedItems.reduce((sum, i) => sum + i.quantity, 0);
-  const getPackageIndividualDailyPrice = (gearPackage: NonNullable<typeof selectedPackage>) =>
+  const totalSelectedCount = selectedItems.reduce(
+    (sum, i) => sum + i.quantity,
+    0,
+  );
+  const getPackageIndividualDailyPrice = (
+    gearPackage: NonNullable<typeof selectedPackage>,
+  ) =>
     gearPackage.items.reduce(
       (sum, item) => sum + item.quantity * item.gearItem.price,
       0,
@@ -239,11 +255,15 @@ export function EquipmentBooking() {
           <CardHeader>
             <CardTitle>1. Choose Booking Mode</CardTitle>
             <CardDescription>
-              Choose either a package or individual items. You can only submit one mode.
+              Choose either a package or individual items. You can only submit
+              one mode.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <Tabs value={mode} onValueChange={(value) => setMode(value as BookingMode)}>
+            <Tabs
+              value={mode}
+              onValueChange={(value) => setMode(value as BookingMode)}
+            >
               <TabsList>
                 <TabsTrigger
                   value="PACKAGE"
@@ -264,11 +284,15 @@ export function EquipmentBooking() {
               <div className="grid gap-4 sm:grid-cols-2">
                 {packagesLoading
                   ? Array.from({ length: 4 }).map((_, i) => (
-                      <div key={i} className="h-32 animate-pulse rounded-xl bg-muted" />
+                      <div
+                        key={i}
+                        className="bg-muted h-32 animate-pulse rounded-xl"
+                      />
                     ))
                   : packages?.map((gearPackage) => {
                       const isSelected = selectedPackageId === gearPackage.id;
-                      const individualDailyPrice = getPackageIndividualDailyPrice(gearPackage);
+                      const individualDailyPrice =
+                        getPackageIndividualDailyPrice(gearPackage);
                       const packageDailySavings = Math.max(
                         individualDailyPrice - gearPackage.price,
                         0,
@@ -278,36 +302,44 @@ export function EquipmentBooking() {
                           key={gearPackage.id}
                           onClick={() =>
                             setSelectedPackageId((current) =>
-                              current === gearPackage.id ? null : gearPackage.id,
+                              current === gearPackage.id
+                                ? null
+                                : gearPackage.id,
                             )
                           }
                           className={cn(
                             "relative flex cursor-pointer flex-col rounded-xl border p-4 transition-all duration-200 select-none",
                             isSelected
-                              ? "border-primary bg-primary/5 ring-1 ring-primary"
+                              ? "border-primary bg-primary/5 ring-primary ring-1"
                               : "border-muted hover:border-primary/50 hover:bg-muted/50",
                           )}
                         >
                           <div className="mb-2 flex items-start justify-between gap-4">
                             <div>
-                              <h4 className="text-lg font-bold">{gearPackage.name}</h4>
+                              <h4 className="text-lg font-bold">
+                                {gearPackage.name}
+                              </h4>
                               {gearPackage.shortName && (
-                                <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                                <p className="text-muted-foreground text-xs tracking-wider uppercase">
                                   {gearPackage.shortName}
                                 </p>
                               )}
                             </div>
-                            <Badge variant={isSelected ? "default" : "secondary"}>
+                            <Badge
+                              variant={isSelected ? "default" : "secondary"}
+                            >
                               ${gearPackage.price}/day
                             </Badge>
                           </div>
-                          <div className="mb-2 space-y-0.5 text-xs text-muted-foreground">
+                          <div className="text-muted-foreground mb-2 space-y-0.5 text-xs">
                             <div>
-                              Items separately: ${individualDailyPrice.toFixed(2)}/day
+                              Items separately: $
+                              {individualDailyPrice.toFixed(2)}/day
                             </div>
                             {packageDailySavings > 0 && (
                               <div className="font-medium text-emerald-600 dark:text-emerald-400">
-                                Package savings: ${packageDailySavings.toFixed(2)}/day
+                                Package savings: $
+                                {packageDailySavings.toFixed(2)}/day
                               </div>
                             )}
                           </div>
@@ -319,6 +351,7 @@ export function EquipmentBooking() {
                                 itemName={item.gearItem.name}
                                 shortName={item.gearItem.shortName}
                                 description={item.gearItem.description}
+                                note={item.gearItem.note}
                               />
                             ))}
                           </div>
@@ -330,7 +363,7 @@ export function EquipmentBooking() {
               <div className="space-y-2">
                 {inventoryLoading ? (
                   <div className="flex items-center justify-center py-16">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
                   </div>
                 ) : (
                   inventory?.map((item) => {
@@ -368,8 +401,13 @@ export function EquipmentBooking() {
                             )}
                           </div>
                           {item.shortName && (
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-muted-foreground text-xs">
                               {item.shortName}
+                            </p>
+                          )}
+                          {isActive && item.note && (
+                            <p className="text-amber-400 mt-1 text-xs">
+                              <b>Note:</b> {item.note}
                             </p>
                           )}
                         </div>
@@ -380,7 +418,7 @@ export function EquipmentBooking() {
                           <div className="flex flex-col items-end text-right text-sm tabular-nums">
                             {isActive && hasDiscount ? (
                               <>
-                                <span className="text-xs text-muted-foreground line-through">
+                                <span className="text-muted-foreground text-xs line-through">
                                   ${rowPricing.originalRowTotal.toFixed(2)}
                                 </span>
                                 <span className="font-semibold text-emerald-600 dark:text-emerald-400">
@@ -393,7 +431,9 @@ export function EquipmentBooking() {
                             ) : (
                               <span className="text-muted-foreground">
                                 ${item.price.toFixed(2)}
-                                <span className="text-[10px] opacity-60">/day</span>
+                                <span className="text-[10px] opacity-60">
+                                  /day
+                                </span>
                               </span>
                             )}
                           </div>
@@ -410,7 +450,7 @@ export function EquipmentBooking() {
                             >
                               {remaining}
                             </span>
-                            <span className="text-[9px] text-muted-foreground uppercase">
+                            <span className="text-muted-foreground text-[9px] uppercase">
                               avail
                             </span>
                           </div>
@@ -430,7 +470,9 @@ export function EquipmentBooking() {
                             <span
                               className={cn(
                                 "min-w-7 text-center text-sm font-semibold tabular-nums",
-                                isActive ? "text-primary" : "text-muted-foreground",
+                                isActive
+                                  ? "text-primary"
+                                  : "text-muted-foreground",
                               )}
                             >
                               {selectedQty}
@@ -453,8 +495,9 @@ export function EquipmentBooking() {
                 )}
 
                 {mode === "ITEMS" && totalSelectedCount > 0 && (
-                  <div className="pt-2 text-right text-sm text-muted-foreground">
-                    {totalSelectedCount} item{totalSelectedCount !== 1 && "s"} selected
+                  <div className="text-muted-foreground pt-2 text-right text-sm">
+                    {totalSelectedCount} item{totalSelectedCount !== 1 && "s"}{" "}
+                    selected
                   </div>
                 )}
               </div>
@@ -463,7 +506,7 @@ export function EquipmentBooking() {
             <div className="border-t pt-6">
               <div className="mb-4 text-center">
                 <h3 className="mb-1 text-lg font-bold">2. Choose Your Dates</h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   {mode === "PACKAGE"
                     ? "Pick a package and dates to validate availability."
                     : "Add items and dates to check stock in realtime."}
@@ -471,10 +514,12 @@ export function EquipmentBooking() {
               </div>
 
               <div className="relative mx-auto w-full max-w-fit">
-                <div className="overflow-auto rounded-2xl border bg-card p-4 shadow-sm sm:p-6">
+                <div className="bg-card overflow-auto rounded-2xl border p-4 shadow-sm sm:p-6">
                   <Calendar
                     mode="range"
-                    selected={{ from: dateRange.from, to: dateRange.to } as never}
+                    selected={
+                      { from: dateRange.from, to: dateRange.to } as never
+                    }
                     onSelect={(range) =>
                       setDateRange(
                         range
@@ -489,7 +534,8 @@ export function EquipmentBooking() {
                       unavailable: "bg-red-500/10 rounded-md",
                     }}
                     disabled={(date) =>
-                      date < today || (hasDateRange && quoteEnabled && isDateUnavailable(date))
+                      date < today ||
+                      (hasDateRange && quoteEnabled && isDateUnavailable(date))
                     }
                     numberOfMonths={2}
                     showOutsideDays={false}
@@ -499,7 +545,9 @@ export function EquipmentBooking() {
                         const dayRentals = getRentalsForDate(props.day.date);
                         const isBooked = dayRentals.length > 0;
                         const isUnavail =
-                          hasDateRange && quoteEnabled && isDateUnavailable(props.day.date);
+                          hasDateRange &&
+                          quoteEnabled &&
+                          isDateUnavailable(props.day.date);
                         return (
                           <CalendarDayButton {...props}>
                             <div className="relative flex flex-col items-center">
@@ -526,18 +574,20 @@ export function EquipmentBooking() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="absolute -top-2 right-2 z-10 h-7 gap-1 rounded-full border bg-background px-2 text-[10px] uppercase tracking-wider text-muted-foreground shadow-sm hover:text-foreground"
-                    onClick={() => setDateRange({ from: undefined, to: undefined })}
+                    className="bg-background text-muted-foreground hover:text-foreground absolute -top-2 right-2 z-10 h-7 gap-1 rounded-full border px-2 text-[10px] tracking-wider uppercase shadow-sm"
+                    onClick={() =>
+                      setDateRange({ from: undefined, to: undefined })
+                    }
                   >
                     <X className="h-3 w-3" /> Clear dates
                   </Button>
                 )}
 
                 {focusedBookings && (
-                  <div className="absolute top-1/2 left-1/2 z-50 mt-3 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border bg-background p-4 shadow-xl">
+                  <div className="bg-background absolute top-1/2 left-1/2 z-50 mt-3 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border p-4 shadow-xl">
                     <div className="mb-3 flex items-center justify-between">
                       <div className="flex items-center gap-2 text-sm font-bold">
-                        <CalendarIcon className="h-4 w-4 text-primary" />
+                        <CalendarIcon className="text-primary h-4 w-4" />
                         {format(focusedBookings.date, "EEEE, MMMM d, yyyy")}
                       </div>
                       <Button
@@ -553,11 +603,14 @@ export function EquipmentBooking() {
                       {focusedBookings.rentals.map((rental) => (
                         <div
                           key={rental.id}
-                          className="rounded-lg border border-muted bg-muted/50 p-2.5 text-xs"
+                          className="border-muted bg-muted/50 rounded-lg border p-2.5 text-xs"
                         >
-                          <div className="mb-1 font-bold">{rental.userName}</div>
+                          <div className="mb-1 font-bold">
+                            {rental.userName}
+                          </div>
                           <div className="text-muted-foreground">
-                            {rental.gearPackage?.name ?? "Individual item rental"}
+                            {rental.gearPackage?.name ??
+                              "Individual item rental"}
                           </div>
                         </div>
                       ))}
@@ -630,8 +683,8 @@ export function EquipmentBooking() {
                 />
               </div>
 
-              <div className="space-y-3 rounded-2xl border border-muted/60 bg-muted/40 p-5">
-                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+              <div className="border-muted/60 bg-muted/40 space-y-3 rounded-2xl border p-5">
+                <Label className="text-muted-foreground text-xs font-bold tracking-widest uppercase">
                   Booking Summary
                 </Label>
                 <div className="text-sm">
@@ -644,7 +697,9 @@ export function EquipmentBooking() {
                   {mode === "PACKAGE" ? (
                     selectedPackage ? (
                       <>
-                        <Badge variant="secondary">{selectedPackage.name}</Badge>
+                        <Badge variant="secondary">
+                          {selectedPackage.name}
+                        </Badge>
                         {selectedPackage.items.map((item) => (
                           <PackageItemBadge
                             key={item.id}
@@ -652,12 +707,13 @@ export function EquipmentBooking() {
                             itemName={item.gearItem.name}
                             shortName={item.gearItem.shortName}
                             description={item.gearItem.description}
+                            note={item.gearItem.note}
                             className="text-[10px]"
                           />
                         ))}
                       </>
                     ) : (
-                      <span className="text-sm italic text-destructive/70">
+                      <span className="text-destructive/70 text-sm italic">
                         No package selected
                       </span>
                     )
@@ -673,19 +729,20 @@ export function EquipmentBooking() {
                           itemName={gearItem?.name ?? "Item"}
                           shortName={gearItem?.shortName}
                           description={gearItem?.description}
+                          note={gearItem?.note}
                           className="text-[10px]"
                         />
                       );
                     })
                   ) : (
-                    <span className="text-sm italic text-destructive/70">
+                    <span className="text-destructive/70 text-sm italic">
                       No items selected
                     </span>
                   )}
                 </div>
 
                 {hasDateRange && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="text-muted-foreground flex items-center gap-2 text-xs">
                     <CalendarIcon className="h-3 w-3" />
                     {format(dateRange.from!, "MMM d")} &ndash;{" "}
                     {format(dateRange.to!, "MMM d, yyyy")}
@@ -693,21 +750,24 @@ export function EquipmentBooking() {
                 )}
 
                 {quoteEnabled && quote && (
-                  <div className="space-y-1.5 border-t border-muted/60 pt-3 text-sm">
-                    <div className="flex justify-between text-muted-foreground">
+                  <div className="border-muted/60 space-y-1.5 border-t pt-3 text-sm">
+                    <div className="text-muted-foreground flex justify-between">
                       <span>Days</span>
                       <span className="tabular-nums">{numDays || 1}</span>
                     </div>
-                    <div className="flex justify-between text-muted-foreground">
+                    <div className="text-muted-foreground flex justify-between">
                       <span>Subtotal</span>
-                      <span className="tabular-nums">${quote.baseDailyPrice}/day</span>
+                      <span className="tabular-nums">
+                        ${quote.baseDailyPrice}/day
+                      </span>
                     </div>
                     {mode === "PACKAGE" && selectedPackage && (
                       <>
-                        <div className="flex justify-between text-muted-foreground">
+                        <div className="text-muted-foreground flex justify-between">
                           <span>Items separately</span>
                           <span className="tabular-nums">
-                            ${selectedPackageIndividualDailyPrice.toFixed(2)}/day
+                            ${selectedPackageIndividualDailyPrice.toFixed(2)}
+                            /day
                           </span>
                         </div>
                         {selectedPackageDailySavings > 0 && (
@@ -738,11 +798,13 @@ export function EquipmentBooking() {
                         </span>
                       </div>
                     )}
-                    <div className="flex justify-between text-muted-foreground">
+                    <div className="text-muted-foreground flex justify-between">
                       <span>Daily rate</span>
-                      <span className="tabular-nums">${quote.discountedDailyPrice}/day</span>
+                      <span className="tabular-nums">
+                        ${quote.discountedDailyPrice}/day
+                      </span>
                     </div>
-                    <div className="border-t border-muted/60 pt-2">
+                    <div className="border-muted/60 border-t pt-2">
                       <div className="flex items-baseline justify-between">
                         <span className="text-sm font-bold">Total</span>
                         <span

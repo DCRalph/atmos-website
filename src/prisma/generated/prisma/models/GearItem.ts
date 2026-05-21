@@ -41,6 +41,7 @@ export type GearItemMinAggregateOutputType = {
   name: string | null
   shortName: string | null
   description: string | null
+  note: string | null
   quantity: number | null
   price: number | null
   image: string | null
@@ -53,6 +54,7 @@ export type GearItemMaxAggregateOutputType = {
   name: string | null
   shortName: string | null
   description: string | null
+  note: string | null
   quantity: number | null
   price: number | null
   image: string | null
@@ -65,6 +67,7 @@ export type GearItemCountAggregateOutputType = {
   name: number
   shortName: number
   description: number
+  note: number
   quantity: number
   price: number
   image: number
@@ -89,6 +92,7 @@ export type GearItemMinAggregateInputType = {
   name?: true
   shortName?: true
   description?: true
+  note?: true
   quantity?: true
   price?: true
   image?: true
@@ -101,6 +105,7 @@ export type GearItemMaxAggregateInputType = {
   name?: true
   shortName?: true
   description?: true
+  note?: true
   quantity?: true
   price?: true
   image?: true
@@ -113,6 +118,7 @@ export type GearItemCountAggregateInputType = {
   name?: true
   shortName?: true
   description?: true
+  note?: true
   quantity?: true
   price?: true
   image?: true
@@ -212,6 +218,7 @@ export type GearItemGroupByOutputType = {
   name: string
   shortName: string | null
   description: string | null
+  note: string | null
   quantity: number
   price: number
   image: string | null
@@ -247,6 +254,7 @@ export type GearItemWhereInput = {
   name?: Prisma.StringFilter<"GearItem"> | string
   shortName?: Prisma.StringNullableFilter<"GearItem"> | string | null
   description?: Prisma.StringNullableFilter<"GearItem"> | string | null
+  note?: Prisma.StringNullableFilter<"GearItem"> | string | null
   quantity?: Prisma.IntFilter<"GearItem"> | number
   price?: Prisma.FloatFilter<"GearItem"> | number
   image?: Prisma.StringNullableFilter<"GearItem"> | string | null
@@ -262,6 +270,7 @@ export type GearItemOrderByWithRelationInput = {
   name?: Prisma.SortOrder
   shortName?: Prisma.SortOrderInput | Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
+  note?: Prisma.SortOrderInput | Prisma.SortOrder
   quantity?: Prisma.SortOrder
   price?: Prisma.SortOrder
   image?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -280,6 +289,7 @@ export type GearItemWhereUniqueInput = Prisma.AtLeast<{
   name?: Prisma.StringFilter<"GearItem"> | string
   shortName?: Prisma.StringNullableFilter<"GearItem"> | string | null
   description?: Prisma.StringNullableFilter<"GearItem"> | string | null
+  note?: Prisma.StringNullableFilter<"GearItem"> | string | null
   quantity?: Prisma.IntFilter<"GearItem"> | number
   price?: Prisma.FloatFilter<"GearItem"> | number
   image?: Prisma.StringNullableFilter<"GearItem"> | string | null
@@ -295,6 +305,7 @@ export type GearItemOrderByWithAggregationInput = {
   name?: Prisma.SortOrder
   shortName?: Prisma.SortOrderInput | Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
+  note?: Prisma.SortOrderInput | Prisma.SortOrder
   quantity?: Prisma.SortOrder
   price?: Prisma.SortOrder
   image?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -315,6 +326,7 @@ export type GearItemScalarWhereWithAggregatesInput = {
   name?: Prisma.StringWithAggregatesFilter<"GearItem"> | string
   shortName?: Prisma.StringNullableWithAggregatesFilter<"GearItem"> | string | null
   description?: Prisma.StringNullableWithAggregatesFilter<"GearItem"> | string | null
+  note?: Prisma.StringNullableWithAggregatesFilter<"GearItem"> | string | null
   quantity?: Prisma.IntWithAggregatesFilter<"GearItem"> | number
   price?: Prisma.FloatWithAggregatesFilter<"GearItem"> | number
   image?: Prisma.StringNullableWithAggregatesFilter<"GearItem"> | string | null
@@ -327,6 +339,7 @@ export type GearItemCreateInput = {
   name: string
   shortName?: string | null
   description?: string | null
+  note?: string | null
   quantity?: number
   price?: number
   image?: string | null
@@ -342,6 +355,7 @@ export type GearItemUncheckedCreateInput = {
   name: string
   shortName?: string | null
   description?: string | null
+  note?: string | null
   quantity?: number
   price?: number
   image?: string | null
@@ -357,6 +371,7 @@ export type GearItemUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   shortName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -372,6 +387,7 @@ export type GearItemUncheckedUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   shortName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -387,6 +403,7 @@ export type GearItemCreateManyInput = {
   name: string
   shortName?: string | null
   description?: string | null
+  note?: string | null
   quantity?: number
   price?: number
   image?: string | null
@@ -399,6 +416,7 @@ export type GearItemUpdateManyMutationInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   shortName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -411,6 +429,7 @@ export type GearItemUncheckedUpdateManyInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   shortName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -423,6 +442,7 @@ export type GearItemCountOrderByAggregateInput = {
   name?: Prisma.SortOrder
   shortName?: Prisma.SortOrder
   description?: Prisma.SortOrder
+  note?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   price?: Prisma.SortOrder
   image?: Prisma.SortOrder
@@ -440,6 +460,7 @@ export type GearItemMaxOrderByAggregateInput = {
   name?: Prisma.SortOrder
   shortName?: Prisma.SortOrder
   description?: Prisma.SortOrder
+  note?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   price?: Prisma.SortOrder
   image?: Prisma.SortOrder
@@ -452,6 +473,7 @@ export type GearItemMinOrderByAggregateInput = {
   name?: Prisma.SortOrder
   shortName?: Prisma.SortOrder
   description?: Prisma.SortOrder
+  note?: Prisma.SortOrder
   quantity?: Prisma.SortOrder
   price?: Prisma.SortOrder
   image?: Prisma.SortOrder
@@ -516,6 +538,7 @@ export type GearItemCreateWithoutPackageItemsInput = {
   name: string
   shortName?: string | null
   description?: string | null
+  note?: string | null
   quantity?: number
   price?: number
   image?: string | null
@@ -530,6 +553,7 @@ export type GearItemUncheckedCreateWithoutPackageItemsInput = {
   name: string
   shortName?: string | null
   description?: string | null
+  note?: string | null
   quantity?: number
   price?: number
   image?: string | null
@@ -560,6 +584,7 @@ export type GearItemUpdateWithoutPackageItemsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   shortName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -574,6 +599,7 @@ export type GearItemUncheckedUpdateWithoutPackageItemsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   shortName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -588,6 +614,7 @@ export type GearItemCreateWithoutRentalItemsInput = {
   name: string
   shortName?: string | null
   description?: string | null
+  note?: string | null
   quantity?: number
   price?: number
   image?: string | null
@@ -602,6 +629,7 @@ export type GearItemUncheckedCreateWithoutRentalItemsInput = {
   name: string
   shortName?: string | null
   description?: string | null
+  note?: string | null
   quantity?: number
   price?: number
   image?: string | null
@@ -632,6 +660,7 @@ export type GearItemUpdateWithoutRentalItemsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   shortName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -646,6 +675,7 @@ export type GearItemUncheckedUpdateWithoutRentalItemsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   shortName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -660,6 +690,7 @@ export type GearItemCreateWithoutDiscountRequirementsInput = {
   name: string
   shortName?: string | null
   description?: string | null
+  note?: string | null
   quantity?: number
   price?: number
   image?: string | null
@@ -674,6 +705,7 @@ export type GearItemUncheckedCreateWithoutDiscountRequirementsInput = {
   name: string
   shortName?: string | null
   description?: string | null
+  note?: string | null
   quantity?: number
   price?: number
   image?: string | null
@@ -704,6 +736,7 @@ export type GearItemUpdateWithoutDiscountRequirementsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   shortName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -718,6 +751,7 @@ export type GearItemUncheckedUpdateWithoutDiscountRequirementsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   shortName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  note?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   quantity?: Prisma.IntFieldUpdateOperationsInput | number
   price?: Prisma.FloatFieldUpdateOperationsInput | number
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -781,6 +815,7 @@ export type GearItemSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   name?: boolean
   shortName?: boolean
   description?: boolean
+  note?: boolean
   quantity?: boolean
   price?: boolean
   image?: boolean
@@ -797,6 +832,7 @@ export type GearItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   name?: boolean
   shortName?: boolean
   description?: boolean
+  note?: boolean
   quantity?: boolean
   price?: boolean
   image?: boolean
@@ -809,6 +845,7 @@ export type GearItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   name?: boolean
   shortName?: boolean
   description?: boolean
+  note?: boolean
   quantity?: boolean
   price?: boolean
   image?: boolean
@@ -821,6 +858,7 @@ export type GearItemSelectScalar = {
   name?: boolean
   shortName?: boolean
   description?: boolean
+  note?: boolean
   quantity?: boolean
   price?: boolean
   image?: boolean
@@ -828,7 +866,7 @@ export type GearItemSelectScalar = {
   updatedAt?: boolean
 }
 
-export type GearItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "shortName" | "description" | "quantity" | "price" | "image" | "createdAt" | "updatedAt", ExtArgs["result"]["gearItem"]>
+export type GearItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "shortName" | "description" | "note" | "quantity" | "price" | "image" | "createdAt" | "updatedAt", ExtArgs["result"]["gearItem"]>
 export type GearItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   packageItems?: boolean | Prisma.GearItem$packageItemsArgs<ExtArgs>
   rentalItems?: boolean | Prisma.GearItem$rentalItemsArgs<ExtArgs>
@@ -850,6 +888,7 @@ export type $GearItemPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     name: string
     shortName: string | null
     description: string | null
+    note: string | null
     quantity: number
     price: number
     image: string | null
@@ -1285,6 +1324,7 @@ export interface GearItemFieldRefs {
   readonly name: Prisma.FieldRef<"GearItem", 'String'>
   readonly shortName: Prisma.FieldRef<"GearItem", 'String'>
   readonly description: Prisma.FieldRef<"GearItem", 'String'>
+  readonly note: Prisma.FieldRef<"GearItem", 'String'>
   readonly quantity: Prisma.FieldRef<"GearItem", 'Int'>
   readonly price: Prisma.FieldRef<"GearItem", 'Float'>
   readonly image: Prisma.FieldRef<"GearItem", 'String'>

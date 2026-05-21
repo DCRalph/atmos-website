@@ -478,6 +478,7 @@ export const GearItemScalarFieldEnum = {
   name: 'name',
   shortName: 'shortName',
   description: 'description',
+  note: 'note',
   quantity: 'quantity',
   price: 'price',
   image: 'image',
