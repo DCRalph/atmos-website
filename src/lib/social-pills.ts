@@ -176,7 +176,7 @@ export const SOCIAL_PLATFORMS: readonly SocialPlatform[] = [
     pillTitle: "youtube-pill",
     hosts: YOUTUBE_HOSTS,
     supportsHandleInput: true,
-    inputPlaceholder: "atmos or https://youtube.com/@atmos",
+    inputPlaceholder: "atmos or https://www.youtube.com/@Atmosmediatv",
     inputHelp:
       "Channel handle (e.g. atmos) or a full YouTube URL. Leading @ is optional.",
     pillClassName:

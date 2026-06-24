@@ -76,7 +76,7 @@ const smallLinks: SocialLink[] = [
   },
   {
     platform: "YouTube",
-    handle: "@ATMOS_TV",
+    handle: "@Atmosmediatv",
     url: links.youtube,
     icon: FaYoutube,
     color: "#E44405F",

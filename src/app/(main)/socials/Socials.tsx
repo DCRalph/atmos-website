@@ -19,7 +19,7 @@ type SocialLink = {
 export const links = {
   instagram: "https://instagram.com/atmos.nz",
   tiktok: "https://tiktok.com/@atmos_tv",
-  youtube: "https://youtube.com/@ATMOS_TV",
+  youtube: "https://www.youtube.com/@Atmosmediatv",
   facebook: "https://facebook.com/atmos.nz",
   soundcloud: "https://soundcloud.com/atmosmedia",
   spotify: "https://open.spotify.com/user/31zgkcouzyfpwhb3pfixdpvlfaom?si=a7f5f0fae13e4b1b",
@@ -45,7 +45,7 @@ const socialLinks: SocialLink[] = [
     label: "YOUTUBE",
     href: links.youtube,
     image: "/socials/youtube.png",
-    username: "@ATMOS_TV",
+    username: "@Atmosmediatv",
     color: "#FF0000",
   },
   {
