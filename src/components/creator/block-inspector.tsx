@@ -12,15 +12,34 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { type ClientBlock } from "./block-types";
+import { ImageUploadField } from "./image-upload-field";
+import { ImageGalleryUpload } from "./image-gallery-upload";
 
 type Props = {
   block: ClientBlock;
   onChange: (next: ClientBlock) => void;
+  /**
+   * Profile the uploaded files should be associated with. In self mode this
+   * can be omitted (the server falls back to the current user's profile); in
+   * admin mode pass the target profile id.
+   */
+  profileId?: string;
 };
 
 function dataField(block: ClientBlock, key: string): string {
   const v = block.data[key];
   return typeof v === "string" ? v : "";
+}
+
+function dataFileId(block: ClientBlock, key: string): string | null {
+  const v = block.data[key];
+  return typeof v === "string" && v ? v : null;
+}
+
+function dataFileIdArray(block: ClientBlock, key: string): string[] {
+  const v = block.data[key];
+  if (!Array.isArray(v)) return [];
+  return v.filter((x): x is string => typeof x === "string" && x.length > 0);
 }
 
 function updateData(
@@ -31,7 +50,7 @@ function updateData(
   return { ...block, data: { ...block.data, [key]: value } };
 }
 
-export function BlockInspector({ block, onChange }: Props) {
+export function BlockInspector({ block, onChange, profileId }: Props) {
   switch (block.type) {
     case "HEADING":
       return (
@@ -85,14 +104,14 @@ export function BlockInspector({ block, onChange }: Props) {
     case "IMAGE":
       return (
         <div className="space-y-3">
-          <div className="space-y-1">
-            <Label>Image URL</Label>
-            <Input
-              value={dataField(block, "url")}
-              onChange={(e) => onChange(updateData(block, "url", e.target.value))}
-              placeholder="https://..."
-            />
-          </div>
+          <ImageUploadField
+            label="Image"
+            value={dataFileId(block, "fileId")}
+            onChange={(id) => onChange(updateData(block, "fileId", id))}
+            profileId={profileId}
+            kind="block_image"
+            aspect="square"
+          />
           <div className="space-y-1">
             <Label>Alt text</Label>
             <Input
@@ -103,41 +122,14 @@ export function BlockInspector({ block, onChange }: Props) {
         </div>
       );
     case "GALLERY": {
-      const urls = (block.data.urls as string[] | undefined) ?? [];
+      const fileIds = dataFileIdArray(block, "fileIds");
       return (
-        <div className="space-y-3">
-          <Label>Image URLs</Label>
-          {urls.map((u, i) => (
-            <div key={i} className="flex gap-2">
-              <Input
-                value={u}
-                onChange={(e) => {
-                  const copy = [...urls];
-                  copy[i] = e.target.value;
-                  onChange(updateData(block, "urls", copy));
-                }}
-              />
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  const copy = [...urls];
-                  copy.splice(i, 1);
-                  onChange(updateData(block, "urls", copy));
-                }}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onChange(updateData(block, "urls", [...urls, ""]))}
-          >
-            <Plus className="mr-1 h-4 w-4" /> Add image
-          </Button>
-        </div>
+        <ImageGalleryUpload
+          label="Gallery images"
+          value={fileIds}
+          onChange={(ids) => onChange(updateData(block, "fileIds", ids))}
+          profileId={profileId}
+        />
       );
     }
     case "SOUNDCLOUD_TRACK":

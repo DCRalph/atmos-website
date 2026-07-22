@@ -15,6 +15,11 @@ import {
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { ClaimProfileCTA } from "~/components/creator/claim-profile-cta";
+import {
+  parseBlockOverrides,
+  resolveProfileTokens,
+  themeToCssVars,
+} from "~/lib/creator-theme";
 
 export const revalidate = 60;
 
@@ -26,6 +31,7 @@ async function loadProfile(handle: string) {
     include: {
       blocks: { orderBy: [{ y: "asc" }, { x: "asc" }] },
       socials: { orderBy: { sortOrder: "asc" } },
+      themeRef: true,
       gigCreators: {
         orderBy: { sortOrder: "asc" },
         include: {
@@ -105,10 +111,13 @@ export default async function PublicCreatorProfilePage({
     return notFound();
   }
 
-  const accent = profile.accentColor ?? null;
-  const accentVars: React.CSSProperties = accent
-    ? ({ ["--creator-accent" as string]: accent } as React.CSSProperties)
-    : {};
+  const tokens = resolveProfileTokens(
+    profile.themeRef?.tokens,
+    profile.accentColor,
+  );
+  const blockOverrides = parseBlockOverrides(profile.themeRef?.blockOverrides);
+  const pageStyle = themeToCssVars(tokens, blockOverrides);
+  const accent = tokens.accent;
 
   const blocks: (ClientBlock & { type: CreatorBlockTypeName })[] =
     profile.blocks.map((b) => ({
@@ -135,10 +144,16 @@ export default async function PublicCreatorProfilePage({
 
   return (
     <div
-      className={`min-h-dvh ${
-        profile.theme === "light" ? "bg-white text-black" : ""
-      }`}
-      style={accentVars}
+      className="creator-page min-h-dvh"
+      style={{
+        ...pageStyle,
+        background:
+          "var(--creator-page-bg-image), var(--creator-page-bg)",
+        color: "var(--creator-page-fg)",
+        fontFamily: "var(--creator-body-font)",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
     >
       {!profile.isPublished && (
         <div className="bg-amber-500 text-black text-center text-xs py-1">
@@ -169,7 +184,19 @@ export default async function PublicCreatorProfilePage({
               className="object-cover"
               priority
             />
-            <div className="absolute inset-0 bg-linear-to-t from-background to-transparent" />
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(to top, var(--creator-page-bg), transparent)",
+              }}
+            />
+            {tokens.bannerOverlay && (
+              <div
+                className="absolute inset-0"
+                style={{ background: tokens.bannerOverlay }}
+              />
+            )}
           </div>
         ) : (
           <div
@@ -199,7 +226,14 @@ export default async function PublicCreatorProfilePage({
             </div>
             <div className="flex-1 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-3xl md:text-4xl font-bold">
+                <h1
+                  className="text-3xl md:text-4xl"
+                  style={{
+                    fontFamily: "var(--creator-heading-font)",
+                    fontWeight: "var(--creator-heading-weight)",
+                    letterSpacing: "var(--creator-letter-spacing)",
+                  }}
+                >
                   {profile.displayName}
                 </h1>
                 {profile.claimStatus === "UNCLAIMED" && (
@@ -245,6 +279,8 @@ export default async function PublicCreatorProfilePage({
           cols={profile.gridCols}
           rowHeightPx={profile.rowHeightPx}
           accent={accent}
+          tokens={tokens}
+          blockOverrides={blockOverrides}
         />
 
         {profile.claimStatus === "UNCLAIMED" &&

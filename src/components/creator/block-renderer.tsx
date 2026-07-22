@@ -144,9 +144,9 @@ export function BlockRenderer({
       );
     }
     case "IMAGE": {
-      const url = getString(block.data, "url");
+      const fileId = getString(block.data, "fileId");
       const alt = getString(block.data, "alt") || "";
-      if (!url) {
+      if (!fileId) {
         return (
           <div className="bg-muted text-muted-foreground grid h-full w-full place-items-center rounded-md text-sm">
             No image selected
@@ -156,13 +156,17 @@ export function BlockRenderer({
       return (
         <div className="relative h-full w-full overflow-hidden rounded-md">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={url} alt={alt} className="h-full w-full object-cover" />
+          <img
+            src={buildMediaUrl(fileId)}
+            alt={alt}
+            className="h-full w-full object-cover"
+          />
         </div>
       );
     }
     case "GALLERY": {
-      const urls = getArray<string>(block.data, "urls");
-      if (!urls.length) {
+      const fileIds = getArray<string>(block.data, "fileIds");
+      if (!fileIds.length) {
         return (
           <div className="bg-muted text-muted-foreground grid h-full w-full place-items-center rounded-md text-sm">
             Empty gallery
@@ -171,11 +175,11 @@ export function BlockRenderer({
       }
       return (
         <div className="grid h-full w-full grid-cols-2 gap-2 md:grid-cols-3">
-          {urls.map((u, i) => (
+          {fileIds.map((id, i) => (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              key={i}
-              src={u}
+              key={`${id}-${i}`}
+              src={buildMediaUrl(id)}
               alt=""
               className="h-full w-full rounded-md object-cover"
             />

@@ -16,6 +16,7 @@ import { rentalsRouter } from "~/server/api/routers/rentals";
 import { settingsRouter } from "~/server/api/routers/settings";
 import { shopifyRouter } from "~/server/api/routers/shopify";
 import { creatorProfilesRouter } from "~/server/api/routers/creator-profiles";
+import { creatorThemesRouter } from "~/server/api/routers/creator-themes";
 import { gigCreatorsRouter } from "~/server/api/routers/gig-creators";
 import { featureFlagsRouter } from "~/server/api/routers/feature-flags";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
@@ -44,6 +45,7 @@ export const appRouter = createTRPCRouter({
   settings: settingsRouter,
   shopify: shopifyRouter,
   creatorProfiles: creatorProfilesRouter,
+  creatorThemes: creatorThemesRouter,
   gigCreators: gigCreatorsRouter,
   featureFlags: featureFlagsRouter,
 });
