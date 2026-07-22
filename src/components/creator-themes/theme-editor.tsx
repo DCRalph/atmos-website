@@ -26,6 +26,7 @@ import {
   type ThemeTokens,
 } from "~/lib/creator-theme";
 import { ThemeCanvas } from "./theme-canvas";
+import { ImageUploadField } from "~/components/creator/image-upload-field";
 import { useUnsavedChangesWarning } from "~/hooks/use-unsaved-changes-warning";
 import { type CreatorBlockTypeName } from "~/components/creator/block-types";
 import { useRouter } from "next/navigation";
@@ -241,6 +242,16 @@ export function ThemeEditor({
                   setDirty(true);
                 }}
                 maxLength={500}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <ImageUploadField
+                label="Background image"
+                value={tokens.pageBgImageFileId}
+                onChange={(id) => patchTokens({ pageBgImageFileId: id })}
+                kind="theme_bg"
+                aspect="wide"
+                helperText="Shown behind the whole page. The banner photo is separate — set it in your profile editor under Edit identity."
               />
             </div>
           </div>

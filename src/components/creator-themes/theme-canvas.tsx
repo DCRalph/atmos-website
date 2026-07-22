@@ -137,6 +137,10 @@ export function ThemeCanvas({
                 value={tokens.bannerOverlay}
                 onChange={(v) => patch({ bannerOverlay: v })}
               />
+              <p className="text-muted-foreground text-[11px] leading-tight">
+                The banner photo itself is part of your profile, not the
+                theme — set it in the profile editor under Edit identity.
+              </p>
             </EditHotspot>
           )}
         </div>

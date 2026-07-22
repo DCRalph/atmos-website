@@ -191,7 +191,10 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
   });
   const uploadAvatar = api.creatorProfiles.uploadAvatar.useMutation();
   const clearAvatar = api.creatorProfiles.clearAvatar.useMutation();
+  const uploadBanner = api.creatorProfiles.uploadBanner.useMutation();
+  const clearBanner = api.creatorProfiles.clearBanner.useMutation();
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
   const [identityOpen, setIdentityOpen] = useState(false);
 
   async function refetch() {
@@ -301,6 +304,48 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
     await clearAvatar.mutateAsync({ profileId: mutationProfileIdArg });
     setIdentity((prev) =>
       prev ? { ...prev, avatarFileId: null } : prev,
+    );
+    await refetch();
+  }
+
+  async function onBannerFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !file.type.startsWith("image/")) return;
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const res = await uploadBanner.mutateAsync({
+        profileId: mutationProfileIdArg,
+        base64,
+        name: file.name,
+        mimeType: file.type,
+      });
+      setIdentity((prev) =>
+        prev ? { ...prev, bannerFileId: res.bannerFileId } : prev,
+      );
+      await refetch();
+    } catch {
+      // Error is available on uploadBanner.error
+    }
+  }
+
+  async function onRemoveBanner() {
+    const ok = await confirm({
+      title: "Remove banner image?",
+      description:
+        "This removes the banner from the profile. You can upload a new one anytime.",
+      confirmLabel: "Remove",
+      variant: "destructive",
+    });
+    if (!ok) return;
+    await clearBanner.mutateAsync({ profileId: mutationProfileIdArg });
+    setIdentity((prev) =>
+      prev ? { ...prev, bannerFileId: null } : prev,
     );
     await refetch();
   }
@@ -481,8 +526,8 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
           <DialogHeader>
             <DialogTitle>Edit identity</DialogTitle>
             <DialogDescription>
-              Your display name, handle, bio and profile photo. Changes save
-              when you hit the button below.
+              Your display name, handle, bio, profile photo and banner image.
+              Changes save when you hit the button below.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -573,6 +618,100 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
               {(uploadAvatar.error ?? clearAvatar.error) && (
                 <p className="text-destructive text-xs">
                   {(uploadAvatar.error ?? clearAvatar.error)?.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Banner image</Label>
+              <input
+                ref={bannerInputRef}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(ev) => void onBannerFileChange(ev)}
+              />
+              <div className="flex items-start gap-3">
+                <button
+                  type="button"
+                  onClick={() => bannerInputRef.current?.click()}
+                  disabled={uploadBanner.isPending || clearBanner.isPending}
+                  className="group bg-muted relative aspect-video w-40 shrink-0 overflow-hidden rounded-md border disabled:opacity-60"
+                  aria-label={
+                    identity.bannerFileId
+                      ? "Replace banner image"
+                      : "Upload banner image"
+                  }
+                >
+                  {identity.bannerFileId ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={buildMediaUrl(identity.bannerFileId)}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="text-muted-foreground grid h-full w-full place-items-center">
+                      <ImagePlus className="h-5 w-5" />
+                    </div>
+                  )}
+                  <div className="bg-background/70 absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                    {uploadBanner.isPending ? (
+                      <Loader2 className="text-foreground h-5 w-5 animate-spin" />
+                    ) : (
+                      <ImagePlus className="text-foreground h-5 w-5" />
+                    )}
+                  </div>
+                </button>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <div className="flex flex-wrap gap-1.5">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={
+                        uploadBanner.isPending || clearBanner.isPending
+                      }
+                      onClick={() => bannerInputRef.current?.click()}
+                    >
+                      {uploadBanner.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <ImagePlus className="h-4 w-4" />
+                      )}
+                      <span className="ml-1.5">
+                        {identity.bannerFileId ? "Replace" : "Upload"}
+                      </span>
+                    </Button>
+                    {identity.bannerFileId ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        disabled={
+                          uploadBanner.isPending || clearBanner.isPending
+                        }
+                        onClick={() => void onRemoveBanner()}
+                      >
+                        {clearBanner.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                        <span className="ml-1.5">Remove</span>
+                      </Button>
+                    ) : null}
+                  </div>
+                  <p className="text-muted-foreground text-[11px] leading-tight">
+                    Shown across the top of your public page. Wide images
+                    (about 3:1) work best. JPG, PNG, WebP or GIF.
+                  </p>
+                </div>
+              </div>
+              {(uploadBanner.error ?? clearBanner.error) && (
+                <p className="text-destructive text-xs">
+                  {(uploadBanner.error ?? clearBanner.error)?.message}
                 </p>
               )}
             </div>

@@ -531,6 +531,108 @@ export const creatorProfilesRouter = createTRPCRouter({
       return { ok: true as const, avatarFileId: null as string | null };
     }),
 
+  uploadBanner: protectedProcedure
+    .input(
+      z.object({
+        profileId: z.string().optional(),
+        base64: z.string(),
+        name: z.string(),
+        mimeType: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { profileId } = await resolveTargetProfileId(ctx, input.profileId);
+      if (!input.mimeType.startsWith("image/")) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Banner must be an image file",
+        });
+      }
+      const base64Data = input.base64.replace(/^data:[^;]+;base64,/, "");
+      const buffer = Buffer.from(base64Data, "base64");
+      if (buffer.length > limits.fileSize) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Image is too large (max ${limits.fileSize / 1024 / 1024}MB before processing)`,
+        });
+      }
+      // Banners are displayed full-width, so keep more detail than avatars.
+      const resized = await toWebPMax(buffer, {
+        maxSizePx: 2048,
+        quality: 82,
+      });
+      const id = randomUUID();
+      const key = `creator-profiles/${profileId}/banner-${id}.webp`;
+      const uploadResult = await uploadBufferToS3({
+        buffer: resized.buffer,
+        key,
+        contentType: resized.contentType,
+        name: `${input.name.replace(/\.[^/.]+$/, "") || "banner"}.webp`,
+        fileType: "photo",
+        for: "creator_profile_banner",
+        forId: profileId,
+        acl: "public-read",
+        userId: ctx.session.user.id,
+        width: resized.width,
+        height: resized.height,
+      });
+      const newFileId = uploadResult.record.id;
+      const prev = await ctx.db.creatorProfile.findUnique({
+        where: { id: profileId },
+        select: { bannerFileId: true, handle: true },
+      });
+      await ctx.db.creatorProfile.update({
+        where: { id: profileId },
+        data: { bannerFileId: newFileId },
+      });
+      if (prev?.bannerFileId && prev.bannerFileId !== newFileId) {
+        try {
+          await softDeleteFile({ id: prev.bannerFileId });
+        } catch {
+          // ignore orphan / already deleted
+        }
+      }
+      await logUserActivity(
+        ActivityType.CREATOR_PROFILE_UPDATED,
+        `Updated banner image for @${prev?.handle ?? profileId}`,
+        ctx.session.user.id,
+        undefined,
+        { profileId, bannerFileId: newFileId },
+      );
+      return { bannerFileId: newFileId };
+    }),
+
+  clearBanner: protectedProcedure
+    .input(z.object({ profileId: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const { profileId } = await resolveTargetProfileId(ctx, input.profileId);
+      const prev = await ctx.db.creatorProfile.findUnique({
+        where: { id: profileId },
+        select: { bannerFileId: true, handle: true },
+      });
+      if (!prev?.bannerFileId) {
+        return { ok: true as const, bannerFileId: null as string | null };
+      }
+      const oldId = prev.bannerFileId;
+      await ctx.db.creatorProfile.update({
+        where: { id: profileId },
+        data: { bannerFileId: null },
+      });
+      try {
+        await softDeleteFile({ id: oldId });
+      } catch {
+        // ignore
+      }
+      await logUserActivity(
+        ActivityType.CREATOR_PROFILE_UPDATED,
+        `Removed banner image from @${prev.handle}`,
+        ctx.session.user.id,
+        undefined,
+        { profileId },
+      );
+      return { ok: true as const, bannerFileId: null as string | null };
+    }),
+
   publish: protectedProcedure
     .input(z.object({ profileId: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
