@@ -25,7 +25,6 @@ import {
   FolderOpen,
   Tag,
   ShoppingBag,
-  Store,
   Sparkles,
   Palette,
 } from "lucide-react";
@@ -82,11 +81,6 @@ const menuItems = [
     title: "Merch",
     url: "/admin/merch",
     icon: ShoppingBag,
-  },
-  {
-    title: "Shopify",
-    url: "/admin/shopify",
-    icon: Store,
   },
   {
     title: "Contact",

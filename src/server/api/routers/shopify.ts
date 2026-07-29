@@ -311,7 +311,7 @@ export const shopifyRouter = createTRPCRouter({
     .input(
       z
         .object({
-          limit: z.number().min(1).max(50).optional(),
+          limit: z.number().min(1).max(250).optional(),
         })
         .optional(),
     )
@@ -578,15 +578,49 @@ export const shopifyRouter = createTRPCRouter({
     };
   }),
 
+  // Persist the exact order an admin arranged in the UI. Each product's index
+  // in the array becomes its sortOrder, which the public merch grid reads via
+  // getProducts (ordered by sortOrder asc).
+  reorderProducts: adminProcedure
+    .input(
+      z.object({
+        ids: z.array(z.string().min(1)).min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.$transaction(
+        input.ids.map((id, index) =>
+          ctx.db.shopifyProductCache.updateMany({
+            where: { shopifyProductId: id },
+            data: { sortOrder: index },
+          }),
+        ),
+      );
+
+      return { ok: true, count: input.ids.length };
+    }),
+
   syncProducts: adminProcedure.mutation(async ({ ctx }) => {
     const products = await fetchStorefrontProducts({});
     const syncedAt = new Date();
     const ids = products.map((p) => p.id);
 
     const removed = await ctx.db.$transaction(async (tx) => {
-      for (let i = 0; i < products.length; i++) {
-        const p = products[i]!;
-        await persistCachedProduct(tx, p, { sortOrder: i, syncedAt });
+      // Preserve any manual ordering an admin set: keep each existing product's
+      // sortOrder, and append newly-discovered products after the current max
+      // so a sync never clobbers the arranged display order.
+      const existingRows = await tx.shopifyProductCache.findMany({
+        select: { shopifyProductId: true, sortOrder: true },
+      });
+      const existingOrder = new Map(
+        existingRows.map((r) => [r.shopifyProductId, r.sortOrder]),
+      );
+      let nextSortOrder =
+        existingRows.reduce((max, r) => Math.max(max, r.sortOrder), -1) + 1;
+
+      for (const p of products) {
+        const sortOrder = existingOrder.get(p.id) ?? nextSortOrder++;
+        await persistCachedProduct(tx, p, { sortOrder, syncedAt });
       }
 
       const deleteResult =

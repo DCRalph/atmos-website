@@ -184,31 +184,6 @@ const pastGigs = [
   },
 ];
 
-type MerchItem = {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  image: string;
-};
-
-const merchItems: MerchItem[] = [
-  {
-    id: 1,
-    name: "Atmos classic oversized tee",
-    description: "Classic oversized Atmos tee. (White)",
-    price: 69.69,
-    image: "/shop/1.jpg",
-  },
-  {
-    id: 2,
-    name: "Atmos classic oversized tee",
-    description: "Classic oversized Atmos tee. (Black)",
-    price: 69.69,
-    image: "/shop/1.jpg",
-  },
-];
-
 // Helper function to parse date strings and convert to UTC at midnight
 function parseDate(dateStr: string, isUpcoming = false): Date {
   let date: Date;
@@ -332,7 +307,6 @@ async function main() {
   await db.gig.deleteMany();
   await db.crewMember.deleteMany();
   await db.contentItem.deleteMany();
-  await db.merchItem.deleteMany();
   await db.contactSubmission.deleteMany();
 
   // Seed ContentItems
@@ -422,20 +396,6 @@ async function main() {
     });
   }
   console.log(`✓ Seeded ${pastGigs.length} past gigs`);
-
-  // Seed MerchItems
-  console.log("Seeding merch items...");
-  for (const item of merchItems) {
-    await db.merchItem.create({
-      data: {
-        name: item.name,
-        description: item.description,
-        price: item.price,
-        image: item.image,
-      },
-    });
-  }
-  console.log(`✓ Seeded ${merchItems.length} merch items`);
 
   console.log("Database seed completed successfully!");
 }
