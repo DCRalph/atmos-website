@@ -1,10 +1,13 @@
 import { AdminSection } from "~/components/admin/admin-section";
-import { MerchManager } from "~/components/admin/merch-manager";
+import { ShopifyIntegrationManager } from "~/components/admin/shopify-integration-manager";
 
 export default function AdminMerchPage() {
   return (
-    <AdminSection title="Merch" description="Manage merchandise listings">
-      <MerchManager />
+    <AdminSection
+      title="Merch"
+      description="Sync products from Shopify and set the order they appear on the merch page"
+    >
+      <ShopifyIntegrationManager />
     </AdminSection>
   );
 }

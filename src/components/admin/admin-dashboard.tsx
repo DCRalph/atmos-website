@@ -38,13 +38,8 @@ const sections = [
   },
   {
     title: "Merch",
-    description: "Manage merchandise listings",
+    description: "Sync Shopify products and set their display order",
     href: "/admin/merch",
-  },
-  {
-    title: "Shopify",
-    description: "Sync Shopify products into the site cache",
-    href: "/admin/shopify",
   },
   {
     title: "Contact",

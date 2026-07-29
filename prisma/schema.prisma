@@ -437,18 +437,6 @@ model GigMedia {
   @@map("gig_media")
 }
 
-model MerchItem {
-  id          String   @id @default(cuid())
-  name        String
-  description String
-  price       Float
-  image       String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("merch_item")
-}
-
 /// Cached Shopify Storefront products; populated by admin sync.
 model ShopifyProductCache {
   id               String   @id @default(cuid())
