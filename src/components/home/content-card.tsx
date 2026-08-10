@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import { SoundCloudPlayer } from "~/components/soundcloud-player";
 import { YouTubePlayer } from "~/components/youtube-player";
-import { type ContentItem } from "~Prisma/client";
+import type { ContentItem } from "~Prisma/client";
 import { cn } from "~/lib/utils";
 import { AccentGlowCard } from "~/components/ui/accent-glow-card";
 
