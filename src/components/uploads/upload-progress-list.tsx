@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, Loader2, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, RotateCcw, X } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { formatBytes } from "~/lib/uploads/validate";
 import type { UploadItem } from "~/hooks/use-upload";
@@ -19,10 +19,13 @@ const STATUS_LABEL: Record<UploadItem["status"], string> = {
 export function UploadProgressList({
   items,
   onCancel,
+  onRetry,
   className,
 }: {
   items: UploadItem[];
   onCancel?: (itemId: string) => void;
+  /** Enables a retry button on failed and cancelled rows. */
+  onRetry?: (itemId: string) => void;
   className?: string;
 }) {
   if (items.length === 0) return null;
@@ -34,6 +37,8 @@ export function UploadProgressList({
           item.status === "preparing" ||
           item.status === "uploading" ||
           item.status === "processing";
+        const canRetry =
+          item.status === "error" || item.status === "cancelled";
 
         return (
           <li key={item.id} className="rounded-md border px-3 py-2 text-sm">
@@ -59,6 +64,18 @@ export function UploadProgressList({
                     ? formatBytes(item.result?.size ?? item.file.size)
                     : STATUS_LABEL[item.status]}
               </span>
+
+              {onRetry && canRetry ? (
+                <button
+                  type="button"
+                  onClick={() => onRetry(item.id)}
+                  className="text-muted-foreground hover:text-foreground flex shrink-0 items-center gap-1 rounded-sm border px-1.5 py-0.5 text-xs"
+                  aria-label={`Retry upload of ${item.file.name}`}
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Retry
+                </button>
+              ) : null}
 
               {onCancel && inFlight ? (
                 <button

@@ -7,6 +7,7 @@ import { api } from "~/trpc/react";
 import { useUpload } from "~/hooks/use-upload";
 import { UploadProgressList } from "~/components/uploads/upload-progress-list";
 import { describeConstraints } from "~/lib/uploads/validate";
+import { buildMediaUrl } from "~/lib/media-url";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -248,6 +249,7 @@ export function FilesManager() {
   // image processing all come from the `mediaLibrary` preset.
   const {
     upload,
+    retry: retryUpload,
     items: uploadItems,
     isUploading,
     cancel: cancelUpload,
@@ -357,23 +359,40 @@ export function FilesManager() {
     setUploadFiles((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
+  const announceUploaded = useCallback(
+    (count: number) => {
+      if (count === 0) return;
+      void refetch();
+      toast.success(`Uploaded ${count} file${count === 1 ? "" : "s"}`);
+    },
+    [refetch],
+  );
+
   const handleUpload = useCallback(async () => {
     if (uploadFiles.length === 0) return;
 
     resetUploads();
+    const attempted = uploadFiles.length;
     const uploaded = await upload(uploadFiles);
 
     setUploadFiles([]);
-    void refetch();
+    announceUploaded(uploaded.length);
 
-    if (uploaded.length > 0) {
+    // Stay open when anything failed, so the failed rows keep their Retry
+    // button instead of the dialog closing out from under them.
+    if (uploaded.length === attempted) {
       setUploadDialogOpen(false);
       setUploadTagIds([]);
-      toast.success(
-        `Uploaded ${uploaded.length} file${uploaded.length === 1 ? "" : "s"}`,
-      );
     }
-  }, [uploadFiles, upload, resetUploads, refetch]);
+  }, [uploadFiles, upload, resetUploads, announceUploaded]);
+
+  const handleRetryUpload = useCallback(
+    async (itemId: string) => {
+      const uploaded = await retryUpload(itemId);
+      announceUploaded(uploaded.length);
+    },
+    [retryUpload, announceUploaded],
+  );
 
   const copyToClipboard = useCallback(async (text: string, field: string) => {
     await navigator.clipboard.writeText(text);
@@ -786,7 +805,7 @@ export function FilesManager() {
                         <div className="bg-muted flex h-10 w-10 items-center justify-center rounded">
                           {file.mimeType.startsWith("image/") ? (
                             <Image
-                              src={file.url}
+                              src={buildMediaUrl(file.id)}
                               alt={file.name}
                               width={40}
                               height={40}
@@ -879,7 +898,7 @@ export function FilesManager() {
                             className="h-8 w-8 p-0"
                             onClick={() =>
                               setPreviewFile({
-                                url: file.url,
+                                url: buildMediaUrl(file.id),
                                 name: file.name,
                                 mimeType: file.mimeType,
                               })
@@ -896,7 +915,7 @@ export function FilesManager() {
                             title="Open in new tab"
                           >
                             <a
-                              href={file.url}
+                              href={buildMediaUrl(file.id)}
                               target="_blank"
                               rel="noopener noreferrer"
                             >
@@ -1163,6 +1182,7 @@ export function FilesManager() {
             <UploadProgressList
               items={uploadItems}
               onCancel={cancelUpload}
+              onRetry={(id) => void handleRetryUpload(id)}
               className="max-h-48 overflow-y-auto"
             />
 
@@ -1239,7 +1259,7 @@ export function FilesManager() {
               <div className="bg-muted flex min-h-[200px] items-center justify-center rounded-lg p-4">
                 {infoFile.mimeType.startsWith("image/") ? (
                   <Image
-                    src={infoFile.url}
+                    src={buildMediaUrl(infoFile.id)}
                     alt={infoFile.name}
                     width={400}
                     height={300}
@@ -1247,7 +1267,7 @@ export function FilesManager() {
                   />
                 ) : infoFile.mimeType.startsWith("video/") ? (
                   <video
-                    src={infoFile.url}
+                    src={buildMediaUrl(infoFile.id)}
                     controls
                     className="max-h-[200px] w-auto rounded"
                   />
@@ -1391,21 +1411,40 @@ export function FilesManager() {
                     copied={copiedField === "key"}
                     mono
                   />
-                  <InfoRow
-                    label="URL"
-                    value={infoFile.url}
+                  <LinkRow
+                    label="Website URL"
+                    url={buildMediaUrl(infoFile.id)}
+                    hint="Served through the app with long-lived cache headers. Works regardless of the object's ACL — use this one in the site."
+                    onCopy={() =>
+                      copyToClipboard(buildMediaUrl(infoFile.id), "mediaUrl")
+                    }
+                    copied={copiedField === "mediaUrl"}
+                  />
+                  <LinkRow
+                    label="Direct S3 URL"
+                    url={infoFile.url}
+                    hint={
+                      infoFile.acl === "private"
+                        ? "This object is private, so the direct link will return Access Denied to anyone without S3 credentials."
+                        : "Straight from the bucket, bypassing the app."
+                    }
                     onCopy={() => copyToClipboard(infoFile.url, "url")}
                     copied={copiedField === "url"}
-                    mono
                   />
                   <InfoRow label="MIME Type" value={infoFile.mimeType} />
                   <InfoRow label="Size" value={formatFileSize(infoFile.size)} />
-                  {infoFile.width && infoFile.height && (
+                  {infoFile.width && infoFile.height ? (
                     <InfoRow
                       label="Dimensions"
-                      value={`${infoFile.width} × ${infoFile.height}`}
+                      value={`${infoFile.width} × ${infoFile.height} px`}
                     />
-                  )}
+                  ) : null}
+                  {infoFile.width && infoFile.height ? (
+                    <InfoRow
+                      label="Aspect ratio"
+                      value={aspectRatioLabel(infoFile.width, infoFile.height)}
+                    />
+                  ) : null}
                   <InfoRow label="For" value={infoFile.for} />
                   <InfoRow
                     label="For ID"
@@ -1540,7 +1579,7 @@ export function FilesManager() {
                   <>
                     <Button variant="outline" asChild>
                       <a
-                        href={infoFile.url}
+                        href={buildMediaUrl(infoFile.id)}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
@@ -1810,6 +1849,84 @@ export function FilesManager() {
 }
 
 // Helper component for info rows
+/**
+ * A full-width URL row: clickable, copyable, and openable in a new tab.
+ * Spans both columns because URLs are long and truncating them mid-path makes
+ * them useless at a glance.
+ */
+function LinkRow({
+  label,
+  url,
+  hint,
+  onCopy,
+  copied,
+}: {
+  label: string;
+  url: string;
+  hint?: string;
+  onCopy: () => void;
+  copied?: boolean;
+}) {
+  return (
+    <div className="col-span-2 space-y-1">
+      <Label className="text-muted-foreground text-xs">{label}</Label>
+      <div className="flex items-center gap-2">
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={url}
+          className="text-primary min-w-0 flex-1 truncate font-mono text-sm hover:underline"
+        >
+          {url}
+        </a>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 shrink-0 p-0"
+          onClick={onCopy}
+          aria-label={`Copy ${label}`}
+        >
+          {copied ? (
+            <Check className="h-3 w-3 text-green-500" />
+          ) : (
+            <Copy className="h-3 w-3" />
+          )}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 shrink-0 p-0"
+          asChild
+        >
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Open ${label} in a new tab`}
+          >
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </Button>
+      </div>
+      {hint ? (
+        <p className="text-muted-foreground text-[11px] leading-tight">{hint}</p>
+      ) : null}
+    </div>
+  );
+}
+
+/** Reduces pixel dimensions to a readable ratio, e.g. "16:9 (1.78)". */
+function aspectRatioLabel(width: number, height: number): string {
+  const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+  const divisor = gcd(width, height) || 1;
+  const w = width / divisor;
+  const h = height / divisor;
+  const decimal = (width / height).toFixed(2);
+  // Ratios like 1907:1073 tell you nothing; fall back to the decimal.
+  return w <= 32 && h <= 32 ? `${w}:${h} (${decimal})` : decimal;
+}
+
 function InfoRow({
   label,
   value,

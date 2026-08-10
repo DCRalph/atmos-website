@@ -49,6 +49,7 @@ export function UploadDropzone<K extends UploadPresetName>({
 
   const {
     upload,
+    retry,
     items,
     isUploading,
     cancel,
@@ -121,7 +122,11 @@ export function UploadDropzone<K extends UploadPresetName>({
         </span>
       </button>
 
-      <UploadProgressList items={items} onCancel={cancel} />
+      <UploadProgressList
+        items={items}
+        onCancel={cancel}
+        onRetry={(id) => void retry(id)}
+      />
     </div>
   );
 }

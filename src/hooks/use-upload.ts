@@ -54,7 +54,10 @@ export type UseUploadOptions<K extends UploadPresetName> = {
   concurrency?: number;
   /** Fired as each file lands. */
   onFileComplete?: (file: UploadedFile) => void | Promise<void>;
-  /** Fired once, with everything that succeeded in the batch. */
+  /**
+   * Fired once per batch, with everything that succeeded. Also fires after a
+   * retry, so completion work belongs here rather than after `await upload()`.
+   */
   onComplete?: (files: UploadedFile[]) => void | Promise<void>;
   /** Fired for each rejected or failed file. */
   onError?: (message: string, file?: File) => void;
@@ -65,6 +68,9 @@ const HASH_LIMIT_BYTES = 256 * 1024 * 1024;
 
 /** Share of the progress bar given to the S3 transfer; the rest is processing. */
 const TRANSFER_SHARE = 0.9;
+
+/** Statuses a file can be retried from. */
+const RETRYABLE: UploadStatus[] = ["error", "cancelled"];
 
 export function useUpload<K extends UploadPresetName>(
   preset: K,
@@ -94,15 +100,26 @@ export function useUpload<K extends UploadPresetName>(
   const latest = useRef({ context, tagIds, onFileComplete, onComplete, onError });
   latest.current = { context, tagIds, onFileComplete, onComplete, onError };
 
-  const patch = useCallback((id: string, changes: Partial<UploadItem>) => {
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, ...changes } : item)),
-    );
+  // A ref mirrors the item list so `retry` can read current state without
+  // doing lookups inside a setState updater (which must stay pure).
+  const itemsRef = useRef<UploadItem[]>([]);
+  const commit = useCallback((next: UploadItem[]) => {
+    itemsRef.current = next;
+    setItems(next);
   }, []);
 
-  const reset = useCallback(() => {
-    setItems([]);
-  }, []);
+  const patch = useCallback(
+    (id: string, changes: Partial<UploadItem>) => {
+      commit(
+        itemsRef.current.map((item) =>
+          item.id === id ? { ...item, ...changes } : item,
+        ),
+      );
+    },
+    [commit],
+  );
+
+  const reset = useCallback(() => commit([]), [commit]);
 
   const cancel = useCallback(
     (itemId?: string) => {
@@ -119,6 +136,108 @@ export function useUpload<K extends UploadPresetName>(
       }
     },
     [client, patch],
+  );
+
+  /** Runs one file all the way through. Resolves to null if it did not land. */
+  const runOne = useCallback(
+    async (item: UploadItem): Promise<UploadedFile | null> => {
+      try {
+        patch(item.id, {
+          status: "preparing",
+          progress: 1,
+          error: undefined,
+        });
+
+        const sourceHash = await hashFile(item.file);
+
+        const started = await client.uploads.start.mutate({
+          preset,
+          context: latest.current.context,
+          tagIds: latest.current.tagIds,
+          file: {
+            name: item.file.name,
+            size: item.file.size,
+            type: item.file.type,
+            ...(sourceHash ? { sourceHash } : {}),
+          },
+        });
+
+        if (started.status === "duplicate") {
+          patch(item.id, {
+            status: "done",
+            progress: 100,
+            result: started.file,
+          });
+          await latest.current.onFileComplete?.(started.file);
+          return started.file;
+        }
+
+        reservations.current.set(item.id, started.uploadId);
+        patch(item.id, { status: "uploading", progress: 2 });
+
+        await putToS3({
+          url: started.uploadUrl,
+          headers: started.headers,
+          file: item.file,
+          onProgress: (fraction) =>
+            patch(item.id, {
+              progress: Math.max(2, Math.round(fraction * TRANSFER_SHARE * 100)),
+            }),
+          register: (xhr) => transfers.current.set(item.id, xhr),
+        });
+
+        transfers.current.delete(item.id);
+        patch(item.id, {
+          status: "processing",
+          progress: Math.round(TRANSFER_SHARE * 100),
+        });
+
+        const result = await client.uploads.finish.mutate({
+          uploadId: started.uploadId,
+        });
+        reservations.current.delete(item.id);
+
+        patch(item.id, { status: "done", progress: 100, result });
+        await latest.current.onFileComplete?.(result);
+        return result;
+      } catch (error) {
+        transfers.current.delete(item.id);
+        const uploadId = reservations.current.get(item.id);
+        if (uploadId) {
+          reservations.current.delete(item.id);
+          void client.uploads.abort.mutate({ uploadId }).catch(() => undefined);
+        }
+        if (isAbort(error)) {
+          patch(item.id, { status: "cancelled", progress: 0 });
+          return null;
+        }
+        const message = errorMessage(error);
+        patch(item.id, { status: "error", progress: 0, error: message });
+        latest.current.onError?.(message, item.file);
+        return null;
+      }
+    },
+    [client, patch, preset],
+  );
+
+  const runBatch = useCallback(
+    async (batch: UploadItem[]): Promise<UploadedFile[]> => {
+      if (batch.length === 0) return [];
+
+      setIsUploading(true);
+      const succeeded: UploadedFile[] = [];
+      try {
+        await runWithConcurrency(batch, concurrency, async (item) => {
+          const result = await runOne(item);
+          if (result) succeeded.push(result);
+        });
+        if (succeeded.length > 0) await latest.current.onComplete?.(succeeded);
+      } finally {
+        setIsUploading(false);
+      }
+      return succeeded;
+    },
+    [concurrency, runOne],
   );
 
   const upload = useCallback(
@@ -138,105 +257,50 @@ export function useUpload<K extends UploadPresetName>(
         status: "queued",
         progress: 0,
       }));
-      setItems((prev) => [...prev, ...queued]);
-      setIsUploading(true);
+      commit([...itemsRef.current, ...queued]);
 
-      const succeeded: UploadedFile[] = [];
-
-      const runOne = async (item: UploadItem) => {
-        try {
-          patch(item.id, { status: "preparing", progress: 1 });
-
-          const sourceHash = await hashFile(item.file);
-
-          const started = await client.uploads.start.mutate({
-            preset,
-            context: latest.current.context,
-            tagIds: latest.current.tagIds,
-            file: {
-              name: item.file.name,
-              size: item.file.size,
-              type: item.file.type,
-              ...(sourceHash ? { sourceHash } : {}),
-            },
-          });
-
-          if (started.status === "duplicate") {
-            patch(item.id, {
-              status: "done",
-              progress: 100,
-              result: started.file,
-            });
-            succeeded.push(started.file);
-            await latest.current.onFileComplete?.(started.file);
-            return;
-          }
-
-          reservations.current.set(item.id, started.uploadId);
-          patch(item.id, { status: "uploading", progress: 2 });
-
-          await putToS3({
-            url: started.uploadUrl,
-            headers: started.headers,
-            file: item.file,
-            onProgress: (fraction) =>
-              patch(item.id, {
-                progress: Math.max(2, Math.round(fraction * TRANSFER_SHARE * 100)),
-              }),
-            register: (xhr) => transfers.current.set(item.id, xhr),
-          });
-
-          transfers.current.delete(item.id);
-          patch(item.id, {
-            status: "processing",
-            progress: Math.round(TRANSFER_SHARE * 100),
-          });
-
-          const result = await client.uploads.finish.mutate({
-            uploadId: started.uploadId,
-          });
-          reservations.current.delete(item.id);
-
-          patch(item.id, { status: "done", progress: 100, result });
-          succeeded.push(result);
-          await latest.current.onFileComplete?.(result);
-        } catch (error) {
-          transfers.current.delete(item.id);
-          const uploadId = reservations.current.get(item.id);
-          if (uploadId) {
-            reservations.current.delete(item.id);
-            void client.uploads.abort
-              .mutate({ uploadId })
-              .catch(() => undefined);
-          }
-          if (isAbort(error)) {
-            patch(item.id, { status: "cancelled", progress: 0 });
-            return;
-          }
-          const message = errorMessage(error);
-          patch(item.id, { status: "error", error: message });
-          latest.current.onError?.(message, item.file);
-        }
-      };
-
-      try {
-        await runWithConcurrency(queued, concurrency, runOne);
-        if (succeeded.length > 0) await latest.current.onComplete?.(succeeded);
-      } finally {
-        setIsUploading(false);
-      }
-
-      return succeeded;
+      return runBatch(queued);
     },
-    [client, concurrency, constraints, patch, preset],
+    [commit, constraints, runBatch],
+  );
+
+  /**
+   * Re-run a file that failed or was cancelled. Pass an id for one file, or
+   * omit it to retry everything retryable.
+   */
+  const retry = useCallback(
+    async (itemId?: string): Promise<UploadedFile[]> => {
+      const batch = itemsRef.current.filter(
+        (item) =>
+          (itemId === undefined || item.id === itemId) &&
+          RETRYABLE.includes(item.status),
+      );
+      if (batch.length === 0) return [];
+
+      const ids = new Set(batch.map((item) => item.id));
+      commit(
+        itemsRef.current.map((item) =>
+          ids.has(item.id)
+            ? { ...item, status: "queued", progress: 0, error: undefined }
+            : item,
+        ),
+      );
+
+      return runBatch(batch);
+    },
+    [commit, runBatch],
   );
 
   return {
     /** Validate, transfer and finalise a set of files. */
     upload,
+    /** Re-run a failed or cancelled file (or all of them). */
+    retry,
     /** Per-file state for rendering progress. */
     items,
     isUploading,
+    /** True when at least one file can be retried. */
+    hasFailures: items.some((item) => RETRYABLE.includes(item.status)),
     /** Cancel one item, or everything in flight. */
     cancel,
     /** Clear the item list (does not touch uploaded files). */
@@ -317,13 +381,16 @@ async function runWithConcurrency<T>(
   run: (task: T) => Promise<void>,
 ): Promise<void> {
   const queue = [...tasks];
-  const workers = Array.from({ length: Math.max(1, Math.min(limit, queue.length)) }, async () => {
-    for (;;) {
-      const next = queue.shift();
-      if (!next) return;
-      await run(next);
-    }
-  });
+  const workers = Array.from(
+    { length: Math.max(1, Math.min(limit, queue.length)) },
+    async () => {
+      for (;;) {
+        const next = queue.shift();
+        if (!next) return;
+        await run(next);
+      }
+    },
+  );
   await Promise.all(workers);
 }
 

@@ -569,6 +569,7 @@ export function GigMediaManager({
   // then attached to the chosen section as a GigMedia row.
   const {
     upload,
+    retry: retryUpload,
     items: uploadItems,
     isUploading,
     cancel: cancelUpload,
@@ -853,11 +854,24 @@ export function GigMediaManager({
     resetUploads();
     setUploadWarnings([]);
 
+    const attempted = pendingFiles.length;
     const uploaded = await upload(pendingFiles);
 
     setPendingFiles([]);
     if (uploaded.length > 0) {
+      await utils.gigs.getById.invalidate({ id: gigId });
+      onRefetch();
+    }
+    // Stay open when anything failed, so the failed rows keep their Retry
+    // button instead of the dialog closing out from under them.
+    if (uploaded.length === attempted) {
       setIsUploadDialogOpen(false);
+    }
+  };
+
+  const handleRetryUpload = async (itemId: string) => {
+    const uploaded = await retryUpload(itemId);
+    if (uploaded.length > 0) {
       await utils.gigs.getById.invalidate({ id: gigId });
       onRefetch();
     }
@@ -1150,6 +1164,7 @@ export function GigMediaManager({
             <UploadProgressList
               items={uploadItems}
               onCancel={cancelUpload}
+              onRetry={(id) => void handleRetryUpload(id)}
               className="max-h-52 overflow-y-auto"
             />
 
