@@ -10,7 +10,9 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { api } from "~/trpc/react";
+import { useUpload } from "~/hooks/use-upload";
 import { useConfirm } from "~/components/confirm-provider";
 import UserAvatar from "~/components/UserAvatar";
 import { buildMediaUrl } from "~/lib/media-url";
@@ -189,9 +191,9 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
       await refetch();
     },
   });
-  const uploadAvatar = api.creatorProfiles.uploadAvatar.useMutation();
+  const setAvatar = api.creatorProfiles.setAvatar.useMutation();
   const clearAvatar = api.creatorProfiles.clearAvatar.useMutation();
-  const uploadBanner = api.creatorProfiles.uploadBanner.useMutation();
+  const setBanner = api.creatorProfiles.setBanner.useMutation();
   const clearBanner = api.creatorProfiles.clearBanner.useMutation();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -207,6 +209,45 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
 
   const targetProfileId = profile?.id;
   const mutationProfileIdArg = mode === "admin" ? targetProfileId : undefined;
+
+  // Avatar and banner bytes go straight to S3 through the shared upload
+  // system; the mutations below only move the profile's FK.
+  const avatarUpload = useUpload("creatorAvatar", {
+    context: { profileId: mutationProfileIdArg },
+    onComplete: async (files) => {
+      const file = files[0];
+      if (!file) return;
+      const res = await setAvatar.mutateAsync({
+        profileId: mutationProfileIdArg,
+        fileId: file.id,
+      });
+      setIdentity((prev) =>
+        prev ? { ...prev, avatarFileId: res.avatarFileId } : prev,
+      );
+      await refetch();
+    },
+    onError: (message) => toast.error(message),
+  });
+
+  const bannerUpload = useUpload("creatorBanner", {
+    context: { profileId: mutationProfileIdArg },
+    onComplete: async (files) => {
+      const file = files[0];
+      if (!file) return;
+      const res = await setBanner.mutateAsync({
+        profileId: mutationProfileIdArg,
+        fileId: file.id,
+      });
+      setIdentity((prev) =>
+        prev ? { ...prev, bannerFileId: res.bannerFileId } : prev,
+      );
+      await refetch();
+    },
+    onError: (message) => toast.error(message),
+  });
+
+  const avatarBusy = avatarUpload.isUploading || setAvatar.isPending;
+  const bannerBusy = bannerUpload.isUploading || setBanner.isPending;
 
   const debouncedSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
@@ -266,30 +307,10 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
   const selectedBlock =
     blocks.find((b) => b.id === selectedBlockId) ?? null;
 
-  async function onAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function onAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file || !file.type.startsWith("image/")) return;
-    try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      const res = await uploadAvatar.mutateAsync({
-        profileId: mutationProfileIdArg,
-        base64,
-        name: file.name,
-        mimeType: file.type,
-      });
-      setIdentity((prev) =>
-        prev ? { ...prev, avatarFileId: res.avatarFileId } : prev,
-      );
-      await refetch();
-    } catch {
-      // Error is available on uploadAvatar.error
-    }
+    if (file) void avatarUpload.upload([file]);
   }
 
   async function onRemoveAvatar() {
@@ -308,30 +329,10 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
     await refetch();
   }
 
-  async function onBannerFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function onBannerFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file || !file.type.startsWith("image/")) return;
-    try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      const res = await uploadBanner.mutateAsync({
-        profileId: mutationProfileIdArg,
-        base64,
-        name: file.name,
-        mimeType: file.type,
-      });
-      setIdentity((prev) =>
-        prev ? { ...prev, bannerFileId: res.bannerFileId } : prev,
-      );
-      await refetch();
-    } catch {
-      // Error is available on uploadBanner.error
-    }
+    if (file) void bannerUpload.upload([file]);
   }
 
   async function onRemoveBanner() {
@@ -536,15 +537,15 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
               <input
                 ref={avatarInputRef}
                 type="file"
-                accept="image/*"
+                accept={avatarUpload.accept}
                 className="sr-only"
-                onChange={(ev) => void onAvatarFileChange(ev)}
+                onChange={onAvatarFileChange}
               />
               <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => avatarInputRef.current?.click()}
-                  disabled={uploadAvatar.isPending || clearAvatar.isPending}
+                  disabled={avatarBusy || clearAvatar.isPending}
                   className="group relative h-20 w-20 shrink-0 overflow-hidden rounded-full disabled:opacity-60"
                   aria-label={
                     identity.avatarFileId
@@ -563,7 +564,7 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
                     name={identity.displayName}
                   />
                   <div className="bg-background/70 absolute inset-0 flex items-center justify-center rounded-full opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-                    {uploadAvatar.isPending ? (
+                    {avatarBusy ? (
                       <Loader2 className="text-foreground h-5 w-5 animate-spin" />
                     ) : (
                       <ImagePlus className="text-foreground h-5 w-5" />
@@ -576,12 +577,10 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
                       type="button"
                       variant="outline"
                       size="sm"
-                      disabled={
-                        uploadAvatar.isPending || clearAvatar.isPending
-                      }
+                      disabled={avatarBusy || clearAvatar.isPending}
                       onClick={() => avatarInputRef.current?.click()}
                     >
-                      {uploadAvatar.isPending ? (
+                      {avatarBusy ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <ImagePlus className="h-4 w-4" />
@@ -596,9 +595,7 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
                         variant="ghost"
                         size="sm"
                         className="text-destructive hover:text-destructive"
-                        disabled={
-                          uploadAvatar.isPending || clearAvatar.isPending
-                        }
+                        disabled={avatarBusy || clearAvatar.isPending}
                         onClick={() => void onRemoveAvatar()}
                       >
                         {clearAvatar.isPending ? (
@@ -615,11 +612,11 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
                   </p>
                 </div>
               </div>
-              {(uploadAvatar.error ?? clearAvatar.error) && (
+              {clearAvatar.error ? (
                 <p className="text-destructive text-xs">
-                  {(uploadAvatar.error ?? clearAvatar.error)?.message}
+                  {clearAvatar.error.message}
                 </p>
-              )}
+              ) : null}
             </div>
 
             <div className="space-y-2">
@@ -627,15 +624,15 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
               <input
                 ref={bannerInputRef}
                 type="file"
-                accept="image/*"
+                accept={bannerUpload.accept}
                 className="sr-only"
-                onChange={(ev) => void onBannerFileChange(ev)}
+                onChange={onBannerFileChange}
               />
               <div className="flex items-start gap-3">
                 <button
                   type="button"
                   onClick={() => bannerInputRef.current?.click()}
-                  disabled={uploadBanner.isPending || clearBanner.isPending}
+                  disabled={bannerBusy || clearBanner.isPending}
                   className="group bg-muted relative aspect-video w-40 shrink-0 overflow-hidden rounded-md border disabled:opacity-60"
                   aria-label={
                     identity.bannerFileId
@@ -656,7 +653,7 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
                     </div>
                   )}
                   <div className="bg-background/70 absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-                    {uploadBanner.isPending ? (
+                    {bannerBusy ? (
                       <Loader2 className="text-foreground h-5 w-5 animate-spin" />
                     ) : (
                       <ImagePlus className="text-foreground h-5 w-5" />
@@ -669,12 +666,10 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
                       type="button"
                       variant="outline"
                       size="sm"
-                      disabled={
-                        uploadBanner.isPending || clearBanner.isPending
-                      }
+                      disabled={bannerBusy || clearBanner.isPending}
                       onClick={() => bannerInputRef.current?.click()}
                     >
-                      {uploadBanner.isPending ? (
+                      {bannerBusy ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <ImagePlus className="h-4 w-4" />
@@ -689,9 +684,7 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
                         variant="ghost"
                         size="sm"
                         className="text-destructive hover:text-destructive"
-                        disabled={
-                          uploadBanner.isPending || clearBanner.isPending
-                        }
+                        disabled={bannerBusy || clearBanner.isPending}
                         onClick={() => void onRemoveBanner()}
                       >
                         {clearBanner.isPending ? (
@@ -709,11 +702,11 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
                   </p>
                 </div>
               </div>
-              {(uploadBanner.error ?? clearBanner.error) && (
+              {clearBanner.error ? (
                 <p className="text-destructive text-xs">
-                  {(uploadBanner.error ?? clearBanner.error)?.message}
+                  {clearBanner.error.message}
                 </p>
-              )}
+              ) : null}
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">

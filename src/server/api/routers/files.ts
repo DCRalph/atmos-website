@@ -4,12 +4,7 @@ import {
   publicProcedure,
   adminProcedure,
 } from "~/server/api/trpc";
-import {
-  uploadBufferToS3,
-  softDeleteFile,
-  deleteFile,
-  limits,
-} from "~/lib/s3Helper";
+import { softDeleteFile, deleteFile } from "~/server/uploads/files";
 import {
   FileUploadStatus,
   type file_upload,
@@ -105,6 +100,8 @@ export const filesRouter = createTRPCRouter({
           page: z.number().min(1).default(1),
           for: z.string().optional(),
           forId: z.string().optional(),
+          /** Filter by the upload preset that produced the file. */
+          preset: z.string().optional(),
           status: z.nativeEnum(FileUploadStatus).optional(),
           search: z.string().optional(),
           mimeTypePrefix: z.string().optional(), // e.g., "image/" or "video/"
@@ -120,6 +117,7 @@ export const filesRouter = createTRPCRouter({
       const where = {
         ...(input?.for && { for: input.for }),
         ...(input?.forId && { forId: input.forId }),
+        ...(input?.preset && { preset: input.preset }),
         ...(input?.status && { status: input.status }),
         ...(input?.mimeTypePrefix && {
           mimeType: { startsWith: input.mimeTypePrefix },
@@ -227,68 +225,6 @@ export const filesRouter = createTRPCRouter({
     }),
 
   /**
-   * Upload a file via base64 (for smaller files via tRPC)
-   * For larger files, use the direct upload endpoint
-   */
-  uploadBase64: adminProcedure
-    .input(
-      z.object({
-        base64: z.string(),
-        name: z.string(),
-        mimeType: z.string(),
-        for: z.string(),
-        forId: z.string(),
-        keyPrefix: z.string().optional(),
-        tagIds: z.array(z.string()).optional(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      // Decode base64 to buffer
-      const base64Data = input.base64.replace(/^data:[^;]+;base64,/, "");
-      const buffer = Buffer.from(base64Data, "base64");
-
-      // Check size limit
-      if (buffer.length > limits.fileSize) {
-        throw new Error(
-          `File size exceeds limit of ${limits.fileSize / 1024 / 1024}MB`,
-        );
-      }
-
-      // Generate key
-      const ext = input.name.split(".").pop() ?? "";
-      const uuid = crypto.randomUUID();
-      const keyPrefix =
-        input.keyPrefix?.replace(/\/$/, "") ?? `uploads/${input.for}`;
-      const key = `${keyPrefix}/${uuid}${ext ? `.${ext}` : ""}`;
-
-      const result = await uploadBufferToS3({
-        buffer,
-        key,
-        contentType: input.mimeType,
-        name: input.name,
-        fileType: getFileTypeFromMime(input.mimeType),
-        for: input.for,
-        forId: input.forId,
-        acl: "public-read", // Always use private ACL - admins cannot change this
-        userId: ctx.user?.id ?? ctx.session.user.id,
-      });
-
-      // Connect tags if provided
-      if (input.tagIds && input.tagIds.length > 0 && !result.isDuplicate) {
-        await ctx.db.file_upload.update({
-          where: { id: result.record.id },
-          data: {
-            fileTags: {
-              connect: input.tagIds.map((id) => ({ id })),
-            },
-          },
-        });
-      }
-
-      return result;
-    }),
-
-  /**
    * Soft delete a file (mark as deleted but keep in S3)
    */
   softDelete: adminProcedure
@@ -317,18 +253,6 @@ export const filesRouter = createTRPCRouter({
         data: { status: FileUploadStatus.OK },
       });
     }),
-
-  /**
-   * Get upload limits configuration (for client-side validation)
-   */
-  getLimits: publicProcedure.query(() => {
-    return {
-      maxFileSize: limits.fileSize,
-      maxFiles: limits.files,
-      maxTotalSize: limits.totalSize,
-      maxConcurrency: limits.concurrency,
-    };
-  }),
 
   /**
    * Get file statistics for admin dashboard
@@ -540,16 +464,3 @@ export const filesRouter = createTRPCRouter({
       return { success: true, filesUpdated: fileIds.length };
     }),
 });
-
-/**
- * Helper to determine file type from MIME type
- */
-function getFileTypeFromMime(mimeType: string): string {
-  if (mimeType.startsWith("image/")) return "image";
-  if (mimeType.startsWith("video/")) return "video";
-  if (mimeType.startsWith("audio/")) return "audio";
-  if (mimeType.includes("pdf")) return "pdf";
-  if (mimeType.includes("document") || mimeType.includes("word"))
-    return "document";
-  return "file";
-}

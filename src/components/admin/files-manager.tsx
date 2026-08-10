@@ -2,7 +2,11 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import Image from "next/image";
+import { toast } from "sonner";
 import { api } from "~/trpc/react";
+import { useUpload } from "~/hooks/use-upload";
+import { UploadProgressList } from "~/components/uploads/upload-progress-list";
+import { describeConstraints } from "~/lib/uploads/validate";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -126,6 +130,10 @@ type FileInfo = {
   height: number | null;
   createdAt: Date | string;
   acl: string;
+  /** Upload preset this file came from; null for pre-unified-upload rows. */
+  preset: string | null;
+  /** Size before image processing, when it differs from `size`. */
+  originalSize: number | null;
   fileTags: FileTag[];
   linkedEntity: { type: string; id: string; title: string } | null;
 };
@@ -150,11 +158,6 @@ export function FilesManager() {
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadCategory, setUploadCategory] = useState<string>("general");
   const [uploadTagIds, setUploadTagIds] = useState<string[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<{
-    current: number;
-    total: number;
-  }>({ current: 0, total: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -241,10 +244,20 @@ export function FilesManager() {
     },
   });
 
-  const uploadBase64 = api.files.uploadBase64.useMutation({
-    onSuccess: () => {
-      void refetch();
-    },
+  // One uploader for the whole media library. Constraints, accepted types and
+  // image processing all come from the `mediaLibrary` preset.
+  const {
+    upload,
+    items: uploadItems,
+    isUploading,
+    cancel: cancelUpload,
+    reset: resetUploads,
+    constraints: uploadConstraints,
+    accept: uploadAccept,
+  } = useUpload("mediaLibrary", {
+    context: { category: uploadCategory },
+    tagIds: uploadTagIds,
+    onError: (message) => toast.error(message),
   });
 
   const updateFile = api.files.updateFile.useMutation({
@@ -347,44 +360,20 @@ export function FilesManager() {
   const handleUpload = useCallback(async () => {
     if (uploadFiles.length === 0) return;
 
-    setIsUploading(true);
-    setUploadProgress({ current: 0, total: uploadFiles.length });
+    resetUploads();
+    const uploaded = await upload(uploadFiles);
 
-    try {
-      for (let i = 0; i < uploadFiles.length; i++) {
-        const file = uploadFiles[i];
-        if (!file) continue;
+    setUploadFiles([]);
+    void refetch();
 
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-
-        await uploadBase64.mutateAsync({
-          base64,
-          name: file.name,
-          mimeType: file.type || "application/octet-stream",
-          for: uploadCategory,
-          forId: crypto.randomUUID(),
-          keyPrefix: `uploads/${uploadCategory}`,
-          tagIds: uploadTagIds.length > 0 ? uploadTagIds : undefined,
-        });
-
-        setUploadProgress({ current: i + 1, total: uploadFiles.length });
-      }
-
-      setUploadFiles([]);
+    if (uploaded.length > 0) {
       setUploadDialogOpen(false);
       setUploadTagIds([]);
-    } catch (error) {
-      console.error("Upload error:", error);
-    } finally {
-      setIsUploading(false);
-      setUploadProgress({ current: 0, total: 0 });
+      toast.success(
+        `Uploaded ${uploaded.length} file${uploaded.length === 1 ? "" : "s"}`,
+      );
     }
-  }, [uploadFiles, uploadCategory, uploadTagIds, uploadBase64]);
+  }, [uploadFiles, upload, resetUploads, refetch]);
 
   const copyToClipboard = useCallback(async (text: string, field: string) => {
     await navigator.clipboard.writeText(text);
@@ -1124,14 +1113,14 @@ export function FilesManager() {
                 multiple
                 className="hidden"
                 onChange={(e) => handleFileSelect(e.target.files)}
-                accept="image/*,video/*,audio/*,application/pdf"
+                accept={uploadAccept}
               />
               <Upload className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
               <p className="text-muted-foreground text-sm">
                 Drag and drop files here, or click to select
               </p>
               <p className="text-muted-foreground mt-1 text-xs">
-                Images, videos, audio, and PDFs up to 100MB each
+                {describeConstraints(uploadConstraints)}
               </p>
             </div>
 
@@ -1171,24 +1160,11 @@ export function FilesManager() {
             )}
 
             {/* Upload Progress */}
-            {isUploading && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span>Uploading...</span>
-                  <span>
-                    {uploadProgress.current} / {uploadProgress.total}
-                  </span>
-                </div>
-                <div className="bg-muted h-2 overflow-hidden rounded-full">
-                  <div
-                    className="bg-primary h-full transition-all duration-300"
-                    style={{
-                      width: `${(uploadProgress.current / uploadProgress.total) * 100}%`,
-                    }}
-                  />
-                </div>
-              </div>
-            )}
+            <UploadProgressList
+              items={uploadItems}
+              onCancel={cancelUpload}
+              className="max-h-48 overflow-y-auto"
+            />
 
             {/* Actions */}
             <div className="flex justify-end gap-2">
@@ -1439,6 +1415,18 @@ export function FilesManager() {
                     mono
                   />
                   <InfoRow label="Category" value={infoFile.category} />
+                  <InfoRow
+                    label="Upload target"
+                    value={infoFile.preset ?? "— (pre-dates the upload system)"}
+                  />
+                  {infoFile.originalSize && infoFile.originalSize > infoFile.size ? (
+                    <InfoRow
+                      label="Original size"
+                      value={`${formatFileSize(infoFile.originalSize)} → saved ${formatFileSize(
+                        infoFile.originalSize - infoFile.size,
+                      )}`}
+                    />
+                  ) : null}
                   <div className="space-y-1">
                     <Label className="text-muted-foreground text-xs">
                       Tags

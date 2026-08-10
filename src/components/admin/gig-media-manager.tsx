@@ -23,7 +23,10 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import Image from "next/image";
+import { toast } from "sonner";
 import { api } from "~/trpc/react";
+import { useUpload } from "~/hooks/use-upload";
+import { UploadProgressList } from "~/components/uploads/upload-progress-list";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -525,8 +528,6 @@ export function GigMediaManager({
     return JSON.stringify(items.gallery) !== JSON.stringify(savedItems.gallery);
   }, [items.gallery, savedItems.gallery]);
 
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [deleteMediaId, setDeleteMediaId] = useState<string | null>(null);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
@@ -558,10 +559,37 @@ export function GigMediaManager({
     }),
   );
 
-  const uploadMedia = api.gigs.uploadMedia.useMutation({
+  const addExistingMedia = api.gigs.addExistingMedia.useMutation({
     onSuccess: () => {
       onRefetch();
     },
+  });
+
+  // Bytes go straight to S3 through the shared uploader; each finished file is
+  // then attached to the chosen section as a GigMedia row.
+  const {
+    upload,
+    items: uploadItems,
+    isUploading,
+    cancel: cancelUpload,
+    reset: resetUploads,
+    accept: uploadAccept,
+  } = useUpload("gigMedia", {
+    context: { gigId },
+    onFileComplete: async (file) => {
+      if (file.isDuplicate) {
+        setUploadWarnings((prev) => [
+          ...prev,
+          `"${file.name}" was already uploaded to this gig — the existing file was reused.`,
+        ]);
+      }
+      await addExistingMedia.mutateAsync({
+        gigId,
+        fileUploadId: file.id,
+        section: uploadSection,
+      });
+    },
+    onError: (message) => toast.error(message),
   });
 
   const deleteMedia = api.gigs.deleteMedia.useMutation({
@@ -583,12 +611,6 @@ export function GigMediaManager({
     { gigId },
     { enabled: isSelectDialogOpen },
   );
-
-  const addExistingMedia = api.gigs.addExistingMedia.useMutation({
-    onSuccess: () => {
-      onRefetch();
-    },
-  });
 
   // Find which section an item is in
   const findSection = (id: string): "featured" | "gallery" | null => {
@@ -828,49 +850,16 @@ export function GigMediaManager({
   const handleUpload = async () => {
     if (pendingFiles.length === 0) return;
 
-    setIsUploading(true);
-    setUploadProgress(0);
-    const warnings: string[] = [];
+    resetUploads();
+    setUploadWarnings([]);
 
-    try {
-      for (let i = 0; i < pendingFiles.length; i++) {
-        const file = pendingFiles[i];
-        if (!file) continue;
+    const uploaded = await upload(pendingFiles);
 
-        const arrayBuffer = await file.arrayBuffer();
-        const base64 = Buffer.from(arrayBuffer).toString("base64");
-        const dataUrl = `data:${file.type};base64,${base64}`;
-
-        const result = await uploadMedia.mutateAsync({
-          gigId,
-          base64: dataUrl,
-          name: file.name,
-          mimeType: file.type,
-          section: uploadSection,
-        });
-
-        // Check if this was a duplicate
-        if (result.isDuplicate && result.warning) {
-          warnings.push(result.warning);
-        }
-
-        setUploadProgress(((i + 1) / pendingFiles.length) * 100);
-      }
-
-      setPendingFiles([]);
+    setPendingFiles([]);
+    if (uploaded.length > 0) {
       setIsUploadDialogOpen(false);
-
-      // Show warnings if any duplicates were found
-      if (warnings.length > 0) {
-        setUploadWarnings(warnings);
-      }
-
       await utils.gigs.getById.invalidate({ id: gigId });
-    } catch (error) {
-      console.error("Upload failed:", error);
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
+      onRefetch();
     }
   };
 
@@ -959,7 +948,7 @@ export function GigMediaManager({
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/*,video/*"
+          accept={uploadAccept}
           className="hidden"
           onChange={handleFileSelect}
         />
@@ -1158,19 +1147,11 @@ export function GigMediaManager({
             </div>
 
             {/* Upload Progress */}
-            {isUploading && (
-              <div className="space-y-2">
-                <div className="bg-muted h-2 overflow-hidden rounded-full">
-                  <div
-                    className="bg-primary h-full transition-all"
-                    style={{ width: `${uploadProgress}%` }}
-                  />
-                </div>
-                <p className="text-muted-foreground text-center text-sm">
-                  Uploading... {Math.round(uploadProgress)}%
-                </p>
-              </div>
-            )}
+            <UploadProgressList
+              items={uploadItems}
+              onCancel={cancelUpload}
+              className="max-h-52 overflow-y-auto"
+            />
 
             {/* Actions */}
             <div className="flex justify-end gap-2">

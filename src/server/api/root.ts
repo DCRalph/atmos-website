@@ -18,6 +18,7 @@ import { creatorProfilesRouter } from "~/server/api/routers/creator-profiles";
 import { creatorThemesRouter } from "~/server/api/routers/creator-themes";
 import { gigCreatorsRouter } from "~/server/api/routers/gig-creators";
 import { featureFlagsRouter } from "~/server/api/routers/feature-flags";
+import { uploadsRouter } from "~/server/api/routers/uploads";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -38,6 +39,7 @@ export const appRouter = createTRPCRouter({
   invites: invitesRouter,
   users: usersRouter,
   files: filesRouter,
+  uploads: uploadsRouter,
   activityLogs: activityLogsRouter,
   rentals: rentalsRouter,
   settings: settingsRouter,

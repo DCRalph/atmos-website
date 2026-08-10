@@ -529,7 +529,20 @@ model file_upload {
 
   fileTags file_tag[]
 
+  /// SHA-256 of the bytes actually stored in S3 (post-processing).
   hash String?
+
+  /// SHA-256 of the original file the user picked, before any resize/convert.
+  /// Lets us dedupe *before* uploading a single byte, and survives a change to
+  /// the processing settings (same source, different output).
+  sourceHash String?
+
+  /// Byte size of the original file, so the admin UI can show what processing saved.
+  originalSize Int?
+
+  /// Name of the upload preset (`src/lib/uploads/presets.ts`) that produced this
+  /// row. Null for rows created before the unified upload system.
+  preset String?
 
   // Image/video dimensions (null for non-media files)
   width  Int?
@@ -548,6 +561,9 @@ model file_upload {
   @@index([size])
   @@index([for, forId])
   @@index([hash])
+  @@index([sourceHash])
+  @@index([preset])
+  @@index([status, createdAt])
 }
 
 enum RentalStatus {

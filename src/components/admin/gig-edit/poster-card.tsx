@@ -23,6 +23,7 @@ import {
 } from "~/components/ui/alert-dialog";
 import { Loader2, Trash2, Upload } from "lucide-react";
 import { api } from "~/trpc/react";
+import { useUpload } from "~/hooks/use-upload";
 
 type PosterCardProps = {
   gig: {
@@ -38,20 +39,27 @@ type PosterCardProps = {
 
 export function PosterCard({ gig, onSaved }: PosterCardProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isPosterUploading, setIsPosterUploading] = useState(false);
   const [isRemoveOpen, setIsRemoveOpen] = useState(false);
 
-  const uploadPoster = api.gigs.uploadPoster.useMutation({
+  const setPoster = api.gigs.setPosterFromUpload.useMutation({
     onSuccess: async () => {
       await onSaved();
       toast.success("Poster uploaded");
     },
     onError: (err) => {
-      toast.error(err.message || "Failed to upload poster");
+      toast.error(err.message || "Failed to set poster");
     },
-    onSettled: () => {
-      setIsPosterUploading(false);
+  });
+
+  // The file goes straight to S3; this component only points the gig at the
+  // resulting file id.
+  const { upload, isUploading: isTransferring, accept } = useUpload("gigPoster", {
+    context: { gigId: gig.id },
+    onComplete: (files) => {
+      const file = files[0];
+      if (file) setPoster.mutate({ gigId: gig.id, fileUploadId: file.id });
     },
+    onError: (message) => toast.error(message),
   });
 
   const clearPoster = api.gigs.clearPoster.useMutation({
@@ -65,32 +73,13 @@ export function PosterCard({ gig, onSaved }: PosterCardProps) {
     },
   });
 
-  const handleFileChange = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file) return;
-    try {
-      setIsPosterUploading(true);
-      const arrayBuffer = await file.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString("base64");
-      const dataUrl = `data:${file.type};base64,${base64}`;
-      uploadPoster.mutate({
-        gigId: gig.id,
-        base64: dataUrl,
-        name: file.name,
-        mimeType: file.type,
-      });
-    } catch (err) {
-      setIsPosterUploading(false);
-      toast.error(
-        err instanceof Error ? err.message : "Failed to read file",
-      );
-    }
+    if (file) void upload([file]);
   };
 
-  const isUploading = isPosterUploading || uploadPoster.isPending;
+  const isUploading = isTransferring || setPoster.isPending;
   const hasPoster = Boolean(gig.posterFileUpload);
 
   return (
@@ -108,7 +97,7 @@ export function PosterCard({ gig, onSaved }: PosterCardProps) {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept={accept}
                 className="hidden"
                 onChange={handleFileChange}
               />

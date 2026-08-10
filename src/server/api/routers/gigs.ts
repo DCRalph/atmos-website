@@ -9,9 +9,8 @@ import {
   getTodayRangeEnd,
   isGigUpcoming,
 } from "~/lib/date-utils";
-import { uploadBufferToS3, softDeleteFile } from "~/lib/s3Helper";
+import { softDeleteFile } from "~/server/uploads/files";
 import { FileUploadStatus, GigMode, type GigMedia } from "~Prisma/client";
-import { toWebPMax } from "~/lib/sparpImage";
 import { userHasRole } from "~/server/utils/roles";
 import type { SerializedEditorState } from "lexical";
 import { Prisma } from "~Prisma/client";
@@ -796,95 +795,6 @@ export const gigsRouter = createTRPCRouter({
     }),
 
   /**
-   * Add media via base64 upload to S3
-   */
-  uploadMedia: adminProcedure
-    .input(
-      z.object({
-        gigId: z.string(),
-        base64: z.string(),
-        name: z.string(),
-        mimeType: z.string(),
-        section: z.enum(["featured", "gallery"]).default("gallery"),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      // Decode base64 to buffer
-      const base64Data = input.base64.replace(/^data:[^;]+;base64,/, "");
-      const buffer = Buffer.from(base64Data, "base64");
-
-      const resized = await toWebPMax(buffer, { maxSizePx: 2048, quality: 80 });
-
-      // Determine type from mimeType
-      const type = input.mimeType.startsWith("video/") ? "video" : "photo";
-
-      // Get max sort order for section first
-      const maxOrder = await ctx.db.gigMedia.aggregate({
-        where: { gigId: input.gigId, section: input.section },
-        _max: { sortOrder: true },
-      });
-
-      // Create GigMedia record first to get the ID
-      const media = await ctx.db.gigMedia.create({
-        data: {
-          gigId: input.gigId,
-          type,
-          section: input.section,
-          sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
-        },
-      });
-
-      // Upload to S3 with for="gig_media" and forId=media.id
-      const ext = input.name.split(".").pop() ?? "";
-      const uuid = crypto.randomUUID();
-      const key = `gigs/${input.gigId}/${uuid}${ext ? `.${ext}` : ""}`;
-
-      const uploadResult = await uploadBufferToS3({
-        buffer: resized.buffer,
-        key,
-        contentType: resized.contentType,
-        name: input.name,
-        fileType: type,
-        for: "gig_media",
-        forId: media.id,
-        acl: "public-read",
-        userId: ctx.user?.id ?? ctx.session.user.id,
-        width: resized.width,
-        height: resized.height,
-      });
-
-      // If duplicate, delete the created GigMedia record and return warning
-      if (uploadResult.isDuplicate) {
-        await ctx.db.gigMedia.delete({ where: { id: media.id } });
-        return {
-          isDuplicate: true,
-          warning: uploadResult.warning,
-          existingFileId: uploadResult.record.id,
-          existingUrl: uploadResult.url,
-          existingName: uploadResult.record.name,
-        };
-      }
-
-      // Update GigMedia with the file upload ID
-      const updatedMedia = await ctx.db.gigMedia.update({
-        where: { id: media.id },
-        data: { fileUploadId: uploadResult.record.id },
-      });
-
-      return {
-        isDuplicate: false,
-        ...updatedMedia,
-        fileUpload: {
-          id: uploadResult.record.id,
-          url: uploadResult.url,
-          name: input.name,
-          mimeType: input.mimeType,
-          status: FileUploadStatus.OK,
-        },
-      };
-    }),
-
-  /**
    * Update media properties
    */
   updateMedia: adminProcedure
@@ -1191,70 +1101,6 @@ export const gigsRouter = createTRPCRouter({
     }),
 
   // Poster management endpoints
-
-  uploadPoster: adminProcedure
-    .input(
-      z.object({
-        gigId: z.string(),
-        base64: z.string(),
-        name: z.string(),
-        mimeType: z.string(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      if (!input.mimeType.startsWith("image/")) {
-        throw new Error("Poster must be an image");
-      }
-
-      const gig = await ctx.db.gig.findUnique({
-        where: { id: input.gigId },
-        select: { id: true, posterFileUploadId: true },
-      });
-      if (!gig) throw new Error("Gig not found");
-
-      const base64Data = input.base64.replace(/^data:[^;]+;base64,/, "");
-      const buffer = Buffer.from(base64Data, "base64");
-      const resized = await toWebPMax(buffer, { maxSizePx: 2048, quality: 80 });
-
-      const uuid = crypto.randomUUID();
-      const key = `gigs/${input.gigId}/poster/${uuid}.webp`;
-
-      const uploadResult = await uploadBufferToS3({
-        buffer: resized.buffer,
-        key,
-        contentType: resized.contentType,
-        name: input.name,
-        fileType: "image",
-        for: "gig",
-        forId: input.gigId,
-        acl: "public-read",
-        userId: ctx.user?.id ?? ctx.session.user.id,
-        width: resized.width,
-        height: resized.height,
-      });
-
-      // If duplicate upload, still allow using it as the poster.
-      const nextPosterFileId = uploadResult.record.id;
-
-      await ctx.db.gig.update({
-        where: { id: input.gigId },
-        data: { posterFileUploadId: nextPosterFileId },
-      });
-
-      // Soft-delete previous poster file (if any and different)
-      if (
-        gig.posterFileUploadId &&
-        gig.posterFileUploadId !== nextPosterFileId
-      ) {
-        await softDeleteFile({ id: gig.posterFileUploadId });
-      }
-
-      const posterFileUpload = await getFileUploadInfoById(
-        ctx.db,
-        nextPosterFileId,
-      );
-      return { posterFileUpload };
-    }),
 
   setPosterFromUpload: adminProcedure
     .input(z.object({ gigId: z.string(), fileUploadId: z.string() }))

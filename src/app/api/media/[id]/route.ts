@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "~/server/db";
-import { getS3ObjectStream } from "~/lib/s3Helper";
+import { getObjectStream } from "~/server/uploads/s3";
 import { FileUploadStatus } from "~Prisma/client";
-import { ObjectCannedACL } from "@aws-sdk/client-s3";
 
 // 1 year in seconds
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
@@ -18,15 +17,10 @@ export async function GET(
   }
 
   try {
-    // const { stream, contentType, contentLength, lastModified, eTag } =
-    //   await getS3FromDbId(id);
-
     const record = await db.file_upload.findUnique({
       where: {
         id,
         status: FileUploadStatus.OK,
-        // for: "gig_media",
-        // acl: ObjectCannedACL.public_read
       },
       select: {
         key: true,
@@ -34,7 +28,7 @@ export async function GET(
     });
     if (!record) throw new Error("File not found");
     const { stream, contentType, contentLength, lastModified, eTag } =
-      await getS3ObjectStream(record.key);
+      await getObjectStream(record.key);
 
     // Convert Node.js stream to Web ReadableStream
     const webStream = new ReadableStream({

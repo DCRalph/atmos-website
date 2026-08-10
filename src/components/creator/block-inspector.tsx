@@ -12,8 +12,8 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { type ClientBlock } from "./block-types";
-import { ImageUploadField } from "./image-upload-field";
-import { ImageGalleryUpload } from "./image-gallery-upload";
+import { ImageUploadField } from "~/components/uploads/image-upload-field";
+import { ImageGalleryField } from "~/components/uploads/image-gallery-field";
 
 type Props = {
   block: ClientBlock;
@@ -108,8 +108,8 @@ export function BlockInspector({ block, onChange, profileId }: Props) {
             label="Image"
             value={dataFileId(block, "fileId")}
             onChange={(id) => onChange(updateData(block, "fileId", id))}
-            profileId={profileId}
-            kind="block_image"
+            preset="creatorBlockImage"
+            context={{ profileId }}
             aspect="square"
           />
           <div className="space-y-1">
@@ -124,11 +124,12 @@ export function BlockInspector({ block, onChange, profileId }: Props) {
     case "GALLERY": {
       const fileIds = dataFileIdArray(block, "fileIds");
       return (
-        <ImageGalleryUpload
+        <ImageGalleryField
           label="Gallery images"
           value={fileIds}
           onChange={(ids) => onChange(updateData(block, "fileIds", ids))}
-          profileId={profileId}
+          preset="creatorBlockImage"
+          context={{ profileId }}
         />
       );
     }

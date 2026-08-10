@@ -28,7 +28,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "~/components/ui/tabs";
-import { ImageUploadField } from "~/components/creator/image-upload-field";
+import { ImageUploadField } from "~/components/uploads/image-upload-field";
 import { EditHotspot } from "./edit-hotspot";
 
 // ---------------------------------------------------------------------------
@@ -124,7 +124,7 @@ export function ThemeCanvas({
                 label="Background image"
                 value={tokens.pageBgImageFileId}
                 onChange={(id) => patch({ pageBgImageFileId: id })}
-                kind="theme_bg"
+                preset="creatorThemeBackground"
                 aspect="wide"
               />
               <NullableColorField

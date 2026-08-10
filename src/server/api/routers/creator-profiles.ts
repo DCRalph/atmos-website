@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
@@ -8,13 +7,13 @@ import {
   creatorProcedure,
   adminProcedure,
 } from "~/server/api/trpc";
-import { userHasRole } from "~/server/utils/roles";
 import { logUserActivity } from "~/server/utils/activity-log";
-import { uploadBufferToS3, softDeleteFile, limits } from "~/lib/s3Helper";
-import { toWebPMax } from "~/lib/sparpImage";
+import { softDeleteFile } from "~/server/uploads/files";
+import { resolveTargetProfileId } from "~/server/utils/creator-profile-access";
 import {
   ActivityType,
   ClaimStatus,
+  FileUploadStatus,
   type CreatorBlockType,
   type PrismaClient,
 } from "~Prisma/client";
@@ -83,70 +82,32 @@ const socialInputSchema = z.object({
   sortOrder: z.number().int().default(0),
 });
 
-/** Ensure the current user can edit the given profile. */
-async function assertCanEditProfile(
-  ctx: {
-    db: PrismaClient;
-    session: { user: { id: string } } | null;
-  },
-  profileId: string,
-): Promise<{ profileId: string; isAdmin: boolean }> {
-  if (!ctx.session?.user) {
-    throw new TRPCError({ code: "UNAUTHORIZED" });
-  }
-  const [profile, user] = await Promise.all([
-    ctx.db.creatorProfile.findUnique({
-      where: { id: profileId },
-      select: { id: true, userId: true },
-    }),
-    ctx.db.user.findUnique({
-      where: { id: ctx.session.user.id },
-      include: { roles: true },
-    }),
-  ]);
-  if (!profile) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Profile not found" });
-  }
-  if (!user) {
-    throw new TRPCError({ code: "UNAUTHORIZED" });
-  }
-  const isAdmin = userHasRole(user, "ADMIN");
-  if (!isAdmin && profile.userId !== user.id) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "You cannot edit this profile",
-    });
-  }
-  return { profileId: profile.id, isAdmin };
-}
-
 /**
- * Resolve the target profile id. If `profileId` is provided, verify admin OR
- * owner. If omitted, return the current user's profile (creating one if the
- * user has CREATOR role but no profile yet).
+ * Confirms a file id refers to a usable image before a profile points at it.
+ * The upload itself is already constrained by its preset; this guards against
+ * a caller passing the id of a deleted or non-image file.
  */
-async function resolveTargetProfileId(
-  ctx: {
-    db: PrismaClient;
-    session: { user: { id: string } } | null;
-  },
-  profileId?: string,
-): Promise<{ profileId: string; isAdmin: boolean }> {
-  if (profileId) return assertCanEditProfile(ctx, profileId);
-  if (!ctx.session?.user) {
-    throw new TRPCError({ code: "UNAUTHORIZED" });
-  }
-  const mine = await ctx.db.creatorProfile.findUnique({
-    where: { userId: ctx.session.user.id },
-    select: { id: true },
+async function assertUsableImage(db: PrismaClient, fileId: string) {
+  const file = await db.file_upload.findUnique({
+    where: { id: fileId },
+    select: { id: true, status: true, mimeType: true },
   });
-  if (!mine) {
+  if (!file) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "File not found" });
+  }
+  if (file.status !== FileUploadStatus.OK) {
     throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "No profile for this user yet. Create one first.",
+      code: "BAD_REQUEST",
+      message: "File is not available",
     });
   }
-  return { profileId: mine.id, isAdmin: false };
+  if (!file.mimeType.startsWith("image/")) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "File must be an image",
+    });
+  }
+  return file;
 }
 
 export const creatorProfilesRouter = createTRPCRouter({
@@ -368,136 +329,90 @@ export const creatorProfilesRouter = createTRPCRouter({
       return updated;
     }),
 
-  uploadAvatar: protectedProcedure
+  /**
+   * Point the profile at an already-uploaded avatar.
+   *
+   * The file itself arrives through the shared upload system
+   * (`useUpload("creatorAvatar")`); this only moves the FK and retires the
+   * image it replaces.
+   */
+  setAvatar: protectedProcedure
     .input(
       z.object({
         profileId: z.string().optional(),
-        base64: z.string(),
-        name: z.string(),
-        mimeType: z.string(),
+        fileId: z.string().min(1),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const { profileId } = await resolveTargetProfileId(ctx, input.profileId);
-      if (!input.mimeType.startsWith("image/")) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Profile photo must be an image file",
-        });
-      }
-      const base64Data = input.base64.replace(/^data:[^;]+;base64,/, "");
-      const buffer = Buffer.from(base64Data, "base64");
-      if (buffer.length > limits.fileSize) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Image is too large (max ${limits.fileSize / 1024 / 1024}MB before processing)`,
-        });
-      }
-      const resized = await toWebPMax(buffer, {
-        maxSizePx: 896,
-        quality: 82,
-      });
-      const id = randomUUID();
-      const key = `creator-profiles/${profileId}/avatar-${id}.webp`;
-      const uploadResult = await uploadBufferToS3({
-        buffer: resized.buffer,
-        key,
-        contentType: resized.contentType,
-        name: `${input.name.replace(/\.[^/.]+$/, "") || "avatar"}.webp`,
-        fileType: "photo",
-        for: "creator_profile_avatar",
-        forId: profileId,
-        acl: "public-read",
-        userId: ctx.session.user.id,
-        width: resized.width,
-        height: resized.height,
-      });
-      const newFileId = uploadResult.record.id;
+      const file = await assertUsableImage(ctx.db, input.fileId);
+
       const prev = await ctx.db.creatorProfile.findUnique({
         where: { id: profileId },
         select: { avatarFileId: true, handle: true },
       });
+
       await ctx.db.creatorProfile.update({
         where: { id: profileId },
-        data: { avatarFileId: newFileId },
+        data: { avatarFileId: file.id },
       });
-      if (
-        prev?.avatarFileId &&
-        prev.avatarFileId !== newFileId
-      ) {
+
+      if (prev?.avatarFileId && prev.avatarFileId !== file.id) {
         try {
           await softDeleteFile({ id: prev.avatarFileId });
         } catch {
-          // ignore orphan / already deleted
+          // Previous file already gone; nothing to retire.
         }
       }
+
       await logUserActivity(
         ActivityType.CREATOR_PROFILE_UPDATED,
         `Updated profile photo for @${prev?.handle ?? profileId}`,
         ctx.session.user.id,
         undefined,
-        { profileId, avatarFileId: newFileId },
+        { profileId, avatarFileId: file.id },
       );
-      return { avatarFileId: newFileId };
+      return { avatarFileId: file.id };
     }),
 
-  /**
-   * Upload an image used inside a profile (theme background or block image).
-   * Kept separate from `uploadAvatar` because it does not update a dedicated
-   * FK on `CreatorProfile` — the resulting `file_upload.id` is stored inside
-   * theme tokens JSON or block data JSON by the caller.
-   */
-  uploadProfileImage: protectedProcedure
+  /** Point the profile at an already-uploaded banner. */
+  setBanner: protectedProcedure
     .input(
       z.object({
         profileId: z.string().optional(),
-        base64: z.string(),
-        name: z.string(),
-        mimeType: z.string(),
-        kind: z.enum(["theme_bg", "block_image"]),
+        fileId: z.string().min(1),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const { profileId } = await resolveTargetProfileId(ctx, input.profileId);
-      if (!input.mimeType.startsWith("image/")) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Upload must be an image file",
-        });
-      }
-      const base64Data = input.base64.replace(/^data:[^;]+;base64,/, "");
-      const buffer = Buffer.from(base64Data, "base64");
-      if (buffer.length > limits.fileSize) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Image is too large (max ${limits.fileSize / 1024 / 1024}MB before processing)`,
-        });
-      }
-      // Background images should preserve more detail; block images are
-      // typically displayed at smaller sizes.
-      const maxSizePx = input.kind === "theme_bg" ? 2048 : 1600;
-      const resized = await toWebPMax(buffer, {
-        maxSizePx,
-        quality: 82,
+      const file = await assertUsableImage(ctx.db, input.fileId);
+
+      const prev = await ctx.db.creatorProfile.findUnique({
+        where: { id: profileId },
+        select: { bannerFileId: true, handle: true },
       });
-      const id = randomUUID();
-      const folder =
-        input.kind === "theme_bg" ? "theme-bg" : "block-image";
-      const key = `creator-profiles/${profileId}/${folder}-${id}.webp`;
-      const uploadResult = await uploadBufferToS3({
-        buffer: resized.buffer,
-        key,
-        contentType: resized.contentType,
-        name: `${input.name.replace(/\.[^/.]+$/, "") || folder}.webp`,
-        fileType: "photo",
-        for: `creator_profile_${input.kind}`,
-        forId: profileId,
-        acl: "public-read",
-        userId: ctx.session.user.id,
-        width: resized.width,
-        height: resized.height,
+
+      await ctx.db.creatorProfile.update({
+        where: { id: profileId },
+        data: { bannerFileId: file.id },
       });
-      return { fileId: uploadResult.record.id };
+
+      if (prev?.bannerFileId && prev.bannerFileId !== file.id) {
+        try {
+          await softDeleteFile({ id: prev.bannerFileId });
+        } catch {
+          // Previous file already gone; nothing to retire.
+        }
+      }
+
+      await logUserActivity(
+        ActivityType.CREATOR_PROFILE_UPDATED,
+        `Updated banner image for @${prev?.handle ?? profileId}`,
+        ctx.session.user.id,
+        undefined,
+        { profileId, bannerFileId: file.id },
+      );
+      return { bannerFileId: file.id };
     }),
 
   clearAvatar: protectedProcedure
@@ -529,77 +444,6 @@ export const creatorProfilesRouter = createTRPCRouter({
         { profileId },
       );
       return { ok: true as const, avatarFileId: null as string | null };
-    }),
-
-  uploadBanner: protectedProcedure
-    .input(
-      z.object({
-        profileId: z.string().optional(),
-        base64: z.string(),
-        name: z.string(),
-        mimeType: z.string(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const { profileId } = await resolveTargetProfileId(ctx, input.profileId);
-      if (!input.mimeType.startsWith("image/")) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Banner must be an image file",
-        });
-      }
-      const base64Data = input.base64.replace(/^data:[^;]+;base64,/, "");
-      const buffer = Buffer.from(base64Data, "base64");
-      if (buffer.length > limits.fileSize) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Image is too large (max ${limits.fileSize / 1024 / 1024}MB before processing)`,
-        });
-      }
-      // Banners are displayed full-width, so keep more detail than avatars.
-      const resized = await toWebPMax(buffer, {
-        maxSizePx: 2048,
-        quality: 82,
-      });
-      const id = randomUUID();
-      const key = `creator-profiles/${profileId}/banner-${id}.webp`;
-      const uploadResult = await uploadBufferToS3({
-        buffer: resized.buffer,
-        key,
-        contentType: resized.contentType,
-        name: `${input.name.replace(/\.[^/.]+$/, "") || "banner"}.webp`,
-        fileType: "photo",
-        for: "creator_profile_banner",
-        forId: profileId,
-        acl: "public-read",
-        userId: ctx.session.user.id,
-        width: resized.width,
-        height: resized.height,
-      });
-      const newFileId = uploadResult.record.id;
-      const prev = await ctx.db.creatorProfile.findUnique({
-        where: { id: profileId },
-        select: { bannerFileId: true, handle: true },
-      });
-      await ctx.db.creatorProfile.update({
-        where: { id: profileId },
-        data: { bannerFileId: newFileId },
-      });
-      if (prev?.bannerFileId && prev.bannerFileId !== newFileId) {
-        try {
-          await softDeleteFile({ id: prev.bannerFileId });
-        } catch {
-          // ignore orphan / already deleted
-        }
-      }
-      await logUserActivity(
-        ActivityType.CREATOR_PROFILE_UPDATED,
-        `Updated banner image for @${prev?.handle ?? profileId}`,
-        ctx.session.user.id,
-        undefined,
-        { profileId, bannerFileId: newFileId },
-      );
-      return { bannerFileId: newFileId };
     }),
 
   clearBanner: protectedProcedure
