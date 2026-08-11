@@ -208,6 +208,13 @@ export const ticketsRouter = createTRPCRouter({
           )
           .max(50),
         buyerName: z.string().trim().max(120).optional(),
+        /**
+         * Only honoured while the order has no address of its own. A free
+         * ticket can be issued without one, and the tickets page offers this
+         * field so somebody looking at their QR code can still have it sent to
+         * them. Changing an address that already exists is `saveDetails`.
+         */
+        buyerEmail: z.email().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -226,6 +233,22 @@ export const ticketsRouter = createTRPCRouter({
         }
       }
 
+      const email =
+        !order.buyerEmail && input.buyerEmail
+          ? input.buyerEmail.toLowerCase().trim()
+          : null;
+
+      if (email) {
+        const ip =
+          ctx.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+        await enforceRateLimit({
+          key: `details:${ip}`,
+          limit: 20,
+          windowSeconds: 900,
+          message: "Too many changes. Give it a few minutes.",
+        });
+      }
+
       await ctx.db.$transaction([
         ...input.names.map((entry) =>
           ctx.db.ticket.update({
@@ -238,11 +261,17 @@ export const ticketsRouter = createTRPCRouter({
           data: {
             detailsCompletedAt: new Date(),
             ...(input.buyerName ? { buyerName: input.buyerName } : {}),
+            ...(email ? { buyerEmail: email } : {}),
           },
         }),
       ]);
 
-      return { ok: true as const };
+      // First address this order has had, so it has never been sent anything.
+      const result = email
+        ? await sendTicketEmail({ orderId: order.id })
+        : { ok: false as const };
+
+      return { ok: true as const, emailedTo: result.ok ? email : null };
     }),
 
   /** Re-send the ticket email to the address that bought them. */

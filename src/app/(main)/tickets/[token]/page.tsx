@@ -28,9 +28,10 @@ import { useIssuedOrder } from "~/hooks/use-issued-order";
 /**
  * The buyer's tickets.
  *
- * Reached straight after payment and from the email, with no login. The QR
- * codes render first and everything else — names, receipt — sits underneath,
- * because the only thing that matters at 11pm is the code being on screen.
+ * Reached from the email and from the details step, with no login. Anything
+ * still being asked of the buyer sits above the QR codes — a form underneath
+ * three full-width codes is a form nobody scrolls to — and the receipt sits
+ * below them, because it is the one thing here nobody is in a hurry to read.
  */
 export default function TicketsPage() {
   const params = useParams<{ token: string }>();
@@ -93,25 +94,9 @@ export default function TicketsPage() {
         <div className="mb-8 flex items-center gap-3 border-2 border-emerald-500/30 bg-emerald-500/10 p-4">
           <Check className="size-5 shrink-0 text-emerald-300" aria-hidden />
           <p className="text-sm text-emerald-100">
-            You&apos;re in. We&apos;ve emailed a copy to{" "}
-            {data.buyerEmail ?? "your inbox"}.
-          </p>
-        </div>
-      )}
-
-      {!data.detailsCompletedAt && (
-        <div className="mb-8 border-2 border-amber-500/30 bg-amber-500/10 p-4">
-          <p className="text-sm text-amber-100">
             {data.buyerEmail
-              ? "We don't know who these tickets are for yet."
-              : "We haven't got an email address for these tickets yet."}{" "}
-            <Link
-              href={`/tickets/${token}/details`}
-              className="underline underline-offset-4"
-            >
-              Add your details
-            </Link>
-            .
+              ? `You're in. We've emailed a copy to ${data.buyerEmail}.`
+              : "You're in. Add an email below and we'll send you a copy."}
           </p>
         </div>
       )}
@@ -150,6 +135,10 @@ export default function TicketsPage() {
           </p>
         )}
       </header>
+
+      {(data.event.requireAttendeeNames || !data.buyerEmail) && (
+        <AttendeeDetails token={token} data={data} onSaved={refresh} />
+      )}
 
       <section className="mt-10 space-y-5">
         {data.tickets.map((ticket, index) => (
@@ -202,10 +191,6 @@ export default function TicketsPage() {
         ))}
       </section>
 
-      {data.event.requireAttendeeNames && (
-        <AttendeeNames token={token} tickets={data.tickets} onSaved={refresh} />
-      )}
-
       <Receipt data={data} />
 
       <ResendButton token={token} email={data.buyerEmail} />
@@ -213,15 +198,27 @@ export default function TicketsPage() {
   );
 }
 
-function AttendeeNames({
+/**
+ * Names, and an address to send the tickets to if the order hasn't got one.
+ *
+ * A free ticket can be issued without an email, so somebody can be sitting on
+ * this page looking at a perfectly good QR code that exists nowhere else. The
+ * email field is the way out of that, and it only appears while it is needed.
+ */
+function AttendeeDetails({
   token,
-  tickets,
+  data,
   onSaved,
 }: {
   token: string;
-  tickets: { id: string; attendeeName: string | null; tierName: string }[];
+  data: TicketOrderView;
   onSaved: () => void;
 }) {
+  const tickets = data.tickets;
+  const needsEmail = !data.buyerEmail;
+  const wantsNames = data.event.requireAttendeeNames;
+
+  const [email, setEmail] = useState("");
   const [names, setNames] = useState<Record<string, string>>(() =>
     Object.fromEntries(
       tickets.map((ticket) => [ticket.id, ticket.attendeeName ?? ""]),
@@ -229,8 +226,12 @@ function AttendeeNames({
   );
 
   const save = api.tickets.setAttendeeNames.useMutation({
-    onSuccess: () => {
-      toast.success("Saved — see you there.");
+    onSuccess: (result) => {
+      toast.success(
+        result.emailedTo
+          ? `Sent to ${result.emailedTo}. See you there.`
+          : "Saved — see you there.",
+      );
       onSaved();
     },
     onError: (error) => toast.error(error.message),
@@ -240,53 +241,89 @@ function AttendeeNames({
 
   return (
     <section className="mt-10 border-2 border-white/10 bg-black/60 p-5">
-      <h2 className="text-lg font-semibold text-white">
-        {allNamed ? "Who's coming" : "Who's coming?"}
-      </h2>
-      <p className="mt-1 text-sm text-white/50">
-        {allNamed
-          ? "Change a name any time before the doors open."
-          : "Optional, but it gets your group through the door faster."}
-      </p>
-
       <form
-        className="mt-5 space-y-4"
+        className="space-y-8"
         onSubmit={(e) => {
           e.preventDefault();
           save.mutate({
             accessToken: token,
-            names: tickets.map((ticket) => ({
-              ticketId: ticket.id,
-              attendeeName: names[ticket.id]?.trim() ?? "",
-            })),
+            names: wantsNames
+              ? tickets.map((ticket) => ({
+                  ticketId: ticket.id,
+                  attendeeName: names[ticket.id]?.trim() ?? "",
+                }))
+              : [],
+            ...(needsEmail && email.trim() ? { buyerEmail: email.trim() } : {}),
           });
         }}
       >
-        {tickets.map((ticket, index) => (
-          <div key={ticket.id} className="space-y-1.5">
-            <Label htmlFor={`name-${ticket.id}`}>
-              Ticket {index + 1} · {ticket.tierName}
-            </Label>
-            <Input
-              id={`name-${ticket.id}`}
-              value={names[ticket.id] ?? ""}
-              onChange={(e) =>
-                setNames((current) => ({
-                  ...current,
-                  [ticket.id]: e.target.value,
-                }))
-              }
-              placeholder="Full name"
-              autoComplete="off"
-            />
+        {needsEmail && (
+          <div>
+            <h2 className="text-lg font-semibold text-white">
+              Where should we send these?
+            </h2>
+            <p className="mt-1 text-sm text-white/50">
+              We haven&apos;t got an email for this order. Add one and the
+              tickets are on their way — right now they only exist on this page.
+            </p>
+
+            <div className="mt-5 space-y-1.5">
+              <Label htmlFor="buyer-email">Email</Label>
+              <Input
+                id="buyer-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                autoComplete="email"
+                required
+              />
+            </div>
           </div>
-        ))}
+        )}
+
+        {wantsNames && (
+          <div className={needsEmail ? "border-t-2 border-white/10 pt-8" : ""}>
+            <h2 className="text-lg font-semibold text-white">
+              {allNamed ? "Who's coming" : "Who's coming?"}
+            </h2>
+            <p className="mt-1 text-sm text-white/50">
+              {allNamed
+                ? "Change a name any time before the doors open."
+                : "Optional, but it gets your group through the door faster."}
+            </p>
+
+            <div className="mt-5 space-y-4">
+              {tickets.map((ticket, index) => (
+                <div key={ticket.id} className="space-y-1.5">
+                  <Label htmlFor={`name-${ticket.id}`}>
+                    Ticket {index + 1} · {ticket.tierName}
+                  </Label>
+                  <Input
+                    id={`name-${ticket.id}`}
+                    value={names[ticket.id] ?? ""}
+                    onChange={(e) =>
+                      setNames((current) => ({
+                        ...current,
+                        [ticket.id]: e.target.value,
+                      }))
+                    }
+                    placeholder="Full name"
+                    autoComplete="off"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <Button type="submit" disabled={save.isPending} className="w-full">
           {save.isPending ? (
             <>
               <Loader2 className="size-4 animate-spin" /> Saving…
             </>
+          ) : needsEmail ? (
+            "Send my tickets"
           ) : (
             "Save names"
           )}
