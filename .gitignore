@@ -24,7 +24,14 @@ next-env.d.ts
 
 # misc
 .DS_Store
+
+# signing material — the Apple Wallet pass certificate and its private key
+/keys/
 *.pem
+*.p12
+*.cer
+*.key
+*.certSigningRequest
 
 # debug
 npm-debug.log*

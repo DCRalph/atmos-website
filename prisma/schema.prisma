@@ -777,6 +777,7 @@ enum ActivityType {
   TICKET_RESENT
   TICKET_SCANNED
   TICKET_SCAN_OVERRIDE
+  TICKET_ENTRY_DENIED
   DISCOUNT_CODE_CREATED
   DISCOUNT_CODE_UPDATED
   DISCOUNT_CODE_DELETED
@@ -865,12 +866,32 @@ enum TicketScanResult {
   /// A manager undoing a mistaken admission. The scan log stays append-only,
   /// so an undo is a new row rather than a deletion.
   ADMISSION_REVERTED
+  /// Door staff turned this person away after the scan itself came back fine.
+  /// Carries `denyReason` and optionally `denyNote`.
+  DENIED
+  /// A later scan of a ticket that still carries an active denial. The door
+  /// sees the earlier refusal instead of a fresh decision.
+  PREVIOUSLY_DENIED
   INVALID_SIGNATURE
   NOT_FOUND
   WRONG_EVENT
   VOIDED
   REFUNDED_TICKET
   ORDER_UNPAID
+}
+
+/// Why the door turned someone away. A fixed list rather than free text: the
+/// reasons have to be tappable one-handed in the dark, and they only mean
+/// anything afterwards if everyone picked from the same set.
+enum TicketDenyReason {
+  INTOXICATED
+  NO_ID
+  UNDERAGE
+  BEHAVIOUR
+  DRESS_CODE
+  BANNED
+  WRONG_PERSON
+  OTHER
 }
 
 enum DiscountCodeType {
@@ -1144,6 +1165,11 @@ model TicketScan {
 
   result      TicketScanResult
   wasOverride Boolean          @default(false)
+
+  /// Set on DENIED rows: why the door refused entry.
+  denyReason TicketDenyReason?
+  /// Whatever the door added in their own words alongside the reason.
+  denyNote   String?
 
   scannedByUserId String?
   deviceLabel     String?

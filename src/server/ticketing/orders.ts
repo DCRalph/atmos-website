@@ -524,7 +524,9 @@ export async function findOrderByAccessToken(token: string) {
   const order = await db.ticketOrder.findUnique({
     where: { id: parsed.orderId },
     include: {
-      event: true,
+      // The gig comes along for its poster: an event linked to a gig inherits
+      // that artwork when it has none of its own.
+      event: { include: { gig: { select: { posterFileUploadId: true } } } },
       items: { include: { tier: true } },
       tickets: {
         where: { status: { not: TicketStatus.VOID } },

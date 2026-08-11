@@ -23,6 +23,11 @@ export function ticketsUrl(accessToken: string): string {
   return `${base()}/tickets/${accessToken}`;
 }
 
+/** Where the buyer says who they are and names each ticket. */
+export function ticketDetailsUrl(accessToken: string): string {
+  return `${base()}/tickets/${accessToken}/details`;
+}
+
 export function applePassUrl(ticketId: string, accessToken: string): string {
   return `${base()}/api/tickets/${ticketId}/pkpass?t=${encodeURIComponent(accessToken)}`;
 }

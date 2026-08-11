@@ -41,6 +41,8 @@ export type TicketEmailInput = {
   orderNumber: string;
   tickets: EmailTicket[];
   ticketsUrl: string;
+  /** Where the "add names" prompt sends them. */
+  detailsUrl: string;
   appleWalletUrlFor?: (ticketNumber: string) => string;
   googleWalletUrlFor?: (ticketNumber: string) => string;
   totals: {
@@ -165,7 +167,7 @@ export function renderTicketEmail(input: TicketEmailInput): {
 <tr><td style="padding:18px 20px;">
   <div style="font-size:14px;color:${TEXT};margin-bottom:8px;">One quick thing</div>
   <div style="font-size:14px;color:${MUTED};line-height:1.6;">Add the name of whoever is using each ticket so the door can find them fast. It only takes a second, and you can do it any time before the event.</div>
-  <a href="${input.ticketsUrl}" style="display:inline-block;margin-top:12px;padding:10px 16px;background:${ACCENT};color:#000;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;">Add names</a>
+  <a href="${input.detailsUrl}" style="display:inline-block;margin-top:12px;padding:10px 16px;background:${ACCENT};color:#000;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;">Add names</a>
 </td></tr>
 </table>
 </td></tr>`
@@ -244,8 +246,8 @@ Screenshots work, but the first scan wins: don't forward a ticket you're using y
     .join("\n");
 
   return {
-    subject: `Your tickets — ${input.eventName}`,
-    html: layout(`Your tickets — ${input.eventName}`, body, footer),
+    subject: input.eventName,
+    html: layout(input.eventName, body, footer),
     text,
   };
 }

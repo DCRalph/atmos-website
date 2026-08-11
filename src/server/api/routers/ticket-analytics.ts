@@ -298,6 +298,8 @@ export const ticketAnalyticsRouter = createTRPCRouter({
               result: {
                 in: [
                   TicketScanResult.DUPLICATE,
+                  TicketScanResult.DENIED,
+                  TicketScanResult.PREVIOUSLY_DENIED,
                   TicketScanResult.INVALID_SIGNATURE,
                   TicketScanResult.NOT_FOUND,
                   TicketScanResult.WRONG_EVENT,

@@ -31,6 +31,8 @@ export type CheckoutSession = {
   totalCents: number;
   isFree: boolean;
   expiresAt: Date | null;
+  /** A gated tier that can't be issued before we know who is claiming it. */
+  needsDetailsUpFront: boolean;
 };
 
 /**
@@ -40,6 +42,9 @@ export type CheckoutSession = {
  * is the whole point of the flow: one tap, no typing, and the buyer's email
  * arrives from the wallet rather than a form. The card form underneath is the
  * fallback, not the headline.
+ *
+ * Neither path asks who the buyer is. Everyone lands on
+ * `/tickets/[token]/details` afterwards, ticket already in hand.
  */
 
 let stripePromise: Promise<Stripe | null> | null = null;
@@ -129,7 +134,7 @@ function PaidCheckout({
 
   const returnUrl = useMemo(() => {
     if (typeof window === "undefined") return "";
-    return `${window.location.origin}/tickets/${session.accessToken}?new=1`;
+    return `${window.location.origin}/tickets/${session.accessToken}/details?new=1`;
   }, [session.accessToken]);
 
   async function pay() {
@@ -169,7 +174,7 @@ function PaidCheckout({
       // Issue immediately rather than waiting for the webhook, so the tickets
       // are on screen by the time the buyer looks up.
       await confirm.mutateAsync({ accessToken: session.accessToken });
-      router.push(`/tickets/${session.accessToken}?new=1`);
+      router.push(`/tickets/${session.accessToken}/details?new=1`);
     } catch (cause) {
       setBusy(false);
       const message =
@@ -249,8 +254,13 @@ function PaidCheckout({
 }
 
 /**
- * Free tickets are the one place we ask for an email before issuing: there is
- * no payment to take one from, and a ticket has to be delivered somewhere.
+ * Free tickets: a tick-box and a button.
+ *
+ * Nothing is asked here — the ticket is issued and the details page collects
+ * the name and the email to send it to. The exception is a gated tier
+ * (`needsDetailsUpFront`): a request awaiting approval has no ticket to hand
+ * over yet and no way to tell anyone the answer, and a per-email cap checked
+ * after issuing isn't a cap. Those two keep their form.
  */
 function FreeClaimForm({
   event,
@@ -262,6 +272,8 @@ function FreeClaimForm({
   onCancel: () => void;
 }) {
   const router = useRouter();
+  const askUpFront = session.needsDetailsUpFront;
+
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [accepted, setAccepted] = useState(false);
@@ -275,7 +287,7 @@ function FreeClaimForm({
         router.push(`/tickets/${session.accessToken}`);
         return;
       }
-      router.push(`/tickets/${session.accessToken}?new=1`);
+      router.push(`/tickets/${session.accessToken}/details?new=1`);
     },
     onError: (cause) => setError(cause.message),
   });
@@ -293,10 +305,9 @@ function FreeClaimForm({
           }
           claim.mutate({
             accessToken: session.accessToken,
-            email,
-            name,
             acceptTerms: true,
             marketingOptIn: marketing,
+            ...(askUpFront ? { email, name } : {}),
           });
         }}
       >
@@ -305,31 +316,41 @@ function FreeClaimForm({
           <p className="text-2xl font-semibold text-white">Free entry</p>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="claim-name">Your name</Label>
-          <Input
-            id="claim-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            autoComplete="name"
-          />
-        </div>
+        {askUpFront ? (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="claim-name">Your name</Label>
+              <Input
+                id="claim-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                autoComplete="name"
+              />
+            </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="claim-email">Email</Label>
-          <Input
-            id="claim-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-          />
-          <p className="text-xs text-white/40">
-            We&apos;ll send your ticket here. Nothing else without your say-so.
+            <div className="space-y-2">
+              <Label htmlFor="claim-email">Email</Label>
+              <Input
+                id="claim-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+              />
+              <p className="text-xs text-white/40">
+                This ticket has to be checked against your email before it can
+                be issued.
+              </p>
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-white/50">
+            Grab it now — we&apos;ll ask who you are on the next page, once the
+            ticket is yours.
           </p>
-        </div>
+        )}
 
         <Consent
           accepted={accepted}

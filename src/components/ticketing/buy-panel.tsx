@@ -8,19 +8,10 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { formatNZD, formatNZDCompact } from "~/lib/ticketing/money";
-import { CheckoutPanel } from "./checkout-panel";
+import { CheckoutPanel, type CheckoutSession } from "./checkout-panel";
 
 type PublicEvent = NonNullable<RouterOutputs["ticketEvents"]["bySlug"]>;
 type PublicTier = PublicEvent["tiers"][number];
-
-type CheckoutSession = {
-  orderId: string;
-  accessToken: string;
-  clientSecret: string | null;
-  totalCents: number;
-  isFree: boolean;
-  expiresAt: Date | null;
-};
 
 /**
  * The buy panel.
@@ -63,6 +54,7 @@ export function BuyPanel({ event }: { event: PublicEvent }) {
         totalCents: order.totalCents,
         isFree: order.isFree,
         expiresAt: order.expiresAt,
+        needsDetailsUpFront: order.needsDetailsUpFront,
       });
     },
     onError: (error) => toast.error(error.message),

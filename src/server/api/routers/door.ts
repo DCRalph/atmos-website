@@ -10,8 +10,9 @@ import {
   TicketStatus,
 } from "~Prisma/client";
 import { createTRPCRouter, doorProcedure } from "~/server/api/trpc";
-import { admittedCount, scanTicket } from "~/server/ticketing/scan";
+import { admittedCount, denyTicket, scanTicket } from "~/server/ticketing/scan";
 import { buildTicketToken } from "~/server/ticketing/qr";
+import { DENY_REASON_VALUES } from "~/lib/ticketing/deny-reasons";
 import { logActivity } from "~/server/utils/activity-log";
 import { db } from "~/server/db";
 
@@ -212,6 +213,7 @@ export const doorRouter = createTRPCRouter({
           message: "No ticket with that number",
           ticket: null,
           previousAdmission: null,
+          previousDenial: null,
           isR18: false,
           canOverride: false,
           admitted: await admittedCount(input.eventId),
@@ -225,6 +227,56 @@ export const doorRouter = createTRPCRouter({
         deviceLabel: input.deviceLabel ?? null,
         override: input.override,
       });
+
+      return { ...outcome, admitted: await admittedCount(input.eventId) };
+    }),
+
+  /**
+   * Turn someone away. Available to every door staffer, not just managers —
+   * the person holding the scanner is the one looking at the punter, and a
+   * refusal that has to wait for a manager is a refusal that doesn't happen.
+   */
+  deny: doorProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        ticketId: z.string(),
+        reason: z.enum(DENY_REASON_VALUES),
+        note: z.string().trim().max(200).optional(),
+        deviceLabel: z.string().trim().max(60).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
+
+      const outcome = await denyTicket({
+        ticketId: input.ticketId,
+        eventId: input.eventId,
+        reason: input.reason,
+        note: input.note ?? null,
+        scannedByUserId: ctx.user.id,
+        deviceLabel: input.deviceLabel ?? null,
+      });
+
+      if (outcome.result === TicketScanResult.DENIED) {
+        await logActivity({
+          type: ActivityType.TICKET_ENTRY_DENIED,
+          action: `Refused entry to ${outcome.ticket?.ticketNumber ?? "unknown ticket"} (${input.reason})`,
+          userId: ctx.user.id,
+          details: {
+            eventId: input.eventId,
+            ticketId: input.ticketId,
+            reason: input.reason,
+            note: input.note,
+            deviceLabel: input.deviceLabel,
+          },
+        });
+      }
 
       return { ...outcome, admitted: await admittedCount(input.eventId) };
     }),

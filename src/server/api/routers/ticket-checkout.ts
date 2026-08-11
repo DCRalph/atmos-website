@@ -26,11 +26,16 @@ import { db } from "~/server/db";
 /**
  * Public checkout.
  *
- * The shape of this router is the seamless flow: `quote` prices a basket with
- * nothing but tier ids, `start` takes the money, and the buyer's email arrives
- * with the payment rather than before it. `claimFree` is the one exception —
- * a free ticket still has to be delivered somewhere, so that path asks for an
- * email up front.
+ * Nobody is asked who they are until they have a ticket. `quote` prices a
+ * basket from tier ids alone, `start` takes the money, `claimFree` hands over a
+ * free ticket on a tick-box — and the buyer's name and email are collected
+ * afterwards, on `/tickets/[token]/details`.
+ *
+ * Two tier settings can't work that way round and still keep their promise, so
+ * they alone are asked up front: `requiresApproval` (there is no ticket yet,
+ * and an approval nobody can be told about is useless) and `maxPerEmail` (a cap
+ * you check after issuing is not a cap). `start` reports that as
+ * `needsDetailsUpFront` so the client knows which form to show.
  */
 
 const linesSchema = z
@@ -184,17 +189,28 @@ export const ticketCheckoutRouter = createTRPCRouter({
         await cancelPendingOrder(input.replaceOrderId).catch(() => undefined);
       }
 
+      const lines = input.lines.filter((line) => line.quantity > 0);
+
       const order = await createPendingOrder({
         eventId: input.eventId,
-        lines: input.lines.filter((line) => line.quantity > 0),
+        lines,
         discountCodeInput: input.discountCode ?? null,
         utm: input.utm,
         ipAddress: ip === "unknown" ? null : ip,
         userId: ctx.session?.user.id ?? null,
       }).catch(inventoryErrorToTrpc);
 
+      const needsDetailsUpFront = await gatedTierCount(
+        lines.map((line) => line.tierId),
+      );
+
       if (order.isFree) {
-        return { ...order, clientSecret: null, publishableKey: null };
+        return {
+          ...order,
+          clientSecret: null,
+          publishableKey: null,
+          needsDetailsUpFront,
+        };
       }
 
       if (!isStripeConfigured()) {
@@ -232,21 +248,26 @@ export const ticketCheckoutRouter = createTRPCRouter({
         ...order,
         clientSecret: intent.client_secret,
         publishableKey: env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? null,
+        needsDetailsUpFront,
       };
     }),
 
   /**
-   * Issue a free order. This is the only place a buyer is asked for anything
-   * before they have "paid" — there is no payment to harvest an email from.
+   * Issue a free order.
+   *
+   * Normally this needs nothing but the terms tick — the ticket appears, and
+   * the details page afterwards is what makes it deliverable. `email` and
+   * `name` are only sent for the gated tiers described at the top of this file,
+   * and are required in exactly that case.
    */
   claimFree: publicProcedure
     .input(
       z.object({
         accessToken: z.string(),
-        email: z.email(),
-        name: z.string().trim().min(1).max(120),
         acceptTerms: z.literal(true),
         marketingOptIn: z.boolean().default(false),
+        email: z.email().optional(),
+        name: z.string().trim().min(1).max(120).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -276,24 +297,36 @@ export const ticketCheckoutRouter = createTRPCRouter({
         });
       }
 
-      const email = input.email.toLowerCase().trim();
-
-      // Per-email caps are enforceable here because, unlike a card checkout,
-      // we know who is claiming before anything is issued.
-      for (const item of order.items) {
-        if (item.tier.maxPerEmail === null) continue;
-        const already = await ctx.db.ticket.count({
-          where: {
-            tierId: item.tierId,
-            status: "VALID",
-            order: { buyerEmail: email },
-          },
+      const needsUpFront = order.items.some(
+        (item) => item.tier.requiresApproval || item.tier.maxPerEmail !== null,
+      );
+      if (needsUpFront && !input.email) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This ticket needs an email address.",
         });
-        if (already + item.quantity > item.tier.maxPerEmail) {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message: `There's a limit of ${item.tier.maxPerEmail} × ${item.tier.name} per person.`,
+      }
+
+      const email = input.email?.toLowerCase().trim() ?? null;
+
+      // Only checkable while we still know who is claiming and nothing has been
+      // issued — which is exactly why a capped tier asks up front.
+      if (email) {
+        for (const item of order.items) {
+          if (item.tier.maxPerEmail === null) continue;
+          const already = await ctx.db.ticket.count({
+            where: {
+              tierId: item.tierId,
+              status: "VALID",
+              order: { buyerEmail: email },
+            },
           });
+          if (already + item.quantity > item.tier.maxPerEmail) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: `There's a limit of ${item.tier.maxPerEmail} × ${item.tier.name} per person.`,
+            });
+          }
         }
       }
 
@@ -302,12 +335,18 @@ export const ticketCheckoutRouter = createTRPCRouter({
       );
 
       if (needsApproval) {
+        if (!email) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This ticket needs an email address.",
+          });
+        }
         await ctx.db.ticketOrder.update({
           where: { id: order.id },
           data: {
             status: TicketOrderStatus.AWAITING_APPROVAL,
             buyerEmail: email,
-            buyerName: input.name,
+            buyerName: input.name ?? null,
             termsAcceptedAt: new Date(),
             marketingOptIn: input.marketingOptIn,
             // Approval queues shouldn't time out and dump the request.
@@ -321,14 +360,18 @@ export const ticketCheckoutRouter = createTRPCRouter({
       await issueTicketsForOrder({
         orderId: order.id,
         buyerEmail: email,
-        buyerName: input.name,
+        buyerName: input.name ?? null,
         paymentMethod: PaymentMethodKind.FREE,
         termsAccepted: true,
         marketingOptIn: input.marketingOptIn,
       });
 
-      await maybeSubscribe(email, input.marketingOptIn);
-      await sendTicketEmail({ orderId: order.id });
+      // Without an email there is nowhere to send it yet; the details page
+      // picks that up the moment the buyer gives us one.
+      if (email) {
+        await maybeSubscribe(email, input.marketingOptIn);
+        await sendTicketEmail({ orderId: order.id });
+      }
 
       return { ok: true as const, alreadyIssued: false };
     }),
@@ -453,6 +496,21 @@ export const ticketCheckoutRouter = createTRPCRouter({
     };
   }),
 });
+
+/**
+ * Whether this basket contains a tier whose rules only hold if we know the
+ * buyer before issuing. See the note at the top of this file.
+ */
+async function gatedTierCount(tierIds: string[]): Promise<boolean> {
+  if (tierIds.length === 0) return false;
+  const gated = await db.ticketTier.count({
+    where: {
+      id: { in: tierIds },
+      OR: [{ requiresApproval: true }, { maxPerEmail: { not: null } }],
+    },
+  });
+  return gated > 0;
+}
 
 /**
  * Ticket buyers are only added to the newsletter when they explicitly tick the

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -23,6 +23,7 @@ import {
   formatEventTime,
 } from "~/lib/ticketing/dates";
 import { formatNZD } from "~/lib/ticketing/money";
+import { useIssuedOrder } from "~/hooks/use-issued-order";
 
 /**
  * The buyer's tickets.
@@ -37,30 +38,7 @@ export default function TicketsPage() {
   const token = params.token;
   const isNew = searchParams.get("new") === "1";
 
-  const utils = api.useUtils();
-  const order = api.tickets.byAccessToken.useQuery(
-    { accessToken: token },
-    {
-      enabled: !!token,
-      // Straight after payment the webhook may still be in flight; poll until
-      // the tickets exist rather than showing an empty page.
-      refetchInterval: (query) =>
-        query.state.data && !query.state.data.issued ? 2000 : false,
-    },
-  );
-
-  const confirm = api.ticketCheckout.confirm.useMutation({
-    onSuccess: () => void utils.tickets.byAccessToken.invalidate(),
-  });
-
-  // Covers the redirect-based payment methods, which land here without the
-  // client-side confirm having run.
-  useEffect(() => {
-    if (isNew && order.data && !order.data.issued && !confirm.isPending) {
-      confirm.mutate({ accessToken: token });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isNew, order.data?.issued]);
+  const { order, refresh } = useIssuedOrder(token, isNew);
 
   if (order.isPending) {
     return (
@@ -117,6 +95,23 @@ export default function TicketsPage() {
           <p className="text-sm text-emerald-100">
             You&apos;re in. We&apos;ve emailed a copy to{" "}
             {data.buyerEmail ?? "your inbox"}.
+          </p>
+        </div>
+      )}
+
+      {!data.detailsCompletedAt && (
+        <div className="mb-8 border-2 border-amber-500/30 bg-amber-500/10 p-4">
+          <p className="text-sm text-amber-100">
+            {data.buyerEmail
+              ? "We don't know who these tickets are for yet."
+              : "We haven't got an email address for these tickets yet."}{" "}
+            <Link
+              href={`/tickets/${token}/details`}
+              className="underline underline-offset-4"
+            >
+              Add your details
+            </Link>
+            .
           </p>
         </div>
       )}
@@ -208,11 +203,7 @@ export default function TicketsPage() {
       </section>
 
       {data.event.requireAttendeeNames && (
-        <AttendeeNames
-          token={token}
-          tickets={data.tickets}
-          onSaved={() => void utils.tickets.byAccessToken.invalidate()}
-        />
+        <AttendeeNames token={token} tickets={data.tickets} onSaved={refresh} />
       )}
 
       <Receipt data={data} />

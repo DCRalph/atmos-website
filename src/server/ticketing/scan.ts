@@ -1,6 +1,7 @@
 import "server-only";
 
 import {
+  type TicketDenyReason,
   TicketOrderStatus,
   TicketScanResult,
   TicketStatus,
@@ -19,6 +20,12 @@ import { parseTicketToken, verifyTicketToken } from "~/server/ticketing/qr";
  *
  * Every scan is recorded, including the failures — a wall of `NOT_FOUND` at
  * 11pm is how you discover somebody is selling fake tickets outside.
+ *
+ * A valid code is not the same as a valid person, so the door can refuse
+ * anyone after the fact (`denyTicket`). That refusal sticks to the ticket: the
+ * next scanner sees red and reads back exactly what the last one wrote, which
+ * is the only thing that stops a knocked-back punter walking twenty metres to
+ * the other scanner and trying again.
  */
 
 /** Results that mean the person is inside. */
@@ -27,6 +34,14 @@ const ADMITTING_RESULTS = [
   TicketScanResult.OVERRIDE_ADMITTED,
   TicketScanResult.REENTRY,
 ] as const;
+
+export type PreviousDenial = {
+  at: Date;
+  reason: TicketDenyReason | null;
+  note: string | null;
+  deviceLabel: string | null;
+  scannedByName: string | null;
+};
 
 export type ScanOutcome = {
   result: TicketScanResult;
@@ -50,8 +65,10 @@ export type ScanOutcome = {
     scannedByName: string | null;
     admissionCount: number;
   } | null;
+  /** The refusal still standing against this ticket, if there is one. */
+  previousDenial: PreviousDenial | null;
   isR18: boolean;
-  /** Set when a DUPLICATE could be forced through by a manager. */
+  /** Set when a DUPLICATE or a standing denial could be forced through. */
   canOverride: boolean;
 };
 
@@ -66,10 +83,24 @@ function outcome(
     message,
     ticket: null,
     previousAdmission: null,
+    previousDenial: null,
     isR18: false,
     canOverride: false,
     ...extras,
   };
+}
+
+/** `TicketScan.scannedByUserId` is a plain column, so names need a lookup. */
+async function staffName(
+  tx: Pick<typeof db, "user">,
+  userId: string | null,
+): Promise<string | null> {
+  if (!userId) return null;
+  const user = await tx.user.findUnique({
+    where: { id: userId },
+    select: { name: true },
+  });
+  return user?.name ?? null;
 }
 
 export async function scanTicket({
@@ -223,20 +254,72 @@ export async function scanTicket({
 
     const previous = liveAdmissions[0] ?? null;
 
-    if (previous) {
-      const scannedByName = previous.scannedByUserId
-        ? ((
-            await tx.user.findUnique({
-              where: { id: previous.scannedByUserId },
-              select: { name: true },
-            })
-          )?.name ?? null)
-        : null;
+    // A refusal outranks everything below it until somebody deliberately
+    // admits the ticket afterwards.
+    const denial = await tx.ticketScan.findFirst({
+      where: { ticketId: ticket.id, result: TicketScanResult.DENIED },
+      orderBy: { createdAt: "desc" },
+      select: {
+        createdAt: true,
+        denyReason: true,
+        denyNote: true,
+        deviceLabel: true,
+        scannedByUserId: true,
+      },
+    });
 
+    const denialStands =
+      denial !== null &&
+      (previous === null || denial.createdAt > previous.createdAt);
+
+    if (denialStands) {
+      const previousDenial: PreviousDenial = {
+        at: denial.createdAt,
+        reason: denial.denyReason,
+        note: denial.denyNote,
+        deviceLabel: denial.deviceLabel,
+        scannedByName: await staffName(tx, denial.scannedByUserId),
+      };
+
+      if (!override) {
+        await tx.ticketScan.create({
+          data: {
+            ticketId: ticket.id,
+            eventId,
+            result: TicketScanResult.PREVIOUSLY_DENIED,
+            scannedByUserId,
+            deviceLabel: deviceLabel ?? null,
+          },
+        });
+        return outcome(
+          TicketScanResult.PREVIOUSLY_DENIED,
+          "Refused entry earlier",
+          { ...base, previousDenial, canOverride: true },
+        );
+      }
+
+      await tx.ticketScan.create({
+        data: {
+          ticketId: ticket.id,
+          eventId,
+          result: TicketScanResult.OVERRIDE_ADMITTED,
+          wasOverride: true,
+          scannedByUserId,
+          deviceLabel: deviceLabel ?? null,
+        },
+      });
+      return outcome(
+        TicketScanResult.OVERRIDE_ADMITTED,
+        "Admitted despite earlier refusal",
+        { ...base, previousDenial },
+      );
+    }
+
+    if (previous) {
       const previousAdmission = {
         at: previous.createdAt,
         deviceLabel: previous.deviceLabel,
-        scannedByName,
+        scannedByName: await staffName(tx, previous.scannedByUserId),
         admissionCount: liveAdmissions.length,
       };
 
@@ -302,6 +385,131 @@ export async function scanTicket({
     });
 
     return outcome(TicketScanResult.ADMITTED, "Welcome in", base);
+  });
+}
+
+/**
+ * The door turning someone away.
+ *
+ * Runs after a scan that already came back fine, so this is a decision about
+ * the person, not the code. Any door staff can make it — refusing entry is the
+ * job — and it is recorded against the ticket so the next scanner sees it.
+ *
+ * If the ticket was admitted moments earlier the admission is reverted in the
+ * same breath: they were let in and then turned around, so the headcount and
+ * the door list must not keep claiming they're inside.
+ */
+export async function denyTicket({
+  ticketId,
+  eventId,
+  reason,
+  note,
+  scannedByUserId,
+  deviceLabel,
+}: {
+  ticketId: string;
+  eventId: string;
+  reason: TicketDenyReason;
+  note?: string | null;
+  scannedByUserId: string;
+  deviceLabel?: string | null;
+}): Promise<ScanOutcome> {
+  return db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "ticket" WHERE id = ${ticketId} FOR UPDATE`;
+
+    const ticket = await tx.ticket.findUnique({
+      where: { id: ticketId },
+      include: {
+        tier: { select: { name: true } },
+        event: { select: { isR18: true } },
+        order: {
+          select: {
+            orderNumber: true,
+            buyerName: true,
+            buyerEmail: true,
+            _count: { select: { tickets: true } },
+          },
+        },
+      },
+    });
+
+    if (!ticket || ticket.eventId !== eventId) {
+      return outcome(TicketScanResult.NOT_FOUND, "Ticket not found");
+    }
+
+    const position = await tx.ticket.count({
+      where: {
+        orderId: ticket.orderId,
+        ticketNumber: { lte: ticket.ticketNumber },
+      },
+    });
+
+    const denial = await tx.ticketScan.create({
+      data: {
+        ticketId: ticket.id,
+        eventId,
+        result: TicketScanResult.DENIED,
+        denyReason: reason,
+        denyNote: note?.trim() ? note.trim() : null,
+        scannedByUserId,
+        deviceLabel: deviceLabel ?? null,
+      },
+      select: {
+        createdAt: true,
+        denyReason: true,
+        denyNote: true,
+        deviceLabel: true,
+      },
+    });
+
+    const admittedEarlier = await tx.ticketScan.findFirst({
+      where: { ticketId: ticket.id, result: { in: [...ADMITTING_RESULTS] } },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    });
+    const revertedEarlier = await tx.ticketScan.findFirst({
+      where: { ticketId: ticket.id, result: TicketScanResult.ADMISSION_REVERTED },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    });
+
+    const wasInside =
+      admittedEarlier !== null &&
+      (revertedEarlier === null ||
+        admittedEarlier.createdAt > revertedEarlier.createdAt);
+
+    if (wasInside) {
+      await tx.ticketScan.create({
+        data: {
+          ticketId: ticket.id,
+          eventId,
+          result: TicketScanResult.ADMISSION_REVERTED,
+          scannedByUserId,
+          deviceLabel: deviceLabel ?? null,
+        },
+      });
+    }
+
+    return outcome(TicketScanResult.DENIED, "Entry refused", {
+      ticket: {
+        id: ticket.id,
+        ticketNumber: ticket.ticketNumber,
+        tierName: ticket.tier.name,
+        attendeeName: ticket.attendeeName,
+        buyerName: ticket.order.buyerName,
+        buyerEmail: ticket.order.buyerEmail,
+        orderNumber: ticket.order.orderNumber,
+        positionInOrder: `${position} of ${ticket.order._count.tickets}`,
+      },
+      isR18: ticket.event.isR18,
+      previousDenial: {
+        at: denial.createdAt,
+        reason: denial.denyReason,
+        note: denial.denyNote,
+        deviceLabel: denial.deviceLabel,
+        scannedByName: await staffName(tx, scannedByUserId),
+      },
+    });
   });
 }
 

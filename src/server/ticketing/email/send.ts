@@ -11,6 +11,7 @@ import { getTicketingSettings } from "~/server/ticketing/settings";
 import {
   applePassUrl,
   googleWalletSaveUrl,
+  ticketDetailsUrl,
   ticketsUrl,
 } from "~/server/ticketing/urls";
 import { sendTransactional } from "./provider";
@@ -116,6 +117,7 @@ export async function sendTicketEmail({
     orderNumber: order.orderNumber,
     tickets: emailTickets,
     ticketsUrl: ticketsUrl(accessToken),
+    detailsUrl: ticketDetailsUrl(accessToken),
     appleWalletUrlFor: isAppleWalletConfigured()
       ? (ticketNumber) => passUrlByTicketNumber.get(ticketNumber)?.apple ?? ""
       : undefined,

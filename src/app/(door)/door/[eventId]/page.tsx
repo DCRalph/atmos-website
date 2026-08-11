@@ -72,6 +72,19 @@ export default function DoorScannerPage() {
     onError: (error) => toast.error(error.message),
   });
 
+  const deny = api.door.deny.useMutation({
+    onSuccess: (result) => {
+      setOutcome(result);
+      playFeedback("error");
+      // A denial can revert an admission, so the headcount moves too.
+      void summary.refetch();
+    },
+    onError: (error) => {
+      playFeedback("error");
+      toast.error(error.message);
+    },
+  });
+
   const handleScan = useCallback(
     (token: string) => {
       setLastToken(token);
@@ -193,6 +206,7 @@ export default function DoorScannerPage() {
           outcome={outcome}
           canOverride={isManager}
           overriding={scan.isPending}
+          denying={deny.isPending}
           onDismiss={() => setOutcome(null)}
           onOverride={() => {
             if (!lastToken) return;
@@ -201,6 +215,16 @@ export default function DoorScannerPage() {
               token: lastToken,
               deviceLabel: deviceLabel || undefined,
               override: true,
+            });
+          }}
+          onDeny={(reason, note) => {
+            if (!outcome.ticket) return;
+            deny.mutate({
+              eventId,
+              ticketId: outcome.ticket.id,
+              reason,
+              note: note.trim() || undefined,
+              deviceLabel: deviceLabel || undefined,
             });
           }}
         />
