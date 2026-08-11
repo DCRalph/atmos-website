@@ -367,7 +367,12 @@ export async function issueTicketsForOrder({
         discountCodeId: true,
         discountCents: true,
         items: {
-          select: { tierId: true, quantity: true, unitPriceCents: true },
+          select: {
+            tierId: true,
+            quantity: true,
+            unitPriceCents: true,
+            tier: { select: { accessLevel: true } },
+          },
           orderBy: { tierId: "asc" },
         },
       },
@@ -388,6 +393,9 @@ export async function issueTicketsForOrder({
             qrSecret: generateQrSecret(),
             pricePaidCents: item.unitPriceCents,
             status: TicketStatus.VALID,
+            // Snapshotted, not joined: editing a tier later must not re-band
+            // tickets already sitting in people's wallets.
+            accessLevel: item.tier.accessLevel,
           },
           select: { id: true },
         });

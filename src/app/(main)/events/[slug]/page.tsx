@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { CalendarDays, Clock, MapPin } from "lucide-react";
@@ -21,15 +21,24 @@ import { SITE_URL } from "~/lib/seo-constants";
 /** Public event page. The buy panel sticks to the side on desktop. */
 export default function EventPage() {
   const params = useParams<{ slug: string }>();
+  const searchParams = useSearchParams();
   const slug = params.slug;
+  // A private event's share link carries its key here. Public and unlisted
+  // events ignore it entirely.
+  const key = searchParams.get("k") ?? undefined;
 
-  const event = api.ticketEvents.bySlug.useQuery({ slug }, { enabled: !!slug });
+  const event = api.ticketEvents.bySlug.useQuery(
+    { slug, key },
+    { enabled: !!slug },
+  );
 
   usePageMetadata({
     title: event.data?.name ?? "Event",
     description:
       event.data?.shortDescription ?? "Tickets to an Atmos event in Pōneke.",
     canonical: `${SITE_URL}/events/${slug}`,
+    // An event nobody can find without a link shouldn't turn up in a search.
+    noindex: event.data ? event.data.visibility !== "PUBLIC" : true,
   });
 
   if (event.isPending) {

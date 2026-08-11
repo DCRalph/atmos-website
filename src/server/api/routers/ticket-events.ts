@@ -1,11 +1,17 @@
+import { randomBytes, timingSafeEqual } from "node:crypto";
+
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+
+import { env } from "~/env";
+import { ACCESS_LEVEL_VALUES } from "~/lib/ticketing/access-levels";
 
 import {
   ActivityType,
   EventStaffRole,
   Prisma,
   TicketEventStatus,
+  TicketEventVisibility,
   TicketOrderStatus,
   TicketStatus,
 } from "~Prisma/client";
@@ -97,6 +103,13 @@ const eventInputSchema = z.object({
   maxTicketsPerOrder: z.number().int().min(1).max(50).default(10),
   requireAttendeeNames: z.boolean().default(true),
   reentryAllowed: z.boolean().default(false),
+  visibility: z
+    .enum([
+      TicketEventVisibility.PUBLIC,
+      TicketEventVisibility.UNLISTED,
+      TicketEventVisibility.PRIVATE,
+    ])
+    .default(TicketEventVisibility.PUBLIC),
   isR18: z.boolean().default(true),
   bookingFeeFixedCents: z.number().int().min(0).nullable().optional(),
   bookingFeePercentBp: z.number().int().min(0).max(5000).nullable().optional(),
@@ -115,7 +128,57 @@ const tierInputSchema = z.object({
   maxPerOrder: z.number().int().min(1).max(50).default(10),
   maxPerEmail: z.number().int().min(1).nullable().optional(),
   requiresApproval: z.boolean().default(false),
+  accessLevel: z.enum(ACCESS_LEVEL_VALUES).default("GENERAL"),
 });
+
+/**
+ * Whether this caller may see this event at all.
+ *
+ * Draft and archived are nobody's business either way. Beyond that, only
+ * PRIVATE needs the key, and it is compared in constant time — the key is a
+ * bearer credential, and there is no reason to leak how much of a guess was
+ * right.
+ */
+function isViewable(
+  event: {
+    status: TicketEventStatus;
+    visibility: TicketEventVisibility;
+    accessKey: string | null;
+  },
+  key: string | undefined,
+): boolean {
+  if (
+    event.status === TicketEventStatus.DRAFT ||
+    event.status === TicketEventStatus.ARCHIVED
+  ) {
+    return false;
+  }
+  if (event.visibility !== TicketEventVisibility.PRIVATE) return true;
+  if (!event.accessKey || !key) return false;
+
+  const expected = Buffer.from(event.accessKey);
+  const given = Buffer.from(key);
+  return (
+    expected.length === given.length && timingSafeEqual(expected, given)
+  );
+}
+
+/** 32 bytes of base64url — unguessable, and short enough to paste. */
+function newAccessKey(): string {
+  return randomBytes(24).toString("base64url");
+}
+
+/** The link to hand out. Carries the key only when one is actually needed. */
+function shareUrl(event: {
+  slug: string;
+  visibility: TicketEventVisibility;
+  accessKey: string | null;
+}): string {
+  const base = `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/events/${event.slug}`;
+  return event.visibility === TicketEventVisibility.PRIVATE && event.accessKey
+    ? `${base}?k=${encodeURIComponent(event.accessKey)}`
+    : base;
+}
 
 function assertSaneDates(input: {
   startsAt: Date;
@@ -224,6 +287,7 @@ export const ticketEventsRouter = createTRPCRouter({
 
       return {
         ...event,
+        shareUrl: shareUrl(event),
         effectiveBookingFee: resolveBookingFee(event, settings),
         siteDefaults: settings,
         staff: event.staff.map((assignment) => ({
@@ -266,6 +330,13 @@ export const ticketEventsRouter = createTRPCRouter({
           maxTicketsPerOrder: input.maxTicketsPerOrder,
           requireAttendeeNames: input.requireAttendeeNames,
           reentryAllowed: input.reentryAllowed,
+          visibility: input.visibility,
+          // Minted up front so the share link exists the moment an event is
+          // made private, rather than on some later save.
+          accessKey:
+            input.visibility === TicketEventVisibility.PRIVATE
+              ? newAccessKey()
+              : null,
           isR18: input.isR18,
           bookingFeeFixedCents: input.bookingFeeFixedCents ?? null,
           bookingFeePercentBp: input.bookingFeePercentBp ?? null,
@@ -365,6 +436,17 @@ export const ticketEventsRouter = createTRPCRouter({
             : {}),
           ...(rest.requireAttendeeNames !== undefined
             ? { requireAttendeeNames: rest.requireAttendeeNames }
+            : {}),
+          ...(rest.visibility !== undefined
+            ? {
+                visibility: rest.visibility,
+                // Turning privacy on needs a key; turning it off keeps the old
+                // one, so flipping back doesn't silently resurrect dead links.
+                ...(rest.visibility === TicketEventVisibility.PRIVATE &&
+                !existing.accessKey
+                  ? { accessKey: newAccessKey() }
+                  : {}),
+              }
             : {}),
           ...(rest.reentryAllowed !== undefined
             ? { reentryAllowed: rest.reentryAllowed }
@@ -532,6 +614,7 @@ export const ticketEventsRouter = createTRPCRouter({
           maxPerOrder: rest.maxPerOrder,
           maxPerEmail: rest.maxPerEmail ?? null,
           requiresApproval: rest.requiresApproval,
+          accessLevel: rest.accessLevel,
           sortOrder: (last?.sortOrder ?? -1) + 1,
         },
       });
@@ -597,6 +680,9 @@ export const ticketEventsRouter = createTRPCRouter({
             : {}),
           ...(rest.requiresApproval !== undefined
             ? { requiresApproval: rest.requiresApproval }
+            : {}),
+          ...(rest.accessLevel !== undefined
+            ? { accessLevel: rest.accessLevel }
             : {}),
         },
       });
@@ -721,11 +807,49 @@ export const ticketEventsRouter = createTRPCRouter({
       return { ok: true as const };
     }),
 
+  /**
+   * Mint a new access key, killing every link already sent.
+   *
+   * The reason this exists: a private event's link is a bearer credential, and
+   * the way it leaks is somebody forwarding it. Rotating is how you take it
+   * back — everyone still invited needs the new link.
+   */
+  rotateAccessKey: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const event = await ctx.db.ticketEvent.update({
+        where: { id: input.id },
+        data: { accessKey: newAccessKey() },
+        select: { id: true, slug: true, visibility: true, accessKey: true },
+      });
+
+      await logActivity({
+        type: ActivityType.TICKET_EVENT_UPDATED,
+        action: "Rotated the private event link",
+        userId: ctx.session.user.id,
+        details: { eventId: event.id },
+      });
+
+      return { shareUrl: shareUrl(event) };
+    }),
+
   // ---------------------------------------------------------------- public
 
-  /** The public event page. Only ever returns events that are on sale. */
+  /**
+   * The public event page.
+   *
+   * Returns null rather than throwing for anything the caller isn't allowed to
+   * see, so a private event is indistinguishable from one that doesn't exist —
+   * a 403 would confirm that something is on at that address.
+   */
   bySlug: publicProcedure
-    .input(z.object({ slug: z.string() }))
+    .input(
+      z.object({
+        slug: z.string(),
+        /** The `?k=` off a private event's share link. */
+        key: z.string().max(120).optional(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       const event = await ctx.db.ticketEvent.findUnique({
         where: { slug: input.slug },
@@ -735,13 +859,7 @@ export const ticketEventsRouter = createTRPCRouter({
         },
       });
 
-      if (
-        !event ||
-        event.status === TicketEventStatus.DRAFT ||
-        event.status === TicketEventStatus.ARCHIVED
-      ) {
-        return null;
-      }
+      if (!event || !isViewable(event, input.key)) return null;
 
       return toPublicEvent(event, await getTicketingSettings());
     }),
@@ -753,6 +871,9 @@ export const ticketEventsRouter = createTRPCRouter({
       const event = await ctx.db.ticketEvent.findFirst({
         where: {
           gigId: input.gigId,
+          // A gig page is a public listing; an unlisted or private event must
+          // not be discoverable through one.
+          visibility: TicketEventVisibility.PUBLIC,
           status: {
             in: [
               TicketEventStatus.PUBLISHED,
@@ -784,6 +905,7 @@ export const ticketEventsRouter = createTRPCRouter({
             TicketEventStatus.SOLD_OUT,
           ],
         },
+        visibility: TicketEventVisibility.PUBLIC,
         startsAt: { gte: new Date(Date.now() - 6 * 60 * 60 * 1000) },
       },
       orderBy: { startsAt: "asc" },
@@ -827,6 +949,7 @@ function toPublicEvent(
         maxPerOrder: tier.maxPerOrder,
         isFree: tier.priceCents === 0,
         requiresApproval: tier.requiresApproval,
+        accessLevel: tier.accessLevel,
         available: reason === null,
         unavailableReason: reason,
         salesStartAt: tier.salesStartAt,
@@ -850,6 +973,7 @@ function toPublicEvent(
     slug: event.slug,
     name: event.name,
     status: event.status,
+    visibility: event.visibility,
     shortDescription: event.shortDescription,
     descriptionLexical: event.descriptionLexical,
     posterFileUploadId: event.posterFileUploadId,

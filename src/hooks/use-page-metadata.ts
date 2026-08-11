@@ -18,6 +18,8 @@ type MetadataOptions = {
   image?: string;
   canonical?: string;
   keywords?: string[];
+  /** Keep this page out of search results — unlisted and private pages. */
+  noindex?: boolean;
 };
 
 export function usePageMetadata(options: MetadataOptions) {
@@ -29,6 +31,7 @@ export function usePageMetadata(options: MetadataOptions) {
     image,
     canonical,
     keywords,
+    noindex,
   } = options;
 
   useEffect(() => {
@@ -116,10 +119,20 @@ export function usePageMetadata(options: MetadataOptions) {
       updateMetaTag("keywords", finalKeywords.join(", "));
     }
 
+    // Indexing. A page reachable only by a link somebody was sent has no
+    // business in a search index, and the tag has to be removed again on the
+    // way out or it would follow the visitor to the next page.
+    const robots = document.querySelector('meta[name="robots"]');
+    if (noindex) {
+      updateMetaTag("robots", "noindex, nofollow");
+    } else if (robots) {
+      robots.remove();
+    }
+
     // Open Graph type
     updatePropertyTag("og:type", "website");
 
     // Twitter card
     updateMetaTag("twitter:card", "summary_large_image");
-  }, [pathname, title, ogTitle, description, image, canonical, keywords]);
+  }, [pathname, title, ogTitle, description, image, canonical, keywords, noindex]);
 }

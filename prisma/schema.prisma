@@ -778,6 +778,8 @@ enum ActivityType {
   TICKET_SCANNED
   TICKET_SCAN_OVERRIDE
   TICKET_ENTRY_DENIED
+  TICKET_ACCESS_CHANGED
+  TICKET_COMPED
   DISCOUNT_CODE_CREATED
   DISCOUNT_CODE_UPDATED
   DISCOUNT_CODE_DELETED
@@ -839,6 +841,22 @@ enum TicketEventStatus {
   ARCHIVED
 }
 
+/// Who is allowed to know an event exists.
+///
+/// Deliberately independent of `TicketEventStatus`: status says whether
+/// tickets are on sale, this says who can find the page. A private event still
+/// moves DRAFT → PUBLISHED → SOLD_OUT like any other, it just never appears in
+/// a listing.
+enum TicketEventVisibility {
+  /// Listed on /events and on its linked gig.
+  PUBLIC
+  /// Listed nowhere, but the URL works for anyone who has it.
+  UNLISTED
+  /// Listed nowhere, and the URL only opens with the event's access key on it.
+  /// This is the one you send to a guest list.
+  PRIVATE
+}
+
 enum TicketOrderStatus {
   /// Inventory is held, payment not yet confirmed. Expires at `expiresAt`.
   PENDING
@@ -878,6 +896,24 @@ enum TicketScanResult {
   VOIDED
   REFUNDED_TICKET
   ORDER_UNPAID
+}
+
+/// What a ticket gets you past.
+///
+/// Read off the scan by whoever is handing out wristbands, so it is a short
+/// fixed list everyone on a door already recognises rather than free text. A
+/// tier carries the level it sells, and each issued ticket snapshots it — an
+/// artist's guest can be bumped to AAA without rewriting the tier they came
+/// from, and changing a tier later never silently re-bands tickets already in
+/// people's pockets.
+enum TicketAccessLevel {
+  GENERAL
+  GUEST
+  VIP
+  ARTIST
+  CREW
+  /// Access all areas.
+  AAA
 }
 
 /// Why the door turned someone away. A fixed list rather than free text: the
@@ -950,6 +986,11 @@ model TicketEvent {
   salesOpenAt  DateTime?
   salesCloseAt DateTime?
 
+  visibility TicketEventVisibility @default(PUBLIC)
+  /// Random and rotatable. Goes on the share link as `?k=` and is what makes a
+  /// PRIVATE event open at all. Rotating it kills every link already sent.
+  accessKey  String?
+
   /// Overall cap across every tier. Null means the sum of tier allocations.
   capacity             Int?
   maxTicketsPerOrder   Int     @default(10)
@@ -1013,6 +1054,10 @@ model TicketTier {
   maxPerEmail      Int?
   /// Free tier that an admin must approve before tickets are issued.
   requiresApproval Boolean @default(false)
+
+  /// What tickets sold from this tier get you past. Snapshotted onto each
+  /// ticket at issue, so changing it here never re-bands tickets already out.
+  accessLevel TicketAccessLevel @default(GENERAL)
 
   sortOrder Int @default(0)
 
@@ -1127,6 +1172,11 @@ model Ticket {
   status        TicketStatus @default(VALID)
   attendeeName  String?
   attendeeEmail String?
+
+  /// Taken from the tier when the ticket is issued, and changeable per ticket
+  /// afterwards — an artist's guest gets bumped to AAA without anyone touching
+  /// the tier they were comped from.
+  accessLevel TicketAccessLevel @default(GENERAL)
 
   /// Random 32 bytes, base64url. Combined with `qrVersion` and the server
   /// secret to produce the signed QR payload.

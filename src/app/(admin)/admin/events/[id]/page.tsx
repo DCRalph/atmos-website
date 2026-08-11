@@ -25,6 +25,8 @@ import { EventOverview } from "~/components/admin/ticketing/event-overview";
 import { OrdersPanel } from "~/components/admin/ticketing/orders-panel";
 import { StaffPanel } from "~/components/admin/ticketing/staff-panel";
 import { BoxOfficePanel } from "~/components/admin/ticketing/box-office-panel";
+import { CompsPanel } from "~/components/admin/ticketing/comps-panel";
+import { ShareLinkCard } from "~/components/admin/ticketing/share-link-card";
 import { formatEventDateTime } from "~/lib/ticketing/dates";
 
 const STATUSES = [
@@ -133,11 +135,13 @@ export default function AdminEventPage() {
           <TabsTrigger value="tiers">Tiers</TabsTrigger>
           <TabsTrigger value="orders">Orders</TabsTrigger>
           <TabsTrigger value="boxoffice">Box office</TabsTrigger>
+          <TabsTrigger value="comps">Comps</TabsTrigger>
           <TabsTrigger value="staff">Door staff</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="mt-6">
+        <TabsContent value="overview" className="mt-6 space-y-6">
+          <ShareLinkCard event={data} />
           <EventOverview eventId={data.id} />
         </TabsContent>
         <TabsContent value="tiers" className="mt-6">
@@ -148,6 +152,9 @@ export default function AdminEventPage() {
         </TabsContent>
         <TabsContent value="boxoffice" className="mt-6">
           <BoxOfficePanel event={data} />
+        </TabsContent>
+        <TabsContent value="comps" className="mt-6">
+          <CompsPanel event={data} />
         </TabsContent>
         <TabsContent value="staff" className="mt-6">
           <StaffPanel event={data} />

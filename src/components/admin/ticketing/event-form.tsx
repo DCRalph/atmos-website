@@ -11,6 +11,32 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { Switch } from "~/components/ui/switch";
+
+type Visibility = "PUBLIC" | "UNLISTED" | "PRIVATE";
+
+const VISIBILITIES = [
+  {
+    value: "PUBLIC",
+    label: "Public",
+    description: "Listed on /events and on its gig page.",
+  },
+  {
+    value: "UNLISTED",
+    label: "Unlisted",
+    description:
+      "Listed nowhere, but the URL works for anyone who ends up with it.",
+  },
+  {
+    value: "PRIVATE",
+    label: "Private — invite link only",
+    description:
+      "Listed nowhere, and the page only opens with the key on the link. Save, then copy the link from the event's overview.",
+  },
+] as const satisfies readonly {
+  value: Visibility;
+  label: string;
+  description: string;
+}[];
 import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { PickerSelect } from "~/components/ui/picker-select";
 import { formatNZD, parsePriceToCents } from "~/lib/ticketing/money";
@@ -53,6 +79,9 @@ export function EventForm({ event }: { event?: AdminEvent }) {
   const [capacity, setCapacity] = useState(event?.capacity?.toString() ?? "");
   const [maxPerOrder, setMaxPerOrder] = useState(
     (event?.maxTicketsPerOrder ?? 10).toString(),
+  );
+  const [visibility, setVisibility] = useState<Visibility>(
+    (event?.visibility as Visibility | undefined) ?? "PUBLIC",
   );
   const [isR18, setIsR18] = useState(event?.isR18 ?? true);
   const [reentryAllowed, setReentryAllowed] = useState(
@@ -113,6 +142,7 @@ export function EventForm({ event }: { event?: AdminEvent }) {
       salesCloseAt: salesCloseAt ?? null,
       capacity: capacity ? Number.parseInt(capacity, 10) : null,
       maxTicketsPerOrder: Number.parseInt(maxPerOrder, 10) || 10,
+      visibility,
       isR18,
       reentryAllowed,
       requireAttendeeNames: requireNames,
@@ -266,6 +296,31 @@ export function EventForm({ event }: { event?: AdminEvent }) {
             onChange={(e) => setFeePercent(e.target.value)}
           />
         </Field>
+      </Fieldset>
+
+      <Fieldset legend="Who can find it">
+        <div className="space-y-2 md:col-span-2">
+          {VISIBILITIES.map((option) => (
+            <label
+              key={option.value}
+              className="flex cursor-pointer items-start gap-3 rounded-lg border p-3"
+            >
+              <input
+                type="radio"
+                name="visibility"
+                className="mt-1 size-4"
+                checked={visibility === option.value}
+                onChange={() => setVisibility(option.value)}
+              />
+              <span>
+                <span className="block font-medium">{option.label}</span>
+                <span className="text-muted-foreground block text-sm">
+                  {option.description}
+                </span>
+              </span>
+            </label>
+          ))}
+        </div>
       </Fieldset>
 
       <Fieldset legend="Door">
