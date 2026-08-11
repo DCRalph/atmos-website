@@ -2,7 +2,11 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createTRPCRouter, adminProcedure } from "~/server/api/trpc";
 import { logUserActivity } from "~/server/utils/activity-log";
-import { addUserRole, removeUserRole } from "~/server/utils/roles";
+import {
+  grantUserPermission,
+  isPermissionCutoverComplete,
+  revokeUserPermission,
+} from "~/server/utils/permissions";
 import { ActivityType } from "~Prisma/client";
 
 export const usersRouter = createTRPCRouter({
@@ -19,11 +23,11 @@ export const usersRouter = createTRPCRouter({
 
       const where = search
         ? {
-          OR: [
-            { name: { contains: search, mode: "insensitive" as const } },
-            { email: { contains: search, mode: "insensitive" as const } },
-          ],
-        }
+            OR: [
+              { name: { contains: search, mode: "insensitive" as const } },
+              { email: { contains: search, mode: "insensitive" as const } },
+            ],
+          }
         : undefined;
 
       const users = await ctx.db.user.findMany({
@@ -33,7 +37,7 @@ export const usersRouter = createTRPCRouter({
           id: true,
           name: true,
           email: true,
-          roles: { select: { role: true } },
+          permissions: { select: { permission: true } },
           emailVerified: true,
           createdAt: true,
           updatedAt: true,
@@ -50,13 +54,15 @@ export const usersRouter = createTRPCRouter({
 
           try {
             // @ts-expect-error - Better Auth plugin table, may not exist in Prisma types yet
-            const lastLogin = await ctx.db.lastLoginMethod?.findUnique({
-              where: { userId: user.id },
-              select: {
-                method: true,
-                updatedAt: true,
-              },
-            }).catch(() => null);
+            const lastLogin = await ctx.db.lastLoginMethod
+              ?.findUnique({
+                where: { userId: user.id },
+                select: {
+                  method: true,
+                  updatedAt: true,
+                },
+              })
+              .catch(() => null);
 
             if (lastLogin) {
               lastLoginMethod = lastLogin.method ?? null;
@@ -77,11 +83,11 @@ export const usersRouter = createTRPCRouter({
       return usersWithLastLogin;
     }),
 
-  addRole: adminProcedure
+  addPermission: adminProcedure
     .input(
       z.object({
         id: z.string(),
-        role: z.enum(["USER", "CREATOR", "ADMIN", "DOOR_STAFF"]),
+        permission: z.enum(["EVENT_ORGANISER", "CREATOR", "ADMIN"]),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -90,33 +96,33 @@ export const usersRouter = createTRPCRouter({
         select: { name: true, email: true },
       });
 
-      await addUserRole(input.id, input.role, {
+      await grantUserPermission(input.id, input.permission, {
         createdBy: ctx.session.user.id,
       });
 
       await logUserActivity(
-        ActivityType.USER_ROLE_ADDED,
-        `Added role ${input.role} to ${targetUser?.name ?? targetUser?.email ?? input.id}`,
+        ActivityType.USER_PERMISSION_ADDED,
+        `Added permission ${input.permission} to ${targetUser?.name ?? targetUser?.email ?? input.id}`,
         ctx.session.user.id,
         input.id,
-        { role: input.role },
+        { permission: input.permission },
       );
 
       return { ok: true as const };
     }),
 
-  removeRole: adminProcedure
+  removePermission: adminProcedure
     .input(
       z.object({
         id: z.string(),
-        role: z.enum(["USER", "CREATOR", "ADMIN", "DOOR_STAFF"]),
+        permission: z.enum(["EVENT_ORGANISER", "CREATOR", "ADMIN"]),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (input.id === ctx.session.user.id && input.role === "ADMIN") {
+      if (input.id === ctx.session.user.id && input.permission === "ADMIN") {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "You cannot remove your own admin role",
+          message: "You cannot remove your own admin permission",
         });
       }
 
@@ -125,63 +131,63 @@ export const usersRouter = createTRPCRouter({
         select: { name: true, email: true },
       });
 
-      await removeUserRole(input.id, input.role);
+      await revokeUserPermission(input.id, input.permission);
 
       await logUserActivity(
-        ActivityType.USER_ROLE_REMOVED,
-        `Removed role ${input.role} from ${targetUser?.name ?? targetUser?.email ?? input.id}`,
+        ActivityType.USER_PERMISSION_REMOVED,
+        `Removed permission ${input.permission} from ${targetUser?.name ?? targetUser?.email ?? input.id}`,
         ctx.session.user.id,
         input.id,
-        { role: input.role },
+        { permission: input.permission },
       );
 
       return { ok: true as const };
     }),
 
-  setRoles: adminProcedure
+  setPermissions: adminProcedure
     .input(
       z.object({
         id: z.string(),
-        roles: z.array(z.enum(["USER", "CREATOR", "ADMIN", "DOOR_STAFF"])),
+        permissions: z.array(z.enum(["EVENT_ORGANISER", "CREATOR", "ADMIN"])),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       if (
         input.id === ctx.session.user.id &&
-        !input.roles.includes("ADMIN")
+        !input.permissions.includes("ADMIN")
       ) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "You cannot remove your own admin role",
+          message: "You cannot remove your own admin permission",
         });
       }
 
-      const current = await ctx.db.userRoleAssignment.findMany({
+      const current = await ctx.db.userPermissionAssignment.findMany({
         where: { userId: input.id },
-        select: { role: true },
+        select: { permission: true },
       });
-      const currentSet = new Set(current.map((c) => c.role));
-      const nextSet = new Set(input.roles);
+      const currentSet = new Set(current.map((c) => c.permission));
+      const nextSet = new Set(input.permissions);
 
-      for (const role of nextSet) {
-        if (!currentSet.has(role)) {
-          await addUserRole(input.id, role, {
+      for (const permission of nextSet) {
+        if (!currentSet.has(permission)) {
+          await grantUserPermission(input.id, permission, {
             createdBy: ctx.session.user.id,
           });
         }
       }
-      for (const role of currentSet) {
-        if (!nextSet.has(role)) {
-          await removeUserRole(input.id, role);
+      for (const permission of currentSet) {
+        if (!nextSet.has(permission)) {
+          await revokeUserPermission(input.id, permission);
         }
       }
 
       await logUserActivity(
-        ActivityType.USER_ROLE_CHANGED,
-        `Updated roles for ${input.id}`,
+        ActivityType.USER_PERMISSION_CHANGED,
+        `Updated permissions for ${input.id}`,
         ctx.session.user.id,
         input.id,
-        { roles: input.roles },
+        { permissions: input.permissions },
       );
 
       return { ok: true as const };
@@ -196,7 +202,7 @@ export const usersRouter = createTRPCRouter({
           id: true,
           name: true,
           email: true,
-          roles: { select: { role: true } },
+          permissions: { select: { permission: true } },
           emailVerified: true,
           image: true,
           createdAt: true,
@@ -222,13 +228,15 @@ export const usersRouter = createTRPCRouter({
 
       try {
         // @ts-expect-error - Better Auth plugin table, may not exist in Prisma types yet
-        const lastLogin = await ctx.db.lastLoginMethod?.findUnique({
-          where: { userId: user.id },
-          select: {
-            method: true,
-            updatedAt: true,
-          },
-        }).catch(() => null);
+        const lastLogin = await ctx.db.lastLoginMethod
+          ?.findUnique({
+            where: { userId: user.id },
+            select: {
+              method: true,
+              updatedAt: true,
+            },
+          })
+          .catch(() => null);
 
         if (lastLogin) {
           lastLoginMethod = lastLogin.method ?? null;
@@ -244,6 +252,22 @@ export const usersRouter = createTRPCRouter({
         lastLoginAt,
       };
     }),
+
+  permissionMigrationStatus: adminProcedure.query(async ({ ctx }) => {
+    const [cutoverComplete, assignedUsers, adminCount] = await Promise.all([
+      isPermissionCutoverComplete(ctx.db),
+      ctx.db.userPermissionAssignment.groupBy({ by: ["userId"] }),
+      ctx.db.userPermissionAssignment.count({
+        where: { permission: "ADMIN" },
+      }),
+    ]);
+
+    return {
+      cutoverComplete,
+      assignedUserCount: assignedUsers.length,
+      adminCount,
+    };
+  }),
 
   delete: adminProcedure
     .input(z.object({ id: z.string() }))

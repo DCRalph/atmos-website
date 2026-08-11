@@ -3,10 +3,11 @@ import { z } from "zod";
 import {
   adminProcedure,
   createTRPCRouter,
+  creatorProcedure,
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
-import { userHasRole } from "~/server/utils/roles";
+import { userHasEffectivePermission } from "~/server/utils/permissions";
 import { logUserActivity } from "~/server/utils/activity-log";
 import {
   DEFAULT_BLOCK_OVERRIDES,
@@ -40,12 +41,19 @@ async function canReadTheme(
   if (!theme) return { ok: false, reason: "not-found" };
   if (theme.isPublic || theme.isSystem) return { ok: true };
   if (!ctx.session?.user) return { ok: false, reason: "forbidden" };
-  if (theme.ownerUserId === ctx.session.user.id) return { ok: true };
   const user = await ctx.db.user.findUnique({
     where: { id: ctx.session.user.id },
-    include: { roles: true },
+    include: { permissions: true, legacyRoles: true },
   });
-  if (user && userHasRole(user, "ADMIN")) return { ok: true };
+  if (user) {
+    const [isAdmin, isCreator] = await Promise.all([
+      userHasEffectivePermission(user, "ADMIN", ctx.db),
+      userHasEffectivePermission(user, "CREATOR", ctx.db),
+    ]);
+    if (isAdmin || (isCreator && theme.ownerUserId === user.id)) {
+      return { ok: true };
+    }
+  }
   return { ok: false, reason: "forbidden" };
 }
 
@@ -67,7 +75,7 @@ async function assertCanEditTheme(
     }),
     ctx.db.user.findUnique({
       where: { id: ctx.session.user.id },
-      include: { roles: true },
+      include: { permissions: true, legacyRoles: true },
     }),
   ]);
   if (!theme) {
@@ -76,9 +84,12 @@ async function assertCanEditTheme(
   if (!user) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
-  const isAdmin = userHasRole(user, "ADMIN");
+  const [isAdmin, isCreator] = await Promise.all([
+    userHasEffectivePermission(user, "ADMIN", ctx.db),
+    userHasEffectivePermission(user, "CREATOR", ctx.db),
+  ]);
   const isOwner = theme.ownerUserId === user.id;
-  if (!isAdmin && !isOwner) {
+  if (!isAdmin && (!isCreator || !isOwner)) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "You cannot edit this theme",
@@ -94,7 +105,7 @@ export const creatorThemesRouter = createTRPCRouter({
   // ---------- Reads ----------
 
   /** Themes owned by the current user. */
-  listMine: protectedProcedure.query(async ({ ctx }) => {
+  listMine: creatorProcedure.query(async ({ ctx }) => {
     return ctx.db.creatorProfileTheme.findMany({
       where: { ownerUserId: ctx.session.user.id },
       orderBy: { updatedAt: "desc" },
@@ -179,7 +190,7 @@ export const creatorThemesRouter = createTRPCRouter({
   // ---------- Mutations ----------
 
   /** Create a new private theme owned by the caller. */
-  create: protectedProcedure
+  create: creatorProcedure
     .input(
       z.object({
         name: zThemeName,
@@ -294,7 +305,7 @@ export const creatorThemesRouter = createTRPCRouter({
    * Fork any readable theme into a new private theme owned by the caller.
    * Used by the "Duplicate and customize" button on public themes.
    */
-  duplicate: protectedProcedure
+  duplicate: creatorProcedure
     .input(
       z.object({
         id: z.string(),
@@ -341,7 +352,7 @@ export const creatorThemesRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      await assertCanEditTheme(ctx, input.id);
+      const { isAdmin } = await assertCanEditTheme(ctx, input.id);
       const theme = await ctx.db.creatorProfileTheme.findUnique({
         where: { id: input.id },
         select: { id: true, name: true, isSystem: true },
@@ -349,11 +360,7 @@ export const creatorThemesRouter = createTRPCRouter({
       if (!theme) throw new TRPCError({ code: "NOT_FOUND" });
       if (theme.isSystem) {
         // Require admin explicit flow: unmark system first
-        const user = await ctx.db.user.findUnique({
-          where: { id: ctx.session.user.id },
-          include: { roles: true },
-        });
-        if (!user || !userHasRole(user, "ADMIN")) {
+        if (!isAdmin) {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "System themes cannot be deleted by their owner.",
@@ -390,7 +397,9 @@ export const creatorThemesRouter = createTRPCRouter({
       const visibility = input?.visibility ?? "all";
       return ctx.db.creatorProfileTheme.findMany({
         where: {
-          ...(visibility === "private" ? { isPublic: false, isSystem: false } : {}),
+          ...(visibility === "private"
+            ? { isPublic: false, isSystem: false }
+            : {}),
           ...(visibility === "public" ? { isPublic: true } : {}),
           ...(visibility === "system" ? { isSystem: true } : {}),
           ...(input?.ownerUserId ? { ownerUserId: input.ownerUserId } : {}),

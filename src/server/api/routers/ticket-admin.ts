@@ -7,9 +7,16 @@ import {
   TicketOrderStatus,
   TicketStatus,
 } from "~Prisma/client";
-import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
+import {
+  adminProcedure,
+  createTRPCRouter,
+  eventOrganiserProcedure,
+} from "~/server/api/trpc";
 import { getStripe, isStripeConfigured } from "~/server/stripe";
-import { sendRefundEmail, sendTicketEmail } from "~/server/ticketing/email/send";
+import {
+  sendRefundEmail,
+  sendTicketEmail,
+} from "~/server/ticketing/email/send";
 import {
   cancelPendingOrder,
   createPendingOrder,
@@ -43,7 +50,7 @@ function refundableCentsForTicket(
 }
 
 export const ticketAdminRouter = createTRPCRouter({
-  orders: adminProcedure
+  orders: eventOrganiserProcedure
     .input(
       z.object({
         eventId: z.string().optional(),
@@ -99,7 +106,7 @@ export const ticketAdminRouter = createTRPCRouter({
       };
     }),
 
-  order: adminProcedure
+  order: eventOrganiserProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const order = await ctx.db.ticketOrder.findUnique({
@@ -108,7 +115,16 @@ export const ticketAdminRouter = createTRPCRouter({
           event: true,
           items: { include: { tier: { select: { name: true } } } },
           tickets: {
-            include: {
+            select: {
+              id: true,
+              ticketNumber: true,
+              status: true,
+              attendeeName: true,
+              attendeeEmail: true,
+              pricePaidCents: true,
+              voidedAt: true,
+              voidReason: true,
+              createdAt: true,
               tier: { select: { name: true } },
               scans: {
                 orderBy: { createdAt: "desc" },
@@ -134,7 +150,7 @@ export const ticketAdminRouter = createTRPCRouter({
 
       return {
         ...order,
-        ticketsUrl: ticketsUrl(orderAccessToken(order)),
+        ticketsUrl: ctx.isAdmin ? ticketsUrl(orderAccessToken(order)) : null,
       };
     }),
 
@@ -205,7 +221,9 @@ export const ticketAdminRouter = createTRPCRouter({
             amount: amountCents,
             metadata: { orderId: order.id, reason: input.reason },
           },
-          { idempotencyKey: `refund-${order.id}-${input.ticketIds.sort().join("-")}` },
+          {
+            idempotencyKey: `refund-${order.id}-${input.ticketIds.sort().join("-")}`,
+          },
         );
       }
 
@@ -329,7 +347,9 @@ export const ticketAdminRouter = createTRPCRouter({
           ...(rest.buyerEmail !== undefined
             ? { buyerEmail: rest.buyerEmail.toLowerCase().trim() }
             : {}),
-          ...(rest.buyerName !== undefined ? { buyerName: rest.buyerName } : {}),
+          ...(rest.buyerName !== undefined
+            ? { buyerName: rest.buyerName }
+            : {}),
           ...(rest.buyerPhone !== undefined
             ? { buyerPhone: rest.buyerPhone }
             : {}),
@@ -429,7 +449,10 @@ export const ticketAdminRouter = createTRPCRouter({
         });
         await ctx.db.$transaction(
           tickets
-            .map((ticket, index) => ({ ticket, name: input.attendeeNames[index] }))
+            .map((ticket, index) => ({
+              ticket,
+              name: input.attendeeNames[index],
+            }))
             .filter((entry) => Boolean(entry.name))
             .map((entry) =>
               ctx.db.ticket.update({

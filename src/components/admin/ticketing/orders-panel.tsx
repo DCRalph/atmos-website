@@ -17,7 +17,13 @@ import {
 } from "~/lib/ticketing/dates";
 
 /** Orders, and the support actions that get run on them. */
-export function OrdersPanel({ eventId }: { eventId: string }) {
+export function OrdersPanel({
+  eventId,
+  readOnly = false,
+}: {
+  eventId: string;
+  readOnly?: boolean;
+}) {
   const [search, setSearch] = useState("");
   const [openOrderId, setOpenOrderId] = useState<string | null>(null);
 
@@ -99,7 +105,9 @@ export function OrdersPanel({ eventId }: { eventId: string }) {
               </div>
             </button>
 
-            {openOrderId === order.id && <OrderDetail orderId={order.id} />}
+            {openOrderId === order.id && (
+              <OrderDetail orderId={order.id} readOnly={readOnly} />
+            )}
           </div>
         ))}
       </div>
@@ -107,7 +115,13 @@ export function OrdersPanel({ eventId }: { eventId: string }) {
   );
 }
 
-function OrderDetail({ orderId }: { orderId: string }) {
+function OrderDetail({
+  orderId,
+  readOnly,
+}: {
+  orderId: string;
+  readOnly: boolean;
+}) {
   const utils = api.useUtils();
   const confirm = useConfirm();
   const order = api.ticketAdmin.order.useQuery({ id: orderId });
@@ -142,6 +156,7 @@ function OrderDetail({ orderId }: { orderId: string }) {
   if (!order.data) return null;
 
   const data = order.data;
+  const supportUrl = data.ticketsUrl;
 
   return (
     <div className="space-y-4 border-t p-4">
@@ -162,43 +177,45 @@ function OrderDetail({ orderId }: { orderId: string }) {
         </dl>
 
         <div className="space-y-2">
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={resend.isPending || !data.buyerEmail}
-              onClick={() => resend.mutate({ orderId })}
-            >
-              <Mail className="size-3.5" /> Resend tickets
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                void navigator.clipboard.writeText(data.ticketsUrl);
-                toast.success("Ticket link copied.");
-              }}
-            >
-              <Copy className="size-3.5" /> Copy link
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={rotate.isPending}
-              onClick={async () => {
-                const ok = await confirm({
-                  title: "Revoke the current ticket link?",
-                  description:
-                    "The old link stops working immediately. A new one is copied to your clipboard — send it to the buyer.",
-                  confirmLabel: "Revoke and replace",
-                  variant: "destructive",
-                });
-                if (ok) rotate.mutate({ orderId });
-              }}
-            >
-              <Link2 className="size-3.5" /> Rotate link
-            </Button>
-          </div>
+          {!readOnly && supportUrl && (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={resend.isPending || !data.buyerEmail}
+                onClick={() => resend.mutate({ orderId })}
+              >
+                <Mail className="size-3.5" /> Resend tickets
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  void navigator.clipboard.writeText(supportUrl);
+                  toast.success("Ticket link copied.");
+                }}
+              >
+                <Copy className="size-3.5" /> Copy link
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={rotate.isPending}
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: "Revoke the current ticket link?",
+                    description:
+                      "The old link stops working immediately. A new one is copied to your clipboard — send it to the buyer.",
+                    confirmLabel: "Revoke and replace",
+                    variant: "destructive",
+                  });
+                  if (ok) rotate.mutate({ orderId });
+                }}
+              >
+                <Link2 className="size-3.5" /> Rotate link
+              </Button>
+            </div>
+          )}
           {data.notes && (
             <p className="text-muted-foreground text-xs whitespace-pre-line">
               {data.notes}
@@ -222,20 +239,22 @@ function OrderDetail({ orderId }: { orderId: string }) {
                 key={ticket.id}
                 className="flex flex-wrap items-center gap-3 p-3 text-sm"
               >
-                <input
-                  type="checkbox"
-                  className="size-4"
-                  disabled={ticket.status !== "VALID"}
-                  checked={selected.includes(ticket.id)}
-                  onChange={(e) =>
-                    setSelected((current) =>
-                      e.target.checked
-                        ? [...current, ticket.id]
-                        : current.filter((id) => id !== ticket.id),
-                    )
-                  }
-                  aria-label={`Select ${ticket.ticketNumber}`}
-                />
+                {!readOnly && (
+                  <input
+                    type="checkbox"
+                    className="size-4"
+                    disabled={ticket.status !== "VALID"}
+                    checked={selected.includes(ticket.id)}
+                    onChange={(e) =>
+                      setSelected((current) =>
+                        e.target.checked
+                          ? [...current, ticket.id]
+                          : current.filter((id) => id !== ticket.id),
+                      )
+                    }
+                    aria-label={`Select ${ticket.ticketNumber}`}
+                  />
+                )}
                 <span className="font-mono text-xs">{ticket.ticketNumber}</span>
                 <span className="min-w-0 flex-1 truncate">
                   {ticket.attendeeName ?? "—"} · {ticket.tier.name}
@@ -252,7 +271,7 @@ function OrderDetail({ orderId }: { orderId: string }) {
         </ul>
       </div>
 
-      {selected.length > 0 && (
+      {!readOnly && selected.length > 0 && (
         <Button
           variant="destructive"
           disabled={refund.isPending}
@@ -283,7 +302,9 @@ function OrderDetail({ orderId }: { orderId: string }) {
                 {email.toEmail} ·{" "}
                 <span
                   className={
-                    email.status === "sent" ? "text-emerald-600" : "text-red-600"
+                    email.status === "sent"
+                      ? "text-emerald-600"
+                      : "text-red-600"
                   }
                 >
                   {email.status}

@@ -53,7 +53,7 @@ const sections = [
   },
   {
     title: "Users",
-    description: "Manage users and roles",
+    description: "Manage users and permissions",
     href: "/admin/users",
   },
 ];

@@ -2,7 +2,7 @@ import "server-only";
 
 import { TRPCError } from "@trpc/server";
 import { uploadPresets, type UploadPresetName } from "~/lib/uploads/presets";
-import { userHasRole } from "~/server/utils/roles";
+import { userHasEffectivePermission } from "~/server/utils/permissions";
 import { resolveTargetProfileId } from "~/server/utils/creator-profile-access";
 import type { PrismaClient } from "~Prisma/client";
 
@@ -81,14 +81,16 @@ export const authorizeUpload = async (
 
   const user = await ctx.db.user.findUnique({
     where: { id: ctx.session.user.id },
-    include: { roles: true },
+    include: { permissions: true, legacyRoles: true },
   });
   if (!user) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
 
-  const isAdmin = userHasRole(user, "ADMIN");
-  const isCreator = isAdmin || userHasRole(user, "CREATOR");
+  const [isAdmin, isCreator] = await Promise.all([
+    userHasEffectivePermission(user, "ADMIN", ctx.db),
+    userHasEffectivePermission(user, "CREATOR", ctx.db),
+  ]);
 
   if (preset.access === "admin" && !isAdmin) {
     throw new TRPCError({

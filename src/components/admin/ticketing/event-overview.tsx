@@ -11,7 +11,13 @@ import { formatEventDate } from "~/lib/ticketing/dates";
 import { StatTile, TierBars, TimeSeriesChart } from "./charts";
 
 /** Sales dashboard for one event. */
-export function EventOverview({ eventId }: { eventId: string }) {
+export function EventOverview({
+  eventId,
+  liveHref = `/admin/events/${eventId}/live`,
+}: {
+  eventId: string;
+  liveHref?: string;
+}) {
   const overview = api.ticketAnalytics.overview.useQuery({ eventId });
   const sales = api.ticketAnalytics.salesOverTime.useQuery({
     eventId,
@@ -197,7 +203,7 @@ export function EventOverview({ eventId }: { eventId: string }) {
           <Download className="size-4" /> Scan log CSV
         </Button>
         <Button variant="outline" asChild>
-          <a href={`/admin/events/${eventId}/live`}>
+          <a href={liveHref}>
             <ExternalLink className="size-4" /> Live door view
           </a>
         </Button>

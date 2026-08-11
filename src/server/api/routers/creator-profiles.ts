@@ -10,6 +10,7 @@ import {
 import { logUserActivity } from "~/server/utils/activity-log";
 import { softDeleteFile } from "~/server/uploads/files";
 import { resolveTargetProfileId } from "~/server/utils/creator-profile-access";
+import { grantUserPermission } from "~/server/utils/permissions";
 import {
   ActivityType,
   ClaimStatus,
@@ -145,7 +146,7 @@ export const creatorProfilesRouter = createTRPCRouter({
     }),
 
   // ---------- Owner & admin reads ----------
-  getMine: protectedProcedure.query(async ({ ctx }) => {
+  getMine: creatorProcedure.query(async ({ ctx }) => {
     const profile = await ctx.db.creatorProfile.findUnique({
       where: { userId: ctx.session.user.id },
       include: {
@@ -570,7 +571,6 @@ export const creatorProfilesRouter = createTRPCRouter({
           data: { updatedAt: new Date() },
         });
       });
-
       return { ok: true as const };
     }),
 
@@ -652,6 +652,11 @@ export const creatorProfilesRouter = createTRPCRouter({
           isPublished: false,
         },
       });
+      if (input.userId) {
+        await grantUserPermission(input.userId, "CREATOR", {
+          createdBy: ctx.session.user.id,
+        });
+      }
       await logUserActivity(
         ActivityType.CREATOR_PROFILE_CREATED,
         input.userId
@@ -707,6 +712,9 @@ export const creatorProfilesRouter = createTRPCRouter({
       const updated = await ctx.db.creatorProfile.update({
         where: { id: input.profileId },
         data: { userId: input.userId, claimStatus: ClaimStatus.ACTIVE },
+      });
+      await grantUserPermission(input.userId, "CREATOR", {
+        createdBy: ctx.session.user.id,
       });
       await logUserActivity(
         ActivityType.CREATOR_PROFILE_LINKED,
@@ -874,6 +882,9 @@ export const creatorProfilesRouter = createTRPCRouter({
             decidedAt: new Date(),
           },
         });
+      });
+      await grantUserPermission(req.requestingUserId, "CREATOR", {
+        createdBy: ctx.session.user.id,
       });
       await logUserActivity(
         ActivityType.CREATOR_CLAIM_APPROVED,

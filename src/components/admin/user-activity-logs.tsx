@@ -35,11 +35,29 @@ import Link from "next/link";
 import { ActivityType } from "~/lib/activity-types";
 
 function getActivityTypeBadge(type: ActivityType) {
-  const typeMap: Record<ActivityType, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  const typeMap: Record<
+    ActivityType,
+    {
+      label: string;
+      variant: "default" | "secondary" | "destructive" | "outline";
+    }
+  > = {
     USER_CREATED: { label: "User Created", variant: "default" },
     USER_UPDATED: { label: "User Updated", variant: "secondary" },
     USER_DELETED: { label: "User Deleted", variant: "destructive" },
     USER_ROLE_CHANGED: { label: "Role Changed", variant: "outline" },
+    USER_PERMISSION_CHANGED: {
+      label: "Permissions Changed",
+      variant: "outline",
+    },
+    USER_PERMISSION_ADDED: {
+      label: "Permission Added",
+      variant: "outline",
+    },
+    USER_PERMISSION_REMOVED: {
+      label: "Permission Removed",
+      variant: "outline",
+    },
     INVITE_CREATED: { label: "Invite Created", variant: "default" },
     INVITE_DELETED: { label: "Invite Deleted", variant: "secondary" },
     GIG_CREATED: { label: "Gig Created", variant: "default" },
@@ -73,6 +91,9 @@ function getActivityIcon(type: ActivityType) {
     USER_UPDATED: UserCog,
     USER_DELETED: Trash2,
     USER_ROLE_CHANGED: Shield,
+    USER_PERMISSION_CHANGED: Shield,
+    USER_PERMISSION_ADDED: Shield,
+    USER_PERMISSION_REMOVED: Shield,
     INVITE_CREATED: Mail,
     INVITE_DELETED: Trash2,
     GIG_CREATED: Calendar,
@@ -152,7 +173,7 @@ export function UserActivityLogs({ userId }: UserActivityLogsProps) {
                       <TableRow key={log.id}>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Icon className="h-4 w-4 text-muted-foreground" />
+                            <Icon className="text-muted-foreground h-4 w-4" />
                             {getActivityTypeBadge(log.type as ActivityType)}
                           </div>
                         </TableCell>
@@ -184,16 +205,22 @@ export function UserActivityLogs({ userId }: UserActivityLogsProps) {
                                 </div>
                               )}
                               <div>
-                                <p className="text-sm font-medium">{log.user.name}</p>
-                                <p className="text-muted-foreground text-xs">{log.user.email}</p>
+                                <p className="text-sm font-medium">
+                                  {log.user.name}
+                                </p>
+                                <p className="text-muted-foreground text-xs">
+                                  {log.user.email}
+                                </p>
                               </div>
                             </Link>
                           ) : (
-                            <span className="text-muted-foreground text-sm">System</span>
+                            <span className="text-muted-foreground text-sm">
+                              System
+                            </span>
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <div className="text-muted-foreground flex items-center gap-1 text-sm">
                             <Clock className="h-3 w-3" />
                             {formatDateInUserTimezone(log.createdAt, {
                               month: "short",
@@ -205,7 +232,7 @@ export function UserActivityLogs({ userId }: UserActivityLogsProps) {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className="text-muted-foreground text-xs font-mono">
+                          <span className="text-muted-foreground font-mono text-xs">
                             {log.ipAddress ?? "—"}
                           </span>
                         </TableCell>
@@ -214,7 +241,10 @@ export function UserActivityLogs({ userId }: UserActivityLogsProps) {
                   })}
               {!isLoading && logs.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-muted-foreground text-center py-8">
+                  <TableCell
+                    colSpan={5}
+                    className="text-muted-foreground py-8 text-center"
+                  >
                     No activity logs found for this user
                   </TableCell>
                 </TableRow>

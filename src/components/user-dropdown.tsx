@@ -105,7 +105,7 @@ export function UserDropdown({ detailed = false }) {
                     {user.email}
                   </span>
                 )}
-                {user.roles?.some((r) => r.role === "ADMIN") && (
+                {user.effectivePermissions.includes("ADMIN") && (
                   <span className="text-primary mt-1 flex items-center gap-1 text-xs font-medium">
                     <Shield className="size-3" />
                     Admin
@@ -133,7 +133,19 @@ export function UserDropdown({ detailed = false }) {
               </Link>
             </DropdownMenuItem>
 
-            {user?.roles?.some((r) => r.role === "ADMIN") && (
+            {user.effectivePermissions.includes("EVENT_ORGANISER") && (
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/organiser/events"
+                  className="flex items-center gap-3 py-2"
+                >
+                  <LayoutDashboard className="text-muted-foreground size-4" />
+                  <span>Event analytics</span>
+                </Link>
+              </DropdownMenuItem>
+            )}
+
+            {user.effectivePermissions.includes("ADMIN") && (
               <>
                 <DropdownMenuItem asChild>
                   <Link href="/admin" className="flex items-center gap-3 py-2">

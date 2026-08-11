@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { ScanLine, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { api, type RouterOutputs } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
+import { SearchableSelect } from "~/components/ui/searchable-select";
 import {
   Select,
   SelectContent,
@@ -21,15 +21,21 @@ type AdminEvent = RouterOutputs["ticketEvents"]["byId"];
 /**
  * Who can work this door.
  *
- * Being DOOR_STAFF only makes someone eligible; they still have to be assigned
- * here, per event. Managers can additionally override a duplicate scan and undo
- * a mistaken admission.
+ * Assignment here grants access to this event's door. Managers can additionally
+ * override a duplicate scan and undo a mistaken admission.
  */
 export function StaffPanel({ event }: { event: AdminEvent }) {
   const utils = api.useUtils();
-  const eligible = api.ticketEvents.eligibleStaff.useQuery();
   const [userId, setUserId] = useState<string>("");
+  const [staffQuery, setStaffQuery] = useState("");
   const [role, setRole] = useState<"SCANNER" | "MANAGER">("SCANNER");
+
+  // People already on this door are filtered out server-side, so the picker
+  // never offers someone who is already assigned.
+  const eligible = api.ticketEvents.eligibleStaff.useQuery(
+    { query: staffQuery, excludeEventId: event.id },
+    { placeholderData: (previous) => previous },
+  );
 
   const assign = api.ticketEvents.assignStaff.useMutation({
     onSuccess: () => {
@@ -44,17 +50,13 @@ export function StaffPanel({ event }: { event: AdminEvent }) {
     onSuccess: () => void utils.ticketEvents.byId.invalidate(),
   });
 
-  const assignedIds = new Set(event.staff.map((entry) => entry.userId));
-  const available =
-    eligible.data?.filter((user) => !assignedIds.has(user.id)) ?? [];
-
   return (
     <div className="max-w-2xl space-y-6">
       <div>
         <h2 className="text-xl font-semibold">Door staff</h2>
         <p className="text-muted-foreground text-sm">
-          They open <code>/door</code> on their own phone and only see the events
-          they&apos;re on.
+          They open <code>/door</code> on their own phone and only see the
+          events they&apos;re on.
         </p>
       </div>
 
@@ -78,7 +80,9 @@ export function StaffPanel({ event }: { event: AdminEvent }) {
                 {assignment.user?.email}
               </p>
             </div>
-            <Badge variant={assignment.role === "MANAGER" ? "default" : "outline"}>
+            <Badge
+              variant={assignment.role === "MANAGER" ? "default" : "outline"}
+            >
               {assignment.role.toLowerCase()}
             </Badge>
             <Button
@@ -100,18 +104,17 @@ export function StaffPanel({ event }: { event: AdminEvent }) {
 
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-56 flex-1">
-          <Select value={userId} onValueChange={setUserId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Choose someone" />
-            </SelectTrigger>
-            <SelectContent>
-              {available.map((user) => (
-                <SelectItem key={user.id} value={user.id}>
-                  {user.name} — {user.email}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={userId}
+            onChange={(next) => setUserId(next ?? "")}
+            options={eligible.data?.options ?? []}
+            total={eligible.data?.total}
+            loading={eligible.isFetching}
+            onSearchChange={setStaffQuery}
+            placeholder="Choose someone"
+            searchPlaceholder="Search by name or email…"
+            emptyText="No matching unassigned users."
+          />
         </div>
 
         <Select
@@ -135,14 +138,9 @@ export function StaffPanel({ event }: { event: AdminEvent }) {
         </Button>
       </div>
 
-      {available.length === 0 && eligible.data && (
+      {eligible.data?.total === 0 && !staffQuery && (
         <p className="text-muted-foreground text-sm">
-          Everyone with the Door staff role is already on this event. Give
-          someone the role from{" "}
-          <Link href="/admin/users" className="underline">
-            Users
-          </Link>{" "}
-          to add more.
+          Every user is already assigned to this event.
         </p>
       )}
     </div>

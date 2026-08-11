@@ -6,7 +6,7 @@ import {
   TicketScanResult,
   TicketStatus,
 } from "~Prisma/client";
-import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
+import { createTRPCRouter, eventOrganiserProcedure } from "~/server/api/trpc";
 import { admittedCount } from "~/server/ticketing/scan";
 
 /**
@@ -22,7 +22,7 @@ const ADMIT_RESULTS = "('ADMITTED', 'OVERRIDE_ADMITTED', 'REENTRY')";
 
 export const ticketAnalyticsRouter = createTRPCRouter({
   /** Headline numbers for the event dashboard. */
-  overview: adminProcedure
+  overview: eventOrganiserProcedure
     .input(z.object({ eventId: z.string() }))
     .query(async ({ ctx, input }) => {
       const event = await ctx.db.ticketEvent.findUnique({
@@ -57,39 +57,45 @@ export const ticketAnalyticsRouter = createTRPCRouter({
         TicketOrderStatus.REFUNDED,
       ];
 
-      const [money, orderCount, ticketsIssued, ticketsRefunded, admitted, byMethod] =
-        await Promise.all([
-          ctx.db.ticketOrder.aggregate({
-            where: { eventId: event.id, status: { in: paidStatuses } },
-            _sum: {
-              subtotalCents: true,
-              discountCents: true,
-              bookingFeeCents: true,
-              totalCents: true,
-              gstCents: true,
-              refundedCents: true,
-            },
-          }),
-          ctx.db.ticketOrder.count({
-            where: { eventId: event.id, status: { in: paidStatuses } },
-          }),
-          ctx.db.ticket.count({
-            where: { eventId: event.id, status: TicketStatus.VALID },
-          }),
-          ctx.db.ticket.count({
-            where: {
-              eventId: event.id,
-              status: { in: [TicketStatus.REFUNDED, TicketStatus.VOID] },
-            },
-          }),
-          admittedCount(event.id),
-          ctx.db.ticketOrder.groupBy({
-            by: ["paymentMethod"],
-            where: { eventId: event.id, status: { in: paidStatuses } },
-            _sum: { totalCents: true },
-            _count: true,
-          }),
-        ]);
+      const [
+        money,
+        orderCount,
+        ticketsIssued,
+        ticketsRefunded,
+        admitted,
+        byMethod,
+      ] = await Promise.all([
+        ctx.db.ticketOrder.aggregate({
+          where: { eventId: event.id, status: { in: paidStatuses } },
+          _sum: {
+            subtotalCents: true,
+            discountCents: true,
+            bookingFeeCents: true,
+            totalCents: true,
+            gstCents: true,
+            refundedCents: true,
+          },
+        }),
+        ctx.db.ticketOrder.count({
+          where: { eventId: event.id, status: { in: paidStatuses } },
+        }),
+        ctx.db.ticket.count({
+          where: { eventId: event.id, status: TicketStatus.VALID },
+        }),
+        ctx.db.ticket.count({
+          where: {
+            eventId: event.id,
+            status: { in: [TicketStatus.REFUNDED, TicketStatus.VOID] },
+          },
+        }),
+        admittedCount(event.id),
+        ctx.db.ticketOrder.groupBy({
+          by: ["paymentMethod"],
+          where: { eventId: event.id, status: { in: paidStatuses } },
+          _sum: { totalCents: true },
+          _count: true,
+        }),
+      ]);
 
       // Checkouts that reserved stock but never paid — the drop-off rate.
       const abandoned = await ctx.db.ticketOrder.count({
@@ -139,7 +145,9 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           percentSold:
             capacity > 0 ? Math.round((ticketsIssued / capacity) * 100) : 0,
           attendanceRate:
-            ticketsIssued > 0 ? Math.round((admitted / ticketsIssued) * 100) : 0,
+            ticketsIssued > 0
+              ? Math.round((admitted / ticketsIssued) * 100)
+              : 0,
           /** Paid ÷ (paid + abandoned). The checkout funnel's bottom step. */
           checkoutConversion:
             orderCount + abandoned > 0
@@ -153,7 +161,10 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           allocation: tier.allocation,
           sold: tier.soldCount,
           held: tier.heldCount,
-          remaining: Math.max(0, tier.allocation - tier.soldCount - tier.heldCount),
+          remaining: Math.max(
+            0,
+            tier.allocation - tier.soldCount - tier.heldCount,
+          ),
           revenueCents: tier.soldCount * tier.priceCents,
         })),
         byPaymentMethod: byMethod.map((row) => ({
@@ -165,7 +176,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
     }),
 
   /** Cumulative sales curve — when tickets actually moved. */
-  salesOverTime: adminProcedure
+  salesOverTime: eventOrganiserProcedure
     .input(
       z.object({
         eventId: z.string(),
@@ -215,7 +226,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
    * The live door view. Polled every few seconds during an event, so it stays
    * to a handful of cheap aggregate queries.
    */
-  live: adminProcedure
+  live: eventOrganiserProcedure
     .input(z.object({ eventId: z.string() }))
     .query(async ({ ctx, input }) => {
       const [sold, admitted, arrivals, byStaff, recent, failures] =
@@ -242,7 +253,11 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           ),
 
           ctx.db.$queryRawUnsafe<
-            { scannedByUserId: string | null; deviceLabel: string | null; count: bigint }[]
+            {
+              scannedByUserId: string | null;
+              deviceLabel: string | null;
+              count: bigint;
+            }[]
           >(
             `
             SELECT s."scannedByUserId", s."deviceLabel", COUNT(*)::bigint AS count
@@ -347,7 +362,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
       };
     }),
 
-  discountPerformance: adminProcedure
+  discountPerformance: eventOrganiserProcedure
     .input(z.object({ eventId: z.string() }))
     .query(async ({ ctx, input }) => {
       const redemptions = await ctx.db.discountRedemption.findMany({
@@ -385,7 +400,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
     }),
 
   /** Where the buyers came from, captured at checkout. */
-  sources: adminProcedure
+  sources: eventOrganiserProcedure
     .input(z.object({ eventId: z.string() }))
     .query(async ({ ctx, input }) => {
       const rows = await ctx.db.ticketOrder.groupBy({
@@ -410,7 +425,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
    * CSV exports. Returned as a string for the client to download, so the
    * browser never has to hold a second copy of the dataset in memory as JSON.
    */
-  exportCsv: adminProcedure
+  exportCsv: eventOrganiserProcedure
     .input(
       z.object({
         eventId: z.string(),

@@ -19,9 +19,9 @@ import { db } from "~/server/db";
  * The door.
  *
  * Everything here is scoped to an event the signed-in user is actually
- * assigned to — DOOR_STAFF is not a skeleton key, it just makes someone
- * eligible to be put on a specific door. Admins bypass the assignment check
- * so they can always get in and fix things on the night.
+ * assigned to. The assignment itself grants door access; there is no global
+ * door permission. Admins bypass the assignment check so they can always get
+ * in and fix things on the night.
  */
 
 async function assertAssigned(
@@ -257,7 +257,10 @@ export const doorRouter = createTRPCRouter({
         details: { eventId: input.eventId, ticketId: input.ticketId },
       });
 
-      return { ok: true as const, admitted: await admittedCount(input.eventId) };
+      return {
+        ok: true as const,
+        admitted: await admittedCount(input.eventId),
+      };
     }),
 
   /**

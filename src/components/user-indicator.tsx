@@ -101,7 +101,15 @@ export function UserIndicator({ variant = "light" }: UserIndicatorProps) {
               </Button>
             </Link>
 
-            {user.roles?.some((r) => r.role === "ADMIN") && (
+            {user.effectivePermissions.includes("EVENT_ORGANISER") && (
+              <Link href="/organiser/events">
+                <Button variant="ghost" className="w-full justify-between">
+                  <span>Event analytics</span>
+                </Button>
+              </Link>
+            )}
+
+            {user.effectivePermissions.includes("ADMIN") && (
               <Link href="/admin">
                 <Button variant="ghost" className="w-full justify-between">
                   <span>Admin Panel</span>

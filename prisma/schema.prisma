@@ -9,12 +9,18 @@ datasource db {
 }
 
 enum UserRole {
+  /// Legacy rollout-only roles. Authorization switches permanently to
+  /// `UserPermission` as soon as the first ADMIN permission is assigned.
   USER
   CREATOR
   ADMIN
-  /// Door staff. Can open the scanner, but only for events they are assigned
-  /// to via `TicketEventStaff`. Grants no other admin access.
   DOOR_STAFF
+}
+
+enum UserPermission {
+  EVENT_ORGANISER
+  CREATOR
+  ADMIN
 }
 
 enum ClaimStatus {
@@ -58,21 +64,24 @@ enum GigMode {
 }
 
 model User {
-  id                   String                @id
+  id                   String                     @id
   name                 String
   email                String
-  emailVerified        Boolean               @default(false)
+  emailVerified        Boolean                    @default(false)
   image                String?
-  roles                UserRoleAssignment[]
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @default(now()) @updatedAt
+  /// Temporary legacy assignments retained for the two-release cutover.
+  /// Remove these after at least one explicit ADMIN permission exists.
+  legacyRoles          UserRoleAssignment[]
+  permissions          UserPermissionAssignment[]
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @default(now()) @updatedAt
   sessions             Session[]
   accounts             Account[]
-  activities           ActivityLog[]         @relation("UserActivities")
-  targetActivities     ActivityLog[]         @relation("TargetUserActivities")
+  activities           ActivityLog[]              @relation("UserActivities")
+  targetActivities     ActivityLog[]              @relation("TargetUserActivities")
   creatorProfile       CreatorProfile?
-  creatorClaimRequests CreatorClaimRequest[] @relation("ClaimRequestingUser")
-  ownedCreatorThemes   CreatorProfileTheme[] @relation("OwnedCreatorThemes")
+  creatorClaimRequests CreatorClaimRequest[]      @relation("ClaimRequestingUser")
+  ownedCreatorThemes   CreatorProfileTheme[]      @relation("OwnedCreatorThemes")
 
   @@unique([email])
   @@map("user")
@@ -89,6 +98,19 @@ model UserRoleAssignment {
   @@unique([userId, role])
   @@index([role])
   @@map("user_role_assignment")
+}
+
+model UserPermissionAssignment {
+  id         String         @id @default(cuid())
+  userId     String
+  permission UserPermission
+  createdAt  DateTime       @default(now())
+  createdBy  String?
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permission])
+  @@index([permission])
+  @@map("user_permission_assignment")
 }
 
 model Session {
@@ -142,7 +164,6 @@ model Verification {
 model Invite {
   id        String    @id @default(cuid())
   email     String
-  role      UserRole  @default(USER)
   used      Boolean   @default(false)
   usedAt    DateTime?
   createdAt DateTime  @default(now())
@@ -745,6 +766,9 @@ enum ActivityType {
   LOGOUT
   USER_ROLE_ADDED
   USER_ROLE_REMOVED
+  USER_PERMISSION_CHANGED
+  USER_PERMISSION_ADDED
+  USER_PERMISSION_REMOVED
   CREATOR_PROFILE_CREATED
   CREATOR_PROFILE_UPDATED
   CREATOR_PROFILE_PUBLISHED

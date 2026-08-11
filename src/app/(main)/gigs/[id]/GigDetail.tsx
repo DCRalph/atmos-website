@@ -211,7 +211,6 @@
 //                   </div>
 //                 )}
 
-
 //               </div>
 //             </div>
 //           </div>
@@ -410,8 +409,7 @@ export default function GigPage({ params }: PageProps) {
   const { id } = use(params);
   const { data: gig, isLoading } = api.gigs.getById.useQuery({ id });
   const { data: viewerUser } = api.user.me.useQuery();
-  const isAdmin =
-    viewerUser?.roles?.some((r) => r.role === "ADMIN") ?? false;
+  const isAdmin = viewerUser?.effectivePermissions.includes("ADMIN") ?? false;
 
   const upcoming = gig ? !isGigPast(gig) : true;
   const hasPoster = !!gig?.posterFileUpload?.url;
@@ -471,9 +469,7 @@ export default function GigPage({ params }: PageProps) {
   const displayTitle = isTba ? "TBA..." : gig.title;
   const posterLayoutId = `gig-poster-${gig.id}`;
   const hasMedia =
-    gig.mode !== "TO_BE_ANNOUNCED" &&
-    !!gig.media &&
-    gig.media.length > 0;
+    gig.mode !== "TO_BE_ANNOUNCED" && !!gig.media && gig.media.length > 0;
 
   const fadeInUp = {
     hidden: { opacity: 0, y: "30%" },
@@ -489,7 +485,10 @@ export default function GigPage({ params }: PageProps) {
   };
 
   return (
-    <main ref={containerRef} className="relative min-h-screen bg-black text-white">
+    <main
+      ref={containerRef}
+      className="relative min-h-screen bg-black text-white"
+    >
       {/* Hero Section - Full viewport immersive */}
       <section ref={heroRef} className="relative h-[90vh] overflow-hidden">
         {/* Background Poster with Parallax */}
@@ -503,7 +502,7 @@ export default function GigPage({ params }: PageProps) {
               alt={`${displayTitle} poster`}
               fill
               priority
-              className="object-cover blur-2xl absolute inset-0"
+              className="absolute inset-0 object-cover blur-2xl"
               sizes="100vw"
             />
           </motion.div>
@@ -521,7 +520,9 @@ export default function GigPage({ params }: PageProps) {
               alt={`${displayTitle} poster`}
               fill
               priority
-              className={isTba ? "object-contain blur-md pb-48" : "object-contain pb-48"}
+              className={
+                isTba ? "object-contain pb-48 blur-md" : "object-contain pb-48"
+              }
               sizes="100vw"
             />
           </motion.div>
@@ -538,16 +539,14 @@ export default function GigPage({ params }: PageProps) {
             <div className="absolute inset-0 z-10 bg-linear-to-r from-black/60 via-transparent to-transparent" />
           </>
         )}
-        {isTba && (
-          <div className="absolute inset-0 z-10 bg-black/40" />
-        )}
+        {isTba && <div className="absolute inset-0 z-10 bg-black/40" />}
 
         {/* Navigation - Floating */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="absolute top-0 left-0 right-0 z-30 px-4 py-4"
+          className="absolute top-0 right-0 left-0 z-30 px-4 py-4"
         >
           <div className="mx-auto flex max-w-7xl items-center gap-4">
             <Link
@@ -676,7 +675,7 @@ export default function GigPage({ params }: PageProps) {
                                   </div>
                                 )}
                               </div>
-                              <span className="pointer-events-none absolute top-full left-1/2 z-30 mt-2 -translate-x-1/2 translate-y-1 whitespace-nowrap border border-white/15 bg-black/90 px-2 py-1 text-[10px] font-bold tracking-wider text-white uppercase opacity-0 shadow-lg backdrop-blur-md transition-all duration-200 group-hover/avatar:translate-y-0 group-hover/avatar:opacity-100">
+                              <span className="pointer-events-none absolute top-full left-1/2 z-30 mt-2 -translate-x-1/2 translate-y-1 border border-white/15 bg-black/90 px-2 py-1 text-[10px] font-bold tracking-wider whitespace-nowrap text-white uppercase opacity-0 shadow-lg backdrop-blur-md transition-all duration-200 group-hover/avatar:translate-y-0 group-hover/avatar:opacity-100">
                                 {cp.displayName}
                               </span>
                             </Link>

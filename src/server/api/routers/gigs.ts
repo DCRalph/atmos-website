@@ -11,7 +11,7 @@ import {
 } from "~/lib/date-utils";
 import { softDeleteFile } from "~/server/uploads/files";
 import { FileUploadStatus, GigMode, type GigMedia } from "~Prisma/client";
-import { userHasRole } from "~/server/utils/roles";
+import { userHasEffectivePermission } from "~/server/utils/permissions";
 import type { SerializedEditorState } from "lexical";
 import { Prisma } from "~Prisma/client";
 
@@ -68,9 +68,9 @@ const isAdminSession = async (ctx: GigsContext): Promise<boolean> => {
   if (!userId) return false;
   const user = await ctx.db.user.findUnique({
     where: { id: userId },
-    select: { roles: { select: { role: true } } },
+    include: { permissions: true, legacyRoles: true },
   });
-  return user ? userHasRole(user, "ADMIN") : false;
+  return user ? userHasEffectivePermission(user, "ADMIN", ctx.db) : false;
 };
 
 const redactGigForPublic = <T extends { mode?: GigMode }>(gig: T) => {
@@ -129,9 +129,9 @@ async function getFileUploadInfoById(
 
   const uploadedBy = fileUpload.userId
     ? await db.user.findUnique({
-      where: { id: fileUpload.userId },
-      select: { id: true, name: true, email: true },
-    })
+        where: { id: fileUpload.userId },
+        select: { id: true, name: true, email: true },
+      })
     : null;
 
   return {
@@ -186,9 +186,9 @@ async function enrichGigsWithPosterFileUploads<
   const users =
     userIds.length > 0
       ? await db.user.findMany({
-        where: { id: { in: userIds } },
-        select: { id: true, name: true, email: true },
-      })
+          where: { id: { in: userIds } },
+          select: { id: true, name: true, email: true },
+        })
       : [];
 
   const userMap = new Map(users.map((u: any) => [u.id, u]));
@@ -256,9 +256,9 @@ async function enrichMediaWithFileUploads<T extends GigMedia>(
   const users =
     userIds.length > 0
       ? await db.user.findMany({
-        where: { id: { in: userIds } },
-        select: { id: true, name: true, email: true },
-      })
+          where: { id: { in: userIds } },
+          select: { id: true, name: true, email: true },
+        })
       : [];
 
   const userMap = new Map(users.map((u: any) => [u.id, u]));
@@ -329,9 +329,9 @@ async function enrichGigsWithFileUploads<T extends { media: GigMedia[] }>(
   const users =
     userIds.length > 0
       ? await db.user.findMany({
-        where: { id: { in: userIds } },
-        select: { id: true, name: true, email: true },
-      })
+          where: { id: { in: userIds } },
+          select: { id: true, name: true, email: true },
+        })
       : [];
 
   const userMap = new Map(users.map((u: any) => [u.id, u]));
@@ -371,17 +371,17 @@ export const gigsRouter = createTRPCRouter({
 
       const where = search
         ? {
-          OR: [
-            { title: { contains: search, mode: "insensitive" as const } },
-            { subtitle: { contains: search, mode: "insensitive" as const } },
-            {
-              shortDescription: {
-                contains: search,
-                mode: "insensitive" as const,
+            OR: [
+              { title: { contains: search, mode: "insensitive" as const } },
+              { subtitle: { contains: search, mode: "insensitive" as const } },
+              {
+                shortDescription: {
+                  contains: search,
+                  mode: "insensitive" as const,
+                },
               },
-            },
-          ],
-        }
+            ],
+          }
         : undefined;
 
       const gigs = await ctx.db.gig.findMany({
@@ -404,8 +404,13 @@ export const gigsRouter = createTRPCRouter({
       });
 
       const enriched = await enrichGigsWithFileUploads(ctx.db, gigs);
-      const withPosters = await enrichGigsWithPosterFileUploads(ctx.db, enriched);
-      return (await isAdminSession(ctx)) ? withPosters : redactGigsForPublic(withPosters);
+      const withPosters = await enrichGigsWithPosterFileUploads(
+        ctx.db,
+        enriched,
+      );
+      return (await isAdminSession(ctx))
+        ? withPosters
+        : redactGigsForPublic(withPosters);
     }),
 
   /**
@@ -468,7 +473,7 @@ export const gigsRouter = createTRPCRouter({
         .filter((g) => (featuredGig ? g.id !== featuredGig.id : true))
         .slice(0, pastLimit);
 
-      if ((await isAdminSession(ctx))) {
+      if (await isAdminSession(ctx)) {
         return { featuredGig, pastGigs };
       }
 
@@ -505,7 +510,9 @@ export const gigsRouter = createTRPCRouter({
 
     const enriched = await enrichGigsWithFileUploads(ctx.db, gigs);
     const withPosters = await enrichGigsWithPosterFileUploads(ctx.db, enriched);
-    return (await isAdminSession(ctx)) ? withPosters : redactGigsForPublic(withPosters);
+    return (await isAdminSession(ctx))
+      ? withPosters
+      : redactGigsForPublic(withPosters);
   }),
 
   getPast: publicProcedure
@@ -544,8 +551,13 @@ export const gigsRouter = createTRPCRouter({
       });
 
       const enriched = await enrichGigsWithFileUploads(ctx.db, gigs);
-      const withPosters = await enrichGigsWithPosterFileUploads(ctx.db, enriched);
-      return (await isAdminSession(ctx)) ? withPosters : redactGigsForPublic(withPosters);
+      const withPosters = await enrichGigsWithPosterFileUploads(
+        ctx.db,
+        enriched,
+      );
+      return (await isAdminSession(ctx))
+        ? withPosters
+        : redactGigsForPublic(withPosters);
     }),
 
   /**
@@ -655,7 +667,9 @@ export const gigsRouter = createTRPCRouter({
       enrichedGigs,
     );
 
-    return (await isAdminSession(ctx)) ? withPosters : redactGigsForPublic(withPosters);
+    return (await isAdminSession(ctx))
+      ? withPosters
+      : redactGigsForPublic(withPosters);
   }),
 
   getById: publicProcedure
@@ -968,7 +982,10 @@ export const gigsRouter = createTRPCRouter({
         select: { mode: true },
       });
 
-      if (gig?.mode === GigMode.TO_BE_ANNOUNCED && !(await isAdminSession(ctx))) {
+      if (
+        gig?.mode === GigMode.TO_BE_ANNOUNCED &&
+        !(await isAdminSession(ctx))
+      ) {
         return { featured: [], gallery: [], all: [] };
       }
 
@@ -1042,9 +1059,9 @@ export const gigsRouter = createTRPCRouter({
       const users =
         userIds.length > 0
           ? await ctx.db.user.findMany({
-            where: { id: { in: userIds } },
-            select: { id: true, name: true, email: true },
-          })
+              where: { id: { in: userIds } },
+              select: { id: true, name: true, email: true },
+            })
           : [];
 
       const userMap = new Map(users.map((u) => [u.id, u]));

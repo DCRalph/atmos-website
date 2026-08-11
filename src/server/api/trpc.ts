@@ -12,7 +12,8 @@ import { ZodError } from "zod";
 
 import { db } from "~/server/db";
 import { auth } from "~/server/auth";
-import { userHasRole } from "~/server/utils/roles";
+import { userHasEffectivePermission } from "~/server/utils/permissions";
+import type { UserPermission } from "~Prisma/client";
 
 /**
  * 1. CONTEXT
@@ -139,57 +140,64 @@ export const protectedProcedure = t.procedure
  *
  * Only accessible to users with CREATOR or ADMIN role.
  */
-export const creatorProcedure = protectedProcedure.use(
-  async ({ ctx, next }) => {
+function permissionProcedure(permission: UserPermission) {
+  return protectedProcedure.use(async ({ ctx, next }) => {
     const user = await ctx.db.user.findUnique({
       where: { id: ctx.session.user.id },
-      include: { roles: true },
+      include: { permissions: true, legacyRoles: true },
     });
 
-    if (!user || (!userHasRole(user, "CREATOR") && !userHasRole(user, "ADMIN"))) {
+    const hasPermission = user
+      ? await userHasEffectivePermission(user, permission, ctx.db)
+      : false;
+    if (!user || !hasPermission) {
       throw new TRPCError({
         code: "FORBIDDEN",
-        message: "Creator or Admin access required",
+        message: `${permission.replaceAll("_", " ").toLowerCase()} permission required`,
       });
     }
+
+    const isAdmin =
+      permission === "ADMIN"
+        ? true
+        : await userHasEffectivePermission(user, "ADMIN", ctx.db);
 
     return next({
       ctx: {
         ...ctx,
         user,
+        isAdmin,
       },
     });
-  },
-);
+  });
+}
+
+export const creatorProcedure = permissionProcedure("CREATOR");
+
+export const eventOrganiserProcedure = permissionProcedure("EVENT_ORGANISER");
 
 /**
  * Door staff procedure
  *
- * Accessible to DOOR_STAFF and ADMIN. Door staff get no other admin access —
- * individual procedures still check that the user is assigned to the event
- * they are trying to scan, via `TicketEventStaff`.
+ * Accessible to authenticated users. Individual procedures still require a
+ * `TicketEventStaff` assignment for the requested event. Admins bypass that
+ * assignment check.
  */
 export const doorProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   const user = await ctx.db.user.findUnique({
     where: { id: ctx.session.user.id },
-    include: { roles: true },
+    include: { permissions: true, legacyRoles: true },
   });
 
-  if (
-    !user ||
-    (!userHasRole(user, "DOOR_STAFF") && !userHasRole(user, "ADMIN"))
-  ) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Door staff access required",
-    });
-  }
+  if (!user) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+  const isAdmin = await userHasEffectivePermission(user, "ADMIN", ctx.db);
 
   return next({
     ctx: {
       ...ctx,
       user,
-      isAdmin: userHasRole(user, "ADMIN"),
+      isAdmin,
     },
   });
 });
@@ -199,23 +207,4 @@ export const doorProcedure = protectedProcedure.use(async ({ ctx, next }) => {
  *
  * Only accessible to users with ADMIN role.
  */
-export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
-  const user = await ctx.db.user.findUnique({
-    where: { id: ctx.session.user.id },
-    include: { roles: true },
-  });
-
-  if (!user || !userHasRole(user, "ADMIN")) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Admin access required",
-    });
-  }
-
-  return next({
-    ctx: {
-      ...ctx,
-      user,
-    },
-  });
-});
+export const adminProcedure = permissionProcedure("ADMIN");

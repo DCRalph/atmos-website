@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { userHasRole } from "~/server/utils/roles";
+import { userHasEffectivePermission } from "~/server/utils/permissions";
 import type { PrismaClient } from "~Prisma/client";
 
 /**
@@ -27,7 +27,7 @@ export async function assertCanEditProfile(
     }),
     ctx.db.user.findUnique({
       where: { id: ctx.session.user.id },
-      include: { roles: true },
+      include: { permissions: true, legacyRoles: true },
     }),
   ]);
   if (!profile) {
@@ -36,7 +36,16 @@ export async function assertCanEditProfile(
   if (!user) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
-  const isAdmin = userHasRole(user, "ADMIN");
+  const [isAdmin, isCreator] = await Promise.all([
+    userHasEffectivePermission(user, "ADMIN", ctx.db),
+    userHasEffectivePermission(user, "CREATOR", ctx.db),
+  ]);
+  if (!isAdmin && !isCreator) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Creator permission required",
+    });
+  }
   if (!isAdmin && profile.userId !== user.id) {
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -68,5 +77,5 @@ export async function resolveTargetProfileId(
       message: "No profile for this user yet. Create one first.",
     });
   }
-  return { profileId: mine.id, isAdmin: false };
+  return assertCanEditProfile(ctx, mine.id);
 }

@@ -3,11 +3,11 @@ import { headers } from "next/headers";
 import { type Metadata } from "next";
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
-import { UserIndicator } from "~/components/user-indicator";
 import { LayoutWithSideBarHeader } from "~/components/layout-with-sideBar-header";
 import { DashboardSideBar } from "~/components/admin/admin-sidebar";
 import { DashboardHeader } from "~/components/dash-header";
 import { UnsavedChangesProvider } from "~/components/admin/unsaved-changes-provider";
+import { userHasEffectivePermission } from "~/server/utils/permissions";
 
 export const metadata: Metadata = {
   title: { absolute: "Atmos Admin" },
@@ -28,10 +28,12 @@ export default async function AdminLayout({
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },
-    include: { roles: true },
+    include: { permissions: true, legacyRoles: true },
   });
 
-  const isAdmin = user?.roles?.some((r) => r.role === "ADMIN") ?? false;
+  const isAdmin = user
+    ? await userHasEffectivePermission(user, "ADMIN", db)
+    : false;
 
   if (!isAdmin) {
     redirect("/login");

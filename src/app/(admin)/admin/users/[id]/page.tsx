@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useMemo, useEffect } from "react";
+import { use, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { AdminSection } from "~/components/admin/admin-section";
@@ -27,13 +27,7 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 import { Badge } from "~/components/ui/badge";
-import {
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  Calendar,
-  Clock,
-} from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Calendar, Clock } from "lucide-react";
 import { UserActivityLogs } from "~/components/admin/user-activity-logs";
 import { useConfirm } from "~/components/confirm-provider";
 
@@ -60,11 +54,10 @@ function getLoginMethodBadge(method: string | null) {
     github: { label: "GitHub", variant: "outline" },
   };
 
-  const config =
-    methodMap[method.toLowerCase()] ?? {
-      label: method,
-      variant: "outline" as const,
-    };
+  const config = methodMap[method.toLowerCase()] ?? {
+    label: method,
+    variant: "outline" as const,
+  };
 
   return (
     <Badge variant={config.variant} className="text-xs">
@@ -73,23 +66,28 @@ function getLoginMethodBadge(method: string | null) {
   );
 }
 
-type RoleName = "USER" | "CREATOR" | "ADMIN" | "DOOR_STAFF";
-const ALL_ROLES: RoleName[] = ["USER", "CREATOR", "ADMIN", "DOOR_STAFF"];
+type PermissionName = "EVENT_ORGANISER" | "CREATOR" | "ADMIN";
+const ALL_PERMISSIONS: PermissionName[] = [
+  "EVENT_ORGANISER",
+  "CREATOR",
+  "ADMIN",
+];
 
 export default function UserManagementPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
   const confirm = useConfirm();
-  const [selectedRoles, setSelectedRoles] = useState<Set<RoleName> | null>(
-    null,
-  );
+  const [selectedPermissions, setSelectedPermissions] =
+    useState<Set<PermissionName> | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const { data: user, isLoading, refetch } = api.users.getById.useQuery({ id });
-  const setRoles = api.users.setRoles.useMutation({
+  const migrationStatus = api.users.permissionMigrationStatus.useQuery();
+  const setPermissions = api.users.setPermissions.useMutation({
     onSuccess: async () => {
       await refetch();
-      setSelectedRoles(null);
+      await migrationStatus.refetch();
+      setSelectedPermissions(null);
     },
   });
   const deleteUser = api.users.delete.useMutation({
@@ -98,16 +96,10 @@ export default function UserManagementPage({ params }: PageProps) {
     },
   });
 
-  const userRoles = useMemo<RoleName[]>(() => {
+  const userPermissions = useMemo<PermissionName[]>(() => {
     if (!user) return [];
-    return user.roles?.map((r) => r.role as RoleName) ?? [];
+    return user.permissions?.map((row) => row.permission) ?? [];
   }, [user]);
-
-  useEffect(() => {
-    if (user && selectedRoles === null) {
-      setSelectedRoles(new Set(userRoles));
-    }
-  }, [user, selectedRoles, userRoles]);
 
   if (isLoading) {
     return (
@@ -140,18 +132,20 @@ export default function UserManagementPage({ params }: PageProps) {
     );
   }
 
-  const currentRolesSet = new Set(userRoles);
-  const nextRolesSet = selectedRoles ?? currentRolesSet;
-  const hasRolesChanged =
-    selectedRoles !== null &&
-    (nextRolesSet.size !== currentRolesSet.size ||
-      [...nextRolesSet].some((r) => !currentRolesSet.has(r)));
+  const currentPermissionsSet = new Set(userPermissions);
+  const nextPermissionsSet = selectedPermissions ?? currentPermissionsSet;
+  const hasPermissionsChanged =
+    selectedPermissions !== null &&
+    (nextPermissionsSet.size !== currentPermissionsSet.size ||
+      [...nextPermissionsSet].some(
+        (permission) => !currentPermissionsSet.has(permission),
+      ));
 
-  function toggleRole(role: RoleName, checked: boolean) {
-    setSelectedRoles((prev) => {
-      const base = new Set(prev ?? currentRolesSet);
-      if (checked) base.add(role);
-      else base.delete(role);
+  function togglePermission(permission: PermissionName, checked: boolean) {
+    setSelectedPermissions((prev) => {
+      const base = new Set(prev ?? currentPermissionsSet);
+      if (checked) base.add(permission);
+      else base.delete(permission);
       return base;
     });
   }
@@ -278,39 +272,51 @@ export default function UserManagementPage({ params }: PageProps) {
           </CardContent>
         </Card>
 
-        {/* Role Management */}
+        {/* Permission Management */}
         <Card>
           <CardHeader>
-            <CardTitle>Role Management</CardTitle>
+            <CardTitle>Permissions</CardTitle>
             <CardDescription>
-              A user can hold multiple roles simultaneously (e.g. both Admin
-              and Creator).
+              Permissions can be combined. Admin grants full access without
+              requiring the other permissions.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {migrationStatus.data && !migrationStatus.data.cutoverComplete && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
+                Permission rollout is in bootstrap mode. Assign Admin to the
+                intended administrator to cut over from legacy roles.
+              </div>
+            )}
             <div className="flex flex-col gap-3">
-              {ALL_ROLES.map((role) => {
-                const checked = nextRolesSet.has(role);
+              {ALL_PERMISSIONS.map((permission) => {
+                const checked = nextPermissionsSet.has(permission);
                 return (
                   <label
-                    key={role}
+                    key={permission}
                     className="hover:bg-accent/30 flex cursor-pointer items-center gap-3 rounded-md border p-3"
                   >
                     <Checkbox
                       checked={checked}
-                      onCheckedChange={(v) => toggleRole(role, Boolean(v))}
-                      disabled={setRoles.isPending}
+                      onCheckedChange={(value) =>
+                        togglePermission(permission, Boolean(value))
+                      }
+                      disabled={setPermissions.isPending}
                     />
                     <div className="flex flex-col">
-                      <span className="font-medium">{role}</span>
+                      <span className="font-medium">
+                        {permission === "EVENT_ORGANISER"
+                          ? "Event organiser"
+                          : permission === "CREATOR"
+                            ? "Creator"
+                            : "Admin"}
+                      </span>
                       <span className="text-muted-foreground text-xs">
-                        {role === "USER"
-                          ? "Base access — signed-in user."
-                          : role === "CREATOR"
-                            ? "Can own/edit their creator profile."
-                            : role === "DOOR_STAFF"
-                              ? "Can open the door scanner for events they're assigned to."
-                              : "Full admin dashboard access."}
+                        {permission === "EVENT_ORGANISER"
+                          ? "Can view every event, complete analytics, order details, and CSV exports."
+                          : permission === "CREATOR"
+                            ? "Can own, edit, and publish their creator profile and themes."
+                            : "Full application administration rights."}
                       </span>
                     </div>
                   </label>
@@ -318,33 +324,33 @@ export default function UserManagementPage({ params }: PageProps) {
               })}
             </div>
 
-            {hasRolesChanged && (
+            {hasPermissionsChanged && (
               <Button
                 onClick={async () => {
                   const ok = await confirm({
-                    title: "Update roles",
-                    description: `Update ${user.name}'s roles to: ${
-                      [...nextRolesSet].join(", ") || "(none)"
+                    title: "Update permissions",
+                    description: `Update ${user.name}'s permissions to: ${
+                      [...nextPermissionsSet].join(", ") || "(none)"
                     }?`,
                     confirmLabel: "Update",
                   });
                   if (ok) {
-                    setRoles.mutate({
+                    setPermissions.mutate({
                       id: user.id,
-                      roles: [...nextRolesSet],
+                      permissions: [...nextPermissionsSet],
                     });
                   }
                 }}
-                disabled={setRoles.isPending}
+                disabled={setPermissions.isPending}
                 className="w-full"
               >
-                {setRoles.isPending ? (
+                {setPermissions.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Updating...
                   </>
                 ) : (
-                  "Save Roles"
+                  "Save permissions"
                 )}
               </Button>
             )}

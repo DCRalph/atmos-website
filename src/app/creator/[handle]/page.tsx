@@ -15,6 +15,7 @@ import {
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { ClaimProfileCTA } from "~/components/creator/claim-profile-cta";
+import { userHasEffectivePermission } from "~/server/utils/permissions";
 import {
   parseBlockOverrides,
   resolveProfileTokens,
@@ -61,7 +62,8 @@ export async function generateMetadata({
   const profile = await loadProfile(handle);
   if (!profile) return { title: "Profile not found" };
   const title = `${profile.displayName} (@${profile.handle})`;
-  const description = profile.tagline ?? profile.bio?.slice(0, 160) ?? undefined;
+  const description =
+    profile.tagline ?? profile.bio?.slice(0, 160) ?? undefined;
   return {
     title,
     description,
@@ -88,23 +90,29 @@ export default async function PublicCreatorProfilePage({
   if (!profile) return notFound();
 
   const headersList = await headers();
-  const session = await auth.api.getSession({ headers: headersList }).catch(() => null);
+  const session = await auth.api
+    .getSession({ headers: headersList })
+    .catch(() => null);
   const viewerUser = session?.user
     ? await db.user.findUnique({
         where: { id: session.user.id },
-        include: { roles: true },
+        include: { permissions: true, legacyRoles: true },
       })
     : null;
-  const viewerIsAdmin =
-    viewerUser?.roles?.some((r) => r.role === "ADMIN") ?? false;
+  const [viewerIsAdmin, viewerIsCreator] = viewerUser
+    ? await Promise.all([
+        userHasEffectivePermission(viewerUser, "ADMIN", db),
+        userHasEffectivePermission(viewerUser, "CREATOR", db),
+      ])
+    : [false, false];
   const viewerIsOwner =
-    Boolean(viewerUser) && viewerUser!.id === profile.userId;
+    viewerUser !== null && viewerIsCreator && viewerUser.id === profile.userId;
   const viewerHasProfile = Boolean(
     viewerUser &&
-      (await db.creatorProfile.findUnique({
-        where: { userId: viewerUser.id },
-        select: { id: true },
-      })),
+    (await db.creatorProfile.findUnique({
+      where: { userId: viewerUser.id },
+      select: { id: true },
+    })),
   );
 
   if (!profile.isPublished && !viewerIsAdmin && !viewerIsOwner) {
@@ -147,8 +155,7 @@ export default async function PublicCreatorProfilePage({
       className="creator-page min-h-dvh"
       style={{
         ...pageStyle,
-        background:
-          "var(--creator-page-bg-image), var(--creator-page-bg)",
+        background: "var(--creator-page-bg-image), var(--creator-page-bg)",
         color: "var(--creator-page-fg)",
         fontFamily: "var(--creator-body-font)",
         backgroundSize: "cover",
@@ -156,7 +163,7 @@ export default async function PublicCreatorProfilePage({
       }}
     >
       {!profile.isPublished && (
-        <div className="bg-amber-500 text-black text-center text-xs py-1">
+        <div className="bg-amber-500 py-1 text-center text-xs text-black">
           DRAFT — only visible to you and admins
         </div>
       )}
@@ -176,7 +183,7 @@ export default async function PublicCreatorProfilePage({
           </Button>
         </div>
         {profile.bannerFileId ? (
-          <div className="relative h-48 md:h-64 w-full overflow-hidden">
+          <div className="relative h-48 w-full overflow-hidden md:h-64">
             <Image
               src={buildMediaUrl(profile.bannerFileId)}
               alt=""
@@ -200,7 +207,7 @@ export default async function PublicCreatorProfilePage({
           </div>
         ) : (
           <div
-            className="h-32 md:h-48 w-full"
+            className="h-32 w-full md:h-48"
             style={{
               background: accent
                 ? `linear-gradient(135deg, ${accent}, ${accent}88)`
@@ -208,9 +215,9 @@ export default async function PublicCreatorProfilePage({
             }}
           />
         )}
-        <div className="mx-auto max-w-6xl px-4 -mt-16 md:-mt-20 relative z-10">
+        <div className="relative z-10 mx-auto -mt-16 max-w-6xl px-4 md:-mt-20">
           <div className="flex flex-col items-start gap-4 md:flex-row md:items-end">
-            <div className="relative h-28 w-28 md:h-36 md:w-36 overflow-hidden rounded-full border-4 border-background bg-muted">
+            <div className="border-background bg-muted relative h-28 w-28 overflow-hidden rounded-full border-4 md:h-36 md:w-36">
               {profile.avatarFileId ? (
                 <Image
                   src={buildMediaUrl(profile.avatarFileId)}
@@ -243,9 +250,7 @@ export default async function PublicCreatorProfilePage({
               <p className="text-muted-foreground font-mono text-sm">
                 @{profile.handle}
               </p>
-              {profile.tagline && (
-                <p className="text-lg">{profile.tagline}</p>
-              )}
+              {profile.tagline && <p className="text-lg">{profile.tagline}</p>}
             </div>
             <div className="flex gap-2">
               {viewerIsOwner && (
@@ -265,7 +270,7 @@ export default async function PublicCreatorProfilePage({
         </div>
       </div>
 
-      <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
+      <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
         {profile.bio && (
           <div className="prose prose-invert max-w-none">
             <p>{profile.bio}</p>

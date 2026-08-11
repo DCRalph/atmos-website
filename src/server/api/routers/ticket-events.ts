@@ -12,6 +12,7 @@ import {
 import {
   adminProcedure,
   createTRPCRouter,
+  eventOrganiserProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
 import { logActivity } from "~/server/utils/activity-log";
@@ -46,6 +47,12 @@ function toLexicalJsonInput(
   if (value === null) return Prisma.JsonNull;
   return value as unknown as Prisma.InputJsonValue;
 }
+
+/**
+ * How many rows a combobox picker returns. Small on purpose — the search box
+ * is the navigation, not the scrollbar.
+ */
+const PICKER_LIMIT = 20;
 
 /** URL-safe slug, deduplicated with a numeric suffix. */
 function slugify(input: string): string {
@@ -150,7 +157,7 @@ function assertSaneDates(input: {
 export const ticketEventsRouter = createTRPCRouter({
   // ---------------------------------------------------------------- admin
 
-  list: adminProcedure
+  list: eventOrganiserProcedure
     .input(
       z
         .object({
@@ -191,7 +198,7 @@ export const ticketEventsRouter = createTRPCRouter({
       });
     }),
 
-  byId: adminProcedure
+  byId: eventOrganiserProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const event = await ctx.db.ticketEvent.findUnique({
@@ -299,7 +306,9 @@ export const ticketEventsRouter = createTRPCRouter({
         endsAt: rest.endsAt === undefined ? existing.endsAt : rest.endsAt,
         doorsAt: rest.doorsAt === undefined ? existing.doorsAt : rest.doorsAt,
         salesOpenAt:
-          rest.salesOpenAt === undefined ? existing.salesOpenAt : rest.salesOpenAt,
+          rest.salesOpenAt === undefined
+            ? existing.salesOpenAt
+            : rest.salesOpenAt,
         salesCloseAt:
           rest.salesCloseAt === undefined
             ? existing.salesCloseAt
@@ -333,12 +342,16 @@ export const ticketEventsRouter = createTRPCRouter({
             ? { shortDescription: rest.shortDescription }
             : {}),
           ...(rest.descriptionLexical !== undefined
-            ? { descriptionLexical: toLexicalJsonInput(rest.descriptionLexical) }
+            ? {
+                descriptionLexical: toLexicalJsonInput(rest.descriptionLexical),
+              }
             : {}),
           ...(rest.posterFileUploadId !== undefined
             ? { posterFileUploadId: rest.posterFileUploadId }
             : {}),
-          ...(rest.venueName !== undefined ? { venueName: rest.venueName } : {}),
+          ...(rest.venueName !== undefined
+            ? { venueName: rest.venueName }
+            : {}),
           ...(rest.venueAddress !== undefined
             ? { venueAddress: rest.venueAddress }
             : {}),
@@ -369,7 +382,9 @@ export const ticketEventsRouter = createTRPCRouter({
           ...(rest.bookingFeePercentBp !== undefined
             ? { bookingFeePercentBp: rest.bookingFeePercentBp }
             : {}),
-          ...(rest.gstNumber !== undefined ? { gstNumber: rest.gstNumber } : {}),
+          ...(rest.gstNumber !== undefined
+            ? { gstNumber: rest.gstNumber }
+            : {}),
         },
       });
 
@@ -388,7 +403,8 @@ export const ticketEventsRouter = createTRPCRouter({
           rest.startsAt.getTime() !== existing.startsAt.getTime()) ||
         (rest.doorsAt !== undefined &&
           rest.doorsAt?.getTime() !== existing.doorsAt?.getTime()) ||
-        (rest.venueName !== undefined && rest.venueName !== existing.venueName) ||
+        (rest.venueName !== undefined &&
+          rest.venueName !== existing.venueName) ||
         (rest.venueAddress !== undefined &&
           rest.venueAddress !== existing.venueAddress) ||
         (rest.name !== undefined && rest.name !== existing.name);
@@ -481,7 +497,9 @@ export const ticketEventsRouter = createTRPCRouter({
         });
       }
 
-      const event = await ctx.db.ticketEvent.delete({ where: { id: input.id } });
+      const event = await ctx.db.ticketEvent.delete({
+        where: { id: input.id },
+      });
 
       await logActivity({
         type: ActivityType.TICKET_EVENT_DELETED,
@@ -657,20 +675,10 @@ export const ticketEventsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const user = await ctx.db.user.findUnique({
         where: { id: input.userId },
-        include: { roles: true },
+        select: { id: true, name: true, email: true },
       });
       if (!user) {
         throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
-      }
-
-      const canScan = user.roles.some(
-        (r) => r.role === "DOOR_STAFF" || r.role === "ADMIN",
-      );
-      if (!canScan) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `${user.name} needs the Door staff role before they can be assigned to an event.`,
-        });
       }
 
       const assignment = await ctx.db.ticketEventStaff.upsert({
@@ -719,14 +727,171 @@ export const ticketEventsRouter = createTRPCRouter({
       return { ok: true as const };
     }),
 
-  /** Users who can be put on a door — for the assignment picker. */
-  eligibleStaff: adminProcedure.query(async ({ ctx }) => {
-    return ctx.db.user.findMany({
-      where: { roles: { some: { role: { in: ["DOOR_STAFF", "ADMIN"] } } } },
-      select: { id: true, name: true, email: true, image: true },
-      orderBy: { name: "asc" },
-    });
-  }),
+  // --------------------------------------------------------------- pickers
+  //
+  // Combobox sources. Each returns at most `PICKER_LIMIT` rows plus the true
+  // match count, so the UI can say "showing 20 of 340" instead of quietly
+  // truncating. Filtering happens in Postgres — these tables grow forever and
+  // shipping all of one to the browser to populate a dropdown stops working
+  // long before anyone notices it has.
+
+  /** Users who can be put on a door. */
+  eligibleStaff: adminProcedure
+    .input(
+      z
+        .object({
+          query: z.string().trim().max(80).default(""),
+          /** Hide people already on this event's door. */
+          excludeEventId: z.string().optional(),
+        })
+        .default({ query: "" }),
+    )
+    .query(async ({ ctx, input }) => {
+      const assignedIds = input.excludeEventId
+        ? (
+            await ctx.db.ticketEventStaff.findMany({
+              where: { eventId: input.excludeEventId },
+              select: { userId: true },
+            })
+          ).map((row) => row.userId)
+        : [];
+
+      const where = {
+        ...(assignedIds.length > 0 ? { id: { notIn: assignedIds } } : {}),
+        ...(input.query
+          ? {
+              OR: [
+                {
+                  name: { contains: input.query, mode: "insensitive" as const },
+                },
+                {
+                  email: {
+                    contains: input.query,
+                    mode: "insensitive" as const,
+                  },
+                },
+              ],
+            }
+          : {}),
+      };
+
+      const [users, total] = await Promise.all([
+        ctx.db.user.findMany({
+          where,
+          select: { id: true, name: true, email: true, image: true },
+          orderBy: { name: "asc" },
+          take: PICKER_LIMIT,
+        }),
+        ctx.db.user.count({ where }),
+      ]);
+
+      return {
+        options: users.map((user) => ({
+          value: user.id,
+          label: user.name,
+          description: user.email,
+        })),
+        total,
+      };
+    }),
+
+  /** Gigs, for the "link this event to a gig" picker. */
+  gigOptions: adminProcedure
+    .input(
+      z
+        .object({ query: z.string().trim().max(80).default("") })
+        .default({ query: "" }),
+    )
+    .query(async ({ ctx, input }) => {
+      const where = input.query
+        ? {
+            OR: [
+              {
+                title: { contains: input.query, mode: "insensitive" as const },
+              },
+              {
+                subtitle: {
+                  contains: input.query,
+                  mode: "insensitive" as const,
+                },
+              },
+            ],
+          }
+        : {};
+
+      const [gigs, total] = await Promise.all([
+        ctx.db.gig.findMany({
+          where,
+          select: { id: true, title: true, gigStartTime: true },
+          orderBy: { gigStartTime: "desc" },
+          take: PICKER_LIMIT,
+        }),
+        ctx.db.gig.count({ where }),
+      ]);
+
+      return {
+        options: gigs.map((gig) => ({
+          value: gig.id,
+          label: gig.title,
+          description: gig.gigStartTime.toLocaleDateString("en-NZ", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          }),
+        })),
+        total,
+      };
+    }),
+
+  /** Ticketed events, for scoping a discount code. */
+  eventOptions: adminProcedure
+    .input(
+      z
+        .object({ query: z.string().trim().max(80).default("") })
+        .default({ query: "" }),
+    )
+    .query(async ({ ctx, input }) => {
+      const where = {
+        status: { not: TicketEventStatus.ARCHIVED },
+        ...(input.query
+          ? { name: { contains: input.query, mode: "insensitive" as const } }
+          : {}),
+      };
+
+      const [events, total] = await Promise.all([
+        ctx.db.ticketEvent.findMany({
+          where,
+          select: {
+            id: true,
+            name: true,
+            startsAt: true,
+            timezone: true,
+            venueName: true,
+          },
+          orderBy: { startsAt: "desc" },
+          take: PICKER_LIMIT,
+        }),
+        ctx.db.ticketEvent.count({ where }),
+      ]);
+
+      return {
+        options: events.map((event) => ({
+          value: event.id,
+          label: event.name,
+          description: [
+            event.startsAt.toLocaleDateString("en-NZ", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            }),
+            event.venueName,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+        })),
+        total,
+      };
+    }),
 
   // ---------------------------------------------------------------- public
 
@@ -847,7 +1012,8 @@ function toPublicEvent(
   const cheapest = tiers
     .filter((tier) => tier.available)
     .reduce<number | null>(
-      (min, tier) => (min === null ? tier.priceCents : Math.min(min, tier.priceCents)),
+      (min, tier) =>
+        min === null ? tier.priceCents : Math.min(min, tier.priceCents),
       null,
     );
 

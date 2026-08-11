@@ -53,11 +53,10 @@ function getLoginMethodBadge(method: string | null) {
     github: { label: "GitHub", variant: "outline" },
   };
 
-  const config =
-    methodMap[method.toLowerCase()] ?? {
-      label: method,
-      variant: "outline" as const,
-    };
+  const config = methodMap[method.toLowerCase()] ?? {
+    label: method,
+    variant: "outline" as const,
+  };
 
   return (
     <Badge variant={config.variant} className="text-xs">
@@ -66,19 +65,20 @@ function getLoginMethodBadge(method: string | null) {
   );
 }
 
-function getRoleBadge(role: string) {
-  const roleMap: Record<
+function getPermissionBadge(permission: string) {
+  const permissionMap: Record<
     string,
     { label: string; variant: "default" | "secondary" | "destructive" }
   > = {
     ADMIN: { label: "Admin", variant: "destructive" },
     CREATOR: { label: "Creator", variant: "secondary" },
-    DOOR_STAFF: { label: "Door staff", variant: "secondary" },
-    USER: { label: "User", variant: "default" },
+    EVENT_ORGANISER: { label: "Event organiser", variant: "default" },
   };
 
-  const config =
-    roleMap[role] ?? { label: role, variant: "default" as const };
+  const config = permissionMap[permission] ?? {
+    label: permission,
+    variant: "default" as const,
+  };
 
   return (
     <Badge variant={config.variant} className="text-xs font-medium">
@@ -87,24 +87,25 @@ function getRoleBadge(role: string) {
   );
 }
 
-function getRoleBadges(user: { roles?: { role: string }[] }) {
-  const roles = user.roles?.map((r) => r.role) ?? [];
+function getPermissionBadges(user: { permissions?: { permission: string }[] }) {
+  const permissions = user.permissions?.map((row) => row.permission) ?? [];
   const order: Record<string, number> = {
     ADMIN: 0,
-    CREATOR: 1,
-    DOOR_STAFF: 2,
-    USER: 3,
+    EVENT_ORGANISER: 1,
+    CREATOR: 2,
   };
-  const sorted = [...new Set(roles)].sort(
+  const sorted = [...new Set(permissions)].sort(
     (a, b) => (order[a] ?? 99) - (order[b] ?? 99),
   );
   if (sorted.length === 0) {
-    return <span className="text-muted-foreground text-xs">No roles</span>;
+    return (
+      <span className="text-muted-foreground text-xs">No permissions</span>
+    );
   }
   return (
     <div className="flex flex-wrap gap-1">
       {sorted.map((r) => (
-        <span key={r}>{getRoleBadge(r)}</span>
+        <span key={r}>{getPermissionBadge(r)}</span>
       ))}
     </div>
   );
@@ -126,7 +127,7 @@ export function UsersManager() {
             User Management
           </CardTitle>
           <CardDescription>
-            Manage user accounts and roles. View last login methods and
+            Manage user accounts and permissions. View last login methods and
             manage user access.
           </CardDescription>
         </div>
@@ -151,7 +152,7 @@ export function UsersManager() {
             <TableHeader>
               <TableRow>
                 <TableHead>User</TableHead>
-                <TableHead>Roles</TableHead>
+                <TableHead>Permissions</TableHead>
                 <TableHead>Last Login</TableHead>
                 <TableHead>Verified</TableHead>
                 <TableHead>Created</TableHead>
@@ -192,7 +193,7 @@ export function UsersManager() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>{getRoleBadges(user)}</TableCell>
+                      <TableCell>{getPermissionBadges(user)}</TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-1">
                           {user.lastLoginMethod &&
