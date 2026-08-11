@@ -7,6 +7,7 @@ import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
 import { resolveCrewDisplay } from "~/lib/crew-display";
 import {
   AlertDialog,
@@ -18,14 +19,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -55,9 +48,9 @@ export function CrewManager() {
   const [soundcloud, setSoundcloud] = useState("");
   const [image, setImage] = useState("");
   const [creatorProfileId, setCreatorProfileId] = useState<string | null>(null);
-  const [creatorProfileHandle, setCreatorProfileHandle] = useState<string | null>(
-    null,
-  );
+  const [creatorProfileHandle, setCreatorProfileHandle] = useState<
+    string | null
+  >(null);
   const [profileQuery, setProfileQuery] = useState("");
   const [search, setSearch] = useState("");
 
@@ -155,6 +148,163 @@ export function CrewManager() {
     const results = profileSearch.data ?? [];
     return results.filter((p) => p.id !== creatorProfileId);
   }, [profileSearch.data, creatorProfileId]);
+  const rows = crewMembers ?? [];
+  type CrewRow = (typeof rows)[number];
+  const linkedBadge = (source: "profile" | "member" | "none") =>
+    source === "profile" ? (
+      <span className="text-muted-foreground ml-1 text-[10px] tracking-wide uppercase">
+        from profile
+      </span>
+    ) : null;
+  const columns: DataTableColumn<CrewRow>[] = [
+    {
+      id: "name",
+      header: "Name",
+      cell: (member) => {
+        const display = resolveCrewDisplay(member);
+        return (
+          <div className="flex flex-col">
+            <span>{display.name}</span>
+            {display.source.name === "profile" &&
+              display.name !== member.name && (
+                <span className="text-muted-foreground text-[10px] tracking-wide uppercase">
+                  crew row: {member.name}
+                </span>
+              )}
+          </div>
+        );
+      },
+    },
+    {
+      id: "role",
+      header: "Role",
+      cell: (member) => {
+        const display = resolveCrewDisplay(member);
+        return (
+          <>
+            <span>{display.role}</span>
+            {linkedBadge(display.source.role)}
+          </>
+        );
+      },
+    },
+    {
+      id: "instagram",
+      header: "Instagram",
+      cell: (member) => {
+        const display = resolveCrewDisplay(member);
+        return (
+          <>
+            {display.instagram ? "Yes" : "No"}
+            {linkedBadge(display.source.instagram)}
+          </>
+        );
+      },
+    },
+    {
+      id: "soundcloud",
+      header: "SoundCloud",
+      cell: (member) => {
+        const display = resolveCrewDisplay(member);
+        return (
+          <>
+            {display.soundcloud ? "Yes" : "No"}
+            {linkedBadge(display.source.soundcloud)}
+          </>
+        );
+      },
+    },
+    {
+      id: "profile",
+      header: "Creator profile",
+      cell: (member) =>
+        member.creatorProfile ? (
+          <div className="flex items-center gap-1">
+            <Link
+              href={`/admin/creator-profiles/${member.creatorProfile.id}`}
+              className="text-primary font-mono text-sm hover:underline"
+            >
+              @{member.creatorProfile.handle}
+            </Link>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() =>
+                linkCreatorProfile.mutate({
+                  id: member.id,
+                  creatorProfileId: null,
+                })
+              }
+              disabled={linkCreatorProfile.isPending}
+              aria-label={`Unlink creator profile from ${member.name}`}
+              title="Unlink creator profile"
+            >
+              <Unlink className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <span className="text-muted-foreground text-sm">—</span>
+        ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      hideable: false,
+      cell: (member) => {
+        const index = rows.indexOf(member);
+        return (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() =>
+                moveMember.mutate({ id: member.id, direction: "up" })
+              }
+              disabled={Boolean(search) || moveMember.isPending || index === 0}
+              aria-label={`Move ${member.name} up`}
+              title="Move up"
+            >
+              <ArrowUp className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() =>
+                moveMember.mutate({ id: member.id, direction: "down" })
+              }
+              disabled={
+                Boolean(search) ||
+                moveMember.isPending ||
+                index === rows.length - 1
+              }
+              aria-label={`Move ${member.name} down`}
+              title="Move down"
+            >
+              <ArrowDown className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleEdit(member)}
+              disabled={moveMember.isPending}
+            >
+              Edit
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() =>
+                setDeleteTarget({ id: member.id, name: member.name })
+              }
+              disabled={deleteMember.isPending || moveMember.isPending}
+            >
+              Delete
+            </Button>
+          </div>
+        );
+      },
+    },
+  ];
 
   return (
     <Card>
@@ -243,7 +393,8 @@ export function CrewManager() {
                     <Label htmlFor="instagram">Instagram URL</Label>
                     {creatorProfileId && (
                       <span className="text-muted-foreground text-xs">
-                        Fallback — profile&apos;s Instagram social is used if set
+                        Fallback — profile&apos;s Instagram social is used if
+                        set
                       </span>
                     )}
                   </div>
@@ -259,7 +410,8 @@ export function CrewManager() {
                     <Label htmlFor="soundcloud">SoundCloud URL</Label>
                     {creatorProfileId && (
                       <span className="text-muted-foreground text-xs">
-                        Fallback — profile&apos;s SoundCloud social is used if set
+                        Fallback — profile&apos;s SoundCloud social is used if
+                        set
                       </span>
                     )}
                   </div>
@@ -367,8 +519,7 @@ export function CrewManager() {
                 </div>
                 {(createMember.error ?? updateMember.error) && (
                   <p className="text-destructive text-sm">
-                    {createMember.error?.message ??
-                      updateMember.error?.message}
+                    {createMember.error?.message ?? updateMember.error?.message}
                   </p>
                 )}
                 <Button
@@ -396,158 +547,16 @@ export function CrewManager() {
             Clear search to reorder crew members.
           </p>
         ) : null}
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Instagram</TableHead>
-              <TableHead>SoundCloud</TableHead>
-              <TableHead>Creator profile</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading
-              ? Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={`loading-${i}`}>
-                    <TableCell colSpan={6}>
-                      <div className="bg-muted h-8 w-full animate-pulse rounded" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              : crewMembers?.map((member, index) => {
-                  const d = resolveCrewDisplay(member);
-                  const linkedBadge = (src: "profile" | "member" | "none") =>
-                    src === "profile" ? (
-                      <span className="text-muted-foreground ml-1 text-[10px] tracking-wide uppercase">
-                        from profile
-                      </span>
-                    ) : null;
-                  return (
-                  <TableRow key={member.id}>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span>{d.name}</span>
-                        {d.source.name === "profile" &&
-                          d.name !== member.name && (
-                            <span className="text-muted-foreground text-[10px] tracking-wide uppercase">
-                              crew row: {member.name}
-                            </span>
-                          )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span>{d.role}</span>
-                      {linkedBadge(d.source.role)}
-                    </TableCell>
-                    <TableCell>
-                      {d.instagram ? "Yes" : "No"}
-                      {linkedBadge(d.source.instagram)}
-                    </TableCell>
-                    <TableCell>
-                      {d.soundcloud ? "Yes" : "No"}
-                      {linkedBadge(d.source.soundcloud)}
-                    </TableCell>
-                    <TableCell>
-                      {member.creatorProfile ? (
-                        <div className="flex items-center gap-1">
-                          <Link
-                            href={`/admin/creator-profiles/${member.creatorProfile.id}`}
-                            className="text-primary font-mono text-sm hover:underline"
-                          >
-                            @{member.creatorProfile.handle}
-                          </Link>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() =>
-                              linkCreatorProfile.mutate({
-                                id: member.id,
-                                creatorProfileId: null,
-                              })
-                            }
-                            disabled={linkCreatorProfile.isPending}
-                            aria-label={`Unlink creator profile from ${member.name}`}
-                            title="Unlink creator profile"
-                          >
-                            <Unlink className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="icon-sm"
-                          onClick={() =>
-                            moveMember.mutate({ id: member.id, direction: "up" })
-                          }
-                          disabled={
-                            Boolean(search) || moveMember.isPending || index === 0
-                          }
-                          aria-label={`Move ${member.name} up`}
-                          title="Move up"
-                        >
-                          <ArrowUp className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon-sm"
-                          onClick={() =>
-                            moveMember.mutate({
-                              id: member.id,
-                              direction: "down",
-                            })
-                          }
-                          disabled={
-                            Boolean(search) ||
-                            moveMember.isPending ||
-                            index === (crewMembers?.length ?? 1) - 1
-                          }
-                          aria-label={`Move ${member.name} down`}
-                          title="Move down"
-                        >
-                          <ArrowDown className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(member)}
-                          disabled={moveMember.isPending}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() =>
-                            setDeleteTarget({ id: member.id, name: member.name })
-                          }
-                          disabled={deleteMember.isPending || moveMember.isPending}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                  );
-                })}
-            {!isLoading && crewMembers?.length === 0 && (
-              <TableRow>
-                <TableCell
-                  colSpan={6}
-                  className="text-muted-foreground text-center"
-                >
-                  {search ? "No crew members found" : "No crew members yet"}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <DataTable
+          columns={columns}
+          data={rows}
+          getRowId={(row) => row.id}
+          isLoading={isLoading}
+          storageKey="admin-crew"
+          emptyMessage={
+            search ? "No crew members found" : "No crew members yet"
+          }
+        />
 
         <AlertDialog
           open={!!deleteTarget}

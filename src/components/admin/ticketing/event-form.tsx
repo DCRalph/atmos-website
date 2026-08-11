@@ -12,7 +12,7 @@ import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { Switch } from "~/components/ui/switch";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
-import { SearchableSelect } from "~/components/ui/searchable-select";
+import { PickerSelect } from "~/components/ui/picker-select";
 import { formatNZD, parsePriceToCents } from "~/lib/ticketing/money";
 
 type AdminEvent = RouterOutputs["ticketEvents"]["byId"];
@@ -28,14 +28,6 @@ type AdminEvent = RouterOutputs["ticketEvents"]["byId"];
 export function EventForm({ event }: { event?: AdminEvent }) {
   const router = useRouter();
   const utils = api.useUtils();
-
-  // Server-side search: `gigs.getAll` returns every gig with its media, tags
-  // and creators attached, which is a lot of payload to fill one dropdown.
-  const [gigQuery, setGigQuery] = useState("");
-  const gigs = api.ticketEvents.gigOptions.useQuery(
-    { query: gigQuery },
-    { placeholderData: (previous) => previous },
-  );
 
   const [name, setName] = useState(event?.name ?? "");
   const [slug, setSlug] = useState(event?.slug ?? "");
@@ -167,19 +159,15 @@ export function EventForm({ event }: { event?: AdminEvent }) {
           htmlFor="gig"
           hint="The gig page shows the buy panel when one is linked."
         >
-          <SearchableSelect
+          <PickerSelect
             id="gig"
+            endpoint={api.pickers.gigs}
             value={gigId}
             onChange={setGigId}
-            options={gigs.data?.options ?? []}
-            total={gigs.data?.total}
-            loading={gigs.isFetching}
-            onSearchChange={setGigQuery}
             placeholder="No gig"
             searchPlaceholder="Search gigs by title…"
             emptyText="No gigs match that."
             clearLabel="No gig"
-            selectedLabel={event?.gig?.title}
           />
         </Field>
 

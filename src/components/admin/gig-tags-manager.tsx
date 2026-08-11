@@ -6,14 +6,7 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
 import {
   Dialog,
   DialogContent,
@@ -92,6 +85,62 @@ export function GigTagsManager() {
       });
     }
   };
+  const rows = tags ?? [];
+  type TagRow = (typeof rows)[number];
+  const columns: DataTableColumn<TagRow>[] = [
+    {
+      id: "name",
+      header: "Name",
+      accessor: (row) => row.name,
+      className: "font-medium",
+    },
+    {
+      id: "description",
+      header: "Description",
+      cell: (row) => row.description ?? "—",
+    },
+    {
+      id: "color",
+      header: "Color",
+      cell: (tag) => (
+        <div className="flex items-center gap-2">
+          <div
+            className="border-border h-6 w-6 rounded border"
+            style={{ backgroundColor: tag.color }}
+          />
+          <span className="text-muted-foreground text-sm">{tag.color}</span>
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      hideable: false,
+      cell: (tag) => (
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => handleEdit(tag)}>
+            Edit
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={async () => {
+              const ok = await confirm({
+                title: "Delete tag",
+                description:
+                  "Are you sure you want to delete this tag? This action cannot be undone.",
+                confirmLabel: "Delete",
+                variant: "destructive",
+              });
+              if (ok) deleteTag.mutate({ id: tag.id });
+            }}
+          >
+            Delete
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <Card>
@@ -173,81 +222,14 @@ export function GigTagsManager() {
         </div>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Color</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading
-              ? Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={`loading-${i}`}>
-                    <TableCell colSpan={4}>
-                      <div className="bg-muted h-8 w-full animate-pulse rounded" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              : tags?.map((tag) => (
-                  <TableRow key={tag.id}>
-                    <TableCell className="font-medium">{tag.name}</TableCell>
-                    <TableCell>{tag.description || "-"}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="border-border h-6 w-6 rounded border"
-                          style={{ backgroundColor: tag.color }}
-                        />
-                        <span className="text-muted-foreground text-sm">
-                          {tag.color}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(tag)}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={async () => {
-                            const ok = await confirm({
-                              title: "Delete tag",
-                              description: "Are you sure you want to delete this tag? This action cannot be undone.",
-                              confirmLabel: "Delete",
-                              variant: "destructive",
-                            });
-                            if (ok) {
-                              deleteTag.mutate({ id: tag.id });
-                            }
-                          }}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-            {!isLoading && tags?.length === 0 && (
-              <TableRow>
-                <TableCell
-                  colSpan={4}
-                  className="text-muted-foreground text-center"
-                >
-                  No gig tags yet
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <DataTable
+          columns={columns}
+          data={rows}
+          getRowId={(row) => row.id}
+          isLoading={isLoading}
+          storageKey="admin-gig-tags"
+          emptyMessage="No gig tags yet"
+        />
       </CardContent>
     </Card>
   );

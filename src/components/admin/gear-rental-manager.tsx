@@ -4,14 +4,7 @@ import { useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
 import {
   Card,
   CardContent,
@@ -313,6 +306,428 @@ export function GearRentalManager() {
       ),
     });
   };
+  const rentalRows = rentals ?? [];
+  const inventoryRows = inventory ?? [];
+  const packageRows = packages ?? [];
+  const discountRuleRows = discountRules ?? [];
+  type RentalRow = (typeof rentalRows)[number];
+  type InventoryRow = (typeof inventoryRows)[number];
+  type PackageRow = (typeof packageRows)[number];
+  type DiscountRuleRow = (typeof discountRuleRows)[number];
+  const rentalColumns: DataTableColumn<RentalRow>[] = [
+    {
+      id: "user",
+      header: "User",
+      accessor: (rental) => rental.userName,
+      className: "font-medium",
+    },
+    {
+      id: "contact",
+      header: "Contact",
+      accessor: (rental) => rental.contactInfo,
+      className: "text-xs",
+    },
+    {
+      id: "selection",
+      header: "Selection",
+      cell: (rental) => rental.gearPackage?.name ?? "Individual Items",
+    },
+    {
+      id: "includes",
+      header: "Includes",
+      className: "max-w-[280px] whitespace-normal",
+      cell: (rental) => (
+        <div className="flex flex-wrap gap-1">
+          {(rental.rentalItems.length > 0
+            ? rental.rentalItems
+            : (rental.gearPackage?.items ?? [])
+          ).map((item) => (
+            <PackageItemBadge
+              key={item.id}
+              quantity={item.quantity}
+              itemName={item.gearItem.name}
+              shortName={item.gearItem.shortName}
+              description={item.gearItem.description}
+              note={item.gearItem.note}
+              className="text-[10px]"
+            />
+          ))}
+        </div>
+      ),
+    },
+    {
+      id: "dates",
+      header: "Dates",
+      className: "text-xs",
+      cell: (rental) => (
+        <>
+          {format(new Date(rental.startDate), "MMM d, yyyy")} -{" "}
+          {format(new Date(rental.endDate), "MMM d, yyyy")}
+        </>
+      ),
+    },
+    {
+      id: "total",
+      header: "Total",
+      className: "text-xs",
+      cell: (rental) => `$${rental.estimatedTotalPrice}`,
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (rental) => (
+        <Badge
+          variant={
+            rental.status === "APPROVED"
+              ? "outline"
+              : rental.status === "REJECTED"
+                ? "destructive"
+                : "default"
+          }
+          className={
+            rental.status === "APPROVED"
+              ? "border-green-500/50 text-green-500"
+              : ""
+          }
+        >
+          {rental.status}
+        </Badge>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      align: "right",
+      hideable: false,
+      cell: (rental) => (
+        <div className="space-x-2">
+          {rental.status === "PENDING" && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-green-500"
+                onClick={() => approveRental.mutate({ id: rental.id })}
+              >
+                <Check className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-red-500"
+                onClick={() => rejectRental.mutate({ id: rental.id })}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-muted-foreground hover:text-destructive"
+            onClick={async () => {
+              const ok = await confirm({
+                title: "Delete rental record",
+                description:
+                  "Delete this rental record? This action cannot be undone.",
+                confirmLabel: "Delete",
+                variant: "destructive",
+              });
+              if (ok) deleteRental.mutate({ id: rental.id });
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+  const inventoryColumns: DataTableColumn<InventoryRow>[] = [
+    {
+      id: "name",
+      header: "Name",
+      accessor: (item) => item.name,
+      className: "font-medium",
+    },
+    {
+      id: "shortName",
+      header: "Short Name",
+      cell: (item) => item.shortName ?? "—",
+      className: "text-muted-foreground text-xs uppercase",
+    },
+    {
+      id: "description",
+      header: "Description",
+      accessor: (item) => item.description,
+      className: "max-w-[300px] truncate text-sm",
+    },
+    {
+      id: "note",
+      header: "Note",
+      cell: (item) => item.note ?? "—",
+      className: "max-w-[300px] truncate text-sm",
+    },
+    { id: "quantity", header: "Quantity", accessor: (item) => item.quantity },
+    { id: "price", header: "Price/Day", cell: (item) => `$${item.price}` },
+    {
+      id: "packages",
+      header: "Used In Packages",
+      className: "max-w-[220px] whitespace-normal",
+      cell: (item) => (
+        <div className="flex flex-wrap gap-1">
+          {item.packageItems.length > 0 ? (
+            item.packageItems.map((packageItem) => (
+              <Badge
+                key={packageItem.id}
+                variant="outline"
+                className="text-[10px]"
+              >
+                {packageItem.gearPackage.name}
+              </Badge>
+            ))
+          ) : (
+            <span className="text-muted-foreground text-xs">Not used yet</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      align: "right",
+      hideable: false,
+      cell: (item) => (
+        <div className="space-x-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-muted-foreground hover:text-primary"
+            onClick={() =>
+              setEditingInventoryItem({
+                id: item.id,
+                name: item.name,
+                shortName: item.shortName ?? "",
+                description: item.description ?? "",
+                note: item.note ?? "",
+                quantity: item.quantity,
+                price: item.price,
+              })
+            }
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-muted-foreground hover:text-destructive"
+            onClick={async () => {
+              const ok = await confirm({
+                title: "Delete inventory item",
+                description: `Delete ${item.name}? This will remove it from any packages using it.`,
+                confirmLabel: "Delete",
+                variant: "destructive",
+              });
+              if (ok) deleteInventoryItem.mutate({ id: item.id });
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+  const packageColumns: DataTableColumn<PackageRow>[] = [
+    {
+      id: "name",
+      header: "Name",
+      className: "font-medium",
+      cell: (gearPackage) => (
+        <>
+          <div>{gearPackage.name}</div>
+          {gearPackage.description && (
+            <div className="text-muted-foreground max-w-[240px] truncate text-xs">
+              {gearPackage.description}
+            </div>
+          )}
+        </>
+      ),
+    },
+    {
+      id: "shortName",
+      header: "Short Name",
+      cell: (gearPackage) => gearPackage.shortName ?? "—",
+      className: "text-muted-foreground text-xs uppercase",
+    },
+    {
+      id: "price",
+      header: "Daily Price",
+      cell: (gearPackage) => `$${gearPackage.price}`,
+    },
+    {
+      id: "contents",
+      header: "Contents",
+      className: "max-w-[320px] whitespace-normal",
+      cell: (gearPackage) => (
+        <div className="flex flex-wrap gap-1">
+          {gearPackage.items.map((item) => (
+            <PackageItemBadge
+              key={item.id}
+              quantity={item.quantity}
+              itemName={item.gearItem.name}
+              shortName={item.gearItem.shortName}
+              description={item.gearItem.description}
+              note={item.gearItem.note}
+              className="text-[10px]"
+            />
+          ))}
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      align: "right",
+      hideable: false,
+      cell: (gearPackage) => (
+        <div className="space-x-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-muted-foreground hover:text-primary"
+            onClick={() => openEditPackage(gearPackage)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-muted-foreground hover:text-destructive"
+            onClick={async () => {
+              const ok = await confirm({
+                title: "Delete package",
+                description: `Delete ${gearPackage.name}? This will also remove any rentals for it.`,
+                confirmLabel: "Delete",
+                variant: "destructive",
+              });
+              if (ok) deletePackage.mutate({ id: gearPackage.id });
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+  const discountRuleColumns: DataTableColumn<DiscountRuleRow>[] = [
+    {
+      id: "name",
+      header: "Name",
+      accessor: (rule) => rule.name,
+      className: "font-medium",
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (rule) => (
+        <Badge variant={rule.isActive ? "default" : "secondary"}>
+          {rule.isActive ? "Active" : "Inactive"}
+        </Badge>
+      ),
+    },
+    {
+      id: "mode",
+      header: "Mode",
+      cell: (rule) =>
+        rule.discountMode === DISCOUNT_MODE.TOTAL ? "Total" : "Per Item",
+    },
+    {
+      id: "discount",
+      header: "Discount",
+      cell: (rule) =>
+        rule.discountMode === DISCOUNT_MODE.TOTAL
+          ? rule.discountType === DISCOUNT_TYPE.FIXED_AMOUNT
+            ? `$${rule.discountValue} off/day`
+            : `${rule.discountValue}% off/day`
+          : rule.discountType === DISCOUNT_TYPE.FIXED_AMOUNT
+            ? "Per-item dollar discount"
+            : "Per-item percentage discount",
+    },
+    {
+      id: "requirements",
+      header: "Requirements",
+      className: "max-w-[320px] whitespace-normal",
+      cell: (rule) => (
+        <div className="flex flex-wrap gap-1">
+          {rule.requirements.map((item) => (
+            <PackageItemBadge
+              key={item.id}
+              quantity={item.requiredQty}
+              itemName={item.gearItem.name}
+              shortName={item.gearItem.shortName}
+              description={item.gearItem.description}
+              note={item.gearItem.note}
+              className="text-[10px]"
+            />
+          ))}
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      align: "right",
+      hideable: false,
+      cell: (rule) => (
+        <div className="space-x-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-muted-foreground hover:text-primary"
+            onClick={() =>
+              setEditingDiscountRule({
+                id: rule.id,
+                name: rule.name,
+                isActive: rule.isActive,
+                discountMode: rule.discountMode,
+                discountType: rule.discountType,
+                discountValue: rule.discountValue,
+                requirementQuantities: Object.fromEntries(
+                  rule.requirements.map((item) => [
+                    item.gearItemId,
+                    item.requiredQty,
+                  ]),
+                ),
+                requirementDiscountValues: Object.fromEntries(
+                  rule.requirements.map((item) => [
+                    item.gearItemId,
+                    item.discountValue,
+                  ]),
+                ),
+              })
+            }
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-muted-foreground hover:text-destructive"
+            onClick={async () => {
+              const ok = await confirm({
+                title: "Delete discount rule",
+                description: `Delete ${rule.name}? This action cannot be undone.`,
+                confirmLabel: "Delete",
+                variant: "destructive",
+              });
+              if (ok) deleteDiscountRule.mutate({ id: rule.id });
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -333,141 +748,14 @@ export function GearRentalManager() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Selection</TableHead>
-                  <TableHead>Includes</TableHead>
-                  <TableHead>Dates</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rentalsLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="py-8 text-center">
-                      <Loader2 className="mx-auto h-8 w-8 animate-spin" />
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  rentals?.map((rental) => (
-                    <TableRow key={rental.id}>
-                      <TableCell className="font-medium">
-                        {rental.userName}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {rental.contactInfo}
-                      </TableCell>
-                      <TableCell>
-                        {rental.gearPackage?.name ?? "Individual Items"}
-                      </TableCell>
-                      <TableCell className="max-w-[280px] whitespace-normal">
-                        <div className="flex flex-wrap gap-1">
-                          {(rental.rentalItems.length > 0
-                            ? rental.rentalItems
-                            : (rental.gearPackage?.items ?? [])
-                          ).map((item) => (
-                            <PackageItemBadge
-                              key={item.id}
-                              quantity={item.quantity}
-                              itemName={item.gearItem.name}
-                              shortName={item.gearItem.shortName}
-                              description={item.gearItem.description}
-                              note={item.gearItem.note}
-                              className="text-[10px]"
-                            />
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {format(new Date(rental.startDate), "MMM d, yyyy")} -{" "}
-                        {format(new Date(rental.endDate), "MMM d, yyyy")}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        ${rental.estimatedTotalPrice}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            rental.status === "APPROVED"
-                              ? "outline"
-                              : rental.status === "REJECTED"
-                                ? "destructive"
-                                : "default"
-                          }
-                          className={
-                            rental.status === "APPROVED"
-                              ? "border-green-500/50 text-green-500"
-                              : ""
-                          }
-                        >
-                          {rental.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="space-x-2 text-right">
-                        {rental.status === "PENDING" && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-green-500"
-                              onClick={() =>
-                                approveRental.mutate({ id: rental.id })
-                              }
-                            >
-                              <Check className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-red-500"
-                              onClick={() =>
-                                rejectRental.mutate({ id: rental.id })
-                              }
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-muted-foreground hover:text-destructive"
-                          onClick={async () => {
-                            const ok = await confirm({
-                              title: "Delete rental record",
-                              description:
-                                "Delete this rental record? This action cannot be undone.",
-                              confirmLabel: "Delete",
-                              variant: "destructive",
-                            });
-                            if (ok) {
-                              deleteRental.mutate({ id: rental.id });
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-                {!rentalsLoading && rentals?.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={8}
-                      className="text-muted-foreground py-8 text-center"
-                    >
-                      No rental requests yet.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={rentalColumns}
+              data={rentalRows}
+              getRowId={(row) => row.id}
+              isLoading={rentalsLoading}
+              storageKey="admin-rental-requests"
+              emptyMessage="No rental requests yet."
+            />
           </CardContent>
         </Card>
       </TabsContent>
@@ -747,113 +1035,14 @@ export function GearRentalManager() {
               </DialogContent>
             </Dialog>
 
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Short Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Note</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>Price/Day</TableHead>
-                  <TableHead>Used In Packages</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {inventoryLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="py-8 text-center">
-                      <Loader2 className="mx-auto h-8 w-8 animate-spin" />
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  inventory?.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs uppercase">
-                        {item.shortName ?? "—"}
-                      </TableCell>
-                      <TableCell className="max-w-[300px] truncate text-sm">
-                        {item.description}
-                      </TableCell>
-                      <TableCell className="max-w-[300px] truncate text-sm">
-                        {item.note ?? "—"}
-                      </TableCell>
-                      <TableCell>{item.quantity}</TableCell>
-                      <TableCell>${item.price}</TableCell>
-                      <TableCell className="max-w-[220px] whitespace-normal">
-                        <div className="flex flex-wrap gap-1">
-                          {item.packageItems.length > 0 ? (
-                            item.packageItems.map((packageItem) => (
-                              <Badge
-                                key={packageItem.id}
-                                variant="outline"
-                                className="text-[10px]"
-                              >
-                                {packageItem.gearPackage.name}
-                              </Badge>
-                            ))
-                          ) : (
-                            <span className="text-muted-foreground text-xs">
-                              Not used yet
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="space-x-2 text-right">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-muted-foreground hover:text-primary"
-                          onClick={() =>
-                            setEditingInventoryItem({
-                              id: item.id,
-                              name: item.name,
-                              shortName: item.shortName ?? "",
-                              description: item.description ?? "",
-                              note: item.note ?? "",
-                              quantity: item.quantity,
-                              price: item.price,
-                            })
-                          }
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-muted-foreground hover:text-destructive"
-                          onClick={async () => {
-                            const ok = await confirm({
-                              title: "Delete inventory item",
-                              description: `Delete ${item.name}? This will remove it from any packages using it.`,
-                              confirmLabel: "Delete",
-                              variant: "destructive",
-                            });
-                            if (ok) {
-                              deleteInventoryItem.mutate({ id: item.id });
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-                {!inventoryLoading && inventory?.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={8}
-                      className="text-muted-foreground py-8 text-center"
-                    >
-                      No inventory items yet.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={inventoryColumns}
+              data={inventoryRows}
+              getRowId={(row) => row.id}
+              isLoading={inventoryLoading}
+              storageKey="admin-rental-inventory"
+              emptyMessage="No inventory items yet."
+            />
           </CardContent>
         </Card>
       </TabsContent>
@@ -1154,96 +1343,14 @@ export function GearRentalManager() {
               </DialogContent>
             </Dialog>
 
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Short Name</TableHead>
-                  <TableHead>Daily Price</TableHead>
-                  <TableHead>Contents</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {packagesLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="py-8 text-center">
-                      <Loader2 className="mx-auto h-8 w-8 animate-spin" />
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  packages?.map((gearPackage) => (
-                    <TableRow key={gearPackage.id}>
-                      <TableCell className="font-medium">
-                        <div>{gearPackage.name}</div>
-                        {gearPackage.description && (
-                          <div className="text-muted-foreground max-w-[240px] truncate text-xs">
-                            {gearPackage.description}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-xs uppercase">
-                        {gearPackage.shortName ?? "—"}
-                      </TableCell>
-                      <TableCell>${gearPackage.price}</TableCell>
-                      <TableCell className="max-w-[320px] whitespace-normal">
-                        <div className="flex flex-wrap gap-1">
-                          {gearPackage.items.map((item) => (
-                            <PackageItemBadge
-                              key={item.id}
-                              quantity={item.quantity}
-                              itemName={item.gearItem.name}
-                              shortName={item.gearItem.shortName}
-                              description={item.gearItem.description}
-                              note={item.gearItem.note}
-                              className="text-[10px]"
-                            />
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell className="space-x-2 text-right">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-muted-foreground hover:text-primary"
-                          onClick={() => openEditPackage(gearPackage)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-muted-foreground hover:text-destructive"
-                          onClick={async () => {
-                            const ok = await confirm({
-                              title: "Delete package",
-                              description: `Delete ${gearPackage.name}? This will also remove any rentals for it.`,
-                              confirmLabel: "Delete",
-                              variant: "destructive",
-                            });
-                            if (ok) {
-                              deletePackage.mutate({ id: gearPackage.id });
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-                {!packagesLoading && packages?.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-muted-foreground py-8 text-center"
-                    >
-                      No rental packages yet.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={packageColumns}
+              data={packageRows}
+              getRowId={(row) => row.id}
+              isLoading={packagesLoading}
+              storageKey="admin-rental-packages"
+              emptyMessage="No rental packages yet."
+            />
           </CardContent>
         </Card>
       </TabsContent>
@@ -1368,128 +1475,14 @@ export function GearRentalManager() {
               </DialogContent>
             </Dialog>
 
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Mode</TableHead>
-                  <TableHead>Discount</TableHead>
-                  <TableHead>Requirements</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {discountRulesLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="py-8 text-center">
-                      <Loader2 className="mx-auto h-8 w-8 animate-spin" />
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  discountRules?.map((rule) => (
-                    <TableRow key={rule.id}>
-                      <TableCell className="font-medium">{rule.name}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={rule.isActive ? "default" : "secondary"}
-                        >
-                          {rule.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {rule.discountMode === DISCOUNT_MODE.TOTAL
-                          ? "Total"
-                          : "Per Item"}
-                      </TableCell>
-                      <TableCell>
-                        {rule.discountMode === DISCOUNT_MODE.TOTAL
-                          ? rule.discountType === DISCOUNT_TYPE.FIXED_AMOUNT
-                            ? `$${rule.discountValue} off/day`
-                            : `${rule.discountValue}% off/day`
-                          : rule.discountType === DISCOUNT_TYPE.FIXED_AMOUNT
-                            ? "Per-item dollar discount"
-                            : "Per-item percentage discount"}
-                      </TableCell>
-                      <TableCell className="max-w-[320px] whitespace-normal">
-                        <div className="flex flex-wrap gap-1">
-                          {rule.requirements.map((item) => (
-                            <PackageItemBadge
-                              key={item.id}
-                              quantity={item.requiredQty}
-                              itemName={item.gearItem.name}
-                              shortName={item.gearItem.shortName}
-                              description={item.gearItem.description}
-                              note={item.gearItem.note}
-                              className="text-[10px]"
-                            />
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell className="space-x-2 text-right">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-muted-foreground hover:text-primary"
-                          onClick={() =>
-                            setEditingDiscountRule({
-                              id: rule.id,
-                              name: rule.name,
-                              isActive: rule.isActive,
-                              discountMode: rule.discountMode,
-                              discountType: rule.discountType,
-                              discountValue: rule.discountValue,
-                              requirementQuantities: Object.fromEntries(
-                                rule.requirements.map((item) => [
-                                  item.gearItemId,
-                                  item.requiredQty,
-                                ]),
-                              ),
-                              requirementDiscountValues: Object.fromEntries(
-                                rule.requirements.map((item) => [
-                                  item.gearItemId,
-                                  item.discountValue,
-                                ]),
-                              ),
-                            })
-                          }
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-muted-foreground hover:text-destructive"
-                          onClick={async () => {
-                            const ok = await confirm({
-                              title: "Delete discount rule",
-                              description: `Delete ${rule.name}? This action cannot be undone.`,
-                              confirmLabel: "Delete",
-                              variant: "destructive",
-                            });
-                            if (ok) {
-                              deleteDiscountRule.mutate({ id: rule.id });
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-                {!discountRulesLoading && discountRules?.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      className="text-muted-foreground py-8 text-center"
-                    >
-                      No discount rules yet.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={discountRuleColumns}
+              data={discountRuleRows}
+              getRowId={(row) => row.id}
+              isLoading={discountRulesLoading}
+              storageKey="admin-rental-discounts"
+              emptyMessage="No discount rules yet."
+            />
           </CardContent>
         </Card>
       </TabsContent>

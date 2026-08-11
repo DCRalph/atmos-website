@@ -4,14 +4,7 @@ import { useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
 import {
   Card,
   CardContent,
@@ -42,6 +35,76 @@ export function ContactManager() {
       void refetch();
     },
   });
+  const rows = submissions ?? [];
+  type SubmissionRow = (typeof rows)[number];
+  const columns: DataTableColumn<SubmissionRow>[] = [
+    { id: "name", header: "Name", accessor: (row) => row.name },
+    { id: "email", header: "Email", accessor: (row) => row.email },
+    { id: "subject", header: "Subject", accessor: (row) => row.subject },
+    {
+      id: "date",
+      header: "Date",
+      cell: (row) => row.createdAt.toLocaleDateString(),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      hideable: false,
+      cell: (submission) => (
+        <div className="flex gap-2">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                View
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Contact Submission</DialogTitle>
+                <DialogDescription>
+                  Submitted on {submission.createdAt.toLocaleString()}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <p className="font-semibold">Name:</p>
+                  <p>{submission.name}</p>
+                </div>
+                <div>
+                  <p className="font-semibold">Email:</p>
+                  <p>{submission.email}</p>
+                </div>
+                <div>
+                  <p className="font-semibold">Subject:</p>
+                  <p>{submission.subject}</p>
+                </div>
+                <div>
+                  <p className="font-semibold">Message:</p>
+                  <p className="whitespace-pre-wrap">{submission.message}</p>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={async () => {
+              const ok = await confirm({
+                title: "Delete submission",
+                description:
+                  "Are you sure you want to delete this submission? This action cannot be undone.",
+                confirmLabel: "Delete",
+                variant: "destructive",
+              });
+              if (ok) deleteSubmission.mutate({ id: submission.id });
+            }}
+          >
+            Delete
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <Card>
@@ -60,104 +123,14 @@ export function ContactManager() {
             className="max-w-sm"
           />
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Subject</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading
-              ? Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={`loading-${i}`}>
-                    <TableCell colSpan={5}>
-                      <div className="bg-muted h-8 w-full animate-pulse rounded" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              : submissions?.map((submission) => (
-                  <TableRow key={submission.id}>
-                    <TableCell>{submission.name}</TableCell>
-                    <TableCell>{submission.email}</TableCell>
-                    <TableCell>{submission.subject}</TableCell>
-                    <TableCell>
-                      {submission.createdAt.toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              View
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Contact Submission</DialogTitle>
-                              <DialogDescription>
-                                Submitted on{" "}
-                                {submission.createdAt.toLocaleString()}
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <div>
-                                <p className="font-semibold">Name:</p>
-                                <p>{submission.name}</p>
-                              </div>
-                              <div>
-                                <p className="font-semibold">Email:</p>
-                                <p>{submission.email}</p>
-                              </div>
-                              <div>
-                                <p className="font-semibold">Subject:</p>
-                                <p>{submission.subject}</p>
-                              </div>
-                              <div>
-                                <p className="font-semibold">Message:</p>
-                                <p className="whitespace-pre-wrap">
-                                  {submission.message}
-                                </p>
-                              </div>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={async () => {
-                            const ok = await confirm({
-                              title: "Delete submission",
-                              description: "Are you sure you want to delete this submission? This action cannot be undone.",
-                              confirmLabel: "Delete",
-                              variant: "destructive",
-                            });
-                            if (ok) {
-                              deleteSubmission.mutate({ id: submission.id });
-                            }
-                          }}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-            {!isLoading && submissions?.length === 0 && (
-              <TableRow>
-                <TableCell
-                  colSpan={5}
-                  className="text-muted-foreground text-center"
-                >
-                  {search ? "No submissions found" : "No submissions yet"}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <DataTable
+          columns={columns}
+          data={rows}
+          getRowId={(row) => row.id}
+          isLoading={isLoading}
+          storageKey="admin-contact-submissions"
+          emptyMessage={search ? "No submissions found" : "No submissions yet"}
+        />
       </CardContent>
     </Card>
   );

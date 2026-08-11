@@ -26,6 +26,7 @@ import { doorRouter } from "~/server/api/routers/door";
 import { discountCodesRouter } from "~/server/api/routers/discount-codes";
 import { ticketAdminRouter } from "~/server/api/routers/ticket-admin";
 import { ticketAnalyticsRouter } from "~/server/api/routers/ticket-analytics";
+import { pickersRouter } from "~/server/api/routers/pickers";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -64,6 +65,9 @@ export const appRouter = createTRPCRouter({
   ticketAnalytics: ticketAnalyticsRouter,
   discountCodes: discountCodesRouter,
   door: doorRouter,
+
+  /** Combobox data sources — see `~/server/api/pickers/core`. */
+  pickers: pickersRouter,
 });
 
 // export type definition of API

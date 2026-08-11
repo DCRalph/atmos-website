@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { api } from "~/trpc/react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
 import {
   Card,
   CardContent,
@@ -12,14 +13,6 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
 import { describeAcceptedTypes, formatBytes } from "~/lib/uploads/validate";
 
 /**
@@ -47,7 +40,7 @@ export function UploadPresetsPanel() {
 
   if (isLoading) {
     return (
-      <div className="text-muted-foreground flex items-center gap-2 py-12 justify-center">
+      <div className="text-muted-foreground flex items-center justify-center gap-2 py-12">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading upload targets...
       </div>
     );
@@ -57,6 +50,99 @@ export function UploadPresetsPanel() {
   const totalOriginal =
     presets?.reduce((sum, p) => sum + p.originalBytes, 0) ?? 0;
   const saved = Math.max(0, totalOriginal - totalStored);
+  const rows = presets ?? [];
+  type PresetRow = (typeof rows)[number];
+  const columns: DataTableColumn<PresetRow>[] = [
+    {
+      id: "target",
+      header: "Target",
+      cell: (preset) => (
+        <div>
+          <div className="font-medium">{preset.label}</div>
+          <div className="text-muted-foreground text-xs">
+            {preset.description}
+          </div>
+          <code className="text-muted-foreground text-[11px]">
+            {preset.name}
+          </code>
+        </div>
+      ),
+    },
+    {
+      id: "who",
+      header: "Who",
+      cell: (preset) => (
+        <Badge variant="outline" className="capitalize">
+          {preset.access}
+        </Badge>
+      ),
+    },
+    {
+      id: "accepted",
+      header: "Accepted",
+      cell: (preset) => describeAcceptedTypes(preset.accept),
+      className: "max-w-56 text-xs",
+    },
+    {
+      id: "perFile",
+      header: "Per file",
+      align: "right",
+      cell: (preset) => formatBytes(preset.maxFileSize),
+      className: "text-xs whitespace-nowrap",
+    },
+    {
+      id: "perBatch",
+      header: "Per batch",
+      align: "right",
+      cell: (preset) => (
+        <>
+          {preset.maxFiles} file{preset.maxFiles === 1 ? "" : "s"}
+          <div className="text-muted-foreground">
+            {formatBytes(preset.maxTotalSize)}
+          </div>
+        </>
+      ),
+      className: "text-xs whitespace-nowrap",
+    },
+    {
+      id: "processing",
+      header: "Image processing",
+      className: "text-xs",
+      cell: (preset) =>
+        preset.image ? (
+          <div className="space-y-0.5">
+            {preset.image.maxDimension && (
+              <div>Max {preset.image.maxDimension}px</div>
+            )}
+            <div className="text-muted-foreground">
+              {(preset.image.format ?? "webp").toUpperCase()} q
+              {preset.image.quality ?? 82}
+            </div>
+            {preset.image.maxOutputSize && (
+              <div className="text-muted-foreground">
+                Target ≤ {formatBytes(preset.image.maxOutputSize)}
+              </div>
+            )}
+          </div>
+        ) : (
+          <span className="text-muted-foreground">Stored as-is</span>
+        ),
+    },
+    {
+      id: "stored",
+      header: "Stored",
+      align: "right",
+      className: "text-xs whitespace-nowrap",
+      cell: (preset) => (
+        <>
+          {formatBytes(preset.storedBytes)}
+          <div className="text-muted-foreground">
+            {preset.fileCount} file{preset.fileCount === 1 ? "" : "s"}
+          </div>
+        </>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -104,79 +190,13 @@ export function UploadPresetsPanel() {
         </CardContent>
       </Card>
 
-      <div className="overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Target</TableHead>
-              <TableHead>Who</TableHead>
-              <TableHead>Accepted</TableHead>
-              <TableHead className="text-right">Per file</TableHead>
-              <TableHead className="text-right">Per batch</TableHead>
-              <TableHead>Image processing</TableHead>
-              <TableHead className="text-right">Stored</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {presets?.map((preset) => (
-              <TableRow key={preset.name}>
-                <TableCell>
-                  <div className="font-medium">{preset.label}</div>
-                  <div className="text-muted-foreground text-xs">
-                    {preset.description}
-                  </div>
-                  <code className="text-muted-foreground text-[11px]">
-                    {preset.name}
-                  </code>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="capitalize">
-                    {preset.access}
-                  </Badge>
-                </TableCell>
-                <TableCell className="max-w-56 text-xs">
-                  {describeAcceptedTypes(preset.accept)}
-                </TableCell>
-                <TableCell className="text-right text-xs whitespace-nowrap">
-                  {formatBytes(preset.maxFileSize)}
-                </TableCell>
-                <TableCell className="text-right text-xs whitespace-nowrap">
-                  {preset.maxFiles} file{preset.maxFiles === 1 ? "" : "s"}
-                  <div className="text-muted-foreground">
-                    {formatBytes(preset.maxTotalSize)}
-                  </div>
-                </TableCell>
-                <TableCell className="text-xs">
-                  {preset.image ? (
-                    <div className="space-y-0.5">
-                      {preset.image.maxDimension ? (
-                        <div>Max {preset.image.maxDimension}px</div>
-                      ) : null}
-                      <div className="text-muted-foreground">
-                        {(preset.image.format ?? "webp").toUpperCase()} q
-                        {preset.image.quality ?? 82}
-                      </div>
-                      {preset.image.maxOutputSize ? (
-                        <div className="text-muted-foreground">
-                          Target ≤ {formatBytes(preset.image.maxOutputSize)}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground">Stored as-is</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-right text-xs whitespace-nowrap">
-                  {formatBytes(preset.storedBytes)}
-                  <div className="text-muted-foreground">
-                    {preset.fileCount} file{preset.fileCount === 1 ? "" : "s"}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        columns={columns}
+        data={rows}
+        getRowId={(row) => row.name}
+        storageKey="admin-upload-presets"
+        emptyMessage="No upload targets found."
+      />
     </div>
   );
 }

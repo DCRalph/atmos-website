@@ -803,4 +803,3 @@ export function HomeContentManager() {
     </Card>
   );
 }
-

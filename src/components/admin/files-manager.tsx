@@ -11,6 +11,7 @@ import { buildMediaUrl } from "~/lib/media-url";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
 import {
   Card,
   CardContent,
@@ -18,14 +19,6 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -441,12 +434,7 @@ export function FilesManager() {
           | "DELETED"
           | "ERRORED",
         category: editCategory as
-          | "IMAGE"
-          | "VIDEO"
-          | "AUDIO"
-          | "PDF"
-          | "DOCUMENT"
-          | "FILE",
+          "IMAGE" | "VIDEO" | "AUDIO" | "PDF" | "DOCUMENT" | "FILE",
         tagIds: editTagIds,
       });
     } finally {
@@ -546,6 +534,181 @@ export function FilesManager() {
       setIsBulkTagging(false);
     }
   }, [bulkTagIds, selectedFileIds, bulkTagMode, bulkAddTags, bulkRemoveTags]);
+  type FileRow = (typeof files)[number];
+  const columns: DataTableColumn<FileRow>[] = [
+    {
+      id: "select",
+      header: "Select",
+      hideable: false,
+      cell: (file) => (
+        <Checkbox
+          checked={selectedFileIds.has(file.id)}
+          onCheckedChange={() => toggleFileSelection(file.id)}
+          aria-label={`Select ${file.name}`}
+        />
+      ),
+    },
+    {
+      id: "preview",
+      header: "Preview",
+      cell: (file) => (
+        <div className="bg-muted flex h-10 w-10 items-center justify-center rounded">
+          {file.mimeType.startsWith("image/") ? (
+            <Image
+              src={buildMediaUrl(file.id)}
+              alt={file.name}
+              width={40}
+              height={40}
+              className="h-10 w-10 rounded object-cover"
+            />
+          ) : (
+            getFileIcon(file.mimeType)
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "name",
+      header: "Name",
+      cell: (file) => (
+        <div className="flex flex-col">
+          <span
+            className="max-w-[200px] truncate font-medium"
+            title={file.name}
+          >
+            {file.name}
+          </span>
+          <span
+            className="text-muted-foreground max-w-[200px] truncate text-xs"
+            title={file.key}
+          >
+            {file.key}
+          </span>
+        </div>
+      ),
+    },
+    {
+      id: "tags",
+      header: "Tags",
+      cell: (file) => (
+        <div className="flex flex-wrap gap-1">
+          {file.fileTags.length > 0 ? (
+            file.fileTags.slice(0, 2).map((tag) => (
+              <Badge key={tag.id} variant="outline" className="text-xs">
+                {tag.name}
+              </Badge>
+            ))
+          ) : (
+            <span className="text-muted-foreground text-xs">—</span>
+          )}
+          {file.fileTags.length > 2 && (
+            <Badge variant="outline" className="text-xs">
+              +{file.fileTags.length - 2}
+            </Badge>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "category",
+      header: "Category",
+      cell: (file) => (
+        <Badge variant="outline" className="capitalize">
+          {file.for}
+        </Badge>
+      ),
+    },
+    { id: "size", header: "Size", cell: (file) => formatFileSize(file.size) },
+    {
+      id: "status",
+      header: "Status",
+      cell: (file) => (
+        <Badge variant={FILE_STATUS_LABELS[file.status]?.variant ?? "outline"}>
+          {FILE_STATUS_LABELS[file.status]?.label ?? file.status}
+        </Badge>
+      ),
+    },
+    {
+      id: "uploaded",
+      header: "Uploaded",
+      className: "text-muted-foreground text-sm",
+      cell: (file) =>
+        formatDistanceToNow(new Date(file.createdAt), { addSuffix: true }),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      hideable: false,
+      cell: (file) => (
+        <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => {
+              setInfoFile(file);
+              setIsEditing(false);
+            }}
+            title="View/Edit Info"
+          >
+            <Info className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() =>
+              setPreviewFile({
+                url: buildMediaUrl(file.id),
+                name: file.name,
+                mimeType: file.mimeType,
+              })
+            }
+            title="Preview"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            asChild
+            title="Open in new tab"
+          >
+            <a
+              href={buildMediaUrl(file.id)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </Button>
+          {file.status === "SOFT_DELETED" ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => handleRestore(file.id)}
+              disabled={restore.isPending}
+              title="Restore"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive h-8 w-8 p-0"
+              onClick={() => handleDelete(file.id)}
+              title="Delete"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -746,213 +909,28 @@ export function FilesManager() {
             </div>
           )}
 
-          {/* Files Table */}
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">
-                    <Checkbox
-                      checked={allSelected}
-                      onCheckedChange={toggleSelectAll}
-                      aria-label="Select all"
-                    />
-                  </TableHead>
-                  <TableHead className="w-12"></TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Tags</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Size</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Uploaded</TableHead>
-                  <TableHead className="w-24">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell colSpan={9}>
-                        <div className="bg-muted h-12 w-full animate-pulse rounded" />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : files.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={9}
-                      className="text-muted-foreground py-8 text-center"
-                    >
-                      No files found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  files.map((file) => (
-                    <TableRow
-                      key={file.id}
-                      className={
-                        selectedFileIds.has(file.id) ? "bg-muted/50" : ""
-                      }
-                    >
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedFileIds.has(file.id)}
-                          onCheckedChange={() => toggleFileSelection(file.id)}
-                          aria-label={`Select ${file.name}`}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="bg-muted flex h-10 w-10 items-center justify-center rounded">
-                          {file.mimeType.startsWith("image/") ? (
-                            <Image
-                              src={buildMediaUrl(file.id)}
-                              alt={file.name}
-                              width={40}
-                              height={40}
-                              className="h-10 w-10 rounded object-cover"
-                            />
-                          ) : (
-                            getFileIcon(file.mimeType)
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span
-                            className="max-w-[200px] truncate font-medium"
-                            title={file.name}
-                          >
-                            {file.name}
-                          </span>
-                          <span
-                            className="text-muted-foreground max-w-[200px] truncate text-xs"
-                            title={file.key}
-                          >
-                            {file.key}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {file.fileTags.length > 0 ? (
-                            file.fileTags.slice(0, 2).map((tag) => (
-                              <Badge
-                                key={tag.id}
-                                variant="outline"
-                                className="text-xs"
-                              >
-                                {tag.name}
-                              </Badge>
-                            ))
-                          ) : (
-                            <span className="text-muted-foreground text-xs">
-                              —
-                            </span>
-                          )}
-                          {file.fileTags.length > 2 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{file.fileTags.length - 2}
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize">
-                          {file.for}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{formatFileSize(file.size)}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            FILE_STATUS_LABELS[file.status]?.variant ??
-                            "outline"
-                          }
-                        >
-                          {FILE_STATUS_LABELS[file.status]?.label ??
-                            file.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {formatDistanceToNow(new Date(file.createdAt), {
-                          addSuffix: true,
-                        })}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={() => {
-                              setInfoFile(file as FileInfo);
-                              setIsEditing(false);
-                            }}
-                            title="View/Edit Info"
-                          >
-                            <Info className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={() =>
-                              setPreviewFile({
-                                url: buildMediaUrl(file.id),
-                                name: file.name,
-                                mimeType: file.mimeType,
-                              })
-                            }
-                            title="Preview"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            asChild
-                            title="Open in new tab"
-                          >
-                            <a
-                              href={buildMediaUrl(file.id)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </a>
-                          </Button>
-                          {file.status === "SOFT_DELETED" ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              onClick={() => handleRestore(file.id)}
-                              disabled={restore.isPending}
-                              title="Restore"
-                            >
-                              <RotateCcw className="h-4 w-4" />
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive hover:text-destructive h-8 w-8 p-0"
-                              onClick={() => handleDelete(file.id)}
-                              title="Delete"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
+          <DataTable
+            columns={columns}
+            data={files}
+            getRowId={(file) => file.id}
+            isLoading={isLoading}
+            isFetching={isFetching}
+            storageKey="admin-files"
+            emptyMessage="No files found"
+            rowClassName={(file) =>
+              selectedFileIds.has(file.id) ? "bg-muted/50" : undefined
+            }
+            toolbarActions={
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Select all files on this page"
+                />
+                Select page
+              </label>
+            }
+          />
           {/* Pagination Controls */}
           {filesData?.pagination && (
             <PaginationControls
@@ -1458,7 +1436,8 @@ export function FilesManager() {
                     label="Upload target"
                     value={infoFile.preset ?? "— (pre-dates the upload system)"}
                   />
-                  {infoFile.originalSize && infoFile.originalSize > infoFile.size ? (
+                  {infoFile.originalSize &&
+                  infoFile.originalSize > infoFile.size ? (
                     <InfoRow
                       label="Original size"
                       value={`${formatFileSize(infoFile.originalSize)} → saved ${formatFileSize(
@@ -1910,7 +1889,9 @@ function LinkRow({
         </Button>
       </div>
       {hint ? (
-        <p className="text-muted-foreground text-[11px] leading-tight">{hint}</p>
+        <p className="text-muted-foreground text-[11px] leading-tight">
+          {hint}
+        </p>
       ) : null}
     </div>
   );

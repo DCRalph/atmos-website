@@ -4,14 +4,7 @@ import { useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
 import {
   Card,
   CardContent,
@@ -117,6 +110,120 @@ export function UsersManager() {
   const { data: users, isLoading: usersLoading } = api.users.getAll.useQuery(
     userSearch ? { search: userSearch } : undefined,
   );
+  const rows = users ?? [];
+  type UserRow = (typeof rows)[number];
+  const columns: DataTableColumn<UserRow>[] = [
+    {
+      id: "user",
+      header: "User",
+      cell: (user) => (
+        <div className="flex items-center gap-3">
+          {user.image ? (
+            <div className="relative h-8 w-8 overflow-hidden rounded-full">
+              <img
+                src={user.image}
+                alt={user.name}
+                className="h-full w-full object-cover"
+              />
+            </div>
+          ) : (
+            <div className="bg-muted flex h-8 w-8 items-center justify-center rounded-full">
+              <User className="h-4 w-4" />
+            </div>
+          )}
+          <div>
+            <div className="font-medium">{user.name}</div>
+            <div className="text-muted-foreground text-sm">{user.email}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "permissions",
+      header: "Permissions",
+      cell: (user) => getPermissionBadges(user),
+    },
+    {
+      id: "lastLogin",
+      header: "Last Login",
+      cell: (user) => (
+        <div className="flex flex-col gap-1">
+          {user.lastLoginMethod && getLoginMethodBadge(user.lastLoginMethod)}
+          {user.lastLoginAt && (
+            <span className="text-muted-foreground text-xs">
+              {formatDateInUserTimezone(user.lastLoginAt, {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              })}
+            </span>
+          )}
+          {!user.lastLoginAt && !user.lastLoginMethod && (
+            <span className="text-muted-foreground text-xs">Never</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "verified",
+      header: "Verified",
+      cell: (user) =>
+        user.emailVerified ? (
+          <Badge variant="outline" className="text-xs text-green-600">
+            <CheckCircle2 className="mr-1 h-3 w-3" />
+            Verified
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="text-xs">
+            <XCircle className="mr-1 h-3 w-3" />
+            Unverified
+          </Badge>
+        ),
+    },
+    {
+      id: "created",
+      header: "Created",
+      cell: (user) => (
+        <div className="text-muted-foreground flex items-center gap-1 text-sm">
+          <Calendar className="h-3 w-3" />
+          {formatDateInUserTimezone(user.createdAt, {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })}
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      align: "right",
+      hideable: false,
+      cell: (user) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link
+                href={`/admin/users/${user.id}`}
+                className="flex items-center gap-2"
+              >
+                <UserCog className="h-4 w-4" />
+                Manage User
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
 
   return (
     <Card>
@@ -146,138 +253,14 @@ export function UsersManager() {
           </div>
         </div>
 
-        {/* Users Table */}
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Permissions</TableHead>
-                <TableHead>Last Login</TableHead>
-                <TableHead>Verified</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {usersLoading
-                ? Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={`loading-user-${i}`}>
-                      <TableCell colSpan={6}>
-                        <div className="bg-muted h-8 w-full animate-pulse rounded" />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                : users?.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          {user.image ? (
-                            <div className="relative h-8 w-8 overflow-hidden rounded-full">
-                              <img
-                                src={user.image}
-                                alt={user.name}
-                                className="h-full w-full object-cover"
-                              />
-                            </div>
-                          ) : (
-                            <div className="bg-muted flex h-8 w-8 items-center justify-center rounded-full">
-                              <User className="h-4 w-4" />
-                            </div>
-                          )}
-                          <div>
-                            <div className="font-medium">{user.name}</div>
-                            <div className="text-muted-foreground text-sm">
-                              {user.email}
-                            </div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{getPermissionBadges(user)}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1">
-                          {user.lastLoginMethod &&
-                            getLoginMethodBadge(user.lastLoginMethod)}
-                          {user.lastLoginAt && (
-                            <span className="text-muted-foreground text-xs">
-                              {formatDateInUserTimezone(user.lastLoginAt, {
-                                month: "short",
-                                day: "numeric",
-                                hour: "numeric",
-                                minute: "2-digit",
-                              })}
-                            </span>
-                          )}
-                          {!user.lastLoginAt && !user.lastLoginMethod && (
-                            <span className="text-muted-foreground text-xs">
-                              Never
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {user.emailVerified ? (
-                          <Badge
-                            variant="outline"
-                            className="text-xs text-green-600"
-                          >
-                            <CheckCircle2 className="mr-1 h-3 w-3" />
-                            Verified
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-xs">
-                            <XCircle className="mr-1 h-3 w-3" />
-                            Unverified
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-muted-foreground flex items-center gap-1 text-sm">
-                          <Calendar className="h-3 w-3" />
-                          {formatDateInUserTimezone(user.createdAt, {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem asChild>
-                              <Link
-                                href={`/admin/users/${user.id}`}
-                                className="flex items-center gap-2"
-                              >
-                                <UserCog className="h-4 w-4" />
-                                Manage User
-                              </Link>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-              {!usersLoading && users?.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="text-muted-foreground py-8 text-center"
-                  >
-                    {userSearch ? "No users found" : "No users yet"}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        <DataTable
+          columns={columns}
+          data={rows}
+          getRowId={(row) => row.id}
+          isLoading={usersLoading}
+          storageKey="admin-users"
+          emptyMessage={userSearch ? "No users found" : "No users yet"}
+        />
       </CardContent>
     </Card>
   );

@@ -4,14 +4,7 @@ import { useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
 import {
   Card,
   CardContent,
@@ -27,6 +20,49 @@ export function GigsManager() {
   const { data: gigs, isLoading } = api.gigs.getAll.useQuery(
     search ? { search } : undefined,
   );
+  const rows = (gigs ?? []).filter((gig) => gig.gigStartTime);
+  type GigRow = (typeof rows)[number];
+  const columns: DataTableColumn<GigRow>[] = [
+    {
+      id: "start",
+      header: "Start Time",
+      cell: (gig) =>
+        formatDateInUserTimezone(gig.gigStartTime, {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        }),
+    },
+    { id: "title", header: "Title", accessor: (row) => row.title },
+    {
+      id: "status",
+      header: "Status",
+      cell: (gig) =>
+        isGigUpcoming({
+          gigStartTime: gig.gigStartTime,
+          gigEndTime: gig.gigEndTime,
+        })
+          ? "Upcoming"
+          : "Past",
+    },
+    {
+      id: "media",
+      header: "Media",
+      accessor: (gig) => (gig.media as Array<{ id: string }>).length,
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      hideable: false,
+      cell: (gig) => (
+        <Button variant="outline" size="sm" asChild>
+          <Link href={`/admin/gigs/${gig.id}`}>Manage</Link>
+        </Button>
+      ),
+    },
+  ];
 
   return (
     <Card>
@@ -50,71 +86,14 @@ export function GigsManager() {
             className="max-w-sm"
           />
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Start Time</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Media</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading
-              ? Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={`loading-${i}`}>
-                    <TableCell colSpan={5}>
-                      <div className="bg-muted h-8 w-full animate-pulse rounded" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              : gigs
-                  ?.filter((gig) => gig.gigStartTime)
-                  .map((gig) => (
-                    <TableRow key={gig.id}>
-                      <TableCell>
-                        {formatDateInUserTimezone(gig.gigStartTime!, {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                          hour: "numeric",
-                          minute: "2-digit",
-                        })}
-                      </TableCell>
-                      <TableCell>{gig.title}</TableCell>
-                      <TableCell>
-                        {isGigUpcoming({
-                          gigStartTime: gig.gigStartTime!,
-                          gigEndTime: gig.gigEndTime,
-                        })
-                          ? "Upcoming"
-                          : "Past"}
-                      </TableCell>
-                      <TableCell>
-                        {(gig.media as Array<{ id: string }>)?.length ?? 0}
-                      </TableCell>
-                      <TableCell>
-                        <Link href={`/admin/gigs/${gig.id}`}>
-                          <Button variant="outline" size="sm">
-                            Manage
-                          </Button>
-                        </Link>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-            {!isLoading && gigs?.length === 0 && (
-              <TableRow>
-                <TableCell
-                  colSpan={5}
-                  className="text-muted-foreground text-center"
-                >
-                  {search ? "No gigs found" : "No gigs yet"}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <DataTable
+          columns={columns}
+          data={rows}
+          getRowId={(row) => row.id}
+          isLoading={isLoading}
+          storageKey="admin-gigs"
+          emptyMessage={search ? "No gigs found" : "No gigs yet"}
+        />
       </CardContent>
     </Card>
   );

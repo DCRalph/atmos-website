@@ -5,14 +5,7 @@ import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Switch } from "~/components/ui/switch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
 import {
   Card,
   CardContent,
@@ -94,6 +87,54 @@ export function NewsletterManager() {
     link.click();
     document.body.removeChild(link);
   };
+  const rows = subscriptions ?? [];
+  type SubscriptionRow = (typeof rows)[number];
+  const columns: DataTableColumn<SubscriptionRow>[] = [
+    {
+      id: "email",
+      header: "Email",
+      accessor: (row) => row.email,
+      className: "font-medium",
+    },
+    {
+      id: "subscribedAt",
+      header: "Subscribed Date",
+      cell: (row) => row.createdAt.toLocaleDateString(),
+    },
+    {
+      id: "active",
+      header: "Active",
+      cell: (subscription) => (
+        <Switch
+          checked={!subscription.removed}
+          onCheckedChange={(checked) => {
+            toggleRemoved.mutate({ id: subscription.id, removed: !checked });
+          }}
+          disabled={toggleRemoved.isPending}
+        />
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      align: "right",
+      hideable: false,
+      cell: (subscription) => (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() =>
+            setDeleteTarget({ id: subscription.id, email: subscription.email })
+          }
+          aria-label={`Delete ${subscription.email}`}
+          disabled={deleteSubscription.isPending}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      ),
+    },
+  ];
 
   return (
     <Card>
@@ -124,75 +165,16 @@ export function NewsletterManager() {
             className="max-w-sm"
           />
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Email</TableHead>
-              <TableHead>Subscribed Date</TableHead>
-              <TableHead>Active</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading
-              ? Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={`loading-${i}`}>
-                    <TableCell colSpan={4}>
-                      <div className="bg-muted h-8 w-full animate-pulse rounded" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              : subscriptions?.map((subscription) => (
-                  <TableRow key={subscription.id}>
-                    <TableCell className="font-medium">
-                      {subscription.email}
-                    </TableCell>
-                    <TableCell>
-                      {subscription.createdAt.toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <Switch
-                        checked={!subscription.removed}
-                        onCheckedChange={(checked) => {
-                          toggleRemoved.mutate({
-                            id: subscription.id,
-                            removed: !checked,
-                          });
-                        }}
-                        disabled={toggleRemoved.isPending}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() =>
-                          setDeleteTarget({
-                            id: subscription.id,
-                            email: subscription.email,
-                          })
-                        }
-                        aria-label={`Delete ${subscription.email}`}
-                        disabled={deleteSubscription.isPending}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-            {!isLoading && subscriptions?.length === 0 && (
-              <TableRow>
-                <TableCell
-                  colSpan={4}
-                  className="text-muted-foreground text-center"
-                >
-                  {search ? "No subscriptions found" : "No subscriptions yet"}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <DataTable
+          columns={columns}
+          data={rows}
+          getRowId={(row) => row.id}
+          isLoading={isLoading}
+          storageKey="admin-newsletter-subscriptions"
+          emptyMessage={
+            search ? "No subscriptions found" : "No subscriptions yet"
+          }
+        />
 
         <AlertDialog
           open={!!deleteTarget}

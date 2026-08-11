@@ -4,14 +4,7 @@ import { useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
 import {
   Card,
   CardContent,
@@ -81,7 +74,7 @@ export function ContentManager() {
   const handleEdit = (item: NonNullable<typeof contentItems>[0]) => {
     setEditingId(item.id);
     setType(item.type);
-    setLinkType((item.linkType ?? "OTHER") as typeof linkType);
+    setLinkType(item.linkType ?? "OTHER");
     setTitle(item.title);
     setDj(item.dj ?? "");
     setDescription(item.description);
@@ -122,6 +115,47 @@ export function ContentManager() {
       });
     }
   };
+  const rows = contentItems ?? [];
+  type ContentRow = (typeof rows)[number];
+  const columns: DataTableColumn<ContentRow>[] = [
+    { id: "type", header: "Type", accessor: (row) => row.type },
+    { id: "title", header: "Title", accessor: (row) => row.title },
+    { id: "dj", header: "DJ", cell: (row) => row.dj ?? "—" },
+    { id: "platform", header: "Platform", cell: (row) => row.platform ?? "—" },
+    {
+      id: "date",
+      header: "Date",
+      cell: (row) => row.date.toLocaleDateString(),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      hideable: false,
+      cell: (item) => (
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => handleEdit(item)}>
+            Edit
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={async () => {
+              const ok = await confirm({
+                title: "Delete item",
+                description:
+                  "Are you sure you want to delete this item? This action cannot be undone.",
+                confirmLabel: "Delete",
+                variant: "destructive",
+              });
+              if (ok) deleteItem.mutate({ id: item.id });
+            }}
+          >
+            Delete
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <Card>
@@ -173,75 +207,16 @@ export function ContentManager() {
             className="max-w-sm"
           />
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Type</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead>DJ</TableHead>
-              <TableHead>Platform</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading
-              ? Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={`loading-${i}`}>
-                  <TableCell colSpan={6}>
-                    <div className="bg-muted h-8 w-full animate-pulse rounded" />
-                  </TableCell>
-                </TableRow>
-              ))
-              : contentItems?.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>{item.type}</TableCell>
-                  <TableCell>{item.title}</TableCell>
-                  <TableCell>{item.dj || "-"}</TableCell>
-                  <TableCell>{item.platform || "-"}</TableCell>
-                  <TableCell>{item.date.toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(item)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={async () => {
-                          const ok = await confirm({
-                            title: "Delete item",
-                            description: "Are you sure you want to delete this item? This action cannot be undone.",
-                            confirmLabel: "Delete",
-                            variant: "destructive",
-                          });
-                          if (ok) {
-                            deleteItem.mutate({ id: item.id });
-                          }
-                        }}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            {!isLoading && contentItems?.length === 0 && (
-              <TableRow>
-                <TableCell
-                  colSpan={6}
-                  className="text-muted-foreground text-center"
-                >
-                  {search ? "No content items found" : "No content items yet"}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <DataTable
+          columns={columns}
+          data={rows}
+          getRowId={(row) => row.id}
+          isLoading={isLoading}
+          storageKey="admin-content-items"
+          emptyMessage={
+            search ? "No content items found" : "No content items yet"
+          }
+        />
       </CardContent>
     </Card>
   );

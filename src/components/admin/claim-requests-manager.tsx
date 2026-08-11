@@ -2,23 +2,13 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  Check,
-  ExternalLink,
-  Loader2,
-  Search,
-  X,
-} from "lucide-react";
+import { Check, ExternalLink, Loader2, Search, X } from "lucide-react";
 import { api } from "~/trpc/react";
 import UserAvatar from "~/components/UserAvatar";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import {
   Select,
@@ -27,14 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -142,6 +124,131 @@ export function ClaimRequestsManager() {
     if (status === "PENDING") return requests.length;
     return (list.data ?? []).filter((r) => r.status === "PENDING").length;
   }, [list.data, requests, status]);
+  const columns: DataTableColumn<ClaimRequest>[] = [
+    {
+      id: "profile",
+      header: "Profile",
+      cell: (request) =>
+        request.profile ? (
+          <div className="flex flex-col">
+            <Link
+              href={`/admin/creator-profiles/${request.profile.id}`}
+              className="text-primary font-mono hover:underline"
+            >
+              @{request.profile.handle}
+            </Link>
+            <span className="text-muted-foreground text-xs">
+              {request.profile.displayName}
+            </span>
+          </div>
+        ) : (
+          <span className="text-muted-foreground">(deleted)</span>
+        ),
+    },
+    {
+      id: "requester",
+      header: "Requested by",
+      cell: (request) =>
+        request.requestingUser ? (
+          <Link
+            href={`/admin/users/${request.requestingUser.id}`}
+            className="flex items-center gap-2 hover:underline"
+          >
+            <UserAvatar
+              className="h-7 w-7 shrink-0"
+              size={14}
+              src={request.requestingUser.image}
+              name={request.requestingUser.name}
+            />
+            <div className="flex min-w-0 flex-col">
+              <span className="truncate text-sm font-medium">
+                {request.requestingUser.name ?? "Unnamed"}
+              </span>
+              <span className="text-muted-foreground truncate text-xs">
+                {request.requestingUser.email}
+              </span>
+            </div>
+          </Link>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    {
+      id: "message",
+      header: "Message",
+      className: "max-w-sm",
+      cell: (request) =>
+        request.message ? (
+          <p className="line-clamp-3 text-sm whitespace-pre-wrap">
+            {request.message}
+          </p>
+        ) : (
+          <span className="text-muted-foreground text-sm italic">
+            No message
+          </span>
+        ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (request) => <StatusBadge status={request.status} />,
+    },
+    {
+      id: "requested",
+      header: "Requested",
+      className: "text-muted-foreground text-xs whitespace-nowrap",
+      cell: (request) => formatDate(request.createdAt),
+    },
+    {
+      id: "decided",
+      header: "Decided",
+      className: "text-muted-foreground text-xs whitespace-nowrap",
+      cell: (request) => formatDate(request.decidedAt),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      align: "right",
+      hideable: false,
+      cell: (request) => (
+        <div className="flex justify-end gap-1">
+          {request.profile && (
+            <Button size="sm" variant="ghost" asChild>
+              <Link
+                href={`/@${request.profile.handle}`}
+                target="_blank"
+                title="Open profile"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </Link>
+            </Button>
+          )}
+          {request.status === "PENDING" && (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-green-600 hover:text-green-700"
+                onClick={() => setApproveTarget(request)}
+                title="Approve"
+              >
+                <Check className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-destructive hover:text-destructive"
+                onClick={() => setRejectTarget(request)}
+                title="Reject"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-4">
@@ -183,147 +290,18 @@ export function ClaimRequestsManager() {
             </Select>
           </div>
 
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Profile</TableHead>
-                  <TableHead>Requested by</TableHead>
-                  <TableHead>Message</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Requested</TableHead>
-                  <TableHead>Decided</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {list.isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="py-12 text-center">
-                      <Loader2 className="text-muted-foreground mx-auto h-5 w-5 animate-spin" />
-                    </TableCell>
-                  </TableRow>
-                ) : requests.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={7}
-                      className="text-muted-foreground py-12 text-center"
-                    >
-                      {status === "PENDING"
-                        ? "No pending claim requests. Nice and clean."
-                        : "No claim requests match."}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  requests.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell>
-                        {r.profile ? (
-                          <div className="flex flex-col">
-                            <Link
-                              href={`/admin/creator-profiles/${r.profile.id}`}
-                              className="text-primary font-mono hover:underline"
-                            >
-                              @{r.profile.handle}
-                            </Link>
-                            <span className="text-muted-foreground text-xs">
-                              {r.profile.displayName}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">
-                            (deleted)
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {r.requestingUser ? (
-                          <Link
-                            href={`/admin/users/${r.requestingUser.id}`}
-                            className="flex items-center gap-2 hover:underline"
-                          >
-                            <UserAvatar
-                              className="h-7 w-7 shrink-0"
-                              size={14}
-                              src={r.requestingUser.image}
-                              name={r.requestingUser.name}
-                            />
-                            <div className="min-w-0 flex flex-col">
-                              <span className="truncate text-sm font-medium">
-                                {r.requestingUser.name ?? "Unnamed"}
-                              </span>
-                              <span className="text-muted-foreground truncate text-xs">
-                                {r.requestingUser.email}
-                              </span>
-                            </div>
-                          </Link>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="max-w-sm">
-                        {r.message ? (
-                          <p className="line-clamp-3 text-sm whitespace-pre-wrap">
-                            {r.message}
-                          </p>
-                        ) : (
-                          <span className="text-muted-foreground text-sm italic">
-                            No message
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={r.status} />
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
-                        {formatDate(r.createdAt)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
-                        {formatDate(r.decidedAt)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          {r.profile && (
-                            <Button size="sm" variant="ghost" asChild>
-                              <Link
-                                href={`/@${r.profile.handle}`}
-                                target="_blank"
-                                title="Open profile"
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                          )}
-                          {r.status === "PENDING" && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-green-600 hover:text-green-700"
-                                onClick={() => setApproveTarget(r)}
-                                title="Approve"
-                              >
-                                <Check className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => setRejectTarget(r)}
-                                title="Reject"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          <DataTable
+            columns={columns}
+            data={requests}
+            getRowId={(row) => row.id}
+            isLoading={list.isLoading}
+            storageKey="admin-claim-requests"
+            emptyMessage={
+              status === "PENDING"
+                ? "No pending claim requests. Nice and clean."
+                : "No claim requests match."
+            }
+          />
         </CardContent>
       </Card>
 
@@ -343,7 +321,7 @@ export function ClaimRequestsManager() {
                   approveTarget?.requestingUser?.email ??
                   "this user"}
               </b>{" "}
-              and mark the profile as active. They'll immediately get edit
+              and mark the profile as active. They&apos;ll immediately get edit
               access. Any other pending claims on this profile will be
               automatically rejected.
             </AlertDialogDescription>
@@ -354,8 +332,7 @@ export function ClaimRequestsManager() {
               className="bg-green-600 hover:bg-green-600/90"
               disabled={approve.isPending}
               onClick={() =>
-                approveTarget &&
-                approve.mutate({ requestId: approveTarget.id })
+                approveTarget && approve.mutate({ requestId: approveTarget.id })
               }
             >
               {approve.isPending ? (

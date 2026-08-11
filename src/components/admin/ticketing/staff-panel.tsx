@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
-import { SearchableSelect } from "~/components/ui/searchable-select";
+import { PickerSelect } from "~/components/ui/picker-select";
 import {
   Select,
   SelectContent,
@@ -27,15 +27,10 @@ type AdminEvent = RouterOutputs["ticketEvents"]["byId"];
 export function StaffPanel({ event }: { event: AdminEvent }) {
   const utils = api.useUtils();
   const [userId, setUserId] = useState<string>("");
-  const [staffQuery, setStaffQuery] = useState("");
   const [role, setRole] = useState<"SCANNER" | "MANAGER">("SCANNER");
 
-  // People already on this door are filtered out server-side, so the picker
-  // never offers someone who is already assigned.
-  const eligible = api.ticketEvents.eligibleStaff.useQuery(
-    { query: staffQuery, excludeEventId: event.id },
-    { placeholderData: (previous) => previous },
-  );
+  // Search, paging and the "already assigned" exclusion all live in the
+  // `doorStaff` picker — see `~/server/api/routers/pickers.ts`.
 
   const assign = api.ticketEvents.assignStaff.useMutation({
     onSuccess: () => {
@@ -105,16 +100,14 @@ export function StaffPanel({ event }: { event: AdminEvent }) {
 
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-56 flex-1">
-          <SearchableSelect
-            value={userId}
+          <PickerSelect
+            endpoint={api.pickers.doorStaff}
+            filter={{ excludeEventId: event.id }}
+            value={userId || null}
             onChange={(next) => setUserId(next ?? "")}
-            options={eligible.data?.options ?? []}
-            total={eligible.data?.total}
-            loading={eligible.isFetching}
-            onSearchChange={setStaffQuery}
             placeholder="Choose someone"
-            searchPlaceholder="Search by name or email…"
-            emptyText="No matching unassigned users."
+            searchPlaceholder="Name, or a full email address…"
+            emptyText="Nobody matches. Try their full email address."
           />
         </div>
 
@@ -139,11 +132,11 @@ export function StaffPanel({ event }: { event: AdminEvent }) {
         </Button>
       </div>
 
-      {eligible.data?.total === 0 && !staffQuery && (
-        <p className="text-muted-foreground text-sm">
-          Every user is already assigned to this event.
-        </p>
-      )}
+      <p className="text-muted-foreground text-sm">
+        Being assigned here is what grants door access — organisers and admins
+        can already scan every event. The list shows people who have worked a
+        door before; to add anyone else, type their full email address.
+      </p>
     </div>
   );
 }

@@ -14,24 +14,15 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { api } from "~/trpc/react";
-import { LinkUserDialog, type LinkUserTarget } from "~/components/admin/link-user-dialog";
+import {
+  LinkUserDialog,
+  type LinkUserTarget,
+} from "~/components/admin/link-user-dialog";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Badge } from "~/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -109,6 +100,117 @@ export function CreatorProfilesManager() {
   });
 
   const profiles = list.data ?? [];
+  type ProfileRow = (typeof profiles)[number];
+  const columns: DataTableColumn<ProfileRow>[] = [
+    {
+      id: "handle",
+      header: "Handle",
+      cell: (profile) => (
+        <Link
+          href={`/admin/creator-profiles/${profile.id}`}
+          className="text-primary font-mono hover:underline"
+        >
+          @{profile.handle}
+        </Link>
+      ),
+    },
+    {
+      id: "displayName",
+      header: "Display name",
+      accessor: (row) => row.displayName,
+    },
+    {
+      id: "user",
+      header: "Linked user",
+      cell: (profile) =>
+        profile.user ? (
+          <Link
+            href={`/admin/users/${profile.user.id}`}
+            className="text-sm hover:underline"
+          >
+            {profile.user.name}
+          </Link>
+        ) : (
+          <span className="text-muted-foreground text-sm">—</span>
+        ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (row) => <ClaimBadge status={row.claimStatus} />,
+    },
+    {
+      id: "published",
+      header: "Published",
+      cell: (row) =>
+        row.isPublished ? (
+          <Badge variant="outline" className="text-green-600">
+            Yes
+          </Badge>
+        ) : (
+          <Badge variant="outline">Draft</Badge>
+        ),
+    },
+    { id: "blocks", header: "Blocks", accessor: (row) => row._count.blocks },
+    { id: "gigs", header: "Gigs", accessor: (row) => row._count.gigCreators },
+    {
+      id: "actions",
+      header: "Actions",
+      align: "right",
+      hideable: false,
+      cell: (profile) => (
+        <div className="flex justify-end gap-1">
+          <Button size="sm" variant="ghost" asChild>
+            <Link href={`/@${profile.handle}`} target="_blank">
+              <ExternalLink className="h-4 w-4" />
+            </Link>
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() =>
+              setLinkTarget({
+                profileId: profile.id,
+                handle: profile.handle,
+                currentUserId: profile.user?.id ?? null,
+                currentUserName: profile.user?.name ?? null,
+              })
+            }
+            title={
+              profile.user ? "Relink to a different user" : "Link to a user"
+            }
+          >
+            <Link2 className="h-4 w-4" />
+          </Button>
+          {profile.user && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() =>
+                setUnlinkTarget({
+                  profileId: profile.id,
+                  handle: profile.handle,
+                })
+              }
+              title="Unlink user"
+            >
+              <Unlink className="h-4 w-4" />
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() =>
+              setDeleteTarget({ id: profile.id, handle: profile.handle })
+            }
+            title="Delete"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-4">
@@ -137,8 +239,8 @@ export function CreatorProfilesManager() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-60">
-              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <div className="relative min-w-60 flex-1">
+              <Search className="text-muted-foreground absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2" />
               <Input
                 placeholder="Search handle or display name..."
                 value={search}
@@ -162,126 +264,14 @@ export function CreatorProfilesManager() {
             </Select>
           </div>
 
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Handle</TableHead>
-                  <TableHead>Display name</TableHead>
-                  <TableHead>Linked user</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Published</TableHead>
-                  <TableHead>Blocks</TableHead>
-                  <TableHead>Gigs</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {list.isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="py-12 text-center">
-                      <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
-                    </TableCell>
-                  </TableRow>
-                ) : profiles.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="py-12 text-center text-muted-foreground">
-                      No profiles yet.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  profiles.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell>
-                        <Link
-                          href={`/admin/creator-profiles/${p.id}`}
-                          className="font-mono text-primary hover:underline"
-                        >
-                          @{p.handle}
-                        </Link>
-                      </TableCell>
-                      <TableCell>{p.displayName}</TableCell>
-                      <TableCell>
-                        {p.user ? (
-                          <Link
-                            href={`/admin/users/${p.user.id}`}
-                            className="text-sm hover:underline"
-                          >
-                            {p.user.name}
-                          </Link>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <ClaimBadge status={p.claimStatus} />
-                      </TableCell>
-                      <TableCell>
-                        {p.isPublished ? (
-                          <Badge variant="outline" className="text-green-600">
-                            Yes
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline">Draft</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>{p._count.blocks}</TableCell>
-                      <TableCell>{p._count.gigCreators}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button size="sm" variant="ghost" asChild>
-                            <Link href={`/@${p.handle}`} target="_blank">
-                              <ExternalLink className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() =>
-                              setLinkTarget({
-                                profileId: p.id,
-                                handle: p.handle,
-                                currentUserId: p.user?.id ?? null,
-                                currentUserName: p.user?.name ?? null,
-                              })
-                            }
-                            title={p.user ? "Relink to a different user" : "Link to a user"}
-                          >
-                            <Link2 className="h-4 w-4" />
-                          </Button>
-                          {p.user ? (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() =>
-                                setUnlinkTarget({
-                                  profileId: p.id,
-                                  handle: p.handle,
-                                })
-                              }
-                              title="Unlink user"
-                            >
-                              <Unlink className="h-4 w-4" />
-                            </Button>
-                          ) : null}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() =>
-                              setDeleteTarget({ id: p.id, handle: p.handle })
-                            }
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          <DataTable
+            columns={columns}
+            data={profiles}
+            getRowId={(row) => row.id}
+            isLoading={list.isLoading}
+            storageKey="admin-creator-profiles"
+            emptyMessage="No profiles yet."
+          />
         </CardContent>
       </Card>
 
@@ -309,7 +299,9 @@ export function CreatorProfilesManager() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Unlink user from @{unlinkTarget?.handle}?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Unlink user from @{unlinkTarget?.handle}?
+            </AlertDialogTitle>
             <AlertDialogDescription>
               The profile will become unclaimed again. Blocks and gig
               attributions are kept. The user will lose edit access until the
@@ -320,7 +312,8 @@ export function CreatorProfilesManager() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() =>
-                unlinkTarget && unlinkUser.mutate({ profileId: unlinkTarget.profileId })
+                unlinkTarget &&
+                unlinkUser.mutate({ profileId: unlinkTarget.profileId })
               }
             >
               Unlink
@@ -335,12 +328,10 @@ export function CreatorProfilesManager() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete @{deleteTarget?.handle}?
-            </AlertDialogTitle>
+            <AlertDialogTitle>Delete @{deleteTarget?.handle}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently deletes the profile, all blocks, socials, and
-              gig attributions. The linked user (if any) is not affected.
+              This permanently deletes the profile, all blocks, socials, and gig
+              attributions. The linked user (if any) is not affected.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -410,8 +401,8 @@ function CreateProfileDialog({
           <DialogTitle>Create creator profile</DialogTitle>
           <DialogDescription>
             Create a new creator profile. Linking a user is optional — if you
-            don't link one, the profile stays unclaimed and can be attributed to
-            gigs or claimed later.
+            don&apos;t link one, the profile stays unclaimed and can be
+            attributed to gigs or claimed later.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
@@ -545,4 +536,3 @@ function CreateProfileDialog({
     </Dialog>
   );
 }
-

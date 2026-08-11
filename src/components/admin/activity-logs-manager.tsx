@@ -3,15 +3,7 @@
 import { useState } from "react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
 import {
   Card,
   CardContent,
@@ -38,9 +30,7 @@ import {
   Calendar,
   Clock,
   Loader2,
-  ChevronLeft,
   ChevronRight,
-  Search,
   Filter,
 } from "lucide-react";
 import Link from "next/link";
@@ -127,7 +117,6 @@ function getActivityIcon(type: ActivityType) {
 
 export function ActivityLogsManager() {
   const [selectedType, setSelectedType] = useState<ActivityType | "all">("all");
-  const [cursor, setCursor] = useState<string | undefined>(undefined);
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
     api.activityLogs.getAll.useInfiniteQuery(
@@ -141,6 +130,97 @@ export function ActivityLogsManager() {
     );
 
   const logs = data?.pages.flatMap((page) => page.logs) ?? [];
+  type LogRow = (typeof logs)[number];
+  const userCell = (user: LogRow["user"]) =>
+    user ? (
+      <Link
+        href={`/admin/users/${user.id}`}
+        className="flex items-center gap-2 hover:underline"
+      >
+        {user.image ? (
+          <img
+            src={user.image}
+            alt={user.name}
+            className="h-6 w-6 rounded-full"
+          />
+        ) : (
+          <div className="bg-muted flex h-6 w-6 items-center justify-center rounded-full">
+            <User className="h-3 w-3" />
+          </div>
+        )}
+        <div>
+          <p className="text-sm font-medium">{user.name}</p>
+          <p className="text-muted-foreground text-xs">{user.email}</p>
+        </div>
+      </Link>
+    ) : (
+      <span className="text-muted-foreground text-sm">—</span>
+    );
+  const columns: DataTableColumn<LogRow>[] = [
+    {
+      id: "type",
+      header: "Type",
+      cell: (log) => {
+        const Icon = getActivityIcon(log.type as ActivityType);
+        return (
+          <div className="flex items-center gap-2">
+            <Icon className="text-muted-foreground h-4 w-4" />
+            {getActivityTypeBadge(log.type as ActivityType)}
+          </div>
+        );
+      },
+    },
+    {
+      id: "action",
+      header: "Action",
+      cell: (log) => (
+        <div className="max-w-md">
+          <p className="text-sm font-medium">{log.action}</p>
+          {log.details && (
+            <p className="text-muted-foreground mt-1 text-xs">
+              {JSON.stringify(log.details)}
+            </p>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "user",
+      header: "User",
+      cell: (log) =>
+        log.user ? (
+          userCell(log.user)
+        ) : (
+          <span className="text-muted-foreground text-sm">System</span>
+        ),
+    },
+    { id: "target", header: "Target", cell: (log) => userCell(log.targetUser) },
+    {
+      id: "time",
+      header: "Time",
+      cell: (log) => (
+        <div className="text-muted-foreground flex items-center gap-1 text-sm">
+          <Clock className="h-3 w-3" />
+          {formatDateInUserTimezone(log.createdAt, {
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            year: "numeric",
+          })}
+        </div>
+      ),
+    },
+    {
+      id: "ip",
+      header: "IP Address",
+      cell: (log) => (
+        <span className="text-muted-foreground font-mono text-xs">
+          {log.ipAddress ?? "—"}
+        </span>
+      ),
+    },
+  ];
 
   return (
     <Card>
@@ -163,7 +243,6 @@ export function ActivityLogsManager() {
               value={selectedType}
               onValueChange={(value) => {
                 setSelectedType(value as ActivityType | "all");
-                setCursor(undefined);
               }}
             >
               <SelectTrigger>
@@ -174,7 +253,11 @@ export function ActivityLogsManager() {
                 <SelectItem value="all">All Activities</SelectItem>
                 {Object.values(ActivityType).map((type) => (
                   <SelectItem key={type} value={type}>
-                    {getActivityTypeBadge(type as ActivityType).props.children}
+                    {type
+                      .toLowerCase()
+                      .split("_")
+                      .map((word) => word[0]?.toUpperCase() + word.slice(1))
+                      .join(" ")}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -182,145 +265,14 @@ export function ActivityLogsManager() {
           </div>
         </div>
 
-        {/* Activity Logs Table */}
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Type</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Target</TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead>IP Address</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading
-                ? Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={`loading-log-${i}`}>
-                      <TableCell colSpan={6}>
-                        <div className="bg-muted h-8 w-full animate-pulse rounded" />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                : logs.map((log) => {
-                    const Icon = getActivityIcon(log.type as ActivityType);
-                    return (
-                      <TableRow key={log.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Icon className="text-muted-foreground h-4 w-4" />
-                            {getActivityTypeBadge(log.type as ActivityType)}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="max-w-md">
-                            <p className="text-sm font-medium">{log.action}</p>
-                            {log.details && (
-                              <p className="text-muted-foreground mt-1 text-xs">
-                                {JSON.stringify(log.details)}
-                              </p>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {log.user ? (
-                            <Link
-                              href={`/admin/users/${log.user.id}`}
-                              className="flex items-center gap-2 hover:underline"
-                            >
-                              {log.user.image ? (
-                                <img
-                                  src={log.user.image}
-                                  alt={log.user.name}
-                                  className="h-6 w-6 rounded-full"
-                                />
-                              ) : (
-                                <div className="bg-muted flex h-6 w-6 items-center justify-center rounded-full">
-                                  <User className="h-3 w-3" />
-                                </div>
-                              )}
-                              <div>
-                                <p className="text-sm font-medium">
-                                  {log.user.name}
-                                </p>
-                                <p className="text-muted-foreground text-xs">
-                                  {log.user.email}
-                                </p>
-                              </div>
-                            </Link>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">
-                              System
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {log.targetUser ? (
-                            <Link
-                              href={`/admin/users/${log.targetUser.id}`}
-                              className="flex items-center gap-2 hover:underline"
-                            >
-                              {log.targetUser.image ? (
-                                <img
-                                  src={log.targetUser.image}
-                                  alt={log.targetUser.name}
-                                  className="h-6 w-6 rounded-full"
-                                />
-                              ) : (
-                                <div className="bg-muted flex h-6 w-6 items-center justify-center rounded-full">
-                                  <User className="h-3 w-3" />
-                                </div>
-                              )}
-                              <div>
-                                <p className="text-sm font-medium">
-                                  {log.targetUser.name}
-                                </p>
-                                <p className="text-muted-foreground text-xs">
-                                  {log.targetUser.email}
-                                </p>
-                              </div>
-                            </Link>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">
-                              —
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-muted-foreground flex items-center gap-1 text-sm">
-                            <Clock className="h-3 w-3" />
-                            {formatDateInUserTimezone(log.createdAt, {
-                              month: "short",
-                              day: "numeric",
-                              hour: "numeric",
-                              minute: "2-digit",
-                              year: "numeric",
-                            })}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-muted-foreground font-mono text-xs">
-                            {log.ipAddress ?? "—"}
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-              {!isLoading && logs.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="text-muted-foreground py-8 text-center"
-                  >
-                    No activity logs found
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        <DataTable
+          columns={columns}
+          data={logs}
+          getRowId={(row) => row.id}
+          isLoading={isLoading}
+          storageKey="admin-activity-logs"
+          emptyMessage="No activity logs found"
+        />
 
         {/* Load More Button */}
         {hasNextPage && (

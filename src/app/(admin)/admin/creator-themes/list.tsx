@@ -3,12 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Badge } from "~/components/ui/badge";
 import { Switch } from "~/components/ui/switch";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
 import {
   Select,
   SelectContent,
@@ -16,14 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
 import { useConfirm } from "~/components/confirm-provider";
 import { parseTokens } from "~/lib/creator-theme";
 
@@ -67,6 +60,128 @@ export function AdminCreatorThemesList() {
     if (!ok) return;
     await deleteMut.mutateAsync({ id });
   }
+  const themes = listQ.data ?? [];
+  type ThemeRow = (typeof themes)[number];
+  const columns: DataTableColumn<ThemeRow>[] = [
+    {
+      id: "preview",
+      header: "Preview",
+      cell: (theme) => {
+        const tokens = parseTokens(theme.tokens);
+        return (
+          <div
+            className="h-7 w-10 overflow-hidden rounded border"
+            style={{ background: tokens.pageBg }}
+          >
+            <div className="flex h-full">
+              <div className="w-1/3" style={{ background: tokens.accent }} />
+              <div className="flex-1" style={{ background: tokens.blockBg }} />
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: "name",
+      header: "Name",
+      cell: (theme) => (
+        <>
+          <Link
+            href={`/admin/creator-themes/${theme.id}`}
+            className="font-medium hover:underline"
+          >
+            {theme.name}
+          </Link>
+          {theme.description && (
+            <div className="text-muted-foreground line-clamp-1 text-xs">
+              {theme.description}
+            </div>
+          )}
+        </>
+      ),
+    },
+    {
+      id: "owner",
+      header: "Owner",
+      className: "text-sm",
+      cell: (theme) =>
+        theme.owner ? (
+          <Link
+            href={`/admin/users/${theme.owner.id}`}
+            className="hover:underline"
+          >
+            {theme.owner.name ?? theme.owner.email ?? theme.owner.id}
+          </Link>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    {
+      id: "usedBy",
+      header: "Used by",
+      cell: (theme) => (
+        <span className="font-mono text-xs">{theme._count.profiles}</span>
+      ),
+    },
+    {
+      id: "visibility",
+      header: "Visibility",
+      cell: (theme) =>
+        theme.isSystem ? (
+          <Badge variant="secondary">Starter</Badge>
+        ) : theme.isPublic ? (
+          <Badge variant="secondary">Public</Badge>
+        ) : (
+          <Badge variant="outline">Private</Badge>
+        ),
+    },
+    {
+      id: "flags",
+      header: "Flags",
+      cell: (theme) => (
+        <div className="flex flex-col gap-1 text-xs">
+          <label className="flex items-center gap-2">
+            <Switch
+              checked={theme.isPublic}
+              onCheckedChange={(value) =>
+                setVisibilityMut.mutate({ id: theme.id, isPublic: value })
+              }
+            />
+            Public
+          </label>
+          <label className="flex items-center gap-2">
+            <Switch
+              checked={theme.isSystem}
+              onCheckedChange={(value) =>
+                setSystemMut.mutate({ id: theme.id, isSystem: value })
+              }
+            />
+            System
+          </label>
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      hideable: false,
+      cell: (theme) => (
+        <div className="flex items-center gap-1">
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/admin/creator-themes/${theme.id}`}>Edit</Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive"
+            onClick={() => void handleDelete(theme.id, theme.name)}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-4">
@@ -93,9 +208,7 @@ export function AdminCreatorThemesList() {
         </Select>
         <div className="ml-auto">
           <Button
-            onClick={() =>
-              createMut.mutate({ name: "New admin theme" })
-            }
+            onClick={() => createMut.mutate({ name: "New admin theme" })}
             disabled={createMut.isPending}
           >
             <Plus className="mr-1 h-4 w-4" /> New theme
@@ -103,147 +216,14 @@ export function AdminCreatorThemesList() {
         </div>
       </div>
 
-      {listQ.isLoading ? (
-        <div className="text-muted-foreground flex items-center gap-2 py-8 text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading themes...
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">Preview</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Owner</TableHead>
-                <TableHead>Used by</TableHead>
-                <TableHead>Visibility</TableHead>
-                <TableHead className="w-44">Flags</TableHead>
-                <TableHead className="w-32">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(listQ.data ?? []).map((t) => {
-                const tokens = parseTokens(t.tokens);
-                return (
-                  <TableRow key={t.id}>
-                    <TableCell>
-                      <div
-                        className="h-7 w-10 overflow-hidden rounded border"
-                        style={{ background: tokens.pageBg }}
-                      >
-                        <div className="flex h-full">
-                          <div
-                            className="w-1/3"
-                            style={{ background: tokens.accent }}
-                          />
-                          <div
-                            className="flex-1"
-                            style={{ background: tokens.blockBg }}
-                          />
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        href={`/admin/creator-themes/${t.id}`}
-                        className="font-medium hover:underline"
-                      >
-                        {t.name}
-                      </Link>
-                      {t.description && (
-                        <div className="text-muted-foreground line-clamp-1 text-xs">
-                          {t.description}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {t.owner ? (
-                        <Link
-                          href={`/admin/users/${t.owner.id}`}
-                          className="hover:underline"
-                        >
-                          {t.owner.name ?? t.owner.email ?? t.owner.id}
-                        </Link>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-mono text-xs">
-                        {t._count.profiles}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {t.isSystem ? (
-                        <Badge variant="secondary">Starter</Badge>
-                      ) : t.isPublic ? (
-                        <Badge variant="secondary">Public</Badge>
-                      ) : (
-                        <Badge variant="outline">Private</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1 text-xs">
-                        <label className="flex items-center gap-2">
-                          <Switch
-                            checked={t.isPublic}
-                            onCheckedChange={(v) =>
-                              setVisibilityMut.mutate({
-                                id: t.id,
-                                isPublic: v,
-                              })
-                            }
-                          />
-                          Public
-                        </label>
-                        <label className="flex items-center gap-2">
-                          <Switch
-                            checked={t.isSystem}
-                            onCheckedChange={(v) =>
-                              setSystemMut.mutate({
-                                id: t.id,
-                                isSystem: v,
-                              })
-                            }
-                          />
-                          System
-                        </label>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={`/admin/creator-themes/${t.id}`}>
-                            Edit
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => void handleDelete(t.id, t.name)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-              {(listQ.data ?? []).length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="text-muted-foreground py-8 text-center text-sm"
-                  >
-                    No themes match these filters.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+      <DataTable
+        columns={columns}
+        data={themes}
+        getRowId={(row) => row.id}
+        isLoading={listQ.isLoading}
+        storageKey="admin-creator-themes"
+        emptyMessage="No themes match these filters."
+      />
     </div>
   );
 }

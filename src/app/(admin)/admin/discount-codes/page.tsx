@@ -13,7 +13,7 @@ import { Badge } from "~/components/ui/badge";
 import { Switch } from "~/components/ui/switch";
 import { Skeleton } from "~/components/ui/skeleton";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
-import { SearchableSelect } from "~/components/ui/searchable-select";
+import { PickerSelect } from "~/components/ui/picker-select";
 import {
   Select,
   SelectContent,
@@ -146,14 +146,6 @@ function CodeRow({ code }: { code: CodeListItem }) {
 function CodeForm({ onDone }: { onDone: () => void }) {
   const utils = api.useUtils();
 
-  // Was `ticketEvents.list`, which loads every event *with its tiers and sales
-  // counts* — an expensive query to run just to populate a dropdown.
-  const [eventQuery, setEventQuery] = useState("");
-  const events = api.ticketEvents.eventOptions.useQuery(
-    { query: eventQuery },
-    { placeholderData: (previous) => previous },
-  );
-
   const [code, setCode] = useState("");
   const [type, setType] = useState<"PERCENT" | "FIXED">("PERCENT");
   const [value, setValue] = useState("10");
@@ -216,14 +208,11 @@ function CodeForm({ onDone }: { onDone: () => void }) {
 
       <div className="space-y-1.5">
         <Label htmlFor="code-event">Event</Label>
-        <SearchableSelect
+        <PickerSelect
           id="code-event"
+          endpoint={api.pickers.ticketEvents}
           value={eventId}
           onChange={setEventId}
-          options={events.data?.options ?? []}
-          total={events.data?.total}
-          loading={events.isFetching}
-          onSearchChange={setEventQuery}
           placeholder="Any event"
           searchPlaceholder="Search events…"
           emptyText="No events match that."

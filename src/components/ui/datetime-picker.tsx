@@ -31,18 +31,7 @@ export function DateTimePicker({
   // required = false,
   showTime = true,
 }: DateTimePickerProps) {
-  const [timeValue, setTimeValue] = React.useState<string>("");
-
-  React.useEffect(() => {
-    if (date) {
-      // Format time as HH:mm
-      const hours = date.getHours().toString().padStart(2, "0");
-      const minutes = date.getMinutes().toString().padStart(2, "0");
-      setTimeValue(`${hours}:${minutes}`);
-    } else {
-      setTimeValue("");
-    }
-  }, [date]);
+  const timeValue = date ? format(date, "HH:mm") : "";
 
   const handleDateSelect = (selectedDate: Date | undefined) => {
     if (!selectedDate) {
@@ -66,7 +55,6 @@ export function DateTimePicker({
 
   const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setTimeValue(value);
 
     if (date && value) {
       const [hours, minutes] = value.split(":").map(Number);
@@ -113,7 +101,7 @@ export function DateTimePicker({
             mode="single"
             selected={date}
             onSelect={handleDateSelect}
-            initialFocus
+            autoFocus
           />
         </PopoverContent>
       </Popover>

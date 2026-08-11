@@ -2,14 +2,7 @@
 
 import { useState } from "react";
 import { api } from "~/trpc/react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import {
@@ -39,7 +32,7 @@ export function SettingsManager() {
   const upsertMutation = api.settings.upsert.useMutation({
     onSuccess: () => {
       toast.success(editingKey ? "Setting updated" : "Setting created");
-      utils.settings.getAll.invalidate();
+      void utils.settings.getAll.invalidate();
       setIsDialogOpen(false);
       resetForm();
     },
@@ -51,7 +44,7 @@ export function SettingsManager() {
   const deleteMutation = api.settings.delete.useMutation({
     onSuccess: () => {
       toast.success("Setting deleted");
-      utils.settings.getAll.invalidate();
+      void utils.settings.getAll.invalidate();
     },
     onError: (error) => {
       toast.error(error.message);
@@ -79,10 +72,58 @@ export function SettingsManager() {
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="text-primary h-8 w-8 animate-spin" />
       </div>
     );
   }
+  const rows = settings ?? [];
+  type SettingRow = (typeof rows)[number];
+  const columns: DataTableColumn<SettingRow>[] = [
+    {
+      id: "key",
+      header: "Key",
+      accessor: (row) => row.key,
+      className: "font-medium",
+    },
+    {
+      id: "value",
+      header: "Value",
+      accessor: (row) => row.value,
+      className: "max-w-md truncate",
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      hideable: false,
+      cell: (setting) => (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleEdit(setting)}
+          >
+            <Edit2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={async () => {
+              const ok = await confirm({
+                title: "Delete setting",
+                description: `Are you sure you want to delete ${setting.key}? This action cannot be undone.`,
+                confirmLabel: "Delete",
+                variant: "destructive",
+              });
+              if (ok) deleteMutation.mutate({ key: setting.key });
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-4">
@@ -146,64 +187,13 @@ export function SettingsManager() {
         </Dialog>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Key</TableHead>
-              <TableHead>Value</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {settings?.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={3} className="h-24 text-center">
-                  No settings found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              settings?.map((setting) => (
-                <TableRow key={setting.key}>
-                  <TableCell className="font-medium">{setting.key}</TableCell>
-                  <TableCell className="max-w-md truncate">
-                    {setting.value}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(setting)}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        onClick={async () => {
-                          const ok = await confirm({
-                            title: "Delete setting",
-                            description: `Are you sure you want to delete ${setting.key}? This action cannot be undone.`,
-                            confirmLabel: "Delete",
-                            variant: "destructive",
-                          });
-                          if (ok) {
-                            deleteMutation.mutate({ key: setting.key });
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        columns={columns}
+        data={rows}
+        getRowId={(row) => row.key}
+        storageKey="admin-settings"
+        emptyMessage="No settings found."
+      />
     </div>
   );
 }

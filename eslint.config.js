@@ -1,11 +1,38 @@
+import { fixupPluginRules } from "@eslint/compat";
 import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
 import tseslint from "typescript-eslint";
+
+const nextCoreWebVitalsCompat = nextCoreWebVitals.map((config) => {
+  const languageOptions =
+    config.name === "next"
+      ? Object.fromEntries(
+          Object.entries(config.languageOptions ?? {}).filter(
+            ([name]) => name !== "parser",
+          ),
+        )
+      : config.languageOptions;
+
+  return {
+    ...config,
+    ...(languageOptions ? { languageOptions } : {}),
+    ...(config.plugins
+      ? {
+          plugins: Object.fromEntries(
+            Object.entries(config.plugins).map(([name, plugin]) => [
+              name,
+              name === "@typescript-eslint" ? plugin : fixupPluginRules(plugin),
+            ]),
+          ),
+        }
+      : {}),
+  };
+});
 
 export default tseslint.config(
   {
     ignores: [".next"],
   },
-  ...nextCoreWebVitals,
+  ...nextCoreWebVitalsCompat,
   {
     files: ["**/*.ts", "**/*.tsx"],
     extends: [
