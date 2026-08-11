@@ -1,10 +1,8 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Activity,
   BadgePercent,
   BookOpen,
   Calendar,
-  CalendarCog,
   FileText,
   FolderOpen,
   LayoutDashboard,
@@ -45,30 +43,19 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
     items: [
       {
         title: "Content",
-        description: "Manage posts, videos, and featured content",
+        description:
+          "Manage posts and videos, and reorder the home page selection",
         url: "/admin/content",
         icon: BookOpen,
-        keywords: ["posts", "videos"],
+        keywords: ["posts", "videos", "homepage", "featured", "reorder"],
       },
       {
         title: "Gigs",
-        description: "Create and manage upcoming and past gigs",
+        description:
+          "Manage upcoming and past gigs, and reorder the home page selection",
         url: "/admin/gigs",
         icon: Calendar,
-      },
-      {
-        title: "Home gigs",
-        description: "Curate the gigs shown on the home page",
-        url: "/admin/home-gigs",
-        icon: CalendarCog,
-        keywords: ["homepage", "featured"],
-      },
-      {
-        title: "Home content",
-        description: "Curate the latest content on the home page",
-        url: "/admin/home-content",
-        icon: Activity,
-        keywords: ["homepage", "featured"],
+        keywords: ["homepage", "featured", "reorder"],
       },
       {
         title: "Gig tags",
