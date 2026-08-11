@@ -177,9 +177,8 @@ export const eventOrganiserProcedure = permissionProcedure("EVENT_ORGANISER");
 /**
  * Door staff procedure
  *
- * Accessible to authenticated users. Individual procedures still require a
- * `TicketEventStaff` assignment for the requested event. Admins bypass that
- * assignment check.
+ * Accessible to authenticated users. Admins and event organisers can work the
+ * door for every event. Other users require a `TicketEventStaff` assignment.
  */
 export const doorProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   const user = await ctx.db.user.findUnique({
@@ -190,12 +189,15 @@ export const doorProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   if (!user) throw new TRPCError({ code: "UNAUTHORIZED" });
 
   const isAdmin = userHasPermission(user, "ADMIN");
+  const isEventOrganiser = userHasPermission(user, "EVENT_ORGANISER");
 
   return next({
     ctx: {
       ...ctx,
       user,
       isAdmin,
+      isEventOrganiser,
+      hasGlobalDoorAccess: isAdmin || isEventOrganiser,
     },
   });
 });

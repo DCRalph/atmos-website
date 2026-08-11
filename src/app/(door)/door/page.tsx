@@ -7,7 +7,7 @@ import { api } from "~/trpc/react";
 import { Skeleton } from "~/components/ui/skeleton";
 import { formatEventDate, formatEventTime } from "~/lib/ticketing/dates";
 
-/** Pick a door. Only shows events this person is actually assigned to. */
+/** Pick an event the current user is authorized to scan. */
 export default function DoorEventPicker() {
   const events = api.door.myEvents.useQuery();
 
@@ -30,8 +30,8 @@ export default function DoorEventPicker() {
 
         {events.data?.length === 0 && (
           <p className="border-2 border-white/10 p-8 text-center text-white/50">
-            You&apos;re not on the door for anything right now. An admin needs
-            to add you to an event.
+            You&apos;re not on the door for anything right now. An admin can add
+            you to an event.
           </p>
         )}
 

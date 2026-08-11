@@ -305,7 +305,7 @@ export default function UserManagementPage({ params }: PageProps) {
                       </span>
                       <span className="text-muted-foreground text-xs">
                         {permission === "EVENT_ORGANISER"
-                          ? "Can view every event, complete analytics, order details, and CSV exports."
+                          ? "Can view every event, complete analytics, order details, CSV exports, and scan tickets at the door."
                           : permission === "CREATOR"
                             ? "Can own, edit, and publish their creator profile and themes."
                             : "Full application administration rights."}

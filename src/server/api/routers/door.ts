@@ -18,15 +18,16 @@ import { db } from "~/server/db";
 /**
  * The door.
  *
- * Everything here is scoped to an event the signed-in user is actually
- * assigned to. The assignment itself grants door access; there is no global
- * door permission. Admins bypass the assignment check so they can always get
- * in and fix things on the night.
+ * Admins and event organisers can scan at every event. Other signed-in users
+ * must be assigned through `TicketEventStaff`. Admins always receive manager
+ * controls; organisers receive them only when explicitly assigned as a door
+ * manager for that event.
  */
 
 async function assertAssigned(
   userId: string,
   isAdmin: boolean,
+  isEventOrganiser: boolean,
   eventId: string,
 ): Promise<{ isManager: boolean }> {
   if (isAdmin) return { isManager: true };
@@ -36,14 +37,14 @@ async function assertAssigned(
     select: { role: true },
   });
 
-  if (!assignment) {
+  if (!assignment && !isEventOrganiser) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "You're not on the door for this event.",
     });
   }
 
-  return { isManager: assignment.role === EventStaffRole.MANAGER };
+  return { isManager: assignment?.role === EventStaffRole.MANAGER };
 }
 
 export const doorRouter = createTRPCRouter({
@@ -61,7 +62,9 @@ export const doorRouter = createTRPCRouter({
           ],
         },
         startsAt: { gte: horizonStart },
-        ...(ctx.isAdmin ? {} : { staff: { some: { userId: ctx.user.id } } }),
+        ...(ctx.hasGlobalDoorAccess
+          ? {}
+          : { staff: { some: { userId: ctx.user.id } } }),
       },
       orderBy: { startsAt: "asc" },
       select: {
@@ -87,6 +90,7 @@ export const doorRouter = createTRPCRouter({
       const { isManager } = await assertAssigned(
         ctx.user.id,
         ctx.isAdmin,
+        ctx.isEventOrganiser,
         input.eventId,
       );
 
@@ -133,6 +137,7 @@ export const doorRouter = createTRPCRouter({
       const { isManager } = await assertAssigned(
         ctx.user.id,
         ctx.isAdmin,
+        ctx.isEventOrganiser,
         input.eventId,
       );
 
@@ -186,6 +191,7 @@ export const doorRouter = createTRPCRouter({
       const { isManager } = await assertAssigned(
         ctx.user.id,
         ctx.isAdmin,
+        ctx.isEventOrganiser,
         input.eventId,
       );
       if (input.override && !isManager) {
@@ -231,6 +237,7 @@ export const doorRouter = createTRPCRouter({
       const { isManager } = await assertAssigned(
         ctx.user.id,
         ctx.isAdmin,
+        ctx.isEventOrganiser,
         input.eventId,
       );
       if (!isManager) {
@@ -277,7 +284,12 @@ export const doorRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      await assertAssigned(ctx.user.id, ctx.isAdmin, input.eventId);
+      await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
 
       const search = input.search;
       const tickets = await ctx.db.ticket.findMany({
@@ -366,7 +378,12 @@ export const doorRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      await assertAssigned(ctx.user.id, ctx.isAdmin, input.eventId);
+      await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
 
       const scans = await ctx.db.ticketScan.findMany({
         where: { eventId: input.eventId },

@@ -151,7 +151,7 @@ export function LiveDoorAnalytics({
           </div>
 
           <p className="text-muted-foreground text-sm">
-            Assigned door staff scan at{" "}
+            Door staff, event organisers, and admins scan at{" "}
             <Link href="/door" className="underline">
               /door
             </Link>

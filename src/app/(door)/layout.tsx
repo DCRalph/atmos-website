@@ -44,11 +44,15 @@ export default async function DoorLayout({
   });
 
   const isAdmin = user ? userHasPermission(user, "ADMIN") : false;
-  const assignmentCount = user
+  const isEventOrganiser = user
+    ? userHasPermission(user, "EVENT_ORGANISER")
+    : false;
+  const hasGlobalDoorAccess = isAdmin || isEventOrganiser;
+  const assignmentCount = user && !hasGlobalDoorAccess
     ? await db.ticketEventStaff.count({ where: { userId: user.id } })
     : 0;
 
-  const canScan = isAdmin || assignmentCount > 0;
+  const canScan = hasGlobalDoorAccess || assignmentCount > 0;
 
   if (!canScan) {
     redirect("/");
