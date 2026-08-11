@@ -18,10 +18,9 @@ import { db } from "~/server/db";
 /**
  * The door.
  *
- * Admins and event organisers can scan at every event. Other signed-in users
- * must be assigned through `TicketEventStaff`. Admins always receive manager
- * controls; organisers receive them only when explicitly assigned as a door
- * manager for that event.
+ * Admins and event organisers have unrestricted door access at every event,
+ * including manager controls. Other signed-in users must be assigned through
+ * `TicketEventStaff` and receive the scanner or manager level from that event.
  */
 
 async function assertAssigned(
@@ -30,21 +29,21 @@ async function assertAssigned(
   isEventOrganiser: boolean,
   eventId: string,
 ): Promise<{ isManager: boolean }> {
-  if (isAdmin) return { isManager: true };
+  if (isAdmin || isEventOrganiser) return { isManager: true };
 
   const assignment = await db.ticketEventStaff.findUnique({
     where: { eventId_userId: { eventId, userId } },
     select: { role: true },
   });
 
-  if (!assignment && !isEventOrganiser) {
+  if (!assignment) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "You're not on the door for this event.",
     });
   }
 
-  return { isManager: assignment?.role === EventStaffRole.MANAGER };
+  return { isManager: assignment.role === EventStaffRole.MANAGER };
 }
 
 export const doorRouter = createTRPCRouter({

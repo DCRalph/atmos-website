@@ -56,8 +56,8 @@ export function StaffPanel({ event }: { event: AdminEvent }) {
         <h2 className="text-xl font-semibold">Door staff</h2>
         <p className="text-muted-foreground text-sm">
           Assigned staff open <code>/door</code> on their own phone and only
-          see their events. Admins and event organisers can scan at every
-          event.
+          see their events. Admins and event organisers have unrestricted door
+          access at every event.
         </p>
       </div>
 

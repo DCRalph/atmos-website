@@ -177,8 +177,9 @@ export const eventOrganiserProcedure = permissionProcedure("EVENT_ORGANISER");
 /**
  * Door staff procedure
  *
- * Accessible to authenticated users. Admins and event organisers can work the
- * door for every event. Other users require a `TicketEventStaff` assignment.
+ * Accessible to authenticated users. Admins and event organisers have full
+ * door access for every event. Other users require a `TicketEventStaff`
+ * assignment.
  */
 export const doorProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   const user = await ctx.db.user.findUnique({
