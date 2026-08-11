@@ -9,6 +9,7 @@ import {
   Loader2,
   Mail,
   MapPin,
+  Pencil,
   Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -40,6 +41,7 @@ export default function TicketsPage() {
   const isNew = searchParams.get("new") === "1";
 
   const { order, refresh } = useIssuedOrder(token, isNew);
+  const [editingNames, setEditingNames] = useState(false);
 
   if (order.isPending) {
     return (
@@ -69,6 +71,13 @@ export default function TicketsPage() {
   }
 
   const data = order.data;
+
+  // Something the buyer still has to answer: an address to send the tickets
+  // to, or a ticket in the group with nobody's name on it.
+  const unanswered =
+    !data.buyerEmail ||
+    (data.event.requireAttendeeNames &&
+      data.tickets.some((ticket) => !ticket.attendeeName));
 
   if (!data.issued) {
     return (
@@ -136,7 +145,10 @@ export default function TicketsPage() {
         )}
       </header>
 
-      {(data.event.requireAttendeeNames || !data.buyerEmail) && (
+      {/* Only while something is actually being asked for. Once it's all
+          filled in this collapses to a quiet edit button below the codes —
+          it sits up here to be answered, not to be admired. */}
+      {unanswered && (
         <AttendeeDetails token={token} data={data} onSaved={refresh} />
       )}
 
@@ -193,6 +205,31 @@ export default function TicketsPage() {
 
       <Receipt data={data} />
 
+      {!unanswered && data.event.requireAttendeeNames && (
+        <div className="mt-8">
+          {editingNames ? (
+            <AttendeeDetails
+              token={token}
+              data={data}
+              onSaved={() => {
+                refresh();
+                setEditingNames(false);
+              }}
+              onCancel={() => setEditingNames(false)}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setEditingNames(true)}
+              className="mx-auto flex items-center gap-2 text-sm text-white/40 underline underline-offset-4 transition-colors hover:text-white"
+            >
+              <Pencil className="size-3.5" aria-hidden />
+              Edit names
+            </button>
+          )}
+        </div>
+      )}
+
       <ResendButton token={token} email={data.buyerEmail} />
     </main>
   );
@@ -209,10 +246,13 @@ function AttendeeDetails({
   token,
   data,
   onSaved,
+  onCancel,
 }: {
   token: string;
   data: TicketOrderView;
   onSaved: () => void;
+  /** Present only when this was opened from the collapsed edit button. */
+  onCancel?: () => void;
 }) {
   const tickets = data.tickets;
   const needsEmail = !data.buyerEmail;
@@ -245,7 +285,9 @@ function AttendeeDetails({
   const allNamed = tickets.every((ticket) => Boolean(ticket.attendeeName));
 
   return (
-    <section className="mt-10 border-2 border-white/10 bg-black/60 p-5">
+    <section
+      className={`border-2 border-white/10 bg-black/60 p-5 ${onCancel ? "" : "mt-10"}`}
+    >
       <form
         className="space-y-8"
         onSubmit={(e) => {
@@ -333,6 +375,17 @@ function AttendeeDetails({
             "Save names"
           )}
         </Button>
+
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={save.isPending}
+            className="mx-auto block text-sm text-white/40 underline underline-offset-4 transition-colors hover:text-white disabled:opacity-50"
+          >
+            Cancel
+          </button>
+        )}
       </form>
     </section>
   );
