@@ -17,23 +17,45 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowDown, GripVertical, Loader2, RotateCcw, Save, Search, Star } from "lucide-react";
+import {
+  ArrowDown,
+  GripVertical,
+  Loader2,
+  RotateCcw,
+  Save,
+  Search,
+  Star,
+} from "lucide-react";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
-import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 import { useUnsavedChangesWarning } from "~/hooks/use-unsaved-changes-warning";
+import { useDebouncedValue } from "~/hooks/use-debounced-value";
+import {
+  SaveStatusPill,
+  type SaveStatus,
+} from "~/components/admin/save-status";
 
 const HOME_FEATURED_COUNT = 1;
 const HOME_LIST_SHOWN_COUNT = 2;
 const RECENT_UNPLACED_COUNT = 5;
 
 type Placement = RouterOutputs["homeContent"]["getPlacements"][number];
-type ContentItemFromList = RouterOutputs["content"]["getAll"][number];
 type ContentSummary = NonNullable<Placement["contentItem"]>;
 
 function formatContentDateLabel(item: ContentSummary | undefined) {
@@ -141,7 +163,9 @@ function SortableContentRow({
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="truncate font-medium">{item?.title ?? "Unknown content"}</p>
+          <p className="truncate font-medium">
+            {item?.title ?? "Unknown content"}
+          </p>
           {container === "featured" ? (
             <Badge variant="secondary">
               <Star className="h-3 w-3" />
@@ -201,7 +225,7 @@ export function HomeContentManager() {
   const { data: listPlacement, isLoading: isLoadingList } =
     api.homeContent.getPlacements.useQuery({ section: "PAST" });
 
-  const setPlacements = api.homeContent.setPlacements.useMutation();
+  const setAllPlacements = api.homeContent.setAllPlacements.useMutation();
 
   const [featuredIds, setFeaturedIds] = useState<string[]>([]);
   const [listIds, setListIds] = useState<string[]>([]);
@@ -209,7 +233,8 @@ export function HomeContentManager() {
   const [savedListIds, setSavedListIds] = useState<string[]>([]);
 
   const [search, setSearch] = useState("");
-  const trimmedSearch = search.trim();
+  const debouncedSearch = useDebouncedValue(search);
+  const trimmedSearch = debouncedSearch.trim();
 
   const { data: contentList, isLoading: isLoadingContentList } =
     api.content.getAll.useQuery(undefined, { staleTime: 60_000 });
@@ -220,7 +245,7 @@ export function HomeContentManager() {
     );
 
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [saveState, setSaveState] = useState<SaveStatus>("idle");
 
   const itemMap = useMemo(() => {
     const map = new Map<string, ContentSummary>();
@@ -247,24 +272,52 @@ export function HomeContentManager() {
     return map;
   }, [featuredPlacement, listPlacement, contentList]);
 
-  useEffect(() => {
-    const nextFeatured = (featuredPlacement ?? []).map((p) => p.contentItemId);
-    const nextList = (listPlacement ?? []).map((p) => p.contentItemId);
-
-    setFeaturedIds(nextFeatured.slice(0, HOME_FEATURED_COUNT));
-    setListIds(nextList);
-    setSavedFeaturedIds(nextFeatured.slice(0, HOME_FEATURED_COUNT));
-    setSavedListIds(nextList);
-  }, [featuredPlacement, listPlacement]);
-
   const hasChanges =
     JSON.stringify(featuredIds) !== JSON.stringify(savedFeaturedIds) ||
     JSON.stringify(listIds) !== JSON.stringify(savedListIds);
 
-  useUnsavedChangesWarning({ enabled: hasChanges });
-
   const isLoading = isLoadingFeatured || isLoadingList;
-  const isSaving = setPlacements.isPending;
+  const isSaving = setAllPlacements.isPending;
+
+  const serverFeatured = useMemo(
+    () =>
+      (featuredPlacement ?? [])
+        .map((p) => p.contentItemId)
+        .slice(0, HOME_FEATURED_COUNT),
+    [featuredPlacement],
+  );
+  const serverList = useMemo(
+    () => (listPlacement ?? []).map((p) => p.contentItemId),
+    [listPlacement],
+  );
+
+  /**
+   * Adopt the stored arrangement when it is genuinely different, but never on
+   * top of unsaved dragging or mid-save. This used to be an effect keyed on the
+   * query data, which meant any background refetch silently threw away a
+   * reordering that had not been saved yet.
+   */
+  const serverKey =
+    featuredPlacement && listPlacement
+      ? JSON.stringify([serverFeatured, serverList])
+      : null;
+  const [hydratedKey, setHydratedKey] = useState<string | null>(null);
+  if (serverKey && serverKey !== hydratedKey && !isSaving && !hasChanges) {
+    setHydratedKey(serverKey);
+    setFeaturedIds(serverFeatured);
+    setListIds(serverList);
+    setSavedFeaturedIds(serverFeatured);
+    setSavedListIds(serverList);
+  }
+
+  useUnsavedChangesWarning({ enabled: hasChanges && !isSaving });
+
+  // "Saved" is a flash of confirmation, not a resting state.
+  useEffect(() => {
+    if (saveState !== "saved") return;
+    const timer = setTimeout(() => setSaveState("idle"), 2500);
+    return () => clearTimeout(timer);
+  }, [saveState]);
 
   const selectedIds = useMemo(
     () => new Set<string>([...featuredIds, ...listIds]),
@@ -282,6 +335,11 @@ export function HomeContentManager() {
     const list = searchResultsRaw ?? [];
     return list.slice(0, 25);
   }, [searchResultsRaw]);
+
+  const status: SaveStatus =
+    hasChanges && (saveState === "idle" || saveState === "saved")
+      ? "dirty"
+      : saveState;
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -346,8 +404,13 @@ export function HomeContentManager() {
 
   const setFeatured = (id: string) => {
     setListIds((prevList) => {
-      const next = removeFromArray(removeFromArray(prevList, id), featuredIds[0] ?? "");
-      return featuredIds[0] && featuredIds[0] !== id ? [featuredIds[0], ...next] : next;
+      const next = removeFromArray(
+        removeFromArray(prevList, id),
+        featuredIds[0] ?? "",
+      );
+      return featuredIds[0] && featuredIds[0] !== id
+        ? [featuredIds[0], ...next]
+        : next;
     });
     setFeaturedIds([id]);
   };
@@ -362,28 +425,26 @@ export function HomeContentManager() {
 
   const handleDiscard = () => {
     setSaveError(null);
-    setLastSavedAt(null);
+    setSaveState("idle");
     setFeaturedIds(savedFeaturedIds);
     setListIds(savedListIds);
   };
 
   const handleSave = async () => {
     setSaveError(null);
+    setSaveState("saving");
+    const nextFeatured = featuredIds.slice(0, HOME_FEATURED_COUNT);
     try {
-      await Promise.all([
-        setPlacements.mutateAsync({
-          section: "FEATURED",
-          contentItemIds: featuredIds.slice(0, HOME_FEATURED_COUNT),
-        }),
-        setPlacements.mutateAsync({
-          section: "PAST",
-          contentItemIds: listIds,
-        }),
-      ]);
+      // One mutation, one transaction: featured and the list can no longer
+      // half-apply and leave Home showing an arrangement nobody asked for.
+      await setAllPlacements.mutateAsync({
+        featuredContentItemIds: nextFeatured,
+        listContentItemIds: listIds,
+      });
 
-      setSavedFeaturedIds(featuredIds.slice(0, HOME_FEATURED_COUNT));
+      setSavedFeaturedIds(nextFeatured);
       setSavedListIds(listIds);
-      setLastSavedAt(Date.now());
+      setSaveState("saved");
 
       await Promise.all([
         utils.homeContent.getPlacements.invalidate({ section: "FEATURED" }),
@@ -391,9 +452,10 @@ export function HomeContentManager() {
         utils.homeContent.getHomeLatest.invalidate(),
       ]);
     } catch (e) {
-      setSaveError(
-        e instanceof Error ? e.message : "Failed to save. Please try again.",
-      );
+      const message =
+        e instanceof Error ? e.message : "Failed to save. Please try again.";
+      setSaveError(message);
+      setSaveState("error");
     }
   };
 
@@ -429,22 +491,13 @@ export function HomeContentManager() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 pt-2">
-          {hasChanges ? (
-            <Badge variant="secondary">Unsaved changes</Badge>
-          ) : (
-            <Badge variant="outline">Up to date</Badge>
-          )}
-          {lastSavedAt ? (
+          {/* The same pill the item editors use, so "unsaved" reads the same
+              everywhere in the admin. */}
+          <SaveStatusPill status={status} errorMessage={saveError} />
+          {status === "idle" ? (
             <span className="text-muted-foreground text-xs">
-              Saved{" "}
-              {new Date(lastSavedAt).toLocaleTimeString(undefined, {
-                hour: "numeric",
-                minute: "2-digit",
-              })}
+              This arrangement is up to date.
             </span>
-          ) : null}
-          {saveError ? (
-            <span className="text-destructive text-xs">{saveError}</span>
           ) : null}
         </div>
       </CardHeader>
@@ -453,7 +506,9 @@ export function HomeContentManager() {
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="md:col-span-3">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Preview (what Home shows)</CardTitle>
+              <CardTitle className="text-base">
+                Preview (what Home shows)
+              </CardTitle>
               <CardDescription>
                 This is the exact ordering the Home page will display.
               </CardDescription>
@@ -461,7 +516,9 @@ export function HomeContentManager() {
             <CardContent className="space-y-2">
               <div className="bg-muted/50 flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-muted-foreground text-xs">Featured</span>
+                  <span className="text-muted-foreground text-xs">
+                    Featured
+                  </span>
                   <Badge variant={featuredIds.length ? "default" : "secondary"}>
                     {featuredIds.length ? "Selected" : "Missing"}
                   </Badge>
@@ -498,7 +555,8 @@ export function HomeContentManager() {
                   {featuredIds[0] ? (
                     <div className="flex min-w-0 flex-col">
                       <span className="truncate text-sm font-medium">
-                        {itemMap.get(featuredIds[0])?.title ?? "Unknown content"}
+                        {itemMap.get(featuredIds[0])?.title ??
+                          "Unknown content"}
                       </span>
                       <span className="text-muted-foreground truncate text-xs">
                         {(itemMap.get(featuredIds[0])?.type ?? "content") +
@@ -527,7 +585,10 @@ export function HomeContentManager() {
                 <div className="space-y-2 px-3 py-2">
                   {listIds.slice(0, HOME_LIST_SHOWN_COUNT).length ? (
                     listIds.slice(0, HOME_LIST_SHOWN_COUNT).map((id, idx) => (
-                      <div key={id} className="flex items-start justify-between">
+                      <div
+                        key={id}
+                        className="flex items-start justify-between"
+                      >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">
                             {itemMap.get(id)?.title ?? "Unknown content"}
@@ -544,7 +605,8 @@ export function HomeContentManager() {
                     ))
                   ) : (
                     <span className="text-muted-foreground text-sm">
-                      Add at least {HOME_LIST_SHOWN_COUNT} items to populate Home.
+                      Add at least {HOME_LIST_SHOWN_COUNT} items to populate
+                      Home.
                     </span>
                   )}
                 </div>
@@ -682,7 +744,9 @@ export function HomeContentManager() {
                         {trimmedSearch ? "Results" : "Recent unplaced items"}
                       </span>
                       <Badge variant="outline">
-                        {trimmedSearch ? "Search" : `Top ${RECENT_UNPLACED_COUNT}`}
+                        {trimmedSearch
+                          ? "Search"
+                          : `Top ${RECENT_UNPLACED_COUNT}`}
                       </Badge>
                     </div>
                   </div>
