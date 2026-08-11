@@ -106,7 +106,11 @@ export function PastGigsBlock({
                 <ArrowUpRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </button>
             </DialogTrigger>
-            <DialogContent className="max-h-[85vh] overflow-hidden p-0 sm:max-w-2xl">
+            {/* Full-bleed: the list below is its own scroll region. */}
+            <DialogContent
+              scrollable={false}
+              className="max-h-[85vh] overflow-hidden p-0 sm:max-w-2xl"
+            >
               <DialogHeader className="border-b px-6 py-4">
                 <DialogTitle className="flex items-center gap-2 text-lg">
                   <span
@@ -275,9 +279,7 @@ function PastGigRow({
             <CalendarDays className="h-3 w-3" />
             {formatDate(new Date(gig.gigStartTime), "short")}
           </span>
-          {gig.subtitle && (
-            <span className="truncate">· {gig.subtitle}</span>
-          )}
+          {gig.subtitle && <span className="truncate">· {gig.subtitle}</span>}
         </div>
         {showRole && role && (
           <div

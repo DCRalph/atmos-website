@@ -38,6 +38,7 @@ import {
 import { Label } from "~/components/ui/label";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -742,7 +743,10 @@ export function GigMediaManager({
     });
   };
 
-  const handleMoveToSection = (mediaId: string, target: "featured" | "gallery") => {
+  const handleMoveToSection = (
+    mediaId: string,
+    target: "featured" | "gallery",
+  ) => {
     const from = findSection(mediaId);
     if (!from) return;
     if (from === target) return;
@@ -1258,7 +1262,7 @@ export function GigMediaManager({
           </DialogHeader>
 
           {infoMedia && (
-            <div className="max-h-[80vh] space-y-3 overflow-x-hidden overflow-y-auto pr-1">
+            <DialogBody className="space-y-3">
               {/* Preview */}
               <div className="bg-muted relative aspect-video w-full overflow-hidden rounded-lg border">
                 {infoMedia.type === "video" ? (
@@ -1407,7 +1411,7 @@ export function GigMediaManager({
                   </div>
                 </div>
               </div>
-            </div>
+            </DialogBody>
           )}
         </DialogContent>
       </Dialog>

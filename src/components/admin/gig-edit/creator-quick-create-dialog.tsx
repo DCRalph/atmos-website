@@ -316,6 +316,7 @@ function QuickCreateForm({
                   type="button"
                   variant="outline"
                   size="sm"
+                  className="shrink-0"
                   onClick={() => avatarInputRef.current?.click()}
                 >
                   <ImagePlus className="h-4 w-4" />
@@ -323,14 +324,15 @@ function QuickCreateForm({
                 </Button>
                 {avatarFile ? (
                   <>
-                    <span className="text-muted-foreground truncate text-xs">
+                    {/* Upload names run long, so this is the part that gives. */}
+                    <span className="text-muted-foreground min-w-0 flex-1 truncate text-xs">
                       {avatarFile.name}
                     </span>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="text-destructive hover:text-destructive"
+                      className="text-destructive hover:text-destructive shrink-0"
                       onClick={() => setAvatarFile(null)}
                     >
                       <Trash2 className="h-4 w-4" />

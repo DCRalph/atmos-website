@@ -1205,7 +1205,7 @@ export function FilesManager() {
           }
         }}
       >
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <div className="flex items-center justify-between">
               <div>

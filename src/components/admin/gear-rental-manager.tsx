@@ -1064,7 +1064,7 @@ export function GearRentalManager() {
                   Add Package
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+              <DialogContent className="sm:max-w-3xl">
                 <DialogHeader>
                   <DialogTitle>Add Rental Package</DialogTitle>
                   <DialogDescription>
@@ -1199,7 +1199,7 @@ export function GearRentalManager() {
               open={!!editingPackage}
               onOpenChange={(open) => !open && setEditingPackage(null)}
             >
-              <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+              <DialogContent className="sm:max-w-3xl">
                 <DialogHeader>
                   <DialogTitle>Edit Rental Package</DialogTitle>
                 </DialogHeader>
@@ -1375,7 +1375,7 @@ export function GearRentalManager() {
                   Add Rule
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+              <DialogContent className="sm:max-w-3xl">
                 <DialogHeader>
                   <DialogTitle>Add Discount Rule</DialogTitle>
                   <DialogDescription>
@@ -1422,7 +1422,7 @@ export function GearRentalManager() {
               open={!!editingDiscountRule}
               onOpenChange={(open) => !open && setEditingDiscountRule(null)}
             >
-              <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+              <DialogContent className="sm:max-w-3xl">
                 <DialogHeader>
                   <DialogTitle>Edit Discount Rule</DialogTitle>
                 </DialogHeader>
