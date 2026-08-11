@@ -163,6 +163,38 @@ export const creatorProcedure = protectedProcedure.use(
 );
 
 /**
+ * Door staff procedure
+ *
+ * Accessible to DOOR_STAFF and ADMIN. Door staff get no other admin access —
+ * individual procedures still check that the user is assigned to the event
+ * they are trying to scan, via `TicketEventStaff`.
+ */
+export const doorProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+  const user = await ctx.db.user.findUnique({
+    where: { id: ctx.session.user.id },
+    include: { roles: true },
+  });
+
+  if (
+    !user ||
+    (!userHasRole(user, "DOOR_STAFF") && !userHasRole(user, "ADMIN"))
+  ) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Door staff access required",
+    });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      user,
+      isAdmin: userHasRole(user, "ADMIN"),
+    },
+  });
+});
+
+/**
  * Admin procedure
  *
  * Only accessible to users with ADMIN role.

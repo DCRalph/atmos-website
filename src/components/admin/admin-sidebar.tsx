@@ -27,6 +27,8 @@ import {
   ShoppingBag,
   Sparkles,
   Palette,
+  Ticket,
+  BadgePercent,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -71,6 +73,16 @@ const menuItems = [
     title: "Gig Tags",
     url: "/admin/gig-tags",
     icon: Tag,
+  },
+  {
+    title: "Ticketed Events",
+    url: "/admin/events",
+    icon: Ticket,
+  },
+  {
+    title: "Discount Codes",
+    url: "/admin/discount-codes",
+    icon: BadgePercent,
   },
   {
     title: "Media Files",

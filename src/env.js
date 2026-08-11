@@ -40,15 +40,46 @@ export const env = createEnv({
     SHOPIFY_STORE_DOMAIN: z.string(),
     SHOPIFY_PRIVATE_ACCESS_TOKEN: z.string(),
     SHOPIFY_COLLECTION_HANDLE: z.string().optional(),
+
+    // Ticketing — Stripe
+    STRIPE_SECRET_KEY: z.string().optional(),
+    STRIPE_WEBHOOK_SECRET: z.string().optional(),
+
+    /// Signs ticket QR payloads. Independent of BETTER_AUTH_SECRET so it can be
+    /// rotated separately — though rotating it invalidates every live ticket
+    /// and wallet pass, so in practice it is generate-once.
+    TICKET_QR_SECRET: z.string().optional(),
+
+    // Ticketing — email delivery
+    RESEND_API_KEY: z.string().optional(),
+    RESEND_FROM: z.string().optional(),
+
+    // Ticketing — Apple Wallet
+    APPLE_PASS_TYPE_ID: z.string().optional(),
+    APPLE_TEAM_ID: z.string().optional(),
+    /// PEM, base64-encoded so the newlines survive an env var.
+    APPLE_PASS_CERT_PEM_BASE64: z.string().optional(),
+    APPLE_PASS_KEY_PEM_BASE64: z.string().optional(),
+    APPLE_PASS_KEY_PASSWORD: z.string().optional(),
+    APPLE_WWDR_PEM_BASE64: z.string().optional(),
+
+    // Ticketing — Google Wallet
+    GOOGLE_WALLET_ISSUER_ID: z.string().optional(),
+    GOOGLE_WALLET_SERVICE_ACCOUNT_JSON: z.string().optional(),
+
+    /// Shared secret for the Vercel cron endpoints.
+    CRON_SECRET: z.string().optional(),
   },
-  
+
   client: {
     NEXT_PUBLIC_APP_URL: z.string().url(),
-    
+
     NEXT_PUBLIC_POSTHOG_KEY: z.string(),
     NEXT_PUBLIC_POSTHOG_HOST: z.string().url(),
-    
+
     NEXT_PUBLIC_SHOPIFY_PUBLIC_ACCESS_TOKEN: z.string(),
+
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().optional(),
   },
 
   runtimeEnv: {
@@ -83,6 +114,29 @@ export const env = createEnv({
     NEXT_PUBLIC_SHOPIFY_PUBLIC_ACCESS_TOKEN: process.env.NEXT_PUBLIC_SHOPIFY_PUBLIC_ACCESS_TOKEN,
     SHOPIFY_PRIVATE_ACCESS_TOKEN: process.env.SHOPIFY_PRIVATE_ACCESS_TOKEN,
     SHOPIFY_COLLECTION_HANDLE: process.env.SHOPIFY_COLLECTION_HANDLE,
+
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
+      process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+
+    TICKET_QR_SECRET: process.env.TICKET_QR_SECRET,
+
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    RESEND_FROM: process.env.RESEND_FROM,
+
+    APPLE_PASS_TYPE_ID: process.env.APPLE_PASS_TYPE_ID,
+    APPLE_TEAM_ID: process.env.APPLE_TEAM_ID,
+    APPLE_PASS_CERT_PEM_BASE64: process.env.APPLE_PASS_CERT_PEM_BASE64,
+    APPLE_PASS_KEY_PEM_BASE64: process.env.APPLE_PASS_KEY_PEM_BASE64,
+    APPLE_PASS_KEY_PASSWORD: process.env.APPLE_PASS_KEY_PASSWORD,
+    APPLE_WWDR_PEM_BASE64: process.env.APPLE_WWDR_PEM_BASE64,
+
+    GOOGLE_WALLET_ISSUER_ID: process.env.GOOGLE_WALLET_ISSUER_ID,
+    GOOGLE_WALLET_SERVICE_ACCOUNT_JSON:
+      process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_JSON,
+
+    CRON_SECRET: process.env.CRON_SECRET,
   },
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
   emptyStringAsUndefined: true,

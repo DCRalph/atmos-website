@@ -60,6 +60,13 @@
 }
 
 :root {
+  /* Ticketing analytics series colours.
+     Validated per mode against the chart surface for lightness band, chroma,
+     CVD separation and contrast — dark is its own selection, not a flip of
+     these. Do not "brighten" one without re-running the palette validator. */
+  --ticket-series-revenue: #6d4aff;
+  --ticket-series-arrivals: #059669;
+
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -101,6 +108,9 @@
 }
 
 .dark {
+  --ticket-series-revenue: #8b5cf6;
+  --ticket-series-arrivals: #0fa47a;
+
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);

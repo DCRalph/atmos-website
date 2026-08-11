@@ -73,6 +73,7 @@ function getRoleBadge(role: string) {
   > = {
     ADMIN: { label: "Admin", variant: "destructive" },
     CREATOR: { label: "Creator", variant: "secondary" },
+    DOOR_STAFF: { label: "Door staff", variant: "secondary" },
     USER: { label: "User", variant: "default" },
   };
 
@@ -88,7 +89,12 @@ function getRoleBadge(role: string) {
 
 function getRoleBadges(user: { roles?: { role: string }[] }) {
   const roles = user.roles?.map((r) => r.role) ?? [];
-  const order: Record<string, number> = { ADMIN: 0, CREATOR: 1, USER: 2 };
+  const order: Record<string, number> = {
+    ADMIN: 0,
+    CREATOR: 1,
+    DOOR_STAFF: 2,
+    USER: 3,
+  };
   const sorted = [...new Set(roles)].sort(
     (a, b) => (order[a] ?? 99) - (order[b] ?? 99),
   );

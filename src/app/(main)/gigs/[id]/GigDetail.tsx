@@ -397,6 +397,10 @@ import { GigTagList } from "~/components/gig-tag-list";
 import { LexicalContent } from "~/components/lexical";
 import { MediaGallery } from "~/components/gigs/media-gallery";
 import { buildMediaUrl } from "~/lib/media-url";
+import {
+  GigTicketCta,
+  GigTicketPanel,
+} from "~/components/ticketing/gig-tickets";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -693,16 +697,12 @@ export default function GigPage({ params }: PageProps) {
                 >
                   <GigTagList gigTags={gig.gigTags} size="md" />
 
-                  {gig.ticketLink && upcoming && (
-                    <Link
-                      href={gig.ticketLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group relative inline-flex items-center gap-2 overflow-hidden bg-accent-strong px-5 py-2 text-sm font-black tracking-wider text-white uppercase transition-all hover:bg-accent-muted hover:shadow-[0_0_20px_var(--accent-muted)]"
-                    >
-                      <Ticket className="h-4 w-4" />
-                      Get Tickets
-                    </Link>
+                  {upcoming && (
+                    <GigTicketCta
+                      gigId={gig.id}
+                      fallbackLink={gig.ticketLink}
+                      className="group bg-accent-strong hover:bg-accent-muted relative inline-flex items-center gap-2 overflow-hidden px-5 py-2 text-sm font-black tracking-wider text-white uppercase transition-all hover:shadow-[0_0_20px_var(--accent-muted)]"
+                    />
                   )}
                 </motion.div>
               </>
@@ -748,6 +748,19 @@ export default function GigPage({ params }: PageProps) {
                   namespace={`gig-description-${gig.id}`}
                   contentClassName="prose prose-invert max-w-none"
                 />
+              </motion.div>
+            )}
+
+            {/* Buy panel — only renders when a ticketed event is linked. */}
+            {upcoming && (
+              <motion.div
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 0.6 }}
+                className="mt-16"
+              >
+                <GigTicketPanel gigId={gig.id} />
               </motion.div>
             )}
 

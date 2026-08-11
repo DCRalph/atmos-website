@@ -11,16 +11,31 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+/**
+ * Inline attachment. `cid` matches a `cid:` reference in the HTML — used for
+ * ticket QR codes, which must not depend on remote images being unblocked.
+ */
+export type EmailAttachment = {
+  filename: string;
+  content: Buffer;
+  cid?: string;
+  contentType?: string;
+};
+
 export async function sendEmail({
   to,
   subject,
   text,
   html,
+  attachments,
+  replyTo,
 }: {
   to: string;
   subject: string;
   text: string;
   html?: string;
+  attachments?: EmailAttachment[];
+  replyTo?: string;
 }) {
   if (!env.SMTP_HOST) {
     console.warn("SMTP_HOST not set, skipping email notification");
@@ -34,6 +49,14 @@ export async function sendEmail({
       subject,
       text,
       html,
+      replyTo,
+      attachments: attachments?.map((attachment) => ({
+        filename: attachment.filename,
+        content: attachment.content,
+        contentType: attachment.contentType,
+        cid: attachment.cid,
+        contentDisposition: attachment.cid ? "inline" : "attachment",
+      })),
     });
     console.log("Email sent: %s", info.messageId);
     return info;

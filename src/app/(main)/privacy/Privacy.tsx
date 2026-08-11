@@ -110,6 +110,58 @@ export default function PrivacyPage() {
 
             <section>
               <h2 className="mt-8 mb-4 text-2xl font-bold">
+                2a. Buying tickets
+              </h2>
+              <p className="mb-4 leading-relaxed text-gray-700">
+                When you buy a ticket to one of our events we collect and hold:
+              </p>
+              <ul className="list-disc space-y-2 pl-6 text-gray-700">
+                <li>
+                  Your email address and name — supplied by you, or by Apple Pay
+                  or Google Pay when you use them
+                </li>
+                <li>
+                  The names you give for the people using each ticket, if you
+                  choose to add them
+                </li>
+                <li>
+                  Your order: what you bought, what you paid, any discount code
+                  used, and the link you arrived from
+                </li>
+                <li>
+                  A record of each time a ticket is scanned at the door — when
+                  it happened, on which device, and by which staff member
+                </li>
+              </ul>
+              <p className="mt-4 mb-4 leading-relaxed text-gray-700">
+                We use that to issue and deliver your tickets, let you in at the
+                door, prevent the same ticket being used twice, handle refunds
+                and support, and meet our tax record-keeping obligations. We
+                never see or store your full card number — payments are handled
+                entirely by Stripe.
+              </p>
+              <p className="mb-4 leading-relaxed text-gray-700">
+                Ticketing relies on a few overseas providers, so some of this
+                information is held outside New Zealand under comparable privacy
+                safeguards: Stripe (payments), Resend (ticket email), Amazon Web
+                Services (file storage), and Apple and Google if you add a ticket
+                to a wallet app.
+              </p>
+              <p className="mb-4 leading-relaxed text-gray-700">
+                Buying a ticket does not sign you up to anything. We only email
+                you about future events if you tick the box at checkout, and you
+                can unsubscribe at any time without affecting tickets you have
+                already bought.
+              </p>
+              <p className="mb-4 leading-relaxed text-gray-700">
+                We keep order and scan records for seven years, which is what
+                New Zealand tax law requires of business records, and then
+                delete them.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="mt-8 mb-4 text-2xl font-bold">
                 3. How We Use Your Information
               </h2>
               <p className="mb-4 leading-relaxed text-gray-700">

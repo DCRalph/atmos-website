@@ -81,7 +81,7 @@ export const usersRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.string(),
-        role: z.enum(["USER", "CREATOR", "ADMIN"]),
+        role: z.enum(["USER", "CREATOR", "ADMIN", "DOOR_STAFF"]),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -109,7 +109,7 @@ export const usersRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.string(),
-        role: z.enum(["USER", "CREATOR", "ADMIN"]),
+        role: z.enum(["USER", "CREATOR", "ADMIN", "DOOR_STAFF"]),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -142,7 +142,7 @@ export const usersRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.string(),
-        roles: z.array(z.enum(["USER", "CREATOR", "ADMIN"])),
+        roles: z.array(z.enum(["USER", "CREATOR", "ADMIN", "DOOR_STAFF"])),
       }),
     )
     .mutation(async ({ ctx, input }) => {

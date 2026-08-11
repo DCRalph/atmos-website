@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client"
   output   = "../src/prisma/generated/prisma"
@@ -13,6 +12,9 @@ enum UserRole {
   USER
   CREATOR
   ADMIN
+  /// Door staff. Can open the scanner, but only for events they are assigned
+  /// to via `TicketEventStaff`. Grants no other admin access.
+  DOOR_STAFF
 }
 
 enum ClaimStatus {
@@ -56,21 +58,21 @@ enum GigMode {
 }
 
 model User {
-  id               String        @id
-  name             String
-  email            String
-  emailVerified    Boolean       @default(false)
-  image            String?
-  roles            UserRoleAssignment[]
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @default(now()) @updatedAt
-  sessions         Session[]
-  accounts         Account[]
-  activities       ActivityLog[] @relation("UserActivities")
-  targetActivities ActivityLog[] @relation("TargetUserActivities")
-  creatorProfile   CreatorProfile?
+  id                   String                @id
+  name                 String
+  email                String
+  emailVerified        Boolean               @default(false)
+  image                String?
+  roles                UserRoleAssignment[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @default(now()) @updatedAt
+  sessions             Session[]
+  accounts             Account[]
+  activities           ActivityLog[]         @relation("UserActivities")
+  targetActivities     ActivityLog[]         @relation("TargetUserActivities")
+  creatorProfile       CreatorProfile?
   creatorClaimRequests CreatorClaimRequest[] @relation("ClaimRequestingUser")
-  ownedCreatorThemes CreatorProfileTheme[] @relation("OwnedCreatorThemes")
+  ownedCreatorThemes   CreatorProfileTheme[] @relation("OwnedCreatorThemes")
 
   @@unique([email])
   @@map("user")
@@ -101,8 +103,8 @@ model Session {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([token])
-  @@map("session")
   @@index([userId])
+  @@map("session")
 }
 
 model Account {
@@ -121,8 +123,8 @@ model Account {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
-  @@map("account")
   @@index([userId])
+  @@map("account")
 }
 
 model Verification {
@@ -133,8 +135,8 @@ model Verification {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @default(now()) @updatedAt
 
-  @@map("verification")
   @@index([identifier])
+  @@map("verification")
 }
 
 model Invite {
@@ -152,15 +154,15 @@ model Invite {
 }
 
 model CrewMember {
-  id               String   @id @default(cuid())
-  name             String
-  role             String?
-  instagram        String?
-  soundcloud       String?
-  image            String?
-  sortOrder        Int      @default(0)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id         String   @id @default(cuid())
+  name       String
+  role       String?
+  instagram  String?
+  soundcloud String?
+  image      String?
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   // Optional link to a creator profile. When set, the crew card on the public
   // page becomes clickable and links to the profile.
@@ -179,9 +181,9 @@ enum ContentLinkType {
 }
 
 model ContentItem {
-  id          String          @id @default(cuid())
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   type        String
   title       String
@@ -189,12 +191,11 @@ model ContentItem {
   description String
   date        DateTime
 
-  platform    String?
+  platform String?
 
-  link        String
-  linkType    ContentLinkType @default(OTHER)
-  embedUrl    String?
-  
+  link     String
+  linkType ContentLinkType @default(OTHER)
+  embedUrl String?
 
   homeContentPlacements HomeContentPlacement[]
 
@@ -243,18 +244,18 @@ model GigTagRelationship {
 }
 
 model Gig {
-  id           String    @id @default(cuid())
-  title        String
-  subtitle     String
-  shortDescription String?
+  id                 String    @id @default(cuid())
+  title              String
+  subtitle           String
+  shortDescription   String?
   /// Rich description stored as a serialized Lexical editor state
   /// (`SerializedEditorState`). Replaces the old markdown `description`
   /// column — see `prisma/migrate-gig-descriptions-lexical.ts` history.
   descriptionLexical Json?
-  mode         GigMode  @default(NORMAL)
-  gigStartTime DateTime
-  gigEndTime   DateTime?
-  ticketLink   String?
+  mode               GigMode   @default(NORMAL)
+  gigStartTime       DateTime
+  gigEndTime         DateTime?
+  ticketLink         String?
 
   // Optional "poster" image for this gig (stored as a file_upload record)
   posterFileUploadId String?
@@ -275,28 +276,32 @@ model Gig {
   homeGigPlacements HomeGigPlacement[]
   gigCreators       GigCreator[]
 
+  /// Ticketed events sold through this site. When one exists and is published,
+  /// the gig page shows the buy panel instead of the external `ticketLink`.
+  ticketEvents TicketEvent[]
+
   @@index([posterFileUploadId])
   @@map("gig")
 }
 
 model CreatorProfile {
-  id               String       @id @default(cuid())
-  userId           String?      @unique
+  id               String      @id @default(cuid())
+  userId           String?     @unique
   createdByAdminId String?
-  claimStatus      ClaimStatus  @default(ACTIVE)
-  handle           String       @unique
+  claimStatus      ClaimStatus @default(ACTIVE)
+  handle           String      @unique
   displayName      String
   tagline          String?
-  bio              String?      @db.Text
+  bio              String?     @db.Text
   avatarFileId     String?
   bannerFileId     String?
   accentColor      String?
   themeId          String?
-  isPublished      Boolean      @default(false)
-  gridCols         Int          @default(12)
-  rowHeightPx      Int          @default(60)
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  isPublished      Boolean     @default(false)
+  gridCols         Int         @default(12)
+  rowHeightPx      Int         @default(60)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   user          User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
   themeRef      CreatorProfileTheme?  @relation(fields: [themeId], references: [id], onDelete: SetNull)
@@ -631,27 +636,27 @@ model GearPackageItem {
 }
 
 model Rental {
-  id                    String        @id @default(cuid())
+  id                    String            @id @default(cuid())
   packageId             String?
-  gearPackage           GearPackage?  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  gearPackage           GearPackage?      @relation(fields: [packageId], references: [id], onDelete: Cascade)
   userName              String
   contactInfo           String
   startDate             DateTime
   endDate               DateTime
-  status                RentalStatus  @default(PENDING)
-  baseDailyPrice        Float         @default(0)
-  discountDailyAmount   Float         @default(0)
-  discountedDailyPrice  Float         @default(0)
-  estimatedTotalPrice   Float         @default(0)
+  status                RentalStatus      @default(PENDING)
+  baseDailyPrice        Float             @default(0)
+  discountDailyAmount   Float             @default(0)
+  discountedDailyPrice  Float             @default(0)
+  estimatedTotalPrice   Float             @default(0)
   appliedDiscountRuleId String?
   appliedDiscountName   String?
   appliedDiscountMode   DiscountRuleMode?
   appliedDiscountType   DiscountType?
   appliedDiscountValue  Float?
   rentalItems           RentalItem[]
-  appliedDiscountRule   DiscountRule? @relation(fields: [appliedDiscountRuleId], references: [id], onDelete: SetNull)
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
+  appliedDiscountRule   DiscountRule?     @relation(fields: [appliedDiscountRuleId], references: [id], onDelete: SetNull)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
 
   @@map("rental")
 }
@@ -672,16 +677,16 @@ model RentalItem {
 }
 
 model DiscountRule {
-  id              String                    @id @default(cuid())
-  name            String
-  isActive        Boolean                   @default(true)
-  discountMode    DiscountRuleMode          @default(TOTAL)
-  discountType    DiscountType
-  discountValue   Float                     @default(0)
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
-  requirements    DiscountRuleRequirement[]
-  appliedRentals  Rental[]
+  id             String                    @id @default(cuid())
+  name           String
+  isActive       Boolean                   @default(true)
+  discountMode   DiscountRuleMode          @default(TOTAL)
+  discountType   DiscountType
+  discountValue  Float                     @default(0)
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+  requirements   DiscountRuleRequirement[]
+  appliedRentals Rental[]
 
   @@map("discount_rule")
 }
@@ -691,7 +696,7 @@ model DiscountRuleRequirement {
   discountRuleId String
   gearItemId     String
   requiredQty    Int
-  discountValue  Float      @default(0)
+  discountValue  Float        @default(0)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   discountRule   DiscountRule @relation(fields: [discountRuleId], references: [id], onDelete: Cascade)
@@ -761,6 +766,27 @@ enum ActivityType {
   CREATOR_THEME_DUPLICATED
   GIG_CREATOR_ADDED
   GIG_CREATOR_REMOVED
+  TICKET_EVENT_CREATED
+  TICKET_EVENT_UPDATED
+  TICKET_EVENT_DELETED
+  TICKET_EVENT_PUBLISHED
+  TICKET_EVENT_CANCELLED
+  TICKET_TIER_CREATED
+  TICKET_TIER_UPDATED
+  TICKET_TIER_DELETED
+  TICKET_ORDER_PAID
+  TICKET_ORDER_REFUNDED
+  TICKET_ISSUED
+  TICKET_VOIDED
+  TICKET_RESENT
+  TICKET_SCANNED
+  TICKET_SCAN_OVERRIDE
+  DISCOUNT_CODE_CREATED
+  DISCOUNT_CODE_UPDATED
+  DISCOUNT_CODE_DELETED
+  DOOR_STAFF_ASSIGNED
+  DOOR_STAFF_REMOVED
+  BOX_OFFICE_SALE
   OTHER
 }
 
@@ -792,6 +818,455 @@ model KeyValueStore {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("key_value_store")
   @@index([key])
+  @@map("key_value_store")
+}
+
+// ---------------------------------------------------------------------------
+// Ticketing
+//
+// Money is stored as integer cents throughout — deliberately different from the
+// `Float` columns on the gear/rental models. This system issues GST receipts,
+// and float drift in a tax figure is not acceptable.
+//
+// Prices are GST-INCLUSIVE, which is what NZ consumers must be shown. The GST
+// component of a GST-inclusive total is `total * 3 / 23`.
+// ---------------------------------------------------------------------------
+
+enum TicketEventStatus {
+  DRAFT
+  PUBLISHED
+  SALES_PAUSED
+  SOLD_OUT
+  CANCELLED
+  ARCHIVED
+}
+
+enum TicketOrderStatus {
+  /// Inventory is held, payment not yet confirmed. Expires at `expiresAt`.
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+  /// Free tier that requires admin approval before tickets are issued.
+  AWAITING_APPROVAL
+}
+
+enum TicketStatus {
+  VALID
+  VOID
+  REFUNDED
+}
+
+enum TicketScanResult {
+  ADMITTED
+  DUPLICATE
+  OVERRIDE_ADMITTED
+  REENTRY
+  /// A manager undoing a mistaken admission. The scan log stays append-only,
+  /// so an undo is a new row rather than a deletion.
+  ADMISSION_REVERTED
+  INVALID_SIGNATURE
+  NOT_FOUND
+  WRONG_EVENT
+  VOIDED
+  REFUNDED_TICKET
+  ORDER_UNPAID
+}
+
+enum DiscountCodeType {
+  PERCENT
+  FIXED
+}
+
+enum PaymentMethodKind {
+  STRIPE
+  CASH
+  TERMINAL
+  COMP
+  FREE
+}
+
+enum TicketEmailType {
+  CONFIRMATION
+  RESEND
+  REFUND
+  DETAILS_NUDGE
+  REMINDER
+  APPROVAL_REQUIRED
+}
+
+enum EventStaffRole {
+  SCANNER
+  MANAGER
+}
+
+model TicketEvent {
+  id   String @id @default(cuid())
+  slug String @unique
+  name String
+
+  /// Optional link to an existing gig. When set, the gig page renders the buy
+  /// panel and the event inherits the gig's poster if it has none of its own.
+  gigId String?
+  gig   Gig?    @relation(fields: [gigId], references: [id], onDelete: SetNull)
+
+  shortDescription   String?
+  /// Serialized Lexical editor state, same convention as `Gig.descriptionLexical`.
+  descriptionLexical Json?
+  posterFileUploadId String?
+
+  venueName    String?
+  venueAddress String?
+  /// IANA zone. Sale windows and analytics buckets are computed in this zone so
+  /// NZ daylight saving does not shift them.
+  timezone     String    @default("Pacific/Auckland")
+  doorsAt      DateTime?
+  startsAt     DateTime
+  endsAt       DateTime?
+
+  status       TicketEventStatus @default(DRAFT)
+  publishedAt  DateTime?
+  salesOpenAt  DateTime?
+  salesCloseAt DateTime?
+
+  /// Overall cap across every tier. Null means the sum of tier allocations.
+  capacity             Int?
+  maxTicketsPerOrder   Int     @default(10)
+  requireAttendeeNames Boolean @default(true)
+  /// When true a second scan is a calm "re-entry", not a warning.
+  reentryAllowed       Boolean @default(false)
+  /// Defaults to true: most Atmos events are in licensed venues.
+  isR18                Boolean @default(true)
+
+  /// Booking fee. Null falls back to the site default in `KeyValueStore`.
+  bookingFeeFixedCents Int?
+  /// Basis points, so 250 == 2.5%.
+  bookingFeePercentBp  Int?
+  /// Snapshotted onto each order so historical receipts stay correct.
+  gstRateBp            Int     @default(1500)
+  gstNumber            String?
+
+  termsVersion String @default("v1")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tiers         TicketTier[]
+  orders        TicketOrder[]
+  tickets       Ticket[]
+  scans         TicketScan[]
+  staff         TicketEventStaff[]
+  discountCodes DiscountCode[]
+
+  @@index([status, startsAt])
+  @@index([gigId])
+  @@index([posterFileUploadId])
+  @@map("ticket_event")
+}
+
+model TicketTier {
+  id      String      @id @default(cuid())
+  eventId String
+  event   TicketEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  /// GST-inclusive price in cents. 0 means a free tier: Stripe is skipped.
+  priceCents  Int     @default(0)
+  allocation  Int
+
+  /// Denormalised counters, maintained inside a transaction that locks this row.
+  /// `soldCount` counts issued tickets; `heldCount` counts unexpired PENDING orders.
+  soldCount Int @default(0)
+  heldCount Int @default(0)
+
+  salesStartAt DateTime?
+  salesEndAt   DateTime?
+  /// Manual kill switch, independent of dates and allocation.
+  isActive     Boolean   @default(true)
+  /// Hidden tiers only appear once an unlocking discount code is applied.
+  isHidden     Boolean   @default(false)
+
+  maxPerOrder      Int     @default(10)
+  /// Mainly for free tiers, to stop one person taking the whole allocation.
+  maxPerEmail      Int?
+  /// Free tier that an admin must approve before tickets are issued.
+  requiresApproval Boolean @default(false)
+
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tickets    Ticket[]
+  orderItems TicketOrderItem[]
+
+  @@index([eventId, sortOrder])
+  @@map("ticket_tier")
+}
+
+model TicketOrder {
+  id          String @id @default(cuid())
+  /// Human-facing, no ambiguous characters: ATM-4F7K2X
+  orderNumber String @unique
+
+  eventId String
+  event   TicketEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  status TicketOrderStatus @default(PENDING)
+
+  /// Nullable while PENDING — the whole point is that we ask for nothing until
+  /// after payment. Stripe or the wallet supplies the email.
+  buyerEmail String?
+  buyerName  String?
+  buyerPhone String?
+  userId     String?
+
+  subtotalCents   Int    @default(0)
+  discountCents   Int    @default(0)
+  bookingFeeCents Int    @default(0)
+  totalCents      Int    @default(0)
+  /// GST component *of* totalCents, not added on top.
+  gstCents        Int    @default(0)
+  gstRateBp       Int    @default(1500)
+  currency        String @default("NZD")
+
+  discountCodeId String?
+  paymentMethod  PaymentMethodKind @default(STRIPE)
+
+  stripePaymentIntentId String? @unique
+  stripeChargeId        String?
+  /// Set for box office sales so takings can be attributed.
+  soldByUserId          String?
+
+  termsAcceptedAt DateTime?
+  termsVersion    String?
+  /// Separate from the ticket purchase — UEMA 2007 needs express consent.
+  marketingOptIn  Boolean   @default(false)
+
+  /// The `/tickets/[token]` link is derived, not stored: the token is the order
+  /// id plus an HMAC over `id + accessTokenVersion`. That means we can rebuild
+  /// a buyer's link at any time to re-send it, we never hold a bearer secret in
+  /// the database, and bumping this version revokes the old link.
+  accessTokenVersion Int       @default(1)
+  detailsCompletedAt DateTime?
+
+  /// Hold expiry while PENDING.
+  expiresAt     DateTime?
+  paidAt        DateTime?
+  refundedCents Int       @default(0)
+  refundedAt    DateTime?
+
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  ipAddress   String?
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items       TicketOrderItem[]
+  tickets     Ticket[]
+  emails      TicketEmailLog[]
+  redemptions DiscountRedemption[]
+
+  @@index([eventId, status])
+  @@index([buyerEmail])
+  @@index([status, expiresAt])
+  @@index([createdAt])
+  @@map("ticket_order")
+}
+
+model TicketOrderItem {
+  id             String @id @default(cuid())
+  orderId        String
+  tierId         String
+  quantity       Int
+  /// Snapshot: tier prices can change after the order is placed.
+  unitPriceCents Int
+
+  order TicketOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  tier  TicketTier  @relation(fields: [tierId], references: [id], onDelete: Restrict)
+
+  @@unique([orderId, tierId])
+  @@index([tierId])
+  @@map("ticket_order_item")
+}
+
+model Ticket {
+  id           String @id @default(cuid())
+  /// ATM-4F7K2X-03
+  ticketNumber String @unique
+
+  orderId String
+  eventId String
+  tierId  String
+
+  status        TicketStatus @default(VALID)
+  attendeeName  String?
+  attendeeEmail String?
+
+  /// Random 32 bytes, base64url. Combined with `qrVersion` and the server
+  /// secret to produce the signed QR payload.
+  qrSecret  String
+  /// Bumped to invalidate a previously issued code without changing identity.
+  qrVersion Int    @default(1)
+
+  pricePaidCents Int @default(0)
+
+  applePassSerial String? @unique
+  googleObjectId  String? @unique
+
+  voidedAt   DateTime?
+  voidReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order TicketOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  event TicketEvent  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tier  TicketTier   @relation(fields: [tierId], references: [id], onDelete: Restrict)
+  scans TicketScan[]
+
+  @@index([eventId, status])
+  @@index([orderId])
+  @@index([tierId])
+  @@map("ticket")
+}
+
+/// Append-only scan log. Powers "already admitted, 14 minutes ago" on the door
+/// and the arrivals curve in analytics. Never updated, never deleted.
+model TicketScan {
+  id       String  @id @default(cuid())
+  ticketId String?
+  eventId  String
+
+  result      TicketScanResult
+  wasOverride Boolean          @default(false)
+
+  scannedByUserId String?
+  deviceLabel     String?
+  /// Only kept for failed scans, to debug a bad QR at the door.
+  rawToken        String?
+
+  createdAt DateTime @default(now())
+
+  ticket Ticket?     @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  event  TicketEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, createdAt])
+  @@index([ticketId, createdAt])
+  @@index([eventId, result])
+  @@map("ticket_scan")
+}
+
+model TicketEventStaff {
+  id      String         @id @default(cuid())
+  eventId String
+  userId  String
+  role    EventStaffRole @default(SCANNER)
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  event TicketEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([userId])
+  @@map("ticket_event_staff")
+}
+
+model DiscountCode {
+  id   String @id @default(cuid())
+  /// Always stored uppercase; lookups uppercase the input.
+  code String @unique
+
+  type  DiscountCodeType
+  /// Basis points for PERCENT (1000 == 10%), cents for FIXED.
+  value Int
+
+  /// Null means the code works on any event.
+  eventId String?
+  event   TicketEvent? @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  /// Empty means every tier in scope.
+  tierIds String[]
+
+  maxRedemptions  Int?
+  maxPerEmail     Int? @default(1)
+  minTickets      Int?
+  redemptionCount Int  @default(0)
+
+  startsAt           DateTime?
+  endsAt             DateTime?
+  isActive           Boolean   @default(true)
+  /// Lets a code reveal `isHidden` tiers — guest lists, presales.
+  unlocksHiddenTiers Boolean   @default(false)
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  redemptions DiscountRedemption[]
+
+  @@index([eventId, isActive])
+  @@map("discount_code")
+}
+
+model DiscountRedemption {
+  id          String  @id @default(cuid())
+  codeId      String
+  orderId     String
+  email       String?
+  amountCents Int
+
+  createdAt DateTime @default(now())
+
+  code  DiscountCode @relation(fields: [codeId], references: [id], onDelete: Cascade)
+  order TicketOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([codeId, orderId])
+  @@index([codeId, email])
+  @@map("discount_redemption")
+}
+
+model TicketEmailLog {
+  id      String          @id @default(cuid())
+  orderId String?
+  type    TicketEmailType
+  toEmail String
+
+  providerMessageId String?
+  /// "sent" | "failed"
+  status            String
+  error             String?
+
+  createdAt DateTime @default(now())
+
+  order TicketOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([createdAt])
+  @@map("ticket_email_log")
+}
+
+/// Devices that have added an Apple Wallet pass, so we can push updates when an
+/// event time changes or a ticket is voided.
+model WalletPassRegistration {
+  id                      String @id @default(cuid())
+  deviceLibraryIdentifier String
+  passTypeIdentifier      String
+  serialNumber            String
+  pushToken               String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([deviceLibraryIdentifier, serialNumber])
+  @@index([serialNumber])
+  @@map("wallet_pass_registration")
 }

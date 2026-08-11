@@ -73,8 +73,8 @@ function getLoginMethodBadge(method: string | null) {
   );
 }
 
-type RoleName = "USER" | "CREATOR" | "ADMIN";
-const ALL_ROLES: RoleName[] = ["USER", "CREATOR", "ADMIN"];
+type RoleName = "USER" | "CREATOR" | "ADMIN" | "DOOR_STAFF";
+const ALL_ROLES: RoleName[] = ["USER", "CREATOR", "ADMIN", "DOOR_STAFF"];
 
 export default function UserManagementPage({ params }: PageProps) {
   const { id } = use(params);
@@ -308,7 +308,9 @@ export default function UserManagementPage({ params }: PageProps) {
                           ? "Base access — signed-in user."
                           : role === "CREATOR"
                             ? "Can own/edit their creator profile."
-                            : "Full admin dashboard access."}
+                            : role === "DOOR_STAFF"
+                              ? "Can open the door scanner for events they're assigned to."
+                              : "Full admin dashboard access."}
                       </span>
                     </div>
                   </label>

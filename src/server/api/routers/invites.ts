@@ -29,7 +29,7 @@ export const invitesRouter = createTRPCRouter({
     .input(
       z.object({
         email: z.string().email(),
-        role: z.enum(["USER", "CREATOR", "ADMIN"]),
+        role: z.enum(["USER", "CREATOR", "ADMIN", "DOOR_STAFF"]),
       }),
     )
     .mutation(async ({ ctx, input }) => {

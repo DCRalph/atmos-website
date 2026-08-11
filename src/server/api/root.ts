@@ -19,6 +19,13 @@ import { creatorThemesRouter } from "~/server/api/routers/creator-themes";
 import { gigCreatorsRouter } from "~/server/api/routers/gig-creators";
 import { featureFlagsRouter } from "~/server/api/routers/feature-flags";
 import { uploadsRouter } from "~/server/api/routers/uploads";
+import { ticketEventsRouter } from "~/server/api/routers/ticket-events";
+import { ticketCheckoutRouter } from "~/server/api/routers/ticket-checkout";
+import { ticketsRouter } from "~/server/api/routers/tickets";
+import { doorRouter } from "~/server/api/routers/door";
+import { discountCodesRouter } from "~/server/api/routers/discount-codes";
+import { ticketAdminRouter } from "~/server/api/routers/ticket-admin";
+import { ticketAnalyticsRouter } from "~/server/api/routers/ticket-analytics";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -48,6 +55,15 @@ export const appRouter = createTRPCRouter({
   creatorThemes: creatorThemesRouter,
   gigCreators: gigCreatorsRouter,
   featureFlags: featureFlagsRouter,
+
+  // Ticketing
+  ticketEvents: ticketEventsRouter,
+  ticketCheckout: ticketCheckoutRouter,
+  tickets: ticketsRouter,
+  ticketAdmin: ticketAdminRouter,
+  ticketAnalytics: ticketAnalyticsRouter,
+  discountCodes: discountCodesRouter,
+  door: doorRouter,
 });
 
 // export type definition of API
