@@ -11,7 +11,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Badge } from "~/components/ui/badge";
 import { Switch } from "~/components/ui/switch";
-import { Skeleton } from "~/components/ui/skeleton";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { PickerSelect } from "~/components/ui/picker-select";
 import {
@@ -24,6 +24,11 @@ import {
 import { useConfirm } from "~/components/confirm-provider";
 import { formatNZD, parsePriceToCents } from "~/lib/ticketing/money";
 
+type CodeListItem = RouterOutputs["discountCodes"]["list"][number];
+
+const isExhausted = (code: CodeListItem) =>
+  code.maxRedemptions !== null && code.redemptionCount >= code.maxRedemptions;
+
 /**
  * Discount codes.
  *
@@ -33,42 +38,9 @@ import { formatNZD, parsePriceToCents } from "~/lib/ticketing/money";
  */
 export default function DiscountCodesPage() {
   const [creating, setCreating] = useState(false);
-  const codes = api.discountCodes.list.useQuery({});
-
-  return (
-    <AdminSection
-      title="Discount codes"
-      description="Percentage or fixed-amount codes, optionally scoped to one event."
-      actions={
-        <Button onClick={() => setCreating(true)} disabled={creating}>
-          <Plus className="size-4" /> New code
-        </Button>
-      }
-    >
-      {creating && <CodeForm onDone={() => setCreating(false)} />}
-
-      {codes.isPending && <Skeleton className="mt-4 h-40 w-full" />}
-
-      <div className="mt-4 space-y-2">
-        {codes.data?.length === 0 && !creating && (
-          <p className="text-muted-foreground rounded-lg border border-dashed p-10 text-center">
-            No codes yet.
-          </p>
-        )}
-
-        {codes.data?.map((code) => (
-          <CodeRow key={code.id} code={code} />
-        ))}
-      </div>
-    </AdminSection>
-  );
-}
-
-type CodeListItem = RouterOutputs["discountCodes"]["list"][number];
-
-function CodeRow({ code }: { code: CodeListItem }) {
   const utils = api.useUtils();
   const confirm = useConfirm();
+  const codes = api.discountCodes.list.useQuery({});
 
   const update = api.discountCodes.update.useMutation({
     onSuccess: () => void utils.discountCodes.list.invalidate(),
@@ -83,63 +55,125 @@ function CodeRow({ code }: { code: CodeListItem }) {
     onError: (error) => toast.error(error.message),
   });
 
-  const exhausted =
-    code.maxRedemptions !== null && code.redemptionCount >= code.maxRedemptions;
-
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono font-semibold">{code.code}</span>
-          <Badge variant="outline">
-            {code.type === "PERCENT"
-              ? `${code.value / 100}% off`
-              : `${formatNZD(code.value)} off`}
-          </Badge>
-          {code.event && <Badge variant="outline">{code.event.name}</Badge>}
-          {code.unlocksHiddenTiers && (
-            <Badge variant="secondary">unlocks hidden tiers</Badge>
-          )}
-          {exhausted && <Badge variant="destructive">used up</Badge>}
+  const columns: DataTableColumn<CodeListItem>[] = [
+    {
+      id: "code",
+      header: "Code",
+      accessor: (row) => row.code,
+      cell: (row) => <span className="font-mono font-medium">{row.code}</span>,
+    },
+    {
+      id: "discount",
+      header: "Discount",
+      cell: (row) =>
+        row.type === "PERCENT"
+          ? `${row.value / 100}% off`
+          : `${formatNZD(row.value)} off`,
+    },
+    {
+      id: "event",
+      header: "Event",
+      cell: (row) =>
+        row.event ? (
+          <Badge variant="outline">{row.event.name}</Badge>
+        ) : (
+          <span className="text-muted-foreground">Any event</span>
+        ),
+    },
+    {
+      id: "unlocksHiddenTiers",
+      header: "Unlocks hidden",
+      type: "boolean",
+      accessor: (row) => row.unlocksHiddenTiers,
+    },
+    {
+      id: "used",
+      header: "Used",
+      type: "number",
+      align: "right",
+      accessor: (row) => row.redemptionCount,
+      cell: (row) => (
+        <div className="flex items-center justify-end gap-2">
+          <span className="tabular-nums">
+            {row.redemptionCount}
+            {row.maxRedemptions !== null ? ` of ${row.maxRedemptions}` : ""}
+          </span>
+          {isExhausted(row) && <Badge variant="destructive">used up</Badge>}
         </div>
-        <p className="text-muted-foreground mt-1 text-sm">
-          {code.redemptionCount} used
-          {code.maxRedemptions !== null ? ` of ${code.maxRedemptions}` : ""}
-          {code.endsAt
-            ? ` · expires ${code.endsAt.toLocaleDateString("en-NZ")}`
-            : ""}
-        </p>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <Switch
-            checked={code.isActive}
-            onCheckedChange={(value) =>
-              update.mutate({ id: code.id, isActive: value })
-            }
-          />
-          <span className="text-sm">Active</span>
-        </div>
+      ),
+    },
+    {
+      id: "endsAt",
+      header: "Expires",
+      type: "date",
+      accessor: (row) => row.endsAt,
+      cell: (row) =>
+        row.endsAt ? row.endsAt.toLocaleDateString("en-NZ") : "—",
+    },
+    {
+      id: "isActive",
+      header: "Active",
+      cell: (row) => (
+        <Switch
+          checked={row.isActive}
+          aria-label={`${row.isActive ? "Deactivate" : "Activate"} ${row.code}`}
+          onCheckedChange={(value) =>
+            update.mutate({ id: row.id, isActive: value })
+          }
+        />
+      ),
+    },
+    {
+      id: "actions",
+      header: "",
+      hideable: false,
+      align: "right",
+      cell: (row) => (
         <Button
           variant="ghost"
           size="icon"
-          aria-label={`Delete ${code.code}`}
+          aria-label={`Delete ${row.code}`}
           onClick={async () => {
             const ok = await confirm({
-              title: `Delete ${code.code}?`,
+              title: `Delete ${row.code}?`,
               description:
                 "Only possible before it has been used. Otherwise deactivate it so the sales history stays intact.",
               confirmLabel: "Delete",
               variant: "destructive",
             });
-            if (ok) remove.mutate({ id: code.id });
+            if (ok) remove.mutate({ id: row.id });
           }}
         >
           <Trash2 className="size-4" />
         </Button>
+      ),
+    },
+  ];
+
+  return (
+    <AdminSection
+      title="Discount codes"
+      description="Percentage or fixed-amount codes, optionally scoped to one event."
+      actions={
+        <Button onClick={() => setCreating(true)} disabled={creating}>
+          <Plus className="size-4" /> New code
+        </Button>
+      }
+    >
+      {creating && <CodeForm onDone={() => setCreating(false)} />}
+
+      <div className="mt-4">
+        <DataTable
+          columns={columns}
+          data={codes.data ?? []}
+          getRowId={(row) => row.id}
+          isLoading={codes.isPending}
+          isFetching={codes.isFetching}
+          storageKey="admin-discount-codes"
+          emptyMessage="No codes yet."
+        />
       </div>
-    </div>
+    </AdminSection>
   );
 }
 

@@ -10,7 +10,14 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Badge } from "~/components/ui/badge";
 import { Switch } from "~/components/ui/switch";
-import { Skeleton } from "~/components/ui/skeleton";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog";
 import {
   ACCESS_LEVELS,
   type AccessLevelValue,
@@ -18,6 +25,7 @@ import {
 } from "~/lib/ticketing/access-levels";
 
 type AdminEvent = RouterOutputs["ticketEvents"]["byId"];
+type Comp = NonNullable<RouterOutputs["ticketAdmin"]["comps"]>[number];
 
 /**
  * Comps — tickets given away by name.
@@ -36,8 +44,59 @@ export function CompsPanel({ event }: { event: AdminEvent }) {
   const [notes, setNotes] = useState("");
   const [sendEmail, setSendEmail] = useState(true);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [openCompId, setOpenCompId] = useState<string | null>(null);
 
   const comps = api.ticketAdmin.comps.useQuery({ eventId: event.id });
+  const openComp = comps.data?.find((comp) => comp.id === openCompId);
+
+  const compColumns: DataTableColumn<Comp>[] = [
+    {
+      id: "recipient",
+      header: "Recipient",
+      accessor: (row) => row.recipientName ?? "",
+      cell: (row) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium">
+            {row.recipientName ?? "No name"}
+          </p>
+          <p className="text-muted-foreground truncate text-xs">
+            {row.recipientEmail ?? "no email"}
+          </p>
+        </div>
+      ),
+    },
+    {
+      id: "orderNumber",
+      header: "Order",
+      accessor: (row) => row.orderNumber,
+      cell: (row) => (
+        <span className="font-mono text-xs">{row.orderNumber}</span>
+      ),
+    },
+    {
+      id: "tickets",
+      header: "Tickets",
+      type: "number",
+      align: "right",
+      accessor: (row) => row.tickets.length,
+    },
+    {
+      id: "createdAt",
+      header: "Issued",
+      type: "date",
+      accessor: (row) => row.createdAt,
+      cell: (row) =>
+        new Date(row.createdAt).toLocaleDateString("en-NZ", {
+          day: "numeric",
+          month: "short",
+        }),
+    },
+    {
+      id: "notes",
+      header: "Notes",
+      cell: (row) => row.notes ?? "—",
+    },
+  ];
 
   const lines = useMemo(
     () =>
@@ -119,10 +178,7 @@ export function CompsPanel({ event }: { event: AdminEvent }) {
                 );
                 const meta = accessLevelMeta(tier.accessLevel);
                 return (
-                  <li
-                    key={tier.id}
-                    className="flex items-center gap-3 p-3"
-                  >
+                  <li key={tier.id} className="flex items-center gap-3 p-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-medium">{tier.name}</span>
@@ -223,29 +279,41 @@ export function CompsPanel({ event }: { event: AdminEvent }) {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-xl font-semibold">Comps issued</h2>
-
-        {comps.isPending && <Skeleton className="h-32 w-full" />}
-
-        {comps.data?.length === 0 && (
-          <p className="text-muted-foreground rounded-lg border border-dashed p-8 text-center">
-            Nothing comped for this event yet.
-          </p>
-        )}
-
-        <div className="space-y-3">
-          {comps.data?.map((comp) => (
-            <CompRow key={comp.id} comp={comp} />
-          ))}
-        </div>
+        <DataTable
+          title="Comps issued"
+          columns={compColumns}
+          data={comps.data ?? []}
+          getRowId={(row) => row.id}
+          isLoading={comps.isPending}
+          isFetching={comps.isFetching}
+          onRowClick={(row) => setOpenCompId(row.id)}
+          storageKey="admin-ticket-comps"
+          emptyMessage="Nothing comped for this event yet."
+        />
       </section>
+
+      {/* The tickets in a comp, where an artist's own ticket gets set apart
+          from their guests'. */}
+      <Dialog
+        open={openCompId !== null}
+        onOpenChange={(open) => !open && setOpenCompId(null)}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{openComp?.recipientName ?? "Comp"}</DialogTitle>
+            <DialogDescription>
+              {openComp?.orderNumber}
+              {openComp?.notes ? ` · ${openComp.notes}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {openComp && <CompTickets comp={openComp} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-type Comp = NonNullable<RouterOutputs["ticketAdmin"]["comps"]>[number];
-
-function CompRow({ comp }: { comp: Comp }) {
+function CompTickets({ comp }: { comp: Comp }) {
   const utils = api.useUtils();
 
   const setLevel = api.ticketAdmin.setTicketAccessLevel.useMutation({
@@ -257,36 +325,18 @@ function CompRow({ comp }: { comp: Comp }) {
   });
 
   return (
-    <div className="rounded-lg border p-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div className="min-w-0">
-          <p className="font-semibold">
-            {comp.recipientName ?? "No name"}
-            <span className="text-muted-foreground ml-2 text-sm font-normal">
-              {comp.recipientEmail ?? "no email"}
-            </span>
-          </p>
-          <p className="text-muted-foreground text-xs">
-            {comp.orderNumber} ·{" "}
-            {new Date(comp.createdAt).toLocaleDateString("en-NZ", {
-              day: "numeric",
-              month: "short",
-            })}
-            {comp.notes ? ` · ${comp.notes}` : ""}
-          </p>
-        </div>
-        <a
-          href={comp.ticketsUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="text-muted-foreground inline-flex items-center gap-1.5 text-sm underline underline-offset-4"
-        >
-          <Ticket className="size-3.5" aria-hidden />
-          Their tickets
-        </a>
-      </div>
+    <div className="space-y-3">
+      <a
+        href={comp.ticketsUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="text-muted-foreground inline-flex items-center gap-1.5 text-sm underline underline-offset-4"
+      >
+        <Ticket className="size-3.5" aria-hidden />
+        Their tickets
+      </a>
 
-      <ul className="mt-3 space-y-2">
+      <ul className="space-y-2">
         {comp.tickets.map((ticket) => (
           <li
             key={ticket.id}
@@ -325,7 +375,7 @@ function CompRow({ comp }: { comp: Comp }) {
       </ul>
 
       {!comp.recipientEmail && (
-        <p className="text-muted-foreground mt-3 flex items-center gap-1.5 text-xs">
+        <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
           <Mail className="size-3.5" aria-hidden />
           No email on this one — send them the link above.
         </p>

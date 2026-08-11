@@ -491,7 +491,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
       </div>
 
       {/* The page's one and only Save, kept in reach of every field. */}
-      <div className="bg-background/95 sticky top-16 z-20 -mx-2 mb-6 flex flex-wrap items-center gap-3 rounded-lg border px-4 py-3 backdrop-blur">
+      <div className="bg-background/95 sticky top-20 z-20 -mx-2 mb-6 flex flex-wrap items-center gap-3 rounded-lg border px-4 py-3 backdrop-blur">
         <SaveStatusPill status={status} errorMessage={errorMessage} />
         {status === "idle" ? (
           <span className="text-muted-foreground text-sm">

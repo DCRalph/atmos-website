@@ -10,7 +10,11 @@ import {
 } from "react";
 import { Check, ChevronsUpDown, Loader2, Search, X } from "lucide-react";
 
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "~/components/ui/popover";
 import { cn } from "~/lib/utils";
 
 /**
@@ -201,7 +205,10 @@ export function SearchableSelect({
           )}
         >
           <span
-            className={cn("truncate", !resolvedLabel && "text-muted-foreground")}
+            className={cn(
+              "truncate",
+              !resolvedLabel && "text-muted-foreground",
+            )}
           >
             {resolvedLabel ?? placeholder}
           </span>
@@ -220,13 +227,18 @@ export function SearchableSelect({
                 <X className="size-3.5" />
               </span>
             )}
-            <ChevronsUpDown className="text-muted-foreground size-4" aria-hidden />
+            <ChevronsUpDown
+              className="text-muted-foreground size-4"
+              aria-hidden
+            />
           </span>
         </button>
       </PopoverTrigger>
 
       <PopoverContent
-        className="w-(--radix-popover-trigger-width) p-0"
+        // The search box stays put and the list below it takes whatever room
+        // is left, rather than the whole popover scrolling as one.
+        className="flex max-h-[min(24rem,var(--radix-popover-content-available-height))] w-(--radix-popover-trigger-width) flex-col overflow-x-hidden overflow-y-hidden p-0"
         align="start"
         onOpenAutoFocus={(event) => {
           event.preventDefault();
@@ -234,7 +246,10 @@ export function SearchableSelect({
         }}
       >
         <div className="flex items-center gap-2 border-b px-3">
-          <Search className="text-muted-foreground size-4 shrink-0" aria-hidden />
+          <Search
+            className="text-muted-foreground size-4 shrink-0"
+            aria-hidden
+          />
           <input
             ref={inputRef}
             value={query}
@@ -260,7 +275,7 @@ export function SearchableSelect({
           ref={listRef}
           id={listboxId}
           role="listbox"
-          className="max-h-72 overflow-y-auto p-1"
+          className="min-h-0 flex-1 overflow-y-auto p-1"
         >
           {rows.length === 0 && (
             <p className="text-muted-foreground px-3 py-6 text-center text-sm">
@@ -316,7 +331,8 @@ export function SearchableSelect({
 
           {truncated && (
             <p className="text-muted-foreground border-t px-3 py-2 text-xs">
-              Showing {visible.length} of {total}. Keep typing to narrow it down.
+              Showing {visible.length} of {total}. Keep typing to narrow it
+              down.
             </p>
           )}
         </div>

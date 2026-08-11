@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { api, type RouterOutputs } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
-import { Badge } from "~/components/ui/badge";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
 import { PickerSelect } from "~/components/ui/picker-select";
 import {
   Select,
@@ -17,6 +17,7 @@ import {
 } from "~/components/ui/select";
 
 type AdminEvent = RouterOutputs["ticketEvents"]["byId"];
+type StaffRow = AdminEvent["staff"][number];
 
 /**
  * Who can work this door.
@@ -45,58 +46,76 @@ export function StaffPanel({ event }: { event: AdminEvent }) {
     onSuccess: () => void utils.ticketEvents.byId.invalidate(),
   });
 
+  const columns: DataTableColumn<StaffRow>[] = [
+    {
+      id: "name",
+      header: "Staff",
+      accessor: (row) => row.user?.name ?? "",
+      cell: (row) => (
+        <div className="flex min-w-0 items-center gap-2">
+          <ScanLine
+            className="text-muted-foreground size-4 shrink-0"
+            aria-hidden
+          />
+          <div className="min-w-0">
+            <p className="truncate font-medium">
+              {row.user?.name ?? "Unknown user"}
+            </p>
+            <p className="text-muted-foreground truncate text-xs">
+              {row.user?.email}
+            </p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "role",
+      header: "Role",
+      type: "badge",
+      accessor: (row) => row.role.toLowerCase(),
+      badge: (value, row) => ({
+        label: String(value),
+        variant: row.role === "MANAGER" ? "default" : "outline",
+      }),
+    },
+    {
+      id: "actions",
+      header: "",
+      hideable: false,
+      align: "right",
+      cell: (row) => (
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={`Remove ${row.user?.name ?? "staff member"}`}
+          onClick={() =>
+            remove.mutate({ eventId: event.id, userId: row.userId })
+          }
+        >
+          <Trash2 className="size-4" />
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <div className="max-w-2xl space-y-6">
       <div>
         <h2 className="text-xl font-semibold">Door staff</h2>
         <p className="text-muted-foreground text-sm">
-          Assigned staff open <code>/door</code> on their own phone and only
-          see their events. Admins and event organisers have unrestricted door
+          Assigned staff open <code>/door</code> on their own phone and only see
+          their events. Admins and event organisers have unrestricted door
           access at every event.
         </p>
       </div>
 
-      <ul className="divide-y rounded-lg border">
-        {event.staff.length === 0 && (
-          <li className="text-muted-foreground p-6 text-center text-sm">
-            Nobody assigned yet.
-          </li>
-        )}
-        {event.staff.map((assignment) => (
-          <li
-            key={assignment.id}
-            className="flex items-center gap-3 p-3.5 text-sm"
-          >
-            <ScanLine className="text-muted-foreground size-4" aria-hidden />
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-medium">
-                {assignment.user?.name ?? "Unknown user"}
-              </p>
-              <p className="text-muted-foreground truncate text-xs">
-                {assignment.user?.email}
-              </p>
-            </div>
-            <Badge
-              variant={assignment.role === "MANAGER" ? "default" : "outline"}
-            >
-              {assignment.role.toLowerCase()}
-            </Badge>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={`Remove ${assignment.user?.name ?? "staff member"}`}
-              onClick={() =>
-                remove.mutate({
-                  eventId: event.id,
-                  userId: assignment.userId,
-                })
-              }
-            >
-              <Trash2 className="size-4" />
-            </Button>
-          </li>
-        ))}
-      </ul>
+      <DataTable
+        columns={columns}
+        data={event.staff}
+        getRowId={(row) => row.id}
+        storageKey="admin-event-staff"
+        emptyMessage="Nobody assigned yet."
+      />
 
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-56 flex-1">

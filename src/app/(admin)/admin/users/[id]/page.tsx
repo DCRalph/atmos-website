@@ -29,6 +29,7 @@ import {
 import { Badge } from "~/components/ui/badge";
 import { Loader2, CheckCircle2, XCircle, Calendar, Clock } from "lucide-react";
 import { UserActivityLogs } from "~/components/admin/user-activity-logs";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
 import { useConfirm } from "~/components/confirm-provider";
 
 type PageProps = {
@@ -41,6 +42,39 @@ function titleizeProvider(providerId: string): string {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 }
+
+type ConnectedAccount = {
+  id: string;
+  providerId: string;
+  accountId: string;
+  createdAt: Date;
+};
+
+const accountColumns: DataTableColumn<ConnectedAccount>[] = [
+  {
+    id: "provider",
+    header: "Provider",
+    accessor: (row) => titleizeProvider(row.providerId),
+    className: "font-medium",
+  },
+  {
+    id: "accountId",
+    header: "Account ID",
+    cell: (row) => <span className="font-mono text-xs">{row.accountId}</span>,
+  },
+  {
+    id: "createdAt",
+    header: "Connected",
+    type: "date",
+    accessor: (row) => row.createdAt,
+    cell: (row) =>
+      formatDateInUserTimezone(row.createdAt, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      }),
+  },
+];
 
 function getLoginMethodBadge(method: string | null) {
   if (!method) return null;
@@ -358,44 +392,13 @@ export default function UserManagementPage({ params }: PageProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {user.accounts.length > 0 ? (
-              <div className="space-y-3">
-                {user.accounts.map((account) => (
-                  <div
-                    key={account.id}
-                    className="flex items-center justify-between rounded-lg border p-4"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="bg-muted flex h-10 w-10 items-center justify-center rounded-full">
-                        <span className="text-sm font-semibold">
-                          {titleizeProvider(account.providerId).charAt(0)}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-medium">
-                          {titleizeProvider(account.providerId)}
-                        </p>
-                        <p className="text-muted-foreground text-xs">
-                          Account ID: {account.accountId}
-                        </p>
-                        <p className="text-muted-foreground text-xs">
-                          Connected:{" "}
-                          {formatDateInUserTimezone(account.createdAt, {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground py-8 text-center">
-                No connected accounts
-              </p>
-            )}
+            <DataTable
+              columns={accountColumns}
+              data={user.accounts}
+              getRowId={(row) => row.id}
+              storageKey="admin-user-accounts"
+              emptyMessage="No connected accounts"
+            />
           </CardContent>
         </Card>
 

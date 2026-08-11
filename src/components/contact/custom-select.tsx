@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
+
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "~/components/ui/popover";
 
 interface CustomSelectProps {
   options: string[];
@@ -18,74 +24,62 @@ export function CustomSelect({
   hasError = false,
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const selectRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        selectRef.current &&
-        !selectRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   return (
-    <div ref={selectRef} className="relative">
-      {/* Select Button */}
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={`focus:border-accent-strong flex w-full items-center justify-between border-2 bg-black/50 px-4 py-3 text-left font-mono text-white transition-all hover:border-white/40 focus:shadow-[0_0_15px_var(--accent-muted)] focus:outline-none ${
-          hasError
-            ? "border-accent-strong shadow-[0_0_15px_var(--accent-muted)]"
-            : "border-white/20"
-        }`}
-      >
-        <span className={value ? "text-white" : "text-white/40"}>
-          {value || placeholder}
-        </span>
-        <svg
-          className={`h-5 w-5 text-white transition-transform ${isOpen ? "rotate-180" : ""}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={`focus:border-accent-strong flex w-full items-center justify-between border-2 bg-black/50 px-4 py-3 text-left font-mono text-white transition-all hover:border-white/40 focus:shadow-[0_0_15px_var(--accent-muted)] focus:outline-none ${
+            hasError
+              ? "border-accent-strong shadow-[0_0_15px_var(--accent-muted)]"
+              : "border-white/20"
+          }`}
         >
-          <path
-            strokeLinecap="square"
-            strokeLinejoin="miter"
-            strokeWidth={2}
-            d="M19 9l-7 7-7-7"
-          />
-        </svg>
-      </button>
+          <span className={value ? "text-white" : "text-white/40"}>
+            {value || placeholder}
+          </span>
+          <svg
+            className={`h-5 w-5 text-white transition-transform ${isOpen ? "rotate-180" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="square"
+              strokeLinejoin="miter"
+              strokeWidth={2}
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </button>
+      </PopoverTrigger>
 
-      {/* Dropdown Menu */}
-      {isOpen && (
-        <div className="border-accent-strong absolute z-50 mt-1 max-h-60 w-full overflow-auto border-2 bg-black shadow-[0_0_20px_var(--accent-muted)]">
-          {options.map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => {
-                onChange(option);
-                setIsOpen(false);
-              }}
-              className={`w-full border-b border-white/10 px-4 py-3 text-left font-mono transition-colors last:border-b-0 ${
-                value === option
-                  ? "bg-accent-strong font-bold text-white"
-                  : "hover:bg-accent-muted/20 hover:text-accent-muted text-white"
-              }`}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+      {/* Matches the trigger's width, and never grows past the room on screen —
+          Radix flips it above the field when there isn't any below. */}
+      <PopoverContent
+        align="start"
+        sideOffset={4}
+        className="border-accent-strong max-h-[min(15rem,var(--radix-popover-content-available-height))] w-(--radix-popover-trigger-width) rounded-none border-2 bg-black p-0 shadow-[0_0_20px_var(--accent-muted)]"
+      >
+        {options.map((option) => (
+          <button
+            key={option}
+            type="button"
+            onClick={() => {
+              onChange(option);
+              setIsOpen(false);
+            }}
+            className={`w-full border-b border-white/10 px-4 py-3 text-left font-mono transition-colors last:border-b-0 ${
+              value === option
+                ? "bg-accent-strong font-bold text-white"
+                : "hover:bg-accent-muted/20 hover:text-accent-muted text-white"
+            }`}
+          >
+            {option}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
   );
 }

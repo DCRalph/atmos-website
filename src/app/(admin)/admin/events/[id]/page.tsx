@@ -5,11 +5,12 @@ import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
-import { api } from "~/trpc/react";
+import { api, type RouterOutputs } from "~/trpc/react";
 import { AdminSection } from "~/components/admin/admin-section";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { Skeleton } from "~/components/ui/skeleton";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import {
   Select,
@@ -167,6 +168,8 @@ export default function AdminEventPage() {
   );
 }
 
+type ApprovalRow = RouterOutputs["ticketAdmin"]["pendingApprovals"][number];
+
 /** Guest-list tiers that need a decision before tickets are issued. */
 function ApprovalQueue({ eventId, count }: { eventId: string; count: number }) {
   const utils = api.useUtils();
@@ -181,45 +184,66 @@ function ApprovalQueue({ eventId, count }: { eventId: string; count: number }) {
     onError: (error) => toast.error(error.message),
   });
 
+  const columns: DataTableColumn<ApprovalRow>[] = [
+    {
+      id: "buyer",
+      header: "Requested by",
+      accessor: (row) => row.buyerName ?? "",
+      cell: (row) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium">{row.buyerName ?? "No name"}</p>
+          <p className="text-muted-foreground truncate text-xs">
+            {row.buyerEmail}
+          </p>
+        </div>
+      ),
+    },
+    {
+      id: "tickets",
+      header: "Tickets",
+      cell: (row) =>
+        row.items
+          .map((item) => `${item.quantity}× ${item.tier.name}`)
+          .join(", "),
+    },
+    {
+      id: "actions",
+      header: "",
+      hideable: false,
+      align: "right",
+      cell: (row) => (
+        <div className="flex justify-end gap-2">
+          <Button
+            size="sm"
+            disabled={decide.isPending}
+            onClick={() => decide.mutate({ orderId: row.id, approve: true })}
+          >
+            Approve
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={decide.isPending}
+            onClick={() => decide.mutate({ orderId: row.id, approve: false })}
+          >
+            Decline
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="mb-6 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4">
-      <p className="font-medium">
-        {count} guest list request{count === 1 ? "" : "s"} waiting
-      </p>
-      <ul className="mt-3 space-y-2">
-        {approvals.data?.map((order) => (
-          <li
-            key={order.id}
-            className="flex flex-wrap items-center justify-between gap-3 text-sm"
-          >
-            <span>
-              {order.buyerName ?? "No name"} · {order.buyerEmail} ·{" "}
-              {order.items.map((item) => `${item.quantity}× ${item.tier.name}`).join(", ")}
-            </span>
-            <span className="flex gap-2">
-              <Button
-                size="sm"
-                disabled={decide.isPending}
-                onClick={() =>
-                  decide.mutate({ orderId: order.id, approve: true })
-                }
-              >
-                Approve
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={decide.isPending}
-                onClick={() =>
-                  decide.mutate({ orderId: order.id, approve: false })
-                }
-              >
-                Decline
-              </Button>
-            </span>
-          </li>
-        ))}
-      </ul>
+      <DataTable
+        title={`${count} guest list request${count === 1 ? "" : "s"} waiting`}
+        columns={columns}
+        data={approvals.data ?? []}
+        getRowId={(row) => row.id}
+        isLoading={approvals.isPending}
+        storageKey="admin-event-approvals"
+        emptyMessage="Nothing waiting."
+      />
     </div>
   );
 }

@@ -4,11 +4,19 @@ import { useState } from "react";
 import { Copy, Link2, Mail, Search, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { api } from "~/trpc/react";
+import { api, type RouterOutputs } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Badge } from "~/components/ui/badge";
 import { Skeleton } from "~/components/ui/skeleton";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog";
 import { useConfirm } from "~/components/confirm-provider";
 import { formatNZD } from "~/lib/ticketing/money";
 import {
@@ -65,6 +73,10 @@ function AccessLevelSelect({
   );
 }
 
+type OrderRow = RouterOutputs["ticketAdmin"]["orders"]["orders"][number];
+
+const statusLabel = (status: string) => status.replace("_", " ").toLowerCase();
+
 export function OrdersPanel({
   eventId,
   readOnly = false,
@@ -81,84 +93,125 @@ export function OrdersPanel({
     limit: 50,
   });
 
+  const rows = orders.data?.orders ?? [];
+  const openOrder = rows.find((order) => order.id === openOrderId);
+
+  const columns: DataTableColumn<OrderRow>[] = [
+    {
+      id: "orderNumber",
+      header: "Order",
+      accessor: (row) => row.orderNumber,
+      cell: (row) => (
+        <span className="font-mono font-medium">{row.orderNumber}</span>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      type: "badge",
+      accessor: (row) => statusLabel(row.status),
+      badge: (_value, row) => ({
+        label: statusLabel(row.status),
+        variant:
+          row.status === "PAID"
+            ? "default"
+            : row.status === "REFUNDED" || row.status === "PARTIALLY_REFUNDED"
+              ? "destructive"
+              : "outline",
+      }),
+    },
+    {
+      id: "paymentMethod",
+      header: "Payment",
+      type: "badge",
+      accessor: (row) => row.paymentMethod.toLowerCase(),
+      badge: (value) => ({ label: String(value), variant: "outline" }),
+    },
+    {
+      id: "buyer",
+      header: "Buyer",
+      accessor: (row) => row.buyerName ?? "",
+      cell: (row) => (
+        <div className="min-w-0">
+          <p className="truncate">{row.buyerName ?? "No name"}</p>
+          <p className="text-muted-foreground truncate text-xs">
+            {row.buyerEmail ?? "no email"}
+          </p>
+        </div>
+      ),
+    },
+    {
+      id: "tickets",
+      header: "Tickets",
+      type: "number",
+      align: "right",
+      accessor: (row) => row._count.tickets,
+    },
+    {
+      id: "total",
+      header: "Total",
+      type: "number",
+      align: "right",
+      accessor: (row) => row.totalCents,
+      cell: (row) => (
+        <span className="tabular-nums">{formatNZD(row.totalCents)}</span>
+      ),
+    },
+    {
+      id: "createdAt",
+      header: "Placed",
+      type: "date",
+      accessor: (row) => row.createdAt,
+      cell: (row) => formatEventDateTime(row.createdAt, DEFAULT_EVENT_TIMEZONE),
+    },
+  ];
+
   return (
     <div className="space-y-4">
-      <div className="relative max-w-md">
-        <Search
-          className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-          aria-hidden
-        />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Order number, name or email"
-          className="pl-9"
-        />
-      </div>
-
-      {orders.isPending && <Skeleton className="h-64 w-full" />}
-
-      {orders.data?.orders.length === 0 && (
-        <p className="text-muted-foreground rounded-lg border border-dashed p-8 text-center">
-          No orders yet.
-        </p>
-      )}
-
-      <div className="space-y-2">
-        {orders.data?.orders.map((order) => (
-          <div key={order.id} className="rounded-lg border">
-            <button
-              type="button"
-              className="hover:bg-accent/40 flex w-full flex-wrap items-center justify-between gap-3 p-4 text-left transition-colors"
-              onClick={() =>
-                setOpenOrderId(openOrderId === order.id ? null : order.id)
-              }
-            >
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-sm font-semibold">
-                    {order.orderNumber}
-                  </span>
-                  <Badge
-                    variant={
-                      order.status === "PAID"
-                        ? "default"
-                        : order.status === "REFUNDED" ||
-                            order.status === "PARTIALLY_REFUNDED"
-                          ? "destructive"
-                          : "outline"
-                    }
-                  >
-                    {order.status.replace("_", " ").toLowerCase()}
-                  </Badge>
-                  <Badge variant="outline">
-                    {order.paymentMethod.toLowerCase()}
-                  </Badge>
-                </div>
-                <p className="text-muted-foreground mt-1 text-sm">
-                  {order.buyerName ?? "No name"} ·{" "}
-                  {order.buyerEmail ?? "no email"} · {order._count.tickets}{" "}
-                  ticket
-                  {order._count.tickets === 1 ? "" : "s"}
-                </p>
-              </div>
-
-              <div className="text-right">
-                <p className="font-semibold tabular-nums">
-                  {formatNZD(order.totalCents)}
-                </p>
-                <p className="text-muted-foreground text-xs">
-                  {formatEventDateTime(order.createdAt, DEFAULT_EVENT_TIMEZONE)}
-                </p>
-              </div>
-            </button>
-
-            {openOrderId === order.id && (
-              <OrderDetail orderId={order.id} readOnly={readOnly} />
-            )}
+      <DataTable
+        columns={columns}
+        data={rows}
+        getRowId={(row) => row.id}
+        isLoading={orders.isPending}
+        isFetching={orders.isFetching}
+        onRowClick={(row) => setOpenOrderId(row.id)}
+        storageKey="admin-ticket-orders"
+        emptyMessage="No orders yet."
+        toolbarActions={
+          <div className="relative w-full max-w-xs">
+            <Search
+              className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+              aria-hidden
+            />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Order number, name or email"
+              className="pl-9"
+            />
           </div>
-        ))}
-      </div>
+        }
+      />
+
+      <Dialog
+        open={openOrderId !== null}
+        onOpenChange={(open) => !open && setOpenOrderId(null)}
+      >
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-mono">
+              {openOrder?.orderNumber ?? "Order"}
+            </DialogTitle>
+            <DialogDescription>
+              {openOrder?.buyerName ?? "No name"} ·{" "}
+              {openOrder?.buyerEmail ?? "no email"}
+            </DialogDescription>
+          </DialogHeader>
+          {openOrderId && (
+            <OrderDetail orderId={openOrderId} readOnly={readOnly} />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -199,7 +252,7 @@ function OrderDetail({
   });
 
   if (order.isPending) {
-    return <Skeleton className="m-4 h-40" />;
+    return <Skeleton className="h-40" />;
   }
   if (!order.data) return null;
 
@@ -207,7 +260,7 @@ function OrderDetail({
   const supportUrl = data.ticketsUrl;
 
   return (
-    <div className="space-y-4 border-t p-4">
+    <div className="space-y-4">
       <div className="grid gap-4 text-sm sm:grid-cols-2">
         <dl className="space-y-1">
           <Row label="Tickets" value={formatNZD(data.subtotalCents)} />
