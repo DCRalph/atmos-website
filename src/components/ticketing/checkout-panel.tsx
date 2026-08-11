@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import {
@@ -15,7 +15,6 @@ import { toast } from "sonner";
 
 import { env } from "~/env";
 import { Button } from "~/components/ui/button";
-import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -114,22 +113,9 @@ function PaidCheckout({
   const elements = useElements();
   const router = useRouter();
 
-  const [accepted, setAccepted] = useState(false);
-  const [marketing, setMarketing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // The Express Checkout callbacks fire from Stripe's own iframe and hold onto
-  // the closure they were mounted with, so they would otherwise read a stale
-  // `accepted`. Mirroring into refs keeps them looking at the live value.
-  const acceptedRef = useRef(accepted);
-  const marketingRef = useRef(marketing);
-  useEffect(() => {
-    acceptedRef.current = accepted;
-    marketingRef.current = marketing;
-  }, [accepted, marketing]);
-
-  const acceptTerms = api.ticketCheckout.acceptTerms.useMutation();
   const confirm = api.ticketCheckout.confirm.useMutation();
 
   const returnUrl = useMemo(() => {
@@ -140,23 +126,10 @@ function PaidCheckout({
   async function pay() {
     if (!stripe || !elements) return;
 
-    if (!acceptedRef.current) {
-      setError("Please accept the ticket terms before paying.");
-      return;
-    }
-
     setBusy(true);
     setError(null);
 
     try {
-      // Recorded before the charge, so consent is stored whether or not the
-      // payment then goes through.
-      await acceptTerms.mutateAsync({
-        accessToken: session.accessToken,
-        acceptTerms: true,
-        marketingOptIn: marketingRef.current,
-      });
-
       const result = await stripe.confirmPayment({
         elements,
         confirmParams: { return_url: returnUrl },
@@ -196,13 +169,7 @@ function PaidCheckout({
 
         <ExpressCheckoutElement
           options={{ buttonHeight: 48 }}
-          onClick={({ resolve }) => {
-            if (!acceptedRef.current) {
-              setError("Please accept the ticket terms before paying.");
-              return;
-            }
-            resolve({});
-          }}
+          onClick={({ resolve }) => resolve({})}
           onConfirm={() => void pay()}
         />
 
@@ -213,14 +180,6 @@ function PaidCheckout({
         </div>
 
         <PaymentElement options={{ layout: "tabs" }} />
-
-        <Consent
-          accepted={accepted}
-          onAcceptedChange={setAccepted}
-          marketing={marketing}
-          onMarketingChange={setMarketing}
-          isR18={event.isR18}
-        />
 
         {error && (
           <p role="alert" className="text-sm text-red-300">
@@ -276,8 +235,6 @@ function FreeClaimForm({
 
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [accepted, setAccepted] = useState(false);
-  const [marketing, setMarketing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const claim = api.ticketCheckout.claimFree.useMutation({
@@ -299,14 +256,8 @@ function FreeClaimForm({
         onSubmit={(e) => {
           e.preventDefault();
           setError(null);
-          if (!accepted) {
-            setError("Please accept the ticket terms.");
-            return;
-          }
           claim.mutate({
             accessToken: session.accessToken,
-            acceptTerms: true,
-            marketingOptIn: marketing,
             ...(askUpFront ? { email, name } : {}),
           });
         }}
@@ -352,14 +303,6 @@ function FreeClaimForm({
           </p>
         )}
 
-        <Consent
-          accepted={accepted}
-          onAcceptedChange={setAccepted}
-          marketing={marketing}
-          onMarketingChange={setMarketing}
-          isR18={event.isR18}
-        />
-
         {error && (
           <p role="alert" className="text-sm text-red-300">
             {error}
@@ -382,61 +325,6 @@ function FreeClaimForm({
         </Button>
       </form>
     </Shell>
-  );
-}
-
-function Consent({
-  accepted,
-  onAcceptedChange,
-  marketing,
-  onMarketingChange,
-  isR18,
-}: {
-  accepted: boolean;
-  onAcceptedChange: (value: boolean) => void;
-  marketing: boolean;
-  onMarketingChange: (value: boolean) => void;
-  isR18: boolean;
-}) {
-  return (
-    <div className="space-y-3 border-t-2 border-white/10 pt-4">
-      <label className="flex cursor-pointer items-start gap-3 text-sm text-white/70">
-        <Checkbox
-          checked={accepted}
-          onCheckedChange={(value) => onAcceptedChange(Boolean(value))}
-          aria-describedby="terms-note"
-        />
-        <span id="terms-note">
-          I accept the{" "}
-          <a
-            href="/tickets/terms"
-            target="_blank"
-            rel="noreferrer"
-            className="underline underline-offset-2"
-          >
-            ticket terms
-          </a>{" "}
-          and{" "}
-          <a
-            href="/privacy"
-            target="_blank"
-            rel="noreferrer"
-            className="underline underline-offset-2"
-          >
-            privacy policy
-          </a>
-          {isR18 ? ", and I'm 18 or over" : ""}.
-        </span>
-      </label>
-
-      <label className="flex cursor-pointer items-start gap-3 text-sm text-white/50">
-        <Checkbox
-          checked={marketing}
-          onCheckedChange={(value) => onMarketingChange(Boolean(value))}
-        />
-        <span>Email me about future Atmos events. Optional.</span>
-      </label>
-    </div>
   );
 }
 

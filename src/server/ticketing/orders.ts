@@ -105,6 +105,11 @@ function assertEventSellable(event: {
 /**
  * Reserve stock and price an order. Nothing is asked of the buyer at this
  * point — no email, no name — which is the whole point of the flow.
+ *
+ * The terms are the exception, and they are not a personal detail: they are
+ * ticked alongside the quantities, before anything is held, so acceptance is
+ * on the order from the moment it exists rather than bolted on at the payment
+ * step and lost if the buyer wanders off.
  */
 export async function createPendingOrder({
   eventId,
@@ -113,6 +118,7 @@ export async function createPendingOrder({
   utm,
   ipAddress,
   userId,
+  termsAccepted,
 }: {
   eventId: string;
   lines: CheckoutLine[];
@@ -120,6 +126,7 @@ export async function createPendingOrder({
   utm?: { source?: string; medium?: string; campaign?: string };
   ipAddress?: string | null;
   userId?: string | null;
+  termsAccepted?: boolean;
 }): Promise<PricedOrder> {
   const cleanedLines = lines.filter((line) => line.quantity > 0);
   if (cleanedLines.length === 0) {
@@ -205,6 +212,7 @@ export async function createPendingOrder({
           : PaymentMethodKind.STRIPE,
         expiresAt,
         termsVersion: event.termsVersion,
+        termsAcceptedAt: termsAccepted ? new Date() : null,
         utmSource: utm?.source ?? null,
         utmMedium: utm?.medium ?? null,
         utmCampaign: utm?.campaign ?? null,

@@ -271,12 +271,21 @@ function DetailsForm({
             />
           </div>
 
-          <label className="flex cursor-pointer items-start gap-3 pt-1 text-sm text-white/50">
+          {/* The only marketing ask in the whole flow, and it lives here
+              rather than beside the pay button on purpose: consent given
+              next to a payment is consent nobody read. */}
+          <label className="mt-1 flex cursor-pointer items-start gap-3 border-t-2 border-white/10 pt-4 text-sm text-white/60">
             <Checkbox
               checked={marketing}
               onCheckedChange={(value) => setMarketing(Boolean(value))}
             />
-            <span>Email me about future Atmos events. Optional.</span>
+            <span>
+              Email me about future Atmos events.
+              <span className="mt-0.5 block text-xs text-white/40">
+                Entirely optional — your ticket works either way, and you can
+                unsubscribe from any email we send.
+              </span>
+            </span>
           </label>
         </div>
       </section>

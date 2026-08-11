@@ -28,8 +28,12 @@ import { db } from "~/server/db";
  *
  * Nobody is asked who they are until they have a ticket. `quote` prices a
  * basket from tier ids alone, `start` takes the money, `claimFree` hands over a
- * free ticket on a tick-box — and the buyer's name and email are collected
- * afterwards, on `/tickets/[token]/details`.
+ * free ticket — and the buyer's name, email and marketing consent are all
+ * collected afterwards, on `/tickets/[token]/details`.
+ *
+ * Terms acceptance is the one thing gathered before any of that, on the buy
+ * panel: it is a condition of holding a ticket, not a detail about a person, so
+ * `start` refuses to reserve stock without it.
  *
  * Two tier settings can't work that way round and still keep their promise, so
  * they alone are asked up front: `requiresApproval` (there is no ticket yet,
@@ -165,6 +169,8 @@ export const ticketCheckoutRouter = createTRPCRouter({
         eventId: z.string(),
         lines: linesSchema,
         discountCode: z.string().trim().max(64).optional(),
+        /** Ticked on the buy panel, before any stock is held. */
+        acceptTerms: z.literal(true),
         /** A previous hold from this browser, released before taking a new one. */
         replaceOrderId: z.string().optional(),
         utm: z
@@ -198,6 +204,7 @@ export const ticketCheckoutRouter = createTRPCRouter({
         utm: input.utm,
         ipAddress: ip === "unknown" ? null : ip,
         userId: ctx.session?.user.id ?? null,
+        termsAccepted: true,
       }).catch(inventoryErrorToTrpc);
 
       const needsDetailsUpFront = await gatedTierCount(
@@ -255,17 +262,15 @@ export const ticketCheckoutRouter = createTRPCRouter({
   /**
    * Issue a free order.
    *
-   * Normally this needs nothing but the terms tick — the ticket appears, and
-   * the details page afterwards is what makes it deliverable. `email` and
-   * `name` are only sent for the gated tiers described at the top of this file,
-   * and are required in exactly that case.
+   * Normally this needs nothing at all — the terms were accepted at `start`,
+   * the ticket appears, and the details page afterwards is what makes it
+   * deliverable. `email` and `name` are only sent for the gated tiers described
+   * at the top of this file, and are required in exactly that case.
    */
   claimFree: publicProcedure
     .input(
       z.object({
         accessToken: z.string(),
-        acceptTerms: z.literal(true),
-        marketingOptIn: z.boolean().default(false),
         email: z.email().optional(),
         name: z.string().trim().min(1).max(120).optional(),
       }),
@@ -347,13 +352,10 @@ export const ticketCheckoutRouter = createTRPCRouter({
             status: TicketOrderStatus.AWAITING_APPROVAL,
             buyerEmail: email,
             buyerName: input.name ?? null,
-            termsAcceptedAt: new Date(),
-            marketingOptIn: input.marketingOptIn,
             // Approval queues shouldn't time out and dump the request.
             expiresAt: null,
           },
         });
-        await maybeSubscribe(email, input.marketingOptIn);
         return { ok: true as const, awaitingApproval: true };
       }
 
@@ -362,53 +364,15 @@ export const ticketCheckoutRouter = createTRPCRouter({
         buyerEmail: email,
         buyerName: input.name ?? null,
         paymentMethod: PaymentMethodKind.FREE,
-        termsAccepted: true,
-        marketingOptIn: input.marketingOptIn,
       });
 
       // Without an email there is nowhere to send it yet; the details page
       // picks that up the moment the buyer gives us one.
       if (email) {
-        await maybeSubscribe(email, input.marketingOptIn);
         await sendTicketEmail({ orderId: order.id });
       }
 
       return { ok: true as const, alreadyIssued: false };
-    }),
-
-  /**
-   * Record terms acceptance before the payment is confirmed.
-   *
-   * Kept separate from `start` because the buyer ticks the box on the payment
-   * step, after the hold has been taken — and the acceptance has to be stored
-   * against the order regardless of whether the payment then succeeds.
-   */
-  acceptTerms: publicProcedure
-    .input(
-      z.object({
-        accessToken: z.string(),
-        acceptTerms: z.literal(true),
-        marketingOptIn: z.boolean().default(false),
-      }),
-    )
-    .mutation(async ({ input }) => {
-      const order = await findOrderByAccessToken(input.accessToken);
-      if (!order) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
-      }
-      if (order.status !== TicketOrderStatus.PENDING) {
-        return { ok: true as const };
-      }
-
-      await db.ticketOrder.update({
-        where: { id: order.id },
-        data: {
-          termsAcceptedAt: new Date(),
-          marketingOptIn: input.marketingOptIn,
-        },
-      });
-
-      return { ok: true as const };
     }),
 
   /**
@@ -510,20 +474,4 @@ async function gatedTierCount(tierIds: string[]): Promise<boolean> {
     },
   });
   return gated > 0;
-}
-
-/**
- * Ticket buyers are only added to the newsletter when they explicitly tick the
- * box — the Unsolicited Electronic Messages Act needs express consent, and a
- * purchase is not consent to marketing.
- */
-async function maybeSubscribe(email: string, optedIn: boolean): Promise<void> {
-  if (!optedIn) return;
-  await db.newsletterSubscription
-    .upsert({
-      where: { email },
-      update: { removed: false },
-      create: { email },
-    })
-    .catch(() => undefined);
 }

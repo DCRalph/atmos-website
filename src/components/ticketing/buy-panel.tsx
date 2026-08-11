@@ -5,6 +5,7 @@ import { Loader2, Minus, Plus, Ticket } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "~/components/ui/button";
+import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { formatNZD, formatNZDCompact } from "~/lib/ticketing/money";
@@ -16,14 +17,17 @@ type PublicTier = PublicEvent["tiers"][number];
 /**
  * The buy panel.
  *
- * Asks for nothing but quantities. The booking fee is shown in the summary
- * before the buyer commits — NZ fair-trading rules mean unavoidable fees can't
- * appear for the first time at the payment step.
+ * Asks for quantities and a tick on the terms — nothing about the person. The
+ * booking fee is shown in the summary before the buyer commits, because NZ
+ * fair-trading rules mean unavoidable fees can't appear for the first time at
+ * the payment step; the terms sit next to it for the same reason. What a buyer
+ * is agreeing to belongs where they decide, not one screen before they pay.
  */
 export function BuyPanel({ event }: { event: PublicEvent }) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [codeInput, setCodeInput] = useState("");
   const [appliedCode, setAppliedCode] = useState<string | null>(null);
+  const [accepted, setAccepted] = useState(false);
   const [session, setSession] = useState<CheckoutSession | null>(null);
 
   const lines = useMemo(
@@ -248,16 +252,46 @@ export function BuyPanel({ event }: { event: PublicEvent }) {
             )}
           </dl>
 
+          <label className="flex cursor-pointer items-start gap-3 border-t-2 border-white/10 pt-4 text-sm text-white/70">
+            <Checkbox
+              checked={accepted}
+              onCheckedChange={(value) => setAccepted(Boolean(value))}
+              aria-describedby="terms-note"
+            />
+            <span id="terms-note">
+              I accept the{" "}
+              <a
+                href="/tickets/terms"
+                target="_blank"
+                rel="noreferrer"
+                className="underline underline-offset-2"
+              >
+                ticket terms
+              </a>{" "}
+              and{" "}
+              <a
+                href="/privacy"
+                target="_blank"
+                rel="noreferrer"
+                className="underline underline-offset-2"
+              >
+                privacy policy
+              </a>
+              {event.isR18 ? ", and I'm 18 or over" : ""}.
+            </span>
+          </label>
+
           <Button
             type="button"
             className="w-full"
             size="lg"
-            disabled={start.isPending || quote.isPending}
+            disabled={start.isPending || quote.isPending || !accepted}
             onClick={() =>
               start.mutate({
                 eventId: event.id,
                 lines,
                 discountCode: appliedCode ?? undefined,
+                acceptTerms: true,
                 utm: readUtm(),
               })
             }
