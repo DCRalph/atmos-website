@@ -20,6 +20,21 @@ import { useIssuedOrder } from "~/hooks/use-issued-order";
 type TicketOrderView = NonNullable<RouterOutputs["tickets"]["byAccessToken"]>;
 
 /**
+ * Split a stored name back into the two boxes.
+ *
+ * Names arrive from Stripe as one string and are stored as one string, because
+ * plenty of people don't have two of them. The first whitespace-separated word
+ * is treated as the given name and everything after it as the family name,
+ * which is wrong for some people and right for most — and either way nothing
+ * is lost, since the two boxes are joined back together on save.
+ */
+function splitName(full: string | null): { first: string; last: string } {
+  const parts = (full ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { first: "", last: "" };
+  return { first: parts[0] ?? "", last: parts.slice(1).join(" ") };
+}
+
+/**
  * The details step.
  *
  * The ticket already exists by the time anyone reaches this page — that's the
@@ -187,10 +202,13 @@ function DetailsForm({
   data: TicketOrderView;
 }) {
   const router = useRouter();
+  const utils = api.useUtils();
   const tickets = data.tickets;
   const isGroup = tickets.length > 1;
 
-  const [buyerName, setBuyerName] = useState(data.buyerName ?? "");
+  const existing = splitName(data.buyerName);
+  const [firstName, setFirstName] = useState(existing.first);
+  const [lastName, setLastName] = useState(existing.last);
   const [buyerEmail, setBuyerEmail] = useState(data.buyerEmail ?? "");
   // Carried over rather than defaulted: a buyer who ticked this at checkout
   // must not be quietly un-subscribed by saving their name.
@@ -200,14 +218,29 @@ function DetailsForm({
       tickets.map((ticket) => [ticket.id, ticket.attendeeName ?? ""]),
     ),
   );
+  // Which attendee fields the buyer has actually typed in. The first ticket
+  // mirrors the name above until they do, so nobody types their own name twice.
+  const [edited, setEdited] = useState<Record<string, boolean>>({});
+
+  const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+
+  const attendeeName = (ticket: (typeof tickets)[number], index: number) => {
+    const typed = names[ticket.id] ?? "";
+    // A field they've touched wins even when they've cleared it.
+    if (edited[ticket.id] === true || typed !== "") return typed;
+    return index === 0 ? fullName : "";
+  };
 
   const save = api.tickets.saveDetails.useMutation({
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       toast.success(
         result.emailedTo
           ? `Sent to ${result.emailedTo}. See you there.`
           : "Saved — see you there.",
       );
+      // Both pages read the same query, so the tickets page would otherwise
+      // render the pre-save order and ask for the email all over again.
+      await utils.tickets.byAccessToken.invalidate();
       router.push(`/tickets/${token}`);
     },
     onError: (error) => toast.error(error.message),
@@ -220,19 +253,19 @@ function DetailsForm({
         e.preventDefault();
         save.mutate({
           accessToken: token,
-          buyerName: buyerName.trim(),
+          buyerName: fullName,
           buyerEmail: buyerEmail.trim(),
           marketingOptIn: marketing,
-          // On a single ticket the buyer is the person going, so there's no
-          // reason to make them type their own name a second time.
+          // On a single ticket the buyer is the person going, so their name is
+          // the attendee name.
           names: isGroup
-            ? tickets.map((ticket) => ({
+            ? tickets.map((ticket, index) => ({
                 ticketId: ticket.id,
-                attendeeName: names[ticket.id]?.trim() ?? "",
+                attendeeName: attendeeName(ticket, index).trim(),
               }))
             : tickets.map((ticket) => ({
                 ticketId: ticket.id,
-                attendeeName: buyerName.trim(),
+                attendeeName: fullName,
               })),
         });
       }}
@@ -246,16 +279,27 @@ function DetailsForm({
         </p>
 
         <div className="mt-5 space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="buyer-name">Your name</Label>
-            <Input
-              id="buyer-name"
-              value={buyerName}
-              onChange={(e) => setBuyerName(e.target.value)}
-              placeholder="Full name"
-              autoComplete="name"
-              required
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="first-name">First name</Label>
+              <Input
+                id="first-name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                autoComplete="given-name"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="last-name">Last name</Label>
+              <Input
+                id="last-name"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                autoComplete="family-name"
+                required
+              />
+            </div>
           </div>
 
           <div className="space-y-1.5">
@@ -306,13 +350,14 @@ function DetailsForm({
                 </Label>
                 <Input
                   id={`name-${ticket.id}`}
-                  value={names[ticket.id] ?? ""}
-                  onChange={(e) =>
+                  value={attendeeName(ticket, index)}
+                  onChange={(e) => {
+                    setEdited((current) => ({ ...current, [ticket.id]: true }));
                     setNames((current) => ({
                       ...current,
                       [ticket.id]: e.target.value,
-                    }))
-                  }
+                    }));
+                  }}
                   placeholder={index === 0 ? "You" : "Full name"}
                   autoComplete="off"
                 />

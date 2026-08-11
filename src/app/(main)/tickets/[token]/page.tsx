@@ -221,7 +221,12 @@ function AttendeeDetails({
   const [email, setEmail] = useState("");
   const [names, setNames] = useState<Record<string, string>>(() =>
     Object.fromEntries(
-      tickets.map((ticket) => [ticket.id, ticket.attendeeName ?? ""]),
+      tickets.map((ticket, index) => [
+        ticket.id,
+        // The buyer already gave their name on the details page; the first
+        // ticket is theirs unless they say otherwise, so don't ask twice.
+        ticket.attendeeName ?? (index === 0 ? (data.buyerName ?? "") : ""),
+      ]),
     ),
   );
 
