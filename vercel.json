@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/cron/ticketing-sweep",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 14 * * *"
     }
   ]
 }
