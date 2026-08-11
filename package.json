@@ -25,6 +25,7 @@
     "preview": "prisma generate && next build && next start",
     "start": "next start",
     "typecheck": "node node_modules/@typescript/native/bin/tsc --noEmit",
+    "ui:audit": "node scripts/ui-audit-creator.mjs",
     "refresh-baseline-browser-mapping": "bun i --save-dev baseline-browser-mapping@latest"
   },
   "dependencies": {
@@ -116,6 +117,7 @@
     "baseline-browser-mapping": "^2.11.13",
     "eslint": "^10.8.1",
     "eslint-config-next": "^16.3.0",
+    "playwright-core": "^1.62.1",
     "postcss": "^8.5.26",
     "prettier": "^3.9.6",
     "prettier-plugin-tailwindcss": "^0.8.1",

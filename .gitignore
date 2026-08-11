@@ -54,3 +54,6 @@ yarn-error.log*
 .idea
 .vercel
 .env*.local
+
+# creator UI audit output (screenshots + report)
+/.ui-audit/

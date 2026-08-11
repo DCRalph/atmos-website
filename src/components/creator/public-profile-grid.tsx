@@ -56,6 +56,8 @@ export function PublicProfileGrid({
           <div
             key={b.id}
             className="creator-block overflow-hidden"
+            data-block-type={b.type}
+            data-block-size={`${b.w}x${b.h}`}
             style={{
               ...themeToCssVars(tokens, blockOverrides, b.type),
               gridColumn: `${b.x + 1} / span ${b.w}`,
@@ -82,6 +84,8 @@ export function PublicProfileGrid({
             <div
               key={b.id}
               className="creator-block"
+              data-block-type={b.type}
+              data-block-size={`${b.w}x${b.h}`}
               style={{
                 ...themeToCssVars(tokens, blockOverrides, b.type),
                 minHeight: `${Math.max(2, b.h) * rowHeightPx}px`,

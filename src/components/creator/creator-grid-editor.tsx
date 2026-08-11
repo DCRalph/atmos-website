@@ -231,6 +231,8 @@ export function CreatorGridEditor({
         return (
           <div
             key={block.id}
+            data-editor-block-type={block.type}
+            data-editor-block-size={`${w}x${h}`}
             className={cn(
               "group relative bg-card/50 backdrop-blur rounded-md border overflow-hidden",
               isSelected && "ring-2 ring-primary",

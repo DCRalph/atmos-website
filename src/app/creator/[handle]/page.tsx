@@ -2,17 +2,15 @@ import { notFound } from "next/navigation";
 import { type Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
-import Image from "next/image";
-import { ArrowLeft } from "lucide-react";
 import { db } from "~/server/db";
 import { auth } from "~/server/auth";
 import { buildMediaUrl } from "~/lib/media-url";
 import { PublicProfileGrid } from "~/components/creator/public-profile-grid";
+import { CreatorProfileHero } from "~/components/creator/creator-profile-hero";
 import {
   type CreatorBlockTypeName,
   type ClientBlock,
 } from "~/components/creator/block-types";
-import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { ClaimProfileCTA } from "~/components/creator/claim-profile-cta";
 import { userHasPermission } from "~/server/utils/permissions";
@@ -169,90 +167,19 @@ export default async function PublicCreatorProfilePage({
       )}
 
       {/* Banner + header */}
-      <div className="relative">
-        <div className="absolute inset-x-0 top-0 z-20 mx-auto max-w-6xl px-4 pt-4">
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="bg-background/70 backdrop-blur-sm"
-          >
-            <Link href="/">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back
-            </Link>
-          </Button>
-        </div>
-        {profile.bannerFileId ? (
-          <div className="relative h-48 w-full overflow-hidden md:h-64">
-            <Image
-              src={buildMediaUrl(profile.bannerFileId)}
-              alt=""
-              fill
-              className="object-cover"
-              priority
-            />
-            <div
-              className="absolute inset-0"
-              style={{
-                background:
-                  "linear-gradient(to top, var(--creator-page-bg), transparent)",
-              }}
-            />
-            {tokens.bannerOverlay && (
-              <div
-                className="absolute inset-0"
-                style={{ background: tokens.bannerOverlay }}
-              />
-            )}
-          </div>
-        ) : (
-          <div
-            className="h-32 w-full md:h-48"
-            style={{
-              background: accent
-                ? `linear-gradient(135deg, ${accent}, ${accent}88)`
-                : undefined,
-            }}
-          />
-        )}
-        <div className="relative z-10 mx-auto -mt-16 max-w-6xl px-4 md:-mt-20">
-          <div className="flex flex-col items-start gap-4 md:flex-row md:items-end">
-            <div className="border-background bg-muted relative h-28 w-28 overflow-hidden rounded-full border-4 md:h-36 md:w-36">
-              {profile.avatarFileId ? (
-                <Image
-                  src={buildMediaUrl(profile.avatarFileId)}
-                  alt={profile.displayName}
-                  fill
-                  className="object-cover"
-                />
-              ) : (
-                <div className="grid h-full w-full place-items-center text-3xl font-bold">
-                  {profile.displayName.slice(0, 1).toUpperCase()}
-                </div>
-              )}
-            </div>
-            <div className="flex-1 space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1
-                  className="text-3xl md:text-4xl"
-                  style={{
-                    fontFamily: "var(--creator-heading-font)",
-                    fontWeight: "var(--creator-heading-weight)",
-                    letterSpacing: "var(--creator-letter-spacing)",
-                  }}
-                >
-                  {profile.displayName}
-                </h1>
-                {profile.claimStatus === "UNCLAIMED" && (
-                  <Badge variant="secondary">Unclaimed profile</Badge>
-                )}
-              </div>
-              <p className="text-muted-foreground font-mono text-sm">
-                @{profile.handle}
-              </p>
-              {profile.tagline && <p className="text-lg">{profile.tagline}</p>}
-            </div>
-            <div className="flex gap-2">
+      <CreatorProfileHero
+        displayName={profile.displayName}
+        handle={profile.handle}
+        tagline={profile.tagline}
+        avatarFileId={profile.avatarFileId}
+        bannerFileId={profile.bannerFileId}
+        claimStatus={profile.claimStatus}
+        accent={accent}
+        bannerOverlay={tokens.bannerOverlay}
+        backHref="/"
+        actions={
+          viewerIsOwner || viewerIsAdmin ? (
+            <>
               {viewerIsOwner && (
                 <Button asChild variant="outline">
                   <Link href="/dashboard/profile">Edit profile</Link>
@@ -265,10 +192,10 @@ export default async function PublicCreatorProfilePage({
                   </Link>
                 </Button>
               )}
-            </div>
-          </div>
-        </div>
-      </div>
+            </>
+          ) : null
+        }
+      />
 
       <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
         {profile.bio && (
