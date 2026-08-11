@@ -9,6 +9,8 @@ import { Skeleton } from "~/components/ui/skeleton";
 import { formatTimeAgo } from "~/lib/ticketing/dates";
 import type { DenyReasonValue } from "~/lib/ticketing/deny-reasons";
 import { PersonSheet } from "~/components/door/person-sheet";
+import { AccessBadge } from "~/components/door/controls";
+import { isElevated } from "~/lib/ticketing/access-levels";
 
 /**
  * The door list.
@@ -126,6 +128,11 @@ export function DoorList({
                   <span className="block truncate text-xs text-white/40">
                     {row.tierName} · {row.ticketNumber}
                   </span>
+                  {isElevated(row.accessLevel) && (
+                    <span className="mt-1 block">
+                      <AccessBadge level={row.accessLevel} size="small" />
+                    </span>
+                  )}
                   {row.admittedAt && (
                     <span className="mt-0.5 block text-xs text-emerald-400">
                       In {formatTimeAgo(new Date(row.admittedAt))}

@@ -26,6 +26,7 @@ import {
 } from "~/server/ticketing/orders";
 import { logActivity } from "~/server/utils/activity-log";
 import { sellAtDoor } from "~/server/ticketing/box-office";
+import { ACCESS_LEVEL_VALUES } from "~/lib/ticketing/access-levels";
 import { ticketsUrl } from "~/server/ticketing/urls";
 import { pushPassUpdate } from "~/server/wallet/apple-push";
 
@@ -120,6 +121,7 @@ export const ticketAdminRouter = createTRPCRouter({
               id: true,
               ticketNumber: true,
               status: true,
+              accessLevel: true,
               attendeeName: true,
               attendeeEmail: true,
               pricePaidCents: true,
@@ -417,6 +419,146 @@ export const ticketAdminRouter = createTRPCRouter({
         sendEmail: input.sendEmail,
         soldByUserId: ctx.session.user.id,
       });
+    }),
+
+  // ------------------------------------------------------------------ comps
+
+  /**
+   * Give tickets away to somebody by name.
+   *
+   * An artist gets an AAA ticket and, more often than not, a couple of GA
+   * ones for whoever they're bringing — so this takes a set of lines rather
+   * than a quantity, and each line's tier decides what that ticket gets past.
+   * It is one order, so the recipient gets one email with everything in it.
+   *
+   * Runs the same issuance path as a sale; a comp is a sale for nothing, not a
+   * different kind of ticket.
+   */
+  issueComps: adminProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        recipientName: z.string().trim().min(1).max(120),
+        recipientEmail: z.email().optional(),
+        lines: z
+          .array(
+            z.object({
+              tierId: z.string(),
+              quantity: z.number().int().min(1).max(20),
+            }),
+          )
+          .min(1),
+        notes: z.string().trim().max(500).optional(),
+        sendEmail: z.boolean().default(true),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const sale = await sellAtDoor({
+        eventId: input.eventId,
+        lines: input.lines,
+        paymentMethod: PaymentMethodKind.COMP,
+        buyerName: input.recipientName,
+        buyerEmail: input.recipientEmail,
+        // The first ticket is the person being comped; the rest are guests
+        // they'll hand out themselves, so only that one gets a name.
+        attendeeNames: [input.recipientName],
+        notes: input.notes,
+        sendEmail: input.sendEmail,
+        soldByUserId: ctx.session.user.id,
+      });
+
+      await logActivity({
+        type: ActivityType.TICKET_COMPED,
+        action: `Comped ${sale.ticketCount} ticket(s) to ${input.recipientName}`,
+        userId: ctx.session.user.id,
+        details: {
+          eventId: input.eventId,
+          orderId: sale.orderId,
+          recipientEmail: input.recipientEmail,
+        },
+      });
+
+      return sale;
+    }),
+
+  /** Every comp issued for an event, newest first. */
+  comps: adminProcedure
+    .input(z.object({ eventId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const orders = await ctx.db.ticketOrder.findMany({
+        where: {
+          eventId: input.eventId,
+          paymentMethod: PaymentMethodKind.COMP,
+          status: TicketOrderStatus.PAID,
+        },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          orderNumber: true,
+          buyerName: true,
+          buyerEmail: true,
+          notes: true,
+          createdAt: true,
+          accessTokenVersion: true,
+          tickets: {
+            where: { status: TicketStatus.VALID },
+            orderBy: { ticketNumber: "asc" },
+            select: {
+              id: true,
+              ticketNumber: true,
+              accessLevel: true,
+              attendeeName: true,
+              tier: { select: { name: true } },
+            },
+          },
+        },
+      });
+
+      return orders.map((order) => ({
+        id: order.id,
+        orderNumber: order.orderNumber,
+        recipientName: order.buyerName,
+        recipientEmail: order.buyerEmail,
+        notes: order.notes,
+        createdAt: order.createdAt,
+        ticketsUrl: ticketsUrl(orderAccessToken(order)),
+        tickets: order.tickets.map((ticket) => ({
+          id: ticket.id,
+          ticketNumber: ticket.ticketNumber,
+          accessLevel: ticket.accessLevel,
+          attendeeName: ticket.attendeeName,
+          tierName: ticket.tier.name,
+        })),
+      }));
+    }),
+
+  /**
+   * Change what one ticket gets past, without touching the tier it came from
+   * or reissuing anything. The QR is unchanged — the door reads the level at
+   * scan time, so an upgrade takes effect on the next scan.
+   */
+  setTicketAccessLevel: adminProcedure
+    .input(
+      z.object({
+        ticketId: z.string(),
+        accessLevel: z.enum(ACCESS_LEVEL_VALUES),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const ticket = await ctx.db.ticket.update({
+        where: { id: input.ticketId },
+        data: { accessLevel: input.accessLevel },
+        select: { id: true, ticketNumber: true, eventId: true },
+      });
+
+      await logActivity({
+        type: ActivityType.TICKET_ACCESS_CHANGED,
+        action: `${ticket.ticketNumber} set to ${input.accessLevel}`,
+        userId: ctx.session.user.id,
+        details: { ticketId: ticket.id, eventId: ticket.eventId },
+      });
+
+      return { ok: true as const };
     }),
 
   // -------------------------------------------------------- approval queue

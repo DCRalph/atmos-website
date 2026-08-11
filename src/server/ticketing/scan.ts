@@ -1,6 +1,7 @@
 import "server-only";
 
 import {
+  type TicketAccessLevel,
   type TicketDenyReason,
   TicketOrderStatus,
   TicketScanResult,
@@ -52,6 +53,8 @@ export type ScanOutcome = {
     id: string;
     ticketNumber: string;
     tierName: string;
+    /** What this ticket gets them past — which wristband the door hands over. */
+    accessLevel: TicketAccessLevel;
     attendeeName: string | null;
     buyerName: string | null;
     buyerEmail: string | null;
@@ -189,6 +192,7 @@ export async function scanTicket({
       id: ticket.id,
       ticketNumber: ticket.ticketNumber,
       tierName: ticket.tier.name,
+      accessLevel: ticket.accessLevel,
       attendeeName: ticket.attendeeName,
       buyerName: ticket.order.buyerName,
       buyerEmail: ticket.order.buyerEmail,
@@ -495,6 +499,7 @@ export async function denyTicket({
         id: ticket.id,
         ticketNumber: ticket.ticketNumber,
         tierName: ticket.tier.name,
+        accessLevel: ticket.accessLevel,
         attendeeName: ticket.attendeeName,
         buyerName: ticket.order.buyerName,
         buyerEmail: ticket.order.buyerEmail,

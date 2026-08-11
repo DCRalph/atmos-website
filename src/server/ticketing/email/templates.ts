@@ -25,6 +25,8 @@ const ACCENT = "#ffffff";
 export type EmailTicket = {
   ticketNumber: string;
   tierName: string;
+  /** Blank for general admission — only worth printing when it isn't. */
+  accessLabel: string | null;
   attendeeName: string | null;
   /** `cid:` value for this ticket's QR attachment. */
   qrCid: string;
@@ -113,6 +115,10 @@ function ticketCard(
     ? `<div style="font-size:15px;font-weight:600;color:${TEXT};margin-bottom:2px;">${escapeHtml(ticket.attendeeName)}</div>`
     : "";
 
+  const access = ticket.accessLabel
+    ? `<div style="margin-top:10px;display:inline-block;padding:5px 12px;background:${ACCENT};color:#000;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:0.08em;">${escapeHtml(ticket.accessLabel.toUpperCase())}</div>`
+    : "";
+
   return `<tr><td style="padding:0 0 14px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CARD};border:1px solid ${BORDER};border-radius:14px;">
 <tr><td style="padding:20px;text-align:center;">
@@ -122,6 +128,7 @@ function ticketCard(
   <div style="background:#ffffff;border-radius:12px;padding:12px;display:inline-block;">
     <img src="cid:${ticket.qrCid}" width="220" height="220" alt="Entry QR code for ${escapeHtml(ticket.ticketNumber)}" style="display:block;width:220px;height:220px;">
   </div>
+  ${access}
   <div style="margin-top:14px;">
     ${name}
     <div style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;color:${MUTED};">${escapeHtml(ticket.ticketNumber)}</div>
@@ -230,7 +237,7 @@ Screenshots work, but the first scan wins: don't forward a ticket you're using y
     `Order ${input.orderNumber}`,
     ...input.tickets.map(
       (t, i) =>
-        `Ticket ${i + 1}: ${t.ticketNumber} (${t.tierName})${t.attendeeName ? ` — ${t.attendeeName}` : ""}`,
+        `Ticket ${i + 1}: ${t.ticketNumber} (${t.tierName}${t.accessLabel ? `, ${t.accessLabel}` : ""})${t.attendeeName ? ` — ${t.attendeeName}` : ""}`,
     ),
     "",
     `Total paid: ${formatNZD(input.totals.totalCents)}`,

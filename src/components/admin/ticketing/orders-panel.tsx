@@ -12,11 +12,59 @@ import { Skeleton } from "~/components/ui/skeleton";
 import { useConfirm } from "~/components/confirm-provider";
 import { formatNZD } from "~/lib/ticketing/money";
 import {
+  ACCESS_LEVELS,
+  type AccessLevelValue,
+  accessLevel as accessLevelMeta,
+} from "~/lib/ticketing/access-levels";
+import {
   DEFAULT_EVENT_TIMEZONE,
   formatEventDateTime,
 } from "~/lib/ticketing/dates";
 
 /** Orders, and the support actions that get run on them. */
+/**
+ * What one ticket gets past, changeable without reissuing anything. The door
+ * reads the level at scan time, so an upgrade takes effect on the next scan
+ * and the QR in their wallet is untouched.
+ */
+function AccessLevelSelect({
+  ticketId,
+  value,
+}: {
+  ticketId: string;
+  value: string;
+}) {
+  const utils = api.useUtils();
+  const setLevel = api.ticketAdmin.setTicketAccessLevel.useMutation({
+    onSuccess: () => {
+      toast.success("Ticket updated");
+      void utils.ticketAdmin.order.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  return (
+    <select
+      value={value}
+      disabled={setLevel.isPending}
+      onChange={(e) =>
+        setLevel.mutate({
+          ticketId,
+          accessLevel: e.target.value as AccessLevelValue,
+        })
+      }
+      aria-label="Access level"
+      className="border-input bg-background h-7 rounded-md border px-1.5 text-xs"
+    >
+      {ACCESS_LEVELS.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 export function OrdersPanel({
   eventId,
   readOnly = false,
@@ -265,6 +313,16 @@ function OrderDetail({
                   </Badge>
                 )}
                 {admitted && <Badge variant="secondary">admitted</Badge>}
+                {readOnly ? (
+                  <Badge variant="outline">
+                    {accessLevelMeta(ticket.accessLevel).short}
+                  </Badge>
+                ) : (
+                  <AccessLevelSelect
+                    ticketId={ticket.id}
+                    value={ticket.accessLevel}
+                  />
+                )}
               </li>
             );
           })}

@@ -8,6 +8,7 @@ import { api } from "~/trpc/react";
 import { formatTimeAgo } from "~/lib/ticketing/dates";
 import type { DenyReasonValue } from "~/lib/ticketing/deny-reasons";
 import {
+  AccessBadge,
   DenialCard,
   DenyReasonPicker,
   ExceptionAction,
@@ -127,7 +128,10 @@ export function PersonSheet({
         <p className="text-3xl font-black tracking-tight">
           {name ?? "No name given"}
         </p>
-        <p className="mt-1 text-lg opacity-80">{person.tierName}</p>
+        <p className="mt-2">
+          <AccessBadge level={person.accessLevel} />
+        </p>
+        <p className="mt-2 text-lg opacity-80">{person.tierName}</p>
         <p className="mt-1 font-mono text-sm opacity-60">
           {person.ticketNumber} · {person.positionInOrder}
         </p>

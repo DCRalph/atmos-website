@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
 
 import { Input } from "~/components/ui/input";
+import { accessLevel } from "~/lib/ticketing/access-levels";
 import { formatTimeAgo } from "~/lib/ticketing/dates";
 import {
   DENY_REASONS,
@@ -96,6 +97,33 @@ export function PrimaryAction({
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * What this ticket gets them past.
+ *
+ * Sits on whatever colour the result screen is painted, so the tones are solid
+ * and high-contrast rather than tints — an AAA badge has to be legible on green,
+ * amber and red alike. This is the thing that decides which wristband gets
+ * handed over, so on anything above general admission it is loud on purpose.
+ */
+export function AccessBadge({
+  level,
+  size = "large",
+}: {
+  level: string;
+  size?: "large" | "small";
+}) {
+  const meta = accessLevel(level);
+  return (
+    <span
+      className={`inline-block font-black tracking-[0.14em] ${meta.tone} ${
+        size === "large" ? "px-4 py-1.5 text-lg" : "px-2 py-0.5 text-xs"
+      }`}
+    >
+      {meta.short}
+    </span>
   );
 }
 

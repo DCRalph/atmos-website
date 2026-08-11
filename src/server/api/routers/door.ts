@@ -418,6 +418,7 @@ export const doorRouter = createTRPCRouter({
             id: true,
             ticketNumber: true,
             attendeeName: true,
+            accessLevel: true,
             tier: { select: { name: true } },
             order: {
               select: {
@@ -455,6 +456,7 @@ export const doorRouter = createTRPCRouter({
           id: ticket.id,
           ticketNumber: ticket.ticketNumber,
           attendeeName: ticket.attendeeName,
+          accessLevel: ticket.accessLevel,
           tierName: ticket.tier.name,
           orderNumber: ticket.order.orderNumber,
           buyerName: ticket.order.buyerName,
@@ -488,6 +490,7 @@ export const doorRouter = createTRPCRouter({
           id: true,
           ticketNumber: true,
           attendeeName: true,
+          accessLevel: true,
           status: true,
           eventId: true,
           orderId: true,
@@ -523,6 +526,7 @@ export const doorRouter = createTRPCRouter({
         id: ticket.id,
         ticketNumber: ticket.ticketNumber,
         attendeeName: ticket.attendeeName,
+        accessLevel: ticket.accessLevel,
         tierName: ticket.tier.name,
         status: ticket.status,
         orderNumber: ticket.order.orderNumber,

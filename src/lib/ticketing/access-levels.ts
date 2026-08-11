@@ -1,0 +1,78 @@
+import type { TicketAccessLevel } from "~Prisma/client";
+
+/**
+ * What a ticket gets you past.
+ *
+ * Shared by the door, the admin UI, and the routers that validate a change, so
+ * the badge on a scanner and the option in a dropdown can never mean different
+ * things. Ordered least to most access, which is the order a promoter thinks
+ * in and the order these should always be listed.
+ *
+ * `tone` is a Tailwind class pair, not a colour name — the door screen already
+ * paints its own background from the scan result, so a level badge has to sit
+ * on top of green, amber or red and stay readable on all three. Hence the
+ * solid, high-contrast pairs rather than tints.
+ */
+
+export const ACCESS_LEVELS = [
+  {
+    value: "GENERAL",
+    label: "General",
+    short: "GA",
+    tone: "bg-white text-black",
+  },
+  {
+    value: "GUEST",
+    label: "Guest list",
+    short: "GUEST",
+    tone: "bg-sky-300 text-sky-950",
+  },
+  {
+    value: "VIP",
+    label: "VIP",
+    short: "VIP",
+    tone: "bg-violet-300 text-violet-950",
+  },
+  {
+    value: "ARTIST",
+    label: "Artist",
+    short: "ARTIST",
+    tone: "bg-amber-300 text-amber-950",
+  },
+  {
+    value: "CREW",
+    label: "Crew",
+    short: "CREW",
+    tone: "bg-teal-300 text-teal-950",
+  },
+  {
+    value: "AAA",
+    label: "Access all areas",
+    short: "AAA",
+    tone: "bg-fuchsia-300 text-fuchsia-950",
+  },
+] as const satisfies readonly {
+  value: TicketAccessLevel;
+  label: string;
+  short: string;
+  tone: string;
+}[];
+
+export type AccessLevelValue = (typeof ACCESS_LEVELS)[number]["value"];
+
+export const ACCESS_LEVEL_VALUES = ACCESS_LEVELS.map(
+  (level) => level.value,
+) satisfies AccessLevelValue[];
+
+const BY_VALUE = new Map<string, (typeof ACCESS_LEVELS)[number]>(
+  ACCESS_LEVELS.map((level) => [level.value, level]),
+);
+
+export function accessLevel(value: string | null | undefined) {
+  return BY_VALUE.get(value ?? "") ?? ACCESS_LEVELS[0];
+}
+
+/** Everything above general admission is worth pointing at on a door screen. */
+export function isElevated(value: string | null | undefined): boolean {
+  return Boolean(value) && value !== "GENERAL";
+}

@@ -8,6 +8,7 @@ import { buildTicketToken } from "~/server/ticketing/qr";
 import { renderQrPng } from "~/server/ticketing/qr-image";
 import { orderAccessToken } from "~/server/ticketing/orders";
 import { getTicketingSettings } from "~/server/ticketing/settings";
+import { accessLevel, isElevated } from "~/lib/ticketing/access-levels";
 import {
   applePassUrl,
   googleWalletSaveUrl,
@@ -88,6 +89,9 @@ export async function sendTicketEmail({
     emailTickets.push({
       ticketNumber: ticket.ticketNumber,
       tierName: ticket.tier.name,
+      accessLabel: isElevated(ticket.accessLevel)
+        ? accessLevel(ticket.accessLevel).label
+        : null,
       attendeeName: ticket.attendeeName,
       qrCid: cid,
     });

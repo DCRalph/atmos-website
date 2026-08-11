@@ -13,6 +13,12 @@ import { Badge } from "~/components/ui/badge";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { useConfirm } from "~/components/confirm-provider";
 import { formatNZD, parsePriceToCents } from "~/lib/ticketing/money";
+import {
+  ACCESS_LEVELS,
+  type AccessLevelValue,
+  accessLevel as accessLevelMeta,
+  isElevated,
+} from "~/lib/ticketing/access-levels";
 
 type AdminEvent = RouterOutputs["ticketEvents"]["byId"];
 type Tier = AdminEvent["tiers"][number];
@@ -102,6 +108,9 @@ function TierRow({
   const [requiresApproval, setRequiresApproval] = useState(
     tier?.requiresApproval ?? false,
   );
+  const [level, setLevel] = useState<AccessLevelValue>(
+    (tier?.accessLevel as AccessLevelValue | undefined) ?? "GENERAL",
+  );
   const [expanded, setExpanded] = useState(!tier);
 
   const invalidate = () => {
@@ -146,6 +155,7 @@ function TierRow({
     isActive,
     isHidden,
     requiresApproval,
+    accessLevel: level,
   };
 
   const sold = tier?.soldCount ?? 0;
@@ -175,6 +185,9 @@ function TierRow({
             )}
             {tier?.requiresApproval && (
               <Badge variant="outline">Needs approval</Badge>
+            )}
+            {isElevated(level) && (
+              <Badge variant="secondary">{accessLevelMeta(level).short}</Badge>
             )}
           </div>
           {tier && (
@@ -223,6 +236,25 @@ function TierRow({
             />
             <p className="text-muted-foreground text-xs">
               0 makes it a free tier — Stripe is skipped entirely.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Access level</Label>
+            <select
+              value={level}
+              onChange={(e) => setLevel(e.target.value as AccessLevelValue)}
+              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+            >
+              {ACCESS_LEVELS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-muted-foreground text-xs">
+              What the door sees when one of these is scanned. Copied onto each
+              ticket as it&apos;s issued, so changing it later won&apos;t
+              re-band tickets already out.
             </p>
           </div>
           <div className="space-y-1.5 md:col-span-2">

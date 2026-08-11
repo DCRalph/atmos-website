@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Ban, Check, RotateCcw, X } from "lucide-react";
 
 import {
+  AccessBadge,
   DenialCard,
   DenyReasonPicker,
   ExceptionAction,
@@ -151,7 +152,10 @@ export function ScanResultScreen({
                 {outcome.ticket.attendeeName}
               </p>
             )}
-            <p className="text-lg opacity-90">{outcome.ticket.tierName}</p>
+            <p className="pt-1">
+              <AccessBadge level={outcome.ticket.accessLevel} />
+            </p>
+            <p className="pt-1 text-lg opacity-90">{outcome.ticket.tierName}</p>
             <p className="text-sm opacity-70">
               {outcome.ticket.ticketNumber} · {outcome.ticket.positionInOrder}
             </p>
