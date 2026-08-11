@@ -13,6 +13,7 @@ import { Badge } from "~/components/ui/badge";
 import { Switch } from "~/components/ui/switch";
 import { Skeleton } from "~/components/ui/skeleton";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
+import { SearchableSelect } from "~/components/ui/searchable-select";
 import {
   Select,
   SelectContent,
@@ -144,7 +145,14 @@ function CodeRow({ code }: { code: CodeListItem }) {
 
 function CodeForm({ onDone }: { onDone: () => void }) {
   const utils = api.useUtils();
-  const events = api.ticketEvents.list.useQuery({ includeArchived: false });
+
+  // Was `ticketEvents.list`, which loads every event *with its tiers and sales
+  // counts* — an expensive query to run just to populate a dropdown.
+  const [eventQuery, setEventQuery] = useState("");
+  const events = api.ticketEvents.eventOptions.useQuery(
+    { query: eventQuery },
+    { placeholderData: (previous) => previous },
+  );
 
   const [code, setCode] = useState("");
   const [type, setType] = useState<"PERCENT" | "FIXED">("PERCENT");
@@ -207,23 +215,20 @@ function CodeForm({ onDone }: { onDone: () => void }) {
       </div>
 
       <div className="space-y-1.5">
-        <Label>Event</Label>
-        <Select
-          value={eventId ?? "all"}
-          onValueChange={(next) => setEventId(next === "all" ? null : next)}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Any event</SelectItem>
-            {events.data?.map((event) => (
-              <SelectItem key={event.id} value={event.id}>
-                {event.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Label htmlFor="code-event">Event</Label>
+        <SearchableSelect
+          id="code-event"
+          value={eventId}
+          onChange={setEventId}
+          options={events.data?.options ?? []}
+          total={events.data?.total}
+          loading={events.isFetching}
+          onSearchChange={setEventQuery}
+          placeholder="Any event"
+          searchPlaceholder="Search events…"
+          emptyText="No events match that."
+          clearLabel="Any event"
+        />
       </div>
 
       <div className="space-y-1.5">

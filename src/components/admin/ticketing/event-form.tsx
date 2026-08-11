@@ -12,13 +12,7 @@ import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { Switch } from "~/components/ui/switch";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
+import { SearchableSelect } from "~/components/ui/searchable-select";
 import { formatNZD, parsePriceToCents } from "~/lib/ticketing/money";
 
 type AdminEvent = RouterOutputs["ticketEvents"]["byId"];
@@ -35,7 +29,13 @@ export function EventForm({ event }: { event?: AdminEvent }) {
   const router = useRouter();
   const utils = api.useUtils();
 
-  const gigs = api.gigs.getAll.useQuery();
+  // Server-side search: `gigs.getAll` returns every gig with its media, tags
+  // and creators attached, which is a lot of payload to fill one dropdown.
+  const [gigQuery, setGigQuery] = useState("");
+  const gigs = api.ticketEvents.gigOptions.useQuery(
+    { query: gigQuery },
+    { placeholderData: (previous) => previous },
+  );
 
   const [name, setName] = useState(event?.name ?? "");
   const [slug, setSlug] = useState(event?.slug ?? "");
@@ -167,22 +167,20 @@ export function EventForm({ event }: { event?: AdminEvent }) {
           htmlFor="gig"
           hint="The gig page shows the buy panel when one is linked."
         >
-          <Select
-            value={gigId ?? "none"}
-            onValueChange={(value) => setGigId(value === "none" ? null : value)}
-          >
-            <SelectTrigger id="gig">
-              <SelectValue placeholder="No gig" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No gig</SelectItem>
-              {gigs.data?.map((gig) => (
-                <SelectItem key={gig.id} value={gig.id}>
-                  {gig.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            id="gig"
+            value={gigId}
+            onChange={setGigId}
+            options={gigs.data?.options ?? []}
+            total={gigs.data?.total}
+            loading={gigs.isFetching}
+            onSearchChange={setGigQuery}
+            placeholder="No gig"
+            searchPlaceholder="Search gigs by title…"
+            emptyText="No gigs match that."
+            clearLabel="No gig"
+            selectedLabel={event?.gig?.title}
+          />
         </Field>
 
         <Field label="Short description" htmlFor="short">
