@@ -13,45 +13,49 @@ has moved.
 
 ## 1. Decisions locked in
 
-| Area | Decision |
-| --- | --- |
-| Event ↔ Gig | Separate `TicketEvent` model with an **optional** `gigId`. Gigs stay clean; non-gig events are possible. |
-| Checkout | **Embedded** Stripe Payment Element on-site, with Express Checkout (Apple Pay / Google Pay / Link) buttons on top. |
-| Identity | Guest checkout. Email comes from the wallet or the Payment Element. Details collected **after** payment. Permanent signed link emailed; a passwordless account is created quietly. |
-| Wallet | **Apple + Google Wallet.** Requires an Apple Developer Program membership + Pass Type ID cert, and a Google Wallet issuer account + GCP service account. |
-| QR | **Static, HMAC-signed opaque token.** First scan wins; later scans report how long ago. |
-| Scanner | **Online-only** web scanner. Every scan hits the server, so duplicate detection is always correct. |
-| Door access | Authenticated users assigned directly to an event through `TicketEventStaff`. |
-| Re-entry | Warn loudly on a second scan (`ALREADY ADMITTED — 14 min ago`) with an **Admit anyway** override that is logged against the staff member. |
-| Tiers | Per-tier allocation **+** optional sale window **+** manual on/off. Auto-advance when a tier sells out. Optional overall event capacity. |
-| Free tickets | Per-tier: price 0 skips Stripe entirely and issues instantly, with a per-email cap. A tier can optionally require admin approval instead (guest list). |
-| Fees | Booking fee configurable per event, with a site-wide default. Can be zero. |
-| Refunds | Admin can refund a single ticket / whole order from the UI. Anything else is done in the Stripe dashboard and the site reacts to the webhook by voiding the ticket. **No** mass event-cancel refund in v1. |
-| Money | **NZD only**, integer cents everywhere. |
-| GST | Atmos is GST-registered. Displayed prices are **GST-inclusive**; receipts are valid taxable supply information. |
-| Legal | NZ. Terms checkbox at checkout (versioned + stored). Per-event R18 flag **defaulting to true**. |
-| Email | **Resend**, behind a provider interface, with a delivery log and a resend button. |
+
+| Area         | Decision                                                                                                                                                                                                   |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Event ↔ Gig  | Separate `TicketEvent` model with an **optional** `gigId`. Gigs stay clean; non-gig events are possible.                                                                                                   |
+| Checkout     | **Embedded** Stripe Payment Element on-site, with Express Checkout (Apple Pay / Google Pay / Link) buttons on top.                                                                                         |
+| Identity     | Guest checkout. Email comes from the wallet or the Payment Element. Details collected **after** payment. Permanent signed link emailed; a passwordless account is created quietly.                         |
+| Wallet       | **Apple + Google Wallet.** Requires an Apple Developer Program membership + Pass Type ID cert, and a Google Wallet issuer account + GCP service account.                                                   |
+| QR           | **Static, HMAC-signed opaque token.** First scan wins; later scans report how long ago.                                                                                                                    |
+| Scanner      | **Online-only** web scanner. Every scan hits the server, so duplicate detection is always correct.                                                                                                         |
+| Door access  | Authenticated users assigned directly to an event through `TicketEventStaff`.                                                                                                                              |
+| Re-entry     | Warn loudly on a second scan (`ALREADY ADMITTED — 14 min ago`) with an **Admit anyway** override that is logged against the staff member.                                                                  |
+| Tiers        | Per-tier allocation **+** optional sale window **+** manual on/off. Auto-advance when a tier sells out. Optional overall event capacity.                                                                   |
+| Free tickets | Per-tier: price 0 skips Stripe entirely and issues instantly, with a per-email cap. A tier can optionally require admin approval instead (guest list).                                                     |
+| Fees         | Booking fee configurable per event, with a site-wide default. Can be zero.                                                                                                                                 |
+| Refunds      | Admin can refund a single ticket / whole order from the UI. Anything else is done in the Stripe dashboard and the site reacts to the webhook by voiding the ticket. **No** mass event-cancel refund in v1. |
+| Money        | **NZD only**, integer cents everywhere.                                                                                                                                                                    |
+| GST          | Atmos is GST-registered. Displayed prices are **GST-inclusive**; receipts are valid taxable supply information.                                                                                            |
+| Legal        | NZ. Terms checkbox at checkout (versioned + stored). Per-event R18 flag **defaulting to true**.                                                                                                            |
+| Email        | **Resend**, behind a provider interface, with a delivery log and a resend button.                                                                                                                          |
+
 
 Explicitly **out of v1**, but the schema leaves room: waitlists, ticket transfer/resale,
 mass cancel-and-refund, seat maps, multi-currency, offline scanning.
 
 ---
 
+
+
 ## 2. What the buyer experiences
 
 1. **Event page** — `/events/[slug]`, and an embedded buy panel on `/gigs/[id]` when a
-   gig is linked. Tiers with live remaining counts, "from $25 + $1.50 booking fee"
+  gig is linked. Tiers with live remaining counts, "from $25 + $1.50 booking fee"
    shown up front (NZ drip-pricing rules — see §9).
 2. **Pick tiers and quantities.** No account, no form, no email box.
 3. **Pay.** A `PENDING` order is created server-side, inventory is held for 10 minutes,
-   and the Payment Element mounts with Apple Pay / Google Pay on top. Wallet path is
+  and the Payment Element mounts with Apple Pay / Google Pay on top. Wallet path is
    one tap and zero typing. Above the pay button: total breakdown, R18 notice, and the
    terms checkbox.
 4. **Tickets exist immediately.** Redirect to `/tickets/[token]` where the QR codes are
-   already live. Above them, a soft "Who's coming?" form for per-ticket attendee names —
+  already live. Above them, a soft "Who's coming?" form for per-ticket attendee names —
    skippable, editable any time before the doors.
 5. **Email** arrives with the QR codes attached inline, the permanent ticket link, and
-   Add-to-Apple-Wallet / Add-to-Google-Wallet buttons.
+  Add-to-Apple-Wallet / Add-to-Google-Wallet buttons.
 
 The critical rule: **tickets are minted by the Stripe webhook, never by the browser
 redirect.** The success page calls the same idempotent issuance function directly after
@@ -60,10 +64,12 @@ truth if the user closes the tab.
 
 ---
 
+
+
 ## 3. Data model
 
 New Prisma models, following existing conventions (PascalCase model, `@@map` to
-snake_case). One deliberate deviation: **money is `Int` cents**, not the `Float` used by
+snake_case). One deliberate deviation: **money is** `Int` **cents**, not the `Float` used by
 the gear/rentals models. Floats and money don't mix, and this system issues receipts.
 
 ```prisma
@@ -369,14 +375,18 @@ model WalletPassRegistration {
 }
 ```
 
+
+
 Also required:
 
 - Door access is scoped exclusively through `TicketEventStaff`; there is no global door permission.
 - `Gig` gains `ticketEvents TicketEvent[]` (back-relation). The existing `Gig.ticketLink`
-  stays for externally-ticketed gigs; when a `TicketEvent` is linked it takes priority.
+stays for externally-ticketed gigs; when a `TicketEvent` is linked it takes priority.
 - `ActivityType` gains: `TICKET_EVENT_CREATED/UPDATED/DELETED/PUBLISHED/CANCELLED`,
-  `TICKET_ORDER_PAID/REFUNDED`, `TICKET_ISSUED/VOIDED/RESENT`, `TICKET_SCANNED`,
-  `TICKET_SCAN_OVERRIDE`, `DISCOUNT_CODE_CREATED/UPDATED/DELETED`, `DOOR_STAFF_ASSIGNED/REMOVED`.
+`TICKET_ORDER_PAID/REFUNDED`, `TICKET_ISSUED/VOIDED/RESENT`, `TICKET_SCANNED`,
+`TICKET_SCAN_OVERRIDE`, `DISCOUNT_CODE_CREATED/UPDATED/DELETED`, `DOOR_STAFF_ASSIGNED/REMOVED`.
+
+
 
 ### Preventing oversell
 
@@ -385,16 +395,18 @@ maintained inside a transaction that takes `SELECT ... FOR UPDATE` on the tier r
 order creation:
 
 1. Lazily expires stale `PENDING` orders for the event (`expiresAt < now()`) and
-   decrements `heldCount`.
+  decrements `heldCount`.
 2. Locks the tier rows, checks `allocation - soldCount - heldCount >= qty`, and the
-   event-wide `capacity` if set.
+  event-wide `capacity` if set.
 3. Creates the `PENDING` order + items, increments `heldCount`, sets a 10-minute
-   `expiresAt`.
+  `expiresAt`.
 
 A Vercel cron every 5 minutes is the backstop sweeper, plus a nightly reconcile that
 recomputes `soldCount` from the `Ticket` table and logs any drift.
 
 ---
+
+
 
 ## 4. QR tokens
 
@@ -409,39 +421,43 @@ sig = base64url(HMAC-SHA256(TICKET_QR_SECRET, `${ticketId}.${qrVersion}`))[0..21
 - Compact, so it scans fast in bad light on a cheap phone screen.
 - Signature is verified before any DB hit — bogus scans cost nothing.
 - `qrVersion` bumps invalidate an old code without changing the ticket identity, which is
-  what makes reissue and (later) transfer possible.
+what makes reissue and (later) transfer possible.
 - `TICKET_QR_SECRET` is a new env var, independent of `BETTER_AUTH_SECRET` so it can be
-  rotated separately. Rotation would invalidate live passes, so: generate once, treat as
-  permanent, document it.
+rotated separately. Rotation would invalidate live passes, so: generate once, treat as
+permanent, document it.
 
 ---
+
+
 
 ## 5. Door scanner
 
 Route `/door` — outside the admin chrome. Dark, huge touch targets, one-handed.
 
 - **Auth**: `DOOR_STAFF` (or `ADMIN`) via the existing better-auth login, plus a
-  `TicketEventStaff` assignment for the specific event. Staff pick their event, then
-  optionally set a device label ("Front door", "Side entrance") which is attributed to
-  every scan.
+`TicketEventStaff` assignment for the specific event. Staff pick their event, then
+optionally set a device label ("Front door", "Side entrance") which is attributed to
+every scan.
 - **Camera**: `getUserMedia` → decode with `BarcodeDetector` when available, falling back
-  to a wasm decoder (`@zxing/browser` or `qr-scanner`) since iOS Safari has historically
-  lacked `BarcodeDetector`. Feature-detect, never assume.
+to a wasm decoder (`@zxing/browser` or `qr-scanner`) since iOS Safari has historically
+lacked `BarcodeDetector`. Feature-detect, never assume.
 - **Fallbacks that matter at 11pm**: manual code entry for a cracked screen, and a
-  searchable door list by name / order number / email.
+searchable door list by name / order number / email.
 - **Result states** — full-screen colour, distinct sound, haptic:
   - 🟢 `ADMITTED` — name, tier, "3 of 4 in this order".
   - 🟠 `ALREADY ADMITTED — 14 minutes ago` — who scanned it, on which device, plus the
-    full entry history and an **Admit anyway** button that writes an
-    `OVERRIDE_ADMITTED` scan against the staff member. (If the event has
-    `reentryAllowed`, this is a calm green "Re-entry #2" instead.)
+  full entry history and an **Admit anyway** button that writes an
+  `OVERRIDE_ADMITTED` scan against the staff member. (If the event has
+  `reentryAllowed`, this is a calm green "Re-entry #2" instead.)
   - 🔴 `VOID` / `REFUNDED` / `WRONG EVENT` / `NOT A VALID TICKET`.
   - Any R18 event puts a persistent **R18 — CHECK ID** banner in the frame.
 - **Race safety**: the admit is a conditional update inside a transaction, so two phones
-  scanning the same QR simultaneously produce exactly one `ADMITTED`.
+scanning the same QR simultaneously produce exactly one `ADMITTED`.
 - Header shows a live `347 / 500 in` counter.
 
 ---
+
+
 
 ## 6. Analytics
 
@@ -470,21 +486,23 @@ Charts follow the `dataviz` skill when built.
 
 ---
 
+
+
 ## 7. Wallet passes
 
 **Apple** (`.pkpass`) is the larger chunk of work:
 
 - Needs Apple Developer Program membership, a **Pass Type ID certificate** (.p12) and the
-  Apple WWDR intermediate cert, both stored base64 in env vars.
+Apple WWDR intermediate cert, both stored base64 in env vars.
 - `passkit-generator` on the **Node runtime** (not Edge): zip of `pass.json`, images,
-  `manifest.json`, and a detached PKCS#7 signature.
+`manifest.json`, and a detached PKCS#7 signature.
 - Served from `/api/tickets/[ticketId]/pkpass?t=<signed token>`.
 - Set `webServiceURL` + `authenticationToken` from day one, and implement the Apple
-  web service endpoints (`register`, `unregister`, `passes`, `log`) backed by
-  `WalletPassRegistration`. Skipping this makes passes permanently static — no way to
-  push a time change or a cancellation. Push updates go via APNs using the same cert.
+web service endpoints (`register`, `unregister`, `passes`, `log`) backed by
+`WalletPassRegistration`. Skipping this makes passes permanently static — no way to
+push a time change or a cancellation. Push updates go via APNs using the same cert.
 - **The cert expires annually.** Add an admin warning at 30 days and a calendar reminder;
-  an expired cert means nobody can add a pass.
+an expired cert means nobody can add a pass.
 
 **Google Wallet** is simpler: a GCP service account + Wallet API issuer account, one
 `EventTicketClass` per event, then a signed JWT save link per ticket.
@@ -493,49 +511,55 @@ Both use the same QR payload as the email and the web ticket page.
 
 ---
 
+
+
 ## 8. Email
 
 - New `src/server/email/` with a provider interface. Resend becomes the transactional
-  path; the existing `sendEmail()` (contact form, newsletter) is left alone initially and
-  can migrate later.
+path; the existing `sendEmail()` (contact form, newsletter) is left alone initially and
+can migrate later.
 - QR codes are generated server-side as PNGs and attached **inline (CID)**. Many clients
-  block remote images, and a blocked QR is a person stuck outside. Always include the web
-  ticket link and both wallet buttons as a backup.
+block remote images, and a blocked QR is a person stuck outside. Always include the web
+ticket link and both wallet buttons as a backup.
 - Templates: order confirmation with tickets, free-ticket issued, refund confirmation,
-  attendee-details nudge, optional day-before reminder.
+attendee-details nudge, optional day-before reminder.
 - Every send is written to `TicketEmailLog`; admin gets a **Resend tickets** button and
-  can see failures.
+can see failures.
 - **Marketing consent is a separate opt-in checkbox** at checkout — ticket buyers are not
-  auto-subscribed to the newsletter (Unsolicited Electronic Messages Act 2007).
+auto-subscribed to the newsletter (Unsolicited Electronic Messages Act 2007).
 - Requires SPF/DKIM/DMARC on the sending domain before launch. Non-negotiable for tickets.
 
 ---
+
+
 
 ## 9. NZ legal / compliance setup
 
 Not legal advice — worth a quick confirmation with your accountant, especially on GST.
 
 - **GST (15%)** — Atmos is registered, so displayed ticket prices are GST-inclusive. The
-  GST component of a GST-inclusive total is `total × 3 ÷ 23`. Receipts must be valid
-  *taxable supply information*: supplier name, GST number, date, description of supply,
-  amount, and GST. `gstRateBp` and `gstNumber` are snapshotted onto the order so historical
-  receipts stay correct if either changes.
+GST component of a GST-inclusive total is `total × 3 ÷ 23`. Receipts must be valid
+*taxable supply information*: supplier name, GST number, date, description of supply,
+amount, and GST. `gstRateBp` and `gstNumber` are snapshotted onto the order so historical
+receipts stay correct if either changes.
 - **Fair Trading Act 1986** — the Commerce Commission actively pursues "drip pricing". The
-  booking fee must be visible on the event page and in the summary *before* the pay
-  button, not revealed at the last step. Advertise all-in where practical.
+booking fee must be visible on the event page and in the summary *before* the pay
+button, not revealed at the last step. Advertise all-in where practical.
 - **Privacy Act 2020** — a collection notice at the point where the email is captured
-  (IPP 3), linking to an updated `/privacy` that names Stripe, Resend, AWS and Google as
-  processors and covers offshore disclosure (IPP 12). Add a retention period for attendee
-  data and a deletion path. Be ready for the mandatory breach-notification duty.
+(IPP 3), linking to an updated `/privacy` that names Stripe, Resend, AWS and Google as
+processors and covers offshore disclosure (IPP 12). Add a retention period for attendee
+data and a deletion path. Be ready for the mandatory breach-notification duty.
 - **R18** — per-event flag, defaulting **true**. Shown at checkout with an
-  acknowledgement, printed on the ticket, and flagged in the scanner so door staff know to
-  check ID. If the venue is licensed, the venue's own obligations under the Sale and
-  Supply of Alcohol Act 2012 still apply — the flag is a prompt, not a substitute.
+acknowledgement, printed on the ticket, and flagged in the scanner so door staff know to
+check ID. If the venue is licensed, the venue's own obligations under the Sale and
+Supply of Alcohol Act 2012 still apply — the flag is a prompt, not a substitute.
 - **Terms of ticket sale** — a `/tickets/terms` page, versioned; `termsVersion` and
-  `termsAcceptedAt` stored per order. Should state the refund position plainly: no
-  change-of-mind refunds, but cancelled or materially changed events are refunded.
+`termsAcceptedAt` stored per order. Should state the refund position plainly: no
+change-of-mind refunds, but cancelled or materially changed events are refunded.
 
 ---
+
+
 
 ## 10. File layout
 
@@ -595,21 +619,25 @@ New env vars: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
 
 ---
 
+
+
 ## 11. Phases
 
 Each phase ends in a working, shippable state. Everything sits behind a
 `ticketing.enabled` feature flag (the existing `KeyValueStore` pattern) until phase 7.
 
-| # | Phase | Contents |
-| --- | --- | --- |
-| 0 | Foundations | Schema + migration, per-event staff assignments, env vars, Stripe account in test mode, money/QR/numbering utils with tests. |
-| 1 | Admin + public event pages | Event and tier CRUD, poster upload via the existing preset system, gig linking, public `/events` and `/events/[slug]`, buy panel on gig pages. No sales yet. |
-| 2 | Checkout | Inventory holds, embedded Payment Element + express buttons, webhook, idempotent issuance, `/tickets/[token]`, post-payment attendee names, confirmation email with QR + wallet links. **The core.** |
-| 3 | Codes, free tiers, box office | Discount codes with all their limits, free/instant tiers, approval tiers, admin box-office issuance (cash / terminal / comp), single-ticket refunds + refund webhook handling. |
-| 4 | Door | Staff assignment, `/door` scanner with camera + fallbacks, scan transaction, result states, override logging, door list, live counter. |
-| 5 | Wallet | Apple `.pkpass` + web service + APNs updates, then Google Wallet. |
-| 6 | Analytics | Live door dashboard, sales dashboard, CSV exports. |
-| 7 | Launch | Terms + privacy updates, GST receipts, cron sweepers, deliverability setup, rate limiting, load test, Stripe live keys, flag on. |
+
+| #   | Phase                         | Contents                                                                                                                                                                                             |
+| --- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0   | Foundations                   | Schema + migration, per-event staff assignments, env vars, Stripe account in test mode, money/QR/numbering utils with tests.                                                                         |
+| 1   | Admin + public event pages    | Event and tier CRUD, poster upload via the existing preset system, gig linking, public `/events` and `/events/[slug]`, buy panel on gig pages. No sales yet.                                         |
+| 2   | Checkout                      | Inventory holds, embedded Payment Element + express buttons, webhook, idempotent issuance, `/tickets/[token]`, post-payment attendee names, confirmation email with QR + wallet links. **The core.** |
+| 3   | Codes, free tiers, box office | Discount codes with all their limits, free/instant tiers, approval tiers, admin box-office issuance (cash / terminal / comp), single-ticket refunds + refund webhook handling.                       |
+| 4   | Door                          | Staff assignment, `/door` scanner with camera + fallbacks, scan transaction, result states, override logging, door list, live counter.                                                               |
+| 5   | Wallet                        | Apple `.pkpass` + web service + APNs updates, then Google Wallet.                                                                                                                                    |
+| 6   | Analytics                     | Live door dashboard, sales dashboard, CSV exports.                                                                                                                                                   |
+| 7   | Launch                        | Terms + privacy updates, GST receipts, cron sweepers, deliverability setup, rate limiting, load test, Stripe live keys, flag on.                                                                     |
+
 
 Phase 2 is the one that matters; 0–2 is a usable ticketing system. 4 is required before
 any real event. 5 is the most likely to slip on external dependencies (Apple certs,
@@ -618,20 +646,26 @@ approvals take days, not minutes.
 
 ---
 
+
+
 ## 12. Risks
 
-| Risk | Mitigation |
-| --- | --- |
-| Overselling under a rush | Locked tier rows + held inventory + nightly reconcile. Load-test a 200-concurrent-buyer burst before launch. |
-| Webhook lag or loss | Idempotent issuance callable from both webhook and success page; reconcile cron that retries `PENDING` orders whose PaymentIntent actually succeeded. |
-| Ticket email in spam | Resend + SPF/DKIM/DMARC, inline QR attachments, delivery log, resend button, and the ticket link works without email. |
-| iOS camera / decoder | Feature-detect `BarcodeDetector`, ship a wasm fallback, and always keep manual entry + name search available. |
-| Apple cert expiry | Annual renewal; admin warning at 30 days out. |
-| Timezone / DST | Store UTC, render in `Pacific/Auckland`. Sale windows and analytics buckets both need the event timezone, and NZ DST shifts will bite otherwise. |
-| Discount code brute force | Rate-limit code validation and order creation (DB-backed counter — in-memory doesn't work on serverless). |
-| Test/live key mixups | Separate keys per environment, and a loud non-production banner anywhere money appears. |
+
+| Risk                      | Mitigation                                                                                                                                            |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Overselling under a rush  | Locked tier rows + held inventory + nightly reconcile. Load-test a 200-concurrent-buyer burst before launch.                                          |
+| Webhook lag or loss       | Idempotent issuance callable from both webhook and success page; reconcile cron that retries `PENDING` orders whose PaymentIntent actually succeeded. |
+| Ticket email in spam      | Resend + SPF/DKIM/DMARC, inline QR attachments, delivery log, resend button, and the ticket link works without email.                                 |
+| iOS camera / decoder      | Feature-detect `BarcodeDetector`, ship a wasm fallback, and always keep manual entry + name search available.                                         |
+| Apple cert expiry         | Annual renewal; admin warning at 30 days out.                                                                                                         |
+| Timezone / DST            | Store UTC, render in `Pacific/Auckland`. Sale windows and analytics buckets both need the event timezone, and NZ DST shifts will bite otherwise.      |
+| Discount code brute force | Rate-limit code validation and order creation (DB-backed counter — in-memory doesn't work on serverless).                                             |
+| Test/live key mixups      | Separate keys per environment, and a loud non-production banner anywhere money appears.                                                               |
+
 
 ---
+
+
 
 ## 13. Things worth deciding before phase 2
 
@@ -649,6 +683,8 @@ Sensible defaults are assumed for all of these; flag any you want changed.
 10. **PostHog** — reuse the existing install for funnel events rather than adding tracking.
 
 ---
+
+
 
 ## 14. Changes made during the build
 
@@ -669,33 +705,36 @@ leaked `TICKET_QR_SECRET` alone is not enough to forge a ticket — you'd need t
 per-ticket secret out of the database too. Costs one lookup we were making
 regardless.
 
-**Apple certificates are supplied as PEM, not `.p12`.** `passkit-generator`
+**Apple certificates are supplied as PEM, not** `.p12`**.** `passkit-generator`
 wants PEM, so the env vars are `APPLE_PASS_CERT_PEM_BASE64` /
 `APPLE_PASS_KEY_PEM_BASE64` / `APPLE_WWDR_PEM_BASE64`. `.env.example` has the
 two `openssl` commands that split Apple's `.p12` into those.
 
-**Added `ADMISSION_REVERTED`.** Door managers need to undo a mistaken admission.
+**Added** `ADMISSION_REVERTED`**.** Door managers need to undo a mistaken admission.
 The scan log stays append-only — an undo is a new row, and the admitted count
 only counts admissions with no later revert.
 
 ---
+
+
 
 ## 15. Before it can take money
 
 In rough order:
 
 1. `bun db:push` — the schema is additive (new tables, new enum values, one new
-   column on nothing existing) but it has not been applied to any database yet.
+  column on nothing existing) but it has not been applied to any database yet.
 2. Set `TICKET_QR_SECRET`. Generate once, never rotate:
-   `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`
+  `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`
 3. Stripe test keys + `stripe listen --forward-to localhost:3000/api/webhooks/stripe`,
-   then run a full test purchase end to end.
+  then run a full test purchase end to end.
 4. Resend API key, and SPF/DKIM/DMARC on the sending domain.
 5. Admin → Settings → Ticketing: GST number, legal name, support email, booking fee.
 6. Apple Developer: create a Pass Type ID, export the certificate, run the
-   `openssl` commands in `.env.example`.
+  `openssl` commands in `.env.example`.
 7. Google Cloud: service account + Google Wallet issuer account.
 8. `CRON_SECRET`, and confirm the Vercel cron in `vercel.json` is running.
 9. Assign someone to a test event as door staff; run a real scan on a real
-   phone.
+  phone.
 10. Swap to Stripe live keys.
+
