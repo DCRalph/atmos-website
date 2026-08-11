@@ -45,9 +45,7 @@ const PILL_BASE_CLASSES = [
 
 const ALL_PLATFORM_CLASSES = Array.from(
   new Set(
-    SOCIAL_PLATFORMS.flatMap((p) =>
-      p.pillClassName.split(" ").filter(Boolean),
-    ),
+    SOCIAL_PLATFORMS.flatMap((p) => p.pillClassName.split(" ").filter(Boolean)),
   ),
 );
 
@@ -81,9 +79,7 @@ function applyPillStyling(
   }
 
   anchor.classList.add(...PILL_BASE_CLASSES);
-  anchor.classList.add(
-    ...platform.pillClassName.split(" ").filter(Boolean),
-  );
+  anchor.classList.add(...platform.pillClassName.split(" ").filter(Boolean));
   // Hide the raw pill marker (`*-pill`) so users don't see an internal title.
   anchor.removeAttribute("title");
 

@@ -7,10 +7,7 @@ import { CalendarDays, Clock, MapPin } from "lucide-react";
 
 import { api } from "~/trpc/react";
 import { buildMediaUrl } from "~/lib/media-url";
-import {
-  formatEventDateLong,
-  formatEventTime,
-} from "~/lib/ticketing/dates";
+import { formatEventDateLong, formatEventTime } from "~/lib/ticketing/dates";
 import { formatNZD } from "~/lib/ticketing/money";
 import { BuyPanel } from "~/components/ticketing/buy-panel";
 import { LexicalContent } from "~/components/lexical";
@@ -91,7 +88,9 @@ export default function EventPage() {
           </h1>
 
           {data.shortDescription && (
-            <p className="mt-3 text-lg text-white/60">{data.shortDescription}</p>
+            <p className="mt-3 text-lg text-white/60">
+              {data.shortDescription}
+            </p>
           )}
 
           <dl className="mt-8 space-y-3 border-y-2 border-white/10 py-6">
@@ -134,7 +133,8 @@ export default function EventPage() {
           )}
 
           {/* Fees disclosed on the page itself, not just at the payment step. */}
-          {(data.bookingFee.fixedCents > 0 || data.bookingFee.percentBp > 0) && (
+          {(data.bookingFee.fixedCents > 0 ||
+            data.bookingFee.percentBp > 0) && (
             <p className="mt-8 text-xs text-white/40">
               Prices include GST. A booking fee of{" "}
               {data.bookingFee.fixedCents > 0 &&

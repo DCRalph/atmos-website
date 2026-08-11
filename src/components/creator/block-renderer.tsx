@@ -99,13 +99,7 @@ export function BlockRenderer({
       const text = getString(block.data, "text") || "Heading";
       const align = getString(block.data, "align") || "left";
       const Tag = (
-        level <= 1
-          ? "h1"
-          : level === 2
-            ? "h2"
-            : level === 3
-              ? "h3"
-              : "h4"
+        level <= 1 ? "h1" : level === 2 ? "h2" : level === 3 ? "h3" : "h4"
       ) as React.ElementType;
       const sizeClass =
         level === 1

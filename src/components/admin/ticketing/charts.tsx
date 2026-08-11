@@ -43,11 +43,7 @@ export function StatTile({
       </p>
       <p
         className="mt-1.5 text-3xl font-semibold tabular-nums"
-        style={
-          accent
-            ? { color: `var(--ticket-series-${accent})` }
-            : undefined
-        }
+        style={accent ? { color: `var(--ticket-series-${accent})` } : undefined}
       >
         {value}
       </p>
@@ -88,7 +84,9 @@ export function TimeSeriesChart({
 
     const xAt = (index: number) =>
       PAD.left +
-      (points.length === 1 ? innerW / 2 : (index / (points.length - 1)) * innerW);
+      (points.length === 1
+        ? innerW / 2
+        : (index / (points.length - 1)) * innerW);
     const yAt = (value: number) => PAD.top + innerH - (value / maxY) * innerH;
 
     const line = points
@@ -193,7 +191,10 @@ export function TimeSeriesChart({
           {points.map((point, i) => (
             <rect
               key={point.x.toISOString()}
-              x={geometry.xAt(i) - (width - PAD.left - PAD.right) / points.length / 2}
+              x={
+                geometry.xAt(i) -
+                (width - PAD.left - PAD.right) / points.length / 2
+              }
               y={PAD.top}
               width={(width - PAD.left - PAD.right) / points.length}
               height={geometry.innerH}

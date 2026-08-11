@@ -224,7 +224,7 @@ export function FullscreenGallery({
       >
         <div
           ref={thumbnailsRef}
-          className="scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20 flex gap-2 overflow-x-auto px-4 py-4"
+          className="flex scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent gap-2 overflow-x-auto px-4 py-4"
         >
           {media.map((item, index) => {
             const isActive = index === currentIndex;

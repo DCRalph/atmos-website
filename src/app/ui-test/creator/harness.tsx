@@ -8,13 +8,11 @@ import {
   AddBlockPopover,
 } from "~/components/creator/creator-grid-editor";
 import { BlockInspector } from "~/components/creator/block-inspector";
-import { BLOCK_TYPES, type ClientBlock } from "~/components/creator/block-types";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
+  BLOCK_TYPES,
+  type ClientBlock,
+} from "~/components/creator/block-types";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
   DEFAULT_THEME_TOKENS,
   themeToCssVars,
@@ -402,7 +400,8 @@ function Section({
     <section data-uitest-section={id} className="border-border border-b">
       <header className="bg-muted/40 sticky top-0 z-30 border-b px-4 py-2 backdrop-blur">
         <h2 className="text-sm font-semibold tracking-wide">
-          <span className="text-muted-foreground font-mono">{id}</span> — {label}
+          <span className="text-muted-foreground font-mono">{id}</span> —{" "}
+          {label}
         </h2>
       </header>
       {children}
@@ -423,12 +422,11 @@ function HarnessIndex() {
     <div className="border-border border-b p-4">
       <h1 className="text-xl font-bold">Creator UI test harness</h1>
       <p className="text-muted-foreground mt-1 text-sm">
-        Dev-only. {BLOCK_TYPES.length} block types across{" "}
-        {SECTIONS.length} sections. Append{" "}
-        <code className="font-mono">?section=&lt;id&gt;</code> to isolate one,{" "}
-        <code className="font-mono">&amp;outline=1</code> to outline block boxes
-        (red) against their content (cyan). Images are fake ids and render
-        broken here; the audit script substitutes placeholders.
+        Dev-only. {BLOCK_TYPES.length} block types across {SECTIONS.length}{" "}
+        sections. Append <code className="font-mono">?section=&lt;id&gt;</code>{" "}
+        to isolate one, <code className="font-mono">&amp;outline=1</code> to
+        outline block boxes (red) against their content (cyan). Images are fake
+        ids and render broken here; the audit script substitutes placeholders.
       </p>
       <ul className="mt-3 grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
         {SECTIONS.map((s) => (

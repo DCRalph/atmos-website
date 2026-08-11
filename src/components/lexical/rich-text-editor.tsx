@@ -17,16 +17,10 @@ import {
   type SerializedEditorState,
 } from "lexical";
 import { cn } from "~/lib/utils";
-import {
-  normalizeLexicalValue,
-  type LexicalEditorValue,
-} from "./normalize";
+import { normalizeLexicalValue, type LexicalEditorValue } from "./normalize";
 import { LEXICAL_NODES } from "./nodes";
 import { LEXICAL_THEME } from "./theme";
-import {
-  AutoFocusOnMount,
-  ExternalValuePlugin,
-} from "./external-value-plugin";
+import { AutoFocusOnMount, ExternalValuePlugin } from "./external-value-plugin";
 import { Toolbar } from "./toolbar/toolbar";
 import { LinkDialog } from "./link/link-dialog";
 import { FloatingLinkToolbar } from "./link/floating-link-toolbar";
@@ -111,7 +105,7 @@ export function LexicalRichTextEditor({
           className={cn(
             "border-input bg-background focus-within:border-ring focus-within:ring-ring/50 relative border shadow-xs transition-colors focus-within:ring-[3px]",
             showToolbar ? "rounded-b-md" : "rounded-md",
-            fillParent && "flex-1 min-h-0 overflow-hidden",
+            fillParent && "min-h-0 flex-1 overflow-hidden",
           )}
         >
           <RichTextPlugin
@@ -141,10 +135,7 @@ export function LexicalRichTextEditor({
             ignoreHistoryMergeTagChange
             ignoreSelectionChange
           />
-          <ExternalValuePlugin
-            value={value}
-            lastEmittedRef={lastEmittedRef}
-          />
+          <ExternalValuePlugin value={value} lastEmittedRef={lastEmittedRef} />
           {autoFocus ? <AutoFocusOnMount /> : null}
           <FloatingLinkToolbar
             containerRef={editorWrapperRef}

@@ -60,12 +60,10 @@ export function MerchItem({
   }).format(price);
 
   const canAdd =
-    variants.length > 0 &&
-    selected?.availableForSale &&
-    !!selected?.id;
+    variants.length > 0 && selected?.availableForSale && !!selected?.id;
 
   return (
-    <div className="group relative flex h-full flex-col overflow-hidden rounded-none border-2 border-white/10 bg-black/80 backdrop-blur-sm transition-all hover:border-accent-muted/50 hover:bg-black/90 hover:shadow-[0_0_15px_var(--accent-muted)]">
+    <div className="group hover:border-accent-muted/50 relative flex h-full flex-col overflow-hidden rounded-none border-2 border-white/10 bg-black/80 backdrop-blur-sm transition-all hover:bg-black/90 hover:shadow-[0_0_15px_var(--accent-muted)]">
       <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden border-b-2 border-white/10 bg-black/70">
         <Image
           src={displayImage}
@@ -94,10 +92,7 @@ export function MerchItem({
                 Option
               </label>
               {variants.length > 1 ? (
-                <Select
-                  value={selectedId}
-                  onValueChange={setSelectedId}
-                >
+                <Select value={selectedId} onValueChange={setSelectedId}>
                   <SelectTrigger className="w-full rounded-none border-white/20 bg-black/50 text-white">
                     <SelectValue placeholder="Choose variant" />
                   </SelectTrigger>
@@ -128,9 +123,7 @@ export function MerchItem({
               className="min-w-32"
               disabled={!canAdd}
               title={
-                variants.length === 0
-                  ? "No variants available"
-                  : undefined
+                variants.length === 0 ? "No variants available" : undefined
               }
               onClick={() => {
                 if (!selected?.id) return;

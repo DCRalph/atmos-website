@@ -151,7 +151,10 @@ export const pickersRouter = createTRPCRouter({
           }),
         count: () => ctx.db.ticketEvent.count({ where }),
         findByValues: (values) =>
-          ctx.db.ticketEvent.findMany({ where: { id: { in: values } }, select }),
+          ctx.db.ticketEvent.findMany({
+            where: { id: { in: values } },
+            select,
+          }),
         toOption: (event) => ({
           value: event.id,
           label: event.name,
@@ -186,7 +189,9 @@ export const pickersRouter = createTRPCRouter({
    */
   doorStaff: eventOrganiserProcedure
     .input(
-      pickerInput(z.object({ excludeEventId: z.string().optional() }).default({})),
+      pickerInput(
+        z.object({ excludeEventId: z.string().optional() }).default({}),
+      ),
     )
     .query(async ({ ctx, input }) => {
       const assigned = input.filter.excludeEventId
@@ -236,31 +241,29 @@ export const pickersRouter = createTRPCRouter({
     }),
 
   /** Any user. Admin-only — this one can see every account on the site. */
-  users: adminProcedure
-    .input(pickerInput(noFilter))
-    .query(({ ctx, input }) => {
-      const where = searchAcross(input.query, ["name", "email"]);
-      const select = { id: true, name: true, email: true };
+  users: adminProcedure.input(pickerInput(noFilter)).query(({ ctx, input }) => {
+    const where = searchAcross(input.query, ["name", "email"]);
+    const select = { id: true, name: true, email: true };
 
-      return buildPicker({
-        input,
-        find: (take) =>
-          ctx.db.user.findMany({
-            where,
-            select,
-            orderBy: { name: "asc" },
-            take,
-          }),
-        count: () => ctx.db.user.count({ where }),
-        findByValues: (values) =>
-          ctx.db.user.findMany({ where: { id: { in: values } }, select }),
-        toOption: (user) => ({
-          value: user.id,
-          label: user.name,
-          description: user.email,
+    return buildPicker({
+      input,
+      find: (take) =>
+        ctx.db.user.findMany({
+          where,
+          select,
+          orderBy: { name: "asc" },
+          take,
         }),
-      });
-    }),
+      count: () => ctx.db.user.count({ where }),
+      findByValues: (values) =>
+        ctx.db.user.findMany({ where: { id: { in: values } }, select }),
+      toOption: (user) => ({
+        value: user.id,
+        label: user.name,
+        description: user.email,
+      }),
+    });
+  }),
 
   /** Gig tags. */
   gigTags: eventOrganiserProcedure

@@ -57,7 +57,11 @@ export type PickerEndpoint<TFilter> = {
       includeValues?: string[];
       filter?: TFilter;
     },
-    options?: { placeholderData?: (previous: PickerData | undefined) => PickerData | undefined },
+    options?: {
+      placeholderData?: (
+        previous: PickerData | undefined,
+      ) => PickerData | undefined;
+    },
   ) => { data?: PickerData; isFetching: boolean };
 };
 

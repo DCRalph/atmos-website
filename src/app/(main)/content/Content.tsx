@@ -77,8 +77,8 @@ export default function ContentPage() {
                   Atmos highlights, curated regularly
                 </h3>
                 <p className="text-sm text-white/60 sm:text-base">
-                  Every week we pull the sharpest new mixes and live moments into
-                  one place so you can press play fast.
+                  Every week we pull the sharpest new mixes and live moments
+                  into one place so you can press play fast.
                 </p>
               </div>
               <div className="flex flex-col justify-between gap-4 border-t border-white/10 pt-4 text-sm text-white/60 lg:border-t-0 lg:border-l lg:pl-6">

@@ -1,6 +1,10 @@
 import type { NextRequest } from "next/server";
 
-import { PaymentMethodKind, TicketOrderStatus, TicketStatus } from "~Prisma/client";
+import {
+  PaymentMethodKind,
+  TicketOrderStatus,
+  TicketStatus,
+} from "~Prisma/client";
 import { env } from "~/env";
 import { db } from "~/server/db";
 import { getStripe, isStripeConfigured } from "~/server/stripe";
@@ -166,5 +170,65 @@ export async function POST(request: NextRequest): Promise<Response> {
     console.error("[ticketing] tier counter drift corrected", drift);
   }
 
-  return Response.json({ checked: tiers.length, corrected: drift });
+  const compDrift = await checkCompAccounting();
+
+  return Response.json({
+    checked: tiers.length,
+    corrected: drift,
+    compDrift,
+  });
+}
+
+/**
+ * Assert the identity that makes comp numbers readable:
+ *
+ *     valid tickets = Σ tier soldCount + comps
+ *
+ * Comps are minted outside every tier counter, so if this ever fails it means
+ * a ticket exists that is neither drawn from a tier nor marked as a comp — the
+ * one shape that would quietly make the admin figures stop adding up. Reported
+ * rather than corrected, because there is no way to know from here which half
+ * is wrong.
+ */
+async function checkCompAccounting(): Promise<
+  { eventId: string; tickets: number; fromTiers: number; comps: number }[]
+> {
+  const events = await db.ticketEvent.findMany({
+    select: {
+      id: true,
+      tiers: { select: { soldCount: true } },
+      _count: {
+        select: { tickets: { where: { status: TicketStatus.VALID } } },
+      },
+    },
+  });
+
+  const drift: {
+    eventId: string;
+    tickets: number;
+    fromTiers: number;
+    comps: number;
+  }[] = [];
+
+  for (const event of events) {
+    const comps = await db.ticket.count({
+      where: { eventId: event.id, isComp: true, status: TicketStatus.VALID },
+    });
+    const fromTiers = event.tiers.reduce((sum, t) => sum + t.soldCount, 0);
+
+    if (fromTiers + comps !== event._count.tickets) {
+      drift.push({
+        eventId: event.id,
+        tickets: event._count.tickets,
+        fromTiers,
+        comps,
+      });
+    }
+  }
+
+  if (drift.length > 0) {
+    console.error("[ticketing] comp accounting does not reconcile", drift);
+  }
+
+  return drift;
 }

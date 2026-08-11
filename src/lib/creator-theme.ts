@@ -17,12 +17,7 @@ export type BlockShadow = "none" | "sm" | "md" | "lg";
 export type ButtonStyle = "solid" | "outline" | "ghost";
 export type Density = "compact" | "comfortable" | "spacious";
 export type FontStack =
-  | "inherit"
-  | "sans"
-  | "serif"
-  | "mono"
-  | "display"
-  | "handwritten";
+  "inherit" | "sans" | "serif" | "mono" | "display" | "handwritten";
 
 export type ThemeTokens = {
   // Page
@@ -87,7 +82,9 @@ export type BlockSpecificAll = {
 
 export type BlockOverride = Partial<ThemeTokens> & BlockSpecificAll;
 
-export type BlockOverrides = Partial<Record<CreatorBlockTypeName, BlockOverride>>;
+export type BlockOverrides = Partial<
+  Record<CreatorBlockTypeName, BlockOverride>
+>;
 
 // ---------------------------------------------------------------------------
 // Defaults
@@ -218,9 +215,7 @@ const zBlockSpecific = z.object({
   pastGigsCellRadius: z.number().int().min(0).max(64).optional(),
 });
 
-export const zBlockOverride = zThemeTokens
-  .partial()
-  .and(zBlockSpecific);
+export const zBlockOverride = zThemeTokens.partial().and(zBlockSpecific);
 
 const BLOCK_TYPE_NAMES = [
   "HEADING",
@@ -260,7 +255,10 @@ export function mergeTokens(
 }
 
 /** Parse an unknown value into `ThemeTokens`, filling any missing fields with defaults. */
-export function parseTokens(raw: unknown, base: ThemeTokens = DEFAULT_THEME_TOKENS): ThemeTokens {
+export function parseTokens(
+  raw: unknown,
+  base: ThemeTokens = DEFAULT_THEME_TOKENS,
+): ThemeTokens {
   if (!raw || typeof raw !== "object") return base;
   const patched = mergeTokens(base, raw as Partial<ThemeTokens>);
   const result = zThemeTokens.safeParse(patched);
@@ -355,7 +353,11 @@ export function themeToCssVars(
     const override = overrides[blockType];
     if (override) {
       finalTokens = mergeTokens(tokens, override);
-      if (blockType === "HEADING" && "headingColor" in override && override.headingColor) {
+      if (
+        blockType === "HEADING" &&
+        "headingColor" in override &&
+        override.headingColor
+      ) {
         extras["--creator-heading-color"] = override.headingColor;
       }
       if (
@@ -370,12 +372,16 @@ export function themeToCssVars(
         "pastGigsCellRadius" in override &&
         typeof override.pastGigsCellRadius === "number"
       ) {
-        extras["--creator-past-gigs-cell-radius"] = `${override.pastGigsCellRadius}px`;
+        extras["--creator-past-gigs-cell-radius"] =
+          `${override.pastGigsCellRadius}px`;
       }
     }
   }
 
-  return { ...tokensToVarRecord(finalTokens), ...extras } as React.CSSProperties;
+  return {
+    ...tokensToVarRecord(finalTokens),
+    ...extras,
+  } as React.CSSProperties;
 }
 
 /** Convenience: return a `ThemeTokens` ready for rendering, with the

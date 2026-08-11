@@ -14,28 +14,32 @@ export function UpcomingGigsSection() {
     <div className="mb-16 sm:mb-20">
       <motion.h2
         initial={{ opacity: 0, x: "100%" }}
-        whileInView={{ opacity: 1, x: 0, transition: { duration: 0.5, ease: "easeOut" } }}
+        whileInView={{
+          opacity: 1,
+          x: 0,
+          transition: { duration: 0.5, ease: "easeOut" },
+        }}
         viewport={{ once: true }}
 
-        className={`mb-6 border-t-0 md:border-b-2 border-white/10 pb-3 text-2xl font-black tracking-tight uppercase sm:mb-8 sm:pb-4 sm:text-3xl md:text-4xl ${orbitron.className}`}
+        className={`mb-6 border-t-0 border-white/10 pb-3 text-2xl font-black tracking-tight uppercase sm:mb-8 sm:pb-4 sm:text-3xl md:border-b-2 md:text-4xl ${orbitron.className}`}
       >
         Upcoming Gigs
       </motion.h2>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {isLoadingUpcomingGigs ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-white/60" />
           </div>
         ) : // ) : upcomingGigs && upcomingGigs.filter((gig) => gig.gigStartTime).length > 0 ?
-          upcomingGigs && upcomingGigs.length > 0 ? (
-            upcomingGigs
-              // .filter((gig) => gig.gigStartTime)
-              .map((gig) => <UpcomingGigHomeCard key={gig.id} gig={gig} />)
-          ) : (
-            <p className="py-8 text-center text-white/60">
-              No upcoming gigs scheduled.
-            </p>
-          )}
+        upcomingGigs && upcomingGigs.length > 0 ? (
+          upcomingGigs
+            // .filter((gig) => gig.gigStartTime)
+            .map((gig) => <UpcomingGigHomeCard key={gig.id} gig={gig} />)
+        ) : (
+          <p className="py-8 text-center text-white/60">
+            No upcoming gigs scheduled.
+          </p>
+        )}
       </div>
     </div>
   );

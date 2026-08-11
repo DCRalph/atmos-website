@@ -135,7 +135,9 @@ export const ticketCheckoutRouter = createTRPCRouter({
           // A bad code should grey out the discount line, not blow up the
           // whole quote and leave the buyer staring at an error page.
           discountError =
-            cause instanceof TRPCError ? cause.message : "That code isn't valid.";
+            cause instanceof TRPCError
+              ? cause.message
+              : "That code isn't valid.";
         }
       }
 

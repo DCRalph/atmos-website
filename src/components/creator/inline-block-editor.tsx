@@ -25,7 +25,11 @@ export function InlineBlockEditor({
 }: InlineBlockEditorProps) {
   if (block.type === "HEADING") {
     return (
-      <InlineHeadingEditor block={block} onChange={onChange} onFocus={onFocus} />
+      <InlineHeadingEditor
+        block={block}
+        onChange={onChange}
+        onFocus={onFocus}
+      />
     );
   }
   if (block.type === "RICH_TEXT") {

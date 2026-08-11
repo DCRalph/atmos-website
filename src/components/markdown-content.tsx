@@ -91,7 +91,7 @@ function transformSocialPills(content: string) {
       const resolved = resolvePillForTarget(target);
       if (!resolved) return match;
       return `[${label}](${resolved.href} "${resolved.platform.pillTitle}")`;
-    }
+    },
   );
 }
 
@@ -126,7 +126,7 @@ export function MarkdownContent({
             <ul
               className={clsx(
                 "mb-4 list-inside list-disc space-y-2 text-white/90",
-                s.p
+                s.p,
               )}
             >
               {children}
@@ -136,18 +136,20 @@ export function MarkdownContent({
             <ol
               className={clsx(
                 "mb-4 list-inside list-decimal space-y-2 text-white/90",
-                s.p
+                s.p,
               )}
             >
               {children}
             </ol>
           ),
-          li: ({ children }) => <li className={clsx("ml-4", s.li)}>{children}</li>,
+          li: ({ children }) => (
+            <li className={clsx("ml-4", s.li)}>{children}</li>
+          ),
           a: ({ href, title, children }) => {
             const pillPlatform =
               title && SOCIAL_PILL_TITLES.has(title)
-                ? getPlatformFromPillTitle(title) ??
-                  (href ? detectPlatformFromUrl(href) : null)
+                ? (getPlatformFromPillTitle(title) ??
+                  (href ? detectPlatformFromUrl(href) : null))
                 : null;
             if (pillPlatform) {
               return (
@@ -158,7 +160,7 @@ export function MarkdownContent({
                   className={clsx(
                     "inline-flex items-center rounded-full border font-semibold no-underline transition-colors",
                     pillPlatform.pillClassName,
-                    pill.wrapper
+                    pill.wrapper,
                   )}
                 >
                   <Image
@@ -178,7 +180,10 @@ export function MarkdownContent({
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={clsx("text-white underline hover:text-white/80", s.p)}
+                className={clsx(
+                  "text-white underline hover:text-white/80",
+                  s.p,
+                )}
               >
                 {children}
               </a>
@@ -189,12 +194,14 @@ export function MarkdownContent({
               {children}
             </strong>
           ),
-          em: ({ children }) => <em className={clsx("italic", s.p)}>{children}</em>,
+          em: ({ children }) => (
+            <em className={clsx("italic", s.p)}>{children}</em>
+          ),
           code: ({ children }) => (
             <code
               className={clsx(
                 "rounded bg-white/10 px-1.5 py-0.5 font-mono",
-                s.code
+                s.code,
               )}
             >
               {children}
@@ -204,7 +211,7 @@ export function MarkdownContent({
             <blockquote
               className={clsx(
                 "my-4 border-l-4 border-white/30 pl-4 text-white/80 italic",
-                s.blockquote
+                s.blockquote,
               )}
             >
               {children}

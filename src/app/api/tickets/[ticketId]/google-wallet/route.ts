@@ -1,8 +1,7 @@
 import type { NextRequest } from "next/server";
 
-import { TicketStatus } from "~Prisma/client";
 import { db } from "~/server/db";
-import { findOrderByAccessToken } from "~/server/ticketing/orders";
+import { resolvePassTicket } from "~/server/wallet/pass-access";
 import { buildGoogleWalletSaveUrl } from "~/server/wallet/google";
 import { isGoogleWalletConfigured } from "~/server/wallet/google-config";
 
@@ -31,20 +30,15 @@ export async function GET(
     return new Response("Missing token", { status: 401 });
   }
 
-  const order = await findOrderByAccessToken(accessToken);
-  if (!order) return new Response("Not found", { status: 404 });
-
-  const ticket = await db.ticket.findFirst({
-    where: { id: ticketId, orderId: order.id, status: TicketStatus.VALID },
-    include: { tier: { select: { name: true } }, event: true },
-  });
-  if (!ticket) return new Response("Not found", { status: 404 });
+  const resolved = await resolvePassTicket(ticketId, accessToken);
+  if (!resolved) return new Response("Not found", { status: 404 });
+  const { ticket, orderNumber } = resolved;
 
   try {
     const url = await buildGoogleWalletSaveUrl({
       ticket,
       event: ticket.event,
-      orderNumber: order.orderNumber,
+      orderNumber,
     });
     if (!url) return new Response("Not found", { status: 404 });
 

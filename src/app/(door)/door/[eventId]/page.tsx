@@ -160,7 +160,9 @@ export default function DoorScannerPage() {
   if (!summary.data) {
     return (
       <main className="p-8 text-center">
-        <p className="text-white/60">You&apos;re not on the door for this event.</p>
+        <p className="text-white/60">
+          You&apos;re not on the door for this event.
+        </p>
         <Link href="/door" className="mt-4 inline-block underline">
           Back
         </Link>
@@ -220,7 +222,10 @@ export default function DoorScannerPage() {
         <ModeButton active={mode === "scan"} onClick={() => setMode("scan")}>
           Scan
         </ModeButton>
-        <ModeButton active={mode === "manual"} onClick={() => setMode("manual")}>
+        <ModeButton
+          active={mode === "manual"}
+          onClick={() => setMode("manual")}
+        >
           <Keyboard className="size-4" aria-hidden /> Manual
         </ModeButton>
         <ModeButton active={mode === "list"} onClick={() => setMode("list")}>
@@ -387,7 +392,8 @@ function ManualEntry({
           className="mt-1.5 h-14 bg-white/5 text-center font-mono text-lg tracking-wider"
         />
         <p className="mt-2 text-xs text-white/40">
-          It&apos;s printed under the QR code on their ticket and in their email.
+          It&apos;s printed under the QR code on their ticket and in their
+          email.
         </p>
       </div>
 

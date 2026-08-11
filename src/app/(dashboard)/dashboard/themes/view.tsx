@@ -6,12 +6,7 @@ import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { parseTokens } from "~/lib/creator-theme";
 
 export function DashboardThemesView() {
@@ -39,9 +34,7 @@ export function DashboardThemesView() {
           <h1 className="text-2xl font-bold">Themes</h1>
           <div className="ml-auto">
             <Button
-              onClick={() =>
-                createMut.mutate({ name: "New theme" })
-              }
+              onClick={() => createMut.mutate({ name: "New theme" })}
               disabled={createMut.isPending}
             >
               {createMut.isPending ? (
@@ -82,7 +75,9 @@ export function DashboardThemesView() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Browse public & starters</CardTitle>
+            <CardTitle className="text-base">
+              Browse public & starters
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {publicQ.isLoading ? (

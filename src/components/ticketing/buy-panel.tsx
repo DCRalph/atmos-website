@@ -179,7 +179,10 @@ export function BuyPanel({ event }: { event: PublicEvent }) {
     );
   }
 
-  const remainingAllowance = Math.max(0, event.maxTicketsPerOrder - totalTickets);
+  const remainingAllowance = Math.max(
+    0,
+    event.maxTicketsPerOrder - totalTickets,
+  );
   // Only a session priced for the basket currently on screen may be paid.
   const payable =
     session !== null && sessionKey === basketKey && !start.isPending;
@@ -210,7 +213,9 @@ export function BuyPanel({ event }: { event: PublicEvent }) {
                 </div>
 
                 {tier.description && (
-                  <p className="mt-1 text-sm text-white/50">{tier.description}</p>
+                  <p className="mt-1 text-sm text-white/50">
+                    {tier.description}
+                  </p>
                 )}
 
                 {tier.lowStock && tier.available && (
@@ -364,7 +369,10 @@ export function BuyPanel({ event }: { event: PublicEvent }) {
           {payable && session && (
             <>
               {session.expiresAt && (
-                <HoldCountdown expiresAt={session.expiresAt} onExpired={reset} />
+                <HoldCountdown
+                  expiresAt={session.expiresAt}
+                  onExpired={reset}
+                />
               )}
               <CheckoutSection session={session} />
             </>

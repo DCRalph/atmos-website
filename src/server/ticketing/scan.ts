@@ -8,6 +8,7 @@ import {
   TicketStatus,
 } from "~Prisma/client";
 import { db } from "~/server/db";
+import { ticketTypeName } from "~/lib/ticketing/access-levels";
 import { parseTicketToken, verifyTicketToken } from "~/server/ticketing/qr";
 
 /**
@@ -30,7 +31,7 @@ import { parseTicketToken, verifyTicketToken } from "~/server/ticketing/qr";
  */
 
 /** Results that mean the person is inside. */
-const ADMITTING_RESULTS = [
+export const ADMITTING_RESULTS = [
   TicketScanResult.ADMITTED,
   TicketScanResult.OVERRIDE_ADMITTED,
   TicketScanResult.REENTRY,
@@ -59,6 +60,15 @@ export type ScanOutcome = {
     buyerName: string | null;
     buyerEmail: string | null;
     orderNumber: string;
+    /** Given away rather than sold. */
+    isComp: boolean;
+    /** Who put this person on the list, when somebody handed them a ticket. */
+    invitedByName: string | null;
+    /**
+     * The name on this ticket is meant to be the person holding it. The door
+     * shows an ID prompt rather than treating the name as decoration.
+     */
+    nameLocked: boolean;
     /** e.g. "2 of 4" when a group bought together. */
     positionInOrder: string;
   } | null;
@@ -185,19 +195,33 @@ export async function scanTicket({
     }
 
     const position = await tx.ticket.count({
-      where: { orderId: ticket.orderId, ticketNumber: { lte: ticket.ticketNumber } },
+      where: {
+        orderId: ticket.orderId,
+        ticketNumber: { lte: ticket.ticketNumber },
+      },
     });
 
     const ticketInfo: NonNullable<ScanOutcome["ticket"]> = {
       id: ticket.id,
       ticketNumber: ticket.ticketNumber,
-      tierName: ticket.tier.name,
+      tierName: ticketTypeName(ticket),
       accessLevel: ticket.accessLevel,
       attendeeName: ticket.attendeeName,
       buyerName: ticket.order.buyerName,
       buyerEmail: ticket.order.buyerEmail,
       orderNumber: ticket.order.orderNumber,
-      positionInOrder: `${position} of ${ticket.order._count.tickets}`,
+      isComp: ticket.isComp,
+      // Who put this person on the list. The door is standing in front of
+      // somebody they don't recognise, and this is the fact that settles it.
+      invitedByName: ticket.invitedByName,
+      // Drives the "check their ID" prompt: a locked ticket is one where the
+      // name on it is meant to match the person holding it.
+      nameLocked: ticket.nameLockedAt !== null,
+      // The host is always the first ticket on a grant, so the hand-outs number
+      // from there: "handout 1 of 2" rather than a confusing "2 of 3".
+      positionInOrder: ticket.hostTicketId
+        ? `handout ${position - 1} of ${ticket.order._count.tickets - 1}`
+        : `${position} of ${ticket.order._count.tickets}`,
     };
 
     const base = { ticket: ticketInfo, isR18: ticket.event.isR18 };
@@ -216,6 +240,36 @@ export async function scanTicket({
         },
       });
       return outcome(result, message, base);
+    };
+
+    /**
+     * Write an admitting scan, and weld the ticket to whoever just walked in.
+     *
+     * Locking here is what stops a name being fitted to a ticket after it has
+     * been used: from this moment the name on it is the record of who came in,
+     * so the door has the last word rather than the office. It also ends any
+     * chance of the ticket being reassigned out from under an admission.
+     */
+    const admit = async (
+      result: (typeof ADMITTING_RESULTS)[number],
+      wasOverride = false,
+    ): Promise<void> => {
+      await tx.ticketScan.create({
+        data: {
+          ticketId: ticket.id,
+          eventId,
+          result,
+          wasOverride,
+          scannedByUserId,
+          deviceLabel: deviceLabel ?? null,
+        },
+      });
+      if (!ticket.nameLockedAt) {
+        await tx.ticket.update({
+          where: { id: ticket.id },
+          data: { nameLockedAt: new Date() },
+        });
+      }
     };
 
     if (ticket.eventId !== eventId) {
@@ -247,7 +301,10 @@ export async function scanTicket({
     // A manager may have reverted a mistaken admission; only count admissions
     // that happened after the most recent revert.
     const lastRevert = await tx.ticketScan.findFirst({
-      where: { ticketId: ticket.id, result: TicketScanResult.ADMISSION_REVERTED },
+      where: {
+        ticketId: ticket.id,
+        result: TicketScanResult.ADMISSION_REVERTED,
+      },
       orderBy: { createdAt: "desc" },
       select: { createdAt: true },
     });
@@ -302,16 +359,7 @@ export async function scanTicket({
         );
       }
 
-      await tx.ticketScan.create({
-        data: {
-          ticketId: ticket.id,
-          eventId,
-          result: TicketScanResult.OVERRIDE_ADMITTED,
-          wasOverride: true,
-          scannedByUserId,
-          deviceLabel: deviceLabel ?? null,
-        },
-      });
+      await admit(TicketScanResult.OVERRIDE_ADMITTED, true);
       return outcome(
         TicketScanResult.OVERRIDE_ADMITTED,
         "Admitted despite earlier refusal",
@@ -328,15 +376,7 @@ export async function scanTicket({
       };
 
       if (ticket.event.reentryAllowed) {
-        await tx.ticketScan.create({
-          data: {
-            ticketId: ticket.id,
-            eventId,
-            result: TicketScanResult.REENTRY,
-            scannedByUserId,
-            deviceLabel: deviceLabel ?? null,
-          },
-        });
+        await admit(TicketScanResult.REENTRY);
         return outcome(
           TicketScanResult.REENTRY,
           `Re-entry #${liveAdmissions.length + 1}`,
@@ -345,16 +385,7 @@ export async function scanTicket({
       }
 
       if (override) {
-        await tx.ticketScan.create({
-          data: {
-            ticketId: ticket.id,
-            eventId,
-            result: TicketScanResult.OVERRIDE_ADMITTED,
-            wasOverride: true,
-            scannedByUserId,
-            deviceLabel: deviceLabel ?? null,
-          },
-        });
+        await admit(TicketScanResult.OVERRIDE_ADMITTED, true);
         return outcome(
           TicketScanResult.OVERRIDE_ADMITTED,
           "Admitted by override",
@@ -378,15 +409,7 @@ export async function scanTicket({
       });
     }
 
-    await tx.ticketScan.create({
-      data: {
-        ticketId: ticket.id,
-        eventId,
-        result: TicketScanResult.ADMITTED,
-        scannedByUserId,
-        deviceLabel: deviceLabel ?? null,
-      },
-    });
+    await admit(TicketScanResult.ADMITTED);
 
     return outcome(TicketScanResult.ADMITTED, "Welcome in", base);
   });
@@ -472,7 +495,10 @@ export async function denyTicket({
       select: { createdAt: true },
     });
     const revertedEarlier = await tx.ticketScan.findFirst({
-      where: { ticketId: ticket.id, result: TicketScanResult.ADMISSION_REVERTED },
+      where: {
+        ticketId: ticket.id,
+        result: TicketScanResult.ADMISSION_REVERTED,
+      },
       orderBy: { createdAt: "desc" },
       select: { createdAt: true },
     });
@@ -498,13 +524,18 @@ export async function denyTicket({
       ticket: {
         id: ticket.id,
         ticketNumber: ticket.ticketNumber,
-        tierName: ticket.tier.name,
+        tierName: ticketTypeName(ticket),
         accessLevel: ticket.accessLevel,
         attendeeName: ticket.attendeeName,
         buyerName: ticket.order.buyerName,
         buyerEmail: ticket.order.buyerEmail,
         orderNumber: ticket.order.orderNumber,
-        positionInOrder: `${position} of ${ticket.order._count.tickets}`,
+        isComp: ticket.isComp,
+        invitedByName: ticket.invitedByName,
+        nameLocked: ticket.nameLockedAt !== null,
+        positionInOrder: ticket.hostTicketId
+          ? `handout ${position - 1} of ${ticket.order._count.tickets - 1}`
+          : `${position} of ${ticket.order._count.tickets}`,
       },
       isR18: ticket.event.isR18,
       previousDenial: {

@@ -72,7 +72,8 @@ export const contactRouter = createTRPCRouter({
           await sendEmail({
             to: notificationEmailSetting.value,
             subject: `New Contact Submission: ${input.reason}`,
-            text: `A new contact form submission has been received.\n\n` +
+            text:
+              `A new contact form submission has been received.\n\n` +
               `From: ${input.name} <${input.email}>\n` +
               `Reason: ${input.reason}\n\n` +
               `Message:\n${input.message}`,

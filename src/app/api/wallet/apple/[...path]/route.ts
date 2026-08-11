@@ -61,7 +61,11 @@ export async function POST(
   }
 
   // POST /v1/devices/{device}/registrations/{passType}/{serial}
-  if (path[0] === "v1" && path[1] === "devices" && path[3] === "registrations") {
+  if (
+    path[0] === "v1" &&
+    path[1] === "devices" &&
+    path[3] === "registrations"
+  ) {
     const [, , deviceLibraryIdentifier, , passTypeIdentifier, serialNumber] =
       path;
     if (!deviceLibraryIdentifier || !passTypeIdentifier || !serialNumber) {
@@ -115,7 +119,11 @@ export async function DELETE(
 ): Promise<Response> {
   const { path } = await ctx.params;
 
-  if (path[0] === "v1" && path[1] === "devices" && path[3] === "registrations") {
+  if (
+    path[0] === "v1" &&
+    path[1] === "devices" &&
+    path[3] === "registrations"
+  ) {
     const [, , deviceLibraryIdentifier, , , serialNumber] = path;
     if (!deviceLibraryIdentifier || !serialNumber) {
       return new Response(null, { status: 400 });
@@ -152,7 +160,11 @@ export async function GET(
   const { path } = await ctx.params;
 
   // GET /v1/devices/{device}/registrations/{passType}?passesUpdatedSince=
-  if (path[0] === "v1" && path[1] === "devices" && path[3] === "registrations") {
+  if (
+    path[0] === "v1" &&
+    path[1] === "devices" &&
+    path[3] === "registrations"
+  ) {
     const deviceLibraryIdentifier = path[2];
     if (!deviceLibraryIdentifier) return new Response(null, { status: 400 });
 

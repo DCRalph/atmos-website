@@ -31,9 +31,7 @@ const codeInputSchema = z.object({
 
 export const discountCodesRouter = createTRPCRouter({
   list: adminProcedure
-    .input(
-      z.object({ eventId: z.string().optional() }).default({}),
-    )
+    .input(z.object({ eventId: z.string().optional() }).default({}))
     .query(async ({ ctx, input }) => {
       return ctx.db.discountCode.findMany({
         where: input.eventId
@@ -143,7 +141,9 @@ export const discountCodesRouter = createTRPCRouter({
       const updated = await ctx.db.discountCode.update({
         where: { id },
         data: {
-          ...(rest.code !== undefined ? { code: normaliseCode(rest.code) } : {}),
+          ...(rest.code !== undefined
+            ? { code: normaliseCode(rest.code) }
+            : {}),
           ...(rest.type !== undefined ? { type: rest.type } : {}),
           ...(rest.value !== undefined ? { value: rest.value } : {}),
           ...(rest.eventId !== undefined ? { eventId: rest.eventId } : {}),

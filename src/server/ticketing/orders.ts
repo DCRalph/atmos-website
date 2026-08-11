@@ -16,6 +16,7 @@ import {
 } from "~/lib/ticketing/money";
 import {
   commitHold,
+  eventHeadcount,
   holdInventory,
   InventoryError,
   releaseHold,
@@ -24,11 +25,15 @@ import {
 } from "~/server/ticketing/inventory";
 import {
   buildOrderAccessToken,
+  buildTicketAccessToken,
   buildTicketNumber,
   generateOrderNumber,
   parseOrderAccessToken,
+  parseTicketAccessToken,
   verifyOrderAccessToken,
+  verifyTicketAccessToken,
 } from "~/server/ticketing/numbering";
+import { ADMITTING_RESULTS } from "~/server/ticketing/scan";
 import { generateQrSecret } from "~/server/ticketing/qr";
 import {
   applyDiscountCode,
@@ -316,7 +321,11 @@ export async function issueTicketsForOrder({
       where: { orderId },
       select: { id: true },
     });
-    return { orderId, alreadyIssued: true, ticketIds: tickets.map((t) => t.id) };
+    return {
+      orderId,
+      alreadyIssued: true,
+      ticketIds: tickets.map((t) => t.id),
+    };
   }
 
   return withEventInventoryLock(existing.eventId, async (tx) => {
@@ -423,7 +432,7 @@ export async function issueTicketsForOrder({
  * Flip an event to SOLD_OUT once nothing is left, so the public page and the
  * gig card stop advertising tickets without an admin having to notice.
  */
-async function maybeMarkSoldOut(tx: Tx, eventId: string): Promise<void> {
+export async function maybeMarkSoldOut(tx: Tx, eventId: string): Promise<void> {
   const event = await tx.ticketEvent.findUnique({
     where: { id: eventId },
     select: {
@@ -447,10 +456,9 @@ async function maybeMarkSoldOut(tx: Tx, eventId: string): Promise<void> {
     (t) => t.allocation - t.soldCount - t.heldCount > 0,
   );
 
-  const committed = event.tiers.reduce(
-    (sum, t) => sum + t.soldCount + t.heldCount,
-    0,
-  );
+  // Comps fill seats without touching a tier counter, so comping the last of
+  // the room has to be able to close sales just as selling it would.
+  const { headcount: committed } = await eventHeadcount(tx, eventId);
   const atCapacity = event.capacity !== null && committed >= event.capacity;
 
   if (!anythingLeft || atCapacity) {
@@ -532,7 +540,9 @@ export async function voidTicket({
       },
     });
     if (claimed.count === 0) return;
-    await returnToStock(tx, ticket.tierId);
+    // A comp came out of no tier, so there is no counter to give back to — it
+    // frees its seat simply by dropping out of the comp count.
+    if (ticket.tierId) await returnToStock(tx, ticket.tierId);
 
     // A refund can un-sell-out an event.
     const event = await tx.ticketEvent.findUnique({
@@ -577,6 +587,56 @@ export async function findOrderByAccessToken(token: string) {
   if (!verifyOrderAccessToken(parsed, order)) return null;
 
   return order;
+}
+
+/**
+ * Look up one ticket from its `/t/[token]` URL.
+ *
+ * The comp equivalent of `findOrderByAccessToken`: the token unlocks a single
+ * ticket rather than everything somebody bought, so the page it feeds can only
+ * ever render one QR. Hand-outs come along when the ticket is a host, because
+ * that is the list the recipient hands out from.
+ */
+export async function findTicketByAccessToken(token: string) {
+  const parsed = parseTicketAccessToken(token);
+  if (!parsed) return null;
+
+  const ticket = await db.ticket.findUnique({
+    where: { id: parsed.ticketId },
+    include: {
+      tier: true,
+      event: { include: { gig: { select: { posterFileUploadId: true } } } },
+      order: {
+        select: { orderNumber: true, paymentMethod: true, notes: true },
+      },
+      handouts: {
+        where: { status: { not: TicketStatus.VOID } },
+        orderBy: { ticketNumber: "asc" },
+        include: {
+          tier: { select: { name: true } },
+          scans: {
+            where: { result: { in: [...ADMITTING_RESULTS] } },
+            take: 1,
+            orderBy: { createdAt: "asc" },
+            select: { createdAt: true },
+          },
+        },
+      },
+    },
+  });
+  if (!ticket) return null;
+  if (ticket.status === TicketStatus.VOID) return null;
+  if (!verifyTicketAccessToken(parsed, ticket)) return null;
+
+  return ticket;
+}
+
+/** Rebuild one person's `/t/[token]` link. */
+export function ticketAccessToken(ticket: {
+  id: string;
+  accessTokenVersion: number;
+}): string {
+  return buildTicketAccessToken(ticket.id, ticket.accessTokenVersion);
 }
 
 /**

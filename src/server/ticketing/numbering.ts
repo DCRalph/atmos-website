@@ -91,16 +91,66 @@ export function verifyOrderAccessToken(
 }
 
 function accessSignature(orderId: string, version: number): string {
+  return sign(`order-access.${orderId}.${version}`);
+}
+
+/**
+ * The token in one person's `/t/[token]` link.
+ *
+ * The same derivation as an order link, over a ticket. Comps are handed out a
+ * ticket at a time — the recipient's page has to show their QR and no other —
+ * so there is a link per ticket rather than per order. Bumping
+ * `accessTokenVersion` revokes a link already sent, which is what reassigning a
+ * hand-out to somebody else does.
+ */
+export function buildTicketAccessToken(
+  ticketId: string,
+  accessTokenVersion: number,
+): string {
+  return `${ticketId}.${ticketSignature(ticketId, accessTokenVersion)}`;
+}
+
+export type ParsedTicketAccessToken = { ticketId: string; signature: string };
+
+export function parseTicketAccessToken(
+  raw: string,
+): ParsedTicketAccessToken | null {
+  const parts = raw.trim().split(".");
+  if (parts.length !== 2) return null;
+  const [ticketId, signature] = parts;
+  if (!ticketId || !/^[a-z0-9]{20,40}$/i.test(ticketId)) return null;
+  if (!signature || !/^[A-Za-z0-9_-]{20,64}$/.test(signature)) return null;
+  return { ticketId, signature };
+}
+
+export function verifyTicketAccessToken(
+  parsed: ParsedTicketAccessToken,
+  ticket: { id: string; accessTokenVersion: number },
+): boolean {
+  const expected = Buffer.from(
+    ticketSignature(ticket.id, ticket.accessTokenVersion),
+    "utf8",
+  );
+  const provided = Buffer.from(parsed.signature, "utf8");
+  if (expected.length !== provided.length) return false;
+  return timingSafeEqual(expected, provided);
+}
+
+function ticketSignature(ticketId: string, version: number): string {
+  return sign(`ticket-access.${ticketId}.${version}`);
+}
+
+function sign(payload: string): string {
   const secret = env.TICKET_QR_SECRET;
   if (!secret) {
     throw new Error(
       "TICKET_QR_SECRET is not set. Ticket links cannot be signed or verified.",
     );
   }
-  // Prefixed so this can never collide with a QR payload signature, even
-  // though both are keyed on the same secret.
+  // The payload is prefixed by its kind, so an order token, a ticket token and
+  // a QR payload can never collide even though all three key on this secret.
   return createHmac("sha256", secret)
-    .update(`order-access.${orderId}.${version}`)
+    .update(payload)
     .digest()
     .subarray(0, 24)
     .toString("base64url");

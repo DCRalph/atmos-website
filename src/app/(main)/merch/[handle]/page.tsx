@@ -18,7 +18,9 @@ export async function generateMetadata({
   };
 }
 
-export default async function MerchProductPage({ params }: MerchProductPageProps) {
+export default async function MerchProductPage({
+  params,
+}: MerchProductPageProps) {
   const { handle } = await params;
 
   return <MerchProductDetail handle={handle} />;

@@ -11,11 +11,14 @@ export default function EquipmentPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <div className="mb-12 text-center">
-        <h1 className={`text-4xl font-black tracking-tighter sm:text-6xl uppercase ${orbitron.className}`}>
+        <h1
+          className={`text-4xl font-black tracking-tighter uppercase sm:text-6xl ${orbitron.className}`}
+        >
           Equipment
         </h1>
-        <p className="mt-4 text-xl text-muted-foreground">
-          Professional rental packages for your next event. Check availability and request a booking below.
+        <p className="text-muted-foreground mt-4 text-xl">
+          Professional rental packages for your next event. Check availability
+          and request a booking below.
         </p>
       </div>
 

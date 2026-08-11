@@ -1,15 +1,15 @@
-"use client"
+"use client";
 
-import { MotionValue, motion, useScroll, useTransform } from "motion/react"
-import { useRef } from "react"
-import { useMainLayoutScrollContainer } from "~/hooks/use-main-layout-scroll-container"
+import { MotionValue, motion, useScroll, useTransform } from "motion/react";
+import { useRef } from "react";
+import { useMainLayoutScrollContainer } from "~/hooks/use-main-layout-scroll-container";
 
 const words =
   `We design every element sound, light, space to work as one. When it all comes together, that's the atmosphere.`.split(
-    " "
-  )
+    " ",
+  );
 
-const sectionHeightClass = "relative min-h-[200vh]"
+const sectionHeightClass = "relative min-h-[200vh]";
 
 export function StickyStatement() {
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -24,7 +24,7 @@ export function StickyStatement() {
   return (
     <section ref={sectionRef} className={sectionHeightClass}>
       <div className="sticky top-0 flex h-screen items-center justify-center px-4 md:px-8">
-        <p className="max-w-4xl text-center text-3xl font-bold leading-tight tracking-tight md:text-5xl lg:text-6xl">
+        <p className="max-w-4xl text-center text-3xl leading-tight font-bold tracking-tight md:text-5xl lg:text-6xl">
           {words.map((word, i) => {
             const start = i / words.length;
             const end = start + 1 / words.length;
@@ -57,7 +57,7 @@ function Word({
   const opacity = useTransform(progress, [mappedStart, mappedEnd], [0.12, 1]);
 
   return (
-    <motion.span className="inline-block mr-[0.3em]" style={{ opacity }}>
+    <motion.span className="mr-[0.3em] inline-block" style={{ opacity }}>
       {word}
     </motion.span>
   );

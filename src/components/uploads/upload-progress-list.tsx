@@ -37,8 +37,7 @@ export function UploadProgressList({
           item.status === "preparing" ||
           item.status === "uploading" ||
           item.status === "processing";
-        const canRetry =
-          item.status === "error" || item.status === "cancelled";
+        const canRetry = item.status === "error" || item.status === "cancelled";
 
         return (
           <li key={item.id} className="rounded-md border px-3 py-2 text-sm">

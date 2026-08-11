@@ -1,6 +1,6 @@
 import "server-only";
 
-import { type Prisma, TicketOrderStatus } from "~Prisma/client";
+import { type Prisma, TicketOrderStatus, TicketStatus } from "~Prisma/client";
 
 import { db } from "~/server/db";
 
@@ -24,11 +24,7 @@ type Tx = Prisma.TransactionClient;
 
 /** Why a tier cannot currently be bought. `null` means it can. */
 export type TierUnavailableReason =
-  | "SOLD_OUT"
-  | "NOT_ON_SALE_YET"
-  | "SALES_CLOSED"
-  | "DISABLED"
-  | "HIDDEN";
+  "SOLD_OUT" | "NOT_ON_SALE_YET" | "SALES_CLOSED" | "DISABLED" | "HIDDEN";
 
 export type TierAvailability = {
   tierId: string;
@@ -101,6 +97,46 @@ export function committedAgainstCapacity(
   tiers: readonly { soldCount: number; heldCount: number }[],
 ): number {
   return tiers.reduce((sum, t) => sum + t.soldCount + t.heldCount, 0);
+}
+
+/**
+ * Comp tickets standing against the cap.
+ *
+ * Comps are minted rather than drawn, so they appear in no tier counter and
+ * have to be counted from the ticket table. They are still people in the room:
+ * comping fifty into a three-hundred-capacity venue leaves the public two
+ * hundred and fifty, not three hundred.
+ */
+export async function compCountForEvent(
+  tx: Tx,
+  eventId: string,
+): Promise<number> {
+  return tx.ticket.count({
+    where: { eventId, isComp: true, status: TicketStatus.VALID },
+  });
+}
+
+/**
+ * Everyone the event is currently committed to: sold, held, and given away.
+ *
+ * The one definition of "how full is this", shared by the capacity check, the
+ * sold-out sweep and the comp accounting, so a number shown in the admin panel
+ * is the same number the checkout enforces.
+ */
+export async function eventHeadcount(
+  tx: Tx,
+  eventId: string,
+): Promise<{ headcount: number; fromTiers: number; comps: number }> {
+  const [tiers, comps] = await Promise.all([
+    tx.ticketTier.findMany({
+      where: { eventId },
+      select: { soldCount: true, heldCount: true },
+    }),
+    compCountForEvent(tx, eventId),
+  ]);
+
+  const fromTiers = committedAgainstCapacity(tiers);
+  return { headcount: fromTiers + comps, fromTiers, comps };
 }
 
 /**
@@ -292,7 +328,9 @@ export async function holdInventory(
   }
 
   if (event.capacity !== null) {
-    const committed = committedAgainstCapacity(tiers);
+    // Comps are in the room too, so they come off what is left to sell.
+    const committed =
+      committedAgainstCapacity(tiers) + (await compCountForEvent(tx, eventId));
     if (committed + totalRequested > event.capacity) {
       const left = Math.max(0, event.capacity - committed);
       throw new InventoryError(

@@ -35,9 +35,21 @@ export const FIXTURE_ROW_HEIGHT = 60;
 const IMG = (n: number) => `uitest-image-${n}`;
 
 export const FIXTURE_SOCIALS: PublicSocial[] = [
-  { platform: "instagram", url: "https://instagram.com/atmosmedia", label: null },
-  { platform: "soundcloud", url: "https://soundcloud.com/atmosmedia", label: null },
-  { platform: "spotify", url: "https://open.spotify.com/artist/1234567890", label: null },
+  {
+    platform: "instagram",
+    url: "https://instagram.com/atmosmedia",
+    label: null,
+  },
+  {
+    platform: "soundcloud",
+    url: "https://soundcloud.com/atmosmedia",
+    label: null,
+  },
+  {
+    platform: "spotify",
+    url: "https://open.spotify.com/artist/1234567890",
+    label: null,
+  },
   { platform: "youtube", url: "https://youtube.com/@atmosmedia", label: null },
   { platform: "tiktok", url: "https://tiktok.com/@atmosmedia", label: null },
   { platform: "facebook", url: "https://facebook.com/atmosmedia", label: null },
@@ -69,12 +81,55 @@ function gig(
 }
 
 export const FIXTURE_GIGS: PublicGigAttribution[] = [
-  gig(1, "Basement Sessions Vol. 9", "Late night warehouse", "2025-11-14T09:00:00.000Z", "Headline DJ", true),
-  gig(2, "Winterfest", "Main stage", "2025-08-02T06:00:00.000Z", "Support", true),
-  gig(3, "Rooftop Opening Party", null, "2025-04-19T07:00:00.000Z", "Resident", true),
-  gig(4, "A Very Long Gig Title That Should Wrap Onto Two Lines And Then Clamp", "With a subtitle that is also fairly long", "2024-12-31T08:00:00.000Z", "B2B", false),
-  gig(5, "Secret Show", null, "2024-09-07T07:00:00.000Z", null, false, "TO_BE_ANNOUNCED"),
-  gig(6, "Harbourside Sunset", "Sunset set", "2024-06-15T05:00:00.000Z", "Opener", true),
+  gig(
+    1,
+    "Basement Sessions Vol. 9",
+    "Late night warehouse",
+    "2025-11-14T09:00:00.000Z",
+    "Headline DJ",
+    true,
+  ),
+  gig(
+    2,
+    "Winterfest",
+    "Main stage",
+    "2025-08-02T06:00:00.000Z",
+    "Support",
+    true,
+  ),
+  gig(
+    3,
+    "Rooftop Opening Party",
+    null,
+    "2025-04-19T07:00:00.000Z",
+    "Resident",
+    true,
+  ),
+  gig(
+    4,
+    "A Very Long Gig Title That Should Wrap Onto Two Lines And Then Clamp",
+    "With a subtitle that is also fairly long",
+    "2024-12-31T08:00:00.000Z",
+    "B2B",
+    false,
+  ),
+  gig(
+    5,
+    "Secret Show",
+    null,
+    "2024-09-07T07:00:00.000Z",
+    null,
+    false,
+    "TO_BE_ANNOUNCED",
+  ),
+  gig(
+    6,
+    "Harbourside Sunset",
+    "Sunset set",
+    "2024-06-15T05:00:00.000Z",
+    "Opener",
+    true,
+  ),
 ];
 
 /** A small serialized Lexical state — a heading-free bio with two paragraphs. */
@@ -126,7 +181,9 @@ const POPULATED_DATA: Record<CreatorBlockTypeName, Record<string, unknown>> = {
   IMAGE: { fileId: IMG(1), alt: "Press shot" },
   GALLERY: { fileIds: [IMG(2), IMG(3), IMG(4), IMG(5), IMG(6), IMG(7)] },
   SOUNDCLOUD_TRACK: { url: "https://soundcloud.com/atmosmedia/example-track" },
-  SOUNDCLOUD_PLAYLIST: { url: "https://soundcloud.com/atmosmedia/sets/example-set" },
+  SOUNDCLOUD_PLAYLIST: {
+    url: "https://soundcloud.com/atmosmedia/sets/example-set",
+  },
   YOUTUBE_VIDEO: { url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
   SPOTIFY_EMBED: { url: "https://open.spotify.com/album/1234567890abcdef" },
   SOCIAL_LINKS: {},

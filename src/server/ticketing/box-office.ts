@@ -1,6 +1,6 @@
 import "server-only";
 
-import { ActivityType, PaymentMethodKind } from "~Prisma/client";
+import { ActivityType, type PaymentMethodKind } from "~Prisma/client";
 import { db } from "~/server/db";
 import {
   createPendingOrder,
@@ -23,10 +23,12 @@ import { logActivity } from "~/server/utils/activity-log";
  * the door is the one running at midnight with a queue.
  */
 
+/**
+ * Money changed hands. Comps are not here: a giveaway is minted rather than
+ * drawn from a tier, so it goes through `comps.ts` and never touches stock.
+ */
 export type BoxOfficePaymentMethod =
-  | typeof PaymentMethodKind.CASH
-  | typeof PaymentMethodKind.TERMINAL
-  | typeof PaymentMethodKind.COMP;
+  typeof PaymentMethodKind.CASH | typeof PaymentMethodKind.TERMINAL;
 
 export async function sellAtDoor({
   eventId,
@@ -64,20 +66,6 @@ export async function sellAtDoor({
     // Closed online sales don't stop a staff member taking cash at 11pm.
     boxOffice: true,
   });
-
-  // A comp is free regardless of what the tier costs.
-  if (paymentMethod === PaymentMethodKind.COMP) {
-    await db.ticketOrder.update({
-      where: { id: order.orderId },
-      data: {
-        subtotalCents: 0,
-        discountCents: 0,
-        bookingFeeCents: 0,
-        totalCents: 0,
-        gstCents: 0,
-      },
-    });
-  }
 
   const issued = await issueTicketsForOrder({
     orderId: order.orderId,

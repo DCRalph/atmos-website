@@ -36,9 +36,7 @@ export default function EventsPage() {
         <h1 className="text-4xl font-bold tracking-tight text-white md:text-5xl">
           Tickets
         </h1>
-        <p className="mt-2 text-white/50">
-          Everything on sale right now.
-        </p>
+        <p className="mt-2 text-white/50">Everything on sale right now.</p>
 
         <div className="mt-10 space-y-4">
           {events.isPending && (

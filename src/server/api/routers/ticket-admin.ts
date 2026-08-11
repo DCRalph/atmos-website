@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   ActivityType,
   PaymentMethodKind,
+  TicketEmailType,
   TicketOrderStatus,
   TicketStatus,
 } from "~Prisma/client";
@@ -14,20 +15,31 @@ import {
 } from "~/server/api/trpc";
 import { getStripe, isStripeConfigured } from "~/server/stripe";
 import {
+  sendCompTicketEmail,
   sendRefundEmail,
   sendTicketEmail,
 } from "~/server/ticketing/email/send";
 import {
   cancelPendingOrder,
-  createPendingOrder,
   issueTicketsForOrder,
   orderAccessToken,
+  ticketAccessToken,
   voidTicket,
 } from "~/server/ticketing/orders";
+import {
+  assignHandout,
+  compAccounting,
+  issueComp,
+  reassignHandout,
+} from "~/server/ticketing/comps";
+import { ADMITTING_RESULTS } from "~/server/ticketing/scan";
 import { logActivity } from "~/server/utils/activity-log";
 import { sellAtDoor } from "~/server/ticketing/box-office";
-import { ACCESS_LEVEL_VALUES } from "~/lib/ticketing/access-levels";
-import { ticketsUrl } from "~/server/ticketing/urls";
+import {
+  ACCESS_LEVEL_VALUES,
+  ticketTypeName,
+} from "~/lib/ticketing/access-levels";
+import { ticketUrl, ticketsUrl } from "~/server/ticketing/urls";
 import { pushPassUpdate } from "~/server/wallet/apple-push";
 
 /**
@@ -395,10 +407,11 @@ export const ticketAdminRouter = createTRPCRouter({
             }),
           )
           .min(1),
+        // Comps are not a payment method here: they are minted rather than
+        // sold, so they go through `issueComp` and never touch a tier.
         paymentMethod: z.enum([
           PaymentMethodKind.CASH,
           PaymentMethodKind.TERMINAL,
-          PaymentMethodKind.COMP,
         ]),
         buyerName: z.string().trim().max(120).optional(),
         buyerEmail: z.email().optional(),
@@ -424,83 +437,109 @@ export const ticketAdminRouter = createTRPCRouter({
   // ------------------------------------------------------------------ comps
 
   /**
-   * Give tickets away to somebody by name.
+   * Give somebody a ticket, and any they need to hand out.
    *
-   * An artist gets an AAA ticket and, more often than not, a couple of GA
-   * ones for whoever they're bringing — so this takes a set of lines rather
-   * than a quantity, and each line's tier decides what that ticket gets past.
-   * It is one order, so the recipient gets one email with everything in it.
+   * An artist needs an AAA and, more often than not, a couple of GAs for
+   * whoever they're bringing. All of it is minted here: the tickets belong to
+   * no tier, so the level is chosen directly and an AAA can be given away at an
+   * event that has never sold one.
    *
-   * Runs the same issuance path as a sale; a comp is a sale for nothing, not a
-   * different kind of ticket.
+   * The recipient's own ticket carries their name and is locked at issue, which
+   * is what makes passing it on pointless — it still turns up at the door in
+   * their name. The hand-outs are separate tickets with their own links.
    */
-  issueComps: adminProcedure
+  issueComp: adminProcedure
     .input(
       z.object({
         eventId: z.string(),
         recipientName: z.string().trim().min(1).max(120),
         recipientEmail: z.email().optional(),
-        lines: z
+        accessLevel: z.enum(ACCESS_LEVEL_VALUES),
+        handouts: z
           .array(
             z.object({
-              tierId: z.string(),
+              accessLevel: z.enum(ACCESS_LEVEL_VALUES),
               quantity: z.number().int().min(1).max(20),
             }),
           )
-          .min(1),
+          .max(6)
+          .default([]),
         notes: z.string().trim().max(500).optional(),
         sendEmail: z.boolean().default(true),
+        /** Sent back after the admin has read and accepted an overage warning. */
+        acknowledge: z.boolean().default(false),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const sale = await sellAtDoor({
+      const comp = await issueComp({
         eventId: input.eventId,
-        lines: input.lines,
-        paymentMethod: PaymentMethodKind.COMP,
-        buyerName: input.recipientName,
-        buyerEmail: input.recipientEmail,
-        // The first ticket is the person being comped; the rest are guests
-        // they'll hand out themselves, so only that one gets a name.
-        attendeeNames: [input.recipientName],
+        recipientName: input.recipientName,
+        recipientEmail: input.recipientEmail,
+        accessLevel: input.accessLevel,
+        handouts: input.handouts,
         notes: input.notes,
-        sendEmail: input.sendEmail,
-        soldByUserId: ctx.session.user.id,
+        acknowledge: input.acknowledge,
+        issuedByUserId: ctx.session.user.id,
       });
 
       await logActivity({
         type: ActivityType.TICKET_COMPED,
-        action: `Comped ${sale.ticketCount} ticket(s) to ${input.recipientName}`,
+        action: `Comped ${input.accessLevel} to ${input.recipientName}${
+          comp.handoutCount > 0 ? ` +${comp.handoutCount} to hand out` : ""
+        }`,
         userId: ctx.session.user.id,
         details: {
           eventId: input.eventId,
-          orderId: sale.orderId,
+          orderId: comp.orderId,
           recipientEmail: input.recipientEmail,
+          handoutCount: comp.handoutCount,
         },
       });
 
-      return sale;
+      // Their ticket only, never the ones they have to hand out.
+      if (input.sendEmail && input.recipientEmail) {
+        await sendCompTicketEmail({ ticketId: comp.hostTicketId });
+      }
+
+      return comp;
     }),
 
-  /** Every comp issued for an event, newest first. */
+  /** The comp counts for an event, from the one place that computes them. */
+  compAccounting: eventOrganiserProcedure
+    .input(z.object({ eventId: z.string() }))
+    .query(async ({ ctx, input }) => compAccounting(input.eventId, ctx.db)),
+
+  /** Every comp grant for an event, newest first. */
   comps: adminProcedure
     .input(z.object({ eventId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const orders = await ctx.db.ticketOrder.findMany({
+      // A grant is a host ticket plus its hand-outs, so it is listed from the
+      // host rather than from the order.
+      //
+      // Comps issued before this — drawn from a tier, sharing one order link —
+      // are not `isComp` and so do not appear here. They are untouched and
+      // still work; find them under Orders, filtered by the COMP method.
+      const hosts = await ctx.db.ticket.findMany({
         where: {
           eventId: input.eventId,
-          paymentMethod: PaymentMethodKind.COMP,
-          status: TicketOrderStatus.PAID,
+          isComp: true,
+          hostTicketId: null,
+          status: TicketStatus.VALID,
         },
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
-          orderNumber: true,
-          buyerName: true,
-          buyerEmail: true,
-          notes: true,
-          createdAt: true,
+          ticketNumber: true,
+          accessLevel: true,
+          attendeeName: true,
+          attendeeEmail: true,
           accessTokenVersion: true,
-          tickets: {
+          createdAt: true,
+          tier: { select: { name: true } },
+          order: {
+            select: { id: true, orderNumber: true, notes: true },
+          },
+          handouts: {
             where: { status: TicketStatus.VALID },
             orderBy: { ticketNumber: "asc" },
             select: {
@@ -508,28 +547,171 @@ export const ticketAdminRouter = createTRPCRouter({
               ticketNumber: true,
               accessLevel: true,
               attendeeName: true,
+              attendeeEmail: true,
+              sentAt: true,
+              nameLockedAt: true,
+              accessTokenVersion: true,
               tier: { select: { name: true } },
+              scans: {
+                where: { result: { in: [...ADMITTING_RESULTS] } },
+                take: 1,
+                orderBy: { createdAt: "asc" },
+                select: { createdAt: true },
+              },
             },
           },
         },
       });
 
-      return orders.map((order) => ({
-        id: order.id,
-        orderNumber: order.orderNumber,
-        recipientName: order.buyerName,
-        recipientEmail: order.buyerEmail,
-        notes: order.notes,
-        createdAt: order.createdAt,
-        ticketsUrl: ticketsUrl(orderAccessToken(order)),
-        tickets: order.tickets.map((ticket) => ({
-          id: ticket.id,
-          ticketNumber: ticket.ticketNumber,
-          accessLevel: ticket.accessLevel,
-          attendeeName: ticket.attendeeName,
-          tierName: ticket.tier.name,
+      return hosts.map((host) => ({
+        id: host.id,
+        orderId: host.order.id,
+        orderNumber: host.order.orderNumber,
+        recipientName: host.attendeeName,
+        recipientEmail: host.attendeeEmail,
+        accessLevel: host.accessLevel,
+        typeName: ticketTypeName(host),
+        ticketNumber: host.ticketNumber,
+        notes: host.order.notes,
+        createdAt: host.createdAt,
+        ticketUrl: ticketUrl(ticketAccessToken(host)),
+        handouts: host.handouts.map((handout) => ({
+          id: handout.id,
+          ticketNumber: handout.ticketNumber,
+          accessLevel: handout.accessLevel,
+          typeName: ticketTypeName(handout),
+          guestName: handout.attendeeName,
+          guestEmail: handout.attendeeEmail,
+          sentAt: handout.sentAt,
+          admittedAt: handout.scans[0]?.createdAt ?? null,
+          ticketUrl: ticketUrl(ticketAccessToken(handout)),
         })),
       }));
+    }),
+
+  /**
+   * Put a hand-out in somebody's name on the recipient's behalf, and send it.
+   *
+   * The same call the artist makes from their own page — here for when they've
+   * texted the office a name instead.
+   */
+  sendHandout: adminProcedure
+    .input(
+      z.object({
+        ticketId: z.string(),
+        guestName: z.string().trim().min(1).max(120),
+        guestEmail: z.email().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const ticket = await ctx.db.ticket.findUnique({
+        where: { id: input.ticketId },
+        select: { id: true, hostTicketId: true, nameLockedAt: true },
+      });
+      if (!ticket?.hostTicketId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "That isn't a ticket somebody has to hand out.",
+        });
+      }
+
+      const assigned = await assignHandout({
+        ticketId: input.ticketId,
+        guestName: input.guestName,
+        guestEmail: input.guestEmail,
+      });
+
+      if (input.guestEmail) {
+        await sendCompTicketEmail({
+          ticketId: input.ticketId,
+          type: TicketEmailType.HANDOUT,
+        });
+      }
+
+      await logActivity({
+        type: ActivityType.TICKET_HANDOUT_SENT,
+        action: `Sent a hand-out to ${input.guestName}`,
+        userId: ctx.session.user.id,
+        details: { ticketId: input.ticketId },
+      });
+
+      return assigned;
+    }),
+
+  /**
+   * Take a hand-out back so it can go to somebody else. Kills the link already
+   * sent, and is refused once the ticket has been used to get in.
+   */
+  reassignHandout: adminProcedure
+    .input(z.object({ ticketId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await reassignHandout(input.ticketId);
+
+      await logActivity({
+        type: ActivityType.TICKET_HANDOUT_SENT,
+        action: `Took back a hand-out for reassignment`,
+        userId: ctx.session.user.id,
+        details: { ticketId: input.ticketId },
+      });
+
+      return { ok: true as const };
+    }),
+
+  /** Re-send one comp ticket to the person it belongs to. */
+  resendCompTicket: adminProcedure
+    .input(
+      z.object({
+        ticketId: z.string(),
+        overrideEmail: z.email().optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const result = await sendCompTicketEmail({
+        ticketId: input.ticketId,
+        type: TicketEmailType.RESEND,
+        overrideEmail: input.overrideEmail,
+      });
+      if (!result.ok) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: result.error ?? "Couldn't send that email.",
+        });
+      }
+      return { ok: true as const };
+    }),
+
+  /**
+   * Rename a ticket that whoever holds it can no longer change themselves.
+   *
+   * The escape hatch for a locked name — a typo on an artist's ticket, or a
+   * correction after somebody has already walked in. Admin only, and logged,
+   * because everywhere else the lock is the point.
+   */
+  setTicketName: adminProcedure
+    .input(
+      z.object({
+        ticketId: z.string(),
+        attendeeName: z.string().trim().max(120),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const ticket = await ctx.db.ticket.update({
+        where: { id: input.ticketId },
+        data: {
+          attendeeName: input.attendeeName || null,
+          nameLockedAt: input.attendeeName ? new Date() : null,
+        },
+        select: { id: true, ticketNumber: true, eventId: true },
+      });
+
+      await logActivity({
+        type: ActivityType.TICKET_ACCESS_CHANGED,
+        action: `${ticket.ticketNumber} renamed to ${input.attendeeName || "nobody"}`,
+        userId: ctx.session.user.id,
+        details: { ticketId: ticket.id, eventId: ticket.eventId },
+      });
+
+      return { ok: true as const };
     }),
 
   /**

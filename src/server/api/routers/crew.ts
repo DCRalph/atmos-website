@@ -264,7 +264,9 @@ export const crewRouter = createTRPCRouter({
         select: { id: true },
       });
 
-      const currentIndex = crewMembers.findIndex((member) => member.id === input.id);
+      const currentIndex = crewMembers.findIndex(
+        (member) => member.id === input.id,
+      );
       if (currentIndex === -1) {
         throw new TRPCError({
           code: "NOT_FOUND",

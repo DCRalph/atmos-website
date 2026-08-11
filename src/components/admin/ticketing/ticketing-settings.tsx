@@ -154,7 +154,13 @@ function SettingsForm({ initial }: { initial: Record<string, string> }) {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="hold">Checkout hold (minutes)</Label>
-          <Input id="hold" type="number" min={1} max={60} {...field("holdMinutes")} />
+          <Input
+            id="hold"
+            type="number"
+            min={1}
+            max={60}
+            {...field("holdMinutes")}
+          />
           <p className="text-muted-foreground text-xs">
             How long tickets stay reserved while someone is paying.
           </p>

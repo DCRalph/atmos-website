@@ -52,7 +52,7 @@ export function MerchCartDrawer({ triggerClassName }: MerchCartDrawerProps) {
         <button
           type="button"
           className={cn(
-            "group relative inline-flex items-center gap-2 rounded-none border-2 border-white/10 bg-black/80 px-4 py-2 text-sm font-black tracking-wider text-white uppercase backdrop-blur-sm transition-all hover:border-accent-muted/50 hover:bg-black/90 hover:shadow-[0_0_15px_var(--accent-muted)]",
+            "group hover:border-accent-muted/50 relative inline-flex items-center gap-2 rounded-none border-2 border-white/10 bg-black/80 px-4 py-2 text-sm font-black tracking-wider text-white uppercase backdrop-blur-sm transition-all hover:bg-black/90 hover:shadow-[0_0_15px_var(--accent-muted)]",
             triggerClassName,
           )}
         >
@@ -111,10 +111,7 @@ export function MerchCartDrawer({ triggerClassName }: MerchCartDrawerProps) {
           {items.length > 0 && (
             <div className="divide-y-2 divide-white/10">
               {items.map((line) => (
-                <div
-                  key={line.merchandiseId}
-                  className="flex gap-4 px-5 py-4"
-                >
+                <div key={line.merchandiseId} className="flex gap-4 px-5 py-4">
                   <div className="relative size-20 shrink-0 overflow-hidden border-2 border-white/10 bg-black/80">
                     {line.imageUrl ? (
                       <Image
@@ -133,7 +130,7 @@ export function MerchCartDrawer({ triggerClassName }: MerchCartDrawerProps) {
 
                   <div className="flex min-w-0 flex-1 flex-col justify-between">
                     <div>
-                      <p className="truncate text-sm font-black leading-tight tracking-tight text-white uppercase">
+                      <p className="truncate text-sm leading-tight font-black tracking-tight text-white uppercase">
                         {line.productTitle}
                       </p>
                       {line.variantTitle && (
@@ -148,22 +145,32 @@ export function MerchCartDrawer({ triggerClassName }: MerchCartDrawerProps) {
                         <button
                           type="button"
                           className="flex size-7 items-center justify-center text-white/50 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:text-white/20"
-                          disabled={checkoutMutation.isPending || line.quantity <= 1}
+                          disabled={
+                            checkoutMutation.isPending || line.quantity <= 1
+                          }
                           onClick={() =>
-                            updateItemQuantity(line.merchandiseId, line.quantity - 1)
+                            updateItemQuantity(
+                              line.merchandiseId,
+                              line.quantity - 1,
+                            )
                           }
                         >
                           <Minus className="size-3" />
                         </button>
-                        <span className="flex w-8 items-center justify-center border-x-2 border-white/10 text-xs font-bold tabular-nums text-white">
+                        <span className="flex w-8 items-center justify-center border-x-2 border-white/10 text-xs font-bold text-white tabular-nums">
                           {line.quantity}
                         </span>
                         <button
                           type="button"
                           className="flex size-7 items-center justify-center text-white/50 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:text-white/20"
-                          disabled={checkoutMutation.isPending || line.quantity >= 99}
+                          disabled={
+                            checkoutMutation.isPending || line.quantity >= 99
+                          }
                           onClick={() =>
-                            updateItemQuantity(line.merchandiseId, line.quantity + 1)
+                            updateItemQuantity(
+                              line.merchandiseId,
+                              line.quantity + 1,
+                            )
                           }
                         >
                           <Plus className="size-3" />
@@ -171,7 +178,10 @@ export function MerchCartDrawer({ triggerClassName }: MerchCartDrawerProps) {
                       </div>
 
                       <p className="text-sm font-bold tracking-wide text-white">
-                        {formatMoney(line.unitPrice * line.quantity, line.currencyCode)}
+                        {formatMoney(
+                          line.unitPrice * line.quantity,
+                          line.currencyCode,
+                        )}
                       </p>
                     </div>
                   </div>

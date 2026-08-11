@@ -233,7 +233,9 @@ async function findRecoveryTarget(
   }
 
   const cached = mapCachedProductRow(row);
-  const matchedVariant = cached.variants.find((variant) => variant.id === merchandiseId);
+  const matchedVariant = cached.variants.find(
+    (variant) => variant.id === merchandiseId,
+  );
 
   return {
     handle: row.handle,
@@ -253,7 +255,9 @@ function pickVariantForCheckout(
   variants: CachedVariant[],
   line: CheckoutLineInput,
 ): CachedVariant | undefined {
-  const exactMatch = variants.find((variant) => variant.id === line.merchandiseId);
+  const exactMatch = variants.find(
+    (variant) => variant.id === line.merchandiseId,
+  );
   if (exactMatch) {
     return exactMatch;
   }
@@ -278,9 +282,13 @@ async function resolveCheckoutLinesFromLive(
       orderBy: [{ syncedAt: "desc" }],
     });
 
-    const liveProduct = await refreshCachedProductByHandle(db, line.productHandle, {
-      sortOrder: cachedRow?.sortOrder ?? 0,
-    });
+    const liveProduct = await refreshCachedProductByHandle(
+      db,
+      line.productHandle,
+      {
+        sortOrder: cachedRow?.sortOrder ?? 0,
+      },
+    );
 
     const liveVariant = liveProduct
       ? pickVariantForCheckout(liveProduct.variants, line)
@@ -340,9 +348,13 @@ export const shopifyRouter = createTRPCRouter({
       const cached = row ? mapCachedProductRow(row) : null;
 
       if (!cached || cached.variants.length === 0) {
-        const liveProduct = await refreshCachedProductByHandle(ctx.db, input.handle, {
-          sortOrder: row?.sortOrder ?? 0,
-        });
+        const liveProduct = await refreshCachedProductByHandle(
+          ctx.db,
+          input.handle,
+          {
+            sortOrder: row?.sortOrder ?? 0,
+          },
+        );
         return liveProduct ?? cached;
       }
 
@@ -388,8 +400,13 @@ export const shopifyRouter = createTRPCRouter({
         return finalizeCart(cart);
       };
 
-      const addToExistingCart = async (cartId: string, merchandiseId: string) => {
-        const cart = await storefrontCartLinesAdd(cartId, [line(merchandiseId)]);
+      const addToExistingCart = async (
+        cartId: string,
+        merchandiseId: string,
+      ) => {
+        const cart = await storefrontCartLinesAdd(cartId, [
+          line(merchandiseId),
+        ]);
         return finalizeCart(cart);
       };
 
@@ -514,7 +531,10 @@ export const shopifyRouter = createTRPCRouter({
           throw error;
         }
 
-        const resolvedLines = await resolveCheckoutLinesFromLive(ctx.db, input.lines);
+        const resolvedLines = await resolveCheckoutLinesFromLive(
+          ctx.db,
+          input.lines,
+        );
         return createCheckout(resolvedLines);
       }
     }),

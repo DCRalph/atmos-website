@@ -6,6 +6,7 @@ import { PKPass } from "passkit-generator";
 import { env } from "~/env";
 import { buildTicketToken } from "~/server/ticketing/qr";
 import { formatEventDateLong, formatEventTime } from "~/lib/ticketing/dates";
+import { ticketTypeName } from "~/lib/ticketing/access-levels";
 import { getAppleWalletConfig } from "./apple-config";
 import { getPassImages } from "./pass-images";
 
@@ -24,7 +25,9 @@ export type PassTicket = {
   qrVersion: number;
   qrSecret: string;
   attendeeName: string | null;
-  tier: { name: string };
+  accessLevel: string;
+  /** Null on a comp, which is minted rather than drawn from a tier. */
+  tier: { name: string } | null;
 };
 
 export type PassEvent = {
@@ -128,14 +131,18 @@ export async function buildApplePass({
         {
           key: "tier",
           label: "TICKET",
-          value: ticket.tier.name,
+          value: ticketTypeName(ticket),
         },
         ...(ticket.attendeeName
           ? [{ key: "name", label: "NAME", value: ticket.attendeeName }]
           : []),
       ],
       backFields: [
-        { key: "ticketNumber", label: "Ticket number", value: ticket.ticketNumber },
+        {
+          key: "ticketNumber",
+          label: "Ticket number",
+          value: ticket.ticketNumber,
+        },
         { key: "order", label: "Order", value: orderNumber },
         ...(event.venueAddress
           ? [{ key: "address", label: "Address", value: event.venueAddress }]

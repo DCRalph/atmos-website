@@ -38,13 +38,13 @@ and deterministic.
 
 ## Layout
 
-| File | Role |
-| --- | --- |
-| `src/app/ui-test/creator/page.tsx` | Dev-only route |
-| `src/app/ui-test/creator/harness.tsx` | The sections, and the list the audit reads |
-| `src/app/ui-test/creator/fixtures.ts` | Frozen fixture data — no DB, no `Date.now()` |
-| `scripts/ui-audit-creator.mjs` | Browser driving, stubbing, screenshots, report |
-| `scripts/lib/measure-blocks.mjs` | The in-page measurement, on its own so it can be exercised alone |
+| File                                  | Role                                                             |
+| ------------------------------------- | ---------------------------------------------------------------- |
+| `src/app/ui-test/creator/page.tsx`    | Dev-only route                                                   |
+| `src/app/ui-test/creator/harness.tsx` | The sections, and the list the audit reads                       |
+| `src/app/ui-test/creator/fixtures.ts` | Frozen fixture data — no DB, no `Date.now()`                     |
+| `scripts/ui-audit-creator.mjs`        | Browser driving, stubbing, screenshots, report                   |
+| `scripts/lib/measure-blocks.mjs`      | The in-page measurement, on its own so it can be exercised alone |
 
 Add a section by adding an entry to `SECTIONS` in `harness.tsx` and a case in
 `renderSection`. The audit reads the list off the harness index at run time, so

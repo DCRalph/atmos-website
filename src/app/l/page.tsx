@@ -295,7 +295,7 @@ const UpcomingGigLink = ({ gig }: { gig: UpcomingGig }) => {
         <div className="relative flex gap-4">
           {/* Poster on the left */}
           {gig.posterFileUpload?.url && (
-            <div className="relative h-32 w-24 shrink-0 overflow-hidden border-2 border-white/10 bg-black/20 transition-all group-hover:border-accent-muted/50 sm:h-40 sm:w-28">
+            <div className="group-hover:border-accent-muted/50 relative h-32 w-24 shrink-0 overflow-hidden border-2 border-white/10 bg-black/20 transition-all sm:h-40 sm:w-28">
               <Image
                 src={gig.posterFileUpload.url}
                 alt={isTba ? "TBA poster" : `${gig.title} poster`}
@@ -340,7 +340,8 @@ const UpcomingGigLink = ({ gig }: { gig: UpcomingGig }) => {
                   <div className="flex items-center gap-1.5 text-white/50">
                     {/* <Clock className="h-3.5 w-3.5" /> */}
                     <span className="text-xs font-bold tracking-wider uppercase">
-                      {formatTime(gig.gigStartTime)} - {formatTime(gig.gigEndTime)}
+                      {formatTime(gig.gigStartTime)} -{" "}
+                      {formatTime(gig.gigEndTime)}
                     </span>
                   </div>
                 )}

@@ -6,17 +6,23 @@ import { isAppleWalletConfigured } from "~/server/wallet/apple-config";
 import { isGoogleWalletConfigured } from "~/server/wallet/google-config";
 import { buildTicketToken } from "~/server/ticketing/qr";
 import { renderQrPng } from "~/server/ticketing/qr-image";
-import { orderAccessToken } from "~/server/ticketing/orders";
+import { orderAccessToken, ticketAccessToken } from "~/server/ticketing/orders";
 import { getTicketingSettings } from "~/server/ticketing/settings";
-import { accessLevel, isElevated } from "~/lib/ticketing/access-levels";
+import {
+  accessLevel,
+  isElevated,
+  ticketTypeName,
+} from "~/lib/ticketing/access-levels";
 import {
   applePassUrl,
   googleWalletSaveUrl,
   ticketDetailsUrl,
+  ticketUrl,
   ticketsUrl,
 } from "~/server/ticketing/urls";
 import { sendTransactional } from "./provider";
 import {
+  renderCompEmail,
   renderRefundEmail,
   renderTicketEmail,
   type EmailTicket,
@@ -88,7 +94,7 @@ export async function sendTicketEmail({
 
     emailTickets.push({
       ticketNumber: ticket.ticketNumber,
-      tierName: ticket.tier.name,
+      tierName: ticketTypeName(ticket),
       accessLabel: isElevated(ticket.accessLevel)
         ? accessLevel(ticket.accessLevel).label
         : null,
@@ -156,6 +162,96 @@ export async function sendTicketEmail({
     toEmail: to,
     result,
   });
+
+  return { ok: result.ok, error: result.error };
+}
+
+/**
+ * Send one person their own comp ticket, and nothing else.
+ *
+ * Order-scoped `sendTicketEmail` would put every ticket on the grant into the
+ * artist's inbox, guests' QR codes included — which is exactly the swap this
+ * whole design exists to prevent. So a comp is sent a ticket at a time, to the
+ * address on that ticket.
+ */
+export async function sendCompTicketEmail({
+  ticketId,
+  type = TicketEmailType.COMP,
+  overrideEmail,
+}: {
+  ticketId: string;
+  type?: TicketEmailType;
+  overrideEmail?: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const ticket = await db.ticket.findUnique({
+    where: { id: ticketId },
+    include: {
+      tier: { select: { name: true } },
+      event: true,
+      order: { select: { id: true, buyerEmail: true } },
+      handouts: { where: { status: TicketStatus.VALID }, select: { id: true } },
+    },
+  });
+
+  if (!ticket) return { ok: false, error: "Ticket not found" };
+  if (ticket.status !== TicketStatus.VALID) {
+    return { ok: false, error: "Ticket is no longer valid" };
+  }
+
+  const to = overrideEmail ?? ticket.attendeeEmail;
+  if (!to) return { ok: false, error: "Ticket has no email address" };
+
+  const settings = await getTicketingSettings();
+  const token = ticketAccessToken(ticket);
+  const png = await renderQrPng(buildTicketToken(ticket));
+  const cid = "ticket-1";
+
+  const { subject, html, text } = renderCompEmail({
+    eventName: ticket.event.name,
+    eventTimezone: ticket.event.timezone,
+    startsAt: ticket.event.startsAt,
+    doorsAt: ticket.event.doorsAt,
+    venueName: ticket.event.venueName,
+    venueAddress: ticket.event.venueAddress,
+    isR18: ticket.event.isR18,
+    ticket: {
+      ticketNumber: ticket.ticketNumber,
+      tierName: ticketTypeName(ticket),
+      accessLabel: isElevated(ticket.accessLevel)
+        ? accessLevel(ticket.accessLevel).label
+        : null,
+      attendeeName: ticket.attendeeName,
+      qrCid: cid,
+    },
+    ticketUrl: ticketUrl(token),
+    appleWalletUrl: isAppleWalletConfigured()
+      ? applePassUrl(ticket.id, token)
+      : undefined,
+    googleWalletUrl: isGoogleWalletConfigured()
+      ? googleWalletSaveUrl(ticket.id, token)
+      : undefined,
+    invitedByName: ticket.invitedByName,
+    handoutCount: ticket.handouts.length,
+    supportEmail: settings.supportEmail,
+  });
+
+  const result = await sendTransactional({
+    to,
+    subject,
+    html,
+    text,
+    attachments: [
+      {
+        filename: `${ticket.ticketNumber}.png`,
+        content: png,
+        cid,
+        contentType: "image/png",
+      },
+    ],
+    replyTo: settings.supportEmail ?? undefined,
+  });
+
+  await logEmail({ orderId: ticket.order.id, type, toEmail: to, result });
 
   return { ok: result.ok, error: result.error };
 }

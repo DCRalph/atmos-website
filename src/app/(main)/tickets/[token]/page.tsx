@@ -19,10 +19,7 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Skeleton } from "~/components/ui/skeleton";
-import {
-  formatEventDateLong,
-  formatEventTime,
-} from "~/lib/ticketing/dates";
+import { formatEventDateLong, formatEventTime } from "~/lib/ticketing/dates";
 import { formatNZD } from "~/lib/ticketing/money";
 import { useIssuedOrder } from "~/hooks/use-issued-order";
 
@@ -74,10 +71,14 @@ export default function TicketsPage() {
 
   // Something the buyer still has to answer: an address to send the tickets
   // to, or a ticket in the group with nobody's name on it.
+  // Locked tickets are excluded: their names are settled, so chasing the buyer
+  // for one they cannot change would be a prompt with no way to satisfy it.
   const unanswered =
     !data.buyerEmail ||
     (data.event.requireAttendeeNames &&
-      data.tickets.some((ticket) => !ticket.attendeeName));
+      data.tickets.some(
+        (ticket) => !ticket.attendeeName && !ticket.nameLocked,
+      ));
 
   if (!data.issued) {
     return (
@@ -349,6 +350,8 @@ function AttendeeDetails({
                   <Input
                     id={`name-${ticket.id}`}
                     value={names[ticket.id] ?? ""}
+                    // Already somebody's: sent on in their name, or scanned in.
+                    disabled={ticket.nameLocked}
                     onChange={(e) =>
                       setNames((current) => ({
                         ...current,
@@ -358,6 +361,11 @@ function AttendeeDetails({
                     placeholder="Full name"
                     autoComplete="off"
                   />
+                  {ticket.nameLocked && (
+                    <p className="text-xs text-white/40">
+                      Set for good — get in touch if this needs changing.
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -448,7 +456,7 @@ function ReceiptRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between">
       <dt className="text-white/50">{label}</dt>
-      <dd className="tabular-nums text-white/70">{value}</dd>
+      <dd className="text-white/70 tabular-nums">{value}</dd>
     </div>
   );
 }

@@ -31,8 +31,7 @@ export const FONT_FAMILIES: FontFamilyOption[] = [
   {
     id: "script",
     label: "Script",
-    stack:
-      '"Segoe Script", "Brush Script MT", "Lucida Handwriting", cursive',
+    stack: '"Segoe Script", "Brush Script MT", "Lucida Handwriting", cursive',
   },
   {
     id: "display",

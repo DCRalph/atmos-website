@@ -8,7 +8,8 @@ import { SITE_URL } from "~/lib/seo-constants";
 export default function page() {
   usePageMetadata({
     title: "Crew",
-    description: "Meet the ATMOS crew — Wellington's finest DJs, producers, and electronic music artists from the Pōneke underground scene.",
+    description:
+      "Meet the ATMOS crew — Wellington's finest DJs, producers, and electronic music artists from the Pōneke underground scene.",
     canonical: `${SITE_URL}/crew`,
   });
 

@@ -19,7 +19,7 @@ import { api } from "~/trpc/react";
   endpoint={api.pickers.gigs}
   value={gigId}
   onChange={setGigId}
-  clearLabel="No gig"   // omit to make the field required
+  clearLabel="No gig" // omit to make the field required
 />;
 ```
 
@@ -91,8 +91,8 @@ Defined in [`src/server/api/pickers/core.ts`](../src/server/api/pickers/core.ts)
 
 **Keep `select` narrow.** A picker feeds a dropdown — never pull relations or
 blobs. The bug that prompted this system was the discount-code event dropdown
-calling `ticketEvents.list`, which loads every event *with its tiers and sales
-counts* to render a list of names.
+calling `ticketEvents.list`, which loads every event _with its tiers and sales
+counts_ to render a list of names.
 
 **Pick the procedure by who should be able to enumerate the table.** A picker is
 a search endpoint over a whole table; `pickers.users` is `adminProcedure` for
@@ -101,7 +101,7 @@ exactly that reason.
 **Scope by caller when a picker must serve two audiences.** `doorStaff` is the
 worked example: admins search every account, while organisers see only a working
 pool — people who have worked a door before, staff-ish accounts, and themselves.
-To reach anyone outside it they must type a *complete* email address, matched
+To reach anyone outside it they must type a _complete_ email address, matched
 exactly.
 
 That split matters because browsing and lookup are different privileges. An

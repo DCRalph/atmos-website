@@ -90,8 +90,7 @@ export function resolveCrewDisplay(
     instagram,
     soundcloud,
     image,
-    profileHandle:
-      profile && profile.isPublished ? profile.handle : null,
+    profileHandle: profile && profile.isPublished ? profile.handle : null,
     source: {
       name: profileName ? "profile" : "member",
       role: profileTagline ? "profile" : memberRole ? "member" : "none",

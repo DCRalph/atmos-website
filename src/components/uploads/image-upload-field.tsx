@@ -44,14 +44,17 @@ export function ImageUploadField<K extends UploadPresetName>({
 }: Props<K>) {
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { upload, items, isUploading, constraints, accept } = useUpload(preset, {
-    context,
-    onComplete: (files) => {
-      const file = files[0];
-      if (file) onChange(file.id, file);
+  const { upload, items, isUploading, constraints, accept } = useUpload(
+    preset,
+    {
+      context,
+      onComplete: (files) => {
+        const file = files[0];
+        if (file) onChange(file.id, file);
+      },
+      onError: (message) => toast.error(message),
     },
-    onError: (message) => toast.error(message),
-  });
+  );
 
   const pending = isUploading || disabled;
   const previewUrl = value ? buildMediaUrl(value) : null;
@@ -87,7 +90,11 @@ export function ImageUploadField<K extends UploadPresetName>({
         >
           {previewUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={previewUrl} alt="" className="h-full w-full object-cover" />
+            <img
+              src={previewUrl}
+              alt=""
+              className="h-full w-full object-cover"
+            />
           ) : (
             <div className="text-muted-foreground grid h-full w-full place-items-center">
               <ImagePlus className="h-5 w-5" />

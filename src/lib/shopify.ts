@@ -175,7 +175,8 @@ export function assertNoErrors(
   if (errors?.message || errors?.graphQLErrors?.length) {
     const msg =
       errors.message ??
-      (errors.graphQLErrors?.[0] as { message?: string } | undefined)?.message ??
+      (errors.graphQLErrors?.[0] as { message?: string } | undefined)
+        ?.message ??
       "Unknown Shopify GraphQL error";
     throw new Error(`${label}: ${msg}`);
   }
@@ -215,7 +216,9 @@ export async function fetchStorefrontProducts(
 
     const first = Math.min(
       STOREFRONT_PAGE_SIZE,
-      maxProducts !== undefined ? maxProducts - out.length : STOREFRONT_PAGE_SIZE,
+      maxProducts !== undefined
+        ? maxProducts - out.length
+        : STOREFRONT_PAGE_SIZE,
     );
     if (first <= 0) break;
 
@@ -238,7 +241,8 @@ export async function fetchStorefrontProducts(
         break;
       }
 
-      const nodes = productsConn.edges?.map((e) => e?.node).filter(Boolean) ?? [];
+      const nodes =
+        productsConn.edges?.map((e) => e?.node).filter(Boolean) ?? [];
       for (const node of nodes) {
         out.push(mapProduct(node));
         if (maxProducts !== undefined && out.length >= maxProducts) {
@@ -246,7 +250,10 @@ export async function fetchStorefrontProducts(
         }
       }
 
-      if (!productsConn.pageInfo.hasNextPage || !productsConn.pageInfo.endCursor) {
+      if (
+        !productsConn.pageInfo.hasNextPage ||
+        !productsConn.pageInfo.endCursor
+      ) {
         break;
       }
       after = productsConn.pageInfo.endCursor;
@@ -267,7 +274,8 @@ export async function fetchStorefrontProducts(
         break;
       }
 
-      const nodes = productsConn.edges?.map((e) => e?.node).filter(Boolean) ?? [];
+      const nodes =
+        productsConn.edges?.map((e) => e?.node).filter(Boolean) ?? [];
       for (const node of nodes) {
         out.push(mapProduct(node));
         if (maxProducts !== undefined && out.length >= maxProducts) {
@@ -275,7 +283,10 @@ export async function fetchStorefrontProducts(
         }
       }
 
-      if (!productsConn.pageInfo.hasNextPage || !productsConn.pageInfo.endCursor) {
+      if (
+        !productsConn.pageInfo.hasNextPage ||
+        !productsConn.pageInfo.endCursor
+      ) {
         break;
       }
       after = productsConn.pageInfo.endCursor;
@@ -458,9 +469,12 @@ export async function storefrontGetCart(
   cartId: string,
 ): Promise<StorefrontCart | null> {
   const client = getStorefrontClient();
-  const { data, errors } = await client.request<{ cart: unknown }>(getCartQuery, {
-    variables: { cartId },
-  });
+  const { data, errors } = await client.request<{ cart: unknown }>(
+    getCartQuery,
+    {
+      variables: { cartId },
+    },
+  );
   assertNoErrors("Shopify get cart", errors);
   return parseCart(data);
 }
@@ -538,7 +552,10 @@ export async function storefrontCartLinesUpdate(
     },
   });
   assertNoErrors("Shopify cart lines update", errors);
-  assertUserErrors("Shopify cart lines update", data?.cartLinesUpdate?.userErrors);
+  assertUserErrors(
+    "Shopify cart lines update",
+    data?.cartLinesUpdate?.userErrors,
+  );
   const cart = parseCart({ cart: data?.cartLinesUpdate?.cart });
   if (!cart) {
     throw new Error("Shopify cart lines update returned no cart.");
@@ -563,7 +580,10 @@ export async function storefrontCartLinesRemove(
     },
   });
   assertNoErrors("Shopify cart lines remove", errors);
-  assertUserErrors("Shopify cart lines remove", data?.cartLinesRemove?.userErrors);
+  assertUserErrors(
+    "Shopify cart lines remove",
+    data?.cartLinesRemove?.userErrors,
+  );
   const cart = parseCart({ cart: data?.cartLinesRemove?.cart });
   if (!cart) {
     throw new Error("Shopify cart lines remove returned no cart.");

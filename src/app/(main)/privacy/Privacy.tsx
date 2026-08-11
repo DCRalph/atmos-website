@@ -25,12 +25,15 @@ export default function PrivacyPage() {
   return (
     <main className="min-h-content bg-white text-black">
       {/* Background accents */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+      >
         <div className="absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-linear-to-tr from-indigo-300 via-fuchsia-300 to-cyan-200 opacity-40 blur-3xl" />
         <div className="absolute right-0 bottom-0 h-64 w-64 translate-x-16 translate-y-16 rounded-full bg-linear-to-tr from-cyan-200 via-emerald-200 to-lime-200 opacity-40 blur-3xl" />
       </div>
 
-      <section className="relative z-10 px-4 pb-12 pt-12">
+      <section className="relative z-10 px-4 pt-12 pb-12">
         <Container>
           <div className="mb-8">
             <Link
@@ -144,8 +147,8 @@ export default function PrivacyPage() {
                 Ticketing relies on a few overseas providers, so some of this
                 information is held outside New Zealand under comparable privacy
                 safeguards: Stripe (payments), Resend (ticket email), Amazon Web
-                Services (file storage), and Apple and Google if you add a ticket
-                to a wallet app.
+                Services (file storage), and Apple and Google if you add a
+                ticket to a wallet app.
               </p>
               <p className="mb-4 leading-relaxed text-gray-700">
                 Buying a ticket does not sign you up to anything. We only email

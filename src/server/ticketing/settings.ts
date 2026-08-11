@@ -42,15 +42,21 @@ export type TicketingSettings = {
 };
 
 export async function getTicketingSettings(): Promise<TicketingSettings> {
-  const [fixedCents, percentBp, gstNumber, supportEmail, legalName, holdMinutes] =
-    await Promise.all([
-      readInt(TICKETING_KEYS.bookingFeeFixedCents, ZERO_BOOKING_FEE.fixedCents),
-      readInt(TICKETING_KEYS.bookingFeePercentBp, ZERO_BOOKING_FEE.percentBp),
-      getKeyValue(TICKETING_KEYS.gstNumber),
-      getKeyValue(TICKETING_KEYS.supportEmail),
-      getKeyValue(TICKETING_KEYS.legalName),
-      readInt(TICKETING_KEYS.holdMinutes, DEFAULT_HOLD_MINUTES),
-    ]);
+  const [
+    fixedCents,
+    percentBp,
+    gstNumber,
+    supportEmail,
+    legalName,
+    holdMinutes,
+  ] = await Promise.all([
+    readInt(TICKETING_KEYS.bookingFeeFixedCents, ZERO_BOOKING_FEE.fixedCents),
+    readInt(TICKETING_KEYS.bookingFeePercentBp, ZERO_BOOKING_FEE.percentBp),
+    getKeyValue(TICKETING_KEYS.gstNumber),
+    getKeyValue(TICKETING_KEYS.supportEmail),
+    getKeyValue(TICKETING_KEYS.legalName),
+    readInt(TICKETING_KEYS.holdMinutes, DEFAULT_HOLD_MINUTES),
+  ]);
 
   return {
     bookingFee: { fixedCents, percentBp },

@@ -108,7 +108,6 @@ export default function GigsPage() {
           </div> */}
         </div>
 
-
         {/* <h2 className="border-accent-strong mb-6 border-l-4 pl-4 text-2xl font-black tracking-wider uppercase sm:mb-8 sm:text-3xl md:text-4xl">
             Past Gigs
           </h2> */}

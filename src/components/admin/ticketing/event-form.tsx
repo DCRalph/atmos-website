@@ -77,6 +77,9 @@ export function EventForm({ event }: { event?: AdminEvent }) {
     event?.salesCloseAt ?? undefined,
   );
   const [capacity, setCapacity] = useState(event?.capacity?.toString() ?? "");
+  const [compAllowance, setCompAllowance] = useState(
+    event?.compAllowance?.toString() ?? "",
+  );
   const [maxPerOrder, setMaxPerOrder] = useState(
     (event?.maxTicketsPerOrder ?? 10).toString(),
   );
@@ -141,12 +144,15 @@ export function EventForm({ event }: { event?: AdminEvent }) {
       salesOpenAt: salesOpenAt ?? null,
       salesCloseAt: salesCloseAt ?? null,
       capacity: capacity ? Number.parseInt(capacity, 10) : null,
+      compAllowance: compAllowance ? Number.parseInt(compAllowance, 10) : null,
       maxTicketsPerOrder: Number.parseInt(maxPerOrder, 10) || 10,
       visibility,
       isR18,
       reentryAllowed,
       requireAttendeeNames: requireNames,
-      bookingFeeFixedCents: feeFixed ? (parsePriceToCents(feeFixed) ?? 0) : null,
+      bookingFeeFixedCents: feeFixed
+        ? (parsePriceToCents(feeFixed) ?? 0)
+        : null,
       bookingFeePercentBp: feePercent
         ? Math.round(Number.parseFloat(feePercent) * 100)
         : null,
@@ -239,7 +245,10 @@ export function EventForm({ event }: { event?: AdminEvent }) {
       </Fieldset>
 
       <Fieldset legend="Sales">
-        <Field label="Sales open" hint="Leave blank to open as soon as published.">
+        <Field
+          label="Sales open"
+          hint="Leave blank to open as soon as published."
+        >
           <DateTimePicker date={salesOpenAt} onDateChange={setSalesOpenAt} />
         </Field>
         <Field label="Sales close" hint="Leave blank to sell until doors.">
@@ -248,7 +257,7 @@ export function EventForm({ event }: { event?: AdminEvent }) {
         <Field
           label="Overall capacity"
           htmlFor="capacity"
-          hint="Caps total tickets across every tier. Blank means the tier allocations decide."
+          hint="Caps total tickets across every tier, comps included. Blank means the tier allocations decide."
         >
           <Input
             id="capacity"
@@ -256,6 +265,19 @@ export function EventForm({ event }: { event?: AdminEvent }) {
             min={1}
             value={capacity}
             onChange={(e) => setCapacity(e.target.value)}
+          />
+        </Field>
+        <Field
+          label="Comp allowance"
+          htmlFor="comp-allowance"
+          hint="How many tickets you plan to give away. A target, not a limit — going over only warns."
+        >
+          <Input
+            id="comp-allowance"
+            type="number"
+            min={0}
+            value={compAllowance}
+            onChange={(e) => setCompAllowance(e.target.value)}
           />
         </Field>
         <Field label="Max tickets per order" htmlFor="maxper">

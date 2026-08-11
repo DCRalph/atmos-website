@@ -48,7 +48,9 @@ export function LatestContentSection() {
 
             {/* Remaining items */}
             {list.length > 0 &&
-              list.map((item) => <ContentCard key={item.id} contentItem={item} />)}
+              list.map((item) => (
+                <ContentCard key={item.id} contentItem={item} />
+              ))}
           </>
         ) : (
           <p className="col-span-full py-8 text-center text-white/60">

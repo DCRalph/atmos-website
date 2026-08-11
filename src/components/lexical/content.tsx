@@ -8,10 +8,7 @@ import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { cn } from "~/lib/utils";
 import { LEXICAL_NODES } from "./nodes";
 import { LEXICAL_THEME } from "./theme";
-import {
-  normalizeLexicalValue,
-  type LexicalEditorValue,
-} from "./normalize";
+import { normalizeLexicalValue, type LexicalEditorValue } from "./normalize";
 
 type LexicalContentProps = {
   value?: LexicalEditorValue;

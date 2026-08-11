@@ -8,6 +8,8 @@ import {
 } from "~Prisma/client";
 import { createTRPCRouter, eventOrganiserProcedure } from "~/server/api/trpc";
 import { admittedCount } from "~/server/ticketing/scan";
+import { compAccounting } from "~/server/ticketing/comps";
+import { ticketTypeName } from "~/lib/ticketing/access-levels";
 
 /**
  * Event analytics: the sales dashboard, and the live view you watch on your
@@ -117,6 +119,10 @@ export const ticketAnalyticsRouter = createTRPCRouter({
       const allocation = event.tiers.reduce((s, t) => s + t.allocation, 0);
       const capacity = event.capacity ?? allocation;
 
+      // Comps sit outside every tier counter, so the tier table alone will not
+      // add up to `ticketsIssued`. This is the row that reconciles them.
+      const comps = await compAccounting(event.id, ctx.db);
+
       return {
         event: {
           id: event.id,
@@ -153,7 +159,14 @@ export const ticketAnalyticsRouter = createTRPCRouter({
             orderCount + abandoned > 0
               ? Math.round((orderCount / (orderCount + abandoned)) * 100)
               : null,
+          /** Given away. Part of `ticketsIssued`, never part of revenue. */
+          comped: comps.issued,
+          compAllowance: comps.allowance,
+          compsAdmitted: comps.admitted,
+          handoutsUnsent: comps.handouts.unsent,
+          sold: ticketsIssued - comps.issued,
         },
+        comps,
         tiers: event.tiers.map((tier) => ({
           id: tier.id,
           name: tier.name,
@@ -203,6 +216,8 @@ export const ticketAnalyticsRouter = createTRPCRouter({
         JOIN "ticket" t ON t."orderId" = o.id
         WHERE o."eventId" = ${input.eventId}
           AND o."paidAt" IS NOT NULL
+          -- Giveaways are a count, never a point on a revenue line.
+          AND t."isComp" = false
         GROUP BY 1
         ORDER BY 1 ASC
       `;
@@ -480,7 +495,10 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           [
             "Ticket number",
             "Attendee",
-            "Tier",
+            "Type",
+            "Level",
+            "Comp",
+            "Invited by",
             "Order",
             "Buyer",
             "Email",
@@ -491,7 +509,10 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           ...tickets.map((ticket) => [
             ticket.ticketNumber,
             ticket.attendeeName ?? "",
-            ticket.tier.name,
+            ticketTypeName(ticket),
+            ticket.accessLevel,
+            ticket.isComp ? "yes" : "",
+            ticket.invitedByName ?? "",
             ticket.order.orderNumber,
             ticket.order.buyerName ?? "",
             ticket.order.buyerEmail ?? "",

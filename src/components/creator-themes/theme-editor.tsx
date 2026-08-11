@@ -8,12 +8,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { Badge } from "~/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Switch } from "~/components/ui/switch";
 import { useConfirm } from "~/components/confirm-provider";
 import {
@@ -60,8 +55,9 @@ export function ThemeEditor({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [tokens, setTokens] = useState<ThemeTokens>(DEFAULT_THEME_TOKENS);
-  const [overrides, setOverrides] =
-    useState<BlockOverrides>(DEFAULT_BLOCK_OVERRIDES);
+  const [overrides, setOverrides] = useState<BlockOverrides>(
+    DEFAULT_BLOCK_OVERRIDES,
+  );
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);

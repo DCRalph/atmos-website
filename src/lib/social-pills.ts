@@ -1,10 +1,5 @@
 export type SocialPlatformId =
-  | "instagram"
-  | "facebook"
-  | "tiktok"
-  | "youtube"
-  | "spotify"
-  | "soundcloud";
+  "instagram" | "facebook" | "tiktok" | "youtube" | "spotify" | "soundcloud";
 
 export type SocialPlatform = {
   id: SocialPlatformId;
@@ -135,8 +130,7 @@ export const SOCIAL_PLATFORMS: readonly SocialPlatform[] = [
     hosts: FACEBOOK_HOSTS,
     supportsHandleInput: true,
     inputPlaceholder: "atmos.collective or https://facebook.com/atmos",
-    inputHelp:
-      "Letters, numbers, dots, and hyphens. Leading @ is optional.",
+    inputHelp: "Letters, numbers, dots, and hyphens. Leading @ is optional.",
     pillClassName:
       "border-blue-400/40 bg-blue-500/10 text-blue-100 hover:border-blue-300/70 hover:bg-blue-500/20 hover:text-white",
     normalizeInput: makeHandleNormalizer({
@@ -186,7 +180,12 @@ export const SOCIAL_PLATFORMS: readonly SocialPlatform[] = [
       if (!trimmed) return null;
       const parsed = parseUrl(trimmed);
       if (parsed) {
-        if (!YOUTUBE_HOSTS.includes(normalizedHost(parsed) as (typeof YOUTUBE_HOSTS)[number])) return null;
+        if (
+          !YOUTUBE_HOSTS.includes(
+            normalizedHost(parsed) as (typeof YOUTUBE_HOSTS)[number],
+          )
+        )
+          return null;
         return parsed.toString();
       }
       const handle = trimmed.replace(/^@/, "").replace(/\/+$/, "");
@@ -304,6 +303,7 @@ export function resolvePillPlatform(
   existingTitle?: string | null,
 ): SocialPlatform | null {
   return (
-    detectPlatformFromUrl(url) ?? getPlatformFromPillTitle(existingTitle ?? null)
+    detectPlatformFromUrl(url) ??
+    getPlatformFromPillTitle(existingTitle ?? null)
   );
 }

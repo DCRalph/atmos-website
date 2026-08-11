@@ -31,9 +31,11 @@ export function BoxOfficePanel({ event }: { event: AdminEvent }) {
   const utils = api.useUtils();
 
   const [quantities, setQuantities] = useState<Record<string, number>>({});
-  const [paymentMethod, setPaymentMethod] = useState<
-    "CASH" | "TERMINAL" | "COMP"
-  >("CASH");
+  // Comps are not a payment method: they are minted rather than sold, so they
+  // live on the Comps tab where a level is picked instead of a tier.
+  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "TERMINAL">(
+    "CASH",
+  );
   const [buyerName, setBuyerName] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
   const [notes, setNotes] = useState("");
@@ -64,13 +66,10 @@ export function BoxOfficePanel({ event }: { event: AdminEvent }) {
     .filter(([, quantity]) => quantity > 0)
     .map(([tierId, quantity]) => ({ tierId, quantity }));
 
-  const total =
-    paymentMethod === "COMP"
-      ? 0
-      : lines.reduce((sum, line) => {
-          const tier = event.tiers.find((t) => t.id === line.tierId);
-          return sum + (tier?.priceCents ?? 0) * line.quantity;
-        }, 0);
+  const total = lines.reduce((sum, line) => {
+    const tier = event.tiers.find((t) => t.id === line.tierId);
+    return sum + (tier?.priceCents ?? 0) * line.quantity;
+  }, 0);
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -138,7 +137,7 @@ export function BoxOfficePanel({ event }: { event: AdminEvent }) {
           <Select
             value={paymentMethod}
             onValueChange={(value) =>
-              setPaymentMethod(value as "CASH" | "TERMINAL" | "COMP")
+              setPaymentMethod(value as "CASH" | "TERMINAL")
             }
           >
             <SelectTrigger>
@@ -147,9 +146,12 @@ export function BoxOfficePanel({ event }: { event: AdminEvent }) {
             <SelectContent>
               <SelectItem value="CASH">Cash</SelectItem>
               <SelectItem value="TERMINAL">Card / eftpos</SelectItem>
-              <SelectItem value="COMP">Comp (free)</SelectItem>
             </SelectContent>
           </Select>
+          <p className="text-muted-foreground text-xs">
+            Giving one away? That&apos;s the Comps tab — it mints a ticket at
+            any level instead of taking one from a tier.
+          </p>
         </div>
 
         <div className="space-y-1.5">

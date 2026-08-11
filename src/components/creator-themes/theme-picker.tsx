@@ -8,12 +8,7 @@ import { api } from "~/trpc/react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "~/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import {
   DEFAULT_THEME_TOKENS,
   parseTokens,
@@ -43,7 +38,9 @@ export function ThemePicker({
   const router = useRouter();
   const utils = api.useUtils();
   const mineQ = api.creatorThemes.listMine.useQuery();
-  const publicQ = api.creatorThemes.listPublic.useQuery({ includeSystem: true });
+  const publicQ = api.creatorThemes.listPublic.useQuery({
+    includeSystem: true,
+  });
   const duplicateMut = api.creatorThemes.duplicate.useMutation({
     onSuccess: (created) => {
       void utils.creatorThemes.listMine.invalidate();
@@ -124,9 +121,7 @@ export function ThemePicker({
                   theme={t}
                   selected={t.id === selectedThemeId}
                   onSelect={() => onSelect(t.id)}
-                  onDuplicate={() =>
-                    duplicateMut.mutate({ id: t.id })
-                  }
+                  onDuplicate={() => duplicateMut.mutate({ id: t.id })}
                   duplicating={duplicateMut.isPending}
                 />
               ))}
@@ -154,9 +149,7 @@ export function ThemePicker({
                   theme={t}
                   selected={t.id === selectedThemeId}
                   onSelect={() => onSelect(t.id)}
-                  onDuplicate={() =>
-                    duplicateMut.mutate({ id: t.id })
-                  }
+                  onDuplicate={() => duplicateMut.mutate({ id: t.id })}
                   duplicating={duplicateMut.isPending}
                 />
               ))}

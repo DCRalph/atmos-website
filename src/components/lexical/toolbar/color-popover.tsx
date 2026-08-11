@@ -104,7 +104,7 @@ export function TextColorPopover({
       >
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+            <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
               Text color
             </span>
             <button

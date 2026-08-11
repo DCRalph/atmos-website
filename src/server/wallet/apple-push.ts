@@ -29,7 +29,9 @@ export type PushResult = { sent: number; failed: number; pruned: number };
  * Tell every device holding this ticket's pass that it changed.
  * Safe to call when Wallet is not configured — it just does nothing.
  */
-export async function pushPassUpdate(serialNumber: string): Promise<PushResult> {
+export async function pushPassUpdate(
+  serialNumber: string,
+): Promise<PushResult> {
   const result: PushResult = { sent: 0, failed: 0, pruned: 0 };
   if (!isAppleWalletConfigured()) return result;
 
@@ -104,7 +106,9 @@ export async function pushPassUpdate(serialNumber: string): Promise<PushResult> 
 }
 
 /** Push an update for every ticket on an event — a time change, a cancellation. */
-export async function pushEventPassUpdates(eventId: string): Promise<PushResult> {
+export async function pushEventPassUpdates(
+  eventId: string,
+): Promise<PushResult> {
   const totals: PushResult = { sent: 0, failed: 0, pruned: 0 };
   if (!isAppleWalletConfigured()) return totals;
 

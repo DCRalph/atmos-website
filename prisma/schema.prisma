@@ -780,6 +780,7 @@ enum ActivityType {
   TICKET_ENTRY_DENIED
   TICKET_ACCESS_CHANGED
   TICKET_COMPED
+  TICKET_HANDOUT_SENT
   DISCOUNT_CODE_CREATED
   DISCOUNT_CODE_UPDATED
   DISCOUNT_CODE_DELETED
@@ -950,6 +951,11 @@ enum TicketEmailType {
   DETAILS_NUDGE
   REMINDER
   APPROVAL_REQUIRED
+  /// Sent to somebody who has been given a ticket, covering their own ticket
+  /// and any they have to hand out.
+  COMP
+  /// Sent to the person a comp recipient passed a ticket on to.
+  HANDOUT
 }
 
 enum EventStaffRole {
@@ -993,6 +999,11 @@ model TicketEvent {
 
   /// Overall cap across every tier. Null means the sum of tier allocations.
   capacity             Int?
+  /// How many comps this event is budgeted for. A target, not a limit: going
+  /// over is allowed and only ever warns, because the call to comp one more
+  /// person is made in the room and not by this column. Null means nobody set
+  /// a number, so there is nothing to warn against — the count still works.
+  compAllowance        Int?
   maxTicketsPerOrder   Int     @default(10)
   requireAttendeeNames Boolean @default(true)
   /// When true a second scan is a calm "re-entry", not a warning.
@@ -1167,7 +1178,7 @@ model Ticket {
 
   orderId String
   eventId String
-  tierId  String
+  tierId  String?
 
   status        TicketStatus @default(VALID)
   attendeeName  String?
@@ -1178,11 +1189,21 @@ model Ticket {
   /// the tier they were comped from.
   accessLevel TicketAccessLevel @default(GENERAL)
 
+  isComp Boolean @default(false)
+
+  nameLockedAt DateTime?
+
+  hostTicketId String?
+  invitedByName String?
+  sentAt DateTime?
+
   /// Random 32 bytes, base64url. Combined with `qrVersion` and the server
   /// secret to produce the signed QR payload.
   qrSecret  String
   /// Bumped to invalidate a previously issued code without changing identity.
   qrVersion Int    @default(1)
+
+  accessTokenVersion Int @default(1)
 
   pricePaidCents Int @default(0)
 
@@ -1195,14 +1216,18 @@ model Ticket {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  order TicketOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  event TicketEvent  @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  tier  TicketTier   @relation(fields: [tierId], references: [id], onDelete: Restrict)
-  scans TicketScan[]
+  order      TicketOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  event      TicketEvent  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tier       TicketTier?  @relation(fields: [tierId], references: [id], onDelete: Restrict)
+  hostTicket Ticket?      @relation("CompHandout", fields: [hostTicketId], references: [id], onDelete: SetNull)
+  handouts   Ticket[]     @relation("CompHandout")
+  scans      TicketScan[]
 
   @@index([eventId, status])
   @@index([orderId])
   @@index([tierId])
+  @@index([eventId, isComp, status])
+  @@index([hostTicketId])
   @@map("ticket")
 }
 
@@ -1216,14 +1241,11 @@ model TicketScan {
   result      TicketScanResult
   wasOverride Boolean          @default(false)
 
-  /// Set on DENIED rows: why the door refused entry.
   denyReason TicketDenyReason?
-  /// Whatever the door added in their own words alongside the reason.
   denyNote   String?
 
   scannedByUserId String?
   deviceLabel     String?
-  /// Only kept for failed scans, to debug a bad QR at the door.
   rawToken        String?
 
   createdAt DateTime @default(now())

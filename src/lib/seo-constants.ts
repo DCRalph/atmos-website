@@ -8,15 +8,13 @@ export const SITE_NAME = "ATMOS";
 export const SITE_TAGLINE = "Electronic music events in Pōneke";
 export const SITE_NAME_FULL = `${SITE_NAME} electronic music events in Pōneke`;
 
-export const SITE_URL =
-  env.NEXT_PUBLIC_APP_URL ?? "https://atmosmedia.co.nz";
+export const SITE_URL = env.NEXT_PUBLIC_APP_URL ?? "https://atmosmedia.co.nz";
 
 export const DESCRIPTION_SHORT =
   "Immersive curated music experiences in Pōneke";
 
 export const DESCRIPTION_LONG =
   "Gig tickets, weekly radio show, merch drops, dive into the galleries from our past events. Everything Atmos - all in one place";
-
 
 /** Formats a page title with the site name suffix for OG/Twitter (which don't use Next.js template) */
 export const formatFullTitle = (title: string) => `${title} | ${SITE_NAME}`;
@@ -137,12 +135,12 @@ export const PAGE_METADATA = {
     openGraph: {
       ...DEFAULT_OPENGRAPH,
       title: SITE_NAME_FULL,
-      description: DESCRIPTION_SHORT
+      description: DESCRIPTION_SHORT,
     },
     twitter: {
       ...DEFAULT_TWITTER,
       title: SITE_NAME_FULL,
-      description: DESCRIPTION_SHORT
+      description: DESCRIPTION_SHORT,
     },
   },
 

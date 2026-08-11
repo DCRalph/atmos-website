@@ -72,7 +72,10 @@ export function RightMenuRail({
         {isOpen && (
           <motion.ul
             key="menu-list"
-            className={cn("space-y-1 text-lg font-black tracking-wider uppercase sm:text-3xl", orbitron.className)}
+            className={cn(
+              "space-y-1 text-lg font-black tracking-wider uppercase sm:text-3xl",
+              orbitron.className,
+            )}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}

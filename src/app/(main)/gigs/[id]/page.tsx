@@ -24,7 +24,7 @@ export default function page({ params }: { params: Promise<{ id: string }> }) {
   const { data: gig } = api.gigs.getById.useQuery({ id });
 
   const isTba = gig?.mode === "TO_BE_ANNOUNCED";
-  const baseTitle = isTba ? "TBA..." : gig?.title ?? "Gig";
+  const baseTitle = isTba ? "TBA..." : (gig?.title ?? "Gig");
   const subtitle = cleanText(isTba ? "" : gig?.subtitle);
   const shortDescription = cleanText(isTba ? "" : gig?.shortDescription);
   const description =

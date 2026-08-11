@@ -3,10 +3,7 @@
 import { useEffect } from "react";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { $createParagraphNode, $getRoot } from "lexical";
-import {
-  normalizeLexicalValue,
-  type LexicalEditorValue,
-} from "./normalize";
+import { normalizeLexicalValue, type LexicalEditorValue } from "./normalize";
 
 type ValueRef = { current: string };
 

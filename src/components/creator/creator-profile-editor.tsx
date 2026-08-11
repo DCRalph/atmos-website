@@ -21,12 +21,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Badge } from "~/components/ui/badge";
 import { Textarea } from "~/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -47,15 +42,9 @@ import {
   matchSocialPlatform,
   type SocialPlatform,
 } from "~/lib/social-pills";
-import {
-  AddBlockPopover,
-  CreatorGridEditor,
-} from "./creator-grid-editor";
+import { AddBlockPopover, CreatorGridEditor } from "./creator-grid-editor";
 import { BlockInspector } from "./block-inspector";
-import {
-  type ClientBlock,
-  type CreatorBlockTypeName,
-} from "./block-types";
+import { type ClientBlock, type CreatorBlockTypeName } from "./block-types";
 import { useUnsavedChangesWarning } from "~/hooks/use-unsaved-changes-warning";
 import { ThemePicker } from "~/components/creator-themes/theme-picker";
 
@@ -123,23 +112,19 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
   });
 
   const profile = (mode === "admin" ? getByIdQ.data : getMineQ.data) as
-    | Profile
-    | null
-    | undefined;
+    Profile | null | undefined;
 
-  const [identity, setIdentity] = useState<
-    Pick<
-      Profile,
-      | "handle"
-      | "displayName"
-      | "tagline"
-      | "bio"
-      | "accentColor"
-      | "themeId"
-      | "avatarFileId"
-      | "bannerFileId"
-    > | null
-  >(null);
+  const [identity, setIdentity] = useState<Pick<
+    Profile,
+    | "handle"
+    | "displayName"
+    | "tagline"
+    | "bio"
+    | "accentColor"
+    | "themeId"
+    | "avatarFileId"
+    | "bannerFileId"
+  > | null>(null);
 
   const [blocks, setBlocks] = useState<ClientBlock[] | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
@@ -298,14 +283,13 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
 
   if (!profile || !identity || !blocks) {
     return (
-      <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center">
+      <div className="text-muted-foreground flex items-center justify-center gap-2 py-12">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading profile...
       </div>
     );
   }
 
-  const selectedBlock =
-    blocks.find((b) => b.id === selectedBlockId) ?? null;
+  const selectedBlock = blocks.find((b) => b.id === selectedBlockId) ?? null;
 
   function onAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -323,9 +307,7 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
     });
     if (!ok) return;
     await clearAvatar.mutateAsync({ profileId: mutationProfileIdArg });
-    setIdentity((prev) =>
-      prev ? { ...prev, avatarFileId: null } : prev,
-    );
+    setIdentity((prev) => (prev ? { ...prev, avatarFileId: null } : prev));
     await refetch();
   }
 
@@ -345,9 +327,7 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
     });
     if (!ok) return;
     await clearBanner.mutateAsync({ profileId: mutationProfileIdArg });
-    setIdentity((prev) =>
-      prev ? { ...prev, bannerFileId: null } : prev,
-    );
+    setIdentity((prev) => (prev ? { ...prev, bannerFileId: null } : prev));
     await refetch();
   }
 
@@ -371,9 +351,8 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
 
   return (
     <div className="space-y-4">
-
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-sm text-muted-foreground">
+        <div className="text-muted-foreground text-sm">
           {saving ? (
             <span className="flex items-center gap-1">
               <Loader2 className="h-3 w-3 animate-spin" /> Saving...
@@ -466,7 +445,7 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
               }}
             />
           </div>
-          <div className="md:hidden rounded-md border bg-muted/30 p-4 text-sm text-muted-foreground">
+          <div className="bg-muted/30 text-muted-foreground rounded-md border p-4 text-sm md:hidden">
             Switch to a desktop browser to edit the layout. You can still
             preview the profile on mobile.
           </div>
@@ -488,9 +467,7 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
                   block={selectedBlock}
                   profileId={mutationProfileIdArg}
                   onChange={(nb) => {
-                    setBlocks(
-                      blocks.map((b) => (b.id === nb.id ? nb : b)),
-                    );
+                    setBlocks(blocks.map((b) => (b.id === nb.id ? nb : b)));
                     setDirty(true);
                   }}
                 />
@@ -697,8 +674,8 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
                     ) : null}
                   </div>
                   <p className="text-muted-foreground text-[11px] leading-tight">
-                    Shown across the top of your public page. Wide images
-                    (about 3:1) work best. JPG, PNG, WebP or GIF.
+                    Shown across the top of your public page. Wide images (about
+                    3:1) work best. JPG, PNG, WebP or GIF.
                   </p>
                 </div>
               </div>
@@ -783,9 +760,7 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
               <div className="rounded-md border p-2">
                 <ThemePicker
                   selectedThemeId={identity.themeId}
-                  onSelect={(id) =>
-                    setIdentity({ ...identity, themeId: id })
-                  }
+                  onSelect={(id) => setIdentity({ ...identity, themeId: id })}
                   currentUserId={profile.userId ?? undefined}
                 />
               </div>
@@ -930,7 +905,11 @@ function SocialsCard({
         >
           <Plus className="mr-1 h-4 w-4" /> Add social
         </Button>
-        <Button className="w-full" onClick={() => void onSave()} disabled={saving}>
+        <Button
+          className="w-full"
+          onClick={() => void onSave()}
+          disabled={saving}
+        >
           {saving ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
@@ -954,7 +933,9 @@ function SocialRow({
   onRemove: () => void;
 }) {
   const knownPlatform = matchSocialPlatform(social.platform);
-  const platformValue = knownPlatform ? knownPlatform.id : CUSTOM_PLATFORM_VALUE;
+  const platformValue = knownPlatform
+    ? knownPlatform.id
+    : CUSTOM_PLATFORM_VALUE;
   const [urlError, setUrlError] = useState<string | null>(null);
 
   const handlePlatformChange = (value: string) => {

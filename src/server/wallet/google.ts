@@ -4,6 +4,7 @@ import { SignJWT, importPKCS8 } from "jose";
 
 import { env } from "~/env";
 import { buildTicketToken } from "~/server/ticketing/qr";
+import { ticketTypeName } from "~/lib/ticketing/access-levels";
 import { getGoogleWalletConfig } from "./google-config";
 import type { PassEvent, PassTicket } from "./apple";
 
@@ -79,7 +80,7 @@ export async function buildGoogleWalletSaveUrl({
     state: event.status === "CANCELLED" ? "INACTIVE" : "ACTIVE",
     ticketNumber: ticket.ticketNumber,
     ticketType: {
-      defaultValue: { language: "en-NZ", value: ticket.tier.name },
+      defaultValue: { language: "en-NZ", value: ticketTypeName(ticket) },
     },
     ...(ticket.attendeeName
       ? {

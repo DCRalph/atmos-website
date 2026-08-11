@@ -100,6 +100,8 @@ const eventInputSchema = z.object({
   salesOpenAt: z.date().nullable().optional(),
   salesCloseAt: z.date().nullable().optional(),
   capacity: z.number().int().min(1).nullable().optional(),
+  /** A target for tickets given away. Never enforced — see `comps.ts`. */
+  compAllowance: z.number().int().min(0).nullable().optional(),
   maxTicketsPerOrder: z.number().int().min(1).max(50).default(10),
   requireAttendeeNames: z.boolean().default(true),
   reentryAllowed: z.boolean().default(false),
@@ -158,9 +160,7 @@ function isViewable(
 
   const expected = Buffer.from(event.accessKey);
   const given = Buffer.from(key);
-  return (
-    expected.length === given.length && timingSafeEqual(expected, given)
-  );
+  return expected.length === given.length && timingSafeEqual(expected, given);
 }
 
 /** 32 bytes of base64url — unguessable, and short enough to paste. */
@@ -327,6 +327,7 @@ export const ticketEventsRouter = createTRPCRouter({
           salesOpenAt: input.salesOpenAt ?? null,
           salesCloseAt: input.salesCloseAt ?? null,
           capacity: input.capacity ?? null,
+          compAllowance: input.compAllowance ?? null,
           maxTicketsPerOrder: input.maxTicketsPerOrder,
           requireAttendeeNames: input.requireAttendeeNames,
           reentryAllowed: input.reentryAllowed,
@@ -431,6 +432,9 @@ export const ticketEventsRouter = createTRPCRouter({
             ? { salesCloseAt: rest.salesCloseAt }
             : {}),
           ...(rest.capacity !== undefined ? { capacity: rest.capacity } : {}),
+          ...(rest.compAllowance !== undefined
+            ? { compAllowance: rest.compAllowance }
+            : {}),
           ...(rest.maxTicketsPerOrder !== undefined
             ? { maxTicketsPerOrder: rest.maxTicketsPerOrder }
             : {}),

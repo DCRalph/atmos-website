@@ -512,7 +512,7 @@ export default function GigPage({ params }: PageProps) {
           <motion.div
             layoutId={posterLayoutId}
             transition={{ type: "spring", stiffness: 260, damping: 28 }}
-            className="pointer-events-none absolute inset-0 mt-6 z-10"
+            className="pointer-events-none absolute inset-0 z-10 mt-6"
             style={{ y: posterY, scale: posterScale }}
           >
             <Image

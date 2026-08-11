@@ -1,10 +1,7 @@
 import { $isLinkNode, type LinkNode as LinkNodeType } from "@lexical/link";
 import { $findMatchingParent } from "@lexical/utils";
 import type { BaseSelection } from "lexical";
-import {
-  resolvePillPlatform,
-  type SocialPlatformId,
-} from "~/lib/social-pills";
+import { resolvePillPlatform, type SocialPlatformId } from "~/lib/social-pills";
 
 export type LinkDialogMode = "standard" | SocialPlatformId;
 

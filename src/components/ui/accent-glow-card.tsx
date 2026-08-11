@@ -20,12 +20,7 @@ export function AccentGlowCard({
   ...props
 }: AccentGlowCardProps) {
   return (
-    <motion.div {...motionProps}
-      className={cn(
-        "flex",
-        className,
-      )}>
-
+    <motion.div {...motionProps} className={cn("flex", className)}>
       <div
         className={cn(
           [
@@ -53,11 +48,9 @@ export function AccentGlowCard({
         ref={ref}
         {...props}
       >
-
         <div className="bg-accent-strong/80 group-hover:bg-accent-muted absolute top-0 left-0 h-full w-1 transition-all group-hover:w-2" />
 
         {children}
-
       </div>
     </motion.div>
   );

@@ -75,7 +75,10 @@ export const describeAcceptedTypes = (accept: string[]): string => {
   const labels = accept.map((pattern) => {
     if (pattern.endsWith("/*")) return `any ${pattern.slice(0, -2)}`;
     const sub = pattern.split("/")[1] ?? pattern;
-    return sub.replace("svg+xml", "svg").replace("quicktime", "mov").toUpperCase();
+    return sub
+      .replace("svg+xml", "svg")
+      .replace("quicktime", "mov")
+      .toUpperCase();
   });
   return [...new Set(labels)].join(", ");
 };
@@ -87,7 +90,9 @@ export const describeConstraints = (c: PresetConstraints): string => {
     `up to ${formatBytes(c.maxFileSize)}`,
   ];
   if (c.maxFiles > 1) {
-    parts.push(`${c.maxFiles} files max (${formatBytes(c.maxTotalSize)} total)`);
+    parts.push(
+      `${c.maxFiles} files max (${formatBytes(c.maxTotalSize)} total)`,
+    );
   }
   if (c.image?.maxDimension) {
     parts.push(`resized to ${c.image.maxDimension}px`);

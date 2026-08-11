@@ -86,7 +86,8 @@ export const processImage = async (
     };
   };
 
-  if (!canProcessImage(sourceMimeType)) return passThrough("unsupported format");
+  if (!canProcessImage(sourceMimeType))
+    return passThrough("unsupported format");
 
   const image = sharp(input, { failOn: "none" });
   const metadata = await image.metadata();
@@ -113,7 +114,9 @@ export const processImage = async (
       // Apply EXIF orientation before the metadata is dropped.
       .rotate();
 
-    const width = maxWidth ? Math.max(1, Math.round(maxWidth * scale)) : undefined;
+    const width = maxWidth
+      ? Math.max(1, Math.round(maxWidth * scale))
+      : undefined;
     const height = maxHeight
       ? Math.max(1, Math.round(maxHeight * scale))
       : undefined;

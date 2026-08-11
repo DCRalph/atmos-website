@@ -70,16 +70,22 @@ export function EventOverview({
         />
         <StatTile
           label="Tickets sold"
-          value={String(counts.ticketsIssued)}
-          sub={`${counts.percentSold}% of ${counts.capacity}`}
+          value={String(counts.sold)}
+          sub={`${counts.percentSold}% of ${counts.capacity} · ${counts.ticketsIssued} in the room`}
         />
+        {/* Sits next to sold rather than buried in the comps tab: the front
+            page of an event should read "240 sold, 20 comped, 40 left". */}
         <StatTile
-          label="Booking fees"
-          value={formatNZD(money.bookingFeeCents)}
+          label="Comped"
+          value={String(counts.comped)}
           sub={
-            money.discountCents > 0
-              ? `${formatNZD(money.discountCents)} discounted`
-              : undefined
+            counts.compAllowance !== null
+              ? counts.comped > counts.compAllowance
+                ? `${counts.comped - counts.compAllowance} over the ${counts.compAllowance} allowance`
+                : `${counts.compAllowance - counts.comped} of ${counts.compAllowance} left`
+              : counts.handoutsUnsent > 0
+                ? `${counts.handoutsUnsent} not handed out yet`
+                : undefined
           }
         />
         <StatTile

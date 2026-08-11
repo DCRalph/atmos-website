@@ -19,8 +19,12 @@ import {
   ticketState,
 } from "~/server/ticketing/scan";
 import { sellAtDoor } from "~/server/ticketing/box-office";
+import { compAccounting, issueComp } from "~/server/ticketing/comps";
+import { sendCompTicketEmail } from "~/server/ticketing/email/send";
 import { buildTicketToken } from "~/server/ticketing/qr";
 import { DENY_REASON_VALUES } from "~/lib/ticketing/deny-reasons";
+import { ACCESS_LEVEL_VALUES } from "~/lib/ticketing/access-levels";
+import { ticketTypeName } from "~/lib/ticketing/access-levels";
 import { logActivity } from "~/server/utils/activity-log";
 import { db } from "~/server/db";
 
@@ -53,6 +57,43 @@ async function assertAssigned(
   }
 
   return { isManager: assignment.role === EventStaffRole.MANAGER };
+}
+
+/**
+ * Admit tickets that were minted a millisecond ago.
+ *
+ * Written straight in rather than through `scanTicket`: there is no duplicate
+ * to check for and nothing to serialise against. The name lock still has to
+ * happen, though — a ticket somebody has walked in on can never be renamed
+ * afterwards, no matter which door it came out of.
+ */
+async function admitFreshTickets({
+  ticketIds,
+  eventId,
+  scannedByUserId,
+  deviceLabel,
+}: {
+  ticketIds: string[];
+  eventId: string;
+  scannedByUserId: string;
+  deviceLabel?: string | null;
+}): Promise<void> {
+  if (ticketIds.length === 0) return;
+
+  await db.ticketScan.createMany({
+    data: ticketIds.map((ticketId) => ({
+      ticketId,
+      eventId,
+      result: TicketScanResult.ADMITTED,
+      scannedByUserId,
+      deviceLabel: deviceLabel ?? null,
+    })),
+  });
+
+  await db.ticket.updateMany({
+    where: { id: { in: ticketIds }, nameLockedAt: null },
+    data: { nameLockedAt: new Date() },
+  });
 }
 
 export const doorRouter = createTRPCRouter({
@@ -408,9 +449,7 @@ export const doorRouter = createTRPCRouter({
           where,
           // One extra row is how we know whether there is another page.
           take: input.limit + 1,
-          ...(input.cursor
-            ? { cursor: { id: input.cursor }, skip: 1 }
-            : {}),
+          ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
           // `ticketNumber` is unique, so this ordering is total and the cursor
           // can't land ambiguously between two people with the same name.
           orderBy: [{ attendeeName: "asc" }, { ticketNumber: "asc" }],
@@ -419,6 +458,8 @@ export const doorRouter = createTRPCRouter({
             ticketNumber: true,
             attendeeName: true,
             accessLevel: true,
+            isComp: true,
+            invitedByName: true,
             tier: { select: { name: true } },
             order: {
               select: {
@@ -457,7 +498,9 @@ export const doorRouter = createTRPCRouter({
           ticketNumber: ticket.ticketNumber,
           attendeeName: ticket.attendeeName,
           accessLevel: ticket.accessLevel,
-          tierName: ticket.tier.name,
+          tierName: ticketTypeName(ticket),
+          isComp: ticket.isComp,
+          invitedByName: ticket.invitedByName,
           orderNumber: ticket.order.orderNumber,
           buyerName: ticket.order.buyerName,
           buyerEmail: ticket.order.buyerEmail,
@@ -494,6 +537,10 @@ export const doorRouter = createTRPCRouter({
           status: true,
           eventId: true,
           orderId: true,
+          isComp: true,
+          invitedByName: true,
+          nameLockedAt: true,
+          hostTicketId: true,
           tier: { select: { name: true } },
           event: { select: { isR18: true } },
           order: {
@@ -527,13 +574,18 @@ export const doorRouter = createTRPCRouter({
         ticketNumber: ticket.ticketNumber,
         attendeeName: ticket.attendeeName,
         accessLevel: ticket.accessLevel,
-        tierName: ticket.tier.name,
+        tierName: ticketTypeName(ticket),
+        isComp: ticket.isComp,
+        invitedByName: ticket.invitedByName,
+        nameLocked: ticket.nameLockedAt !== null,
         status: ticket.status,
         orderNumber: ticket.order.orderNumber,
         buyerName: ticket.order.buyerName,
         buyerEmail: ticket.order.buyerEmail,
         paymentMethod: ticket.order.paymentMethod,
-        positionInOrder: `${position} of ${ticket.order._count.tickets}`,
+        positionInOrder: ticket.hostTicketId
+          ? `handout ${position - 1} of ${ticket.order._count.tickets - 1}`
+          : `${position} of ${ticket.order._count.tickets}`,
         isR18: ticket.event.isR18,
         isManager,
         ...state,
@@ -568,7 +620,10 @@ export const doorRouter = createTRPCRouter({
         id: tier.id,
         name: tier.name,
         priceCents: tier.priceCents,
-        remaining: Math.max(0, tier.allocation - tier.soldCount - tier.heldCount),
+        remaining: Math.max(
+          0,
+          tier.allocation - tier.soldCount - tier.heldCount,
+        ),
       }));
     }),
 
@@ -594,7 +649,6 @@ export const doorRouter = createTRPCRouter({
         paymentMethod: z.enum([
           PaymentMethodKind.CASH,
           PaymentMethodKind.TERMINAL,
-          PaymentMethodKind.COMP,
         ]),
         buyerName: z.string().trim().max(120).optional(),
         buyerEmail: z.email().optional(),
@@ -605,20 +659,12 @@ export const doorRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { isManager } = await assertAssigned(
+      await assertAssigned(
         ctx.user.id,
         ctx.isAdmin,
         ctx.isEventOrganiser,
         input.eventId,
       );
-
-      // A comp is stock given away rather than sold, which is a manager's call.
-      if (input.paymentMethod === PaymentMethodKind.COMP && !isManager) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Only a door manager can give away a free ticket.",
-        });
-      }
 
       const sale = await sellAtDoor({
         eventId: input.eventId,
@@ -630,18 +676,12 @@ export const doorRouter = createTRPCRouter({
         soldByUserId: ctx.user.id,
       });
 
-      // Written straight in rather than through `scanTicket`: these tickets
-      // were minted a millisecond ago, so there is no duplicate to check for
-      // and nothing to serialise against.
       if (input.admitNow) {
-        await ctx.db.ticketScan.createMany({
-          data: sale.ticketIds.map((ticketId) => ({
-            ticketId,
-            eventId: input.eventId,
-            result: TicketScanResult.ADMITTED,
-            scannedByUserId: ctx.user.id,
-            deviceLabel: input.deviceLabel ?? null,
-          })),
+        await admitFreshTickets({
+          ticketIds: sale.ticketIds,
+          eventId: input.eventId,
+          scannedByUserId: ctx.user.id,
+          deviceLabel: input.deviceLabel,
         });
       }
 
@@ -650,6 +690,95 @@ export const doorRouter = createTRPCRouter({
         admittedNow: input.admitNow,
         admitted: await admittedCount(input.eventId),
       };
+    }),
+
+  /**
+   * Giving somebody a ticket at the door.
+   *
+   * Split off from `sellAtDoor` because a comp is not a sale for nothing: it is
+   * minted rather than drawn from a tier, so it takes an access level directly
+   * and can put an artist on AAA at an event with no AAA tier to sell.
+   *
+   * The cap is a warning, not a wall — `acknowledge` is what the manager sends
+   * back after reading it.
+   */
+  compAtDoor: doorProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        recipientName: z.string().trim().min(1).max(120),
+        recipientEmail: z.email().optional(),
+        accessLevel: z.enum(ACCESS_LEVEL_VALUES),
+        notes: z.string().trim().max(500).optional(),
+        deviceLabel: z.string().trim().max(60).optional(),
+        acknowledge: z.boolean().default(false),
+        admitNow: z.boolean().default(true),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { isManager } = await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
+
+      // Giving a ticket away is a manager's call, as it always was.
+      if (!isManager) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only a door manager can give away a free ticket.",
+        });
+      }
+
+      const comp = await issueComp({
+        eventId: input.eventId,
+        recipientName: input.recipientName,
+        recipientEmail: input.recipientEmail,
+        accessLevel: input.accessLevel,
+        notes: input.notes,
+        acknowledge: input.acknowledge,
+        issuedByUserId: ctx.user.id,
+      });
+
+      if (input.admitNow) {
+        await admitFreshTickets({
+          ticketIds: [comp.hostTicketId],
+          eventId: input.eventId,
+          scannedByUserId: ctx.user.id,
+          deviceLabel: input.deviceLabel,
+        });
+      }
+
+      if (input.recipientEmail) {
+        await sendCompTicketEmail({ ticketId: comp.hostTicketId });
+      }
+
+      await logActivity({
+        type: ActivityType.TICKET_COMPED,
+        action: `Door comp — ${input.accessLevel} for ${input.recipientName}`,
+        userId: ctx.user.id,
+        details: { eventId: input.eventId, orderId: comp.orderId },
+      });
+
+      return {
+        ...comp,
+        admittedNow: input.admitNow,
+        admitted: await admittedCount(input.eventId),
+      };
+    }),
+
+  /** The comp counts behind the door's own over-cap warning. */
+  compAccounting: doorProcedure
+    .input(z.object({ eventId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
+      return compAccounting(input.eventId, ctx.db);
     }),
 
   /** Live feed for the scanner footer and the admin live view. */

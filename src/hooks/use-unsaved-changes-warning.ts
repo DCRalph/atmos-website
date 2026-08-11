@@ -78,7 +78,11 @@ export function useUnsavedChangesWarning({
     const ensureSentinel = () => {
       if (hasSentinelRef.current) return;
       try {
-        window.history.pushState({ __unsaved_sentinel: true }, "", window.location.href);
+        window.history.pushState(
+          { __unsaved_sentinel: true },
+          "",
+          window.location.href,
+        );
         hasSentinelRef.current = true;
       } catch {
         // ignore
@@ -120,4 +124,3 @@ export function useUnsavedChangesWarning({
     };
   }, [requestNavigation]);
 }
-

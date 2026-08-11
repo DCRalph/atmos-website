@@ -56,13 +56,13 @@ export function MainFooter() {
   };
 
   return (
-    <footer className="w-full relative">
+    <footer className="relative w-full">
       {/* top highlight line */}
       {/* <div className="h-px w-full bg-linear-to-r from-transparent via-black/20 to-transparent dark:via-white/35" /> */}
 
       {/* <div className="border-t border-black/10 bg-white/75 text-black backdrop-blur-md dark:border-white/10 dark:bg-black/55 dark:text-white"> */}
-      <div className="bg-white/75 text-black dark:bg-black/55 dark:text-white backdrop-blur-lg z-10">
-      {/* <div className="text-black dark:text-white z-10"> */}
+      <div className="z-10 bg-white/75 text-black backdrop-blur-lg dark:bg-black/55 dark:text-white">
+        {/* <div className="text-black dark:text-white z-10"> */}
         <div className="mx-auto max-w-6xl p-4">
           <div className="flex flex-col items-center gap-6 sm:items-center sm:justify-between md:flex-row">
             <Link href="/" aria-label="ATMOS home" className="shrink-0">

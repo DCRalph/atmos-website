@@ -3,10 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
-import {
-  resolveSocialPlatform,
-  type SocialPlatform,
-} from "~/lib/social-pills";
+import { resolveSocialPlatform, type SocialPlatform } from "~/lib/social-pills";
 import { type PublicSocial } from "./block-renderer";
 
 type Props = {
@@ -55,7 +52,9 @@ function SocialChip({
 }) {
   const name = platform?.name ?? social.platform ?? "Link";
   const subtitle =
-    social.label && social.label !== name ? social.label : handleFrom(platform, social.url);
+    social.label && social.label !== name
+      ? social.label
+      : handleFrom(platform, social.url);
 
   return (
     <Link
@@ -63,7 +62,7 @@ function SocialChip({
       target="_blank"
       rel="noopener noreferrer"
       title={`${name}${subtitle ? ` — ${subtitle}` : ""}`}
-      className="group bg-card/60 hover:bg-card relative flex min-w-0 items-center gap-2.5 overflow-hidden rounded-full border pr-3 pl-1.5 py-1.5 text-sm transition-all  hover:shadow-md focus-visible:ring-2 focus-visible:ring-(--social-accent,currentColor) focus-visible:outline-none"
+      className="group bg-card/60 hover:bg-card relative flex min-w-0 items-center gap-2.5 overflow-hidden rounded-full border py-1.5 pr-3 pl-1.5 text-sm transition-all hover:shadow-md focus-visible:ring-2 focus-visible:ring-(--social-accent,currentColor) focus-visible:outline-none"
     >
       <span
         aria-hidden="true"

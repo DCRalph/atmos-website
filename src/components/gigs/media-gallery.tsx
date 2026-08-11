@@ -38,15 +38,19 @@ type MediaGalleryProps = {
 
 // Helper to get filename for download
 function getDownloadFilename(item: MediaItem, index: number): string {
-  const base =
-    item.fileUpload?.name ?? `image-${item.id}`;
-  const ext = base.includes(".") ? base.split(".").pop() ?? "jpg" : "jpg";
+  const base = item.fileUpload?.name ?? `image-${item.id}`;
+  const ext = base.includes(".") ? (base.split(".").pop() ?? "jpg") : "jpg";
   const nameWithoutExt = base.replace(/\.[^/.]+$/, "") || `image-${index}`;
   return `${nameWithoutExt}.${ext}`;
 }
 
 function sanitizeFilename(name: string): string {
-  return name.replace(/[<>:"/\\|?*]/g, "-").replace(/\s+/g, "-").trim() || "gallery";
+  return (
+    name
+      .replace(/[<>:"/\\|?*]/g, "-")
+      .replace(/\s+/g, "-")
+      .trim() || "gallery"
+  );
 }
 
 export function MediaGallery({ media, gigTitle }: MediaGalleryProps) {
@@ -63,7 +67,9 @@ export function MediaGallery({ media, gigTitle }: MediaGalleryProps) {
       setActiveItemId(null);
     };
     document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("touchstart", handleClickOutside, { passive: true });
+    document.addEventListener("touchstart", handleClickOutside, {
+      passive: true,
+    });
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("touchstart", handleClickOutside);
@@ -107,7 +113,7 @@ export function MediaGallery({ media, gigTitle }: MediaGalleryProps) {
   const downloadAsZip = useCallback(async () => {
     setActiveItemId(null);
     const items = media.filter(
-      (m) => m.type === "photo" && selectedIds.has(m.id)
+      (m) => m.type === "photo" && selectedIds.has(m.id),
     );
     if (items.length === 0) return;
     setIsDownloading(true);
@@ -124,7 +130,7 @@ export function MediaGallery({ media, gigTitle }: MediaGalleryProps) {
           } catch {
             // Skip failed fetches (e.g. CORS)
           }
-        })
+        }),
       );
       const content = await zip.generateAsync({ type: "blob" });
       const a = document.createElement("a");
@@ -155,15 +161,16 @@ export function MediaGallery({ media, gigTitle }: MediaGalleryProps) {
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
   const allPhotoItems = [...featuredMedia, ...regularMedia].filter(
-    (m) => m.type === "photo"
+    (m) => m.type === "photo",
   );
-  const selectedCount = allPhotoItems.filter((m) => selectedIds.has(m.id))
-    .length;
+  const selectedCount = allPhotoItems.filter((m) =>
+    selectedIds.has(m.id),
+  ).length;
 
   const renderMediaItem = (
     item: MediaItem,
     index: number,
-    layoutClass: string
+    layoutClass: string,
   ) => {
     const url = getMediaDisplayUrl(item);
     const isPhoto = item.type === "photo";
@@ -187,7 +194,7 @@ export function MediaGallery({ media, gigTitle }: MediaGalleryProps) {
             setActiveItemId((prev) => (prev === item.id ? null : item.id));
           }
         }}
-        className={`group hover:border-accent-muted relative overflow-hidden rounded-none border-2 border-white/10 bg-black/50 transition-all hover:shadow-[0_0_15px_var(--accent-muted)] touch-manipulation ${layoutClass}`}
+        className={`group hover:border-accent-muted relative touch-manipulation overflow-hidden rounded-none border-2 border-white/10 bg-black/50 transition-all hover:shadow-[0_0_15px_var(--accent-muted)] ${layoutClass}`}
         style={
           isPhoto && item.fileUpload?.width && item.fileUpload?.height
             ? {
@@ -219,7 +226,7 @@ export function MediaGallery({ media, gigTitle }: MediaGalleryProps) {
           className={`absolute inset-0 flex items-center justify-center gap-3 bg-black/60 transition-opacity ${
             isOverlayVisible
               ? "pointer-events-auto opacity-100"
-              : "pointer-events-none opacity-0 group-hover:opacity-100 group-hover:pointer-events-auto"
+              : "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100"
           }`}
         >
           {isPhoto && (
@@ -245,7 +252,7 @@ export function MediaGallery({ media, gigTitle }: MediaGalleryProps) {
               e.stopPropagation();
               downloadSingle(item, index);
             }}
-            className="flex min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-full border-2 border-white/80 bg-white/20 text-white transition-colors active:scale-95 hover:bg-white/40"
+            className="flex min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-full border-2 border-white/80 bg-white/20 text-white transition-colors hover:bg-white/40 active:scale-95"
             aria-label="Download"
           >
             <Download className="h-5 w-5" />
@@ -253,7 +260,7 @@ export function MediaGallery({ media, gigTitle }: MediaGalleryProps) {
         </div>
         {/* Selected indicator */}
         {isPhoto && isSelected && (
-          <div className="absolute right-2 top-2 rounded-full bg-accent-strong px-2 py-0.5 text-xs font-bold text-black">
+          <div className="bg-accent-strong absolute top-2 right-2 rounded-full px-2 py-0.5 text-xs font-bold text-black">
             ✓
           </div>
         )}
@@ -272,7 +279,7 @@ export function MediaGallery({ media, gigTitle }: MediaGalleryProps) {
             </h3>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {featuredMedia.map((item, i) =>
-                renderMediaItem(item, i, "aspect-video")
+                renderMediaItem(item, i, "aspect-video"),
               )}
             </div>
           </div>
@@ -289,8 +296,8 @@ export function MediaGallery({ media, gigTitle }: MediaGalleryProps) {
                 renderMediaItem(
                   item,
                   featuredMedia.length + i,
-                  item.type === "photo" ? "" : "aspect-video"
-                )
+                  item.type === "photo" ? "" : "aspect-video",
+                ),
               )}
             </div>
           </div>
@@ -314,8 +321,10 @@ export function MediaGallery({ media, gigTitle }: MediaGalleryProps) {
               type="button"
               onClick={downloadAsZip}
               disabled={isDownloading}
-              aria-label={isDownloading ? "Preparing download" : "Download as ZIP"}
-              className="flex min-h-[44px] touch-manipulation items-center justify-center gap-2 rounded-full bg-accent-strong px-4 py-2.5 text-sm font-bold text-black transition-opacity active:scale-95 hover:opacity-90 disabled:opacity-50"
+              aria-label={
+                isDownloading ? "Preparing download" : "Download as ZIP"
+              }
+              className="bg-accent-strong flex min-h-[44px] touch-manipulation items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold text-black transition-opacity hover:opacity-90 active:scale-95 disabled:opacity-50"
             >
               <Download className="h-4 w-4 shrink-0" />
               <span className="hidden sm:inline">
@@ -325,7 +334,7 @@ export function MediaGallery({ media, gigTitle }: MediaGalleryProps) {
             <button
               type="button"
               onClick={clearSelection}
-              className="flex min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-full px-3 py-2 text-sm text-white/80 transition-colors active:scale-95 hover:bg-white/10 hover:text-white"
+              className="flex min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-full px-3 py-2 text-sm text-white/80 transition-colors hover:bg-white/10 hover:text-white active:scale-95"
             >
               Clear
             </button>

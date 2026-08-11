@@ -75,7 +75,7 @@ export function PublicProfileGrid({
       </div>
       {/* Mobile: single column */}
       <div
-        className="flex md:hidden flex-col"
+        className="flex flex-col md:hidden"
         style={{ gap: "var(--creator-density-gap)" }}
       >
         {[...blocks]

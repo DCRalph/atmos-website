@@ -31,10 +31,7 @@ export function ToolbarButton({
       disabled={disabled}
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
-      className={cn(
-        "h-8 w-8",
-        active && "bg-accent text-accent-foreground",
-      )}
+      className={cn("h-8 w-8", active && "bg-accent text-accent-foreground")}
     >
       {children}
     </Button>

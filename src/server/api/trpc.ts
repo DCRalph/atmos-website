@@ -156,9 +156,7 @@ function permissionProcedure(permission: UserPermission) {
     }
 
     const isAdmin =
-      permission === "ADMIN"
-        ? true
-        : userHasPermission(user, "ADMIN");
+      permission === "ADMIN" ? true : userHasPermission(user, "ADMIN");
 
     return next({
       ctx: {

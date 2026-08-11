@@ -336,7 +336,9 @@ function DetailsForm({
 
       {isGroup && (
         <section className="border-2 border-white/10 bg-black/60 p-5">
-          <h2 className="text-lg font-semibold text-white">Who&apos;s coming?</h2>
+          <h2 className="text-lg font-semibold text-white">
+            Who&apos;s coming?
+          </h2>
           <p className="mt-1 text-sm text-white/50">
             A name on each ticket gets your group through the door faster. You
             can change these any time before the doors open.
@@ -351,6 +353,9 @@ function DetailsForm({
                 <Input
                   id={`name-${ticket.id}`}
                   value={attendeeName(ticket, index)}
+                  // A locked ticket already belongs to somebody: it went out in
+                  // their name, or they have walked in on it.
+                  disabled={ticket.nameLocked}
                   onChange={(e) => {
                     setEdited((current) => ({ ...current, [ticket.id]: true }));
                     setNames((current) => ({
@@ -361,6 +366,11 @@ function DetailsForm({
                   placeholder={index === 0 ? "You" : "Full name"}
                   autoComplete="off"
                 />
+                {ticket.nameLocked && (
+                  <p className="text-xs text-white/40">
+                    Set for good — get in touch if this needs changing.
+                  </p>
+                )}
               </div>
             ))}
           </div>

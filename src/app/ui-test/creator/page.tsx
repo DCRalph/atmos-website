@@ -26,7 +26,8 @@ export default async function CreatorUiTestPage({
   if (process.env.NODE_ENV === "production") return notFound();
 
   const params = await searchParams;
-  const section = typeof params.section === "string" ? params.section : undefined;
+  const section =
+    typeof params.section === "string" ? params.section : undefined;
   const outline = params.outline === "1" || params.outline === "true";
 
   return <CreatorUiTestHarness section={section} outline={outline} />;

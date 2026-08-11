@@ -76,3 +76,17 @@ export function accessLevel(value: string | null | undefined) {
 export function isElevated(value: string | null | undefined): boolean {
   return Boolean(value) && value !== "GENERAL";
 }
+
+/**
+ * What to call a ticket wherever a tier name used to be printed.
+ *
+ * A comp is minted rather than drawn, so it belongs to no tier and has no tier
+ * name to show. It falls back to what it gets you past — an AAA comp reads
+ * "Access all areas" instead of leaving a blank on a door screen.
+ */
+export function ticketTypeName(ticket: {
+  tier?: { name: string } | null;
+  accessLevel: string;
+}): string {
+  return ticket.tier?.name ?? accessLevel(ticket.accessLevel).label;
+}

@@ -67,7 +67,7 @@ export function MobileMenuToggle() {
           const g = parseInt(rgbMatch[1] ?? "0");
           const b = parseInt(rgbMatch[2] ?? "0");
           const luminance = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
-          
+
           const newColor = luminance > 0.5 ? "black" : "white";
           setBarColor(newColor);
           containerRef.current.style.setProperty("--bar-color", newColor);
@@ -102,8 +102,11 @@ export function MobileMenuToggle() {
         requestAnimationFrame(() => checkBackground(false));
       }
     };
-    
-    document.addEventListener("scroll", handleScroll, { passive: true, capture: true });
+
+    document.addEventListener("scroll", handleScroll, {
+      passive: true,
+      capture: true,
+    });
     window.addEventListener("resize", () => {
       if (!isMenuOpen) {
         checkBackground(false);
@@ -160,7 +163,11 @@ export function MobileMenuToggle() {
     <motion.div
       ref={containerRef}
       className="fixed right-4 bottom-4 z-500 flex size-12 items-center justify-center"
-      style={{ "--bar-color": barColor } as React.CSSProperties & { "--bar-color": string }}
+      style={
+        { "--bar-color": barColor } as React.CSSProperties & {
+          "--bar-color": string;
+        }
+      }
       whileHover={{ scale: 1.1 }}
       transition={{ duration: 0.3 }}
     >

@@ -23,6 +23,7 @@ import {
   ACCESS_LEVELS,
   type AccessLevelValue,
   accessLevel as accessLevelMeta,
+  ticketTypeName,
 } from "~/lib/ticketing/access-levels";
 import {
   DEFAULT_EVENT_TIMEZONE,
@@ -358,7 +359,7 @@ function OrderDetail({
                 )}
                 <span className="font-mono text-xs">{ticket.ticketNumber}</span>
                 <span className="min-w-0 flex-1 truncate">
-                  {ticket.attendeeName ?? "—"} · {ticket.tier.name}
+                  {ticket.attendeeName ?? "—"} · {ticketTypeName(ticket)}
                 </span>
                 {ticket.status !== "VALID" && (
                   <Badge variant="destructive">

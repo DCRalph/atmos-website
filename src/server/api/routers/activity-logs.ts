@@ -79,10 +79,7 @@ export const activityLogsRouter = createTRPCRouter({
 
       const logs = await ctx.db.activityLog.findMany({
         where: {
-          OR: [
-            { userId: input.userId },
-            { targetUserId: input.userId },
-          ],
+          OR: [{ userId: input.userId }, { targetUserId: input.userId }],
         },
         take: limit + 1,
         cursor: cursor ? { id: cursor } : undefined,
@@ -124,7 +121,7 @@ export const activityLogsRouter = createTRPCRouter({
 
   getStats: adminProcedure.query(async ({ ctx }) => {
     const totalLogs = await ctx.db.activityLog.count();
-    
+
     const logsByType = await ctx.db.activityLog.groupBy({
       by: ["type"],
       _count: true,

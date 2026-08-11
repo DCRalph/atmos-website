@@ -234,11 +234,11 @@ export function CreatorGridEditor({
             data-editor-block-type={block.type}
             data-editor-block-size={`${w}x${h}`}
             className={cn(
-              "group relative bg-card/50 backdrop-blur rounded-md border overflow-hidden",
-              isSelected && "ring-2 ring-primary",
+              "group bg-card/50 relative overflow-hidden rounded-md border backdrop-blur",
+              isSelected && "ring-primary ring-2",
               drag.kind !== "idle" &&
                 drag.blockId === block.id &&
-                "shadow-2xl opacity-80",
+                "opacity-80 shadow-2xl",
             )}
             style={{
               gridColumn: `${x + 1} / span ${w}`,
@@ -249,10 +249,10 @@ export function CreatorGridEditor({
             }}
           >
             {/* Block header */}
-            <div className="flex items-center justify-between border-b bg-muted/30 px-2 py-1">
+            <div className="bg-muted/30 flex items-center justify-between border-b px-2 py-1">
               <button
                 type="button"
-                className="flex items-center gap-1 text-xs font-medium cursor-grab active:cursor-grabbing"
+                className="flex cursor-grab items-center gap-1 text-xs font-medium active:cursor-grabbing"
                 onPointerDown={(e) => onPointerDownMove(e, block)}
                 title="Drag to move"
               >
@@ -272,7 +272,7 @@ export function CreatorGridEditor({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-6 w-6 p-0 text-destructive"
+                  className="text-destructive h-6 w-6 p-0"
                   onClick={() =>
                     onChange(blocks.filter((b) => b.id !== block.id))
                   }
@@ -283,15 +283,13 @@ export function CreatorGridEditor({
               </div>
             </div>
             {/* Content */}
-            <div className="p-2 h-[calc(100%-28px)]">
+            <div className="h-[calc(100%-28px)] p-2">
               {block.type === "RICH_TEXT" || block.type === "HEADING" ? (
                 <div className="h-full w-full">
                   <InlineBlockEditor
                     block={block}
                     onChange={(nb) =>
-                      onChange(
-                        blocks.map((b) => (b.id === nb.id ? nb : b)),
-                      )
+                      onChange(blocks.map((b) => (b.id === nb.id ? nb : b)))
                     }
                     onFocus={() => onSelectBlock(block.id)}
                   />
@@ -305,7 +303,7 @@ export function CreatorGridEditor({
             {/* Resize handle */}
             <div
               onPointerDown={(e) => onPointerDownResize(e, block)}
-              className="absolute bottom-0 right-0 h-4 w-4 cursor-nwse-resize bg-primary/40 hover:bg-primary rounded-tl-md"
+              className="bg-primary/40 hover:bg-primary absolute right-0 bottom-0 h-4 w-4 cursor-nwse-resize rounded-tl-md"
               title="Drag to resize"
             />
           </div>
@@ -333,14 +331,19 @@ export function AddBlockPopover({
           Add block
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-2 max-h-96 overflow-y-auto">
+      <PopoverContent className="max-h-96 w-80 overflow-y-auto p-2">
         <div className="grid grid-cols-2 gap-2">
           {BLOCK_TYPES.map((def) => (
             <button
               key={def.type}
               type="button"
               onClick={() => {
-                const pos = findFreeSlot(blocks, cols, def.defaultW, def.defaultH);
+                const pos = findFreeSlot(
+                  blocks,
+                  cols,
+                  def.defaultW,
+                  def.defaultH,
+                );
                 const newBlock: ClientBlock = {
                   id: `tmp_${Math.random().toString(36).slice(2, 10)}`,
                   isNew: true,
@@ -354,7 +357,7 @@ export function AddBlockPopover({
                 onAdd(newBlock);
                 setOpen(false);
               }}
-              className="text-left rounded-md border p-2 hover:bg-accent/40 transition-colors"
+              className="hover:bg-accent/40 rounded-md border p-2 text-left transition-colors"
             >
               <div className="text-sm font-medium">{def.label}</div>
               <div className="text-muted-foreground text-xs">

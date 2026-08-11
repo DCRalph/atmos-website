@@ -11,10 +11,7 @@ import {
   COMMAND_PRIORITY_CRITICAL,
   SELECTION_CHANGE_COMMAND,
 } from "lexical";
-import {
-  resolvePillPlatform,
-  type SocialPlatform,
-} from "~/lib/social-pills";
+import { resolvePillPlatform, type SocialPlatform } from "~/lib/social-pills";
 import { Button } from "~/components/ui/button";
 import { PlatformIcon } from "../toolbar/toolbar-button";
 import {
@@ -53,8 +50,7 @@ export function FloatingLinkToolbar({
       popoverRef.current && activeElement
         ? popoverRef.current.contains(activeElement)
         : false;
-    const isInsideEditor =
-      activeElement && container.contains(activeElement);
+    const isInsideEditor = activeElement && container.contains(activeElement);
     if (!isInsideEditor && !isInsidePopover) return null;
 
     let result: FloatingLinkInfo | null = null;

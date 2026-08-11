@@ -32,7 +32,7 @@ export function ClaimProfileCTA({
 
   return (
     <>
-      <div className="rounded-md border border-amber-500/60 bg-amber-500/10 p-4 text-sm flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 rounded-md border border-amber-500/60 bg-amber-500/10 p-4 text-sm">
         <div>
           This profile is <b>unclaimed</b>. If this is you, you can request to
           claim it.

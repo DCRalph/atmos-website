@@ -131,18 +131,35 @@ export function PersonSheet({
         <p className="mt-2">
           <AccessBadge level={person.accessLevel} />
         </p>
+        {person.invitedByName && (
+          <p className="mt-2 text-lg font-semibold">
+            Invited by {person.invitedByName}
+          </p>
+        )}
         <p className="mt-2 text-lg opacity-80">{person.tierName}</p>
         <p className="mt-1 font-mono text-sm opacity-60">
           {person.ticketNumber} · {person.positionInOrder}
         </p>
 
+        {person.nameLocked && person.attendeeName && (
+          <p className="mt-4 inline-flex items-center gap-2 border-2 border-white/30 px-3 py-2 text-sm font-semibold">
+            Photo ID — this ticket is in the name of {person.attendeeName}
+          </p>
+        )}
+
         <dl className="mt-6 space-y-2 border-t-2 border-white/10 pt-5 text-sm">
           <Row label="Order" value={person.orderNumber} />
+          {person.invitedByName && (
+            <Row label="Invited by" value={person.invitedByName} />
+          )}
           {person.buyerName && (
             <Row label="Bought by" value={person.buyerName} />
           )}
           {person.buyerEmail && <Row label="Email" value={person.buyerEmail} />}
-          <Row label="Paid by" value={paymentLabel(person.paymentMethod)} />
+          <Row
+            label="Paid by"
+            value={person.isComp ? "Comp" : paymentLabel(person.paymentMethod)}
+          />
         </dl>
 
         <div className="mt-6">
@@ -161,7 +178,9 @@ export function PersonSheet({
                 In {formatTimeAgo(new Date(person.admittedAt!))}
               </p>
               <p className="mt-1 text-sm opacity-80">
-                {person.admittedBy ? `by ${person.admittedBy}` : "by an unknown scanner"}
+                {person.admittedBy
+                  ? `by ${person.admittedBy}`
+                  : "by an unknown scanner"}
                 {person.admittedDevice ? ` on ${person.admittedDevice}` : ""}
               </p>
               {person.admissionCount > 1 && (

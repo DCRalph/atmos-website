@@ -103,7 +103,10 @@ interface EventJsonLdProps {
     type?: "Person" | "MusicGroup";
   }>;
   eventStatus?: "EventScheduled" | "EventCancelled" | "EventPostponed";
-  eventAttendanceMode?: "OfflineEventAttendanceMode" | "OnlineEventAttendanceMode" | "MixedEventAttendanceMode";
+  eventAttendanceMode?:
+    | "OfflineEventAttendanceMode"
+    | "OnlineEventAttendanceMode"
+    | "MixedEventAttendanceMode";
 }
 
 export function EventJsonLd({
@@ -132,16 +135,16 @@ export function EventJsonLd({
       name: venue.name,
       address: venue.address
         ? {
-          "@type": "PostalAddress",
-          streetAddress: venue.address,
-          addressLocality: "Wellington",
-          addressCountry: "NZ",
-        }
+            "@type": "PostalAddress",
+            streetAddress: venue.address,
+            addressLocality: "Wellington",
+            addressCountry: "NZ",
+          }
         : {
-          "@type": "PostalAddress",
-          addressLocality: "Wellington",
-          addressCountry: "NZ",
-        },
+            "@type": "PostalAddress",
+            addressLocality: "Wellington",
+            addressCountry: "NZ",
+          },
     },
     image: image ?? `${SITE_URL}${DEFAULT_OG_IMAGE}`,
     organizer: {
@@ -159,11 +162,11 @@ export function EventJsonLd({
     }),
     ...(performers &&
       performers.length > 0 && {
-      performer: performers.map((p) => ({
-        "@type": p.type ?? "Person",
-        name: p.name,
-      })),
-    }),
+        performer: performers.map((p) => ({
+          "@type": p.type ?? "Person",
+          name: p.name,
+        })),
+      }),
   };
 
   return (
@@ -222,7 +225,9 @@ export function EventListJsonLd({ events }: { events: EventListItem[] }) {
       item: {
         "@type": "MusicEvent",
         name: event.name,
-        url: event.url.startsWith("http") ? event.url : `${SITE_URL}${event.url}`,
+        url: event.url.startsWith("http")
+          ? event.url
+          : `${SITE_URL}${event.url}`,
         image: event.image ?? `${SITE_URL}${DEFAULT_OG_IMAGE}`,
         startDate: event.date.toISOString(),
         location: {

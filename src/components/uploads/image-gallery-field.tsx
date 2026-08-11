@@ -35,15 +35,19 @@ export function ImageGalleryField<K extends UploadPresetName>({
 }: Props<K>) {
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { upload, items, isUploading, constraints, accept } = useUpload(preset, {
-    context,
-    onComplete: (files) => onChange([...value, ...files.map((f) => f.id)]),
-    onError: (message) => toast.error(message),
-  });
+  const { upload, items, isUploading, constraints, accept } = useUpload(
+    preset,
+    {
+      context,
+      onComplete: (files) => onChange([...value, ...files.map((f) => f.id)]),
+      onError: (message) => toast.error(message),
+    },
+  );
 
   const pending = isUploading || disabled;
   const inFlight = items.filter(
-    (i) => i.status !== "done" && i.status !== "error" && i.status !== "cancelled",
+    (i) =>
+      i.status !== "done" && i.status !== "error" && i.status !== "cancelled",
   );
 
   return (

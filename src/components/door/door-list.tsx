@@ -127,7 +127,15 @@ export function DoorList({
                   </span>
                   <span className="block truncate text-xs text-white/40">
                     {row.tierName} · {row.ticketNumber}
+                    {row.isComp ? " · comp" : ""}
                   </span>
+                  {/* Grouped by whoever brought them, which is how a manager
+                      scanning the list actually thinks about a guest list. */}
+                  {row.invitedByName && (
+                    <span className="block truncate text-xs text-white/50">
+                      Invited by {row.invitedByName}
+                    </span>
+                  )}
                   {isElevated(row.accessLevel) && (
                     <span className="mt-1 block">
                       <AccessBadge level={row.accessLevel} size="small" />

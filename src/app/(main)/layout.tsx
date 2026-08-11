@@ -24,7 +24,11 @@ export default function MainLayout({
 
   return (
     <ScrollContainerProvider scrollRef={scrollRef}>
-      <div ref={scrollRef} id="main-layout-container" className="bg-background text-foreground h-dvh w-full overflow-x-hidden overflow-y-scroll">
+      <div
+        ref={scrollRef}
+        id="main-layout-container"
+        className="bg-background text-foreground h-dvh w-full overflow-x-hidden overflow-y-scroll"
+      >
         <UserIndicator />
 
         {!isMobile ? ( // Desktop layout
@@ -42,7 +46,6 @@ export default function MainLayout({
               <MobileNav />
               {children}
               {/* <div className="flex-1">{children}</div> */}
-
             </div>
 
             <MobileMenuToggle />

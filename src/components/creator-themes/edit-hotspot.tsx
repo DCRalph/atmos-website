@@ -10,18 +10,14 @@ import {
 import { cn } from "~/lib/utils";
 
 type Position =
-  | "top-right"
-  | "top-left"
-  | "bottom-right"
-  | "bottom-left"
-  | "center";
+  "top-right" | "top-left" | "bottom-right" | "bottom-left" | "center";
 
 const positionClasses: Record<Position, string> = {
   "top-right": "top-2 right-2",
   "top-left": "top-2 left-2",
   "bottom-right": "bottom-2 right-2",
   "bottom-left": "bottom-2 left-2",
-  "center": "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
+  center: "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
 };
 
 /**
@@ -60,8 +56,8 @@ export function EditHotspot({
             "bg-background/80 text-foreground backdrop-blur-sm",
             "border shadow-sm",
             "opacity-0 transition-opacity duration-150",
-            "hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-            "group-hover:opacity-100 group-focus-within:opacity-100",
+            "focus-visible:ring-ring hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:outline-none",
+            "group-focus-within:opacity-100 group-hover:opacity-100",
             "data-[state=open]:opacity-100",
             positionClasses[position],
             className,
@@ -74,7 +70,7 @@ export function EditHotspot({
         align={align}
         className={cn("w-80 space-y-3", contentClassName)}
       >
-        <div className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
+        <div className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
           {label}
         </div>
         {children}

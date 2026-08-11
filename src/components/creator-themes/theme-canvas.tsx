@@ -22,12 +22,7 @@ import {
 } from "~/components/ui/select";
 import { Switch } from "~/components/ui/switch";
 import { Button } from "~/components/ui/button";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "~/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { ImageUploadField } from "~/components/uploads/image-upload-field";
 import { EditHotspot } from "./edit-hotspot";
 
@@ -83,8 +78,7 @@ export function ThemeCanvas({
       className="creator-page relative overflow-hidden rounded-xl border"
       style={{
         ...pageStyle,
-        background:
-          "var(--creator-page-bg-image), var(--creator-page-bg)",
+        background: "var(--creator-page-bg-image), var(--creator-page-bg)",
         color: "var(--creator-page-fg)",
         fontFamily: "var(--creator-body-font)",
         backgroundSize: "cover",
@@ -97,7 +91,7 @@ export function ThemeCanvas({
       <div className="relative">
         {/* Banner (no-banner-image fallback, matches the real page) */}
         <div
-          className="group relative h-32 md:h-48 w-full overflow-hidden"
+          className="group relative h-32 w-full overflow-hidden md:h-48"
           style={{
             background: `linear-gradient(135deg, ${tokens.accent}, ${tokens.accent}88)`,
           }}
@@ -138,15 +132,15 @@ export function ThemeCanvas({
                 onChange={(v) => patch({ bannerOverlay: v })}
               />
               <p className="text-muted-foreground text-[11px] leading-tight">
-                The banner photo itself is part of your profile, not the
-                theme — set it in the profile editor under Edit identity.
+                The banner photo itself is part of your profile, not the theme —
+                set it in the profile editor under Edit identity.
               </p>
             </EditHotspot>
           )}
         </div>
 
         {/* Header row (same offsets as the real page) */}
-        <div className="mx-auto max-w-6xl px-4 -mt-16 md:-mt-20 relative z-10">
+        <div className="relative z-10 mx-auto -mt-16 max-w-6xl px-4 md:-mt-20">
           <div className="flex flex-col items-start gap-4 md:flex-row md:items-end">
             {/* Avatar */}
             <div className="group relative h-28 w-28 md:h-36 md:w-36">
@@ -239,12 +233,12 @@ export function ThemeCanvas({
       {/* ------------------------------------------------------------------ */}
       {/* Body: bio + block grid                                              */}
       {/* ------------------------------------------------------------------ */}
-      <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
+      <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
         <div className="prose prose-invert max-w-none">
           <p style={{ opacity: 0.9 }}>
             A short bio paragraph sits here. Lorem ipsum dolor sit amet,
-            consectetur adipiscing elit — tell visitors who you are and what
-            you do.
+            consectetur adipiscing elit — tell visitors who you are and what you
+            do.
           </p>
         </div>
 
@@ -292,7 +286,7 @@ export function ThemeCanvas({
               onResetOverride={resetOverride}
             >
               <h2
-                className="text-3xl md:text-4xl font-bold"
+                className="text-3xl font-bold md:text-4xl"
                 style={{
                   fontFamily: "var(--creator-heading-font)",
                   fontWeight: "var(--creator-heading-weight)",
@@ -319,10 +313,10 @@ export function ThemeCanvas({
             >
               <div className="h-full overflow-auto">
                 <p className="text-sm leading-relaxed">
-                  Rich text block — use this for long-form writing, liner
-                  notes, or anything else that needs prose. Lorem ipsum dolor
-                  sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
-                  incididunt ut labore et dolore magna aliqua.
+                  Rich text block — use this for long-form writing, liner notes,
+                  or anything else that needs prose. Lorem ipsum dolor sit amet,
+                  consectetur adipiscing elit. Sed do eiusmod tempor incididunt
+                  ut labore et dolore magna aliqua.
                 </p>
               </div>
             </CanvasBlock>
@@ -341,34 +335,34 @@ export function ThemeCanvas({
               onResetOverride={resetOverride}
             >
               <div className="flex h-full flex-wrap content-start gap-2">
-                {(["Instagram", "SoundCloud", "YouTube", "TikTok"] as const).map(
-                  (l) => {
-                    const pill =
-                      blockOverrides.SOCIAL_LINKS?.socialPillStyle ??
-                      tokens.buttonStyle;
-                    return (
-                      <span
-                        key={l}
-                        className="inline-flex h-7 items-center px-3 text-xs font-semibold"
-                        style={{
-                          background:
-                            pill === "solid" ? tokens.accent : "transparent",
-                          color:
-                            pill === "solid"
-                              ? tokens.accentFg
-                              : "var(--creator-link, inherit)",
-                          border:
-                            pill === "outline"
-                              ? `1px solid var(--creator-link, currentColor)`
-                              : "none",
-                          borderRadius: "var(--creator-button-radius, 999px)",
-                        }}
-                      >
-                        {l}
-                      </span>
-                    );
-                  },
-                )}
+                {(
+                  ["Instagram", "SoundCloud", "YouTube", "TikTok"] as const
+                ).map((l) => {
+                  const pill =
+                    blockOverrides.SOCIAL_LINKS?.socialPillStyle ??
+                    tokens.buttonStyle;
+                  return (
+                    <span
+                      key={l}
+                      className="inline-flex h-7 items-center px-3 text-xs font-semibold"
+                      style={{
+                        background:
+                          pill === "solid" ? tokens.accent : "transparent",
+                        color:
+                          pill === "solid"
+                            ? tokens.accentFg
+                            : "var(--creator-link, inherit)",
+                        border:
+                          pill === "outline"
+                            ? `1px solid var(--creator-link, currentColor)`
+                            : "none",
+                        borderRadius: "var(--creator-button-radius, 999px)",
+                      }}
+                    >
+                      {l}
+                    </span>
+                  );
+                })}
               </div>
             </CanvasBlock>
 
@@ -494,7 +488,7 @@ export function ThemeCanvas({
             >
               <div className="flex h-full flex-col gap-3">
                 <h3
-                  className="text-xl md:text-2xl font-semibold"
+                  className="text-xl font-semibold md:text-2xl"
                   style={{
                     fontFamily: "var(--creator-heading-font)",
                     fontWeight: "var(--creator-heading-weight)",
@@ -700,9 +694,7 @@ function CanvasBlock({
                   label="Heading color"
                   base={tokens.pageFg}
                   value={current.headingColor}
-                  onChange={(v) =>
-                    onPatchOverride(type, { headingColor: v })
-                  }
+                  onChange={(v) => onPatchOverride(type, { headingColor: v })}
                 />
               )}
               {type === "SOCIAL_LINKS" && (
@@ -878,9 +870,7 @@ function RangeField({
     <div className="space-y-1">
       <div className="flex items-center justify-between">
         <Label>{label}</Label>
-        <span className="text-muted-foreground font-mono text-xs">
-          {value}
-        </span>
+        <span className="text-muted-foreground font-mono text-xs">{value}</span>
       </div>
       <input
         type="range"

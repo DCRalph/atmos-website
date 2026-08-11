@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Ban, Check, RotateCcw, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Ban,
+  BadgeCheck,
+  Check,
+  RotateCcw,
+  X,
+} from "lucide-react";
 
 import {
   AccessBadge,
@@ -115,7 +122,11 @@ export function ScanResultScreen({
   if (step === "deny" && outcome.ticket) {
     return (
       <DenyReasonPicker
-        attendee={outcome.ticket.attendeeName ?? outcome.ticket.buyerName}
+        attendee={
+          outcome.ticket.invitedByName
+            ? `${outcome.ticket.attendeeName ?? outcome.ticket.buyerName ?? "This guest"} · invited by ${outcome.ticket.invitedByName}`
+            : (outcome.ticket.attendeeName ?? outcome.ticket.buyerName)
+        }
         pending={denying}
         onCancel={() => setStep("result")}
         onConfirm={onDeny}
@@ -155,13 +166,34 @@ export function ScanResultScreen({
             <p className="pt-1">
               <AccessBadge level={outcome.ticket.accessLevel} />
             </p>
+
+            {/* On every result, admitted or not: the moment this matters most
+                is the one where the scan came back wrong. */}
+            {outcome.ticket.invitedByName && (
+              <p className="pt-1 text-lg font-semibold">
+                Invited by {outcome.ticket.invitedByName}
+              </p>
+            )}
+
             <p className="pt-1 text-lg opacity-90">{outcome.ticket.tierName}</p>
             <p className="text-sm opacity-70">
               {outcome.ticket.ticketNumber} · {outcome.ticket.positionInOrder}
+              {outcome.ticket.isComp ? " · comp" : ""}
             </p>
             {!outcome.ticket.attendeeName && outcome.ticket.buyerName && (
               <p className="text-sm opacity-70">
                 Bought by {outcome.ticket.buyerName}
+              </p>
+            )}
+
+            {/* Without this the name above is decoration. A locked ticket is
+                one where the person holding it is supposed to be the person
+                named on it, and only the door can check that. */}
+            {outcome.ticket.nameLocked && outcome.ticket.attendeeName && (
+              <p className="mt-4 inline-flex items-center gap-2 border-2 border-white/40 bg-black/25 px-3 py-2 text-sm font-semibold">
+                <BadgeCheck className="size-4 shrink-0" aria-hidden />
+                Photo ID — this ticket is in the name of{" "}
+                {outcome.ticket.attendeeName}
               </p>
             )}
           </div>
@@ -274,11 +306,18 @@ function ConfirmAdmit({
         </p>
 
         {outcome.ticket && (
-          <p className="mt-6 text-lg font-bold">
-            {outcome.ticket.attendeeName ??
-              outcome.ticket.buyerName ??
-              outcome.ticket.ticketNumber}
-          </p>
+          <>
+            <p className="mt-6 text-lg font-bold">
+              {outcome.ticket.attendeeName ??
+                outcome.ticket.buyerName ??
+                outcome.ticket.ticketNumber}
+            </p>
+            {outcome.ticket.invitedByName && (
+              <p className="mt-1 text-base opacity-80">
+                Invited by {outcome.ticket.invitedByName}
+              </p>
+            )}
+          </>
         )}
 
         {outcome.previousDenial && (

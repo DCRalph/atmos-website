@@ -57,7 +57,7 @@ export function AnimatedPageHeader({
     <AnimatePresence mode="sync">
       <motion.div
         ref={containerRef}
-        className={cn("mb-4 relative", className)}
+        className={cn("relative mb-4", className)}
         initial="hidden"
         animate="visible"
         variants={{
@@ -74,9 +74,9 @@ export function AnimatedPageHeader({
       >
         <h1
           className={cn(
-            "mb-4 w-full font-black tracking-[0.15em] text-white flex justify-center",
+            "mb-4 flex w-full justify-center font-black tracking-[0.15em] text-white",
             teko.className,
-            isMobile && "w-screen scale-x-[1.04] translate-x-[-2%]"
+            isMobile && "w-screen translate-x-[-2%] scale-x-[1.04]",
           )}
           style={{
             fontSize,
@@ -89,7 +89,7 @@ export function AnimatedPageHeader({
           <motion.span
             ref={textRef}
             aria-hidden="true"
-            className="whitespace-nowrap flex scale-y-150"
+            className="flex scale-y-150 whitespace-nowrap"
             variants={{
               hidden: {},
               visible: {

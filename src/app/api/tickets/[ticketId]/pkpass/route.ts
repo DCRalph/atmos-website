@@ -1,8 +1,7 @@
 import type { NextRequest } from "next/server";
 
-import { TicketStatus } from "~Prisma/client";
 import { db } from "~/server/db";
-import { findOrderByAccessToken } from "~/server/ticketing/orders";
+import { resolvePassTicket } from "~/server/wallet/pass-access";
 import { buildApplePass } from "~/server/wallet/apple";
 import { isAppleWalletConfigured } from "~/server/wallet/apple-config";
 
@@ -32,27 +31,19 @@ export async function GET(
     return new Response("Missing token", { status: 401 });
   }
 
-  const order = await findOrderByAccessToken(accessToken);
-  if (!order) {
+  // Scoped to whatever the token unlocks — an order, or a single comp ticket —
+  // so one person's link can never mint a pass for somebody else's ticket.
+  const resolved = await resolvePassTicket(ticketId, accessToken);
+  if (!resolved) {
     return new Response("Not found", { status: 404 });
   }
-
-  const ticket = await db.ticket.findFirst({
-    // Scoped to the order the token unlocks, so one buyer's token can never
-    // mint a pass for somebody else's ticket.
-    where: { id: ticketId, orderId: order.id, status: TicketStatus.VALID },
-    include: { tier: { select: { name: true } }, event: true },
-  });
-
-  if (!ticket) {
-    return new Response("Not found", { status: 404 });
-  }
+  const { ticket, orderNumber } = resolved;
 
   try {
     const buffer = await buildApplePass({
       ticket,
       event: ticket.event,
-      orderNumber: order.orderNumber,
+      orderNumber,
     });
 
     await db.ticket

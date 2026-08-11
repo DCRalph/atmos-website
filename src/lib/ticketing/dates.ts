@@ -17,7 +17,9 @@ function fmt(
   timeZone: string,
   options: Intl.DateTimeFormatOptions,
 ): string {
-  return new Intl.DateTimeFormat("en-NZ", { ...options, timeZone }).format(date);
+  return new Intl.DateTimeFormat("en-NZ", { ...options, timeZone }).format(
+    date,
+  );
 }
 
 /** `Sat 14 Mar` */
@@ -87,7 +89,10 @@ export function eventDayKey(
  * been through the door. Short and unambiguous under pressure.
  */
 export function formatTimeAgo(from: Date, now: Date = new Date()): string {
-  const seconds = Math.max(0, Math.floor((now.getTime() - from.getTime()) / 1000));
+  const seconds = Math.max(
+    0,
+    Math.floor((now.getTime() - from.getTime()) / 1000),
+  );
 
   if (seconds < 10) return "just now";
   if (seconds < 60) return `${seconds} seconds ago`;
@@ -99,7 +104,8 @@ export function formatTimeAgo(from: Date, now: Date = new Date()): string {
   const hours = Math.floor(minutes / 60);
   const remainderMinutes = minutes % 60;
   if (hours < 24) {
-    if (remainderMinutes === 0) return hours === 1 ? "1 hour ago" : `${hours} hours ago`;
+    if (remainderMinutes === 0)
+      return hours === 1 ? "1 hour ago" : `${hours} hours ago`;
     return `${hours}h ${remainderMinutes}m ago`;
   }
 

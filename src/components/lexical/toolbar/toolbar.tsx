@@ -68,14 +68,7 @@ import { TextColorPopover } from "./color-popover";
 import { ToolbarButton, ToolbarSeparator } from "./toolbar-button";
 
 type BlockType =
-  | "paragraph"
-  | "h1"
-  | "h2"
-  | "h3"
-  | "h4"
-  | "quote"
-  | "ul"
-  | "ol";
+  "paragraph" | "h1" | "h2" | "h3" | "h4" | "quote" | "ul" | "ol";
 
 const TEXT_FORMATS = [
   { id: "bold", title: "Bold", Icon: Bold },
@@ -176,19 +169,17 @@ export function Toolbar({ onRequestLinkDialog }: ToolbarProps) {
     const element =
       anchorNode.getKey() === "root"
         ? anchorNode
-        : $findMatchingParent(anchorNode, (e) => {
+        : ($findMatchingParent(anchorNode, (e) => {
             const parent = e.getParent();
             return parent !== null && $isRootOrShadowRoot(parent);
-          }) ?? anchorNode.getTopLevelElementOrThrow();
+          }) ?? anchorNode.getTopLevelElementOrThrow());
 
     setIsLink(Boolean(findLinkAncestor(anchorNode)));
-    setAlign($isElementNode(element) ? element.getFormatType() ?? "" : "");
+    setAlign($isElementNode(element) ? (element.getFormatType() ?? "") : "");
     setFontFamilyRaw(
       $getSelectionStyleValueForProperty(selection, "font-family", ""),
     );
-    setFontColor(
-      $getSelectionStyleValueForProperty(selection, "color", ""),
-    );
+    setFontColor($getSelectionStyleValueForProperty(selection, "color", ""));
 
     if ($isListNode(element)) {
       setBlockType(element.getListType() === "number" ? "ol" : "ul");
@@ -196,7 +187,9 @@ export function Toolbar({ onRequestLinkDialog }: ToolbarProps) {
     }
     const type = element.getType();
     if (type === "heading") {
-      const tag = (element as unknown as { getTag: () => HeadingTagType }).getTag();
+      const tag = (
+        element as unknown as { getTag: () => HeadingTagType }
+      ).getTag();
       setBlockType(tag as BlockType);
       return;
     }
@@ -279,7 +272,9 @@ export function Toolbar({ onRequestLinkDialog }: ToolbarProps) {
       editor.dispatchCommand(REMOVE_LIST_COMMAND, undefined);
     } else {
       editor.dispatchCommand(
-        target === "ul" ? INSERT_UNORDERED_LIST_COMMAND : INSERT_ORDERED_LIST_COMMAND,
+        target === "ul"
+          ? INSERT_UNORDERED_LIST_COMMAND
+          : INSERT_ORDERED_LIST_COMMAND,
         undefined,
       );
     }

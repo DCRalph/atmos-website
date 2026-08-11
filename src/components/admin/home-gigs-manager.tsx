@@ -38,7 +38,11 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Badge } from "~/components/ui/badge";
 import { Separator } from "~/components/ui/separator";
-import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 import { useUnsavedChangesWarning } from "~/hooks/use-unsaved-changes-warning";
 
@@ -489,7 +493,9 @@ export function HomeGigsManager() {
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="md:col-span-3">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Preview (what Home shows)</CardTitle>
+              <CardTitle className="text-base">
+                Preview (what Home shows)
+              </CardTitle>
               <CardDescription>
                 This is the exact ordering the Home page will display.
               </CardDescription>
@@ -497,7 +503,9 @@ export function HomeGigsManager() {
             <CardContent className="space-y-2">
               <div className="bg-muted/50 flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-muted-foreground text-xs">Featured</span>
+                  <span className="text-muted-foreground text-xs">
+                    Featured
+                  </span>
                   <Badge variant={featuredIds.length ? "default" : "secondary"}>
                     {featuredIds.length ? "Selected" : "Missing"}
                   </Badge>
@@ -516,7 +524,9 @@ export function HomeGigsManager() {
                   </Badge>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-muted-foreground text-xs">Past list</span>
+                  <span className="text-muted-foreground text-xs">
+                    Past list
+                  </span>
                   <Badge variant={pastIds.length ? "default" : "secondary"}>
                     {pastIds.length}
                   </Badge>
@@ -560,7 +570,10 @@ export function HomeGigsManager() {
                 <div className="space-y-2 px-3 py-2">
                   {pastIds.slice(0, HOME_PAST_SHOWN_COUNT).length ? (
                     pastIds.slice(0, HOME_PAST_SHOWN_COUNT).map((id, idx) => (
-                      <div key={id} className="flex items-start justify-between">
+                      <div
+                        key={id}
+                        className="flex items-start justify-between"
+                      >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">
                             {gigMap.get(id)?.title ?? "Unknown gig"}
@@ -711,7 +724,9 @@ export function HomeGigsManager() {
                         {trimmedSearch ? "Results" : "Recent unplaced gigs"}
                       </span>
                       <Badge variant="outline">
-                        {trimmedSearch ? "Search" : `Top ${RECENT_UNPLACED_COUNT}`}
+                        {trimmedSearch
+                          ? "Search"
+                          : `Top ${RECENT_UNPLACED_COUNT}`}
                       </Badge>
                     </div>
                   </div>

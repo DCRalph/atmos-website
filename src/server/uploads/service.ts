@@ -29,7 +29,11 @@ import {
   putBuffer,
   PRESIGN_EXPIRY_SECONDS,
 } from "./s3";
-import { canProcessImage, processImage, readImageDimensions } from "./process-image";
+import {
+  canProcessImage,
+  processImage,
+  readImageDimensions,
+} from "./process-image";
 
 /**
  * The upload pipeline, in three steps:

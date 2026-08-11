@@ -58,7 +58,10 @@ export default function DoorEventPicker() {
                 </p>
               )}
             </div>
-            <ChevronRight className="size-6 shrink-0 text-white/30" aria-hidden />
+            <ChevronRight
+              className="size-6 shrink-0 text-white/30"
+              aria-hidden
+            />
           </Link>
         ))}
       </div>

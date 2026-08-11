@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import { Link2, Trash2 } from "lucide-react";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { TOGGLE_LINK_COMMAND, type LinkNode as LinkNodeType } from "@lexical/link";
+import {
+  TOGGLE_LINK_COMMAND,
+  type LinkNode as LinkNodeType,
+} from "@lexical/link";
 import {
   $createTextNode,
   $getSelection,
@@ -296,9 +299,7 @@ export function LinkDialog({ state, onClose }: LinkDialogProps) {
             </p>
           </div>
 
-          {error ? (
-            <p className="text-destructive text-sm">{error}</p>
-          ) : null}
+          {error ? <p className="text-destructive text-sm">{error}</p> : null}
 
           <DialogFooter className="gap-2 sm:justify-between">
             {hasLink ? (

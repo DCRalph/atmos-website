@@ -232,11 +232,10 @@ export function PastGigHomeCard({
   gig,
   featured = false,
 }: PastGigHomeCardProps) {
-
   if (featured) {
     return (
       <AccentGlowCard
-        className="lg:col-span-3 w-full lg:w-9/12 mx-auto"
+        className="mx-auto w-full lg:col-span-3 lg:w-9/12"
         innerClassName="p-2 md:p-4"
         motionProps={{
           initial: { opacity: 0, y: "200px" },
@@ -250,7 +249,7 @@ export function PastGigHomeCard({
           className="flex h-full flex-col justify-between gap-4"
         >
           {/* <div className=""> */}
-            <GigPhotoCarousel media={gig.media ?? []} gigTitle={gig.title} />
+          <GigPhotoCarousel media={gig.media ?? []} gigTitle={gig.title} />
           {/* </div> */}
 
           <div className="flex w-full flex-col gap-3 lg:gap-4">
@@ -280,7 +279,8 @@ export function PastGigHomeCard({
         whileInView: { opacity: 1, y: 0 },
         viewport: { once: true, margin: "50% 0px" },
         transition: { duration: 0.5, ease: "easeOut" },
-      }}>
+      }}
+    >
       <MotionLink
         href={`/gigs/${gig.id}`}
         className="flex h-full flex-col gap-4 md:h-full lg:gap-6"
@@ -290,23 +290,21 @@ export function PastGigHomeCard({
             <h3 className="text-md leading-tight font-black tracking-tight text-white uppercase sm:text-xl md:text-2xl">
               {gig.title}
             </h3>
-
           </div>
-
         </div>
 
-        <div className="order-1 flex flex-col gap-4 lg:order-2 lg:basis-2/3 lg:grid lg:grid-cols-12 lg:items-stretch lg:gap-6">
+        <div className="order-1 flex flex-col gap-4 lg:order-2 lg:grid lg:basis-2/3 lg:grid-cols-12 lg:items-stretch lg:gap-6">
           <div className="order-2 flex min-w-0 flex-col justify-end lg:order-0 lg:col-span-5">
-            <p className="text-xs lg:text-base font-medium text-white/60">
+            <p className="text-xs font-medium text-white/60 lg:text-base">
               {gig.subtitle}
             </p>
 
-            <div className="text-accent-muted text-sm lg:text-xl font-black tracking-tight uppercase">
+            <div className="text-accent-muted text-sm font-black tracking-tight uppercase lg:text-xl">
               {formatDate(gig.gigStartTime)}
             </div>
           </div>
 
-          <div className="order-1 w-full lg:order-0 mt-auto lg:col-span-7">
+          <div className="order-1 mt-auto w-full lg:order-0 lg:col-span-7">
             <GigPhotoCarousel
               media={gig.media ?? []}
               gigTitle={gig.title}

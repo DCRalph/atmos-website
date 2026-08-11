@@ -71,7 +71,9 @@ export function calcBookingFeeCents(
 ): number {
   if (discountedSubtotalCents <= 0 || quantity <= 0) return 0;
   const fixed = fee.fixedCents * quantity;
-  const percent = roundCents((discountedSubtotalCents * fee.percentBp) / 10_000);
+  const percent = roundCents(
+    (discountedSubtotalCents * fee.percentBp) / 10_000,
+  );
   return Math.max(0, fixed + percent);
 }
 

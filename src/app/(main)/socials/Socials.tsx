@@ -22,8 +22,9 @@ export const links = {
   youtube: "https://www.youtube.com/@Atmosmediatv",
   facebook: "https://facebook.com/atmos.nz",
   soundcloud: "https://soundcloud.com/atmosmedia",
-  spotify: "https://open.spotify.com/user/31zgkcouzyfpwhb3pfixdpvlfaom?si=a7f5f0fae13e4b1b",
-  twitter: "https://twitter.com/atmosmedia"
+  spotify:
+    "https://open.spotify.com/user/31zgkcouzyfpwhb3pfixdpvlfaom?si=a7f5f0fae13e4b1b",
+  twitter: "https://twitter.com/atmosmedia",
 } as const;
 
 const socialLinks: SocialLink[] = [
@@ -84,7 +85,7 @@ export default function SocialsPage() {
         />
 
         {/* Social Links Grid */}
-        <div className="mt-18 grid grid-cols-2 gap-8 sm:grid-cols-3 md:gap-12 max-w-4xl mx-auto">
+        <div className="mx-auto mt-18 grid max-w-4xl grid-cols-2 gap-8 sm:grid-cols-3 md:gap-12">
           {socialLinks.map((social, index) => (
             <SocialItem key={social.label} social={social} index={index} />
           ))}

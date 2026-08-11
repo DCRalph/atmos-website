@@ -15,7 +15,7 @@ interface MasonryOptions {
 
 const getBreakpointColumns = (
   columns: MasonryOptions["columns"],
-  width: number
+  width: number,
 ): number => {
   if (!columns) return 3;
 
@@ -29,7 +29,7 @@ const getBreakpointColumns = (
 
 const useMasonry = <T = unknown>(
   dependency?: T,
-  options: MasonryOptions = {}
+  options: MasonryOptions = {},
 ) => {
   const { gap = 16, columns = { default: 1, md: 2, lg: 3, xl: 4 } } = options;
   const masonryContainer = useRef<HTMLDivElement | null>(null);
@@ -55,9 +55,10 @@ const useMasonry = <T = unknown>(
     items.forEach((item) => {
       // Find the shortest column
       const shortestColumn = columnHeights.indexOf(Math.min(...columnHeights));
-      
+
       // Guard against invalid index (should never happen, but TypeScript needs this)
-      if (shortestColumn === -1 || shortestColumn >= columnHeights.length) return;
+      if (shortestColumn === -1 || shortestColumn >= columnHeights.length)
+        return;
 
       // Calculate position
       const x = shortestColumn * (columnWidth + gap);

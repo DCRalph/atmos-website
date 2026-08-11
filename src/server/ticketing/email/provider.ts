@@ -85,7 +85,11 @@ export async function sendTransactional({
     console.warn(
       "[ticketing] No RESEND_API_KEY and no SMTP_HOST — ticket email not sent.",
     );
-    return { ok: false, error: "No email provider configured", provider: "none" };
+    return {
+      ok: false,
+      error: "No email provider configured",
+      provider: "none",
+    };
   }
 
   try {

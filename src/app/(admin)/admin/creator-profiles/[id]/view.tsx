@@ -150,7 +150,8 @@ export function AdminEditCreatorProfileView({ id }: { id: string }) {
               <DialogHeader>
                 <DialogTitle>Linked user</DialogTitle>
                 <DialogDescription>
-                  Manage which user owns <span className="font-mono">@{profile.handle}</span>.
+                  Manage which user owns{" "}
+                  <span className="font-mono">@{profile.handle}</span>.
                 </DialogDescription>
               </DialogHeader>
 
@@ -267,9 +268,7 @@ export function AdminEditCreatorProfileView({ id }: { id: string }) {
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={() =>
-                    unlinkUser.mutate({ profileId: profile.id })
-                  }
+                  onClick={() => unlinkUser.mutate({ profileId: profile.id })}
                   disabled={unlinkUser.isPending}
                 >
                   {unlinkUser.isPending ? (

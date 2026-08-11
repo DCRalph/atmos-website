@@ -63,7 +63,9 @@ export function BlockInspector({ block, onChange, profileId }: Props) {
               <Label>Level</Label>
               <Select
                 value={String(block.data.level ?? 2)}
-                onValueChange={(v) => onChange(updateData(block, "level", Number(v)))}
+                onValueChange={(v) =>
+                  onChange(updateData(block, "level", Number(v)))
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -116,7 +118,9 @@ export function BlockInspector({ block, onChange, profileId }: Props) {
             <Label>Alt text</Label>
             <Input
               value={dataField(block, "alt")}
-              onChange={(e) => onChange(updateData(block, "alt", e.target.value))}
+              onChange={(e) =>
+                onChange(updateData(block, "alt", e.target.value))
+              }
             />
           </div>
         </div>
@@ -169,8 +173,8 @@ export function BlockInspector({ block, onChange, profileId }: Props) {
       );
     case "LINK_LIST": {
       const links =
-        (block.data.links as Array<{ label: string; url: string }> | undefined) ??
-        [];
+        (block.data.links as
+          Array<{ label: string; url: string }> | undefined) ?? [];
       return (
         <div className="space-y-3">
           <Label>Links</Label>
@@ -213,10 +217,7 @@ export function BlockInspector({ block, onChange, profileId }: Props) {
             size="sm"
             onClick={() =>
               onChange(
-                updateData(block, "links", [
-                  ...links,
-                  { label: "", url: "" },
-                ]),
+                updateData(block, "links", [...links, { label: "", url: "" }]),
               )
             }
           >
@@ -237,10 +238,10 @@ export function BlockInspector({ block, onChange, profileId }: Props) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="auto">
-                Auto: gigs I'm attributed to
+              <SelectItem value="auto">Auto: gigs I'm attributed to</SelectItem>
+              <SelectItem value="manual">
+                Manual (pick specific gigs)
               </SelectItem>
-              <SelectItem value="manual">Manual (pick specific gigs)</SelectItem>
             </SelectContent>
           </Select>
           <p className="text-muted-foreground text-xs">

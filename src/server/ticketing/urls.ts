@@ -23,6 +23,17 @@ export function ticketsUrl(accessToken: string): string {
   return `${base()}/tickets/${accessToken}`;
 }
 
+/**
+ * One person's own ticket, and nothing else.
+ *
+ * Comps are handed out one ticket at a time, so a recipient gets this rather
+ * than an order link — there is no second QR on the page for them to pass on
+ * instead of their own.
+ */
+export function ticketUrl(ticketAccessToken: string): string {
+  return `${base()}/t/${ticketAccessToken}`;
+}
+
 /** Where the buyer says who they are and names each ticket. */
 export function ticketDetailsUrl(accessToken: string): string {
   return `${base()}/tickets/${accessToken}/details`;

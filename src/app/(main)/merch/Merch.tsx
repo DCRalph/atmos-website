@@ -42,7 +42,7 @@ export default function MerchPage() {
   return (
     <main className="min-h-content bg-black text-white">
       <StaticBackground imageSrc="/home/atmos-46.jpg" />
-      
+
       <EmailPopup />
 
       <MainPageSection>
@@ -66,22 +66,22 @@ export default function MerchPage() {
             <div className="grid gap-4 transition-all duration-500 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
               {isLoadingProducts
                 ? Array.from({ length: 6 }).map((_, i) => (
-                  <MerchItemSkeleton key={i} />
-                ))
+                    <MerchItemSkeleton key={i} />
+                  ))
                 : shopifyProducts?.map((product) => (
-                  <MerchItem
-                    key={product.id}
-                    id={product.id}
-                    name={product.title}
-                    description={product.description}
-                    defaultPrice={product.price}
-                    image={product.image}
-                    handle={product.handle}
-                    currencyCode={product.currencyCode}
-                    variants={product.variants}
-                    productHref={`/merch/${encodeURIComponent(product.handle)}`}
-                  />
-                ))}
+                    <MerchItem
+                      key={product.id}
+                      id={product.id}
+                      name={product.title}
+                      description={product.description}
+                      defaultPrice={product.price}
+                      image={product.image}
+                      handle={product.handle}
+                      currencyCode={product.currencyCode}
+                      variants={product.variants}
+                      productHref={`/merch/${encodeURIComponent(product.handle)}`}
+                    />
+                  ))}
             </div>
 
             {!isLoadingProducts &&
@@ -89,14 +89,16 @@ export default function MerchPage() {
               shopifyProducts?.length === 0 && (
                 <div className="mt-6 rounded-none border-2 border-white/10 bg-black/70 p-4 text-center text-sm text-white/70 sm:p-6 sm:text-base">
                   No products in the catalog yet. An admin can run a sync from{" "}
-                  <span className="text-white/90">Admin → Shopify</span> when the
-                  store is ready.
+                  <span className="text-white/90">Admin → Shopify</span> when
+                  the store is ready.
                 </div>
               )}
 
             {isErrorProducts && (
               <div className="mt-6 rounded-none border-2 border-red-500/40 bg-red-500/10 p-4 text-center text-sm text-red-100 sm:p-6 sm:text-base">
-                <p className="font-semibold">Could not load the merch catalog.</p>
+                <p className="font-semibold">
+                  Could not load the merch catalog.
+                </p>
                 <p className="mt-2 text-red-100/80">
                   {productsError?.message ?? "Please try again later."}
                 </p>

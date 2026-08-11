@@ -25,10 +25,10 @@ export type AppleWalletConfig = {
 export function isAppleWalletConfigured(): boolean {
   return Boolean(
     env.APPLE_PASS_TYPE_ID &&
-      env.APPLE_TEAM_ID &&
-      env.APPLE_PASS_CERT_PEM_BASE64 &&
-      env.APPLE_PASS_KEY_PEM_BASE64 &&
-      env.APPLE_WWDR_PEM_BASE64,
+    env.APPLE_TEAM_ID &&
+    env.APPLE_PASS_CERT_PEM_BASE64 &&
+    env.APPLE_PASS_KEY_PEM_BASE64 &&
+    env.APPLE_WWDR_PEM_BASE64,
   );
 }
 
@@ -60,9 +60,10 @@ export function appleCertDaysRemaining(): number | null {
     const pem = Buffer.from(env.APPLE_PASS_CERT_PEM_BASE64, "base64").toString(
       "utf8",
     );
-    const match = /-----BEGIN CERTIFICATE-----([\s\S]+?)-----END CERTIFICATE-----/.exec(
-      pem,
-    );
+    const match =
+      /-----BEGIN CERTIFICATE-----([\s\S]+?)-----END CERTIFICATE-----/.exec(
+        pem,
+      );
     if (!match?.[1]) return null;
 
     const der = Buffer.from(match[1].replace(/\s+/g, ""), "base64");

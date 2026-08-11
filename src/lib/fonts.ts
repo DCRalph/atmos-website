@@ -1,4 +1,11 @@
-import { Geist, Nunito, Montserrat, Cabin, Orbitron, Teko } from "next/font/google";
+import {
+  Geist,
+  Nunito,
+  Montserrat,
+  Cabin,
+  Orbitron,
+  Teko,
+} from "next/font/google";
 
 export const geist = Geist({ subsets: ["latin"] });
 export const nunito = Nunito({ subsets: ["latin"] });

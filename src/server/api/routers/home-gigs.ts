@@ -95,23 +95,23 @@ export const homeGigsRouter = createTRPCRouter({
 
     const gigsFromPlacements = placementIds.length
       ? await ctx.db.gig.findMany({
-        where: {
-          id: { in: placementIds },
-          gigEndTime: { lt: now },
-        },
-        include: {
-          media: {
-            orderBy: [
-              { section: "asc" },
-              { sortOrder: "asc" },
-              { createdAt: "asc" },
-            ],
+          where: {
+            id: { in: placementIds },
+            gigEndTime: { lt: now },
           },
-          gigTags: {
-            include: { gigTag: true },
+          include: {
+            media: {
+              orderBy: [
+                { section: "asc" },
+                { sortOrder: "asc" },
+                { createdAt: "asc" },
+              ],
+            },
+            gigTags: {
+              include: { gigTag: true },
+            },
           },
-        },
-      })
+        })
       : [];
 
     const gigMap = new Map(gigsFromPlacements.map((g) => [g.id, g]));

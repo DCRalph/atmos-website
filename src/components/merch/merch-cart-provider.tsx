@@ -53,27 +53,22 @@ function readStoredCart(): MerchCartItem[] {
       return [];
     }
 
-    return parsed.filter(
-      (item): item is MerchCartItem =>
-        Boolean(
-          item &&
-            typeof item === "object" &&
-            "merchandiseId" in item &&
-            "productHandle" in item &&
-            "productTitle" in item &&
-            "quantity" in item,
-        ),
+    return parsed.filter((item): item is MerchCartItem =>
+      Boolean(
+        item &&
+        typeof item === "object" &&
+        "merchandiseId" in item &&
+        "productHandle" in item &&
+        "productTitle" in item &&
+        "quantity" in item,
+      ),
     );
   } catch {
     return [];
   }
 }
 
-export function MerchCartProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function MerchCartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<MerchCartItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 

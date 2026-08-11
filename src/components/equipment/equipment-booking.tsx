@@ -406,7 +406,7 @@ export function EquipmentBooking() {
                             </p>
                           )}
                           {isActive && item.note && (
-                            <p className="text-amber-400 mt-1 text-xs">
+                            <p className="mt-1 text-xs text-amber-400">
                               <b>Note:</b> {item.note}
                             </p>
                           )}

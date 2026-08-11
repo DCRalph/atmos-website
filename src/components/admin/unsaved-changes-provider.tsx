@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertDialog,
@@ -13,9 +20,7 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 
-type PendingNavigation =
-  | { type: "href"; href: string }
-  | { type: "back" };
+type PendingNavigation = { type: "href"; href: string } | { type: "back" };
 
 type UnsavedChangesContextValue = {
   /**
@@ -96,7 +101,10 @@ export function UnsavedChangesProvider({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={onCancel}>Stay</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={onConfirm}>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={onConfirm}
+            >
               Leave page
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -107,9 +107,7 @@ export function LinkUserDialog({
                   <div className="text-muted-foreground text-xs">{u.email}</div>
                 </div>
                 {target?.currentUserId === u.id && (
-                  <span className="text-muted-foreground text-xs">
-                    current
-                  </span>
+                  <span className="text-muted-foreground text-xs">current</span>
                 )}
               </button>
             ))}
