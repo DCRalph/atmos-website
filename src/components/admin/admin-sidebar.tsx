@@ -1,222 +1,123 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { ExternalLink } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
+  SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarFooter,
 } from "~/components/ui/sidebar";
 import {
-  LayoutDashboard,
-  Calendar,
-  BookOpen,
-  FileText,
-  User,
-  GraduationCap,
-  Users,
-  CalendarCog,
-  Activity,
-  Mail,
-  FolderOpen,
-  Tag,
-  ShoppingBag,
-  Sparkles,
-  Palette,
-  Ticket,
-  BadgePercent,
-} from "lucide-react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useSidebar } from "~/components/ui/sidebar";
-import { useState, useEffect } from "react";
-import { Skeleton } from "~/components/ui/skeleton";
-import { authClient } from "~/lib/auth-client";
-import Image from "next/image";
-
-const menuItems = [
-  {
-    title: "Admin Dashboard",
-    url: "/admin",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Crew",
-    url: "/admin/crew",
-    icon: Users,
-  },
-  {
-    title: "Content",
-    url: "/admin/content",
-    icon: BookOpen,
-  },
-  {
-    title: "Gigs",
-    url: "/admin/gigs",
-    icon: Calendar,
-  },
-  {
-    title: "Home Gigs",
-    url: "/admin/home-gigs",
-    icon: CalendarCog,
-  },
-  {
-    title: "Home Content",
-    url: "/admin/home-content",
-    icon: Activity,
-  },
-  {
-    title: "Gig Tags",
-    url: "/admin/gig-tags",
-    icon: Tag,
-  },
-  {
-    title: "Ticketed Events",
-    url: "/admin/events",
-    icon: Ticket,
-  },
-  {
-    title: "Discount Codes",
-    url: "/admin/discount-codes",
-    icon: BadgePercent,
-  },
-  {
-    title: "Media Files",
-    url: "/admin/files",
-    icon: FolderOpen,
-  },
-  {
-    title: "Merch",
-    url: "/admin/merch",
-    icon: ShoppingBag,
-  },
-  {
-    title: "Contact",
-    url: "/admin/contact",
-    icon: Mail,
-  },
-  {
-    title: "Newsletter",
-    url: "/admin/newsletter",
-    icon: Mail,
-  },
-  {
-    title: "Users",
-    url: "/admin/users",
-    icon: Users,
-  },
-  {
-    title: "Creator Profiles",
-    url: "/admin/creator-profiles",
-    icon: Sparkles,
-  },
-  {
-    title: "Creator Themes",
-    url: "/admin/creator-themes",
-    icon: Palette,
-  },
-  {
-    title: "Activity Logs",
-    url: "/admin/activity-logs",
-    icon: Activity,
-  },
-  {
-    title: "Rentals",
-    url: "/admin/rentals",
-    icon: ShoppingBag,
-  },
-  {
-    title: "Settings",
-    url: "/admin/settings",
-    icon: CalendarCog,
-  },
-];
+  adminHomeItem,
+  adminNavigationGroups,
+  adminNavigationItems,
+} from "./admin-navigation";
 
 export function DashboardSideBar() {
-  const { data: session } = authClient.useSession();
   const pathname = usePathname();
-  const { state, isMobile } = useSidebar();
-  const [isCollapsed, setIsCollapsed] = useState(state === "collapsed");
-  const visibleMenuItems = menuItems;
+  const activeItem = [adminHomeItem, ...adminNavigationItems]
+    .filter((item) =>
+      item.url === "/admin"
+        ? pathname === item.url
+        : pathname?.startsWith(item.url),
+    )
+    .sort((a, b) => b.url.length - a.url.length)[0];
 
-  useEffect(() => {
-    setIsCollapsed(state === "collapsed");
-  }, [state]);
-
-  const isActive = (path: string) => {
-    if (path === "/admin") return pathname === "/admin";
-    return pathname?.startsWith(path) ?? false;
-  };
+  const isActive = (path: string) => activeItem?.url === path;
 
   return (
-    // <div className="relative h-screen">
     <Sidebar collapsible="icon" className="fixed top-0 left-0 border-r-0!">
-      <SidebarHeader>
-        <div
-          className={`transition-all duration-300 ${isCollapsed ? "" : "p-1"} absolute flex w-60 items-center gap-2`}
+      <SidebarHeader className="border-sidebar-border h-16 justify-center border-b p-2">
+        <Link
+          href="/admin"
+          className="focus-visible:ring-sidebar-ring flex min-w-0 items-center gap-3 rounded-lg px-1 outline-none group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 focus-visible:ring-2"
         >
-          <div
-            className={`grid ${isCollapsed && !isMobile ? "mt-3 size-8" : "size-11"} place-items-center transition-all duration-300`}
-          >
+          <div className="bg-background grid size-10 shrink-0 place-items-center overflow-hidden rounded-xl shadow-sm group-data-[collapsible=icon]:size-8">
             <Image
               src="/android-chrome-512x512.png"
               alt="Atmos Logo"
-              width={128}
-              height={128}
+              width={40}
+              height={40}
             />
           </div>
-          <div
-            className={`${isCollapsed && !isMobile ? "opacity-0" : "opacity-100"} transition-opacity duration-300`}
-          >
-            <p className="text-lg font-bold">Atmos Admin</p>
+          <div className="min-w-0 leading-tight group-data-[collapsible=icon]:hidden">
+            <p className="truncate text-sm font-semibold">Atmos Admin</p>
+            <p className="text-sidebar-foreground/60 truncate text-xs">
+              Control centre
+            </p>
           </div>
-        </div>
+        </Link>
       </SidebarHeader>
-      <SidebarContent
-        className={`no-scrollbar overflow-x-hidden overflow-y-scroll! ${isCollapsed ? "mt-10" : "mt-14"}`}
-      >
-        <SidebarGroup>
-          <SidebarGroupLabel>Application</SidebarGroupLabel>
-          <SidebarMenu>
-            {!session ? (
-              // Loading state
-              <>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <SidebarMenuItem key={i}>
-                    <div className="flex items-center gap-2 px-2 py-2">
-                      <Skeleton className="size-4 rounded" />
-                      {!isCollapsed && (
-                        <Skeleton className="h-4 w-32 rounded" />
-                      )}
-                    </div>
+
+      <SidebarContent className="no-scrollbar gap-0 overflow-x-hidden py-2">
+        <SidebarGroup className="pb-1">
+          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive(adminHomeItem.url)}
+                  tooltip={adminHomeItem.title}
+                  className="h-9"
+                >
+                  <Link href={adminHomeItem.url}>
+                    <adminHomeItem.icon />
+                    <span>{adminHomeItem.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {adminNavigationGroups.map((group) => (
+          <SidebarGroup key={group.title} className="py-1">
+            <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item) => (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive(item.url)}
+                      tooltip={item.title}
+                      className="h-9"
+                    >
+                      <Link href={item.url}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
-              </>
-            ) : (
-              // Loaded state
-              visibleMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.url)}
-                    tooltip={item.title}
-                  >
-                    <Link href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))
-            )}
-          </SidebarMenu>
-        </SidebarGroup>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
+
+      <SidebarFooter className="border-sidebar-border border-t p-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="View website" className="h-9">
+              <Link href="/">
+                <ExternalLink />
+                <span>View website</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
-    // </div>
   );
 }
