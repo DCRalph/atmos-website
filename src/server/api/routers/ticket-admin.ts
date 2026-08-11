@@ -25,6 +25,7 @@ import {
   voidTicket,
 } from "~/server/ticketing/orders";
 import { logActivity } from "~/server/utils/activity-log";
+import { sellAtDoor } from "~/server/ticketing/box-office";
 import { ticketsUrl } from "~/server/ticketing/urls";
 import { pushPassUpdate } from "~/server/wallet/apple-push";
 
@@ -405,90 +406,17 @@ export const ticketAdminRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const order = await createPendingOrder({
+      return sellAtDoor({
         eventId: input.eventId,
         lines: input.lines,
-        ipAddress: null,
-      });
-
-      // A comp is free regardless of what the tier costs.
-      if (input.paymentMethod === PaymentMethodKind.COMP) {
-        await ctx.db.ticketOrder.update({
-          where: { id: order.orderId },
-          data: {
-            subtotalCents: 0,
-            discountCents: 0,
-            bookingFeeCents: 0,
-            totalCents: 0,
-            gstCents: 0,
-          },
-        });
-      }
-
-      const issued = await issueTicketsForOrder({
-        orderId: order.orderId,
-        buyerEmail: input.buyerEmail ?? null,
-        buyerName: input.buyerName ?? null,
         paymentMethod: input.paymentMethod,
+        buyerName: input.buyerName,
+        buyerEmail: input.buyerEmail,
+        attendeeNames: input.attendeeNames,
+        notes: input.notes,
+        sendEmail: input.sendEmail,
         soldByUserId: ctx.session.user.id,
-        termsAccepted: true,
       });
-
-      if (input.notes) {
-        await ctx.db.ticketOrder.update({
-          where: { id: order.orderId },
-          data: { notes: input.notes },
-        });
-      }
-
-      if (input.attendeeNames.length > 0) {
-        const tickets = await ctx.db.ticket.findMany({
-          where: { orderId: order.orderId },
-          orderBy: { ticketNumber: "asc" },
-          select: { id: true },
-        });
-        await ctx.db.$transaction(
-          tickets
-            .map((ticket, index) => ({
-              ticket,
-              name: input.attendeeNames[index],
-            }))
-            .filter((entry) => Boolean(entry.name))
-            .map((entry) =>
-              ctx.db.ticket.update({
-                where: { id: entry.ticket.id },
-                data: { attendeeName: entry.name },
-              }),
-            ),
-        );
-      }
-
-      await logActivity({
-        type: ActivityType.BOX_OFFICE_SALE,
-        action: `Box office ${input.paymentMethod.toLowerCase()} sale — ${issued.ticketIds.length} ticket(s)`,
-        userId: ctx.session.user.id,
-        details: {
-          orderId: order.orderId,
-          eventId: input.eventId,
-          paymentMethod: input.paymentMethod,
-        },
-      });
-
-      if (input.sendEmail && input.buyerEmail) {
-        await sendTicketEmail({ orderId: order.orderId });
-      }
-
-      const saved = await ctx.db.ticketOrder.findUniqueOrThrow({
-        where: { id: order.orderId },
-        select: { id: true, orderNumber: true, accessTokenVersion: true },
-      });
-
-      return {
-        orderId: saved.id,
-        orderNumber: saved.orderNumber,
-        ticketCount: issued.ticketIds.length,
-        ticketsUrl: ticketsUrl(orderAccessToken(saved)),
-      };
     }),
 
   // -------------------------------------------------------- approval queue

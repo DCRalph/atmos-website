@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Loader2, Search } from "lucide-react";
+import { Check, ChevronRight, Loader2, Search } from "lucide-react";
 
 import { api } from "~/trpc/react";
 import { Input } from "~/components/ui/input";
 import { Skeleton } from "~/components/ui/skeleton";
 import { formatTimeAgo } from "~/lib/ticketing/dates";
+import type { DenyReasonValue } from "~/lib/ticketing/deny-reasons";
+import { PersonSheet } from "~/components/door/person-sheet";
 
 /**
  * The door list.
@@ -25,12 +27,17 @@ import { formatTimeAgo } from "~/lib/ticketing/dates";
 export function DoorList({
   eventId,
   admitting,
+  denying,
   onAdmit,
+  onDeny,
 }: {
   eventId: string;
   admitting: boolean;
+  denying: boolean;
   onAdmit: (ticketNumber: string) => void;
+  onDeny: (ticketId: string, reason: DenyReasonValue, note: string) => void;
 }) {
+  const [openTicketId, setOpenTicketId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
   const [onlyNotArrived, setOnlyNotArrived] = useState(false);
@@ -104,21 +111,33 @@ export function DoorList({
       {rows.length > 0 && (
         <ul className="divide-y-2 divide-white/5 border-2 border-white/10">
           {rows.map((row) => (
-            <li key={row.id} className="flex items-center gap-3 p-3.5">
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">
-                  {row.attendeeName ?? row.buyerName ?? "No name given"}
-                </p>
-                <p className="truncate text-xs text-white/40">
-                  {row.tierName} · {row.ticketNumber}
-                </p>
-                {row.admittedAt && (
-                  <p className="mt-0.5 text-xs text-emerald-400">
-                    In {formatTimeAgo(new Date(row.admittedAt))}
-                    {row.admittedDevice ? ` · ${row.admittedDevice}` : ""}
-                  </p>
-                )}
-              </div>
+            <li key={row.id} className="flex items-center gap-2 p-3.5">
+              {/* The row opens the person; the button on the right is the
+                  fast path for the common case. */}
+              <button
+                type="button"
+                onClick={() => setOpenTicketId(row.id)}
+                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">
+                    {row.attendeeName ?? row.buyerName ?? "No name given"}
+                  </span>
+                  <span className="block truncate text-xs text-white/40">
+                    {row.tierName} · {row.ticketNumber}
+                  </span>
+                  {row.admittedAt && (
+                    <span className="mt-0.5 block text-xs text-emerald-400">
+                      In {formatTimeAgo(new Date(row.admittedAt))}
+                      {row.admittedDevice ? ` · ${row.admittedDevice}` : ""}
+                    </span>
+                  )}
+                </span>
+                <ChevronRight
+                  className="size-4 shrink-0 text-white/25"
+                  aria-hidden
+                />
+              </button>
 
               {row.admittedAt ? (
                 <Check
@@ -156,6 +175,23 @@ export function DoorList({
             `Show more (${total - rows.length} to go)`
           )}
         </button>
+      )}
+
+      {openTicketId && (
+        <PersonSheet
+          eventId={eventId}
+          ticketId={openTicketId}
+          denying={denying}
+          onClose={() => setOpenTicketId(null)}
+          onAdmit={(ticketNumber) => {
+            setOpenTicketId(null);
+            onAdmit(ticketNumber);
+          }}
+          onDeny={(ticketId, reason, note) => {
+            setOpenTicketId(null);
+            onDeny(ticketId, reason, note);
+          }}
+        />
       )}
     </div>
   );

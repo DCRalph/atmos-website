@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Keyboard, Users } from "lucide-react";
+import { ArrowLeft, Banknote, Keyboard, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -14,6 +14,7 @@ import { CameraScanner } from "~/components/door/camera-scanner";
 import { ScanResultScreen } from "~/components/door/scan-result-screen";
 import { playFeedback, unlockAudio } from "~/components/door/feedback";
 import { DoorList } from "~/components/door/door-list";
+import { SellPanel } from "~/components/door/sell-panel";
 import { useLocalStorage } from "~/hooks/use-local-storage";
 
 type ScanOutcome = RouterOutputs["door"]["scan"];
@@ -45,7 +46,7 @@ export default function DoorScannerPage() {
   // that came from the door list must not silently re-admit whatever was last
   // held in front of the camera.
   const [lastLookup, setLastLookup] = useState<Lookup | null>(null);
-  const [mode, setMode] = useState<"scan" | "manual" | "list">("scan");
+  const [mode, setMode] = useState<"scan" | "manual" | "list" | "sell">("scan");
 
   const utils = api.useUtils();
 
@@ -215,7 +216,7 @@ export default function DoorScannerPage() {
         </div>
       </header>
 
-      <nav className="mt-4 grid grid-cols-3 gap-2">
+      <nav className="mt-4 grid grid-cols-4 gap-2">
         <ModeButton active={mode === "scan"} onClick={() => setMode("scan")}>
           Scan
         </ModeButton>
@@ -224,6 +225,9 @@ export default function DoorScannerPage() {
         </ModeButton>
         <ModeButton active={mode === "list"} onClick={() => setMode("list")}>
           <Users className="size-4" aria-hidden /> List
+        </ModeButton>
+        <ModeButton active={mode === "sell"} onClick={() => setMode("sell")}>
+          <Banknote className="size-4" aria-hidden /> Sell
         </ModeButton>
       </nav>
 
@@ -252,7 +256,29 @@ export default function DoorScannerPage() {
           <DoorList
             eventId={eventId}
             admitting={manual.isPending}
+            denying={deny.isPending}
             onAdmit={(ticketNumber) => admitByNumber(ticketNumber)}
+            onDeny={(ticketId, reason, note) =>
+              deny.mutate({
+                eventId,
+                ticketId,
+                reason,
+                note: note.trim() || undefined,
+                deviceLabel: deviceLabel || undefined,
+              })
+            }
+          />
+        )}
+
+        {mode === "sell" && (
+          <SellPanel
+            eventId={eventId}
+            deviceLabel={deviceLabel}
+            isManager={isManager}
+            onSold={() => {
+              void summary.refetch();
+              void utils.door.doorList.invalidate();
+            }}
           />
         )}
       </div>

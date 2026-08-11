@@ -540,6 +540,70 @@ async function recordFailure({
     .catch(() => undefined);
 }
 
+/**
+ * Where a ticket stands right now, without recording anything.
+ *
+ * The door list needs the same answer the scanner computes — is this person
+ * in, and is there a refusal standing against them — and the two must not be
+ * allowed to disagree, so both read the rules from here.
+ */
+export async function ticketState(ticketId: string): Promise<{
+  admittedAt: Date | null;
+  admittedBy: string | null;
+  admittedDevice: string | null;
+  admissionCount: number;
+  denial: PreviousDenial | null;
+}> {
+  const [admissions, lastRevert, denial] = await Promise.all([
+    db.ticketScan.findMany({
+      where: { ticketId, result: { in: [...ADMITTING_RESULTS] } },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true, deviceLabel: true, scannedByUserId: true },
+    }),
+    db.ticketScan.findFirst({
+      where: { ticketId, result: TicketScanResult.ADMISSION_REVERTED },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    }),
+    db.ticketScan.findFirst({
+      where: { ticketId, result: TicketScanResult.DENIED },
+      orderBy: { createdAt: "desc" },
+      select: {
+        createdAt: true,
+        denyReason: true,
+        denyNote: true,
+        deviceLabel: true,
+        scannedByUserId: true,
+      },
+    }),
+  ]);
+
+  const live = lastRevert
+    ? admissions.filter((scan) => scan.createdAt > lastRevert.createdAt)
+    : admissions;
+  const latest = live[0] ?? null;
+
+  const denialStands =
+    denial !== null && (latest === null || denial.createdAt > latest.createdAt);
+
+  return {
+    admittedAt: latest?.createdAt ?? null,
+    admittedBy: await staffName(db, latest?.scannedByUserId ?? null),
+    admittedDevice: latest?.deviceLabel ?? null,
+    admissionCount: live.length,
+    denial:
+      denialStands && denial
+        ? {
+            at: denial.createdAt,
+            reason: denial.denyReason,
+            note: denial.denyNote,
+            deviceLabel: denial.deviceLabel,
+            scannedByName: await staffName(db, denial.scannedByUserId),
+          }
+        : null,
+  };
+}
+
 /** Live admitted count for an event, respecting reverts. */
 export async function admittedCount(eventId: string): Promise<number> {
   const rows = await db.$queryRaw<{ count: bigint }[]>`

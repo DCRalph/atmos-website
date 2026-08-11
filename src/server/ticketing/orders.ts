@@ -75,15 +75,34 @@ export type PricedOrder = {
   isFree: boolean;
 };
 
-function assertEventSellable(event: {
-  status: TicketEventStatus;
-  salesOpenAt: Date | null;
-  salesCloseAt: Date | null;
-}): void {
+function assertEventSellable(
+  event: {
+    status: TicketEventStatus;
+    salesOpenAt: Date | null;
+    salesCloseAt: Date | null;
+  },
+  /**
+   * A staff member selling to somebody in front of them. Online sales being
+   * closed, paused, or sold out says nothing about whether the door can take
+   * twenty dollars at 11pm — and stock is still enforced by `holdInventory`,
+   * so this cannot oversell. Only a cancelled or unpublished event is a real no.
+   */
+  boxOffice = false,
+): void {
   const now = new Date();
 
   if (event.status === TicketEventStatus.CANCELLED) {
     throw new CheckoutError("This event has been cancelled.");
+  }
+
+  if (boxOffice) {
+    if (
+      event.status === TicketEventStatus.DRAFT ||
+      event.status === TicketEventStatus.ARCHIVED
+    ) {
+      throw new CheckoutError("This event isn't published.", "NOT_FOUND");
+    }
+    return;
   }
   if (event.status === TicketEventStatus.SALES_PAUSED) {
     throw new CheckoutError("Ticket sales are paused for this event.");
@@ -119,6 +138,7 @@ export async function createPendingOrder({
   ipAddress,
   userId,
   termsAccepted,
+  boxOffice = false,
 }: {
   eventId: string;
   lines: CheckoutLine[];
@@ -127,6 +147,8 @@ export async function createPendingOrder({
   ipAddress?: string | null;
   userId?: string | null;
   termsAccepted?: boolean;
+  /** Staff selling in person — see `assertEventSellable`. */
+  boxOffice?: boolean;
 }): Promise<PricedOrder> {
   const cleanedLines = lines.filter((line) => line.quantity > 0);
   if (cleanedLines.length === 0) {
@@ -151,7 +173,7 @@ export async function createPendingOrder({
       },
     });
     if (!event) throw new CheckoutError("Event not found.", "NOT_FOUND");
-    assertEventSellable(event);
+    assertEventSellable(event, boxOffice);
 
     const tiers = await tx.ticketTier.findMany({
       where: { eventId, id: { in: cleanedLines.map((l) => l.tierId) } },

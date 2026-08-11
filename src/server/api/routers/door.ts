@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   ActivityType,
   EventStaffRole,
+  PaymentMethodKind,
   type Prisma,
   TicketEventStatus,
   TicketOrderStatus,
@@ -11,7 +12,13 @@ import {
   TicketStatus,
 } from "~Prisma/client";
 import { createTRPCRouter, doorProcedure } from "~/server/api/trpc";
-import { admittedCount, denyTicket, scanTicket } from "~/server/ticketing/scan";
+import {
+  admittedCount,
+  denyTicket,
+  scanTicket,
+  ticketState,
+} from "~/server/ticketing/scan";
+import { sellAtDoor } from "~/server/ticketing/box-office";
 import { buildTicketToken } from "~/server/ticketing/qr";
 import { DENY_REASON_VALUES } from "~/lib/ticketing/deny-reasons";
 import { logActivity } from "~/server/utils/activity-log";
@@ -455,6 +462,189 @@ export const doorRouter = createTRPCRouter({
           admittedAt: ticket.scans[0]?.createdAt ?? null,
           admittedDevice: ticket.scans[0]?.deviceLabel ?? null,
         })),
+      };
+    }),
+
+  /**
+   * One person, in full — the card behind a row in the door list.
+   *
+   * Reads its "is this person in" and "is there a refusal standing against
+   * them" from the same helper the scanner uses, so the list and the scan can
+   * never tell staff two different stories about the same ticket.
+   */
+  ticketDetail: doorProcedure
+    .input(z.object({ eventId: z.string(), ticketId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const { isManager } = await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
+
+      const ticket = await ctx.db.ticket.findUnique({
+        where: { id: input.ticketId },
+        select: {
+          id: true,
+          ticketNumber: true,
+          attendeeName: true,
+          status: true,
+          eventId: true,
+          orderId: true,
+          tier: { select: { name: true } },
+          event: { select: { isR18: true } },
+          order: {
+            select: {
+              orderNumber: true,
+              buyerName: true,
+              buyerEmail: true,
+              paymentMethod: true,
+              _count: { select: { tickets: true } },
+            },
+          },
+        },
+      });
+
+      if (!ticket || ticket.eventId !== input.eventId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Ticket not found" });
+      }
+
+      const [state, position] = await Promise.all([
+        ticketState(ticket.id),
+        ctx.db.ticket.count({
+          where: {
+            orderId: ticket.orderId,
+            ticketNumber: { lte: ticket.ticketNumber },
+          },
+        }),
+      ]);
+
+      return {
+        id: ticket.id,
+        ticketNumber: ticket.ticketNumber,
+        attendeeName: ticket.attendeeName,
+        tierName: ticket.tier.name,
+        status: ticket.status,
+        orderNumber: ticket.order.orderNumber,
+        buyerName: ticket.order.buyerName,
+        buyerEmail: ticket.order.buyerEmail,
+        paymentMethod: ticket.order.paymentMethod,
+        positionInOrder: `${position} of ${ticket.order._count.tickets}`,
+        isR18: ticket.event.isR18,
+        isManager,
+        ...state,
+      };
+    }),
+
+  /** The tiers a door sale can be rung up against, with what's left. */
+  sellableTiers: doorProcedure
+    .input(z.object({ eventId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
+
+      const tiers = await ctx.db.ticketTier.findMany({
+        where: { eventId: input.eventId, isActive: true },
+        orderBy: { priceCents: "asc" },
+        select: {
+          id: true,
+          name: true,
+          priceCents: true,
+          allocation: true,
+          soldCount: true,
+          heldCount: true,
+        },
+      });
+
+      return tiers.map((tier) => ({
+        id: tier.id,
+        name: tier.name,
+        priceCents: tier.priceCents,
+        remaining: Math.max(0, tier.allocation - tier.soldCount - tier.heldCount),
+      }));
+    }),
+
+  /**
+   * A sale at the door, to somebody who turned up without a ticket.
+   *
+   * Open to every assigned staffer rather than managers only: the person
+   * holding the scanner is the person taking the cash, and a sale that has to
+   * wait for a manager is a queue. Their name goes on the order either way.
+   */
+  sellAtDoor: doorProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        lines: z
+          .array(
+            z.object({
+              tierId: z.string(),
+              quantity: z.number().int().min(1).max(20),
+            }),
+          )
+          .min(1),
+        paymentMethod: z.enum([
+          PaymentMethodKind.CASH,
+          PaymentMethodKind.TERMINAL,
+          PaymentMethodKind.COMP,
+        ]),
+        buyerName: z.string().trim().max(120).optional(),
+        buyerEmail: z.email().optional(),
+        notes: z.string().trim().max(500).optional(),
+        deviceLabel: z.string().trim().max(60).optional(),
+        /** They paid at the door and are walking in; usually both at once. */
+        admitNow: z.boolean().default(true),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { isManager } = await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
+
+      // A comp is stock given away rather than sold, which is a manager's call.
+      if (input.paymentMethod === PaymentMethodKind.COMP && !isManager) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only a door manager can give away a free ticket.",
+        });
+      }
+
+      const sale = await sellAtDoor({
+        eventId: input.eventId,
+        lines: input.lines,
+        paymentMethod: input.paymentMethod,
+        buyerName: input.buyerName,
+        buyerEmail: input.buyerEmail,
+        notes: input.notes,
+        soldByUserId: ctx.user.id,
+      });
+
+      // Written straight in rather than through `scanTicket`: these tickets
+      // were minted a millisecond ago, so there is no duplicate to check for
+      // and nothing to serialise against.
+      if (input.admitNow) {
+        await ctx.db.ticketScan.createMany({
+          data: sale.ticketIds.map((ticketId) => ({
+            ticketId,
+            eventId: input.eventId,
+            result: TicketScanResult.ADMITTED,
+            scannedByUserId: ctx.user.id,
+            deviceLabel: input.deviceLabel ?? null,
+          })),
+        });
+      }
+
+      return {
+        ...sale,
+        admittedNow: input.admitNow,
+        admitted: await admittedCount(input.eventId),
       };
     }),
 
