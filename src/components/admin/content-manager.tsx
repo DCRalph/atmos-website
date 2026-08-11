@@ -1,6 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import {
+  ExternalLink,
+  Loader2,
+  Plus,
+  Search,
+  TriangleAlert,
+} from "lucide-react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -13,115 +21,80 @@ import {
   CardTitle,
 } from "~/components/ui/card";
 import {
-  ContentItemDialog,
-  type ContentLinkType,
-} from "~/components/admin/content-item-dialog";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
 import { useConfirm } from "~/components/confirm-provider";
+import { useDebouncedValue } from "~/hooks/use-debounced-value";
+import { findPlatform } from "~/lib/content-platforms";
 
+/**
+ * The content list. Editing lives on its own page (`/admin/content/[id]`), so
+ * this is a table and nothing else — no form state, no dialog plumbing.
+ */
 export function ContentManager() {
   const confirm = useConfirm();
-  const [isOpen, setIsOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [type, setType] = useState("");
-  const [linkType, setLinkType] = useState<ContentLinkType>("OTHER");
-  const [title, setTitle] = useState("");
-  const [dj, setDj] = useState("");
-  const [description, setDescription] = useState("");
-  const [date, setDate] = useState<Date | undefined>(undefined);
-  const [link, setLink] = useState("");
-  const [embedUrl, setEmbedUrl] = useState("");
-  const [platform, setPlatform] = useState("");
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
 
   const {
     data: contentItems,
     isLoading,
+    isFetching,
     refetch,
-  } = api.content.getAll.useQuery(search ? { search } : undefined);
-  const createItem = api.content.create.useMutation({
-    onSuccess: async () => {
-      await refetch();
-      setIsOpen(false);
-      resetForm();
-    },
-  });
-  const updateItem = api.content.update.useMutation({
-    onSuccess: async () => {
-      await refetch();
-      setIsOpen(false);
-      resetForm();
-    },
-  });
+  } = api.content.getAll.useQuery(
+    debouncedSearch.trim() ? { search: debouncedSearch.trim() } : undefined,
+  );
+
   const deleteItem = api.content.delete.useMutation({
     onSuccess: async () => {
       await refetch();
     },
   });
 
-  const resetForm = () => {
-    setEditingId(null);
-    setType("");
-    setLinkType("OTHER");
-    setTitle("");
-    setDj("");
-    setDescription("");
-    setDate(undefined);
-    setLink("");
-    setEmbedUrl("");
-    setPlatform("");
-  };
-
-  const handleEdit = (item: NonNullable<typeof contentItems>[0]) => {
-    setEditingId(item.id);
-    setType(item.type);
-    setLinkType(item.linkType ?? "OTHER");
-    setTitle(item.title);
-    setDj(item.dj ?? "");
-    setDescription(item.description);
-    setDate(item.date);
-    setLink(item.link);
-    setEmbedUrl(item.embedUrl ?? "");
-    setPlatform(item.platform ?? "");
-    setIsOpen(true);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingId) {
-      updateItem.mutate({
-        id: editingId,
-        type,
-        linkType,
-        title,
-        dj: dj || null,
-        description,
-        date: date,
-        link,
-        platform: platform || null,
-        embedUrl: embedUrl || null,
-      });
-    } else {
-      if (!date) return;
-      createItem.mutate({
-        type,
-        linkType,
-        title,
-        dj: dj || undefined,
-        description,
-        date,
-        link,
-        platform: platform || undefined,
-        embedUrl: embedUrl || undefined,
-      });
-    }
-  };
   const rows = contentItems ?? [];
   type ContentRow = (typeof rows)[number];
   const columns: DataTableColumn<ContentRow>[] = [
     { id: "type", header: "Type", accessor: (row) => row.type },
-    { id: "title", header: "Title", accessor: (row) => row.title },
+    {
+      id: "title",
+      header: "Title",
+      cell: (row) => (
+        <Link
+          href={`/admin/content/${row.id}`}
+          className="text-primary font-medium hover:underline"
+        >
+          {row.title}
+        </Link>
+      ),
+    },
     { id: "dj", header: "DJ", cell: (row) => row.dj ?? "—" },
-    { id: "platform", header: "Platform", cell: (row) => row.platform ?? "—" },
+    {
+      id: "platform",
+      header: "Platform",
+      cell: (row) =>
+        row.platform ? (
+          <span className="flex items-center gap-1.5">
+            {row.platform}
+            {findPlatform(row.platform) ? null : (
+              // The public card looks the icon up by this exact string, so a
+              // typo or wrong casing silently renders nothing. Surface it here
+              // rather than leaving it to be spotted on the live site.
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TriangleAlert className="h-3.5 w-3.5 text-amber-500" />
+                </TooltipTrigger>
+                <TooltipContent sideOffset={6}>
+                  No icon or colour matches &quot;{row.platform}&quot;
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </span>
+        ) : (
+          "—"
+        ),
+    },
     {
       id: "date",
       header: "Date",
@@ -130,20 +103,31 @@ export function ContentManager() {
     {
       id: "actions",
       header: "Actions",
+      align: "right",
       hideable: false,
       cell: (item) => (
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => handleEdit(item)}>
-            Edit
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" size="sm" asChild>
+            <a
+              href={item.link}
+              target="_blank"
+              rel="noreferrer"
+              title="Open link"
+            >
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/admin/content/${item.id}`}>Edit</Link>
           </Button>
           <Button
             variant="destructive"
             size="sm"
+            disabled={deleteItem.isPending}
             onClick={async () => {
               const ok = await confirm({
                 title: "Delete item",
-                description:
-                  "Are you sure you want to delete this item? This action cannot be undone.",
+                description: `Delete "${item.title}"? This also removes it from any Home placements and cannot be undone.`,
                 confirmLabel: "Delete",
                 variant: "destructive",
               });
@@ -160,52 +144,33 @@ export function ContentManager() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-col gap-2">
-            <CardTitle>Content Items</CardTitle>
+            <CardTitle>Content items</CardTitle>
             <CardDescription>
-              Manage content items (mixes, videos, playlists)
+              Mixes, videos and playlists. Editing opens on its own page.
             </CardDescription>
           </div>
-          <ContentItemDialog
-            open={isOpen}
-            editingId={editingId}
-            type={type}
-            linkType={linkType}
-            title={title}
-            dj={dj}
-            description={description}
-            date={date}
-            link={link}
-            embedUrl={embedUrl}
-            platform={platform}
-            isPending={createItem.isPending || updateItem.isPending}
-            onOpenChange={(open) => {
-              setIsOpen(open);
-              if (!open) resetForm();
-            }}
-            onResetForm={resetForm}
-            onSubmit={handleSubmit}
-            onTypeChange={setType}
-            onLinkTypeChange={setLinkType}
-            onTitleChange={setTitle}
-            onDjChange={setDj}
-            onDescriptionChange={setDescription}
-            onDateChange={setDate}
-            onLinkChange={setLink}
-            onEmbedUrlChange={setEmbedUrl}
-            onPlatformChange={setPlatform}
-          />
+          <Button asChild>
+            <Link href="/admin/content/new">
+              <Plus className="h-4 w-4" />
+              Add content
+            </Link>
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="mb-4">
+        <div className="relative mb-4 max-w-sm">
+          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <Input
             placeholder="Search by type, title, description, DJ, or platform..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="max-w-sm"
+            className="pl-9"
           />
+          {isFetching ? (
+            <Loader2 className="text-muted-foreground absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 animate-spin" />
+          ) : null}
         </div>
         <DataTable
           columns={columns}

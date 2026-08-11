@@ -39,8 +39,8 @@ export const homeContentRouter = createTRPCRouter({
 
     const itemsFromPlacements = placementIds.length
       ? await ctx.db.contentItem.findMany({
-        where: { id: { in: placementIds } },
-      })
+          where: { id: { in: placementIds } },
+        })
       : [];
 
     const itemMap = new Map(itemsFromPlacements.map((c) => [c.id, c]));
@@ -117,6 +117,71 @@ export const homeContentRouter = createTRPCRouter({
       });
     }),
 
+  /**
+   * Both sections in one transaction.
+   *
+   * The reorder tab commits featured and list together behind a single Save, and
+   * doing that as two `setPlacements` calls meant one could land while the other
+   * failed — leaving the Home page showing a half-applied arrangement that
+   * matched neither what was there before nor what was asked for.
+   */
+  setAllPlacements: adminProcedure
+    .input(
+      z.object({
+        featuredContentItemIds: z.array(z.string()),
+        listContentItemIds: z.array(z.string()),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const featured = Array.from(new Set(input.featuredContentItemIds));
+      const list = Array.from(new Set(input.listContentItemIds));
+
+      if (featured.length > HOME_LATEST_FEATURED_COUNT) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Featured placement can only contain ${HOME_LATEST_FEATURED_COUNT} content item.`,
+        });
+      }
+
+      const referenced = Array.from(new Set([...featured, ...list]));
+      if (referenced.length > 0) {
+        const found = await ctx.db.contentItem.count({
+          where: { id: { in: referenced } },
+        });
+        if (found !== referenced.length) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "One or more of those content items no longer exists",
+          });
+        }
+      }
+
+      await ctx.db.$transaction(async (tx) => {
+        for (const [section, ids] of [
+          [HomeContentSection.FEATURED, featured],
+          [HomeContentSection.PAST, list],
+        ] as const) {
+          // Spelled out rather than relying on `notIn: []`, so clearing a
+          // section actually clears it.
+          await tx.homeContentPlacement.deleteMany({
+            where:
+              ids.length > 0
+                ? { section, contentItemId: { notIn: ids } }
+                : { section },
+          });
+          for (const [sortOrder, contentItemId] of ids.entries()) {
+            await tx.homeContentPlacement.upsert({
+              where: { section_contentItemId: { section, contentItemId } },
+              create: { section, contentItemId, sortOrder },
+              update: { sortOrder },
+            });
+          }
+        }
+      });
+
+      return { ok: true as const };
+    }),
+
   setPlacements: adminProcedure
     .input(
       z.object({
@@ -170,4 +235,3 @@ export const homeContentRouter = createTRPCRouter({
       return { ok: true };
     }),
 });
-

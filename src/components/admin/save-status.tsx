@@ -11,7 +11,10 @@ type SaveStatusPillProps = {
   errorMessage?: string | null;
 };
 
-/** The one save indicator for the gig editor. Silent when there is nothing to say. */
+/**
+ * The save indicator shared by the admin editors, so "unsaved changes" looks and
+ * reads the same everywhere. Silent when there is nothing to say.
+ */
 export function SaveStatusPill({
   status,
   className,
