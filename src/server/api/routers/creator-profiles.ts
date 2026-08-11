@@ -601,6 +601,41 @@ export const creatorProfilesRouter = createTRPCRouter({
     }),
 
   // ---------- Admin-only: profile creation + claim management ----------
+
+  /**
+   * A free handle derived from a display name, for the quick-create form. Keeps
+   * handle slugging and collision-suffixing in one place instead of guessing in
+   * the browser and finding out on submit.
+   */
+  suggestHandle: adminProcedure
+    .input(z.object({ name: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const trimmed = input.name.trim();
+      if (!trimmed) return { handle: "" };
+      return { handle: await uniqueHandleFrom(ctx.db, trimmed) };
+    }),
+
+  /** Live check for a hand-edited handle, so conflicts surface before submit. */
+  handleAvailable: adminProcedure
+    .input(z.object({ handle: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const handle = input.handle.trim().toLowerCase();
+      const parsed = handleSchema.safeParse(handle);
+      if (!parsed.success) {
+        return {
+          available: false,
+          reason: parsed.error.issues[0]?.message ?? "Invalid handle",
+        };
+      }
+      const existing = await ctx.db.creatorProfile.findUnique({
+        where: { handle },
+        select: { id: true },
+      });
+      return existing
+        ? { available: false, reason: "Handle is already taken" }
+        : { available: true, reason: null };
+    }),
+
   createProfile: adminProcedure
     .input(
       z.object({
@@ -933,21 +968,22 @@ export const creatorProfilesRouter = createTRPCRouter({
     }),
 });
 
-/** Suggest a unique handle for a user. */
-async function generateUniqueHandle(
-  db: PrismaClient,
-  userId: string,
-): Promise<string> {
-  const user = await db.user.findUnique({
-    where: { id: userId },
-    select: { name: true, email: true },
-  });
-  const base = (user?.name ?? user?.email ?? "creator")
+/** Turn free text ("DJ Nova!") into a handle-shaped base ("dj-nova"). */
+function handleBaseFrom(raw: string): string {
+  const base = raw
     .toLowerCase()
     .replace(/[^a-z0-9_-]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 24);
-  const safeBase = HANDLE_REGEX.test(base) ? base : "creator";
+  return HANDLE_REGEX.test(base) ? base : "creator";
+}
+
+/** First free handle at or after `base`. */
+async function uniqueHandleFrom(
+  db: PrismaClient,
+  base: string,
+): Promise<string> {
+  const safeBase = handleBaseFrom(base);
   for (let i = 0; i < 20; i++) {
     const candidate = i === 0 ? safeBase : `${safeBase}-${i}`;
     const exists = await db.creatorProfile.findUnique({
@@ -957,4 +993,16 @@ async function generateUniqueHandle(
     if (!exists) return candidate;
   }
   return `${safeBase}-${Date.now().toString(36).slice(-4)}`;
+}
+
+/** Suggest a unique handle for a user. */
+async function generateUniqueHandle(
+  db: PrismaClient,
+  userId: string,
+): Promise<string> {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { name: true, email: true },
+  });
+  return uniqueHandleFrom(db, user?.name ?? user?.email ?? "creator");
 }

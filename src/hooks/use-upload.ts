@@ -94,10 +94,21 @@ export function useUpload<K extends UploadPresetName>(
   const transfers = useRef(new Map<string, XMLHttpRequest>());
   /** Upload ids the server has reserved, so cancelling can clean them up. */
   const reservations = useRef(new Map<string, string>());
+  /**
+   * Per-batch context overrides, kept by item id so a `retry` reuses the same
+   * destination the original attempt was given.
+   */
+  const contexts = useRef(new Map<string, UploadContext<K>>());
 
   // Keep the latest callbacks/context without re-creating `upload` on every
   // render — callers routinely pass inline arrow functions.
-  const latest = useRef({ context, tagIds, onFileComplete, onComplete, onError });
+  const latest = useRef({
+    context,
+    tagIds,
+    onFileComplete,
+    onComplete,
+    onError,
+  });
   latest.current = { context, tagIds, onFileComplete, onComplete, onError };
 
   // A ref mirrors the item list so `retry` can read current state without
@@ -119,7 +130,10 @@ export function useUpload<K extends UploadPresetName>(
     [commit],
   );
 
-  const reset = useCallback(() => commit([]), [commit]);
+  const reset = useCallback(() => {
+    contexts.current.clear();
+    commit([]);
+  }, [commit]);
 
   const cancel = useCallback(
     (itemId?: string) => {
@@ -152,7 +166,7 @@ export function useUpload<K extends UploadPresetName>(
 
         const started = await client.uploads.start.mutate({
           preset,
-          context: latest.current.context,
+          context: contexts.current.get(item.id) ?? latest.current.context,
           tagIds: latest.current.tagIds,
           file: {
             name: item.file.name,
@@ -181,7 +195,10 @@ export function useUpload<K extends UploadPresetName>(
           file: item.file,
           onProgress: (fraction) =>
             patch(item.id, {
-              progress: Math.max(2, Math.round(fraction * TRANSFER_SHARE * 100)),
+              progress: Math.max(
+                2,
+                Math.round(fraction * TRANSFER_SHARE * 100),
+              ),
             }),
           register: (xhr) => transfers.current.set(item.id, xhr),
         });
@@ -240,8 +257,17 @@ export function useUpload<K extends UploadPresetName>(
     [concurrency, runOne],
   );
 
+  /**
+   * `options.context` overrides the hook's context for this batch alone. Needed
+   * when the destination is only known inside the call — uploading a poster
+   * straight after creating the gig it belongs to, for instance, where the
+   * render-captured context still has no gig id.
+   */
   const upload = useCallback(
-    async (input: FileList | File[] | null): Promise<UploadedFile[]> => {
+    async (
+      input: FileList | File[] | null,
+      options?: { context?: UploadContext<K> },
+    ): Promise<UploadedFile[]> => {
       const files = Array.from(input ?? []);
       if (files.length === 0) return [];
 
@@ -257,6 +283,11 @@ export function useUpload<K extends UploadPresetName>(
         status: "queued",
         progress: 0,
       }));
+      if (options?.context !== undefined) {
+        for (const item of queued) {
+          contexts.current.set(item.id, options.context);
+        }
+      }
       commit([...itemsRef.current, ...queued]);
 
       return runBatch(queued);
@@ -319,7 +350,10 @@ async function hashFile(file: File): Promise<string | undefined> {
   if (file.size > HASH_LIMIT_BYTES) return undefined;
   if (typeof crypto === "undefined" || !crypto.subtle) return undefined;
   try {
-    const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      await file.arrayBuffer(),
+    );
     return [...new Uint8Array(digest)]
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");

@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
   createTRPCRouter,
@@ -10,7 +11,13 @@ import {
   isGigUpcoming,
 } from "~/lib/date-utils";
 import { softDeleteFile } from "~/server/uploads/files";
-import { FileUploadStatus, GigMode, type GigMedia } from "~Prisma/client";
+import { logUserActivity } from "~/server/utils/activity-log";
+import {
+  ActivityType,
+  FileUploadStatus,
+  GigMode,
+  type GigMedia,
+} from "~Prisma/client";
 import { userHasPermission } from "~/server/utils/permissions";
 import type { SerializedEditorState } from "lexical";
 import { Prisma } from "~Prisma/client";
@@ -40,6 +47,67 @@ function toLexicalJsonInput(
   if (value === null) return Prisma.JsonNull;
   return value as unknown as Prisma.InputJsonValue;
 }
+
+/**
+ * A gig's line-up as the admin editor sends it: every row that should exist,
+ * in display order, roles inline. Absent rows are removals.
+ */
+const GIG_CREATOR_INPUT = z.array(
+  z.object({
+    creatorProfileId: z.string().min(1),
+    role: z.string().max(80).nullish(),
+  }),
+);
+
+type GigCreatorInput = z.infer<typeof GIG_CREATOR_INPUT>;
+
+const uniqueStrings = (values: string[]): string[] => [...new Set(values)];
+
+/** First occurrence wins, so the submitted order is the stored order. */
+const uniqueCreators = (rows: GigCreatorInput): GigCreatorInput => {
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    if (seen.has(row.creatorProfileId)) return false;
+    seen.add(row.creatorProfileId);
+    return true;
+  });
+};
+
+const normalizeRole = (role: string | null | undefined): string | null =>
+  role?.trim() ? role.trim() : null;
+
+/**
+ * Fails cleanly on ids that no longer exist, rather than letting the write hit
+ * a foreign key and surface as an opaque 500.
+ */
+const assertReferencesExist = async (
+  db: GigsContext["db"],
+  {
+    tagIds,
+    creatorProfileIds,
+  }: { tagIds: string[]; creatorProfileIds: string[] },
+) => {
+  if (tagIds.length > 0) {
+    const found = await db.gigTag.count({ where: { id: { in: tagIds } } });
+    if (found !== tagIds.length) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "One or more of those tags no longer exists",
+      });
+    }
+  }
+  if (creatorProfileIds.length > 0) {
+    const found = await db.creatorProfile.count({
+      where: { id: { in: creatorProfileIds } },
+    });
+    if (found !== creatorProfileIds.length) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "One or more of those creator profiles no longer exists",
+      });
+    }
+  }
+};
 
 type FileUploadInfo = {
   id: string;
@@ -725,22 +793,68 @@ export const gigsRouter = createTRPCRouter({
       z.object({
         title: z.string().min(1),
         subtitle: z.string().min(1),
-        shortDescription: z.string().min(1),
+        shortDescription: z.string().optional(),
         descriptionLexical: LEXICAL_STATE_SCHEMA.optional().nullable(),
         mode: z.nativeEnum(GigMode).optional(),
         gigStartTime: z.date(),
         gigEndTime: z.date().optional(),
         ticketLink: z.string().optional(),
+        /** Tags picked before the gig existed. */
+        tagIds: z.array(z.string()).default([]),
+        /** Line-up picked before the gig existed, in display order. */
+        creators: GIG_CREATOR_INPUT.default([]),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { descriptionLexical, ...rest } = input;
-      return ctx.db.gig.create({
+      const { descriptionLexical, tagIds, creators, ...rest } = input;
+      const wantedTagIds = uniqueStrings(tagIds);
+      const wantedCreators = uniqueCreators(creators);
+
+      await assertReferencesExist(ctx.db, {
+        tagIds: wantedTagIds,
+        creatorProfileIds: wantedCreators.map((row) => row.creatorProfileId),
+      });
+
+      // Nested writes, so a gig never lands without the tags and line-up that
+      // were saved alongside it.
+      const created = await ctx.db.gig.create({
         data: {
           ...rest,
           descriptionLexical: toLexicalJsonInput(descriptionLexical),
+          ...(wantedTagIds.length > 0
+            ? {
+                gigTags: {
+                  create: wantedTagIds.map((gigTagId) => ({ gigTagId })),
+                },
+              }
+            : {}),
+          ...(wantedCreators.length > 0
+            ? {
+                gigCreators: {
+                  create: wantedCreators.map((row, index) => ({
+                    creatorProfileId: row.creatorProfileId,
+                    role: normalizeRole(row.role),
+                    sortOrder: index,
+                  })),
+                },
+              }
+            : {}),
         },
       });
+
+      await logUserActivity(
+        ActivityType.GIG_CREATED,
+        `Created gig "${created.title}"`,
+        ctx.session.user.id,
+        undefined,
+        {
+          gigId: created.id,
+          tagCount: wantedTagIds.length,
+          creatorCount: wantedCreators.length,
+        },
+      );
+
+      return created;
     }),
 
   update: adminProcedure
@@ -766,6 +880,169 @@ export const gigsRouter = createTRPCRouter({
           descriptionLexical: toLexicalJsonInput(descriptionLexical),
         },
       });
+    }),
+
+  /**
+   * Everything the gig editor owns, written in one transaction: core fields,
+   * date/time, tags and line-up. The editor commits all of it behind a single
+   * Save, so a half-applied save — tags written, line-up not — must not be
+   * reachable. `tagIds` and `creators` are the complete desired state; anything
+   * absent from them is removed.
+   */
+  saveAll: adminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        title: z.string().min(1),
+        subtitle: z.string().min(1),
+        shortDescription: z.string().nullish(),
+        descriptionLexical: LEXICAL_STATE_SCHEMA.optional().nullable(),
+        mode: z.enum(GigMode),
+        ticketLink: z.string().nullish(),
+        gigStartTime: z.date(),
+        gigEndTime: z.date().nullish(),
+        tagIds: z.array(z.string()),
+        creators: GIG_CREATOR_INPUT,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, descriptionLexical, tagIds, creators, ...rest } = input;
+      const wantedTagIds = uniqueStrings(tagIds);
+      const wantedCreators = uniqueCreators(creators);
+      const wantedCreatorIds = wantedCreators.map(
+        (row) => row.creatorProfileId,
+      );
+
+      const existing = await ctx.db.gig.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          title: true,
+          gigTags: { select: { id: true, gigTagId: true } },
+          gigCreators: {
+            select: {
+              creatorProfileId: true,
+              creatorProfile: { select: { handle: true } },
+            },
+          },
+        },
+      });
+      if (!existing) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Gig not found" });
+      }
+
+      await assertReferencesExist(ctx.db, {
+        tagIds: wantedTagIds,
+        creatorProfileIds: wantedCreatorIds,
+      });
+
+      const keptCreatorIds = new Set(wantedCreatorIds);
+      const hadCreatorIds = new Set(
+        existing.gigCreators.map((row) => row.creatorProfileId),
+      );
+      const removedCreators = existing.gigCreators.filter(
+        (row) => !keptCreatorIds.has(row.creatorProfileId),
+      );
+      const addedCreatorIds = wantedCreatorIds.filter(
+        (creatorProfileId) => !hadCreatorIds.has(creatorProfileId),
+      );
+
+      // Legacy rows: `gig_tag_relationship` has no unique constraint, so the
+      // same tag can appear twice. Keep the first row per tag and drop the rest.
+      const firstTagRowIds = new Map<string, string>();
+      const duplicateTagRowIds: string[] = [];
+      for (const row of existing.gigTags) {
+        if (firstTagRowIds.has(row.gigTagId)) duplicateTagRowIds.push(row.id);
+        else firstTagRowIds.set(row.gigTagId, row.id);
+      }
+      const newTagIds = wantedTagIds.filter(
+        (tagId) => !firstTagRowIds.has(tagId),
+      );
+
+      await ctx.db.$transaction(async (tx) => {
+        await tx.gig.update({
+          where: { id },
+          data: {
+            ...rest,
+            descriptionLexical: toLexicalJsonInput(descriptionLexical),
+          },
+        });
+
+        // Spelled out rather than leaning on `notIn: []` semantics: clearing
+        // every tag has to actually clear every tag.
+        await tx.gigTagRelationship.deleteMany({
+          where:
+            wantedTagIds.length > 0
+              ? {
+                  gigId: id,
+                  OR: [
+                    { gigTagId: { notIn: wantedTagIds } },
+                    { id: { in: duplicateTagRowIds } },
+                  ],
+                }
+              : { gigId: id },
+        });
+        if (newTagIds.length > 0) {
+          await tx.gigTagRelationship.createMany({
+            data: newTagIds.map((gigTagId) => ({ gigId: id, gigTagId })),
+          });
+        }
+
+        await tx.gigCreator.deleteMany({
+          where:
+            wantedCreatorIds.length > 0
+              ? { gigId: id, creatorProfileId: { notIn: wantedCreatorIds } }
+              : { gigId: id },
+        });
+        // Sequential on purpose: `sortOrder` comes from the submitted order and
+        // (gigId, sortOrder) is a plain index, so transient overlap is fine.
+        for (const [index, row] of wantedCreators.entries()) {
+          const role = normalizeRole(row.role);
+          await tx.gigCreator.upsert({
+            where: {
+              gigId_creatorProfileId: {
+                gigId: id,
+                creatorProfileId: row.creatorProfileId,
+              },
+            },
+            create: {
+              gigId: id,
+              creatorProfileId: row.creatorProfileId,
+              role,
+              sortOrder: index,
+            },
+            update: { role, sortOrder: index },
+          });
+        }
+      });
+
+      await logUserActivity(
+        ActivityType.GIG_UPDATED,
+        `Updated gig "${rest.title}"`,
+        ctx.session.user.id,
+        undefined,
+        { gigId: id },
+      );
+      for (const creatorProfileId of addedCreatorIds) {
+        await logUserActivity(
+          ActivityType.GIG_CREATOR_ADDED,
+          `Added a creator to gig "${rest.title}"`,
+          ctx.session.user.id,
+          undefined,
+          { gigId: id, creatorProfileId },
+        );
+      }
+      for (const row of removedCreators) {
+        await logUserActivity(
+          ActivityType.GIG_CREATOR_REMOVED,
+          `Removed @${row.creatorProfile.handle} from gig "${rest.title}"`,
+          ctx.session.user.id,
+          undefined,
+          { gigId: id, creatorProfileId: row.creatorProfileId },
+        );
+      }
+
+      return { ok: true as const };
     }),
 
   delete: adminProcedure

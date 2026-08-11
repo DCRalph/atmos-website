@@ -1279,6 +1279,7 @@ export function FilesManager() {
                           <SelectItem value="general">General</SelectItem>
                           <SelectItem value="gig">Gig</SelectItem>
                           <SelectItem value="gig_media">Gig Media</SelectItem>
+                          <SelectItem value="gig_poster">Gig Poster</SelectItem>
                           <SelectItem value="crew">Crew</SelectItem>
                           <SelectItem value="merch">Merch</SelectItem>
                           <SelectItem value="content">Content</SelectItem>

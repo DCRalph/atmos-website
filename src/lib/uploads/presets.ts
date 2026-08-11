@@ -61,7 +61,13 @@ const profileContext = z.object({ profileId: z.string().min(1).optional() });
 const resolvedProfileContext = z.object({ profileId: z.string().min(1) });
 
 /** Image types every image field should accept. */
-const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"];
+const IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/avif",
+  "image/gif",
+];
 
 export const uploadPresets = {
   /** Photos and videos attached to a gig's galleries. */
@@ -95,7 +101,13 @@ export const uploadPresets = {
     maxFileSize: mb(50),
     maxFiles: 1,
     maxTotalSize: mb(50),
-    for: "gig",
+    /**
+     * Deliberately its own bucket rather than sharing `gig` with `gigMedia`.
+     * Dedupe is scoped to `for` + `forId`, so a shared bucket handed the poster
+     * the *gallery's* file record whenever the same image was used for both —
+     * and replacing the poster then soft-deleted the gallery image with it.
+     */
+    for: "gig_poster",
     acl: "public-read",
     image: {
       maxDimension: 2048,
@@ -230,7 +242,9 @@ export const uploadPresets = {
       quality: 82,
       maxOutputSize: mb(1.5),
     },
-    context: z.object({ category: z.string().min(1).max(64).default("library") }),
+    context: z.object({
+      category: z.string().min(1).max(64).default("library"),
+    }),
     forId: (c) => c.category,
     keyPrefix: (c) => `uploads/${c.category}`,
   }),

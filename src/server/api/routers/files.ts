@@ -30,9 +30,12 @@ async function enrichFilesWithLinkedEntities<
   db: any,
   files: T[],
 ): Promise<(T & { linkedEntity: LinkedEntity; fileTags: FileTag[] })[]> {
-  // Group files by their "for" type
+  // Group files by their "for" type. `gig` and `gig_poster` both key on the gig
+  // itself; `gig_media` keys on the media row (legacy uploader).
   const gigMediaFiles = files.filter((f) => f.for === "gig_media");
-  const gigFiles = files.filter((f) => f.for === "gig");
+  const gigFiles = files.filter(
+    (f) => f.for === "gig" || f.for === "gig_poster",
+  );
 
   // Fetch linked gig media items
   const gigMediaIds = gigMediaFiles.map((f) => f.forId);
@@ -76,7 +79,7 @@ async function enrichFilesWithLinkedEntities<
           title: mediaItem.gig.title,
         };
       }
-    } else if (f.for === "gig") {
+    } else if (f.for === "gig" || f.for === "gig_poster") {
       const gig = gigMap.get(f.forId);
       if (gig) {
         linkedEntity = { type: "gig", id: gig.id, title: gig.title };
