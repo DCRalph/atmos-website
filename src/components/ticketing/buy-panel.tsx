@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Minus, Plus, Ticket } from "lucide-react";
 import { toast } from "sonner";
 
@@ -8,20 +8,26 @@ import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { api, type RouterOutputs } from "~/trpc/react";
+import { formatCountdown } from "~/lib/ticketing/dates";
 import { formatNZD, formatNZDCompact } from "~/lib/ticketing/money";
-import { CheckoutPanel, type CheckoutSession } from "./checkout-panel";
+import { CheckoutSection, type CheckoutSession } from "./checkout-panel";
 
 type PublicEvent = NonNullable<RouterOutputs["ticketEvents"]["bySlug"]>;
 type PublicTier = PublicEvent["tiers"][number];
 
 /**
- * The buy panel.
+ * The buy panel — the whole purchase, on one screen.
  *
- * Asks for quantities and a tick on the terms — nothing about the person. The
- * booking fee is shown in the summary before the buyer commits, because NZ
+ * Quantities, the fee breakdown, the terms, and the payment all live here.
+ * There used to be a separate payment screen in between, but it only existed
+ * because Stripe needs an order before it can render a payment element. That
+ * happens behind the tick-box now: accepting the terms is what takes the hold
+ * and opens the payment, so a free ticket is one click and a paid one is a tap
+ * on Apple Pay. The next thing anybody sees is their ticket.
+ *
+ * The booking fee is shown in the summary before any of that — NZ
  * fair-trading rules mean unavoidable fees can't appear for the first time at
- * the payment step; the terms sit next to it for the same reason. What a buyer
- * is agreeing to belongs where they decide, not one screen before they pay.
+ * the payment step.
  */
 export function BuyPanel({ event }: { event: PublicEvent }) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -29,6 +35,10 @@ export function BuyPanel({ event }: { event: PublicEvent }) {
   const [appliedCode, setAppliedCode] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
   const [session, setSession] = useState<CheckoutSession | null>(null);
+  // Which basket the held session was priced for. A session that no longer
+  // matches must not be payable: the debounce leaves a window where the old
+  // Apple Pay sheet is still on screen showing the old total.
+  const [sessionKey, setSessionKey] = useState<string | null>(null);
 
   const lines = useMemo(
     () =>
@@ -49,8 +59,22 @@ export function BuyPanel({ event }: { event: PublicEvent }) {
     { enabled: lines.length > 0, staleTime: 0 },
   );
 
+  // What a hold would be *for*. Any change to it invalidates the one we hold.
+  const basketKey = useMemo(
+    () => JSON.stringify({ lines, code: appliedCode }),
+    [lines, appliedCode],
+  );
+
+  // Read inside effects and callbacks that must not re-run when the hold
+  // changes — an effect depending on `session` would take a second hold the
+  // moment it received the first.
+  const heldOrderId = useRef<string | null>(null);
+  const heldKey = useRef<string | null>(null);
+
   const start = api.ticketCheckout.start.useMutation({
     onSuccess: (order) => {
+      heldOrderId.current = order.orderId;
+      setSessionKey(heldKey.current);
       setSession({
         orderId: order.orderId,
         accessToken: order.accessToken,
@@ -61,8 +85,60 @@ export function BuyPanel({ event }: { event: PublicEvent }) {
         needsDetailsUpFront: order.needsDetailsUpFront,
       });
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => {
+      toast.error(error.message);
+      heldKey.current = null;
+      setAccepted(false);
+    },
   });
+
+  const release = api.ticketCheckout.release.useMutation();
+
+  // Un-ticking is the single path that gives a hold back, so everything that
+  // wants to abandon one goes through here.
+  const reset = useCallback(() => setAccepted(false), []);
+
+  // Accepting the terms is what commits: it takes the hold and opens the
+  // payment. Debounced, because a buyer nudging the quantity up and down would
+  // otherwise mint an order per tap.
+  useEffect(() => {
+    if (!accepted) return;
+    if (lines.length === 0) {
+      // They emptied the basket after accepting; the acceptance goes with it.
+      reset();
+      return;
+    }
+    if (heldKey.current === basketKey) return;
+
+    const timer = setTimeout(() => {
+      heldKey.current = basketKey;
+      start.mutate({
+        eventId: event.id,
+        lines,
+        discountCode: appliedCode ?? undefined,
+        acceptTerms: true,
+        replaceOrderId: heldOrderId.current ?? undefined,
+        utm: readUtm(),
+      });
+    }, 500);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accepted, basketKey, event.id, reset]);
+
+  // Un-ticking hands the seats straight back rather than making the next buyer
+  // wait out a hold nobody is using.
+  useEffect(() => {
+    if (accepted) return;
+    heldKey.current = null;
+    setSession(null);
+    setSessionKey(null);
+    const orderId = heldOrderId.current;
+    if (!orderId) return;
+    heldOrderId.current = null;
+    release.mutate({ orderId });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accepted]);
 
   const setQuantity = useCallback(
     (tier: PublicTier, next: number) => {
@@ -74,19 +150,6 @@ export function BuyPanel({ event }: { event: PublicEvent }) {
     },
     [event.maxTicketsPerOrder],
   );
-
-  if (session) {
-    return (
-      <CheckoutPanel
-        event={event}
-        session={session}
-        onCancel={() => {
-          setSession(null);
-          void quote.refetch();
-        }}
-      />
-    );
-  }
 
   if (event.status === "CANCELLED") {
     return (
@@ -117,6 +180,10 @@ export function BuyPanel({ event }: { event: PublicEvent }) {
   }
 
   const remainingAllowance = Math.max(0, event.maxTicketsPerOrder - totalTickets);
+  // Only a session priced for the basket currently on screen may be paid.
+  const payable =
+    session !== null && sessionKey === basketKey && !start.isPending;
+  const preparing = accepted && !payable;
 
   return (
     <PanelShell>
@@ -281,31 +348,27 @@ export function BuyPanel({ event }: { event: PublicEvent }) {
             </span>
           </label>
 
-          <Button
-            type="button"
-            className="w-full"
-            size="lg"
-            disabled={start.isPending || quote.isPending || !accepted}
-            onClick={() =>
-              start.mutate({
-                eventId: event.id,
-                lines,
-                discountCode: appliedCode ?? undefined,
-                acceptTerms: true,
-                utm: readUtm(),
-              })
-            }
-          >
-            {start.isPending ? (
-              <>
-                <Loader2 className="size-4 animate-spin" /> Holding your tickets…
-              </>
-            ) : quote.data?.isFree ? (
-              "Get tickets"
-            ) : (
-              `Pay ${formatNZD(quote.data?.totalCents ?? 0)}`
-            )}
-          </Button>
+          {!accepted && (
+            <p className="text-sm text-white/40">
+              Tick to hold your tickets and pay.
+            </p>
+          )}
+
+          {preparing && (
+            <p className="flex items-center gap-2 text-sm text-white/50">
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+              Holding your tickets…
+            </p>
+          )}
+
+          {payable && session && (
+            <>
+              {session.expiresAt && (
+                <HoldCountdown expiresAt={session.expiresAt} onExpired={reset} />
+              )}
+              <CheckoutSection session={session} />
+            </>
+          )}
 
           {event.isR18 && (
             <p className="text-center text-xs text-white/40">
@@ -315,6 +378,48 @@ export function BuyPanel({ event }: { event: PublicEvent }) {
         </div>
       )}
     </PanelShell>
+  );
+}
+
+/**
+ * The seats are held, not sold. Showing the clock is fairer than silently
+ * dropping the reservation, and it nudges people through checkout.
+ */
+function HoldCountdown({
+  expiresAt,
+  onExpired,
+}: {
+  expiresAt: Date;
+  onExpired: () => void;
+}) {
+  const [remaining, setRemaining] = useState(
+    () => expiresAt.getTime() - Date.now(),
+  );
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const next = expiresAt.getTime() - Date.now();
+      setRemaining(next);
+      if (next <= 0) {
+        clearInterval(timer);
+        toast.error(
+          "Your reservation expired. Please choose your tickets again.",
+        );
+        onExpired();
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [expiresAt, onExpired]);
+
+  const urgent = remaining < 60_000;
+
+  return (
+    <p
+      className={`text-sm tabular-nums ${urgent ? "text-amber-300" : "text-white/40"}`}
+      aria-live="polite"
+    >
+      Held for {formatCountdown(remaining)}
+    </p>
   );
 }
 

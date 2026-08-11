@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import {
@@ -10,18 +10,15 @@ import {
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
-import { ArrowLeft, Loader2, ShieldCheck } from "lucide-react";
+import { Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { env } from "~/env";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { api, type RouterOutputs } from "~/trpc/react";
-import { formatCountdown } from "~/lib/ticketing/dates";
+import { api } from "~/trpc/react";
 import { formatNZD } from "~/lib/ticketing/money";
-
-type PublicEvent = NonNullable<RouterOutputs["ticketEvents"]["bySlug"]>;
 
 export type CheckoutSession = {
   orderId: string;
@@ -35,7 +32,13 @@ export type CheckoutSession = {
 };
 
 /**
- * The payment step.
+ * Paying, in place.
+ *
+ * This renders inside the buy panel rather than replacing it: picking tickets
+ * and paying for them are one step, and the screen that used to sit between
+ * them existed only because the payment intent needed an order to exist first.
+ * That's now handled behind the tick-box, so there is nothing left to click
+ * through.
  *
  * Express Checkout (Apple Pay / Google Pay / Link) sits at the top because it
  * is the whole point of the flow: one tap, no typing, and the buyer's email
@@ -54,33 +57,27 @@ function getStripePromise() {
   return stripePromise;
 }
 
-export function CheckoutPanel({
-  event,
-  session,
-  onCancel,
-}: {
-  event: PublicEvent;
-  session: CheckoutSession;
-  onCancel: () => void;
-}) {
+export function CheckoutSection({ session }: { session: CheckoutSession }) {
   if (session.isFree) {
-    return <FreeClaimForm event={event} session={session} onCancel={onCancel} />;
+    return <FreeClaim session={session} />;
   }
 
   const stripe = getStripePromise();
 
   if (!stripe || !session.clientSecret) {
     return (
-      <Shell onCancel={onCancel} orderId={session.orderId} expiresAt={session.expiresAt}>
-        <p className="text-sm text-red-300">
-          Card payments aren&apos;t available right now. Try again shortly.
-        </p>
-      </Shell>
+      <p className="text-sm text-red-300">
+        Card payments aren&apos;t available right now. Try again shortly.
+      </p>
     );
   }
 
   return (
     <Elements
+      // Stripe won't accept a new client secret on a mounted Elements tree, so
+      // changing the basket has to remount it. Keying on the secret is what
+      // makes that happen instead of silently paying the old amount.
+      key={session.clientSecret}
       stripe={stripe}
       options={{
         clientSecret: session.clientSecret,
@@ -95,20 +92,12 @@ export function CheckoutPanel({
         },
       }}
     >
-      <PaidCheckout event={event} session={session} onCancel={onCancel} />
+      <PaidCheckout session={session} />
     </Elements>
   );
 }
 
-function PaidCheckout({
-  event,
-  session,
-  onCancel,
-}: {
-  event: PublicEvent;
-  session: CheckoutSession;
-  onCancel: () => void;
-}) {
+function PaidCheckout({ session }: { session: CheckoutSession }) {
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
@@ -158,62 +147,53 @@ function PaidCheckout({
   }
 
   return (
-    <Shell onCancel={onCancel} orderId={session.orderId} expiresAt={session.expiresAt}>
-      <div className="space-y-5">
-        <div>
-          <p className="text-sm text-white/50">{event.name}</p>
-          <p className="text-2xl font-semibold text-white">
-            {formatNZD(session.totalCents)}
-          </p>
-        </div>
+    <div className="space-y-4">
+      <ExpressCheckoutElement
+        options={{ buttonHeight: 48 }}
+        onClick={({ resolve }) => resolve({})}
+        onConfirm={() => void pay()}
+      />
 
-        <ExpressCheckoutElement
-          options={{ buttonHeight: 48 }}
-          onClick={({ resolve }) => resolve({})}
-          onConfirm={() => void pay()}
-        />
-
-        <div className="flex items-center gap-3 text-xs text-white/30">
-          <span className="h-px flex-1 bg-white/10" />
-          OR PAY BY CARD
-          <span className="h-px flex-1 bg-white/10" />
-        </div>
-
-        <PaymentElement options={{ layout: "tabs" }} />
-
-        {error && (
-          <p role="alert" className="text-sm text-red-300">
-            {error}
-          </p>
-        )}
-
-        <Button
-          type="button"
-          size="lg"
-          className="w-full"
-          disabled={!stripe || busy}
-          onClick={() => void pay()}
-        >
-          {busy ? (
-            <>
-              <Loader2 className="size-4 animate-spin" /> Processing…
-            </>
-          ) : (
-            `Pay ${formatNZD(session.totalCents)}`
-          )}
-        </Button>
-
-        <p className="flex items-center justify-center gap-1.5 text-xs text-white/30">
-          <ShieldCheck className="size-3.5" aria-hidden />
-          Card details go straight to Stripe — we never see them.
-        </p>
+      <div className="flex items-center gap-3 text-xs text-white/30">
+        <span className="h-px flex-1 bg-white/10" />
+        OR PAY BY CARD
+        <span className="h-px flex-1 bg-white/10" />
       </div>
-    </Shell>
+
+      <PaymentElement options={{ layout: "tabs" }} />
+
+      {error && (
+        <p role="alert" className="text-sm text-red-300">
+          {error}
+        </p>
+      )}
+
+      <Button
+        type="button"
+        size="lg"
+        className="w-full"
+        disabled={!stripe || busy}
+        onClick={() => void pay()}
+      >
+        {busy ? (
+          <>
+            <Loader2 className="size-4 animate-spin" /> Processing…
+          </>
+        ) : (
+          `Pay ${formatNZD(session.totalCents)}`
+        )}
+      </Button>
+
+      <p className="flex items-center justify-center gap-1.5 text-xs text-white/30">
+        <ShieldCheck className="size-3.5" aria-hidden />
+        Card details go straight to Stripe — we never see them.
+      </p>
+    </div>
   );
 }
 
 /**
- * Free tickets: a tick-box and a button.
+ * Free tickets: one button.
  *
  * Nothing is asked here — the ticket is issued and the details page collects
  * the name and the email to send it to. The exception is a gated tier
@@ -221,15 +201,7 @@ function PaidCheckout({
  * over yet and no way to tell anyone the answer, and a per-email cap checked
  * after issuing isn't a cap. Those two keep their form.
  */
-function FreeClaimForm({
-  event,
-  session,
-  onCancel,
-}: {
-  event: PublicEvent;
-  session: CheckoutSession;
-  onCancel: () => void;
-}) {
+function FreeClaim({ session }: { session: CheckoutSession }) {
   const router = useRouter();
   const askUpFront = session.needsDetailsUpFront;
 
@@ -250,157 +222,72 @@ function FreeClaimForm({
   });
 
   return (
-    <Shell onCancel={onCancel} orderId={session.orderId} expiresAt={session.expiresAt}>
-      <form
-        className="space-y-5"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setError(null);
-          claim.mutate({
-            accessToken: session.accessToken,
-            ...(askUpFront ? { email, name } : {}),
-          });
-        }}
+    <form
+      className="space-y-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setError(null);
+        claim.mutate({
+          accessToken: session.accessToken,
+          ...(askUpFront ? { email, name } : {}),
+        });
+      }}
+    >
+      {askUpFront && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="claim-name">Your name</Label>
+            <Input
+              id="claim-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              autoComplete="name"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="claim-email">Email</Label>
+            <Input
+              id="claim-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+            />
+            <p className="text-xs text-white/40">
+              This ticket has to be checked against your email before it can be
+              issued.
+            </p>
+          </div>
+        </>
+      )}
+
+      {error && (
+        <p role="alert" className="text-sm text-red-300">
+          {error}
+        </p>
+      )}
+
+      <Button
+        type="submit"
+        size="lg"
+        className="w-full"
+        disabled={claim.isPending}
       >
-        <div>
-          <p className="text-sm text-white/50">{event.name}</p>
-          <p className="text-2xl font-semibold text-white">Free entry</p>
-        </div>
-
-        {askUpFront ? (
+        {claim.isPending ? (
           <>
-            <div className="space-y-2">
-              <Label htmlFor="claim-name">Your name</Label>
-              <Input
-                id="claim-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                autoComplete="name"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="claim-email">Email</Label>
-              <Input
-                id="claim-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
-              <p className="text-xs text-white/40">
-                This ticket has to be checked against your email before it can
-                be issued.
-              </p>
-            </div>
+            <Loader2 className="size-4 animate-spin" /> Getting your ticket…
           </>
         ) : (
-          <p className="text-sm text-white/50">
-            Grab it now — we&apos;ll ask who you are on the next page, once the
-            ticket is yours.
-          </p>
+          "Get my ticket"
         )}
+      </Button>
 
-        {error && (
-          <p role="alert" className="text-sm text-red-300">
-            {error}
-          </p>
-        )}
-
-        <Button
-          type="submit"
-          size="lg"
-          className="w-full"
-          disabled={claim.isPending}
-        >
-          {claim.isPending ? (
-            <>
-              <Loader2 className="size-4 animate-spin" /> Getting your ticket…
-            </>
-          ) : (
-            "Get my ticket"
-          )}
-        </Button>
-      </form>
-    </Shell>
-  );
-}
-
-/** Shared frame: back button and the hold countdown. */
-function Shell({
-  children,
-  onCancel,
-  orderId,
-  expiresAt,
-}: {
-  children: React.ReactNode;
-  onCancel: () => void;
-  orderId: string;
-  expiresAt: Date | null;
-}) {
-  const release = api.ticketCheckout.release.useMutation();
-
-  return (
-    <section className="space-y-4 border-2 border-white/10 bg-black/80 p-5 backdrop-blur-sm">
-      <div className="flex items-center justify-between gap-3 border-b-2 border-white/10 pb-3">
-        <button
-          type="button"
-          onClick={() => {
-            // Hand the seats back straight away rather than making the next
-            // buyer wait out the hold.
-            release.mutate({ orderId });
-            onCancel();
-          }}
-          className="flex items-center gap-1.5 text-sm text-white/50 transition-colors hover:text-white"
-        >
-          <ArrowLeft className="size-4" aria-hidden />
-          Back
-        </button>
-        {expiresAt && <HoldCountdown expiresAt={expiresAt} onExpired={onCancel} />}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-/**
- * The seats are held, not sold. Showing the clock is fairer than silently
- * dropping the reservation, and it nudges people through checkout.
- */
-function HoldCountdown({
-  expiresAt,
-  onExpired,
-}: {
-  expiresAt: Date;
-  onExpired: () => void;
-}) {
-  const [remaining, setRemaining] = useState(
-    () => expiresAt.getTime() - Date.now(),
-  );
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const next = expiresAt.getTime() - Date.now();
-      setRemaining(next);
-      if (next <= 0) {
-        clearInterval(timer);
-        toast.error("Your reservation expired. Please choose your tickets again.");
-        onExpired();
-      }
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [expiresAt, onExpired]);
-
-  const urgent = remaining < 60_000;
-
-  return (
-    <span
-      className={`text-sm tabular-nums ${urgent ? "text-amber-300" : "text-white/40"}`}
-      aria-live="polite"
-    >
-      Held for {formatCountdown(remaining)}
-    </span>
+      <p className="text-center text-xs text-white/40">
+        We&apos;ll ask who you are on the next page, once the ticket is yours.
+      </p>
+    </form>
   );
 }
