@@ -68,11 +68,11 @@ export default function TicketTermsPage() {
 
             <section>
               <h2 className="mt-8 mb-4 text-2xl font-bold">
-                2. Refunds and exchanges
+                2. Refunds and transfers
               </h2>
               <p className="mb-4 leading-relaxed text-gray-700">
-                We don&apos;t refund tickets because your plans changed. Please
-                be sure before you buy.
+                No refunds are offered because your plans changed. Please be
+                sure before you buy.
               </p>
               <p className="mb-4 leading-relaxed text-gray-700">
                 If an event is cancelled, we refund the full amount you paid,
@@ -81,30 +81,33 @@ export default function TicketTermsPage() {
                 the nature of the event — you may request a refund by contacting
                 us before the event.
               </p>
-              <p className="leading-relaxed text-gray-700">
+              <p className="mb-4 leading-relaxed text-gray-700">
                 Nothing here limits your rights under the Consumer Guarantees
                 Act 1993 or the Fair Trading Act 1986.
+              </p>
+              <p className="leading-relaxed text-gray-700">
+                Tickets are transferable. You are welcome to pass one on to a
+                friend or resell it through a platform like Tixel — just not
+                above face value. We may cancel tickets we reasonably believe
+                have been resold for profit, without a refund.
               </p>
             </section>
 
             <section>
-              <h2 className="mt-8 mb-4 text-2xl font-bold">3. Entry</h2>
+              <h2 className="mt-8 mb-4 text-2xl font-bold">3. Age and entry</h2>
               <p className="mb-4 leading-relaxed text-gray-700">
-                Each ticket admits one person once. The first scan of a QR code
-                is the one that gets in — if you share or forward a ticket you
-                intend to use yourself, you may be refused entry.
+                All of our ticketed events are strictly 18+ because of liquor
+                licensing and liability requirements. You must be able to show
+                valid photo ID at the door. No ID, no entry, no refund.
               </p>
               <p className="mb-4 leading-relaxed text-gray-700">
-                Most of our events are R18. Where an event is marked R18 you
-                must be 18 or over and able to show acceptable photo ID. No ID,
-                no entry, no refund.
+                Each ticket admits one person once. The first scan of a QR code
+                is the one that gets in, so if you pass a ticket on, don&apos;t
+                try to use it yourself as well.
               </p>
               <p className="mb-4 leading-relaxed text-gray-700">
                 Entry is subject to the venue&apos;s conditions and the law,
-                including the Sale and Supply of Alcohol Act 2012. We and the
-                venue may refuse entry to, or remove, anyone who is intoxicated,
-                threatening, or behaving unsafely. No refund is given in those
-                circumstances.
+                including the Sale and Supply of Alcohol Act 2012.
               </p>
               <p className="leading-relaxed text-gray-700">
                 Unless an event says otherwise, leaving the venue ends your
@@ -113,7 +116,63 @@ export default function TicketTermsPage() {
             </section>
 
             <section>
-              <h2 className="mt-8 mb-4 text-2xl font-bold">4. Lost tickets</h2>
+              <h2 className="mt-8 mb-4 text-2xl font-bold">
+                4. A safe environment
+              </h2>
+              <p className="mb-4 leading-relaxed text-gray-700">
+                We have a zero-tolerance policy for harmful or antisocial
+                behaviour. If you feel unsafe or uncomfortable at one of our
+                events, tell venue security, bar staff or an Atmos crew member
+                immediately.
+              </p>
+              <p className="leading-relaxed text-gray-700">
+                We and the venue may refuse entry to, or remove, anyone who is
+                threatening or behaving unsafely. No refund is given in those
+                circumstances.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="mt-8 mb-4 text-2xl font-bold">
+                5. Intoxication and drug use
+              </h2>
+              <p className="mb-4 leading-relaxed text-gray-700">
+                We do not condone drug use or excessive drinking.
+              </p>
+              <p className="mb-4 leading-relaxed text-gray-700">
+                Free drinking water is available at all of our events. If you or
+                someone else needs medical assistance, alert staff immediately —
+                we are here to help, not to judge.
+              </p>
+              <p className="leading-relaxed text-gray-700">
+                Anyone visibly overly intoxicated, or endangering themselves or
+                others, will be removed from the event without a refund.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="mt-8 mb-4 text-2xl font-bold">
+                6. Health and safety
+              </h2>
+              <ul className="list-disc space-y-2 pl-6 text-gray-700">
+                <li>
+                  <strong>Hearing protection:</strong> loud volumes are
+                  expected, and free earplugs are available.
+                </li>
+                <li>
+                  <strong>Epilepsy warning:</strong> our events include strobe
+                  lighting and haze effects.
+                </li>
+                <li>
+                  <strong>Hazards:</strong> we take reasonable precautions to
+                  prevent risks, but if you notice something that isn&apos;t
+                  right, report it to venue staff or an Atmos crew member.
+                </li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="mt-8 mb-4 text-2xl font-bold">7. Lost tickets</h2>
               <p className="leading-relaxed text-gray-700">
                 Your tickets always live at the link we email you, and you can
                 have that email re-sent from the ticket page. If you lose access
@@ -124,7 +183,7 @@ export default function TicketTermsPage() {
 
             <section>
               <h2 className="mt-8 mb-4 text-2xl font-bold">
-                5. Cancelled or rescheduled events
+                8. Cancelled or rescheduled events
               </h2>
               <p className="leading-relaxed text-gray-700">
                 Events can be affected by things outside our control. If we have
@@ -136,18 +195,23 @@ export default function TicketTermsPage() {
 
             <section>
               <h2 className="mt-8 mb-4 text-2xl font-bold">
-                6. Recording and photography
+                9. Photography and recording
               </h2>
+              <p className="mb-4 leading-relaxed text-gray-700">
+                All Atmos events are photographed and filmed for promotional
+                purposes. By purchasing a ticket you consent to being featured
+                in recap content and future marketing material.
+              </p>
               <p className="leading-relaxed text-gray-700">
-                Our events are often photographed or filmed. By attending, you
-                accept that you may appear in that footage and that we may use
-                it to promote future events.
+                If you would rather not be filmed or photographed, let one of
+                our photographers or crew members know and we&apos;ll do our
+                best to accommodate you.
               </p>
             </section>
 
             <section>
               <h2 className="mt-8 mb-4 text-2xl font-bold">
-                7. Your information
+                10. Your information
               </h2>
               <p className="mb-4 leading-relaxed text-gray-700">
                 To sell you a ticket we collect your name, email address and
@@ -174,16 +238,7 @@ export default function TicketTermsPage() {
             </section>
 
             <section>
-              <h2 className="mt-8 mb-4 text-2xl font-bold">8. Reselling</h2>
-              <p className="leading-relaxed text-gray-700">
-                Don&apos;t resell tickets above face value. We may cancel
-                tickets we reasonably believe have been resold for profit,
-                without a refund.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="mt-8 mb-4 text-2xl font-bold">9. Contact</h2>
+              <h2 className="mt-8 mb-4 text-2xl font-bold">11. Contact</h2>
               <p className="mb-4 leading-relaxed text-gray-700">
                 Questions about a ticket or an order — get in touch:
               </p>

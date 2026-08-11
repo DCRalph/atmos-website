@@ -23,14 +23,17 @@ export default function TermsPage() {
   }, [setForcedTheme]);
 
   return (
-    <main className="min-h-content bg-white text-black h">
+    <main className="min-h-content h bg-white text-black">
       {/* Background accents */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+      >
         <div className="absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-linear-to-tr from-indigo-300 via-fuchsia-300 to-cyan-200 opacity-40 blur-3xl" />
         <div className="absolute right-0 bottom-0 h-64 w-64 translate-x-16 translate-y-16 rounded-full bg-linear-to-tr from-cyan-200 via-emerald-200 to-lime-200 opacity-40 blur-3xl" />
       </div>
 
-      <section className="relative z-10 px-4 pb-12 pt-12">
+      <section className="relative z-10 px-4 pt-12 pb-12">
         <Container>
           <div className="mb-8">
             <Link
@@ -121,29 +124,81 @@ export default function TermsPage() {
                 When purchasing tickets through our Website:
               </p>
               <ul className="list-disc space-y-2 pl-6 text-gray-700">
-                <li>All ticket sales are final unless otherwise stated</li>
                 <li>
-                  Refunds are subject to our refund policy and applicable laws
+                  All ticketed events are strictly 18+, and you must present
+                  valid photo identification at the door
                 </li>
-                <li>Tickets are non-transferable unless explicitly stated</li>
                 <li>
-                  You must present valid identification and proof of purchase at
-                  events
+                  No refunds are offered because your plans changed. If we
+                  cancel an event, we refund in full
+                </li>
+                <li>
+                  Tickets are transferable, including through resale platforms,
+                  but must not be resold above face value
                 </li>
                 <li>
                   We reserve the right to refuse entry or remove individuals
                   from events
                 </li>
               </ul>
+              <p className="mt-4 leading-relaxed text-gray-700">
+                Tickets bought through this Website are also governed by our{" "}
+                <Link
+                  href="/tickets/terms"
+                  className="text-blue-600 hover:underline"
+                >
+                  ticket terms
+                </Link>
+                , which set out refunds, entry, safety and photography in full.
+              </p>
 
               <h3 className="mt-6 mb-3 text-xl font-semibold">
                 3.3 Event Conduct
               </h3>
-              <p className="leading-relaxed text-gray-700">
+              <p className="mb-4 leading-relaxed text-gray-700">
                 By attending our events, you agree to follow all venue rules and
                 regulations, respect other attendees, and comply with all
-                applicable laws. We reserve the right to remove any individual
-                who violates these rules or engages in disruptive behavior.
+                applicable laws. We have a zero-tolerance policy for harmful or
+                antisocial behaviour — if you feel unsafe or uncomfortable, tell
+                venue security, bar staff or an Atmos crew member immediately.
+              </p>
+              <p className="mb-4 leading-relaxed text-gray-700">
+                We do not condone drug use or excessive drinking. Free drinking
+                water is available at all of our events, and if you or someone
+                else needs medical assistance, alert staff immediately — we are
+                here to help, not to judge. Anyone visibly overly intoxicated,
+                or endangering themselves or others, will be removed without a
+                refund.
+              </p>
+
+              <h3 className="mt-6 mb-3 text-xl font-semibold">
+                3.4 Health and Safety
+              </h3>
+              <p className="mb-4 leading-relaxed text-gray-700">
+                Our events are loud and use production effects. Please note:
+              </p>
+              <ul className="list-disc space-y-2 pl-6 text-gray-700">
+                <li>
+                  Loud volumes are expected, and free earplugs are available
+                </li>
+                <li>Events include strobe lighting and haze effects</li>
+                <li>
+                  We take reasonable precautions to prevent risks, but if you
+                  notice a hazard please report it to venue staff or an Atmos
+                  crew member
+                </li>
+              </ul>
+
+              <h3 className="mt-6 mb-3 text-xl font-semibold">
+                3.5 Photography and Recording
+              </h3>
+              <p className="leading-relaxed text-gray-700">
+                All of our events are photographed and filmed for promotional
+                purposes. By purchasing a ticket you consent to being featured
+                in recap content and future marketing material. If you would
+                rather not be filmed or photographed, let one of our
+                photographers or crew members know and we&apos;ll do our best to
+                accommodate you.
               </p>
             </section>
 
