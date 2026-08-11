@@ -20,6 +20,11 @@ type ScanOutcome = RouterOutputs["door"]["scan"];
 
 const DEVICE_LABEL_KEY = "atmos.door.deviceLabel";
 
+/** Either half of the door: a scanned code, or a ticket number off the list. */
+type Lookup =
+  | { kind: "token"; token: string }
+  | { kind: "ticketNumber"; ticketNumber: string };
+
 /**
  * The scanner.
  *
@@ -35,8 +40,14 @@ export default function DoorScannerPage() {
   // identity — every scan is attributed to this label.
   const [deviceLabel, setDeviceLabel] = useLocalStorage(DEVICE_LABEL_KEY);
   const [outcome, setOutcome] = useState<ScanOutcome | null>(null);
-  const [lastToken, setLastToken] = useState<string | null>(null);
+  // How the ticket on screen was looked up, so "Admit anyway" can re-run the
+  // same lookup. Tracked rather than assumed: a manager overriding a result
+  // that came from the door list must not silently re-admit whatever was last
+  // held in front of the camera.
+  const [lastLookup, setLastLookup] = useState<Lookup | null>(null);
   const [mode, setMode] = useState<"scan" | "manual" | "list">("scan");
+
+  const utils = api.useUtils();
 
   const summary = api.door.summary.useQuery(
     { eventId },
@@ -66,10 +77,20 @@ export default function DoorScannerPage() {
   const manual = api.door.admitByTicketNumber.useMutation({
     onSuccess: (result) => {
       setOutcome(result);
-      playFeedback(result.admit ? "success" : "error");
+      playFeedback(
+        result.admit
+          ? "success"
+          : result.result === "DUPLICATE"
+            ? "warn"
+            : "error",
+      );
       void summary.refetch();
+      void utils.door.doorList.invalidate();
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => {
+      playFeedback("error");
+      toast.error(error.message);
+    },
   });
 
   const deny = api.door.deny.useMutation({
@@ -87,7 +108,7 @@ export default function DoorScannerPage() {
 
   const handleScan = useCallback(
     (token: string) => {
-      setLastToken(token);
+      setLastLookup({ kind: "token", token });
       scan.mutate({
         eventId,
         token,
@@ -96,6 +117,35 @@ export default function DoorScannerPage() {
     },
     [eventId, deviceLabel, scan],
   );
+
+  const admitByNumber = useCallback(
+    (ticketNumber: string, override = false) => {
+      setLastLookup({ kind: "ticketNumber", ticketNumber });
+      manual.mutate({
+        eventId,
+        ticketNumber,
+        deviceLabel: deviceLabel || undefined,
+        override,
+      });
+    },
+    [eventId, deviceLabel, manual],
+  );
+
+  // Re-runs whichever lookup produced the result on screen, with the override
+  // flag set. Both endpoints funnel into the same scan path server-side.
+  const handleOverride = useCallback(() => {
+    if (!lastLookup) return;
+    if (lastLookup.kind === "token") {
+      scan.mutate({
+        eventId,
+        token: lastLookup.token,
+        deviceLabel: deviceLabel || undefined,
+        override: true,
+      });
+      return;
+    }
+    admitByNumber(lastLookup.ticketNumber, true);
+  }, [lastLookup, eventId, deviceLabel, scan, admitByNumber]);
 
   if (summary.isPending) {
     return (
@@ -180,7 +230,13 @@ export default function DoorScannerPage() {
       <div className="mt-4">
         {mode === "scan" && (
           <>
-            <CameraScanner onScan={handleScan} paused={outcome !== null} />
+            {/* Also paused while a scan is in flight: the result isn't on
+                screen yet, and a second code entering the frame in that
+                window would queue a scan nobody asked for. */}
+            <CameraScanner
+              onScan={handleScan}
+              paused={outcome !== null || scan.isPending}
+            />
             <DeviceLabelField value={deviceLabel} onChange={setDeviceLabel} />
           </>
         )}
@@ -188,35 +244,27 @@ export default function DoorScannerPage() {
         {mode === "manual" && (
           <ManualEntry
             pending={manual.isPending}
-            onSubmit={(ticketNumber) =>
-              manual.mutate({
-                eventId,
-                ticketNumber,
-                deviceLabel: deviceLabel || undefined,
-              })
-            }
+            onSubmit={(ticketNumber) => admitByNumber(ticketNumber)}
           />
         )}
 
-        {mode === "list" && <DoorList eventId={eventId} />}
+        {mode === "list" && (
+          <DoorList
+            eventId={eventId}
+            admitting={manual.isPending}
+            onAdmit={(ticketNumber) => admitByNumber(ticketNumber)}
+          />
+        )}
       </div>
 
       {outcome && (
         <ScanResultScreen
           outcome={outcome}
           canOverride={isManager}
-          overriding={scan.isPending}
+          overriding={scan.isPending || manual.isPending}
           denying={deny.isPending}
           onDismiss={() => setOutcome(null)}
-          onOverride={() => {
-            if (!lastToken) return;
-            scan.mutate({
-              eventId,
-              token: lastToken,
-              deviceLabel: deviceLabel || undefined,
-              override: true,
-            });
-          }}
+          onOverride={handleOverride}
           onDeny={(reason, note) => {
             if (!outcome.ticket) return;
             deny.mutate({

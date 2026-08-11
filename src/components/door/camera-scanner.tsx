@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CameraOff, FlashlightIcon, RefreshCw } from "lucide-react";
+import {
+  CameraOff,
+  FlashlightIcon,
+  RefreshCw,
+  SwitchCamera,
+} from "lucide-react";
 
 import { Button } from "~/components/ui/button";
 
@@ -16,10 +21,28 @@ import { Button } from "~/components/ui/button";
  *
  * The module is imported dynamically: it touches `window` at module scope and
  * would break server rendering.
+ *
+ * The camera is started exactly once and then left alone. It used to be torn
+ * down and rebuilt whenever `onScan` changed identity — which is every time the
+ * scan mutation changes state, so once per scan — and re-acquiring a camera
+ * stream is slow, flickers, and sometimes just doesn't come back. Nothing in
+ * here may depend on a prop that changes per render; the callback is read
+ * through a ref instead.
  */
 
 /** Ignore repeats of the same code for this long, so one badge isn't scanned 8 times. */
 const REPEAT_SUPPRESSION_MS = 3500;
+
+/**
+ * How long the just-dismissed code stays ignored after a result clears.
+ *
+ * The phone is still pointed at the same ticket when staff tap Next — they
+ * haven't moved yet — so without this the code is read again immediately and
+ * the result screen appears never to have closed. Measured from the dismissal
+ * rather than the decode, because staff now take as long as they like reading
+ * a result and any window measured from the scan has long since lapsed.
+ */
+const POST_DISMISS_SUPPRESSION_MS = 2500;
 
 type QrScannerInstance = {
   start: () => Promise<void>;
@@ -40,31 +63,44 @@ export function CameraScanner({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const scannerRef = useRef<QrScannerInstance | null>(null);
-  const lastScanRef = useRef<{ token: string; at: number } | null>(null);
+  const lastScanRef = useRef<{
+    token: string;
+    at: number;
+    suppressFor: number;
+  } | null>(null);
+
+  // Read through refs so the boot effect below never has to re-run.
+  const onScanRef = useRef(onScan);
+  onScanRef.current = onScan;
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
 
   const [error, setError] = useState<string | null>(null);
   const [hasFlash, setHasFlash] = useState(false);
   const [ready, setReady] = useState(false);
+  const [facing, setFacing] = useState<"environment" | "user">("environment");
+  const [attempt, setAttempt] = useState(0);
 
-  const handleDecode = useCallback(
-    (token: string) => {
-      if (pausedRef.current) return;
+  // Restart the suppression window when a result clears, rather than letting
+  // it run from the original decode.
+  const wasPausedRef = useRef(paused);
+  useEffect(() => {
+    const previous = lastScanRef.current;
+    if (wasPausedRef.current && !paused && previous) {
+      lastScanRef.current = {
+        ...previous,
+        at: Date.now(),
+        suppressFor: POST_DISMISS_SUPPRESSION_MS,
+      };
+    }
+    wasPausedRef.current = paused;
+  }, [paused]);
 
-      const previous = lastScanRef.current;
-      const now = Date.now();
-      if (
-        previous?.token === token &&
-        now - previous.at < REPEAT_SUPPRESSION_MS
-      ) {
-        return;
-      }
-      lastScanRef.current = { token, at: now };
-      onScan(token);
-    },
-    [onScan],
-  );
+  const restart = useCallback(() => {
+    setError(null);
+    setReady(false);
+    setAttempt((value) => value + 1);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,7 +116,24 @@ export function CameraScanner({
 
         instance = new QrScanner(
           video,
-          (result: { data: string }) => handleDecode(result.data),
+          (result: { data: string }) => {
+            if (pausedRef.current) return;
+
+            const previous = lastScanRef.current;
+            const now = Date.now();
+            if (
+              previous?.token === result.data &&
+              now - previous.at < previous.suppressFor
+            ) {
+              return;
+            }
+            lastScanRef.current = {
+              token: result.data,
+              at: now,
+              suppressFor: REPEAT_SUPPRESSION_MS,
+            };
+            onScanRef.current(result.data);
+          },
           {
             preferredCamera: "environment",
             highlightScanRegion: true,
@@ -102,7 +155,7 @@ export function CameraScanner({
         setError(
           cause instanceof Error && cause.name === "NotAllowedError"
             ? "Camera access was blocked. Allow it in your browser settings, then reload."
-            : "Couldn't start the camera. Use manual entry below.",
+            : "Couldn't start the camera.",
         );
       }
     }
@@ -114,13 +167,34 @@ export function CameraScanner({
       instance?.destroy();
       scannerRef.current = null;
     };
-  }, [handleDecode]);
+    // `attempt` is the restart handle; nothing else may retrigger this.
+  }, [attempt]);
+
+  // iOS suspends the capture when the browser goes to the background and does
+  // not always resume it on return, which is how a phone comes out of a pocket
+  // showing a frozen frame.
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState !== "visible") return;
+      const video = videoRef.current;
+      if (video && video.readyState === 0) restart();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [restart]);
 
   if (error) {
     return (
       <div className="flex flex-col items-center gap-3 border-2 border-white/10 bg-black p-8 text-center">
         <CameraOff className="size-8 text-white/40" aria-hidden />
         <p className="text-sm text-white/60">{error}</p>
+        <Button type="button" variant="secondary" onClick={restart}>
+          <RefreshCw className="size-4" aria-hidden />
+          Restart camera
+        </Button>
+        <p className="text-xs text-white/40">
+          Manual entry and the door list still work.
+        </p>
       </div>
     );
   }
@@ -157,7 +231,20 @@ export function CameraScanner({
           size="icon"
           variant="secondary"
           aria-label="Switch camera"
-          onClick={() => void scannerRef.current?.setCamera("user")}
+          onClick={() => {
+            const next = facing === "environment" ? "user" : "environment";
+            setFacing(next);
+            void scannerRef.current?.setCamera(next);
+          }}
+        >
+          <SwitchCamera className="size-4" />
+        </Button>
+        <Button
+          type="button"
+          size="icon"
+          variant="secondary"
+          aria-label="Restart camera"
+          onClick={restart}
         >
           <RefreshCw className="size-4" />
         </Button>

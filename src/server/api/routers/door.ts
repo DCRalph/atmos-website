@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   ActivityType,
   EventStaffRole,
+  type Prisma,
   TicketEventStatus,
   TicketOrderStatus,
   TicketScanResult,
@@ -324,6 +325,10 @@ export const doorRouter = createTRPCRouter({
   /**
    * The searchable door list — the fallback when someone turns up with no
    * phone, no email and a lot of confidence.
+   *
+   * Paged rather than capped: with no search this is the entire ticket holder
+   * list, and a silent `take: 40` on an event that sold four hundred is a list
+   * that quietly lies about who is coming.
    */
   doorList: doorProcedure
     .input(
@@ -331,7 +336,9 @@ export const doorRouter = createTRPCRouter({
         eventId: z.string(),
         search: z.string().trim().max(80).default(""),
         onlyNotArrived: z.boolean().default(false),
-        limit: z.number().int().min(1).max(100).default(40),
+        limit: z.number().int().min(1).max(100).default(50),
+        /** Ticket id of the last row on the previous page. */
+        cursor: z.string().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -343,81 +350,112 @@ export const doorRouter = createTRPCRouter({
       );
 
       const search = input.search;
-      const tickets = await ctx.db.ticket.findMany({
-        where: {
-          eventId: input.eventId,
-          status: TicketStatus.VALID,
-          order: { status: TicketOrderStatus.PAID },
-          ...(search
-            ? {
-                OR: [
-                  { attendeeName: { contains: search, mode: "insensitive" } },
-                  { ticketNumber: { contains: search, mode: "insensitive" } },
-                  {
-                    order: {
-                      buyerName: { contains: search, mode: "insensitive" },
-                    },
+      const where = {
+        eventId: input.eventId,
+        status: TicketStatus.VALID,
+        order: { status: TicketOrderStatus.PAID },
+        // Filtered in the query rather than over the page, or "not arrived"
+        // would drop whoever fell past the take.
+        ...(input.onlyNotArrived
+          ? {
+              scans: {
+                none: {
+                  result: {
+                    in: [
+                      TicketScanResult.ADMITTED,
+                      TicketScanResult.OVERRIDE_ADMITTED,
+                      TicketScanResult.REENTRY,
+                    ],
                   },
-                  {
-                    order: {
-                      buyerEmail: { contains: search, mode: "insensitive" },
-                    },
+                },
+              },
+            }
+          : {}),
+        ...(search
+          ? {
+              OR: [
+                { attendeeName: { contains: search, mode: "insensitive" } },
+                { ticketNumber: { contains: search, mode: "insensitive" } },
+                {
+                  order: {
+                    buyerName: { contains: search, mode: "insensitive" },
                   },
-                  {
-                    order: {
-                      orderNumber: { contains: search, mode: "insensitive" },
-                    },
+                },
+                {
+                  order: {
+                    buyerEmail: { contains: search, mode: "insensitive" },
                   },
-                ],
-              }
+                },
+                {
+                  order: {
+                    orderNumber: { contains: search, mode: "insensitive" },
+                  },
+                },
+              ],
+            }
+          : {}),
+      } satisfies Prisma.TicketWhereInput;
+
+      const [tickets, total] = await Promise.all([
+        ctx.db.ticket.findMany({
+          where,
+          // One extra row is how we know whether there is another page.
+          take: input.limit + 1,
+          ...(input.cursor
+            ? { cursor: { id: input.cursor }, skip: 1 }
             : {}),
-        },
-        take: input.limit,
-        orderBy: [{ attendeeName: "asc" }, { ticketNumber: "asc" }],
-        select: {
-          id: true,
-          ticketNumber: true,
-          attendeeName: true,
-          tier: { select: { name: true } },
-          order: {
-            select: {
-              orderNumber: true,
-              buyerName: true,
-              buyerEmail: true,
-            },
-          },
-          scans: {
-            where: {
-              result: {
-                in: [
-                  TicketScanResult.ADMITTED,
-                  TicketScanResult.OVERRIDE_ADMITTED,
-                  TicketScanResult.REENTRY,
-                ],
+          // `ticketNumber` is unique, so this ordering is total and the cursor
+          // can't land ambiguously between two people with the same name.
+          orderBy: [{ attendeeName: "asc" }, { ticketNumber: "asc" }],
+          select: {
+            id: true,
+            ticketNumber: true,
+            attendeeName: true,
+            tier: { select: { name: true } },
+            order: {
+              select: {
+                orderNumber: true,
+                buyerName: true,
+                buyerEmail: true,
               },
             },
-            orderBy: { createdAt: "desc" },
-            take: 1,
-            select: { createdAt: true, deviceLabel: true },
+            scans: {
+              where: {
+                result: {
+                  in: [
+                    TicketScanResult.ADMITTED,
+                    TicketScanResult.OVERRIDE_ADMITTED,
+                    TicketScanResult.REENTRY,
+                  ],
+                },
+              },
+              orderBy: { createdAt: "desc" },
+              take: 1,
+              select: { createdAt: true, deviceLabel: true },
+            },
           },
-        },
-      });
+        }),
+        ctx.db.ticket.count({ where }),
+      ]);
 
-      const rows = tickets.map((ticket) => ({
-        id: ticket.id,
-        ticketNumber: ticket.ticketNumber,
-        attendeeName: ticket.attendeeName,
-        tierName: ticket.tier.name,
-        orderNumber: ticket.order.orderNumber,
-        buyerName: ticket.order.buyerName,
-        buyerEmail: ticket.order.buyerEmail,
-        admittedAt: ticket.scans[0]?.createdAt ?? null,
-        admittedDevice: ticket.scans[0]?.deviceLabel ?? null,
-      }));
+      const hasMore = tickets.length > input.limit;
+      const page = hasMore ? tickets.slice(0, input.limit) : tickets;
 
-      return input.onlyNotArrived
-        ? rows.filter((row) => row.admittedAt === null)
-        : rows;
+      return {
+        total,
+        nextCursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
+        rows: page.map((ticket) => ({
+          id: ticket.id,
+          ticketNumber: ticket.ticketNumber,
+          attendeeName: ticket.attendeeName,
+          tierName: ticket.tier.name,
+          orderNumber: ticket.order.orderNumber,
+          buyerName: ticket.order.buyerName,
+          buyerEmail: ticket.order.buyerEmail,
+          admittedAt: ticket.scans[0]?.createdAt ?? null,
+          admittedDevice: ticket.scans[0]?.deviceLabel ?? null,
+        })),
+      };
     }),
 
   /** Live feed for the scanner footer and the admin live view. */
