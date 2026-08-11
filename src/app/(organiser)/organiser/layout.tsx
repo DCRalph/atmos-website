@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { UserDropdown } from "~/components/user-dropdown";
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
-import { userHasEffectivePermission } from "~/server/utils/permissions";
+import { userHasPermission } from "~/server/utils/permissions";
 
 export const metadata: Metadata = {
   title: { absolute: "Atmos Events" },
@@ -23,10 +23,10 @@ export default async function OrganiserLayout({
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },
-    include: { permissions: true, legacyRoles: true },
+    include: { permissions: true },
   });
   const canViewEvents = user
-    ? await userHasEffectivePermission(user, "EVENT_ORGANISER", db)
+    ? userHasPermission(user, "EVENT_ORGANISER")
     : false;
   if (!canViewEvents) redirect("/");
 

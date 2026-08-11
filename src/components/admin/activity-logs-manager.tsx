@@ -57,7 +57,6 @@ function getActivityTypeBadge(type: ActivityType) {
     USER_CREATED: { label: "User Created", variant: "default" },
     USER_UPDATED: { label: "User Updated", variant: "secondary" },
     USER_DELETED: { label: "User Deleted", variant: "destructive" },
-    USER_ROLE_CHANGED: { label: "Role Changed", variant: "outline" },
     USER_PERMISSION_CHANGED: {
       label: "Permissions Changed",
       variant: "outline",
@@ -102,7 +101,6 @@ function getActivityIcon(type: ActivityType) {
     USER_CREATED: User,
     USER_UPDATED: UserCog,
     USER_DELETED: Trash2,
-    USER_ROLE_CHANGED: Shield,
     USER_PERMISSION_CHANGED: Shield,
     USER_PERMISSION_ADDED: Shield,
     USER_PERMISSION_REMOVED: Shield,

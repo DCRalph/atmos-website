@@ -7,7 +7,7 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
-import { userHasEffectivePermission } from "~/server/utils/permissions";
+import { userHasPermission } from "~/server/utils/permissions";
 import { logUserActivity } from "~/server/utils/activity-log";
 import {
   DEFAULT_BLOCK_OVERRIDES,
@@ -43,13 +43,11 @@ async function canReadTheme(
   if (!ctx.session?.user) return { ok: false, reason: "forbidden" };
   const user = await ctx.db.user.findUnique({
     where: { id: ctx.session.user.id },
-    include: { permissions: true, legacyRoles: true },
+    include: { permissions: true },
   });
   if (user) {
-    const [isAdmin, isCreator] = await Promise.all([
-      userHasEffectivePermission(user, "ADMIN", ctx.db),
-      userHasEffectivePermission(user, "CREATOR", ctx.db),
-    ]);
+    const isAdmin = userHasPermission(user, "ADMIN");
+    const isCreator = userHasPermission(user, "CREATOR");
     if (isAdmin || (isCreator && theme.ownerUserId === user.id)) {
       return { ok: true };
     }
@@ -75,7 +73,7 @@ async function assertCanEditTheme(
     }),
     ctx.db.user.findUnique({
       where: { id: ctx.session.user.id },
-      include: { permissions: true, legacyRoles: true },
+      include: { permissions: true },
     }),
   ]);
   if (!theme) {
@@ -84,10 +82,8 @@ async function assertCanEditTheme(
   if (!user) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
-  const [isAdmin, isCreator] = await Promise.all([
-    userHasEffectivePermission(user, "ADMIN", ctx.db),
-    userHasEffectivePermission(user, "CREATOR", ctx.db),
-  ]);
+  const isAdmin = userHasPermission(user, "ADMIN");
+  const isCreator = userHasPermission(user, "CREATOR");
   const isOwner = theme.ownerUserId === user.id;
   if (!isAdmin && (!isCreator || !isOwner)) {
     throw new TRPCError({

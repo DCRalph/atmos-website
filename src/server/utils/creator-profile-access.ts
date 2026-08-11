@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { userHasEffectivePermission } from "~/server/utils/permissions";
+import { userHasPermission } from "~/server/utils/permissions";
 import type { PrismaClient } from "~Prisma/client";
 
 /**
@@ -27,7 +27,7 @@ export async function assertCanEditProfile(
     }),
     ctx.db.user.findUnique({
       where: { id: ctx.session.user.id },
-      include: { permissions: true, legacyRoles: true },
+      include: { permissions: true },
     }),
   ]);
   if (!profile) {
@@ -36,10 +36,8 @@ export async function assertCanEditProfile(
   if (!user) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
-  const [isAdmin, isCreator] = await Promise.all([
-    userHasEffectivePermission(user, "ADMIN", ctx.db),
-    userHasEffectivePermission(user, "CREATOR", ctx.db),
-  ]);
+  const isAdmin = userHasPermission(user, "ADMIN");
+  const isCreator = userHasPermission(user, "CREATOR");
   if (!isAdmin && !isCreator) {
     throw new TRPCError({
       code: "FORBIDDEN",

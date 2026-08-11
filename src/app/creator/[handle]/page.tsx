@@ -15,7 +15,7 @@ import {
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { ClaimProfileCTA } from "~/components/creator/claim-profile-cta";
-import { userHasEffectivePermission } from "~/server/utils/permissions";
+import { userHasPermission } from "~/server/utils/permissions";
 import {
   parseBlockOverrides,
   resolveProfileTokens,
@@ -96,15 +96,15 @@ export default async function PublicCreatorProfilePage({
   const viewerUser = session?.user
     ? await db.user.findUnique({
         where: { id: session.user.id },
-        include: { permissions: true, legacyRoles: true },
+        include: { permissions: true },
       })
     : null;
-  const [viewerIsAdmin, viewerIsCreator] = viewerUser
-    ? await Promise.all([
-        userHasEffectivePermission(viewerUser, "ADMIN", db),
-        userHasEffectivePermission(viewerUser, "CREATOR", db),
-      ])
-    : [false, false];
+  const viewerIsAdmin = viewerUser
+    ? userHasPermission(viewerUser, "ADMIN")
+    : false;
+  const viewerIsCreator = viewerUser
+    ? userHasPermission(viewerUser, "CREATOR")
+    : false;
   const viewerIsOwner =
     viewerUser !== null && viewerIsCreator && viewerUser.id === profile.userId;
   const viewerHasProfile = Boolean(

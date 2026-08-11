@@ -12,7 +12,7 @@ import { ZodError } from "zod";
 
 import { db } from "~/server/db";
 import { auth } from "~/server/auth";
-import { userHasEffectivePermission } from "~/server/utils/permissions";
+import { userHasPermission } from "~/server/utils/permissions";
 import type { UserPermission } from "~Prisma/client";
 
 /**
@@ -138,18 +138,16 @@ export const protectedProcedure = t.procedure
 /**
  * Creator procedure
  *
- * Only accessible to users with CREATOR or ADMIN role.
+ * Only accessible to users with the CREATOR permission or full ADMIN access.
  */
 function permissionProcedure(permission: UserPermission) {
   return protectedProcedure.use(async ({ ctx, next }) => {
     const user = await ctx.db.user.findUnique({
       where: { id: ctx.session.user.id },
-      include: { permissions: true, legacyRoles: true },
+      include: { permissions: true },
     });
 
-    const hasPermission = user
-      ? await userHasEffectivePermission(user, permission, ctx.db)
-      : false;
+    const hasPermission = user ? userHasPermission(user, permission) : false;
     if (!user || !hasPermission) {
       throw new TRPCError({
         code: "FORBIDDEN",
@@ -160,7 +158,7 @@ function permissionProcedure(permission: UserPermission) {
     const isAdmin =
       permission === "ADMIN"
         ? true
-        : await userHasEffectivePermission(user, "ADMIN", ctx.db);
+        : userHasPermission(user, "ADMIN");
 
     return next({
       ctx: {
@@ -186,12 +184,12 @@ export const eventOrganiserProcedure = permissionProcedure("EVENT_ORGANISER");
 export const doorProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   const user = await ctx.db.user.findUnique({
     where: { id: ctx.session.user.id },
-    include: { permissions: true, legacyRoles: true },
+    include: { permissions: true },
   });
 
   if (!user) throw new TRPCError({ code: "UNAUTHORIZED" });
 
-  const isAdmin = await userHasEffectivePermission(user, "ADMIN", ctx.db);
+  const isAdmin = userHasPermission(user, "ADMIN");
 
   return next({
     ctx: {
@@ -205,6 +203,6 @@ export const doorProcedure = protectedProcedure.use(async ({ ctx, next }) => {
 /**
  * Admin procedure
  *
- * Only accessible to users with ADMIN role.
+ * Only accessible to users with the ADMIN permission.
  */
 export const adminProcedure = permissionProcedure("ADMIN");

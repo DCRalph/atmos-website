@@ -4,7 +4,7 @@ import { UserIndicator } from "~/components/user-indicator";
 import { UnsavedChangesProvider } from "~/components/admin/unsaved-changes-provider";
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
-import { userHasEffectivePermission } from "~/server/utils/permissions";
+import { userHasPermission } from "~/server/utils/permissions";
 
 export default async function DashboardLayout({
   children,
@@ -16,11 +16,9 @@ export default async function DashboardLayout({
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },
-    include: { permissions: true, legacyRoles: true },
+    include: { permissions: true },
   });
-  const isCreator = user
-    ? await userHasEffectivePermission(user, "CREATOR", db)
-    : false;
+  const isCreator = user ? userHasPermission(user, "CREATOR") : false;
   if (!isCreator) redirect("/");
 
   return (

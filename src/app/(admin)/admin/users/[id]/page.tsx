@@ -82,11 +82,9 @@ export default function UserManagementPage({ params }: PageProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const { data: user, isLoading, refetch } = api.users.getById.useQuery({ id });
-  const migrationStatus = api.users.permissionMigrationStatus.useQuery();
   const setPermissions = api.users.setPermissions.useMutation({
     onSuccess: async () => {
       await refetch();
-      await migrationStatus.refetch();
       setSelectedPermissions(null);
     },
   });
@@ -282,12 +280,6 @@ export default function UserManagementPage({ params }: PageProps) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {migrationStatus.data && !migrationStatus.data.cutoverComplete && (
-              <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
-                Permission rollout is in bootstrap mode. Assign Admin to the
-                intended administrator to cut over from legacy roles.
-              </div>
-            )}
             <div className="flex flex-col gap-3">
               {ALL_PERMISSIONS.map((permission) => {
                 const checked = nextPermissionsSet.has(permission);

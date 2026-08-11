@@ -9,7 +9,7 @@ location means adding a preset — not writing an upload path.
 browser                         server (tRPC)                    S3
    |                                 |                            |
    |  1. hash the file (SHA-256)     |                            |
-   |  2. uploads.start ------------->|  authorize (role + owner)  |
+   |  2. uploads.start ------------->| authorize (permission + owner) |
    |                                 |  validate name/size/type   |
    |                                 |  dedupe on source hash     |
    |                                 |  reserve file_upload row   |

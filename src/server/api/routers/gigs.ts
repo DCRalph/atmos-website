@@ -11,7 +11,7 @@ import {
 } from "~/lib/date-utils";
 import { softDeleteFile } from "~/server/uploads/files";
 import { FileUploadStatus, GigMode, type GigMedia } from "~Prisma/client";
-import { userHasEffectivePermission } from "~/server/utils/permissions";
+import { userHasPermission } from "~/server/utils/permissions";
 import type { SerializedEditorState } from "lexical";
 import { Prisma } from "~Prisma/client";
 
@@ -68,9 +68,9 @@ const isAdminSession = async (ctx: GigsContext): Promise<boolean> => {
   if (!userId) return false;
   const user = await ctx.db.user.findUnique({
     where: { id: userId },
-    include: { permissions: true, legacyRoles: true },
+    include: { permissions: true },
   });
-  return user ? userHasEffectivePermission(user, "ADMIN", ctx.db) : false;
+  return user ? userHasPermission(user, "ADMIN") : false;
 };
 
 const redactGigForPublic = <T extends { mode?: GigMode }>(gig: T) => {

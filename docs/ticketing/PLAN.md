@@ -21,7 +21,7 @@ has moved.
 | Wallet | **Apple + Google Wallet.** Requires an Apple Developer Program membership + Pass Type ID cert, and a Google Wallet issuer account + GCP service account. |
 | QR | **Static, HMAC-signed opaque token.** First scan wins; later scans report how long ago. |
 | Scanner | **Online-only** web scanner. Every scan hits the server, so duplicate detection is always correct. |
-| Door access | New **`DOOR_STAFF`** role, assigned per event. |
+| Door access | Authenticated users assigned directly to an event through `TicketEventStaff`. |
 | Re-entry | Warn loudly on a second scan (`ALREADY ADMITTED — 14 min ago`) with an **Admit anyway** override that is logged against the staff member. |
 | Tiers | Per-tier allocation **+** optional sale window **+** manual on/off. Auto-advance when a tier sells out. Optional overall event capacity. |
 | Free tickets | Per-tier: price 0 skips Stripe entirely and issues instantly, with a per-email cap. A tier can optionally require admin approval instead (guest list). |
@@ -371,7 +371,7 @@ model WalletPassRegistration {
 
 Also required:
 
-- `UserRole` enum gains **`DOOR_STAFF`**.
+- Door access is scoped exclusively through `TicketEventStaff`; there is no global door permission.
 - `Gig` gains `ticketEvents TicketEvent[]` (back-relation). The existing `Gig.ticketLink`
   stays for externally-ticketed gigs; when a `TicketEvent` is linked it takes priority.
 - `ActivityType` gains: `TICKET_EVENT_CREATED/UPDATED/DELETED/PUBLISHED/CANCELLED`,
@@ -602,7 +602,7 @@ Each phase ends in a working, shippable state. Everything sits behind a
 
 | # | Phase | Contents |
 | --- | --- | --- |
-| 0 | Foundations | Schema + migration, `DOOR_STAFF` role, env vars, Stripe account in test mode, money/QR/numbering utils with tests. |
+| 0 | Foundations | Schema + migration, per-event staff assignments, env vars, Stripe account in test mode, money/QR/numbering utils with tests. |
 | 1 | Admin + public event pages | Event and tier CRUD, poster upload via the existing preset system, gig linking, public `/events` and `/events/[slug]`, buy panel on gig pages. No sales yet. |
 | 2 | Checkout | Inventory holds, embedded Payment Element + express buttons, webhook, idempotent issuance, `/tickets/[token]`, post-payment attendee names, confirmation email with QR + wallet links. **The core.** |
 | 3 | Codes, free tiers, box office | Discount codes with all their limits, free/instant tiers, approval tiers, admin box-office issuance (cash / terminal / comp), single-ticket refunds + refund webhook handling. |
@@ -696,6 +696,6 @@ In rough order:
    `openssl` commands in `.env.example`.
 7. Google Cloud: service account + Google Wallet issuer account.
 8. `CRON_SECRET`, and confirm the Vercel cron in `vercel.json` is running.
-9. Give someone the `DOOR_STAFF` role and assign them to a test event; run a
-   real scan on a real phone.
+9. Assign someone to a test event as door staff; run a real scan on a real
+   phone.
 10. Swap to Stripe live keys.

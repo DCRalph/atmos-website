@@ -7,7 +7,7 @@ import { LayoutWithSideBarHeader } from "~/components/layout-with-sideBar-header
 import { DashboardSideBar } from "~/components/admin/admin-sidebar";
 import { DashboardHeader } from "~/components/dash-header";
 import { UnsavedChangesProvider } from "~/components/admin/unsaved-changes-provider";
-import { userHasEffectivePermission } from "~/server/utils/permissions";
+import { userHasPermission } from "~/server/utils/permissions";
 
 export const metadata: Metadata = {
   title: { absolute: "Atmos Admin" },
@@ -28,12 +28,10 @@ export default async function AdminLayout({
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },
-    include: { permissions: true, legacyRoles: true },
+    include: { permissions: true },
   });
 
-  const isAdmin = user
-    ? await userHasEffectivePermission(user, "ADMIN", db)
-    : false;
+  const isAdmin = user ? userHasPermission(user, "ADMIN") : false;
 
   if (!isAdmin) {
     redirect("/login");

@@ -14,9 +14,9 @@ export const mb = (n: number) => n * 1024 * 1024;
 export type UploadAccess =
   /** Any signed-in user. */
   | "user"
-  /** Users with the CREATOR or ADMIN role. */
+  /** Users with the CREATOR permission or full ADMIN access. */
   | "creator"
-  /** Users with the ADMIN role. */
+  /** Users with the ADMIN permission. */
   | "admin";
 
 /** Output container for a processed image. `original` keeps the source format. */
@@ -72,7 +72,7 @@ export type UploadPreset<TContext = Record<string, string>> = {
   label: string;
   /** One-line explanation of where this preset is used. */
   description: string;
-  /** Minimum role required. Ownership checks live in `~/server/uploads/authorize`. */
+  /** Required permission level. Ownership checks live in `~/server/uploads/authorize`. */
   access: UploadAccess;
   /**
    * Accepted MIME types. Supports exact types (`application/pdf`) and wildcard

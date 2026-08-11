@@ -4,7 +4,7 @@ import type { Metadata, Viewport } from "next";
 
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
-import { userHasEffectivePermission } from "~/server/utils/permissions";
+import { userHasPermission } from "~/server/utils/permissions";
 
 export const metadata: Metadata = {
   title: { absolute: "Atmos Door" },
@@ -40,15 +40,13 @@ export default async function DoorLayout({
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },
-    include: { permissions: true, legacyRoles: true },
+    include: { permissions: true },
   });
 
-  const [isAdmin, assignmentCount] = user
-    ? await Promise.all([
-        userHasEffectivePermission(user, "ADMIN", db),
-        db.ticketEventStaff.count({ where: { userId: user.id } }),
-      ])
-    : [false, 0];
+  const isAdmin = user ? userHasPermission(user, "ADMIN") : false;
+  const assignmentCount = user
+    ? await db.ticketEventStaff.count({ where: { userId: user.id } })
+    : 0;
 
   const canScan = isAdmin || assignmentCount > 0;
 

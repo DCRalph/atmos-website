@@ -8,15 +8,6 @@ datasource db {
   // url      = env("DATABASE_URL")
 }
 
-enum UserRole {
-  /// Legacy rollout-only roles. Authorization switches permanently to
-  /// `UserPermission` as soon as the first ADMIN permission is assigned.
-  USER
-  CREATOR
-  ADMIN
-  DOOR_STAFF
-}
-
 enum UserPermission {
   EVENT_ORGANISER
   CREATOR
@@ -69,9 +60,6 @@ model User {
   email                String
   emailVerified        Boolean                    @default(false)
   image                String?
-  /// Temporary legacy assignments retained for the two-release cutover.
-  /// Remove these after at least one explicit ADMIN permission exists.
-  legacyRoles          UserRoleAssignment[]
   permissions          UserPermissionAssignment[]
   createdAt            DateTime                   @default(now())
   updatedAt            DateTime                   @default(now()) @updatedAt
@@ -85,19 +73,6 @@ model User {
 
   @@unique([email])
   @@map("user")
-}
-
-model UserRoleAssignment {
-  id        String   @id @default(cuid())
-  userId    String
-  role      UserRole
-  createdAt DateTime @default(now())
-  createdBy String?
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, role])
-  @@index([role])
-  @@map("user_role_assignment")
 }
 
 model UserPermissionAssignment {
@@ -732,7 +707,6 @@ enum ActivityType {
   USER_CREATED
   USER_UPDATED
   USER_DELETED
-  USER_ROLE_CHANGED
   INVITE_CREATED
   INVITE_DELETED
   GIG_CREATED
@@ -764,8 +738,6 @@ enum ActivityType {
   FILE_DELETED
   LOGIN
   LOGOUT
-  USER_ROLE_ADDED
-  USER_ROLE_REMOVED
   USER_PERMISSION_CHANGED
   USER_PERMISSION_ADDED
   USER_PERMISSION_REMOVED

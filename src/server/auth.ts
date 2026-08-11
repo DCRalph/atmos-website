@@ -153,13 +153,6 @@ export const auth = betterAuth({
   //         },
   //       });
 
-  //       // Set user role from invite
-  //       await db.user.update({
-  //         where: { id: newSession.user.id },
-  //         data: {
-  //           role: invite.role as "USER" | "CREATOR" | "ADMIN",
-  //         },
-  //       });
   //     } else if (invite?.used) {
   //       // Invite was already used - this shouldn't happen for email signup (caught in before hook)
   //       // but could happen for social signup

@@ -4,7 +4,6 @@ import { createTRPCRouter, adminProcedure } from "~/server/api/trpc";
 import { logUserActivity } from "~/server/utils/activity-log";
 import {
   grantUserPermission,
-  isPermissionCutoverComplete,
   revokeUserPermission,
 } from "~/server/utils/permissions";
 import { ActivityType } from "~Prisma/client";
@@ -252,22 +251,6 @@ export const usersRouter = createTRPCRouter({
         lastLoginAt,
       };
     }),
-
-  permissionMigrationStatus: adminProcedure.query(async ({ ctx }) => {
-    const [cutoverComplete, assignedUsers, adminCount] = await Promise.all([
-      isPermissionCutoverComplete(ctx.db),
-      ctx.db.userPermissionAssignment.groupBy({ by: ["userId"] }),
-      ctx.db.userPermissionAssignment.count({
-        where: { permission: "ADMIN" },
-      }),
-    ]);
-
-    return {
-      cutoverComplete,
-      assignedUserCount: assignedUsers.length,
-      adminCount,
-    };
-  }),
 
   delete: adminProcedure
     .input(z.object({ id: z.string() }))
