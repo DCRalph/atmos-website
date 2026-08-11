@@ -558,7 +558,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
                 </Field>
                 <Field
                   id="gig-subtitle"
-                  label="Subtitle"
+                  label="Subtitle (venue)"
                   error={errors.subtitle}
                   required
                 >

@@ -9,7 +9,7 @@ export default function AdminSettingsPage() {
       description="Manage application configuration and key-value store"
     >
       <div className="space-y-10">
-        <TicketingSettings />
+        {/* <TicketingSettings /> */}
         <SettingsManager />
       </div>
     </AdminSection>
