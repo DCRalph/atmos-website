@@ -10,7 +10,6 @@ import { MobileMenuProvider } from "~/components/mobile-menu-provider";
 import { LayoutGroupProvider } from "~/components/layout-group-provider";
 import { MerchCartProvider } from "~/components/merch/merch-cart-provider";
 import { ConfirmProvider } from "~/components/confirm-provider";
-import { ViewTransition } from "react";
 import { montserrat } from "~/lib/fonts";
 
 import NextTopLoader from "nextjs-toploader";
@@ -70,16 +69,18 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body>
-        <ViewTransition>
-          <LayoutGroupProvider>
-            <ThemeOverrideProvider
-            // defaultForcedTheme="dark"
-            >
-              <TRPCReactProvider>
-                <MerchCartProvider>
-                  <MobileMenuProvider>
-                    <ConfirmProvider>
-
+        {/* No app-wide <ViewTransition>: it froze a snapshot of the old page
+            over every navigation, so a click changed the URL but not the
+            screen. It also needs `experimental.viewTransition` in
+            next.config.js, which is not set. */}
+        <LayoutGroupProvider>
+          <ThemeOverrideProvider
+          // defaultForcedTheme="dark"
+          >
+            <TRPCReactProvider>
+              <MerchCartProvider>
+                <MobileMenuProvider>
+                  <ConfirmProvider>
                     <NextTopLoader height={4} showSpinner={false} />
 
                     <div
@@ -96,7 +97,6 @@ export default function RootLayout({
                       id="app-content-wrapper"
                       className="origin-center transition-all duration-700 ease-out"
                     >
-
                       {/* <RightMenuRail/> */}
                       {children}
                     </div>
@@ -107,13 +107,12 @@ export default function RootLayout({
                       endpoint="/fuckoffaddblockers"
                       scriptSrc="/fuckoffaddblocker/script.js"
                     />
-                    </ConfirmProvider>
-                  </MobileMenuProvider>
-                </MerchCartProvider>
-              </TRPCReactProvider>
-            </ThemeOverrideProvider>
-          </LayoutGroupProvider>
-        </ViewTransition>
+                  </ConfirmProvider>
+                </MobileMenuProvider>
+              </MerchCartProvider>
+            </TRPCReactProvider>
+          </ThemeOverrideProvider>
+        </LayoutGroupProvider>
       </body>
     </html>
   );
