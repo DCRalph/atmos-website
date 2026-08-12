@@ -1,7 +1,6 @@
 import "server-only";
 
 import {
-  type TicketAccessLevel,
   type TicketDenyReason,
   TicketOrderStatus,
   TicketScanResult,
@@ -55,7 +54,7 @@ export type ScanOutcome = {
     ticketNumber: string;
     tierName: string;
     /** What this ticket gets them past — which wristband the door hands over. */
-    accessLevel: TicketAccessLevel;
+    accessLevel: string;
     attendeeName: string | null;
     buyerName: string | null;
     buyerEmail: string | null;

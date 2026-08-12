@@ -5,7 +5,6 @@ import { TRPCError } from "@trpc/server";
 import {
   PaymentMethodKind,
   type Prisma,
-  type TicketAccessLevel,
   TicketOrderStatus,
   TicketStatus,
 } from "~Prisma/client";
@@ -56,7 +55,7 @@ export type CompAccounting = {
   /** Named recipients — the people a grant was made to. */
   hosts: number;
   handouts: { total: number; sent: number; unsent: number };
-  byLevel: Partial<Record<TicketAccessLevel, number>>;
+  byLevel: Record<string, number>;
   /** Comps that actually turned up. */
   admitted: number;
   /** 0 when within budget, else how far past it. */
@@ -107,7 +106,7 @@ export async function compAccounting(
     }),
   ]);
 
-  const byLevel: Partial<Record<TicketAccessLevel, number>> = {};
+  const byLevel: Record<string, number> = {};
   let hosts = 0;
   let handoutsSent = 0;
   let handoutsTotal = 0;
@@ -215,7 +214,7 @@ function overageReasons(
 // ------------------------------------------------------------------ issuing
 
 export type CompHandoutLine = {
-  accessLevel: TicketAccessLevel;
+  accessLevel: string;
   quantity: number;
 };
 
@@ -248,7 +247,7 @@ export async function issueComp({
   eventId: string;
   recipientName: string;
   recipientEmail?: string | null;
-  accessLevel: TicketAccessLevel;
+  accessLevel: string;
   handouts?: CompHandoutLine[];
   notes?: string | null;
   /** Set after the admin has seen and accepted an overage warning. */

@@ -6,12 +6,7 @@ import { PKPass } from "passkit-generator";
 import { env } from "~/env";
 import { buildTicketToken } from "~/server/ticketing/qr";
 import { formatEventDateLong, formatEventTime } from "~/lib/ticketing/dates";
-import {
-  accessLevel,
-  accessLevelRank,
-  isElevated,
-  ticketTypeName,
-} from "~/lib/ticketing/access-levels";
+import { resolveLevel } from "~/server/ticketing/access-level-store";
 import {
   resolvePassTheme,
   toPassRgb,
@@ -93,12 +88,33 @@ export async function buildApplePass({
    * dark room. General admission is left entirely alone — the event's design is
    * the point, and most tickets are GA.
    */
-  const level = accessLevel(ticket.accessLevel);
+  // Read from the table rather than the retired enum, so a level renamed or
+  // recoloured in admin shows on the next pass without a deploy.
+  const level = await resolveLevel(ticket.accessLevel);
+  const elevated = level.rank > 0;
   const baseTheme = resolvePassTheme(event);
   const theme = level.passAccent
     ? { ...baseTheme, accentHex: level.passAccent }
     : baseTheme;
-  const images = await getPassImages(theme, accessLevelRank(ticket.accessLevel));
+
+  // The chip is drawn into the band rather than added as a field, which is both
+  // how it gets a background and how the level stays in exactly one place.
+  // Inverted on purpose: the chip sits on the accent-flooded end of the band,
+  // so filling it with that same accent leaves it readable only by its edge. A
+  // dark chip with accent type is the pairing that actually reads.
+  const badge =
+    elevated && level.passAccent
+      ? {
+          text: level.short,
+          background: baseTheme.backgroundHex,
+          foreground: level.passAccent,
+        }
+      : null;
+
+  const images = await getPassImages(theme, level.intensity, badge);
+
+  const tierFieldValue =
+    ticket.tier?.name ?? (elevated ? null : level.label);
 
   const doorsText = event.doorsAt
     ? formatEventTime(event.doorsAt, event.timezone)
@@ -152,15 +168,11 @@ export async function buildApplePass({
           : []),
       ],
       auxiliaryFields: [
-        {
-          key: "tier",
-          label: "TICKET",
-          value: ticketTypeName(ticket),
-        },
-        // Only for tickets that get you somewhere extra. On a GA pass this
-        // would just be a second field saying "General".
-        ...(isElevated(ticket.accessLevel)
-          ? [{ key: "access", label: "ACCESS", value: level.label }]
+        // A comp has no tier, so this used to fall back to the access level —
+        // printing the exact text already on the chip. The tier name is the
+        // only thing worth saying here; without one the chip has it covered.
+        ...(tierFieldValue
+          ? [{ key: "tier", label: "TICKET", value: tierFieldValue }]
           : []),
         ...(ticket.attendeeName
           ? [{ key: "name", label: "NAME", value: ticket.attendeeName }]

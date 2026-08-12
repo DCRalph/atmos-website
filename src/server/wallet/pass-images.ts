@@ -2,7 +2,11 @@ import "server-only";
 
 import sharp from "sharp";
 
-import { stripSvg, type PassTheme } from "~/lib/ticketing/pass-theme";
+import {
+  stripSvg,
+  type PassTheme,
+  type StripBadge,
+} from "~/lib/ticketing/pass-theme";
 import { ATMOS_ICON_PNG, ATMOS_WORDMARK_PNG } from "./pass-logo";
 
 /**
@@ -32,7 +36,11 @@ type ImageSet = Record<string, Buffer>;
  */
 const themedCache = new Map<string, ImageSet>();
 
-function themeKey(theme: PassTheme, intensity: number): string {
+function themeKey(
+  theme: PassTheme,
+  intensity: number,
+  badge: StripBadge | null,
+): string {
   return [
     theme.stripStyle,
     theme.accentHex,
@@ -40,6 +48,7 @@ function themeKey(theme: PassTheme, intensity: number): string {
     theme.foregroundHex,
     theme.labelHex,
     intensity.toFixed(2),
+    badge ? `${badge.text}:${badge.background}:${badge.foreground}` : "-",
   ].join("|");
 }
 
@@ -158,8 +167,9 @@ async function getBrandImages(): Promise<ImageSet> {
 export async function getPassImages(
   theme: PassTheme,
   intensity = 0,
+  badge: StripBadge | null = null,
 ): Promise<ImageSet> {
-  const key = themeKey(theme, intensity);
+  const key = themeKey(theme, intensity, badge);
   const hit = themedCache.get(key);
   if (hit) return hit;
 
@@ -168,9 +178,9 @@ export async function getPassImages(
   // Strip on an event ticket is 375x98pt. Rendered at each scale rather than
   // upscaled, so the hatch and bar edges stay hard on a 3x screen.
   const [strip, strip2x, strip3x] = await Promise.all([
-    renderSvg(stripSvg(theme, 375, 98, intensity), 375, 98),
-    renderSvg(stripSvg(theme, 750, 196, intensity), 750, 196),
-    renderSvg(stripSvg(theme, 1125, 294, intensity), 1125, 294),
+    renderSvg(stripSvg(theme, 375, 98, intensity, badge), 375, 98),
+    renderSvg(stripSvg(theme, 750, 196, intensity, badge), 750, 196),
+    renderSvg(stripSvg(theme, 1125, 294, intensity, badge), 1125, 294),
   ]);
 
   const images: ImageSet = {

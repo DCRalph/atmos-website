@@ -137,6 +137,22 @@ export function toPassRgb(hex: string): string {
  * a small preview. Kept as a string rather than JSX because the server side
  * hands it to sharp, which wants markup.
  */
+/**
+ * The access-level chip drawn onto the band.
+ *
+ * Wallet has no per-field background, so a level that needs to stand out has to
+ * be part of the artwork. Drawn here rather than added as another field, which
+ * is also what keeps the level to exactly one place on the pass.
+ */
+export type StripBadge = {
+  /** Short form — `AAA`, `VIP`. A label would crowd the band. */
+  text: string;
+  /** The chip fill. The level's own colour. */
+  background: string;
+  /** Text on the chip. */
+  foreground: string;
+};
+
 export function stripSvg(
   theme: PassTheme,
   width: number,
@@ -147,6 +163,7 @@ export function stripSvg(
    * pass without the organiser having to design one per tier.
    */
   intensity = 0,
+  badge: StripBadge | null = null,
 ): string {
   const { accentHex: accent, backgroundHex: ground } = theme;
   const clamped = Math.min(1, Math.max(0, intensity));
@@ -214,5 +231,42 @@ export function stripSvg(
     }
   })();
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${body}${theme.stripStyle === "NONE" ? "" : edges}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${body}${theme.stripStyle === "NONE" ? "" : edges}${badgeSvg(badge, width, height)}</svg>`;
+}
+
+/**
+ * The chip, right-aligned on the band.
+ *
+ * Wallet draws the event name over the left of the strip, so the right is the
+ * only safe place for this. Width is estimated from the character count —
+ * there is no text metrics API here, and 0.62em per character is close enough
+ * for bold Helvetica at these sizes that the padding absorbs the error.
+ */
+function badgeSvg(
+  badge: StripBadge | null,
+  width: number,
+  height: number,
+): string {
+  if (!badge) return "";
+
+  const fontSize = Math.round(height * 0.2);
+  const padX = Math.round(fontSize * 0.75);
+  const boxHeight = Math.round(fontSize * 1.9);
+  const boxWidth = Math.round(
+    badge.text.length * fontSize * 0.62 + padX * 2 + fontSize * 0.35,
+  );
+  const margin = Math.round(height * 0.14);
+  const x = width - boxWidth - margin;
+  const y = Math.round((height - boxHeight) / 2);
+
+  return `
+    <g>
+      <rect x="${x}" y="${y}" width="${boxWidth}" height="${boxHeight}"
+            fill="${badge.background}"/>
+      <text x="${x + boxWidth / 2}" y="${y + boxHeight / 2}"
+            font-family="Helvetica,Arial,sans-serif" font-size="${fontSize}"
+            font-weight="700" letter-spacing="${(fontSize * 0.14).toFixed(2)}"
+            fill="${badge.foreground}" text-anchor="middle"
+            dominant-baseline="central">${badge.text}</text>
+    </g>`;
 }

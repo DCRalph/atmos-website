@@ -10,6 +10,7 @@ import {
   Palette,
   ScanLine,
   Settings,
+  ShieldCheck,
   ShoppingBag,
   Sparkles,
   Tag,
@@ -96,6 +97,13 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         url: "/admin/discount-codes",
         icon: BadgePercent,
         keywords: ["promotions", "coupons"],
+      },
+      {
+        title: "Access levels",
+        description: "What a ticket gets you past, and its colour on a pass",
+        url: "/admin/access-levels",
+        icon: ShieldCheck,
+        keywords: ["vip", "guest list", "aaa", "artist", "crew", "backstage"],
       },
       {
         title: "Merch",
