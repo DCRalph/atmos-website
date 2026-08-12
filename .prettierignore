@@ -1,0 +1,7 @@
+# The Expo app formats itself with its own Prettier run — the Tailwind class
+# sorter configured here has no business reordering React Native styles.
+mobile/
+
+.next/
+node_modules/
+src/prisma/generated/

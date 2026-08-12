@@ -46,6 +46,10 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    // The Expo app has its own toolchain, its own tsconfig and its own
+    // React Native types. Type-checking it from here makes the web build fail
+    // on JSX and module resolution it was never meant to understand.
+    "mobile"
   ]
 }

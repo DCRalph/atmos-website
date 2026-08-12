@@ -1,0 +1,22 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    // The app's own code lives behind `@/`. `~/` is left meaning exactly what
+    // it means in the web project, because pulling in `AppRouter` drags the
+    // whole server type graph with it and every one of those files imports
+    // itself as `~/server/...`. Giving the app a different prefix is what stops
+    // the two alias schemes colliding.
+    "paths": {
+      "@/*": ["./src/*"],
+      "~/*": ["../src/*"],
+      "~Prisma/*": ["../src/prisma/generated/prisma/*"]
+    },
+    // Type-checking the server graph means type-checking code written against
+    // web globals (Headers, Request, URL). They are types only — none of it is
+    // bundled — but tsc still has to know the names.
+    "lib": ["ESNext", "DOM"]
+  },
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
+  "exclude": ["node_modules"]
+}

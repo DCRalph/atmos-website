@@ -70,9 +70,44 @@ model User {
   creatorProfile       CreatorProfile?
   creatorClaimRequests CreatorClaimRequest[]      @relation("ClaimRequestingUser")
   ownedCreatorThemes   CreatorProfileTheme[]      @relation("OwnedCreatorThemes")
+  deviceTokens         DeviceToken[]
 
   @@unique([email])
   @@map("user")
+}
+
+/// A phone that has agreed to receive notifications.
+///
+/// `userId` is nullable on purpose: somebody who has installed the app but
+/// never signed in should still hear that a lineup dropped. It gets filled in
+/// when they do sign in, and cleared on sign-out, so a shared handset never
+/// carries the last person's ticket notifications.
+///
+/// Distinct from `WalletPassRegistration`, which is Apple's own pass-update
+/// channel and has nothing to do with app notifications.
+model DeviceToken {
+  id String @id @default(cuid())
+
+  /// Expo push token — `ExponentPushToken[...]`.
+  token    String  @unique
+  platform String
+  /// "William's iPhone", for the account screen and for revoking one device.
+  label    String?
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Which kinds of notification this device wants.
+  gigAnnouncements Boolean @default(true)
+  doorReminders    Boolean @default(true)
+
+  /// Refreshed on every app launch, so dead installs can be pruned.
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+  @@map("device_token")
 }
 
 model UserPermissionAssignment {
@@ -938,7 +973,14 @@ enum DiscountCodeType {
 enum PaymentMethodKind {
   STRIPE
   CASH
+  /// An external eftpos machine. The sale is only *recorded* here — the money
+  /// moved before anybody pressed a button.
   TERMINAL
+  /// Contactless taken on the staff member's own iPhone, through Stripe
+  /// Terminal. Distinct from TERMINAL because the money moves inside our flow
+  /// and can decline, and distinct from STRIPE so door card takings stay
+  /// separable from online sales in reporting.
+  TAP_TO_PAY
   COMP
   FREE
 }

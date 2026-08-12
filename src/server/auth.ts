@@ -5,14 +5,38 @@ import { db } from "~/server/db";
 // import { createAuthMiddleware } from "better-auth/api";
 // import { z } from "zod";
 import { lastLoginMethod } from "better-auth/plugins";
+import { expo } from "@better-auth/expo";
+import { sendVerificationEmail } from "~/server/auth-emails";
 
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
   database: prismaAdapter(db, {
     provider: "postgresql",
   }),
+  emailVerification: {
+    sendOnSignUp: true,
+    // Straight into a signed-in session once confirmed — making somebody type
+    // their password again immediately after proving they own the address is
+    // friction with nothing behind it.
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      await sendVerificationEmail({
+        to: user.email,
+        name: user.name || null,
+        url,
+      });
+    },
+  },
   emailAndPassword: {
     enabled: true,
+    // Off until existing accounts are grandfathered — `emailVerified` defaults
+    // to false and this site has never asked, so flipping it first would lock
+    // out every current password user. Run
+    // `bun prisma/backfill-email-verified.ts` (see the file's header), confirm
+    // the count, then set this to `true`.
+    requireEmailVerification: false,
+    // Unverified users can still ask for a fresh link from the account screen.
+    sendOnSignIn: false,
   },
   socialProviders: {
     google: {
@@ -20,7 +44,10 @@ export const auth = betterAuth({
       clientSecret: env.GOOGLE_CLIENT_SECRET,
     },
   },
-  plugins: [lastLoginMethod()],
+  // The mobile app has no cookie jar and comes back from OAuth through a deep
+  // link, so its scheme has to be trusted explicitly.
+  trustedOrigins: ["atmos://", "atmos://*"],
+  plugins: [lastLoginMethod(), expo()],
   // hooks: {
   //   before: createAuthMiddleware(async (ctx) => {
   //     // Check for invites before allowing signup

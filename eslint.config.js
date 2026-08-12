@@ -30,7 +30,9 @@ const nextCoreWebVitalsCompat = nextCoreWebVitals.map((config) => {
 
 export default tseslint.config(
   {
-    ignores: [".next"],
+    // `mobile` carries its own Expo lint setup; linting React Native from the
+    // Next.js config trips the type-aware rules on a tsconfig they don't share.
+    ignores: [".next", "mobile"],
   },
   ...nextCoreWebVitalsCompat,
   {

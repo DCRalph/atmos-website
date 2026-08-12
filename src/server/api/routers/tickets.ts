@@ -6,13 +6,18 @@ import {
   TicketOrderStatus,
   TicketStatus,
 } from "~Prisma/client";
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "~/server/api/trpc";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
 import { buildTicketToken } from "~/server/ticketing/qr";
 import { renderQrSvg } from "~/server/ticketing/qr-image";
 import {
   findOrderByAccessToken,
   findTicketByAccessToken,
+  orderAccessToken,
   syncMarketingConsent,
   ticketAccessToken,
 } from "~/server/ticketing/orders";
@@ -568,5 +573,116 @@ export const ticketsRouter = createTRPCRouter({
       }
 
       return { ok: true as const, sentTo: order.buyerEmail };
+    }),
+
+  /**
+   * Every order this account can claim — the app's "My tickets".
+   *
+   * Two ways an order belongs to somebody. `userId` is set when they were
+   * already signed in at checkout, which is rare. The common case is a guest
+   * checkout under an email address they later signed up with, so a *verified*
+   * address matches too.
+   *
+   * The verification requirement is the whole security model here: an
+   * unverified address is just a string somebody typed, and matching on it
+   * would hand a stranger's tickets to anybody willing to type their email.
+   */
+  mine: protectedProcedure.query(async ({ ctx }) => {
+    const user = await ctx.db.user.findUnique({
+      where: { id: ctx.session.user.id },
+      select: { email: true, emailVerified: true },
+    });
+
+    const claimableEmail =
+      user?.emailVerified && user.email ? user.email.toLowerCase() : null;
+
+    const orders = await ctx.db.ticketOrder.findMany({
+      where: {
+        status: TicketOrderStatus.PAID,
+        OR: [
+          { userId: ctx.session.user.id },
+          ...(claimableEmail
+            ? [{ buyerEmail: { equals: claimableEmail, mode: "insensitive" as const } }]
+            : []),
+        ],
+      },
+      orderBy: { event: { startsAt: "desc" } },
+      select: {
+        id: true,
+        orderNumber: true,
+        accessTokenVersion: true,
+        event: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            startsAt: true,
+            doorsAt: true,
+            timezone: true,
+            venueName: true,
+            isR18: true,
+            status: true,
+          },
+        },
+        tickets: {
+          where: { status: TicketStatus.VALID },
+          select: { id: true },
+        },
+      },
+    });
+
+    return orders.map((order) => ({
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      event: order.event,
+      ticketCount: order.tickets.length,
+      // The app needs this to open the order and to build wallet-pass URLs;
+      // it is the same credential already sitting in the buyer's inbox.
+      accessToken: orderAccessToken(order),
+    }));
+  }),
+
+  /**
+   * Attach an order to the signed-in account.
+   *
+   * For the cases `mine` cannot cover: bought on a different email, forwarded
+   * by a friend, or an address they have not verified. Proof is the access
+   * token they already hold — the same credential that opens the order on the
+   * web — so this grants nothing they could not already reach.
+   */
+  claim: protectedProcedure
+    .input(z.object({ accessToken: z.string().min(8).max(400) }))
+    .mutation(async ({ ctx, input }) => {
+      await enforceRateLimit({
+        key: `ticket-claim:${ctx.session.user.id}`,
+        limit: 20,
+        windowSeconds: 60 * 10,
+      });
+
+      const order = await findOrderByAccessToken(input.accessToken);
+      if (!order) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "That ticket link isn't valid. Check it and try again.",
+        });
+      }
+
+      // Already somebody else's. Not an error worth explaining in detail —
+      // saying whose would leak the other account.
+      if (order.userId && order.userId !== ctx.session.user.id) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "That order is already saved to another account.",
+        });
+      }
+
+      if (!order.userId) {
+        await ctx.db.ticketOrder.update({
+          where: { id: order.id },
+          data: { userId: ctx.session.user.id },
+        });
+      }
+
+      return { ok: true as const, orderId: order.id };
     }),
 });

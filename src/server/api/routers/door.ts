@@ -20,6 +20,12 @@ import {
   ticketState,
 } from "~/server/ticketing/scan";
 import { sellAtDoor } from "~/server/ticketing/box-office";
+import {
+  cancelPendingOrder,
+  createPendingOrder,
+  issueTicketsForOrder,
+} from "~/server/ticketing/orders";
+import { getStripe, isStripeConfigured } from "~/server/stripe";
 import { compAccounting, issueComp } from "~/server/ticketing/comps";
 import { sendCompTicketEmail } from "~/server/ticketing/email/send";
 import { buildTicketToken } from "~/server/ticketing/qr";
@@ -772,6 +778,225 @@ export const doorRouter = createTRPCRouter({
         admittedNow: input.admitNow,
         admitted: await admittedCount(input.eventId),
       };
+    }),
+
+  /**
+   * Step one of a Tap to Pay sale: hold the stock, open the payment.
+   *
+   * This is the branch where the door's usual assumption breaks. Cash and
+   * eftpos are a *record* of money that already moved, so `sellAtDoor` can
+   * mint tickets in the same breath and nothing can fail in between. A tap
+   * happens inside the flow and can decline, so the order is created pending —
+   * holding the stock so two staff cannot sell the same last ticket — and no
+   * ticket exists until `completeSale` sees the intent succeed.
+   */
+  createSaleIntent: doorProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        lines: z
+          .array(
+            z.object({
+              tierId: z.string(),
+              quantity: z.number().int().min(1).max(20),
+            }),
+          )
+          .min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
+
+      if (!isStripeConfigured()) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Card payments aren't set up yet.",
+        });
+      }
+
+      const order = await createPendingOrder({
+        eventId: input.eventId,
+        lines: input.lines,
+        ipAddress: null,
+        // Accepted verbally by the staff member taking the money, as at any
+        // other door sale.
+        termsAccepted: true,
+        boxOffice: true,
+      });
+
+      if (order.isFree) {
+        // Nothing to tap for. Fall back to the ordinary path rather than
+        // opening a zero-dollar payment.
+        await cancelPendingOrder(order.orderId).catch(() => undefined);
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "That's a free ticket — issue it without a payment.",
+        });
+      }
+
+      const stripe = getStripe();
+      const intent = await stripe.paymentIntents.create(
+        {
+          amount: order.totalCents,
+          currency: "nzd",
+          // Tap to Pay is a card-present method; the automatic-methods flag
+          // used online would offer wallets that make no sense at a door.
+          payment_method_types: ["card_present"],
+          capture_method: "automatic",
+          metadata: {
+            orderId: order.orderId,
+            orderNumber: order.orderNumber,
+            eventId: input.eventId,
+            channel: "door-tap-to-pay",
+            soldByUserId: ctx.user.id,
+          },
+          description: `Door sale — order ${order.orderNumber}`,
+        },
+        // A retried tap must not open a second payment on the same order.
+        { idempotencyKey: `door-pi-${order.orderId}` },
+      );
+
+      await ctx.db.ticketOrder.update({
+        where: { id: order.orderId },
+        data: { stripePaymentIntentId: intent.id },
+      });
+
+      return {
+        orderId: order.orderId,
+        orderNumber: order.orderNumber,
+        totalCents: order.totalCents,
+        paymentIntentId: intent.id,
+        clientSecret: intent.client_secret,
+      };
+    }),
+
+  /**
+   * Step two: the tap went through, so issue.
+   *
+   * The intent is re-read from Stripe rather than trusted from the client —
+   * the app saying "it worked" is not evidence, and this is the exact point
+   * where a lie would mint a free ticket.
+   */
+  completeSale: doorProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        orderId: z.string(),
+        deviceLabel: z.string().trim().max(60).optional(),
+        admitNow: z.boolean().default(true),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
+
+      const order = await ctx.db.ticketOrder.findUnique({
+        where: { id: input.orderId },
+        select: {
+          id: true,
+          eventId: true,
+          status: true,
+          orderNumber: true,
+          stripePaymentIntentId: true,
+          tickets: { select: { id: true } },
+        },
+      });
+
+      if (order?.eventId !== input.eventId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+      }
+
+      // Already issued — a double tap on "done", or a retried request.
+      if (order.status === TicketOrderStatus.PAID) {
+        return {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          ticketCount: order.tickets.length,
+          admittedNow: false,
+          alreadyIssued: true as const,
+          admitted: await admittedCount(input.eventId),
+        };
+      }
+
+      if (!order.stripePaymentIntentId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "That sale has no payment against it.",
+        });
+      }
+
+      const stripe = getStripe();
+      const intent = await stripe.paymentIntents.retrieve(
+        order.stripePaymentIntentId,
+        { expand: ["latest_charge"] },
+      );
+
+      if (intent.status !== "succeeded") {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "That payment hasn't gone through. Try the tap again.",
+        });
+      }
+
+      const charge =
+        typeof intent.latest_charge === "object" ? intent.latest_charge : null;
+
+      const issued = await issueTicketsForOrder({
+        orderId: order.id,
+        buyerEmail: charge?.billing_details?.email ?? null,
+        buyerName: charge?.billing_details?.name ?? null,
+        paymentIntentId: intent.id,
+        chargeId: charge?.id ?? null,
+        paymentMethod: PaymentMethodKind.TAP_TO_PAY,
+        soldByUserId: ctx.user.id,
+      });
+
+      if (input.admitNow) {
+        await admitFreshTickets({
+          ticketIds: issued.ticketIds,
+          eventId: input.eventId,
+          scannedByUserId: ctx.user.id,
+          deviceLabel: input.deviceLabel,
+        });
+      }
+
+      return {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        ticketCount: issued.ticketIds.length,
+        admittedNow: input.admitNow,
+        alreadyIssued: false as const,
+        admitted: await admittedCount(input.eventId),
+      };
+    }),
+
+  /**
+   * Give the stock back when a tap is abandoned or declined for good.
+   *
+   * Without this the tickets sit held until the hold expires, which at a door
+   * means the last two of a sold-out event are invisible for ten minutes while
+   * somebody stands there with cash.
+   */
+  abandonSale: doorProcedure
+    .input(z.object({ eventId: z.string(), orderId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
+      await cancelPendingOrder(input.orderId).catch(() => undefined);
+      return { ok: true as const };
     }),
 
   /**

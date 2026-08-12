@@ -23,6 +23,8 @@ import { ticketEventsRouter } from "~/server/api/routers/ticket-events";
 import { ticketCheckoutRouter } from "~/server/api/routers/ticket-checkout";
 import { ticketsRouter } from "~/server/api/routers/tickets";
 import { doorRouter } from "~/server/api/routers/door";
+import { terminalRouter } from "~/server/api/routers/terminal";
+import { pushRouter } from "~/server/api/routers/push";
 import { discountCodesRouter } from "~/server/api/routers/discount-codes";
 import { ticketAdminRouter } from "~/server/api/routers/ticket-admin";
 import { ticketAnalyticsRouter } from "~/server/api/routers/ticket-analytics";
@@ -65,6 +67,8 @@ export const appRouter = createTRPCRouter({
   ticketAnalytics: ticketAnalyticsRouter,
   discountCodes: discountCodesRouter,
   door: doorRouter,
+  terminal: terminalRouter,
+  push: pushRouter,
 
   /** Combobox data sources — see `~/server/api/pickers/core`. */
   pickers: pickersRouter,
