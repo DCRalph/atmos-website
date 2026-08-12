@@ -5,6 +5,10 @@ import { z } from "zod";
 
 import { env } from "~/env";
 import { ACCESS_LEVEL_VALUES } from "~/lib/ticketing/access-levels";
+import {
+  HEX_COLOUR_PATTERN,
+  PASS_STRIP_STYLES,
+} from "~/lib/ticketing/pass-theme";
 
 import {
   ActivityType,
@@ -84,6 +88,12 @@ async function uniqueSlug(
   return `${base}-${Date.now().toString(36)}`;
 }
 
+/** Same rule the admin form and the pass renderer use. */
+const HEX_COLOUR = z
+  .string()
+  .trim()
+  .regex(HEX_COLOUR_PATTERN, "Use a hex colour like #470082");
+
 const eventInputSchema = z.object({
   name: z.string().trim().min(1, "Give the event a name"),
   slug: z.string().trim().optional(),
@@ -116,6 +126,14 @@ const eventInputSchema = z.object({
   bookingFeeFixedCents: z.number().int().min(0).nullable().optional(),
   bookingFeePercentBp: z.number().int().min(0).max(5000).nullable().optional(),
   gstNumber: z.string().trim().nullable().optional(),
+
+  // Wallet pass look. Colours are validated here rather than trusted from the
+  // form, because they are interpolated straight into the pass SVG.
+  passStripStyle: z.enum(PASS_STRIP_STYLES).optional(),
+  passAccentHex: HEX_COLOUR.nullable().optional(),
+  passBackgroundHex: HEX_COLOUR.nullable().optional(),
+  passForegroundHex: HEX_COLOUR.nullable().optional(),
+  passLabelHex: HEX_COLOUR.nullable().optional(),
 });
 
 const tierInputSchema = z.object({

@@ -7,6 +7,11 @@ import { env } from "~/env";
 import { buildTicketToken } from "~/server/ticketing/qr";
 import { formatEventDateLong, formatEventTime } from "~/lib/ticketing/dates";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
+import {
+  resolvePassTheme,
+  toPassRgb,
+  type PassThemeFields,
+} from "~/lib/ticketing/pass-theme";
 import { getAppleWalletConfig } from "./apple-config";
 import { getPassImages } from "./pass-images";
 
@@ -40,7 +45,7 @@ export type PassEvent = {
   venueAddress: string | null;
   isR18: boolean;
   status: string;
-};
+} & PassThemeFields;
 
 /**
  * Per-pass secret for the Apple web service. Derived, so nothing extra is
@@ -74,7 +79,8 @@ export async function buildApplePass({
   orderNumber: string;
 }): Promise<Buffer> {
   const config = getAppleWalletConfig();
-  const images = await getPassImages();
+  const theme = resolvePassTheme(event);
+  const images = await getPassImages(theme);
 
   const doorsText = event.doorsAt
     ? formatEventTime(event.doorsAt, event.timezone)
@@ -88,9 +94,9 @@ export async function buildApplePass({
     organizationName: "Atmos Media",
     description: `Ticket — ${event.name}`,
 
-    foregroundColor: "rgb(255, 255, 255)",
-    backgroundColor: "rgb(11, 11, 12)",
-    labelColor: "rgb(160, 160, 170)",
+    foregroundColor: toPassRgb(theme.foregroundHex),
+    backgroundColor: toPassRgb(theme.backgroundHex),
+    labelColor: toPassRgb(theme.labelHex),
 
     // Lets the pass surface itself on the lock screen near the venue and time.
     relevantDate: (event.doorsAt ?? event.startsAt).toISOString(),

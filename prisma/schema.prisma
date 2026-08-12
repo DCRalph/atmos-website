@@ -518,6 +518,15 @@ model NewsletterSubscription {
   @@map("newsletter_subscription")
 }
 
+/// The band drawn behind the event name on a wallet pass.
+enum PassStripStyle {
+  HATCH
+  GRADIENT
+  SOLID
+  BARS
+  NONE
+}
+
 enum FileUploadStatus {
   NO_FILE
   UPLOADING
@@ -1042,6 +1051,15 @@ model TicketEvent {
 
   termsVersion String @default("v1")
 
+  /// Apple Wallet pass styling. Null anywhere falls back to the Atmos default
+  /// in `~/lib/ticketing/pass-theme.ts` — an event that sets nothing still gets
+  /// a house-style pass.
+  passStripStyle    PassStripStyle @default(HATCH)
+  passAccentHex     String?
+  passBackgroundHex String?
+  passForegroundHex String?
+  passLabelHex      String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1128,7 +1146,6 @@ model TicketOrder {
   /// Separate from the ticket purchase — UEMA 2007 needs express consent.
   marketingOptIn  Boolean   @default(false)
 
-
   accessTokenVersion Int       @default(1)
   detailsCompletedAt DateTime?
 
@@ -1188,16 +1205,15 @@ model Ticket {
   attendeeName  String?
   attendeeEmail String?
 
-
   accessLevel TicketAccessLevel @default(GENERAL)
 
   isComp Boolean @default(false)
 
   nameLockedAt DateTime?
 
-  hostTicketId String?
+  hostTicketId  String?
   invitedByName String?
-  sentAt DateTime?
+  sentAt        DateTime?
 
   qrSecret  String
   qrVersion Int    @default(1)
