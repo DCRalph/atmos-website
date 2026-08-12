@@ -272,24 +272,29 @@ export function DashboardHeader() {
   // return null
 
   return (
-    <nav className="bg-background/90 sticky top-0 z-50 h-16 w-full border-b backdrop-blur-sm">
-      <div className="flex h-16 w-full items-center justify-between gap-4 px-4 lg:px-6">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+    <nav className="bg-background/90 sticky top-0 z-50 h-14 w-full border-b backdrop-blur-sm lg:h-16">
+      <div className="flex h-14 w-full items-center justify-between gap-2 px-2 sm:gap-4 sm:px-4 lg:h-16 lg:px-6">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           <SidebarTrigger size={"icon"} className="shrink-0" />
-          <Separator orientation="vertical" className="h-8! shrink-0" />
+          <Separator
+            orientation="vertical"
+            className="h-8! hidden shrink-0 sm:block"
+          />
           <div className="min-w-0 flex-1 overflow-hidden">
             <Breadcrumb>
               <BreadcrumbList className="flex-nowrap">
                 {crumbs.map((crumb, idx) => {
                   const isLast = idx === crumbs.length - 1;
                   return (
+                    // Only the current page's crumb survives on a phone — the
+                    // ancestor trail would crowd out the title it belongs to.
                     <span key={crumb.href} className="contents">
                       <BreadcrumbItem
-                        className={`min-w-0 ${!isLast ? "shrink-0" : ""}`}
+                        className={`min-w-0 ${!isLast ? "shrink-0 max-sm:hidden" : ""}`}
                       >
                         {isLast ? (
                           <BreadcrumbPage
-                            className={`${cabin.className} truncate text-2xl text-nowrap`}
+                            className={`${cabin.className} truncate text-lg text-nowrap sm:text-xl lg:text-2xl`}
                           >
                             {crumb.isLoading ? (
                               <span className="animate-pulse">Loading...</span>
@@ -301,7 +306,7 @@ export function DashboardHeader() {
                           <BreadcrumbLink asChild>
                             <Link
                               href={crumb.href}
-                              className={`${cabin.className} text-2xl text-nowrap`}
+                              className={`${cabin.className} text-lg text-nowrap sm:text-xl lg:text-2xl`}
                             >
                               {crumb.label}
                             </Link>
@@ -309,7 +314,7 @@ export function DashboardHeader() {
                         )}
                       </BreadcrumbItem>
                       {!isLast ? (
-                        <BreadcrumbSeparator className="shrink-0" />
+                        <BreadcrumbSeparator className="shrink-0 max-sm:hidden" />
                       ) : null}
                     </span>
                   );
@@ -319,7 +324,7 @@ export function DashboardHeader() {
           </div>
         </div>
 
-        <div className="right-4 flex items-center gap-4">
+        <div className="flex shrink-0 items-center gap-4">
           <UserDropdown detailed />
         </div>
       </div>

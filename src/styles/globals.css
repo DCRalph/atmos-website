@@ -3,6 +3,16 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Scroll without a visible scrollbar. Used by horizontally scrolling strips
+   (tab bars, the sidebar nav) where a native bar would eat into a fixed height. */
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @theme {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";

@@ -180,7 +180,9 @@ export function DataTableToolbar<TRow>({
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         {enableSearch && (
-          <div className="relative min-w-[200px] flex-1 sm:max-w-72">
+          // Full width on a phone, so the search box takes its own row and the
+          // toolbar buttons wrap underneath instead of being crushed beside it.
+          <div className="relative w-full flex-1 sm:w-auto sm:min-w-[200px] sm:max-w-72">
             <HugeiconsIcon
               icon={Search01Icon}
               strokeWidth={2}

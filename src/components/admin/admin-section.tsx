@@ -21,30 +21,36 @@ export function AdminSection({
   children: React.ReactNode;
 }) {
   return (
-    // <div className="p-8">
-    <div className={`p-8`}>
+    <div className="px-4 py-5 sm:px-6 sm:py-6 lg:p-8">
       {backLink && (
-        <div className="mb-4">
-          <Button variant="outline" asChild>
+        <div className="mb-3 sm:mb-4">
+          <Button variant="outline" size="sm" asChild className="sm:h-9">
             <Link href={backLink.href}>{backLink.label}</Link>
           </Button>
         </div>
       )}
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-foreground text-4xl font-bold">{title}</h1>
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3 sm:mb-8">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h1 className="text-foreground text-2xl font-bold break-words sm:text-3xl lg:text-4xl">
+            {title}
+          </h1>
           {subtitle ? (
-            <p className="text-muted-foreground">{subtitle}</p>
+            <p className="text-muted-foreground text-sm break-words sm:text-base">
+              {subtitle}
+            </p>
           ) : null}
           {description ? (
-            <p className="text-muted-foreground">{description}</p>
+            <p className="text-muted-foreground text-sm sm:text-base">
+              {description}
+            </p>
           ) : null}
         </div>
-        <div className="flex items-center gap-4">{actions}</div>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+          {actions}
+        </div>
       </div>
 
       {children}
     </div>
-    // </div>
   );
 }

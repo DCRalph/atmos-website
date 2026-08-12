@@ -63,14 +63,16 @@ export default function AdminEventPage() {
 
   if (event.isPending) {
     return (
-      <div className="p-8">
+      <div className="px-4 py-5 sm:px-6 sm:py-6 lg:p-8">
         <Skeleton className="h-12 w-1/2" />
         <Skeleton className="mt-6 h-96 w-full" />
       </div>
     );
   }
   if (!event.data) {
-    return <div className="p-8">Event not found.</div>;
+    return (
+      <div className="px-4 py-5 sm:px-6 sm:py-6 lg:p-8">Event not found.</div>
+    );
   }
 
   const data = event.data;

@@ -15,6 +15,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "~/components/ui/sidebar";
 import {
   adminHomeItem,
@@ -24,6 +25,10 @@ import {
 
 export function DashboardSideBar() {
   const pathname = usePathname();
+  const { setOpenMobile } = useSidebar();
+  // On mobile the sidebar is a sheet over the page, so it has to be dismissed
+  // when a link is tapped or it covers the page it just navigated to.
+  const closeOnMobile = () => setOpenMobile(false);
   const activeItem = [adminHomeItem, ...adminNavigationItems]
     .filter((item) =>
       item.url === "/admin"
@@ -39,6 +44,7 @@ export function DashboardSideBar() {
       <SidebarHeader className="border-sidebar-border h-16 justify-center border-b p-2">
         <Link
           href="/admin"
+          onClick={closeOnMobile}
           className="focus-visible:ring-sidebar-ring flex min-w-0 items-center gap-3 rounded-lg px-1 outline-none group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 focus-visible:ring-2"
         >
           <div className="bg-background grid size-10 shrink-0 place-items-center overflow-hidden rounded-xl shadow-sm group-data-[collapsible=icon]:size-8">
@@ -70,7 +76,7 @@ export function DashboardSideBar() {
                   tooltip={adminHomeItem.title}
                   className="h-9"
                 >
-                  <Link href={adminHomeItem.url}>
+                  <Link href={adminHomeItem.url} onClick={closeOnMobile}>
                     <adminHomeItem.icon />
                     <span>{adminHomeItem.title}</span>
                   </Link>
@@ -93,7 +99,7 @@ export function DashboardSideBar() {
                       tooltip={item.title}
                       className="h-9"
                     >
-                      <Link href={item.url}>
+                      <Link href={item.url} onClick={closeOnMobile}>
                         <item.icon />
                         <span>{item.title}</span>
                       </Link>
@@ -110,7 +116,7 @@ export function DashboardSideBar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip="View website" className="h-9">
-              <Link href="/">
+              <Link href="/" onClick={closeOnMobile}>
                 <ExternalLink />
                 <span>View website</span>
               </Link>
