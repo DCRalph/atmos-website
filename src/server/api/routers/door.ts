@@ -13,6 +13,7 @@ import {
 } from "~Prisma/client";
 import { createTRPCRouter, doorProcedure } from "~/server/api/trpc";
 import {
+  ADMITTING_RESULTS,
   admissionStates,
   admittedCount,
   denyTicket,
@@ -347,11 +348,31 @@ export const doorRouter = createTRPCRouter({
         ctx.isEventOrganiser,
         input.eventId,
       );
+      /**
+       * Managers can undo anyone's admission; a staffer can undo their own.
+       *
+       * The old rule was manager-only across the board, which meant the person
+       * who scanned the wrong ticket could not fix it and had to find someone
+       * who could. Correcting your own mistake is not the same power as
+       * overturning somebody else's decision, so only the second still needs a
+       * manager.
+       */
       if (!isManager) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Only a door manager can undo an admission.",
+        const lastAdmission = await ctx.db.ticketScan.findFirst({
+          where: {
+            ticketId: input.ticketId,
+            result: { in: [...ADMITTING_RESULTS] },
+          },
+          orderBy: { createdAt: "desc" },
+          select: { scannedByUserId: true },
         });
+        if (lastAdmission?.scannedByUserId !== ctx.user.id) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message:
+              "Only a door manager can undo somebody else's admission.",
+          });
+        }
       }
 
       await ctx.db.ticketScan.create({
@@ -1360,10 +1381,12 @@ export const doorRouter = createTRPCRouter({
       z.object({
         eventId: z.string(),
         limit: z.number().int().min(1).max(50).default(20),
+        /** Only what this staffer did, which is what an undo list is for. */
+        mine: z.boolean().default(false),
       }),
     )
     .query(async ({ ctx, input }) => {
-      await assertAssigned(
+      const { isManager } = await assertAssigned(
         ctx.user.id,
         ctx.isAdmin,
         ctx.isEventOrganiser,
@@ -1371,7 +1394,10 @@ export const doorRouter = createTRPCRouter({
       );
 
       const scans = await ctx.db.ticketScan.findMany({
-        where: { eventId: input.eventId },
+        where: {
+          eventId: input.eventId,
+          ...(input.mine ? { scannedByUserId: ctx.user.id } : {}),
+        },
         orderBy: { createdAt: "desc" },
         take: input.limit,
         select: {
@@ -1381,6 +1407,11 @@ export const doorRouter = createTRPCRouter({
           deviceLabel: true,
           wasOverride: true,
           scannedByUserId: true,
+          ticketId: true,
+          // A refusal without its reason is the thing staff end up arguing
+          // about, so it travels with the row rather than needing the sheet.
+          denyReason: true,
+          denyNote: true,
           ticket: {
             select: {
               ticketNumber: true,
@@ -1406,11 +1437,44 @@ export const doorRouter = createTRPCRouter({
       });
       const nameById = new Map(staff.map((user) => [user.id, user.name]));
 
-      return scans.map((scan) => ({
-        ...scan,
-        scannedByName: scan.scannedByUserId
-          ? (nameById.get(scan.scannedByUserId) ?? null)
-          : null,
-      }));
+      /**
+       * What can still be taken back from this list.
+       *
+       * Decided against the ticket's *current* state, not the row's, so a
+       * scan that has already been undone or overtaken stops offering an
+       * undo. One query for the whole page via `admissionStates`.
+       */
+      const ticketIds = [
+        ...new Set(
+          scans
+            .map((scan) => scan.ticketId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ];
+      const states = await admissionStates(ticketIds);
+
+      return scans.map((scan) => {
+        const state = scan.ticketId ? states.get(scan.ticketId) : undefined;
+        const mine = scan.scannedByUserId === ctx.user.id;
+        const admitting = (ADMITTING_RESULTS as readonly string[]).includes(
+          scan.result,
+        );
+
+        return {
+          ...scan,
+          scannedByName: scan.scannedByUserId
+            ? (nameById.get(scan.scannedByUserId) ?? null)
+            : null,
+          isMine: mine,
+          // Admissions: only while they still stand, and only yours unless you
+          // manage the door. Refusals: any staffer, same as `revertDenial`.
+          undo:
+            admitting && state?.admittedAt && (isManager || mine)
+              ? ("admission" as const)
+              : scan.result === TicketScanResult.DENIED && state?.deniedAt
+                ? ("denial" as const)
+                : null,
+        };
+      });
     }),
 });

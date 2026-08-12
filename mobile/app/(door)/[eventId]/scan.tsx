@@ -148,7 +148,10 @@ export default function ScanScreen() {
           />
         </View>
 
-        <RecentScans eventId={eventId} />
+        <RecentScans
+          eventId={eventId}
+          isManager={summary.data?.isManager ?? false}
+        />
       </ScrollView>
 
       {outcome ? (
