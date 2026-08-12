@@ -18,6 +18,7 @@ import { colors, radius, space, stroke } from "@/lib/theme";
 import { formatTimeAgo } from "@/lib/dates";
 import { Body, Button, Caption, Loading, Notice, Pill } from "@/components/ui";
 import { DoorHeader } from "@/components/door/door-header";
+import { AccessBadge } from "@/components/door/access-badge";
 import { ScanResult, type ScanOutcome } from "@/components/door/scan-result";
 import { PersonSheet } from "@/components/door/person-sheet";
 
@@ -175,6 +176,7 @@ export default function DoorListScreen() {
                   {row.tierName} · {row.ticketNumber}
                   {row.isComp ? " · comp" : ""}
                 </Caption>
+                <AccessBadge level={row.accessLevel} size="small" onlyElevated />
                 {row.admittedAt ? (
                   <Caption style={{ color: colors.in }}>
                     In {formatTimeAgo(new Date(row.admittedAt))}

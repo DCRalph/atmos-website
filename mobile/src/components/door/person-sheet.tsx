@@ -16,6 +16,7 @@ import { colors, radius, space } from "@/lib/theme";
 import { formatTimeAgo } from "@/lib/dates";
 import { Body, Button, Caption, Loading, Pill } from "@/components/ui";
 import { DenySheet } from "@/components/door/deny-sheet";
+import { AccessBadge } from "@/components/door/access-badge";
 
 /**
  * One person, opened from the door list.
@@ -141,6 +142,9 @@ export function PersonSheet({
             <Text style={styles.mono}>
               {person.ticketNumber} · {person.positionInOrder}
             </Text>
+            <View style={{ marginTop: space.xs }}>
+              <AccessBadge level={person.accessLevel} />
+            </View>
 
             {/* Sits against the "1 of 4" that prompts the question, rather than
                 in the action stack, which is reserved for things that change a
@@ -443,6 +447,7 @@ function PartyView({
                 <Caption numberOfLines={1}>
                   {row.tierName} · {row.ticketNumber}
                 </Caption>
+                <AccessBadge level={row.accessLevel} size="small" onlyElevated />
                 {/* A refusal outranks everything — it is the reason they are
                     standing there arguing. */}
                 {row.deniedAt ? (

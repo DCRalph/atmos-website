@@ -9,6 +9,7 @@ import { Caption } from "@/components/ui";
 import { formatTimeAgo } from "@/lib/dates";
 import { labelArg, useDeviceLabel } from "@/lib/device-label";
 import { DenySheet } from "@/components/door/deny-sheet";
+import { AccessBadge } from "@/components/door/access-badge";
 
 export type ScanOutcome = RouterOutputs["door"]["scan"];
 
@@ -85,8 +86,28 @@ export function ScanResult({
               <Text style={styles.name}>
                 {ticket.attendeeName ?? "No name given"}
               </Text>
+              {/* On every result, admitted or not — the moment this matters
+                  most is the one where the scan came back wrong. */}
+              <View style={{ marginTop: space.sm }}>
+                <AccessBadge level={ticket.accessLevel} />
+              </View>
+              {/* Who put them on the list. This is what a manager decides on
+                  when a guest-list name comes back wrong. */}
+              {ticket.invitedByName ? (
+                <Text style={styles.invited}>
+                  Invited by {ticket.invitedByName}
+                </Text>
+              ) : null}
               <Text style={styles.meta}>{ticket.tierName}</Text>
-              <Text style={styles.mono}>{ticket.ticketNumber}</Text>
+              <Text style={styles.mono}>
+                {ticket.ticketNumber} · {ticket.positionInOrder}
+                {ticket.isComp ? " · comp" : ""}
+              </Text>
+              {/* Only when there is no attendee name to show instead —
+                  otherwise the buyer is noise on a ticket that names someone. */}
+              {!ticket.attendeeName && ticket.buyerName ? (
+                <Text style={styles.mono}>Bought by {ticket.buyerName}</Text>
+              ) : null}
             </>
           ) : (
             <Text style={styles.meta}>{current.message}</Text>
@@ -109,6 +130,18 @@ export function ScanResult({
               <Text style={styles.panelTitle}>Refused earlier</Text>
               <Text style={styles.panelBody}>
                 {current.previousDenial.note ?? current.previousDenial.reason}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Without this the name above is decoration. A locked ticket is one
+              where the person holding it is supposed to be the person named on
+              it, and only the door can check that. */}
+          {ticket?.nameLocked && ticket.attendeeName ? (
+            <View style={[styles.panel, styles.idCheck]}>
+              <Text style={styles.panelTitle}>PHOTO ID</Text>
+              <Text style={styles.panelBody}>
+                This ticket is in the name of {ticket.attendeeName}
               </Text>
             </View>
           ) : null}
@@ -224,6 +257,13 @@ function toneFor(outcome: ScanOutcome): { bg: string; heading: string } {
 }
 
 const styles = StyleSheet.create({
+  idCheck: { borderColor: "rgba(255,255,255,0.55)" },
+  invited: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: "700",
+    marginTop: space.sm,
+  },
   findOnList: {
     borderWidth: 2,
     borderColor: "rgba(255,255,255,0.35)",
