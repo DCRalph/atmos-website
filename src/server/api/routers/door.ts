@@ -13,6 +13,7 @@ import {
 } from "~Prisma/client";
 import { createTRPCRouter, doorProcedure } from "~/server/api/trpc";
 import {
+  admissionStates,
   admittedCount,
   denyTicket,
   scanTicket,
@@ -586,10 +587,91 @@ export const doorRouter = createTRPCRouter({
         positionInOrder: ticket.hostTicketId
           ? `handout ${position - 1} of ${ticket.order._count.tickets - 1}`
           : `${position} of ${ticket.order._count.tickets}`,
+        // The "of N" above, as a number, so the sheet knows whether there is
+        // anybody else on this order worth offering to show.
+        orderTicketCount: ticket.hostTicketId
+          ? ticket.order._count.tickets - 1
+          : ticket.order._count.tickets,
         isR18: ticket.event.isR18,
         isManager,
         ...state,
       };
+    }),
+
+  /**
+   * The rest of the order behind one ticket — the other three of a "1 of 4".
+   *
+   * A group buys together and arrives together, so the question staff ask after
+   * "is this one real" is "who else is on it, and are they already in". Without
+   * this they'd search the buyer's name and eyeball the list.
+   *
+   * Membership mirrors the `positionInOrder` line exactly, so the count on the
+   * button can never disagree with the list behind it: from a comp handout that
+   * means the other handouts, and from anything else the whole order. Void and
+   * refunded tickets stay in, flagged — a ticket that was refunded this morning
+   * is the reason somebody is arguing at the door, and hiding it just moves the
+   * argument to the list that quietly dropped it.
+   */
+  orderTickets: doorProcedure
+    .input(z.object({ eventId: z.string(), ticketId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
+
+      const ticket = await ctx.db.ticket.findUnique({
+        where: { id: input.ticketId },
+        select: { id: true, orderId: true, eventId: true, hostTicketId: true },
+      });
+
+      if (ticket?.eventId !== input.eventId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Ticket not found" });
+      }
+
+      const siblings = await ctx.db.ticket.findMany({
+        where: {
+          orderId: ticket.orderId,
+          eventId: input.eventId,
+          // A handout's companions are the other handouts, never the host
+          // ticket the comp was minted against.
+          ...(ticket.hostTicketId ? { hostTicketId: { not: null } } : {}),
+        },
+        orderBy: { ticketNumber: "asc" },
+        select: {
+          id: true,
+          ticketNumber: true,
+          attendeeName: true,
+          accessLevel: true,
+          status: true,
+          isComp: true,
+          invitedByName: true,
+          tier: { select: { name: true } },
+        },
+      });
+
+      const states = await admissionStates(siblings.map((row) => row.id));
+
+      return siblings.map((row, index) => {
+        const state = states.get(row.id);
+        return {
+          id: row.id,
+          ticketNumber: row.ticketNumber,
+          attendeeName: row.attendeeName,
+          accessLevel: row.accessLevel,
+          tierName: ticketTypeName(row),
+          isComp: row.isComp,
+          invitedByName: row.invitedByName,
+          isValid: row.status === TicketStatus.VALID,
+          status: row.status,
+          position: index + 1,
+          isCurrent: row.id === ticket.id,
+          admittedAt: state?.admittedAt ?? null,
+          deniedAt: state?.deniedAt ?? null,
+        };
+      });
     }),
 
   /** The tiers a door sale can be rung up against, with what's left. */

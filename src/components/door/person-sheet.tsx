@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { api } from "~/trpc/react";
@@ -15,6 +15,7 @@ import {
   PrimaryAction,
   SafeAction,
 } from "~/components/door/controls";
+import { PartySheet } from "~/components/door/party-sheet";
 
 /**
  * One person, opened from the door list.
@@ -31,6 +32,7 @@ export function PersonSheet({
   onClose,
   onAdmit,
   onDeny,
+  admitting,
   denying,
 }: {
   eventId: string;
@@ -38,11 +40,12 @@ export function PersonSheet({
   onClose: () => void;
   onAdmit: (ticketNumber: string) => void;
   onDeny: (ticketId: string, reason: DenyReasonValue, note: string) => void;
+  admitting: boolean;
   denying: boolean;
 }) {
-  const [step, setStep] = useState<"detail" | "deny" | "confirm-revert">(
-    "detail",
-  );
+  const [step, setStep] = useState<
+    "detail" | "deny" | "confirm-revert" | "party"
+  >("detail");
 
   const utils = api.useUtils();
   const detail = api.door.ticketDetail.useQuery({ eventId, ticketId });
@@ -52,6 +55,7 @@ export function PersonSheet({
       toast.success("Admission undone.");
       void utils.door.ticketDetail.invalidate();
       void utils.door.doorList.invalidate();
+      void utils.door.orderTickets.invalidate();
       void utils.door.summary.invalidate();
       setStep("detail");
     },
@@ -86,6 +90,18 @@ export function PersonSheet({
         pending={denying}
         onCancel={() => setStep("detail")}
         onConfirm={(reason, note) => onDeny(person.id, reason, note)}
+      />
+    );
+  }
+
+  if (step === "party") {
+    return (
+      <PartySheet
+        eventId={eventId}
+        ticketId={person.id}
+        admitting={admitting}
+        onBack={() => setStep("detail")}
+        onAdmit={onAdmit}
       />
     );
   }
@@ -140,6 +156,20 @@ export function PersonSheet({
         <p className="mt-1 font-mono text-sm opacity-60">
           {person.ticketNumber} · {person.positionInOrder}
         </p>
+
+        {/* Sits against the "1 of 4" that prompts the question, rather than in
+            the action stack at the bottom, which is reserved for the things
+            that change a decision. */}
+        {person.orderTicketCount > 1 && (
+          <button
+            type="button"
+            onClick={() => setStep("party")}
+            className="mt-4 flex w-full max-w-sm items-center justify-center gap-2 border-2 border-white/20 px-4 py-3 text-base font-semibold transition-colors active:bg-white active:text-black"
+          >
+            <Users className="size-4" aria-hidden />
+            See the other {person.orderTicketCount - 1} on this order
+          </button>
+        )}
 
         {person.nameLocked && person.attendeeName && (
           <p className="mt-4 inline-flex items-center gap-2 border-2 border-white/30 px-3 py-2 text-sm font-semibold">

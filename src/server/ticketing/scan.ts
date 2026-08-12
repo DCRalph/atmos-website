@@ -640,6 +640,92 @@ export async function ticketState(ticketId: string): Promise<{
   };
 }
 
+export type AdmissionState = { admittedAt: Date | null; deniedAt: Date | null };
+
+/**
+ * The standing of one ticket, from its scans alone.
+ *
+ * The same two rules `ticketState` applies, pulled out as a pure function
+ * because they are the easy ones to get subtly wrong: an admission only counts
+ * if no *later* revert undid it, and a refusal only stands if nothing admitted
+ * them *after* it. Getting either backwards means somebody walks in twice, or
+ * gets turned away on a refusal that was already overruled.
+ *
+ * `rows` must be newest-first.
+ */
+export function reduceAdmissionState(
+  rows: { result: TicketScanResult; createdAt: Date }[],
+): AdmissionState {
+  const admitting = new Set<TicketScanResult>(ADMITTING_RESULTS);
+
+  const admissions = rows.filter((row) => admitting.has(row.result));
+  const lastRevert = rows.find(
+    (row) => row.result === TicketScanResult.ADMISSION_REVERTED,
+  );
+  const live = lastRevert
+    ? admissions.filter((row) => row.createdAt > lastRevert.createdAt)
+    : admissions;
+  const latest = live[0] ?? null;
+
+  const denial =
+    rows.find((row) => row.result === TicketScanResult.DENIED) ?? null;
+  const denialStands =
+    denial !== null && (latest === null || denial.createdAt > latest.createdAt);
+
+  return {
+    admittedAt: latest?.createdAt ?? null,
+    deniedAt: denialStands && denial ? denial.createdAt : null,
+  };
+}
+
+/**
+ * Where several tickets stand right now, in one pass.
+ *
+ * Same rules as `ticketState`, but for a whole order at once, so showing the
+ * rest of a party costs one query rather than one per companion. Only the two
+ * facts a companion row shows are returned; use `ticketState` when the full
+ * story — who admitted them, on what device — is needed.
+ */
+export async function admissionStates(
+  ticketIds: string[],
+): Promise<Map<string, AdmissionState>> {
+  const states = new Map<string, AdmissionState>();
+  if (ticketIds.length === 0) return states;
+
+  const scans = await db.ticketScan.findMany({
+    where: {
+      ticketId: { in: ticketIds },
+      result: {
+        in: [
+          ...ADMITTING_RESULTS,
+          TicketScanResult.ADMISSION_REVERTED,
+          TicketScanResult.DENIED,
+        ],
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    select: { ticketId: true, result: true, createdAt: true },
+  });
+
+  // `ticketId` is nullable on the model — a scan of a token that resolved to
+  // nothing still gets logged — so the null case is narrowed away here rather
+  // than assumed away, even though the `in` filter above can't return one.
+  const byTicket = new Map<string, typeof scans>();
+  for (const scan of scans) {
+    if (scan.ticketId === null) continue;
+    const bucket = byTicket.get(scan.ticketId);
+    if (bucket) bucket.push(scan);
+    else byTicket.set(scan.ticketId, [scan]);
+  }
+
+  for (const ticketId of ticketIds) {
+    // Buckets keep the newest-first ordering of the query above.
+    states.set(ticketId, reduceAdmissionState(byTicket.get(ticketId) ?? []));
+  }
+
+  return states;
+}
+
 /** Live admitted count for an event, respecting reverts. */
 export async function admittedCount(eventId: string): Promise<number> {
   const rows = await db.$queryRaw<{ count: bigint }[]>`

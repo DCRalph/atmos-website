@@ -64,6 +64,7 @@ export default function DoorScannerPage() {
             : "error",
       );
       void summary.refetch();
+      void utils.door.orderTickets.invalidate();
     },
     onError: (error) => {
       playFeedback("error");
@@ -83,6 +84,7 @@ export default function DoorScannerPage() {
       );
       void summary.refetch();
       void utils.door.doorList.invalidate();
+      void utils.door.orderTickets.invalidate();
     },
     onError: (error) => {
       playFeedback("error");
@@ -96,6 +98,7 @@ export default function DoorScannerPage() {
       playFeedback("error");
       // A denial can revert an admission, so the headcount moves too.
       void summary.refetch();
+      void utils.door.orderTickets.invalidate();
     },
     onError: (error) => {
       playFeedback("error");
@@ -279,6 +282,7 @@ export default function DoorScannerPage() {
             onSold={() => {
               void summary.refetch();
               void utils.door.doorList.invalidate();
+              void utils.door.orderTickets.invalidate();
             }}
           />
         )}

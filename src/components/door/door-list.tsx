@@ -196,6 +196,7 @@ export function DoorList({
         <PersonSheet
           eventId={eventId}
           ticketId={openTicketId}
+          admitting={admitting}
           denying={denying}
           onClose={() => setOpenTicketId(null)}
           onAdmit={(ticketNumber) => {
