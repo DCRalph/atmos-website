@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Check } from "lucide-react-native";
 
 import { api } from "@/lib/api";
 import { colors, radius, space } from "@/lib/theme";
@@ -36,7 +37,7 @@ export default function DoneScreen() {
     >
       <View style={{ flex: 1, justifyContent: "center", gap: space.md }}>
         <View style={styles.tick}>
-          <Body style={{ fontSize: 30 }}>✓</Body>
+          <Check color={colors.text} size={30} strokeWidth={3} />
         </View>
         <Title style={{ textAlign: "center" }}>You&apos;re in</Title>
         <Body soft style={{ textAlign: "center" }}>

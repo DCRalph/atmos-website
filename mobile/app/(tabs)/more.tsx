@@ -1,13 +1,14 @@
-import { Link, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ChevronRight } from "lucide-react-native";
 
 import { api } from "@/lib/api";
 import { API_URL } from "@/lib/env";
 import { signOut, useAuth } from "@/lib/auth";
 import { getRegisteredPushToken } from "@/lib/push";
-import { colors, radius, space } from "@/lib/theme";
+import { colors, radius, space, stroke } from "@/lib/theme";
 import { Body, Button, Caption, Eyebrow, Title } from "@/components/ui";
 
 /** Everything that does not earn a tab of its own. */
@@ -16,6 +17,19 @@ export default function MoreScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const unregister = api.push.unregister.useMutation();
+
+  // Door mode is staff tooling inside a customer app, so nothing about it
+  // renders until someone is both signed in and actually rostered on. The
+  // query is the same one the door itself uses and every door call re-checks
+  // server-side — hiding the button is tidiness, not the security boundary.
+  const myEvents = api.door.myEvents.useQuery(undefined, {
+    enabled: !!user,
+    // A refusal here is the normal answer for a punter, not an error worth
+    // retrying three times.
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+  const isDoorStaff = !!user && (myEvents.data?.length ?? 0) > 0;
 
   const openWeb = (path: string) => {
     void WebBrowser.openBrowserAsync(`${API_URL}${path}`, {
@@ -48,6 +62,16 @@ export default function MoreScreen() {
                 Email not verified — verify it to see tickets you bought before
                 installing the app.
               </Caption>
+            )}
+            {isDoorStaff && (
+              <Button
+                variant="outline"
+                size="sm"
+                style={{ marginTop: space.md }}
+                onPress={() => router.push("/(door)")}
+              >
+                Door mode
+              </Button>
             )}
             <Button
               variant="outline"
@@ -92,14 +116,6 @@ export default function MoreScreen() {
         <Row label="Terms" onPress={() => openWeb("/terms")} />
         <Row label="Privacy" onPress={() => openWeb("/privacy")} />
       </View>
-
-      {/* Staff only — the tab is hidden for everyone else, but a direct route
-          still needs to exist for people who have it. */}
-      <Link href="/(door)" asChild>
-        <Pressable>
-          <Caption style={{ textAlign: "center" }}>Door mode</Caption>
-        </Pressable>
-      </Link>
     </ScrollView>
   );
 }
@@ -112,7 +128,7 @@ function Row({ label, onPress }: { label: string; onPress: () => void }) {
       style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
     >
       <Body>{label}</Body>
-      <Caption>›</Caption>
+      <ChevronRight color={colors.textFaint} size={16} strokeWidth={2.5} />
     </Pressable>
   );
 }
@@ -120,7 +136,7 @@ function Row({ label, onPress }: { label: string; onPress: () => void }) {
 const styles = StyleSheet.create({
   account: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
+    borderWidth: stroke.hair,
     borderColor: colors.border,
     borderRadius: radius.md,
     padding: space.lg,
@@ -132,7 +148,7 @@ const styles = StyleSheet.create({
     paddingVertical: space.md,
     paddingHorizontal: space.lg,
     backgroundColor: colors.surface,
-    borderWidth: 1,
+    borderWidth: stroke.hair,
     borderColor: colors.border,
     borderRadius: radius.md,
   },

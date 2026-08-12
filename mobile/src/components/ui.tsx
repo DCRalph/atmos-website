@@ -10,7 +10,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { colors, radius, space, type } from "@/lib/theme";
+import { colors, radius, space, stroke, type } from "@/lib/theme";
 
 /** Section marker — the uppercase letterspaced label used across the site. */
 export function Eyebrow({ children }: { children: ReactNode }) {
@@ -78,6 +78,7 @@ export function Button({
   children,
   onPress,
   variant = "primary",
+  size = "md",
   disabled,
   loading,
   style,
@@ -85,11 +86,15 @@ export function Button({
   children: ReactNode;
   onPress: () => void;
   variant?: "primary" | "outline" | "ghost";
+  /** `sm` is for secondary affordances that should not compete with the
+      screen's real action — the door entry point on the account card. */
+  size?: "sm" | "md";
   disabled?: boolean;
   loading?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   const isDisabled = disabled ?? loading;
+  const isSmall = size === "sm";
   return (
     <Pressable
       accessibilityRole="button"
@@ -97,6 +102,7 @@ export function Button({
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
+        isSmall && styles.buttonSmall,
         variant === "primary" && styles.buttonPrimary,
         variant === "outline" && styles.buttonOutline,
         variant === "ghost" && styles.buttonGhost,
@@ -106,11 +112,15 @@ export function Button({
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={variant === "primary" ? "#000" : "#fff"} />
+        <ActivityIndicator
+          size={isSmall ? "small" : undefined}
+          color={variant === "primary" ? "#000" : "#fff"}
+        />
       ) : (
         <Text
           style={[
             styles.buttonLabel,
+            isSmall && styles.buttonLabelSmall,
             variant === "primary" && { color: "#000" },
           ]}
         >
@@ -184,33 +194,44 @@ const styles = StyleSheet.create({
     fontSize: type.title.fontSize,
     fontWeight: type.title.fontWeight,
     letterSpacing: type.title.letterSpacing,
+    textTransform: "uppercase",
   },
   body: { color: colors.text, fontSize: type.body.fontSize },
   caption: { color: colors.textFaint, fontSize: type.caption.fontSize },
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderWidth: 1,
+    borderWidth: stroke.hair,
     borderRadius: radius.lg,
     overflow: "hidden",
   },
   button: {
-    height: 52,
+    height: 48,
     borderRadius: radius.md,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: space.lg,
   },
+  buttonSmall: {
+    height: 34,
+    borderRadius: radius.sm,
+    paddingHorizontal: space.md,
+    alignSelf: "flex-start",
+  },
   buttonPrimary: { backgroundColor: colors.text },
-  buttonOutline: { borderWidth: 1.5, borderColor: colors.borderStrong },
+  // `border-2 border-white/30 bg-transparent`, straight off the site's CTAs.
+  buttonOutline: { borderWidth: stroke.hard, borderColor: colors.borderHard },
   buttonGhost: { backgroundColor: "transparent" },
   buttonLabel: {
     color: colors.text,
-    fontSize: type.label.fontSize + 2,
-    fontWeight: "700",
+    fontSize: type.label.fontSize,
+    fontWeight: type.label.fontWeight,
+    letterSpacing: type.label.letterSpacing,
+    textTransform: "uppercase",
   },
+  buttonLabelSmall: { fontSize: type.label.fontSize - 2, letterSpacing: 1 },
   notice: {
-    borderWidth: 1,
+    borderWidth: stroke.hard,
     borderColor: colors.border,
     borderRadius: radius.lg,
     padding: space.xl,
@@ -219,7 +240,9 @@ const styles = StyleSheet.create({
   noticeTitle: {
     color: colors.text,
     fontSize: type.heading.fontSize,
-    fontWeight: "700",
+    fontWeight: type.heading.fontWeight,
+    letterSpacing: type.heading.letterSpacing,
+    textTransform: "uppercase",
     textAlign: "center",
   },
   loading: { paddingVertical: space.xxl, alignItems: "center" },
@@ -229,5 +252,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     alignSelf: "flex-start",
   },
-  pillLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.4 },
+  pillLabel: {
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
 });

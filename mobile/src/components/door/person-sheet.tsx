@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/lib/api";
+import { labelArg, useDeviceLabel } from "@/lib/device-label";
 import { colors, radius, space } from "@/lib/theme";
 import { formatTimeAgo } from "@/lib/dates";
 import { Body, Button, Caption, Loading, Pill } from "@/components/ui";
@@ -30,6 +31,9 @@ export function PersonSheet({
   const [step, setStep] = useState<"detail" | "party" | "deny">("detail");
   const detail = api.door.ticketDetail.useQuery({ eventId, ticketId });
   const utils = api.useUtils();
+  // A refusal is the entry staff are most likely to be asked about later, so
+  // it carries the same device tag as an admission.
+  const { deviceLabel } = useDeviceLabel();
 
   const deny = api.door.deny.useMutation({
     onSuccess: () => {
@@ -78,6 +82,7 @@ export function PersonSheet({
                 ticketId: person.id,
                 reason,
                 note: note || undefined,
+                deviceLabel: labelArg(deviceLabel),
               })
             }
           />

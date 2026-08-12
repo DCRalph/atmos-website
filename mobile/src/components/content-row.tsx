@@ -1,8 +1,9 @@
 import * as WebBrowser from "expo-web-browser";
 import { Pressable, StyleSheet, View } from "react-native";
+import { ChevronRight } from "lucide-react-native";
 
 import { Body, Caption } from "@/components/ui";
-import { colors, radius, space } from "@/lib/theme";
+import { colors, radius, space, stroke } from "@/lib/theme";
 import { formatGigDate } from "@/lib/dates";
 
 export type ContentRowData = {
@@ -36,12 +37,14 @@ export function ContentRow({ item }: { item: ContentRowData }) {
       style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
     >
       <View style={styles.badge}>
-        <Caption style={{ color: colors.textSoft, fontWeight: "700" }}>
+        <Caption
+          style={{ color: colors.textSoft, fontWeight: "900", letterSpacing: 1 }}
+        >
           {item.type.slice(0, 3).toUpperCase()}
         </Caption>
       </View>
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-        <Body numberOfLines={1} style={{ fontWeight: "600" }}>
+        <Body numberOfLines={1} style={{ fontWeight: "700" }}>
           {item.title}
         </Body>
         <Caption numberOfLines={1}>
@@ -50,7 +53,7 @@ export function ContentRow({ item }: { item: ContentRowData }) {
             .join(" · ")}
         </Caption>
       </View>
-      <Caption style={{ color: colors.textFaint }}>›</Caption>
+      <ChevronRight color={colors.textFaint} size={16} strokeWidth={2.5} />
     </Pressable>
   );
 }
@@ -62,7 +65,7 @@ const styles = StyleSheet.create({
     gap: space.md,
     padding: space.md,
     backgroundColor: colors.surface,
-    borderWidth: 1,
+    borderWidth: stroke.hair,
     borderColor: colors.border,
     borderRadius: radius.md,
   },

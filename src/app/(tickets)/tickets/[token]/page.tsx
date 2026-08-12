@@ -10,9 +10,13 @@ import {
   Mail,
   MapPin,
   Pencil,
-  Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
+
+import {
+  AddToAppleWalletButton,
+  AddToGoogleWalletButton,
+} from "~/components/tickets/wallet-buttons";
 
 import { api, type RouterOutputs } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
@@ -181,22 +185,10 @@ export default function TicketsPage() {
             {(ticket.appleWalletUrl ?? ticket.googleWalletUrl) && (
               <div className="mt-5 flex flex-wrap justify-center gap-2">
                 {ticket.appleWalletUrl && (
-                  <a
-                    href={ticket.appleWalletUrl}
-                    className="inline-flex items-center gap-2 border border-white/20 px-4 py-2 text-sm text-white/80 transition-colors hover:bg-white hover:text-black"
-                  >
-                    <Wallet className="size-4" aria-hidden />
-                    Apple Wallet
-                  </a>
+                  <AddToAppleWalletButton href={ticket.appleWalletUrl} />
                 )}
                 {ticket.googleWalletUrl && (
-                  <a
-                    href={ticket.googleWalletUrl}
-                    className="inline-flex items-center gap-2 border border-white/20 px-4 py-2 text-sm text-white/80 transition-colors hover:bg-white hover:text-black"
-                  >
-                    <Wallet className="size-4" aria-hidden />
-                    Google Wallet
-                  </a>
+                  <AddToGoogleWalletButton href={ticket.googleWalletUrl} />
                 )}
               </div>
             )}

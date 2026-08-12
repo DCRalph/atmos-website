@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Check, Minus, Plus, X } from "lucide-react-native";
 
 import { api } from "@/lib/api";
 import { colors, radius, space } from "@/lib/theme";
@@ -77,7 +78,7 @@ export default function TiersScreen() {
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={[styles.header, { paddingTop: insets.top + space.sm }]}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Text style={styles.close}>✕</Text>
+          <X color={colors.text} size={22} strokeWidth={2.5} />
         </Pressable>
         <Title style={{ fontSize: 18 }}>Tickets</Title>
         <View style={{ width: 24 }} />
@@ -165,7 +166,9 @@ export default function TiersScreen() {
             accessibilityState={{ checked: accepted }}
           >
             <View style={[styles.box, accepted && styles.boxOn]}>
-              {accepted ? <Text style={styles.tick}>✓</Text> : null}
+              {accepted ? (
+                <Check color="#000" size={14} strokeWidth={3.5} />
+              ) : null}
             </View>
             <Caption style={{ flex: 1 }}>
               I accept the ticket terms. Tickets are non-refundable except as
@@ -238,7 +241,7 @@ function Stepper({
         disabled={value === 0}
         style={styles.stepBtn}
       >
-        <Text style={styles.stepLabel}>−</Text>
+        <Minus color={colors.text} size={16} strokeWidth={3} />
       </Pressable>
       <Text style={styles.stepValue}>{value}</Text>
       <Pressable
@@ -246,7 +249,7 @@ function Stepper({
         disabled={value >= max}
         style={styles.stepBtn}
       >
-        <Text style={styles.stepLabel}>+</Text>
+        <Plus color={colors.text} size={16} strokeWidth={3} />
       </Pressable>
     </View>
   );
@@ -262,7 +265,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  close: { color: colors.textSoft, fontSize: 20 },
   tier: {
     flexDirection: "row",
     alignItems: "center",
@@ -283,7 +285,6 @@ const styles = StyleSheet.create({
     borderColor: colors.borderStrong,
     borderRadius: radius.sm,
   },
-  stepLabel: { color: colors.text, fontSize: 20, fontWeight: "700" },
   stepValue: {
     color: colors.text,
     fontSize: 17,
@@ -299,14 +300,12 @@ const styles = StyleSheet.create({
   box: {
     width: 22,
     height: 22,
-    borderRadius: 4,
     borderWidth: 2,
     borderColor: colors.borderStrong,
     alignItems: "center",
     justifyContent: "center",
   },
   boxOn: { backgroundColor: colors.text, borderColor: colors.text },
-  tick: { color: "#000", fontSize: 14, fontWeight: "900" },
   footer: {
     padding: space.lg,
     gap: space.sm,

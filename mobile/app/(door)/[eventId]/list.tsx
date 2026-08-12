@@ -11,6 +11,7 @@ import {
 } from "react-native";
 
 import { api } from "@/lib/api";
+import { labelArg, useDeviceLabel } from "@/lib/device-label";
 import { colors, radius, space } from "@/lib/theme";
 import { formatTimeAgo } from "@/lib/dates";
 import { Body, Button, Caption, Loading, Notice, Pill } from "@/components/ui";
@@ -42,7 +43,12 @@ export default function DoorListScreen() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const summary = api.door.summary.useQuery({ eventId }, { enabled: !!eventId });
+  const { deviceLabel } = useDeviceLabel();
+
+  const summary = api.door.summary.useQuery(
+    { eventId },
+    { enabled: !!eventId, refetchInterval: 15_000 },
+  );
   const utils = api.useUtils();
 
   const list = api.door.doorList.useInfiniteQuery(
@@ -147,7 +153,11 @@ export default function DoorListScreen() {
               ) : (
                 <Pressable
                   onPress={() =>
-                    admit.mutate({ eventId, ticketNumber: row.ticketNumber })
+                    admit.mutate({
+                      eventId,
+                      ticketNumber: row.ticketNumber,
+                      deviceLabel: labelArg(deviceLabel),
+                    })
                   }
                   disabled={admit.isPending}
                   style={styles.admit}
@@ -179,7 +189,11 @@ export default function DoorListScreen() {
           isManager={summary.data?.isManager ?? false}
           onClose={() => setOpenTicketId(null)}
           onAdmit={(ticketNumber) =>
-            admit.mutate({ eventId, ticketNumber })
+            admit.mutate({
+              eventId,
+              ticketNumber,
+              deviceLabel: labelArg(deviceLabel),
+            })
           }
         />
       ) : null}

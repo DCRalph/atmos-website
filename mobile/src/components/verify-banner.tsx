@@ -3,7 +3,7 @@ import { StyleSheet, View } from "react-native";
 
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { colors, radius, space } from "@/lib/theme";
+import { colors, radius, space, stroke } from "@/lib/theme";
 import { Body, Button, Caption } from "@/components/ui";
 
 /**
@@ -25,7 +25,9 @@ export function VerifyBanner() {
 
   return (
     <View style={styles.wrap}>
-      <Body style={{ fontWeight: "700" }}>Confirm your email</Body>
+      <Body style={{ fontWeight: "900", textTransform: "uppercase" }}>
+        Confirm your email
+      </Body>
       <Caption style={{ marginTop: 2 }}>
         {sent
           ? `Sent to ${user.email}. Tap the link and your tickets appear here.`
@@ -54,7 +56,7 @@ const styles = StyleSheet.create({
   wrap: {
     padding: space.lg,
     borderRadius: radius.md,
-    borderWidth: 1,
+    borderWidth: stroke.hard,
     borderColor: colors.warn,
     backgroundColor: colors.warnDim,
   },

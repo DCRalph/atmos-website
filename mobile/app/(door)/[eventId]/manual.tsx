@@ -10,6 +10,7 @@ import {
 } from "react-native";
 
 import { api } from "@/lib/api";
+import { labelArg, useDeviceLabel } from "@/lib/device-label";
 import { colors, radius, space } from "@/lib/theme";
 import { Body, Button, Caption } from "@/components/ui";
 import { DoorHeader } from "@/components/door/door-header";
@@ -27,7 +28,12 @@ export default function ManualScreen() {
   const [value, setValue] = useState("");
   const [outcome, setOutcome] = useState<ScanOutcome | null>(null);
 
-  const summary = api.door.summary.useQuery({ eventId }, { enabled: !!eventId });
+  const { deviceLabel } = useDeviceLabel();
+
+  const summary = api.door.summary.useQuery(
+    { eventId },
+    { enabled: !!eventId, refetchInterval: 15_000 },
+  );
   const utils = api.useUtils();
 
   const admit = api.door.admitByTicketNumber.useMutation({
@@ -69,7 +75,11 @@ export default function ManualScreen() {
 
         <Button
           onPress={() =>
-            admit.mutate({ eventId, ticketNumber: value.trim() })
+            admit.mutate({
+              eventId,
+              ticketNumber: value.trim(),
+              deviceLabel: labelArg(deviceLabel),
+            })
           }
           disabled={value.trim().length < 3}
           loading={admit.isPending}

@@ -2,11 +2,12 @@ import { useCallback, useRef, useState } from "react";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "@/lib/api";
-import { colors, radius, space } from "@/lib/theme";
+import { labelArg, useDeviceLabel } from "@/lib/device-label";
+import { colors, radius, space, stroke } from "@/lib/theme";
 import { Body, Button, Caption, Loading, Notice } from "@/components/ui";
 import { ScanResult, type ScanOutcome } from "@/components/door/scan-result";
 import { DoorHeader } from "@/components/door/door-header";
@@ -29,7 +30,14 @@ export default function ScanScreen() {
   /** Guards against the same code firing repeatedly while the sheet animates. */
   const lastToken = useRef<string | null>(null);
 
-  const summary = api.door.summary.useQuery({ eventId }, { enabled: !!eventId });
+  const { deviceLabel, setDeviceLabel } = useDeviceLabel();
+
+  // Polled, like the web scanner: on a second door the headcount moves without
+  // anything happening on this phone, and a stale number is one staff act on.
+  const summary = api.door.summary.useQuery(
+    { eventId },
+    { enabled: !!eventId, refetchInterval: 15_000 },
+  );
   const utils = api.useUtils();
 
   const scan = api.door.scan.useMutation({
@@ -57,9 +65,9 @@ export default function ScanScreen() {
       if (outcome || scan.isPending) return;
       if (lastToken.current === data) return;
       lastToken.current = data;
-      scan.mutate({ eventId, token: data });
+      scan.mutate({ eventId, token: data, deviceLabel: labelArg(deviceLabel) });
     },
-    [eventId, outcome, scan],
+    [eventId, outcome, scan, deviceLabel],
   );
 
   const dismiss = useCallback(() => {
@@ -128,6 +136,18 @@ export default function ScanScreen() {
           </Pressable>
         </View>
 
+        <View style={{ gap: space.xs }}>
+          <Caption>This device — shows on every scan you take</Caption>
+          <TextInput
+            value={deviceLabel}
+            onChangeText={setDeviceLabel}
+            placeholder="Front door"
+            placeholderTextColor={colors.textFaint}
+            autoCorrect={false}
+            style={styles.label}
+          />
+        </View>
+
         <RecentScans eventId={eventId} />
       </ScrollView>
 
@@ -145,6 +165,15 @@ export default function ScanScreen() {
 
 const styles = StyleSheet.create({
   centre: { flex: 1, paddingHorizontal: space.lg },
+  label: {
+    height: 48,
+    borderWidth: stroke.hard,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: space.md,
+    color: colors.text,
+    fontSize: 15,
+  },
   viewfinder: {
     // Square and fixed rather than flex: the camera stays put while the
     // recent-scans list scrolls under it, so the framing a staffer has learned

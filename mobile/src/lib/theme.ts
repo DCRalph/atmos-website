@@ -13,10 +13,16 @@ export const colors = {
   surfaceRaised: "#171717",
   border: "#242424",
   borderStrong: "#333333",
+  /** The hairline the site draws its brutalist edges in — `border-white/30`. */
+  borderHard: "rgba(255,255,255,0.30)",
 
   text: "#FFFFFF",
   textSoft: "rgba(255,255,255,0.62)",
   textFaint: "rgba(255,255,255,0.38)",
+
+  /** `--accent-strong` / `--accent-muted` from the site's globals.css. */
+  accent: "#470082",
+  accentMuted: "#483195",
 
   /** Door signal colours — admitted / exception / refused. */
   in: "#34D399",
@@ -36,19 +42,36 @@ export const space = {
   xxl: 32,
 } as const;
 
+/**
+ * Square, everywhere.
+ *
+ * The site's public surfaces are `rounded-none` with a hard 2px border, and
+ * the app should read as the same object. The scale is kept rather than
+ * deleted so the call sites still say which edge they meant — if a rounded
+ * variant is ever wanted back, it changes here and nowhere else.
+ */
 export const radius = {
-  sm: 6,
-  md: 10,
-  lg: 16,
-  pill: 999,
+  sm: 0,
+  md: 0,
+  lg: 0,
+  pill: 0,
+} as const;
+
+/** Border weights. `hard` is the site's `border-2` on buttons and cards. */
+export const stroke = {
+  hair: 1,
+  hard: 2,
 } as const;
 
 export const type = {
-  display: { fontSize: 30, fontWeight: "800", letterSpacing: -0.6 },
-  title: { fontSize: 22, fontWeight: "700", letterSpacing: -0.3 },
-  heading: { fontSize: 17, fontWeight: "700" },
+  // Headings on the site are `font-black tracking-tight uppercase`, so the
+  // weights here go to 900 and the components uppercase their text.
+  display: { fontSize: 30, fontWeight: "900", letterSpacing: -0.8 },
+  title: { fontSize: 22, fontWeight: "900", letterSpacing: -0.5 },
+  heading: { fontSize: 17, fontWeight: "900", letterSpacing: -0.2 },
   body: { fontSize: 15, fontWeight: "400" },
-  label: { fontSize: 13, fontWeight: "600" },
+  /** Button text — the site's `font-black tracking-wider uppercase`. */
+  label: { fontSize: 13, fontWeight: "900", letterSpacing: 1.2 },
   caption: { fontSize: 12, fontWeight: "400" },
   /** Uppercase section markers, as on the site. */
   eyebrow: {

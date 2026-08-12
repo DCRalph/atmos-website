@@ -80,5 +80,5 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  dot: { width: 8, height: 8, borderRadius: 4 },
+  dot: { width: 8, height: 8 },
 });
