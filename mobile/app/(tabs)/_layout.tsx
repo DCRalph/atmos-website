@@ -1,30 +1,25 @@
 import { Tabs } from "expo-router";
-import { Text, View, type ColorValue } from "react-native";
+import { View, type ColorValue } from "react-native";
+import { CalendarDays, House, Menu, Ticket } from "lucide-react-native";
 
-import { api } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
 import { colors } from "@/lib/theme";
+
+/**
+ * Home is the anchor, explicitly.
+ *
+ * Without this the router falls back to the alphabetically-first route in the
+ * directory, which is how a customer app ended up opening on a door scanner.
+ */
+export const unstable_settings = { anchor: "index" };
 
 /**
  * The tab bar.
  *
- * The Door tab appears only when `door.myEvents` returns something. That query
- * is already authorised server-side and every door call re-checks, so hiding
- * the tab is a convenience for the 99% who are not staff — not the security
- * boundary.
+ * Every tab here is a customer's app. Door mode is staff tooling and does not
+ * get one — it hangs off the account card in `more`, and lives full-screen
+ * outside the tabs.
  */
 export default function TabsLayout() {
-  const { user } = useAuth();
-  const myEvents = api.door.myEvents.useQuery(undefined, {
-    enabled: !!user,
-    // A refusal here is the normal answer for a punter, not an error worth
-    // retrying three times on every app launch.
-    retry: false,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const isDoorStaff = (myEvents.data?.length ?? 0) > 0;
-
   return (
     <Tabs
       screenOptions={{
@@ -35,45 +30,52 @@ export default function TabsLayout() {
           backgroundColor: colors.bg,
           borderTopColor: colors.border,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: "900",
+          letterSpacing: 1,
+          textTransform: "uppercase",
+        },
         sceneStyle: { backgroundColor: colors.bg },
       }}
     >
       <Tabs.Screen
         name="index"
-        options={{ title: "Home", tabBarIcon: (p) => <Glyph {...p} char="◉" /> }}
+        options={{ title: "Home", tabBarIcon: (p) => <Glyph {...p} icon={House} /> }}
       />
       <Tabs.Screen
         name="gigs"
-        options={{ title: "Gigs", tabBarIcon: (p) => <Glyph {...p} char="♫" /> }}
+        options={{
+          title: "Gigs",
+          tabBarIcon: (p) => <Glyph {...p} icon={CalendarDays} />,
+        }}
       />
       <Tabs.Screen
         name="tickets"
         options={{
           title: "Tickets",
-          tabBarIcon: (p) => <Glyph {...p} char="▤" />,
-        }}
-      />
-      <Tabs.Screen
-        name="door"
-        options={{
-          title: "Door",
-          tabBarIcon: (p) => <Glyph {...p} char="⛨" />,
-          href: isDoorStaff ? "/(tabs)/door" : null,
+          tabBarIcon: (p) => <Glyph {...p} icon={Ticket} />,
         }}
       />
       <Tabs.Screen
         name="more"
-        options={{ title: "More", tabBarIcon: (p) => <Glyph {...p} char="⋯" /> }}
+        options={{ title: "More", tabBarIcon: (p) => <Glyph {...p} icon={Menu} /> }}
       />
     </Tabs>
   );
 }
 
-function Glyph({ color, char }: { color: ColorValue; char: string }) {
+/** Lucide, the same set the website draws its icons from. */
+function Glyph({
+  color,
+  icon: Icon,
+}: {
+  color: ColorValue;
+  icon: typeof House;
+}) {
   return (
     <View style={{ height: 24, justifyContent: "center" }}>
-      <Text style={{ color, fontSize: 18 }}>{char}</Text>
+      <Icon color={color as string} size={20} strokeWidth={2} />
     </View>
   );
 }

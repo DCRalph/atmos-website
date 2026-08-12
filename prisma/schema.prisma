@@ -518,6 +518,15 @@ model NewsletterSubscription {
   @@map("newsletter_subscription")
 }
 
+/// The band drawn behind the event name on a wallet pass.
+enum PassStripStyle {
+  HATCH
+  GRADIENT
+  SOLID
+  BARS
+  NONE
+}
+
 enum FileUploadStatus {
   NO_FILE
   UPLOADING
@@ -926,6 +935,13 @@ enum TicketScanResult {
   /// A later scan of a ticket that still carries an active denial. The door
   /// sees the earlier refusal instead of a fresh decision.
   PREVIOUSLY_DENIED
+  /// Staff taking back a refusal. Append-only like everything else here, so an
+  /// undo is a new row and the original refusal stays in the history.
+  DENIAL_REVERTED
+  /// Free text a staffer attached to a ticket without changing anything —
+  /// "argued at the door", "ID looked off". Carries its text in `denyNote`,
+  /// which is the column that already holds whatever a staffer typed.
+  NOTE
   INVALID_SIGNATURE
   NOT_FOUND
   WRONG_EVENT
@@ -942,6 +958,48 @@ enum TicketScanResult {
 /// artist's guest can be bumped to AAA without rewriting the tier they came
 /// from, and changing a tier later never silently re-bands tickets already in
 /// people's pockets.
+/// A door access level, editable by an organiser.
+///
+/// Replaces what used to be the `TicketAccessLevel` enum. `code` is what sits
+/// on every ticket and is seeded with the old enum's exact values, so the
+/// conversion was an identity mapping and historical tickets read unchanged.
+/// Codes are immutable once issued; labels, colours and order are not.
+model AccessLevel {
+  /// Stored on tickets. Uppercase, no spaces.
+  code  String @id
+  label String
+  /// Compact form for door badges and the wallet chip — `GA`, `AAA`.
+  short String
+
+  /// Badge colours as CSS, not class names — a promoter picking a colour
+  /// should not have to know Tailwind's palette. Solid rather than tinted,
+  /// because a door badge sits on top of green, amber or red and has to stay
+  /// readable on all three.
+  badgeBg String @default("#FFFFFF")
+  badgeFg String @default("#000000")
+
+  /// Hex the wallet pass tints itself with. Null leaves the event's own theme
+  /// alone, which is what general admission wants.
+  passAccent String?
+
+  /// Least to most access. Drives ordering everywhere and how far the accent
+  /// floods a pass's band.
+  rank Int @default(0)
+
+  /// Retired levels stay so historical tickets still resolve, but are not
+  /// offered when issuing anything new.
+  archived Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tiers   TicketTier[]
+  tickets Ticket[]
+
+  @@index([archived, rank])
+  @@map("access_level")
+}
+
 enum TicketAccessLevel {
   GENERAL
   GUEST
@@ -1042,6 +1100,15 @@ model TicketEvent {
 
   termsVersion String @default("v1")
 
+  /// Apple Wallet pass styling. Null anywhere falls back to the Atmos default
+  /// in `~/lib/ticketing/pass-theme.ts` — an event that sets nothing still gets
+  /// a house-style pass.
+  passStripStyle    PassStripStyle @default(HATCH)
+  passAccentHex     String?
+  passBackgroundHex String?
+  passForegroundHex String?
+  passLabelHex      String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1080,7 +1147,8 @@ model TicketTier {
   maxPerEmail      Int?
   requiresApproval Boolean @default(false)
 
-  accessLevel TicketAccessLevel @default(GENERAL)
+  accessLevel String      @default("GENERAL")
+  level       AccessLevel @relation(fields: [accessLevel], references: [code], onUpdate: Cascade)
 
   sortOrder Int @default(0)
 
@@ -1127,7 +1195,6 @@ model TicketOrder {
   termsVersion    String?
   /// Separate from the ticket purchase — UEMA 2007 needs express consent.
   marketingOptIn  Boolean   @default(false)
-
 
   accessTokenVersion Int       @default(1)
   detailsCompletedAt DateTime?
@@ -1177,7 +1244,7 @@ model TicketOrderItem {
 
 model Ticket {
   id           String @id @default(cuid())
-  /// ATM-4F7K2X-03
+  /// ATN-4F7K2X-03
   ticketNumber String @unique
 
   orderId String
@@ -1188,16 +1255,16 @@ model Ticket {
   attendeeName  String?
   attendeeEmail String?
 
-
-  accessLevel TicketAccessLevel @default(GENERAL)
+  accessLevel String      @default("GENERAL")
+  level       AccessLevel @relation(fields: [accessLevel], references: [code], onUpdate: Cascade)
 
   isComp Boolean @default(false)
 
   nameLockedAt DateTime?
 
-  hostTicketId String?
+  hostTicketId  String?
   invitedByName String?
-  sentAt DateTime?
+  sentAt        DateTime?
 
   qrSecret  String
   qrVersion Int    @default(1)

@@ -11,6 +11,7 @@ import type { DenyReasonValue } from "~/lib/ticketing/deny-reasons";
 import { PersonSheet } from "~/components/door/person-sheet";
 import { AccessBadge } from "~/components/door/controls";
 import { isElevated } from "~/lib/ticketing/access-levels";
+import { denyReasonLabel } from "~/lib/ticketing/deny-reasons";
 
 /**
  * The door list.
@@ -42,7 +43,9 @@ export function DoorList({
   const [openTicketId, setOpenTicketId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
-  const [onlyNotArrived, setOnlyNotArrived] = useState(false);
+  const [filter, setFilter] = useState<
+    "all" | "notArrived" | "arrived" | "denied"
+  >("all");
 
   // A door list can be several hundred rows; re-querying on every keystroke of
   // a name typed at arm's length is a lot of round trips for no benefit.
@@ -52,7 +55,7 @@ export function DoorList({
   }, [search]);
 
   const list = api.door.doorList.useInfiniteQuery(
-    { eventId, search: debounced, onlyNotArrived },
+    { eventId, search: debounced, filter },
     {
       enabled: !!eventId,
       getNextPageParam: (page) => page.nextCursor ?? undefined,
@@ -79,15 +82,30 @@ export function DoorList({
       </div>
 
       <div className="flex items-center justify-between gap-3">
-        <label className="flex items-center gap-2 text-sm text-white/60">
-          <input
-            type="checkbox"
-            checked={onlyNotArrived}
-            onChange={(e) => setOnlyNotArrived(e.target.checked)}
-            className="size-4 accent-white"
-          />
-          Not arrived only
-        </label>
+        <div className="flex flex-wrap gap-1.5">
+          {(
+            [
+              ["all", "All"],
+              ["notArrived", "To come"],
+              ["arrived", "In"],
+              ["denied", "Refused"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setFilter(value)}
+              aria-pressed={filter === value}
+              className={`border-2 px-2.5 py-1 text-xs font-bold tracking-wider uppercase transition-colors ${
+                filter === value
+                  ? "border-white bg-white text-black"
+                  : "border-white/15 text-white/60 hover:border-white/40"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
         {!list.isPending && (
           <p className="shrink-0 text-sm text-white/40 tabular-nums">
@@ -104,9 +122,13 @@ export function DoorList({
         <p className="border-2 border-white/10 p-6 text-center text-sm text-white/40">
           {debounced
             ? "Nobody matches that."
-            : onlyNotArrived
+            : filter === "notArrived"
               ? "Everyone with a ticket is already in."
-              : "No tickets sold yet."}
+              : filter === "denied"
+                ? "Nobody has been refused."
+                : filter === "arrived"
+                  ? "Nobody has been scanned in yet."
+                  : "No tickets sold yet."}
         </p>
       )}
 
@@ -128,6 +150,9 @@ export function DoorList({
                   <span className="block truncate text-xs text-white/40">
                     {row.tierName} · {row.ticketNumber}
                     {row.isComp ? " · comp" : ""}
+                    {row.status !== "VALID"
+                      ? ` · ${row.status.toLowerCase()}`
+                      : ""}
                   </span>
                   {/* Grouped by whoever brought them, which is how a manager
                       scanning the list actually thinks about a guest list. */}
@@ -145,6 +170,16 @@ export function DoorList({
                     <span className="mt-0.5 block text-xs text-emerald-400">
                       In {formatTimeAgo(new Date(row.admittedAt))}
                       {row.admittedDevice ? ` · ${row.admittedDevice}` : ""}
+                    </span>
+                  )}
+                  {/* Only when the refusal is the last word — see `denial` in
+                      the router. The reason is the whole point: "refused" with
+                      no why is what staff end up arguing about. */}
+                  {row.denial && (
+                    <span className="mt-0.5 block text-xs text-red-400">
+                      Refused {formatTimeAgo(new Date(row.denial.at))} ·{" "}
+                      {denyReasonLabel(row.denial.reason)}
+                      {row.denial.note ? ` — ${row.denial.note}` : ""}
                     </span>
                   )}
                 </span>
@@ -212,3 +247,4 @@ export function DoorList({
     </div>
   );
 }
+

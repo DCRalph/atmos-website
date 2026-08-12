@@ -22,6 +22,27 @@ const config: ExpoConfig = {
     // (https://atmosmedia.co.nz/tickets/...) open the app instead of Safari
     // when it is installed.
     associatedDomains: ["applinks:atmosmedia.co.nz"],
+    /**
+     * Tap to Pay, and production push.
+     *
+     * The Stripe config plugin does not add the proximity-reader entitlement —
+     * its `tapToPayCheck` option is Android-only. Apple grants this one by
+     * manual review against the bundle id, so it can only be listed here once
+     * that has come through. See `docs/ticketing/TAP-TO-PAY.md`.
+     *
+     * `aps-environment` follows the build. A development profile only carries
+     * the development value, so hardcoding production fails signing for the
+     * device builds we install directly; a store build needs production or it
+     * registers tokens the server can never push to. `scripts/build-ipa.sh`
+     * sets `APS_ENVIRONMENT=production` for that case.
+     */
+    entitlements: {
+      // Granted by Apple against this bundle id and enabled on the App ID.
+      // Without it the Stripe SDK never surfaces a reader and the sell sheet
+      // reports Tap to Pay as unavailable. See `docs/ticketing/TAP-TO-PAY.md`.
+      "com.apple.developer.proximity-reader.payment.acceptance": true,
+      "aps-environment": process.env.APS_ENVIRONMENT ?? "development",
+    },
     infoPlist: {
       NSCameraUsageDescription:
         "Atmos uses the camera to scan tickets at the door.",

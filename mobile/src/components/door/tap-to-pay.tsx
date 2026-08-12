@@ -5,6 +5,7 @@ import {
   type Reader,
 } from "@stripe/stripe-terminal-react-native";
 import { Modal, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "@/lib/api";
 import { colors, radius, space } from "@/lib/theme";
@@ -45,7 +46,10 @@ export function TapToPaySheet({
   onClose: () => void;
   onSold: (orderNumber: string) => void;
 }) {
+  const insets = useSafeAreaInsets();
   const [stage, setStage] = useState<Stage>("connecting");
+  /** Permanent, unlike a timeout — no point offering a retry. */
+  const [unsupported, setUnsupported] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const orderRef = useRef<string | null>(null);
   const settled = useRef(false);
@@ -58,6 +62,7 @@ export function TapToPaySheet({
     collectPaymentMethod,
     confirmPaymentIntent,
     retrievePaymentIntent,
+    supportsReadersOfType,
   } = useStripeTerminal();
 
   const terminal = api.terminal.config.useQuery(undefined, { retry: false });
@@ -76,12 +81,74 @@ export function TapToPaySheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]);
 
-  // On iOS the "reader" is this phone, so discovery resolves to one local
-  // handle almost immediately rather than scanning for hardware.
+  /**
+   * Can this phone accept Tap to Pay at all?
+   *
+   * Asked before discovery, because the answer is usually permanent: the app
+   * has to be signed with Apple's
+   * `com.apple.developer.proximity-reader.payment.acceptance` entitlement, the
+   * Stripe account has to be enabled for it, and the handset has to be an
+   * iPhone XS or later. Fail any of those and discovery simply never returns a
+   * reader — so without this check the sheet spins forever at a door, looking
+   * like a slow network rather than a build that can never work.
+   *
+   * See `docs/ticketing/TAP-TO-PAY.md`.
+   */
   useEffect(() => {
     if (connectedReader) return;
-    void discoverReaders({ discoveryMethod: "tapToPay", simulated: __DEV__ });
+    let alive = true;
+
+    void (async () => {
+      try {
+        const { readerSupportResult, error: supportError } =
+          await supportsReadersOfType({
+            deviceType: "tapToPay",
+            discoveryMethod: "tapToPay",
+            simulated: __DEV__,
+          });
+        if (!alive) return;
+        if (supportError || !readerSupportResult) {
+          setUnsupported(true);
+          setStage("failed");
+          setError(
+            supportError?.message ??
+              "This phone can't take Tap to Pay payments. It needs Apple's Tap to Pay entitlement, Tap to Pay enabled on the Stripe account, and an iPhone XS or later.",
+          );
+          return;
+        }
+        void discoverReaders({
+          discoveryMethod: "tapToPay",
+          simulated: __DEV__,
+        });
+      } catch (e) {
+        if (!alive) return;
+        setUnsupported(true);
+        setStage("failed");
+        setError(e instanceof Error ? e.message : "Tap to Pay is unavailable.");
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
   }, [connectedReader, discoverReaders]);
+
+  /**
+   * A backstop for the cases the support check clears but discovery still
+   * stalls on — no network to Stripe, a location that does not resolve. Long
+   * enough not to trip on a slow venue connection, short enough that nobody
+   * stands there wondering.
+   */
+  useEffect(() => {
+    if (connectedReader || stage !== "connecting" || unsupported) return;
+    const timer = setTimeout(() => {
+      setStage("failed");
+      setError(
+        "Couldn't get the reader ready. Check the connection and try again — or take cash and record it after.",
+      );
+    }, 20_000);
+    return () => clearTimeout(timer);
+  }, [connectedReader, stage, unsupported]);
 
   useEffect(() => {
     if (connectedReader || discoveredReaders.length === 0) return;
@@ -180,7 +247,14 @@ export function TapToPaySheet({
 
   return (
     <Modal visible animationType="slide" transparent={false}>
-      <View style={styles.screen}>
+      <View
+        style={[
+          styles.screen,
+          // Full-screen modals sit under the notch and the home indicator
+          // otherwise — the verdict ran into the Dynamic Island.
+          { paddingTop: insets.top, paddingBottom: insets.bottom },
+        ]}
+      >
         <View style={styles.body}>
           <Title style={{ textAlign: "center" }}>{money(totalCents)}</Title>
 
@@ -213,6 +287,18 @@ export function TapToPaySheet({
             <Body style={[styles.big, { color: colors.in }]}>Paid</Body>
           ) : null}
 
+          {/* Its own heading, because this is not a payment that failed — the
+              phone cannot take card at all, and staff need to stop trying and
+              take cash instead. */}
+          {unsupported ? (
+            <View style={styles.prompt}>
+              <Body style={styles.big}>Tap to Pay unavailable</Body>
+              <Caption style={{ textAlign: "center" }}>
+                Take cash or another payment, and record the sale after.
+              </Caption>
+            </View>
+          ) : null}
+
           {error ? (
             <View style={styles.error}>
               <Caption style={{ color: colors.deny }}>{error}</Caption>
@@ -224,7 +310,7 @@ export function TapToPaySheet({
           {stage === "connecting" && ready ? (
             <Button onPress={() => void run()}>Take payment</Button>
           ) : null}
-          {stage === "failed" ? (
+          {stage === "failed" && !unsupported ? (
             <Button onPress={() => void run()}>Try again</Button>
           ) : null}
           {/* Bottom button, always harmless — the door's rule everywhere. */}

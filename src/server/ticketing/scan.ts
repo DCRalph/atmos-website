@@ -56,7 +56,7 @@ export type ScanOutcome = {
     ticketNumber: string;
     tierName: string;
     /** What this ticket gets them past — which wristband the door hands over. */
-    accessLevel: TicketAccessLevel;
+    accessLevel: string;
     attendeeName: string | null;
     buyerName: string | null;
     buyerEmail: string | null;
@@ -330,9 +330,16 @@ export async function scanTicket({
       },
     });
 
+    const denialRevert = await tx.ticketScan.findFirst({
+      where: { ticketId: ticket.id, result: TicketScanResult.DENIAL_REVERTED },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    });
+
     const denialStands =
       denial !== null &&
-      (previous === null || denial.createdAt > previous.createdAt);
+      (previous === null || denial.createdAt > previous.createdAt) &&
+      (denialRevert === null || denial.createdAt > denialRevert.createdAt);
 
     if (denialStands) {
       const previousDenial: PreviousDenial = {
@@ -591,7 +598,8 @@ export async function ticketState(ticketId: string): Promise<{
   admissionCount: number;
   denial: PreviousDenial | null;
 }> {
-  const [admissions, lastRevert, denial] = await Promise.all([
+  const [admissions, lastRevert, denial, denialRevert] =
+    await Promise.all([
     db.ticketScan.findMany({
       where: { ticketId, result: { in: [...ADMITTING_RESULTS] } },
       orderBy: { createdAt: "desc" },
@@ -613,6 +621,11 @@ export async function ticketState(ticketId: string): Promise<{
         scannedByUserId: true,
       },
     }),
+    db.ticketScan.findFirst({
+      where: { ticketId, result: TicketScanResult.DENIAL_REVERTED },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    }),
   ]);
 
   const live = lastRevert
@@ -620,8 +633,13 @@ export async function ticketState(ticketId: string): Promise<{
     : admissions;
   const latest = live[0] ?? null;
 
+  // A refusal stands until something later overrules it: an admission, or a
+  // staffer taking it back. Without the second clause an undo would be written
+  // to the log and change nothing, which is worse than not offering it.
   const denialStands =
-    denial !== null && (latest === null || denial.createdAt > latest.createdAt);
+    denial !== null &&
+    (latest === null || denial.createdAt > latest.createdAt) &&
+    (denialRevert === null || denial.createdAt > denialRevert.createdAt);
 
   return {
     admittedAt: latest?.createdAt ?? null,
@@ -679,8 +697,13 @@ export function reduceAdmissionState<
 
   const denial =
     rows.find((row) => row.result === TicketScanResult.DENIED) ?? null;
+  const denialRevert =
+    rows.find((row) => row.result === TicketScanResult.DENIAL_REVERTED) ?? null;
+  // Same rule as `ticketState`, over rows already in hand.
   const denialStands =
-    denial !== null && (latest === null || denial.createdAt > latest.createdAt);
+    denial !== null &&
+    (latest === null || denial.createdAt > latest.createdAt) &&
+    (denialRevert === null || denial.createdAt > denialRevert.createdAt);
 
   return {
     admittedAt: latest?.createdAt ?? null,
@@ -713,6 +736,7 @@ export async function admissionStates(
           ...ADMITTING_RESULTS,
           TicketScanResult.ADMISSION_REVERTED,
           TicketScanResult.DENIED,
+          TicketScanResult.DENIAL_REVERTED,
         ],
       },
     },

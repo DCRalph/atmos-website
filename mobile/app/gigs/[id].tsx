@@ -3,9 +3,10 @@ import * as WebBrowser from "expo-web-browser";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ArrowLeft } from "lucide-react-native";
 
 import { api } from "@/lib/api";
-import { colors, radius, space } from "@/lib/theme";
+import { colors, radius, space, stroke } from "@/lib/theme";
 import { formatGigDateLong, formatGigTime } from "@/lib/dates";
 import {
   Body,
@@ -76,7 +77,7 @@ export default function GigScreen() {
         hitSlop={16}
         style={[styles.back, { top: insets.top + space.sm }]}
       >
-        <Body style={{ fontSize: 24, lineHeight: 26 }}>‹</Body>
+        <ArrowLeft color={colors.text} size={20} strokeWidth={2.5} />
       </Pressable>
 
       <View style={{ padding: space.lg, gap: space.md }}>
@@ -151,13 +152,14 @@ export default function GigScreen() {
 }
 
 const styles = StyleSheet.create({
-  poster: { width: "100%", aspectRatio: 1 },
+  poster: { width: "100%", aspectRatio: 4 / 5 },
   back: {
     position: "absolute",
     left: space.lg,
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderWidth: stroke.hard,
+    borderColor: colors.borderHard,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.55)",
@@ -165,7 +167,7 @@ const styles = StyleSheet.create({
   creator: {
     padding: space.md,
     backgroundColor: colors.surface,
-    borderWidth: 1,
+    borderWidth: stroke.hair,
     borderColor: colors.border,
     borderRadius: radius.md,
   },

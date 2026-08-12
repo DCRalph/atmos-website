@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   DENY_REASONS,
@@ -31,12 +32,20 @@ export function DenySheet({
   onCancel: () => void;
   onConfirm: (reason: DenyReasonValue, note: string) => void;
 }) {
+  const insets = useSafeAreaInsets();
   const [reason, setReason] = useState<DenyReasonValue | null>(null);
   const [note, setNote] = useState("");
 
   return (
     <Modal visible animationType="slide" transparent={false}>
-      <View style={styles.screen}>
+      <View
+        style={[
+          styles.screen,
+          // Full-screen modals sit under the notch and the home indicator
+          // otherwise — the verdict ran into the Dynamic Island.
+          { paddingTop: insets.top, paddingBottom: insets.bottom },
+        ]}
+      >
         <ScrollView contentContainerStyle={styles.body}>
           <Title style={{ color: "#fff" }}>Why refuse?</Title>
           <Caption style={{ color: "rgba(255,255,255,0.75)" }}>

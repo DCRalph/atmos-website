@@ -10,11 +10,16 @@ import {
   Mail,
   MapPin,
   Pencil,
-  Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 
+import {
+  AddToAppleWalletButton,
+  AddToGoogleWalletButton,
+} from "~/components/tickets/wallet-buttons";
+
 import { api, type RouterOutputs } from "~/trpc/react";
+import { accessLevel, isElevated } from "~/lib/ticketing/access-levels";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -160,8 +165,12 @@ export default function TicketsPage() {
             className="border-2 border-white/10 bg-black/80 p-5 text-center backdrop-blur-sm"
           >
             <p className="text-xs tracking-[0.14em] text-white/40 uppercase">
-              Ticket {index + 1} of {data.tickets.length} · {ticket.tierName}
+              Ticket {index + 1} of {data.tickets.length}
+              <LevelChip accessLevel={ticket.accessLevel} />
             </p>
+            {/* The tier is what was bought, not what it gets you past. Kept
+                for reference, at the weight that deserves. */}
+            <p className="mt-1 text-[11px] text-white/30">{ticket.tierName}</p>
 
             <div
               className="mx-auto mt-4 w-full max-w-70 bg-white p-3 [&>svg]:h-auto [&>svg]:w-full"
@@ -181,22 +190,10 @@ export default function TicketsPage() {
             {(ticket.appleWalletUrl ?? ticket.googleWalletUrl) && (
               <div className="mt-5 flex flex-wrap justify-center gap-2">
                 {ticket.appleWalletUrl && (
-                  <a
-                    href={ticket.appleWalletUrl}
-                    className="inline-flex items-center gap-2 border border-white/20 px-4 py-2 text-sm text-white/80 transition-colors hover:bg-white hover:text-black"
-                  >
-                    <Wallet className="size-4" aria-hidden />
-                    Apple Wallet
-                  </a>
+                  <AddToAppleWalletButton href={ticket.appleWalletUrl} />
                 )}
                 {ticket.googleWalletUrl && (
-                  <a
-                    href={ticket.googleWalletUrl}
-                    className="inline-flex items-center gap-2 border border-white/20 px-4 py-2 text-sm text-white/80 transition-colors hover:bg-white hover:text-black"
-                  >
-                    <Wallet className="size-4" aria-hidden />
-                    Google Wallet
-                  </a>
+                  <AddToGoogleWalletButton href={ticket.googleWalletUrl} />
                 )}
               </div>
             )}
@@ -345,7 +342,11 @@ function AttendeeDetails({
               {tickets.map((ticket, index) => (
                 <div key={ticket.id} className="space-y-1.5">
                   <Label htmlFor={`name-${ticket.id}`}>
-                    Ticket {index + 1} · {ticket.tierName}
+                    Ticket {index + 1}
+                    <LevelChip accessLevel={ticket.accessLevel} />
+                    <span className="ml-2 text-[11px] font-normal text-white/30">
+                      {ticket.tierName}
+                    </span>
                   </Label>
                   <Input
                     id={`name-${ticket.id}`}
@@ -488,5 +489,25 @@ function ResendButton({
         {resend.isPending ? "Sending…" : `Email these tickets to ${email}`}
       </button>
     </div>
+  );
+}
+
+/**
+ * The access level, next to the tier name.
+ *
+ * Only when it is above general admission: on a GA ticket the tier already
+ * says everything, and a chip repeating it is noise. Without this an AAA on a
+ * tier called "General Admission" reads as general admission.
+ */
+function LevelChip({ accessLevel: code }: { accessLevel: string }) {
+  if (!isElevated(code)) return null;
+  const level = accessLevel(code);
+  return (
+    <span
+      className="ml-2 inline-block px-1.5 py-0.5 align-middle text-[10px] font-bold tracking-[0.08em]"
+      style={{ backgroundColor: level.badgeBg, color: level.badgeFg }}
+    >
+      {level.short}
+    </span>
   );
 }

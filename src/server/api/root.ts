@@ -13,6 +13,7 @@ import { homeContentRouter } from "~/server/api/routers/home-content";
 import { activityLogsRouter } from "~/server/api/routers/activity-logs";
 import { rentalsRouter } from "~/server/api/routers/rentals";
 import { settingsRouter } from "~/server/api/routers/settings";
+import { accessLevelsRouter } from "~/server/api/routers/access-levels";
 import { shopifyRouter } from "~/server/api/routers/shopify";
 import { creatorProfilesRouter } from "~/server/api/routers/creator-profiles";
 import { creatorThemesRouter } from "~/server/api/routers/creator-themes";
@@ -66,6 +67,7 @@ export const appRouter = createTRPCRouter({
   ticketAdmin: ticketAdminRouter,
   ticketAnalytics: ticketAnalyticsRouter,
   discountCodes: discountCodesRouter,
+  accessLevels: accessLevelsRouter,
   door: doorRouter,
   terminal: terminalRouter,
   push: pushRouter,

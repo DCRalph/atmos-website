@@ -6,15 +6,19 @@ import {
   ScrollView,
   StyleSheet,
   Switch,
+  Text,
   TextInput,
   View,
 } from "react-native";
 
 import { api } from "@/lib/api";
-import { colors, radius, space } from "@/lib/theme";
+import { denyReasonLabel } from "~/lib/ticketing/deny-reasons";
+import { labelArg, useDeviceLabel } from "@/lib/device-label";
+import { colors, radius, space, stroke } from "@/lib/theme";
 import { formatTimeAgo } from "@/lib/dates";
 import { Body, Button, Caption, Loading, Notice, Pill } from "@/components/ui";
 import { DoorHeader } from "@/components/door/door-header";
+import { AccessBadge } from "@/components/door/access-badge";
 import { ScanResult, type ScanOutcome } from "@/components/door/scan-result";
 import { PersonSheet } from "@/components/door/person-sheet";
 
@@ -27,11 +31,16 @@ import { PersonSheet } from "@/components/door/person-sheet";
  * "admitted" is how a stranger walks in on a used ticket.
  */
 export default function DoorListScreen() {
-  const { eventId } = useLocalSearchParams<{ eventId: string }>();
+  const { eventId, q } = useLocalSearchParams<{
+    eventId: string;
+    q?: string;
+  }>();
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(q ?? "");
   const [debounced, setDebounced] = useState("");
-  const [onlyNotArrived, setOnlyNotArrived] = useState(false);
+  const [filter, setFilter] = useState<
+    "all" | "notArrived" | "arrived" | "denied"
+  >("all");
   const [openTicketId, setOpenTicketId] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<ScanOutcome | null>(null);
 
@@ -42,11 +51,16 @@ export default function DoorListScreen() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const summary = api.door.summary.useQuery({ eventId }, { enabled: !!eventId });
+  const { deviceLabel } = useDeviceLabel();
+
+  const summary = api.door.summary.useQuery(
+    { eventId },
+    { enabled: !!eventId, refetchInterval: 15_000 },
+  );
   const utils = api.useUtils();
 
   const list = api.door.doorList.useInfiniteQuery(
-    { eventId, search: debounced, onlyNotArrived },
+    { eventId, search: debounced, filter },
     {
       enabled: !!eventId,
       getNextPageParam: (page) => page.nextCursor ?? undefined,
@@ -86,13 +100,36 @@ export default function DoorListScreen() {
           style={styles.search}
         />
         <View style={styles.filterRow}>
-          <View style={styles.filter}>
-            <Switch
-              value={onlyNotArrived}
-              onValueChange={setOnlyNotArrived}
-              trackColor={{ true: colors.in, false: colors.surfaceRaised }}
-            />
-            <Caption>Not arrived only</Caption>
+          {/* Four states rather than one toggle: "who is still to come" and
+              "who did we turn away" are different questions, and the second had
+              no answer at the door at all. */}
+          <View style={styles.filterChips}>
+            {(
+              [
+                ["all", "All"],
+                ["notArrived", "To come"],
+                ["arrived", "In"],
+                ["denied", "Refused"],
+              ] as const
+            ).map(([value, label]) => (
+              <Pressable
+                key={value}
+                onPress={() => setFilter(value)}
+                style={[
+                  styles.chip,
+                  filter === value && styles.chipOn,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.chipLabel,
+                    filter === value && { color: "#000" },
+                  ]}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
           </View>
           {!list.isPending && (
             <Caption>
@@ -116,9 +153,13 @@ export default function DoorListScreen() {
             title={
               debounced
                 ? "Nobody matches that"
-                : onlyNotArrived
+                : filter === "notArrived"
                   ? "Everyone is already in"
-                  : "No tickets sold yet"
+                  : filter === "denied"
+                    ? "Nobody has been refused"
+                    : filter === "arrived"
+                      ? "Nobody scanned in yet"
+                      : "No tickets sold yet"
             }
           />
         ) : (
@@ -135,9 +176,22 @@ export default function DoorListScreen() {
                   {row.tierName} · {row.ticketNumber}
                   {row.isComp ? " · comp" : ""}
                 </Caption>
+                <AccessBadge level={row.accessLevel} size="small" onlyElevated />
                 {row.admittedAt ? (
                   <Caption style={{ color: colors.in }}>
                     In {formatTimeAgo(new Date(row.admittedAt))}
+                  </Caption>
+                ) : null}
+                {row.denial ? (
+                  <Caption style={{ color: colors.deny }}>
+                    Refused {formatTimeAgo(row.denial.at)} ·{" "}
+                    {denyReasonLabel(row.denial.reason)}
+                    {row.denial.note ? ` — ${row.denial.note}` : ""}
+                  </Caption>
+                ) : null}
+                {row.status !== "VALID" ? (
+                  <Caption style={{ color: colors.warn }}>
+                    {row.status.toLowerCase()}
                   </Caption>
                 ) : null}
               </Pressable>
@@ -147,7 +201,11 @@ export default function DoorListScreen() {
               ) : (
                 <Pressable
                   onPress={() =>
-                    admit.mutate({ eventId, ticketNumber: row.ticketNumber })
+                    admit.mutate({
+                      eventId,
+                      ticketNumber: row.ticketNumber,
+                      deviceLabel: labelArg(deviceLabel),
+                    })
                   }
                   disabled={admit.isPending}
                   style={styles.admit}
@@ -179,7 +237,11 @@ export default function DoorListScreen() {
           isManager={summary.data?.isManager ?? false}
           onClose={() => setOpenTicketId(null)}
           onAdmit={(ticketNumber) =>
-            admit.mutate({ eventId, ticketNumber })
+            admit.mutate({
+              eventId,
+              ticketNumber,
+              deviceLabel: labelArg(deviceLabel),
+            })
           }
         />
       ) : null}
@@ -197,6 +259,21 @@ export default function DoorListScreen() {
 }
 
 const styles = StyleSheet.create({
+  filterChips: { flexDirection: "row", gap: space.xs, flexWrap: "wrap" },
+  chip: {
+    paddingHorizontal: space.sm,
+    paddingVertical: 4,
+    borderWidth: stroke.hard,
+    borderColor: colors.border,
+  },
+  chipOn: { backgroundColor: colors.text, borderColor: colors.text },
+  chipLabel: {
+    color: colors.textSoft,
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
   search: {
     height: 48,
     borderRadius: radius.md,

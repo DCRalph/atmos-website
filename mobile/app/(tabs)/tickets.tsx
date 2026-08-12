@@ -147,31 +147,35 @@ function OrderCard({ order, past }: { order: OrderSummary; past?: boolean }) {
       }}
       asChild
     >
-      <Pressable
-        style={({ pressed }) => [
-          styles.card,
-          past && { opacity: 0.55 },
-          pressed && { opacity: 0.8 },
-        ]}
-      >
-        <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-          <Caption>
-            {formatGigDate(order.event.startsAt)} ·{" "}
-            {formatGigTime(order.event.startsAt)}
-          </Caption>
-          <Body numberOfLines={1} style={{ fontWeight: "700" }}>
-            {order.event.name}
-          </Body>
-          <Caption numberOfLines={1}>
-            {[
-              order.event.venueName,
-              `${order.ticketCount} ${order.ticketCount === 1 ? "ticket" : "tickets"}`,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </Caption>
-        </View>
-        {order.event.isR18 && !past ? <Pill tone="warn">R18</Pill> : null}
+      <Pressable>
+        {({ pressed }) => (
+          <View
+            style={[
+              styles.card,
+              past && { opacity: 0.55 },
+              pressed && { opacity: 0.8 },
+            ]}
+          >
+            <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+              <Caption>
+                {formatGigDate(order.event.startsAt)} ·{" "}
+                {formatGigTime(order.event.startsAt)}
+              </Caption>
+              <Body numberOfLines={1} style={{ fontWeight: "700" }}>
+                {order.event.name}
+              </Body>
+              <Caption numberOfLines={1}>
+                {[
+                  order.event.venueName,
+                  `${order.ticketCount} ${order.ticketCount === 1 ? "ticket" : "tickets"}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </Caption>
+            </View>
+            {order.event.isR18 && !past ? <Pill tone="warn">R18</Pill> : null}
+          </View>
+        )}
       </Pressable>
     </Link>
   );

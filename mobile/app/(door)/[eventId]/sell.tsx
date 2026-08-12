@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import { useLocalSearchParams } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Minus, Plus } from "lucide-react-native";
 
 import { api } from "@/lib/api";
+import { useDeviceLabel } from "@/lib/device-label";
 import { colors, radius, space } from "@/lib/theme";
 import { Body, Button, Caption, Loading, Notice } from "@/components/ui";
 import { DoorHeader } from "@/components/door/door-header";
@@ -34,7 +36,12 @@ export default function SellScreen() {
   const [tapping, setTapping] = useState(false);
   const [mode, setMode] = useState<"SELL" | "COMP">("SELL");
 
-  const summary = api.door.summary.useQuery({ eventId }, { enabled: !!eventId });
+  const { deviceLabel } = useDeviceLabel();
+
+  const summary = api.door.summary.useQuery(
+    { eventId },
+    { enabled: !!eventId, refetchInterval: 15_000 },
+  );
   const tiers = api.door.sellableTiers.useQuery({ eventId });
   const terminal = api.terminal.config.useQuery(undefined, { retry: false });
   const utils = api.useUtils();
@@ -130,6 +137,7 @@ export default function SellScreen() {
         {mode === "COMP" ? (
           <CompForm
             eventId={eventId}
+            deviceLabel={deviceLabel || undefined}
             onIssued={(ticketNumber) => {
               setReceipt({ kind: "comp", reference: ticketNumber });
               void summary.refetch();
@@ -253,6 +261,7 @@ export default function SellScreen() {
       {tapping ? (
         <TapToPaySheet
           eventId={eventId}
+          deviceLabel={deviceLabel || undefined}
           lines={lines}
           totalCents={totalCents}
           onClose={() => setTapping(false)}
@@ -286,7 +295,7 @@ function Stepper({
         disabled={value === 0}
         style={styles.stepBtn}
       >
-        <Text style={styles.stepLabel}>−</Text>
+        <Minus color={colors.text} size={16} strokeWidth={3} />
       </Pressable>
       <Text style={styles.stepValue}>{value}</Text>
       <Pressable
@@ -294,7 +303,7 @@ function Stepper({
         disabled={value >= max}
         style={styles.stepBtn}
       >
-        <Text style={styles.stepLabel}>+</Text>
+        <Plus color={colors.text} size={16} strokeWidth={3} />
       </Pressable>
     </View>
   );
@@ -321,7 +330,6 @@ const styles = StyleSheet.create({
     borderColor: colors.borderStrong,
     borderRadius: radius.sm,
   },
-  stepLabel: { color: colors.text, fontSize: 20, fontWeight: "700" },
   stepValue: {
     color: colors.text,
     fontSize: 17,

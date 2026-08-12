@@ -11,9 +11,13 @@ import {
   MapPin,
   Send,
   Undo2,
-  Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
+
+import {
+  AddToAppleWalletButton,
+  AddToGoogleWalletButton,
+} from "~/components/tickets/wallet-buttons";
 
 import { api, type RouterOutputs } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
@@ -130,7 +134,8 @@ export default function TicketPage() {
           />
 
           <p
-            className={`mt-4 inline-block px-3 py-1 text-xs font-bold tracking-[0.08em] ${level.tone}`}
+            className="mt-4 inline-block px-3 py-1 text-xs font-bold tracking-[0.08em]"
+            style={{ backgroundColor: level.badgeBg, color: level.badgeFg }}
           >
             {level.short}
           </p>
@@ -156,23 +161,11 @@ export default function TicketPage() {
           {(data.appleWalletUrl ?? data.googleWalletUrl) && (
             <div className="mt-5 flex flex-wrap justify-center gap-2">
               {data.appleWalletUrl && (
-                <a
-                  href={data.appleWalletUrl}
-                  className="inline-flex items-center gap-2 border border-white/20 px-4 py-2 text-sm text-white/80 transition-colors hover:bg-white hover:text-black"
-                >
-                  <Wallet className="size-4" aria-hidden />
-                  Apple Wallet
-                </a>
-              )}
+                  <AddToAppleWalletButton href={data.appleWalletUrl} />
+                )}
               {data.googleWalletUrl && (
-                <a
-                  href={data.googleWalletUrl}
-                  className="inline-flex items-center gap-2 border border-white/20 px-4 py-2 text-sm text-white/80 transition-colors hover:bg-white hover:text-black"
-                >
-                  <Wallet className="size-4" aria-hidden />
-                  Google Wallet
-                </a>
-              )}
+                  <AddToGoogleWalletButton href={data.googleWalletUrl} />
+                )}
             </div>
           )}
         </article>
@@ -290,7 +283,8 @@ function HandoutCard({
     <div className="border-2 border-white/10 bg-black/60 p-5">
       <div className="flex flex-wrap items-center gap-2">
         <span
-          className={`px-2.5 py-1 text-xs font-bold tracking-[0.08em] ${level.tone}`}
+          className="px-2.5 py-1 text-xs font-bold tracking-[0.08em]"
+          style={{ backgroundColor: level.badgeBg, color: level.badgeFg }}
         >
           {level.short}
         </span>

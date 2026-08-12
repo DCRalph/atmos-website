@@ -4,7 +4,7 @@ import { SignJWT, importPKCS8 } from "jose";
 
 import { env } from "~/env";
 import { buildTicketToken } from "~/server/ticketing/qr";
-import { ticketTypeName } from "~/lib/ticketing/access-levels";
+import { accessLevel } from "~/lib/ticketing/access-levels";
 import { getGoogleWalletConfig } from "./google-config";
 import type { PassEvent, PassTicket } from "./apple";
 
@@ -79,9 +79,23 @@ export async function buildGoogleWalletSaveUrl({
     classId: classId(config.issuerId, event.id),
     state: event.status === "CANCELLED" ? "INACTIVE" : "ACTIVE",
     ticketNumber: ticket.ticketNumber,
+    // The level, not the tier — same reasoning as the Apple pass. A tier is a
+    // product name chosen when the event was built and contradicts the ticket
+    // as often as it describes it; what it gets you past is what a door acts
+    // on. The tier stays below as a detail.
     ticketType: {
-      defaultValue: { language: "en-NZ", value: ticketTypeName(ticket) },
+      defaultValue: {
+        language: "en-NZ",
+        value: accessLevel(ticket.accessLevel).label,
+      },
     },
+    ...(ticket.tier?.name
+      ? {
+          textModulesData: [
+            { id: "tier", header: "Ticket", body: ticket.tier.name },
+          ],
+        }
+      : {}),
     ...(ticket.attendeeName
       ? {
           ticketHolderName: ticket.attendeeName,

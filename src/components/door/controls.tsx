@@ -118,9 +118,10 @@ export function AccessBadge({
   const meta = accessLevel(level);
   return (
     <span
-      className={`inline-block font-black tracking-[0.14em] ${meta.tone} ${
+      className={`inline-block font-black tracking-[0.14em] ${
         size === "large" ? "px-4 py-1.5 text-lg" : "px-2 py-0.5 text-xs"
       }`}
+      style={{ backgroundColor: meta.badgeBg, color: meta.badgeFg }}
     >
       {meta.short}
     </span>
@@ -181,7 +182,7 @@ export function DenyReasonPicker({
   const [note, setNote] = useState("");
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-red-800 text-white">
+    <div className="fixed inset-0 z-50 flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] bg-red-800 text-white">
       <div className="flex-1 overflow-y-auto px-5 pt-8">
         <p className="text-2xl font-black tracking-tight">Why refuse?</p>
         <p className="mt-1 text-sm opacity-80">

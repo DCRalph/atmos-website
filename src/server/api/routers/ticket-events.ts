@@ -5,6 +5,10 @@ import { z } from "zod";
 
 import { env } from "~/env";
 import { ACCESS_LEVEL_VALUES } from "~/lib/ticketing/access-levels";
+import {
+  HEX_COLOUR_PATTERN,
+  PASS_STRIP_STYLES,
+} from "~/lib/ticketing/pass-theme";
 
 import {
   ActivityType,
@@ -84,6 +88,12 @@ async function uniqueSlug(
   return `${base}-${Date.now().toString(36)}`;
 }
 
+/** Same rule the admin form and the pass renderer use. */
+const HEX_COLOUR = z
+  .string()
+  .trim()
+  .regex(HEX_COLOUR_PATTERN, "Use a hex colour like #470082");
+
 const eventInputSchema = z.object({
   name: z.string().trim().min(1, "Give the event a name"),
   slug: z.string().trim().optional(),
@@ -116,6 +126,14 @@ const eventInputSchema = z.object({
   bookingFeeFixedCents: z.number().int().min(0).nullable().optional(),
   bookingFeePercentBp: z.number().int().min(0).max(5000).nullable().optional(),
   gstNumber: z.string().trim().nullable().optional(),
+
+  // Wallet pass look. Colours are validated here rather than trusted from the
+  // form, because they are interpolated straight into the pass SVG.
+  passStripStyle: z.enum(PASS_STRIP_STYLES).optional(),
+  passAccentHex: HEX_COLOUR.nullable().optional(),
+  passBackgroundHex: HEX_COLOUR.nullable().optional(),
+  passForegroundHex: HEX_COLOUR.nullable().optional(),
+  passLabelHex: HEX_COLOUR.nullable().optional(),
 });
 
 const tierInputSchema = z.object({
@@ -344,6 +362,15 @@ export const ticketEventsRouter = createTRPCRouter({
           // Snapshot the GST number so a receipt reprinted in two years still
           // shows the number that was current at the time of sale.
           gstNumber: input.gstNumber ?? settings.gstNumber,
+          // Left to the column default when unset, so a new event starts on
+          // house style rather than being pinned to whatever the form sent.
+          ...(input.passStripStyle !== undefined
+            ? { passStripStyle: input.passStripStyle }
+            : {}),
+          passAccentHex: input.passAccentHex ?? null,
+          passBackgroundHex: input.passBackgroundHex ?? null,
+          passForegroundHex: input.passForegroundHex ?? null,
+          passLabelHex: input.passLabelHex ?? null,
         },
       });
 
@@ -464,6 +491,21 @@ export const ticketEventsRouter = createTRPCRouter({
             : {}),
           ...(rest.gstNumber !== undefined
             ? { gstNumber: rest.gstNumber }
+            : {}),
+          ...(rest.passStripStyle !== undefined
+            ? { passStripStyle: rest.passStripStyle }
+            : {}),
+          ...(rest.passAccentHex !== undefined
+            ? { passAccentHex: rest.passAccentHex }
+            : {}),
+          ...(rest.passBackgroundHex !== undefined
+            ? { passBackgroundHex: rest.passBackgroundHex }
+            : {}),
+          ...(rest.passForegroundHex !== undefined
+            ? { passForegroundHex: rest.passForegroundHex }
+            : {}),
+          ...(rest.passLabelHex !== undefined
+            ? { passLabelHex: rest.passLabelHex }
             : {}),
         },
       });

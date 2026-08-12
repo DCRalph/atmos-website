@@ -57,3 +57,5 @@ yarn-error.log*
 
 # creator UI audit output (screenshots + report)
 /.ui-audit/
+
+/mobile/build/

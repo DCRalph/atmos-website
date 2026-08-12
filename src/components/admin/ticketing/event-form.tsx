@@ -40,6 +40,14 @@ const VISIBILITIES = [
 import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { PickerSelect } from "~/components/ui/picker-select";
 import { formatNZD, parsePriceToCents } from "~/lib/ticketing/money";
+import {
+  DEFAULT_PASS_THEME,
+  type PassStripStyle,
+} from "~/lib/ticketing/pass-theme";
+import {
+  PassThemeField,
+  type PassThemeDraft,
+} from "~/components/admin/ticketing/pass-theme-field";
 
 type AdminEvent = RouterOutputs["ticketEvents"]["byId"];
 
@@ -104,6 +112,18 @@ export function EventForm({ event }: { event?: AdminEvent }) {
       : "",
   );
 
+  const [passTheme, setPassTheme] = useState<PassThemeDraft>({
+    stripStyle:
+      (event?.passStripStyle as PassStripStyle | undefined) ??
+      DEFAULT_PASS_THEME.stripStyle,
+    accentHex: event?.passAccentHex ?? DEFAULT_PASS_THEME.accentHex,
+    backgroundHex:
+      event?.passBackgroundHex ?? DEFAULT_PASS_THEME.backgroundHex,
+    foregroundHex:
+      event?.passForegroundHex ?? DEFAULT_PASS_THEME.foregroundHex,
+    labelHex: event?.passLabelHex ?? DEFAULT_PASS_THEME.labelHex,
+  });
+
   const create = api.ticketEvents.create.useMutation({
     onSuccess: (created) => {
       toast.success("Event created — add your tiers next.");
@@ -156,6 +176,11 @@ export function EventForm({ event }: { event?: AdminEvent }) {
       bookingFeePercentBp: feePercent
         ? Math.round(Number.parseFloat(feePercent) * 100)
         : null,
+      passStripStyle: passTheme.stripStyle,
+      passAccentHex: passTheme.accentHex,
+      passBackgroundHex: passTheme.backgroundHex,
+      passForegroundHex: passTheme.foregroundHex,
+      passLabelHex: passTheme.labelHex,
     };
 
     if (event) {
@@ -363,6 +388,14 @@ export function EventForm({ event }: { event?: AdminEvent }) {
           description="Prompts the buyer after payment, and shows names on the door list."
           checked={requireNames}
           onChange={setRequireNames}
+        />
+      </Fieldset>
+
+      <Fieldset legend="Wallet pass">
+        <PassThemeField
+          value={passTheme}
+          onChange={setPassTheme}
+          eventName={name}
         />
       </Fieldset>
 

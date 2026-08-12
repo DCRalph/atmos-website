@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ArrowLeft } from "lucide-react-native";
 
 import type { RouterOutputs } from "@/lib/api";
 import { colors, space } from "@/lib/theme";
@@ -8,13 +9,16 @@ import { Caption } from "@/components/ui";
 import { OfflineBanner } from "@/components/door/offline-banner";
 
 type Summary = RouterOutputs["door"]["summary"];
-type Mode = "scan" | "manual" | "list" | "sell";
+type Mode = "scan" | "manual" | "list" | "sell" | "activity";
 
 const MODES: { key: Mode; label: string; path: string }[] = [
   { key: "scan", label: "Scan", path: "scan" },
   { key: "manual", label: "Manual", path: "manual" },
   { key: "list", label: "List", path: "list" },
   { key: "sell", label: "Sell", path: "sell" },
+  // Five across is tight on a phone, hence the short label — but a door with
+  // no log is a door that cannot answer "what happened ten minutes ago".
+  { key: "activity", label: "Log", path: "activity" },
 ];
 
 /**
@@ -50,7 +54,7 @@ export function DoorHeader({
 
       <View style={styles.top}>
         <Pressable onPress={onBack ?? (() => router.back())} hitSlop={12}>
-          <Text style={styles.back}>‹</Text>
+          <ArrowLeft color={colors.text} size={22} strokeWidth={2.5} />
         </Pressable>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text numberOfLines={1} style={styles.event}>
@@ -120,8 +124,12 @@ const styles = StyleSheet.create({
   },
   banner: { marginHorizontal: -space.lg },
   top: { flexDirection: "row", alignItems: "center", gap: space.md },
-  back: { color: colors.textSoft, fontSize: 30, lineHeight: 32 },
-  event: { color: colors.text, fontSize: 15, fontWeight: "700" },
+  event: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
   count: {
     color: colors.text,
     fontSize: 20,
@@ -132,7 +140,6 @@ const styles = StyleSheet.create({
   track: {
     height: 3,
     backgroundColor: colors.surfaceRaised,
-    borderRadius: 2,
     overflow: "hidden",
   },
   fill: { height: "100%", backgroundColor: colors.in },
@@ -140,12 +147,18 @@ const styles = StyleSheet.create({
   mode: {
     flex: 1,
     height: 40,
+    paddingHorizontal: 2,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
     borderColor: colors.border,
-    borderRadius: 6,
   },
   modeActive: { backgroundColor: colors.text, borderColor: colors.text },
-  modeLabel: { color: colors.textSoft, fontSize: 13, fontWeight: "700" },
+  modeLabel: {
+    color: colors.textSoft,
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
 });

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStripe } from "@stripe/stripe-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { AppState, Pressable, StyleSheet, Text, View } from "react-native";
+import { AppState, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ArrowLeft } from "lucide-react-native";
 
 import { api } from "@/lib/api";
 import { colors, space } from "@/lib/theme";
@@ -140,7 +141,7 @@ export default function PayScreen() {
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={[styles.header, { paddingTop: insets.top + space.sm }]}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Text style={styles.close}>‹</Text>
+          <ArrowLeft color={colors.text} size={22} strokeWidth={2.5} />
         </Pressable>
         <Title style={{ fontSize: 18 }}>Payment</Title>
         <View style={{ width: 24 }} />
@@ -208,10 +209,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  close: { color: colors.textSoft, fontSize: 26, lineHeight: 28 },
   hold: {
     padding: space.lg,
-    borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.in,
     backgroundColor: colors.inDim,
@@ -226,7 +225,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: colors.border,
   },
-  error: { padding: space.md, borderRadius: 6, backgroundColor: colors.denyDim },
+  error: { padding: space.md, backgroundColor: colors.denyDim },
   footer: {
     padding: space.lg,
     gap: space.sm,

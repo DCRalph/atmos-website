@@ -6,7 +6,12 @@ import { PKPass } from "passkit-generator";
 import { env } from "~/env";
 import { buildTicketToken } from "~/server/ticketing/qr";
 import { formatEventDateLong, formatEventTime } from "~/lib/ticketing/dates";
-import { ticketTypeName } from "~/lib/ticketing/access-levels";
+import { resolveLevel } from "~/server/ticketing/access-level-store";
+import {
+  resolvePassTheme,
+  toPassRgb,
+  type PassThemeFields,
+} from "~/lib/ticketing/pass-theme";
 import { getAppleWalletConfig } from "./apple-config";
 import { getPassImages } from "./pass-images";
 
@@ -40,7 +45,7 @@ export type PassEvent = {
   venueAddress: string | null;
   isR18: boolean;
   status: string;
-};
+} & PassThemeFields;
 
 /**
  * Per-pass secret for the Apple web service. Derived, so nothing extra is
@@ -74,7 +79,40 @@ export async function buildApplePass({
   orderNumber: string;
 }): Promise<Buffer> {
   const config = getAppleWalletConfig();
-  const images = await getPassImages();
+
+  /**
+   * A better ticket gets a louder pass.
+   *
+   * Anything above general admission takes the level's own colour and floods
+   * the band further, so an AAA or artist pass is recognisable at a glance in a
+   * dark room. General admission is left entirely alone — the event's design is
+   * the point, and most tickets are GA.
+   */
+  // Read from the table rather than the retired enum, so a level renamed or
+  // recoloured in admin shows on the next pass without a deploy.
+  const level = await resolveLevel(ticket.accessLevel);
+  const elevated = level.rank > 0;
+  const baseTheme = resolvePassTheme(event);
+  const theme = level.passAccent
+    ? { ...baseTheme, accentHex: level.passAccent }
+    : baseTheme;
+
+  // The chip is drawn into the band rather than added as a field, which is both
+  // how it gets a background and how the level stays in exactly one place.
+  // Inverted on purpose: the chip sits on the accent-flooded end of the band,
+  // so filling it with that same accent leaves it readable only by its edge. A
+  // dark chip with accent type is the pairing that actually reads.
+  const badge =
+    elevated && level.passAccent
+      ? {
+          text: level.short,
+          background: baseTheme.backgroundHex,
+          foreground: level.passAccent,
+        }
+      : null;
+
+  const images = await getPassImages(theme, level.intensity, badge);
+
 
   const doorsText = event.doorsAt
     ? formatEventTime(event.doorsAt, event.timezone)
@@ -88,9 +126,9 @@ export async function buildApplePass({
     organizationName: "Atmos Media",
     description: `Ticket — ${event.name}`,
 
-    foregroundColor: "rgb(255, 255, 255)",
-    backgroundColor: "rgb(11, 11, 12)",
-    labelColor: "rgb(160, 160, 170)",
+    foregroundColor: toPassRgb(theme.foregroundHex),
+    backgroundColor: toPassRgb(theme.backgroundHex),
+    labelColor: toPassRgb(theme.labelHex),
 
     // Lets the pass surface itself on the lock screen near the venue and time.
     relevantDate: (event.doorsAt ?? event.startsAt).toISOString(),
@@ -128,11 +166,12 @@ export async function buildApplePass({
           : []),
       ],
       auxiliaryFields: [
-        {
-          key: "tier",
-          label: "TICKET",
-          value: ticketTypeName(ticket),
-        },
+        // Deliberately no tier field. A tier is a product — a name and a price
+        // set when the event was built — and it contradicts the pass as often
+        // as it explains it: an AAA sold on a tier called "General Admission"
+        // read as general admission. What a ticket gets you past is the only
+        // thing a door acts on, so that is what the pass states.
+        { key: "access", label: "ACCESS", value: level.label },
         ...(ticket.attendeeName
           ? [{ key: "name", label: "NAME", value: ticket.attendeeName }]
           : []),

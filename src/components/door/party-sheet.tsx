@@ -37,7 +37,7 @@ export function PartySheet({
   const inCount = rows.filter((row) => row.admittedAt !== null).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-neutral-900 text-white">
+    <div className="fixed inset-0 z-50 flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] bg-neutral-900 text-white">
       <div className="flex-1 overflow-y-auto px-5 py-8">
         <p className="text-2xl font-black tracking-tight">
           Everyone on this order

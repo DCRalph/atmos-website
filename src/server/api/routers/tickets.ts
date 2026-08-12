@@ -111,6 +111,10 @@ export const ticketsRouter = createTRPCRouter({
             id: ticket.id,
             ticketNumber: ticket.ticketNumber,
             tierName: ticketTypeName(ticket),
+            // The tier is what they bought; the level is what it gets them
+            // past, and those differ often enough — an AAA on a General
+            // Admission tier — that showing only the tier reads as wrong.
+            accessLevel: ticket.accessLevel,
             attendeeName: ticket.attendeeName,
             // A locked name is somebody else's business now: the form renders
             // it read-only rather than letting the link holder rewrite it.
