@@ -378,6 +378,185 @@ export const doorRouter = createTRPCRouter({
     }),
 
   /**
+   * Take back a refusal.
+   *
+   * Open to any door staffer, unlike undoing an admission. A refusal is the
+   * one action here every staffer can take, so a mis-tap has to be fixable by
+   * the person who made it — waiting for a manager with a queue building is
+   * how a wrong refusal becomes permanent.
+   */
+  revertDenial: doorProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        ticketId: z.string(),
+        deviceLabel: z.string().trim().max(60).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
+
+      await ctx.db.ticketScan.create({
+        data: {
+          ticketId: input.ticketId,
+          eventId: input.eventId,
+          result: TicketScanResult.DENIAL_REVERTED,
+          scannedByUserId: ctx.user.id,
+          deviceLabel: input.deviceLabel,
+        },
+      });
+
+      await logActivity({
+        type: ActivityType.TICKET_SCAN_OVERRIDE,
+        action: "Took back a refusal",
+        userId: ctx.user.id,
+        details: { eventId: input.eventId, ticketId: input.ticketId },
+      });
+
+      return { ok: true as const };
+    }),
+
+  /**
+   * Attach a note to a ticket without changing anything.
+   *
+   * "Argued at the door", "ID looked off", "came back with a manager". Until
+   * now the only way to leave a record was to refuse somebody, which meant
+   * staff either refused people they did not mean to or wrote nothing down.
+   * Stored as a scan row so it lands in the same timeline, in order.
+   */
+  addNote: doorProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        ticketId: z.string(),
+        note: z.string().trim().min(1, "Say something").max(500),
+        deviceLabel: z.string().trim().max(60).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
+
+      await ctx.db.ticketScan.create({
+        data: {
+          ticketId: input.ticketId,
+          eventId: input.eventId,
+          result: TicketScanResult.NOTE,
+          denyNote: input.note,
+          scannedByUserId: ctx.user.id,
+          deviceLabel: input.deviceLabel,
+        },
+      });
+
+      return { ok: true as const };
+    }),
+
+  /**
+   * Everything that has happened on this door, newest first.
+   *
+   * `recentScans` answers "what did I just do"; this is the manager's version —
+   * every door, every staffer, filterable — for the moment somebody asks what
+   * happened ten minutes ago and nobody was watching that scanner.
+   */
+  activity: doorProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        filter: z.enum(["all", "refused", "overrides", "notes"]).default("all"),
+        limit: z.number().int().min(1).max(200).default(60),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
+
+      const results =
+        input.filter === "refused"
+          ? [TicketScanResult.DENIED, TicketScanResult.PREVIOUSLY_DENIED]
+          : input.filter === "overrides"
+            ? [
+                TicketScanResult.OVERRIDE_ADMITTED,
+                TicketScanResult.ADMISSION_REVERTED,
+                TicketScanResult.DENIAL_REVERTED,
+              ]
+            : input.filter === "notes"
+              ? [TicketScanResult.NOTE]
+              : null;
+
+      const scans = await ctx.db.ticketScan.findMany({
+        where: {
+          eventId: input.eventId,
+          ...(results ? { result: { in: results } } : {}),
+        },
+        orderBy: { createdAt: "desc" },
+        take: input.limit,
+        select: {
+          id: true,
+          result: true,
+          createdAt: true,
+          deviceLabel: true,
+          denyReason: true,
+          denyNote: true,
+          wasOverride: true,
+          scannedByUserId: true,
+          ticket: {
+            select: {
+              id: true,
+              ticketNumber: true,
+              attendeeName: true,
+              accessLevel: true,
+            },
+          },
+        },
+      });
+
+      // Same one-extra-lookup shape as `recentScans`: `scannedByUserId` is a
+      // plain column, not a relation.
+      const staffIds = [
+        ...new Set(
+          scans
+            .map((scan) => scan.scannedByUserId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ];
+      const nameById = new Map(
+        (
+          await ctx.db.user.findMany({
+            where: { id: { in: staffIds } },
+            select: { id: true, name: true },
+          })
+        ).map((user) => [user.id, user.name]),
+      );
+
+      return scans.map((scan) => ({
+        id: scan.id,
+        at: scan.createdAt,
+        result: scan.result,
+        reason: scan.denyReason,
+        note: scan.denyNote,
+        device: scan.deviceLabel,
+        wasOverride: scan.wasOverride,
+        by: scan.scannedByUserId
+          ? (nameById.get(scan.scannedByUserId) ?? null)
+          : null,
+        ticket: scan.ticket,
+      }));
+    }),
+
+  /**
    * The searchable door list — the fallback when someone turns up with no
    * phone, no email and a lot of confidence.
    *
@@ -390,7 +569,17 @@ export const doorRouter = createTRPCRouter({
       z.object({
         eventId: z.string(),
         search: z.string().trim().max(80).default(""),
-        onlyNotArrived: z.boolean().default(false),
+        /**
+         * What the list is showing.
+         *
+         * `all` is genuinely all — including void and refunded tickets, which
+         * used to be filtered out entirely. A ticket refunded this morning is
+         * the reason somebody is arguing at the door, and a list that silently
+         * dropped it just moved the argument somewhere staff had no answer.
+         */
+        filter: z
+          .enum(["all", "notArrived", "arrived", "denied"])
+          .default("all"),
         limit: z.number().int().min(1).max(100).default(50),
         /** Ticket id of the last row on the previous page. */
         cursor: z.string().optional(),
@@ -405,26 +594,24 @@ export const doorRouter = createTRPCRouter({
       );
 
       const search = input.search;
+      const ADMITTING = [
+        TicketScanResult.ADMITTED,
+        TicketScanResult.OVERRIDE_ADMITTED,
+        TicketScanResult.REENTRY,
+      ];
       const where = {
         eventId: input.eventId,
-        status: TicketStatus.VALID,
         order: { status: TicketOrderStatus.PAID },
-        // Filtered in the query rather than over the page, or "not arrived"
-        // would drop whoever fell past the take.
-        ...(input.onlyNotArrived
-          ? {
-              scans: {
-                none: {
-                  result: {
-                    in: [
-                      TicketScanResult.ADMITTED,
-                      TicketScanResult.OVERRIDE_ADMITTED,
-                      TicketScanResult.REENTRY,
-                    ],
-                  },
-                },
-              },
-            }
+        // Filtered in the query rather than over the page, or a filter would
+        // drop whoever fell past the take.
+        ...(input.filter === "notArrived"
+          ? { status: TicketStatus.VALID, scans: { none: { result: { in: ADMITTING } } } }
+          : {}),
+        ...(input.filter === "arrived"
+          ? { status: TicketStatus.VALID, scans: { some: { result: { in: ADMITTING } } } }
+          : {}),
+        ...(input.filter === "denied"
+          ? { scans: { some: { result: TicketScanResult.DENIED } } }
           : {}),
         ...(search
           ? {
@@ -475,19 +662,24 @@ export const doorRouter = createTRPCRouter({
                 buyerEmail: true,
               },
             },
+            status: true,
             scans: {
+              // Admissions and refusals in one pass — which of the two is
+              // current is decided below, by whichever happened last.
               where: {
                 result: {
-                  in: [
-                    TicketScanResult.ADMITTED,
-                    TicketScanResult.OVERRIDE_ADMITTED,
-                    TicketScanResult.REENTRY,
-                  ],
+                  in: [...ADMITTING, TicketScanResult.DENIED],
                 },
               },
               orderBy: { createdAt: "desc" },
-              take: 1,
-              select: { createdAt: true, deviceLabel: true },
+              take: 20,
+              select: {
+                createdAt: true,
+                deviceLabel: true,
+                result: true,
+                denyReason: true,
+                denyNote: true,
+              },
             },
           },
         }),
@@ -500,7 +692,14 @@ export const doorRouter = createTRPCRouter({
       return {
         total,
         nextCursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
-        rows: page.map((ticket) => ({
+        rows: page.map((ticket) => {
+          const admission = ticket.scans.find((scan) =>
+            (ADMITTING as string[]).includes(scan.result),
+          );
+          const denial = ticket.scans.find(
+            (scan) => scan.result === TicketScanResult.DENIED,
+          );
+          return {
           id: ticket.id,
           ticketNumber: ticket.ticketNumber,
           attendeeName: ticket.attendeeName,
@@ -511,9 +710,23 @@ export const doorRouter = createTRPCRouter({
           orderNumber: ticket.order.orderNumber,
           buyerName: ticket.order.buyerName,
           buyerEmail: ticket.order.buyerEmail,
-          admittedAt: ticket.scans[0]?.createdAt ?? null,
-          admittedDevice: ticket.scans[0]?.deviceLabel ?? null,
-        })),
+          status: ticket.status,
+          admittedAt: admission?.createdAt ?? null,
+          admittedDevice: admission?.deviceLabel ?? null,
+          // Only surfaced when the refusal is the most recent word on this
+          // ticket. Somebody denied at 10 and let in at 11 is in, and a row
+          // still shouting "REFUSED" at them is worse than saying nothing.
+          denial:
+            denial && (!admission || denial.createdAt > admission.createdAt)
+              ? {
+                  at: denial.createdAt,
+                  reason: denial.denyReason,
+                  note: denial.denyNote,
+                  device: denial.deviceLabel,
+                }
+              : null,
+        };
+      }),
       };
     }),
 
@@ -566,7 +779,7 @@ export const doorRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Ticket not found" });
       }
 
-      const [state, position] = await Promise.all([
+      const [state, position, timeline] = await Promise.all([
         ticketState(ticket.id),
         ctx.db.ticket.count({
           where: {
@@ -574,7 +787,49 @@ export const doorRouter = createTRPCRouter({
             ticketNumber: { lte: ticket.ticketNumber },
           },
         }),
+        /**
+         * Every scan this ticket has ever taken, newest first.
+         *
+         * `ticketState` answers "are they in right now", which is what the
+         * scanner needs mid-queue. This is the other question — what actually
+         * happened — and it is the one asked after an argument, when somebody
+         * says they were turned away and nobody remembers why. Capped because
+         * a genuinely pathological ticket should not be able to stall a sheet.
+         */
+        ctx.db.ticketScan.findMany({
+          where: { ticketId: input.ticketId },
+          orderBy: { createdAt: "desc" },
+          take: 50,
+          select: {
+            id: true,
+            createdAt: true,
+            result: true,
+            denyReason: true,
+            denyNote: true,
+            deviceLabel: true,
+            scannedByUserId: true,
+          },
+        }),
       ]);
+
+      // `TicketScan.scannedByUserId` is a plain column rather than a relation,
+      // so the names come from one extra lookup instead of a join — the same
+      // shape `recentScans` uses.
+      const staffIds = [
+        ...new Set(
+          timeline
+            .map((scan) => scan.scannedByUserId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ];
+      const staffNames = new Map(
+        (
+          await ctx.db.user.findMany({
+            where: { id: { in: staffIds } },
+            select: { id: true, name: true },
+          })
+        ).map((user) => [user.id, user.name]),
+      );
 
       return {
         id: ticket.id,
@@ -600,6 +855,17 @@ export const doorRouter = createTRPCRouter({
           : ticket.order._count.tickets,
         isR18: ticket.event.isR18,
         isManager,
+        timeline: timeline.map((scan) => ({
+          id: scan.id,
+          at: scan.createdAt,
+          result: scan.result,
+          reason: scan.denyReason,
+          note: scan.denyNote,
+          device: scan.deviceLabel,
+          by: scan.scannedByUserId
+            ? (staffNames.get(scan.scannedByUserId) ?? null)
+            : null,
+        })),
         ...state,
       };
     }),

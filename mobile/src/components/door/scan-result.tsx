@@ -1,11 +1,14 @@
 import { useState } from "react";
 import * as Haptics from "expo-haptics";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
 
 import { api, type RouterOutputs } from "@/lib/api";
 import { colors, space } from "@/lib/theme";
 import { Caption } from "@/components/ui";
 import { formatTimeAgo } from "@/lib/dates";
+import { labelArg, useDeviceLabel } from "@/lib/device-label";
+import { DenySheet } from "@/components/door/deny-sheet";
 
 export type ScanOutcome = RouterOutputs["door"]["scan"];
 
@@ -30,7 +33,30 @@ export function ScanResult({
   onDismiss: () => void;
 }) {
   const [current, setCurrent] = useState(outcome);
+  const [denying, setDenying] = useState(false);
+  const router = useRouter();
+  const { deviceLabel } = useDeviceLabel();
   const utils = api.useUtils();
+
+  /**
+   * Turning somebody away, from the scan itself.
+   *
+   * This used to be reachable only by finding the person in the list — which
+   * is the one thing nobody can do with a queue in front of them. A refusal
+   * recorded here is the same record the list shows later, with the reason
+   * attached, so "why was I turned away" has an answer.
+   */
+  const deny = api.door.deny.useMutation({
+    onSuccess: async (result) => {
+      setDenying(false);
+      setCurrent(result as ScanOutcome);
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      void utils.door.summary.invalidate();
+      void utils.door.doorList.invalidate();
+      void utils.door.ticketDetail.invalidate();
+      void utils.door.recentScans.invalidate();
+    },
+  });
 
   const override = api.door.scan.useMutation({
     onSuccess: async (result) => {
@@ -95,6 +121,23 @@ export function ScanResult({
         </View>
 
         <View style={styles.actions}>
+          {/* Only when there is a ticket to refuse: an unreadable or foreign
+              code has nobody to record it against. */}
+          {current.ticket ? (
+            <Pressable
+              onPress={() => setDenying(true)}
+              disabled={deny.isPending}
+              style={styles.refuse}
+            >
+              <Text style={styles.refuseLabel}>
+                {deny.isPending ? "Refusing…" : "Refuse entry"}
+              </Text>
+              <Caption style={{ color: "rgba(255,255,255,0.7)" }}>
+                Asks why, and records it against your name
+              </Caption>
+            </Pressable>
+          ) : null}
+
           {current.canOverride && isManager ? (
             <Pressable
               onPress={() =>
@@ -116,12 +159,50 @@ export function ScanResult({
             </Pressable>
           ) : null}
 
+          {/* The way out when the code is the problem rather than the person:
+              a smashed screen, a forwarded email, the wrong QR entirely. Takes
+              the name it already knows straight into the list search. */}
+          <Pressable
+            onPress={() => {
+              const q =
+                current.ticket?.attendeeName ??
+                current.ticket?.buyerName ??
+                current.ticket?.ticketNumber ??
+                "";
+              onDismiss();
+              router.push({
+                pathname: "/(door)/[eventId]/list",
+                params: { eventId, q },
+              });
+            }}
+            style={styles.findOnList}
+          >
+            <Text style={styles.findLabel}>Find them on the list</Text>
+          </Pressable>
+
           {/* Always last, always white, always harmless. */}
           <Pressable onPress={onDismiss} style={styles.safe}>
             <Text style={styles.safeLabel}>Next</Text>
           </Pressable>
         </View>
       </View>
+
+      {denying && current.ticket ? (
+        <DenySheet
+          attendee={current.ticket.attendeeName ?? current.ticket.buyerName}
+          pending={deny.isPending}
+          onCancel={() => setDenying(false)}
+          onConfirm={(reason, note) =>
+            deny.mutate({
+              eventId,
+              ticketId: current.ticket!.id,
+              reason,
+              note: note || undefined,
+              deviceLabel: labelArg(deviceLabel),
+            })
+          }
+        />
+      ) : null}
     </Modal>
   );
 }
@@ -143,6 +224,34 @@ function toneFor(outcome: ScanOutcome): { bg: string; heading: string } {
 }
 
 const styles = StyleSheet.create({
+  findOnList: {
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.35)",
+    paddingVertical: space.md,
+    alignItems: "center",
+  },
+  findLabel: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "900",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  refuse: {
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.55)",
+    paddingVertical: space.md,
+    paddingHorizontal: space.lg,
+    alignItems: "center",
+    gap: 2,
+  },
+  refuseLabel: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: "900",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
   screen: { flex: 1 },
   body: {
     flex: 1,

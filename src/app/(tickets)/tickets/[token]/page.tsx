@@ -165,9 +165,12 @@ export default function TicketsPage() {
             className="border-2 border-white/10 bg-black/80 p-5 text-center backdrop-blur-sm"
           >
             <p className="text-xs tracking-[0.14em] text-white/40 uppercase">
-              Ticket {index + 1} of {data.tickets.length} · {ticket.tierName}
+              Ticket {index + 1} of {data.tickets.length}
               <LevelChip accessLevel={ticket.accessLevel} />
             </p>
+            {/* The tier is what was bought, not what it gets you past. Kept
+                for reference, at the weight that deserves. */}
+            <p className="mt-1 text-[11px] text-white/30">{ticket.tierName}</p>
 
             <div
               className="mx-auto mt-4 w-full max-w-70 bg-white p-3 [&>svg]:h-auto [&>svg]:w-full"
@@ -339,8 +342,11 @@ function AttendeeDetails({
               {tickets.map((ticket, index) => (
                 <div key={ticket.id} className="space-y-1.5">
                   <Label htmlFor={`name-${ticket.id}`}>
-                    Ticket {index + 1} · {ticket.tierName}
+                    Ticket {index + 1}
                     <LevelChip accessLevel={ticket.accessLevel} />
+                    <span className="ml-2 text-[11px] font-normal text-white/30">
+                      {ticket.tierName}
+                    </span>
                   </Label>
                   <Input
                     id={`name-${ticket.id}`}

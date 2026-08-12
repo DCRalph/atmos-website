@@ -89,8 +89,9 @@ export default function OrderScreen() {
             <Body style={{ fontWeight: "700" }}>
               {ticket.attendeeName ?? "No name on this ticket"}
             </Body>
+            {/* The level leads: it is what the door acts on. The tier is what
+                was bought, and sits under it as a detail. */}
             <View style={styles.typeRow}>
-              <Caption>{ticket.tierName}</Caption>
               {isElevated(ticket.accessLevel) ? (
                 <View
                   style={[
@@ -108,6 +109,7 @@ export default function OrderScreen() {
                   </Text>
                 </View>
               ) : null}
+              <Text style={styles.tierDetail}>{ticket.tierName}</Text>
             </View>
             <Caption style={{ fontFamily: "Menlo" }}>
               {ticket.ticketNumber}
@@ -163,6 +165,7 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 1,
   },
+  tierDetail: { color: colors.textFaint, fontSize: 11 },
   ticket: {
     backgroundColor: colors.surface,
     borderWidth: 1,

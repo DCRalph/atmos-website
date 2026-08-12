@@ -935,6 +935,13 @@ enum TicketScanResult {
   /// A later scan of a ticket that still carries an active denial. The door
   /// sees the earlier refusal instead of a fresh decision.
   PREVIOUSLY_DENIED
+  /// Staff taking back a refusal. Append-only like everything else here, so an
+  /// undo is a new row and the original refusal stays in the history.
+  DENIAL_REVERTED
+  /// Free text a staffer attached to a ticket without changing anything —
+  /// "argued at the door", "ID looked off". Carries its text in `denyNote`,
+  /// which is the column that already holds whatever a staffer typed.
+  NOTE
   INVALID_SIGNATURE
   NOT_FOUND
   WRONG_EVENT

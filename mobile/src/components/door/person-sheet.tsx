@@ -1,7 +1,16 @@
 import { useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
-import { api } from "@/lib/api";
+import { api, type RouterOutputs } from "@/lib/api";
+import { denyReasonLabel } from "~/lib/ticketing/deny-reasons";
 import { labelArg, useDeviceLabel } from "@/lib/device-label";
 import { colors, radius, space } from "@/lib/theme";
 import { formatTimeAgo } from "@/lib/dates";
@@ -28,7 +37,9 @@ export function PersonSheet({
   onClose: () => void;
   onAdmit: (ticketNumber: string) => void;
 }) {
-  const [step, setStep] = useState<"detail" | "party" | "deny">("detail");
+  const [step, setStep] = useState<
+    "detail" | "party" | "deny" | "history" | "note"
+  >("detail");
   const detail = api.door.ticketDetail.useQuery({ eventId, ticketId });
   const utils = api.useUtils();
   // A refusal is the entry staff are most likely to be asked about later, so
@@ -41,6 +52,23 @@ export function PersonSheet({
       void utils.door.doorList.invalidate();
       void utils.door.summary.invalidate();
       void utils.door.orderTickets.invalidate();
+      setStep("detail");
+    },
+  });
+
+  const undoDenial = api.door.revertDenial.useMutation({
+    onSuccess: () => {
+      void utils.door.ticketDetail.invalidate();
+      void utils.door.doorList.invalidate();
+      void utils.door.activity.invalidate();
+      void utils.door.orderTickets.invalidate();
+    },
+  });
+
+  const addNote = api.door.addNote.useMutation({
+    onSuccess: () => {
+      void utils.door.ticketDetail.invalidate();
+      void utils.door.activity.invalidate();
       setStep("detail");
     },
   });
@@ -69,6 +97,24 @@ export function PersonSheet({
             eventId={eventId}
             ticketId={person.id}
             onAdmit={onAdmit}
+            onBack={() => setStep("detail")}
+          />
+        ) : step === "note" ? (
+          <NoteComposer
+            pending={addNote.isPending}
+            onCancel={() => setStep("detail")}
+            onSave={(note) =>
+              addNote.mutate({
+                eventId,
+                ticketId,
+                note,
+                deviceLabel: labelArg(deviceLabel),
+              })
+            }
+          />
+        ) : step === "history" ? (
+          <HistoryView
+            timeline={person?.timeline ?? []}
             onBack={() => setStep("detail")}
           />
         ) : step === "deny" ? (
@@ -103,6 +149,20 @@ export function PersonSheet({
               <Pressable onPress={() => setStep("party")} style={styles.partyBtn}>
                 <Body style={{ fontWeight: "700" }}>
                   See the other {person.orderTicketCount - 1} on this order
+                </Body>
+              </Pressable>
+            ) : null}
+
+            {/* Every scan this ticket has taken. The question after "are they
+                in" is "what happened before", and until now the door had no
+                way to answer it. */}
+            {person.timeline.length > 0 ? (
+              <Pressable
+                onPress={() => setStep("history")}
+                style={styles.partyBtn}
+              >
+                <Body style={{ fontWeight: "700" }}>
+                  Scan history ({person.timeline.length})
                 </Body>
               </Pressable>
             ) : null}
@@ -177,7 +237,27 @@ export function PersonSheet({
               <Button variant="outline" onPress={() => setStep("deny")}>
                 Deny entry
               </Button>
-            ) : null}
+            ) : (
+              /* Any staffer, not just a manager: a refusal is the one call
+                 every staffer can make, so a mis-tap has to be fixable by the
+                 person who made it. */
+              <Button
+                variant="outline"
+                loading={undoDenial.isPending}
+                onPress={() =>
+                  undoDenial.mutate({
+                    eventId,
+                    ticketId: person.id,
+                    deviceLabel: labelArg(deviceLabel),
+                  })
+                }
+              >
+                Take back refusal
+              </Button>
+            )}
+            <Button variant="outline" onPress={() => setStep("note")}>
+              Add a note
+            </Button>
             <Button variant="outline" onPress={onClose}>
               Close
             </Button>
@@ -187,6 +267,142 @@ export function PersonSheet({
     </Modal>
   );
 }
+
+/**
+ * A note, without turning anybody away.
+ *
+ * Deliberately not a decision: nothing about the ticket changes, it just lands
+ * in the timeline next to everything else so the next staffer sees it.
+ */
+function NoteComposer({
+  pending,
+  onCancel,
+  onSave,
+}: {
+  pending: boolean;
+  onCancel: () => void;
+  onSave: (note: string) => void;
+}) {
+  const [text, setText] = useState("");
+  return (
+    <ScrollView
+      contentContainerStyle={styles.body}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Pressable onPress={onCancel} hitSlop={8}>
+        <Caption>‹ Back</Caption>
+      </Pressable>
+      <Text style={styles.name}>Add a note</Text>
+      <Caption>
+        Seen by anyone who opens this ticket. Nothing about their entry changes.
+      </Caption>
+      <TextInput
+        value={text}
+        onChangeText={setText}
+        placeholder="Argued at the door, ID looked off…"
+        placeholderTextColor={colors.textFaint}
+        multiline
+        style={styles.noteInput}
+      />
+      <Button
+        onPress={() => onSave(text.trim())}
+        disabled={text.trim().length === 0}
+        loading={pending}
+      >
+        Save note
+      </Button>
+    </ScrollView>
+  );
+}
+
+/**
+ * Everything that has happened to this ticket, newest first.
+ *
+ * Reads as a log rather than a summary on purpose: a refusal followed by an
+ * override is a different story from a clean admission, and the door is where
+ * that gets argued about.
+ */
+function HistoryView({
+  timeline,
+  onBack,
+}: {
+  timeline: NonNullable<RouterOutputs["door"]["ticketDetail"]>["timeline"];
+  onBack: () => void;
+}) {
+  return (
+    <ScrollView contentContainerStyle={styles.body}>
+      <Pressable onPress={onBack} hitSlop={8}>
+        <Caption>‹ Back</Caption>
+      </Pressable>
+      <Text style={styles.name}>Scan history</Text>
+
+      <View style={{ gap: space.sm }}>
+        {timeline.map((entry) => {
+          const tone = SCAN_TONES[entry.result] ?? colors.textSoft;
+          return (
+            <View key={entry.id} style={styles.historyRow}>
+              <View style={[styles.historyDot, { backgroundColor: tone }]} />
+              <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                <Body style={{ fontWeight: "700", color: tone }}>
+                  {SCAN_LABELS[entry.result] ?? entry.result}
+                </Body>
+                {entry.reason ? (
+                  <Caption>
+                    {denyReasonLabel(entry.reason)}
+                    {entry.note ? ` — ${entry.note}` : ""}
+                  </Caption>
+                ) : null}
+                <Caption>
+                  {formatTimeAgo(entry.at)}
+                  {entry.by ? ` · ${entry.by}` : ""}
+                  {entry.device ? ` · ${entry.device}` : ""}
+                </Caption>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    </ScrollView>
+  );
+}
+
+/**
+ * Colour and wording per scan result, so a log skims at a glance.
+ *
+ * Every value of `TicketScanResult` is covered deliberately: an unmapped one
+ * would surface the raw enum name to somebody working a door in the dark.
+ */
+const SCAN_TONES: Record<string, string> = {
+  ADMITTED: colors.in,
+  REENTRY: colors.in,
+  OVERRIDE_ADMITTED: colors.warn,
+  DUPLICATE: colors.warn,
+  ADMISSION_REVERTED: colors.warn,
+  DENIED: colors.deny,
+  PREVIOUSLY_DENIED: colors.deny,
+  INVALID_SIGNATURE: colors.deny,
+  NOT_FOUND: colors.deny,
+  WRONG_EVENT: colors.deny,
+  VOIDED: colors.deny,
+  REFUNDED_TICKET: colors.deny,
+  ORDER_UNPAID: colors.deny,
+};
+
+const SCAN_LABELS: Record<string, string> = {
+  ADMITTED: "Admitted",
+  REENTRY: "Re-entry",
+  OVERRIDE_ADMITTED: "Let in anyway",
+  DUPLICATE: "Already in — turned back",
+  ADMISSION_REVERTED: "Admission undone",
+  DENIED: "Refused",
+  PREVIOUSLY_DENIED: "Scanned while refused",
+  INVALID_SIGNATURE: "Code did not verify",
+  NOT_FOUND: "Unknown code",
+  WRONG_EVENT: "Ticket for another event",
+  VOIDED: "Void ticket",
+  REFUNDED_TICKET: "Refunded ticket",
+  ORDER_UNPAID: "Order unpaid",
+};
 
 /** The rest of the order — who else is on it, and are they in yet. */
 function PartyView({
@@ -293,6 +509,25 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   mono: { color: colors.textFaint, fontFamily: "Menlo", fontSize: 13 },
+  noteInput: {
+    minHeight: 110,
+    borderWidth: 2,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: space.md,
+    color: colors.text,
+    fontSize: 15,
+    textAlignVertical: "top",
+  },
+  historyRow: {
+    flexDirection: "row",
+    gap: space.md,
+    padding: space.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  historyDot: { width: 8, height: 8, marginTop: 6 },
   partyBtn: {
     marginTop: space.lg,
     borderWidth: 2,

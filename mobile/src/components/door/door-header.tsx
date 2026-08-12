@@ -9,13 +9,16 @@ import { Caption } from "@/components/ui";
 import { OfflineBanner } from "@/components/door/offline-banner";
 
 type Summary = RouterOutputs["door"]["summary"];
-type Mode = "scan" | "manual" | "list" | "sell";
+type Mode = "scan" | "manual" | "list" | "sell" | "activity";
 
 const MODES: { key: Mode; label: string; path: string }[] = [
   { key: "scan", label: "Scan", path: "scan" },
   { key: "manual", label: "Manual", path: "manual" },
   { key: "list", label: "List", path: "list" },
   { key: "sell", label: "Sell", path: "sell" },
+  // Five across is tight on a phone, hence the short label — but a door with
+  // no log is a door that cannot answer "what happened ten minutes ago".
+  { key: "activity", label: "Log", path: "activity" },
 ];
 
 /**
@@ -144,6 +147,7 @@ const styles = StyleSheet.create({
   mode: {
     flex: 1,
     height: 40,
+    paddingHorizontal: 2,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
@@ -152,7 +156,7 @@ const styles = StyleSheet.create({
   modeActive: { backgroundColor: colors.text, borderColor: colors.text },
   modeLabel: {
     color: colors.textSoft,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "900",
     letterSpacing: 1,
     textTransform: "uppercase",

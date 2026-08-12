@@ -113,8 +113,6 @@ export async function buildApplePass({
 
   const images = await getPassImages(theme, level.intensity, badge);
 
-  const tierFieldValue =
-    ticket.tier?.name ?? (elevated ? null : level.label);
 
   const doorsText = event.doorsAt
     ? formatEventTime(event.doorsAt, event.timezone)
@@ -168,19 +166,12 @@ export async function buildApplePass({
           : []),
       ],
       auxiliaryFields: [
-        // A comp has no tier, so this used to fall back to the access level —
-        // printing the exact text already on the chip. The tier name is the
-        // only thing worth saying here; without one the chip has it covered.
-        ...(tierFieldValue
-          ? [{ key: "tier", label: "TICKET", value: tierFieldValue }]
-          : []),
-        // The chip on the band carries the short code; this is the full name,
-        // and without it a pass whose tier is "General Admission" reads as
-        // general admission even when it is an AAA. Skipped when there is no
-        // tier, where `tierFieldValue` is already the level.
-        ...(elevated && tierFieldValue
-          ? [{ key: "access", label: "ACCESS", value: level.label }]
-          : []),
+        // Deliberately no tier field. A tier is a product — a name and a price
+        // set when the event was built — and it contradicts the pass as often
+        // as it explains it: an AAA sold on a tier called "General Admission"
+        // read as general admission. What a ticket gets you past is the only
+        // thing a door acts on, so that is what the pass states.
+        { key: "access", label: "ACCESS", value: level.label },
         ...(ticket.attendeeName
           ? [{ key: "name", label: "NAME", value: ticket.attendeeName }]
           : []),
