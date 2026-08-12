@@ -16,7 +16,14 @@ import { db } from "~/server/db";
  */
 const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 const ORDER_NUMBER_LENGTH = 6;
-const PREFIX = "ATM";
+/**
+ * Ticket and order numbers issued from here on.
+ *
+ * Only new numbers are affected — nothing looks a number up by prefix, so the
+ * `ATM-` codes already in the database and in people's inboxes keep resolving
+ * exactly as before.
+ */
+const PREFIX = "ATN";
 
 function randomCode(length: number): string {
   let out = "";
@@ -45,7 +52,7 @@ export async function generateOrderNumber(): Promise<string> {
   return `${PREFIX}-${randomCode(ORDER_NUMBER_LENGTH + 4)}`;
 }
 
-/** `ATM-4F7K2X` + seat 3 -> `ATM-4F7K2X-03`. */
+/** `ATN-4F7K2X` + seat 3 -> `ATN-4F7K2X-03`. */
 export function buildTicketNumber(orderNumber: string, index: number): string {
   return `${orderNumber}-${String(index + 1).padStart(2, "0")}`;
 }

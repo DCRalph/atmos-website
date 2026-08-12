@@ -385,7 +385,7 @@ function ManualEntry({
           id="ticket-number"
           value={value}
           onChange={(e) => setValue(e.target.value.toUpperCase())}
-          placeholder="ATM-4F7K2X-01"
+          placeholder="ATN-4F7K2X-01"
           autoCapitalize="characters"
           autoComplete="off"
           spellCheck={false}

@@ -141,8 +141,15 @@ export function stripSvg(
   theme: PassTheme,
   width: number,
   height: number,
+  /**
+   * How far the accent floods the band, 0 (the event's own balance) to 1 (all
+   * colour). Driven by a ticket's access level, so a better ticket is a louder
+   * pass without the organiser having to design one per tier.
+   */
+  intensity = 0,
 ): string {
   const { accentHex: accent, backgroundHex: ground } = theme;
+  const clamped = Math.min(1, Math.max(0, intensity));
   // Rules top and bottom echo the site's 2px borders, scaled to the band.
   const rule = Math.max(2, Math.round(height * 0.02));
   const edges = `
@@ -154,15 +161,19 @@ export function stripSvg(
       case "SOLID":
         return `<rect width="${width}" height="${height}" fill="${accent}"/>`;
 
-      case "GRADIENT":
+      case "GRADIENT": {
+        // The ground holds until `start`, so more intensity means the accent
+        // begins further left and the band reads as more saturated.
+        const start = Math.round(30 * (1 - clamped));
         return `
           <defs>
             <linearGradient id="wash" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stop-color="${ground}"/>
+              <stop offset="${start}%" stop-color="${ground}"/>
               <stop offset="100%" stop-color="${accent}"/>
             </linearGradient>
           </defs>
           <rect width="${width}" height="${height}" fill="url(#wash)"/>`;
+      }
 
       case "BARS": {
         // Six bars stepping from ground to accent, hard-edged.
@@ -181,11 +192,13 @@ export function stripSvg(
       case "HATCH":
       default: {
         const pitch = Math.max(8, Math.round(height * 0.095));
+        // 55% of ground at rest, down to 10% when the access level is maximal.
+        const hold = Math.round(55 - 45 * clamped);
         return `
           <defs>
             <linearGradient id="wash" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stop-color="${ground}"/>
-              <stop offset="55%" stop-color="${ground}"/>
+              <stop offset="${hold}%" stop-color="${ground}"/>
               <stop offset="100%" stop-color="${accent}"/>
             </linearGradient>
             <pattern id="hatch" width="${pitch}" height="${pitch}"

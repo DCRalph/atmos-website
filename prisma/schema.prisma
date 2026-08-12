@@ -1194,7 +1194,7 @@ model TicketOrderItem {
 
 model Ticket {
   id           String @id @default(cuid())
-  /// ATM-4F7K2X-03
+  /// ATN-4F7K2X-03
   ticketNumber String @unique
 
   orderId String

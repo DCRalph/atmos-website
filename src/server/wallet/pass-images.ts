@@ -32,13 +32,14 @@ type ImageSet = Record<string, Buffer>;
  */
 const themedCache = new Map<string, ImageSet>();
 
-function themeKey(theme: PassTheme): string {
+function themeKey(theme: PassTheme, intensity: number): string {
   return [
     theme.stripStyle,
     theme.accentHex,
     theme.backgroundHex,
     theme.foregroundHex,
     theme.labelHex,
+    intensity.toFixed(2),
   ].join("|");
 }
 
@@ -147,9 +148,18 @@ async function getBrandImages(): Promise<ImageSet> {
   return brandCache;
 }
 
-/** The image files a pass ships with, for one event's theme. */
-export async function getPassImages(theme: PassTheme): Promise<ImageSet> {
-  const key = themeKey(theme);
+/**
+ * The image files a pass ships with, for one event's theme.
+ *
+ * `intensity` comes from the ticket's access level, so two tickets to the same
+ * event can differ — cached per (theme, intensity) pair, which in practice is
+ * one entry per access level actually issued.
+ */
+export async function getPassImages(
+  theme: PassTheme,
+  intensity = 0,
+): Promise<ImageSet> {
+  const key = themeKey(theme, intensity);
   const hit = themedCache.get(key);
   if (hit) return hit;
 
@@ -158,9 +168,9 @@ export async function getPassImages(theme: PassTheme): Promise<ImageSet> {
   // Strip on an event ticket is 375x98pt. Rendered at each scale rather than
   // upscaled, so the hatch and bar edges stay hard on a 3x screen.
   const [strip, strip2x, strip3x] = await Promise.all([
-    renderSvg(stripSvg(theme, 375, 98), 375, 98),
-    renderSvg(stripSvg(theme, 750, 196), 750, 196),
-    renderSvg(stripSvg(theme, 1125, 294), 1125, 294),
+    renderSvg(stripSvg(theme, 375, 98, intensity), 375, 98),
+    renderSvg(stripSvg(theme, 750, 196, intensity), 750, 196),
+    renderSvg(stripSvg(theme, 1125, 294, intensity), 1125, 294),
   ]);
 
   const images: ImageSet = {

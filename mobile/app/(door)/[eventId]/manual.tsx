@@ -64,7 +64,7 @@ export default function ManualScreen() {
           <TextInput
             value={value}
             onChangeText={(text) => setValue(text.toUpperCase())}
-            placeholder="ATM-4F7K2X-03"
+            placeholder="ATN-4F7K2X-03"
             placeholderTextColor={colors.textFaint}
             autoCapitalize="characters"
             autoCorrect={false}

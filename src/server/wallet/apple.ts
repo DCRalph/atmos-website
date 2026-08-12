@@ -6,7 +6,12 @@ import { PKPass } from "passkit-generator";
 import { env } from "~/env";
 import { buildTicketToken } from "~/server/ticketing/qr";
 import { formatEventDateLong, formatEventTime } from "~/lib/ticketing/dates";
-import { ticketTypeName } from "~/lib/ticketing/access-levels";
+import {
+  accessLevel,
+  accessLevelRank,
+  isElevated,
+  ticketTypeName,
+} from "~/lib/ticketing/access-levels";
 import {
   resolvePassTheme,
   toPassRgb,
@@ -79,8 +84,21 @@ export async function buildApplePass({
   orderNumber: string;
 }): Promise<Buffer> {
   const config = getAppleWalletConfig();
-  const theme = resolvePassTheme(event);
-  const images = await getPassImages(theme);
+
+  /**
+   * A better ticket gets a louder pass.
+   *
+   * Anything above general admission takes the level's own colour and floods
+   * the band further, so an AAA or artist pass is recognisable at a glance in a
+   * dark room. General admission is left entirely alone — the event's design is
+   * the point, and most tickets are GA.
+   */
+  const level = accessLevel(ticket.accessLevel);
+  const baseTheme = resolvePassTheme(event);
+  const theme = level.passAccent
+    ? { ...baseTheme, accentHex: level.passAccent }
+    : baseTheme;
+  const images = await getPassImages(theme, accessLevelRank(ticket.accessLevel));
 
   const doorsText = event.doorsAt
     ? formatEventTime(event.doorsAt, event.timezone)
@@ -139,6 +157,11 @@ export async function buildApplePass({
           label: "TICKET",
           value: ticketTypeName(ticket),
         },
+        // Only for tickets that get you somewhere extra. On a GA pass this
+        // would just be a second field saying "General".
+        ...(isElevated(ticket.accessLevel)
+          ? [{ key: "access", label: "ACCESS", value: level.label }]
+          : []),
         ...(ticket.attendeeName
           ? [{ key: "name", label: "NAME", value: ticket.attendeeName }]
           : []),
