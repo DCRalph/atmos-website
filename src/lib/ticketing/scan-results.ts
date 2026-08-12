@@ -12,6 +12,12 @@ import type { TicketScanResult } from "~Prisma/client";
  * ticket at all. That is the distinction staff skim the list for, so it is the
  * one the colour carries.
  *
+ * Two lengths, because there are two places to read a result and they are not
+ * the same reading. A ticket's full history is opened on purpose by somebody
+ * with a question, and gets the sentence. A row in the live feed under the
+ * camera is glanced at between scans and shares its line with a staff name and
+ * a device, so it gets the phrase that survives being truncated.
+ *
  * Client-safe.
  */
 
@@ -19,27 +25,60 @@ export type ScanResultTone = "in" | "out" | "bad" | "neutral";
 
 const RESULTS: Record<
   TicketScanResult,
-  { label: string; tone: ScanResultTone }
+  { label: string; short: string; tone: ScanResultTone }
 > = {
-  ADMITTED: { label: "Admitted", tone: "in" },
-  REENTRY: { label: "Re-entry", tone: "in" },
-  OVERRIDE_ADMITTED: { label: "Admitted by override", tone: "in" },
-  DUPLICATE: { label: "Turned back — already in", tone: "out" },
-  DENIED: { label: "Refused entry", tone: "out" },
-  PREVIOUSLY_DENIED: { label: "Turned back — refused earlier", tone: "out" },
-  ADMISSION_REVERTED: { label: "Admission undone", tone: "neutral" },
-  DENIAL_REVERTED: { label: "Refusal taken back", tone: "neutral" },
-  NOTE: { label: "Note", tone: "neutral" },
-  INVALID_SIGNATURE: { label: "Code didn't check out", tone: "bad" },
-  NOT_FOUND: { label: "Unknown code", tone: "bad" },
-  WRONG_EVENT: { label: "Wrong event", tone: "bad" },
-  VOIDED: { label: "Cancelled ticket", tone: "bad" },
-  REFUNDED_TICKET: { label: "Refunded ticket", tone: "bad" },
-  ORDER_UNPAID: { label: "Order not paid", tone: "bad" },
+  ADMITTED: { label: "Admitted", short: "In", tone: "in" },
+  REENTRY: { label: "Re-entry", short: "Re-entry", tone: "in" },
+  OVERRIDE_ADMITTED: {
+    label: "Admitted by override",
+    short: "Let in anyway",
+    tone: "in",
+  },
+  DUPLICATE: {
+    label: "Turned back — already in",
+    short: "Already in",
+    tone: "out",
+  },
+  DENIED: { label: "Refused entry", short: "Refused", tone: "out" },
+  PREVIOUSLY_DENIED: {
+    label: "Turned back — refused earlier",
+    short: "Scanned while refused",
+    tone: "out",
+  },
+  ADMISSION_REVERTED: {
+    label: "Admission undone",
+    short: "Admission undone",
+    tone: "neutral",
+  },
+  DENIAL_REVERTED: {
+    label: "Refusal taken back",
+    short: "Refusal taken back",
+    tone: "neutral",
+  },
+  NOTE: { label: "Note", short: "Note", tone: "neutral" },
+  INVALID_SIGNATURE: {
+    label: "Code didn't check out",
+    short: "Bad code",
+    tone: "bad",
+  },
+  NOT_FOUND: { label: "Unknown code", short: "Unknown code", tone: "bad" },
+  WRONG_EVENT: { label: "Wrong event", short: "Another event", tone: "bad" },
+  VOIDED: { label: "Cancelled ticket", short: "Cancelled", tone: "bad" },
+  REFUNDED_TICKET: {
+    label: "Refunded ticket",
+    short: "Refunded",
+    tone: "bad",
+  },
+  ORDER_UNPAID: { label: "Order not paid", short: "Unpaid", tone: "bad" },
 };
 
 export function scanResultLabel(result: TicketScanResult): string {
   return RESULTS[result].label;
+}
+
+/** The same result, for a row that shares its line with three other facts. */
+export function scanResultShort(result: TicketScanResult): string {
+  return RESULTS[result].short;
 }
 
 export function scanResultTone(result: TicketScanResult): ScanResultTone {

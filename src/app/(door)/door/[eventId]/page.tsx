@@ -28,6 +28,7 @@ import { CheckPanel } from "~/components/door/check-panel";
 import { ScanResultScreen } from "~/components/door/scan-result-screen";
 import { playFeedback, unlockAudio } from "~/components/door/feedback";
 import { DoorList } from "~/components/door/door-list";
+import { RecentScans } from "~/components/door/recent-scans";
 import { SellPanel } from "~/components/door/sell-panel";
 import { ManualEntryPanel } from "~/components/door/ticket-number-entry";
 import { useLocalStorage } from "~/hooks/use-local-storage";
@@ -294,6 +295,22 @@ export default function DoorScannerPage() {
               submitLabel="Check in"
               pendingLabel="Checking…"
               onSubmit={(ticketNumber) => admitByNumber(ticketNumber)}
+            />
+            <RecentScans
+              eventId={eventId}
+              deviceLabel={deviceLabel}
+              admitting={manual.isPending}
+              denying={deny.isPending}
+              onAdmit={(ticketNumber) => admitByNumber(ticketNumber)}
+              onDeny={(ticketId, reason, note) =>
+                deny.mutate({
+                  eventId,
+                  ticketId,
+                  reason,
+                  note: note.trim() || undefined,
+                  deviceLabel: deviceLabel || undefined,
+                })
+              }
             />
           </div>
         )}
