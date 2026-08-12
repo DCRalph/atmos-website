@@ -893,7 +893,9 @@ export const doorRouter = createTRPCRouter({
           nameLockedAt: true,
           hostTicketId: true,
           tier: { select: { name: true } },
-          event: { select: { isR18: true, reentryAllowed: true } },
+          event: {
+            select: { isR18: true, reentryAllowed: true, timezone: true },
+          },
           order: {
             select: {
               orderNumber: true,
@@ -935,6 +937,7 @@ export const doorRouter = createTRPCRouter({
             id: true,
             createdAt: true,
             result: true,
+            wasOverride: true,
             denyReason: true,
             denyNote: true,
             deviceLabel: true,
@@ -986,6 +989,9 @@ export const doorRouter = createTRPCRouter({
           : ticket.order._count.tickets,
         isR18: ticket.event.isR18,
         reentryAllowed: ticket.event.reentryAllowed,
+        // The timeline prints clock times, and a door in Auckland reads
+        // Auckland times whatever the server thinks the hour is.
+        timezone: ticket.event.timezone,
         isManager,
         timeline: timeline.map((scan) => ({
           id: scan.id,
@@ -994,6 +1000,7 @@ export const doorRouter = createTRPCRouter({
           reason: scan.denyReason,
           note: scan.denyNote,
           device: scan.deviceLabel,
+          wasOverride: scan.wasOverride,
           by: scan.scannedByUserId
             ? (staffNames.get(scan.scannedByUserId) ?? null)
             : null,

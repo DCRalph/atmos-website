@@ -6,6 +6,7 @@ import {
   Ban,
   BadgeCheck,
   Check,
+  History,
   RotateCcw,
   X,
 } from "lucide-react";
@@ -17,6 +18,7 @@ import {
   ExceptionAction,
   SafeAction,
 } from "~/components/door/controls";
+import { TicketHistorySheet } from "~/components/door/ticket-timeline";
 import { formatTimeAgo } from "~/lib/ticketing/dates";
 import type { DenyReasonValue } from "~/lib/ticketing/deny-reasons";
 import type { RouterOutputs } from "~/trpc/react";
@@ -85,9 +87,10 @@ function canDeny(outcome: ScanOutcome): boolean {
   );
 }
 
-type Step = "result" | "deny" | "confirm-admit";
+type Step = "result" | "deny" | "confirm-admit" | "history";
 
 export function ScanResultScreen({
+  eventId,
   outcome,
   onDismiss,
   onOverride,
@@ -96,6 +99,7 @@ export function ScanResultScreen({
   overriding,
   denying,
 }: {
+  eventId: string;
   outcome: ScanOutcome;
   onDismiss: () => void;
   onOverride: () => void;
@@ -141,6 +145,16 @@ export function ScanResultScreen({
         pending={overriding}
         onCancel={() => setStep("result")}
         onConfirm={onOverride}
+      />
+    );
+  }
+
+  if (step === "history" && outcome.ticket) {
+    return (
+      <TicketHistorySheet
+        eventId={eventId}
+        ticketId={outcome.ticket.id}
+        onBack={() => setStep("result")}
       />
     );
   }
@@ -196,6 +210,19 @@ export function ScanResultScreen({
                 {outcome.ticket.attendeeName}
               </p>
             )}
+
+            {/* In the body rather than the action stack at the bottom: reading
+                a ticket's past changes nothing, and that stack is reserved for
+                the buttons that do. It is the first thing wanted when a scan
+                comes back wrong and somebody starts arguing about it. */}
+            <button
+              type="button"
+              onClick={() => setStep("history")}
+              className="mt-5 flex w-full items-center justify-center gap-2 border-2 border-white/40 bg-black/20 px-4 py-3 text-base font-semibold"
+            >
+              <History className="size-4" aria-hidden />
+              See this ticket&apos;s history
+            </button>
           </div>
         )}
 
@@ -294,7 +321,7 @@ function ConfirmAdmit({
   const refused = outcome.result === "PREVIOUSLY_DENIED";
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] bg-amber-600 text-white">
+    <div className="fixed inset-0 z-50 flex flex-col bg-amber-600 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] text-white">
       <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-6 py-8 text-center [&>*:first-child]:mt-auto [&>*:last-child]:mb-auto">
         <AlertTriangle className="size-16" aria-hidden />
         <p className="mt-4 text-3xl font-black tracking-tight">Admit anyway?</p>

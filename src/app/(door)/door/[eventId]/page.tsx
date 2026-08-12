@@ -385,6 +385,7 @@ export default function DoorScannerPage() {
 
       {outcome && (
         <ScanResultScreen
+          eventId={eventId}
           outcome={outcome}
           canOverride={isManager}
           overriding={scan.isPending || manual.isPending}

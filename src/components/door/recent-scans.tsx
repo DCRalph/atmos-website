@@ -230,6 +230,19 @@ function ScanRow({
         </span>
       </button>
 
+      {/* Spelled out rather than left to the row being tappable. The thing
+          wanted off this feed is usually the ticket's whole story, and a
+          target you have to guess at is one nobody finds mid-shift. */}
+      {ticketId && (
+        <button
+          type="button"
+          onClick={() => onOpen(ticketId)}
+          className="shrink-0 border-l-2 border-white/10 px-3 text-xs font-black tracking-widest uppercase transition-colors active:bg-white active:text-black"
+        >
+          View
+        </button>
+      )}
+
       {/* Offered only while it still stands — the server decides against the
           ticket's current state, so a row already undone or overtaken by a
           later scan stops showing it. */}
@@ -238,7 +251,7 @@ function ScanRow({
           type="button"
           disabled={busy}
           onClick={() => onUndo({ kind: undo, ticketId, who })}
-          className="shrink-0 border-l-2 border-white/10 px-4 text-xs font-black tracking-widest uppercase transition-colors active:bg-white active:text-black disabled:opacity-50"
+          className="shrink-0 border-l-2 border-white/10 px-3 text-xs font-black tracking-widest uppercase transition-colors active:bg-white active:text-black disabled:opacity-50"
         >
           Undo
         </button>

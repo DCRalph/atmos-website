@@ -1,19 +1,14 @@
 "use client";
 
-import { AlertTriangle, Ban, Check, History, Info } from "lucide-react";
+import { AlertTriangle, Ban, Check, Info } from "lucide-react";
 
 import {
   AccessBadge,
   DenialCard,
   SafeAction,
 } from "~/components/door/controls";
-import { formatEventTime, formatTimeAgo } from "~/lib/ticketing/dates";
-import { denyReasonLabel } from "~/lib/ticketing/deny-reasons";
-import {
-  SCAN_TONE_TEXT,
-  scanResultLabel,
-  scanResultTone,
-} from "~/lib/ticketing/scan-results";
+import { TicketTimelineSection } from "~/components/door/ticket-timeline";
+import { formatTimeAgo } from "~/lib/ticketing/dates";
 import type { RouterOutputs } from "~/trpc/react";
 
 type TicketCheck = RouterOutputs["door"]["checkTicket"];
@@ -213,36 +208,20 @@ export function CheckResultScreen({
           </p>
         )}
 
-        <div className="mt-8 border-t-2 border-white/10 pt-5">
-          <p className="flex items-center gap-2 text-xs font-semibold tracking-[0.2em] text-white/40 uppercase">
-            <History className="size-3.5" aria-hidden />
-            History
-          </p>
-
-          {check.history.length === 0 ? (
-            <p className="mt-3 text-sm text-white/40">
-              This ticket has never been scanned.
-            </p>
-          ) : (
-            <>
-              <ul className="mt-3 divide-y-2 divide-white/5 border-2 border-white/10">
-                {check.history.map((entry) => (
-                  <HistoryRow
-                    key={entry.id}
-                    entry={entry}
-                    timezone={timezone}
-                  />
-                ))}
-              </ul>
-              {check.scanCount > check.history.length && (
-                <p className="mt-2 text-xs text-white/40">
-                  Showing the {check.history.length} most recent of{" "}
-                  {check.scanCount} scans.
-                </p>
-              )}
-            </>
-          )}
-        </div>
+        <TicketTimelineSection
+          entries={check.history.map((entry) => ({
+            id: entry.id,
+            at: entry.at,
+            result: entry.result,
+            by: entry.scannedByName,
+            device: entry.deviceLabel,
+            reason: entry.denyReason,
+            note: entry.denyNote,
+            wasOverride: entry.wasOverride,
+          }))}
+          timezone={timezone}
+          total={check.scanCount}
+        />
 
         {check.verdict === "OK" && (
           <p className="mt-6 text-sm text-white/40">
@@ -256,47 +235,6 @@ export function CheckResultScreen({
         <SafeAction onClick={onDismiss}>Check another</SafeAction>
       </div>
     </div>
-  );
-}
-
-function HistoryRow({
-  entry,
-  timezone,
-}: {
-  entry: TicketCheck["history"][number];
-  timezone: string;
-}) {
-  const at = new Date(entry.at);
-
-  return (
-    <li className="flex gap-3 p-3">
-      <span className="w-16 shrink-0 pt-0.5 text-xs tabular-nums opacity-40">
-        {formatEventTime(at, timezone)}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span
-          className={`block text-sm font-semibold ${SCAN_TONE_TEXT[scanResultTone(entry.result)]}`}
-        >
-          {scanResultLabel(entry.result)}
-          {entry.wasOverride ? " · override" : ""}
-        </span>
-        <span className="block text-xs opacity-40">
-          {formatTimeAgo(at)}
-          {entry.scannedByName ? ` · ${entry.scannedByName}` : ""}
-          {entry.deviceLabel ? ` · ${entry.deviceLabel}` : ""}
-        </span>
-        {/* A NOTE row carries its whole text in `denyNote` with no reason
-            against it, so the note has to stand on its own here. */}
-        {(entry.denyReason ?? entry.denyNote) && (
-          <span className="mt-0.5 block text-xs opacity-80">
-            {entry.denyReason ? denyReasonLabel(entry.denyReason) : ""}
-            {entry.denyNote
-              ? `${entry.denyReason ? " — " : ""}“${entry.denyNote}”`
-              : ""}
-          </span>
-        )}
-      </span>
-    </li>
   );
 }
 

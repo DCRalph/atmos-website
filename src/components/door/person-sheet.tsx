@@ -16,6 +16,7 @@ import {
   SafeAction,
 } from "~/components/door/controls";
 import { PartySheet } from "~/components/door/party-sheet";
+import { TicketTimelineSection } from "~/components/door/ticket-timeline";
 
 /**
  * One person, opened from the door list.
@@ -309,6 +310,14 @@ export function PersonSheet({
             R18 — CHECK ID
           </p>
         )}
+
+        {/* The whole story, under the summary above it. This is the sheet
+            somebody opens when there is an argument rather than a queue, and
+            "who did what, when" is the thing that settles it. */}
+        <TicketTimelineSection
+          entries={person.timeline}
+          timezone={person.timezone}
+        />
       </div>
 
       <div className="space-y-3 p-5 pb-8">
