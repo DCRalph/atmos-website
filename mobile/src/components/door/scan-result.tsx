@@ -1,7 +1,15 @@
 import { useState } from "react";
 import * as Haptics from "expo-haptics";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api, type RouterOutputs } from "@/lib/api";
 import { colors, space } from "@/lib/theme";
@@ -36,6 +44,7 @@ export function ScanResult({
   const [current, setCurrent] = useState(outcome);
   const [denying, setDenying] = useState(false);
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { deviceLabel } = useDeviceLabel();
   const utils = api.useUtils();
 
@@ -59,7 +68,16 @@ export function ScanResult({
     },
   });
 
-  const override = api.door.scan.useMutation({
+  /**
+   * Admitting past a duplicate.
+   *
+   * Goes through `admitByTicketNumber`, not `scan`. All this screen still has
+   * is the ticket number — the signed QR token is long gone — and `scan` reads
+   * its `token` as that signed payload, so passing a ticket number made the
+   * server correctly answer that it is not an Atmos ticket. Both endpoints
+   * funnel into the same admit path server-side.
+   */
+  const override = api.door.admitByTicketNumber.useMutation({
     onSuccess: async (result) => {
       setCurrent(result as ScanOutcome);
       await Haptics.notificationAsync(
@@ -78,8 +96,23 @@ export function ScanResult({
   return (
     <Modal visible animationType="fade" transparent={false}>
       <View style={[styles.screen, { backgroundColor: tone.bg }]}>
-        <View style={styles.body}>
-          <Text style={styles.verdict}>{tone.heading}</Text>
+        {/* Scrolls rather than stretching: with a name, a badge, a duplicate
+            warning, a photo-ID line and an R18 flag all showing at once, a
+            fixed body ran straight under the buttons. */}
+        <ScrollView
+          contentContainerStyle={[
+            styles.body,
+            { paddingTop: insets.top + space.lg },
+          ]}
+        >
+          <Text
+            style={styles.verdict}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+          >
+            {tone.heading}
+          </Text>
 
           {ticket ? (
             <>
@@ -151,9 +184,14 @@ export function ScanResult({
               <Text style={styles.panelTitle}>R18 — CHECK ID</Text>
             </View>
           ) : null}
-        </View>
+        </ScrollView>
 
-        <View style={styles.actions}>
+        <View
+          style={[
+            styles.actions,
+            { paddingBottom: insets.bottom + space.lg },
+          ]}
+        >
           {/* Only when there is a ticket to refuse: an unreadable or foreign
               code has nobody to record it against. */}
           {current.ticket ? (
@@ -176,8 +214,9 @@ export function ScanResult({
               onPress={() =>
                 override.mutate({
                   eventId,
-                  token: current.ticket?.ticketNumber ?? "",
+                  ticketNumber: current.ticket?.ticketNumber ?? "",
                   override: true,
+                  deviceLabel: labelArg(deviceLabel),
                 })
               }
               disabled={override.isPending}
@@ -294,17 +333,22 @@ const styles = StyleSheet.create({
   },
   screen: { flex: 1 },
   body: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: space.xl,
+    paddingHorizontal: space.xl,
+    paddingBottom: space.xl,
     gap: space.sm,
   },
   verdict: {
     color: "#fff",
-    fontSize: 64,
+    // 64 wrapped "ALREADY IN" onto two lines and pushed it under the notch.
+    // Shrunk here and capped to one line below, so a longer verdict scales
+    // itself down rather than reflowing the whole screen.
+    fontSize: 46,
     fontWeight: "900",
-    letterSpacing: -2,
+    letterSpacing: -1.5,
+    textAlign: "center",
   },
   name: {
     color: "#fff",
@@ -332,7 +376,7 @@ const styles = StyleSheet.create({
   r18: { borderColor: "rgba(255,255,255,0.5)" },
   panelTitle: { color: "#fff", fontSize: 15, fontWeight: "800" },
   panelBody: { color: "rgba(255,255,255,0.85)", fontSize: 14, marginTop: 2 },
-  actions: { padding: space.lg, paddingBottom: space.xxl, gap: space.md },
+  actions: { padding: space.lg, gap: space.md },
   exception: {
     borderWidth: 2,
     borderColor: "rgba(0,0,0,0.3)",

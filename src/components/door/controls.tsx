@@ -182,7 +182,7 @@ export function DenyReasonPicker({
   const [note, setNote] = useState("");
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-red-800 text-white">
+    <div className="fixed inset-0 z-50 flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] bg-red-800 text-white">
       <div className="flex-1 overflow-y-auto px-5 pt-8">
         <p className="text-2xl font-black tracking-tight">Why refuse?</p>
         <p className="mt-1 text-sm opacity-80">

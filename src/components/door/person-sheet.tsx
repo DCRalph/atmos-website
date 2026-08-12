@@ -108,7 +108,7 @@ export function PersonSheet({
 
   if (step === "confirm-revert") {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-amber-600 text-white">
+      <div className="fixed inset-0 z-50 flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] bg-amber-600 text-white">
         <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
           <p className="text-3xl font-black tracking-tight">Undo admission?</p>
           <p className="mt-3 max-w-sm text-base opacity-90">
@@ -269,7 +269,7 @@ export function PersonSheet({
 
 function Sheet({ children }: { children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-neutral-900 text-white">
+    <div className="fixed inset-0 z-50 flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] bg-neutral-900 text-white">
       {children}
     </div>
   );

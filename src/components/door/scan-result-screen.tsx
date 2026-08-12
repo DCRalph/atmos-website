@@ -147,11 +147,11 @@ export function ScanResultScreen({
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex flex-col ${tone.bg} text-white`}
+      className={`fixed inset-0 z-50 flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] ${tone.bg} text-white`}
       role="alert"
       aria-live="assertive"
     >
-      <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 py-8 text-center">
+      <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-6 py-8 text-center [&>*:first-child]:mt-auto [&>*:last-child]:mb-auto">
         <Icon className="size-20" aria-hidden />
         <p className="mt-4 text-3xl font-black tracking-tight">{tone.label}</p>
         <p className="mt-1 text-lg opacity-90">{outcome.message}</p>
@@ -294,8 +294,8 @@ function ConfirmAdmit({
   const refused = outcome.result === "PREVIOUSLY_DENIED";
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-amber-600 text-white">
-      <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 py-8 text-center">
+    <div className="fixed inset-0 z-50 flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] bg-amber-600 text-white">
+      <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-6 py-8 text-center [&>*:first-child]:mt-auto [&>*:last-child]:mb-auto">
         <AlertTriangle className="size-16" aria-hidden />
         <p className="mt-4 text-3xl font-black tracking-tight">Admit anyway?</p>
 

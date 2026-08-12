@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api, type RouterOutputs } from "@/lib/api";
 import { denyReasonLabel } from "~/lib/ticketing/deny-reasons";
@@ -38,6 +39,7 @@ export function PersonSheet({
   onClose: () => void;
   onAdmit: (ticketNumber: string) => void;
 }) {
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState<
     "detail" | "party" | "deny" | "history" | "note"
   >("detail");
@@ -88,7 +90,14 @@ export function PersonSheet({
 
   return (
     <Modal visible animationType="slide" transparent={false}>
-      <View style={styles.screen}>
+      <View
+        style={[
+          styles.screen,
+          // Full-screen modals sit under the notch and the home indicator
+          // otherwise — the verdict ran into the Dynamic Island.
+          { paddingTop: insets.top, paddingBottom: insets.bottom },
+        ]}
+      >
         {detail.isPending || !person ? (
           <View style={{ flex: 1, justifyContent: "center" }}>
             <Loading label="Loading ticket" />

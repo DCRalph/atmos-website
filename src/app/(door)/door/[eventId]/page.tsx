@@ -173,11 +173,11 @@ export default function DoorScannerPage() {
 
   return (
     <main
-      className="mx-auto w-full max-w-lg px-4 pb-10"
+      className="mx-auto w-full max-w-lg px-4 pb-[calc(env(safe-area-inset-bottom)+2.5rem)]"
       // The first tap anywhere unlocks audio for the rest of the session.
       onPointerDown={unlockAudio}
     >
-      <header className="sticky top-0 z-10 -mx-4 border-b-2 border-white/10 bg-black/95 px-4 py-3 backdrop-blur">
+      <header className="sticky top-0 z-10 -mx-4 border-b-2 border-white/10 bg-black/95 px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-3 backdrop-blur">
         <div className="flex items-center gap-3">
           <Link
             href="/door"
@@ -325,7 +325,7 @@ function ModeButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex h-12 items-center justify-center gap-1.5 border-2 text-sm font-medium transition-colors ${
+      className={`flex h-12 items-center justify-center gap-1.5 border-2 text-xs font-medium transition-colors sm:text-sm ${
         active
           ? "border-white bg-white text-black"
           : "border-white/15 text-white/60"

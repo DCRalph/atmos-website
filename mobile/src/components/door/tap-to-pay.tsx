@@ -5,6 +5,7 @@ import {
   type Reader,
 } from "@stripe/stripe-terminal-react-native";
 import { Modal, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "@/lib/api";
 import { colors, radius, space } from "@/lib/theme";
@@ -45,6 +46,7 @@ export function TapToPaySheet({
   onClose: () => void;
   onSold: (orderNumber: string) => void;
 }) {
+  const insets = useSafeAreaInsets();
   const [stage, setStage] = useState<Stage>("connecting");
   const [error, setError] = useState<string | null>(null);
   const orderRef = useRef<string | null>(null);
@@ -180,7 +182,14 @@ export function TapToPaySheet({
 
   return (
     <Modal visible animationType="slide" transparent={false}>
-      <View style={styles.screen}>
+      <View
+        style={[
+          styles.screen,
+          // Full-screen modals sit under the notch and the home indicator
+          // otherwise — the verdict ran into the Dynamic Island.
+          { paddingTop: insets.top, paddingBottom: insets.bottom },
+        ]}
+      >
         <View style={styles.body}>
           <Title style={{ textAlign: "center" }}>{money(totalCents)}</Title>
 
