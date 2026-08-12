@@ -60,6 +60,104 @@ Rebuild for the device and reinstall. Verify with the `codesign` command above
 before testing at a door — a build without it fails identically to no build at
 all, and the failure looks like a network problem rather than a signing one.
 
+## Development and distribution are granted separately
+
+The entitlement can be live for development builds and still absent from App
+Store ones. That is not a caching problem and no amount of re-provisioning
+fixes it — Apple simply issues the two profile types differently.
+
+**Confirmed for this app on 2026-08-13:** the grant is development-only. Tap to
+Pay works on builds installed directly to a registered device, and the App Store
+export fails until Apple extends the grant to distribution. Everything below is
+the evidence trail; skip to "Building for a device" if you just want it running
+on a phone.
+
+Observed on 2026-08-13, with both profiles issued four minutes apart by
+automatic signing:
+
+```
+iOS Team Provisioning Profile: nz.co.atmosmedia.app          tapToPay = 1
+iOS Team Store Provisioning Profile: nz.co.atmosmedia.app    tapToPay = 0
+```
+
+The export then fails with:
+
+```
+Provisioning profile "iOS Team Store Provisioning Profile: nz.co.atmosmedia.app"
+doesn't include the Tap to Pay on iPhone capability.
+```
+
+Note the wording — Apple names the capability, which means the App ID has it.
+Compare with the message when the entitlement is not granted at all:
+
+```
+Entitlement com.apple.developer.proximity-reader.payment.acceptance not found
+and could not be included in profile.
+```
+
+Those two errors mean different things and are worth telling apart before
+raising anything with Apple. The first says "you have it, not for this profile
+type"; the second says "you do not have it".
+
+### Checking which profiles carry it
+
+```bash
+DIR="$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
+for f in "$DIR"/*.mobileprovision; do
+  P=$(security cms -D -i "$f" 2>/dev/null)
+  A=$(echo "$P" | plutil -extract Entitlements.application-identifier raw - 2>/dev/null)
+  case "$A" in *atmosmedia*)
+    echo "$(echo "$P" | plutil -extract Name raw - 2>/dev/null) | tapToPay=$(echo "$P" \
+      | plutil -extract Entitlements xml1 -o - - 2>/dev/null | grep -c proximity-reader)";;
+  esac
+done
+```
+
+Deleting the stale ones and letting Xcode re-fetch does not help if the grant
+itself is development-only. It is worth doing once to rule caching out, then
+stop.
+
+### Likely causes, in order
+
+1. **The grant covers development only.** Apple's approval is per environment;
+   distribution can lag or need a second request.
+2. **No App Store Connect app record.** Apple has been observed to withhold
+   payment-acceptance entitlements from distribution profiles for a bundle id
+   that has no app record. Creating the record costs nothing and rules it out.
+3. **Propagation.** Rare, but the App ID capability can take time to reach the
+   distribution profile service.
+
+## Building for a device
+
+The path that works today. Development signing, so the development profile —
+the one that carries the capability — is the one that gets used.
+
+```bash
+cd mobile
+npx expo prebuild -p ios --no-install && npx pod-install
+xcodebuild build -workspace ios/Atmos.xcworkspace -scheme Atmos \
+  -configuration Release -destination "id=<device-udid>" \
+  -derivedDataPath build/dd DEVELOPMENT_TEAM=QB4T85D6S2 -allowProvisioningUpdates
+xcrun devicectl device install app --device <device-udid> \
+  build/dd/Build/Products/Release-iphoneos/Atmos.app
+```
+
+Get the udid from `xcrun devicectl list devices`. **Unlock the phone before
+installing** — a locked device fails with `kAMDMobileImageMounterDeviceLocked`,
+which reads like a developer disk image problem and is not one.
+
+Release rather than Debug matters: `tap-to-pay.tsx` passes `simulated: __DEV__`,
+so a Debug build connects to a simulated reader and proves nothing about the
+entitlement.
+
+### Push environment
+
+`app.config.ts` reads `aps-environment` from `APS_ENVIRONMENT`, defaulting to
+`development`. A development profile only carries the development value, so
+hardcoding production breaks exactly the device builds needed to test Tap to
+Pay. `scripts/build-ipa.sh` sets it to production for store builds, which is
+where the production value belongs.
+
 ## What the Stripe Expo plugin does and does not do
 
 `@stripe/stripe-terminal-react-native`'s config plugin **does not add the iOS
