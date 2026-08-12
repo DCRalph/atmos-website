@@ -156,9 +156,9 @@ export function CheckResultScreen({
           <p className="mt-6 flex items-start gap-2 border-2 border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200">
             <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
             <span>
-              Refused {countLabel(check.refusalCount, "time", "times")} earlier,
-              then let in anyway. The refusal no longer stands — the history
-              below has who did what.
+              Refused {countLabel(check.refusalCount, "time", "times")} earlier.
+              That no longer stands — it was taken back, or they were admitted
+              afterwards. The history below has who did what.
             </span>
           </p>
         )}
@@ -271,10 +271,14 @@ function HistoryRow({
           {entry.scannedByName ? ` · ${entry.scannedByName}` : ""}
           {entry.deviceLabel ? ` · ${entry.deviceLabel}` : ""}
         </span>
-        {entry.denyReason && (
+        {/* A NOTE row carries its whole text in `denyNote` with no reason
+            against it, so the note has to stand on its own here. */}
+        {(entry.denyReason ?? entry.denyNote) && (
           <span className="mt-0.5 block text-xs opacity-80">
-            {denyReasonLabel(entry.denyReason)}
-            {entry.denyNote ? ` — “${entry.denyNote}”` : ""}
+            {entry.denyReason ? denyReasonLabel(entry.denyReason) : ""}
+            {entry.denyNote
+              ? `${entry.denyReason ? " — " : ""}“${entry.denyNote}”`
+              : ""}
           </span>
         )}
       </span>

@@ -28,6 +28,8 @@ const RESULTS: Record<
   DENIED: { label: "Refused entry", tone: "out" },
   PREVIOUSLY_DENIED: { label: "Turned back — refused earlier", tone: "out" },
   ADMISSION_REVERTED: { label: "Admission undone", tone: "neutral" },
+  DENIAL_REVERTED: { label: "Refusal taken back", tone: "neutral" },
+  NOTE: { label: "Note", tone: "neutral" },
   INVALID_SIGNATURE: { label: "Code didn't check out", tone: "bad" },
   NOT_FOUND: { label: "Unknown code", tone: "bad" },
   WRONG_EVENT: { label: "Wrong event", tone: "bad" },
