@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -25,7 +25,6 @@ import { TierManager } from "~/components/admin/ticketing/tier-manager";
 import { EventOverview } from "~/components/admin/ticketing/event-overview";
 import { OrdersPanel } from "~/components/admin/ticketing/orders-panel";
 import { StaffPanel } from "~/components/admin/ticketing/staff-panel";
-import { BoxOfficePanel } from "~/components/admin/ticketing/box-office-panel";
 import { CompsPanel } from "~/components/admin/ticketing/comps-panel";
 import { ShareLinkCard } from "~/components/admin/ticketing/share-link-card";
 import { formatEventDateTime } from "~/lib/ticketing/dates";
@@ -120,6 +119,11 @@ export default function AdminEventPage() {
               <ExternalLink className="size-4" /> View
             </Link>
           </Button>
+          <Button variant="outline" asChild>
+            <Link href={`/door/${data.id}`} target="_blank">
+              <ScanLine className="size-4" /> Scanner
+            </Link>
+          </Button>
           <Button asChild>
             <Link href={`/admin/events/${data.id}/live`}>Live door</Link>
           </Button>
@@ -135,7 +139,6 @@ export default function AdminEventPage() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="tiers">Tiers</TabsTrigger>
           <TabsTrigger value="orders">Orders</TabsTrigger>
-          <TabsTrigger value="boxoffice">Box office</TabsTrigger>
           <TabsTrigger value="comps">Comps</TabsTrigger>
           <TabsTrigger value="staff">Door staff</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -150,9 +153,6 @@ export default function AdminEventPage() {
         </TabsContent>
         <TabsContent value="orders" className="mt-6">
           <OrdersPanel eventId={data.id} />
-        </TabsContent>
-        <TabsContent value="boxoffice" className="mt-6">
-          <BoxOfficePanel event={data} />
         </TabsContent>
         <TabsContent value="comps" className="mt-6">
           <CompsPanel event={data} />

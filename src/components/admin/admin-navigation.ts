@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Mail,
   Palette,
+  ScanLine,
   Settings,
   ShoppingBag,
   Sparkles,
@@ -81,6 +82,13 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         url: "/admin/events",
         icon: Ticket,
         keywords: ["orders", "tickets", "door"],
+      },
+      {
+        title: "Door scanner",
+        description: "Scan people in, sell at the door, and comp tickets",
+        url: "/door",
+        icon: ScanLine,
+        keywords: ["door", "scan", "box office", "comp", "entry"],
       },
       {
         title: "Discount codes",

@@ -34,7 +34,6 @@ import {
 } from "~/server/ticketing/comps";
 import { ADMITTING_RESULTS } from "~/server/ticketing/scan";
 import { logActivity } from "~/server/utils/activity-log";
-import { sellAtDoor } from "~/server/ticketing/box-office";
 import {
   ACCESS_LEVEL_VALUES,
   ticketTypeName,
@@ -42,16 +41,6 @@ import {
 import { ticketUrl, ticketsUrl } from "~/server/ticketing/urls";
 import { pushPassUpdate } from "~/server/wallet/apple-push";
 
-/**
- * Admin operations on orders and tickets: the box office, refunds, resends,
- * voids, and the approval queue for guest-list tiers.
- */
-
-/**
- * A ticket's share of the order — its face value plus an even split of the
- * booking fee. Refunding face value only would quietly keep the fee on a
- * ticket the buyer never got to use.
- */
 function refundableCentsForTicket(
   ticket: { pricePaidCents: number },
   order: { bookingFeeCents: number; tickets: unknown[] },
@@ -386,52 +375,6 @@ export const ticketAdminRouter = createTRPCRouter({
         data: { accessTokenVersion: { increment: 1 } },
       });
       return { ticketsUrl: ticketsUrl(orderAccessToken(order)) };
-    }),
-
-  // ------------------------------------------------------------ box office
-
-  /**
-   * Sell or comp a ticket at the door. Runs through the same inventory and
-   * issuance path as an online sale, so stock, scanning and analytics all stay
-   * consistent — the only difference is where the money came from.
-   */
-  boxOfficeSale: adminProcedure
-    .input(
-      z.object({
-        eventId: z.string(),
-        lines: z
-          .array(
-            z.object({
-              tierId: z.string(),
-              quantity: z.number().int().min(1).max(20),
-            }),
-          )
-          .min(1),
-        // Comps are not a payment method here: they are minted rather than
-        // sold, so they go through `issueComp` and never touch a tier.
-        paymentMethod: z.enum([
-          PaymentMethodKind.CASH,
-          PaymentMethodKind.TERMINAL,
-        ]),
-        buyerName: z.string().trim().max(120).optional(),
-        buyerEmail: z.email().optional(),
-        attendeeNames: z.array(z.string().trim().max(120)).default([]),
-        notes: z.string().trim().max(500).optional(),
-        sendEmail: z.boolean().default(true),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      return sellAtDoor({
-        eventId: input.eventId,
-        lines: input.lines,
-        paymentMethod: input.paymentMethod,
-        buyerName: input.buyerName,
-        buyerEmail: input.buyerEmail,
-        attendeeNames: input.attendeeNames,
-        notes: input.notes,
-        sendEmail: input.sendEmail,
-        soldByUserId: ctx.session.user.id,
-      });
     }),
 
   // ------------------------------------------------------------------ comps

@@ -25,9 +25,9 @@ lines and hands them to `sellAtDoor`, which calls `createPendingOrder` →
 A comp is a single order holding every ticket, and the `/tickets/[token]` link is
 per-**order** (`src/server/ticketing/numbering.ts:62`). `findOrderByAccessToken`
 returns every ticket on it (`orders.ts:558`), the page renders every QR
-(`src/app/(main)/tickets/[token]/page.tsx`), and the details page lets whoever
+(`src/app/(main)/(tickets)/tickets/[token]/page.tsx`), and the details page lets whoever
 holds the link put any name on any ticket
-(`src/app/(main)/tickets/[token]/details/page.tsx:337`).
+(`src/app/(main)/(tickets)/tickets/[token]/details/page.tsx:337`).
 
 Comp Bob 1×AAA + 2×GA and he holds three interchangeable QR codes. He can keep a
 GA, hand the AAA to a mate, and the door has no way to know.
@@ -375,7 +375,7 @@ Shipped as one change. The pieces, so the next person can find them:
 | Capacity including comps                                 | `src/server/ticketing/inventory.ts` (`eventHeadcount`)                                |
 | Per-ticket tokens                                        | `src/server/ticketing/numbering.ts`, `orders.ts` (`findTicketByAccessToken`)          |
 | Type label for tier-less tickets                         | `src/lib/ticketing/access-levels.ts` (`ticketTypeName`)                               |
-| The recipient's page and hand-out flow                   | `src/app/(main)/t/[token]/page.tsx`, `routers/tickets.ts`                             |
+| The recipient's page and hand-out flow                   | `src/app/(main)/(tickets)/t/[token]/page.tsx`, `routers/tickets.ts`                   |
 | Admin issuing, accounting, hand-out controls             | `routers/ticket-admin.ts`, `components/admin/ticketing/comps-panel.tsx`               |
 | Door comping, `Invited by`, ID prompt, lock-on-admission | `routers/door.ts`, `ticketing/scan.ts`, `components/door/*`                           |
 | Comp and hand-out email                                  | `ticketing/email/templates.ts` (`renderCompEmail`), `send.ts` (`sendCompTicketEmail`) |

@@ -913,7 +913,6 @@ enum TicketAccessLevel {
   VIP
   ARTIST
   CREW
-  /// Access all areas.
   AAA
 }
 
@@ -951,10 +950,7 @@ enum TicketEmailType {
   DETAILS_NUDGE
   REMINDER
   APPROVAL_REQUIRED
-  /// Sent to somebody who has been given a ticket, covering their own ticket
-  /// and any they have to hand out.
   COMP
-  /// Sent to the person a comp recipient passed a ticket on to.
   HANDOUT
 }
 
@@ -968,20 +964,15 @@ model TicketEvent {
   slug String @unique
   name String
 
-  /// Optional link to an existing gig. When set, the gig page renders the buy
-  /// panel and the event inherits the gig's poster if it has none of its own.
   gigId String?
   gig   Gig?    @relation(fields: [gigId], references: [id], onDelete: SetNull)
 
   shortDescription   String?
-  /// Serialized Lexical editor state, same convention as `Gig.descriptionLexical`.
   descriptionLexical Json?
   posterFileUploadId String?
 
   venueName    String?
   venueAddress String?
-  /// IANA zone. Sale windows and analytics buckets are computed in this zone so
-  /// NZ daylight saving does not shift them.
   timezone     String    @default("Pacific/Auckland")
   doorsAt      DateTime?
   startsAt     DateTime
@@ -993,29 +984,17 @@ model TicketEvent {
   salesCloseAt DateTime?
 
   visibility TicketEventVisibility @default(PUBLIC)
-  /// Random and rotatable. Goes on the share link as `?k=` and is what makes a
-  /// PRIVATE event open at all. Rotating it kills every link already sent.
   accessKey  String?
 
-  /// Overall cap across every tier. Null means the sum of tier allocations.
   capacity             Int?
-  /// How many comps this event is budgeted for. A target, not a limit: going
-  /// over is allowed and only ever warns, because the call to comp one more
-  /// person is made in the room and not by this column. Null means nobody set
-  /// a number, so there is nothing to warn against — the count still works.
   compAllowance        Int?
   maxTicketsPerOrder   Int     @default(10)
   requireAttendeeNames Boolean @default(true)
-  /// When true a second scan is a calm "re-entry", not a warning.
   reentryAllowed       Boolean @default(false)
-  /// Defaults to true: most Atmos events are in licensed venues.
   isR18                Boolean @default(true)
 
-  /// Booking fee. Null falls back to the site default in `KeyValueStore`.
   bookingFeeFixedCents Int?
-  /// Basis points, so 250 == 2.5%.
   bookingFeePercentBp  Int?
-  /// Snapshotted onto each order so historical receipts stay correct.
   gstRateBp            Int     @default(1500)
   gstNumber            String?
 
@@ -1044,30 +1023,21 @@ model TicketTier {
 
   name        String
   description String?
-  /// GST-inclusive price in cents. 0 means a free tier: Stripe is skipped.
   priceCents  Int     @default(0)
   allocation  Int
 
-  /// Denormalised counters, maintained inside a transaction that locks this row.
-  /// `soldCount` counts issued tickets; `heldCount` counts unexpired PENDING orders.
   soldCount Int @default(0)
   heldCount Int @default(0)
 
   salesStartAt DateTime?
   salesEndAt   DateTime?
-  /// Manual kill switch, independent of dates and allocation.
   isActive     Boolean   @default(true)
-  /// Hidden tiers only appear once an unlocking discount code is applied.
   isHidden     Boolean   @default(false)
 
   maxPerOrder      Int     @default(10)
-  /// Mainly for free tiers, to stop one person taking the whole allocation.
   maxPerEmail      Int?
-  /// Free tier that an admin must approve before tickets are issued.
   requiresApproval Boolean @default(false)
 
-  /// What tickets sold from this tier get you past. Snapshotted onto each
-  /// ticket at issue, so changing it here never re-bands tickets already out.
   accessLevel TicketAccessLevel @default(GENERAL)
 
   sortOrder Int @default(0)
@@ -1084,7 +1054,6 @@ model TicketTier {
 
 model TicketOrder {
   id          String @id @default(cuid())
-  /// Human-facing, no ambiguous characters: ATM-4F7K2X
   orderNumber String @unique
 
   eventId String
@@ -1092,8 +1061,6 @@ model TicketOrder {
 
   status TicketOrderStatus @default(PENDING)
 
-  /// Nullable while PENDING — the whole point is that we ask for nothing until
-  /// after payment. Stripe or the wallet supplies the email.
   buyerEmail String?
   buyerName  String?
   buyerPhone String?
@@ -1103,7 +1070,6 @@ model TicketOrder {
   discountCents   Int    @default(0)
   bookingFeeCents Int    @default(0)
   totalCents      Int    @default(0)
-  /// GST component *of* totalCents, not added on top.
   gstCents        Int    @default(0)
   gstRateBp       Int    @default(1500)
   currency        String @default("NZD")
@@ -1113,7 +1079,6 @@ model TicketOrder {
 
   stripePaymentIntentId String? @unique
   stripeChargeId        String?
-  /// Set for box office sales so takings can be attributed.
   soldByUserId          String?
 
   termsAcceptedAt DateTime?
@@ -1121,10 +1086,7 @@ model TicketOrder {
   /// Separate from the ticket purchase — UEMA 2007 needs express consent.
   marketingOptIn  Boolean   @default(false)
 
-  /// The `/tickets/[token]` link is derived, not stored: the token is the order
-  /// id plus an HMAC over `id + accessTokenVersion`. That means we can rebuild
-  /// a buyer's link at any time to re-send it, we never hold a bearer secret in
-  /// the database, and bumping this version revokes the old link.
+
   accessTokenVersion Int       @default(1)
   detailsCompletedAt DateTime?
 
@@ -1184,9 +1146,7 @@ model Ticket {
   attendeeName  String?
   attendeeEmail String?
 
-  /// Taken from the tier when the ticket is issued, and changeable per ticket
-  /// afterwards — an artist's guest gets bumped to AAA without anyone touching
-  /// the tier they were comped from.
+
   accessLevel TicketAccessLevel @default(GENERAL)
 
   isComp Boolean @default(false)
@@ -1197,10 +1157,7 @@ model Ticket {
   invitedByName String?
   sentAt DateTime?
 
-  /// Random 32 bytes, base64url. Combined with `qrVersion` and the server
-  /// secret to produce the signed QR payload.
   qrSecret  String
-  /// Bumped to invalidate a previously issued code without changing identity.
   qrVersion Int    @default(1)
 
   accessTokenVersion Int @default(1)
@@ -1277,17 +1234,13 @@ model TicketEventStaff {
 
 model DiscountCode {
   id   String @id @default(cuid())
-  /// Always stored uppercase; lookups uppercase the input.
   code String @unique
 
   type  DiscountCodeType
-  /// Basis points for PERCENT (1000 == 10%), cents for FIXED.
   value Int
 
-  /// Null means the code works on any event.
   eventId String?
   event   TicketEvent? @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  /// Empty means every tier in scope.
   tierIds String[]
 
   maxRedemptions  Int?
@@ -1298,7 +1251,6 @@ model DiscountCode {
   startsAt           DateTime?
   endsAt             DateTime?
   isActive           Boolean   @default(true)
-  /// Lets a code reveal `isHidden` tiers — guest lists, presales.
   unlocksHiddenTiers Boolean   @default(false)
 
   createdBy String?
@@ -1335,7 +1287,6 @@ model TicketEmailLog {
   toEmail String
 
   providerMessageId String?
-  /// "sent" | "failed"
   status            String
   error             String?
 

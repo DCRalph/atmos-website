@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, ScanLine } from "lucide-react";
 import { useParams } from "next/navigation";
 
 import { api } from "~/trpc/react";
@@ -37,6 +37,11 @@ export default function OrganiserEventPage() {
           <Button variant="outline" asChild>
             <Link href={`/events/${data.slug}`} target="_blank">
               <ExternalLink className="size-4" /> Public page
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href={`/door/${id}`} target="_blank">
+              <ScanLine className="size-4" /> Scanner
             </Link>
           </Button>
           <Button asChild>

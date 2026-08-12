@@ -571,8 +571,11 @@ src/app/api/cron/ticketing-sweep/route.ts
 
 src/app/(main)/events/page.tsx            # what's on
 src/app/(main)/events/[slug]/page.tsx     # event + buy panel
-src/app/(main)/tickets/[token]/page.tsx   # tickets + details form (noindex)
-src/app/(main)/tickets/terms/page.tsx
+src/app/(main)/(tickets)/                 # everything a ticket link opens,
+                                          # grouped to share the noindex layout
+src/app/(main)/(tickets)/tickets/[token]/ # an order: every ticket on it
+src/app/(main)/(tickets)/t/[token]/       # one person's own ticket
+src/app/(main)/(tickets)/tickets/terms/
 
 src/app/(door)/door/...                   # scanner, own minimal layout
 

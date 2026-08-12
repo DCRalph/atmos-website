@@ -37,14 +37,10 @@ export default function DoorScannerPage() {
   const params = useParams<{ eventId: string }>();
   const eventId = params.eventId;
 
-  // Persisted so a phone that gets locked and reopened mid-shift keeps its
-  // identity — every scan is attributed to this label.
+
   const [deviceLabel, setDeviceLabel] = useLocalStorage(DEVICE_LABEL_KEY);
   const [outcome, setOutcome] = useState<ScanOutcome | null>(null);
-  // How the ticket on screen was looked up, so "Admit anyway" can re-run the
-  // same lookup. Tracked rather than assumed: a manager overriding a result
-  // that came from the door list must not silently re-admit whatever was last
-  // held in front of the camera.
+
   const [lastLookup, setLastLookup] = useState<Lookup | null>(null);
   const [mode, setMode] = useState<"scan" | "manual" | "list" | "sell">("scan");
 

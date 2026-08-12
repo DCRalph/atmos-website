@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { ScanLine } from "lucide-react";
 
 import { UserDropdown } from "~/components/user-dropdown";
 import { auth } from "~/server/auth";
@@ -37,7 +38,18 @@ export default async function OrganiserLayout({
           <Link href="/organiser/events" className="text-lg font-semibold">
             Atmos Events
           </Link>
-          <UserDropdown />
+          <div className="flex items-center gap-3">
+            {/* Organisers have door access at every event, so this always
+                works for them. Door sales and comps live here too. */}
+            <Link
+              href="/door"
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
+            >
+              <ScanLine className="size-4" aria-hidden />
+              Scanner
+            </Link>
+            <UserDropdown />
+          </div>
         </div>
       </header>
       <main className="mx-auto max-w-7xl">{children}</main>
