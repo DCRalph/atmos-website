@@ -134,7 +134,8 @@ export default function TicketPage() {
           />
 
           <p
-            className={`mt-4 inline-block px-3 py-1 text-xs font-bold tracking-[0.08em] ${level.tone}`}
+            className="mt-4 inline-block px-3 py-1 text-xs font-bold tracking-[0.08em]"
+            style={{ backgroundColor: level.badgeBg, color: level.badgeFg }}
           >
             {level.short}
           </p>
@@ -282,7 +283,8 @@ function HandoutCard({
     <div className="border-2 border-white/10 bg-black/60 p-5">
       <div className="flex flex-wrap items-center gap-2">
         <span
-          className={`px-2.5 py-1 text-xs font-bold tracking-[0.08em] ${level.tone}`}
+          className="px-2.5 py-1 text-xs font-bold tracking-[0.08em]"
+          style={{ backgroundColor: level.badgeBg, color: level.badgeFg }}
         >
           {level.short}
         </span>

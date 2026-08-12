@@ -8,10 +8,11 @@ import type { TicketAccessLevel } from "~Prisma/client";
  * things. Ordered least to most access, which is the order a promoter thinks
  * in and the order these should always be listed.
  *
- * `tone` is a Tailwind class pair, not a colour name — the door screen already
- * paints its own background from the scan result, so a level badge has to sit
- * on top of green, amber or red and stay readable on all three. Hence the
- * solid, high-contrast pairs rather than tints.
+ * Badge colours are CSS rather than class names: they are editable in admin,
+ * and a promoter picking a colour should not have to know Tailwind's palette.
+ * Solid and high-contrast rather than tinted, because the door screen paints
+ * its own background from the scan result and a level badge has to sit on top
+ * of green, amber or red and stay readable on all three.
  */
 
 export const ACCESS_LEVELS = [
@@ -19,49 +20,56 @@ export const ACCESS_LEVELS = [
     value: "GENERAL",
     label: "General",
     short: "GA",
-    tone: "bg-white text-black",
+    badgeBg: "#FFFFFF",
+    badgeFg: "#000000",
     passAccent: null,
   },
   {
     value: "GUEST",
     label: "Guest list",
     short: "GUEST",
-    tone: "bg-sky-300 text-sky-950",
+    badgeBg: "#7DD3FC",
+    badgeFg: "#082F49",
     passAccent: "#7DD3FC",
   },
   {
     value: "VIP",
     label: "VIP",
     short: "VIP",
-    tone: "bg-violet-300 text-violet-950",
+    badgeBg: "#C4B5FD",
+    badgeFg: "#2E1065",
     passAccent: "#C4B5FD",
   },
   {
     value: "ARTIST",
     label: "Artist",
     short: "ARTIST",
-    tone: "bg-amber-300 text-amber-950",
+    badgeBg: "#FCD34D",
+    badgeFg: "#451A03",
     passAccent: "#FCD34D",
   },
   {
     value: "CREW",
     label: "Crew",
     short: "CREW",
-    tone: "bg-teal-300 text-teal-950",
+    badgeBg: "#5EEAD4",
+    badgeFg: "#042F2E",
     passAccent: "#5EEAD4",
   },
   {
     value: "AAA",
     label: "Access all areas",
     short: "AAA",
-    tone: "bg-fuchsia-300 text-fuchsia-950",
+    badgeBg: "#F0ABFC",
+    badgeFg: "#4A044E",
     passAccent: "#F0ABFC",
   },
 ] as const satisfies readonly {
   value: TicketAccessLevel;
   label: string;
   short: string;
-  tone: string;
+  badgeBg: string;
+  badgeFg: string;
   /**
    * The colour a wallet pass tints itself with. Null on general admission,
    * which leaves the event's own theme alone — only a ticket worth more than

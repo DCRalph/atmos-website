@@ -964,9 +964,12 @@ model AccessLevel {
   /// Compact form for door badges and the wallet chip — `GA`, `AAA`.
   short String
 
-  /// Tailwind pair for web badges. Solid, because a door badge sits on top of
-  /// green, amber or red and has to stay readable on all three.
-  tone String @default("bg-white text-black")
+  /// Badge colours as CSS, not class names — a promoter picking a colour
+  /// should not have to know Tailwind's palette. Solid rather than tinted,
+  /// because a door badge sits on top of green, amber or red and has to stay
+  /// readable on all three.
+  badgeBg String @default("#FFFFFF")
+  badgeFg String @default("#000000")
 
   /// Hex the wallet pass tints itself with. Null leaves the event's own theme
   /// alone, which is what general admission wants.

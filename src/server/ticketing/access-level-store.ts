@@ -15,7 +15,8 @@ export type ResolvedLevel = {
   code: string;
   label: string;
   short: string;
-  tone: string;
+  badgeBg: string;
+  badgeFg: string;
   passAccent: string | null;
   rank: number;
   /**
@@ -37,7 +38,8 @@ function fallback(): ResolvedLevel[] {
     code: level.value,
     label: level.label,
     short: level.short,
-    tone: level.tone,
+    badgeBg: level.badgeBg,
+    badgeFg: level.badgeFg,
     passAccent: level.passAccent,
     rank: index,
     intensity: index / max,
@@ -58,7 +60,8 @@ export async function getLevels(): Promise<ResolvedLevel[]> {
       code: row.code,
       label: row.label,
       short: row.short,
-      tone: row.tone,
+      badgeBg: row.badgeBg,
+      badgeFg: row.badgeFg,
       passAccent: row.passAccent,
       rank: row.rank,
       intensity: Math.min(1, Math.max(0, row.rank / maxRank)),
@@ -87,7 +90,8 @@ export async function resolveLevel(code: string): Promise<ResolvedLevel> {
       code,
       label: code,
       short: code.slice(0, 6),
-      tone: "bg-white text-black",
+      badgeBg: "#FFFFFF",
+      badgeFg: "#000000",
       passAccent: null,
       rank: 0,
       intensity: 0,

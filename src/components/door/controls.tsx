@@ -118,9 +118,10 @@ export function AccessBadge({
   const meta = accessLevel(level);
   return (
     <span
-      className={`inline-block font-black tracking-[0.14em] ${meta.tone} ${
+      className={`inline-block font-black tracking-[0.14em] ${
         size === "large" ? "px-4 py-1.5 text-lg" : "px-2 py-0.5 text-xs"
       }`}
+      style={{ backgroundColor: meta.badgeBg, color: meta.badgeFg }}
     >
       {meta.short}
     </span>

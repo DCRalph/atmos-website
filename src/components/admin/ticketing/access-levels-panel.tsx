@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDown, ArrowUp, Loader2, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { toast } from "sonner";
 
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -9,28 +9,77 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "~/components/ui/dialog";
+import { useConfirm } from "~/components/confirm-provider";
 import { isHexColour } from "~/lib/ticketing/pass-theme";
 
 type Level = RouterOutputs["accessLevels"]["list"][number];
+
+const BLANK = {
+  code: "",
+  label: "",
+  short: "",
+  badgeBg: "#FFFFFF",
+  badgeFg: "#000000",
+  passAccent: "",
+};
 
 /**
  * Manage access levels.
  *
  * These used to be a Prisma enum, so the two rules that survive from that are
- * enforced here rather than assumed: a code is permanent once tickets carry it,
- * and a level in use is archived rather than deleted.
+ * enforced rather than assumed: a code is permanent once tickets carry it, and
+ * a level in use is archived rather than deleted.
  */
 export function AccessLevelsPanel() {
+  const confirm = useConfirm();
   const utils = api.useUtils();
-  const levels = api.accessLevels.list.useQuery({ includeArchived: true });
-  const [adding, setAdding] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [editingCode, setEditingCode] = useState<string | null>(null);
+  const [form, setForm] = useState({ ...BLANK });
+
+  const { data, isLoading } = api.accessLevels.list.useQuery({
+    includeArchived: true,
+  });
 
   const refresh = async () => {
     await utils.accessLevels.list.invalidate();
   };
+  const close = () => {
+    setIsOpen(false);
+    setEditingCode(null);
+    setForm({ ...BLANK });
+  };
 
+  const create = api.accessLevels.create.useMutation({
+    onSuccess: async () => {
+      toast.success("Level added");
+      await refresh();
+      close();
+    },
+    onError: (e) => toast.error(e.message),
+  });
   const update = api.accessLevels.update.useMutation({
-    onSuccess: refresh,
+    onSuccess: async () => {
+      toast.success("Saved");
+      await refresh();
+      close();
+    },
     onError: (e) => toast.error(e.message),
   });
   const setArchived = api.accessLevels.setArchived.useMutation({
@@ -49,11 +98,20 @@ export function AccessLevelsPanel() {
     onError: (e) => toast.error(e.message),
   });
 
-  if (levels.isPending) {
-    return <Loader2 className="size-5 animate-spin text-white/40" />;
-  }
+  const rows = data ?? [];
 
-  const rows = levels.data ?? [];
+  const openEdit = (level: Level) => {
+    setEditingCode(level.code);
+    setForm({
+      code: level.code,
+      label: level.label,
+      short: level.short,
+      badgeBg: level.badgeBg,
+      badgeFg: level.badgeFg,
+      passAccent: level.passAccent ?? "",
+    });
+    setIsOpen(true);
+  };
 
   const move = (index: number, delta: number) => {
     const next = [...rows];
@@ -65,301 +123,353 @@ export function AccessLevelsPanel() {
     reorder.mutate({ codes: next.map((r) => r.code) });
   };
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between gap-4">
-        <p className="max-w-prose text-sm text-white/50">
-          Lowest access first — the order decides how far a wallet pass floods
-          with the level&apos;s colour, so access-all-areas belongs at the
-          bottom. Codes are what sit on issued tickets and cannot be changed.
-        </p>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setAdding(true)}
-          disabled={adding}
-        >
-          <Plus className="size-4" aria-hidden /> Add level
-        </Button>
-      </div>
+  const codeValid = /^[A-Z][A-Z0-9_]{1,23}$/.test(form.code.toUpperCase());
+  const coloursValid =
+    isHexColour(form.badgeBg) &&
+    isHexColour(form.badgeFg) &&
+    (form.passAccent === "" || isHexColour(form.passAccent));
+  const canSubmit =
+    Boolean(form.label) &&
+    Boolean(form.short) &&
+    coloursValid &&
+    (editingCode !== null || codeValid);
 
-      <ul className="space-y-2">
-        {rows.map((level, index) => (
-          <LevelRow
-            key={level.code}
-            level={level}
-            first={index === 0}
-            last={index === rows.length - 1}
-            busy={update.isPending || reorder.isPending}
-            onMove={(delta) => move(index, delta)}
-            onSave={(patch) => update.mutate({ code: level.code, ...patch })}
-            onArchive={(archived) =>
-              setArchived.mutate({ code: level.code, archived })
-            }
-            onDelete={() => remove.mutate({ code: level.code })}
-          />
-        ))}
-      </ul>
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload = {
+      label: form.label,
+      short: form.short,
+      badgeBg: form.badgeBg,
+      badgeFg: form.badgeFg,
+      passAccent: form.passAccent || null,
+    };
+    if (editingCode) {
+      update.mutate({ code: editingCode, ...payload });
+    } else {
+      create.mutate({
+        code: form.code.toUpperCase(),
+        ...payload,
+        rank: rows.length,
+      });
+    }
+  };
 
-      {adding && (
-        <NewLevel
-          nextRank={rows.length}
-          onDone={async () => {
-            setAdding(false);
-            await refresh();
-          }}
-          onCancel={() => setAdding(false)}
-        />
-      )}
-    </div>
-  );
-}
-
-function LevelRow({
-  level,
-  first,
-  last,
-  busy,
-  onMove,
-  onSave,
-  onArchive,
-  onDelete,
-}: {
-  level: Level;
-  first: boolean;
-  last: boolean;
-  busy: boolean;
-  onMove: (delta: number) => void;
-  onSave: (patch: {
-    label: string;
-    short: string;
-    tone: string;
-    passAccent: string | null;
-  }) => void;
-  onArchive: (archived: boolean) => void;
-  onDelete: () => void;
-}) {
-  const [label, setLabel] = useState(level.label);
-  const [short, setShort] = useState(level.short);
-  const [tone, setTone] = useState(level.tone);
-  const [accent, setAccent] = useState(level.passAccent ?? "");
-
-  const accentValid = accent === "" || isHexColour(accent);
-  const dirty =
-    label !== level.label ||
-    short !== level.short ||
-    tone !== level.tone ||
-    (accent || null) !== level.passAccent;
-
-  return (
-    <li
-      className={`border-2 p-3 ${level.archived ? "border-white/10 opacity-50" : "border-white/15"}`}
-    >
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="flex flex-col gap-1">
-          <button
-            type="button"
-            onClick={() => onMove(-1)}
-            disabled={first || busy}
-            aria-label="Move up"
-            className="border border-white/15 p-0.5 disabled:opacity-30"
-          >
-            <ArrowUp className="size-3" aria-hidden />
-          </button>
-          <button
-            type="button"
-            onClick={() => onMove(1)}
-            disabled={last || busy}
-            aria-label="Move down"
-            className="border border-white/15 p-0.5 disabled:opacity-30"
-          >
-            <ArrowDown className="size-3" aria-hidden />
-          </button>
-        </div>
-
-        <div className="space-y-1">
-          <Label>Code</Label>
-          <div className="flex h-9 items-center bg-white/5 px-3 font-mono text-sm text-white/50">
-            {level.code}
+  const columns: DataTableColumn<Level>[] = [
+    {
+      id: "order",
+      header: "Order",
+      hideable: false,
+      cell: (level) => {
+        const index = rows.findIndex((r) => r.code === level.code);
+        return (
+          <div className="flex gap-1">
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label={`Move ${level.label} up`}
+              disabled={index <= 0 || reorder.isPending}
+              onClick={() => move(index, -1)}
+            >
+              <ArrowUp className="size-3.5" aria-hidden />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label={`Move ${level.label} down`}
+              disabled={index === rows.length - 1 || reorder.isPending}
+              onClick={() => move(index, 1)}
+            >
+              <ArrowDown className="size-3.5" aria-hidden />
+            </Button>
           </div>
-        </div>
-
-        <div className="min-w-40 flex-1 space-y-1">
-          <Label htmlFor={`label-${level.code}`}>Name</Label>
-          <Input
-            id={`label-${level.code}`}
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-          />
-        </div>
-
-        <div className="w-24 space-y-1">
-          <Label htmlFor={`short-${level.code}`}>Short</Label>
-          <Input
-            id={`short-${level.code}`}
-            value={short}
-            onChange={(e) => setShort(e.target.value)}
-          />
-        </div>
-
-        <div className="space-y-1">
-          <Label htmlFor={`accent-${level.code}`}>Pass colour</Label>
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              aria-label="Pass colour picker"
-              value={isHexColour(accent) ? accent : "#7DD3FC"}
-              onChange={(e) => setAccent(e.target.value)}
-              className="h-9 w-9 shrink-0 cursor-pointer border-2 border-white/15 bg-transparent p-0.5"
-            />
-            <Input
-              id={`accent-${level.code}`}
-              value={accent}
-              placeholder="none"
-              onChange={(e) => setAccent(e.target.value)}
-              className={`w-28 font-mono ${accentValid ? "" : "border-red-500"}`}
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 pb-1">
-          <Switch
-            id={`archived-${level.code}`}
-            checked={!level.archived}
-            onCheckedChange={(on) => onArchive(!on)}
-          />
-          <Label htmlFor={`archived-${level.code}`}>Offered</Label>
-        </div>
-
-        <Button
-          type="button"
-          disabled={!dirty || !accentValid || busy}
-          onClick={() =>
-            onSave({ label, short, tone, passAccent: accent || null })
-          }
-        >
-          Save
-        </Button>
-
-        <button
-          type="button"
-          onClick={onDelete}
-          aria-label={`Delete ${level.label}`}
-          className="p-2 text-white/40 hover:text-red-400"
-        >
-          <Trash2 className="size-4" aria-hidden />
-        </button>
-      </div>
-
-      <div className="mt-2 space-y-1">
-        <Label htmlFor={`tone-${level.code}`}>Door badge classes</Label>
-        <Input
-          id={`tone-${level.code}`}
-          value={tone}
-          onChange={(e) => setTone(e.target.value)}
-          className="font-mono text-xs"
-        />
-        <p className="text-xs text-white/40">
-          A solid Tailwind pair — a door badge sits on green, amber or red and
-          has to stay readable on all three.{" "}
-          <span className={`ml-1 px-1.5 py-0.5 text-xs font-bold ${tone}`}>
-            {short || "?"}
-          </span>
-        </p>
-      </div>
-    </li>
-  );
-}
-
-function NewLevel({
-  nextRank,
-  onDone,
-  onCancel,
-}: {
-  nextRank: number;
-  onDone: () => void;
-  onCancel: () => void;
-}) {
-  const [code, setCode] = useState("");
-  const [label, setLabel] = useState("");
-  const [short, setShort] = useState("");
-  const [accent, setAccent] = useState("#7DD3FC");
-
-  const create = api.accessLevels.create.useMutation({
-    onSuccess: () => {
-      toast.success("Level added");
-      onDone();
+        );
+      },
     },
-    onError: (e) => toast.error(e.message),
-  });
-
-  const codeValid = /^[A-Z][A-Z0-9_]{1,23}$/.test(code.toUpperCase());
+    {
+      id: "label",
+      header: "Name",
+      accessor: (row) => row.label,
+      className: "font-medium",
+    },
+    {
+      id: "code",
+      header: "Code",
+      cell: (level) => (
+        <span className="text-muted-foreground font-mono text-sm">
+          {level.code}
+        </span>
+      ),
+    },
+    {
+      id: "badge",
+      header: "Door badge",
+      cell: (level) => (
+        <span
+          className="inline-block px-2 py-0.5 text-xs font-black tracking-[0.14em]"
+          style={{ backgroundColor: level.badgeBg, color: level.badgeFg }}
+        >
+          {level.short}
+        </span>
+      ),
+    },
+    {
+      id: "pass",
+      header: "Pass colour",
+      cell: (level) =>
+        level.passAccent ? (
+          <div className="flex items-center gap-2">
+            <div
+              className="border-border size-6 rounded border"
+              style={{ backgroundColor: level.passAccent }}
+            />
+            <span className="text-muted-foreground text-sm">
+              {level.passAccent}
+            </span>
+          </div>
+        ) : (
+          <span className="text-muted-foreground text-sm">Event theme</span>
+        ),
+    },
+    {
+      id: "offered",
+      header: "Offered",
+      cell: (level) => (
+        <Switch
+          checked={!level.archived}
+          aria-label={`Offer ${level.label} when issuing tickets`}
+          onCheckedChange={(on) =>
+            setArchived.mutate({ code: level.code, archived: !on })
+          }
+        />
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      hideable: false,
+      cell: (level) => (
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => openEdit(level)}>
+            Edit
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={async () => {
+              const ok = await confirm({
+                title: `Delete ${level.label}`,
+                description:
+                  "Only possible if no tickets or tiers use it. Otherwise switch it off under Offered, which retires it while keeping past tickets readable.",
+                confirmLabel: "Delete",
+                variant: "destructive",
+              });
+              if (ok) remove.mutate({ code: level.code });
+            }}
+          >
+            Delete
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
-    <div className="space-y-3 border-2 border-dashed border-white/25 p-3">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1">
-          <Label htmlFor="new-code">Code</Label>
-          <Input
-            id="new-code"
-            value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
-            placeholder="BACKSTAGE"
-            className={`w-40 font-mono ${code && !codeValid ? "border-red-500" : ""}`}
-          />
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2">
+            <CardTitle>Access levels</CardTitle>
+            <CardDescription>
+              Lowest access first — the order decides how far a wallet pass
+              floods with the level&apos;s colour, so access-all-areas belongs
+              at the bottom.
+            </CardDescription>
+          </div>
+          <Dialog
+            open={isOpen}
+            onOpenChange={(open) => (open ? setIsOpen(true) : close())}
+          >
+            <DialogTrigger asChild>
+              <Button
+                onClick={() => {
+                  setEditingCode(null);
+                  setForm({ ...BLANK });
+                }}
+              >
+                Add level
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {editingCode ? "Edit" : "Add"} access level
+                </DialogTitle>
+                <DialogDescription>
+                  {editingCode
+                    ? "The code is written onto every ticket issued at this level, so it cannot change. Everything else can."
+                    : "Pick a code carefully — it is written onto every ticket issued at this level and can never be changed."}
+                </DialogDescription>
+              </DialogHeader>
+
+              <form onSubmit={submit} className="space-y-4">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="code">Code</Label>
+                  <Input
+                    id="code"
+                    value={form.code}
+                    disabled={editingCode !== null}
+                    onChange={(e) =>
+                      setForm({ ...form, code: e.target.value.toUpperCase() })
+                    }
+                    placeholder="BACKSTAGE"
+                    className="font-mono"
+                  />
+                  {!editingCode && form.code && !codeValid && (
+                    <p className="text-destructive text-xs">
+                      Letters, numbers and underscores; start with a letter.
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="label">Name</Label>
+                    <Input
+                      id="label"
+                      value={form.label}
+                      onChange={(e) =>
+                        setForm({ ...form, label: e.target.value })
+                      }
+                      placeholder="Backstage"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="short">Short</Label>
+                    <Input
+                      id="short"
+                      value={form.short}
+                      onChange={(e) =>
+                        setForm({ ...form, short: e.target.value.toUpperCase() })
+                      }
+                      placeholder="BACK"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <ColourField
+                    id="badgeBg"
+                    label="Badge background"
+                    value={form.badgeBg}
+                    onChange={(v) => setForm({ ...form, badgeBg: v })}
+                  />
+                  <ColourField
+                    id="badgeFg"
+                    label="Badge text"
+                    value={form.badgeFg}
+                    onChange={(v) => setForm({ ...form, badgeFg: v })}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <Label>Preview</Label>
+                  <div className="bg-muted flex items-center gap-3 p-3">
+                    <span
+                      className="inline-block px-3 py-1 text-sm font-black tracking-[0.14em]"
+                      style={{
+                        backgroundColor: isHexColour(form.badgeBg)
+                          ? form.badgeBg
+                          : "#FFFFFF",
+                        color: isHexColour(form.badgeFg)
+                          ? form.badgeFg
+                          : "#000000",
+                      }}
+                    >
+                      {form.short || "SHORT"}
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      A door badge sits on green, amber or red — check it reads
+                      on all three.
+                    </span>
+                  </div>
+                </div>
+
+                <ColourField
+                  id="passAccent"
+                  label="Wallet pass colour"
+                  value={form.passAccent}
+                  onChange={(v) => setForm({ ...form, passAccent: v })}
+                  optional
+                  hint="Leave empty to use the event's own theme — what general admission wants."
+                />
+
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={close}>
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={
+                      !canSubmit || create.isPending || update.isPending
+                    }
+                  >
+                    {editingCode ? "Save" : "Add level"}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
-        <div className="min-w-40 flex-1 space-y-1">
-          <Label htmlFor="new-label">Name</Label>
-          <Input
-            id="new-label"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder="Backstage"
-          />
-        </div>
-        <div className="w-24 space-y-1">
-          <Label htmlFor="new-short">Short</Label>
-          <Input
-            id="new-short"
-            value={short}
-            onChange={(e) => setShort(e.target.value.toUpperCase())}
-            placeholder="BACK"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="new-accent">Pass colour</Label>
-          <input
-            id="new-accent"
-            type="color"
-            value={isHexColour(accent) ? accent : "#7DD3FC"}
-            onChange={(e) => setAccent(e.target.value)}
-            className="h-9 w-16 cursor-pointer border-2 border-white/15 bg-transparent p-0.5"
-          />
-        </div>
-        <Button
-          type="button"
-          disabled={!codeValid || !label || !short || create.isPending}
-          onClick={() =>
-            create.mutate({
-              code: code.toUpperCase(),
-              label,
-              short: short || label.slice(0, 6).toUpperCase(),
-              tone: "bg-white text-black",
-              passAccent: accent || null,
-              rank: nextRank,
-            })
-          }
-        >
-          {create.isPending ? "Adding…" : "Add"}
-        </Button>
-        <Button type="button" variant="ghost" onClick={onCancel}>
-          Cancel
-        </Button>
+      </CardHeader>
+      <CardContent>
+        <DataTable
+          columns={columns}
+          data={rows}
+          isLoading={isLoading}
+          getRowId={(row) => row.code}
+          rowClassName={(row) => (row.archived ? "opacity-50" : undefined)}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+function ColourField({
+  id,
+  label,
+  value,
+  onChange,
+  optional = false,
+  hint,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  optional?: boolean;
+  hint?: string;
+}) {
+  const valid = optional ? value === "" || isHexColour(value) : isHexColour(value);
+  return (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor={id}>{label}</Label>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          aria-label={`${label} picker`}
+          value={isHexColour(value) ? value : "#FFFFFF"}
+          onChange={(e) => onChange(e.target.value.toUpperCase())}
+          className="border-border size-9 shrink-0 cursor-pointer rounded border bg-transparent p-1"
+        />
+        <Input
+          id={id}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={optional ? "Event theme" : "#FFFFFF"}
+          className={`font-mono ${valid ? "" : "border-destructive"}`}
+        />
       </div>
-      <p className="text-xs text-white/40">
-        The code is written onto every ticket issued at this level and can never
-        be changed — the name above it can.
-      </p>
+      {hint && <p className="text-muted-foreground text-xs">{hint}</p>}
     </div>
   );
 }

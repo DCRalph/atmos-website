@@ -35,7 +35,8 @@ const HEX = z
 const levelInput = z.object({
   label: z.string().trim().min(1, "Give the level a name").max(40),
   short: z.string().trim().min(1).max(10),
-  tone: z.string().trim().min(1).max(80),
+  badgeBg: HEX,
+  badgeFg: HEX,
   passAccent: HEX.nullable().optional(),
   rank: z.number().int().min(0).max(999),
 });
