@@ -69,9 +69,47 @@ async function renderSvg(
     .toBuffer();
 }
 
+/**
+ * Optical centring for the wordmark.
+ *
+ * The mark is top-heavy: the letters carry the weight and the swoosh trails
+ * below them, so the ink's centre of mass sits at 43.6% of the trimmed height
+ * rather than 50%. Centred on its bounding box it reads as sitting too high.
+ *
+ * Padding the top by `T` moves the centroid to the middle of the canvas when
+ * `centroid + T = (height + T) / 2` — for the trimmed 480x108 mark that is
+ * ~14px, or about 13% of its height. Expressed as a ratio so it survives the
+ * source artwork being re-exported at another size.
+ */
+const WORDMARK_TOP_PAD_RATIO = 14 / 108;
+
+/**
+ * The wordmark with its optical padding, built once.
+ *
+ * Two passes on purpose: sharp applies `extend` after `resize` within a single
+ * pipeline whatever order they are called in, which would pad the outside of
+ * the finished slot and leave the logo undersized in it. Padding first, then
+ * fitting the padded artwork, keeps the output exactly the slot size.
+ */
+let paddedWordmark: Promise<Buffer> | null = null;
+
+function getPaddedWordmark(): Promise<Buffer> {
+  paddedWordmark ??= (async () => {
+    const { height = 0 } = await sharp(ATMOS_WORDMARK_PNG).metadata();
+    return sharp(ATMOS_WORDMARK_PNG)
+      .extend({
+        top: Math.round(height * WORDMARK_TOP_PAD_RATIO),
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
+      .png()
+      .toBuffer();
+  })();
+  return paddedWordmark;
+}
+
 /** The wordmark, scaled to one of Apple's logo slots, transparent behind. */
 async function renderLogo(width: number, height: number): Promise<Buffer> {
-  return sharp(ATMOS_WORDMARK_PNG)
+  return sharp(await getPaddedWordmark())
     .resize(width, height, {
       fit: "contain",
       position: "left",
