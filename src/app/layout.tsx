@@ -29,6 +29,7 @@ import {
   ICONS,
 } from "~/lib/seo-constants";
 import { RightMenuRail } from "~/components/right-menu-rail";
+import { StripTicketHash } from "~/components/ticketing/strip-ticket-hash";
 
 export const metadata: Metadata = {
   title: {
@@ -69,6 +70,9 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body>
+        {/* First thing in the document on purpose — see the component. */}
+        <StripTicketHash />
+
         {/* No app-wide <ViewTransition>: it froze a snapshot of the old page
             over every navigation, so a click changed the URL but not the
             screen. It also needs `experimental.viewTransition` in

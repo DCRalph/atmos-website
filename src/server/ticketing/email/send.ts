@@ -4,7 +4,7 @@ import { TicketEmailType, TicketStatus } from "~Prisma/client";
 import { db } from "~/server/db";
 import { isAppleWalletConfigured } from "~/server/wallet/apple-config";
 import { isGoogleWalletConfigured } from "~/server/wallet/google-config";
-import { buildTicketToken } from "~/server/ticketing/qr";
+import { buildTicketQrPayload } from "~/server/ticketing/qr";
 import { renderQrPng } from "~/server/ticketing/qr-image";
 import { orderAccessToken, ticketAccessToken } from "~/server/ticketing/orders";
 import { getTicketingSettings } from "~/server/ticketing/settings";
@@ -83,7 +83,9 @@ export async function sendTicketEmail({
 
   for (const [index, ticket] of order.tickets.entries()) {
     const cid = `ticket-${index + 1}`;
-    const png = await renderQrPng(buildTicketToken(ticket));
+    const png = await renderQrPng(
+      buildTicketQrPayload(ticket, order.event.slug),
+    );
 
     attachments.push({
       filename: `${ticket.ticketNumber}.png`,
@@ -203,7 +205,7 @@ export async function sendCompTicketEmail({
 
   const settings = await getTicketingSettings();
   const token = ticketAccessToken(ticket);
-  const png = await renderQrPng(buildTicketToken(ticket));
+  const png = await renderQrPng(buildTicketQrPayload(ticket, ticket.event.slug));
   const cid = "ticket-1";
 
   const { subject, html, text } = renderCompEmail({

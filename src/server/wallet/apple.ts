@@ -4,7 +4,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { PKPass } from "passkit-generator";
 
 import { env } from "~/env";
-import { buildTicketToken } from "~/server/ticketing/qr";
+import { buildTicketQrPayload } from "~/server/ticketing/qr";
 import { formatEventDateLong, formatEventTime } from "~/lib/ticketing/dates";
 import { resolveLevel } from "~/server/ticketing/access-level-store";
 import {
@@ -37,6 +37,8 @@ export type PassTicket = {
 
 export type PassEvent = {
   id: string;
+  /** The barcode is a link to the event's page, so the pass needs its slug. */
+  slug: string;
   name: string;
   timezone: string;
   startsAt: Date;
@@ -222,7 +224,7 @@ export async function buildApplePass({
 
   pass.setBarcodes({
     format: "PKBarcodeFormatQR",
-    message: buildTicketToken(ticket),
+    message: buildTicketQrPayload(ticket, event.slug),
     // Apple's own recommendation for QR payloads.
     messageEncoding: "iso-8859-1",
     altText: ticket.ticketNumber,

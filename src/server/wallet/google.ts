@@ -3,7 +3,7 @@ import "server-only";
 import { SignJWT, importPKCS8 } from "jose";
 
 import { env } from "~/env";
-import { buildTicketToken } from "~/server/ticketing/qr";
+import { buildTicketQrPayload } from "~/server/ticketing/qr";
 import { accessLevel } from "~/lib/ticketing/access-levels";
 import { getGoogleWalletConfig } from "./google-config";
 import type { PassEvent, PassTicket } from "./apple";
@@ -103,7 +103,7 @@ export async function buildGoogleWalletSaveUrl({
       : {}),
     barcode: {
       type: "QR_CODE",
-      value: buildTicketToken(ticket),
+      value: buildTicketQrPayload(ticket, event.slug),
       alternateText: ticket.ticketNumber,
     },
     textModulesData: [

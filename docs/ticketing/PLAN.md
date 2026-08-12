@@ -398,12 +398,17 @@ recomputes `soldCount` from the `Ticket` table and logs any drift.
 
 ## 4. QR tokens
 
-Payload (not a URL — a random person scanning a screenshot with their camera app gets
-nothing useful):
+Token:
 
 ```
 atm1.<ticketId>.<qrVersion>.<sig>
 sig = base64url(HMAC-SHA256(TICKET_QR_SECRET, `${ticketId}.${qrVersion}`))[0..21]
+```
+
+Encoded in the QR (see "The QR is a link" below):
+
+```
+https://<app>/events/<slug>#atm1.<ticketId>.<qrVersion>.<sig>
 ```
 
 - Compact, so it scans fast in bad light on a cheap phone screen.
@@ -671,6 +676,31 @@ anyway, the signature now also covers the per-ticket `qrSecret`, which means a
 leaked `TICKET_QR_SECRET` alone is not enough to forge a ticket — you'd need the
 per-ticket secret out of the database too. Costs one lookup we were making
 regardless.
+
+**The QR is a link, and the token rides in the fragment.** The plan had a bare
+opaque string on the grounds that a stranger scanning a screenshot should get
+nothing useful. That also meant a ticket — the one thing every attendee has in
+their pocket and shows their friends — advertised nothing. The QR now encodes
+the event's own public page with the token as a URL fragment, so a camera app
+opens the page that sells tickets to that event while the door scanner takes
+what follows the `#`.
+
+The fragment is what keeps that from being a downgrade. Fragments are never
+sent with the HTTP request, so the token stays out of access logs, out of
+`Referer` headers, and out of reach of any third-party script the page loads;
+the server cannot leak what it is never told. It follows that a valid token and
+a garbage one produce byte-identical pages — there is no oracle confirming to a
+stranger that they found a live ticket. `StripTicketHash` in the root layout
+then removes it from the address bar during HTML parse, before hydration and
+before analytics, so it does not linger in the URL bar, in history, or in a
+copy-pasted link.
+
+`parseTicketToken` takes everything after the last `#`, so it accepts both
+forms — passes and emailed QRs issued before this change are still in wallets
+and still open the door. Payload went from ~50 to ~101 chars, which is QR
+version 4 → 6 (33² → 41² modules); a long slug reaches version 8. Still ~10px
+per module on the 600px PNG, so the "scans on a cracked screen" property holds.
+Worth keeping event slugs short.
 
 **Apple certificates are supplied as PEM, not** `.p12`**.** `passkit-generator`
 wants PEM, so the env vars are `APPLE_PASS_CERT_PEM_BASE64` /

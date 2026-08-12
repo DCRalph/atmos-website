@@ -3,14 +3,28 @@ import "server-only";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 import { env } from "~/env";
+import { TICKET_TOKEN_PREFIX } from "~/lib/ticketing/qr-token";
+import { eventUrl } from "~/server/ticketing/urls";
 
 /**
  * Ticket QR payloads.
  *
- * Format: `atm1.<ticketId>.<qrVersion>.<signature>`
+ * Token: `atm1.<ticketId>.<qrVersion>.<signature>`
+ * Encoded in the QR: `https://…/events/<slug>#atm1.<ticketId>.<qrVersion>.<sig>`
  *
- * Deliberately *not* a URL. If someone points their camera app at a photo of
- * a ticket they get an opaque string, not a working link to anything.
+ * The token is hung off the event's own public page as a URL *fragment*, so
+ * one code does two jobs. A phone camera sees a link and opens the page that
+ * sells tickets to that event — every ticket in the room, every screenshot in
+ * a group chat, is a poster. The door scanner reads the same string and takes
+ * what follows the `#`.
+ *
+ * The fragment is what makes that safe to point a stranger's camera at.
+ * Fragments are never sent with the HTTP request, so the token stays out of
+ * access logs, out of the `Referer` header, and out of reach of anything the
+ * page loads; the server cannot leak a secret it was never told. The page then
+ * strips it from the address bar on arrival, and because nothing server-side
+ * ever sees it, a valid token and a garbage one render exactly the same page —
+ * there is no oracle here telling a scanner whether it found a live ticket.
  *
  * The signature covers the ticket's own random `qrSecret` as well as the
  * server secret, so a leaked `TICKET_QR_SECRET` on its own is not enough to
@@ -23,7 +37,7 @@ import { env } from "~/env";
  * changing the ticket's identity.
  */
 
-const PREFIX = "atm1";
+const PREFIX = TICKET_TOKEN_PREFIX;
 /** 16 bytes of HMAC, base64url — 22 chars. Plenty, and keeps the QR small. */
 const SIG_BYTES = 16;
 
@@ -59,6 +73,21 @@ export function buildTicketToken(ticket: {
   return `${PREFIX}.${ticket.id}.${ticket.qrVersion}.${signature}`;
 }
 
+/**
+ * What actually goes in the QR image, the wallet barcode and the email
+ * attachment: the token as a fragment on the event's public page.
+ *
+ * `buildTicketToken` stays the bare credential — it is what the scanner
+ * compares against and what `admitByTicketNumber` rebuilds — while this is the
+ * thing a camera is ever pointed at.
+ */
+export function buildTicketQrPayload(
+  ticket: { id: string; qrVersion: number; qrSecret: string },
+  eventSlug: string,
+): string {
+  return `${eventUrl(eventSlug)}#${buildTicketToken(ticket)}`;
+}
+
 export type ParsedTicketToken = {
   ticketId: string;
   qrVersion: number;
@@ -66,13 +95,27 @@ export type ParsedTicketToken = {
 };
 
 /**
+ * Take the token out of whatever the scanner handed us.
+ *
+ * Codes arrive bare or as an event URL with the token in the fragment,
+ * depending on when the ticket was issued: passes and emailed QRs minted
+ * before the URL format are in pockets and wallets already, and they still
+ * have to open the door. A base64url signature never contains `#`, so the last
+ * one is always the separator.
+ */
+function stripToToken(raw: string): string {
+  const trimmed = raw.trim();
+  const hash = trimmed.lastIndexOf("#");
+  return hash === -1 ? trimmed : trimmed.slice(hash + 1);
+}
+
+/**
  * Cheap structural parse, before any database work. Returns null for anything
  * that is not shaped like one of our tokens — a shop loyalty card, a Wi-Fi QR,
  * a smudge that decoded to garbage.
  */
 export function parseTicketToken(raw: string): ParsedTicketToken | null {
-  const trimmed = raw.trim();
-  const parts = trimmed.split(".");
+  const parts = stripToToken(raw).split(".");
   if (parts.length !== 4) return null;
 
   const [prefix, ticketId, versionRaw, signature] = parts;

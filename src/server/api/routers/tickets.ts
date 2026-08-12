@@ -12,7 +12,7 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
-import { buildTicketToken } from "~/server/ticketing/qr";
+import { buildTicketQrPayload } from "~/server/ticketing/qr";
 import { renderQrSvg } from "~/server/ticketing/qr-image";
 import {
   findOrderByAccessToken,
@@ -119,7 +119,9 @@ export const ticketsRouter = createTRPCRouter({
             // A locked name is somebody else's business now: the form renders
             // it read-only rather than letting the link holder rewrite it.
             nameLocked: ticket.nameLockedAt !== null,
-            qrSvg: await renderQrSvg(buildTicketToken(ticket)),
+            qrSvg: await renderQrSvg(
+              buildTicketQrPayload(ticket, order.event.slug),
+            ),
             appleWalletUrl: isAppleWalletConfigured()
               ? applePassUrl(ticket.id, input.accessToken)
               : null,
@@ -364,7 +366,9 @@ export const ticketsRouter = createTRPCRouter({
         isComp: ticket.isComp,
         invitedByName: ticket.invitedByName,
         orderNumber: ticket.order.orderNumber,
-        qrSvg: await renderQrSvg(buildTicketToken(ticket)),
+        qrSvg: await renderQrSvg(
+          buildTicketQrPayload(ticket, ticket.event.slug),
+        ),
         appleWalletUrl: isAppleWalletConfigured()
           ? applePassUrl(ticket.id, input.ticketToken)
           : null,
