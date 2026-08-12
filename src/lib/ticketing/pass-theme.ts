@@ -164,6 +164,12 @@ export function stripSvg(
    */
   intensity = 0,
   badge: StripBadge | null = null,
+  /**
+   * Draw the chip's text as SVG. True in the browser, where fonts exist. The
+   * server passes false and composites the text as a raster instead, because a
+   * serverless image has no fonts and `<text>` comes out as tofu.
+   */
+  withBadgeText = true,
 ): string {
   const { accentHex: accent, backgroundHex: ground } = theme;
   const clamped = Math.min(1, Math.max(0, intensity));
@@ -231,7 +237,31 @@ export function stripSvg(
     }
   })();
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${body}${theme.stripStyle === "NONE" ? "" : edges}${badgeSvg(badge, width, height)}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${body}${theme.stripStyle === "NONE" ? "" : edges}${badgeSvg(badge, width, height, withBadgeText)}</svg>`;
+}
+
+/**
+ * Where the chip sits, so the server can drop rasterised text onto it.
+ *
+ * Width is estimated from the character count — there is no text metrics API
+ * here, and 0.62em per character is close enough for bold sans at these sizes
+ * that the padding absorbs the error.
+ */
+export function badgeBox(text: string, width: number, height: number) {
+  const fontSize = Math.round(height * 0.2);
+  const padX = Math.round(fontSize * 0.75);
+  const boxHeight = Math.round(fontSize * 1.9);
+  const boxWidth = Math.round(
+    text.length * fontSize * 0.62 + padX * 2 + fontSize * 0.35,
+  );
+  const margin = Math.round(height * 0.14);
+  return {
+    x: width - boxWidth - margin,
+    y: Math.round((height - boxHeight) / 2),
+    width: boxWidth,
+    height: boxHeight,
+    fontSize,
+  };
 }
 
 /**
@@ -246,26 +276,20 @@ function badgeSvg(
   badge: StripBadge | null,
   width: number,
   height: number,
+  withText: boolean,
 ): string {
   if (!badge) return "";
 
-  const fontSize = Math.round(height * 0.2);
-  const padX = Math.round(fontSize * 0.75);
-  const boxHeight = Math.round(fontSize * 1.9);
-  const boxWidth = Math.round(
-    badge.text.length * fontSize * 0.62 + padX * 2 + fontSize * 0.35,
-  );
-  const margin = Math.round(height * 0.14);
-  const x = width - boxWidth - margin;
-  const y = Math.round((height - boxHeight) / 2);
+  const box = badgeBox(badge.text, width, height);
+  const chip = `<rect x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" fill="${badge.background}"/>`;
+  if (!withText) return chip;
 
   return `
     <g>
-      <rect x="${x}" y="${y}" width="${boxWidth}" height="${boxHeight}"
-            fill="${badge.background}"/>
-      <text x="${x + boxWidth / 2}" y="${y + boxHeight / 2}"
-            font-family="Helvetica,Arial,sans-serif" font-size="${fontSize}"
-            font-weight="700" letter-spacing="${(fontSize * 0.14).toFixed(2)}"
+      ${chip}
+      <text x="${box.x + box.width / 2}" y="${box.y + box.height / 2}"
+            font-family="Helvetica,Arial,sans-serif" font-size="${box.fontSize}"
+            font-weight="700" letter-spacing="${(box.fontSize * 0.14).toFixed(2)}"
             fill="${badge.foreground}" text-anchor="middle"
             dominant-baseline="central">${badge.text}</text>
     </g>`;

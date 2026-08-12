@@ -19,6 +19,7 @@ import {
 } from "~/components/tickets/wallet-buttons";
 
 import { api, type RouterOutputs } from "~/trpc/react";
+import { accessLevel, isElevated } from "~/lib/ticketing/access-levels";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -165,6 +166,7 @@ export default function TicketsPage() {
           >
             <p className="text-xs tracking-[0.14em] text-white/40 uppercase">
               Ticket {index + 1} of {data.tickets.length} · {ticket.tierName}
+              <LevelChip accessLevel={ticket.accessLevel} />
             </p>
 
             <div
@@ -338,6 +340,7 @@ function AttendeeDetails({
                 <div key={ticket.id} className="space-y-1.5">
                   <Label htmlFor={`name-${ticket.id}`}>
                     Ticket {index + 1} · {ticket.tierName}
+                    <LevelChip accessLevel={ticket.accessLevel} />
                   </Label>
                   <Input
                     id={`name-${ticket.id}`}
@@ -480,5 +483,25 @@ function ResendButton({
         {resend.isPending ? "Sending…" : `Email these tickets to ${email}`}
       </button>
     </div>
+  );
+}
+
+/**
+ * The access level, next to the tier name.
+ *
+ * Only when it is above general admission: on a GA ticket the tier already
+ * says everything, and a chip repeating it is noise. Without this an AAA on a
+ * tier called "General Admission" reads as general admission.
+ */
+function LevelChip({ accessLevel: code }: { accessLevel: string }) {
+  if (!isElevated(code)) return null;
+  const level = accessLevel(code);
+  return (
+    <span
+      className="ml-2 inline-block px-1.5 py-0.5 align-middle text-[10px] font-bold tracking-[0.08em]"
+      style={{ backgroundColor: level.badgeBg, color: level.badgeFg }}
+    >
+      {level.short}
+    </span>
   );
 }

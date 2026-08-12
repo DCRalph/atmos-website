@@ -174,6 +174,13 @@ export async function buildApplePass({
         ...(tierFieldValue
           ? [{ key: "tier", label: "TICKET", value: tierFieldValue }]
           : []),
+        // The chip on the band carries the short code; this is the full name,
+        // and without it a pass whose tier is "General Admission" reads as
+        // general admission even when it is an AAA. Skipped when there is no
+        // tier, where `tierFieldValue` is already the level.
+        ...(elevated && tierFieldValue
+          ? [{ key: "access", label: "ACCESS", value: level.label }]
+          : []),
         ...(ticket.attendeeName
           ? [{ key: "name", label: "NAME", value: ticket.attendeeName }]
           : []),

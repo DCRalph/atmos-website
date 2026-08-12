@@ -4,7 +4,11 @@ import { SignJWT, importPKCS8 } from "jose";
 
 import { env } from "~/env";
 import { buildTicketToken } from "~/server/ticketing/qr";
-import { ticketTypeName } from "~/lib/ticketing/access-levels";
+import {
+  accessLevel,
+  isElevated,
+  ticketTypeName,
+} from "~/lib/ticketing/access-levels";
 import { getGoogleWalletConfig } from "./google-config";
 import type { PassEvent, PassTicket } from "./apple";
 
@@ -82,6 +86,19 @@ export async function buildGoogleWalletSaveUrl({
     ticketType: {
       defaultValue: { language: "en-NZ", value: ticketTypeName(ticket) },
     },
+    // The tier alone reads as general admission on a ticket whose level is
+    // higher, which is exactly the case an AAA on a GA tier produces.
+    ...(isElevated(ticket.accessLevel)
+      ? {
+          textModulesData: [
+            {
+              id: "access",
+              header: "Access",
+              body: accessLevel(ticket.accessLevel).label,
+            },
+          ],
+        }
+      : {}),
     ...(ticket.attendeeName
       ? {
           ticketHolderName: ticket.attendeeName,

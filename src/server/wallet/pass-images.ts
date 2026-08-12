@@ -1,12 +1,18 @@
 import "server-only";
 
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import sharp from "sharp";
 
 import {
+  badgeBox,
   stripSvg,
   type PassTheme,
   type StripBadge,
 } from "~/lib/ticketing/pass-theme";
+import { PASS_FONT_TTF } from "./pass-font";
 import { ATMOS_ICON_PNG, ATMOS_WORDMARK_PNG } from "./pass-logo";
 
 /**
@@ -119,6 +125,64 @@ async function renderLogo(width: number, height: number): Promise<Buffer> {
     .toBuffer();
 }
 
+/**
+ * The bundled font, materialised where sharp can reach it.
+ *
+ * `fontfile` takes a path, not a buffer, so the embedded bytes are written to
+ * the process's temp directory the first time a badge is drawn and reused
+ * after. `/tmp` is writable on every serverless runtime this ships to.
+ */
+let fontPath: string | null = null;
+
+function getFontPath(): string {
+  if (fontPath) return fontPath;
+  const dir = mkdtempSync(join(tmpdir(), "atmos-pass-"));
+  const file = join(dir, "pass-font.ttf");
+  writeFileSync(file, PASS_FONT_TTF);
+  fontPath = file;
+  return file;
+}
+
+/**
+ * The chip's text, rasterised rather than left to the SVG.
+ *
+ * `<text>` in the strip SVG renders through librsvg, which resolves fonts via
+ * fontconfig — and a serverless image has none, so it came out as tofu boxes in
+ * production while looking correct on macOS via CoreText. Drawing it here with
+ * our own font file takes the environment out of it.
+ */
+async function renderBadgeText(
+  badge: StripBadge,
+  width: number,
+  height: number,
+): Promise<{ input: Buffer; top: number; left: number } | null> {
+  const box = badgeBox(badge.text, width, height);
+  try {
+    const text = await sharp({
+      text: {
+        text: `<span foreground="${badge.foreground}" letter_spacing="${Math.round(box.fontSize * 140)}">${badge.text}</span>`,
+        font: "sans",
+        fontfile: getFontPath(),
+        dpi: Math.round(72 * (box.fontSize / 12)),
+        rgba: true,
+      },
+    })
+      .png()
+      .toBuffer();
+
+    const meta = await sharp(text).metadata();
+    return {
+      input: text,
+      left: Math.round(box.x + (box.width - (meta.width ?? 0)) / 2),
+      top: Math.round(box.y + (box.height - (meta.height ?? 0)) / 2),
+    };
+  } catch {
+    // A chip without its letters is still a colour block — better than failing
+    // the whole pass because a font could not be written or parsed.
+    return null;
+  }
+}
+
 /** The square mark, for the icon slot Apple shows in notifications. */
 async function renderIcon(size: number): Promise<Buffer> {
   return sharp(ATMOS_ICON_PNG).resize(size, size).png().toBuffer();
@@ -157,6 +221,24 @@ async function getBrandImages(): Promise<ImageSet> {
   return brandCache;
 }
 
+/** One strip: the band from SVG, the chip's letters composited on top. */
+async function renderStrip(
+  theme: PassTheme,
+  intensity: number,
+  badge: StripBadge | null,
+  width: number,
+  height: number,
+): Promise<Buffer> {
+  const band = sharp(
+    Buffer.from(stripSvg(theme, width, height, intensity, badge, false)),
+  ).resize(width, height, { fit: "cover" });
+
+  if (!badge) return band.png().toBuffer();
+
+  const text = await renderBadgeText(badge, width, height);
+  return (text ? band.composite([text]) : band).png().toBuffer();
+}
+
 /**
  * The image files a pass ships with, for one event's theme.
  *
@@ -178,9 +260,9 @@ export async function getPassImages(
   // Strip on an event ticket is 375x98pt. Rendered at each scale rather than
   // upscaled, so the hatch and bar edges stay hard on a 3x screen.
   const [strip, strip2x, strip3x] = await Promise.all([
-    renderSvg(stripSvg(theme, 375, 98, intensity, badge), 375, 98),
-    renderSvg(stripSvg(theme, 750, 196, intensity, badge), 750, 196),
-    renderSvg(stripSvg(theme, 1125, 294, intensity, badge), 1125, 294),
+    renderStrip(theme, intensity, badge, 375, 98),
+    renderStrip(theme, intensity, badge, 750, 196),
+    renderStrip(theme, intensity, badge, 1125, 294),
   ]);
 
   const images: ImageSet = {

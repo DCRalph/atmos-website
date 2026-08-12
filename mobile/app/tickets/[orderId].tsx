@@ -1,11 +1,12 @@
 import * as WebBrowser from "expo-web-browser";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SvgXml } from "react-native-svg";
 
 import { api } from "@/lib/api";
 import { API_URL } from "@/lib/env";
+import { accessLevel, isElevated } from "~/lib/ticketing/access-levels";
 import { colors, radius, space } from "@/lib/theme";
 import { formatGigDateLong, formatGigTime } from "@/lib/dates";
 import { Body, Button, Caption, Loading, Notice, Title } from "@/components/ui";
@@ -88,7 +89,26 @@ export default function OrderScreen() {
             <Body style={{ fontWeight: "700" }}>
               {ticket.attendeeName ?? "No name on this ticket"}
             </Body>
-            <Caption>{ticket.tierName}</Caption>
+            <View style={styles.typeRow}>
+              <Caption>{ticket.tierName}</Caption>
+              {isElevated(ticket.accessLevel) ? (
+                <View
+                  style={[
+                    styles.levelChip,
+                    { backgroundColor: accessLevel(ticket.accessLevel).badgeBg },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.levelChipLabel,
+                      { color: accessLevel(ticket.accessLevel).badgeFg },
+                    ]}
+                  >
+                    {accessLevel(ticket.accessLevel).short}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
             <Caption style={{ fontFamily: "Menlo" }}>
               {ticket.ticketNumber}
             </Caption>
@@ -136,6 +156,13 @@ function absolute(url: string): string {
 }
 
 const styles = StyleSheet.create({
+  typeRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  levelChip: { paddingHorizontal: space.sm, paddingVertical: 2 },
+  levelChipLabel: {
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
   ticket: {
     backgroundColor: colors.surface,
     borderWidth: 1,
