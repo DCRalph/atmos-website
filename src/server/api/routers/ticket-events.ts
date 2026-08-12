@@ -362,6 +362,15 @@ export const ticketEventsRouter = createTRPCRouter({
           // Snapshot the GST number so a receipt reprinted in two years still
           // shows the number that was current at the time of sale.
           gstNumber: input.gstNumber ?? settings.gstNumber,
+          // Left to the column default when unset, so a new event starts on
+          // house style rather than being pinned to whatever the form sent.
+          ...(input.passStripStyle !== undefined
+            ? { passStripStyle: input.passStripStyle }
+            : {}),
+          passAccentHex: input.passAccentHex ?? null,
+          passBackgroundHex: input.passBackgroundHex ?? null,
+          passForegroundHex: input.passForegroundHex ?? null,
+          passLabelHex: input.passLabelHex ?? null,
         },
       });
 
@@ -482,6 +491,21 @@ export const ticketEventsRouter = createTRPCRouter({
             : {}),
           ...(rest.gstNumber !== undefined
             ? { gstNumber: rest.gstNumber }
+            : {}),
+          ...(rest.passStripStyle !== undefined
+            ? { passStripStyle: rest.passStripStyle }
+            : {}),
+          ...(rest.passAccentHex !== undefined
+            ? { passAccentHex: rest.passAccentHex }
+            : {}),
+          ...(rest.passBackgroundHex !== undefined
+            ? { passBackgroundHex: rest.passBackgroundHex }
+            : {}),
+          ...(rest.passForegroundHex !== undefined
+            ? { passForegroundHex: rest.passForegroundHex }
+            : {}),
+          ...(rest.passLabelHex !== undefined
+            ? { passLabelHex: rest.passLabelHex }
             : {}),
         },
       });
