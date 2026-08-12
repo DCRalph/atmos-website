@@ -18,6 +18,7 @@ import {
   admittedCount,
   denyTicket,
   inspectTicket,
+  reduceAdmissionState,
   scanTicket,
   ticketState,
 } from "~/server/ticketing/scan";
@@ -408,8 +409,7 @@ export const doorRouter = createTRPCRouter({
         if (lastAdmission?.scannedByUserId !== ctx.user.id) {
           throw new TRPCError({
             code: "FORBIDDEN",
-            message:
-              "Only a door manager can undo somebody else's admission.",
+            message: "Only a door manager can undo somebody else's admission.",
           });
         }
       }
@@ -429,6 +429,62 @@ export const doorRouter = createTRPCRouter({
         action: "Reverted an admission",
         userId: ctx.user.id,
         details: { eventId: input.eventId, ticketId: input.ticketId },
+      });
+
+      return {
+        ok: true as const,
+        admitted: await admittedCount(input.eventId),
+      };
+    }),
+
+  /**
+   * Mark somebody out of the building.
+   *
+   * Not an undo. `revertAdmission` says the admission should never have
+   * counted; this says it was real and is over — they went home, or stepped out
+   * for a smoke. The admission stays in their history, the headcount drops
+   * because they are not inside, and their ticket scans clean on the way back
+   * in even where re-entry is switched off.
+   *
+   * Open to every door staffer. Watching people leave is the job, and a queue
+   * of departures waiting on a manager is a headcount nobody keeps up to date.
+   *
+   * Marked somebody out by mistake? Scan them back in — that is the fix, and it
+   * is the same tap as any other admission.
+   */
+  markDeparted: doorProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        ticketId: z.string(),
+        deviceLabel: z.string().trim().max(60).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
+
+      const ticket = await ctx.db.ticket.findUnique({
+        where: { id: input.ticketId },
+        select: { eventId: true },
+      });
+
+      if (ticket?.eventId !== input.eventId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Ticket not found" });
+      }
+
+      await ctx.db.ticketScan.create({
+        data: {
+          ticketId: input.ticketId,
+          eventId: input.eventId,
+          result: TicketScanResult.DEPARTED,
+          scannedByUserId: ctx.user.id,
+          deviceLabel: input.deviceLabel,
+        },
       });
 
       return {
@@ -665,10 +721,16 @@ export const doorRouter = createTRPCRouter({
         // Filtered in the query rather than over the page, or a filter would
         // drop whoever fell past the take.
         ...(input.filter === "notArrived"
-          ? { status: TicketStatus.VALID, scans: { none: { result: { in: ADMITTING } } } }
+          ? {
+              status: TicketStatus.VALID,
+              scans: { none: { result: { in: ADMITTING } } },
+            }
           : {}),
         ...(input.filter === "arrived"
-          ? { status: TicketStatus.VALID, scans: { some: { result: { in: ADMITTING } } } }
+          ? {
+              status: TicketStatus.VALID,
+              scans: { some: { result: { in: ADMITTING } } },
+            }
           : {}),
         ...(input.filter === "denied"
           ? { scans: { some: { result: TicketScanResult.DENIED } } }
@@ -724,15 +786,26 @@ export const doorRouter = createTRPCRouter({
             },
             status: true,
             scans: {
-              // Admissions and refusals in one pass — which of the two is
-              // current is decided below, by whichever happened last.
+              // Everything that moves a ticket's standing, in one pass. The
+              // undos and the departure have to travel with the admissions and
+              // refusals or the row below decides on half the story — a person
+              // who left would still read "in", and a reverted admission would
+              // never stop reading "in" at all.
               where: {
                 result: {
-                  in: [...ADMITTING, TicketScanResult.DENIED],
+                  in: [
+                    ...ADMITTING,
+                    TicketScanResult.ADMISSION_REVERTED,
+                    TicketScanResult.DEPARTED,
+                    TicketScanResult.DENIED,
+                    TicketScanResult.DENIAL_REVERTED,
+                  ],
                 },
               },
               orderBy: { createdAt: "desc" },
-              take: 20,
+              // Far more than any real ticket collects; the reduce below needs
+              // the whole relevant history to be right.
+              take: 40,
               select: {
                 createdAt: true,
                 deviceLabel: true,
@@ -753,40 +826,38 @@ export const doorRouter = createTRPCRouter({
         total,
         nextCursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
         rows: page.map((ticket) => {
-          const admission = ticket.scans.find((scan) =>
-            (ADMITTING as string[]).includes(scan.result),
-          );
-          const denial = ticket.scans.find(
-            (scan) => scan.result === TicketScanResult.DENIED,
-          );
+          // The same reduce the scanner and the check tab run, so a row can
+          // never tell staff something the scan would contradict. It also
+          // decides the refusal: somebody denied at 10 and let in at 11 is in,
+          // and a row still shouting "REFUSED" at them is worse than silence.
+          const state = reduceAdmissionState(ticket.scans);
+
           return {
-          id: ticket.id,
-          ticketNumber: ticket.ticketNumber,
-          attendeeName: ticket.attendeeName,
-          accessLevel: ticket.accessLevel,
-          tierName: ticketTypeName(ticket),
-          isComp: ticket.isComp,
-          invitedByName: ticket.invitedByName,
-          orderNumber: ticket.order.orderNumber,
-          buyerName: ticket.order.buyerName,
-          buyerEmail: ticket.order.buyerEmail,
-          status: ticket.status,
-          admittedAt: admission?.createdAt ?? null,
-          admittedDevice: admission?.deviceLabel ?? null,
-          // Only surfaced when the refusal is the most recent word on this
-          // ticket. Somebody denied at 10 and let in at 11 is in, and a row
-          // still shouting "REFUSED" at them is worse than saying nothing.
-          denial:
-            denial && (!admission || denial.createdAt > admission.createdAt)
+            id: ticket.id,
+            ticketNumber: ticket.ticketNumber,
+            attendeeName: ticket.attendeeName,
+            accessLevel: ticket.accessLevel,
+            tierName: ticketTypeName(ticket),
+            isComp: ticket.isComp,
+            invitedByName: ticket.invitedByName,
+            orderNumber: ticket.order.orderNumber,
+            buyerName: ticket.order.buyerName,
+            buyerEmail: ticket.order.buyerEmail,
+            status: ticket.status,
+            admittedAt: state.admittedAt,
+            admittedDevice: state.admission?.deviceLabel ?? null,
+            departedAt: state.departedAt,
+            departedDevice: state.departure?.deviceLabel ?? null,
+            denial: state.denial
               ? {
-                  at: denial.createdAt,
-                  reason: denial.denyReason,
-                  note: denial.denyNote,
-                  device: denial.deviceLabel,
+                  at: state.denial.createdAt,
+                  reason: state.denial.denyReason,
+                  note: state.denial.denyNote,
+                  device: state.denial.deviceLabel,
                 }
               : null,
-        };
-      }),
+          };
+        }),
       };
     }),
 
@@ -822,7 +893,7 @@ export const doorRouter = createTRPCRouter({
           nameLockedAt: true,
           hostTicketId: true,
           tier: { select: { name: true } },
-          event: { select: { isR18: true } },
+          event: { select: { isR18: true, reentryAllowed: true } },
           order: {
             select: {
               orderNumber: true,
@@ -914,6 +985,7 @@ export const doorRouter = createTRPCRouter({
           ? ticket.order._count.tickets - 1
           : ticket.order._count.tickets,
         isR18: ticket.event.isR18,
+        reentryAllowed: ticket.event.reentryAllowed,
         isManager,
         timeline: timeline.map((scan) => ({
           id: scan.id,

@@ -310,11 +310,37 @@ export async function scanTicket({
       select: { createdAt: true },
     });
 
+    // Somebody may also have marked them out of the building. That does not
+    // undo the admission — it ends it — so the two are tracked apart.
+    const lastDeparture = await tx.ticketScan.findFirst({
+      where: { ticketId: ticket.id, result: TicketScanResult.DEPARTED },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    });
+
     const liveAdmissions = lastRevert
       ? priorAdmissions.filter((scan) => scan.createdAt > lastRevert.createdAt)
       : priorAdmissions;
 
-    const previous = liveAdmissions[0] ?? null;
+    /**
+     * The last admission that counts, whether or not they are still inside.
+     *
+     * This is the one a refusal is measured against: being let in after a
+     * refusal overrules it, and walking back out later does not bring it back.
+     */
+    const lastAdmission = liveAdmissions[0] ?? null;
+
+    // Admissions that still have them in the building. A departure ends the
+    // ones before it, so `previous` is presence, not history.
+    const insideAdmissions = lastDeparture
+      ? liveAdmissions.filter(
+          (scan) => scan.createdAt > lastDeparture.createdAt,
+        )
+      : liveAdmissions;
+
+    const previous = insideAdmissions[0] ?? null;
+    /** Been in, marked out, now standing at the door again. */
+    const departed = previous === null && lastAdmission !== null;
 
     // A refusal outranks everything below it until somebody deliberately
     // admits the ticket afterwards.
@@ -338,7 +364,7 @@ export async function scanTicket({
 
     const denialStands =
       denial !== null &&
-      (previous === null || denial.createdAt > previous.createdAt) &&
+      (lastAdmission === null || denial.createdAt > lastAdmission.createdAt) &&
       (denialRevert === null || denial.createdAt > denialRevert.createdAt);
 
     if (denialStands) {
@@ -415,6 +441,31 @@ export async function scanTicket({
         previousAdmission,
         canOverride: true,
       });
+    }
+
+    /**
+     * They were in, somebody marked them out, and here they are again.
+     *
+     * Admitted regardless of what the event says about re-entry: marking
+     * somebody out is the deliberate act that grants the return, and turning
+     * them away at the door afterwards would make the whole thing a trap for
+     * the staffer who did it.
+     */
+    if (departed) {
+      await admit(TicketScanResult.REENTRY);
+      return outcome(
+        TicketScanResult.REENTRY,
+        `Back in — re-entry #${liveAdmissions.length + 1}`,
+        {
+          ...base,
+          previousAdmission: {
+            at: lastAdmission.createdAt,
+            deviceLabel: lastAdmission.deviceLabel,
+            scannedByName: await staffName(tx, lastAdmission.scannedByUserId),
+            admissionCount: liveAdmissions.length,
+          },
+        },
+      );
     }
 
     await admit(TicketScanResult.ADMITTED);
@@ -596,54 +647,77 @@ export async function ticketState(ticketId: string): Promise<{
   admittedBy: string | null;
   admittedDevice: string | null;
   admissionCount: number;
+  /** Set when they were let in and a staffer has since marked them out. */
+  departedAt: Date | null;
+  departedBy: string | null;
   denial: PreviousDenial | null;
 }> {
-  const [admissions, lastRevert, denial, denialRevert] =
+  const [admissions, lastRevert, lastDeparture, denial, denialRevert] =
     await Promise.all([
-    db.ticketScan.findMany({
-      where: { ticketId, result: { in: [...ADMITTING_RESULTS] } },
-      orderBy: { createdAt: "desc" },
-      select: { createdAt: true, deviceLabel: true, scannedByUserId: true },
-    }),
-    db.ticketScan.findFirst({
-      where: { ticketId, result: TicketScanResult.ADMISSION_REVERTED },
-      orderBy: { createdAt: "desc" },
-      select: { createdAt: true },
-    }),
-    db.ticketScan.findFirst({
-      where: { ticketId, result: TicketScanResult.DENIED },
-      orderBy: { createdAt: "desc" },
-      select: {
-        createdAt: true,
-        denyReason: true,
-        denyNote: true,
-        deviceLabel: true,
-        scannedByUserId: true,
-      },
-    }),
-    db.ticketScan.findFirst({
-      where: { ticketId, result: TicketScanResult.DENIAL_REVERTED },
-      orderBy: { createdAt: "desc" },
-      select: { createdAt: true },
-    }),
-  ]);
+      db.ticketScan.findMany({
+        where: { ticketId, result: { in: [...ADMITTING_RESULTS] } },
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true, deviceLabel: true, scannedByUserId: true },
+      }),
+      db.ticketScan.findFirst({
+        where: { ticketId, result: TicketScanResult.ADMISSION_REVERTED },
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true },
+      }),
+      db.ticketScan.findFirst({
+        where: { ticketId, result: TicketScanResult.DEPARTED },
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true, scannedByUserId: true },
+      }),
+      db.ticketScan.findFirst({
+        where: { ticketId, result: TicketScanResult.DENIED },
+        orderBy: { createdAt: "desc" },
+        select: {
+          createdAt: true,
+          denyReason: true,
+          denyNote: true,
+          deviceLabel: true,
+          scannedByUserId: true,
+        },
+      }),
+      db.ticketScan.findFirst({
+        where: { ticketId, result: TicketScanResult.DENIAL_REVERTED },
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true },
+      }),
+    ]);
 
   const live = lastRevert
     ? admissions.filter((scan) => scan.createdAt > lastRevert.createdAt)
     : admissions;
-  const latest = live[0] ?? null;
+  /** The last admission that counts, in or out. */
+  const lastAdmission = live[0] ?? null;
+
+  // Presence, which a departure ends without undoing anything.
+  const inside = lastDeparture
+    ? live.filter((scan) => scan.createdAt > lastDeparture.createdAt)
+    : live;
+  const latest = inside[0] ?? null;
+  const departed = latest === null && lastAdmission !== null;
 
   // A refusal stands until something later overrules it: an admission, or a
   // staffer taking it back. Without the second clause an undo would be written
   // to the log and change nothing, which is worse than not offering it.
+  //
+  // Measured against `lastAdmission` rather than presence: being let in after a
+  // refusal overrules it, and leaving later does not bring it back.
   const denialStands =
     denial !== null &&
-    (latest === null || denial.createdAt > latest.createdAt) &&
+    (lastAdmission === null || denial.createdAt > lastAdmission.createdAt) &&
     (denialRevert === null || denial.createdAt > denialRevert.createdAt);
 
   return {
     admittedAt: latest?.createdAt ?? null,
     admittedBy: await staffName(db, latest?.scannedByUserId ?? null),
+    departedAt: departed ? (lastDeparture?.createdAt ?? null) : null,
+    departedBy: departed
+      ? await staffName(db, lastDeparture?.scannedByUserId ?? null)
+      : null,
     admittedDevice: latest?.deviceLabel ?? null,
     admissionCount: live.length,
     denial:
@@ -659,15 +733,22 @@ export async function ticketState(ticketId: string): Promise<{
   };
 }
 
-export type AdmissionState = { admittedAt: Date | null; deniedAt: Date | null };
+export type AdmissionState = {
+  /** When they came in, and are still in. Null once they've been marked out. */
+  admittedAt: Date | null;
+  /** When a staffer marked them out of the building, if they haven't returned. */
+  departedAt: Date | null;
+  deniedAt: Date | null;
+};
 
 /**
  * The standing of one ticket, from its scans alone.
  *
- * The same two rules `ticketState` applies, pulled out as a pure function
- * because they are the easy ones to get subtly wrong: an admission only counts
- * if no *later* revert undid it, and a refusal only stands if nothing admitted
- * them *after* it. Getting either backwards means somebody walks in twice, or
+ * The same rules `ticketState` applies, pulled out as a pure function because
+ * they are the easy ones to get subtly wrong: an admission only counts if no
+ * *later* revert undid it, presence ends at a departure without the admission
+ * itself being undone, and a refusal only stands if nothing admitted them
+ * *after* it. Getting any of them backwards means somebody walks in twice, or
  * gets turned away on a refusal that was already overruled.
  *
  * `rows` must be newest-first.
@@ -679,6 +760,8 @@ export function reduceAdmissionState<
 ): AdmissionState & {
   /** The admission that stands, if any — the row behind `admittedAt`. */
   admission: T | null;
+  /** The departure that stands, if any — the row behind `departedAt`. */
+  departure: T | null;
   /** The refusal that stands, if any — the row behind `deniedAt`. */
   denial: T | null;
   /** Admissions since the last revert. Two or more means they re-entered. */
@@ -693,22 +776,37 @@ export function reduceAdmissionState<
   const live = lastRevert
     ? admissions.filter((row) => row.createdAt > lastRevert.createdAt)
     : admissions;
-  const latest = live[0] ?? null;
+  /** The last admission that counts, whether or not they are still inside. */
+  const lastAdmission = live[0] ?? null;
+
+  // A departure ends the admissions before it without undoing them, so
+  // presence and history part company here.
+  const lastDeparture =
+    rows.find((row) => row.result === TicketScanResult.DEPARTED) ?? null;
+  const inside = lastDeparture
+    ? live.filter((row) => row.createdAt > lastDeparture.createdAt)
+    : live;
+  const latest = inside[0] ?? null;
+  const departed = latest === null && lastAdmission !== null;
 
   const denial =
     rows.find((row) => row.result === TicketScanResult.DENIED) ?? null;
   const denialRevert =
     rows.find((row) => row.result === TicketScanResult.DENIAL_REVERTED) ?? null;
-  // Same rule as `ticketState`, over rows already in hand.
+  // Same rule as `ticketState`, over rows already in hand — and measured
+  // against the last admission rather than presence, so walking out does not
+  // resurrect a refusal an admission had already overruled.
   const denialStands =
     denial !== null &&
-    (latest === null || denial.createdAt > latest.createdAt) &&
+    (lastAdmission === null || denial.createdAt > lastAdmission.createdAt) &&
     (denialRevert === null || denial.createdAt > denialRevert.createdAt);
 
   return {
     admittedAt: latest?.createdAt ?? null,
+    departedAt: departed && lastDeparture ? lastDeparture.createdAt : null,
     deniedAt: denialStands && denial ? denial.createdAt : null,
     admission: latest,
+    departure: departed ? lastDeparture : null,
     denial: denialStands ? denial : null,
     admissionCount: live.length,
   };
@@ -717,10 +815,11 @@ export function reduceAdmissionState<
 /**
  * Where several tickets stand right now, in one pass.
  *
- * Same rules as `ticketState`, but for a whole order at once, so showing the
- * rest of a party costs one query rather than one per companion. Only the two
- * facts a companion row shows are returned; use `ticketState` when the full
- * story — who admitted them, on what device — is needed.
+ * Same rules as `ticketState`, but for a whole list at once, so showing the
+ * rest of a party — or a page of the door list — costs one query rather than
+ * one per row. Only the three facts a row shows are returned; use
+ * `ticketState` when the full story — who admitted them, on what device — is
+ * needed.
  */
 export async function admissionStates(
   ticketIds: string[],
@@ -735,6 +834,7 @@ export async function admissionStates(
         in: [
           ...ADMITTING_RESULTS,
           TicketScanResult.ADMISSION_REVERTED,
+          TicketScanResult.DEPARTED,
           TicketScanResult.DENIED,
           TicketScanResult.DENIAL_REVERTED,
         ],
@@ -797,6 +897,9 @@ export type TicketCheck = {
   admittedBy: string | null;
   admittedDevice: string | null;
   admissionCount: number;
+  /** Set when they were let in and a staffer has since marked them out. */
+  departedAt: Date | null;
+  departedBy: string | null;
   /** The refusal standing against this ticket right now, if any. */
   denial: PreviousDenial | null;
   /** Every refusal ever recorded against it, standing or since overruled. */
@@ -844,6 +947,8 @@ export async function inspectTicket({
     admittedBy: null,
     admittedDevice: null,
     admissionCount: 0,
+    departedAt: null,
+    departedBy: null,
     denial: null,
     refusalCount: 0,
     history: [],
@@ -1033,6 +1138,15 @@ export async function inspectTicket({
           "Someone came in on this ticket. Scanning it now would be refused unless a manager overrides it.",
       };
     }
+    if (state.departedAt) {
+      return {
+        verdict: "OK",
+        wouldScanAs: TicketScanResult.REENTRY,
+        headline: "Valid — out at the moment",
+        detail:
+          "They came in and a staffer marked them out, so this scans clean on the way back.",
+      };
+    }
     return {
       verdict: "OK",
       wouldScanAs: TicketScanResult.ADMITTED,
@@ -1049,6 +1163,8 @@ export async function inspectTicket({
     admittedBy: nameOf(state.admission?.scannedByUserId ?? null),
     admittedDevice: state.admission?.deviceLabel ?? null,
     admissionCount: state.admissionCount,
+    departedAt: state.departedAt,
+    departedBy: nameOf(state.departure?.scannedByUserId ?? null),
     denial: state.denial
       ? {
           at: state.denial.createdAt,
@@ -1080,7 +1196,14 @@ export async function inspectTicket({
   };
 }
 
-/** Live admitted count for an event, respecting reverts. */
+/**
+ * How many people are in the building right now.
+ *
+ * Reverts and departures both take somebody out of it, for different reasons —
+ * one says the admission never counted, the other that they have gone — and
+ * either way they are not inside, which is the number a door needs when it is
+ * watching a capacity.
+ */
 export async function admittedCount(eventId: string): Promise<number> {
   const rows = await db.$queryRaw<{ count: bigint }[]>`
     SELECT COUNT(DISTINCT s."ticketId")::bigint AS count
@@ -1090,7 +1213,7 @@ export async function admittedCount(eventId: string): Promise<number> {
       AND NOT EXISTS (
         SELECT 1 FROM "ticket_scan" r
         WHERE r."ticketId" = s."ticketId"
-          AND r."result" = 'ADMISSION_REVERTED'
+          AND r."result" IN ('ADMISSION_REVERTED', 'DEPARTED')
           AND r."createdAt" > s."createdAt"
       )
   `;

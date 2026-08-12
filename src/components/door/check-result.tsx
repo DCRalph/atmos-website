@@ -182,6 +182,20 @@ export function CheckResultScreen({
                   </p>
                 )}
               </div>
+            ) : check.departedAt ? (
+              <div className="border-2 border-sky-500/40 bg-sky-500/10 p-4">
+                <p className="text-xl font-bold text-sky-200">
+                  Left {formatTimeAgo(new Date(check.departedAt))}
+                </p>
+                <p className="mt-1 text-sm opacity-80">
+                  {check.departedBy
+                    ? `marked out by ${check.departedBy}`
+                    : "marked out"}
+                  {check.admissionCount > 1
+                    ? ` · ${check.admissionCount} admissions on record`
+                    : ""}
+                </p>
+              </div>
             ) : (
               <div className="border-2 border-white/15 bg-white/5 p-4">
                 <p className="text-xl font-bold">Not arrived</p>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Users } from "lucide-react";
+import { Loader2, LogOut, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { api } from "~/trpc/react";
@@ -44,19 +44,35 @@ export function PersonSheet({
   denying: boolean;
 }) {
   const [step, setStep] = useState<
-    "detail" | "deny" | "confirm-revert" | "party"
+    "detail" | "deny" | "confirm-revert" | "confirm-leave" | "party"
   >("detail");
 
   const utils = api.useUtils();
   const detail = api.door.ticketDetail.useQuery({ eventId, ticketId });
 
+  const refresh = () => {
+    void utils.door.ticketDetail.invalidate();
+    void utils.door.doorList.invalidate();
+    void utils.door.orderTickets.invalidate();
+    void utils.door.recentScans.invalidate();
+    void utils.door.summary.invalidate();
+  };
+
   const revert = api.door.revertAdmission.useMutation({
     onSuccess: () => {
       toast.success("Admission undone.");
-      void utils.door.ticketDetail.invalidate();
-      void utils.door.doorList.invalidate();
-      void utils.door.orderTickets.invalidate();
-      void utils.door.summary.invalidate();
+      refresh();
+      setStep("detail");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const depart = api.door.markDeparted.useMutation({
+    onSuccess: () => {
+      toast.success(
+        "Marked as left. Their ticket scans clean on the way back.",
+      );
+      refresh();
       setStep("detail");
     },
     onError: (error) => toast.error(error.message),
@@ -108,7 +124,7 @@ export function PersonSheet({
 
   if (step === "confirm-revert") {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] bg-amber-600 text-white">
+      <div className="fixed inset-0 z-50 flex flex-col bg-amber-600 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] text-white">
         <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
           <p className="text-3xl font-black tracking-tight">Undo admission?</p>
           <p className="mt-3 max-w-sm text-base opacity-90">
@@ -130,6 +146,47 @@ export function PersonSheet({
           <SafeAction
             onClick={() => setStep("detail")}
             disabled={revert.isPending}
+          >
+            Cancel
+          </SafeAction>
+        </div>
+      </div>
+    );
+  }
+
+  /**
+   * Marking somebody out is not an undo, and this screen says so.
+   *
+   * It sits next to "Undo admission" in the stack, and the two are easy to
+   * confuse at arm's length: both drop the headcount by one. The difference is
+   * what happens next — an undo says they were never in and leaves the ticket
+   * looking untouched, this says they were and have gone.
+   */
+  if (step === "confirm-leave") {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col bg-sky-700 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] text-white">
+        <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
+          <p className="text-3xl font-black tracking-tight">Mark as left?</p>
+          <p className="mt-3 max-w-sm text-base opacity-90">
+            {name ?? person.ticketNumber} comes off the headcount. Their ticket
+            scans clean on the way back in
+            {person.reentryAllowed ? "" : ", even though re-entry is off"}.
+          </p>
+          <p className="mt-6 max-w-sm text-sm opacity-80">
+            Their admission stays on record — this says they&apos;ve gone, not
+            that it never happened.
+          </p>
+        </div>
+        <div className="space-y-3 p-5 pb-8">
+          <ExceptionAction
+            onClick={() => depart.mutate({ eventId, ticketId: person.id })}
+            disabled={depart.isPending}
+          >
+            {depart.isPending ? "Marking…" : "Yes, they've left"}
+          </ExceptionAction>
+          <SafeAction
+            onClick={() => setStep("detail")}
+            disabled={depart.isPending}
           >
             Cancel
           </SafeAction>
@@ -219,6 +276,24 @@ export function PersonSheet({
                 </p>
               )}
             </div>
+          ) : person.departedAt ? (
+            <div className="w-full max-w-sm border-2 border-sky-500/40 bg-sky-500/10 p-4">
+              <p className="text-xl font-bold text-sky-200">
+                Left {formatTimeAgo(new Date(person.departedAt))}
+              </p>
+              <p className="mt-1 text-sm opacity-80">
+                {person.departedBy
+                  ? `marked out by ${person.departedBy}`
+                  : "marked out"}
+              </p>
+              <p className="mt-1 text-sm opacity-80">
+                Was in{" "}
+                {person.admissionCount === 1
+                  ? "once"
+                  : `${person.admissionCount} times`}
+                . Their ticket scans clean on the way back.
+              </p>
+            </div>
           ) : (
             <div className="w-full max-w-sm border-2 border-white/15 bg-white/5 p-4">
               <p className="text-xl font-bold">Not arrived</p>
@@ -239,13 +314,28 @@ export function PersonSheet({
       <div className="space-y-3 p-5 pb-8">
         {!isIn && (
           <PrimaryAction onClick={() => onAdmit(person.ticketNumber)}>
-            {person.denial ? "Admit anyway" : "Admit"}
+            {person.denial
+              ? "Admit anyway"
+              : person.departedAt
+                ? "Back in"
+                : "Admit"}
+          </PrimaryAction>
+        )}
+
+        {/* An ordinary action, not an exception: watching people leave is the
+            job, nothing is overruled, and it is undone by scanning them back
+            in. It sits above "Undo admission" because it is the one staff will
+            reach for far more often. */}
+        {isIn && (
+          <PrimaryAction onClick={() => setStep("confirm-leave")}>
+            <LogOut className="size-5" aria-hidden />
+            Mark as left
           </PrimaryAction>
         )}
 
         {isIn && person.isManager && (
           <ExceptionAction
-            hint="For a mis-scan — drops the headcount by one"
+            hint="For a mis-scan — says they were never in"
             onClick={() => setStep("confirm-revert")}
           >
             Undo admission
@@ -269,7 +359,7 @@ export function PersonSheet({
 
 function Sheet({ children }: { children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] bg-neutral-900 text-white">
+    <div className="fixed inset-0 z-50 flex flex-col bg-neutral-900 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] text-white">
       {children}
     </div>
   );

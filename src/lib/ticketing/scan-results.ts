@@ -50,6 +50,7 @@ const RESULTS: Record<
     short: "Admission undone",
     tone: "neutral",
   },
+  DEPARTED: { label: "Marked as left", short: "Left", tone: "neutral" },
   DENIAL_REVERTED: {
     label: "Refusal taken back",
     short: "Refusal taken back",

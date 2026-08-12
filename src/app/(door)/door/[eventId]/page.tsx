@@ -93,6 +93,9 @@ export default function DoorScannerPage() {
 
   const [lastLookup, setLastLookup] = useState<Lookup | null>(null);
   const [mode, setMode] = useState<Mode>("scan");
+  // Lives here rather than in the feed, so switching tabs doesn't quietly put
+  // it back to your own scans while you were reading the whole door's.
+  const [historyMine, setHistoryMine] = useState(true);
 
   const utils = api.useUtils();
 
@@ -221,6 +224,34 @@ export default function DoorScannerPage() {
 
   const { event, sold, admitted, notArrived, isManager } = summary.data;
 
+  /**
+   * The live feed, built once and dropped into whichever tab is open.
+   *
+   * One element rather than one per tab: "what just happened, and can I take it
+   * back" is the same question on the scanner, the list and the till, and three
+   * copies would be three things to keep in step.
+   */
+  const historyPanel = (
+    <RecentScans
+      eventId={eventId}
+      deviceLabel={deviceLabel}
+      admitting={manual.isPending}
+      denying={deny.isPending}
+      mine={historyMine}
+      onMineChange={setHistoryMine}
+      onAdmit={(ticketNumber) => admitByNumber(ticketNumber)}
+      onDeny={(ticketId, reason, note) =>
+        deny.mutate({
+          eventId,
+          ticketId,
+          reason,
+          note: note.trim() || undefined,
+          deviceLabel: deviceLabel || undefined,
+        })
+      }
+    />
+  );
+
   return (
     <main
       className="mx-auto w-full max-w-lg px-4 pb-[calc(env(safe-area-inset-bottom)+2.5rem)]"
@@ -280,7 +311,13 @@ export default function DoorScannerPage() {
         <MoreMenu mode={mode} onSelect={setMode} />
       </nav>
 
-      <div className="mt-4">
+      <div className="mt-4 space-y-4">
+        {/* Above the content everywhere except the scanner, where the camera
+            has first claim on the space under the tabs. Below a door list that
+            can run to hundreds of rows it would be unreachable, and the whole
+            point of it is being one glance away wherever you are. */}
+        {(mode === "list" || mode === "sell") && historyPanel}
+
         {mode === "scan" && (
           <div className="space-y-4">
             {/* Also paused while a scan is in flight: the result isn't on
@@ -296,22 +333,7 @@ export default function DoorScannerPage() {
               pendingLabel="Checking…"
               onSubmit={(ticketNumber) => admitByNumber(ticketNumber)}
             />
-            <RecentScans
-              eventId={eventId}
-              deviceLabel={deviceLabel}
-              admitting={manual.isPending}
-              denying={deny.isPending}
-              onAdmit={(ticketNumber) => admitByNumber(ticketNumber)}
-              onDeny={(ticketId, reason, note) =>
-                deny.mutate({
-                  eventId,
-                  ticketId,
-                  reason,
-                  note: note.trim() || undefined,
-                  deviceLabel: deviceLabel || undefined,
-                })
-              }
-            />
+            {historyPanel}
           </div>
         )}
 

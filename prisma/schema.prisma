@@ -929,6 +929,15 @@ enum TicketScanResult {
   /// A manager undoing a mistaken admission. The scan log stays append-only,
   /// so an undo is a new row rather than a deletion.
   ADMISSION_REVERTED
+  /// Somebody who was let in and has now gone home, or stepped out.
+  ///
+  /// Not the same as ADMISSION_REVERTED, which says the admission should never
+  /// have counted. This one says it was real and is simply over: the admission
+  /// stays in their history, the headcount drops because they are not in the
+  /// building, and their ticket scans clean on the way back in even at an event
+  /// with re-entry switched off — a staffer marking them out is what grants the
+  /// return.
+  DEPARTED
   /// Door staff turned this person away after the scan itself came back fine.
   /// Carries `denyReason` and optionally `denyNote`.
   DENIED

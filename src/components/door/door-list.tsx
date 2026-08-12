@@ -87,7 +87,10 @@ export function DoorList({
             [
               ["all", "All"],
               ["notArrived", "To come"],
-              ["arrived", "In"],
+              // "Arrived", not "In": the filter is a scan-level `some`, so it
+              // catches everyone who has come through at some point, including
+              // whoever has since been marked out again.
+              ["arrived", "Arrived"],
               ["denied", "Refused"],
             ] as const
           ).map(([value, label]) => (
@@ -172,6 +175,15 @@ export function DoorList({
                       {row.admittedDevice ? ` · ${row.admittedDevice}` : ""}
                     </span>
                   )}
+                  {/* They were in and somebody marked them out. Said plainly
+                      rather than left to read as "not arrived", because the
+                      two look identical on a row and mean opposite things. */}
+                  {row.departedAt && (
+                    <span className="mt-0.5 block text-xs text-sky-400">
+                      Left {formatTimeAgo(new Date(row.departedAt))}
+                      {row.departedDevice ? ` · ${row.departedDevice}` : ""}
+                    </span>
+                  )}
                   {/* Only when the refusal is the last word — see `denial` in
                       the router. The reason is the whole point: "refused" with
                       no why is what staff end up arguing about. */}
@@ -201,7 +213,7 @@ export function DoorList({
                   onClick={() => onAdmit(row.ticketNumber)}
                   className="shrink-0 border-2 border-white/20 px-3 py-2 text-sm font-medium transition-colors active:bg-white active:text-black disabled:opacity-50"
                 >
-                  Admit
+                  {row.departedAt ? "Back in" : "Admit"}
                 </button>
               )}
             </li>
@@ -247,4 +259,3 @@ export function DoorList({
     </div>
   );
 }
-

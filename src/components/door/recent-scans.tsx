@@ -42,6 +42,8 @@ export function RecentScans({
   deviceLabel,
   admitting,
   denying,
+  mine,
+  onMineChange,
   onAdmit,
   onDeny,
 }: {
@@ -49,10 +51,12 @@ export function RecentScans({
   deviceLabel: string;
   admitting: boolean;
   denying: boolean;
+  /** Held by the page: this follows staff from tab to tab, so it must too. */
+  mine: boolean;
+  onMineChange: (mine: boolean) => void;
   onAdmit: (ticketNumber: string) => void;
   onDeny: (ticketId: string, reason: DenyReasonValue, note: string) => void;
 }) {
-  const [mine, setMine] = useState(true);
   const [openTicketId, setOpenTicketId] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<UndoRequest | null>(null);
 
@@ -104,7 +108,7 @@ export function RecentScans({
         </p>
         <button
           type="button"
-          onClick={() => setMine(!mine)}
+          onClick={() => onMineChange(!mine)}
           className="shrink-0 text-xs text-white/50 underline underline-offset-2"
         >
           {mine ? "Show every door" : "Show only mine"}
