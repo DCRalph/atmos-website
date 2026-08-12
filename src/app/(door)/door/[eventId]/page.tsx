@@ -3,18 +3,33 @@
 import { useCallback, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Banknote, Keyboard, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  Banknote,
+  ChevronDown,
+  ScanLine,
+  Settings,
+  ShieldQuestionMark,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { api, type RouterOutputs } from "~/trpc/react";
-import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Skeleton } from "~/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import { CameraScanner } from "~/components/door/camera-scanner";
+import { CheckPanel } from "~/components/door/check-panel";
 import { ScanResultScreen } from "~/components/door/scan-result-screen";
 import { playFeedback, unlockAudio } from "~/components/door/feedback";
 import { DoorList } from "~/components/door/door-list";
 import { SellPanel } from "~/components/door/sell-panel";
+import { ManualEntryPanel } from "~/components/door/ticket-number-entry";
 import { useLocalStorage } from "~/hooks/use-local-storage";
 
 type ScanOutcome = RouterOutputs["door"]["scan"];
@@ -26,23 +41,57 @@ type Lookup =
   | { kind: "token"; token: string }
   | { kind: "ticketNumber"; ticketNumber: string };
 
+type Mode = "scan" | "list" | "sell" | "check" | "settings";
+
+/**
+ * The two tabs that aren't part of working a queue.
+ *
+ * Four things fit across a phone; a fifth and a sixth make every target too
+ * narrow to hit in the dark. Scan, List and Sell are what a door does with
+ * somebody standing in front of it, so they keep their own buttons. Checking a
+ * ticket and naming the device are both things you do when the queue has
+ * stopped, and they go behind one tap.
+ */
+const EXTRA_MODES = [
+  {
+    value: "check",
+    label: "Check a ticket",
+    short: "Check",
+    hint: "Look one up without admitting anyone",
+    icon: ShieldQuestionMark,
+  },
+  {
+    value: "settings",
+    label: "Settings",
+    short: "Settings",
+    hint: "Name this scanner, test the sound",
+    icon: Settings,
+  },
+] as const satisfies readonly {
+  value: Mode;
+  label: string;
+  short: string;
+  hint: string;
+  icon: React.ElementType;
+}[];
+
 /**
  * The scanner.
  *
- * Camera first, everything else out of the way. Manual entry and the door list
- * are one tap down because they're the fallbacks that save the night when a
- * phone screen is smashed or someone turns up with nothing.
+ * Camera first, everything else out of the way. Manual entry folds out under
+ * the camera rather than taking a tab of its own, because it is the same job —
+ * getting this person through the door — done when a screen is smashed or a
+ * battery is flat.
  */
 export default function DoorScannerPage() {
   const params = useParams<{ eventId: string }>();
   const eventId = params.eventId;
 
-
   const [deviceLabel, setDeviceLabel] = useLocalStorage(DEVICE_LABEL_KEY);
   const [outcome, setOutcome] = useState<ScanOutcome | null>(null);
 
   const [lastLookup, setLastLookup] = useState<Lookup | null>(null);
-  const [mode, setMode] = useState<"scan" | "manual" | "list" | "sell">("scan");
+  const [mode, setMode] = useState<Mode>("scan");
 
   const utils = api.useUtils();
 
@@ -219,25 +268,20 @@ export default function DoorScannerPage() {
 
       <nav className="mt-4 grid grid-cols-4 gap-2">
         <ModeButton active={mode === "scan"} onClick={() => setMode("scan")}>
-          Scan
-        </ModeButton>
-        <ModeButton
-          active={mode === "manual"}
-          onClick={() => setMode("manual")}
-        >
-          <Keyboard className="size-4" aria-hidden /> Manual
+          <ScanLine className="size-4 shrink-0" aria-hidden /> Scan
         </ModeButton>
         <ModeButton active={mode === "list"} onClick={() => setMode("list")}>
-          <Users className="size-4" aria-hidden /> List
+          <Users className="size-4 shrink-0" aria-hidden /> List
         </ModeButton>
         <ModeButton active={mode === "sell"} onClick={() => setMode("sell")}>
-          <Banknote className="size-4" aria-hidden /> Sell
+          <Banknote className="size-4 shrink-0" aria-hidden /> Sell
         </ModeButton>
+        <MoreMenu mode={mode} onSelect={setMode} />
       </nav>
 
       <div className="mt-4">
         {mode === "scan" && (
-          <>
+          <div className="space-y-4">
             {/* Also paused while a scan is in flight: the result isn't on
                 screen yet, and a second code entering the frame in that
                 window would queue a scan nobody asked for. */}
@@ -245,15 +289,13 @@ export default function DoorScannerPage() {
               onScan={handleScan}
               paused={outcome !== null || scan.isPending}
             />
-            <DeviceLabelField value={deviceLabel} onChange={setDeviceLabel} />
-          </>
-        )}
-
-        {mode === "manual" && (
-          <ManualEntry
-            pending={manual.isPending}
-            onSubmit={(ticketNumber) => admitByNumber(ticketNumber)}
-          />
+            <ManualEntryPanel
+              pending={manual.isPending}
+              submitLabel="Check in"
+              pendingLabel="Checking…"
+              onSubmit={(ticketNumber) => admitByNumber(ticketNumber)}
+            />
+          </div>
         )}
 
         {mode === "list" && (
@@ -286,6 +328,20 @@ export default function DoorScannerPage() {
             }}
           />
         )}
+
+        {mode === "check" && (
+          <CheckPanel eventId={eventId} timezone={event.timezone} />
+        )}
+
+        {mode === "settings" && (
+          <SettingsPanel
+            deviceLabel={deviceLabel}
+            onDeviceLabelChange={setDeviceLabel}
+            isManager={isManager}
+            isR18={event.isR18}
+            reentryAllowed={event.reentryAllowed}
+          />
+        )}
       </div>
 
       {outcome && (
@@ -312,6 +368,14 @@ export default function DoorScannerPage() {
   );
 }
 
+function modeButtonClass(active: boolean): string {
+  return `flex h-12 items-center justify-center gap-1.5 border-2 px-1 text-sm font-medium transition-colors ${
+    active
+      ? "border-white bg-white text-black"
+      : "border-white/15 text-white/60"
+  }`;
+}
+
 function ModeButton({
   active,
   onClick,
@@ -322,89 +386,156 @@ function ModeButton({
   children: React.ReactNode;
 }) {
   return (
+    <button type="button" onClick={onClick} className={modeButtonClass(active)}>
+      {children}
+    </button>
+  );
+}
+
+/**
+ * The fourth button, which is a menu.
+ *
+ * When one of its modes is open the button wears that mode's name, so the tab
+ * row still answers "where am I" at a glance rather than reading "More" while
+ * a different screen is up.
+ */
+function MoreMenu({
+  mode,
+  onSelect,
+}: {
+  mode: Mode;
+  onSelect: (mode: Mode) => void;
+}) {
+  const active = EXTRA_MODES.find((entry) => entry.value === mode) ?? null;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger className={modeButtonClass(active !== null)}>
+        <span className="min-w-0 truncate">{active?.short ?? "More"}</span>
+        <ChevronDown className="size-3.5 shrink-0 opacity-60" aria-hidden />
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent
+        align="end"
+        className="w-64 rounded-none border-2 border-white/20 bg-neutral-900 p-0 text-white"
+      >
+        {EXTRA_MODES.map((entry) => (
+          <DropdownMenuItem
+            key={entry.value}
+            onSelect={() => onSelect(entry.value)}
+            className="flex-col items-start gap-0.5 rounded-none px-4 py-3.5 focus:bg-white focus:text-black"
+          >
+            <span className="flex items-center gap-2 text-base font-semibold">
+              <entry.icon className="size-4 text-current" aria-hidden />
+              {entry.label}
+            </span>
+            <span className="pl-6 text-xs opacity-60">{entry.hint}</span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/**
+ * The things you set once, before the doors open.
+ *
+ * Out of the way of the queue on purpose: the scanner name is typed at the
+ * start of a shift and never again, and a text field that lives under the
+ * camera is a text field somebody's thumb finds at the worst moment.
+ */
+function SettingsPanel({
+  deviceLabel,
+  onDeviceLabelChange,
+  isManager,
+  isR18,
+  reentryAllowed,
+}: {
+  deviceLabel: string;
+  onDeviceLabelChange: (value: string) => void;
+  isManager: boolean;
+  isR18: boolean;
+  reentryAllowed: boolean;
+}) {
+  return (
+    <div className="space-y-6">
+      <label className="block">
+        <span className="text-sm font-medium">Scanner name</span>
+        <span className="mt-1 block text-xs text-white/40">
+          Recorded against every scan this phone takes, and shown to the next
+          person who looks the ticket up. &ldquo;Front door&rdquo;, &ldquo;Side
+          gate&rdquo;, &ldquo;Sam&apos;s phone&rdquo;.
+        </span>
+        <Input
+          value={deviceLabel}
+          onChange={(e) => onDeviceLabelChange(e.target.value)}
+          placeholder="Front door"
+          maxLength={60}
+          className="mt-2 h-12 bg-white/5"
+        />
+        <span className="mt-1.5 block text-xs text-white/40">
+          Kept on this phone until you change it.
+        </span>
+      </label>
+
+      {/* The failure mode this prevents is a phone that came out of a pocket
+          on silent, whose holder then spends an hour not noticing the ones
+          that came back red. */}
+      <div className="border-t-2 border-white/10 pt-5">
+        <p className="text-sm font-medium">Sound and buzz</p>
+        <p className="mt-1 text-xs text-white/40">
+          Play each one now, before there&apos;s a queue. If you hear nothing,
+          the phone is on silent.
+        </p>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <FeedbackTest tone="success">In</FeedbackTest>
+          <FeedbackTest tone="warn">Already in</FeedbackTest>
+          <FeedbackTest tone="error">No</FeedbackTest>
+        </div>
+      </div>
+
+      <dl className="space-y-2 border-t-2 border-white/10 pt-5 text-sm">
+        <SettingRow label="You are" value={isManager ? "Manager" : "Scanner"} />
+        <SettingRow
+          label="Overrides"
+          value={isManager ? "You can override" : "Ask a manager"}
+        />
+        <SettingRow
+          label="Re-entry"
+          value={reentryAllowed ? "Allowed" : "No"}
+        />
+        <SettingRow label="R18" value={isR18 ? "Check ID" : "No"} />
+      </dl>
+    </div>
+  );
+}
+
+function FeedbackTest({
+  tone,
+  children,
+}: {
+  tone: "success" | "warn" | "error";
+  children: React.ReactNode;
+}) {
+  return (
     <button
       type="button"
-      onClick={onClick}
-      className={`flex h-12 items-center justify-center gap-1.5 border-2 text-sm font-medium transition-colors ${
-        active
-          ? "border-white bg-white text-black"
-          : "border-white/15 text-white/60"
-      }`}
+      onClick={() => {
+        unlockAudio();
+        playFeedback(tone);
+      }}
+      className="flex h-12 items-center justify-center border-2 border-white/15 px-1 text-sm font-medium text-white/70 transition-colors active:bg-white active:text-black"
     >
       {children}
     </button>
   );
 }
 
-function DeviceLabelField({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-}) {
+function SettingRow({ label, value }: { label: string; value: string }) {
   return (
-    <label className="mt-4 block">
-      <span className="text-xs text-white/40">
-        This device — shows on every scan you take
-      </span>
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Front door"
-        className="mt-1.5 h-12 bg-white/5"
-      />
-    </label>
-  );
-}
-
-function ManualEntry({
-  pending,
-  onSubmit,
-}: {
-  pending: boolean;
-  onSubmit: (ticketNumber: string) => void;
-}) {
-  const [value, setValue] = useState("");
-
-  return (
-    <form
-      className="space-y-4"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (!value.trim()) return;
-        onSubmit(value.trim());
-        setValue("");
-      }}
-    >
-      <div>
-        <label htmlFor="ticket-number" className="text-sm text-white/60">
-          Ticket number
-        </label>
-        <Input
-          id="ticket-number"
-          value={value}
-          onChange={(e) => setValue(e.target.value.toUpperCase())}
-          placeholder="ATM-4F7K2X-01"
-          autoCapitalize="characters"
-          autoComplete="off"
-          spellCheck={false}
-          className="mt-1.5 h-14 bg-white/5 text-center font-mono text-lg tracking-wider"
-        />
-        <p className="mt-2 text-xs text-white/40">
-          It&apos;s printed under the QR code on their ticket and in their
-          email.
-        </p>
-      </div>
-
-      <Button
-        type="submit"
-        size="lg"
-        className="h-14 w-full text-base"
-        disabled={pending || !value.trim()}
-      >
-        {pending ? "Checking…" : "Check in"}
-      </Button>
-    </form>
+    <div className="flex items-baseline justify-between gap-4">
+      <dt className="shrink-0 text-white/50">{label}</dt>
+      <dd className="truncate text-right">{value}</dd>
+    </div>
   );
 }

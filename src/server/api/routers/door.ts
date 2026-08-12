@@ -16,6 +16,7 @@ import {
   admissionStates,
   admittedCount,
   denyTicket,
+  inspectTicket,
   scanTicket,
   ticketState,
 } from "~/server/ticketing/scan";
@@ -285,6 +286,44 @@ export const doorRouter = createTRPCRouter({
       });
 
       return { ...outcome, admitted: await admittedCount(input.eventId) };
+    }),
+
+  /**
+   * Look a ticket up without admitting anybody.
+   *
+   * The question staff ask when there's an argument rather than a queue: is
+   * this real, has it been used, did somebody already knock this person back.
+   * Scanning to find out is not an option — it would admit them, or burn the
+   * ticket as a duplicate, on the way to answering.
+   *
+   * Read-only on purpose. Nothing is written, so a check can be run as many
+   * times as it takes without appearing in the history it is showing.
+   */
+  checkTicket: doorProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        lookup: z.discriminatedUnion("kind", [
+          z.object({
+            kind: z.literal("token"),
+            token: z.string().min(1).max(400),
+          }),
+          z.object({
+            kind: z.literal("ticketNumber"),
+            ticketNumber: z.string().trim().min(3).max(40),
+          }),
+        ]),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
+
+      return inspectTicket({ eventId: input.eventId, lookup: input.lookup });
     }),
 
   /**

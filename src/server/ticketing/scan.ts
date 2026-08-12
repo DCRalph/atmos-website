@@ -1,6 +1,7 @@
 import "server-only";
 
 import {
+  type PaymentMethodKind,
   type TicketAccessLevel,
   type TicketDenyReason,
   TicketOrderStatus,
@@ -653,9 +654,18 @@ export type AdmissionState = { admittedAt: Date | null; deniedAt: Date | null };
  *
  * `rows` must be newest-first.
  */
-export function reduceAdmissionState(
-  rows: { result: TicketScanResult; createdAt: Date }[],
-): AdmissionState {
+export function reduceAdmissionState<
+  T extends { result: TicketScanResult; createdAt: Date },
+>(
+  rows: T[],
+): AdmissionState & {
+  /** The admission that stands, if any — the row behind `admittedAt`. */
+  admission: T | null;
+  /** The refusal that stands, if any — the row behind `deniedAt`. */
+  denial: T | null;
+  /** Admissions since the last revert. Two or more means they re-entered. */
+  admissionCount: number;
+} {
   const admitting = new Set<TicketScanResult>(ADMITTING_RESULTS);
 
   const admissions = rows.filter((row) => admitting.has(row.result));
@@ -675,6 +685,9 @@ export function reduceAdmissionState(
   return {
     admittedAt: latest?.createdAt ?? null,
     deniedAt: denialStands && denial ? denial.createdAt : null,
+    admission: latest,
+    denial: denialStands ? denial : null,
+    admissionCount: live.length,
   };
 }
 
@@ -724,6 +737,323 @@ export async function admissionStates(
   }
 
   return states;
+}
+
+/** Where a check landed, in the terms a door thinks in. */
+export type TicketCheckVerdict = "OK" | "ALREADY_IN" | "REFUSED" | "NOT_VALID";
+
+/** One row of a ticket's scan log, ready to read. */
+export type TicketScanHistoryEntry = {
+  id: string;
+  result: TicketScanResult;
+  at: Date;
+  scannedByName: string | null;
+  deviceLabel: string | null;
+  wasOverride: boolean;
+  denyReason: TicketDenyReason | null;
+  denyNote: string | null;
+};
+
+export type TicketCheck = {
+  found: boolean;
+  verdict: TicketCheckVerdict;
+  /** The result a scan would produce right now, decided by the same rules. */
+  wouldScanAs: TicketScanResult;
+  /** Two or three words, big, at the top. */
+  headline: string;
+  /** The sentence under it. Never contains a time — those go stale. */
+  detail: string;
+  ticket:
+    | (NonNullable<ScanOutcome["ticket"]> & {
+        status: TicketStatus;
+        paymentMethod: PaymentMethodKind;
+      })
+    | null;
+  admittedAt: Date | null;
+  admittedBy: string | null;
+  admittedDevice: string | null;
+  admissionCount: number;
+  /** The refusal standing against this ticket right now, if any. */
+  denial: PreviousDenial | null;
+  /** Every refusal ever recorded against it, standing or since overruled. */
+  refusalCount: number;
+  /** Newest first, trimmed for the wire. */
+  history: TicketScanHistoryEntry[];
+  /** How many scans exist in total, which `history` may be a slice of. */
+  scanCount: number;
+  isR18: boolean;
+  reentryAllowed: boolean;
+};
+
+/** A ticket's history is bounded by human behaviour; this is just a backstop. */
+const CHECK_HISTORY_LIMIT = 50;
+
+/**
+ * Read a ticket without touching it.
+ *
+ * Every other path in this file writes a `TicketScan` row — that is what they
+ * are for. A check must not: it would put rows into the very history it exists
+ * to show, and a "did this get used?" would start counting as a use. So this
+ * reads and returns, and nothing anywhere moves.
+ *
+ * The verdict runs the checks in the same order `scanTicket` applies them and
+ * is phrased as the result a scan *would* produce, so the door can never be
+ * told a ticket is fine here and watch it come back red a moment later.
+ */
+export async function inspectTicket({
+  eventId,
+  lookup,
+}: {
+  eventId: string;
+  lookup:
+    | { kind: "token"; token: string }
+    | { kind: "ticketNumber"; ticketNumber: string };
+}): Promise<TicketCheck> {
+  const nothing = (headline: string, detail: string): TicketCheck => ({
+    found: false,
+    verdict: "NOT_VALID",
+    wouldScanAs: TicketScanResult.NOT_FOUND,
+    headline,
+    detail,
+    ticket: null,
+    admittedAt: null,
+    admittedBy: null,
+    admittedDevice: null,
+    admissionCount: 0,
+    denial: null,
+    refusalCount: 0,
+    history: [],
+    scanCount: 0,
+    isR18: false,
+    reentryAllowed: false,
+  });
+
+  const parsed =
+    lookup.kind === "token" ? parseTicketToken(lookup.token) : null;
+  const ticketNumber =
+    lookup.kind === "ticketNumber" ? lookup.ticketNumber.toUpperCase() : null;
+
+  const where = parsed
+    ? { id: parsed.ticketId }
+    : ticketNumber
+      ? { ticketNumber }
+      : null;
+
+  if (!where) {
+    return nothing(
+      "Not an Atmos ticket",
+      "That code isn't one of ours. It might be a pass for another event, or any other QR code entirely.",
+    );
+  }
+
+  const ticket = await db.ticket.findUnique({
+    where,
+    include: {
+      tier: { select: { name: true } },
+      event: { select: { id: true, isR18: true, reentryAllowed: true } },
+      order: {
+        select: {
+          orderNumber: true,
+          status: true,
+          buyerName: true,
+          buyerEmail: true,
+          paymentMethod: true,
+          _count: { select: { tickets: true } },
+        },
+      },
+    },
+  });
+
+  if (!ticket) {
+    return nothing(
+      "No such ticket",
+      ticketNumber
+        ? `Nothing on record for ${ticketNumber}. Worth a second look for a typo — 0 and O are the usual one.`
+        : "This code doesn't match any ticket we've issued.",
+    );
+  }
+
+  const [position, scans] = await Promise.all([
+    db.ticket.count({
+      where: {
+        orderId: ticket.orderId,
+        ticketNumber: { lte: ticket.ticketNumber },
+      },
+    }),
+    // Uncapped: the state below is derived from these rows, and a `take` that
+    // cut off an old admission would quietly change the answer.
+    db.ticketScan.findMany({
+      where: { ticketId: ticket.id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        result: true,
+        createdAt: true,
+        deviceLabel: true,
+        wasOverride: true,
+        denyReason: true,
+        denyNote: true,
+        scannedByUserId: true,
+      },
+    }),
+  ]);
+
+  const staffIds = [
+    ...new Set(
+      scans
+        .map((scan) => scan.scannedByUserId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const staff = await db.user.findMany({
+    where: { id: { in: staffIds } },
+    select: { id: true, name: true },
+  });
+  const nameById = new Map(staff.map((user) => [user.id, user.name]));
+  const nameOf = (userId: string | null) =>
+    userId ? (nameById.get(userId) ?? null) : null;
+
+  const state = reduceAdmissionState(scans);
+
+  const info: NonNullable<TicketCheck["ticket"]> = {
+    id: ticket.id,
+    ticketNumber: ticket.ticketNumber,
+    tierName: ticketTypeName(ticket),
+    accessLevel: ticket.accessLevel,
+    attendeeName: ticket.attendeeName,
+    buyerName: ticket.order.buyerName,
+    buyerEmail: ticket.order.buyerEmail,
+    orderNumber: ticket.order.orderNumber,
+    isComp: ticket.isComp,
+    invitedByName: ticket.invitedByName,
+    nameLocked: ticket.nameLockedAt !== null,
+    positionInOrder: ticket.hostTicketId
+      ? `handout ${position - 1} of ${ticket.order._count.tickets - 1}`
+      : `${position} of ${ticket.order._count.tickets}`,
+    status: ticket.status,
+    paymentMethod: ticket.order.paymentMethod,
+  };
+
+  const verdict = ((): Pick<
+    TicketCheck,
+    "verdict" | "wouldScanAs" | "headline" | "detail"
+  > => {
+    // A code that no longer matches the ticket it names — reissued, transferred,
+    // or forged. Checked first, exactly as a scan checks it first.
+    if (parsed && !verifyTicketToken(parsed, ticket)) {
+      return {
+        verdict: "NOT_VALID",
+        wouldScanAs: TicketScanResult.INVALID_SIGNATURE,
+        headline: "Code doesn't check out",
+        detail:
+          "This QR was replaced, so they're holding an old copy. Their ticket may still be fine — look it up by name on the list.",
+      };
+    }
+    if (ticket.eventId !== eventId) {
+      return {
+        verdict: "NOT_VALID",
+        wouldScanAs: TicketScanResult.WRONG_EVENT,
+        headline: "Wrong event",
+        detail: "This is a real ticket, but it's for a different night.",
+      };
+    }
+    if (ticket.status === TicketStatus.REFUNDED) {
+      return {
+        verdict: "NOT_VALID",
+        wouldScanAs: TicketScanResult.REFUNDED_TICKET,
+        headline: "Refunded",
+        detail: "The money went back, so this ticket no longer gets them in.",
+      };
+    }
+    if (ticket.status === TicketStatus.VOID) {
+      return {
+        verdict: "NOT_VALID",
+        wouldScanAs: TicketScanResult.VOIDED,
+        headline: "Cancelled",
+        detail: "This ticket was cancelled and won't scan.",
+      };
+    }
+    if (ticket.order.status !== TicketOrderStatus.PAID) {
+      return {
+        verdict: "NOT_VALID",
+        wouldScanAs: TicketScanResult.ORDER_UNPAID,
+        headline: "Not paid for",
+        detail:
+          "The order behind this ticket never completed. Nothing was charged.",
+      };
+    }
+    if (state.denial) {
+      return {
+        verdict: "REFUSED",
+        wouldScanAs: TicketScanResult.PREVIOUSLY_DENIED,
+        headline: "Refused",
+        detail:
+          "Somebody on the door turned this person away, and that stands until a manager overrides it.",
+      };
+    }
+    if (state.admission) {
+      if (ticket.event.reentryAllowed) {
+        return {
+          verdict: "OK",
+          wouldScanAs: TicketScanResult.REENTRY,
+          headline: "Valid — already inside",
+          detail:
+            "Re-entry is on for this event, so this ticket still scans clean.",
+        };
+      }
+      return {
+        verdict: "ALREADY_IN",
+        wouldScanAs: TicketScanResult.DUPLICATE,
+        headline: "Already used",
+        detail:
+          "Someone came in on this ticket. Scanning it now would be refused unless a manager overrides it.",
+      };
+    }
+    return {
+      verdict: "OK",
+      wouldScanAs: TicketScanResult.ADMITTED,
+      headline: "Valid",
+      detail: "Not used yet. Scanning this would let them in.",
+    };
+  })();
+
+  return {
+    ...verdict,
+    found: true,
+    ticket: info,
+    admittedAt: state.admittedAt,
+    admittedBy: nameOf(state.admission?.scannedByUserId ?? null),
+    admittedDevice: state.admission?.deviceLabel ?? null,
+    admissionCount: state.admissionCount,
+    denial: state.denial
+      ? {
+          at: state.denial.createdAt,
+          reason: state.denial.denyReason,
+          note: state.denial.denyNote,
+          deviceLabel: state.denial.deviceLabel,
+          scannedByName: nameOf(state.denial.scannedByUserId),
+        }
+      : null,
+    // Every refusal, not just the one standing: "was this person ever knocked
+    // back" is a different question from "are they barred right now", and the
+    // door asks both.
+    refusalCount: scans.filter(
+      (scan) => scan.result === TicketScanResult.DENIED,
+    ).length,
+    history: scans.slice(0, CHECK_HISTORY_LIMIT).map((scan) => ({
+      id: scan.id,
+      result: scan.result,
+      at: scan.createdAt,
+      scannedByName: nameOf(scan.scannedByUserId),
+      deviceLabel: scan.deviceLabel,
+      wasOverride: scan.wasOverride,
+      denyReason: scan.denyReason,
+      denyNote: scan.denyNote,
+    })),
+    scanCount: scans.length,
+    isR18: ticket.event.isR18,
+    reentryAllowed: ticket.event.reentryAllowed,
+  };
 }
 
 /** Live admitted count for an event, respecting reverts. */
