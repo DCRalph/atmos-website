@@ -1219,3 +1219,36 @@ export async function admittedCount(eventId: string): Promise<number> {
   `;
   return Number(rows[0]?.count ?? 0);
 }
+
+/**
+ * How many people came in and have since gone.
+ *
+ * The mirror of `admittedCount`, and it exists because that number alone
+ * cannot tell a difference that matters on the night: a room reading 300 of
+ * 500 is a very different evening depending on whether the other 200 never
+ * turned up or have already left. Departures are invisible in the headcount by
+ * design — the whole point is that they are not inside.
+ *
+ * A departure only stands while it is the last word on that ticket. Scanning
+ * back in makes them present again, so a later admission cancels it; a later
+ * `ADMISSION_REVERTED` cancels it too, for the different reason that the
+ * admission it ended is now saying it never counted, which leaves nothing to
+ * have departed from.
+ */
+export async function departedCount(eventId: string): Promise<number> {
+  const rows = await db.$queryRaw<{ count: bigint }[]>`
+    SELECT COUNT(DISTINCT s."ticketId")::bigint AS count
+    FROM "ticket_scan" s
+    WHERE s."eventId" = ${eventId}
+      AND s."result" = 'DEPARTED'
+      AND NOT EXISTS (
+        SELECT 1 FROM "ticket_scan" r
+        WHERE r."ticketId" = s."ticketId"
+          AND r."result" IN (
+            'ADMITTED', 'OVERRIDE_ADMITTED', 'REENTRY', 'ADMISSION_REVERTED'
+          )
+          AND r."createdAt" > s."createdAt"
+      )
+  `;
+  return Number(rows[0]?.count ?? 0);
+}

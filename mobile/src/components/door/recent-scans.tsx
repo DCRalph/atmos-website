@@ -7,30 +7,10 @@ import { labelArg, useDeviceLabel } from "@/lib/device-label";
 import { colors, radius, space, stroke } from "@/lib/theme";
 import { formatTimeAgo } from "@/lib/dates";
 import { denyReasonLabel } from "~/lib/ticketing/deny-reasons";
+import { scanResultShort } from "~/lib/ticketing/scan-results";
+import { scanToneColor } from "@/lib/scan-tone";
 import { Body, Caption, Eyebrow } from "@/components/ui";
 import { PersonSheet } from "@/components/door/person-sheet";
-
-/** Scan results that mean the person got in. */
-const ADMITTING = new Set(["ADMITTED", "OVERRIDE_ADMITTED", "REENTRY"]);
-
-/** Plain wording, so a row reads without decoding an enum. */
-const LABELS: Record<string, string> = {
-  ADMITTED: "Admitted",
-  REENTRY: "Re-entry",
-  OVERRIDE_ADMITTED: "Let in anyway",
-  DUPLICATE: "Already in",
-  ADMISSION_REVERTED: "Admission undone",
-  DENIAL_REVERTED: "Refusal taken back",
-  NOTE: "Note",
-  DENIED: "Refused",
-  PREVIOUSLY_DENIED: "Scanned while refused",
-  INVALID_SIGNATURE: "Code did not verify",
-  NOT_FOUND: "Unknown code",
-  WRONG_EVENT: "Another event",
-  VOIDED: "Void ticket",
-  REFUNDED_TICKET: "Refunded ticket",
-  ORDER_UNPAID: "Order unpaid",
-};
 
 /**
  * The last few scans, under the camera.
@@ -102,9 +82,11 @@ export function RecentScans({
       ) : (
         <View style={styles.list}>
           {rows.map((scan) => {
-            const good = ADMITTING.has(scan.result);
-            const refused =
-              scan.result === "DENIED" || scan.result === "PREVIOUSLY_DENIED";
+            // Grouped by what it meant for the person holding the ticket, from
+            // the same table the web feed reads — so a result added to the
+            // enum gets a colour on both at once, rather than silently
+            // landing in whichever branch the local ternary ended on.
+            const dotColor = scanToneColor(scan.result);
             return (
               <View key={scan.id} style={styles.row}>
                 <Pressable
@@ -115,16 +97,7 @@ export function RecentScans({
                   style={styles.rowMain}
                 >
                   <View
-                    style={[
-                      styles.dot,
-                      {
-                        backgroundColor: good
-                          ? colors.in
-                          : refused
-                            ? colors.deny
-                            : colors.warn,
-                      },
-                    ]}
+                    style={[styles.dot, { backgroundColor: dotColor }]}
                   />
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Body numberOfLines={1} style={{ fontSize: 14 }}>
@@ -134,7 +107,7 @@ export function RecentScans({
                     </Body>
                     <Caption numberOfLines={1}>
                       {[
-                        LABELS[scan.result] ?? scan.result,
+                        scanResultShort(scan.result),
                         scan.denyReason
                           ? denyReasonLabel(scan.denyReason)
                           : null,

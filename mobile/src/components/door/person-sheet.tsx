@@ -12,6 +12,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api, type RouterOutputs } from "@/lib/api";
 import { denyReasonLabel } from "~/lib/ticketing/deny-reasons";
+import { scanResultLabel } from "~/lib/ticketing/scan-results";
+import { scanToneColor } from "@/lib/scan-tone";
 import { labelArg, useDeviceLabel } from "@/lib/device-label";
 import { colors, radius, space } from "@/lib/theme";
 import { formatTimeAgo } from "@/lib/dates";
@@ -41,7 +43,13 @@ export function PersonSheet({
 }) {
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<
-    "detail" | "party" | "deny" | "history" | "note"
+    | "detail"
+    | "party"
+    | "deny"
+    | "history"
+    | "note"
+    | "confirm-revert"
+    | "confirm-leave"
   >("detail");
   const detail = api.door.ticketDetail.useQuery({ eventId, ticketId });
   const utils = api.useUtils();
@@ -82,6 +90,28 @@ export function PersonSheet({
       void utils.door.doorList.invalidate();
       void utils.door.summary.invalidate();
       void utils.door.orderTickets.invalidate();
+      void utils.door.recentScans.invalidate();
+      setStep("detail");
+    },
+  });
+
+  /**
+   * Watching somebody leave.
+   *
+   * Not an undo, and the confirmation screen behind it exists to keep the two
+   * apart: both drop the headcount by one, and on a phone they sit one above
+   * the other in the same stack. The difference is the record — this leaves
+   * the admission standing and says it is over, so their ticket scans clean on
+   * the way back in even where re-entry is switched off.
+   */
+  const depart = api.door.markDeparted.useMutation({
+    onSuccess: () => {
+      void utils.door.ticketDetail.invalidate();
+      void utils.door.doorList.invalidate();
+      void utils.door.summary.invalidate();
+      void utils.door.orderTickets.invalidate();
+      void utils.door.recentScans.invalidate();
+      setStep("detail");
     },
   });
 
@@ -141,6 +171,30 @@ export function PersonSheet({
                 deviceLabel: labelArg(deviceLabel),
               })
             }
+          />
+        ) : step === "confirm-revert" ? (
+          <ConfirmScreen
+            tint={colors.warn}
+            heading="Undo admission?"
+            body={`${personName(person) ?? person.ticketNumber} goes back to not having arrived, and the headcount drops by one. Their ticket will scan clean again.`}
+            footnote="Use this for a mis-scan, not to turn somebody away — refusing entry keeps a reason on the ticket."
+            confirmLabel={revert.isPending ? "Undoing…" : "Yes, undo it"}
+            pending={revert.isPending}
+            onConfirm={() => revert.mutate({ eventId, ticketId: person.id })}
+            onCancel={() => setStep("detail")}
+          />
+        ) : step === "confirm-leave" ? (
+          <ConfirmScreen
+            tint={colors.left}
+            heading="Mark as left?"
+            body={`${personName(person) ?? person.ticketNumber} comes off the headcount. Their ticket scans clean on the way back in${
+              person.reentryAllowed ? "" : ", even though re-entry is off"
+            }.`}
+            footnote="Their admission stays on record — this says they've gone, not that it never happened."
+            confirmLabel={depart.isPending ? "Marking…" : "Yes, they've left"}
+            pending={depart.isPending}
+            onConfirm={() => depart.mutate({ eventId, ticketId: person.id })}
+            onCancel={() => setStep("detail")}
           />
         ) : (
           <ScrollView contentContainerStyle={styles.body}>
@@ -209,6 +263,32 @@ export function PersonSheet({
                     {person.admittedBy
                       ? `by ${person.admittedBy}`
                       : "by an unknown scanner"}
+                    {person.admittedDevice ? ` on ${person.admittedDevice}` : ""}
+                  </Caption>
+                  {person.admissionCount > 1 ? (
+                    <Caption>
+                      {person.admissionCount} admissions on record
+                    </Caption>
+                  ) : null}
+                </View>
+              ) : person.departedAt ? (
+                /* Distinct from both "in" and "not arrived": they were here,
+                   and the ticket is expected to come back through the door. */
+                <View style={[styles.state, { borderColor: colors.left }]}>
+                  <Body style={{ color: colors.left, fontWeight: "700" }}>
+                    Left {formatTimeAgo(new Date(person.departedAt))}
+                  </Body>
+                  <Caption>
+                    {person.departedBy
+                      ? `marked out by ${person.departedBy}`
+                      : "marked out"}
+                  </Caption>
+                  <Caption>
+                    Was in{" "}
+                    {person.admissionCount === 1
+                      ? "once"
+                      : `${person.admissionCount} times`}
+                    . Their ticket scans clean on the way back.
                   </Caption>
                 </View>
               ) : (
@@ -231,14 +311,26 @@ export function PersonSheet({
           <View style={styles.actions}>
             {!isIn ? (
               <Button onPress={() => onAdmit(person.ticketNumber)}>
-                {person.denial ? "Admit anyway" : "Admit"}
+                {person.denial
+                  ? "Admit anyway"
+                  : person.departedAt
+                    ? "Back in"
+                    : "Admit"}
+              </Button>
+            ) : null}
+            {/* An ordinary action, not an exception: watching people leave is
+                the job, nothing is being overruled, and it is undone by
+                scanning them back in. Above "Undo admission" because it is the
+                one staff reach for far more often. */}
+            {isIn ? (
+              <Button onPress={() => setStep("confirm-leave")}>
+                Mark as left
               </Button>
             ) : null}
             {isIn && isManager ? (
               <Button
                 variant="outline"
-                loading={revert.isPending}
-                onPress={() => revert.mutate({ eventId, ticketId: person.id })}
+                onPress={() => setStep("confirm-revert")}
               >
                 Undo admission
               </Button>
@@ -351,13 +443,13 @@ function HistoryView({
 
       <View style={{ gap: space.sm }}>
         {timeline.map((entry) => {
-          const tone = SCAN_TONES[entry.result] ?? colors.textSoft;
+          const tone = scanToneColor(entry.result);
           return (
             <View key={entry.id} style={styles.historyRow}>
               <View style={[styles.historyDot, { backgroundColor: tone }]} />
               <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
                 <Body style={{ fontWeight: "700", color: tone }}>
-                  {SCAN_LABELS[entry.result] ?? entry.result}
+                  {scanResultLabel(entry.result)}
                 </Body>
                 {entry.reason ? (
                   <Caption>
@@ -380,42 +472,75 @@ function HistoryView({
 }
 
 /**
- * Colour and wording per scan result, so a log skims at a glance.
+ * A decision that drops the headcount, behind one deliberate tap.
  *
- * Every value of `TicketScanResult` is covered deliberately: an unmapped one
- * would surface the raw enum name to somebody working a door in the dark.
+ * Shared by "undo admission" and "mark as left" because the whole risk is that
+ * those two are confused for each other: same effect on the count, opposite
+ * meaning on the record. Each gets its own colour and its own sentence saying
+ * what it will leave behind.
  */
-const SCAN_TONES: Record<string, string> = {
-  ADMITTED: colors.in,
-  REENTRY: colors.in,
-  OVERRIDE_ADMITTED: colors.warn,
-  DUPLICATE: colors.warn,
-  ADMISSION_REVERTED: colors.warn,
-  DENIED: colors.deny,
-  PREVIOUSLY_DENIED: colors.deny,
-  INVALID_SIGNATURE: colors.deny,
-  NOT_FOUND: colors.deny,
-  WRONG_EVENT: colors.deny,
-  VOIDED: colors.deny,
-  REFUNDED_TICKET: colors.deny,
-  ORDER_UNPAID: colors.deny,
-};
+function ConfirmScreen({
+  tint,
+  heading,
+  body,
+  footnote,
+  confirmLabel,
+  pending,
+  onConfirm,
+  onCancel,
+}: {
+  tint: string;
+  heading: string;
+  body: string;
+  footnote: string;
+  confirmLabel: string;
+  pending: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const insets = useSafeAreaInsets();
 
-const SCAN_LABELS: Record<string, string> = {
-  ADMITTED: "Admitted",
-  REENTRY: "Re-entry",
-  OVERRIDE_ADMITTED: "Let in anyway",
-  DUPLICATE: "Already in — turned back",
-  ADMISSION_REVERTED: "Admission undone",
-  DENIED: "Refused",
-  PREVIOUSLY_DENIED: "Scanned while refused",
-  INVALID_SIGNATURE: "Code did not verify",
-  NOT_FOUND: "Unknown code",
-  WRONG_EVENT: "Ticket for another event",
-  VOIDED: "Void ticket",
-  REFUNDED_TICKET: "Refunded ticket",
-  ORDER_UNPAID: "Order unpaid",
-};
+  return (
+    // Its own modal, as `DenySheet` is, so the colour reaches the edges of the
+    // screen. Nested inside the person sheet it would sit within that sheet's
+    // safe-area padding and read as a panel with black bands, which is not the
+    // "stop and look at this" a headcount change wants.
+    <Modal visible animationType="slide" transparent={false}>
+      <View
+        style={[
+          styles.confirm,
+          {
+            backgroundColor: tint,
+            paddingTop: insets.top,
+            paddingBottom: insets.bottom,
+          },
+        ]}
+      >
+        <View style={styles.confirmBody}>
+          <Text style={styles.confirmHeading}>{heading}</Text>
+          <Text style={styles.confirmText}>{body}</Text>
+          <Text style={styles.confirmFootnote}>{footnote}</Text>
+        </View>
+        <View style={styles.confirmActions}>
+          <Button variant="outline" loading={pending} onPress={onConfirm}>
+            {confirmLabel}
+          </Button>
+          {/* Last and harmless, as everywhere else on the door. */}
+          <Button onPress={onCancel} disabled={pending}>
+            Cancel
+          </Button>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+/** The name to put in a sentence, or null when the ticket has none. */
+function personName(
+  person: NonNullable<RouterOutputs["door"]["ticketDetail"]>,
+): string | null {
+  return person.attendeeName ?? person.buyerName ?? null;
+}
 
 /** The rest of the order — who else is on it, and are they in yet. */
 function PartyView({
@@ -590,5 +715,38 @@ const styles = StyleSheet.create({
     gap: space.sm,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+  },
+  confirm: { flex: 1 },
+  confirmActions: {
+    padding: space.lg,
+    paddingBottom: space.xxl,
+    gap: space.sm,
+  },
+  confirmBody: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: space.xl,
+    gap: space.md,
+  },
+  confirmHeading: {
+    color: "#fff",
+    fontSize: 30,
+    fontWeight: "900",
+    letterSpacing: -0.8,
+    textAlign: "center",
+  },
+  confirmText: {
+    color: "rgba(255,255,255,0.92)",
+    fontSize: 16,
+    textAlign: "center",
+    maxWidth: 380,
+  },
+  confirmFootnote: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 13,
+    textAlign: "center",
+    maxWidth: 380,
+    marginTop: space.md,
   },
 });

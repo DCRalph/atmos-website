@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { api } from "~/trpc/react";
 import { formatTimeAgo } from "~/lib/ticketing/dates";
+import { paymentMethodLabel } from "~/lib/ticketing/payment-methods";
 import type { DenyReasonValue } from "~/lib/ticketing/deny-reasons";
 import {
   AccessBadge,
@@ -246,7 +247,7 @@ export function PersonSheet({
           {person.buyerEmail && <Row label="Email" value={person.buyerEmail} />}
           <Row
             label="Paid by"
-            value={person.isComp ? "Comp" : paymentLabel(person.paymentMethod)}
+            value={person.isComp ? "Comp" : paymentMethodLabel(person.paymentMethod)}
           />
         </dl>
 
@@ -383,17 +384,3 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-function paymentLabel(method: string): string {
-  switch (method) {
-    case "CASH":
-      return "Cash at the door";
-    case "TERMINAL":
-      return "Card at the door";
-    case "COMP":
-      return "Comp";
-    case "FREE":
-      return "Free ticket";
-    default:
-      return "Online";
-  }
-}

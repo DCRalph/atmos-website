@@ -279,20 +279,32 @@ export function ScanResult({
   );
 }
 
+/**
+ * Colour and verdict word per result, matching the web scanner case for case.
+ *
+ * Keyed off `result` rather than the `admit` flag, which is what previously let
+ * `PREVIOUSLY_DENIED` fall through to a bare "NO" — hiding the one fact that
+ * decides what happens next, that somebody has already turned this person away.
+ * A re-entry gets its own colour for the same reason it does on the web: it is
+ * neither a fresh admission nor a problem, and staff read the colour before
+ * they read the word.
+ */
 function toneFor(outcome: ScanOutcome): { bg: string; heading: string } {
-  if (outcome.admit) {
-    return {
-      bg: "#047857",
-      heading: outcome.result === "REENTRY" ? "BACK IN" : "IN",
-    };
+  switch (outcome.result) {
+    case "ADMITTED":
+    case "OVERRIDE_ADMITTED":
+      return { bg: "#047857", heading: "IN" };
+    case "REENTRY":
+      return { bg: "#0284C7", heading: "RE-ENTRY" };
+    case "DUPLICATE":
+      return { bg: "#B45309", heading: "ALREADY ADMITTED" };
+    case "DENIED":
+      return { bg: "#B91C1C", heading: "REFUSED" };
+    case "PREVIOUSLY_DENIED":
+      return { bg: "#B91C1C", heading: "REFUSED EARLIER" };
+    default:
+      return { bg: "#7F1D1D", heading: "NO ENTRY" };
   }
-  if (outcome.result === "DUPLICATE") {
-    return { bg: "#B45309", heading: "ALREADY IN" };
-  }
-  if (outcome.result === "DENIED") {
-    return { bg: "#B91C1C", heading: "REFUSED" };
-  }
-  return { bg: "#7F1D1D", heading: "NO" };
 }
 
 const styles = StyleSheet.create({

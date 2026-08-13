@@ -7,7 +7,7 @@ import {
   TicketStatus,
 } from "~Prisma/client";
 import { createTRPCRouter, eventOrganiserProcedure } from "~/server/api/trpc";
-import { admittedCount } from "~/server/ticketing/scan";
+import { admittedCount, departedCount } from "~/server/ticketing/scan";
 import { compAccounting } from "~/server/ticketing/comps";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
 
@@ -244,12 +244,13 @@ export const ticketAnalyticsRouter = createTRPCRouter({
   live: eventOrganiserProcedure
     .input(z.object({ eventId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const [sold, admitted, arrivals, byStaff, recent, failures] =
+      const [sold, admitted, departed, arrivals, byStaff, recent, failures] =
         await Promise.all([
           ctx.db.ticket.count({
             where: { eventId: input.eventId, status: TicketStatus.VALID },
           }),
           admittedCount(input.eventId),
+          departedCount(input.eventId),
 
           // Five-minute arrival buckets for the last six hours.
           ctx.db.$queryRawUnsafe<{ bucket: Date; count: bigint }[]>(
@@ -355,7 +356,13 @@ export const ticketAnalyticsRouter = createTRPCRouter({
       return {
         sold,
         admitted,
-        notArrived: Math.max(0, sold - admitted),
+        departed,
+        /**
+         * Tickets that have never come through, as opposed to ones that have
+         * been and gone. `admitted` excludes departures, so subtracting it
+         * alone would count everyone who left as though they never arrived.
+         */
+        notArrived: Math.max(0, sold - admitted - departed),
         percentIn: sold > 0 ? Math.round((admitted / sold) * 100) : 0,
         arrivalsPerMinute: Number((recentArrivals / 15).toFixed(1)),
         arrivals: arrivalBuckets,

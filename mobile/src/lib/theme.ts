@@ -31,6 +31,17 @@ export const colors = {
   warnDim: "rgba(245,165,36,0.12)",
   deny: "#EF4444",
   denyDim: "rgba(239,68,68,0.12)",
+
+  /**
+   * Somebody who was in and has gone.
+   *
+   * Its own colour rather than a reuse of `warn`, because "left" is not an
+   * exception — it is the ordinary end of a normal night. It has to be
+   * distinguishable at arm's length from both the green of an admission and
+   * the amber of an override, which is what the web's sky-500 does.
+   */
+  left: "#38BDF8",
+  leftDim: "rgba(56,189,248,0.12)",
 } as const;
 
 export const space = {

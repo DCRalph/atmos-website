@@ -6,6 +6,8 @@ import { api } from "@/lib/api";
 import { colors, space, stroke } from "@/lib/theme";
 import { formatTimeAgo } from "@/lib/dates";
 import { denyReasonLabel } from "~/lib/ticketing/deny-reasons";
+import { scanResultLabel } from "~/lib/ticketing/scan-results";
+import { scanToneColor } from "@/lib/scan-tone";
 import { Body, Caption, Loading, Notice } from "@/components/ui";
 import { DoorHeader } from "@/components/door/door-header";
 import { PersonSheet } from "@/components/door/person-sheet";
@@ -26,43 +28,6 @@ const FILTERS = [
   ["overrides", "Overrides"],
   ["notes", "Notes"],
 ] as const;
-
-/** Wording and colour per result, matching the ticket's own history view. */
-const TONES: Record<string, string> = {
-  ADMITTED: colors.in,
-  REENTRY: colors.in,
-  OVERRIDE_ADMITTED: colors.warn,
-  DUPLICATE: colors.warn,
-  ADMISSION_REVERTED: colors.warn,
-  DENIAL_REVERTED: colors.warn,
-  NOTE: colors.textSoft,
-  DENIED: colors.deny,
-  PREVIOUSLY_DENIED: colors.deny,
-  INVALID_SIGNATURE: colors.deny,
-  NOT_FOUND: colors.deny,
-  WRONG_EVENT: colors.deny,
-  VOIDED: colors.deny,
-  REFUNDED_TICKET: colors.deny,
-  ORDER_UNPAID: colors.deny,
-};
-
-const LABELS: Record<string, string> = {
-  ADMITTED: "Admitted",
-  REENTRY: "Re-entry",
-  OVERRIDE_ADMITTED: "Let in anyway",
-  DUPLICATE: "Already in — turned back",
-  ADMISSION_REVERTED: "Admission undone",
-  DENIAL_REVERTED: "Refusal taken back",
-  NOTE: "Note",
-  DENIED: "Refused",
-  PREVIOUSLY_DENIED: "Scanned while refused",
-  INVALID_SIGNATURE: "Code did not verify",
-  NOT_FOUND: "Unknown code",
-  WRONG_EVENT: "Ticket for another event",
-  VOIDED: "Void ticket",
-  REFUNDED_TICKET: "Refunded ticket",
-  ORDER_UNPAID: "Order unpaid",
-};
 
 export default function ActivityScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -121,7 +86,7 @@ export default function ActivityScreen() {
           />
         ) : (
           rows.map((row) => {
-            const tone = TONES[row.result] ?? colors.textSoft;
+            const tone = scanToneColor(row.result);
             const name =
               row.ticket?.attendeeName ?? row.ticket?.ticketNumber ?? null;
             return (
@@ -139,7 +104,7 @@ export default function ActivityScreen() {
                     numberOfLines={1}
                     style={{ fontWeight: "700", color: tone }}
                   >
-                    {LABELS[row.result] ?? row.result}
+                    {scanResultLabel(row.result)}
                     {name ? ` · ${name}` : ""}
                   </Body>
                   {row.reason || row.note ? (

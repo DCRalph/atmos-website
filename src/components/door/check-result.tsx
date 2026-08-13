@@ -9,6 +9,7 @@ import {
 } from "~/components/door/controls";
 import { TicketTimelineSection } from "~/components/door/ticket-timeline";
 import { formatTimeAgo } from "~/lib/ticketing/dates";
+import { paymentMethodLabel } from "~/lib/ticketing/payment-methods";
 import type { RouterOutputs } from "~/trpc/react";
 
 type TicketCheck = RouterOutputs["door"]["checkTicket"];
@@ -120,7 +121,7 @@ export function CheckResultScreen({
               <Row
                 label="Paid by"
                 value={
-                  ticket.isComp ? "Comp" : paymentLabel(ticket.paymentMethod)
+                  ticket.isComp ? "Comp" : paymentMethodLabel(ticket.paymentMethod)
                 }
               />
               <Row
@@ -251,19 +252,3 @@ function countLabel(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
 }
 
-function paymentLabel(method: string): string {
-  switch (method) {
-    case "CASH":
-      return "Cash at the door";
-    case "TERMINAL":
-      return "Card at the door";
-    case "TAP_TO_PAY":
-      return "Tap to pay at the door";
-    case "COMP":
-      return "Comp";
-    case "FREE":
-      return "Free ticket";
-    default:
-      return "Online";
-  }
-}

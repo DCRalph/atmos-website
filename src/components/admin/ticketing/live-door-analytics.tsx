@@ -9,6 +9,11 @@ import { Badge } from "~/components/ui/badge";
 import { Skeleton } from "~/components/ui/skeleton";
 import { BucketBarChart, StatTile } from "~/components/admin/ticketing/charts";
 import { formatEventTime, formatTimeAgo } from "~/lib/ticketing/dates";
+import {
+  SCAN_TONE_TEXT,
+  scanResultShort,
+  scanResultTone,
+} from "~/lib/ticketing/scan-results";
 
 export function LiveDoorAnalytics({
   eventId,
@@ -44,7 +49,7 @@ export function LiveDoorAnalytics({
 
       {live.data && (
         <div className="space-y-6">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <StatTile
               label="Inside"
               value={String(live.data.admitted)}
@@ -54,6 +59,15 @@ export function LiveDoorAnalytics({
             <StatTile
               label="Still to come"
               value={String(live.data.notArrived)}
+              sub="never scanned in"
+            />
+            {/* The distinction the headcount alone cannot make: 300 of 500 is
+                a different evening depending on whether the rest never came or
+                have already gone home. */}
+            <StatTile
+              label="Left"
+              value={String(live.data.departed)}
+              sub={live.data.departed > 0 ? "came in, marked out" : undefined}
             />
             <StatTile
               label="Arrival rate"
@@ -67,7 +81,7 @@ export function LiveDoorAnalytics({
               )}
               sub={
                 live.data.problems
-                  .map((row) => `${row.count} ${row.result.toLowerCase()}`)
+                  .map((row) => `${row.count} ${scanResultShort(row.result)}`)
                   .join(", ") || "none"
               }
             />
@@ -112,13 +126,14 @@ export function LiveDoorAnalytics({
               </p>
               <ul className="mt-3 space-y-1.5 text-sm">
                 {live.data.recent.map((scan) => {
-                  const good =
-                    scan.result === "ADMITTED" ||
-                    scan.result === "OVERRIDE_ADMITTED" ||
-                    scan.result === "REENTRY";
+                  // Same grouping the door itself reads, rather than a second
+                  // opinion on which results count as fine. `.toLowerCase()`
+                  // on the raw enum used to put "invalid signature" in front
+                  // of an organiser where the door says "Bad code".
+                  const tone = scanResultTone(scan.result);
                   return (
                     <li key={scan.id} className="flex items-center gap-2">
-                      {!good && (
+                      {tone !== "in" && (
                         <AlertTriangle
                           className="size-3.5 shrink-0 text-amber-500"
                           aria-hidden
@@ -130,7 +145,11 @@ export function LiveDoorAnalytics({
                           "unknown"}
                         <span className="text-muted-foreground">
                           {" "}
-                          · {scan.result.replace("_", " ").toLowerCase()}
+                          ·{" "}
+                          <span className={SCAN_TONE_TEXT[tone]}>
+                            {scanResultShort(scan.result)}
+                          </span>
+                          {scan.wasOverride ? " · override" : ""}
                           {scan.deviceLabel ? ` · ${scan.deviceLabel}` : ""}
                           {scan.scannedByName ? ` · ${scan.scannedByName}` : ""}
                         </span>

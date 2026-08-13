@@ -31,6 +31,15 @@ export default function MoreScreen() {
   });
   const isDoorStaff = !!user && (myEvents.data?.length ?? 0) > 0;
 
+  // Same shape as the door check above, and the same reasoning: the query is
+  // the one the organiser screens actually use, it is refused server-side for
+  // everybody else, and hiding the button is tidiness rather than the boundary.
+  const organiserEvents = api.ticketEvents.list.useQuery(
+    { includeArchived: false },
+    { enabled: !!user, retry: false, staleTime: 5 * 60 * 1000 },
+  );
+  const isOrganiser = !!user && organiserEvents.isSuccess;
+
   const openWeb = (path: string) => {
     void WebBrowser.openBrowserAsync(`${API_URL}${path}`, {
       presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
@@ -71,6 +80,16 @@ export default function MoreScreen() {
                 onPress={() => router.push("/(door)")}
               >
                 Door mode
+              </Button>
+            )}
+            {isOrganiser && (
+              <Button
+                variant="outline"
+                size="sm"
+                style={{ marginTop: space.sm }}
+                onPress={() => router.push("/(admin)")}
+              >
+                Event analytics
               </Button>
             )}
             <Button

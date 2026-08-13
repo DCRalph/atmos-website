@@ -7,6 +7,7 @@ import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { formatNZD } from "~/lib/ticketing/money";
+import { paymentMethodLabel } from "~/lib/ticketing/payment-methods";
 import { formatEventDate } from "~/lib/ticketing/dates";
 import { StatTile, TierBars, TimeSeriesChart } from "./charts";
 
@@ -114,6 +115,45 @@ export function EventOverview({
         <TierBars tiers={tiers} formatMoney={formatNZD} />
 
         <div className="space-y-4">
+          {/* The headline tile gives net and gross; this is the only place the
+              steps between them are visible. "Why is net below face value"
+              otherwise needs a Stripe dashboard and arithmetic. */}
+          <div className="rounded-lg border p-4">
+            <p className="text-muted-foreground text-sm font-medium">
+              Where the money went
+            </p>
+            <dl className="mt-3 space-y-1.5 text-sm">
+              <Row label="Face value" value={formatNZD(money.faceValueCents)} />
+              {money.discountCents > 0 && (
+                <Row
+                  label="Discounts"
+                  value={`−${formatNZD(money.discountCents)}`}
+                />
+              )}
+              <Row
+                label="Booking fees"
+                value={formatNZD(money.bookingFeeCents)}
+              />
+              <Row label="Gross" value={formatNZD(money.grossCents)} />
+              {money.refundedCents > 0 && (
+                <Row
+                  label="Refunded"
+                  value={`−${formatNZD(money.refundedCents)}`}
+                />
+              )}
+              <div className="flex justify-between gap-3 border-t pt-1.5 font-semibold">
+                <dt>Net</dt>
+                <dd className="tabular-nums">{formatNZD(money.netCents)}</dd>
+              </div>
+              {/* Below the total, not a step in it: GST is already inside every
+                  line above, and listing it as a deduction would double-count. */}
+              <Row
+                label="of which GST"
+                value={formatNZD(money.gstCents)}
+              />
+            </dl>
+          </div>
+
           <div className="rounded-lg border p-4">
             <p className="text-muted-foreground text-sm font-medium">
               Checkout funnel
@@ -143,7 +183,7 @@ export function EventOverview({
               {byPaymentMethod.map((row) => (
                 <Row
                   key={row.method}
-                  label={row.method.toLowerCase()}
+                  label={paymentMethodLabel(row.method)}
                   value={`${row.orders} · ${formatNZD(row.totalCents)}`}
                 />
               ))}

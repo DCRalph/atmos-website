@@ -9,15 +9,17 @@ import { Caption } from "@/components/ui";
 import { OfflineBanner } from "@/components/door/offline-banner";
 
 type Summary = RouterOutputs["door"]["summary"];
-type Mode = "scan" | "manual" | "list" | "sell" | "activity";
+type Mode = "scan" | "manual" | "list" | "sell" | "check" | "activity";
 
 const MODES: { key: Mode; label: string; path: string }[] = [
   { key: "scan", label: "Scan", path: "scan" },
   { key: "manual", label: "Manual", path: "manual" },
   { key: "list", label: "List", path: "list" },
   { key: "sell", label: "Sell", path: "sell" },
-  // Five across is tight on a phone, hence the short label — but a door with
-  // no log is a door that cannot answer "what happened ten minutes ago".
+  // The one tab that decides nothing: looks a ticket up and records no scan.
+  { key: "check", label: "Check", path: "check" },
+  // A door with no log is a door that cannot answer "what happened ten
+  // minutes ago", hence the short label rather than dropping it.
   { key: "activity", label: "Log", path: "activity" },
 ];
 
@@ -143,9 +145,19 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   fill: { height: "100%", backgroundColor: colors.in },
-  modes: { flexDirection: "row", gap: space.sm },
+  /**
+   * Wraps rather than cramming.
+   *
+   * Six modes across a phone leaves ~50pt each, which is below a comfortable
+   * tap target and forces the labels down to unreadable. `flexBasis` is set so
+   * the row breaks after three on a phone — a 3x2 grid of full-width buttons —
+   * while a wider screen still lays all six out in one line. Every mode stays
+   * one tap away, which matters more at a door than a tidy single row.
+   */
+  modes: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
   mode: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: 92,
     height: 40,
     paddingHorizontal: 2,
     alignItems: "center",
