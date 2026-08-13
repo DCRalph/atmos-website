@@ -147,6 +147,7 @@ export async function eventHeadcount(
 export async function withEventInventoryLock<T>(
   eventId: string,
   fn: (tx: Tx) => Promise<T>,
+  options?: { timeout?: number },
 ): Promise<T> {
   return db.$transaction(
     async (tx) => {
@@ -164,7 +165,8 @@ export async function withEventInventoryLock<T>(
       return fn(tx);
     },
     // Long enough to survive a slow Stripe round trip on a cold lambda.
-    { timeout: 15_000 },
+    // Bulk link issuance can mint hundreds of rows and needs more time.
+    { timeout: options?.timeout ?? 15_000 },
   );
 }
 
@@ -393,5 +395,22 @@ export async function returnToStock(
   await tx.ticketTier.update({
     where: { id: tierId },
     data: { soldCount: { decrement: quantity } },
+  });
+}
+
+/**
+ * Increment sold count without a prior hold.
+ *
+ * Used by admin-issued ticket links, which mint immediately rather than
+ * reserving through checkout. Must still run inside `withEventInventoryLock`.
+ */
+export async function recordDirectSale(
+  tx: Tx,
+  tierId: string,
+  quantity: number,
+): Promise<void> {
+  await tx.ticketTier.update({
+    where: { id: tierId },
+    data: { soldCount: { increment: quantity } },
   });
 }

@@ -23,6 +23,7 @@ const LABELS: Record<PaymentMethodKind, string> = {
   TAP_TO_PAY: "Tap to pay at the door",
   COMP: "Comp",
   FREE: "Free ticket",
+  ADMIN: "Admin link",
 };
 
 /** Short form, for a table column or a chip that shares its line. */
@@ -33,6 +34,7 @@ const SHORT: Record<PaymentMethodKind, string> = {
   TAP_TO_PAY: "Tap to pay",
   COMP: "Comp",
   FREE: "Free",
+  ADMIN: "Admin",
 };
 
 /**

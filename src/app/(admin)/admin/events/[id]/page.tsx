@@ -26,6 +26,7 @@ import { EventOverview } from "~/components/admin/ticketing/event-overview";
 import { OrdersPanel } from "~/components/admin/ticketing/orders-panel";
 import { StaffPanel } from "~/components/admin/ticketing/staff-panel";
 import { CompsPanel } from "~/components/admin/ticketing/comps-panel";
+import { TicketLinksPanel } from "~/components/admin/ticketing/ticket-links-panel";
 import { ShareLinkCard } from "~/components/admin/ticketing/share-link-card";
 import { formatEventDateTime } from "~/lib/ticketing/dates";
 
@@ -142,6 +143,7 @@ export default function AdminEventPage() {
           <TabsTrigger value="tiers">Tiers</TabsTrigger>
           <TabsTrigger value="orders">Orders</TabsTrigger>
           <TabsTrigger value="comps">Comps</TabsTrigger>
+          <TabsTrigger value="links">Ticket links</TabsTrigger>
           <TabsTrigger value="staff">Door staff</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
@@ -158,6 +160,9 @@ export default function AdminEventPage() {
         </TabsContent>
         <TabsContent value="comps" className="mt-6">
           <CompsPanel event={data} />
+        </TabsContent>
+        <TabsContent value="links" className="mt-6">
+          <TicketLinksPanel event={data} />
         </TabsContent>
         <TabsContent value="staff" className="mt-6">
           <StaffPanel event={data} />

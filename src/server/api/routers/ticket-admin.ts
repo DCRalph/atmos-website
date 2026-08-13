@@ -32,6 +32,14 @@ import {
   issueComp,
   reassignHandout,
 } from "~/server/ticketing/comps";
+import { InventoryError } from "~/server/ticketing/inventory";
+import {
+  MAX_PLUS_PER_LINK,
+  MAX_PRIMARY_LINKS,
+  getTicketLinkBatch,
+  issueTicketLinkBatch,
+  listTicketLinkBatches,
+} from "~/server/ticketing/ticket-link-batches";
 import { ADMITTING_RESULTS } from "~/server/ticketing/scan";
 import { logActivity } from "~/server/utils/activity-log";
 import {
@@ -750,4 +758,67 @@ export const ticketAdminRouter = createTRPCRouter({
 
       return { ok: true as const, approved: true };
     }),
+
+  // ----------------------------------------------------------- ticket links
+
+  /**
+   * Mint unnamed bearer links from a tier, optionally with plus tickets to
+   * hand out. Consumes allocation and capacity — not a comp.
+   */
+  createTicketLinkBatch: adminProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        tierId: z.string(),
+        primaryCount: z.number().int().min(1).max(MAX_PRIMARY_LINKS),
+        plusCount: z.number().int().min(0).max(MAX_PLUS_PER_LINK),
+        label: z.string().trim().max(120).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const batch = await issueTicketLinkBatch({
+          eventId: input.eventId,
+          tierId: input.tierId,
+          primaryCount: input.primaryCount,
+          plusCount: input.plusCount,
+          label: input.label,
+          issuedByUserId: ctx.session.user.id,
+        });
+
+        await logActivity({
+          type: ActivityType.TICKET_LINK_BATCH_CREATED,
+          action: `Issued ${batch.primaryCount} ticket link${
+            batch.primaryCount === 1 ? "" : "s"
+          } from ${batch.tierName}${
+            batch.plusCount > 0 ? ` (+${batch.plusCount} each)` : ""
+          }`,
+          userId: ctx.session.user.id,
+          details: {
+            eventId: input.eventId,
+            batchId: batch.id,
+            tierId: input.tierId,
+            primaryCount: batch.primaryCount,
+            plusCount: batch.plusCount,
+          },
+        });
+
+        return batch;
+      } catch (cause) {
+        if (cause instanceof InventoryError) {
+          throw new TRPCError({ code: "CONFLICT", message: cause.message });
+        }
+        throw cause;
+      }
+    }),
+
+  /** Batches for an event, newest first. Links are loaded separately. */
+  ticketLinkBatches: adminProcedure
+    .input(z.object({ eventId: z.string() }))
+    .query(async ({ input }) => listTicketLinkBatches(input.eventId)),
+
+  /** Every primary bearer link in a batch. */
+  ticketLinkBatch: adminProcedure
+    .input(z.object({ batchId: z.string() }))
+    .query(async ({ input }) => getTicketLinkBatch(input.batchId)),
 });

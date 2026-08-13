@@ -825,6 +825,7 @@ enum ActivityType {
   TICKET_ACCESS_CHANGED
   TICKET_COMPED
   TICKET_HANDOUT_SENT
+  TICKET_LINK_BATCH_CREATED
   DISCOUNT_CODE_CREATED
   DISCOUNT_CODE_UPDATED
   DISCOUNT_CODE_DELETED
@@ -1050,6 +1051,9 @@ enum PaymentMethodKind {
   TAP_TO_PAY
   COMP
   FREE
+  /// Admin-issued bearer links drawn from a tier. Zero-value, not a sale and
+  /// not a comp — they consume allocation the same way a paid ticket does.
+  ADMIN
 }
 
 enum TicketEmailType {
@@ -1127,6 +1131,7 @@ model TicketEvent {
   scans         TicketScan[]
   staff         TicketEventStaff[]
   discountCodes DiscountCode[]
+  linkBatches   TicketLinkBatch[]
 
   @@index([status, startsAt])
   @@index([gigId])
@@ -1166,6 +1171,7 @@ model TicketTier {
 
   tickets    Ticket[]
   orderItems TicketOrderItem[]
+  linkBatches TicketLinkBatch[]
 
   @@index([eventId, sortOrder])
   @@map("ticket_tier")
@@ -1227,6 +1233,7 @@ model TicketOrder {
   tickets     Ticket[]
   emails      TicketEmailLog[]
   redemptions DiscountRedemption[]
+  linkBatch   TicketLinkBatch?
 
   @@index([eventId, status])
   @@index([buyerEmail])
@@ -1297,13 +1304,46 @@ model Ticket {
   hostTicket Ticket?      @relation("CompHandout", fields: [hostTicketId], references: [id], onDelete: SetNull)
   handouts   Ticket[]     @relation("CompHandout")
   scans      TicketScan[]
+  linkBatchId String?
+  linkBatch   TicketLinkBatch? @relation(fields: [linkBatchId], references: [id], onDelete: SetNull)
 
   @@index([eventId, status])
   @@index([orderId])
   @@index([tierId])
   @@index([eventId, isComp, status])
   @@index([hostTicketId])
+  @@index([linkBatchId])
   @@map("ticket")
+}
+
+/// A set of unnamed, immediately usable ticket links drawn from a tier.
+///
+/// Unlike a comp, these consume the tier's allocation and the event capacity.
+/// Each primary ticket has its own `/t/[token]` link and may carry plus tickets
+/// the holder hands out, the same way a comp grant does.
+model TicketLinkBatch {
+  id String @id @default(cuid())
+
+  eventId String
+  event   TicketEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  tierId String
+  tier   TicketTier @relation(fields: [tierId], references: [id], onDelete: Restrict)
+
+  orderId String      @unique
+  order   TicketOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  label        String?
+  primaryCount Int
+  plusCount    Int
+
+  createdByUserId String
+  createdAt       DateTime @default(now())
+
+  tickets Ticket[]
+
+  @@index([eventId, createdAt])
+  @@map("ticket_link_batch")
 }
 
 /// Append-only scan log. Powers "already admitted, 14 minutes ago" on the door
