@@ -12,11 +12,12 @@ import { formatEventDateLong, formatEventTime } from "~/lib/ticketing/dates";
  * somebody at the door with an empty box where their ticket should be.
  */
 
-const BG = "#0b0b0c";
-const CARD = "#141416";
-const BORDER = "#2a2a2e";
-const TEXT = "#f4f4f5";
-const MUTED = "#a1a1aa";
+const BG = "#000000";
+const CARD = "#000000";
+const BORDER = "#1a1a1a";
+const STRONG_BORDER = "#333333";
+const TEXT = "#ffffff";
+const MUTED = "#999999";
 const ACCENT = "#ffffff";
 
 export type EmailTicket = {
@@ -24,6 +25,8 @@ export type EmailTicket = {
   tierName: string;
   /** Blank for general admission — only worth printing when it isn't. */
   accessLabel: string | null;
+  accessBadgeBg: string | null;
+  accessBadgeFg: string | null;
   attendeeName: string | null;
   /** `cid:` value for this ticket's QR attachment. */
   qrCid: string;
@@ -43,6 +46,7 @@ export type TicketEmailInput = {
   /** Where the "add names" prompt sends them. */
   detailsUrl: string;
   appleWalletUrlFor?: (ticketNumber: string) => string;
+  appleWalletBadgeCid?: string;
   googleWalletUrlFor?: (ticketNumber: string) => string;
   totals: {
     subtotalCents: number;
@@ -65,6 +69,12 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
+function appleWalletBadge(url: string, cid: string): string {
+  return `<a href="${escapeHtml(url)}" style="display:inline-block;margin:0 8px 8px 0;text-decoration:none;">
+    <img src="cid:${escapeHtml(cid)}" width="133" height="42" alt="Add to Apple Wallet" style="display:block;width:133px;height:42px;border:0;">
+  </a>`;
+}
+
 function layout(title: string, body: string, footer: string): string {
   return `<!doctype html>
 <html lang="en">
@@ -78,11 +88,11 @@ function layout(title: string, body: string, footer: string): string {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BG};padding:24px 12px;">
 <tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
-<tr><td style="padding:8px 4px 20px;">
-  <span style="font-size:18px;font-weight:700;letter-spacing:0.18em;color:${ACCENT};">ATMOS</span>
+<tr><td style="padding:8px 0 24px;">
+  <span style="font-size:18px;font-weight:800;letter-spacing:0.22em;color:${ACCENT};">ATMOS</span>
 </td></tr>
 ${body}
-<tr><td style="padding:24px 4px 8px;color:${MUTED};font-size:12px;line-height:1.6;">
+<tr><td style="padding:24px 0 8px;color:${MUTED};font-size:12px;line-height:1.6;">
 ${footer}
 </td></tr>
 </table>
@@ -98,11 +108,14 @@ function ticketCard(
   index: number,
 ): string {
   const walletRow = [
-    input.appleWalletUrlFor
-      ? `<a href="${input.appleWalletUrlFor(ticket.ticketNumber)}" style="display:inline-block;padding:9px 14px;margin:0 6px 6px 0;border:1px solid ${BORDER};border-radius:8px;color:${TEXT};text-decoration:none;font-size:13px;">Add to Apple Wallet</a>`
+    input.appleWalletUrlFor && input.appleWalletBadgeCid
+      ? appleWalletBadge(
+          input.appleWalletUrlFor(ticket.ticketNumber),
+          input.appleWalletBadgeCid,
+        )
       : "",
     input.googleWalletUrlFor
-      ? `<a href="${input.googleWalletUrlFor(ticket.ticketNumber)}" style="display:inline-block;padding:9px 14px;margin:0 6px 6px 0;border:1px solid ${BORDER};border-radius:8px;color:${TEXT};text-decoration:none;font-size:13px;">Add to Google Wallet</a>`
+      ? `<a href="${escapeHtml(input.googleWalletUrlFor(ticket.ticketNumber))}" style="display:inline-block;padding:11px 16px;margin:0 8px 8px 0;border:1px solid ${STRONG_BORDER};border-radius:10px;color:${TEXT};text-decoration:none;font-size:13px;line-height:18px;">Add to Google Wallet</a>`
       : "",
   ]
     .filter(Boolean)
@@ -113,16 +126,16 @@ function ticketCard(
     : "";
 
   const access = ticket.accessLabel
-    ? `<div style="margin-top:10px;display:inline-block;padding:5px 12px;background:${ACCENT};color:#000;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:0.08em;">${escapeHtml(ticket.accessLabel.toUpperCase())}</div>`
+    ? `<div style="margin-top:10px;display:inline-block;padding:5px 12px;background:${ticket.accessBadgeBg ?? ACCENT};color:${ticket.accessBadgeFg ?? "#000000"};font-size:12px;font-weight:700;letter-spacing:0.08em;">${escapeHtml(ticket.accessLabel.toUpperCase())}</div>`
     : "";
 
   return `<tr><td style="padding:0 0 14px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CARD};border:1px solid ${BORDER};border-radius:14px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CARD};border:2px solid ${BORDER};">
 <tr><td style="padding:20px;text-align:center;">
   <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.1em;color:${MUTED};margin-bottom:12px;">
     Ticket ${index + 1} of ${input.tickets.length} &middot; ${escapeHtml(ticket.tierName)}
   </div>
-  <div style="background:#ffffff;border-radius:12px;padding:12px;display:inline-block;">
+  <div style="background:#ffffff;padding:12px;display:inline-block;">
     <img src="cid:${ticket.qrCid}" width="220" height="220" alt="Entry QR code for ${escapeHtml(ticket.ticketNumber)}" style="display:block;width:220px;height:220px;">
   </div>
   ${access}
@@ -159,7 +172,7 @@ export function renderTicketEmail(input: TicketEmailInput): {
       ? `<div style="font-size:14px;color:${MUTED};">${escapeHtml(venueLine)}</div>`
       : "",
     input.isR18
-      ? `<div style="margin-top:12px;display:inline-block;padding:6px 10px;border:1px solid #7f1d1d;background:#2a0d0d;border-radius:8px;font-size:12px;color:#fca5a5;">R18 — photo ID required at the door</div>`
+      ? `<div style="margin-top:12px;display:inline-block;padding:6px 10px;border:1px solid #7f1d1d;background:#190808;font-size:12px;color:#fecaca;">R18 — photo ID required at the door</div>`
       : "",
   ]
     .filter(Boolean)
@@ -167,11 +180,11 @@ export function renderTicketEmail(input: TicketEmailInput): {
 
   const namesPrompt = input.needsAttendeeNames
     ? `<tr><td style="padding:0 0 14px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CARD};border:1px solid ${BORDER};border-radius:14px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CARD};border:2px solid ${BORDER};">
 <tr><td style="padding:18px 20px;">
   <div style="font-size:14px;color:${TEXT};margin-bottom:8px;">One quick thing</div>
   <div style="font-size:14px;color:${MUTED};line-height:1.6;">Add the name of whoever is using each ticket so the door can find them fast. It only takes a second, and you can do it any time before the event.</div>
-  <a href="${input.detailsUrl}" style="display:inline-block;margin-top:12px;padding:10px 16px;background:${ACCENT};color:#000;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;">Add names</a>
+  <a href="${escapeHtml(input.detailsUrl)}" style="display:inline-block;margin-top:12px;padding:10px 16px;background:${ACCENT};color:#000;text-decoration:none;font-size:14px;font-weight:700;">Add names</a>
 </td></tr>
 </table>
 </td></tr>`
@@ -184,7 +197,7 @@ export function renderTicketEmail(input: TicketEmailInput): {
     </tr>`;
 
   const summary = `<tr><td style="padding:0 0 14px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CARD};border:1px solid ${BORDER};border-radius:14px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CARD};border:2px solid ${BORDER};">
 <tr><td style="padding:18px 20px;">
   <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.1em;color:${MUTED};margin-bottom:10px;">Order ${escapeHtml(input.orderNumber)}</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
@@ -206,14 +219,14 @@ export function renderTicketEmail(input: TicketEmailInput): {
 
   const body = `
 <tr><td style="padding:0 0 18px;">
-  <div style="font-size:26px;line-height:1.25;font-weight:700;color:${TEXT};margin-bottom:12px;">You're going to ${escapeHtml(input.eventName)}</div>
+  <div style="font-size:30px;line-height:1.2;font-weight:800;letter-spacing:-0.02em;color:${TEXT};margin-bottom:14px;">You're going to ${escapeHtml(input.eventName)}</div>
   ${detailRows}
 </td></tr>
 ${input.tickets.map((ticket, i) => ticketCard(ticket, input, i)).join("\n")}
 ${namesPrompt}
 ${summary}
 <tr><td style="padding:4px 0 0;">
-  <a href="${input.ticketsUrl}" style="display:inline-block;padding:12px 18px;border:1px solid ${BORDER};border-radius:10px;color:${TEXT};text-decoration:none;font-size:14px;">View tickets online</a>
+  <a href="${escapeHtml(input.ticketsUrl)}" style="display:inline-block;padding:12px 18px;border:2px solid ${BORDER};color:${TEXT};text-decoration:none;font-size:14px;font-weight:600;">View tickets online</a>
 </td></tr>`;
 
   const support = input.supportEmail
@@ -268,6 +281,7 @@ export type CompEmailInput = {
   ticket: EmailTicket;
   ticketUrl: string;
   appleWalletUrl?: string;
+  appleWalletBadgeCid?: string;
   googleWalletUrl?: string;
   /** Set when somebody passed this ticket on, rather than an admin issuing it. */
   invitedByName: string | null;
@@ -303,18 +317,18 @@ export function renderCompEmail(input: CompEmailInput): {
     : `You're on the list for ${escapeHtml(input.eventName)}`;
 
   const walletRow = [
-    input.appleWalletUrl
-      ? `<a href="${input.appleWalletUrl}" style="display:inline-block;padding:9px 14px;margin:0 6px 6px 0;border:1px solid ${BORDER};border-radius:8px;color:${TEXT};text-decoration:none;font-size:13px;">Add to Apple Wallet</a>`
+    input.appleWalletUrl && input.appleWalletBadgeCid
+      ? appleWalletBadge(input.appleWalletUrl, input.appleWalletBadgeCid)
       : "",
     input.googleWalletUrl
-      ? `<a href="${input.googleWalletUrl}" style="display:inline-block;padding:9px 14px;margin:0 6px 6px 0;border:1px solid ${BORDER};border-radius:8px;color:${TEXT};text-decoration:none;font-size:13px;">Add to Google Wallet</a>`
+      ? `<a href="${escapeHtml(input.googleWalletUrl)}" style="display:inline-block;padding:11px 16px;margin:0 8px 8px 0;border:1px solid ${STRONG_BORDER};border-radius:10px;color:${TEXT};text-decoration:none;font-size:13px;line-height:18px;">Add to Google Wallet</a>`
       : "",
   ]
     .filter(Boolean)
     .join("");
 
   const access = input.ticket.accessLabel
-    ? `<div style="margin-top:10px;display:inline-block;padding:5px 12px;background:${ACCENT};color:#000;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:0.08em;">${escapeHtml(input.ticket.accessLabel.toUpperCase())}</div>`
+    ? `<div style="margin-top:10px;display:inline-block;padding:5px 12px;background:${input.ticket.accessBadgeBg ?? ACCENT};color:${input.ticket.accessBadgeFg ?? "#000000"};font-size:12px;font-weight:700;letter-spacing:0.08em;">${escapeHtml(input.ticket.accessLabel.toUpperCase())}</div>`
     : "";
 
   // The name is the whole mechanism, so it is the largest thing on the card.
@@ -326,11 +340,11 @@ export function renderCompEmail(input: CompEmailInput): {
   const handouts =
     input.handoutCount > 0
       ? `<tr><td style="padding:0 0 14px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CARD};border:1px solid ${BORDER};border-radius:14px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CARD};border:2px solid ${BORDER};">
 <tr><td style="padding:18px 20px;">
   <div style="font-size:14px;color:${TEXT};margin-bottom:8px;">${input.handoutCount} ${input.handoutCount === 1 ? "ticket" : "tickets"} to hand out</div>
   <div style="font-size:14px;color:${MUTED};line-height:1.6;">Open your ticket page to send ${input.handoutCount === 1 ? "it" : "them"} on. Whoever you send to gets their own ticket by email, in their name.</div>
-  <a href="${input.ticketUrl}" style="display:inline-block;margin-top:12px;padding:10px 16px;background:${ACCENT};color:#000;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;">Hand out tickets</a>
+  <a href="${escapeHtml(input.ticketUrl)}" style="display:inline-block;margin-top:12px;padding:10px 16px;background:${ACCENT};color:#000;text-decoration:none;font-size:14px;font-weight:700;">Hand out tickets</a>
 </td></tr>
 </table>
 </td></tr>`
@@ -345,7 +359,7 @@ export function renderCompEmail(input: CompEmailInput): {
       ? `<div style="font-size:14px;color:${MUTED};">${escapeHtml(venueLine)}</div>`
       : "",
     input.isR18
-      ? `<div style="margin-top:12px;display:inline-block;padding:6px 10px;border:1px solid #7f1d1d;background:#2a0d0d;border-radius:8px;font-size:12px;color:#fca5a5;">R18 — photo ID required at the door</div>`
+      ? `<div style="margin-top:12px;display:inline-block;padding:6px 10px;border:1px solid #7f1d1d;background:#190808;font-size:12px;color:#fecaca;">R18 — photo ID required at the door</div>`
       : "",
   ]
     .filter(Boolean)
@@ -353,14 +367,14 @@ export function renderCompEmail(input: CompEmailInput): {
 
   const body = `
 <tr><td style="padding:0 0 18px;">
-  <div style="font-size:26px;line-height:1.25;font-weight:700;color:${TEXT};margin-bottom:12px;">${heading}</div>
+  <div style="font-size:30px;line-height:1.2;font-weight:800;letter-spacing:-0.02em;color:${TEXT};margin-bottom:14px;">${heading}</div>
   ${detailRows}
 </td></tr>
 <tr><td style="padding:0 0 14px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CARD};border:1px solid ${BORDER};border-radius:14px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CARD};border:2px solid ${BORDER};">
 <tr><td style="padding:20px;text-align:center;">
   <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.1em;color:${MUTED};margin-bottom:12px;">${escapeHtml(input.ticket.tierName)}</div>
-  <div style="background:#ffffff;border-radius:12px;padding:12px;display:inline-block;">
+  <div style="background:#ffffff;padding:12px;display:inline-block;">
     <img src="cid:${input.ticket.qrCid}" width="220" height="220" alt="Entry QR code for ${escapeHtml(input.ticket.ticketNumber)}" style="display:block;width:220px;height:220px;">
   </div>
   ${access}
@@ -372,7 +386,7 @@ export function renderCompEmail(input: CompEmailInput): {
 </td></tr>
 ${handouts}
 <tr><td style="padding:4px 0 0;">
-  <a href="${input.ticketUrl}" style="display:inline-block;padding:12px 18px;border:1px solid ${BORDER};border-radius:10px;color:${TEXT};text-decoration:none;font-size:14px;">View your ticket</a>
+  <a href="${escapeHtml(input.ticketUrl)}" style="display:inline-block;padding:12px 18px;border:2px solid ${BORDER};color:${TEXT};text-decoration:none;font-size:14px;font-weight:600;">View your ticket</a>
 </td></tr>`;
 
   const support = input.supportEmail
@@ -430,7 +444,7 @@ export function renderRefundEmail({
 
   const body = `
 <tr><td style="padding:0 0 18px;">
-  <div style="font-size:24px;font-weight:700;color:${TEXT};margin-bottom:12px;">Refund processed</div>
+  <div style="font-size:30px;line-height:1.2;font-weight:800;letter-spacing:-0.02em;color:${TEXT};margin-bottom:14px;">Refund processed</div>
   <div style="font-size:15px;color:${MUTED};line-height:1.7;">
     We've refunded ${formatNZD(amountCents)} for order ${escapeHtml(orderNumber)} — ${escapeHtml(eventName)}.<br>
     ${ticketNumbers.length > 0 ? `Cancelled: ${list}.<br>` : ""}
@@ -438,7 +452,7 @@ export function renderRefundEmail({
   </div>
 </td></tr>
 <tr><td style="padding:0 0 14px;">
-  <div style="background:${CARD};border:1px solid ${BORDER};border-radius:14px;padding:18px 20px;font-size:14px;color:${MUTED};">
+  <div style="background:${CARD};border:2px solid ${BORDER};padding:18px 20px;font-size:14px;color:${MUTED};">
     Those tickets no longer work at the door. Any wallet passes will stop scanning too.
   </div>
 </td></tr>`;

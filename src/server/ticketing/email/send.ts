@@ -1,5 +1,7 @@
 import "server-only";
 
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { TicketEmailType, TicketStatus } from "~Prisma/client";
 import { db } from "~/server/db";
 import { isAppleWalletConfigured } from "~/server/wallet/apple-config";
@@ -27,6 +29,20 @@ import {
   renderTicketEmail,
   type EmailTicket,
 } from "./templates";
+
+const APPLE_WALLET_BADGE_CID = "apple-wallet-badge";
+const APPLE_WALLET_BADGE_FILENAME = "US-UK_Add_to_Apple_Wallet_RGB_101421.png";
+
+async function appleWalletBadgeAttachment() {
+  return {
+    filename: APPLE_WALLET_BADGE_FILENAME,
+    content: await readFile(
+      join(process.cwd(), "public", APPLE_WALLET_BADGE_FILENAME),
+    ),
+    cid: APPLE_WALLET_BADGE_CID,
+    contentType: "image/png",
+  };
+}
 
 /**
  * Sending, logging and retrying ticket email.
@@ -68,6 +84,8 @@ export async function sendTicketEmail({
 
   const settings = await getTicketingSettings();
   const accessToken = orderAccessToken(order);
+  const appleWalletConfigured = isAppleWalletConfigured();
+  const googleWalletConfigured = isGoogleWalletConfigured();
 
   const attachments: {
     filename: string;
@@ -75,6 +93,10 @@ export async function sendTicketEmail({
     cid: string;
     contentType: string;
   }[] = [];
+  if (appleWalletConfigured) {
+    attachments.push(await appleWalletBadgeAttachment());
+  }
+
   const emailTickets: EmailTicket[] = [];
   const passUrlByTicketNumber = new Map<
     string,
@@ -83,6 +105,8 @@ export async function sendTicketEmail({
 
   for (const [index, ticket] of order.tickets.entries()) {
     const cid = `ticket-${index + 1}`;
+    const elevated = isElevated(ticket.accessLevel);
+    const level = accessLevel(ticket.accessLevel);
     const png = await renderQrPng(
       buildTicketQrPayload(ticket, order.event.slug),
     );
@@ -97,18 +121,18 @@ export async function sendTicketEmail({
     emailTickets.push({
       ticketNumber: ticket.ticketNumber,
       tierName: ticketTypeName(ticket),
-      accessLabel: isElevated(ticket.accessLevel)
-        ? accessLevel(ticket.accessLevel).label
-        : null,
+      accessLabel: elevated ? level.label : null,
+      accessBadgeBg: elevated ? level.badgeBg : null,
+      accessBadgeFg: elevated ? level.badgeFg : null,
       attendeeName: ticket.attendeeName,
       qrCid: cid,
     });
 
     passUrlByTicketNumber.set(ticket.ticketNumber, {
-      apple: isAppleWalletConfigured()
+      apple: appleWalletConfigured
         ? applePassUrl(ticket.id, accessToken)
         : undefined,
-      google: isGoogleWalletConfigured()
+      google: googleWalletConfigured
         ? googleWalletSaveUrl(ticket.id, accessToken)
         : undefined,
     });
@@ -130,10 +154,13 @@ export async function sendTicketEmail({
     tickets: emailTickets,
     ticketsUrl: ticketsUrl(accessToken),
     detailsUrl: ticketDetailsUrl(accessToken),
-    appleWalletUrlFor: isAppleWalletConfigured()
+    appleWalletUrlFor: appleWalletConfigured
       ? (ticketNumber) => passUrlByTicketNumber.get(ticketNumber)?.apple ?? ""
       : undefined,
-    googleWalletUrlFor: isGoogleWalletConfigured()
+    appleWalletBadgeCid: appleWalletConfigured
+      ? APPLE_WALLET_BADGE_CID
+      : undefined,
+    googleWalletUrlFor: googleWalletConfigured
       ? (ticketNumber) => passUrlByTicketNumber.get(ticketNumber)?.google ?? ""
       : undefined,
     totals: {
@@ -205,8 +232,25 @@ export async function sendCompTicketEmail({
 
   const settings = await getTicketingSettings();
   const token = ticketAccessToken(ticket);
-  const png = await renderQrPng(buildTicketQrPayload(ticket, ticket.event.slug));
+  const png = await renderQrPng(
+    buildTicketQrPayload(ticket, ticket.event.slug),
+  );
   const cid = "ticket-1";
+  const appleWalletConfigured = isAppleWalletConfigured();
+  const googleWalletConfigured = isGoogleWalletConfigured();
+  const attachments = [
+    {
+      filename: `${ticket.ticketNumber}.png`,
+      content: png,
+      cid,
+      contentType: "image/png",
+    },
+  ];
+  if (appleWalletConfigured) {
+    attachments.push(await appleWalletBadgeAttachment());
+  }
+  const elevated = isElevated(ticket.accessLevel);
+  const level = accessLevel(ticket.accessLevel);
 
   const { subject, html, text } = renderCompEmail({
     eventName: ticket.event.name,
@@ -219,17 +263,20 @@ export async function sendCompTicketEmail({
     ticket: {
       ticketNumber: ticket.ticketNumber,
       tierName: ticketTypeName(ticket),
-      accessLabel: isElevated(ticket.accessLevel)
-        ? accessLevel(ticket.accessLevel).label
-        : null,
+      accessLabel: elevated ? level.label : null,
+      accessBadgeBg: elevated ? level.badgeBg : null,
+      accessBadgeFg: elevated ? level.badgeFg : null,
       attendeeName: ticket.attendeeName,
       qrCid: cid,
     },
     ticketUrl: ticketUrl(token),
-    appleWalletUrl: isAppleWalletConfigured()
+    appleWalletUrl: appleWalletConfigured
       ? applePassUrl(ticket.id, token)
       : undefined,
-    googleWalletUrl: isGoogleWalletConfigured()
+    appleWalletBadgeCid: appleWalletConfigured
+      ? APPLE_WALLET_BADGE_CID
+      : undefined,
+    googleWalletUrl: googleWalletConfigured
       ? googleWalletSaveUrl(ticket.id, token)
       : undefined,
     invitedByName: ticket.invitedByName,
@@ -242,14 +289,7 @@ export async function sendCompTicketEmail({
     subject,
     html,
     text,
-    attachments: [
-      {
-        filename: `${ticket.ticketNumber}.png`,
-        content: png,
-        cid,
-        contentType: "image/png",
-      },
-    ],
+    attachments,
     replyTo: settings.supportEmail ?? undefined,
   });
 
