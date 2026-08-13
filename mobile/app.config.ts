@@ -17,30 +17,37 @@ const config: ExpoConfig = {
   icon: "./assets/icon.png",
   ios: {
     bundleIdentifier: "nz.co.atmosmedia.app",
+    // App Store Connect rejects a build whose number it has already seen, so
+    // this has to go up on every upload of the same version.
+    buildNumber: process.env.BUILD_NUMBER ?? "1",
     supportsTablet: false,
     // Lets the existing emailed ticket links
     // (https://atmosmedia.co.nz/tickets/...) open the app instead of Safari
     // when it is installed.
     associatedDomains: ["applinks:atmosmedia.co.nz"],
     /**
-     * Tap to Pay, and production push.
+     * Tap to Pay, and push. Both entitlements differ between a build installed
+     * straight to a device and one going to the App Store, so both follow the
+     * environment rather than being hardcoded. `scripts/build-ipa.sh` sets the
+     * store values; the defaults here are the device ones.
      *
-     * The Stripe config plugin does not add the proximity-reader entitlement —
-     * its `tapToPayCheck` option is Android-only. Apple grants this one by
-     * manual review against the bundle id, so it can only be listed here once
-     * that has come through. See `docs/ticketing/TAP-TO-PAY.md`.
+     * Apple granted Tap to Pay for **development only**. An App Store profile
+     * is issued without the capability, and exporting an archive that claims it
+     * fails outright — so a store build has to ship without it. The Stripe SDK
+     * then reports Tap to Pay as unavailable, which the sell sheet already
+     * handles as a first-class state.
      *
-     * `aps-environment` follows the build. A development profile only carries
-     * the development value, so hardcoding production fails signing for the
-     * device builds we install directly; a store build needs production or it
-     * registers tokens the server can never push to. `scripts/build-ipa.sh`
-     * sets `APS_ENVIRONMENT=production` for that case.
+     * `aps-environment` is the mirror image: a development profile only carries
+     * the development value, so hardcoding production breaks the device builds,
+     * while a store build needs production or it registers tokens the server
+     * can never push to.
+     *
+     * See `docs/ticketing/TAP-TO-PAY.md`.
      */
     entitlements: {
-      // Granted by Apple against this bundle id and enabled on the App ID.
-      // Without it the Stripe SDK never surfaces a reader and the sell sheet
-      // reports Tap to Pay as unavailable. See `docs/ticketing/TAP-TO-PAY.md`.
-      "com.apple.developer.proximity-reader.payment.acceptance": true,
+      ...(process.env.TAP_TO_PAY === "0"
+        ? {}
+        : { "com.apple.developer.proximity-reader.payment.acceptance": true }),
       "aps-environment": process.env.APS_ENVIRONMENT ?? "development",
     },
     infoPlist: {

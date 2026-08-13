@@ -150,6 +150,17 @@ Release rather than Debug matters: `tap-to-pay.tsx` passes `simulated: __DEV__`,
 so a Debug build connects to a simulated reader and proves nothing about the
 entitlement.
 
+### Building for the App Store meanwhile
+
+`scripts/build-ipa.sh` sets `TAP_TO_PAY=0`, which drops the entitlement from the
+store build entirely. Claiming a capability the App Store profile does not carry
+fails the export, so shipping without it is the only way through until Apple
+extends the grant.
+
+The app degrades honestly: `supportsReadersOfType` returns false, the sell sheet
+shows "Tap to Pay unavailable", and staff take cash. Delete that line from the
+script once distribution is granted.
+
 ### Push environment
 
 `app.config.ts` reads `aps-environment` from `APS_ENVIRONMENT`, defaulting to
@@ -157,6 +168,35 @@ entitlement.
 hardcoding production breaks exactly the device builds needed to test Tap to
 Pay. `scripts/build-ipa.sh` sets it to production for store builds, which is
 where the production value belongs.
+
+## The SDK has to be initialized explicitly
+
+`StripeTerminalProvider` does **not** initialize the SDK. It hands `initialize`
+out through context and waits to be asked. Until something asks, every other
+call fails with:
+
+```
+First initialize the Stripe Terminal SDK before performing any action
+```
+
+Mounting the provider is not enough, and nothing warns you. This is done in
+`mobile/src/components/door/terminal.tsx`, which wraps the provider, calls
+`initialize()` once, and publishes the result so the sell sheet can wait for it.
+
+Two traps worth knowing:
+
+- **`isInitialized` from the hook cannot be waited on.** The provider stores it
+  in a ref and exposes it through a `useMemo`, so setting it never re-renders
+  anything. Track the state yourself.
+- **The error is easy to misattribute.** It arrives at whatever SDK call runs
+  first — here the `supportsReadersOfType` capability check — so it surfaces at
+  the door as *Tap to Pay unavailable*, sending whoever debugs it to Apple and
+  Stripe over a missing function call. The sell sheet now waits for
+  initialization before calling anything, so the two cannot be confused.
+
+Initialization fetches a connection token, so it needs the network and a
+signed-in session. That makes it worth retrying rather than final, which is why
+"Try again" re-initializes when there is no reader instead of retrying the sale.
 
 ## What the Stripe Expo plugin does and does not do
 
@@ -201,6 +241,7 @@ it is the entitlement.
 | Symptom | Cause |
 | --- | --- |
 | Stuck on "Getting the reader ready" | Entitlement missing, Stripe account not enabled, or unsupported device. Discovery never returns a reader. |
+| "First initialize the Stripe Terminal SDK before performing any action" | Nothing called `initialize()`. Not an entitlement problem — see above. |
 | "This door has no Stripe location set" | `STRIPE_TERMINAL_LOCATION_ID` unset on the server |
 | Connects, then fails on tap | Account or payment-method problem, not setup — read the Stripe error |
 

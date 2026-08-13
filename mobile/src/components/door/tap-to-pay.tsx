@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/lib/api";
 import { colors, radius, space } from "@/lib/theme";
 import { Body, Button, Caption, Loading, Title } from "@/components/ui";
+import { useTerminalInit } from "@/components/door/terminal";
 
 const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
@@ -65,6 +66,13 @@ export function TapToPaySheet({
     supportsReadersOfType,
   } = useStripeTerminal();
 
+  // Read as primitives: the context value is rebuilt every render, so watching
+  // the object itself would re-run discovery on every render.
+  const init = useTerminalInit();
+  const initStatus = init.status;
+  const initMessage = init.status === "error" ? init.message : null;
+  const retryInit = init.retry;
+
   const terminal = api.terminal.config.useQuery(undefined, { retry: false });
   const createIntent = api.door.createSaleIntent.useMutation();
   const complete = api.door.completeSale.useMutation();
@@ -92,10 +100,25 @@ export function TapToPaySheet({
    * reader — so without this check the sheet spins forever at a door, looking
    * like a slow network rather than a build that can never work.
    *
+   * Waits on initialization first. The SDK rejects every call until then with
+   * "First initialize the Stripe Terminal SDK before performing any action",
+   * and that message arriving here would be reported as an unsupported phone —
+   * sending whoever debugs it to Apple and Stripe over a missing call.
+   *
    * See `docs/ticketing/TAP-TO-PAY.md`.
    */
   useEffect(() => {
     if (connectedReader) return;
+    if (initStatus === "pending") return;
+
+    // Needs the network and a session, so it can fail for reasons a retry
+    // fixes. Not the permanent `unsupported` case.
+    if (initStatus === "error") {
+      setStage("failed");
+      setError(initMessage);
+      return;
+    }
+
     let alive = true;
 
     void (async () => {
@@ -131,7 +154,7 @@ export function TapToPaySheet({
     return () => {
       alive = false;
     };
-  }, [connectedReader, discoverReaders]);
+  }, [connectedReader, discoverReaders, initStatus, initMessage]);
 
   /**
    * A backstop for the cases the support check clears but discovery still
@@ -243,6 +266,21 @@ export function TapToPaySheet({
     onSold,
   ]);
 
+  /**
+   * "Try again" means different things depending on how far we got: retake the
+   * payment if there is a reader, otherwise go back and bring the SDK up again.
+   * Retrying the sale against a reader that never connected just fails faster.
+   */
+  const retry = useCallback(() => {
+    setError(null);
+    if (connectedReader) {
+      void run();
+      return;
+    }
+    setStage("connecting");
+    retryInit();
+  }, [connectedReader, run, retryInit]);
+
   const ready = !!connectedReader;
 
   return (
@@ -311,7 +349,7 @@ export function TapToPaySheet({
             <Button onPress={() => void run()}>Take payment</Button>
           ) : null}
           {stage === "failed" && !unsupported ? (
-            <Button onPress={() => void run()}>Try again</Button>
+            <Button onPress={retry}>Try again</Button>
           ) : null}
           {/* Bottom button, always harmless — the door's rule everywhere. */}
           <Button
