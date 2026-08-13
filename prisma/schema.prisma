@@ -71,9 +71,33 @@ model User {
   creatorClaimRequests CreatorClaimRequest[]      @relation("ClaimRequestingUser")
   ownedCreatorThemes   CreatorProfileTheme[]      @relation("OwnedCreatorThemes")
   deviceTokens         DeviceToken[]
+  tapToPayAnnouncement TapToPayAnnouncement?
 
   @@unique([email])
   @@map("user")
+}
+
+/// What this person has already been told about Tap to Pay on iPhone.
+///
+/// Apple's App Review checklist requires the launch communications to reach
+/// every eligible user **at least once** — 3.3 and 6.3 for the push, 6.2 for
+/// the in-app splash, 6.1 for the launch email. "At least once" is only
+/// enforceable if it is written down, and only tolerable if it is written down
+/// per user: without this, the splash is either shown every launch or shown
+/// once per install and missed by anybody who reinstalls.
+model TapToPayAnnouncement {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  splashSeenAt DateTime?
+  pushSentAt   DateTime?
+  emailSentAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tap_to_pay_announcement")
 }
 
 /// A phone that has agreed to receive notifications.
@@ -1132,6 +1156,7 @@ model TicketEvent {
   staff         TicketEventStaff[]
   discountCodes DiscountCode[]
   linkBatches   TicketLinkBatch[]
+  doorReceipts  DoorPaymentReceipt[]
 
   @@index([status, startsAt])
   @@index([gigId])
@@ -1229,11 +1254,12 @@ model TicketOrder {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  items       TicketOrderItem[]
-  tickets     Ticket[]
-  emails      TicketEmailLog[]
-  redemptions DiscountRedemption[]
-  linkBatch   TicketLinkBatch?
+  items        TicketOrderItem[]
+  tickets      Ticket[]
+  emails       TicketEmailLog[]
+  redemptions  DiscountRedemption[]
+  linkBatch    TicketLinkBatch?
+  doorReceipts DoorPaymentReceipt[]
 
   @@index([eventId, status])
   @@index([buyerEmail])
@@ -1472,4 +1498,61 @@ model WalletPassRegistration {
   @@unique([deviceLibraryIdentifier, serialNumber])
   @@index([serialNumber])
   @@map("wallet_pass_registration")
+}
+
+/// The outcome of a Tap to Pay attempt, as the customer experienced it.
+enum DoorReceiptOutcome {
+  APPROVED
+  DECLINED
+  /// The card was never read — nobody tapped, or the read timed out.
+  TIMED_OUT
+}
+
+/// A receipt for a card payment taken at a door.
+///
+/// Apple's App Review checklist 5.10 requires that a confidential digital
+/// receipt can be sent to the customer "regardless of whether a transaction is
+/// approved or declined". A declined tap leaves no paid order behind — the hold
+/// is released and the `TicketOrder` is cancelled — so receipts cannot hang off
+/// the order and need a record of their own.
+///
+/// Nothing here identifies the cardholder unless they choose to give an address:
+/// the brand and last four digits come from Stripe's `card_present` details
+/// server-side and are the most that is ever stored.
+model DoorPaymentReceipt {
+  id String @id @default(cuid())
+
+  /// The only credential the public receipt page accepts. Unguessable, because
+  /// the customer receiving it has no Atmos account to authenticate with.
+  token String @unique
+
+  eventId String
+  event   TicketEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  /// Null on a decline: there is no order once the hold has been released.
+  orderId String?
+  order   TicketOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  paymentIntentId String?
+  outcome         DoorReceiptOutcome
+
+  amountCents Int
+  currency    String @default("NZD")
+
+  cardBrand   String?
+  last4       String?
+  /// Stripe's reason, kept so a customer disputing a decline can be told why.
+  declineCode String?
+
+  createdByUserId String?
+  deviceLabel     String?
+
+  sentToEmail String?
+  sentAt      DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([eventId, createdAt])
+  @@index([orderId])
+  @@map("door_payment_receipt")
 }

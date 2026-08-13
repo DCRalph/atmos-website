@@ -22,9 +22,11 @@ import {
   ticketUrl,
   ticketsUrl,
 } from "~/server/ticketing/urls";
+import { doorReceiptUrl } from "~/server/ticketing/door-receipts";
 import { sendTransactional } from "./provider";
 import {
   renderCompEmail,
+  renderDoorReceiptEmail,
   renderRefundEmail,
   renderTicketEmail,
   type EmailTicket,
@@ -372,4 +374,66 @@ async function logEmail({
       // Logging must never take down a send that already succeeded.
       console.error("[ticketing] failed to write email log", cause);
     });
+}
+
+/**
+ * Email a door card receipt.
+ *
+ * Apple's App Review checklist 5.10. Separate from `sendTicketEmail` on
+ * purpose: this is a record of a card being charged (or refused), not a
+ * delivery of tickets, and it has to work for the declines that never produced
+ * an order at all.
+ */
+export async function sendDoorReceiptEmail({
+  receiptId,
+  to,
+}: {
+  receiptId: string;
+  to: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const receipt = await db.doorPaymentReceipt.findUnique({
+    where: { id: receiptId },
+    include: {
+      event: { select: { name: true } },
+      order: { select: { orderNumber: true } },
+    },
+  });
+
+  if (!receipt) return { ok: false, error: "Receipt not found" };
+
+  const settings = await getTicketingSettings();
+
+  const { subject, html, text } = renderDoorReceiptEmail({
+    eventName: receipt.event.name,
+    outcome: receipt.outcome,
+    amountCents: receipt.amountCents,
+    cardBrand: receipt.cardBrand,
+    last4: receipt.last4,
+    declineReason: receipt.declineCode,
+    orderNumber: receipt.order?.orderNumber ?? null,
+    takenAt: receipt.createdAt,
+    receiptUrl: doorReceiptUrl(receipt.token),
+    legalName: settings.legalName,
+    gstNumber: settings.gstNumber,
+    supportEmail: settings.supportEmail,
+  });
+
+  const result = await sendTransactional({
+    to,
+    subject,
+    html,
+    text,
+    replyTo: settings.supportEmail ?? undefined,
+  });
+
+  if (result.ok) {
+    await db.doorPaymentReceipt
+      .update({
+        where: { id: receiptId },
+        data: { sentToEmail: to.toLowerCase().trim(), sentAt: new Date() },
+      })
+      .catch(() => undefined);
+  }
+
+  return { ok: result.ok, error: result.error };
 }

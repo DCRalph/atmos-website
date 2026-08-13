@@ -25,6 +25,7 @@ import { ticketCheckoutRouter } from "~/server/api/routers/ticket-checkout";
 import { ticketsRouter } from "~/server/api/routers/tickets";
 import { doorRouter } from "~/server/api/routers/door";
 import { terminalRouter } from "~/server/api/routers/terminal";
+import { tapToPayRouter } from "~/server/api/routers/tap-to-pay";
 import { pushRouter } from "~/server/api/routers/push";
 import { discountCodesRouter } from "~/server/api/routers/discount-codes";
 import { ticketAdminRouter } from "~/server/api/routers/ticket-admin";
@@ -70,6 +71,7 @@ export const appRouter = createTRPCRouter({
   accessLevels: accessLevelsRouter,
   door: doorRouter,
   terminal: terminalRouter,
+  tapToPay: tapToPayRouter,
   push: pushRouter,
 
   /** Combobox data sources — see `~/server/api/pickers/core`. */

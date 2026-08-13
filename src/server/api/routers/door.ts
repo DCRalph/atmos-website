@@ -30,7 +30,15 @@ import {
 } from "~/server/ticketing/orders";
 import { getStripe, isStripeConfigured } from "~/server/stripe";
 import { compAccounting, issueComp } from "~/server/ticketing/comps";
-import { sendCompTicketEmail } from "~/server/ticketing/email/send";
+import {
+  sendCompTicketEmail,
+  sendDoorReceiptEmail,
+} from "~/server/ticketing/email/send";
+import {
+  DoorReceiptOutcome,
+  doorReceiptUrl,
+  recordDoorReceipt,
+} from "~/server/ticketing/door-receipts";
 import { buildTicketToken } from "~/server/ticketing/qr";
 import { DENY_REASON_VALUES } from "~/lib/ticketing/deny-reasons";
 import { ACCESS_LEVEL_VALUES } from "~/lib/ticketing/access-levels";
@@ -1322,6 +1330,16 @@ export const doorRouter = createTRPCRouter({
 
       // Already issued — a double tap on "done", or a retried request.
       if (order.status === TicketOrderStatus.PAID) {
+        // The receipt written by the first call through, so a retry hands back
+        // the same one instead of a null the sheet would read as "no receipt".
+        // Same shape as the success branch on purpose: the client should not
+        // have to narrow a union to find out whether it can offer a receipt.
+        const existing = await ctx.db.doorPaymentReceipt.findFirst({
+          where: { orderId: order.id },
+          orderBy: { createdAt: "desc" },
+          select: { id: true, token: true },
+        });
+
         return {
           orderId: order.id,
           orderNumber: order.orderNumber,
@@ -1329,6 +1347,8 @@ export const doorRouter = createTRPCRouter({
           admittedNow: false,
           alreadyIssued: true as const,
           admitted: await admittedCount(input.eventId),
+          receiptId: existing?.id ?? null,
+          receiptUrl: existing ? doorReceiptUrl(existing.token) : null,
         };
       }
 
@@ -1374,6 +1394,24 @@ export const doorRouter = createTRPCRouter({
         });
       }
 
+      /**
+       * Checklist 5.10 — the receipt exists before anybody asks for it.
+       *
+       * Minted here rather than when a customer requests one, because the card
+       * details it prints are only readable from the charge, and the staffer
+       * will have moved on to the next person by then. Not fatal: a sale that
+       * completed must not be undone because a receipt row failed to write.
+       */
+      const receipt = await recordDoorReceipt({
+        eventId: input.eventId,
+        orderId: order.id,
+        paymentIntentId: intent.id,
+        outcome: DoorReceiptOutcome.APPROVED,
+        amountCents: intent.amount,
+        createdByUserId: ctx.user.id,
+        deviceLabel: input.deviceLabel,
+      }).catch(() => null);
+
       return {
         orderId: order.id,
         orderNumber: order.orderNumber,
@@ -1381,7 +1419,120 @@ export const doorRouter = createTRPCRouter({
         admittedNow: input.admitNow,
         alreadyIssued: false as const,
         admitted: await admittedCount(input.eventId),
+        receiptId: receipt?.receiptId ?? null,
+        receiptUrl: receipt?.url ?? null,
       };
+    }),
+
+  /**
+   * Write a receipt for a tap that did not become a sale.
+   *
+   * The other half of checklist 5.10: a declined card and a tap that timed out
+   * both have to be receiptable, and neither leaves an order behind — the hold
+   * is released and the order cancelled, so there is nothing for a receipt to
+   * hang off but this.
+   *
+   * The outcome is the app's account of what the cardholder saw, which is all
+   * it can be. Everything that could be checked *is* checked: amount and card
+   * details are re-read from Stripe inside `recordDoorReceipt` rather than
+   * accepted from here, so the worst a patched client can do is ask for a
+   * receipt that says a card was refused.
+   */
+  recordDeclinedSale: doorProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        orderId: z.string().optional(),
+        paymentIntentId: z.string().optional(),
+        outcome: z.enum(["DECLINED", "TIMED_OUT"]),
+        amountCents: z.number().int().min(0),
+        deviceLabel: z.string().trim().max(60).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
+
+      const receipt = await recordDoorReceipt({
+        eventId: input.eventId,
+        // Only if it is still around — `abandonSale` may already have taken it.
+        orderId: input.orderId ?? null,
+        paymentIntentId: input.paymentIntentId ?? null,
+        outcome:
+          input.outcome === "DECLINED"
+            ? DoorReceiptOutcome.DECLINED
+            : DoorReceiptOutcome.TIMED_OUT,
+        amountCents: input.amountCents,
+        createdByUserId: ctx.user.id,
+        deviceLabel: input.deviceLabel,
+      });
+
+      return { receiptId: receipt.receiptId, receiptUrl: receipt.url };
+    }),
+
+  /**
+   * The customer's copy.
+   *
+   * Two channels, because a door needs both: an address typed in when somebody
+   * wants it in writing, and a shareable link for the far more common case of
+   * "AirDrop it to me" — or of nobody wanting anything at all, which is why
+   * neither is mandatory before the next sale can start.
+   */
+  receiptLink: doorProcedure
+    .input(z.object({ receiptId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const receipt = await db.doorPaymentReceipt.findUnique({
+        where: { id: input.receiptId },
+        select: { token: true, eventId: true, amountCents: true, outcome: true },
+      });
+      if (!receipt) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No such receipt." });
+      }
+      await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        receipt.eventId,
+      );
+      return {
+        url: doorReceiptUrl(receipt.token),
+        amountCents: receipt.amountCents,
+        outcome: receipt.outcome,
+      };
+    }),
+
+  sendReceipt: doorProcedure
+    .input(z.object({ receiptId: z.string(), email: z.email() }))
+    .mutation(async ({ ctx, input }) => {
+      const receipt = await db.doorPaymentReceipt.findUnique({
+        where: { id: input.receiptId },
+        select: { eventId: true },
+      });
+      if (!receipt) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No such receipt." });
+      }
+      await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        receipt.eventId,
+      );
+
+      const result = await sendDoorReceiptEmail({
+        receiptId: input.receiptId,
+        to: input.email,
+      });
+      if (!result.ok) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: result.error ?? "That receipt didn't send.",
+        });
+      }
+      return { ok: true as const };
     }),
 
   /**

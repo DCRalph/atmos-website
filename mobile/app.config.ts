@@ -20,6 +20,8 @@ const config: ExpoConfig = {
     // App Store Connect rejects a build whose number it has already seen, so
     // this has to go up on every upload of the same version.
     buildNumber: process.env.BUILD_NUMBER ?? "1",
+    // No iPad can do Tap to Pay, and the door screens are laid out for a phone
+    // held one-handed in the dark.
     supportsTablet: false,
     // Lets the existing emailed ticket links
     // (https://atmosmedia.co.nz/tickets/...) open the app instead of Safari
@@ -50,9 +52,29 @@ const config: ExpoConfig = {
         : { "com.apple.developer.proximity-reader.payment.acceptance": true }),
       "aps-environment": process.env.APS_ENVIRONMENT ?? "development",
     },
+    /**
+     * Note what is deliberately *absent* here: `UIRequiredDeviceCapabilities`
+     * with `iphone-ipad-minimum-performance-a12`, and a raised deployment
+     * target.
+     *
+     * Apple's App Review checklist rows 1.2 and 1.3 ask for both, but each is
+     * conditional on Tap to Pay being the app's *primary* payment method. It is
+     * not: this is a consumer ticketing app whose primary payment method is
+     * Stripe checkout on the web, and Tap to Pay is internal box-office tooling
+     * for Atmos door staff. Requiring an A12 would lock a punter with an
+     * iPhone 8 out of their own ticket over a staff feature they cannot see.
+     *
+     * The device floor is enforced where it belongs instead — at runtime, in
+     * `src/lib/tap-to-pay.tsx`, which reports an unsupported handset or an
+     * out-of-date iOS as its own first-class state (checklist rows 1.1, 1.4).
+     */
     infoPlist: {
       NSCameraUsageDescription:
         "Atmos uses the camera to scan tickets at the door.",
+      // Checklist 1.7 — Face ID unlocks a handset that is already signed in, so
+      // door staff are not typing a password at a door in the dark.
+      NSFaceIDUsageDescription:
+        "Atmos uses Face ID to unlock this handset for door mode and your tickets.",
       ITSAppUsesNonExemptEncryption: false,
     },
   },

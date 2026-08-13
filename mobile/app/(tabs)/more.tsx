@@ -1,12 +1,13 @@
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChevronRight } from "lucide-react-native";
 
 import { api } from "@/lib/api";
 import { API_URL } from "@/lib/env";
 import { signOut, useAuth } from "@/lib/auth";
+import { useBiometrics } from "@/lib/biometrics";
 import { getRegisteredPushToken } from "@/lib/push";
 import { colors, radius, space, stroke } from "@/lib/theme";
 import { Body, Button, Caption, Eyebrow, Title } from "@/components/ui";
@@ -16,6 +17,7 @@ export default function MoreScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
+  const biometrics = useBiometrics();
   const unregister = api.push.unregister.useMutation();
 
   // Door mode is staff tooling inside a customer app, so nothing about it
@@ -92,6 +94,27 @@ export default function MoreScreen() {
                 Event analytics
               </Button>
             )}
+            {/* Checklist 1.7. Hidden entirely when the handset has no
+                biometric enrolled — a switch that cannot be turned on is worse
+                than no switch. */}
+            {biometrics.available && (
+              <View style={styles.toggle}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Body>Unlock with {biometrics.label}</Body>
+                  <Caption>
+                    Locks the app when it has been put down. You stay signed in.
+                  </Caption>
+                </View>
+                <Switch
+                  value={biometrics.enabled}
+                  onValueChange={(next) => {
+                    void biometrics.setEnabled(next);
+                  }}
+                  trackColor={{ true: colors.text, false: colors.border }}
+                  thumbColor={colors.bg}
+                />
+              </View>
+            )}
             <Button
               variant="outline"
               style={{ marginTop: space.md }}
@@ -119,6 +142,23 @@ export default function MoreScreen() {
           </View>
         )}
       </View>
+
+      {/*
+        Checklist 3.1 and 3.6 — Tap to Pay must be visible and discoverable
+        outside checkout, and enabling it must be possible from settings. Also
+        2.1: shown to everybody signed in, not just staff, because a new user
+        has to be able to find out how Tap to Pay is reached at all. The screen
+        itself tells a punter it is Atmos door tooling.
+      */}
+      {user ? (
+        <View style={{ gap: space.sm }}>
+          <Eyebrow>Payments</Eyebrow>
+          <Row
+            label="Tap to Pay on iPhone"
+            onPress={() => router.push("/(door)/tap-to-pay")}
+          />
+        </View>
+      ) : null}
 
       <View style={{ gap: space.sm }}>
         <Eyebrow>Atmos</Eyebrow>
@@ -170,5 +210,14 @@ const styles = StyleSheet.create({
     borderWidth: stroke.hair,
     borderColor: colors.border,
     borderRadius: radius.md,
+  },
+  toggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    marginTop: space.md,
+    paddingTop: space.md,
+    borderTopWidth: stroke.hair,
+    borderTopColor: colors.border,
   },
 });

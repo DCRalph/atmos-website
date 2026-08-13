@@ -1,17 +1,20 @@
-import { useMemo, useState } from "react";
-import { useLocalSearchParams } from "expo-router";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Minus, Plus } from "lucide-react-native";
 
 import { api } from "@/lib/api";
 import { useDeviceLabel } from "@/lib/device-label";
-import { colors, radius, space } from "@/lib/theme";
+import { useTapToPay } from "@/lib/tap-to-pay";
+import { colors, radius, space, stroke } from "@/lib/theme";
 import { Body, Button, Caption, Loading, Notice } from "@/components/ui";
 import { DoorHeader } from "@/components/door/door-header";
 import { TapToPaySheet } from "@/components/door/tap-to-pay";
+import { TapToPayMark } from "@/components/door/tap-to-pay-mark";
 import { CompForm } from "@/components/door/comp-form";
+import { DoorReceiptPrompt } from "@/components/door/receipt-prompt";
 
-type PaymentMethod = "CASH" | "TERMINAL" | "TAP_TO_PAY";
+type PaymentMethod = "TAP_TO_PAY" | "CASH" | "TERMINAL";
 
 /**
  * Selling to somebody at the door with no ticket.
@@ -24,31 +27,40 @@ type PaymentMethod = "CASH" | "TERMINAL" | "TAP_TO_PAY";
  * decline, so it runs through its own two-step path where no ticket exists
  * until the server has seen the payment succeed. Hence the separate sheet
  * rather than a third value on the same button.
+ *
+ * The layout is shaped by Apple's App Review checklist as much as by the door:
+ *
+ * - **5.2** Tap to Pay is first in the list of payment options, and the whole
+ *   payment block is pinned to the bottom of the screen so it can never be
+ *   scrolled off — an event with a dozen tiers must not push it under the fold.
+ * - **5.3** the Tap to Pay option is *always* rendered, never greyed out and
+ *   never hidden, whatever state the reader is in. Choosing it when the handset
+ *   has not been set up opens the Terms and Conditions rather than failing.
+ * - **5.4 / 1.9** it is called "Tap to Pay on iPhone", in full, every time.
+ * - **5.5** the icon is Apple's own `wave.3.right.circle.fill` SF Symbol.
  */
 export default function SellScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
+  const router = useRouter();
   const [quantities, setQuantities] = useState<Record<string, number>>({});
-  const [method, setMethod] = useState<PaymentMethod>("CASH");
+  const [method, setMethod] = useState<PaymentMethod>("TAP_TO_PAY");
   const [receipt, setReceipt] = useState<{
     kind: "sale" | "comp";
     reference: string;
+    receiptId?: string;
   } | null>(null);
   const [tapping, setTapping] = useState(false);
   const [mode, setMode] = useState<"SELL" | "COMP">("SELL");
 
   const { deviceLabel } = useDeviceLabel();
+  const tapToPay = useTapToPay();
 
   const summary = api.door.summary.useQuery(
     { eventId },
     { enabled: !!eventId, refetchInterval: 15_000 },
   );
   const tiers = api.door.sellableTiers.useQuery({ eventId });
-  const terminal = api.terminal.config.useQuery(undefined, { retry: false });
   const utils = api.useUtils();
-
-  // Hidden rather than shown-and-broken when Stripe is not configured — a
-  // payment button that always fails is worse than no button.
-  const tapAvailable = terminal.data?.available ?? false;
 
   const lines = useMemo(
     () =>
@@ -79,11 +91,25 @@ export default function SellScreen() {
     },
   });
 
+  /**
+   * Checklist 5.3 — pressing Tap to Pay when it is not yet enabled must lead to
+   * acceptance, not to a dead end. An admin gets Apple's sheet directly; anybody
+   * else is sent to the hub, which tells them to find one (3.8.1).
+   */
+  const startSetUp = useCallback(() => {
+    const state = tapToPay.state;
+    if (state.status === "needs-setup" && state.canAccept) {
+      void tapToPay.acceptTerms().catch(() => undefined);
+      return;
+    }
+    router.push("/(door)/tap-to-pay");
+  }, [tapToPay, router]);
+
   if (receipt) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
         <DoorHeader eventId={eventId} summary={summary.data} active="sell" />
-        <View style={{ padding: space.lg }}>
+        <ScrollView contentContainerStyle={{ padding: space.lg, gap: space.lg }}>
           <Notice
             title={receipt.kind === "comp" ? "Comped and in" : "Sold and in"}
             detail={`${
@@ -91,20 +117,24 @@ export default function SellScreen() {
             } ${receipt.reference}. They are counted as inside.`}
             action={<Button onPress={() => setReceipt(null)}>Next</Button>}
           />
-        </View>
+          {/* Checklist 5.10 — a receipt has to be offered for card sales. */}
+          {receipt.receiptId ? (
+            <DoorReceiptPrompt receiptId={receipt.receiptId} />
+          ) : null}
+        </ScrollView>
       </View>
     );
   }
 
   const available = (tiers.data ?? []).filter((tier) => tier.remaining > 0);
+  const tapReady = tapToPay.isReady;
+  const showPayment = mode === "SELL" && ticketCount > 0;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <DoorHeader eventId={eventId} summary={summary.data} active="sell" />
 
-      <ScrollView
-        contentContainerStyle={{ padding: space.lg, gap: space.lg }}
-      >
+      <ScrollView contentContainerStyle={{ padding: space.lg, gap: space.lg }}>
         {/* Comping is a separate mode rather than a third payment method,
             because it is a different act: nothing is drawn from a tier, a level
             is picked directly, and the ticket goes out in somebody's name. */}
@@ -119,7 +149,7 @@ export default function SellScreen() {
               <Pressable
                 key={tab.value}
                 onPress={() => setMode(tab.value)}
-                style={[styles.method, mode === tab.value && styles.methodActive]}
+                style={[styles.tab, mode === tab.value && styles.tabActive]}
               >
                 <Text
                   style={[
@@ -178,85 +208,94 @@ export default function SellScreen() {
             })}
           </View>
         )}
+      </ScrollView>
 
-        {mode === "SELL" && ticketCount > 0 ? (
-          <>
-            <View style={{ gap: space.sm }}>
-              <Caption>How are they paying?</Caption>
-              <View style={{ flexDirection: "row", gap: space.sm }}>
-                {(
-                  [
-                    { value: "CASH", label: "Cash" },
-                    { value: "TERMINAL", label: "Eftpos" },
-                    ...(tapAvailable
-                      ? [{ value: "TAP_TO_PAY", label: "Tap" } as const]
-                      : []),
-                  ] as { value: PaymentMethod; label: string }[]
-                ).map((option) => (
-                  <Pressable
-                    key={option.value}
-                    onPress={() => setMethod(option.value)}
-                    style={[
-                      styles.method,
-                      method === option.value && styles.methodActive,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.methodLabel,
-                        method === option.value && { color: "#000" },
-                      ]}
-                    >
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-              {method === "TAP_TO_PAY" ? (
-                <Caption>
-                  They tap their card or phone against this handset. The ticket
-                  is only issued once the payment goes through.
-                </Caption>
-              ) : (
-                <Caption>
-                  Recorded as already paid — take the money first.
-                </Caption>
-              )}
-            </View>
+      {/*
+        Pinned, not scrolled. Checklist 5.2 requires the Tap to Pay button to be
+        reachable "without requiring scrolling" — which cannot be promised from
+        inside a list whose length is set by however many tiers an event has.
+      */}
+      {showPayment ? (
+        <View style={styles.footer}>
+          <Caption>How are they paying?</Caption>
 
-            <View style={styles.total}>
-              <Body style={{ fontWeight: "700" }}>
-                {ticketCount === 1 ? "1 ticket" : `${ticketCount} tickets`}
-              </Body>
-              <Body style={{ fontWeight: "700" }}>
-                ${(totalCents / 100).toFixed(2)}
-              </Body>
-            </View>
+          <View style={{ gap: space.sm }}>
+            <MethodRow
+              label="Tap to Pay on iPhone"
+              hint={
+                tapReady
+                  ? "Card, Apple Pay or Google Pay on this phone"
+                  : "Tap to set it up on this iPhone"
+              }
+              icon={
+                <TapToPayMark
+                  size={20}
+                  color={method === "TAP_TO_PAY" ? "#000" : colors.text}
+                />
+              }
+              selected={method === "TAP_TO_PAY"}
+              onPress={() => setMethod("TAP_TO_PAY")}
+            />
+            <MethodRow
+              label="Cash"
+              hint="Recorded as already paid"
+              selected={method === "CASH"}
+              onPress={() => setMethod("CASH")}
+            />
+            <MethodRow
+              label="Eftpos"
+              hint="Recorded as already paid"
+              selected={method === "TERMINAL"}
+              onPress={() => setMethod("TERMINAL")}
+            />
+          </View>
 
-            {method === "TAP_TO_PAY" ? (
+          <View style={styles.total}>
+            <Body style={{ fontWeight: "700" }}>
+              {ticketCount === 1 ? "1 ticket" : `${ticketCount} tickets`}
+            </Body>
+            <Body style={{ fontWeight: "700" }}>
+              ${(totalCents / 100).toFixed(2)}
+            </Body>
+          </View>
+
+          {method === "TAP_TO_PAY" ? (
+            tapReady ? (
               <Button onPress={() => setTapping(true)}>
-                {`Charge $${(totalCents / 100).toFixed(2)} by tap`}
+                {`Charge $${(totalCents / 100).toFixed(2)} with Tap to Pay on iPhone`}
               </Button>
             ) : (
-              <Button
-                loading={sell.isPending}
-                onPress={() =>
-                  sell.mutate({
-                    eventId,
-                    lines,
-                    paymentMethod: method,
-                    admitNow: true,
-                  })
-                }
-              >
-                {`Took $${(totalCents / 100).toFixed(2)} — issue ${
-                  ticketCount === 1 ? "ticket" : "tickets"
-                }`}
+              /*
+                Never greyed out (5.3). If the handset is not set up, the button
+                is the way *in* to setting it up rather than a locked door — and
+                for a state that no button can fix, it still opens the screen
+                that explains why.
+              */
+              <Button onPress={startSetUp}>
+                {tapToPay.state.status === "needs-setup"
+                  ? "Set up Tap to Pay on iPhone"
+                  : "Tap to Pay on iPhone — see status"}
               </Button>
-            )}
-          </>
-        ) : null}
-      </ScrollView>
+            )
+          ) : (
+            <Button
+              loading={sell.isPending}
+              onPress={() =>
+                sell.mutate({
+                  eventId,
+                  lines,
+                  paymentMethod: method,
+                  admitNow: true,
+                })
+              }
+            >
+              {`Took $${(totalCents / 100).toFixed(2)} — issue ${
+                ticketCount === 1 ? "ticket" : "tickets"
+              }`}
+            </Button>
+          )}
+        </View>
+      ) : null}
 
       {tapping ? (
         <TapToPaySheet
@@ -265,9 +304,9 @@ export default function SellScreen() {
           lines={lines}
           totalCents={totalCents}
           onClose={() => setTapping(false)}
-          onSold={(orderNumber) => {
+          onSold={(orderNumber, receiptId) => {
             setTapping(false);
-            setReceipt({ kind: "sale", reference: orderNumber });
+            setReceipt({ kind: "sale", reference: orderNumber, receiptId });
             setQuantities({});
             void summary.refetch();
             void utils.door.doorList.invalidate();
@@ -276,6 +315,46 @@ export default function SellScreen() {
         />
       ) : null}
     </View>
+  );
+}
+
+/**
+ * One payment option.
+ *
+ * A row rather than a chip because the full product name has to fit — Apple's
+ * marketing guidelines do not allow "Tap to Pay on iPhone" abbreviated to
+ * "Tap", which is what the horizontal three-up layout this replaced forced.
+ */
+function MethodRow({
+  label,
+  hint,
+  icon,
+  selected,
+  onPress,
+}: {
+  label: string;
+  hint: string;
+  icon?: ReactNode;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={[styles.method, selected && styles.methodActive]}
+    >
+      {icon ? <View style={{ width: 22 }}>{icon}</View> : null}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[styles.methodLabel, selected && { color: "#000" }]}>
+          {label}
+        </Text>
+        <Text style={[styles.methodHint, selected && { color: "#000" }]}>
+          {hint}
+        </Text>
+      </View>
+    </Pressable>
   );
 }
 
@@ -338,7 +417,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontVariant: ["tabular-nums"],
   },
-  method: {
+  tab: {
     flex: 1,
     height: 52,
     alignItems: "center",
@@ -347,8 +426,21 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.sm,
   },
+  tabActive: { backgroundColor: colors.text, borderColor: colors.text },
+  method: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    minHeight: 52,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+  },
   methodActive: { backgroundColor: colors.text, borderColor: colors.text },
-  methodLabel: { color: colors.textSoft, fontSize: 15, fontWeight: "700" },
+  methodLabel: { color: colors.text, fontSize: 15, fontWeight: "700" },
+  methodHint: { color: colors.textFaint, fontSize: 12, marginTop: 1 },
   total: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -356,5 +448,13 @@ const styles = StyleSheet.create({
     borderTopWidth: 2,
     borderBottomWidth: 2,
     borderColor: colors.border,
+  },
+  footer: {
+    padding: space.lg,
+    paddingBottom: space.xl,
+    gap: space.md,
+    backgroundColor: colors.bg,
+    borderTopWidth: stroke.hard,
+    borderTopColor: colors.border,
   },
 });

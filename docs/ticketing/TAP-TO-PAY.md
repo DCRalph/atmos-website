@@ -1,8 +1,19 @@
 # Tap to Pay on iPhone
 
 Taking contactless card payments at the door on the phone itself, with no
-separate reader. Stripe Terminal's `tapToPay` discovery method drives it from
-`mobile/src/components/door/tap-to-pay.tsx`.
+separate reader. Stripe Terminal's `tapToPay` discovery method drives it.
+
+**Where things live.** The lifecycle — initialize, support check, discovery,
+connect, terms, configuration progress — is all in `mobile/src/lib/tap-to-pay.tsx`
+and nowhere else. `mobile/src/components/door/tap-to-pay.tsx` is now only the
+payment sheet: it consumes that state and collects a payment against an
+already-connected reader. Merchant-facing screens are under
+`mobile/app/(door)/tap-to-pay/`.
+
+That split exists because Apple's App Review checklist treats Tap to Pay as an
+app-level capability rather than a checkout detail. See
+`docs/ticketing/TAP-TO-PAY-APP-REVIEW.md` for the plan and
+`docs/ticketing/APP-REVIEW-ANSWERS.md` for the filled-in checklist.
 
 It needs one thing that cannot be done in code: **Apple has to grant the app an
 entitlement.** Until they do, the sheet hangs on "Getting the reader ready"
@@ -180,8 +191,8 @@ First initialize the Stripe Terminal SDK before performing any action
 ```
 
 Mounting the provider is not enough, and nothing warns you. This is done in
-`mobile/src/components/door/terminal.tsx`, which wraps the provider, calls
-`initialize()` once, and publishes the result so the sell sheet can wait for it.
+`mobile/src/lib/tap-to-pay.tsx`, which wraps the provider, calls `initialize()`
+once, and publishes the result so everything else can wait for it.
 
 Two traps worth knowing:
 
@@ -220,15 +231,82 @@ Recorded so nobody re-debugs it while waiting on Apple.
 
 | Piece | Where | State |
 | --- | --- | --- |
-| Discovery method | `tap-to-pay.tsx` | `discoveryMethod: "tapToPay"` — correct for this SDK |
-| Simulated reader | `tap-to-pay.tsx` | `simulated: __DEV__` — false in Release, so real hardware |
+| Discovery method | `lib/tap-to-pay.tsx` | `discoveryMethod: "tapToPay"` — correct for this SDK |
+| Simulated reader | `lib/tap-to-pay.tsx` | `simulated: __DEV__` — false in Release, so real hardware |
 | Connection token | `terminal.connectionToken` | Minted server-side against the secret key |
 | Terminal location | `STRIPE_TERMINAL_LOCATION_ID` | Set; required by `connectReader` |
 | Stripe key | `STRIPE_SECRET_KEY` | Live |
 
-The token provider is wired at the door layout rather than the sell screen
-(`mobile/app/(door)/_layout.tsx`), so the reader stays connected between sales
-instead of reconnecting per transaction.
+The provider is mounted at the **app root** (`mobile/src/components/providers.tsx`),
+not around the door stack. Apple's checklist row 1.5 wants the reader warmed up
+at app launch and again on foreground, and a provider that only mounts when
+somebody navigates into door mode is already too late — by then there is a queue.
+It stays completely inert for anybody the server does not recognise as door
+staff: `terminal.config` is a `doorProcedure`, so a punter's call is refused and
+nothing is ever initialized.
+
+## Terms and Conditions, and who may accept them
+
+Checklist rows 3.5, 3.8 and 3.8.1. Apple requires acceptance to be a deliberate
+act by an authorized party, and requires everybody else to be told to go and
+find one.
+
+The mechanism is `tosAcceptancePermitted` on `connectReader`:
+
+- The **background warm-up** connects with it `false`. That means "connect if
+  this Apple Account has already accepted, otherwise fail" — so launching the
+  app on a fresh handset can never ambush whoever opened it with Apple's terms
+  sheet.
+- The **explicit setup action** on `app/(door)/tap-to-pay/index.tsx` connects
+  with it `true`. That is the only place in the app where it is ever true, and
+  it is gated on `terminal.config.canAcceptTerms`, which the server answers with
+  `ctx.isAdmin`. Admin only, deliberately: accepting binds the Atmos merchant
+  identity to that person's personal Apple Account.
+
+Nothing about acceptance is stored (checklist 1.6). The state is re-derived from
+the SDK on every launch by attempting the permissive-false connect.
+
+**A trap worth knowing.** You cannot tell "terms not yet accepted" apart from
+other reader failures by error code. The React Native SDK flattens Apple's
+`tapToPayReaderTOSNotYetAccepted` onto `READER_SOFTWARE_UPDATE_FAILED`, which it
+also uses for a genuinely failed reader update — see `ios/Errors.swift` in the
+package. That is why the state is called `needs-setup` rather than
+`needs-terms`, and why the way through is an explicit action rather than a
+guess at an error string.
+
+## What ships around it
+
+| Requirement | Where |
+| --- | --- |
+| Warm-up at launch and foreground (1.5, 5.6) | `lib/tap-to-pay.tsx` |
+| iOS version floor and device errors (1.1, 1.4) | `MIN_TAP_TO_PAY_IOS`, `describeError` |
+| Configuration progress (3.9.1, 5.7) | `components/door/tap-to-pay-state.tsx` |
+| Apple's merchant education (4.1) | `modules/proximity-education`, `lib/apple-education.ts` |
+| Education fallback for iOS 17 (4.2, 4.5–4.8) | `app/(door)/tap-to-pay/education.tsx` |
+| Settings entry and enable action (3.1, 3.6, 4.3) | `app/(door)/tap-to-pay/index.tsx` |
+| Test payment (3.9) | `app/(door)/tap-to-pay/try-it.tsx`, `terminal.createTestIntent` |
+| Digital receipts (5.10) | `DoorPaymentReceipt`, `/receipts/[token]`, `door.sendReceipt` |
+| Launch splash, push, email (3.2, 3.3, 6.x) | `TapToPaySplash`, `tapToPay` router |
+| Face ID unlock (1.7) | `lib/biometrics.tsx` |
+
+## Apple's merchant education needs a native module
+
+`ProximityReaderDiscovery` is required by checklist 4.1 on iOS 18 and later, and
+the Stripe React Native SDK does not expose it — its iOS bridge touches
+`TapToPayDiscoveryConfiguration` and nothing else. Stripe's own documentation
+says to call Apple's API directly, and no dependency is added by doing so:
+`ProximityReader` is a system framework the Terminal SDK already links.
+
+It lives in `mobile/modules/proximity-education` as a **local Expo module**
+rather than as a patch to `ios/`, because `ios/` is generated by `expo prebuild`
+and gitignored — anything written there by hand is destroyed by the next build.
+Two things decide whether the call works at all:
+
+- an `#available(iOS 18.0, *)` guard, with our own screens as the fallback;
+- the **topmost presented** view controller. Apple presents onto whatever it is
+  handed, so passing the root while a modal is up fails silently — and the
+  checkout runs inside a full-screen modal, which makes that the normal case
+  here rather than an edge case.
 
 ## Device requirements
 

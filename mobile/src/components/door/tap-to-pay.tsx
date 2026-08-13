@@ -1,27 +1,45 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as Haptics from "expo-haptics";
-import {
-  useStripeTerminal,
-  type Reader,
-} from "@stripe/stripe-terminal-react-native";
-import { Modal, StyleSheet, View } from "react-native";
+import { useStripeTerminal } from "@stripe/stripe-terminal-react-native";
+import { Modal, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "@/lib/api";
 import { colors, radius, space } from "@/lib/theme";
+import { useTapToPay } from "@/lib/tap-to-pay";
 import { Body, Button, Caption, Loading, Title } from "@/components/ui";
-import { useTerminalInit } from "@/components/door/terminal";
+import { TapToPayStateView } from "@/components/door/tap-to-pay-state";
+import { DoorReceiptPrompt } from "@/components/door/receipt-prompt";
 
 const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
+/**
+ * How the tap ended, in the three words Apple's checklist 5.9 asks for.
+ *
+ * Everything the SDK can throw lands in one of these. A generic "that didn't
+ * work" is what this replaced, and it is the wrong answer at a door: "declined"
+ * means ask for another card, "not completed" means try the tap again, and
+ * telling them apart is the difference between a queue moving and a queue
+ * watching somebody re-tap a card the bank has already refused.
+ */
+type Verdict = "approved" | "declined" | "timed-out";
+
 type Stage =
-  | "connecting"
+  | "idle"
   | "creating"
   | "waiting-for-tap"
   | "processing"
   | "issuing"
-  | "done"
-  | "failed";
+  | "settled";
+
+/** Collect failed: nothing was ever read. */
+const TIMEOUT_CODES = new Set([
+  "CANCELED",
+  "CARD_READ_TIMED_OUT",
+  "REQUEST_TIMED_OUT",
+  "TAP_TO_PAY_READER_REQUEST_INTERRUPTED",
+  "CARD_REMOVED",
+]);
 
 /**
  * Take a contactless payment on the phone itself.
@@ -31,6 +49,17 @@ type Stage =
  * from Stripe and seen it succeed are tickets minted. Nothing here can issue a
  * ticket on this component's say-so — a declined card that walked away holding
  * a valid ticket is the failure mode this shape exists to prevent.
+ *
+ * What changed for Apple's App Review checklist:
+ *
+ * - **5.6** the reader is warmed up at app launch by `lib/tap-to-pay`, so this
+ *   sheet opens onto a live connection and goes straight to collecting. It no
+ *   longer runs its own discovery, which is what used to put several seconds
+ *   between the button and Apple's sheet.
+ * - **5.7** if the reader is still being configured, that is shown with real
+ *   progress rather than an indeterminate spinner.
+ * - **5.9** approved, declined and timed out are three different endings.
+ * - **5.10** a receipt can be sent for a decline, not just for a sale.
  */
 export function TapToPaySheet({
   eventId,
@@ -45,40 +74,28 @@ export function TapToPaySheet({
   totalCents: number;
   deviceLabel?: string;
   onClose: () => void;
-  onSold: (orderNumber: string) => void;
+  onSold: (orderNumber: string, receiptId?: string) => void;
 }) {
   const insets = useSafeAreaInsets();
-  const [stage, setStage] = useState<Stage>("connecting");
-  /** Permanent, unlike a timeout — no point offering a retry. */
-  const [unsupported, setUnsupported] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { state, isReady, retry } = useTapToPay();
+
+  const [stage, setStage] = useState<Stage>("idle");
+  const [verdict, setVerdict] = useState<Verdict | null>(null);
+  const [detail, setDetail] = useState<string | null>(null);
+  const [receiptId, setReceiptId] = useState<string | null>(null);
+
   const orderRef = useRef<string | null>(null);
+  const intentRef = useRef<string | null>(null);
   const settled = useRef(false);
+  const started = useRef(false);
 
-  const {
-    connectReader,
-    connectedReader,
-    discoverReaders,
-    discoveredReaders,
-    collectPaymentMethod,
-    confirmPaymentIntent,
-    retrievePaymentIntent,
-    supportsReadersOfType,
-  } = useStripeTerminal();
+  const { collectPaymentMethod, confirmPaymentIntent, retrievePaymentIntent } =
+    useStripeTerminal();
 
-  // Read as primitives: the context value is rebuilt every render, so watching
-  // the object itself would re-run discovery on every render.
-  const init = useTerminalInit();
-  const initStatus = init.status;
-  const initMessage = init.status === "error" ? init.message : null;
-  const retryInit = init.retry;
-
-  const terminal = api.terminal.config.useQuery(undefined, { retry: false });
   const createIntent = api.door.createSaleIntent.useMutation();
   const complete = api.door.completeSale.useMutation();
   const abandon = api.door.abandonSale.useMutation();
-
-  const locationId = terminal.data?.locationId ?? null;
+  const recordDeclined = api.door.recordDeclinedSale.useMutation();
 
   // Give the stock back if the sheet closes before the money lands.
   useEffect(() => {
@@ -89,126 +106,16 @@ export function TapToPaySheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]);
 
-  /**
-   * Can this phone accept Tap to Pay at all?
-   *
-   * Asked before discovery, because the answer is usually permanent: the app
-   * has to be signed with Apple's
-   * `com.apple.developer.proximity-reader.payment.acceptance` entitlement, the
-   * Stripe account has to be enabled for it, and the handset has to be an
-   * iPhone XS or later. Fail any of those and discovery simply never returns a
-   * reader — so without this check the sheet spins forever at a door, looking
-   * like a slow network rather than a build that can never work.
-   *
-   * Waits on initialization first. The SDK rejects every call until then with
-   * "First initialize the Stripe Terminal SDK before performing any action",
-   * and that message arriving here would be reported as an unsupported phone —
-   * sending whoever debugs it to Apple and Stripe over a missing call.
-   *
-   * See `docs/ticketing/TAP-TO-PAY.md`.
-   */
-  useEffect(() => {
-    if (connectedReader) return;
-    if (initStatus === "pending") return;
-
-    // Needs the network and a session, so it can fail for reasons a retry
-    // fixes. Not the permanent `unsupported` case.
-    if (initStatus === "error") {
-      setStage("failed");
-      setError(initMessage);
-      return;
-    }
-
-    let alive = true;
-
-    void (async () => {
-      try {
-        const { readerSupportResult, error: supportError } =
-          await supportsReadersOfType({
-            deviceType: "tapToPay",
-            discoveryMethod: "tapToPay",
-            simulated: __DEV__,
-          });
-        if (!alive) return;
-        if (supportError || !readerSupportResult) {
-          setUnsupported(true);
-          setStage("failed");
-          setError(
-            supportError?.message ??
-              "This phone can't take Tap to Pay payments. It needs Apple's Tap to Pay entitlement, Tap to Pay enabled on the Stripe account, and an iPhone XS or later.",
-          );
-          return;
-        }
-        void discoverReaders({
-          discoveryMethod: "tapToPay",
-          simulated: __DEV__,
-        });
-      } catch (e) {
-        if (!alive) return;
-        setUnsupported(true);
-        setStage("failed");
-        setError(e instanceof Error ? e.message : "Tap to Pay is unavailable.");
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, [connectedReader, discoverReaders, initStatus, initMessage]);
-
-  /**
-   * A backstop for the cases the support check clears but discovery still
-   * stalls on — no network to Stripe, a location that does not resolve. Long
-   * enough not to trip on a slow venue connection, short enough that nobody
-   * stands there wondering.
-   */
-  useEffect(() => {
-    if (connectedReader || stage !== "connecting" || unsupported) return;
-    const timer = setTimeout(() => {
-      setStage("failed");
-      setError(
-        "Couldn't get the reader ready. Check the connection and try again — or take cash and record it after.",
-      );
-    }, 20_000);
-    return () => clearTimeout(timer);
-  }, [connectedReader, stage, unsupported]);
-
-  useEffect(() => {
-    if (connectedReader || discoveredReaders.length === 0) return;
-    const reader = discoveredReaders[0] as Reader.Type | undefined;
-    if (!reader) return;
-
-    // Stripe scopes every reader to a Location, so without one there is
-    // nothing to connect to. Say so plainly rather than failing deep inside
-    // the SDK with a message nobody at a door can act on.
-    if (!locationId) {
-      setError(
-        "No Stripe Terminal location is configured. Set STRIPE_TERMINAL_LOCATION_ID on the server.",
-      );
-      setStage("failed");
-      return;
-    }
-
-    void (async () => {
-      const { error: connectError } = await connectReader({
-        discoveryMethod: "tapToPay",
-        reader,
-        locationId,
-        merchantDisplayName: "Atmos",
-      });
-      if (connectError) {
-        setError(connectError.message);
-        setStage("failed");
-      }
-    })();
-  }, [connectedReader, discoveredReaders, connectReader, locationId]);
-
   const run = useCallback(async () => {
-    setError(null);
+    setVerdict(null);
+    setDetail(null);
+    setReceiptId(null);
+
     try {
       setStage("creating");
       const order = await createIntent.mutateAsync({ eventId, lines });
       orderRef.current = order.orderId;
+      intentRef.current = order.paymentIntentId;
 
       if (!order.clientSecret) {
         throw new Error("That sale didn't open a payment.");
@@ -224,7 +131,16 @@ export function TapToPaySheet({
       const { paymentIntent: collected, error: collectError } =
         await collectPaymentMethod({ paymentIntent });
       if (collectError || !collected) {
-        throw new Error(collectError?.message ?? "No card was read.");
+        // Nothing was read. Not a decline — the card never got that far.
+        const code = collectError?.code;
+        throw Object.assign(
+          new Error(collectError?.message ?? "No card was read."),
+          {
+            verdict: (code && !TIMEOUT_CODES.has(code)
+              ? "declined"
+              : "timed-out") satisfies Verdict,
+          },
+        );
       }
 
       setStage("processing");
@@ -232,7 +148,10 @@ export function TapToPaySheet({
         paymentIntent: collected,
       });
       if (confirmError) {
-        throw new Error(confirmError.message);
+        // The card was read and the bank said no.
+        throw Object.assign(new Error(confirmError.message), {
+          verdict: "declined" satisfies Verdict,
+        });
       }
 
       // The server checks Stripe itself before issuing — this call is a
@@ -247,19 +166,49 @@ export function TapToPaySheet({
 
       settled.current = true;
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setStage("done");
-      onSold(result.orderNumber);
+      setVerdict("approved");
+      setReceiptId(result.receiptId ?? null);
+      setStage("settled");
+      onSold(result.orderNumber, result.receiptId ?? undefined);
     } catch (cause) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setError(cause instanceof Error ? cause.message : "That didn't go through.");
-      setStage("failed");
+
+      const outcome =
+        (cause as { verdict?: Verdict }).verdict ?? ("declined" as const);
+      setVerdict(outcome);
+      setDetail(
+        cause instanceof Error ? cause.message : "That didn't go through.",
+      );
+      setStage("settled");
+
+      /**
+       * Checklist 5.10 — the receipt for a tap that did not become a sale.
+       *
+       * Written before the hold is released on unmount, and never allowed to
+       * fail the flow: a customer standing at a door does not care that the
+       * receipt row could not be created, and neither should the sale that is
+       * about to be retried.
+       */
+      recordDeclined.mutate(
+        {
+          eventId,
+          orderId: orderRef.current ?? undefined,
+          paymentIntentId: intentRef.current ?? undefined,
+          outcome: outcome === "declined" ? "DECLINED" : "TIMED_OUT",
+          amountCents: totalCents,
+          deviceLabel,
+        },
+        { onSuccess: (result) => setReceiptId(result.receiptId) },
+      );
     }
   }, [
     eventId,
     lines,
+    totalCents,
     deviceLabel,
     createIntent,
     complete,
+    recordDeclined,
     retrievePaymentIntent,
     collectPaymentMethod,
     confirmPaymentIntent,
@@ -267,21 +216,31 @@ export function TapToPaySheet({
   ]);
 
   /**
-   * "Try again" means different things depending on how far we got: retake the
-   * payment if there is a reader, otherwise go back and bring the SDK up again.
-   * Retrying the sale against a reader that never connected just fails faster.
+   * Start as soon as there is a reader.
+   *
+   * The staffer already pressed "Charge $X with Tap to Pay on iPhone" — making
+   * them press a second button inside this sheet is the delay checklist 5.6 is
+   * about. Because the reader is warmed up at launch, `isReady` is almost
+   * always true on the very first render.
    */
-  const retry = useCallback(() => {
-    setError(null);
-    if (connectedReader) {
-      void run();
-      return;
-    }
-    setStage("connecting");
-    retryInit();
-  }, [connectedReader, run, retryInit]);
+  useEffect(() => {
+    if (!isReady || started.current) return;
+    started.current = true;
+    void run();
+  }, [isReady, run]);
 
-  const ready = !!connectedReader;
+  const again = useCallback(() => {
+    // A fresh order: the previous one is cancelled and its stock returned.
+    if (orderRef.current && !settled.current) {
+      abandon.mutate({ eventId, orderId: orderRef.current });
+    }
+    orderRef.current = null;
+    intentRef.current = null;
+    setStage("idle");
+    void run();
+  }, [abandon, eventId, run]);
+
+  const busy = stage === "processing" || stage === "issuing";
 
   return (
     <Modal visible animationType="slide" transparent={false}>
@@ -293,18 +252,23 @@ export function TapToPaySheet({
           { paddingTop: insets.top, paddingBottom: insets.bottom },
         ]}
       >
-        <View style={styles.body}>
+        <ScrollView
+          contentContainerStyle={styles.body}
+          keyboardShouldPersistTaps="handled"
+        >
           <Title style={{ textAlign: "center" }}>{money(totalCents)}</Title>
 
-          {stage === "connecting" && !ready ? (
-            <Loading label="Getting the reader ready" />
+          {/*
+            The reader is not ready. Checklist 5.7 wants an "initializing"
+            screen with the configuration progress rather than a dead button,
+            and 5.3 means arriving here is a normal path — the sell screen never
+            greys the option out.
+          */}
+          {!isReady && stage === "idle" ? (
+            <TapToPayStateView state={state} compact />
           ) : null}
 
-          {ready && stage === "connecting" ? (
-            <Body soft style={{ textAlign: "center" }}>
-              Ready. Tap below, then hold their card to the top of the phone.
-            </Body>
-          ) : null}
+          {stage === "creating" ? <Loading label="Opening the payment" /> : null}
 
           {stage === "waiting-for-tap" ? (
             <View style={styles.prompt}>
@@ -315,49 +279,71 @@ export function TapToPaySheet({
             </View>
           ) : null}
 
-          {stage === "creating" || stage === "processing" ? (
-            <Loading label="Processing" />
-          ) : null}
-
+          {/* 5.8 — a distinct processing screen once the card has been read. */}
+          {stage === "processing" ? <Loading label="Processing" /> : null}
           {stage === "issuing" ? <Loading label="Issuing tickets" /> : null}
 
-          {stage === "done" ? (
-            <Body style={[styles.big, { color: colors.in }]}>Paid</Body>
-          ) : null}
-
-          {/* Its own heading, because this is not a payment that failed — the
-              phone cannot take card at all, and staff need to stop trying and
-              take cash instead. */}
-          {unsupported ? (
+          {/* 5.9 — three endings, said plainly. */}
+          {verdict === "approved" ? (
             <View style={styles.prompt}>
-              <Body style={styles.big}>Tap to Pay unavailable</Body>
+              <Body style={[styles.big, { color: colors.in }]}>Approved</Body>
               <Caption style={{ textAlign: "center" }}>
-                Take cash or another payment, and record the sale after.
+                Paid. Their tickets are issued and they&apos;re counted as
+                inside.
               </Caption>
             </View>
           ) : null}
 
-          {error ? (
-            <View style={styles.error}>
-              <Caption style={{ color: colors.deny }}>{error}</Caption>
+          {verdict === "declined" ? (
+            <View style={styles.prompt}>
+              <Body style={[styles.big, { color: colors.deny }]}>Declined</Body>
+              <Caption style={{ textAlign: "center" }}>
+                Nothing has been charged. Ask for another card or a phone wallet
+                — or take cash and record it on the Sell screen.
+              </Caption>
             </View>
           ) : null}
-        </View>
+
+          {verdict === "timed-out" ? (
+            <View style={styles.prompt}>
+              <Body style={[styles.big, { color: colors.warn }]}>
+                No card read
+              </Body>
+              <Caption style={{ textAlign: "center" }}>
+                The tap didn&apos;t complete and nothing has been charged. Try
+                again, holding the card to the top of the phone until it buzzes.
+              </Caption>
+            </View>
+          ) : null}
+
+          {detail ? (
+            <View style={styles.detail}>
+              <Caption style={{ color: colors.textSoft }}>{detail}</Caption>
+            </View>
+          ) : null}
+
+          {/* 5.10 — offered for the decline as much as for the sale. */}
+          {receiptId ? (
+            <DoorReceiptPrompt
+              receiptId={receiptId}
+              declined={verdict !== "approved"}
+            />
+          ) : null}
+        </ScrollView>
 
         <View style={styles.actions}>
-          {stage === "connecting" && ready ? (
-            <Button onPress={() => void run()}>Take payment</Button>
+          {stage === "settled" && verdict !== "approved" ? (
+            <Button onPress={again}>Try the tap again</Button>
           ) : null}
-          {stage === "failed" && !unsupported ? (
+
+          {/* A reader that failed for a retryable reason, before any money. */}
+          {!isReady && stage === "idle" && state.status === "error" ? (
             <Button onPress={retry}>Try again</Button>
           ) : null}
+
           {/* Bottom button, always harmless — the door's rule everywhere. */}
-          <Button
-            variant="outline"
-            disabled={stage === "processing" || stage === "issuing"}
-            onPress={onClose}
-          >
-            {stage === "done" ? "Done" : "Cancel"}
+          <Button variant="outline" disabled={busy} onPress={onClose}>
+            {verdict === "approved" ? "Done" : "Cancel"}
           </Button>
         </View>
       </View>
@@ -368,7 +354,7 @@ export function TapToPaySheet({
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#111" },
   body: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: "center",
     justifyContent: "center",
     padding: space.xl,
@@ -376,10 +362,11 @@ const styles = StyleSheet.create({
   },
   big: { fontSize: 26, fontWeight: "800", textAlign: "center" },
   prompt: { alignItems: "center", gap: space.sm },
-  error: {
+  detail: {
     padding: space.md,
     borderRadius: radius.sm,
-    backgroundColor: colors.denyDim,
+    backgroundColor: colors.surfaceRaised,
+    alignSelf: "stretch",
   },
   actions: {
     padding: space.lg,

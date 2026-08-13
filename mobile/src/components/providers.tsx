@@ -7,6 +7,9 @@ import { api } from "@/lib/api";
 import { authCookieHeader } from "@/lib/auth";
 import { TRPC_URL } from "@/lib/env";
 import { usePushRegistration } from "@/lib/push";
+import { BiometricLockProvider } from "@/lib/biometrics";
+import { TapToPayProvider } from "@/lib/tap-to-pay";
+import { TapToPaySplash } from "@/components/tap-to-pay-splash";
 
 /**
  * `httpBatchLink`, not the streaming link the website uses: React Native's
@@ -57,7 +60,22 @@ export function Providers({ children }: { children: ReactNode }) {
       <api.Provider client={trpcClient} queryClient={queryClient}>
         {/* Inside the tRPC provider, since registering calls the API. */}
         <PushRegistration />
-        {children}
+        {/* Also inside it, and at the root rather than around the door stack:
+            Apple's checklist 1.5 wants Tap to Pay warmed up at app launch, and
+            a provider that mounts when somebody enters door mode is already too
+            late. It stays inert for anybody the server does not recognise as
+            door staff. */}
+        <TapToPayProvider>
+          {/* Outermost of the UI layers, so its lock screen covers the splash
+              as well as the app. Checklist 1.7. */}
+          <BiometricLockProvider>
+            {children}
+            {/* Checklist 3.2 and 6.2 — shown once to every eligible user, over
+                whatever they happened to open the app on. Renders nothing at
+                all for anybody the server does not recognise as door staff. */}
+            <TapToPaySplash />
+          </BiometricLockProvider>
+        </TapToPayProvider>
       </api.Provider>
     </QueryClientProvider>
   );

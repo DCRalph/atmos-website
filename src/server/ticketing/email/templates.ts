@@ -478,3 +478,196 @@ export function renderRefundEmail({
     text,
   };
 }
+
+/**
+ * Receipt for a card payment taken at a door.
+ *
+ * Apple's App Review checklist 5.10 requires a confidential digital receipt to
+ * be available whether the transaction was approved *or* declined, which is why
+ * this renders a decline as a first-class thing rather than an error. A
+ * customer whose card was refused in front of a queue is precisely the person
+ * who wants something in writing about it.
+ *
+ * Deliberately thin on detail: brand, last four, amount, outcome, time. A
+ * receipt handed to whoever happened to be at the counter should not carry
+ * anything the cardholder would mind a stranger reading.
+ */
+export function renderDoorReceiptEmail({
+  eventName,
+  outcome,
+  amountCents,
+  cardBrand,
+  last4,
+  declineReason,
+  orderNumber,
+  takenAt,
+  receiptUrl,
+  legalName,
+  gstNumber,
+  supportEmail,
+}: {
+  eventName: string;
+  outcome: "APPROVED" | "DECLINED" | "TIMED_OUT";
+  amountCents: number;
+  cardBrand: string | null;
+  last4: string | null;
+  declineReason: string | null;
+  orderNumber: string | null;
+  takenAt: Date;
+  receiptUrl: string;
+  legalName: string;
+  gstNumber: string | null;
+  supportEmail: string | null;
+}): { subject: string; html: string; text: string } {
+  const approved = outcome === "APPROVED";
+  const heading = approved
+    ? "Payment received"
+    : outcome === "DECLINED"
+      ? "Payment declined"
+      : "Payment not completed";
+
+  const card = [cardBrand, last4 ? `•••• ${last4}` : null]
+    .filter(Boolean)
+    .join(" ");
+
+  const rows: [string, string][] = [
+    ["Amount", formatNZD(amountCents)],
+    ["Status", approved ? "Approved" : outcome === "DECLINED" ? "Declined" : "Not completed"],
+    ...(card ? ([["Card", card]] as [string, string][]) : []),
+    ...(orderNumber ? ([["Order", orderNumber]] as [string, string][]) : []),
+    ["When", takenAt.toLocaleString("en-NZ", { timeZone: "Pacific/Auckland" })],
+    ["Paid to", legalName],
+    ...(gstNumber ? ([["GST number", gstNumber]] as [string, string][]) : []),
+  ];
+
+  const rowHtml = rows
+    .map(
+      ([label, value]) => `
+  <tr>
+    <td style="padding:8px 0;font-size:14px;color:${MUTED};">${escapeHtml(label)}</td>
+    <td style="padding:8px 0;font-size:14px;color:${TEXT};text-align:right;">${escapeHtml(value)}</td>
+  </tr>`,
+    )
+    .join("");
+
+  const explain = approved
+    ? "Paid in person with Tap to Pay on iPhone. Your tickets were issued at the door."
+    : outcome === "DECLINED"
+      ? `The card was refused by the bank, so nothing has been charged.${
+          declineReason ? ` Reason given: ${declineReason}.` : ""
+        } If you were let in, you paid another way.`
+      : "The card was never read, so nothing has been charged.";
+
+  const body = `
+<tr><td style="padding:0 0 18px;">
+  <div style="font-size:30px;line-height:1.2;font-weight:800;letter-spacing:-0.02em;color:${TEXT};margin-bottom:14px;">${escapeHtml(heading)}</div>
+  <div style="font-size:15px;color:${MUTED};line-height:1.7;">
+    ${escapeHtml(eventName)}<br>
+    ${escapeHtml(explain)}
+  </div>
+</td></tr>
+<tr><td style="padding:0 0 14px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CARD};border:2px solid ${BORDER};padding:6px 20px;">
+    ${rowHtml}
+  </table>
+</td></tr>
+<tr><td style="padding:0 0 14px;">
+  <a href="${escapeHtml(receiptUrl)}" style="display:inline-block;padding:12px 18px;border:2px solid ${STRONG_BORDER};color:${TEXT};text-decoration:none;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">View receipt</a>
+</td></tr>`;
+
+  const footer = supportEmail
+    ? `Questions? <a href="mailto:${supportEmail}" style="color:${MUTED};">${escapeHtml(supportEmail)}</a>`
+    : "";
+
+  const text = [
+    heading,
+    "",
+    eventName,
+    explain,
+    "",
+    ...rows.map(([label, value]) => `${label}: ${value}`),
+    "",
+    receiptUrl,
+  ].join("\n");
+
+  return {
+    subject: `${heading} — ${eventName}`,
+    html: layout(`${heading} — ${eventName}`, body, footer),
+    text,
+  };
+}
+
+/**
+ * The Tap to Pay on iPhone launch email.
+ *
+ * Apple's App Review checklist 6.1: "At launch, a dedicated launch email must
+ * be sent to all eligible users. This must leverage the 'Launch' email referred
+ * to in the Tap to Pay on iPhone Marketing Guide."
+ *
+ * ⚠️ **PLACEHOLDER copy.** The structure, audience and delivery are finished;
+ * the words are not Apple's. Replace the headline and body below with the
+ * approved 'Launch' email copy from the Marketing Guide and Toolkit before
+ * submitting for review — row 1.9 is checked against exactly this.
+ */
+export function renderTapToPayLaunchEmail({
+  recipientName,
+  appUrl,
+  supportEmail,
+}: {
+  recipientName: string | null;
+  appUrl: string;
+  supportEmail: string | null;
+}): { subject: string; html: string; text: string } {
+  const greeting = recipientName ? `${recipientName}, ` : "";
+
+  const body = `
+<tr><td style="padding:0 0 18px;">
+  <div style="font-size:30px;line-height:1.2;font-weight:800;letter-spacing:-0.02em;color:${TEXT};margin-bottom:14px;">Take card payments on your iPhone</div>
+  <div style="font-size:15px;color:${MUTED};line-height:1.7;">
+    ${escapeHtml(greeting)}Tap to Pay on iPhone is now switched on in the Atmos app.
+    You can accept contactless cards, Apple Pay and other digital wallets at the
+    door using the iPhone already in your pocket — no extra reader to carry,
+    charge or lose.
+  </div>
+</td></tr>
+<tr><td style="padding:0 0 14px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CARD};border:2px solid ${BORDER};">
+  <tr><td style="padding:20px;font-size:14px;color:${MUTED};line-height:1.7;">
+    <strong style="color:${TEXT};">Getting started</strong><br>
+    1. Open the Atmos app and go to More &rsaquo; Tap to Pay on iPhone.<br>
+    2. An Atmos admin accepts Apple's Terms and Conditions on the handset.<br>
+    3. Read the short guide, then take a test payment.<br><br>
+    Needs an iPhone XS or later on a current version of iOS. Cash and eftpos
+    stay available at every door.
+  </td></tr>
+  </table>
+</td></tr>
+<tr><td style="padding:0 0 14px;">
+  <a href="${escapeHtml(appUrl)}" style="display:inline-block;padding:12px 18px;border:2px solid ${STRONG_BORDER};color:${TEXT};text-decoration:none;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Open Atmos</a>
+</td></tr>`;
+
+  const footer = supportEmail
+    ? `Questions? <a href="mailto:${supportEmail}" style="color:${MUTED};">${escapeHtml(supportEmail)}</a>`
+    : "";
+
+  const text = [
+    "Take card payments on your iPhone",
+    "",
+    `${greeting}Tap to Pay on iPhone is now switched on in the Atmos app. You can accept contactless cards, Apple Pay and other digital wallets at the door using the iPhone already in your pocket.`,
+    "",
+    "Getting started",
+    "1. Open the Atmos app and go to More > Tap to Pay on iPhone.",
+    "2. An Atmos admin accepts Apple's Terms and Conditions on the handset.",
+    "3. Read the short guide, then take a test payment.",
+    "",
+    "Needs an iPhone XS or later on a current version of iOS.",
+    "",
+    appUrl,
+  ].join("\n");
+
+  return {
+    subject: "Tap to Pay on iPhone is now available in Atmos",
+    html: layout("Tap to Pay on iPhone is now available in Atmos", body, footer),
+    text,
+  };
+}
