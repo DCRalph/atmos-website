@@ -488,6 +488,9 @@ Charts follow the `dataviz` skill when built.
   web service endpoints (`register`, `unregister`, `passes`, `log`) backed by
   `WalletPassRegistration`. Skipping this makes passes permanently static — no way to
   push a time change or a cancellation. Push updates go via APNs using the same cert.
+  The list endpoint compares both ticket and event freshness so an admin edit of
+  doors/time/name/venue/theme actually lands on the phone. Production smoke test:
+  `docs/ticketing/APPLE-WALLET.md`.
 - **The cert expires annually.** Add an admin warning at 30 days and a calendar reminder;
   an expired cert means nobody can add a pass.
 

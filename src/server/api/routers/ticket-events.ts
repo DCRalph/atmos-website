@@ -34,7 +34,8 @@ import {
   getTicketingSettings,
   resolveBookingFee,
 } from "~/server/ticketing/settings";
-import { pushEventPassUpdates } from "~/server/wallet/apple-push";
+import { scheduleEventPassUpdates } from "~/server/wallet/apple-push";
+import { eventHasPassVisibleChange } from "~/server/wallet/pass-updates";
 import type { SerializedEditorState } from "lexical";
 
 /**
@@ -520,21 +521,13 @@ export const ticketEventsRouter = createTRPCRouter({
       // Anything printed on a wallet pass changed, so push the new version to
       // the phones already holding one. Failures are logged, never fatal — a
       // pass that missed an update is not a reason to fail the edit.
-      const passAffectingChange =
-        (rest.startsAt !== undefined &&
-          rest.startsAt.getTime() !== existing.startsAt.getTime()) ||
-        (rest.doorsAt !== undefined &&
-          rest.doorsAt?.getTime() !== existing.doorsAt?.getTime()) ||
-        (rest.venueName !== undefined &&
-          rest.venueName !== existing.venueName) ||
-        (rest.venueAddress !== undefined &&
-          rest.venueAddress !== existing.venueAddress) ||
-        (rest.name !== undefined && rest.name !== existing.name);
-
-      if (passAffectingChange) {
-        void pushEventPassUpdates(event.id).catch((cause) =>
-          console.error("[wallet] pass update push failed", cause),
-        );
+      if (
+        eventHasPassVisibleChange(existing, {
+          ...rest,
+          ...(slug ? { slug } : {}),
+        })
+      ) {
+        scheduleEventPassUpdates(event.id);
       }
 
       return event;
@@ -597,9 +590,7 @@ export const ticketEventsRouter = createTRPCRouter({
       });
 
       if (input.status === TicketEventStatus.CANCELLED) {
-        void pushEventPassUpdates(event.id).catch((cause) =>
-          console.error("[wallet] cancellation push failed", cause),
-        );
+        scheduleEventPassUpdates(event.id);
       }
 
       return event;

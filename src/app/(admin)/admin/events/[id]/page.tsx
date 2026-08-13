@@ -24,6 +24,7 @@ import { EventForm } from "~/components/admin/ticketing/event-form";
 import { TierManager } from "~/components/admin/ticketing/tier-manager";
 import { EventOverview } from "~/components/admin/ticketing/event-overview";
 import { OrdersPanel } from "~/components/admin/ticketing/orders-panel";
+import { TicketsPanel } from "~/components/admin/ticketing/tickets-panel";
 import { StaffPanel } from "~/components/admin/ticketing/staff-panel";
 import { CompsPanel } from "~/components/admin/ticketing/comps-panel";
 import { TicketLinksPanel } from "~/components/admin/ticketing/ticket-links-panel";
@@ -142,6 +143,7 @@ export default function AdminEventPage() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="tiers">Tiers</TabsTrigger>
           <TabsTrigger value="orders">Orders</TabsTrigger>
+          <TabsTrigger value="tickets">Tickets</TabsTrigger>
           <TabsTrigger value="comps">Comps</TabsTrigger>
           <TabsTrigger value="links">Ticket links</TabsTrigger>
           <TabsTrigger value="staff">Door staff</TabsTrigger>
@@ -157,6 +159,9 @@ export default function AdminEventPage() {
         </TabsContent>
         <TabsContent value="orders" className="mt-6">
           <OrdersPanel eventId={data.id} />
+        </TabsContent>
+        <TabsContent value="tickets" className="mt-6">
+          <TicketsPanel eventId={data.id} />
         </TabsContent>
         <TabsContent value="comps" className="mt-6">
           <CompsPanel event={data} />

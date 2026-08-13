@@ -40,14 +40,14 @@ import {
   issueTicketLinkBatch,
   listTicketLinkBatches,
 } from "~/server/ticketing/ticket-link-batches";
-import { ADMITTING_RESULTS } from "~/server/ticketing/scan";
+import { ADMITTING_RESULTS, admissionStates } from "~/server/ticketing/scan";
 import { logActivity } from "~/server/utils/activity-log";
 import {
   ACCESS_LEVEL_VALUES,
   ticketTypeName,
 } from "~/lib/ticketing/access-levels";
 import { ticketUrl, ticketsUrl } from "~/server/ticketing/urls";
-import { pushPassUpdate } from "~/server/wallet/apple-push";
+import { schedulePassUpdate } from "~/server/wallet/apple-push";
 
 function refundableCentsForTicket(
   ticket: { pricePaidCents: number },
@@ -166,6 +166,112 @@ export const ticketAdminRouter = createTRPCRouter({
       };
     }),
 
+  /** Individual tickets for an event — search, inspect, then void or refund. */
+  tickets: adminProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        search: z.string().trim().max(80).optional(),
+        status: z
+          .enum([TicketStatus.VALID, TicketStatus.VOID, TicketStatus.REFUNDED])
+          .optional(),
+        limit: z.number().int().min(1).max(200).default(50),
+        cursor: z.string().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const search = input.search;
+
+      const tickets = await ctx.db.ticket.findMany({
+        where: {
+          eventId: input.eventId,
+          ...(input.status ? { status: input.status } : {}),
+          ...(search
+            ? {
+                OR: [
+                  { ticketNumber: { contains: search, mode: "insensitive" } },
+                  { attendeeName: { contains: search, mode: "insensitive" } },
+                  { attendeeEmail: { contains: search, mode: "insensitive" } },
+                  {
+                    order: {
+                      orderNumber: { contains: search, mode: "insensitive" },
+                    },
+                  },
+                  {
+                    order: {
+                      buyerName: { contains: search, mode: "insensitive" },
+                    },
+                  },
+                  {
+                    order: {
+                      buyerEmail: { contains: search, mode: "insensitive" },
+                    },
+                  },
+                ],
+              }
+            : {}),
+        },
+        orderBy: { createdAt: "desc" },
+        take: input.limit + 1,
+        ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+        select: {
+          id: true,
+          ticketNumber: true,
+          status: true,
+          accessLevel: true,
+          attendeeName: true,
+          attendeeEmail: true,
+          pricePaidCents: true,
+          isComp: true,
+          nameLockedAt: true,
+          voidedAt: true,
+          voidReason: true,
+          createdAt: true,
+          orderId: true,
+          tier: { select: { name: true } },
+          order: {
+            select: {
+              id: true,
+              orderNumber: true,
+              buyerName: true,
+              buyerEmail: true,
+              paymentMethod: true,
+              totalCents: true,
+              status: true,
+            },
+          },
+          scans: {
+            orderBy: { createdAt: "desc" },
+            take: 5,
+            select: {
+              id: true,
+              result: true,
+              createdAt: true,
+              deviceLabel: true,
+            },
+          },
+        },
+      });
+
+      const hasMore = tickets.length > input.limit;
+      const page = hasMore ? tickets.slice(0, input.limit) : tickets;
+      const states = await admissionStates(page.map((ticket) => ticket.id));
+
+      return {
+        tickets: page.map((ticket) => {
+          const admission = states.get(ticket.id);
+          return {
+            ...ticket,
+            typeName: ticketTypeName(ticket),
+            admittedAt: admission?.admittedAt ?? null,
+            departedAt: admission?.departedAt ?? null,
+            deniedAt: admission?.deniedAt ?? null,
+          };
+        }),
+        nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
+      };
+    }),
+
   /**
    * Refund tickets through Stripe and kill their QR codes immediately, rather
    * than waiting for the webhook — a refunded ticket must stop working at the
@@ -246,7 +352,7 @@ export const ticketAdminRouter = createTRPCRouter({
           status: TicketStatus.REFUNDED,
         });
         // Kill the pass in their wallet too, not just the QR on our side.
-        void pushPassUpdate(ticket.id).catch(() => undefined);
+        schedulePassUpdate(ticket.id);
       }
 
       const remainingValid = await ctx.db.ticket.count({
@@ -297,7 +403,7 @@ export const ticketAdminRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       await voidTicket({ ticketId: input.ticketId, reason: input.reason });
-      void pushPassUpdate(input.ticketId).catch(() => undefined);
+      schedulePassUpdate(input.ticketId);
 
       await logActivity({
         type: ActivityType.TICKET_VOIDED,

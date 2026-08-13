@@ -7,6 +7,7 @@ import {
   verifyApplePassAuthToken,
 } from "~/server/wallet/apple";
 import { isAppleWalletConfigured } from "~/server/wallet/apple-config";
+import { listUpdatedPasses, passUpdatedAt } from "~/server/wallet/pass-updates";
 
 /**
  * Apple Wallet web service.
@@ -166,39 +167,55 @@ export async function GET(
     path[3] === "registrations"
   ) {
     const deviceLibraryIdentifier = path[2];
-    if (!deviceLibraryIdentifier) return new Response(null, { status: 400 });
-
-    const since = request.nextUrl.searchParams.get("passesUpdatedSince");
-    const sinceDate = since ? new Date(Number(since) * 1000) : null;
+    const passTypeIdentifier = path[4];
+    if (!deviceLibraryIdentifier || !passTypeIdentifier) {
+      return new Response(null, { status: 400 });
+    }
 
     const registrations = await db.walletPassRegistration.findMany({
-      where: { deviceLibraryIdentifier },
-      select: { serialNumber: true },
+      where: { deviceLibraryIdentifier, passTypeIdentifier },
+      select: { serialNumber: true, passTypeIdentifier: true },
     });
     if (registrations.length === 0) {
       return new Response(null, { status: 204 });
     }
 
     const serials = registrations.map((r) => r.serialNumber);
-    const updated = await db.ticket.findMany({
-      where: {
-        id: { in: serials },
-        ...(sinceDate ? { updatedAt: { gt: sinceDate } } : {}),
+    const tickets = await db.ticket.findMany({
+      where: { id: { in: serials } },
+      select: {
+        id: true,
+        updatedAt: true,
+        event: { select: { updatedAt: true } },
       },
-      select: { id: true, updatedAt: true },
-      orderBy: { updatedAt: "desc" },
+    });
+    const freshnessBySerial = new Map(
+      tickets.map((ticket) => [ticket.id, ticket] as const),
+    );
+
+    const listed = listUpdatedPasses({
+      passTypeIdentifier,
+      passesUpdatedSince:
+        request.nextUrl.searchParams.get("passesUpdatedSince"),
+      registrations: registrations.flatMap((registration) => {
+        const ticket = freshnessBySerial.get(registration.serialNumber);
+        if (!ticket) return [];
+        return [
+          {
+            serialNumber: registration.serialNumber,
+            passTypeIdentifier: registration.passTypeIdentifier,
+            ticketUpdatedAt: ticket.updatedAt,
+            eventUpdatedAt: ticket.event.updatedAt,
+          },
+        ];
+      }),
     });
 
-    if (updated.length === 0) {
+    if (!listed) {
       return new Response(null, { status: 204 });
     }
 
-    return Response.json({
-      serialNumbers: updated.map((ticket) => ticket.id),
-      lastUpdated: String(
-        Math.floor((updated[0]?.updatedAt.getTime() ?? Date.now()) / 1000),
-      ),
-    });
+    return Response.json(listed);
   }
 
   // GET /v1/passes/{passType}/{serial}
@@ -223,10 +240,15 @@ export async function GET(
       orderNumber: ticket.order.orderNumber,
     });
 
+    const lastModified = passUpdatedAt(
+      ticket.updatedAt,
+      ticket.event.updatedAt,
+    );
+
     return new Response(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/vnd.apple.pkpass",
-        "Last-Modified": ticket.updatedAt.toUTCString(),
+        "Last-Modified": lastModified.toUTCString(),
         "Cache-Control": "no-store",
       },
     });

@@ -2,6 +2,8 @@ import "server-only";
 
 import http2 from "node:http2";
 
+import { after } from "next/server";
+
 import { db } from "~/server/db";
 import { env } from "~/env";
 import { getAppleWalletConfig, isAppleWalletConfigured } from "./apple-config";
@@ -105,7 +107,11 @@ export async function pushPassUpdate(
   return result;
 }
 
-/** Push an update for every ticket on an event — a time change, a cancellation. */
+/**
+ * Push an update for every device that actually registered a pass for this
+ * event. The `applePassSerial` marker is best-effort and can be missing even
+ * when Wallet already holds the pass.
+ */
 export async function pushEventPassUpdates(
   eventId: string,
 ): Promise<PushResult> {
@@ -113,16 +119,72 @@ export async function pushEventPassUpdates(
   if (!isAppleWalletConfigured()) return totals;
 
   const tickets = await db.ticket.findMany({
-    where: { eventId, applePassSerial: { not: null } },
+    where: { eventId },
     select: { id: true },
   });
+  if (tickets.length === 0) return totals;
 
-  for (const ticket of tickets) {
-    const result = await pushPassUpdate(ticket.id);
+  const registrations = await db.walletPassRegistration.findMany({
+    where: { serialNumber: { in: tickets.map((ticket) => ticket.id) } },
+    distinct: ["serialNumber"],
+    select: { serialNumber: true },
+  });
+
+  for (const { serialNumber } of registrations) {
+    const result = await pushPassUpdate(serialNumber);
     totals.sent += result.sent;
     totals.failed += result.failed;
     totals.pruned += result.pruned;
   }
 
   return totals;
+}
+
+function logPushResult(
+  kind: "ticket" | "event",
+  id: string,
+  result: PushResult,
+): void {
+  const payload = { kind, id, ...result };
+  if (result.failed > 0) {
+    console.error("[wallet] pass update push had failures", payload);
+    return;
+  }
+  console.info("[wallet] pass update push", payload);
+}
+
+function runAfterResponse(task: () => Promise<void>): void {
+  try {
+    after(task);
+  } catch {
+    void task();
+  }
+}
+
+/** Wake Wallet after a ticket-level change (void, refund) without blocking. */
+export function schedulePassUpdate(serialNumber: string): void {
+  runAfterResponse(async () => {
+    try {
+      const result = await pushPassUpdate(serialNumber);
+      logPushResult("ticket", serialNumber, result);
+    } catch (cause) {
+      console.error(
+        "[wallet] pass update push failed",
+        { serialNumber },
+        cause,
+      );
+    }
+  });
+}
+
+/** Wake Wallet after a ticketed-event change without blocking the admin save. */
+export function scheduleEventPassUpdates(eventId: string): void {
+  runAfterResponse(async () => {
+    try {
+      const result = await pushEventPassUpdates(eventId);
+      logPushResult("event", eventId, result);
+    } catch (cause) {
+      console.error("[wallet] pass update push failed", { eventId }, cause);
+    }
+  });
 }
