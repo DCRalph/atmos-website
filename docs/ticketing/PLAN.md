@@ -23,7 +23,7 @@ has moved.
 | Scanner      | **Online-only** web scanner. Every scan hits the server, so duplicate detection is always correct.                                                                                                         |
 | Door access  | Authenticated users assigned directly to an event through `TicketEventStaff`.                                                                                                                              |
 | Re-entry     | Warn loudly on a second scan (`ALREADY ADMITTED — 14 min ago`) with an **Admit anyway** override that is logged against the staff member.                                                                  |
-| Tiers        | Per-tier allocation **+** optional sale window **+** manual on/off. Auto-advance when a tier sells out. Optional overall event capacity.                                                                   |
+| Tiers        | Per-tier allocation **+** optional sale window **+** manual on/off. Auto-advance when a tier sells out. Optional overall event capacity, which the tier allocations have to fit inside.                    |
 | Free tickets | Per-tier: price 0 skips Stripe entirely and issues instantly, with a per-email cap. A tier can optionally require admin approval instead (guest list).                                                     |
 | Fees         | Booking fee configurable per event, with a site-wide default. Can be zero.                                                                                                                                 |
 | Refunds      | Admin can refund a single ticket / whole order from the UI. Anything else is done in the Stripe dashboard and the site reacts to the webhook by voiding the ticket. **No** mass event-cancel refund in v1. |
@@ -98,7 +98,7 @@ model TicketEvent {
   salesOpenAt       DateTime?
   salesCloseAt      DateTime?
 
-  capacity          Int?            // overall cap across tiers (null = tier sums only)
+  capacity          Int?            // the room: binds tier allocations (null = tier sums only)
   maxTicketsPerOrder Int @default(10)
   requireAttendeeNames Boolean @default(true)
   reentryAllowed    Boolean @default(false)
@@ -394,6 +394,23 @@ order creation:
 A Vercel cron every 5 minutes is the backstop sweeper, plus a nightly reconcile that
 recomputes `soldCount` from the `Ticket` table and logs any drift.
 
+### The cap binds the plan, not just the till
+
+`capacity` is a statement about the room, so it is enforced where the room is
+planned as well as where it is sold. Tier allocations must fit inside
+`capacity − comps issued` (`allocationBudget` / `allocationRefusal` in
+`inventory.ts`), checked whenever a tier is created or grown. Comps are the one
+thing that may be issued past the cap — that call is made in the room, not by a
+form — but they still take their seats with them, which is why they come off
+what the tiers are allowed to sell.
+
+Two edits are deliberately still allowed: anything that lowers or holds a tier's
+allocation, and lowering the cap under what the tiers already hold. Both exist so
+an event that is already over — comps issued past the cap, or a room that turned
+out smaller — can be edited back into shape rather than deadlocked. Lowering the
+cap that way warns on save and the tier editor shows the overage; checkout still
+stops at the cap, so nothing oversells either way.
+
 ---
 
 ## 4. QR tokens
@@ -655,7 +672,7 @@ Sensible defaults are assumed for all of these; flag any you want changed.
 5. **Day-before reminder email** — build it, off by default per event?
 6. **Comp tickets** — superseded. Comps are minted rather than sold: they belong to no tier, take an access level directly, and are welded to a named person. See `docs/ticketing/COMPS-PLAN.md`.
 7. **Refund of booking fee** — assumed refunded along with face value on a full refund.
-8. **Order edits** — admin can void a ticket and reissue; no quantity edits on a paid order.
+8. **Order edits** — admin can void a ticket and reissue; no quantity edits on a paid order. A ticket that should never have existed can also be deleted outright from the Tickets tab, singly or in bulk: the row, its scans and its wallet registration go, the seat comes back, a comp grant leaves with its hand-outs, and the activity log keeps who and why. Voiding remains the answer for a ticket that was real.
 9. **Apple/Google Wallet accounts** — who applies? These need to start early.
 10. **PostHog** — reuse the existing install for funnel events rather than adding tracking.
 

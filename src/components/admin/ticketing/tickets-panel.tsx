@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Undo2, XCircle } from "lucide-react";
+import { Search, Trash2, Undo2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -10,7 +10,11 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Badge } from "~/components/ui/badge";
 import { Textarea } from "~/components/ui/textarea";
-import { DataTable, type DataTableColumn } from "~/components/data-table";
+import {
+  DataTable,
+  useDataTable,
+  type DataTableColumn,
+} from "~/components/data-table";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +40,9 @@ type TicketRow = RouterOutputs["ticketAdmin"]["tickets"]["tickets"][number];
 const PAID_METHODS = new Set(["STRIPE", "CASH", "TERMINAL", "TAP_TO_PAY"]);
 
 const statusLabel = (status: string) => status.replace("_", " ").toLowerCase();
+
+/** Matches the server's own limit on one delete call. */
+const MAX_DELETE_AT_ONCE = 200;
 
 function canRefund(ticket: TicketRow) {
   return (
@@ -83,9 +90,45 @@ function AccessLevelSelect({
   );
 }
 
+/**
+ * What a delete is about to take with it.
+ *
+ * Comp grants leave together — the hand-outs are only tickets because somebody
+ * was given them to give away — so the count has to be said out loud before
+ * anyone confirms two tickets and loses five.
+ */
+function describeDelete(tickets: TicketRow[]): string {
+  const handouts = tickets.reduce(
+    (sum, ticket) => sum + (ticket.hostTicketId ? 0 : ticket._count.handouts),
+    0,
+  );
+  const paid = tickets.filter(
+    (ticket) => ticket.pricePaidCents > 0 && ticket.status === "VALID",
+  ).length;
+
+  const head =
+    tickets.length === 1
+      ? "This ticket, its scan history and its wallet pass registration go for good."
+      : `These ${tickets.length} tickets, their scan history and their wallet pass registrations go for good.`;
+
+  return [
+    head,
+    handouts > 0
+      ? `${handouts} hand-out${handouts === 1 ? "" : "s"} from the same comp grant ${handouts === 1 ? "goes" : "go"} too.`
+      : null,
+    "Any seat comes back on sale.",
+    paid > 0
+      ? `${paid === 1 ? "This one was" : `${paid} of them were`} paid for — nothing is refunded here, so refund first if the buyer is owed money.`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 export function TicketsPanel({ eventId }: { eventId: string }) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<TicketRow | null>(null);
+  const [deleting, setDeleting] = useState<TicketRow[] | null>(null);
   const debouncedSearch = useDebouncedValue(search);
 
   const tickets = api.ticketAdmin.tickets.useInfiniteQuery(
@@ -199,9 +242,18 @@ export function TicketsPanel({ eventId }: { eventId: string }) {
     },
   ];
 
+  // Held here rather than inside the table so a delete can drop the selection
+  // it just acted on; otherwise the banner keeps counting rows that are gone.
+  const table = useDataTable<TicketRow>({
+    columns,
+    getRowId: (row) => row.id,
+    storageKey: "admin-event-tickets",
+  });
+
   return (
     <div className="space-y-4">
       <DataTable
+        api={table}
         columns={columns}
         data={rows}
         getRowId={(row) => row.id}
@@ -210,6 +262,13 @@ export function TicketsPanel({ eventId }: { eventId: string }) {
         onRowClick={(row) => setSelected(row)}
         storageKey="admin-event-tickets"
         emptyMessage="No tickets yet."
+        bulkActions={[
+          {
+            label: "Delete",
+            variant: "destructive",
+            onClick: (selectedRows) => setDeleting(selectedRows),
+          },
+        ]}
         toolbarActions={
           <div className="relative w-full max-w-xs">
             <Search
@@ -250,15 +309,154 @@ export function TicketsPanel({ eventId }: { eventId: string }) {
             </DialogDescription>
           </DialogHeader>
           {openTicket && (
-            <TicketDetail key={openTicket.id} ticket={openTicket} />
+            <TicketDetail
+              key={openTicket.id}
+              ticket={openTicket}
+              onDelete={() => {
+                setDeleting([openTicket]);
+                setSelected(null);
+              }}
+            />
           )}
         </DialogContent>
       </Dialog>
+
+      <DeleteTicketsDialog
+        tickets={deleting}
+        onClose={() => setDeleting(null)}
+        onDeleted={() => {
+          setDeleting(null);
+          table.clearSelection();
+        }}
+      />
     </div>
   );
 }
 
-function TicketDetail({ ticket }: { ticket: TicketRow }) {
+/** Reason, consequences, confirm — the same flow for one ticket or fifty. */
+function DeleteTicketsDialog({
+  tickets,
+  onClose,
+  onDeleted,
+}: {
+  tickets: TicketRow[] | null;
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const utils = api.useUtils();
+  const [reason, setReason] = useState("");
+
+  const remove = api.ticketAdmin.deleteTickets.useMutation({
+    onSuccess: (result) => {
+      toast.success(
+        `${result.deleted} ticket${result.deleted === 1 ? "" : "s"} deleted.${
+          result.withGrant > 0
+            ? ` ${result.withGrant} came from the same comp grant.`
+            : ""
+        }`,
+      );
+      setReason("");
+      void utils.ticketAdmin.invalidate();
+      void utils.ticketEvents.byId.invalidate();
+      void utils.ticketAnalytics.invalidate();
+      onDeleted();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const count = tickets?.length ?? 0;
+  const tooMany = count > MAX_DELETE_AT_ONCE;
+
+  return (
+    <Dialog
+      open={tickets !== null}
+      onOpenChange={(open) => {
+        if (!open && !remove.isPending) {
+          setReason("");
+          onClose();
+        }
+      }}
+    >
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>
+            Delete {count === 1 ? "this ticket" : `${count} tickets`}?
+          </DialogTitle>
+          <DialogDescription>
+            {tooMany
+              ? `${count} is more than one delete can take. Select up to ${MAX_DELETE_AT_ONCE} at a time.`
+              : tickets
+                ? describeDelete(tickets)
+                : null}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2">
+          <Label htmlFor="delete-reason">Reason</Label>
+          <Textarea
+            id="delete-reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            maxLength={200}
+            placeholder="Kept in the activity log — it's all that's left afterwards"
+            className="min-h-16"
+          />
+        </div>
+
+        {tickets && tickets.length <= 8 && (
+          <ul className="text-muted-foreground max-h-32 space-y-0.5 overflow-y-auto text-xs">
+            {tickets.map((ticket) => (
+              <li key={ticket.id} className="truncate">
+                <span className="font-mono">{ticket.ticketNumber}</span> ·{" "}
+                {ticket.attendeeName ?? "No name"} · {ticket.typeName}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="ghost"
+            disabled={remove.isPending}
+            onClick={() => {
+              setReason("");
+              onClose();
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={
+              remove.isPending ||
+              reason.trim().length === 0 ||
+              !tickets ||
+              tooMany
+            }
+            onClick={() => {
+              if (!tickets) return;
+              remove.mutate({
+                ticketIds: tickets.map((ticket) => ticket.id),
+                reason: reason.trim(),
+              });
+            }}
+          >
+            <Trash2 className="size-4" />
+            {remove.isPending ? "Deleting…" : "Delete for good"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function TicketDetail({
+  ticket,
+  onDelete,
+}: {
+  ticket: TicketRow;
+  onDelete: () => void;
+}) {
   const utils = api.useUtils();
   const confirm = useConfirm();
   const [name, setName] = useState(ticket.attendeeName ?? "");
@@ -450,6 +648,21 @@ function TicketDetail({ ticket }: { ticket: TicketRow }) {
           </div>
         </div>
       )}
+
+      {/* Always available, including on a ticket that is already void: this is
+          how a row that shouldn't exist leaves the door list for good. */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+        <p className="text-muted-foreground text-xs">
+          Voiding keeps the ticket and its history. Deleting takes both.
+        </p>
+        <Button
+          variant="outline"
+          className="text-destructive hover:text-destructive"
+          onClick={onDelete}
+        >
+          <Trash2 className="size-4" /> Delete
+        </Button>
+      </div>
     </div>
   );
 }

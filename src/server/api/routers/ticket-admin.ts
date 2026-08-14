@@ -21,6 +21,7 @@ import {
 } from "~/server/ticketing/email/send";
 import {
   cancelPendingOrder,
+  deleteTickets,
   issueTicketsForOrder,
   orderAccessToken,
   ticketAccessToken,
@@ -228,6 +229,10 @@ export const ticketAdminRouter = createTRPCRouter({
           voidReason: true,
           createdAt: true,
           orderId: true,
+          hostTicketId: true,
+          // Deleting a comp grant takes the hand-outs with it, so the panel has
+          // to be able to say how many that is before anyone confirms.
+          _count: { select: { handouts: true } },
           tier: { select: { name: true } },
           order: {
             select: {
@@ -413,6 +418,66 @@ export const ticketAdminRouter = createTRPCRouter({
       });
 
       return { ok: true as const };
+    }),
+
+  /**
+   * Delete tickets outright — the row, its scans, and its wallet registrations.
+   *
+   * Void is still the right answer for a ticket that was real: it keeps the
+   * history, and the door can say why somebody was turned away. This is for
+   * tickets that should never have existed, where the void row is only noise on
+   * a list somebody has to read at a door. Nothing is refunded on the way — a
+   * paid ticket is refunded first, and the panel says so.
+   *
+   * A comp grant goes as a grant: deleting the recipient's ticket takes the
+   * plus-ones they were given to hand out with it.
+   */
+  deleteTickets: adminProcedure
+    .input(
+      z.object({
+        ticketIds: z.array(z.string()).min(1).max(200),
+        reason: z.string().trim().min(1).max(200),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const deleted = await deleteTickets(input.ticketIds);
+      if (deleted.length === 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Those tickets have already gone.",
+        });
+      }
+
+      // Written after the fact on purpose: this is the only record the deleted
+      // tickets leave behind, so it carries who they belonged to and what was
+      // paid, not just how many there were.
+      await logActivity({
+        type: ActivityType.TICKET_DELETED,
+        action: `Deleted ${deleted.length} ticket${
+          deleted.length === 1 ? "" : "s"
+        } — ${input.reason}`,
+        userId: ctx.session.user.id,
+        details: {
+          reason: input.reason,
+          eventId: deleted[0]?.eventId,
+          tickets: deleted.map((ticket) => ({
+            ticketNumber: ticket.ticketNumber,
+            orderId: ticket.orderId,
+            attendeeName: ticket.attendeeName,
+            attendeeEmail: ticket.attendeeEmail,
+            pricePaidCents: ticket.pricePaidCents,
+            isComp: ticket.isComp,
+            withGrant: ticket.viaHost,
+          })),
+        },
+      });
+
+      return {
+        ok: true as const,
+        deleted: deleted.length,
+        /** Hand-outs that came along with a comp grant, so the UI can say so. */
+        withGrant: deleted.filter((ticket) => ticket.viaHost).length,
+      };
     }),
 
   resendTickets: adminProcedure

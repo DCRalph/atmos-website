@@ -133,8 +133,13 @@ export function EventForm({ event }: { event?: AdminEvent }) {
   });
 
   const update = api.ticketEvents.update.useMutation({
-    onSuccess: () => {
+    onSuccess: (saved) => {
       toast.success("Saved");
+      // A cap that no longer covers the tiers under it saves, but never
+      // quietly: from here checkout stops before the tiers run out.
+      if (saved.capacityWarning) {
+        toast.warning(saved.capacityWarning, { duration: 10_000 });
+      }
       void utils.ticketEvents.byId.invalidate();
       void utils.ticketEvents.list.invalidate();
     },
@@ -282,7 +287,7 @@ export function EventForm({ event }: { event?: AdminEvent }) {
         <Field
           label="Overall capacity"
           htmlFor="capacity"
-          hint="Caps total tickets across every tier, comps included. Blank means the tier allocations decide."
+          hint="The room. Tiers can't allocate more than this between them, and comps come off it too. Blank means the tier allocations decide."
         >
           <Input
             id="capacity"

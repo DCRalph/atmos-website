@@ -113,8 +113,23 @@ export async function buildApplePass({
         }
       : null;
 
-  const images = await getPassImages(theme, level.intensity, badge);
-
+  /**
+   * On a pass with a chip, the band carries the event name too.
+   *
+   * Wallet draws a primary field across the whole width of the strip, so the
+   * longer the name the further it runs under the chip — "Summer Series: Night
+   * Two" and an AAA badge ended up on top of each other. The two only stay
+   * apart if one thing lays them both out, so when there is a chip the name is
+   * typeset into the artwork beside it and the primary field is left empty.
+   * Everything else (most tickets, which are general admission) keeps Wallet's
+   * own type, which scales with the reader's text size.
+   */
+  const artwork = await getPassImages(
+    theme,
+    level.intensity,
+    badge,
+    badge ? event.name : null,
+  );
 
   const doorsText = event.doorsAt
     ? formatEventTime(event.doorsAt, event.timezone)
@@ -150,13 +165,17 @@ export async function buildApplePass({
           value: doorsText,
         },
       ],
-      primaryFields: [
-        {
-          key: "event",
-          label: "EVENT",
-          value: event.name,
-        },
-      ],
+      // Empty when the band already says it: this is the field Wallet would
+      // draw over the chip.
+      primaryFields: artwork.titleDrawn
+        ? []
+        : [
+            {
+              key: "event",
+              label: "EVENT",
+              value: event.name,
+            },
+          ],
       secondaryFields: [
         {
           key: "date",
@@ -179,6 +198,11 @@ export async function buildApplePass({
           : []),
       ],
       backFields: [
+        // The name is artwork on the front of these, so the back carries it as
+        // text — in full, and reachable by a screen reader.
+        ...(artwork.titleDrawn
+          ? [{ key: "eventName", label: "Event", value: event.name }]
+          : []),
         {
           key: "ticketNumber",
           label: "Ticket number",
@@ -211,7 +235,7 @@ export async function buildApplePass({
 
   const pass = new PKPass(
     {
-      ...images,
+      ...artwork.files,
       "pass.json": Buffer.from(JSON.stringify(passJson), "utf8"),
     },
     {

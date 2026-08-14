@@ -842,6 +842,8 @@ enum ActivityType {
   TICKET_ORDER_REFUNDED
   TICKET_ISSUED
   TICKET_VOIDED
+  /// Deleted outright, row and all. The log is the only record left of it.
+  TICKET_DELETED
   TICKET_RESENT
   TICKET_SCANNED
   TICKET_SCAN_OVERRIDE

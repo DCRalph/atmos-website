@@ -241,6 +241,45 @@ export function stripSvg(
 }
 
 /**
+ * The band's own margins, as fractions of its size.
+ *
+ * One set of numbers for the chip and the title, because the whole point is
+ * that they cannot reach each other.
+ */
+const STRIP_PAD_X = 0.043;
+const STRIP_PAD_Y = 0.11;
+const STRIP_GAP = 0.032;
+
+/**
+ * The room left for the event name once the chip has taken its lane.
+ *
+ * Wallet draws a primary field across the whole width of the strip, which on a
+ * pass that also carries a chip means the name runs straight under it — the
+ * longer the event's name, the worse it reads. So on those passes the name is
+ * typeset into the artwork here instead, inside this box, and the primary field
+ * is left out. Two things sharing one band have to be laid out together or they
+ * will not stay apart.
+ */
+export function stripTitleBox(
+  width: number,
+  height: number,
+  badge: StripBadge | null,
+) {
+  const padX = Math.round(width * STRIP_PAD_X);
+  const padY = Math.round(height * STRIP_PAD_Y);
+  const right = badge
+    ? badgeBox(badge.text, width, height).x - Math.round(width * STRIP_GAP)
+    : width - padX;
+
+  return {
+    x: padX,
+    y: padY,
+    width: Math.max(0, right - padX),
+    height: height - padY * 2,
+  };
+}
+
+/**
  * Where the chip sits, so the server can drop rasterised text onto it.
  *
  * Width is estimated from the character count — there is no text metrics API

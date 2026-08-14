@@ -13,6 +13,7 @@ import { Badge } from "~/components/ui/badge";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { useConfirm } from "~/components/confirm-provider";
 import { formatNZD, parsePriceToCents } from "~/lib/ticketing/money";
+import { allocationRefusal, roomForTier } from "~/lib/ticketing/capacity";
 import {
   ACCESS_LEVELS,
   type AccessLevelValue,
@@ -22,6 +23,7 @@ import {
 
 type AdminEvent = RouterOutputs["ticketEvents"]["byId"];
 type Tier = AdminEvent["tiers"][number];
+type Budget = AdminEvent["budget"];
 
 /**
  * Tiers.
@@ -29,9 +31,14 @@ type Tier = AdminEvent["tiers"][number];
  * A tier is buyable when it's active, inside its sale window, and has stock —
  * which is what makes "50 early bird then general admission" work without
  * anyone having to flip a switch at midnight.
+ *
+ * Between them the tiers may allocate the cap, less anything already comped
+ * away. The cap is the room, so a plan that adds up to more than the room is
+ * refused here rather than discovered at the door.
  */
 export function TierManager({ event }: { event: AdminEvent }) {
   const [adding, setAdding] = useState(false);
+  const { budget } = event;
 
   return (
     <div className="space-y-4">
@@ -47,6 +54,8 @@ export function TierManager({ event }: { event: AdminEvent }) {
         </Button>
       </div>
 
+      <BudgetBar budget={budget} />
+
       {event.tiers.length === 0 && !adding && (
         <p className="text-muted-foreground rounded-lg border border-dashed p-8 text-center">
           No tiers yet. An event needs at least one before it can be published.
@@ -55,12 +64,13 @@ export function TierManager({ event }: { event: AdminEvent }) {
 
       <div className="space-y-3">
         {event.tiers.map((tier) => (
-          <TierRow key={tier.id} tier={tier} />
+          <TierRow key={tier.id} tier={tier} budget={budget} />
         ))}
 
         {adding && (
           <TierRow
             eventId={event.id}
+            budget={budget}
             onDone={() => setAdding(false)}
             sortOrder={event.tiers.length}
           />
@@ -70,13 +80,60 @@ export function TierManager({ event }: { event: AdminEvent }) {
   );
 }
 
+/** The cap, and what the tiers have done with it. */
+function BudgetBar({ budget }: { budget: Budget }) {
+  if (budget.capacity === null) {
+    return (
+      <p className="text-muted-foreground rounded-lg border border-dashed px-4 py-3 text-sm">
+        No cap set for this event, so the tier allocations decide how many
+        tickets exist. Set one under Settings to hold every tier to a room size.
+      </p>
+    );
+  }
+
+  const over = budget.overAllocatedBy > 0;
+
+  return (
+    <div
+      className={`rounded-lg border px-4 py-3 text-sm ${
+        over ? "border-amber-500/40 bg-amber-500/5" : ""
+      }`}
+    >
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="font-semibold">Cap {budget.capacity}</span>
+        <span className="text-muted-foreground">·</span>
+        <span>{budget.allocated} allocated to tiers</span>
+        {budget.comps > 0 && (
+          <>
+            <span className="text-muted-foreground">·</span>
+            <span>{budget.comps} comped</span>
+          </>
+        )}
+        <span className="text-muted-foreground">·</span>
+        <span className={over ? "font-medium text-amber-500" : ""}>
+          {over
+            ? `${budget.overAllocatedBy} over`
+            : `${budget.unallocated} still to allocate`}
+        </span>
+      </div>
+      <p className="text-muted-foreground mt-1 text-xs">
+        {over
+          ? "Checkout stops at the cap, so the tiers can't all sell out. Trim one to make the plan match the room."
+          : "Comps are the only tickets that may be issued past the cap — and they come off what the tiers can sell."}
+      </p>
+    </div>
+  );
+}
+
 function TierRow({
   tier,
   eventId,
+  budget,
   onDone,
 }: {
   tier?: Tier;
   eventId?: string;
+  budget: Budget;
   onDone?: () => void;
   sortOrder?: number;
 }) {
@@ -161,6 +218,16 @@ function TierRow({
   const sold = tier?.soldCount ?? 0;
   const held = tier?.heldCount ?? 0;
   const remaining = tier ? Math.max(0, tier.allocation - sold - held) : 0;
+
+  // The server's own rule, run against what is being typed — including its
+  // allowance for an event that is already over, where a tier still has to be
+  // editable as long as the edit doesn't make things worse.
+  const room = roomForTier(budget, tier?.allocation ?? 0);
+  const refusal = allocationRefusal({
+    budget,
+    currentAllocation: tier?.allocation ?? 0,
+    nextAllocation: payload.allocation,
+  });
 
   return (
     <div className="rounded-lg border p-4">
@@ -272,7 +339,16 @@ function TierRow({
               min={0}
               value={allocation}
               onChange={(e) => setAllocation(e.target.value)}
+              aria-invalid={refusal !== null}
             />
+            {room !== null && (
+              <p
+                className={`text-xs ${refusal ? "text-destructive" : "text-muted-foreground"}`}
+              >
+                {refusal ??
+                  `Up to ${room} of the ${budget.capacity} cap is free for this tier.`}
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label>Max per order</Label>
@@ -329,7 +405,9 @@ function TierRow({
 
           <div className="flex gap-2 md:col-span-2">
             <Button
-              disabled={create.isPending || update.isPending}
+              disabled={
+                create.isPending || update.isPending || refusal !== null
+              }
               onClick={() => {
                 if (tier) update.mutate({ id: tier.id, ...payload });
                 else if (eventId) create.mutate({ eventId, ...payload });

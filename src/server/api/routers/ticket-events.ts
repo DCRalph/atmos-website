@@ -17,7 +17,6 @@ import {
   TicketEventStatus,
   TicketEventVisibility,
   TicketOrderStatus,
-  TicketStatus,
 } from "~Prisma/client";
 import {
   adminProcedure,
@@ -26,9 +25,13 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import { logActivity } from "~/server/utils/activity-log";
+import { allocationRefusal } from "~/lib/ticketing/capacity";
 import {
+  allocationBudget,
+  eventHeadcount,
   remainingInTier,
   tierUnavailableReason,
+  withEventInventoryLock,
 } from "~/server/ticketing/inventory";
 import {
   getTicketingSettings,
@@ -230,6 +233,26 @@ function assertSaneDates(input: {
   }
 }
 
+/**
+ * The warning for a cap that no longer covers the tiers under it, or null when
+ * they fit — which is the usual case, and the case worth saying nothing about.
+ */
+async function describeOverAllocation(
+  eventId: string,
+  client: Prisma.TransactionClient,
+): Promise<string | null> {
+  const budget = await allocationBudget(eventId, client);
+  if (budget.overAllocatedBy === 0) return null;
+
+  const comped =
+    budget.comps > 0 ? `, plus ${budget.comps} already comped,` : "";
+  return (
+    `Tiers allocate ${budget.allocated}${comped} against a cap of ${budget.capacity}.` +
+    ` Sales stop at the cap, so the last ${budget.overAllocatedBy} can't be sold —` +
+    ` trim a tier to make the plan match the room.`
+  );
+}
+
 export const ticketEventsRouter = createTRPCRouter({
   // ---------------------------------------------------------------- admin
 
@@ -289,7 +312,7 @@ export const ticketEventsRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
       }
 
-      const [settings, staffUsers, revenue] = await Promise.all([
+      const [settings, staffUsers, revenue, budget] = await Promise.all([
         getTicketingSettings(),
         ctx.db.user.findMany({
           where: { id: { in: event.staff.map((s) => s.userId) } },
@@ -300,6 +323,7 @@ export const ticketEventsRouter = createTRPCRouter({
           _sum: { totalCents: true, refundedCents: true },
           _count: true,
         }),
+        allocationBudget(event.id, ctx.db),
       ]);
 
       const userById = new Map(staffUsers.map((u) => [u.id, u]));
@@ -318,6 +342,9 @@ export const ticketEventsRouter = createTRPCRouter({
           grossCents: revenue._sum.totalCents ?? 0,
           refundedCents: revenue._sum.refundedCents ?? 0,
         },
+        // What the tiers are allowed to hold between them, so the tier editor
+        // shows the same arithmetic it will be judged by on save.
+        budget,
       };
     }),
 
@@ -409,14 +436,15 @@ export const ticketEventsRouter = createTRPCRouter({
             : rest.salesCloseAt,
       });
 
+      // The cap is a statement about the room, so it is measured against
+      // everyone already committed to it — sold, mid-checkout, and comped —
+      // rather than against sales alone.
       if (rest.capacity != null) {
-        const sold = await ctx.db.ticket.count({
-          where: { eventId: id, status: TicketStatus.VALID },
-        });
-        if (rest.capacity < sold) {
+        const { headcount } = await eventHeadcount(ctx.db, id);
+        if (rest.capacity < headcount) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: `${sold} tickets are already sold — capacity can't go below that.`,
+            message: `${headcount} tickets are already sold, held or comped — the cap can't go below that.`,
           });
         }
       }
@@ -511,6 +539,15 @@ export const ticketEventsRouter = createTRPCRouter({
         },
       });
 
+      // Lowering the cap under what the tiers already hold is allowed — the
+      // alternative is an admin who can't get the number down without first
+      // unpicking every tier — but it is never silent. Checkout enforces the
+      // cap, so from here the tiers can't all sell out.
+      const capacityWarning =
+        rest.capacity === undefined
+          ? null
+          : await describeOverAllocation(id, ctx.db);
+
       await logActivity({
         type: ActivityType.TICKET_EVENT_UPDATED,
         action: `Updated ticketed event "${event.name}"`,
@@ -530,7 +567,7 @@ export const ticketEventsRouter = createTRPCRouter({
         scheduleEventPassUpdates(event.id);
       }
 
-      return event;
+      return { ...event, capacityWarning };
     }),
 
   setStatus: adminProcedure
@@ -631,29 +668,43 @@ export const ticketEventsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { eventId, ...rest } = input;
 
-      const last = await ctx.db.ticketTier.findFirst({
-        where: { eventId },
-        orderBy: { sortOrder: "desc" },
-        select: { sortOrder: true },
-      });
+      // Under the lock so two tiers added at once can't each be told there is
+      // room for them, and so the budget is read from the same rows the sale
+      // path reads.
+      const tier = await withEventInventoryLock(eventId, async (tx) => {
+        const refusal = allocationRefusal({
+          budget: await allocationBudget(eventId, tx),
+          currentAllocation: 0,
+          nextAllocation: rest.allocation,
+        });
+        if (refusal) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: refusal });
+        }
 
-      const tier = await ctx.db.ticketTier.create({
-        data: {
-          eventId,
-          name: rest.name,
-          description: rest.description ?? null,
-          priceCents: rest.priceCents,
-          allocation: rest.allocation,
-          salesStartAt: rest.salesStartAt ?? null,
-          salesEndAt: rest.salesEndAt ?? null,
-          isActive: rest.isActive,
-          isHidden: rest.isHidden,
-          maxPerOrder: rest.maxPerOrder,
-          maxPerEmail: rest.maxPerEmail ?? null,
-          requiresApproval: rest.requiresApproval,
-          accessLevel: rest.accessLevel,
-          sortOrder: (last?.sortOrder ?? -1) + 1,
-        },
+        const last = await tx.ticketTier.findFirst({
+          where: { eventId },
+          orderBy: { sortOrder: "desc" },
+          select: { sortOrder: true },
+        });
+
+        return tx.ticketTier.create({
+          data: {
+            eventId,
+            name: rest.name,
+            description: rest.description ?? null,
+            priceCents: rest.priceCents,
+            allocation: rest.allocation,
+            salesStartAt: rest.salesStartAt ?? null,
+            salesEndAt: rest.salesEndAt ?? null,
+            isActive: rest.isActive,
+            isHidden: rest.isHidden,
+            maxPerOrder: rest.maxPerOrder,
+            maxPerEmail: rest.maxPerEmail ?? null,
+            requiresApproval: rest.requiresApproval,
+            accessLevel: rest.accessLevel,
+            sortOrder: (last?.sortOrder ?? -1) + 1,
+          },
+        });
       });
 
       await logActivity({
@@ -676,53 +727,71 @@ export const ticketEventsRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Tier not found" });
       }
 
-      // Shrinking an allocation below what is already committed would make
-      // `remaining` negative and the buy panel nonsense.
-      if (rest.allocation !== undefined) {
-        const committed = existing.soldCount + existing.heldCount;
-        if (rest.allocation < committed) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: `${committed} already sold or held in this tier — allocation can't go below that.`,
-          });
-        }
-      }
+      const tier = await withEventInventoryLock(
+        existing.eventId,
+        async (tx) => {
+          // Shrinking an allocation below what is already committed would make
+          // `remaining` negative and the buy panel nonsense.
+          if (rest.allocation !== undefined) {
+            const committed = existing.soldCount + existing.heldCount;
+            if (rest.allocation < committed) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: `${committed} already sold or held in this tier — allocation can't go below that.`,
+              });
+            }
 
-      const tier = await ctx.db.ticketTier.update({
-        where: { id },
-        data: {
-          ...(rest.name !== undefined ? { name: rest.name } : {}),
-          ...(rest.description !== undefined
-            ? { description: rest.description }
-            : {}),
-          ...(rest.priceCents !== undefined
-            ? { priceCents: rest.priceCents }
-            : {}),
-          ...(rest.allocation !== undefined
-            ? { allocation: rest.allocation }
-            : {}),
-          ...(rest.salesStartAt !== undefined
-            ? { salesStartAt: rest.salesStartAt }
-            : {}),
-          ...(rest.salesEndAt !== undefined
-            ? { salesEndAt: rest.salesEndAt }
-            : {}),
-          ...(rest.isActive !== undefined ? { isActive: rest.isActive } : {}),
-          ...(rest.isHidden !== undefined ? { isHidden: rest.isHidden } : {}),
-          ...(rest.maxPerOrder !== undefined
-            ? { maxPerOrder: rest.maxPerOrder }
-            : {}),
-          ...(rest.maxPerEmail !== undefined
-            ? { maxPerEmail: rest.maxPerEmail }
-            : {}),
-          ...(rest.requiresApproval !== undefined
-            ? { requiresApproval: rest.requiresApproval }
-            : {}),
-          ...(rest.accessLevel !== undefined
-            ? { accessLevel: rest.accessLevel }
-            : {}),
+            const refusal = allocationRefusal({
+              budget: await allocationBudget(existing.eventId, tx),
+              currentAllocation: existing.allocation,
+              nextAllocation: rest.allocation,
+            });
+            if (refusal) {
+              throw new TRPCError({ code: "BAD_REQUEST", message: refusal });
+            }
+          }
+
+          return tx.ticketTier.update({
+            where: { id },
+            data: {
+              ...(rest.name !== undefined ? { name: rest.name } : {}),
+              ...(rest.description !== undefined
+                ? { description: rest.description }
+                : {}),
+              ...(rest.priceCents !== undefined
+                ? { priceCents: rest.priceCents }
+                : {}),
+              ...(rest.allocation !== undefined
+                ? { allocation: rest.allocation }
+                : {}),
+              ...(rest.salesStartAt !== undefined
+                ? { salesStartAt: rest.salesStartAt }
+                : {}),
+              ...(rest.salesEndAt !== undefined
+                ? { salesEndAt: rest.salesEndAt }
+                : {}),
+              ...(rest.isActive !== undefined
+                ? { isActive: rest.isActive }
+                : {}),
+              ...(rest.isHidden !== undefined
+                ? { isHidden: rest.isHidden }
+                : {}),
+              ...(rest.maxPerOrder !== undefined
+                ? { maxPerOrder: rest.maxPerOrder }
+                : {}),
+              ...(rest.maxPerEmail !== undefined
+                ? { maxPerEmail: rest.maxPerEmail }
+                : {}),
+              ...(rest.requiresApproval !== undefined
+                ? { requiresApproval: rest.requiresApproval }
+                : {}),
+              ...(rest.accessLevel !== undefined
+                ? { accessLevel: rest.accessLevel }
+                : {}),
+            },
+          });
         },
-      });
+      );
 
       await logActivity({
         type: ActivityType.TICKET_TIER_UPDATED,

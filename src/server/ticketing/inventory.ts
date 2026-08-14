@@ -3,6 +3,10 @@ import "server-only";
 import { type Prisma, TicketOrderStatus, TicketStatus } from "~Prisma/client";
 
 import { db } from "~/server/db";
+import {
+  toAllocationBudget,
+  type AllocationBudget,
+} from "~/lib/ticketing/capacity";
 
 /**
  * Inventory: the one place that decides whether a ticket can be sold.
@@ -137,6 +141,42 @@ export async function eventHeadcount(
 
   const fromTiers = committedAgainstCapacity(tiers);
   return { headcount: fromTiers + comps, fromTiers, comps };
+}
+
+// ------------------------------------------------------------ planning a room
+
+/**
+ * The event's cap, as the tier editor has to see it.
+ *
+ * The arithmetic itself lives in `~/lib/ticketing/capacity` so the admin form
+ * can run it against what somebody is typing; this is only the read that gets
+ * the three numbers out of the database.
+ *
+ * Tier allocations are counted whether or not the tier is currently on sale: a
+ * paused tier is a switch away from selling, and a plan that only adds up while
+ * something is switched off is not a plan.
+ */
+export async function allocationBudget(
+  eventId: string,
+  client: Tx = db,
+): Promise<AllocationBudget> {
+  const [event, tiers, comps] = await Promise.all([
+    client.ticketEvent.findUniqueOrThrow({
+      where: { id: eventId },
+      select: { capacity: true },
+    }),
+    client.ticketTier.findMany({
+      where: { eventId },
+      select: { allocation: true },
+    }),
+    compCountForEvent(client, eventId),
+  ]);
+
+  return toAllocationBudget({
+    capacity: event.capacity,
+    allocated: tiers.reduce((sum, tier) => sum + tier.allocation, 0),
+    comps,
+  });
 }
 
 /**

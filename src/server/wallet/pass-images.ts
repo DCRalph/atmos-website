@@ -4,11 +4,12 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import sharp from "sharp";
+import sharp, { type OverlayOptions } from "sharp";
 
 import {
   badgeBox,
   stripSvg,
+  stripTitleBox,
   type PassTheme,
   type StripBadge,
 } from "~/lib/ticketing/pass-theme";
@@ -29,23 +30,46 @@ import { ATMOS_ICON_PNG, ATMOS_WORDMARK_PNG } from "./pass-logo";
  * event ticket — together they are the whole look of the thing.
  */
 
-
-
 type ImageSet = Record<string, Buffer>;
+
+/** What one call to {@link getPassImages} produced. */
+type PassArtwork = {
+  files: ImageSet;
+  /**
+   * Whether the band carries the event name. When it does the pass leaves its
+   * primary field empty, because that field is what would be drawn over it.
+   */
+  titleDrawn: boolean;
+};
 
 /**
  * Themed artwork is cached per theme, not globally.
  *
- * Most events run house style, so in practice this is one entry doing the work
- * the old single cache did. It is bounded by the number of distinct themes in
- * use rather than by ticket volume, so it cannot grow with traffic.
+ * Most events run house style, so in practice this is a handful of entries
+ * doing the work the old single cache did. It is bounded by the number of
+ * distinct themes, levels and event names in use rather than by ticket volume,
+ * so it cannot grow with traffic — and the lid below keeps a long-running
+ * process from accumulating every event of the season.
  */
-const themedCache = new Map<string, ImageSet>();
+const themedCache = new Map<string, PassArtwork>();
+const MAX_CACHED_THEMES = 32;
+
+function remember(key: string, artwork: PassArtwork): PassArtwork {
+  if (themedCache.size >= MAX_CACHED_THEMES) {
+    // Insertion order: the oldest theme is the least likely to be asked for
+    // again, and re-rendering one is a few hundred milliseconds, not an error.
+    const oldest = themedCache.keys().next().value;
+    if (oldest !== undefined) themedCache.delete(oldest);
+  }
+  themedCache.set(key, artwork);
+  return artwork;
+}
 
 function themeKey(
   theme: PassTheme,
   intensity: number,
   badge: StripBadge | null,
+  title: string | null,
 ): string {
   return [
     theme.stripStyle,
@@ -55,6 +79,7 @@ function themeKey(
     theme.labelHex,
     intensity.toFixed(2),
     badge ? `${badge.text}:${badge.background}:${badge.foreground}` : "-",
+    title ?? "-",
   ].join("|");
 }
 
@@ -143,44 +168,191 @@ function getFontPath(): string {
   return file;
 }
 
+/** Pango markup is XML, so a venue called "Smith & Sons" needs escaping. */
+function escapeMarkup(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+type Raster = { buffer: Buffer; width: number; height: number };
+
 /**
- * The chip's text, rasterised rather than left to the SVG.
+ * A run of text, rasterised rather than left to the SVG.
  *
  * `<text>` in the strip SVG renders through librsvg, which resolves fonts via
  * fontconfig — and a serverless image has none, so it came out as tofu boxes in
  * production while looking correct on macOS via CoreText. Drawing it here with
  * our own font file takes the environment out of it.
+ *
+ * Sizing goes through `dpi` rather than a font description: pango is asked for
+ * 12pt and the dots-per-inch are set so that 12pt lands on the pixel size we
+ * actually want, which keeps one number in play instead of two.
  */
-async function renderBadgeText(
-  badge: StripBadge,
-  width: number,
-  height: number,
-): Promise<{ input: Buffer; top: number; left: number } | null> {
-  const box = badgeBox(badge.text, width, height);
+async function renderText({
+  text,
+  colour,
+  sizePx,
+  /** Wrap width. Text longer than this breaks at a word rather than running on. */
+  maxWidthPx,
+  /**
+   * Fit to this height instead of using `sizePx`. Sharp then picks the size
+   * itself, which is the only way to be sure of something that has to fit —
+   * a single word longer than the lane cannot be wrapped out of trouble.
+   */
+  maxHeightPx,
+  /** Pango units — 1024ths of a point, so a constant here is constant tracking. */
+  letterSpacing,
+}: {
+  text: string;
+  colour: string;
+  sizePx: number;
+  maxWidthPx?: number;
+  maxHeightPx?: number;
+  letterSpacing?: number;
+}): Promise<Raster | null> {
   try {
-    const text = await sharp({
+    const spacing =
+      letterSpacing === undefined ? "" : ` letter_spacing="${letterSpacing}"`;
+    const buffer = await sharp({
       text: {
-        text: `<span foreground="${badge.foreground}" letter_spacing="${Math.round(box.fontSize * 140)}">${badge.text}</span>`,
+        text: `<span foreground="${colour}"${spacing}>${escapeMarkup(text)}</span>`,
         font: "sans",
         fontfile: getFontPath(),
-        dpi: Math.round(72 * (box.fontSize / 12)),
         rgba: true,
+        ...(maxWidthPx ? { width: Math.round(maxWidthPx) } : {}),
+        ...(maxHeightPx
+          ? { height: Math.round(maxHeightPx) }
+          : { dpi: Math.round(72 * (sizePx / 12)) }),
       },
     })
       .png()
       .toBuffer();
 
-    const meta = await sharp(text).metadata();
-    return {
-      input: text,
-      left: Math.round(box.x + (box.width - (meta.width ?? 0)) / 2),
-      top: Math.round(box.y + (box.height - (meta.height ?? 0)) / 2),
-    };
+    const meta = await sharp(buffer).metadata();
+    return { buffer, width: meta.width ?? 0, height: meta.height ?? 0 };
   } catch {
-    // A chip without its letters is still a colour block — better than failing
-    // the whole pass because a font could not be written or parsed.
+    // Better than failing the whole pass because a font could not be written
+    // or parsed: the caller falls back to artwork without this text in it.
     return null;
   }
+}
+
+/** The chip's letters, centred in the chip the band SVG drew. */
+async function renderBadgeText(
+  badge: StripBadge,
+  width: number,
+  height: number,
+): Promise<OverlayOptions | null> {
+  const box = badgeBox(badge.text, width, height);
+  const text = await renderText({
+    text: badge.text,
+    colour: badge.foreground,
+    sizePx: box.fontSize,
+    letterSpacing: Math.round(box.fontSize * 140),
+  });
+  if (!text) return null;
+
+  return {
+    input: text.buffer,
+    left: Math.round(box.x + (box.width - text.width) / 2),
+    top: Math.round(box.y + (box.height - text.height) / 2),
+  };
+}
+
+/**
+ * The event name on the band, in the lane the chip left it.
+ *
+ * Set as large as fits, dropping a step at a time and wrapping rather than
+ * shrinking where it can. A name long enough to need three cramped lines gets
+ * them: the whole name in small type says more than half of it in large type.
+ * Only a name that will not fit the band at all is cut at a word and
+ * ellipsised, and the full one is on the back of the pass.
+ */
+const TITLE_SIZE_RATIOS = [0.245, 0.225, 0.205, 0.19, 0.175, 0.16, 0.15];
+/** Roughly how much text is worth setting at all, in lines at the floor size. */
+const TITLE_LINE_BUDGET = 2;
+const LABEL_SIZE_RATIO = 0.105;
+/** ~0.18em of tracking, matching the small caps Wallet sets labels in. */
+const LABEL_TRACKING = 2200;
+
+function ellipsise(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  const cut = text.slice(0, Math.max(1, maxChars - 1));
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${(lastSpace > maxChars * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+}
+
+async function renderTitleBlock(
+  theme: PassTheme,
+  title: string,
+  box: { x: number; y: number; width: number; height: number },
+  stripHeight: number,
+): Promise<OverlayOptions[] | null> {
+  const label = await renderText({
+    text: "EVENT",
+    colour: theme.labelHex,
+    sizePx: Math.max(6, Math.round(stripHeight * LABEL_SIZE_RATIO)),
+    letterSpacing: LABEL_TRACKING,
+  });
+  if (!label) return null;
+
+  const gap = Math.round(stripHeight * 0.04);
+  const room = box.height - label.height - gap;
+
+  // Trimmed once, against the smallest size we are willing to set, so the loop
+  // below is only ever choosing a size — never discovering it has to cut.
+  const floorSize = Math.round(
+    stripHeight * TITLE_SIZE_RATIOS[TITLE_SIZE_RATIOS.length - 1]!,
+  );
+  const perLine = Math.max(6, Math.floor(box.width / (floorSize * 0.52)));
+  const text = ellipsise(title.trim(), perLine * TITLE_LINE_BUDGET);
+
+  let chosen: Raster | null = null;
+  for (const ratio of TITLE_SIZE_RATIOS) {
+    const attempt = await renderText({
+      text,
+      colour: theme.foregroundHex,
+      sizePx: Math.round(stripHeight * ratio),
+      maxWidthPx: box.width,
+    });
+    if (!attempt) return null;
+    if (attempt.height <= room && attempt.width <= box.width) {
+      chosen = attempt;
+      break;
+    }
+  }
+
+  // Nothing on the ladder fits: one word longer than the lane, or letterforms
+  // wider than the estimate above allowed for. Hand the box to sharp and let it
+  // scale the type down until it does.
+  chosen ??= await renderText({
+    text,
+    colour: theme.foregroundHex,
+    sizePx: floorSize,
+    maxWidthPx: box.width,
+    maxHeightPx: room,
+  });
+  if (!chosen) return null;
+
+  const blockHeight = label.height + gap + chosen.height;
+  // Last check before it becomes a composite: sharp refuses an overlay that
+  // runs off its canvas, and a pass that fails to build is worse than a pass
+  // that lets Wallet set the name.
+  if (
+    blockHeight > box.height ||
+    Math.max(label.width, chosen.width) > box.width
+  ) {
+    return null;
+  }
+
+  const top = Math.round(box.y + (box.height - blockHeight) / 2);
+
+  return [
+    { input: label.buffer, left: box.x, top },
+    { input: chosen.buffer, left: box.x, top: top + label.height + gap },
+  ];
 }
 
 /** The square mark, for the icon slot Apple shows in notifications. */
@@ -221,37 +393,65 @@ async function getBrandImages(): Promise<ImageSet> {
   return brandCache;
 }
 
-/** One strip: the band from SVG, the chip's letters composited on top. */
+/** One strip: the band from SVG, then the chip's letters and the title on top. */
 async function renderStrip(
   theme: PassTheme,
   intensity: number,
   badge: StripBadge | null,
+  title: string | null,
   width: number,
   height: number,
-): Promise<Buffer> {
+): Promise<{ image: Buffer; titleDrawn: boolean }> {
   const band = sharp(
     Buffer.from(stripSvg(theme, width, height, intensity, badge, false)),
   ).resize(width, height, { fit: "cover" });
 
-  if (!badge) return band.png().toBuffer();
+  const overlays: OverlayOptions[] = [];
 
-  const text = await renderBadgeText(badge, width, height);
-  return (text ? band.composite([text]) : band).png().toBuffer();
+  if (badge) {
+    const text = await renderBadgeText(badge, width, height);
+    // A chip without its letters is still a colour block, which is better than
+    // no pass at all.
+    if (text) overlays.push(text);
+  }
+
+  let titleDrawn = false;
+  if (title) {
+    const box = stripTitleBox(width, height, badge);
+    // A chip wide enough to leave no lane worth setting type in: better to let
+    // Wallet draw the name over the band than to squeeze it into nothing.
+    const block =
+      box.width >= width * 0.35
+        ? await renderTitleBlock(theme, title, box, height)
+        : null;
+    if (block) {
+      overlays.push(...block);
+      titleDrawn = true;
+    }
+  }
+
+  const image = await (overlays.length > 0 ? band.composite(overlays) : band)
+    .png()
+    .toBuffer();
+
+  return { image, titleDrawn };
 }
 
 /**
  * The image files a pass ships with, for one event's theme.
  *
  * `intensity` comes from the ticket's access level, so two tickets to the same
- * event can differ — cached per (theme, intensity) pair, which in practice is
- * one entry per access level actually issued.
+ * event can differ. `title` is set only when the band has to carry the event
+ * name itself — see {@link stripTitleBox} — and the caller is told whether it
+ * got there, because a name drawn twice is exactly the problem being avoided.
  */
 export async function getPassImages(
   theme: PassTheme,
   intensity = 0,
   badge: StripBadge | null = null,
-): Promise<ImageSet> {
-  const key = themeKey(theme, intensity, badge);
+  title: string | null = null,
+): Promise<PassArtwork> {
+  const key = themeKey(theme, intensity, badge, title);
   const hit = themedCache.get(key);
   if (hit) return hit;
 
@@ -259,26 +459,38 @@ export async function getPassImages(
 
   // Strip on an event ticket is 375x98pt. Rendered at each scale rather than
   // upscaled, so the hatch and bar edges stay hard on a 3x screen.
-  const [strip, strip2x, strip3x] = await Promise.all([
-    renderStrip(theme, intensity, badge, 375, 98),
-    renderStrip(theme, intensity, badge, 750, 196),
-    renderStrip(theme, intensity, badge, 1125, 294),
-  ]);
+  const render = (wanted: string | null) =>
+    Promise.all([
+      renderStrip(theme, intensity, badge, wanted, 375, 98),
+      renderStrip(theme, intensity, badge, wanted, 750, 196),
+      renderStrip(theme, intensity, badge, wanted, 1125, 294),
+    ]);
 
-  const images: ImageSet = {
-    ...brand,
-    // A themeless band would be a black bar over the title rather than no band
-    // at all, so `NONE` omits the file entirely and lets the pass fall back to
-    // its plain layout.
-    ...(theme.stripStyle === "NONE"
-      ? {}
-      : {
-          "strip.png": strip,
-          "strip@2x.png": strip2x,
-          "strip@3x.png": strip3x,
-        }),
-  };
+  // A themeless band would be a black bar over the title rather than no band at
+  // all, so `NONE` omits the file entirely and lets the pass fall back to its
+  // plain layout — and with no band there is nowhere to set the name.
+  const banded = theme.stripStyle !== "NONE";
+  let strips = await render(banded ? title : null);
 
-  themedCache.set(key, images);
-  return images;
+  // All three scales or none: a name on the 2x artwork but not the 1x would be
+  // a different pass depending on which phone opened it.
+  if (title && strips.some((strip) => !strip.titleDrawn)) {
+    strips = await render(null);
+  }
+
+  const [strip, strip2x, strip3x] = strips;
+
+  return remember(key, {
+    files: {
+      ...brand,
+      ...(banded
+        ? {
+            "strip.png": strip.image,
+            "strip@2x.png": strip2x.image,
+            "strip@3x.png": strip3x.image,
+          }
+        : {}),
+    },
+    titleDrawn: banded && strips.every((item) => item.titleDrawn),
+  });
 }

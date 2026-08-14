@@ -16,6 +16,27 @@ under `/admin/events/[id]` for Wallet to follow.
 - Event cancelled
 - Ticket voided or refunded from admin
 
+## What the band carries
+
+The strip is the band behind the top of the pass, and on a ticket above general
+admission it carries the access chip — `AAA`, `VIP`, `CREW` — at the right.
+
+Wallet draws a primary field across the whole width of that band, so on those
+tickets the event name ran under the chip and the two collided. The name is
+therefore typeset **into the artwork** beside the chip
+(`src/server/wallet/pass-images.ts`), in the lane `stripTitleBox` leaves it, and
+`primaryFields` is left empty so Wallet has nothing to draw on top. It wraps to
+a second or third line and steps down in size to fit; a name too long even for
+that is ellipsised, with the full one on the back of the pass.
+
+General admission tickets have no chip and are untouched: the name stays a
+Wallet field, in Wallet's type, scaling with the reader's text size.
+
+If the text ever fails to rasterise — a font that cannot be written to `/tmp`,
+say — nothing is drawn on the band and the primary field comes back, which is
+also the only case where the old overlap could return. The chip fails the same
+way, so in practice one goes with the other.
+
 ## Production smoke test
 
 Needs a real iPhone, Wallet configured in env (`APPLE_PASS_*`,

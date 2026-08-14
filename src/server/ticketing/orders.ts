@@ -558,6 +558,135 @@ export async function voidTicket({
   });
 }
 
+/** One ticket as it was, kept for the log once the row is gone. */
+export type DeletedTicket = {
+  id: string;
+  ticketNumber: string;
+  eventId: string;
+  orderId: string;
+  attendeeName: string | null;
+  attendeeEmail: string | null;
+  pricePaidCents: number;
+  isComp: boolean;
+  /** True when it came along as part of a comp grant being deleted. */
+  viaHost: boolean;
+};
+
+/**
+ * Delete tickets outright.
+ *
+ * Voiding is the normal way to kill a ticket: the row stays, the door can still
+ * explain why somebody was turned away, and the money it was bought with is
+ * still attached to an order. Deleting is for tickets that should never have
+ * existed — a test order, a comp to the wrong person, a duplicate — where the
+ * void row is just noise on a door list that has to be read at a glance.
+ *
+ * It takes everything with it. Scans cascade, the wallet registrations go so we
+ * stop pushing to a phone holding a pass with no ticket behind it, and a comp
+ * grant leaves as a grant: deleting somebody's ticket without the plus-ones
+ * they were given to hand out would leave guests holding links to a party
+ * nobody invited them to.
+ *
+ * Seats come back the same way a void returns them, and an event that sold out
+ * on the deleted tickets opens again.
+ */
+export async function deleteTickets(
+  ticketIds: readonly string[],
+): Promise<DeletedTicket[]> {
+  if (ticketIds.length === 0) return [];
+
+  const selected = await db.ticket.findMany({
+    where: { id: { in: [...ticketIds] } },
+    select: {
+      id: true,
+      ticketNumber: true,
+      eventId: true,
+      orderId: true,
+      tierId: true,
+      status: true,
+      isComp: true,
+      attendeeName: true,
+      attendeeEmail: true,
+      pricePaidCents: true,
+    },
+  });
+  if (selected.length === 0) return [];
+
+  const chosen = new Set(selected.map((ticket) => ticket.id));
+  const handouts = await db.ticket.findMany({
+    where: { hostTicketId: { in: selected.map((t) => t.id) } },
+    select: {
+      id: true,
+      ticketNumber: true,
+      eventId: true,
+      orderId: true,
+      tierId: true,
+      status: true,
+      isComp: true,
+      attendeeName: true,
+      attendeeEmail: true,
+      pricePaidCents: true,
+    },
+  });
+
+  const doomed = [
+    ...selected,
+    ...handouts.filter((handout) => !chosen.has(handout.id)),
+  ];
+
+  const byEvent = new Map<string, typeof doomed>();
+  for (const ticket of doomed) {
+    const bucket = byEvent.get(ticket.eventId);
+    if (bucket) bucket.push(ticket);
+    else byEvent.set(ticket.eventId, [ticket]);
+  }
+
+  for (const [eventId, tickets] of byEvent) {
+    await withEventInventoryLock(eventId, async (tx) => {
+      for (const ticket of tickets) {
+        // A void already gave its seat back, and a comp was never drawn from a
+        // tier — only a live tier ticket has a counter to return to.
+        if (ticket.status === TicketStatus.VALID && ticket.tierId) {
+          await returnToStock(tx, ticket.tierId);
+        }
+      }
+
+      await tx.ticket.deleteMany({
+        where: { id: { in: tickets.map((ticket) => ticket.id) } },
+      });
+
+      const event = await tx.ticketEvent.findUnique({
+        where: { id: eventId },
+        select: { status: true },
+      });
+      if (event?.status === TicketEventStatus.SOLD_OUT) {
+        await tx.ticketEvent.update({
+          where: { id: eventId },
+          data: { status: TicketEventStatus.PUBLISHED },
+        });
+      }
+    });
+  }
+
+  // Outside the lock: a stale registration is harmless, and failing the delete
+  // over one would leave the ticket gone and the caller told it wasn't.
+  await db.walletPassRegistration.deleteMany({
+    where: { serialNumber: { in: doomed.map((ticket) => ticket.id) } },
+  });
+
+  return doomed.map((ticket) => ({
+    id: ticket.id,
+    ticketNumber: ticket.ticketNumber,
+    eventId: ticket.eventId,
+    orderId: ticket.orderId,
+    attendeeName: ticket.attendeeName,
+    attendeeEmail: ticket.attendeeEmail,
+    pricePaidCents: ticket.pricePaidCents,
+    isComp: ticket.isComp,
+    viaHost: !chosen.has(ticket.id),
+  }));
+}
+
 /**
  * Look up an order from its `/tickets/[token]` URL.
  *
