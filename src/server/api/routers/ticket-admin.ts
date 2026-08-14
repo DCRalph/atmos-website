@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   ActivityType,
   PaymentMethodKind,
+  type Prisma,
   TicketEmailType,
   TicketOrderStatus,
   TicketStatus,
@@ -37,6 +38,7 @@ import { InventoryError } from "~/server/ticketing/inventory";
 import {
   MAX_PLUS_PER_LINK,
   MAX_PRIMARY_LINKS,
+  deleteTicketLinkBatch,
   getTicketLinkBatch,
   issueTicketLinkBatch,
   listTicketLinkBatches,
@@ -49,6 +51,50 @@ import {
 } from "~/lib/ticketing/access-levels";
 import { ticketUrl, ticketsUrl } from "~/server/ticketing/urls";
 import { schedulePassUpdate } from "~/server/wallet/apple-push";
+
+/**
+ * The filters the admin lists offer, as Prisma fragments.
+ *
+ * Kept here rather than inlined into each query so "named" means the same thing
+ * on the tickets tab as it does on the orders tab — the whole point of a filter
+ * is that the answer matches the question you thought you asked.
+ */
+const TICKET_KINDS = ["SOLD", "COMP", "LINK"] as const;
+const NAMED_STATES = ["NAMED", "UNNAMED"] as const;
+const DOOR_STATES = ["ARRIVED", "NOT_ARRIVED"] as const;
+
+/** A ticket has a name on it, or it doesn't. Empty strings are stored as null. */
+function namedWhere(
+  state: (typeof NAMED_STATES)[number],
+): Prisma.TicketWhereInput {
+  return state === "NAMED"
+    ? { NOT: { attendeeName: null } }
+    : { attendeeName: null };
+}
+
+/** Somebody came in on it, by the same results the door counts. */
+function doorWhere(
+  state: (typeof DOOR_STATES)[number],
+): Prisma.TicketWhereInput {
+  const scanned = { result: { in: [...ADMITTING_RESULTS] } };
+  return state === "ARRIVED"
+    ? { scans: { some: scanned } }
+    : { scans: { none: scanned } };
+}
+
+/**
+ * Where a ticket came from.
+ *
+ * A comp was minted, a link was issued as a bearer link out of a tier, and
+ * everything else was sold — including free tiers, which are still a checkout.
+ */
+function kindWhere(
+  kind: (typeof TICKET_KINDS)[number],
+): Prisma.TicketWhereInput {
+  if (kind === "COMP") return { isComp: true };
+  if (kind === "LINK") return { linkBatchId: { not: null } };
+  return { isComp: false, linkBatchId: null };
+}
 
 function refundableCentsForTicket(
   ticket: { pricePaidCents: number },
@@ -79,17 +125,45 @@ export const ticketAdminRouter = createTRPCRouter({
           ])
           .optional(),
         search: z.string().trim().max(80).optional(),
+        paymentMethod: z
+          .enum([
+            PaymentMethodKind.STRIPE,
+            PaymentMethodKind.CASH,
+            PaymentMethodKind.TERMINAL,
+            PaymentMethodKind.TAP_TO_PAY,
+            PaymentMethodKind.COMP,
+            PaymentMethodKind.FREE,
+            PaymentMethodKind.ADMIN,
+          ])
+          .optional(),
+        /**
+         * Whether every live ticket on the order has a name yet. `MISSING` is
+         * the chase-list: orders whose tickets nobody has claimed.
+         */
+        names: z.enum(["COMPLETE", "MISSING"]).optional(),
         limit: z.number().int().min(1).max(200).default(50),
         cursor: z.string().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
       const search = input.search;
+      const unnamedTicket = {
+        attendeeName: null,
+        status: TicketStatus.VALID,
+      } satisfies Prisma.TicketWhereInput;
 
       const orders = await ctx.db.ticketOrder.findMany({
         where: {
           ...(input.eventId ? { eventId: input.eventId } : {}),
           ...(input.status ? { status: input.status } : {}),
+          ...(input.paymentMethod
+            ? { paymentMethod: input.paymentMethod }
+            : {}),
+          ...(input.names === "MISSING"
+            ? { tickets: { some: unnamedTicket } }
+            : input.names === "COMPLETE"
+              ? { tickets: { none: unnamedTicket } }
+              : {}),
           ...(search
             ? {
                 OR: [
@@ -176,6 +250,13 @@ export const ticketAdminRouter = createTRPCRouter({
         status: z
           .enum([TicketStatus.VALID, TicketStatus.VOID, TicketStatus.REFUNDED])
           .optional(),
+        /** Sold, comped, or issued as a bearer link. */
+        kind: z.enum(TICKET_KINDS).optional(),
+        /** Whether anybody's name is on it — the "who is this for" question. */
+        named: z.enum(NAMED_STATES).optional(),
+        /** Whether it has been used to get in. */
+        door: z.enum(DOOR_STATES).optional(),
+        accessLevel: z.enum(ACCESS_LEVEL_VALUES).optional(),
         limit: z.number().int().min(1).max(200).default(50),
         cursor: z.string().optional(),
       }),
@@ -187,6 +268,10 @@ export const ticketAdminRouter = createTRPCRouter({
         where: {
           eventId: input.eventId,
           ...(input.status ? { status: input.status } : {}),
+          ...(input.kind ? kindWhere(input.kind) : {}),
+          ...(input.named ? namedWhere(input.named) : {}),
+          ...(input.door ? doorWhere(input.door) : {}),
+          ...(input.accessLevel ? { accessLevel: input.accessLevel } : {}),
           ...(search
             ? {
                 OR: [
@@ -658,6 +743,14 @@ export const ticketAdminRouter = createTRPCRouter({
           accessTokenVersion: true,
           createdAt: true,
           tier: { select: { name: true } },
+          // Whether the person it was given to actually turned up, so the list
+          // can be filtered down to the ones still outside.
+          scans: {
+            where: { result: { in: [...ADMITTING_RESULTS] } },
+            take: 1,
+            orderBy: { createdAt: "asc" },
+            select: { createdAt: true },
+          },
           order: {
             select: { id: true, orderNumber: true, notes: true },
           },
@@ -696,6 +789,7 @@ export const ticketAdminRouter = createTRPCRouter({
         ticketNumber: host.ticketNumber,
         notes: host.order.notes,
         createdAt: host.createdAt,
+        admittedAt: host.scans[0]?.createdAt ?? null,
         ticketUrl: ticketUrl(ticketAccessToken(host)),
         handouts: host.handouts.map((handout) => ({
           id: handout.id,
@@ -992,4 +1086,39 @@ export const ticketAdminRouter = createTRPCRouter({
   ticketLinkBatch: adminProcedure
     .input(z.object({ batchId: z.string() }))
     .query(async ({ input }) => getTicketLinkBatch(input.batchId)),
+
+  /**
+   * Bin a whole batch: the links, every ticket behind them, and the order they
+   * were issued through. For a list sent to the wrong people, or a run of links
+   * generated by mistake — one act to undo one act.
+   */
+  deleteTicketLinkBatch: adminProcedure
+    .input(
+      z.object({
+        batchId: z.string(),
+        reason: z.string().trim().min(1).max(200),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const result = await deleteTicketLinkBatch(input.batchId);
+
+      await logActivity({
+        type: ActivityType.TICKET_DELETED,
+        action: `Deleted the ${
+          result.label ?? result.tierName
+        } link batch and its ${result.ticketsDeleted} ticket${
+          result.ticketsDeleted === 1 ? "" : "s"
+        } — ${input.reason}`,
+        userId: ctx.session.user.id,
+        details: {
+          batchId: input.batchId,
+          reason: input.reason,
+          ticketsDeleted: result.ticketsDeleted,
+          claimed: result.use.claimed,
+          arrived: result.use.arrived,
+        },
+      });
+
+      return { ok: true as const, ...result };
+    }),
 });

@@ -10,6 +10,7 @@ import {
   Loader2,
   Minus,
   Plus,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -17,6 +18,7 @@ import { api, type RouterOutputs } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { Textarea } from "~/components/ui/textarea";
 import { DataTable, type DataTableColumn } from "~/components/data-table";
 import {
   Dialog,
@@ -80,6 +82,7 @@ export function TicketLinksPanel({ event }: { event: AdminEvent }) {
   const [plusCount, setPlusCount] = useState(0);
   const [label, setLabel] = useState("");
   const [openBatchId, setOpenBatchId] = useState<string | null>(null);
+  const [deletingBatch, setDeletingBatch] = useState<Batch | null>(null);
 
   const batches = api.ticketAdmin.ticketLinkBatches.useQuery({
     eventId: event.id,
@@ -154,6 +157,28 @@ export function TicketLinksPanel({ event }: { event: AdminEvent }) {
         cell: (row) => <span className="tabular-nums">{row.ticketCount}</span>,
       },
       {
+        id: "claimed",
+        header: "Claimed",
+        accessor: (row) => row.use.claimed,
+        cell: (row) => (
+          <span className="tabular-nums">
+            {row.use.claimed}
+            <span className="text-muted-foreground"> of {row.ticketCount}</span>
+          </span>
+        ),
+      },
+      {
+        id: "arrived",
+        header: "Arrived",
+        accessor: (row) => row.use.arrived,
+        cell: (row) =>
+          row.use.arrived === 0 ? (
+            <span className="text-muted-foreground">—</span>
+          ) : (
+            <span className="tabular-nums">{row.use.arrived}</span>
+          ),
+      },
+      {
         id: "createdAt",
         header: "Created",
         type: "date",
@@ -163,6 +188,26 @@ export function TicketLinksPanel({ event }: { event: AdminEvent }) {
             day: "numeric",
             month: "short",
           }),
+      },
+      {
+        id: "actions",
+        header: "",
+        hideable: false,
+        align: "right",
+        cell: (row) => (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Delete ${row.label ?? "this batch"}`}
+            onClick={(event) => {
+              // The row itself opens the batch; this button doesn't.
+              event.stopPropagation();
+              setDeletingBatch(row);
+            }}
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        ),
       },
     ],
     [],
@@ -338,6 +383,10 @@ export function TicketLinksPanel({ event }: { event: AdminEvent }) {
                     detail.data.plusCount > 0
                       ? ` · +${detail.data.plusCount} to hand out each`
                       : ""
+                  }${
+                    detail.data.use.claimed > 0
+                      ? ` · ${detail.data.use.claimed} claimed`
+                      : ""
                   }`
                 : "Loading this batch."}
             </DialogDescription>
@@ -356,13 +405,148 @@ export function TicketLinksPanel({ event }: { event: AdminEvent }) {
             )}
           </DialogBody>
           {detail.data && (
-            <DialogFooter>
-              <BatchActions batch={detail.data} />
+            <DialogFooter className="sm:justify-between">
+              <Button
+                type="button"
+                variant="outline"
+                className="text-destructive hover:text-destructive"
+                onClick={() => {
+                  // The detail carries everything the list row does, plus the
+                  // links — so the confirm can be opened straight from here.
+                  setDeletingBatch(detail.data ?? null);
+                  setOpenBatchId(null);
+                }}
+              >
+                <Trash2 className="size-4" /> Delete batch
+              </Button>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                <BatchActions batch={detail.data} />
+              </div>
             </DialogFooter>
           )}
         </DialogContent>
       </Dialog>
+
+      <DeleteBatchDialog
+        batch={deletingBatch}
+        onClose={() => setDeletingBatch(null)}
+        onDeleted={async () => {
+          setDeletingBatch(null);
+          await refresh();
+        }}
+      />
     </div>
+  );
+}
+
+/**
+ * Deleting a batch is deleting its tickets, so the dialog leads with that —
+ * and with how many of them have already been claimed or used, which is the
+ * number that should stop somebody.
+ */
+function DeleteBatchDialog({
+  batch,
+  onClose,
+  onDeleted,
+}: {
+  batch: Batch | null;
+  onClose: () => void;
+  onDeleted: () => Promise<void>;
+}) {
+  const utils = api.useUtils();
+  const [reason, setReason] = useState("");
+
+  const remove = api.ticketAdmin.deleteTicketLinkBatch.useMutation({
+    onSuccess: async (result) => {
+      toast.success(
+        `Batch deleted — ${result.ticketsDeleted} ticket${
+          result.ticketsDeleted === 1 ? "" : "s"
+        } gone and the seats back on sale.`,
+      );
+      setReason("");
+      void utils.ticketAdmin.invalidate();
+      await onDeleted();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  return (
+    <Dialog
+      open={batch !== null}
+      onOpenChange={(open) => {
+        if (!open && !remove.isPending) {
+          setReason("");
+          onClose();
+        }
+      }}
+    >
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Delete {batch?.label ?? "this batch"}?</DialogTitle>
+          <DialogDescription>
+            {batch
+              ? `All ${batch.ticketCount} ticket${
+                  batch.ticketCount === 1 ? "" : "s"
+                } in this batch go for good, along with their scan history and any wallet passes. The seats go back to ${batch.tierName}. Every link stops working immediately.`
+              : null}
+          </DialogDescription>
+        </DialogHeader>
+
+        {batch && (batch.use.claimed > 0 || batch.use.arrived > 0) && (
+          <p className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
+            {batch.use.claimed > 0 &&
+              `${batch.use.claimed} of these tickets ${
+                batch.use.claimed === 1 ? "has" : "have"
+              } somebody's name on ${batch.use.claimed === 1 ? "it" : "them"}.`}
+            {batch.use.claimed > 0 && batch.use.arrived > 0 && " "}
+            {batch.use.arrived > 0 &&
+              `${batch.use.arrived} ${
+                batch.use.arrived === 1 ? "has" : "have"
+              } already been used to get in — deleting ${
+                batch.use.arrived === 1 ? "it" : "them"
+              } takes that record with ${
+                batch.use.arrived === 1 ? "it" : "them"
+              }.`}
+          </p>
+        )}
+
+        <div className="space-y-2">
+          <Label htmlFor="delete-batch-reason">Reason</Label>
+          <Textarea
+            id="delete-batch-reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            maxLength={200}
+            placeholder="Kept in the activity log — it's all that's left afterwards"
+            className="min-h-16"
+          />
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="ghost"
+            disabled={remove.isPending}
+            onClick={() => {
+              setReason("");
+              onClose();
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={remove.isPending || reason.trim().length === 0 || !batch}
+            onClick={() => {
+              if (!batch) return;
+              remove.mutate({ batchId: batch.id, reason: reason.trim() });
+            }}
+          >
+            <Trash2 className="size-4" />
+            {remove.isPending ? "Deleting…" : "Delete batch and tickets"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -380,14 +564,27 @@ function BatchLinks({ batch }: { batch: BatchDetail }) {
       {batch.links.map((link, index) => (
         <li
           key={link.ticketId}
-          className="flex items-center gap-2 rounded-md border p-2"
+          className="flex flex-wrap items-center gap-2 rounded-md border p-2"
         >
-          <span className="text-muted-foreground w-8 shrink-0 text-right text-xs tabular-nums">
+          <span className="text-muted-foreground w-6 shrink-0 text-right text-xs tabular-nums">
             {index + 1}
           </span>
-          <code className="min-w-0 flex-1 truncate font-mono text-xs">
-            {link.ticketNumber}
-          </code>
+          <div className="min-w-0 flex-1">
+            <code className="block font-mono text-xs break-all">
+              {link.ticketNumber}
+            </code>
+            {/* A bearer link is anonymous until somebody's name lands on it, so
+                this line is the only way to tell a live one from a spare. */}
+            <p className="text-muted-foreground text-xs break-words">
+              {link.attendeeName ?? "Not claimed"}
+              {link.admittedAt
+                ? ` · arrived ${new Date(link.admittedAt).toLocaleTimeString(
+                    "en-NZ",
+                    { hour: "numeric", minute: "2-digit" },
+                  )}`
+                : ""}
+            </p>
+          </div>
           <Button
             type="button"
             size="sm"

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Copy, Link2, Mail, Search, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 
+import type { PaymentMethodKind } from "~Prisma/client";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -19,6 +20,11 @@ import {
 } from "~/components/ui/dialog";
 import { useConfirm } from "~/components/confirm-provider";
 import { formatNZD } from "~/lib/ticketing/money";
+import {
+  PAYMENT_METHODS,
+  paymentMethodLabel,
+} from "~/lib/ticketing/payment-methods";
+import { FilterSelect, ListFilters } from "./list-filters";
 import {
   ACCESS_LEVELS,
   type AccessLevelValue,
@@ -78,6 +84,27 @@ type OrderRow = RouterOutputs["ticketAdmin"]["orders"]["orders"][number];
 
 const statusLabel = (status: string) => status.replace("_", " ").toLowerCase();
 
+type OrderFilters = {
+  status:
+    | "PAID"
+    | "PENDING"
+    | "AWAITING_APPROVAL"
+    | "REFUNDED"
+    | "PARTIALLY_REFUNDED"
+    | "CANCELLED"
+    | "EXPIRED"
+    | "FAILED"
+    | null;
+  paymentMethod: PaymentMethodKind | null;
+  names: "COMPLETE" | "MISSING" | null;
+};
+
+const NO_ORDER_FILTERS: OrderFilters = {
+  status: null,
+  paymentMethod: null,
+  names: null,
+};
+
 export function OrdersPanel({
   eventId,
   readOnly = false,
@@ -87,10 +114,18 @@ export function OrdersPanel({
 }) {
   const [search, setSearch] = useState("");
   const [openOrderId, setOpenOrderId] = useState<string | null>(null);
+  const [filters, setFilters] = useState<OrderFilters>(NO_ORDER_FILTERS);
+
+  const activeFilters = Object.values(filters).filter(Boolean).length;
+  const set = <K extends keyof OrderFilters>(key: K, value: OrderFilters[K]) =>
+    setFilters((current) => ({ ...current, [key]: value }));
 
   const orders = api.ticketAdmin.orders.useQuery({
     eventId,
     search: search || undefined,
+    status: filters.status ?? undefined,
+    paymentMethod: filters.paymentMethod ?? undefined,
+    names: filters.names ?? undefined,
     limit: 50,
   });
 
@@ -169,6 +204,50 @@ export function OrdersPanel({
 
   return (
     <div className="space-y-4">
+      <ListFilters
+        activeCount={activeFilters}
+        onClear={() => setFilters(NO_ORDER_FILTERS)}
+        summary={
+          orders.isPending
+            ? null
+            : `${rows.length} order${rows.length === 1 ? "" : "s"}`
+        }
+      >
+        <FilterSelect
+          label="Status"
+          value={filters.status}
+          onChange={(value) => set("status", value)}
+          options={[
+            { value: "PAID", label: "Paid" },
+            { value: "AWAITING_APPROVAL", label: "Awaiting approval" },
+            { value: "PENDING", label: "Pending" },
+            { value: "REFUNDED", label: "Refunded" },
+            { value: "PARTIALLY_REFUNDED", label: "Partly refunded" },
+            { value: "CANCELLED", label: "Cancelled" },
+            { value: "EXPIRED", label: "Expired" },
+            { value: "FAILED", label: "Failed" },
+          ]}
+        />
+        <FilterSelect
+          label="Payment"
+          value={filters.paymentMethod}
+          onChange={(value) => set("paymentMethod", value)}
+          options={PAYMENT_METHODS.map((method) => ({
+            value: method,
+            label: paymentMethodLabel(method),
+          }))}
+        />
+        <FilterSelect
+          label="Names"
+          value={filters.names}
+          onChange={(value) => set("names", value)}
+          options={[
+            { value: "MISSING", label: "Tickets still unnamed" },
+            { value: "COMPLETE", label: "Every ticket named" },
+          ]}
+        />
+      </ListFilters>
+
       <DataTable
         columns={columns}
         data={rows}
@@ -358,7 +437,9 @@ function OrderDetail({
                   />
                 )}
                 <span className="font-mono text-xs">{ticket.ticketNumber}</span>
-                <span className="min-w-0 flex-1 truncate">
+                {/* Wraps: this is the dialog somebody opened to read the name
+                    on a ticket, so the name has to be all there. */}
+                <span className="min-w-0 flex-1 break-words">
                   {ticket.attendeeName ?? "—"} · {ticketTypeName(ticket)}
                 </span>
                 {ticket.status !== "VALID" && (
@@ -409,7 +490,10 @@ function OrderDetail({
           </summary>
           <ul className="mt-2 space-y-1">
             {data.emails.map((email) => (
-              <li key={email.id} className="text-muted-foreground text-xs">
+              <li
+                key={email.id}
+                className="text-muted-foreground text-xs break-words"
+              >
                 {email.createdAt.toLocaleString("en-NZ")} · {email.type} ·{" "}
                 {email.toEmail} ·{" "}
                 <span

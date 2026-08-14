@@ -20,12 +20,29 @@ import {
   buildTicketNumber,
   generateOrderNumber,
 } from "~/server/ticketing/numbering";
-import { maybeMarkSoldOut, ticketAccessToken } from "~/server/ticketing/orders";
+import {
+  deleteTickets,
+  maybeMarkSoldOut,
+  ticketAccessToken,
+} from "~/server/ticketing/orders";
 import { generateQrSecret } from "~/server/ticketing/qr";
+import { ADMITTING_RESULTS } from "~/server/ticketing/scan";
 import { ticketUrl } from "~/server/ticketing/urls";
 
 export const MAX_PRIMARY_LINKS = 100;
 export const MAX_PLUS_PER_LINK = 10;
+
+/**
+ * What has happened to a batch since it was handed out.
+ *
+ * A bearer link starts anonymous, so "claimed" is the only signal that one
+ * reached a person: somebody's name is on it. `arrived` counts every ticket in
+ * the batch that has been used to get in, hand-outs included.
+ */
+export type TicketLinkBatchUse = {
+  claimed: number;
+  arrived: number;
+};
 
 export type IssuedTicketLinkBatch = {
   id: string;
@@ -38,10 +55,14 @@ export type IssuedTicketLinkBatch = {
   ticketCount: number;
   createdAt: Date;
   createdByUserId: string;
+  use: TicketLinkBatchUse;
   links: {
     ticketId: string;
     ticketNumber: string;
     ticketUrl: string;
+    /** Null until somebody puts a name to it. */
+    attendeeName: string | null;
+    admittedAt: Date | null;
   }[];
 };
 
@@ -279,15 +300,65 @@ export async function issueTicketLinkBatch({
         ticketCount,
         createdAt: batch.createdAt,
         createdByUserId: issuedByUserId,
+        // Nothing has happened to a batch nobody has been sent yet.
+        use: { claimed: 0, arrived: 0 },
         links: hosts.map((host) => ({
           ticketId: host.id,
           ticketNumber: host.ticketNumber,
           ticketUrl: ticketUrl(ticketAccessToken(host)),
+          attendeeName: null,
+          admittedAt: null,
         })),
       };
     },
     { timeout: 60_000 },
   );
+}
+
+/**
+ * Claimed and arrived counts for a set of batches, in two queries rather than
+ * two per batch. Batches with neither simply don't come back.
+ */
+async function readBatchUse(
+  batchIds: string[],
+): Promise<Map<string, TicketLinkBatchUse>> {
+  const use = new Map<string, TicketLinkBatchUse>();
+  if (batchIds.length === 0) return use;
+
+  const bump = (
+    id: string | null,
+    key: keyof TicketLinkBatchUse,
+    n: number,
+  ) => {
+    if (!id) return;
+    const current = use.get(id) ?? { claimed: 0, arrived: 0 };
+    current[key] = n;
+    use.set(id, current);
+  };
+
+  const [claimed, arrived] = await Promise.all([
+    db.ticket.groupBy({
+      by: ["linkBatchId"],
+      where: {
+        linkBatchId: { in: batchIds },
+        status: TicketStatus.VALID,
+        NOT: { attendeeName: null },
+      },
+      _count: { _all: true },
+    }),
+    db.ticket.groupBy({
+      by: ["linkBatchId"],
+      where: {
+        linkBatchId: { in: batchIds },
+        scans: { some: { result: { in: [...ADMITTING_RESULTS] } } },
+      },
+      _count: { _all: true },
+    }),
+  ]);
+
+  for (const row of claimed) bump(row.linkBatchId, "claimed", row._count._all);
+  for (const row of arrived) bump(row.linkBatchId, "arrived", row._count._all);
+  return use;
 }
 
 export async function listTicketLinkBatches(
@@ -309,6 +380,8 @@ export async function listTicketLinkBatches(
     },
   });
 
+  const use = await readBatchUse(batches.map((batch) => batch.id));
+
   return batches.map((batch) => ({
     id: batch.id,
     eventId: batch.eventId,
@@ -320,6 +393,7 @@ export async function listTicketLinkBatches(
     ticketCount: batch.primaryCount * (1 + batch.plusCount),
     createdAt: batch.createdAt,
     createdByUserId: batch.createdByUserId,
+    use: use.get(batch.id) ?? { claimed: 0, arrived: 0 },
   }));
 }
 
@@ -345,6 +419,13 @@ export async function getTicketLinkBatch(
           id: true,
           ticketNumber: true,
           accessTokenVersion: true,
+          attendeeName: true,
+          scans: {
+            where: { result: { in: [...ADMITTING_RESULTS] } },
+            take: 1,
+            orderBy: { createdAt: "asc" },
+            select: { createdAt: true },
+          },
         },
       },
     },
@@ -355,6 +436,8 @@ export async function getTicketLinkBatch(
       message: "That batch isn't here any more.",
     });
   }
+
+  const use = await readBatchUse([batch.id]);
 
   return {
     id: batch.id,
@@ -367,10 +450,73 @@ export async function getTicketLinkBatch(
     ticketCount: batch.primaryCount * (1 + batch.plusCount),
     createdAt: batch.createdAt,
     createdByUserId: batch.createdByUserId,
+    use: use.get(batch.id) ?? { claimed: 0, arrived: 0 },
     links: batch.tickets.map((ticket) => ({
       ticketId: ticket.id,
       ticketNumber: ticket.ticketNumber,
       ticketUrl: ticketUrl(ticketAccessToken(ticket)),
+      attendeeName: ticket.attendeeName,
+      admittedAt: ticket.scans[0]?.createdAt ?? null,
     })),
+  };
+}
+
+/**
+ * Delete a batch, every ticket in it, and the order it was issued through.
+ *
+ * A batch is one act — "twenty links for the press list" — and undoing it has
+ * to be one act too, or you are left picking twenty tickets out of a list of
+ * four hundred. The tickets go through the same path a single delete does, so
+ * seats come back, wallet registrations are dropped, and an event that sold out
+ * on them opens again.
+ *
+ * The order goes with them. It was minted for this batch alone, it has no money
+ * on it, and left behind it would show in the orders list as a paid order with
+ * nothing in it.
+ */
+export async function deleteTicketLinkBatch(batchId: string): Promise<{
+  label: string | null;
+  tierName: string;
+  ticketsDeleted: number;
+  use: TicketLinkBatchUse;
+}> {
+  const batch = await db.ticketLinkBatch.findUnique({
+    where: { id: batchId },
+    select: {
+      id: true,
+      label: true,
+      orderId: true,
+      tier: { select: { name: true } },
+      tickets: { select: { id: true } },
+    },
+  });
+  if (!batch) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "That batch isn't here any more.",
+    });
+  }
+
+  const use = (await readBatchUse([batch.id])).get(batch.id) ?? {
+    claimed: 0,
+    arrived: 0,
+  };
+
+  const deleted = await deleteTickets(batch.tickets.map((ticket) => ticket.id));
+
+  // The batch row first: the order it points at cannot be deleted while it is
+  // still pointed at.
+  await db.ticketLinkBatch.delete({ where: { id: batch.id } });
+
+  const left = await db.ticket.count({ where: { orderId: batch.orderId } });
+  if (left === 0) {
+    await db.ticketOrder.delete({ where: { id: batch.orderId } });
+  }
+
+  return {
+    label: batch.label,
+    tierName: batch.tier.name,
+    ticketsDeleted: deleted.length,
+    use,
   };
 }

@@ -16,6 +16,20 @@ import type { PaymentMethodKind } from "~Prisma/client";
  * Client-safe: the import above is a type, so nothing from Prisma is bundled.
  */
 
+/**
+ * Every method, in the order a filter should offer them: how most tickets were
+ * bought first, the door in the middle, the zero-value ones last.
+ */
+export const PAYMENT_METHODS = [
+  "STRIPE",
+  "CASH",
+  "TERMINAL",
+  "TAP_TO_PAY",
+  "COMP",
+  "FREE",
+  "ADMIN",
+] as const satisfies readonly PaymentMethodKind[];
+
 const LABELS: Record<PaymentMethodKind, string> = {
   STRIPE: "Online",
   CASH: "Cash at the door",

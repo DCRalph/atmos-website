@@ -42,10 +42,50 @@ import {
   type AccessLevelValue,
   accessLevel as accessLevelMeta,
 } from "~/lib/ticketing/access-levels";
+import { FilterSelect, ListFilters } from "./list-filters";
 
 type AdminEvent = RouterOutputs["ticketEvents"]["byId"];
 type Comp = RouterOutputs["ticketAdmin"]["comps"][number];
 type Handout = Comp["handouts"][number];
+
+type CompFilters = {
+  accessLevel: AccessLevelValue | null;
+  handouts: "UNSENT" | "ALL_SENT" | "NONE" | null;
+  door: "ARRIVED" | "NOT_ARRIVED" | null;
+};
+
+const NO_COMP_FILTERS: CompFilters = {
+  accessLevel: null,
+  handouts: null,
+  door: null,
+};
+
+/**
+ * Filtered here rather than in the query, unlike the tickets and orders tabs.
+ *
+ * Every comp for an event is already loaded — there is no paging to fall
+ * through — so a filter is a decision about what to show, not another round
+ * trip.
+ */
+function filterComps(comps: Comp[], filters: CompFilters): Comp[] {
+  return comps.filter((comp) => {
+    if (filters.accessLevel && comp.accessLevel !== filters.accessLevel) {
+      return false;
+    }
+    if (filters.door === "ARRIVED" && !comp.admittedAt) return false;
+    if (filters.door === "NOT_ARRIVED" && comp.admittedAt) return false;
+
+    if (filters.handouts === "NONE" && comp.handouts.length > 0) return false;
+    if (filters.handouts === "UNSENT") {
+      if (!comp.handouts.some((handout) => !handout.sentAt)) return false;
+    }
+    if (filters.handouts === "ALL_SENT") {
+      if (comp.handouts.length === 0) return false;
+      if (comp.handouts.some((handout) => !handout.sentAt)) return false;
+    }
+    return true;
+  });
+}
 
 /**
  * Comps — tickets given away by name.
@@ -70,12 +110,23 @@ export function CompsPanel({ event }: { event: AdminEvent }) {
   const [sendEmail, setSendEmail] = useState(true);
   const [openCompId, setOpenCompId] = useState<string | null>(null);
   const [overage, setOverage] = useState<string | null>(null);
+  const [filters, setFilters] = useState<CompFilters>(NO_COMP_FILTERS);
 
   const comps = api.ticketAdmin.comps.useQuery({ eventId: event.id });
   const accounting = api.ticketAdmin.compAccounting.useQuery({
     eventId: event.id,
   });
   const openComp = comps.data?.find((comp) => comp.id === openCompId);
+
+  const activeFilters = Object.values(filters).filter(Boolean).length;
+  const setFilter = <K extends keyof CompFilters>(
+    key: K,
+    value: CompFilters[K],
+  ) => setFilters((current) => ({ ...current, [key]: value }));
+  const visibleComps = useMemo(
+    () => filterComps(comps.data ?? [], filters),
+    [comps.data, filters],
+  );
 
   const refresh = async () => {
     await Promise.all([
@@ -169,6 +220,22 @@ export function CompsPanel({ event }: { event: AdminEvent }) {
               {row.handouts.filter((h) => h.sentAt).length} of{" "}
               {row.handouts.length} sent
             </span>
+          ),
+      },
+      {
+        id: "door",
+        header: "Door",
+        accessor: (row) => (row.admittedAt ? 1 : 0),
+        cell: (row) =>
+          row.admittedAt ? (
+            <Badge variant="secondary">
+              {new Date(row.admittedAt).toLocaleTimeString("en-NZ", {
+                hour: "numeric",
+                minute: "2-digit",
+              })}
+            </Badge>
+          ) : (
+            <span className="text-muted-foreground">—</span>
           ),
       },
       {
@@ -322,16 +389,61 @@ export function CompsPanel({ event }: { event: AdminEvent }) {
       </section>
 
       <section className="space-y-3">
+        <ListFilters
+          activeCount={activeFilters}
+          onClear={() => setFilters(NO_COMP_FILTERS)}
+          summary={
+            comps.isPending
+              ? null
+              : activeFilters > 0
+                ? `${visibleComps.length} of ${comps.data?.length ?? 0}`
+                : null
+          }
+        >
+          <FilterSelect
+            label="Level"
+            value={filters.accessLevel}
+            onChange={(value) => setFilter("accessLevel", value)}
+            options={ACCESS_LEVELS.map((level) => ({
+              value: level.value,
+              label: level.label,
+            }))}
+          />
+          <FilterSelect
+            label="Hand-outs"
+            value={filters.handouts}
+            onChange={(value) => setFilter("handouts", value)}
+            options={[
+              { value: "UNSENT", label: "Some not sent" },
+              { value: "ALL_SENT", label: "All sent" },
+              { value: "NONE", label: "None to hand out" },
+            ]}
+          />
+          <FilterSelect
+            label="Door"
+            value={filters.door}
+            onChange={(value) => setFilter("door", value)}
+            options={[
+              { value: "ARRIVED", label: "Arrived" },
+              { value: "NOT_ARRIVED", label: "Not arrived" },
+            ]}
+          />
+        </ListFilters>
+
         <DataTable
           title="Comps issued"
           columns={compColumns}
-          data={comps.data ?? []}
+          data={visibleComps}
           getRowId={(row) => row.id}
           isLoading={comps.isPending}
           isFetching={comps.isFetching}
           onRowClick={(row) => setOpenCompId(row.id)}
           storageKey="admin-ticket-comps"
-          emptyMessage="Nothing comped for this event yet."
+          emptyMessage={
+            activeFilters > 0
+              ? "No comps match those filters."
+              : "Nothing comped for this event yet."
+          }
         />
       </section>
 
@@ -510,7 +622,7 @@ function CompDetail({
       <div className="space-y-1 rounded-lg border p-3">
         <div className="flex flex-wrap items-center gap-2">
           <Badge>{accessLevelMeta(comp.accessLevel).short}</Badge>
-          <span className="font-medium">{comp.recipientName}</span>
+          <span className="font-medium break-words">{comp.recipientName}</span>
         </div>
         <p className="text-muted-foreground text-xs">
           Their own ticket. The name is locked — only you can change it.
@@ -583,7 +695,7 @@ function HandoutRow({
 
   return (
     <li className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm">
-      <span className="min-w-0">
+      <span className="min-w-0 break-words">
         <Badge variant="secondary" className="mr-2">
           {accessLevelMeta(handout.accessLevel).short}
         </Badge>

@@ -79,7 +79,9 @@ const AlertDialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Title
     ref={ref}
-    className={cn("text-lg font-semibold", className)}
+    // Confirm titles quote what is about to happen to — a ticket number, an
+    // event name — so they wrap and break instead of running off the edge.
+    className={cn("text-lg font-semibold break-words", className)}
     {...props}
   />
 ));
@@ -91,7 +93,7 @@ const AlertDialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Description
     ref={ref}
-    className={cn("text-muted-foreground text-sm", className)}
+    className={cn("text-muted-foreground text-sm break-words", className)}
     {...props}
   />
 ));

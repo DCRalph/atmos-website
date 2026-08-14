@@ -672,7 +672,7 @@ Sensible defaults are assumed for all of these; flag any you want changed.
 5. **Day-before reminder email** — build it, off by default per event?
 6. **Comp tickets** — superseded. Comps are minted rather than sold: they belong to no tier, take an access level directly, and are welded to a named person. See `docs/ticketing/COMPS-PLAN.md`.
 7. **Refund of booking fee** — assumed refunded along with face value on a full refund.
-8. **Order edits** — admin can void a ticket and reissue; no quantity edits on a paid order. A ticket that should never have existed can also be deleted outright from the Tickets tab, singly or in bulk: the row, its scans and its wallet registration go, the seat comes back, a comp grant leaves with its hand-outs, and the activity log keeps who and why. Voiding remains the answer for a ticket that was real.
+8. **Order edits** — admin can void a ticket and reissue; no quantity edits on a paid order. A ticket that should never have existed can also be deleted outright from the Tickets tab, singly or in bulk: the row, its scans and its wallet registration go, the seat comes back, a comp grant leaves with its hand-outs, and the activity log keeps who and why. Voiding remains the answer for a ticket that was real. A whole ticket-link batch goes the same way from the Ticket links tab — the links, every ticket behind them and the order they were issued through — with the confirm naming how many were already claimed or used.
 9. **Apple/Google Wallet accounts** — who applies? These need to start early.
 10. **PostHog** — reuse the existing install for funnel events rather than adding tracking.
 

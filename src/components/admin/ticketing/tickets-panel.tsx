@@ -24,6 +24,7 @@ import {
 } from "~/components/ui/dialog";
 import { useConfirm } from "~/components/confirm-provider";
 import { useDebouncedValue } from "~/hooks/use-debounced-value";
+import { FilterSelect, ListFilters } from "./list-filters";
 import { formatNZD } from "~/lib/ticketing/money";
 import {
   ACCESS_LEVELS,
@@ -125,16 +126,47 @@ function describeDelete(tickets: TicketRow[]): string {
     .join(" ");
 }
 
+type TicketFilters = {
+  status: "VALID" | "VOID" | "REFUNDED" | null;
+  kind: "SOLD" | "COMP" | "LINK" | null;
+  named: "NAMED" | "UNNAMED" | null;
+  door: "ARRIVED" | "NOT_ARRIVED" | null;
+  accessLevel: AccessLevelValue | null;
+};
+
+const NO_TICKET_FILTERS: TicketFilters = {
+  status: null,
+  kind: null,
+  named: null,
+  door: null,
+  accessLevel: null,
+};
+
 export function TicketsPanel({ eventId }: { eventId: string }) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<TicketRow | null>(null);
   const [deleting, setDeleting] = useState<TicketRow[] | null>(null);
+  const [filters, setFilters] = useState<TicketFilters>(NO_TICKET_FILTERS);
   const debouncedSearch = useDebouncedValue(search);
 
+  const activeFilters = Object.values(filters).filter(Boolean).length;
+  const set = <K extends keyof TicketFilters>(
+    key: K,
+    value: TicketFilters[K],
+  ) => setFilters((current) => ({ ...current, [key]: value }));
+
+  // Filtering happens in the query, not over the rows already loaded: this list
+  // is paged, and filtering a page would answer "none of the fifty I have"
+  // while the answer sat on page four.
   const tickets = api.ticketAdmin.tickets.useInfiniteQuery(
     {
       eventId,
       search: debouncedSearch.trim() || undefined,
+      status: filters.status ?? undefined,
+      kind: filters.kind ?? undefined,
+      named: filters.named ?? undefined,
+      door: filters.door ?? undefined,
+      accessLevel: filters.accessLevel ?? undefined,
       limit: 50,
     },
     {
@@ -252,6 +284,66 @@ export function TicketsPanel({ eventId }: { eventId: string }) {
 
   return (
     <div className="space-y-4">
+      <ListFilters
+        activeCount={activeFilters}
+        onClear={() => setFilters(NO_TICKET_FILTERS)}
+        summary={
+          tickets.isPending
+            ? null
+            : `${rows.length}${tickets.hasNextPage ? "+" : ""} ticket${
+                rows.length === 1 ? "" : "s"
+              }`
+        }
+      >
+        <FilterSelect
+          label="Status"
+          value={filters.status}
+          onChange={(value) => set("status", value)}
+          options={[
+            { value: "VALID", label: "Valid" },
+            { value: "VOID", label: "Void" },
+            { value: "REFUNDED", label: "Refunded" },
+          ]}
+        />
+        <FilterSelect
+          label="Name"
+          value={filters.named}
+          onChange={(value) => set("named", value)}
+          options={[
+            { value: "NAMED", label: "Named" },
+            { value: "UNNAMED", label: "No name yet" },
+          ]}
+        />
+        <FilterSelect
+          label="Door"
+          value={filters.door}
+          onChange={(value) => set("door", value)}
+          options={[
+            { value: "ARRIVED", label: "Arrived" },
+            { value: "NOT_ARRIVED", label: "Not arrived" },
+          ]}
+        />
+        <FilterSelect
+          label="Kind"
+          value={filters.kind}
+          onChange={(value) => set("kind", value)}
+          options={[
+            { value: "SOLD", label: "Sold" },
+            { value: "COMP", label: "Comp" },
+            { value: "LINK", label: "Ticket link" },
+          ]}
+        />
+        <FilterSelect
+          label="Access"
+          value={filters.accessLevel}
+          onChange={(value) => set("accessLevel", value)}
+          options={ACCESS_LEVELS.map((level) => ({
+            value: level.value,
+            label: level.label,
+          }))}
+        />
+      </ListFilters>
+
       <DataTable
         api={table}
         columns={columns}
@@ -406,7 +498,7 @@ function DeleteTicketsDialog({
         {tickets && tickets.length <= 8 && (
           <ul className="text-muted-foreground max-h-32 space-y-0.5 overflow-y-auto text-xs">
             {tickets.map((ticket) => (
-              <li key={ticket.id} className="truncate">
+              <li key={ticket.id} className="break-words">
                 <span className="font-mono">{ticket.ticketNumber}</span> ·{" "}
                 {ticket.attendeeName ?? "No name"} · {ticket.typeName}
               </li>
@@ -577,7 +669,10 @@ function TicketDetail({
           <p className="mb-2 text-sm font-medium">Recent scans</p>
           <ul className="space-y-1">
             {ticket.scans.map((scan) => (
-              <li key={scan.id} className="text-muted-foreground text-xs">
+              <li
+                key={scan.id}
+                className="text-muted-foreground text-xs break-words"
+              >
                 {formatEventDateTime(scan.createdAt, DEFAULT_EVENT_TIMEZONE)} ·{" "}
                 {scan.result.toLowerCase().replace("_", " ")}
                 {scan.deviceLabel ? ` · ${scan.deviceLabel}` : ""}
@@ -679,7 +774,9 @@ function Row({
   return (
     <div className="min-w-0">
       <dt className="text-muted-foreground text-xs">{label}</dt>
-      <dd className={mono ? "truncate font-mono text-xs" : "truncate"}>
+      {/* Wraps rather than truncates: a dialog is where you go to read the
+          whole thing, and half an email address is no use to anybody. */}
+      <dd className={mono ? "font-mono text-xs break-all" : "break-words"}>
         {value}
       </dd>
     </div>
