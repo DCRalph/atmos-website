@@ -315,6 +315,10 @@ export const ticketAdminRouter = createTRPCRouter({
           createdAt: true,
           orderId: true,
           hostTicketId: true,
+          // Half of the `/t/[token]` link built below. Nothing secret on its
+          // own — the signature is what makes a token work — but the finished
+          // URL is the only form anything downstream should be using.
+          accessTokenVersion: true,
           // Deleting a comp grant takes the hand-outs with it, so the panel has
           // to be able to say how many that is before anyone confirms.
           _count: { select: { handouts: true } },
@@ -353,6 +357,9 @@ export const ticketAdminRouter = createTRPCRouter({
           return {
             ...ticket,
             typeName: ticketTypeName(ticket),
+            // What you send somebody who has lost their email — one ticket,
+            // their own QR, and no way through to the rest of the order.
+            ticketUrl: ticketUrl(ticketAccessToken(ticket)),
             admittedAt: admission?.admittedAt ?? null,
             departedAt: admission?.departedAt ?? null,
             deniedAt: admission?.deniedAt ?? null,

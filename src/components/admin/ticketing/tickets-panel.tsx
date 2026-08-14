@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Trash2, Undo2, XCircle } from "lucide-react";
+import {
+  Check,
+  Copy,
+  ExternalLink,
+  Search,
+  Trash2,
+  Undo2,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -627,6 +635,8 @@ function TicketDetail({
         </p>
       )}
 
+      <TicketLink ticket={ticket} />
+
       <div className="space-y-2">
         <Label htmlFor={`ticket-name-${ticket.id}`}>Attendee name</Label>
         <div className="flex gap-2">
@@ -758,6 +768,61 @@ function TicketDetail({
           <Trash2 className="size-4" /> Delete
         </Button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The one ticket's own link, to hand back to whoever lost it.
+ *
+ * Deliberately this rather than the order link: it opens exactly this QR, so
+ * sending it to one guest of four can't hand them everybody else's ticket. The
+ * key on the end is a bearer credential — whoever holds the link holds the
+ * ticket — which is why the warning sits under it rather than in a tooltip.
+ */
+function TicketLink({ ticket }: { ticket: TicketRow }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(ticket.ticketUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Couldn't copy — select the link and copy it manually.");
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label>Ticket link</Label>
+      <div className="flex flex-wrap items-center gap-2">
+        <code className="bg-muted min-w-0 flex-1 truncate rounded-md px-2.5 py-1.5 font-mono text-xs">
+          {ticket.ticketUrl}
+        </code>
+        <Button size="sm" variant="outline" onClick={() => void copy()}>
+          {copied ? (
+            <>
+              <Check className="size-3.5" /> Copied
+            </>
+          ) : (
+            <>
+              <Copy className="size-3.5" /> Copy
+            </>
+          )}
+        </Button>
+        <Button size="icon-sm" variant="ghost" asChild>
+          <a href={ticket.ticketUrl} target="_blank" rel="noreferrer">
+            <ExternalLink className="size-3.5" />
+            <span className="sr-only">Open ticket</span>
+          </a>
+        </Button>
+      </div>
+      <p className="text-muted-foreground text-xs">
+        {ticket.status === "VOID"
+          ? "This ticket is void, so the link no longer opens."
+          : "Anyone with this link can show the QR at the door — send it to the ticket holder only."}
+      </p>
     </div>
   );
 }
