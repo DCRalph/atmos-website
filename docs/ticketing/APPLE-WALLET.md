@@ -25,9 +25,14 @@ Wallet draws a primary field across the whole width of that band, so on those
 tickets the event name ran under the chip and the two collided. The name is
 therefore typeset **into the artwork** beside the chip
 (`src/server/wallet/pass-images.ts`), in the lane `stripTitleBox` leaves it, and
-`primaryFields` is left empty so Wallet has nothing to draw on top. It wraps to
-a second or third line and steps down in size to fit; a name too long even for
-that is ellipsised, with the full one on the back of the pass.
+`primaryFields` is left empty so Wallet has nothing to draw on top.
+
+Inside that lane the name is set as large as it will go: the size is found by
+binary search over the rendered text rather than picked from a list, so a short
+name fills the band and a long one wraps to two or three lines of the largest
+type that still fits. Only a name that cannot be set even at the floor size —
+one unbreakable word longer than the lane — is cut at a word and ellipsised,
+and the full one is on the back of the pass.
 
 General admission tickets have no chip and are untouched: the name stays a
 Wallet field, in Wallet's type, scaling with the reader's text size.

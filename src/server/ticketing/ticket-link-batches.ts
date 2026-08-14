@@ -18,7 +18,7 @@ import {
 } from "~/server/ticketing/inventory";
 import {
   buildTicketNumber,
-  generateOrderNumber,
+  generateOrderNumbers,
 } from "~/server/ticketing/numbering";
 import {
   deleteTickets,
@@ -118,7 +118,8 @@ export async function issueTicketLinkBatch({
     const trimmed = label.trim();
     if (trimmed.length > 0) trimmedLabel = trimmed;
   }
-  const orderNumber = await generateOrderNumber();
+  // Read-only, so it happens before the lock rather than inside it.
+  const orderNumbers = await generateOrderNumbers(primaryCount);
 
   return withEventInventoryLock(
     eventId,
@@ -189,33 +190,10 @@ export async function issueTicketLinkBatch({
         }
       }
 
-      const order = await tx.ticketOrder.create({
-        data: {
-          orderNumber,
-          eventId,
-          status: TicketOrderStatus.PAID,
-          paymentMethod: PaymentMethodKind.ADMIN,
-          paidAt: new Date(),
-          soldByUserId: issuedByUserId,
-          notes: trimmedLabel,
-          termsVersion: event.termsVersion,
-          termsAcceptedAt: new Date(),
-          items: {
-            create: {
-              tierId: tier.id,
-              quantity: ticketCount,
-              unitPriceCents: 0,
-            },
-          },
-        },
-        select: { id: true, orderNumber: true },
-      });
-
       const batch = await tx.ticketLinkBatch.create({
         data: {
           eventId,
           tierId: tier.id,
-          orderId: order.id,
           label: trimmedLabel,
           primaryCount,
           plusCount,
@@ -224,12 +202,39 @@ export async function issueTicketLinkBatch({
         select: { id: true, createdAt: true },
       });
 
+      const issuedAt = new Date();
+
+      // One order per link. Whoever holds it has a party of one or three, and
+      // an order is the unit everything else is about: its own number, its own
+      // ticket link, its own line in the orders list.
+      const orders = await tx.ticketOrder.createManyAndReturn({
+        data: orderNumbers.map((orderNumber) => ({
+          orderNumber,
+          eventId,
+          status: TicketOrderStatus.PAID,
+          paymentMethod: PaymentMethodKind.ADMIN,
+          paidAt: issuedAt,
+          soldByUserId: issuedByUserId,
+          notes: trimmedLabel,
+          termsVersion: event.termsVersion,
+          termsAcceptedAt: issuedAt,
+          linkBatchId: batch.id,
+        })),
+        select: { id: true, orderNumber: true },
+      });
+
+      await tx.ticketOrderItem.createMany({
+        data: orders.map((order) => ({
+          orderId: order.id,
+          tierId: tier.id,
+          quantity: ticketsPerLink,
+          unitPriceCents: 0,
+        })),
+      });
+
       const createdHosts = await tx.ticket.createManyAndReturn({
-        data: Array.from({ length: primaryCount }, (_, index) => ({
-          ticketNumber: buildTicketNumber(
-            order.orderNumber,
-            index * ticketsPerLink,
-          ),
+        data: orders.map((order) => ({
+          ticketNumber: buildTicketNumber(order.orderNumber, 0),
           orderId: order.id,
           eventId,
           tierId: tier.id,
@@ -245,15 +250,13 @@ export async function issueTicketLinkBatch({
           accessTokenVersion: true,
         },
       });
+      // Matched back by ticket number rather than by position: nothing promises
+      // rows come back in the order they went in.
       const hostByNumber = new Map(
         createdHosts.map((host) => [host.ticketNumber, host]),
       );
-      const hosts = Array.from({ length: primaryCount }, (_, index) => {
-        const ticketNumber = buildTicketNumber(
-          order.orderNumber,
-          index * ticketsPerLink,
-        );
-        const host = hostByNumber.get(ticketNumber);
+      const links = orders.map((order) => {
+        const host = hostByNumber.get(buildTicketNumber(order.orderNumber, 0));
         if (!host) {
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
@@ -261,17 +264,16 @@ export async function issueTicketLinkBatch({
               "A ticket in this batch didn't come back from the database.",
           });
         }
-        return host;
+        return { order, host };
       });
 
       if (plusCount > 0) {
         await tx.ticket.createMany({
-          data: hosts.flatMap((host, index) =>
+          data: links.flatMap(({ order, host }) =>
             Array.from({ length: plusCount }, (_, plusIndex) => ({
-              ticketNumber: buildTicketNumber(
-                order.orderNumber,
-                index * ticketsPerLink + 1 + plusIndex,
-              ),
+              // Seat 1 onwards of that person's own order, so a plus one reads
+              // as `ATN-4F7K2X-02` beside their `ATN-4F7K2X-01`.
+              ticketNumber: buildTicketNumber(order.orderNumber, 1 + plusIndex),
               orderId: order.id,
               eventId,
               tierId: tier.id,
@@ -302,7 +304,7 @@ export async function issueTicketLinkBatch({
         createdByUserId: issuedByUserId,
         // Nothing has happened to a batch nobody has been sent yet.
         use: { claimed: 0, arrived: 0 },
-        links: hosts.map((host) => ({
+        links: links.map(({ host }) => ({
           ticketId: host.id,
           ticketNumber: host.ticketNumber,
           ticketUrl: ticketUrl(ticketAccessToken(host)),
@@ -485,9 +487,9 @@ export async function deleteTicketLinkBatch(batchId: string): Promise<{
     select: {
       id: true,
       label: true,
-      orderId: true,
       tier: { select: { name: true } },
       tickets: { select: { id: true } },
+      orders: { select: { id: true } },
     },
   });
   if (!batch) {
@@ -502,15 +504,26 @@ export async function deleteTicketLinkBatch(batchId: string): Promise<{
     arrived: 0,
   };
 
+  // Held now: deleting the batch sets `linkBatchId` to null on its orders, so
+  // after that they can no longer be found from here.
+  const orderIds = batch.orders.map((order) => order.id);
+
   const deleted = await deleteTickets(batch.tickets.map((ticket) => ticket.id));
 
-  // The batch row first: the order it points at cannot be deleted while it is
-  // still pointed at.
   await db.ticketLinkBatch.delete({ where: { id: batch.id } });
 
-  const left = await db.ticket.count({ where: { orderId: batch.orderId } });
-  if (left === 0) {
-    await db.ticketOrder.delete({ where: { id: batch.orderId } });
+  // The orders were minted for these links and nothing else, so once the
+  // tickets are gone they are empty rows that would otherwise show in the
+  // orders list as paid orders with nothing on them. Anything that somehow
+  // still has a ticket stays.
+  const empty = await db.ticketOrder.findMany({
+    where: { id: { in: orderIds }, tickets: { none: {} } },
+    select: { id: true },
+  });
+  if (empty.length > 0) {
+    await db.ticketOrder.deleteMany({
+      where: { id: { in: empty.map((order) => order.id) } },
+    });
   }
 
   return {

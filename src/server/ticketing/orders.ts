@@ -643,12 +643,18 @@ export async function deleteTickets(
 
   for (const [eventId, tickets] of byEvent) {
     await withEventInventoryLock(eventId, async (tx) => {
+      // A void already gave its seat back, and a comp was never drawn from a
+      // tier — only a live tier ticket has a counter to return to. Counted per
+      // tier first: deleting a batch of a thousand links is one update per
+      // tier, not a thousand inside the lock.
+      const returning = new Map<string, number>();
       for (const ticket of tickets) {
-        // A void already gave its seat back, and a comp was never drawn from a
-        // tier — only a live tier ticket has a counter to return to.
         if (ticket.status === TicketStatus.VALID && ticket.tierId) {
-          await returnToStock(tx, ticket.tierId);
+          returning.set(ticket.tierId, (returning.get(ticket.tierId) ?? 0) + 1);
         }
+      }
+      for (const [tierId, quantity] of returning) {
+        await returnToStock(tx, tierId, quantity);
       }
 
       await tx.ticket.deleteMany({

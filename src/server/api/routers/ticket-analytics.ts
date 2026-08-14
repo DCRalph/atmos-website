@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import {
+  PaymentMethodKind,
   TicketOrderStatus,
   TicketScanResult,
   TicketStatus,
@@ -78,8 +79,19 @@ export const ticketAnalyticsRouter = createTRPCRouter({
             refundedCents: true,
           },
         }),
+        // Orders somebody actually went through a checkout for. Comps and
+        // admin-issued ticket links are minted as paid orders — a batch of
+        // twenty links is twenty of them — and counting those as conversions
+        // would tell the funnel a story nobody lived. They are still in the
+        // money totals (they are worth nothing) and in "how they paid".
         ctx.db.ticketOrder.count({
-          where: { eventId: event.id, status: { in: paidStatuses } },
+          where: {
+            eventId: event.id,
+            status: { in: paidStatuses },
+            paymentMethod: {
+              notIn: [PaymentMethodKind.COMP, PaymentMethodKind.ADMIN],
+            },
+          },
         }),
         ctx.db.ticket.count({
           where: { eventId: event.id, status: TicketStatus.VALID },

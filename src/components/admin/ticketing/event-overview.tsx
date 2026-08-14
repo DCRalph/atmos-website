@@ -159,7 +159,9 @@ export function EventOverview({
               Checkout funnel
             </p>
             <dl className="mt-3 space-y-1.5 text-sm">
-              <Row label="Paid orders" value={String(counts.orders)} />
+              {/* Bought, not issued: comps and ticket-link batches are minted
+                  as paid orders and would flatter this to 100%. */}
+              <Row label="Orders bought" value={String(counts.orders)} />
               <Row
                 label="Abandoned checkouts"
                 value={String(counts.abandonedCheckouts)}

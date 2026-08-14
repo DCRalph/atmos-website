@@ -1256,17 +1256,23 @@ model TicketOrder {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// Set when this order is one link out of an admin-issued batch. A batch of
+  /// twenty links is twenty orders, so the batch is on this side of the
+  /// relation — see `TicketLinkBatch`.
+  linkBatchId String?
+
   items        TicketOrderItem[]
   tickets      Ticket[]
   emails       TicketEmailLog[]
   redemptions  DiscountRedemption[]
-  linkBatch    TicketLinkBatch?
+  linkBatch    TicketLinkBatch?     @relation(fields: [linkBatchId], references: [id], onDelete: SetNull)
   doorReceipts DoorPaymentReceipt[]
 
   @@index([eventId, status])
   @@index([buyerEmail])
   @@index([status, expiresAt])
   @@index([createdAt])
+  @@index([linkBatchId])
   @@map("ticket_order")
 }
 
@@ -1349,6 +1355,11 @@ model Ticket {
 /// Unlike a comp, these consume the tier's allocation and the event capacity.
 /// Each primary ticket has its own `/t/[token]` link and may carry plus tickets
 /// the holder hands out, the same way a comp grant does.
+///
+/// One link is one order. Twenty links with a plus one each is twenty orders of
+/// two tickets, not one order of forty — the person holding a link has a party
+/// of their own, and everything an order carries (its number, its ticket link,
+/// a refund, a note) has to be about them and nobody else.
 model TicketLinkBatch {
   id String @id @default(cuid())
 
@@ -1358,9 +1369,6 @@ model TicketLinkBatch {
   tierId String
   tier   TicketTier @relation(fields: [tierId], references: [id], onDelete: Restrict)
 
-  orderId String      @unique
-  order   TicketOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
-
   label        String?
   primaryCount Int
   plusCount    Int
@@ -1368,6 +1376,7 @@ model TicketLinkBatch {
   createdByUserId String
   createdAt       DateTime @default(now())
 
+  orders  TicketOrder[]
   tickets Ticket[]
 
   @@index([eventId, createdAt])

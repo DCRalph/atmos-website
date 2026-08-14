@@ -52,6 +52,41 @@ export async function generateOrderNumber(): Promise<string> {
   return `${PREFIX}-${randomCode(ORDER_NUMBER_LENGTH + 4)}`;
 }
 
+/**
+ * Several order numbers at once, for the paths that mint a run of orders.
+ *
+ * Same guarantee as `generateOrderNumber`, but one query for the whole run
+ * rather than one per number: a hundred ticket links should not be a hundred
+ * round trips before the first row is written.
+ */
+export async function generateOrderNumbers(count: number): Promise<string[]> {
+  const chosen = new Set<string>();
+
+  for (let attempt = 0; attempt < 8 && chosen.size < count; attempt++) {
+    const candidates = new Set<string>();
+    while (candidates.size < count - chosen.size) {
+      const candidate = `${PREFIX}-${randomCode(ORDER_NUMBER_LENGTH)}`;
+      if (!chosen.has(candidate)) candidates.add(candidate);
+    }
+
+    const taken = await db.ticketOrder.findMany({
+      where: { orderNumber: { in: [...candidates] } },
+      select: { orderNumber: true },
+    });
+    const clashes = new Set(taken.map((order) => order.orderNumber));
+    for (const candidate of candidates) {
+      if (!clashes.has(candidate)) chosen.add(candidate);
+    }
+  }
+
+  // Same fallback as the single-number path: a longer code beats failing.
+  while (chosen.size < count) {
+    chosen.add(`${PREFIX}-${randomCode(ORDER_NUMBER_LENGTH + 4)}`);
+  }
+
+  return [...chosen];
+}
+
 /** `ATN-4F7K2X` + seat 3 -> `ATN-4F7K2X-03`. */
 export function buildTicketNumber(orderNumber: string, index: number): string {
   return `${orderNumber}-${String(index + 1).padStart(2, "0")}`;

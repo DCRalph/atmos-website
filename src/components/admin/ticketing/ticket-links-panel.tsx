@@ -221,7 +221,8 @@ export function TicketLinksPanel({ event }: { event: AdminEvent }) {
           <p className="text-muted-foreground text-sm">
             Draws from a tier and gives you links to send. Each one is a real
             ticket, usable as soon as they open it. Add extras if they should be
-            able to hand some out.
+            able to hand some out — those ride on the same order as the link
+            they came with, so every link is one person&apos;s order.
           </p>
         </div>
 
@@ -320,8 +321,9 @@ export function TicketLinksPanel({ event }: { event: AdminEvent }) {
             </div>
 
             <p className="text-muted-foreground text-sm">
-              {ticketCount} ticket{ticketCount === 1 ? "" : "s"} from{" "}
-              {selectedTier?.name ?? "this tier"}
+              {primaryCount} order{primaryCount === 1 ? "" : "s"} of{" "}
+              {1 + plusCount} ticket{plusCount === 0 ? "" : "s"} · {ticketCount}{" "}
+              from {selectedTier?.name ?? "this tier"}
               {selectedTier ? ` · ${remaining} left` : ""}.
             </p>
 

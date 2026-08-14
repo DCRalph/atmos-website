@@ -264,24 +264,75 @@ async function renderBadgeText(
 /**
  * The event name on the band, in the lane the chip left it.
  *
- * Set as large as fits, dropping a step at a time and wrapping rather than
- * shrinking where it can. A name long enough to need three cramped lines gets
- * them: the whole name in small type says more than half of it in large type.
- * Only a name that will not fit the band at all is cut at a word and
- * ellipsised, and the full one is on the back of the pass.
+ * Set as large as it will go. The size is searched for rather than chosen from
+ * a list of sizes: whatever the name, it ends up at the largest type that fits
+ * the lane, which is the whole point of drawing it ourselves instead of letting
+ * Wallet shrink it to a caption. Long names wrap — two or three lines of
+ * readable type beat one line of small type — and only a name that will not fit
+ * even at the floor size is cut at a word, with the full one on the back.
  */
-const TITLE_SIZE_RATIOS = [0.245, 0.225, 0.205, 0.19, 0.175, 0.16, 0.15];
-/** Roughly how much text is worth setting at all, in lines at the floor size. */
-const TITLE_LINE_BUDGET = 2;
-const LABEL_SIZE_RATIO = 0.105;
+const LABEL_SIZE_RATIO = 0.095;
+const LABEL_GAP_RATIO = 0.035;
+/** Below this the name is not worth setting; cut it instead. */
+const TITLE_MIN_RATIO = 0.12;
 /** ~0.18em of tracking, matching the small caps Wallet sets labels in. */
 const LABEL_TRACKING = 2200;
 
 function ellipsise(text: string, maxChars: number): string {
-  if (text.length <= maxChars) return text;
-  const cut = text.slice(0, Math.max(1, maxChars - 1));
+  const clean = text.replace(/…$/, "").trimEnd();
+  if (clean.length <= maxChars) return clean;
+  const cut = clean.slice(0, Math.max(1, maxChars - 1));
   const lastSpace = cut.lastIndexOf(" ");
   return `${(lastSpace > maxChars * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+}
+
+/**
+ * The largest size this text fits the box at, or null if even the floor is too
+ * big for it.
+ *
+ * Binary search rather than a ladder, because "as large as it will go" is a
+ * number, not one of seven. Both dimensions of the rendered block grow with the
+ * size — more lines are taller, not shorter — so the fit is monotonic and the
+ * search is sound. Six or seven rasters, then cached with the artwork.
+ */
+async function fitTitle({
+  text,
+  colour,
+  maxWidthPx,
+  maxHeightPx,
+  minSizePx,
+}: {
+  text: string;
+  colour: string;
+  maxWidthPx: number;
+  maxHeightPx: number;
+  minSizePx: number;
+}): Promise<Raster | null> {
+  let low = minSizePx;
+  // A line is always taller than its type, so a size the height of the box
+  // cannot fit in it — an upper bound that costs one iteration to rule out.
+  let high = Math.max(minSizePx, Math.floor(maxHeightPx));
+  let best: Raster | null = null;
+
+  while (low <= high) {
+    const size = Math.floor((low + high) / 2);
+    const attempt = await renderText({
+      text,
+      colour,
+      sizePx: size,
+      maxWidthPx,
+    });
+    if (!attempt) return null;
+
+    if (attempt.height <= maxHeightPx && attempt.width <= maxWidthPx) {
+      best = attempt;
+      low = size + 1;
+    } else {
+      high = size - 1;
+    }
+  }
+
+  return best;
 }
 
 async function renderTitleBlock(
@@ -298,41 +349,36 @@ async function renderTitleBlock(
   });
   if (!label) return null;
 
-  const gap = Math.round(stripHeight * 0.04);
+  const gap = Math.round(stripHeight * LABEL_GAP_RATIO);
   const room = box.height - label.height - gap;
+  const minSize = Math.max(7, Math.round(stripHeight * TITLE_MIN_RATIO));
 
-  // Trimmed once, against the smallest size we are willing to set, so the loop
-  // below is only ever choosing a size — never discovering it has to cut.
-  const floorSize = Math.round(
-    stripHeight * TITLE_SIZE_RATIOS[TITLE_SIZE_RATIOS.length - 1]!,
-  );
-  const perLine = Math.max(6, Math.floor(box.width / (floorSize * 0.52)));
-  const text = ellipsise(title.trim(), perLine * TITLE_LINE_BUDGET);
-
-  let chosen: Raster | null = null;
-  for (const ratio of TITLE_SIZE_RATIOS) {
-    const attempt = await renderText({
+  const fit = (text: string) =>
+    fitTitle({
       text,
       colour: theme.foregroundHex,
-      sizePx: Math.round(stripHeight * ratio),
       maxWidthPx: box.width,
+      maxHeightPx: room,
+      minSizePx: minSize,
     });
-    if (!attempt) return null;
-    if (attempt.height <= room && attempt.width <= box.width) {
-      chosen = attempt;
-      break;
-    }
+
+  // The whole name first. Only if it cannot be set at the floor size does any
+  // of it get cut, and then by a little at a time rather than to an estimate.
+  let text = title.trim();
+  let chosen = await fit(text);
+  for (let attempt = 0; !chosen && attempt < 4; attempt++) {
+    text = ellipsise(text, Math.max(8, Math.floor(text.length * 0.6)));
+    chosen = await fit(text);
   }
 
-  // Nothing on the ladder fits: one word longer than the lane, or letterforms
-  // wider than the estimate above allowed for. Hand the box to sharp and let it
-  // scale the type down until it does.
+  // Still nothing: a single word longer than the lane can hold at any size we
+  // are willing to set. Hand the box to sharp and let it scale to fit.
   chosen ??= await renderText({
     text,
     colour: theme.foregroundHex,
-    sizePx: floorSize,
     maxWidthPx: box.width,
     maxHeightPx: room,
+    sizePx: minSize,
   });
   if (!chosen) return null;
 
