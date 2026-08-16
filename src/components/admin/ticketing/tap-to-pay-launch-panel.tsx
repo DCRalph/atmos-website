@@ -49,7 +49,11 @@ export function TapToPayLaunchPanel() {
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold">Tap to Pay launch campaign</h2>
+        {/* The full product name, never shortened — Apple's Developer
+            Marketing Guidelines, checklist row 1.9. */}
+        <h2 className="text-lg font-semibold">
+          Tap to Pay on iPhone launch campaign
+        </h2>
         <p className="text-muted-foreground text-sm">
           Apple requires every eligible staff member to be told about Tap to Pay
           on iPhone at least once, by push and by email. Safe to run more than

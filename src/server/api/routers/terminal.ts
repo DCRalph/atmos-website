@@ -98,7 +98,10 @@ export const terminalRouter = createTRPCRouter({
       currency: "nzd",
       payment_method_types: ["card_present"],
       capture_method: "manual",
-      description: "Tap to Pay test — authorisation only, never captured",
+      // Reaches the cardholder's statement and the Stripe dashboard, so the
+      // product name is written in full here too — checklist row 1.9.
+      description:
+        "Tap to Pay on iPhone test — authorisation only, never captured",
       metadata: {
         channel: "tap-to-pay-test",
         testedByUserId: ctx.user.id,
@@ -119,7 +122,9 @@ export const terminalRouter = createTRPCRouter({
       if (!isStripeConfigured()) return { ok: true as const };
 
       const stripe = getStripe();
-      const intent = await stripe.paymentIntents.retrieve(input.paymentIntentId);
+      const intent = await stripe.paymentIntents.retrieve(
+        input.paymentIntentId,
+      );
 
       // Only ever touch the intents this router made, so a stray id cannot be
       // used to cancel a real door sale mid-tap.
