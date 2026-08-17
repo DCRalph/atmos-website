@@ -5,6 +5,7 @@ import {
   Calendar,
   FileText,
   FolderOpen,
+  IdCard,
   LayoutDashboard,
   Mail,
   Palette,
@@ -90,6 +91,13 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         url: "/door",
         icon: ScanLine,
         keywords: ["door", "scan", "box office", "comp", "entry"],
+      },
+      {
+        title: "ID checks",
+        description: "People the door has checked, and everyone barred",
+        url: "/admin/patrons",
+        icon: IdCard,
+        keywords: ["ban", "banned", "age", "underage", "id", "patron", "r18"],
       },
       {
         title: "Discount codes",

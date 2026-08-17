@@ -95,6 +95,7 @@ export function ScanResultScreen({
   onDismiss,
   onOverride,
   onDeny,
+  onCheckId,
   canOverride,
   overriding,
   denying,
@@ -104,6 +105,8 @@ export function ScanResultScreen({
   onDismiss: () => void;
   onOverride: () => void;
   onDeny: (reason: DenyReasonValue, note: string) => void;
+  /** Hands the ticket to the ID tab. Absent where there is no ID panel. */
+  onCheckId?: (ticketId: string, attendeeName: string | null) => void;
   /** Door managers only. */
   canOverride: boolean;
   overriding: boolean;
@@ -289,6 +292,27 @@ export function ScanResultScreen({
             Deny entry
           </ExceptionAction>
         )}
+
+        {/* The prompts above tell staff to check ID; this is the button that
+            lets them do it without losing the ticket they are standing on.
+            Offered for the two cases that ask for it — an R18 event, and a
+            ticket whose name is meant to be the person holding it — because a
+            button on every scan is a button nobody reads. */}
+        {onCheckId &&
+          outcome.ticket &&
+          (outcome.isR18 || outcome.ticket.nameLocked) && (
+            <button
+              type="button"
+              onClick={() => {
+                const ticket = outcome.ticket;
+                if (ticket) onCheckId(ticket.id, ticket.attendeeName);
+              }}
+              className="flex h-12 w-full items-center justify-center gap-2 border-2 border-white/35 text-sm font-black tracking-wide uppercase"
+            >
+              <BadgeCheck className="size-4" aria-hidden />
+              Check their ID
+            </button>
+          )}
 
         <SafeAction onClick={onDismiss}>
           <X className="size-5" aria-hidden />

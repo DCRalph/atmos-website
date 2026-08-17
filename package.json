@@ -20,7 +20,7 @@
     "dev": "next dev",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
     "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
-    "postinstall": "prisma generate",
+    "postinstall": "prisma generate && node scripts/vendor-tesseract.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "preview": "prisma generate && next build && next start",
@@ -103,6 +103,7 @@
     "stripe": "^22.5.0",
     "superjson": "^2.2.6",
     "tailwind-merge": "^3.6.0",
+    "tesseract.js": "^7.0.0",
     "troika-three-text": "^0.52.5",
     "uuid": "^14.0.1",
     "zod": "^4.4.3"

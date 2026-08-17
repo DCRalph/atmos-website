@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Banknote,
   ChevronDown,
+  IdCard,
   ScanLine,
   Settings,
   ShieldQuestionMark,
@@ -25,6 +26,7 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { CameraScanner } from "~/components/door/camera-scanner";
 import { CheckPanel } from "~/components/door/check-panel";
+import { IdPanel } from "~/components/door/id-panel";
 import { ScanResultScreen } from "~/components/door/scan-result-screen";
 import { playFeedback, unlockAudio } from "~/components/door/feedback";
 import { DoorList } from "~/components/door/door-list";
@@ -42,16 +44,20 @@ type Lookup =
   | { kind: "token"; token: string }
   | { kind: "ticketNumber"; ticketNumber: string };
 
-type Mode = "scan" | "list" | "sell" | "check" | "settings";
+type Mode = "scan" | "list" | "sell" | "check" | "id" | "settings";
 
 /**
- * The two tabs that aren't part of working a queue.
+ * The tabs that aren't part of working a queue.
  *
  * Four things fit across a phone; a fifth and a sixth make every target too
  * narrow to hit in the dark. Scan, List and Sell are what a door does with
- * somebody standing in front of it, so they keep their own buttons. Checking a
- * ticket and naming the device are both things you do when the queue has
- * stopped, and they go behind one tap.
+ * somebody standing in front of it, so they keep their own buttons. Everything
+ * else goes behind one tap.
+ *
+ * ID checking sits here rather than in the main row despite being used *with* a
+ * queue, because the way staff actually reach it is the "Check their ID" button
+ * on a scan result — this tab is the way in for somebody who has not scanned a
+ * ticket yet.
  */
 const EXTRA_MODES = [
   {
@@ -60,6 +66,13 @@ const EXTRA_MODES = [
     short: "Check",
     hint: "Look one up without admitting anyone",
     icon: ShieldQuestionMark,
+  },
+  {
+    value: "id",
+    label: "Check an ID",
+    short: "ID",
+    hint: "Age, name and entry bans, read off the card",
+    icon: IdCard,
   },
   {
     value: "settings",
@@ -93,6 +106,16 @@ export default function DoorScannerPage() {
 
   const [lastLookup, setLastLookup] = useState<Lookup | null>(null);
   const [mode, setMode] = useState<Mode>("scan");
+  /**
+   * The ticket an ID check is being run against, when the ID tab was opened
+   * from a scan result rather than on its own. It is what turns on the name
+   * comparison and the "already used tonight" check, so it is carried across
+   * the mode switch rather than being asked for again.
+   */
+  const [idTicket, setIdTicket] = useState<{
+    id: string;
+    name: string | null;
+  } | null>(null);
   // Lives here rather than in the feed, so switching tabs doesn't quietly put
   // it back to your own scans while you were reading the whole door's.
   const [historyMine, setHistoryMine] = useState(true);
@@ -158,6 +181,17 @@ export default function DoorScannerPage() {
       toast.error(error.message);
     },
   });
+
+  /**
+   * Switching tabs by hand, which also drops any ticket an ID check was
+   * carrying. A ticket picked up from a scan result belongs to that visit only
+   * — leaving it attached would silently compare the next stranger's licence
+   * against a name from ten minutes ago.
+   */
+  const changeMode = useCallback((next: Mode) => {
+    if (next !== "id") setIdTicket(null);
+    setMode(next);
+  }, []);
 
   const handleScan = useCallback(
     (token: string) => {
@@ -299,16 +333,16 @@ export default function DoorScannerPage() {
       </header>
 
       <nav className="mt-4 grid grid-cols-4 gap-2">
-        <ModeButton active={mode === "scan"} onClick={() => setMode("scan")}>
+        <ModeButton active={mode === "scan"} onClick={() => changeMode("scan")}>
           <ScanLine className="size-4 shrink-0" aria-hidden /> Scan
         </ModeButton>
-        <ModeButton active={mode === "list"} onClick={() => setMode("list")}>
+        <ModeButton active={mode === "list"} onClick={() => changeMode("list")}>
           <Users className="size-4 shrink-0" aria-hidden /> List
         </ModeButton>
-        <ModeButton active={mode === "sell"} onClick={() => setMode("sell")}>
+        <ModeButton active={mode === "sell"} onClick={() => changeMode("sell")}>
           <Banknote className="size-4 shrink-0" aria-hidden /> Sell
         </ModeButton>
-        <MoreMenu mode={mode} onSelect={setMode} />
+        <MoreMenu mode={mode} onSelect={changeMode} />
       </nav>
 
       <div className="mt-4 space-y-4">
@@ -372,6 +406,15 @@ export default function DoorScannerPage() {
           <CheckPanel eventId={eventId} timezone={event.timezone} />
         )}
 
+        {mode === "id" && (
+          <IdPanel
+            eventId={eventId}
+            isManager={isManager}
+            ticketId={idTicket?.id}
+            attendeeName={idTicket?.name}
+          />
+        )}
+
         {mode === "settings" && (
           <SettingsPanel
             deviceLabel={deviceLabel}
@@ -392,6 +435,11 @@ export default function DoorScannerPage() {
           denying={deny.isPending}
           onDismiss={() => setOutcome(null)}
           onOverride={handleOverride}
+          onCheckId={(ticketId, attendeeName) => {
+            setIdTicket({ id: ticketId, name: attendeeName });
+            setOutcome(null);
+            setMode("id");
+          }}
           onDeny={(reason, note) => {
             if (!outcome.ticket) return;
             deny.mutate({

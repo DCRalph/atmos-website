@@ -237,7 +237,54 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="mt-8 mb-4 text-2xl font-bold">6. Data Security</h2>
+              <h2 className="mt-8 mb-4 text-2xl font-bold">
+                6. ID Checks at Our Events
+              </h2>
+              <p className="mb-4 leading-relaxed text-gray-700">
+                At R18 events, and at any event where a ticket is issued in a
+                named person&apos;s name, our door staff may scan your identity
+                document — a New Zealand driver licence, a passport, or a Kiwi
+                Access Card. We do this to confirm you are old enough to be
+                admitted, to check the ticket belongs to you, and to enforce
+                entry bans.
+              </p>
+              <p className="mb-4 leading-relaxed text-gray-700">
+                The document is read on the staff member&apos;s own device. The
+                photograph of your document is never uploaded to us. From that
+                reading we record:
+              </p>
+              <ul className="list-disc space-y-2 pl-6 text-gray-700">
+                <li>Your name and date of birth, as printed on the document</li>
+                <li>The document type, its number and its expiry date</li>
+                <li>
+                  A cropped photograph of your face taken from the document —
+                  never an image of the whole document, so your address and any
+                  other details printed on it are not retained
+                </li>
+                <li>
+                  The date, event and device of each check, and its outcome
+                </li>
+              </ul>
+              <p className="mt-4 leading-relaxed text-gray-700">
+                This information is deleted automatically 90 days after your
+                most recent check. The exception is where an entry ban is in
+                force against you: in that case the record is kept for as long
+                as the ban stands, because a ban we cannot match to a person
+                does not work. We do not use any of it for marketing, and we do
+                not share it with other venues or operators.
+              </p>
+              <p className="mt-4 leading-relaxed text-gray-700">
+                You can ask us what we hold about you, ask us to correct it, or
+                ask us to delete it early, using the contact details below. If
+                you would rather not have your ID scanned, tell the staff member
+                — they can check your ID by eye instead, though at an R18 event
+                they must still be satisfied you are over 18 before admitting
+                you.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="mt-8 mb-4 text-2xl font-bold">7. Data Security</h2>
               <p className="leading-relaxed text-gray-700">
                 We implement appropriate technical and organizational security
                 measures to protect your personal information. However, no
@@ -247,7 +294,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="mt-8 mb-4 text-2xl font-bold">7. Your Rights</h2>
+              <h2 className="mt-8 mb-4 text-2xl font-bold">8. Your Rights</h2>
               <p className="mb-4 leading-relaxed text-gray-700">
                 Depending on your location, you may have certain rights
                 regarding your personal information, including:
@@ -270,7 +317,7 @@ export default function PrivacyPage() {
 
             <section>
               <h2 className="mt-8 mb-4 text-2xl font-bold">
-                8. Children's Privacy
+                9. Children's Privacy
               </h2>
               <p className="leading-relaxed text-gray-700">
                 Our services are not intended for individuals under the age of
@@ -282,7 +329,7 @@ export default function PrivacyPage() {
 
             <section>
               <h2 className="mt-8 mb-4 text-2xl font-bold">
-                9. International Data Transfers
+                10. International Data Transfers
               </h2>
               <p className="leading-relaxed text-gray-700">
                 Your information may be transferred to and processed in
@@ -294,7 +341,7 @@ export default function PrivacyPage() {
 
             <section>
               <h2 className="mt-8 mb-4 text-2xl font-bold">
-                10. Changes to This Privacy Policy
+                11. Changes to This Privacy Policy
               </h2>
               <p className="leading-relaxed text-gray-700">
                 We may update this Privacy Policy from time to time. We will
@@ -305,7 +352,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="mt-8 mb-4 text-2xl font-bold">11. Contact Us</h2>
+              <h2 className="mt-8 mb-4 text-2xl font-bold">12. Contact Us</h2>
               <p className="mb-4 leading-relaxed text-gray-700">
                 If you have any questions about this Privacy Policy or our data
                 practices, please contact us:

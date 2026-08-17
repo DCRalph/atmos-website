@@ -18,11 +18,12 @@ import {
   withEventInventoryLock,
 } from "~/server/ticketing/inventory";
 import { pruneRateLimitKeys } from "~/server/ticketing/rate-limit";
+import { purgeExpiredPatrons } from "~/server/ticketing/id-check";
 
 /**
  * The ticketing janitor. Runs every few minutes (see `vercel.json`).
  *
- * Three jobs, in order of how much they matter:
+ * Four jobs, in order of how much they matter:
  *
  *  1. **Reconcile paid-but-unissued orders.** Webhooks get lost. If Stripe says
  *     a PaymentIntent succeeded and we still have a PENDING order, that is
@@ -30,7 +31,11 @@ import { pruneRateLimitKeys } from "~/server/ticketing/rate-limit";
  *  2. **Release expired holds.** Checkouts get abandoned. Availability sweeps
  *     itself lazily on every purchase, but a dead-quiet event needs this so
  *     stock isn't held hostage by an abandoned tab.
- *  3. **Prune rate-limit rows**, which are write-once and never read again.
+ *  3. **Purge expired patron records.** Names, birthdays and faces read off ID
+ *     documents at the door, deleted once their window is up. This is the job
+ *     that makes the ID system defensible, so it runs here rather than being
+ *     something somebody remembers to do.
+ *  4. **Prune rate-limit rows**, which are write-once and never read again.
  */
 
 export const runtime = "nodejs";
@@ -47,9 +52,10 @@ export async function GET(request: NextRequest): Promise<Response> {
 
   const rescued = await reconcileUnissuedOrders();
   const expired = await releaseAllExpiredHolds();
+  const purgedPatrons = await purgeExpiredPatrons();
   const pruned = await pruneRateLimitKeys();
 
-  return Response.json({ rescued, expired, pruned });
+  return Response.json({ rescued, expired, purgedPatrons, pruned });
 }
 
 /**

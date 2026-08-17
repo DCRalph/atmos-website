@@ -858,6 +858,14 @@ enum ActivityType {
   DOOR_STAFF_ASSIGNED
   DOOR_STAFF_REMOVED
   BOX_OFFICE_SALE
+  /// Door ID checks. The checks themselves are logged in `IdCheck` — these are
+  /// the decisions a *staff member* made about a member of the public, which
+  /// belong in the same audit trail as everything else staff do.
+  PATRON_BANNED
+  PATRON_BAN_LIFTED
+  /// A patron record deleted early, on request. Routine expiry is not logged:
+  /// it happens nightly, in bulk, and nobody decided it.
+  PATRON_PURGED
   OTHER
 }
 
@@ -1159,6 +1167,7 @@ model TicketEvent {
   discountCodes DiscountCode[]
   linkBatches   TicketLinkBatch[]
   doorReceipts  DoorPaymentReceipt[]
+  idChecks      IdCheck[]
 
   @@index([status, startsAt])
   @@index([gigId])
@@ -1338,6 +1347,7 @@ model Ticket {
   hostTicket Ticket?      @relation("CompHandout", fields: [hostTicketId], references: [id], onDelete: SetNull)
   handouts   Ticket[]     @relation("CompHandout")
   scans      TicketScan[]
+  idChecks   IdCheck[]
   linkBatchId String?
   linkBatch   TicketLinkBatch? @relation(fields: [linkBatchId], references: [id], onDelete: SetNull)
 
@@ -1566,4 +1576,192 @@ model DoorPaymentReceipt {
   @@index([eventId, createdAt])
   @@index([orderId])
   @@map("door_payment_receipt")
+}
+
+// ---------------------------------------------------------------------------
+// DOOR ID CHECKS
+//
+// Everything above decides whether a *ticket* is good. This decides whether the
+// *person* is: old enough, known to us, and not barred.
+//
+// The scan log answers "has this ticket been used". It cannot answer "has this
+// person been here before", because a refusal is recorded against a ticket and
+// next weekend's ticket is a different row. A `Patron` is the missing spine —
+// one row per human, found again by their document rather than their booking.
+//
+// This is the most sensitive data in the schema: names, dates of birth and
+// faces belonging to members of the public who are not our users and have no
+// account here. Three rules follow from that, and they are enforced in the
+// columns rather than left to whoever writes the next query.
+//
+//  1. **It expires.** `Patron.purgeAfter` is set on every check and swept
+//     nightly. Nothing here is kept because it might be useful one day.
+//  2. **The photo is a portrait, never the card.** No address, no licence
+//     classes — see `~/server/ticketing/id-photos.ts`, which deliberately does
+//     not use the public `file_upload` path.
+//  3. **The log outlives the person.** `IdCheck` rows keep the night's counts
+//     honest after a purge takes the identity away, so `patronId` is nullable
+//     and set null rather than cascading.
+// ---------------------------------------------------------------------------
+
+/// The documents a New Zealand door actually gets handed.
+///
+/// Only the passports carry a machine-readable zone; the NZ driver licence and
+/// the Kiwi Access Card have nothing but printed text, which is why the reader
+/// is OCR rather than a barcode scanner. `OTHER` is the honest bucket for a
+/// foreign licence or a document the parser could name no better — the check
+/// still happened and still has to be recorded.
+enum IdDocumentType {
+  NZ_DRIVER_LICENCE
+  NZ_PASSPORT
+  FOREIGN_PASSPORT
+  KIWI_ACCESS_CARD
+  OTHER
+}
+
+/// Where an ID check landed.
+///
+/// Ordered by how badly the door wants to know: a ban outranks an age problem,
+/// because somebody barred is barred whatever their birthday says.
+enum IdCheckResult {
+  PASS
+  /// Under the age the event requires, measured in the event's own timezone.
+  UNDERAGE
+  /// An active `PatronBan` stands against them.
+  BANNED
+  /// Past its expiry, so it is not approved evidence of age under the Sale and
+  /// Supply of Alcohol Act. Reported alongside the age rather than instead of
+  /// it — staff need both facts to decide.
+  DOCUMENT_EXPIRED
+  /// A document that is not on the Act's approved list at all — most often an
+  /// overseas driver licence, which New Zealand does not accept as evidence of
+  /// age however genuine it is.
+  NOT_APPROVED_EVIDENCE
+  /// This document already got somebody in tonight. One ID going back out the
+  /// door to a mate is the fraud a per-ticket scan log cannot see.
+  ALREADY_USED_TONIGHT
+  /// The name on the ID is not the name on the ticket it was checked against.
+  NAME_MISMATCH
+  /// Nothing usable came back from the camera. Recorded rather than dropped,
+  /// for the same reason `TicketScan` records `NOT_FOUND`: a wall of these at
+  /// 11pm is how you find out the torch is broken.
+  UNREADABLE
+}
+
+/// A member of the public, as identified by the document they showed.
+///
+/// Keyed by `documentHash` — an HMAC of the document type and number — so the
+/// same licence always finds the same row without the raw number having to be
+/// the primary key. Names are stored as read off the document, which is the
+/// only spelling that will match next time.
+model Patron {
+  id String @id @default(cuid())
+
+  /// HMAC of `type|normalisedNumber`. The match key; see `~/server/ticketing/id-identity.ts`.
+  documentHash   String         @unique
+  documentType   IdDocumentType
+  documentNumber String?
+  documentExpiry DateTime?
+
+  /// As printed. `fullName` is what the door screen shows; the split parts are
+  /// what the ticket-name comparison uses, because "SMITH, JANE ANNE" and
+  /// "Jane Smith" are the same person and a whole-string compare says otherwise.
+  fullName    String
+  givenNames  String?
+  familyName  String?
+  /// Date only — the time component is meaningless and is stored as midnight UTC.
+  dateOfBirth DateTime
+
+  /// Private S3 key of the portrait crop. Never a `file_upload` row: that path
+  /// is served publicly and cached for a year.
+  photoKey String?
+
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+  checkCount  Int      @default(0)
+
+  /// When this record is due to be deleted, portrait and all. Re-armed on every
+  /// check, and null while a ban stands — a ban we cannot attach to a face is
+  /// a ban that does not work.
+  purgeAfter DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bans   PatronBan[]
+  checks IdCheck[]
+
+  @@index([familyName])
+  @@index([purgeAfter])
+  @@map("patron")
+}
+
+/// Somebody barred from Atmos events.
+///
+/// Atmos-wide rather than per-event, which is the whole point: a ban that only
+/// held for the night it was issued would be indistinguishable from the refusal
+/// the scan log already records. Append-only like the scan log — lifting a ban
+/// sets `liftedAt`, it never deletes the row, so "who barred me, and who let me
+/// back in" always has an answer.
+model PatronBan {
+  id       String @id @default(cuid())
+  patronId String
+  patron   Patron @relation(fields: [patronId], references: [id], onDelete: Cascade)
+
+  /// The same fixed list the door already picks from when refusing entry.
+  reason TicketDenyReason
+  note   String?
+
+  startsAt DateTime  @default(now())
+  /// Null is permanent. A dated ban stops applying on its own, which is what
+  /// makes a three-month ban safe to hand out.
+  expiresAt DateTime?
+
+  createdByUserId String
+  /// The night it happened, when there was one.
+  eventId         String?
+
+  liftedAt       DateTime?
+  liftedByUserId String?
+  liftedNote     String?
+
+  createdAt DateTime @default(now())
+
+  @@index([patronId, liftedAt])
+  @@map("patron_ban")
+}
+
+/// Append-only log of every ID check. Never updated, never deleted.
+///
+/// The identity can be purged out from under these rows — that is the point of
+/// `purgeAfter` — so `patronId` is nullable and falls to null rather than
+/// taking the log with it. What is left still answers "how many IDs did this
+/// door check, and how many came back underage", which is the question a
+/// licensing inspector asks.
+model IdCheck {
+  id String @id @default(cuid())
+
+  eventId  String
+  event    TicketEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  patronId String?
+  patron   Patron?     @relation(fields: [patronId], references: [id], onDelete: SetNull)
+  /// Set when the check was run off a ticket scan rather than on its own.
+  ticketId String?
+  ticket   Ticket?     @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+
+  result       IdCheckResult
+  /// Their age at the moment of the check. Kept because recomputing it later
+  /// from a date of birth that may since have been purged is impossible.
+  ageYears     Int?
+  documentType IdDocumentType?
+
+  checkedByUserId String?
+  deviceLabel     String?
+
+  createdAt DateTime @default(now())
+
+  @@index([eventId, createdAt])
+  @@index([patronId, createdAt])
+  @@index([ticketId])
+  @@map("id_check")
 }

@@ -44,18 +44,11 @@ export const env = createEnv({
     // Ticketing — Stripe
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
-    /**
-     * Stripe Terminal Location for Tap to Pay at the door. Optional — Stripe
-     * will pick the account default when it is absent — but setting one keeps
-     * door takings grouped in reporting. Create it in the Stripe dashboard
-     * under Terminal → Locations.
-     */
     STRIPE_TERMINAL_LOCATION_ID: z.string().optional(),
 
-    /// Signs ticket QR payloads. Independent of BETTER_AUTH_SECRET so it can be
-    /// rotated separately — though rotating it invalidates every live ticket
-    /// and wallet pass, so in practice it is generate-once.
     TICKET_QR_SECRET: z.string().optional(),
+
+    PATRON_ID_SECRET: z.string().optional(),
 
     // Ticketing — email delivery
     RESEND_API_KEY: z.string().optional(),
@@ -129,6 +122,7 @@ export const env = createEnv({
       process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
 
     TICKET_QR_SECRET: process.env.TICKET_QR_SECRET,
+    PATRON_ID_SECRET: process.env.PATRON_ID_SECRET,
 
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     RESEND_FROM: process.env.RESEND_FROM,

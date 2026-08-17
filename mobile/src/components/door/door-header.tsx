@@ -9,7 +9,7 @@ import { Caption } from "@/components/ui";
 import { OfflineBanner } from "@/components/door/offline-banner";
 
 type Summary = RouterOutputs["door"]["summary"];
-type Mode = "scan" | "manual" | "list" | "sell" | "check" | "activity";
+type Mode = "scan" | "manual" | "list" | "sell" | "check" | "id" | "activity";
 
 const MODES: { key: Mode; label: string; path: string }[] = [
   { key: "scan", label: "Scan", path: "scan" },
@@ -18,6 +18,9 @@ const MODES: { key: Mode; label: string; path: string }[] = [
   { key: "sell", label: "Sell", path: "sell" },
   // The one tab that decides nothing: looks a ticket up and records no scan.
   { key: "check", label: "Check", path: "check" },
+  // The other half of the door: everything else here decides about a ticket,
+  // this one decides about the person holding it.
+  { key: "id", label: "ID", path: "id" },
   // A door with no log is a door that cannot answer "what happened ten
   // minutes ago", hence the short label rather than dropping it.
   { key: "activity", label: "Log", path: "activity" },

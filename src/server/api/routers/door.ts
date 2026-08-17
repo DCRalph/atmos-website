@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   ActivityType,
   EventStaffRole,
+  IdCheckResult,
   PaymentMethodKind,
   type Prisma,
   TicketEventStatus,
@@ -40,7 +41,9 @@ import {
   recordDoorReceipt,
 } from "~/server/ticketing/door-receipts";
 import { buildTicketToken } from "~/server/ticketing/qr";
+import { banPatron, checkIdentity, liftBan } from "~/server/ticketing/id-check";
 import { DENY_REASON_VALUES } from "~/lib/ticketing/deny-reasons";
+import { ID_DOCUMENT_TYPES } from "~/lib/ticketing/id-documents";
 import { ACCESS_LEVEL_VALUES } from "~/lib/ticketing/access-levels";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
 import { logActivity } from "~/server/utils/activity-log";
@@ -1487,7 +1490,12 @@ export const doorRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const receipt = await db.doorPaymentReceipt.findUnique({
         where: { id: input.receiptId },
-        select: { token: true, eventId: true, amountCents: true, outcome: true },
+        select: {
+          token: true,
+          eventId: true,
+          amountCents: true,
+          outcome: true,
+        },
       });
       if (!receipt) {
         throw new TRPCError({ code: "NOT_FOUND", message: "No such receipt." });
@@ -1745,5 +1753,199 @@ export const doorRouter = createTRPCRouter({
                 : null,
         };
       });
+    }),
+
+  // -------------------------------------------------------------------------
+  // ID checks
+  //
+  // The other half of the door: everything above decides whether a ticket is
+  // good, and these decide whether the person holding it is. See
+  // `~/server/ticketing/id-check.ts` for the decision itself and
+  // `docs/ticketing/ID-CHECKS.md` for what is kept and for how long.
+  // -------------------------------------------------------------------------
+
+  /**
+   * Read somebody's ID and decide about them.
+   *
+   * Takes either the raw text the device's camera recognised, or fields a
+   * staffer typed — a correction and a manual entry are the same call, so a
+   * bad read never becomes a dead end. Optionally tied to a ticket, which is
+   * what turns on the name comparison and the "already used tonight" check.
+   */
+  checkId: doorProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        ticketId: z.string().optional(),
+        deviceLabel: z.string().trim().max(60).optional(),
+        /**
+         * The cropped face as base64 JPEG. Around 40KB — small enough to ride
+         * along with the check rather than needing an upload of its own, and
+         * the crop already happened on the device, so the card itself never
+         * reaches us.
+         */
+        portrait: z.string().max(1_500_000).optional(),
+        reading: z.discriminatedUnion("kind", [
+          z.object({
+            kind: z.literal("ocr"),
+            // A card yields tens of lines; a few hundred is a camera pointed
+            // at a page of text, and nothing good comes of parsing it.
+            lines: z.array(z.string().max(300)).max(200),
+          }),
+          z.object({
+            kind: z.literal("fields"),
+            documentType: z.enum(ID_DOCUMENT_TYPES),
+            documentNumber: z.string().trim().max(40).optional(),
+            fullName: z.string().trim().min(2).max(120),
+            dateOfBirth: z.iso.date(),
+            expiry: z.iso.date().optional(),
+          }),
+        ]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
+
+      return checkIdentity({
+        eventId: input.eventId,
+        ticketId: input.ticketId ?? null,
+        reading: input.reading,
+        portrait: input.portrait ?? null,
+        checkedByUserId: ctx.user.id,
+        deviceLabel: input.deviceLabel ?? null,
+      });
+    }),
+
+  /**
+   * Bar somebody from Atmos events.
+   *
+   * Manager-only, unlike refusing entry. Turning one person away tonight is
+   * the job of whoever is holding the scanner; barring them from every event
+   * we run until somebody lifts it is not.
+   */
+  banPatron: doorProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        patronId: z.string(),
+        reason: z.enum(DENY_REASON_VALUES),
+        note: z.string().trim().max(300).optional(),
+        /** Days from now. Omitted is permanent. */
+        expiresInDays: z.number().int().min(1).max(3650).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { isManager } = await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
+      if (!isManager) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only a door manager can ban somebody.",
+        });
+      }
+
+      const { banId, patronName } = await banPatron({
+        patronId: input.patronId,
+        reason: input.reason,
+        note: input.note ?? null,
+        expiresAt: input.expiresInDays
+          ? new Date(Date.now() + input.expiresInDays * 24 * 60 * 60 * 1000)
+          : null,
+        eventId: input.eventId,
+        createdByUserId: ctx.user.id,
+      });
+
+      await logActivity({
+        type: ActivityType.PATRON_BANNED,
+        action: `Banned ${patronName} (${input.reason})`,
+        userId: ctx.user.id,
+        details: {
+          eventId: input.eventId,
+          patronId: input.patronId,
+          banId,
+          reason: input.reason,
+          note: input.note,
+          expiresInDays: input.expiresInDays ?? null,
+        },
+      });
+
+      return { banId };
+    }),
+
+  /** Take a ban back. Manager-only, and appended rather than deleted. */
+  liftBan: doorProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        banId: z.string(),
+        note: z.string().trim().max(300).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { isManager } = await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
+      if (!isManager) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only a door manager can lift a ban.",
+        });
+      }
+
+      const { patronId, patronName } = await liftBan({
+        banId: input.banId,
+        note: input.note ?? null,
+        liftedByUserId: ctx.user.id,
+      });
+
+      await logActivity({
+        type: ActivityType.PATRON_BAN_LIFTED,
+        action: `Lifted the ban on ${patronName}`,
+        userId: ctx.user.id,
+        details: { eventId: input.eventId, patronId, banId: input.banId },
+      });
+
+      return { patronId };
+    }),
+
+  /** How the night's ID checks are going, for the door header. */
+  idCheckSummary: doorProcedure
+    .input(z.object({ eventId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      await assertAssigned(
+        ctx.user.id,
+        ctx.isAdmin,
+        ctx.isEventOrganiser,
+        input.eventId,
+      );
+
+      const counts = await ctx.db.idCheck.groupBy({
+        by: ["result"],
+        where: { eventId: input.eventId },
+        _count: true,
+      });
+
+      const of = (result: IdCheckResult) =>
+        counts.find((row) => row.result === result)?._count ?? 0;
+
+      return {
+        checked: counts.reduce((sum, row) => sum + row._count, 0),
+        passed: of(IdCheckResult.PASS),
+        underage: of(IdCheckResult.UNDERAGE),
+        banned: of(IdCheckResult.BANNED),
+        unreadable: of(IdCheckResult.UNREADABLE),
+      };
     }),
 });

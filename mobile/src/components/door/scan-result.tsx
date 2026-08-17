@@ -231,6 +231,33 @@ export function ScanResult({
             </Pressable>
           ) : null}
 
+          {/* The prompts above tell staff to check ID; this is the button that
+              lets them actually do it, without losing the ticket they are
+              standing on. Shown for the two cases that ask for it — an R18
+              event, and a ticket whose name is supposed to be the person
+              holding it — because a button offered on every scan is a button
+              nobody reads. */}
+          {current.ticket && (current.isR18 || current.ticket.nameLocked) ? (
+            <Pressable
+              onPress={() => {
+                const ticket = current.ticket;
+                if (!ticket) return;
+                onDismiss();
+                router.push({
+                  pathname: "/(door)/[eventId]/id",
+                  params: {
+                    eventId,
+                    ticketId: ticket.id,
+                    attendeeName: ticket.attendeeName ?? "",
+                  },
+                });
+              }}
+              style={styles.findOnList}
+            >
+              <Text style={styles.findLabel}>Check their ID</Text>
+            </Pressable>
+          ) : null}
+
           {/* The way out when the code is the problem rather than the person:
               a smashed screen, a forwarded email, the wrong QR entirely. Takes
               the name it already knows straight into the list search. */}

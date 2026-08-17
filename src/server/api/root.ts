@@ -24,6 +24,7 @@ import { ticketEventsRouter } from "~/server/api/routers/ticket-events";
 import { ticketCheckoutRouter } from "~/server/api/routers/ticket-checkout";
 import { ticketsRouter } from "~/server/api/routers/tickets";
 import { doorRouter } from "~/server/api/routers/door";
+import { patronsRouter } from "~/server/api/routers/patrons";
 import { terminalRouter } from "~/server/api/routers/terminal";
 import { tapToPayRouter } from "~/server/api/routers/tap-to-pay";
 import { pushRouter } from "~/server/api/routers/push";
@@ -70,6 +71,8 @@ export const appRouter = createTRPCRouter({
   discountCodes: discountCodesRouter,
   accessLevels: accessLevelsRouter,
   door: doorRouter,
+  /** ID checks at the door, from the office: bans, lookups, erasure requests. */
+  patrons: patronsRouter,
   terminal: terminalRouter,
   tapToPay: tapToPayRouter,
   push: pushRouter,
