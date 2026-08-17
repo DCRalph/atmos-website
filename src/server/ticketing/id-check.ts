@@ -22,6 +22,7 @@ import {
   type IdParseSource,
   type NameMatch,
   normaliseName,
+  type ParsedIdDocument,
   parseIdDocument,
 } from "~/lib/ticketing/id-documents";
 import { deletePortrait, storePortrait } from "~/server/ticketing/id-photos";
@@ -192,6 +193,40 @@ function identityHash(document: {
     .digest("base64url");
 }
 
+/**
+ * Whatever the client sent, as a parse result.
+ *
+ * Camera and keyboard converge here so that everything downstream — the age
+ * arithmetic, the ban lookup, the record — cannot tell them apart and cannot
+ * therefore treat them differently. A staffer reading the card themselves is
+ * the most reliable input this system has; it is also the slowest, which is why
+ * it is the fallback rather than the flow.
+ */
+function readingToParse(reading: IdReading): {
+  document: ParsedIdDocument;
+  source: IdParseSource | "MANUAL";
+  confidence: IdParseConfidence;
+  ambiguities: string[];
+} {
+  if (reading.kind === "ocr") return parseIdDocument(reading.lines);
+
+  return {
+    document: {
+      documentType: reading.documentType,
+      documentNumber: reading.documentNumber ?? null,
+      familyName: null,
+      givenNames: null,
+      fullName: reading.fullName.trim(),
+      dateOfBirth: reading.dateOfBirth,
+      expiry: reading.expiry ?? null,
+      nationality: null,
+    },
+    source: "MANUAL",
+    confidence: "high",
+    ambiguities: [],
+  };
+}
+
 /** `yyyy-mm-dd` → the midnight-UTC `DateTime` the column holds. */
 function toDateColumn(iso: string): Date {
   return new Date(`${iso}T00:00:00.000Z`);
@@ -227,29 +262,7 @@ export async function checkIdentity({
     select: { id: true, isR18: true, timezone: true },
   });
 
-  const parsed =
-    reading.kind === "ocr"
-      ? parseIdDocument(reading.lines)
-      : {
-          document: {
-            documentType: reading.documentType,
-            documentNumber: reading.documentNumber ?? null,
-            familyName: null,
-            givenNames: null,
-            fullName: reading.fullName.trim(),
-            dateOfBirth: reading.dateOfBirth,
-            expiry: reading.expiry ?? null,
-            nationality: null,
-          },
-          // A staffer reading the card themselves is the most reliable input
-          // this system has. It is also the slowest, which is why it is the
-          // fallback rather than the flow.
-          source: "MANUAL" as const,
-          confidence: "high" as IdParseConfidence,
-          ambiguities: [] as string[],
-          usable: true,
-        };
-
+  const parsed = readingToParse(reading);
   const { document } = parsed;
   // Pulled out rather than read off `document` throughout: the awaits below
   // would otherwise widen these back to nullable at every use.
@@ -509,6 +522,160 @@ function retentionHorizon(from: Date): Date {
 }
 
 // ---------------------------------------------------------------------------
+// Trying it without doing it
+// ---------------------------------------------------------------------------
+
+/** What a read produced, and what it *would* have decided. */
+export type IdPreview = {
+  document: ParsedIdDocument;
+  readAs: IdParseSource | "MANUAL";
+  confidence: IdParseConfidence;
+  ambiguities: string[];
+  /** Null when no date of birth could be read. */
+  ageYears: number | null;
+  expired: boolean;
+  approvedEvidence: boolean;
+  /** The verdict a real check would return right now. */
+  wouldBe: IdCheckResult;
+  warnings: IdWarning[];
+  /** Whether this document already has a record, without creating one. */
+  known: {
+    patronId: string;
+    fullName: string;
+    checkCount: number;
+    firstSeenAt: Date;
+    lastSeenAt: Date;
+  } | null;
+  ban: StandingBan | null;
+};
+
+/**
+ * Read a document without recording anything.
+ *
+ * The same relationship `inspectTicket` has to `scanTicket`: every other path
+ * in this file writes a row, and this one must not. Somebody testing whether
+ * the parser copes with a new licence design should not be creating patron
+ * records for a colleague's driver licence, arming a 90-day retention clock on
+ * them, or putting rows into the very count the door reads back.
+ *
+ * The verdict is phrased as what a real check *would* return, computed by the
+ * same `decide` the real path uses, so a test can never say one thing and the
+ * door another.
+ */
+export async function previewIdentity({
+  reading,
+  isR18,
+  timeZone,
+}: {
+  reading: IdReading;
+  /** Whether to judge it against an R18 event's rules. */
+  isR18: boolean;
+  timeZone: string;
+}): Promise<IdPreview> {
+  const parsed = readingToParse(reading);
+  const { document } = parsed;
+  const now = new Date();
+
+  const approvedEvidence = isApprovedEvidenceOfAge(document.documentType);
+  const ageYears = document.dateOfBirth
+    ? ageAt(document.dateOfBirth, now, timeZone)
+    : null;
+  const expired = isExpired(document.expiry, now, timeZone);
+
+  if (!document.fullName || !document.dateOfBirth || ageYears === null) {
+    return {
+      document,
+      readAs: parsed.source,
+      confidence: parsed.confidence,
+      ambiguities: parsed.ambiguities,
+      ageYears,
+      expired,
+      approvedEvidence,
+      wouldBe: IdCheckResult.UNREADABLE,
+      warnings: [],
+      known: null,
+      ban: null,
+    };
+  }
+
+  const documentHash = identityHash({
+    documentType: document.documentType,
+    documentNumber: document.documentNumber,
+    fullName: document.fullName,
+    dateOfBirth: document.dateOfBirth,
+  });
+
+  const existing = await db.patron.findUnique({
+    where: { documentHash },
+    select: {
+      id: true,
+      fullName: true,
+      checkCount: true,
+      firstSeenAt: true,
+      lastSeenAt: true,
+      familyName: true,
+      dateOfBirth: true,
+    },
+  });
+
+  // Same two-route lookup the real check runs, so a test shows the namesake
+  // match as well rather than pretending only the document matters.
+  const ban = existing
+    ? await findStandingBan({
+        patronId: existing.id,
+        familyName: existing.familyName,
+        dateOfBirth: existing.dateOfBirth,
+      })
+    : await findStandingBan({
+        patronId: null,
+        familyName: document.familyName,
+        dateOfBirth: toDateColumn(document.dateOfBirth),
+      });
+
+  return {
+    document,
+    readAs: parsed.source,
+    confidence: parsed.confidence,
+    ambiguities: parsed.ambiguities,
+    ageYears,
+    expired,
+    approvedEvidence,
+    wouldBe: decide({
+      isR18,
+      ageYears,
+      expired,
+      approvedEvidence,
+      banned: ban !== null,
+      usedTonight: false,
+      nameMatch: null,
+    }),
+    warnings: collectWarnings({
+      isR18,
+      ageYears,
+      expired,
+      approvedEvidence,
+      documentType: document.documentType,
+      usedTonight: false,
+      nameMatch: null,
+      ticketName: null,
+      previousRefusals: 0,
+      ambiguities: parsed.ambiguities,
+      confidence: parsed.confidence,
+    }),
+    known: existing
+      ? {
+          patronId: existing.id,
+          fullName: existing.fullName,
+          checkCount: existing.checkCount,
+          firstSeenAt: existing.firstSeenAt,
+          lastSeenAt: existing.lastSeenAt,
+        }
+      : null,
+    ban,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // The three questions
 // ---------------------------------------------------------------------------
 
@@ -527,7 +694,8 @@ async function findStandingBan({
   familyName,
   dateOfBirth,
 }: {
-  patronId: string;
+  /** Null when nothing has been recorded for this document yet — a preview. */
+  patronId: string | null;
   familyName: string | null;
   dateOfBirth: Date;
 }): Promise<StandingBan | null> {
@@ -537,18 +705,24 @@ async function findStandingBan({
     OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
   };
 
-  const own = await db.patronBan.findFirst({
-    where: { patronId, ...active },
-    orderBy: { createdAt: "desc" },
-  });
-  if (own) return toStandingBan(own, "DOCUMENT");
+  if (patronId) {
+    const own = await db.patronBan.findFirst({
+      where: { patronId, ...active },
+      orderBy: { createdAt: "desc" },
+    });
+    if (own) return toStandingBan(own, "DOCUMENT");
+  }
 
   if (!familyName) return null;
 
   const namesake = await db.patronBan.findFirst({
     where: {
       ...active,
-      patron: { familyName, dateOfBirth, id: { not: patronId } },
+      patron: {
+        familyName,
+        dateOfBirth,
+        ...(patronId ? { id: { not: patronId } } : {}),
+      },
     },
     orderBy: { createdAt: "desc" },
   });

@@ -234,6 +234,20 @@ everything outside the box is discarded before anything is sent.
 
 ## Trying it out
 
+**`/admin/patrons/test` is the bench.** Paste OCR lines, upload a photo of a
+card, or use the camera; it runs the real engine and the real parser and shows
+every step — the lines that came back, which template claimed them, what it
+pulled out, what it was unsure about, and the verdict a door would reach. It
+**writes nothing**: no patron record, no retention clock, no row in a door's
+counts, because testing the reader on a colleague's licence must not put that
+colleague in the database. It goes through `patrons.previewRead`, which is
+read-only in the way `checkTicket` is on the door router.
+
+Four sample inputs are built in, so the page is useful before anybody finds a
+real card. The passport sample carries valid check digits — if it comes back as
+anything other than `MRZ` / `high`, the parser has regressed rather than the
+camera having failed.
+
 ```bash
 bun test src/lib/ticketing/id-documents.test.ts   # the parser
 bun run check                                      # prisma + eslint + tsc

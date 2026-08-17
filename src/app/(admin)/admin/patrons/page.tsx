@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Ban, Loader2, Search, ShieldOff, Trash2 } from "lucide-react";
+import Link from "next/link";
+import {
+  Ban,
+  FlaskConical,
+  Loader2,
+  Search,
+  ShieldOff,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { api } from "~/trpc/react";
@@ -53,6 +61,14 @@ export default function PatronsPage() {
           : undefined
       }
       maxWidth="max-w-4xl"
+      actions={
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/admin/patrons/test">
+            <FlaskConical className="size-4" aria-hidden />
+            Test the reader
+          </Link>
+        </Button>
+      }
     >
       <div className="space-y-6">
         <div className="relative">
