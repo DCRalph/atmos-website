@@ -19,11 +19,6 @@ db.sqlite
 /out/
 next-env.d.ts
 
-# the web door's OCR engine — copied out of node_modules and downloaded once by
-# `scripts/vendor-tesseract.mjs` on postinstall. Eight megabytes of binaries
-# that a reinstall reproduces exactly.
-/public/tesseract/
-
 # production
 /build
 

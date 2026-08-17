@@ -7,13 +7,10 @@ import {
   banPatron,
   liftBan,
   patronDossier,
-  previewIdentity,
   purgePatron,
   RETENTION_DAYS,
 } from "~/server/ticketing/id-check";
 import { DENY_REASON_VALUES } from "~/lib/ticketing/deny-reasons";
-import { DEFAULT_EVENT_TIMEZONE } from "~/lib/ticketing/dates";
-import { ID_DOCUMENT_TYPES } from "~/lib/ticketing/id-documents";
 import { logActivity } from "~/server/utils/activity-log";
 
 /**
@@ -33,45 +30,6 @@ import { logActivity } from "~/server/utils/activity-log";
 export const patronsRouter = createTRPCRouter({
   /** How long records are kept, so the UI can state it rather than restate it. */
   retention: adminProcedure.query(() => ({ days: RETENTION_DAYS })),
-
-  /**
-   * Read a document and report what a door *would* decide, writing nothing.
-   *
-   * The test bench. Somebody checking whether the parser copes with a new
-   * licence design should not be creating patron records for a colleague's
-   * licence, arming a 90-day retention clock on them, or putting rows into the
-   * count a door reads back — so this is read-only, like `checkTicket` is on
-   * the door router.
-   */
-  previewRead: adminProcedure
-    .input(
-      z.object({
-        /** Judge it against an R18 event's rules, which is the usual case. */
-        isR18: z.boolean().default(true),
-        timeZone: z.string().max(60).default(DEFAULT_EVENT_TIMEZONE),
-        reading: z.discriminatedUnion("kind", [
-          z.object({
-            kind: z.literal("ocr"),
-            lines: z.array(z.string().max(300)).max(200),
-          }),
-          z.object({
-            kind: z.literal("fields"),
-            documentType: z.enum(ID_DOCUMENT_TYPES),
-            documentNumber: z.string().trim().max(40).optional(),
-            fullName: z.string().trim().min(1).max(120),
-            dateOfBirth: z.iso.date(),
-            expiry: z.iso.date().optional(),
-          }),
-        ]),
-      }),
-    )
-    .mutation(({ input }) =>
-      previewIdentity({
-        reading: input.reading,
-        isR18: input.isR18,
-        timeZone: input.timeZone,
-      }),
-    ),
 
   /**
    * Find somebody.

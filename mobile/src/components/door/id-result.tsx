@@ -44,9 +44,6 @@ export function IdResult({
   ticketId,
   attendeeName,
   isManager,
-  /** The crop this phone just took, shown before any round trip for it. */
-  localPortrait,
-  onRetake,
   onDismiss,
 }: {
   eventId: string;
@@ -54,8 +51,6 @@ export function IdResult({
   ticketId?: string;
   attendeeName?: string | null;
   isManager: boolean;
-  localPortrait: string | null;
-  onRetake: () => void;
   onDismiss: () => void;
 }) {
   const insets = useSafeAreaInsets();
@@ -113,13 +108,11 @@ export function IdResult({
             {current.headline}
           </Text>
 
-          {localPortrait || person?.photoPath ? (
+          {/* Only ever a stored portrait, and only when something put one
+              there. Nothing captures one today — that arrives with an SDK. */}
+          {person?.photoPath ? (
             <Image
-              source={
-                localPortrait
-                  ? { uri: `data:image/jpeg;base64,${localPortrait}` }
-                  : { uri: person?.photoPath ?? "" }
-              }
+              source={{ uri: person.photoPath }}
               style={styles.portrait}
               contentFit="cover"
               accessibilityLabel="Photo from the ID"
@@ -215,12 +208,6 @@ export function IdResult({
               </Caption>
             </Pressable>
           ) : null}
-
-          {/* The way out when the reading is the problem rather than the
-              person — glare on the plastic, a thumb over the birthday. */}
-          <Pressable onPress={onRetake} style={styles.secondary}>
-            <Text style={styles.secondaryLabel}>Read it again</Text>
-          </Pressable>
 
           {/* Always last, always white, always harmless. */}
           <Pressable onPress={onDismiss} style={styles.safe}>

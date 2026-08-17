@@ -46,10 +46,6 @@
     // The Expo app has its own toolchain, its own tsconfig and its own
     // React Native types. Type-checking it from here makes the web build fail
     // on JSX and module resolution it was never meant to understand.
-    "mobile",
-    // Vendored third-party binaries served as static assets: the emscripten
-    // build of Tesseract is minified machine output, and `checkJs` has plenty
-    // to say about it. See `scripts/vendor-tesseract.mjs`.
-    "public/tesseract"
+    "mobile"
   ]
 }

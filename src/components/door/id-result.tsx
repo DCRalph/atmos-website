@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, Ban, BadgeCheck, RefreshCw } from "lucide-react";
+import { AlertTriangle, Ban, BadgeCheck, HelpCircle } from "lucide-react";
 
 import { api, type RouterOutputs } from "~/trpc/react";
 import {
@@ -25,14 +25,16 @@ export type IdOutcome = RouterOutputs["door"]["checkId"];
  *
  * Two things this screen does that the ticket result does not.
  *
- * The portrait is shown at a size that can be compared with a face, because
- * every check ends with somebody looking from the screen to the queue and back.
- * A green screen against the wrong face is worse than no check at all.
+ * Any stored portrait is shown at a size that can be compared with a face,
+ * because every check ends with somebody looking from the screen to the queue
+ * and back. A green screen against the wrong face is worse than no check at
+ * all. Nothing captures a portrait today — that arrives with an ID SDK — so in
+ * practice this is blank until one is wired up.
  *
  * And the disclaimer is printed on every outcome, including a pass. Nothing
- * here detects a good forgery — it reads what is printed and does the
- * arithmetic — and a door that forgets that will wave through a decent fake
- * precisely *because* the screen went green.
+ * here can tell a good forgery from the real thing: it takes the details it is
+ * given and does the arithmetic. A door that forgets that will wave through a
+ * decent fake precisely *because* the screen went green.
  */
 
 const TONE = {
@@ -40,7 +42,7 @@ const TONE = {
   banned: { bg: "bg-red-900", icon: Ban },
   refused: { bg: "bg-red-700", icon: Ban },
   caution: { bg: "bg-amber-600", icon: AlertTriangle },
-  unreadable: { bg: "bg-neutral-700", icon: RefreshCw },
+  unreadable: { bg: "bg-neutral-700", icon: HelpCircle },
 } as const;
 
 function toneFor(result: IdOutcome["result"]): keyof typeof TONE {
@@ -67,9 +69,6 @@ export function IdResultScreen({
   ticketId,
   attendeeName,
   isManager,
-  /** The crop this browser just took, shown without a round trip for it. */
-  localPortrait,
-  onRetake,
   onDismiss,
 }: {
   eventId: string;
@@ -77,8 +76,6 @@ export function IdResultScreen({
   ticketId?: string;
   attendeeName?: string | null;
   isManager: boolean;
-  localPortrait: string | null;
-  onRetake: () => void;
   onDismiss: () => void;
 }) {
   const [current, setCurrent] = useState(outcome);
@@ -126,17 +123,15 @@ export function IdResultScreen({
           {current.headline}
         </p>
 
-        {localPortrait || person?.photoPath ? (
-          // The source is either a data URI this page just made or a private,
-          // no-store route. Neither can go through the image optimiser, and a
-          // face off an ID must not be cached at the edge in any case.
+        {/* Only ever a stored portrait, and only when something put one there.
+            Nothing here produces one today — that comes with an SDK. */}
+        {person?.photoPath ? (
+          // A private, no-store route that re-checks door access on every
+          // request, so it cannot go through the image optimiser — and a face
+          // off an ID must not be cached at an edge in any case.
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={
-              localPortrait
-                ? `data:image/jpeg;base64,${localPortrait}`
-                : (person?.photoPath ?? "")
-            }
+            src={person.photoPath}
             alt="Photo from the ID"
             className="mt-5 h-40 w-33 border-2 border-white/50 bg-black/25 object-cover"
           />
@@ -188,7 +183,7 @@ export function IdResultScreen({
         ))}
 
         <p className="mt-6 max-w-xs text-xs opacity-55">
-          This reads what&apos;s printed. It can&apos;t spot a good fake — look
+          This checks the details it was given. It can&apos;t spot a fake — look
           at the card.
         </p>
       </div>
@@ -214,15 +209,6 @@ export function IdResultScreen({
             Ban from all events
           </ExceptionAction>
         ) : null}
-
-        <button
-          type="button"
-          onClick={onRetake}
-          className="flex h-12 w-full items-center justify-center gap-2 border-2 border-white/35 text-sm font-black tracking-wide uppercase"
-        >
-          <RefreshCw className="size-4" aria-hidden />
-          Read it again
-        </button>
 
         {/* Always last, always white, always harmless. */}
         <SafeAction onClick={onDismiss}>Next</SafeAction>

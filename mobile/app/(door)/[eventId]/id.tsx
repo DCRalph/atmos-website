@@ -1,5 +1,4 @@
-import { useCallback, useRef, useState } from "react";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { useCallback, useState } from "react";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -10,13 +9,11 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "@/lib/api";
 import { labelArg, useDeviceLabel } from "@/lib/device-label";
-import { isIdReadingAvailable, readIdDocument } from "@/lib/id-ocr";
-import { colors, radius, space, stroke } from "@/lib/theme";
-import { Body, Button, Caption, Loading, Notice } from "@/components/ui";
+import { colors, space, stroke } from "@/lib/theme";
+import { Button, Caption } from "@/components/ui";
 import { DoorHeader } from "@/components/door/door-header";
 import { IdResult, type IdOutcome } from "@/components/door/id-result";
 import { ID_DOCUMENTS } from "~/lib/ticketing/id-documents";
@@ -29,15 +26,16 @@ import { ID_DOCUMENTS } from "~/lib/ticketing/id-documents";
  * `ticketId` and so is the only one that can compare the name on the card with
  * the name on the ticket.
  *
- * The card is photographed and read **on this phone** — Apple's Vision
- * framework, offline, free. The photo itself is never uploaded. What goes to
- * the server is the recognised text and, if a face was found, a crop of it;
- * the server does the parsing, the age arithmetic and the ban lookup, and
- * sends back a verdict.
+ * Staff read the card and type what is on it. Everything after that — the age
+ * arithmetic in the venue's timezone, the ban list, the name comparison,
+ * whether the document is accepted evidence of age in New Zealand at all — is
+ * the server's job and is the same however these fields arrived.
  *
- * Manual entry sits one tap away rather than behind a failure. A camera that
- * cannot read a scratched licence is a normal Tuesday, and a door with a queue
- * cannot be left with no way forward.
+ * **There is no camera here on purpose.** Reading a licence off a photograph is
+ * a specialist job and the home-grown attempt was not good enough to put in
+ * front of a queue. That work belongs to an ID SDK; when one is chosen it fills
+ * in these same fields and submits them. See `~/lib/ticketing/id-reading` for
+ * the seam and `docs/ticketing/ID-CHECKS.md` for the options.
  */
 export default function IdScreen() {
   const { eventId, ticketId, attendeeName } = useLocalSearchParams<{
@@ -46,15 +44,13 @@ export default function IdScreen() {
     attendeeName?: string;
   }>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
-  const [permission, requestPermission] = useCameraPermissions();
-  const camera = useRef<CameraView>(null);
   const [outcome, setOutcome] = useState<IdOutcome | null>(null);
-  const [portrait, setPortrait] = useState<string | null>(null);
-  const [reading, setReading] = useState(false);
-  const [manual, setManual] = useState(false);
-  const [couldNotRead, setCouldNotRead] = useState(false);
+  const [documentType, setDocumentType] =
+    useState<(typeof ID_DOCUMENTS)[number]["value"]>("NZ_DRIVER_LICENCE");
+  const [fullName, setFullName] = useState("");
+  const [birth, setBirth] = useState("");
+  const [documentNumber, setDocumentNumber] = useState("");
 
   const { deviceLabel } = useDeviceLabel();
   const summary = api.door.summary.useQuery(
@@ -78,49 +74,15 @@ export default function IdScreen() {
     },
   });
 
-  const capture = useCallback(async () => {
-    if (reading || check.isPending) return;
-    setCouldNotRead(false);
-    setReading(true);
+  const dateOfBirth = toIsoDate(birth);
+  const ready = fullName.trim().length > 1 && dateOfBirth !== null;
 
-    try {
-      const photo = await camera.current?.takePictureAsync({ quality: 0.9 });
-      if (!photo?.uri) {
-        setCouldNotRead(true);
-        return;
-      }
-
-      const read = await readIdDocument(photo.uri);
-      if (!read) {
-        setCouldNotRead(true);
-        await Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Warning,
-        );
-        return;
-      }
-
-      setPortrait(read.portrait);
-      check.mutate({
-        eventId,
-        ticketId: ticketId ?? undefined,
-        deviceLabel: labelArg(deviceLabel),
-        portrait: read.portrait ?? undefined,
-        reading: { kind: "ocr", lines: read.lines },
-      });
-    } finally {
-      setReading(false);
-    }
-  }, [check, deviceLabel, eventId, reading, ticketId]);
-
-  const dismiss = useCallback(() => {
+  const reset = useCallback(() => {
     setOutcome(null);
-    setPortrait(null);
-    setManual(false);
+    setFullName("");
+    setBirth("");
+    setDocumentNumber("");
   }, []);
-
-  if (!permission) return <Loading label="Checking camera" />;
-
-  const canRead = isIdReadingAvailable();
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -133,101 +95,98 @@ export default function IdScreen() {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: space.lg, gap: space.lg }}
+        contentContainerStyle={{ padding: space.lg, gap: space.md }}
         keyboardShouldPersistTaps="handled"
       >
-        {!permission.granted ? (
-          <Notice
-            title="Camera access needed"
-            detail="Reading an ID needs the camera. The photo stays on this phone — it's read here and never uploaded."
-            action={
-              <Button onPress={() => void requestPermission()}>
-                Allow camera
-              </Button>
-            }
-          />
-        ) : !canRead ? (
-          // A dev client older than the native module. Real, and recoverable:
-          // typing the details in works exactly the same from here on.
-          <Notice
-            title="This build can't read cards"
-            detail="Reading an ID needs a newer build of the app. You can still type the details in."
-            action={<Button onPress={() => setManual(true)}>Type it in</Button>}
-          />
-        ) : manual ? null : (
-          <>
-            <View style={styles.viewfinder}>
-              <CameraView
-                ref={camera}
-                style={StyleSheet.absoluteFill}
-                facing="back"
-              />
-              {/* An ID-1 card is 85.6 × 54mm. Framing the guide to the real
-                  proportions is what gets a whole card in shot rather than a
-                  cropped one, and a cropped card is a missing birthday. */}
-              <View pointerEvents="none" style={styles.guide} />
-            </View>
-
-            <Body soft style={{ textAlign: "center" }}>
-              {reading
-                ? "Reading…"
-                : check.isPending
-                  ? "Checking…"
-                  : "Fill the frame with the front of the card"}
-            </Body>
-
-            <Button
-              onPress={() => void capture()}
-              loading={reading || check.isPending}
-              disabled={reading || check.isPending}
-            >
-              Read this ID
-            </Button>
-
-            {couldNotRead ? (
-              <Notice
-                title="Couldn't read it"
-                detail="Try again with the card flat and the light off the plastic — or type the details in."
-                action={
-                  <Button variant="outline" onPress={() => setManual(true)}>
-                    Type it in
-                  </Button>
-                }
-              />
-            ) : (
-              <Pressable onPress={() => setManual(true)} hitSlop={8}>
-                <Caption style={{ textAlign: "center" }}>
-                  Card won't read? Type it in
-                </Caption>
+        <Caption>Which document</Caption>
+        <View style={styles.typeGrid}>
+          {ID_DOCUMENTS.map((option) => {
+            const active = documentType === option.value;
+            return (
+              <Pressable
+                key={option.value}
+                onPress={() => setDocumentType(option.value)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: active }}
+                style={[styles.type, active && styles.typeActive]}
+              >
+                <Text style={[styles.typeLabel, active && { color: "#000" }]}>
+                  {option.label}
+                </Text>
               </Pressable>
-            )}
+            );
+          })}
+        </View>
 
-            {/* IPP3: the person handing over the card is entitled to know what
-                is being taken and why, before it is taken. Staff can turn the
-                screen round; there is a sign for the door in the docs. */}
-            <Text style={styles.privacy}>
-              We record the name, date of birth and photo from the ID to check
-              age and entry bans. It's deleted after 90 days unless there's a
-              ban.
-            </Text>
-          </>
-        )}
-
-        {manual ? (
-          <ManualEntry
-            pending={check.isPending}
-            onCancel={() => setManual(false)}
-            onSubmit={(fields) => {
-              setPortrait(null);
-              check.mutate({
-                eventId,
-                ticketId: ticketId ?? undefined,
-                deviceLabel: labelArg(deviceLabel),
-                reading: { kind: "fields", ...fields },
-              });
-            }}
+        <View style={{ gap: space.xs }}>
+          <Caption>Name, as printed</Caption>
+          <TextInput
+            value={fullName}
+            onChangeText={setFullName}
+            autoCapitalize="words"
+            autoCorrect={false}
+            placeholder="Jane Anne Smith"
+            placeholderTextColor={colors.textFaint}
+            style={styles.input}
           />
-        ) : null}
+        </View>
+
+        <View style={{ gap: space.xs }}>
+          <Caption>Date of birth — day/month/year</Caption>
+          <TextInput
+            value={birth}
+            onChangeText={setBirth}
+            keyboardType="number-pad"
+            placeholder="15/01/1990"
+            placeholderTextColor={colors.textFaint}
+            style={styles.input}
+          />
+        </View>
+
+        <View style={{ gap: space.xs }}>
+          <Caption>
+            Document number — optional, but it&apos;s how we know them again
+          </Caption>
+          <TextInput
+            value={documentNumber}
+            onChangeText={setDocumentNumber}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            placeholder="AB123456"
+            placeholderTextColor={colors.textFaint}
+            style={styles.input}
+          />
+        </View>
+
+        <Button
+          onPress={() => {
+            if (!dateOfBirth) return;
+            check.mutate({
+              eventId,
+              ticketId: ticketId ?? undefined,
+              deviceLabel: labelArg(deviceLabel),
+              reading: {
+                documentType,
+                fullName: fullName.trim(),
+                dateOfBirth,
+                documentNumber: documentNumber.trim() || undefined,
+              },
+            });
+          }}
+          disabled={!ready || check.isPending}
+          loading={check.isPending}
+        >
+          {ready ? "Check this person" : "Name and birthday first"}
+        </Button>
+
+        {/* IPP3: the person handing over the card is entitled to know what is
+            being taken and why, before it is taken. Staff can turn the screen
+            round; there is a sign for the door in the docs. */}
+        <Text style={styles.privacy}>
+          We record the name, date of birth and document number from the ID to
+          check age and entry bans. It&apos;s deleted after 90 days unless
+          there&apos;s a ban.
+        </Text>
       </ScrollView>
 
       {outcome ? (
@@ -237,13 +196,8 @@ export default function IdScreen() {
           ticketId={ticketId}
           attendeeName={attendeeName}
           isManager={summary.data?.isManager ?? false}
-          localPortrait={portrait}
-          onRetake={() => {
-            setOutcome(null);
-            setPortrait(null);
-          }}
           onDismiss={() => {
-            dismiss();
+            reset();
             // Straight back to the ticket queue when that is where this came
             // from; an ID check off a scan is one step in a longer job.
             if (ticketId) {
@@ -255,124 +209,6 @@ export default function IdScreen() {
           }}
         />
       ) : null}
-
-      <View style={{ height: insets.bottom }} />
-    </View>
-  );
-}
-
-/**
- * Typing the card in by hand.
- *
- * The same endpoint as a camera read — a correction and a manual entry are the
- * same thing to the server — so everything downstream, the ban lookup, the age
- * arithmetic, the record, behaves identically. Only the document type has to
- * be picked, because that is the one field a person cannot infer from what
- * they typed and it decides whether the ID is even accepted evidence of age.
- */
-function ManualEntry({
-  pending,
-  onCancel,
-  onSubmit,
-}: {
-  pending: boolean;
-  onCancel: () => void;
-  onSubmit: (fields: {
-    documentType: (typeof ID_DOCUMENTS)[number]["value"];
-    documentNumber?: string;
-    fullName: string;
-    dateOfBirth: string;
-  }) => void;
-}) {
-  const [documentType, setDocumentType] = useState<
-    (typeof ID_DOCUMENTS)[number]["value"]
-  >("NZ_DRIVER_LICENCE");
-  const [fullName, setFullName] = useState("");
-  const [birth, setBirth] = useState("");
-  const [documentNumber, setDocumentNumber] = useState("");
-
-  const dateOfBirth = toIsoDate(birth);
-  const ready = fullName.trim().length > 1 && dateOfBirth !== null;
-
-  return (
-    <View style={{ gap: space.md }}>
-      <Caption>Which document</Caption>
-      <View style={styles.typeGrid}>
-        {ID_DOCUMENTS.map((option) => {
-          const active = documentType === option.value;
-          return (
-            <Pressable
-              key={option.value}
-              onPress={() => setDocumentType(option.value)}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: active }}
-              style={[styles.type, active && styles.typeActive]}
-            >
-              <Text style={[styles.typeLabel, active && { color: "#000" }]}>
-                {option.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      <View style={{ gap: space.xs }}>
-        <Caption>Name, as printed</Caption>
-        <TextInput
-          value={fullName}
-          onChangeText={setFullName}
-          autoCapitalize="words"
-          autoCorrect={false}
-          placeholder="Jane Anne Smith"
-          placeholderTextColor={colors.textFaint}
-          style={styles.input}
-        />
-      </View>
-
-      <View style={{ gap: space.xs }}>
-        <Caption>Date of birth — day/month/year</Caption>
-        <TextInput
-          value={birth}
-          onChangeText={setBirth}
-          keyboardType="number-pad"
-          placeholder="15/01/1990"
-          placeholderTextColor={colors.textFaint}
-          style={styles.input}
-        />
-      </View>
-
-      <View style={{ gap: space.xs }}>
-        <Caption>Document number (optional, but it's how we know them again)</Caption>
-        <TextInput
-          value={documentNumber}
-          onChangeText={setDocumentNumber}
-          autoCapitalize="characters"
-          autoCorrect={false}
-          placeholder="AB123456"
-          placeholderTextColor={colors.textFaint}
-          style={styles.input}
-        />
-      </View>
-
-      <Button
-        onPress={() =>
-          dateOfBirth &&
-          onSubmit({
-            documentType,
-            fullName: fullName.trim(),
-            dateOfBirth,
-            documentNumber: documentNumber.trim() || undefined,
-          })
-        }
-        disabled={!ready || pending}
-        loading={pending}
-      >
-        {ready ? "Check this person" : "Name and birthday first"}
-      </Button>
-
-      <Pressable onPress={onCancel} hitSlop={8}>
-        <Caption style={{ textAlign: "center" }}>Back to the camera</Caption>
-      </Pressable>
     </View>
   );
 }
@@ -381,9 +217,7 @@ function ManualEntry({
  * `15/01/1990` → `1990-01-15`.
  *
  * Day-first, with no cleverness about the American order: somebody typing into
- * a New Zealand door app under a label that says day/month means day/month.
- * The camera path is where ambiguity has to be handled, and it is handled
- * there.
+ * a New Zealand door app, under a label that says day/month, means day/month.
  */
 function toIsoDate(value: string): string | null {
   const match = /^(\d{1,2})\s*[/.\-\s]\s*(\d{1,2})\s*[/.\-\s]\s*(\d{4})$/.exec(
@@ -396,6 +230,8 @@ function toIsoDate(value: string): string | null {
   const year = Number(match[3]);
   if (month < 1 || month > 12 || day < 1 || day > 31) return null;
 
+  // Rejects the 31st of February and friends, which `Date` would otherwise
+  // roll forward into March and hand back as a date nobody typed.
   const probe = new Date(Date.UTC(year, month - 1, day));
   if (probe.getUTCMonth() !== month - 1 || probe.getUTCDate() !== day) {
     return null;
@@ -405,24 +241,6 @@ function toIsoDate(value: string): string | null {
 }
 
 const styles = StyleSheet.create({
-  viewfinder: {
-    // Wider than the ticket scanner's square: a card held up fills a landscape
-    // frame, and a square one wastes half the sensor on the queue behind them.
-    aspectRatio: 4 / 3,
-    borderRadius: radius.lg,
-    overflow: "hidden",
-    backgroundColor: "#000",
-  },
-  guide: {
-    position: "absolute",
-    top: "12%",
-    left: "6%",
-    right: "6%",
-    // 85.6 × 54mm, as a percentage of the frame above.
-    bottom: "12%",
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.35)",
-  },
   input: {
     height: 48,
     borderWidth: stroke.hard,
@@ -455,5 +273,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     textAlign: "center",
+    marginTop: space.sm,
   },
 });

@@ -11,93 +11,68 @@ card in the dark and doing date arithmetic in their head. And there was no
 memory: somebody refused on Friday was a stranger again on Saturday, because a
 refusal is recorded against a *ticket*, and Saturday's ticket is a different row.
 
-## The shape of it
+## What this is, and what it deliberately is not
 
+**It does not read documents.** There is no OCR here, no template matching, no
+barcode parsing. A home-grown reader was built and then removed: on real cards
+under a real doorway light it was not accurate enough to put in front of a
+queue, and a reader that is *nearly* right is worse than none — it files people
+under misread names and matches bans against the wrong person, quietly.
+
+Reading a licence is a specialist job. It belongs to an ID SDK. Until one is
+chosen, **staff read the card and type what is on it**, which is slower and
+exact. Everything downstream is identical either way, which is the whole point
+of where the boundary sits.
+
+## The seam an SDK plugs into
+
+`src/lib/ticketing/id-reading.ts`. One flat shape:
+
+```ts
+{ documentType, documentNumber?, fullName, dateOfBirth, expiry? }
 ```
-iPhone → Apple Vision (native, offline) ─┐
-                                          ├→ text lines → server → verdict
-Web    → Tesseract WASM (in the page)   ─┘
-```
 
-**The device does the optical work; the server does everything else.** Both
-clients send a bag of recognised text lines and nothing else. Two reasons, and
-they shaped the whole design:
+`checkIdentity` neither knows nor cares where those came from. Wiring up an SDK
+means changing the two screens that collect them and nothing else — not the age
+rules, not the ban list, not the retention clock, not the audit log.
 
-- The phone and the browser must never disagree about what `03/04/1999` means.
-  One parser, one answer.
-- A new card design needs fixing at 2am. That is a server deploy. A parser
-  living in the app would be an App Store review.
+When you do wire one up, add what it returns that we do not have yet — the
+portrait it cropped, an authenticity verdict, a confidence score — and let
+`checkIdentity` act on them. The portrait plumbing is already there and unused:
+`src/server/ticketing/id-photos.ts` stores one privately and
+`/api/door/patron-photo/[patronId]` serves it back to door staff only.
 
-**The photograph of the card never leaves the device.** What crosses the network
-is the text and — only if a face was found — a crop of it. The address, the
-licence classes and everything else printed on the card are gone before anything
-is transmitted.
+**Capture the document number if the SDK gives you one.** It is what a patron
+record is keyed on, and it is exact — the same card finds the same person
+however their name was spelled that night. Without it the key falls back to
+name-plus-birthday, which misses somebody entered differently next time.
 
-### Where the code is
+### The options, as researched
 
-| Piece | File |
-| --- | --- |
-| Parsing text → name, birthday, expiry | `src/lib/ticketing/id-documents.ts` |
-| The decision, bans, retention | `src/server/ticketing/id-check.ts` |
-| Portrait storage | `src/server/ticketing/id-photos.ts` |
-| Serving a stored portrait | `src/app/api/door/patron-photo/[patronId]/route.ts` |
-| Door API | `door.checkId`, `door.banPatron`, `door.liftBan`, `door.patron` |
-| Office API | `src/server/api/routers/patrons.ts` → `/admin/patrons` |
-| iOS recogniser | `mobile/modules/text-recognition/` + `mobile/src/lib/id-ocr.ts` |
-| Web recogniser | `src/lib/door/id-ocr-web.ts` + `scripts/vendor-tesseract.mjs` |
+Reading a New Zealand licence is the hard case: the front is printed text with
+no MRZ, and the barcode on the back carries only the licence number, the card
+number and a check digit — no name, no birthday. So a real SDK with a real
+document template is the only reliable route.
 
-## What it can and cannot do
+| Vendor | NZ licence | On-device | React Native | Fake detection | Price |
+| --- | --- | --- | --- | --- | --- |
+| **Regula** | Best documented — DL 2013/2014, Kiwi Access, passports | Fully offline | Official package | Hologram/liveness | Quote |
+| **Microblink BlinkID** | Yes, template-level | Yes | Official package | Yes | Quote; 100 scans/mo free |
+| **Scandit ID Capture** | 2,500+ docs, 95%+ claimed on visual zone | Yes | Official package | ID Validate tier | Quote |
+| **Scanbot** | Weaker ID coverage | Yes | Yes | Limited | Flat annual, unlimited |
+| **ID Analyzer** | 6 NZ licence versions | ✗ cloud | REST | Yes | USD $89/mo for 1,000 |
 
-It reads what is printed and does the arithmetic. **It does not detect a good
-forgery** — no free on-device reader does — and the UI says so on every verdict,
-including a pass, because a door that forgets it will wave through a decent fake
-precisely *because* the screen went green.
+Two things worth weighing. Scanbot's flat annual fee suits a door better than
+anyone's per-scan pricing, which punishes exactly the behaviour you want. And ID
+Analyzer is the only published affordable price, but it is a cloud API — the
+photograph leaves the device, which reverses the privacy position below and
+would need the policy rewritten to match.
 
-The one place there is real verification is a passport: an MRZ carries its own
-check digits, so a passport that parses is arithmetically verified. Everything
-else is pattern-matching on text an OCR engine may have mangled, which is why
-`confidence` never comes back `"high"` for a driver licence and why every
-uncertain reading travels with the doubt attached for a human to confirm.
-
-## The documents
-
-Only three things are approved evidence of age on licensed premises in New
-Zealand, under the Sale and Supply of Alcohol Regulations 2013: a **New Zealand
-driver licence**, a **passport** of any country, and the **Kiwi Access Card**
-(with the old Hospitality NZ 18+ card still valid). An Australian driver licence
-is a perfectly genuine document that is *not* on that list.
-
-`ID_DOCUMENTS` in `src/lib/ticketing/id-documents.ts` carries that as data, and
-an unapproved document at an R18 event comes back `NOT_APPROVED_EVIDENCE` rather
-than passing. That is the licensee's exposure, not the holder's, so the door is
-told rather than being left to remember.
-
-Machine-readability, which is why the reader is OCR and not a barcode scanner:
-
-| Document | What is machine-readable |
-| --- | --- |
-| NZ driver licence | Nothing. Printed text only — hence the OCR. |
-| Kiwi Access Card | Nothing. |
-| Passport (any) | The MRZ, with check digits. The reliable path. |
-
-### Parser order
-
-Best-first, and the first template that yields a name and a birthday wins.
-
-1. **MRZ** (TD1/TD2/TD3), check digits validated. Numeric fields are repaired
-   before the checksum, not after — `9OO115` fails its own check digit and
-   `900115` passes it, which is what turns the `O`→`0` repair from a hopeful
-   substitution into a verified one.
-2. **NZ driver licence** — the numbered fields (`1` surname, `2` first names,
-   `3` date of birth, `4b` expiry, `5` card number `[A-Z]{2}\d{6}`).
-3. **Kiwi Access Card**, then a **generic fallback**: the oldest date that
-   yields a plausible age is the birthday, the longest all-caps lines are the
-   name. Always `confidence: "low"`.
-
-Dates are read `DD/MM/YYYY`. When both numbers are 12 or under the reading is
-genuinely ambiguous and that doubt is returned rather than resolved — `03/04/1999`
-is either the 3rd of April or the 4th of March, and on the wrong side of a
-birthday that is the difference between admitting somebody and not.
+Worth tracking separately: New Zealand's **digital driver licence**. The
+Regulatory Systems (Transport) Amendment Act 2026 recognises it, DIA and Mattr
+are building the credential platform, and an mDL is cryptographically signed —
+exact data, no reading, no forgery question. That eventually makes all of the
+above unnecessary.
 
 ## The decision
 
@@ -117,6 +92,13 @@ BANNED  >  UNDERAGE  >  NOT_APPROVED_EVIDENCE  >  DOCUMENT_EXPIRED
 Age is computed in the **event's** timezone. A door in Auckland at 1am on
 somebody's birthday is a door where they are eighteen, and a UTC server thinks
 otherwise.
+
+Only three documents are approved evidence of age on licensed premises in New
+Zealand, under the Sale and Supply of Alcohol Regulations 2013: a **NZ driver
+licence**, a **passport** of any country, and the **Kiwi Access Card**. An
+Australian driver licence is a genuine document that is *not* on that list, so
+it comes back `NOT_APPROVED_EVIDENCE` at an R18 event. That is the licensee's
+exposure, not the holder's, so the door is told rather than left to remember.
 
 Three checks worth calling out:
 
@@ -153,7 +135,7 @@ is how every ban ends up permanent.
 ## Retention
 
 **90 days from the last check** (`RETENTION_DAYS`), swept nightly by
-`purgeExpiredPatrons()` from `/api/cron/ticketing-sweep`. The portrait object
+`purgeExpiredPatrons()` from `/api/cron/ticketing-sweep`. Any portrait object
 goes first, then the row — a row deleted before its object leaves an orphan
 nobody will ever find again.
 
@@ -173,7 +155,6 @@ belonging to members of the public who have no account here and did not choose
 to be in a database. The rules are enforced in the columns rather than left to
 whoever writes the next query.
 
-- **The portrait is a face, never the card.** Cropped on the device.
 - **Portraits do not use the `file_upload` path.** That path ends at
   `/api/media/[id]`, which serves any completed file to anyone and caches it for
   a year. These are private objects behind a route that re-checks door access on
@@ -185,85 +166,28 @@ whoever writes the next query.
 - **Somebody can ask.** `/admin/patrons` shows every field held, including the
   date it will be deleted, and can delete a record early. The Privacy Act gives
   them that right; a system with no way to honour it cannot be run lawfully.
-- **They are told.** The capture screen states what is collected and why before
-  the camera opens (IPP3), and the privacy policy carries a section on it. Print
-  a notice for the door as well — the screen is for the staffer, the sign is for
-  the queue.
-
-## The iOS recogniser
-
-`mobile/modules/text-recognition/` — a local Expo module wrapping Apple's Vision
-framework. Local rather than a patch to `ios/` for the same reason the Tap to Pay
-education module is: `ios/` is generated by `expo prebuild` and gitignored, so a
-patch applied there is destroyed by the next build.
-
-Two settings matter more than the rest:
-
-- `recognitionLevel = .accurate`. `.fast` reads a licence number as a smear.
-- `usesLanguageCorrection = false`. Autocorrect "fixes" surnames into dictionary
-  words and turns `AB123456` into something that was never on the card.
-
-`VNDetectFaceRectanglesRequest` supplies the portrait crop in the same pass.
-
-> ⚠️ **A dev client built before this module existed cannot run it.** Rebuild:
-> `eas build --profile development --platform ios`. The app treats an absent
-> module as a first-class state and offers manual entry rather than crashing.
-
-## The web recogniser
-
-Tesseract compiled to WebAssembly, running in the page. `scripts/vendor-tesseract.mjs`
-copies the worker and the SIMD-LSTM engine out of `node_modules` and downloads
-the English model once, into `public/tesseract/` — gitignored, because eight
-megabytes of binaries do not belong in the history when a reinstall reproduces
-them exactly. It runs on `postinstall`.
-
-Served from our own origin rather than the project's CDN, which is what
-tesseract.js does by default: a door on a venue's guest wifi should not depend on
-a third party being up, and a photograph of somebody's licence should not be
-processed by code fetched from a host we do not control.
-
-Be honest about the quality. Tesseract on a phone photo of an NZ licence is
-materially worse than Vision on the same card. It is there because the
-alternative on the web is nothing, and because the parser it feeds is built to
-say "I am not sure". Manual entry is one tap away at every point, not a
-punishment for failure.
-
-The browser has no face detector worth shipping, so the staffer taps the photo on
-the captured still and that becomes the centre of the crop. One tap, and
-everything outside the box is discarded before anything is sent.
+- **They are told.** The entry screen states what is collected and why (IPP3),
+  and the privacy policy carries a section on it. Print a notice for the door as
+  well — the screen is for the staffer, the sign is for the queue.
+- **If you adopt a cloud SDK**, all of the above changes. The image would leave
+  the device and be processed by a third party, which needs saying in the policy
+  and to the person handing over the card.
 
 ## Trying it out
 
-**`/admin/patrons/test` is the bench.** Paste OCR lines, upload a photo of a
-card, or use the camera; it runs the real engine and the real parser and shows
-every step — the lines that came back, which template claimed them, what it
-pulled out, what it was unsure about, and the verdict a door would reach. It
-**writes nothing**: no patron record, no retention clock, no row in a door's
-counts, because testing the reader on a colleague's licence must not put that
-colleague in the database. It goes through `patrons.previewRead`, which is
-read-only in the way `checkTicket` is on the door router.
-
-Four sample inputs are built in, so the page is useful before anybody finds a
-real card. The passport sample carries valid check digits — if it comes back as
-anything other than `MRZ` / `high`, the parser has regressed rather than the
-camera having failed.
-
 ```bash
-bun test src/lib/ticketing/id-documents.test.ts   # the parser
+bun test src/lib/ticketing/id-documents.test.ts   # age, expiry, name matching
 bun run check                                      # prisma + eslint + tsc
 bun run db:migrate                                 # 20260817000000_door_id_checks
 ```
 
 End to end on the web: `bun dev` → `/door/<eventId>` → **More → Check an ID** →
-photograph a licence → verdict. Ban from the verdict, then read the same document
-again and confirm the red screen and the recorded reason.
-
-On the phone: rebuild the dev client, then door → scan a ticket at an R18 event →
-**Check their ID**.
+type a name and birthday → verdict. Ban from the verdict, then check the same
+details again and confirm the red screen and the recorded reason.
 
 Retention: set a `purgeAfter` in the past by hand and hit the cron route with the
-`CRON_SECRET` header. The row and its S3 object should both go, and the `IdCheck`
-row should survive with a null `patronId`.
+`CRON_SECRET` header. The row should go and the `IdCheck` row should survive with
+a null `patronId`.
 
 The photo route is the one to check by hand: request
 `/api/door/patron-photo/<id>` while signed out, and again as a user who is not

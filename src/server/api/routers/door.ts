@@ -43,7 +43,7 @@ import {
 import { buildTicketToken } from "~/server/ticketing/qr";
 import { banPatron, checkIdentity, liftBan } from "~/server/ticketing/id-check";
 import { DENY_REASON_VALUES } from "~/lib/ticketing/deny-reasons";
-import { ID_DOCUMENT_TYPES } from "~/lib/ticketing/id-documents";
+import { idReadingSchema } from "~/lib/ticketing/id-reading";
 import { ACCESS_LEVEL_VALUES } from "~/lib/ticketing/access-levels";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
 import { logActivity } from "~/server/utils/activity-log";
@@ -1779,28 +1779,15 @@ export const doorRouter = createTRPCRouter({
         ticketId: z.string().optional(),
         deviceLabel: z.string().trim().max(60).optional(),
         /**
-         * The cropped face as base64 JPEG. Around 40KB — small enough to ride
-         * along with the check rather than needing an upload of its own, and
-         * the crop already happened on the device, so the card itself never
-         * reaches us.
+         * The cardholder's face as base64 JPEG, cropped from the document.
+         *
+         * Nothing sends this yet — it is here for the ID SDK that will. A crop
+         * is around 40KB, small enough to ride along with the check rather
+         * than needing an upload of its own, and cropping on the device is
+         * what keeps the rest of the card from ever reaching us.
          */
         portrait: z.string().max(1_500_000).optional(),
-        reading: z.discriminatedUnion("kind", [
-          z.object({
-            kind: z.literal("ocr"),
-            // A card yields tens of lines; a few hundred is a camera pointed
-            // at a page of text, and nothing good comes of parsing it.
-            lines: z.array(z.string().max(300)).max(200),
-          }),
-          z.object({
-            kind: z.literal("fields"),
-            documentType: z.enum(ID_DOCUMENT_TYPES),
-            documentNumber: z.string().trim().max(40).optional(),
-            fullName: z.string().trim().min(2).max(120),
-            dateOfBirth: z.iso.date(),
-            expiry: z.iso.date().optional(),
-          }),
-        ]),
+        reading: idReadingSchema,
       }),
     )
     .mutation(async ({ ctx, input }) => {

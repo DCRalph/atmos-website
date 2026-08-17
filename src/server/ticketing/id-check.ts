@@ -18,12 +18,8 @@ import {
   isExpired,
   matchNames,
   MINIMUM_ENTRY_AGE,
-  type IdParseConfidence,
-  type IdParseSource,
   type NameMatch,
   normaliseName,
-  type ParsedIdDocument,
-  parseIdDocument,
 } from "~/lib/ticketing/id-documents";
 import { deletePortrait, storePortrait } from "~/server/ticketing/id-photos";
 
@@ -70,8 +66,7 @@ export type IdWarning = {
     | "ALREADY_USED_TONIGHT"
     | "NAME_MISMATCH"
     | "NAME_PARTIAL"
-    | "PREVIOUSLY_REFUSED"
-    | "UNCERTAIN_READING";
+    | "PREVIOUSLY_REFUSED";
   /** Two or three words, for a chip on the verdict screen. */
   label: string;
   /** One sentence, written for a doorway. */
@@ -128,25 +123,31 @@ export type IdCheckOutcome = {
   /** Against the ticket this was checked from, when there was one. */
   nameMatch: NameMatch | null;
   ticketName: string | null;
-  /** How the document was read, and how much the reading can be trusted. */
-  readAs: IdParseSource | "MANUAL";
-  confidence: IdParseConfidence;
-  /** Readings a human has to confirm before the verdict means anything. */
-  ambiguities: string[];
 };
 
-/** What the client sends: raw OCR, or fields a staffer typed or corrected. */
-export type IdReading =
-  | { kind: "ocr"; lines: string[] }
-  | {
-      kind: "fields";
-      documentType: IdDocumentType;
-      documentNumber?: string | null;
-      fullName: string;
-      /** `yyyy-mm-dd`. */
-      dateOfBirth: string;
-      expiry?: string | null;
-    };
+/**
+ * The details off the card, from whatever read it.
+ *
+ * Nothing in this codebase reads a document — see `~/lib/ticketing/id-reading`,
+ * which is the seam an ID SDK plugs into. Today these fields come from a
+ * staffer typing what they can see. Whatever produces them next, everything
+ * below this line is unchanged by the swap, which is the whole reason the
+ * boundary sits here.
+ */
+export type IdReading = {
+  documentType: IdDocumentType;
+  /**
+   * The number printed on the card, when there is one.
+   *
+   * Worth capturing: it is exact and stable, so it keys a patron record far
+   * better than a name and a birthday do.
+   */
+  documentNumber?: string | null;
+  fullName: string;
+  /** `yyyy-mm-dd`. */
+  dateOfBirth: string;
+  expiry?: string | null;
+};
 
 // ---------------------------------------------------------------------------
 // Identity
@@ -181,12 +182,13 @@ function identitySecret(): string {
 function identityHash(document: {
   documentType: IdDocumentType;
   documentNumber: string | null;
-  fullName: string;
-  dateOfBirth: string;
+  /** Only needed for the weak form, where there is no document number. */
+  fullName?: string;
+  dateOfBirth?: string;
 }): string {
   const material = document.documentNumber
     ? `doc:${document.documentType}:${document.documentNumber.toUpperCase().replace(/\s/g, "")}`
-    : `name:${normaliseName(document.fullName)}:${document.dateOfBirth}`;
+    : `name:${normaliseName(document.fullName ?? "")}:${document.dateOfBirth ?? ""}`;
 
   return createHmac("sha256", identitySecret())
     .update(material)
@@ -194,36 +196,29 @@ function identityHash(document: {
 }
 
 /**
- * Whatever the client sent, as a parse result.
+ * A name split into the halves the ban lookup needs.
  *
- * Camera and keyboard converge here so that everything downstream — the age
- * arithmetic, the ban lookup, the record — cannot tell them apart and cannot
- * therefore treat them differently. A staffer reading the card themselves is
- * the most reliable input this system has; it is also the slowest, which is why
- * it is the fallback rather than the flow.
+ * Crude on purpose, and only ever used for the *secondary* ban match — the one
+ * that catches somebody barred on a licence coming back on a passport. Last
+ * word as the surname is a Western convention that is wrong for plenty of
+ * people, which is exactly why a match on it is reported as
+ * `matchedOn: "NAME_AND_DOB"` for a human to settle rather than acted on
+ * blindly.
+ *
+ * An ID SDK returns these as separate fields off the document itself. When one
+ * is wired up, take them from it and delete this.
  */
-function readingToParse(reading: IdReading): {
-  document: ParsedIdDocument;
-  source: IdParseSource | "MANUAL";
-  confidence: IdParseConfidence;
-  ambiguities: string[];
+function splitName(fullName: string): {
+  givenNames: string | null;
+  familyName: string | null;
 } {
-  if (reading.kind === "ocr") return parseIdDocument(reading.lines);
+  const words = fullName.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return { givenNames: null, familyName: null };
+  if (words.length === 1) return { givenNames: null, familyName: words[0]! };
 
   return {
-    document: {
-      documentType: reading.documentType,
-      documentNumber: reading.documentNumber ?? null,
-      familyName: null,
-      givenNames: null,
-      fullName: reading.fullName.trim(),
-      dateOfBirth: reading.dateOfBirth,
-      expiry: reading.expiry ?? null,
-      nationality: null,
-    },
-    source: "MANUAL",
-    confidence: "high",
-    ambiguities: [],
+    givenNames: words.slice(0, -1).join(" "),
+    familyName: words[words.length - 1]!,
   };
 }
 
@@ -252,7 +247,13 @@ export async function checkIdentity({
   eventId: string;
   ticketId?: string | null;
   reading: IdReading;
-  /** The cropped face as base64 JPEG, cropped on the device. */
+  /**
+   * The cardholder's face as base64 JPEG, cropped from the document.
+   *
+   * Nothing produces one yet — it is here for the ID SDK that will. The
+   * storage behind it is live, so the day something passes a portrait it is
+   * saved privately, shown on the verdict, and purged with the record.
+   */
   portrait?: string | null;
   checkedByUserId: string;
   deviceLabel?: string | null;
@@ -262,54 +263,37 @@ export async function checkIdentity({
     select: { id: true, isR18: true, timezone: true },
   });
 
-  const parsed = readingToParse(reading);
-  const { document } = parsed;
-  // Pulled out rather than read off `document` throughout: the awaits below
-  // would otherwise widen these back to nullable at every use.
+  const document = {
+    documentType: reading.documentType,
+    documentNumber: reading.documentNumber?.trim() ?? null,
+    fullName: reading.fullName.trim(),
+    dateOfBirth: reading.dateOfBirth,
+    expiry: reading.expiry ?? null,
+    ...splitName(reading.fullName),
+  };
+
   const fullName = document.fullName;
   const birthDate = document.dateOfBirth;
 
-  // Nothing to check, but the attempt still happened and still gets recorded.
-  if (!fullName || !birthDate) {
-    await db.idCheck
-      .create({
-        data: {
-          eventId,
-          ticketId: ticketId ?? null,
-          result: IdCheckResult.UNREADABLE,
-          documentType: document.documentType,
-          checkedByUserId,
-          deviceLabel: deviceLabel ?? null,
-        },
-      })
-      .catch(() => undefined);
-
-    return {
-      result: IdCheckResult.UNREADABLE,
-      ok: false,
-      headline: "Couldn't read it",
-      message:
-        "Try again with the card flat and the light off the plastic, or type the details in.",
-      person: null,
-      warnings: [],
-      ban: null,
-      nameMatch: null,
-      ticketName: null,
-      readAs: parsed.source,
-      confidence: parsed.confidence,
-      ambiguities: parsed.ambiguities,
-    };
-  }
-
-  const now = new Date();
-  const ageYears = ageAt(birthDate, now, event.timezone);
-  const expired = isExpired(document.expiry, now, event.timezone);
-  const documentHash = identityHash({
+  /**
+   * The key this record is filed under.
+   *
+   * The document number wherever there is one: it is exact, it is stable, and
+   * it means the same card always finds the same person however their name was
+   * spelled that night. Without one it falls back to the name and the birthday
+   * together, which is weaker and will miss somebody entered differently next
+   * time — a good reason for whatever reads the card to capture the number.
+   */
+  const identity = identityHash({
     documentType: document.documentType,
     documentNumber: document.documentNumber,
     fullName,
     dateOfBirth: birthDate,
   });
+
+  const now = new Date();
+  const ageYears = ageAt(birthDate, now, event.timezone);
+  const expired = isExpired(document.expiry, now, event.timezone);
 
   const ticket = ticketId
     ? await db.ticket.findUnique({
@@ -322,7 +306,7 @@ export async function checkIdentity({
 
   const { patron, previous } = await db.$transaction(async (tx) => {
     const existing = await tx.patron.findUnique({
-      where: { documentHash },
+      where: { documentHash: identity },
       select: { id: true, photoKey: true, checkCount: true },
     });
 
@@ -348,9 +332,9 @@ export async function checkIdentity({
      * because the counts reported back have to be from *before* this check.
      */
     const row = await tx.patron.upsert({
-      where: { documentHash },
+      where: { documentHash: identity },
       create: {
-        documentHash,
+        documentHash: identity,
         documentType: document.documentType,
         documentNumber: document.documentNumber,
         documentExpiry: document.expiry ? toDateColumn(document.expiry) : null,
@@ -442,8 +426,6 @@ export async function checkIdentity({
     nameMatch,
     ticketName,
     previousRefusals,
-    ambiguities: parsed.ambiguities,
-    confidence: parsed.confidence,
   });
 
   const result = decide({
@@ -506,9 +488,6 @@ export async function checkIdentity({
     ban,
     nameMatch,
     ticketName,
-    readAs: parsed.source,
-    confidence: parsed.confidence,
-    ambiguities: parsed.ambiguities,
   };
 }
 
@@ -519,160 +498,6 @@ export function patronPhotoPath(patronId: string): string {
 
 function retentionHorizon(from: Date): Date {
   return new Date(from.getTime() + RETENTION_DAYS * 24 * 60 * 60 * 1000);
-}
-
-// ---------------------------------------------------------------------------
-// Trying it without doing it
-// ---------------------------------------------------------------------------
-
-/** What a read produced, and what it *would* have decided. */
-export type IdPreview = {
-  document: ParsedIdDocument;
-  readAs: IdParseSource | "MANUAL";
-  confidence: IdParseConfidence;
-  ambiguities: string[];
-  /** Null when no date of birth could be read. */
-  ageYears: number | null;
-  expired: boolean;
-  approvedEvidence: boolean;
-  /** The verdict a real check would return right now. */
-  wouldBe: IdCheckResult;
-  warnings: IdWarning[];
-  /** Whether this document already has a record, without creating one. */
-  known: {
-    patronId: string;
-    fullName: string;
-    checkCount: number;
-    firstSeenAt: Date;
-    lastSeenAt: Date;
-  } | null;
-  ban: StandingBan | null;
-};
-
-/**
- * Read a document without recording anything.
- *
- * The same relationship `inspectTicket` has to `scanTicket`: every other path
- * in this file writes a row, and this one must not. Somebody testing whether
- * the parser copes with a new licence design should not be creating patron
- * records for a colleague's driver licence, arming a 90-day retention clock on
- * them, or putting rows into the very count the door reads back.
- *
- * The verdict is phrased as what a real check *would* return, computed by the
- * same `decide` the real path uses, so a test can never say one thing and the
- * door another.
- */
-export async function previewIdentity({
-  reading,
-  isR18,
-  timeZone,
-}: {
-  reading: IdReading;
-  /** Whether to judge it against an R18 event's rules. */
-  isR18: boolean;
-  timeZone: string;
-}): Promise<IdPreview> {
-  const parsed = readingToParse(reading);
-  const { document } = parsed;
-  const now = new Date();
-
-  const approvedEvidence = isApprovedEvidenceOfAge(document.documentType);
-  const ageYears = document.dateOfBirth
-    ? ageAt(document.dateOfBirth, now, timeZone)
-    : null;
-  const expired = isExpired(document.expiry, now, timeZone);
-
-  if (!document.fullName || !document.dateOfBirth || ageYears === null) {
-    return {
-      document,
-      readAs: parsed.source,
-      confidence: parsed.confidence,
-      ambiguities: parsed.ambiguities,
-      ageYears,
-      expired,
-      approvedEvidence,
-      wouldBe: IdCheckResult.UNREADABLE,
-      warnings: [],
-      known: null,
-      ban: null,
-    };
-  }
-
-  const documentHash = identityHash({
-    documentType: document.documentType,
-    documentNumber: document.documentNumber,
-    fullName: document.fullName,
-    dateOfBirth: document.dateOfBirth,
-  });
-
-  const existing = await db.patron.findUnique({
-    where: { documentHash },
-    select: {
-      id: true,
-      fullName: true,
-      checkCount: true,
-      firstSeenAt: true,
-      lastSeenAt: true,
-      familyName: true,
-      dateOfBirth: true,
-    },
-  });
-
-  // Same two-route lookup the real check runs, so a test shows the namesake
-  // match as well rather than pretending only the document matters.
-  const ban = existing
-    ? await findStandingBan({
-        patronId: existing.id,
-        familyName: existing.familyName,
-        dateOfBirth: existing.dateOfBirth,
-      })
-    : await findStandingBan({
-        patronId: null,
-        familyName: document.familyName,
-        dateOfBirth: toDateColumn(document.dateOfBirth),
-      });
-
-  return {
-    document,
-    readAs: parsed.source,
-    confidence: parsed.confidence,
-    ambiguities: parsed.ambiguities,
-    ageYears,
-    expired,
-    approvedEvidence,
-    wouldBe: decide({
-      isR18,
-      ageYears,
-      expired,
-      approvedEvidence,
-      banned: ban !== null,
-      usedTonight: false,
-      nameMatch: null,
-    }),
-    warnings: collectWarnings({
-      isR18,
-      ageYears,
-      expired,
-      approvedEvidence,
-      documentType: document.documentType,
-      usedTonight: false,
-      nameMatch: null,
-      ticketName: null,
-      previousRefusals: 0,
-      ambiguities: parsed.ambiguities,
-      confidence: parsed.confidence,
-    }),
-    known: existing
-      ? {
-          patronId: existing.id,
-          fullName: existing.fullName,
-          checkCount: existing.checkCount,
-          firstSeenAt: existing.firstSeenAt,
-          lastSeenAt: existing.lastSeenAt,
-        }
-      : null,
-    ban,
-  };
 }
 
 // ---------------------------------------------------------------------------
@@ -809,8 +634,6 @@ function collectWarnings({
   nameMatch,
   ticketName,
   previousRefusals,
-  ambiguities,
-  confidence,
 }: {
   isR18: boolean;
   ageYears: number;
@@ -821,8 +644,6 @@ function collectWarnings({
   nameMatch: NameMatch | null;
   ticketName: string | null;
   previousRefusals: number;
-  ambiguities: string[];
-  confidence: IdParseConfidence;
 }): IdWarning[] {
   const warnings: IdWarning[] = [];
 
@@ -885,23 +706,6 @@ function collectWarnings({
           : `Refused ${previousRefusals}×`,
       detail:
         "A door has turned this person away before. Not a ban — a manager can look up why.",
-    });
-  }
-
-  for (const ambiguity of ambiguities) {
-    warnings.push({
-      code: "UNCERTAIN_READING",
-      label: "Check the reading",
-      detail: ambiguity,
-    });
-  }
-
-  if (confidence === "low" && ambiguities.length === 0) {
-    warnings.push({
-      code: "UNCERTAIN_READING",
-      label: "Check the reading",
-      detail:
-        "This document wasn't recognised outright. Read the details back off the card before acting on them.",
     });
   }
 
