@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { Prisma } from "~Prisma/client";
+
 import { db } from "~/server/db";
 
 /**
@@ -25,8 +27,10 @@ type PushMessage = {
   title: string;
   body: string;
   data?: Record<string, string>;
-  sound?: "default";
+  sound?: "default" | null;
   badge?: number;
+  /** Expo's own scale, not ntfy's — a low-priority push may be held back. */
+  priority?: "normal" | "high";
 };
 
 type PushTicket = {
@@ -38,7 +42,8 @@ type PushTicket = {
 
 export type Audience =
   | { kind: "everyone"; channel: "gigAnnouncements" | "doorReminders" }
-  | { kind: "users"; userIds: string[] };
+  | { kind: "users"; userIds: string[] }
+  | { kind: "topic"; topic: string };
 
 /**
  * Send one notification to an audience.
@@ -51,19 +56,18 @@ export async function sendPush({
   title,
   body,
   data,
+  sound = "default",
+  priority,
 }: {
   audience: Audience;
   title: string;
   body: string;
   data?: Record<string, string>;
+  sound?: "default" | null;
+  priority?: "normal" | "high";
 }): Promise<{ sent: number; removed: number }> {
   const devices = await db.deviceToken.findMany({
-    where:
-      audience.kind === "users"
-        ? { userId: { in: audience.userIds } }
-        : // Preference is per-device, so somebody can mute announcements on a
-          // work phone and keep them on their own.
-          { [audience.channel]: true },
+    where: audienceFilter(audience),
     select: { token: true },
   });
 
@@ -74,7 +78,8 @@ export async function sendPush({
     title,
     body,
     data,
-    sound: "default",
+    sound,
+    priority,
   }));
 
   let sent = 0;
@@ -122,6 +127,19 @@ export async function sendPush({
   }
 
   return { sent, removed: dead.length };
+}
+
+function audienceFilter(audience: Audience): Prisma.DeviceTokenWhereInput {
+  switch (audience.kind) {
+    case "users":
+      return { userId: { in: audience.userIds } };
+    case "topic":
+      return { topics: { has: audience.topic } };
+    case "everyone":
+      // Preference is per-device, so somebody can mute announcements on a work
+      // phone and keep them on their own.
+      return { [audience.channel]: true };
+  }
 }
 
 /** A new gig is up. Goes to everyone who has not muted announcements. */

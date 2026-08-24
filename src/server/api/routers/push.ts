@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { getUserPermissions } from "~/server/utils/permissions";
+import { defaultTopicsFor } from "~/lib/notify/topics";
 
 /**
  * Device registration for push notifications.
@@ -21,6 +23,20 @@ export const pushRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session?.user.id ?? null;
 
+      const existing = await ctx.db.deviceToken.findUnique({
+        where: { token: input.token },
+        select: { userId: true },
+      });
+
+      // Topics are seeded on the first registration and again when the device
+      // changes hands, never on an ordinary launch — otherwise a topic taken
+      // off a device in the admin comes straight back the next time the app
+      // opens. See `defaultTopicsFor`.
+      const reseed = existing?.userId !== userId;
+      const topics = reseed
+        ? defaultTopicsFor(userId ? await getUserPermissions(userId) : [])
+        : undefined;
+
       await ctx.db.deviceToken.upsert({
         where: { token: input.token },
         create: {
@@ -28,6 +44,7 @@ export const pushRouter = createTRPCRouter({
           platform: input.platform,
           label: input.label ?? null,
           userId,
+          topics: topics ?? [],
         },
         // A handset that changes hands has to change owner with it, or the
         // last person's ticket reminders follow the phone.
@@ -35,6 +52,7 @@ export const pushRouter = createTRPCRouter({
           platform: input.platform,
           label: input.label ?? undefined,
           userId,
+          topics,
           lastSeenAt: new Date(),
         },
       });

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Platform } from "react-native";
+import { Linking, Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import Constants from "expo-constants";
@@ -85,15 +85,24 @@ export function usePushRegistration(): void {
   }, [user?.id]);
 
   // A notification carries the screen it belongs to, so tapping one lands
-  // where it is about rather than on the home screen.
+  // where it is about rather than on the home screen. A team notification
+  // published through `/api/notify` can carry an ntfy `Click` instead, which is
+  // an absolute URL — usually a page of the web admin — so that opens outside.
   useEffect(() => {
-    const subscription =
-      Notifications.addNotificationResponseReceivedListener((response) => {
+    const subscription = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
         const url = response.notification.request.content.data?.url;
-        if (typeof url === "string" && url.startsWith("/")) {
+        if (typeof url !== "string") return;
+
+        if (url.startsWith("/")) {
           router.push(url as never);
+        } else if (url.startsWith("https://") || url.startsWith("http://")) {
+          void Linking.openURL(url).catch(() => {
+            // A bad Click should not take the app down on a tap.
+          });
         }
-      });
+      },
+    );
     return () => subscription.remove();
   }, [router]);
 }

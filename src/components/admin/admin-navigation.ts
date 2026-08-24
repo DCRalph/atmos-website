@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   BadgePercent,
+  Bell,
   BookOpen,
   Calendar,
   FileText,
@@ -184,6 +185,13 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         url: "/admin/newsletter",
         icon: Mail,
         keywords: ["email", "signups"],
+      },
+      {
+        title: "Notifications",
+        description: "Push to team handsets",
+        url: "/admin/notifications",
+        icon: Bell,
+        keywords: ["push", "ntfy", "alerts", "notify"],
       },
     ],
   },
