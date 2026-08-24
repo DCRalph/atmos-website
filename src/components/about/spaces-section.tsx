@@ -4,8 +4,6 @@ import { motion, useScroll, useTransform } from "motion/react";
 import { useRef } from "react";
 import { useMainLayoutScrollContainer } from "~/hooks/use-main-layout-scroll-container";
 
-// "02 / The spaces" editorial row: photo left, text right.
-// Mirrors WhatWeDoSection with the clip-path reveal wiping from the right.
 export function SpacesSection() {
   const ref = useRef<HTMLDivElement>(null);
   const { containerRef } = useMainLayoutScrollContainer();
@@ -15,58 +13,59 @@ export function SpacesSection() {
     offset: ["start end", "end start"],
   });
 
-  const eyebrowOpacity = useTransform(scrollYProgress, [0.08, 0.24], [0, 1]);
-  const titleOpacity = useTransform(scrollYProgress, [0.12, 0.3], [0, 1]);
-  const titleY = useTransform(scrollYProgress, [0.12, 0.3], [50, 0]);
-  const bodyOpacity = useTransform(scrollYProgress, [0.2, 0.38], [0, 1]);
-  const bodyY = useTransform(scrollYProgress, [0.2, 0.38], [40, 0]);
-  const clip = useTransform(scrollYProgress, [0.1, 0.45], [100, 0]);
-  const clipPath = useTransform(clip, (v) => `inset(0 0 0 ${v}%)`);
-  const imgScale = useTransform(scrollYProgress, [0.1, 0.55], [1.15, 1]);
+  const imgY = useTransform(scrollYProgress, [0, 1], [60, -60]);
+  const imageOpacity = useTransform(scrollYProgress, [0.06, 0.26], [0, 1]);
+  const imageX = useTransform(scrollYProgress, [0.06, 0.26], [-60, 0]);
+  const textOpacity = useTransform(scrollYProgress, [0.18, 0.42], [0, 1]);
+  const textY = useTransform(scrollYProgress, [0.18, 0.42], [36, 0]);
 
   return (
-    <section ref={ref} className="relative border-t border-white/10">
-      <div className="grid md:grid-cols-2">
+    <section
+      ref={ref}
+      className="relative overflow-hidden px-6 py-32 md:px-8 md:py-48"
+    >
+      <div className="mx-auto flex max-w-6xl flex-col items-center gap-12 md:flex-row md:gap-20">
+        {/* Image */}
         <motion.div
-          className="relative min-h-[320px] overflow-hidden md:min-h-[480px]"
-          style={{ clipPath }}
+          className="w-full flex-1"
+          style={{ opacity: imageOpacity, x: imageX }}
         >
-          <motion.img
-            src="/home/atmos-17.jpg"
-            alt="DJ performing at an underground Atmos event"
-            className="absolute inset-0 h-full w-full object-cover"
-            style={{ scale: imgScale }}
-            crossOrigin="anonymous"
-          />
+          <div className="relative aspect-4/5 overflow-hidden rounded-lg">
+            <motion.img
+              src="/home/atmos-17.jpg"
+              alt="DJ performing at an underground Atmos event"
+              className="h-full w-full object-cover"
+              style={{ y: imgY }}
+              crossOrigin="anonymous"
+            />
+          </div>
         </motion.div>
 
-        <div className="flex flex-col justify-center px-6 py-24 md:px-10 md:py-36">
-          <motion.p
-            className="mb-6 text-xs tracking-[0.3em] text-white/40 uppercase"
-            style={{ opacity: eyebrowOpacity }}
-          >
-            02 / The spaces
+        {/* Text */}
+        <motion.div
+          className="flex-1"
+          style={{ opacity: textOpacity, y: textY }}
+        >
+          <motion.p className="text-muted-foreground mb-6 text-sm tracking-[0.3em] uppercase">
+            Beyond Four Walls
           </motion.p>
-          <motion.h2
-            className="mb-6 text-4xl leading-[1.05] font-bold tracking-tight text-balance md:text-5xl"
-            style={{ opacity: titleOpacity, y: titleY }}
-          >
-            Turning nowhere into somewhere.
+
+          <motion.h2 className="mb-8 font-serif text-3xl leading-[1.1] font-bold tracking-tight text-balance md:text-5xl">
+            {"Turning nowhere into somewhere."}
           </motion.h2>
-          <motion.div
-            className="flex max-w-md flex-col gap-4"
-            style={{ opacity: bodyOpacity, y: bodyY }}
-          >
-            <p className="text-lg leading-relaxed text-white/65">
-              {
-                "We work with existing venues but we also use spaces you wouldn’t expect. Basements, warehouses, places around Pōneke most people walk past without a second look."
-              }
-            </p>
-            <p className="text-lg leading-relaxed text-white/65">
-              {"Everyone’s welcome. No pretension, no pressure."}
-            </p>
-          </motion.div>
-        </div>
+
+          <motion.p className="text-muted-foreground mb-6 text-lg leading-relaxed">
+            {
+              "We work with existing venues but we also use spaces you wouldn\u2019t expect. Basements, warehouses, places around Poneke that most people walk past without a second look."
+            }
+          </motion.p>
+
+          <motion.p className="text-muted-foreground text-lg leading-relaxed">
+            {
+              "Everyone\u2019s welcome. No pretension, no pressure. Just a good environment with good people around you."
+            }
+          </motion.p>
+        </motion.div>
       </div>
     </section>
   );
