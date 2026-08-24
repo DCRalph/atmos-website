@@ -129,6 +129,16 @@ export async function sendPush({
   return { sent, removed: dead.length };
 }
 
+/**
+ * How many handsets an audience is, before anything is sent.
+ *
+ * Recorded alongside the delivery count so "nobody got it" separates into "it
+ * went to nobody" and "it went out and did not arrive".
+ */
+export async function countAudience(audience: Audience): Promise<number> {
+  return db.deviceToken.count({ where: audienceFilter(audience) });
+}
+
 function audienceFilter(audience: Audience): Prisma.DeviceTokenWhereInput {
   switch (audience.kind) {
     case "users":

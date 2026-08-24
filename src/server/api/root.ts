@@ -17,7 +17,9 @@ import { accessLevelsRouter } from "~/server/api/routers/access-levels";
 import { shopifyRouter } from "~/server/api/routers/shopify";
 import { creatorProfilesRouter } from "~/server/api/routers/creator-profiles";
 import { creatorThemesRouter } from "~/server/api/routers/creator-themes";
-import { gigCreatorsRouter } from "~/server/api/routers/gig-creators";
+import { lineUpRouter } from "~/server/api/routers/line-up";
+import { runSheetRouter } from "~/server/api/routers/run-sheet";
+import { gigChatRouter } from "~/server/api/routers/gig-chat";
 import { featureFlagsRouter } from "~/server/api/routers/feature-flags";
 import { uploadsRouter } from "~/server/api/routers/uploads";
 import { ticketEventsRouter } from "~/server/api/routers/ticket-events";
@@ -59,7 +61,9 @@ export const appRouter = createTRPCRouter({
   shopify: shopifyRouter,
   creatorProfiles: creatorProfilesRouter,
   creatorThemes: creatorThemesRouter,
-  gigCreators: gigCreatorsRouter,
+  lineUp: lineUpRouter,
+  runSheet: runSheetRouter,
+  gigChat: gigChatRouter,
   featureFlags: featureFlagsRouter,
 
   // Ticketing

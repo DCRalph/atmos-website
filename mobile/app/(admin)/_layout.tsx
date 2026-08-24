@@ -1,5 +1,7 @@
 import { Stack } from "expo-router";
 
+import { BiometricGate } from "@/lib/biometrics";
+import { StaffGate } from "@/components/staff-gate";
 import { colors } from "@/lib/theme";
 
 /**
@@ -12,15 +14,22 @@ import { colors } from "@/lib/theme";
  * while the room fills, so it answers questions and edits nothing.
  *
  * Access is enforced server-side on every call by `eventOrganiserProcedure`.
- * Hiding the entry point in More is tidiness, not the boundary.
+ * `StaffGate` makes sure a non-organiser never sees the screens either, however
+ * they got here. The biometric lock is the third layer: takings and a guest
+ * list should not be readable off a handset somebody picked up, even by
+ * somebody the server would happily answer.
  */
 export default function AdminLayout() {
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: colors.bg },
-      }}
-    />
+    <StaffGate role="organiser">
+      <BiometricGate>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: colors.bg },
+          }}
+        />
+      </BiometricGate>
+    </StaffGate>
   );
 }

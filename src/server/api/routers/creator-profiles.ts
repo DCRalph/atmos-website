@@ -122,9 +122,15 @@ export const creatorProfilesRouter = createTRPCRouter({
           blocks: { orderBy: [{ y: "asc" }, { x: "asc" }] },
           socials: { orderBy: { sortOrder: "asc" } },
           themeRef: true,
-          gigCreators: {
+          // The gigs this artist is on, one row each. A run sheet row carries
+          // set times and internal notes, so this names the columns rather than
+          // including the row: a creator page is public.
+          scheduleItems: {
+            distinct: ["gigId"],
             orderBy: { sortOrder: "asc" },
-            include: {
+            select: {
+              id: true,
+              role: true,
               gig: {
                 select: {
                   id: true,
@@ -236,7 +242,7 @@ export const creatorProfilesRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const search = input?.search?.toLowerCase().trim();
-      return ctx.db.creatorProfile.findMany({
+      const profiles = await ctx.db.creatorProfile.findMany({
         where: {
           ...(input?.claimStatus ? { claimStatus: input.claimStatus } : {}),
           ...(search
@@ -261,11 +267,29 @@ export const creatorProfilesRouter = createTRPCRouter({
         orderBy: { updatedAt: "desc" },
         include: {
           user: { select: { id: true, name: true, email: true, image: true } },
-          _count: {
-            select: { blocks: true, gigCreators: true, crewMembers: true },
-          },
+          _count: { select: { blocks: true, crewMembers: true } },
         },
       });
+
+      // Counted separately because `_count` counts rows, and an artist opening
+      // and closing the same night is two run sheet rows and one gig.
+      const pairs = await ctx.db.gigScheduleItem.groupBy({
+        by: ["creatorProfileId", "gigId"],
+        where: { creatorProfileId: { in: profiles.map((row) => row.id) } },
+      });
+      const gigCounts = new Map<string, number>();
+      for (const pair of pairs) {
+        if (!pair.creatorProfileId) continue;
+        gigCounts.set(
+          pair.creatorProfileId,
+          (gigCounts.get(pair.creatorProfileId) ?? 0) + 1,
+        );
+      }
+
+      return profiles.map((profile) => ({
+        ...profile,
+        gigCount: gigCounts.get(profile.id) ?? 0,
+      }));
     }),
 
   // ---------- Mutations (owner or admin) ----------
@@ -737,7 +761,7 @@ export const creatorProfilesRouter = createTRPCRouter({
             where: { profileId: existingMine.id },
             data: { profileId: input.profileId },
           });
-          await tx.gigCreator.updateMany({
+          await tx.gigScheduleItem.updateMany({
             where: { creatorProfileId: existingMine.id },
             data: { creatorProfileId: input.profileId },
           });

@@ -22,6 +22,10 @@ here — can notify the team with no shim on either side.
 | `mobile/app/(admin)/notify.tsx`                  | The app's compose screen, reached from More.                                          |
 | `mobile/src/lib/push.ts`                         | Registration and tap routing on the handset.                                          |
 
+Run sheet cues are published through the same `publish()`, with the audience
+overridden to the people an admin picked for that gig. See
+[RUN-SHEET.md](./RUN-SHEET.md).
+
 ## Publishing
 
 ```bash

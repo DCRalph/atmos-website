@@ -1,7 +1,7 @@
 import "server-only";
 
 import { db } from "~/server/db";
-import { sendPush } from "~/server/push";
+import { countAudience, sendPush, type Audience } from "~/server/push";
 import { KNOWN_TOPICS } from "~/lib/notify/topics";
 import type { PublishInput } from "~/lib/notify/ntfy-request";
 
@@ -17,6 +17,11 @@ import type { PublishInput } from "~/lib/notify/ntfy-request";
  * rather than erroring, because that is what a message board does. What is not
  * kept is ntfy's message cache — there is no `since=` to replay from, since a
  * push either reaches a handset or does not.
+ *
+ * `origin.audience` is the one deliberate break from ntfy. A run sheet cue goes
+ * to the people an admin picked for that gig, not to whoever happens to be
+ * subscribed to a topic, so it overrides the fan-out while still logging under
+ * a topic — which keeps every notification the site has ever sent in one list.
  */
 
 /** What the ntfy API hands back, plus what we actually did with it. */
@@ -35,18 +40,25 @@ export type PublishedMessage = {
   delivery: { devices: number; delivered: number };
 };
 
-export type PublishSource = "api" | "admin";
+export type PublishSource = "api" | "admin" | "run-sheet";
 
 export async function publish(
   input: PublishInput,
-  origin: { source: PublishSource; senderId?: string },
+  origin: {
+    source: PublishSource;
+    senderId?: string;
+    /** Defaults to everyone subscribed to `input.topic`. */
+    audience?: Audience;
+  },
 ): Promise<PublishedMessage> {
-  const devices = await db.deviceToken.count({
-    where: { topics: { has: input.topic } },
-  });
+  const audience: Audience = origin.audience ?? {
+    kind: "topic",
+    topic: input.topic,
+  };
+  const devices = await countAudience(audience);
 
   const { sent } = await sendPush({
-    audience: { kind: "topic", topic: input.topic },
+    audience,
     // A notification with no title is nearly unreadable on a lock screen, so
     // the topic names itself rather than leaving the app name to do it.
     title: input.title ?? topicLabel(input.topic),

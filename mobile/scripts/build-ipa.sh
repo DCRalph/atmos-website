@@ -36,6 +36,19 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# CocoaPods runs the project path through Ruby's `unicode_normalize`, which
+# raises on a path Ruby has read as ASCII-8BIT:
+#
+#   Unicode Normalization not appropriate for ASCII-8BIT
+#   (Encoding::CompatibilityError)
+#
+# That happens whenever the shell has no UTF-8 locale, which a non-interactive
+# or agent-launched shell frequently does not. `pod install` then dies before it
+# has even looked at the Podfile, so the failure names nothing in this project
+# and reads as a CocoaPods bug rather than a missing environment variable.
+export LANG="${LANG:-en_US.UTF-8}"
+export LC_ALL="${LC_ALL:-en_US.UTF-8}"
+
 TEAM_ID="QB4T85D6S2"
 BUNDLE_ID="nz.co.atmosmedia.app"
 SIGN_ID="Apple Distribution: William Giles ($TEAM_ID)"

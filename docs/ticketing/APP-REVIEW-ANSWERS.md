@@ -40,10 +40,14 @@ answerable, and it is true.
 > Stripe account was opened. There is therefore no in-app merchant onboarding
 > flow and there will not be one.
 >
-> A new user who downloads the app can still discover how Tap to Pay is reached:
-> **More › Tap to Pay on iPhone** is visible to every signed-in user and
-> explains that it is Atmos door tooling, that access is granted per event by an
-> organiser, and how to get in touch.
+> Tap to Pay is internal box-office tooling and is not surfaced to customers at
+> all. Every entry point lives behind **More › Internal**, which renders only for
+> an account the server recognises as door staff or an organiser, and the
+> `(door)` routes are gated the same way so a deep link cannot reach them either.
+>
+> ⚠️ **App Review therefore needs door-staff credentials.** A reviewer signed in
+> as an ordinary customer cannot reach a single Tap to Pay screen, because for
+> them none exist. Put a rostered account in the App Review Information notes.
 
 ---
 
@@ -65,7 +69,7 @@ answerable, and it is true.
 
 | # | Status | Answer |
 | --- | --- | --- |
-| 2.1 | ✅ | **More › Tap to Pay on iPhone**, visible to every signed-in user. For somebody who is not door staff it explains that Tap to Pay is Atmos box-office tooling, that access is granted per event by an organiser, and offers a contact link. |
+| 2.1 | **N/A** | No third-party merchant onboarding to discover — see the explanation above. Tap to Pay is internal tooling, deliberately invisible to customers: the entry point at **More › Internal** renders only for door staff and organisers. ⚠️ Supply door-staff credentials in the App Review notes or the reviewer sees nothing. |
 | 2.2 | **N/A** | Single-merchant closed-loop app. There is no third-party merchant onboarding, digital or otherwise — see the explanation above. |
 | 2.3 | **N/A** | Same. For reference, a newly-rostered staff member goes from being granted door access to taking a tap in well under 15 minutes, and the New User Flow recording shows exactly that. |
 
@@ -73,12 +77,12 @@ answerable, and it is true.
 
 | # | Status | Answer |
 | --- | --- | --- |
-| 3.1 | ✅ | A dedicated Tap to Pay on iPhone screen, reachable from More and from door mode, plus the one-time launch splash. |
+| 3.1 | ✅ | A dedicated Tap to Pay on iPhone screen, reachable from **More › Internal** and from door mode, plus the one-time launch splash. Staff only, by design. |
 | 3.2 | ✅ | Full-screen modal splash shown once per eligible user. `mobile/src/components/tap-to-pay-splash.tsx`. ⚠️ Hero artwork and copy are placeholder. |
 | 3.3 | ✅ | Push notification to all eligible staff, sent once each and recorded per user. Admin trigger at **Admin › Settings › Tap to Pay launch campaign**. ⚠️ Copy is placeholder. |
 | 3.4 | **N/A** | No merchant onboarding to end. Its function is served instead by the launch splash and the enable flow, which fire the first time a user is granted door access. |
 | 3.5 | ✅ | **Set up Tap to Pay on iPhone** on the hub screen. This is the only path in the app that connects with `tosAcceptancePermitted: true`, and therefore the only one that can raise Apple's acceptance sheet. |
-| 3.6 | ✅ | That action lives in settings, entirely outside checkout — More › Tap to Pay on iPhone. |
+| 3.6 | ✅ | That action lives in settings, entirely outside checkout — More › Internal › Tap to Pay guides. |
 | 3.7 | ✅ | Both, in effect. Tap to Pay is the first payment option at checkout and is always present; choosing it when the handset is not set up opens the acceptance flow rather than failing. |
 | 3.8 | ✅ | **Admin only.** The server answers `canAcceptTerms` from `ctx.isAdmin` and the app cannot decide it for itself — that answer is what gates `tosAcceptancePermitted`. Event organisers and per-event door managers are deliberately excluded: accepting binds the Atmos merchant identity to that person's personal Apple Account. |
 | 3.8.1 | ✅ | Everybody else sees: "An Atmos admin needs to accept the Tap to Pay on iPhone Terms and Conditions on this handset before it can take card. Ask one to sign in here, or take cash and eftpos in the meantime." |
@@ -92,7 +96,7 @@ answerable, and it is true.
 | --- | --- | --- |
 | 4.1 | ✅ | `ProximityReaderDiscovery` via a purpose-built native module — `content(for: .payment(.howToTap))` then `presentContent(_:from:)`, guarded on iOS 18 and presented from the topmost view controller. Not exposed by the Stripe React Native SDK, so written directly against Apple's framework. `mobile/modules/proximity-education`. |
 | 4.2 | ✅ | Education is pushed automatically off the SDK's own terms-acceptance callback, so it follows acceptance however acceptance was reached. |
-| 4.3 | ✅ | Permanently at More › Tap to Pay on iPhone › How to take a payment. |
+| 4.3 | ✅ | Permanently at More › Internal › Tap to Pay guides › How to take a payment. |
 | 4.4 | ✅ | Covered by 4.1 per the checklist's own note. |
 | 4.5 | ✅ | Covered by 4.1, and by our own screen for iOS 17 — holding a contactless card to the top edge, and which schemes work. |
 | 4.6 | ✅ | Covered by 4.1, and by our own screen — Apple Pay, Google Pay, Samsung Pay, and that watches need to be held closer than a card. |
@@ -170,7 +174,7 @@ actually takes. Say so at the start of the recording.
    or state it.)
 2. The user opens the Atmos app. **The launch splash appears** — full screen,
    Tap to Pay on iPhone. *(3.2, 6.2)*
-3. Tap **Set it up**, landing on More › Tap to Pay on iPhone. *(3.1, 3.6)*
+3. Tap **Set it up**, landing on More › Internal › Tap to Pay guides. *(3.1, 3.6)*
 4. **Signed in as a non-admin first**: show the "An Atmos admin needs to accept…"
    message. *(3.8, 3.8.1)*
 5. Sign in as an admin. Tap **Set up Tap to Pay on iPhone** → Apple's Terms and
@@ -182,8 +186,8 @@ actually takes. Say so at the start of the recording.
 8. **Configuration progress bar** while the reader prepares, then completion.
    *(3.9.1)*
 9. The "Try Tap to Pay on iPhone" screen; take the $1 test payment. *(3.9)*
-10. Go back to More › Tap to Pay on iPhone › How to take a payment to show
-    education is permanently reachable. *(4.3)*
+10. Go back to More › Internal › Tap to Pay guides › How to take a payment to
+    show education is permanently reachable. *(4.3)*
 
 ### Existing User Flow
 

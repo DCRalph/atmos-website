@@ -27,7 +27,7 @@ import { useUpload } from "~/hooks/use-upload";
 import { presetConstraints } from "~/lib/uploads/presets";
 import { validateFile } from "~/lib/uploads/validate";
 import { cn } from "~/lib/utils";
-import type { DraftCreator } from "./types";
+import type { PickedCreator } from "./types";
 
 const AVATAR_CONSTRAINTS = presetConstraints("creatorAvatar");
 
@@ -45,7 +45,7 @@ type QuickCreateDialogProps = {
   /** Prefills the name from whatever was typed into the search box. */
   initialName: string;
   /** The new profile, ready to drop straight into the line-up. */
-  onCreated: (creator: Omit<DraftCreator, "role">) => void;
+  onCreated: (creator: PickedCreator) => void;
 };
 
 /**

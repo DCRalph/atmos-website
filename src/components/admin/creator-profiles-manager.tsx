@@ -152,7 +152,7 @@ export function CreatorProfilesManager() {
         ),
     },
     { id: "blocks", header: "Blocks", accessor: (row) => row._count.blocks },
-    { id: "gigs", header: "Gigs", accessor: (row) => row._count.gigCreators },
+    { id: "gigs", header: "Gigs", accessor: (row) => row.gigCount },
     {
       id: "actions",
       header: "Actions",

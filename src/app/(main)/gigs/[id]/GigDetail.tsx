@@ -640,11 +640,11 @@ export default function GigPage({ params }: PageProps) {
                     </>
                   )}
 
-                  {gig.gigCreators && gig.gigCreators.length > 0 && (
+                  {gig.lineUp && gig.lineUp.length > 0 && (
                     <>
                       <span className="text-white/20">|</span>
                       <div className="group/lineup flex items-center">
-                        {gig.gigCreators.map((gc, i) => {
+                        {gig.lineUp.map((gc, i) => {
                           const cp = gc.creatorProfile;
                           const avatar = cp.avatarFileId
                             ? buildMediaUrl(cp.avatarFileId)

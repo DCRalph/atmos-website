@@ -1,14 +1,22 @@
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ChevronRight } from "lucide-react-native";
+import { ChevronRight, Lock } from "lucide-react-native";
 
 import { api } from "@/lib/api";
 import { API_URL } from "@/lib/env";
 import { signOut, useAuth } from "@/lib/auth";
-import { useBiometrics } from "@/lib/biometrics";
+import { useBiometrics, useBiometricGate } from "@/lib/biometrics";
 import { getRegisteredPushToken } from "@/lib/push";
+import { useStaff } from "@/lib/staff";
 import { colors, radius, space, stroke } from "@/lib/theme";
 import { Body, Button, Caption, Eyebrow, Title } from "@/components/ui";
 
@@ -18,29 +26,22 @@ export default function MoreScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const biometrics = useBiometrics();
+  const gate = useBiometricGate();
   const unregister = api.push.unregister.useMutation();
 
-  // Door mode is staff tooling inside a customer app, so nothing about it
-  // renders until someone is both signed in and actually rostered on. The
-  // query is the same one the door itself uses and every door call re-checks
-  // server-side — hiding the button is tidiness, not the security boundary.
-  const myEvents = api.door.myEvents.useQuery(undefined, {
-    enabled: !!user,
-    // A refusal here is the normal answer for a punter, not an error worth
-    // retrying three times.
-    retry: false,
-    staleTime: 5 * 60 * 1000,
-  });
-  const isDoorStaff = !!user && (myEvents.data?.length ?? 0) > 0;
+  // Nothing internal renders until the server has confirmed this account is
+  // staff — see `useStaff`. `ready` matters as much as the answer: drawing the
+  // section optimistically would flash "Internal" at a punter on every launch.
+  const { isDoorStaff, isOrganiser, isStaff, ready: staffReady } = useStaff();
 
-  // Same shape as the door check above, and the same reasoning: the query is
-  // the one the organiser screens actually use, it is refused server-side for
-  // everybody else, and hiding the button is tidiness rather than the boundary.
-  const organiserEvents = api.ticketEvents.list.useQuery(
-    { includeArchived: false },
-    { enabled: !!user, retry: false, staleTime: 5 * 60 * 1000 },
-  );
-  const isOrganiser = !!user && organiserEvents.isSuccess;
+  // One number, so the way into the rooms can say whether it is worth opening.
+  // Gated on `isStaff` rather than fired for everybody: a punter's More tab
+  // should not be asking the server about gig rooms at all.
+  const unread = api.gigChat.unreadTotal.useQuery(undefined, {
+    enabled: staffReady && isStaff,
+    retry: false,
+    refetchInterval: 60_000,
+  });
 
   const openWeb = (path: string) => {
     void WebBrowser.openBrowserAsync(`${API_URL}${path}`, {
@@ -74,57 +75,6 @@ export default function MoreScreen() {
                 installing the app.
               </Caption>
             )}
-            {isDoorStaff && (
-              <Button
-                variant="outline"
-                size="sm"
-                style={{ marginTop: space.md }}
-                onPress={() => router.push("/(door)")}
-              >
-                Door mode
-              </Button>
-            )}
-            {isOrganiser && (
-              <Button
-                variant="outline"
-                size="sm"
-                style={{ marginTop: space.sm }}
-                onPress={() => router.push("/(admin)")}
-              >
-                Event analytics
-              </Button>
-            )}
-            {isOrganiser && (
-              <Button
-                variant="outline"
-                size="sm"
-                style={{ marginTop: space.sm }}
-                onPress={() => router.push("/(admin)/notify")}
-              >
-                Notify team
-              </Button>
-            )}
-            {/* Checklist 1.7. Hidden entirely when the handset has no
-                biometric enrolled — a switch that cannot be turned on is worse
-                than no switch. */}
-            {biometrics.available && (
-              <View style={styles.toggle}>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Body>Unlock with {biometrics.label}</Body>
-                  <Caption>
-                    Locks the app when it has been put down. You stay signed in.
-                  </Caption>
-                </View>
-                <Switch
-                  value={biometrics.enabled}
-                  onValueChange={(next) => {
-                    void biometrics.setEnabled(next);
-                  }}
-                  trackColor={{ true: colors.text, false: colors.border }}
-                  thumbColor={colors.bg}
-                />
-              </View>
-            )}
             <Button
               variant="outline"
               style={{ marginTop: space.md }}
@@ -154,19 +104,88 @@ export default function MoreScreen() {
       </View>
 
       {/*
-        Checklist 3.1 and 3.6 — Tap to Pay must be visible and discoverable
-        outside checkout, and enabling it must be possible from settings. Also
-        2.1: shown to everybody signed in, not just staff, because a new user
-        has to be able to find out how Tap to Pay is reached at all. The screen
-        itself tells a punter it is Atmos door tooling.
+        Staff tooling, gathered.
+
+        Collapsed behind a single row until Face ID opens it, rather than
+        prompting on sight: this section sits in a scroll view somebody passes
+        on the way to Terms, and throwing a scan at them for scrolling would be
+        absurd. The tap is what asks.
+
+        The lock here guards the way in, not the destinations. `(door)` and
+        `(admin)` keep their own `BiometricGate` so a deep link or a
+        notification tap lands on the same challenge.
       */}
-      {user ? (
+      {staffReady && isStaff ? (
         <View style={{ gap: space.sm }}>
-          <Eyebrow>Payments</Eyebrow>
-          <Row
-            label="Tap to Pay on iPhone"
-            onPress={() => router.push("/(door)/tap-to-pay")}
-          />
+          <Eyebrow>Internal</Eyebrow>
+          {gate.guarded ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={gate.prompt}
+              style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
+            >
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Body>Locked</Body>
+                <Caption>
+                  {gate.failed
+                    ? `${biometrics.label} didn't unlock. Tap to try again, or use your device passcode.`
+                    : `Tap to unlock with ${biometrics.label}.`}
+                </Caption>
+              </View>
+              <Lock color={colors.textFaint} size={16} strokeWidth={2.5} />
+            </Pressable>
+          ) : (
+            <>
+              {isDoorStaff && (
+                <Row label="Door mode" onPress={() => router.push("/(door)")} />
+              )}
+              {isOrganiser && (
+                <Row
+                  label="Event analytics"
+                  onPress={() => router.push("/(admin)")}
+                />
+              )}
+              {isOrganiser && (
+                <Row
+                  label="Gig rooms"
+                  badge={unread.data ?? 0}
+                  onPress={() => router.push("/(admin)/chat")}
+                />
+              )}
+              {isOrganiser && (
+                <Row
+                  label="Notify team"
+                  onPress={() => router.push("/(admin)/notify")}
+                />
+              )}
+              <Row
+                label="Tap to Pay guides"
+                onPress={() => router.push("/(door)/tap-to-pay")}
+              />
+              {/* Checklist 1.7. Hidden entirely when the handset has no
+                  biometric enrolled — a switch that cannot be turned on is
+                  worse than no switch. */}
+              {biometrics.available && (
+                <View style={styles.toggleRow}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Body>Unlock with {biometrics.label}</Body>
+                    <Caption>
+                      Locks this section and everything in it. Your own tickets
+                      stay open.
+                    </Caption>
+                  </View>
+                  <Switch
+                    value={biometrics.enabled}
+                    onValueChange={(next) => {
+                      void biometrics.setEnabled(next);
+                    }}
+                    trackColor={{ true: colors.text, false: colors.border }}
+                    thumbColor={colors.bg}
+                  />
+                </View>
+              )}
+            </>
+          )}
         </View>
       ) : null}
 
@@ -189,7 +208,16 @@ export default function MoreScreen() {
   );
 }
 
-function Row({ label, onPress }: { label: string; onPress: () => void }) {
+function Row({
+  label,
+  badge,
+  onPress,
+}: {
+  label: string;
+  /** Drawn only when there is something to say. Zero is not news. */
+  badge?: number;
+  onPress: () => void;
+}) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -197,12 +225,27 @@ function Row({ label, onPress }: { label: string; onPress: () => void }) {
       style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
     >
       <Body>{label}</Body>
-      <ChevronRight color={colors.textFaint} size={16} strokeWidth={2.5} />
+      <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
+        {badge ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{badge}</Text>
+          </View>
+        ) : null}
+        <ChevronRight color={colors.textFaint} size={16} strokeWidth={2.5} />
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
+  badge: {
+    minWidth: 19,
+    alignItems: "center",
+    backgroundColor: colors.text,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  badgeText: { color: "#000", fontSize: 10.5, fontWeight: "900" },
   account: {
     backgroundColor: colors.surface,
     borderWidth: stroke.hair,
@@ -214,6 +257,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: space.md,
     paddingVertical: space.md,
     paddingHorizontal: space.lg,
     backgroundColor: colors.surface,
@@ -221,13 +265,15 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.md,
   },
-  toggle: {
+  toggleRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: space.md,
-    marginTop: space.md,
-    paddingTop: space.md,
-    borderTopWidth: stroke.hair,
-    borderTopColor: colors.border,
+    paddingVertical: space.md,
+    paddingHorizontal: space.lg,
+    backgroundColor: colors.surface,
+    borderWidth: stroke.hair,
+    borderColor: colors.border,
+    borderRadius: radius.md,
   },
 });

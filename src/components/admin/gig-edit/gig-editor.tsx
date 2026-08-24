@@ -51,10 +51,11 @@ import { LexicalRichTextEditor } from "~/components/lexical";
 import { useUnsavedChangesWarning } from "~/hooks/use-unsaved-changes-warning";
 import { useUpload } from "~/hooks/use-upload";
 import { GigMode } from "~Prisma/browser";
+import { GigChatPanel } from "./gig-chat-panel";
 import { LineUpField } from "./line-up-field";
 import { PosterField } from "./poster-field";
 import { TagsField } from "./tags-field";
-import type { ClaimStatus, GigDraft } from "./types";
+import { newScheduleItem, type DraftScheduleItem, type GigDraft } from "./types";
 
 /**
  * The gig admin form, for both creating and editing.
@@ -88,7 +89,7 @@ type MediaRow = {
   } | null;
 };
 
-/** The admin-visible shape of `gigs.getById`. */
+/** The admin-visible shape of `gigs.getForEditor`. */
 type LoadedGig = {
   id: string;
   title: string;
@@ -103,17 +104,26 @@ type LoadedGig = {
   posterFileUpload: { id: string; name: string } | null;
   media: MediaRow[];
   gigTags: { gigTag: { id: string } }[];
-  gigCreators: {
+  scheduleItems: {
+    id: string;
+    kind: DraftScheduleItem["kind"];
+    label: string | null;
     role: string | null;
+    startsAt: Date | null;
+    endsAt: Date | null;
+    notes: string | null;
+    leadMinutes: number[];
+    recipients: { userId: string }[];
     creatorProfile: {
       id: string;
       handle: string;
       displayName: string;
       avatarFileId: string | null;
-      claimStatus: ClaimStatus;
+      claimStatus: DraftScheduleItem["claimStatus"];
       isPublished: boolean;
-    };
+    } | null;
   }[];
+  notifyRecipients: { userId: string }[];
 };
 
 const emptyDraft = (): GigDraft => ({
@@ -126,7 +136,8 @@ const emptyDraft = (): GigDraft => ({
   startTime: undefined,
   endTime: undefined,
   tagIds: [],
-  creators: [],
+  schedule: [],
+  notifyUserIds: [],
   poster: { kind: "keep" },
 });
 
@@ -141,15 +152,29 @@ const draftFromGig = (gig: LoadedGig): GigDraft => ({
   startTime: gig.gigStartTime ? new Date(gig.gigStartTime) : undefined,
   endTime: gig.gigEndTime ? new Date(gig.gigEndTime) : undefined,
   tagIds: gig.gigTags.map((row) => row.gigTag.id),
-  creators: gig.gigCreators.map((row) => ({
-    creatorProfileId: row.creatorProfile.id,
-    handle: row.creatorProfile.handle,
-    displayName: row.creatorProfile.displayName,
-    avatarFileId: row.creatorProfile.avatarFileId,
-    claimStatus: row.creatorProfile.claimStatus,
-    isPublished: row.creatorProfile.isPublished,
-    role: row.role ?? "",
-  })),
+  schedule: gig.scheduleItems.map((row) =>
+    newScheduleItem({
+      // A saved row keys by its database id, so a save round-trip does not
+      // reorder or remount the timeline.
+      key: row.id,
+      id: row.id,
+      kind: row.kind,
+      creatorProfileId: row.creatorProfile?.id ?? null,
+      handle: row.creatorProfile?.handle ?? null,
+      displayName: row.creatorProfile?.displayName ?? null,
+      avatarFileId: row.creatorProfile?.avatarFileId ?? null,
+      claimStatus: row.creatorProfile?.claimStatus ?? null,
+      isPublished: row.creatorProfile?.isPublished ?? true,
+      label: row.label ?? "",
+      role: row.role ?? "",
+      startsAt: row.startsAt ? new Date(row.startsAt) : null,
+      endsAt: row.endsAt ? new Date(row.endsAt) : null,
+      notes: row.notes ?? "",
+      leadMinutes: row.leadMinutes,
+      recipientUserIds: row.recipients.map((entry) => entry.userId),
+    }),
+  ),
+  notifyUserIds: gig.notifyRecipients.map((row) => row.userId),
   poster: { kind: "keep" },
 });
 
@@ -167,10 +192,19 @@ const fingerprint = (draft: GigDraft): string =>
     startTime: draft.startTime?.getTime() ?? null,
     endTime: draft.endTime?.getTime() ?? null,
     tagIds: [...draft.tagIds].sort(),
-    creators: draft.creators.map((row) => [
+    schedule: draft.schedule.map((row) => [
+      row.id ?? row.key,
+      row.kind,
       row.creatorProfileId,
+      row.label.trim(),
       row.role.trim(),
+      row.startsAt?.getTime() ?? null,
+      row.endsAt?.getTime() ?? null,
+      row.notes.trim(),
+      [...row.leadMinutes].sort((a, b) => a - b),
+      [...row.recipientUserIds].sort(),
     ]),
+    notifyUserIds: [...draft.notifyUserIds].sort(),
     poster:
       draft.poster.kind === "replace"
         ? `replace:${draft.poster.file.name}:${draft.poster.file.size}:${draft.poster.file.lastModified}`
@@ -223,7 +257,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
   const isNew = gigId === null;
   const isSaving = saveState === "saving";
 
-  const query = api.gigs.getById.useQuery(
+  const query = api.gigs.getForEditor.useQuery(
     { id: gigId ?? "" },
     { enabled: gigId !== null },
   );
@@ -322,10 +356,19 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
       gigStartTime: draft.startTime,
       gigEndTime: draft.endTime ?? null,
       tagIds: draft.tagIds,
-      creators: draft.creators.map((row) => ({
+      scheduleItems: draft.schedule.map((row) => ({
+        id: row.id,
+        kind: row.kind,
         creatorProfileId: row.creatorProfileId,
+        label: row.label.trim() || null,
         role: row.role.trim() || null,
+        startsAt: row.startsAt,
+        endsAt: row.endsAt,
+        notes: row.notes.trim() || null,
+        leadMinutes: row.leadMinutes,
+        recipientUserIds: row.recipientUserIds,
       })),
+      notifyUserIds: draft.notifyUserIds,
     };
 
     try {
@@ -367,6 +410,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
       }
 
       await utils.gigs.getById.invalidate({ id });
+      await utils.gigs.getForEditor.invalidate({ id });
       // The baseline is what actually went to the server. The draft keeps
       // anything typed while the save was in flight, minus the poster file just
       // consumed — unless a different one was picked in the meantime.
@@ -638,8 +682,8 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
           </Card>
 
           <LineUpField
-            creators={draft.creators}
-            onChange={(creators) => update("creators", creators)}
+            creators={draft.schedule}
+            onChange={(schedule) => update("schedule", schedule)}
             disabled={isSaving}
           />
 
@@ -738,6 +782,14 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
             </Card>
           )}
         </div>
+
+        {/* A room is a gig, so there is nothing to create — but there is no gig
+            to have a room about until this one is saved. */}
+        {gigId ? (
+          <div className="xl:col-span-12">
+            <GigChatPanel gigId={gigId} />
+          </div>
+        ) : null}
       </div>
 
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
