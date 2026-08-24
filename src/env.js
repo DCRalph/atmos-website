@@ -76,6 +76,12 @@ export const env = createEnv({
 
     /// Shared secret for the Vercel cron endpoints.
     CRON_SECRET: z.string().optional(),
+
+    /// Shared secret for the ntfy-compatible publish endpoint at
+    /// `/api/notify`. Unset means the endpoint refuses everything — a
+    /// notification channel that anyone can post to is a notification channel
+    /// nobody reads.
+    NOTIFY_TOKEN: z.string().optional(),
   },
 
   client: {
@@ -145,6 +151,7 @@ export const env = createEnv({
       process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_JSON,
 
     CRON_SECRET: process.env.CRON_SECRET,
+    NOTIFY_TOKEN: process.env.NOTIFY_TOKEN,
   },
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
   emptyStringAsUndefined: true,

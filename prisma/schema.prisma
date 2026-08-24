@@ -71,6 +71,7 @@ model User {
   creatorClaimRequests CreatorClaimRequest[]      @relation("ClaimRequestingUser")
   ownedCreatorThemes   CreatorProfileTheme[]      @relation("OwnedCreatorThemes")
   deviceTokens         DeviceToken[]
+  notifyMessages       NotifyMessage[]
   tapToPayAnnouncement TapToPayAnnouncement?
 
   @@unique([email])
@@ -125,6 +126,11 @@ model DeviceToken {
   gigAnnouncements Boolean @default(true)
   doorReminders    Boolean @default(true)
 
+  /// ntfy-style topics this device receives — see `src/lib/notify/topics.ts`.
+  /// Seeded from the signed-in user's permissions on first registration and
+  /// whenever the device changes hands; editable per device in the admin.
+  topics String[] @default([])
+
   /// Refreshed on every app launch, so dead installs can be pruned.
   lastSeenAt DateTime @default(now())
   createdAt  DateTime @default(now())
@@ -132,6 +138,38 @@ model DeviceToken {
 
   @@index([userId])
   @@map("device_token")
+}
+
+/// One notification, as published. Kept so the admin can see what went out and
+/// so "nobody got it" can be answered with a device count rather than a guess.
+model NotifyMessage {
+  id String @id @default(cuid())
+
+  topic    String
+  title    String?
+  message  String
+  priority Int      @default(3)
+  tags     String[] @default([])
+  /// URL the notification opens when tapped — ntfy's `Click`.
+  click    String?
+
+  /// How it was published: "api" for the ntfy endpoint, "admin" for a compose
+  /// screen.
+  source String
+  /// Null for the ntfy endpoint, which authenticates with a shared secret
+  /// rather than as a person.
+  senderId String?
+  sender   User?   @relation(fields: [senderId], references: [id], onDelete: SetNull)
+
+  /// Devices subscribed at the time, and how many Expo accepted.
+  devices   Int @default(0)
+  delivered Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([topic, createdAt])
+  @@index([senderId])
+  @@map("notify_message")
 }
 
 model UserPermissionAssignment {

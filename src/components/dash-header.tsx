@@ -47,6 +47,7 @@ const STATIC_PATH_LABELS: Record<string, string> = {
   "/admin/merch": "Merch",
   "/admin/contact": "Contact",
   "/admin/newsletter": "Newsletter",
+  "/admin/notifications": "Notifications",
   "/admin/users": "Users",
   "/admin/files": "Files",
   "/dashboard": "Dashboard",

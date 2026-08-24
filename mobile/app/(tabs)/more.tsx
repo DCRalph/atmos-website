@@ -94,6 +94,16 @@ export default function MoreScreen() {
                 Event analytics
               </Button>
             )}
+            {isOrganiser && (
+              <Button
+                variant="outline"
+                size="sm"
+                style={{ marginTop: space.sm }}
+                onPress={() => router.push("/(admin)/notify")}
+              >
+                Notify team
+              </Button>
+            )}
             {/* Checklist 1.7. Hidden entirely when the handset has no
                 biometric enrolled — a switch that cannot be turned on is worse
                 than no switch. */}
