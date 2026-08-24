@@ -282,10 +282,7 @@ export function TextConversation() {
   const visibleMessages = messages.slice(0, visibleCount);
 
   return (
-    <section
-      ref={sectionRef}
-      className="relative min-h-[250vh] border-t border-white/10"
-    >
+    <section ref={sectionRef} className="relative min-h-[250vh]">
       <div className="sticky top-0 flex h-screen flex-col items-center justify-center px-4 py-6 md:px-6 md:py-0">
         {/* Section title */}
         <motion.div
@@ -295,9 +292,9 @@ export function TextConversation() {
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
         >
-          <p className="mb-2 text-xs tracking-[0.3em] text-white/40 uppercase md:mb-3">
-            03 / The escape
-          </p>
+          {/* <p className="mb-2 text-xs uppercase tracking-[0.3em] text-muted-foreground md:mb-3 md:text-sm">
+            The Escape
+          </p> */}
           <h2 className="text-foreground text-2xl font-bold tracking-tight md:text-4xl">
             {"There\u2019s a lot going on. Leave it at the door."}
           </h2>

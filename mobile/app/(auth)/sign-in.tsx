@@ -12,8 +12,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { signIn, signUp } from "@/lib/auth";
-import { colors, radius, space } from "@/lib/theme";
+import { colors, radius, space, stroke } from "@/lib/theme";
 import { Body, Button, Caption, Eyebrow, Title } from "@/components/ui";
+import { GoogleMark } from "@/components/google-mark";
 
 type Mode = "sign-in" | "sign-up";
 
@@ -96,9 +97,7 @@ export default function SignInScreen() {
           </Caption>
         </View>
 
-        <Button variant="outline" onPress={google} disabled={pending}>
-          Continue with Google
-        </Button>
+        <GoogleButton onPress={google} disabled={pending} />
 
         <View style={styles.divider}>
           <View style={styles.rule} />
@@ -167,6 +166,43 @@ export default function SignInScreen() {
   );
 }
 
+/**
+ * Sign in with Google.
+ *
+ * Its own button rather than the shared one, because that one puts its label
+ * through `textTransform: uppercase` and cannot hold anything but text. Google
+ * asks for the mark and the phrase as written, so "CONTINUE WITH GOOGLE" with
+ * no logo was wrong twice over.
+ *
+ * Still not fully to spec: the colours and the typeface are the app's, where
+ * Google names a theme palette and Google Sans Medium. Those are the remaining
+ * gaps.
+ */
+function GoogleButton({
+  onPress,
+  disabled,
+}: {
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Continue with Google"
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.google,
+        pressed && !disabled && { opacity: 0.7 },
+        disabled && { opacity: 0.45 },
+      ]}
+    >
+      <GoogleMark size={20} />
+      <Body style={styles.googleLabel}>Continue with Google</Body>
+    </Pressable>
+  );
+}
+
 function Field({
   label,
   ...props
@@ -193,6 +229,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
     color: colors.text,
     fontSize: 16,
+  },
+  google: {
+    height: 48,
+    borderRadius: radius.md,
+    borderWidth: stroke.hard,
+    borderColor: colors.borderHard,
+    flexDirection: "row",
+    alignItems: "center",
+    // Google's iOS padding: 16 before the mark, 12 after it, 16 at the end.
+    paddingLeft: 16,
+    paddingRight: 16,
+  },
+  googleLabel: {
+    flex: 1,
+    textAlign: "center",
+    marginLeft: 12,
+    // Deliberately not the shared button label: that one is uppercase, 900 and
+    // letterspaced, and the phrase has to read as Google wrote it.
+    fontWeight: "500",
   },
   divider: { flexDirection: "row", alignItems: "center", gap: space.md },
   rule: { flex: 1, height: 1, backgroundColor: colors.border },

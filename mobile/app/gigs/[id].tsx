@@ -129,10 +129,10 @@ export default function GigScreen() {
           <Caption>Tickets aren&apos;t on sale for this one.</Caption>
         )}
 
-        {data.gigCreators.length > 0 ? (
+        {data.lineUp.length > 0 ? (
           <View style={{ gap: space.sm, marginTop: space.md }}>
             <Eyebrow>Line-up</Eyebrow>
-            {data.gigCreators.map((entry) => (
+            {data.lineUp.map((entry) => (
               <View key={entry.id} style={styles.creator}>
                 <Body style={{ fontWeight: "600" }}>
                   {entry.creatorProfile.displayName}

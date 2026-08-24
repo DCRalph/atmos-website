@@ -5,8 +5,6 @@ import { useRef } from "react";
 import { useMainLayoutScrollContainer } from "~/hooks/use-main-layout-scroll-container";
 import Image from "next/image";
 
-// Full-bleed photo hero with the content anchored to the bottom edge:
-// logo + tagline on the left, quick facts on the right.
 export function HeroSection() {
   const ref = useRef<HTMLDivElement>(null);
   const { containerRef } = useMainLayoutScrollContainer();
@@ -17,18 +15,22 @@ export function HeroSection() {
   });
 
   const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
-  const y = useTransform(scrollYProgress, [0, 0.8], [0, 80]);
+  const scale = useTransform(scrollYProgress, [0, 0.8], [1, 0.9]);
+  const y = useTransform(scrollYProgress, [0, 0.8], [0, 100]);
   const backgroundY = useTransform(scrollYProgress, [0, 1], [0, 200]);
-  const overlayOpacity = useTransform(scrollYProgress, [0, 0.7], [0.45, 0.75]);
+  const overlayOpacity = useTransform(scrollYProgress, [0, 0.7], [0.35, 0.65]);
 
   return (
-    <section ref={ref} className="relative h-[85vh] overflow-hidden">
+    <section
+      ref={ref}
+      className="relative flex h-[80vh] items-center justify-center overflow-hidden"
+    >
       {/* Background image with parallax */}
       <motion.div className="absolute inset-0 z-0" style={{ y: backgroundY }}>
         <img
           src="/home/atmos-46.jpg"
           alt="Crowd at an Atmos event"
-          className="h-[120%] w-full object-cover brightness-[0.5]"
+          className="h-[120%] w-full object-cover brightness-[0.3]"
           crossOrigin="anonymous"
         />
       </motion.div>
@@ -38,41 +40,71 @@ export function HeroSection() {
         style={{ opacity: overlayOpacity }}
       />
 
-      {/* Bottom-anchored content */}
+      {/* Content */}
       <motion.div
-        className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-6 px-6 pb-10 md:flex-row md:items-end md:justify-between md:px-10 md:pb-12"
-        style={{ opacity, y }}
+        className="relative z-10 flex flex-col items-center gap-6 px-6 text-center"
+        style={{ opacity, scale, y }}
       >
-        <motion.div
-          initial={{ opacity: 0, y: 40, filter: "blur(10px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          transition={{ duration: 1.1, ease: [0.25, 0.1, 0.25, 1] }}
-        >
-          <div className="relative mb-5 aspect-3/1 w-[clamp(9rem,22vw,15rem)]">
-            <Image
-              src="/logo/atmos-white.png"
-              alt="Atmos"
-              fill
-              className="object-contain object-left"
-            />
-          </div>
-          <p className="text-lg font-semibold tracking-tight text-white md:text-xl">
-            {"We don’t do gigs. We build atmospheres."}
-          </p>
-        </motion.div>
-
-        <motion.div
-          className="text-[11px] leading-loose tracking-[0.2em] text-white/60 uppercase md:text-right"
+        {/* <motion.p
+          className="text-xs tracking-[0.5em] uppercase text-white/40 font-light"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.5, ease: "easeOut" }}
+          transition={{ duration: 1, delay: 0.4, ease: "easeOut" }}
         >
-          {"Pōneke, New Zealand"}
-          <br />
-          Sound, light, space
-          <br />
-          Independent
+          Poneke, New Zealand
+        </motion.p> */}
+        {/* <motion.h1
+          className="text-[clamp(4rem,15vw,12rem)] font-serif font-bold leading-[0.85] tracking-tighter text-white"
+          initial={{ opacity: 0, y: 60, filter: "blur(10px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          transition={{ duration: 1.2, delay: 0, ease: [0.25, 0.1, 0.25, 1] }}
+        >
+          ATMOS
+        </motion.h1> */}
+        <motion.div
+          className="relative aspect-3/1 w-[clamp(8rem,50vw,32rem)]"
+          initial={{ opacity: 0, y: 60, filter: "blur(10px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          transition={{ duration: 1.2, delay: 0, ease: [0.25, 0.1, 0.25, 1] }}
+        >
+          <Image
+            src="/logo/atmos-white.png"
+            alt="Atmos"
+            fill
+            className="object-contain"
+          />
         </motion.div>
+        <motion.div
+          className="h-px w-12 bg-white/20"
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ duration: 0.8, delay: 0.6, ease: "easeOut" }}
+        />
+        <motion.p
+          className="max-w-sm text-base leading-relaxed tracking-wide text-white/50"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.7, ease: "easeOut" }}
+        >
+          {"We don\u2019t do gigs. We build atmospheres."}
+        </motion.p>
+      </motion.div>
+
+      {/* Scroll indicator */}
+      <motion.div
+        className="absolute bottom-10 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-2"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.2, duration: 0.8 }}
+      >
+        <span className="text-[10px] tracking-[0.4em] text-white/30 uppercase">
+          Scroll
+        </span>
+        <motion.div
+          className="h-8 w-px origin-top bg-white/20"
+          animate={{ scaleY: [0, 1, 0] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+        />
       </motion.div>
     </section>
   );

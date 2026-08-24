@@ -73,7 +73,10 @@ public class ProximityEducationModule: Module {
           do {
             let discovery = ProximityReaderDiscovery()
             let content = try await discovery.content(for: .payment(.howToTap))
-            discovery.presentContent(content, from: root)
+            // `presentContent` became throwing and async in the iOS 26 SDK,
+            // where it used to be neither. The surrounding do/catch already
+            // reports a failure to JS, so it needs no handling of its own.
+            try await discovery.presentContent(content, from: root)
             promise.resolve(nil)
           } catch {
             promise.reject(

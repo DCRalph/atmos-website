@@ -16,8 +16,10 @@ import {
   ActivityType,
   FileUploadStatus,
   GigMode,
+  GigScheduleKind,
   type GigMedia,
 } from "~Prisma/client";
+import { toPublicLineUp } from "~/lib/run-sheet/line-up";
 import { userHasPermission } from "~/server/utils/permissions";
 import type { SerializedEditorState } from "lexical";
 import { Prisma } from "~Prisma/client";
@@ -49,32 +51,117 @@ function toLexicalJsonInput(
 }
 
 /**
- * A gig's line-up as the admin editor sends it: every row that should exist,
- * in display order, roles inline. Absent rows are removals.
+ * A gig's run sheet as the admin editor sends it: every row that should exist,
+ * in display order. Absent rows are removals, which is why `id` matters — a row
+ * that comes back with its id keeps the notifications it has already sent, and a
+ * row that comes back without one is new.
+ *
+ * The line-up is not a separate thing. A `SET` row is a line-up entry; the
+ * public bill is built from these and nothing else.
  */
-const GIG_CREATOR_INPUT = z.array(
-  z.object({
-    creatorProfileId: z.string().min(1),
-    role: z.string().max(80).nullish(),
-  }),
-);
+const SCHEDULE_ITEM_INPUT = z
+  .array(
+    z.object({
+      /** Absent on a row that has never been saved. */
+      id: z.string().min(1).optional(),
+      kind: z.enum(GigScheduleKind),
+      creatorProfileId: z.string().min(1).nullish(),
+      label: z.string().max(120).nullish(),
+      role: z.string().max(80).nullish(),
+      startsAt: z.coerce.date().nullish(),
+      endsAt: z.coerce.date().nullish(),
+      notes: z.string().max(4000).nullish(),
+      /** Minutes before the cue to warn. Capped so a typo cannot warn a week out. */
+      leadMinutes: z.array(z.number().int().min(1).max(720)).max(4).default([]),
+      /** Narrows the gig's recipients for this cue. Empty means "the gig's list". */
+      recipientUserIds: z.array(z.string().min(1)).default([]),
+    }),
+  )
+  .superRefine((rows, ctx) => {
+    rows.forEach((row, index) => {
+      if (row.kind === GigScheduleKind.SET && !row.creatorProfileId) {
+        ctx.addIssue({
+          code: "custom",
+          message: "A set needs somebody playing it",
+          path: [index, "creatorProfileId"],
+        });
+      }
+      if (row.kind !== GigScheduleKind.SET && row.creatorProfileId) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Only a set carries a creator profile",
+          path: [index, "creatorProfileId"],
+        });
+      }
+      if (row.startsAt && row.endsAt && row.endsAt < row.startsAt) {
+        ctx.addIssue({
+          code: "custom",
+          message: "A row cannot end before it starts",
+          path: [index, "endsAt"],
+        });
+      }
+    });
+  });
 
-type GigCreatorInput = z.infer<typeof GIG_CREATOR_INPUT>;
+type ScheduleItemInput = z.infer<typeof SCHEDULE_ITEM_INPUT>;
 
 const uniqueStrings = (values: string[]): string[] => [...new Set(values)];
 
-/** First occurrence wins, so the submitted order is the stored order. */
-const uniqueCreators = (rows: GigCreatorInput): GigCreatorInput => {
-  const seen = new Set<string>();
-  return rows.filter((row) => {
-    if (seen.has(row.creatorProfileId)) return false;
-    seen.add(row.creatorProfileId);
-    return true;
-  });
-};
-
 const normalizeRole = (role: string | null | undefined): string | null =>
   role?.trim() ? role.trim() : null;
+
+const normalizeText = (value: string | null | undefined): string | null =>
+  value?.trim() ? value.trim() : null;
+
+/**
+ * Leads, deduplicated and longest first, so "5, 5, 15" is two warnings and the
+ * order they appear in matches the order they arrive.
+ */
+const uniqueLeads = (minutes: number[]): number[] =>
+  [...new Set(minutes)].sort((a, b) => b - a);
+
+/** One run sheet row's columns. `sortOrder` comes from the submitted order. */
+const scheduleItemData = (row: ScheduleItemInput[number], index: number) => ({
+  kind: row.kind,
+  creatorProfileId: row.creatorProfileId ?? null,
+  label: normalizeText(row.label),
+  role: normalizeRole(row.role),
+  startsAt: row.startsAt ?? null,
+  endsAt: row.endsAt ?? null,
+  notes: normalizeText(row.notes),
+  leadMinutes: uniqueLeads(row.leadMinutes),
+  sortOrder: index,
+});
+
+/** Every distinct artist named by a run sheet, for reference checks. */
+const creatorIdsIn = (rows: ScheduleItemInput): string[] =>
+  uniqueStrings(
+    rows.flatMap((row) => (row.creatorProfileId ? [row.creatorProfileId] : [])),
+  );
+
+/**
+ * The columns a public line-up is allowed to be built from. Times are absent by
+ * construction except where ordering needs them, and ordering is the only thing
+ * they are used for — see `toPublicLineUp`.
+ */
+const LINE_UP_SELECT = {
+  id: true,
+  kind: true,
+  role: true,
+  startsAt: true,
+  sortOrder: true,
+  creatorProfile: {
+    select: {
+      id: true,
+      handle: true,
+      displayName: true,
+      avatarFileId: true,
+      tagline: true,
+      isPublished: true,
+      claimStatus: true,
+    },
+  },
+} satisfies Prisma.GigScheduleItemSelect;
 
 /**
  * Fails cleanly on ids that no longer exist, rather than letting the write hit
@@ -85,8 +172,18 @@ const assertReferencesExist = async (
   {
     tagIds,
     creatorProfileIds,
-  }: { tagIds: string[]; creatorProfileIds: string[] },
+    userIds = [],
+  }: { tagIds: string[]; creatorProfileIds: string[]; userIds?: string[] },
 ) => {
+  if (userIds.length > 0) {
+    const found = await db.user.count({ where: { id: { in: userIds } } });
+    if (found !== userIds.length) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "One or more of those people no longer has an account",
+      });
+    }
+  }
   if (tagIds.length > 0) {
     const found = await db.gigTag.count({ where: { id: { in: tagIds } } });
     if (found !== tagIds.length) {
@@ -740,6 +837,15 @@ export const gigsRouter = createTRPCRouter({
       : redactGigsForPublic(withPosters);
   }),
 
+  /**
+   * One gig, for anybody.
+   *
+   * The line-up is assembled from a select narrow enough that a set time, a
+   * note or a non-set cue has nowhere to be. Admins do not get more here; they
+   * get `getForEditor`, which is a different procedure with a different guard,
+   * so "who can see the run sheet" is answered by tRPC rather than by a branch
+   * inside a query somebody has to keep correct.
+   */
   getById: publicProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -753,12 +859,52 @@ export const gigsRouter = createTRPCRouter({
               { createdAt: "asc" },
             ],
           },
-          gigTags: {
-            include: {
-              gigTag: true,
-            },
+          gigTags: { include: { gigTag: true } },
+          scheduleItems: { select: LINE_UP_SELECT },
+        },
+      });
+
+      if (!gig) return null;
+
+      const enrichedMedia = await enrichMediaWithFileUploads(ctx.db, gig.media);
+      const posterFileUpload = await getFileUploadInfoById(
+        ctx.db,
+        gig.posterFileUploadId ?? null,
+      );
+
+      const { scheduleItems, ...rest } = gig;
+      const result = {
+        ...rest,
+        media: enrichedMedia,
+        posterFileUpload,
+        lineUp: toPublicLineUp(scheduleItems),
+      };
+
+      return (await isAdminSession(ctx)) ? result : redactGigForPublic(result);
+    }),
+
+  /**
+   * Everything the gig editor owns, including the run sheet.
+   *
+   * Admin-only and deliberately separate from `getById`: the run sheet is
+   * internal, and the cheapest way to keep it internal is for the public
+   * procedure to have no code path that returns it.
+   */
+  getForEditor: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const gig = await ctx.db.gig.findUnique({
+        where: { id: input.id },
+        include: {
+          media: {
+            orderBy: [
+              { section: "asc" },
+              { sortOrder: "asc" },
+              { createdAt: "asc" },
+            ],
           },
-          gigCreators: {
+          gigTags: { include: { gigTag: true } },
+          scheduleItems: {
             orderBy: { sortOrder: "asc" },
             include: {
               creatorProfile: {
@@ -772,8 +918,10 @@ export const gigsRouter = createTRPCRouter({
                   claimStatus: true,
                 },
               },
+              recipients: { select: { userId: true } },
             },
           },
+          notifyRecipients: { select: { userId: true } },
         },
       });
 
@@ -784,8 +932,8 @@ export const gigsRouter = createTRPCRouter({
         ctx.db,
         gig.posterFileUploadId ?? null,
       );
-      const result = { ...gig, media: enrichedMedia, posterFileUpload };
-      return (await isAdminSession(ctx)) ? result : redactGigForPublic(result);
+
+      return { ...gig, media: enrichedMedia, posterFileUpload };
     }),
 
   create: adminProcedure
@@ -801,21 +949,28 @@ export const gigsRouter = createTRPCRouter({
         ticketLink: z.string().optional(),
         /** Tags picked before the gig existed. */
         tagIds: z.array(z.string()).default([]),
-        /** Line-up picked before the gig existed, in display order. */
-        creators: GIG_CREATOR_INPUT.default([]),
+        /** Run sheet built before the gig existed, in running order. */
+        scheduleItems: SCHEDULE_ITEM_INPUT.default([]),
+        /** Who hears this gig's cues. */
+        notifyUserIds: z.array(z.string().min(1)).default([]),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { descriptionLexical, tagIds, creators, ...rest } = input;
+      const { descriptionLexical, tagIds, scheduleItems, notifyUserIds, ...rest } =
+        input;
       const wantedTagIds = uniqueStrings(tagIds);
-      const wantedCreators = uniqueCreators(creators);
+      const wantedRecipients = uniqueStrings(notifyUserIds);
 
       await assertReferencesExist(ctx.db, {
         tagIds: wantedTagIds,
-        creatorProfileIds: wantedCreators.map((row) => row.creatorProfileId),
+        creatorProfileIds: creatorIdsIn(scheduleItems),
+        userIds: uniqueStrings([
+          ...wantedRecipients,
+          ...scheduleItems.flatMap((row) => row.recipientUserIds),
+        ]),
       });
 
-      // Nested writes, so a gig never lands without the tags and line-up that
+      // Nested writes, so a gig never lands without the tags and run sheet that
       // were saved alongside it.
       const created = await ctx.db.gig.create({
         data: {
@@ -828,14 +983,24 @@ export const gigsRouter = createTRPCRouter({
                 },
               }
             : {}),
-          ...(wantedCreators.length > 0
+          ...(scheduleItems.length > 0
             ? {
-                gigCreators: {
-                  create: wantedCreators.map((row, index) => ({
-                    creatorProfileId: row.creatorProfileId,
-                    role: normalizeRole(row.role),
-                    sortOrder: index,
+                scheduleItems: {
+                  create: scheduleItems.map((row, index) => ({
+                    ...scheduleItemData(row, index),
+                    recipients: {
+                      create: uniqueStrings(row.recipientUserIds).map(
+                        (userId) => ({ userId }),
+                      ),
+                    },
                   })),
+                },
+              }
+            : {}),
+          ...(wantedRecipients.length > 0
+            ? {
+                notifyRecipients: {
+                  create: wantedRecipients.map((userId) => ({ userId })),
                 },
               }
             : {}),
@@ -850,7 +1015,7 @@ export const gigsRouter = createTRPCRouter({
         {
           gigId: created.id,
           tagCount: wantedTagIds.length,
-          creatorCount: wantedCreators.length,
+          creatorCount: creatorIdsIn(scheduleItems).length,
         },
       );
 
@@ -884,10 +1049,10 @@ export const gigsRouter = createTRPCRouter({
 
   /**
    * Everything the gig editor owns, written in one transaction: core fields,
-   * date/time, tags and line-up. The editor commits all of it behind a single
-   * Save, so a half-applied save — tags written, line-up not — must not be
-   * reachable. `tagIds` and `creators` are the complete desired state; anything
-   * absent from them is removed.
+   * date/time, tags, the run sheet and who hears it. The editor commits all of
+   * it behind a single Save, so a half-applied save — tags written, run sheet
+   * not — must not be reachable. `tagIds`, `scheduleItems` and `notifyUserIds`
+   * are the complete desired state; anything absent from them is removed.
    */
   saveAll: adminProcedure
     .input(
@@ -902,16 +1067,22 @@ export const gigsRouter = createTRPCRouter({
         gigStartTime: z.date(),
         gigEndTime: z.date().nullish(),
         tagIds: z.array(z.string()),
-        creators: GIG_CREATOR_INPUT,
+        scheduleItems: SCHEDULE_ITEM_INPUT,
+        notifyUserIds: z.array(z.string().min(1)),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { id, descriptionLexical, tagIds, creators, ...rest } = input;
+      const {
+        id,
+        descriptionLexical,
+        tagIds,
+        scheduleItems,
+        notifyUserIds,
+        ...rest
+      } = input;
       const wantedTagIds = uniqueStrings(tagIds);
-      const wantedCreators = uniqueCreators(creators);
-      const wantedCreatorIds = wantedCreators.map(
-        (row) => row.creatorProfileId,
-      );
+      const wantedRecipients = uniqueStrings(notifyUserIds);
+      const wantedCreatorIds = creatorIdsIn(scheduleItems);
 
       const existing = await ctx.db.gig.findUnique({
         where: { id },
@@ -919,8 +1090,9 @@ export const gigsRouter = createTRPCRouter({
           id: true,
           title: true,
           gigTags: { select: { id: true, gigTagId: true } },
-          gigCreators: {
+          scheduleItems: {
             select: {
+              id: true,
               creatorProfileId: true,
               creatorProfile: { select: { handle: true } },
             },
@@ -934,17 +1106,38 @@ export const gigsRouter = createTRPCRouter({
       await assertReferencesExist(ctx.db, {
         tagIds: wantedTagIds,
         creatorProfileIds: wantedCreatorIds,
+        userIds: uniqueStrings([
+          ...wantedRecipients,
+          ...scheduleItems.flatMap((row) => row.recipientUserIds),
+        ]),
       });
 
-      const keptCreatorIds = new Set(wantedCreatorIds);
-      const hadCreatorIds = new Set(
-        existing.gigCreators.map((row) => row.creatorProfileId),
+      // A row keeps its id across a save, and with it the record of what has
+      // already been announced. Only ids we actually hold are honoured, so a
+      // stale draft cannot adopt another gig's row.
+      const existingItemIds = new Set(
+        existing.scheduleItems.map((row) => row.id),
       );
-      const removedCreators = existing.gigCreators.filter(
-        (row) => !keptCreatorIds.has(row.creatorProfileId),
+      const keptItemIds = new Set(
+        scheduleItems.flatMap((row) =>
+          row.id && existingItemIds.has(row.id) ? [row.id] : [],
+        ),
+      );
+      const removedItems = existing.scheduleItems.filter(
+        (row) => !keptItemIds.has(row.id),
+      );
+
+      const hadCreatorIds = new Set(
+        existing.scheduleItems.flatMap((row) =>
+          row.creatorProfileId ? [row.creatorProfileId] : [],
+        ),
       );
       const addedCreatorIds = wantedCreatorIds.filter(
         (creatorProfileId) => !hadCreatorIds.has(creatorProfileId),
+      );
+      const removedCreators = removedItems.filter(
+        (row) =>
+          row.creatorProfileId && !wantedCreatorIds.includes(row.creatorProfileId),
       );
 
       // Legacy rows: `gig_tag_relationship` has no unique constraint, so the
@@ -988,30 +1181,57 @@ export const gigsRouter = createTRPCRouter({
           });
         }
 
-        await tx.gigCreator.deleteMany({
-          where:
-            wantedCreatorIds.length > 0
-              ? { gigId: id, creatorProfileId: { notIn: wantedCreatorIds } }
-              : { gigId: id },
-        });
+        if (removedItems.length > 0) {
+          await tx.gigScheduleItem.deleteMany({
+            where: { id: { in: removedItems.map((row) => row.id) } },
+          });
+        }
+
         // Sequential on purpose: `sortOrder` comes from the submitted order and
         // (gigId, sortOrder) is a plain index, so transient overlap is fine.
-        for (const [index, row] of wantedCreators.entries()) {
-          const role = normalizeRole(row.role);
-          await tx.gigCreator.upsert({
-            where: {
-              gigId_creatorProfileId: {
-                gigId: id,
-                creatorProfileId: row.creatorProfileId,
-              },
-            },
-            create: {
-              gigId: id,
-              creatorProfileId: row.creatorProfileId,
-              role,
-              sortOrder: index,
-            },
-            update: { role, sortOrder: index },
+        for (const [index, row] of scheduleItems.entries()) {
+          const data = scheduleItemData(row, index);
+          const recipients = uniqueStrings(row.recipientUserIds);
+          const itemId =
+            row.id && existingItemIds.has(row.id)
+              ? (
+                  await tx.gigScheduleItem.update({
+                    where: { id: row.id },
+                    data,
+                    select: { id: true },
+                  })
+                ).id
+              : (
+                  await tx.gigScheduleItem.create({
+                    data: { ...data, gigId: id },
+                    select: { id: true },
+                  })
+                ).id;
+
+          await tx.gigScheduleRecipient.deleteMany({
+            where:
+              recipients.length > 0
+                ? { itemId, userId: { notIn: recipients } }
+                : { itemId },
+          });
+          if (recipients.length > 0) {
+            await tx.gigScheduleRecipient.createMany({
+              data: recipients.map((userId) => ({ itemId, userId })),
+              skipDuplicates: true,
+            });
+          }
+        }
+
+        await tx.gigNotifyRecipient.deleteMany({
+          where:
+            wantedRecipients.length > 0
+              ? { gigId: id, userId: { notIn: wantedRecipients } }
+              : { gigId: id },
+        });
+        if (wantedRecipients.length > 0) {
+          await tx.gigNotifyRecipient.createMany({
+            data: wantedRecipients.map((userId) => ({ gigId: id, userId })),
+            skipDuplicates: true,
           });
         }
       });
@@ -1035,7 +1255,7 @@ export const gigsRouter = createTRPCRouter({
       for (const row of removedCreators) {
         await logUserActivity(
           ActivityType.GIG_CREATOR_REMOVED,
-          `Removed @${row.creatorProfile.handle} from gig "${rest.title}"`,
+          `Removed @${row.creatorProfile?.handle ?? "someone"} from gig "${rest.title}"`,
           ctx.session.user.id,
           undefined,
           { gigId: id, creatorProfileId: row.creatorProfileId },

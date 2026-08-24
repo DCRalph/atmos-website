@@ -276,8 +276,8 @@ New route group `mobile/app/(door)/tap-to-pay/`:
 
 **`index.tsx` — the Tap to Pay hub (3.1, 3.6, 4.3)**
 
-Reachable from *More* → "Tap to Pay on iPhone" for any door staff, and from the
-door picker. This is the screen that satisfies "enable outside of the usual
+Reachable from *More* → *Internal* → "Tap to Pay guides" for any door staff, and
+from the door picker. Both entry points are staff-only. This is the screen that satisfies "enable outside of the usual
 communications and checkout flow". It shows live state from Phase 1:
 
 - `needs-terms` + admin → **Set up Tap to Pay** (3.5). Connects with
@@ -310,9 +310,11 @@ After education completes, invite a real test tap. Recommended, not required —
 worth having because it is also the cleanest thing to put in the Apple
 recording.
 
-**`mobile/app/(tabs)/more.tsx`** — add the "Tap to Pay on iPhone" row, visible to
-staff. For non-staff it explains that Tap to Pay is Atmos box-office tooling and
-how to ask for access, which is what carries 2.1.
+**`mobile/app/(tabs)/more.tsx`** — the "Tap to Pay guides" row lives in the
+*Internal* section, which renders only for door staff and organisers. There is no
+customer-facing Tap to Pay row: 2.1 is answered as N/A on the grounds that there
+is no third-party merchant onboarding at all, and App Review is given door-staff
+credentials instead. See `APP-REVIEW-ANSWERS.md`.
 
 ---
 

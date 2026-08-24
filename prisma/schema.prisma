@@ -72,6 +72,11 @@ model User {
   ownedCreatorThemes   CreatorProfileTheme[]      @relation("OwnedCreatorThemes")
   deviceTokens         DeviceToken[]
   notifyMessages       NotifyMessage[]
+  gigNotifyRecipients  GigNotifyRecipient[]
+  gigScheduleRecipients GigScheduleRecipient[]
+  gigChatMessages      GigChatMessage[]
+  gigChatReactions     GigChatReaction[]
+  gigChatReads         GigChatRead[]
   tapToPayAnnouncement TapToPayAnnouncement?
 
   @@unique([email])
@@ -367,7 +372,16 @@ model Gig {
 
   gigTags           GigTagRelationship[]
   homeGigPlacements HomeGigPlacement[]
-  gigCreators       GigCreator[]
+
+  /// The run sheet: line-up and cues on one timeline. See `GigScheduleItem`.
+  scheduleItems    GigScheduleItem[]
+  /// Who hears this gig's cues, unless a cue narrows it further. Also who is
+  /// in the gig's chat room, alongside every admin - see `~/server/gig-chat.ts`.
+  notifyRecipients GigNotifyRecipient[]
+
+  /// The room the people working this gig talk in on the day.
+  chatMessages GigChatMessage[]
+  chatReads    GigChatRead[]
 
   /// Ticketed events sold through this site. When one exists and is published,
   /// the gig page shows the buy panel instead of the external `ticketLink`.
@@ -400,7 +414,7 @@ model CreatorProfile {
   themeRef      CreatorProfileTheme?  @relation(fields: [themeId], references: [id], onDelete: SetNull)
   blocks        CreatorBlock[]
   socials       CreatorSocial[]
-  gigCreators   GigCreator[]
+  scheduleItems GigScheduleItem[]
   crewMembers   CrewMember[]
   claimRequests CreatorClaimRequest[]
 
@@ -482,22 +496,204 @@ model CreatorClaimRequest {
   @@map("creator_claim_request")
 }
 
-model GigCreator {
-  id               String   @id @default(cuid())
-  gigId            String
-  creatorProfileId String
-  role             String?
-  sortOrder        Int      @default(0)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+enum GigScheduleKind {
+  LOAD_IN
+  SOUND_CHECK
+  DOORS
+  SET
+  CURFEW
+  CUSTOM
+}
 
-  gig            Gig            @relation(fields: [gigId], references: [id], onDelete: Cascade)
-  creatorProfile CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+/// One entry on a gig's run sheet, which is also the line-up.
+///
+/// Replaces `gig_creator` — the migration is a table rename, so these are the
+/// same rows the line-up always had. A `SET` carries a creator profile and is
+/// what the public line-up is built from; every other kind is internal and is
+/// never selected by a public procedure. Times are optional throughout, so a
+/// gig with names typed into it and no run sheet yet behaves exactly as before.
+///
+/// Changeovers are not stored. Two adjacent sets imply one, which is why the
+/// cue copy in `~/server/run-sheet.ts` reads a set's predecessor rather than a
+/// row somebody has to remember to keep in sync.
+model GigScheduleItem {
+  id    String          @id @default(cuid())
+  gigId String
+  kind  GigScheduleKind @default(SET)
 
-  @@unique([gigId, creatorProfileId])
-  @@index([creatorProfileId])
+  /// Set on `SET` rows, null on every other kind.
+  creatorProfileId String?
+  /// Names a non-`SET` row, or overrides the artist's name on a `SET`.
+  label String?
+  /// Free text, as the line-up always had it: "Headliner", "B2B", "Support".
+  role  String?
+
+  startsAt DateTime?
+  endsAt   DateTime?
+
+  /// Running order, and the tiebreak when two rows share a time or have none.
+  sortOrder Int @default(0)
+
+  /// Internal. Deliberately never reaches a public payload.
+  notes String? @db.Text
+
+  /// Minutes before `startsAt` to warn. Empty fires only on the cue itself.
+  leadMinutes Int[] @default([5])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  gig            Gig             @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  creatorProfile CreatorProfile? @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+
+  /// Narrows the gig's recipients for this one cue. Empty means "the gig's list".
+  recipients GigScheduleRecipient[]
+  fires      GigScheduleFire[]
+
+  @@index([gigId, startsAt])
   @@index([gigId, sortOrder])
-  @@map("gig_creator")
+  @@index([creatorProfileId])
+  @@map("gig_schedule_item")
+}
+
+/// Who hears a gig's cues by default.
+model GigNotifyRecipient {
+  id        String   @id @default(cuid())
+  gigId     String
+  userId    String
+  createdAt DateTime @default(now())
+
+  gig  Gig  @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([gigId, userId])
+  @@index([userId])
+  @@map("gig_notify_recipient")
+}
+
+/// A per-cue override of the gig's recipient list.
+model GigScheduleRecipient {
+  id     String @id @default(cuid())
+  itemId String
+  userId String
+
+  item GigScheduleItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, userId])
+  @@index([userId])
+  @@map("gig_schedule_recipient")
+}
+
+/// One cue the sweep has already dealt with, and the reason it never deals with
+/// it twice: `@@unique([itemId, offsetMinutes])` means two overlapping pings
+/// race to insert and exactly one wins.
+model GigScheduleFire {
+  id     String @id @default(cuid())
+  itemId String
+
+  /// Minutes before the cue this covers. 0 is the cue itself.
+  offsetMinutes Int
+  /// The item's `startsAt` when it fired, so a night that moved afterwards can
+  /// be told apart from one that did not.
+  firedFor DateTime
+  /// Recorded rather than sent, when the sweep found the cue too far overdue to
+  /// be worth waking anybody for. Written so it cannot fire late either.
+  skipped Boolean @default(false)
+
+  devices         Int     @default(0)
+  delivered       Int     @default(0)
+  notifyMessageId String?
+
+  createdAt DateTime @default(now())
+
+  item GigScheduleItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, offsetMinutes])
+  @@map("gig_schedule_fire")
+}
+
+/// One message in a gig's room.
+///
+/// There is no room table. A room *is* a gig, so there is nothing to create,
+/// nothing to archive, and no way to end up with a gig whose room is missing.
+/// Who is in it is not stored here either: it is every admin plus the gig's
+/// `GigNotifyRecipient` list, resolved in `~/server/gig-chat.ts`. One roster,
+/// edited in one place, used for both the run sheet's cues and this.
+model GigChatMessage {
+  id       String @id @default(cuid())
+  gigId    String
+  authorId String
+
+  body String @db.Text
+
+  /// Soft, so a deleted message keeps its place in the transcript rather than
+  /// resequencing everything under somebody mid-scroll. The body is cleared on
+  /// delete; the row survives only to say something was here.
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  gig       Gig               @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  author    User              @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  reactions GigChatReaction[]
+
+  /// The room's only read pattern: newest N for one gig.
+  @@index([gigId, createdAt])
+  @@index([authorId])
+  @@map("gig_chat_message")
+}
+
+/// One person's reaction to one message.
+///
+/// The emoji is a fixed set of five, validated in `~/lib/gig-chat/reactions.ts`
+/// rather than by a database constraint, so adding a sixth is a code change and
+/// not a migration.
+model GigChatReaction {
+  id        String @id @default(cuid())
+  messageId String
+  userId    String
+  emoji     String
+
+  createdAt DateTime @default(now())
+
+  message GigChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Reacting twice with the same emoji is the same reaction, so the toggle in
+  /// the router can upsert rather than read-then-write.
+  @@unique([messageId, userId, emoji])
+  @@index([userId])
+  @@map("gig_chat_reaction")
+}
+
+/// How far one person has read in one room, and whether it buzzes.
+///
+/// A high-water mark rather than a row per message per reader. Six people and
+/// two hundred messages is twelve hundred rows a night to say what one
+/// timestamp already says, and "seen by 4 of 6" is a count of members whose
+/// mark is past the message either way.
+///
+/// `lastReadAt` doubles as the presence signal: the room screen refreshes it
+/// every few seconds while it is open, so a mark within the last half minute
+/// means that person is looking at the room right now and does not need a push.
+model GigChatRead {
+  id     String @id @default(cuid())
+  gigId  String
+  userId String
+
+  /// Only ever moves forwards - see `markRead` in the router.
+  lastReadAt DateTime @default(now())
+
+  /// A muted room still counts its unread. It just does not push.
+  muted Boolean @default(false)
+
+  gig  Gig  @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([gigId, userId])
+  @@index([userId])
+  @@map("gig_chat_read")
 }
 
 model HomeGigPlacement {

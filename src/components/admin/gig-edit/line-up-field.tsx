@@ -33,11 +33,16 @@ import { useDebouncedValue } from "~/hooks/use-debounced-value";
 import { buildMediaUrl } from "~/lib/media-url";
 import { cn } from "~/lib/utils";
 import { CreatorQuickCreateDialog } from "./creator-quick-create-dialog";
-import type { DraftCreator } from "./types";
+import {
+  newScheduleItem,
+  type DraftScheduleItem,
+  type PickedCreator,
+} from "./types";
 
 type LineUpFieldProps = {
-  creators: DraftCreator[];
-  onChange: (creators: DraftCreator[]) => void;
+  /** The `SET` rows of the run sheet, in running order. */
+  creators: DraftScheduleItem[];
+  onChange: (creators: DraftScheduleItem[]) => void;
   disabled?: boolean;
 };
 
@@ -58,11 +63,11 @@ export function LineUpField({
 
   const debouncedQuery = useDebouncedValue(query);
   const assignedIds = useMemo(
-    () => creators.map((row) => row.creatorProfileId),
+    () => creators.flatMap((row) => (row.creatorProfileId ? [row.creatorProfileId] : [])),
     [creators],
   );
 
-  const search = api.gigCreators.searchProfiles.useQuery(
+  const search = api.lineUp.searchProfiles.useQuery(
     { query: debouncedQuery, excludeIds: assignedIds, limit: 20 },
     {
       enabled: isPickerOpen,
@@ -91,9 +96,9 @@ export function LineUpField({
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
   );
 
-  const add = (profile: Omit<DraftCreator, "role">) => {
+  const add = (profile: PickedCreator) => {
     if (assigned.has(profile.creatorProfileId)) return;
-    onChange([...creators, { ...profile, role: "" }]);
+    onChange([...creators, newScheduleItem({ kind: "SET", ...profile })]);
     setQuery("");
     setActiveIndex(0);
     searchRef.current?.focus();
@@ -143,20 +148,14 @@ export function LineUpField({
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const from = creators.findIndex(
-      (row) => row.creatorProfileId === active.id,
-    );
-    const to = creators.findIndex((row) => row.creatorProfileId === over.id);
+    const from = creators.findIndex((row) => row.key === active.id);
+    const to = creators.findIndex((row) => row.key === over.id);
     if (from < 0 || to < 0) return;
     onChange(arrayMove(creators, from, to));
   };
 
-  const updateRole = (creatorProfileId: string, role: string) => {
-    onChange(
-      creators.map((row) =>
-        row.creatorProfileId === creatorProfileId ? { ...row, role } : row,
-      ),
-    );
+  const updateRole = (key: string, role: string) => {
+    onChange(creators.map((row) => (row.key === key ? { ...row, role } : row)));
   };
 
   return (
@@ -185,25 +184,21 @@ export function LineUpField({
                 onDragEnd={handleDragEnd}
               >
                 <SortableContext
-                  items={creators.map((row) => row.creatorProfileId)}
+                  items={creators.map((row) => row.key)}
                   strategy={verticalListSortingStrategy}
                 >
                   <ul className="flex flex-col gap-2">
                     {creators.map((row, index) => (
                       <SortableCreatorRow
-                        key={row.creatorProfileId}
+                        key={row.key}
                         row={row}
                         position={index + 1}
                         disabled={disabled}
-                        onRoleChange={(role) =>
-                          updateRole(row.creatorProfileId, role)
-                        }
+                        onRoleChange={(role) => updateRole(row.key, role)}
                         onRemove={() =>
                           onChange(
                             creators.filter(
-                              (candidate) =>
-                                candidate.creatorProfileId !==
-                                row.creatorProfileId,
+                              (candidate) => candidate.key !== row.key,
                             ),
                           )
                         }
@@ -375,7 +370,7 @@ function SortableCreatorRow({
   onRoleChange,
   onRemove,
 }: {
-  row: DraftCreator;
+  row: DraftScheduleItem;
   position: number;
   disabled?: boolean;
   onRoleChange: (role: string) => void;
@@ -388,7 +383,9 @@ function SortableCreatorRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: row.creatorProfileId });
+  } = useSortable({ id: row.key });
+
+  const name = row.displayName ?? "Unnamed";
 
   return (
     <li
@@ -402,7 +399,7 @@ function SortableCreatorRow({
     >
       <button
         type="button"
-        aria-label={`Reorder ${row.displayName}`}
+        aria-label={`Reorder ${name}`}
         className="text-muted-foreground hover:text-foreground cursor-grab touch-none active:cursor-grabbing"
         {...attributes}
         {...listeners}
@@ -412,14 +409,14 @@ function SortableCreatorRow({
       <span className="text-muted-foreground w-4 shrink-0 text-xs tabular-nums">
         {position}
       </span>
-      <Avatar fileId={row.avatarFileId} name={row.displayName} size={36} />
+      <Avatar fileId={row.avatarFileId} name={name} size={36} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Link
           href={`/@${row.handle}`}
           target="_blank"
           className="truncate text-sm font-semibold hover:underline"
         >
-          {row.displayName}
+          {name}
         </Link>
         <span className="text-muted-foreground truncate text-xs">
           @{row.handle}
@@ -430,7 +427,7 @@ function SortableCreatorRow({
         isPublished={row.isPublished}
       />
       <Input
-        aria-label={`Role for ${row.displayName}`}
+        aria-label={`Role for ${name}`}
         placeholder="Role (optional)"
         value={row.role}
         disabled={disabled}
@@ -443,7 +440,7 @@ function SortableCreatorRow({
         size="sm"
         disabled={disabled}
         onClick={onRemove}
-        aria-label={`Remove ${row.displayName}`}
+        aria-label={`Remove ${name}`}
       >
         <X className="h-4 w-4" />
       </Button>
@@ -488,7 +485,7 @@ function StatusBadges({
   claimStatus,
   isPublished,
 }: {
-  claimStatus: DraftCreator["claimStatus"];
+  claimStatus: DraftScheduleItem["claimStatus"];
   isPublished: boolean;
 }) {
   return (

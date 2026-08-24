@@ -31,9 +31,14 @@ async function loadProfile(handle: string) {
       blocks: { orderBy: [{ y: "asc" }, { x: "asc" }] },
       socials: { orderBy: { sortOrder: "asc" } },
       themeRef: true,
-      gigCreators: {
+      // One row per gig, naming its columns: a run sheet row also carries set
+      // times and internal notes, and this page is public.
+      scheduleItems: {
+        distinct: ["gigId"],
         orderBy: { sortOrder: "asc" },
-        include: {
+        select: {
+          id: true,
+          role: true,
           gig: {
             select: {
               id: true,
@@ -142,7 +147,7 @@ export default async function PublicCreatorProfilePage({
     label: s.label,
   }));
 
-  const gigAttributions = profile.gigCreators.map((g) => ({
+  const gigAttributions = profile.scheduleItems.map((g) => ({
     id: g.id,
     role: g.role,
     gig: g.gig,
