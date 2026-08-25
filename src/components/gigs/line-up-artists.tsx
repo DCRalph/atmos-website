@@ -3,9 +3,10 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, XIcon } from "lucide-react";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
@@ -51,8 +52,20 @@ export function LineUpAvatars({
 }: {
   lineUp: readonly PublicLineUpEntry[];
 }) {
-  const [selected, setSelected] = useState<PublicLineUpEntry | null>(null);
+  const [index, setIndex] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
+
+  // Fetched with the page rather than on open. The batch link folds the whole
+  // bill into a single request, so the cost is one round trip and the dialog
+  // has nothing left to wait for, including when switching between artists.
+  const summaries = api.useQueries((t) =>
+    lineUp.map((entry) =>
+      t.creatorProfiles.publicSummary(
+        { handle: entry.creatorProfile.handle },
+        { staleTime: 5 * 60 * 1000 },
+      ),
+    ),
+  );
 
   return (
     <>
@@ -63,7 +76,7 @@ export function LineUpAvatars({
             type="button"
             aria-label={entry.creatorProfile.displayName}
             onClick={() => {
-              setSelected(entry);
+              setIndex(i);
               setOpen(true);
             }}
             className={cn(
@@ -84,8 +97,9 @@ export function LineUpAvatars({
 
       <ArtistDialog
         lineUp={lineUp}
-        selected={selected}
-        onSelect={setSelected}
+        index={index}
+        onSelect={setIndex}
+        summary={index === null ? undefined : summaries[index]?.data}
         open={open}
         onOpenChange={setOpen}
       />
@@ -94,44 +108,41 @@ export function LineUpAvatars({
 }
 
 /**
- * `selected` outlives `open` on purpose: clearing it on close would drop the
- * loaded summary and flash the skeleton through the closing animation.
+ * `index` outlives `open` on purpose: clearing it on close would empty the
+ * dialog and let it collapse through the closing animation.
+ *
+ * The switcher floats above the card rather than sitting in a header band, so
+ * the card stays one uninterrupted block of the artist's history.
  */
 function ArtistDialog({
   lineUp,
-  selected,
+  index,
   onSelect,
+  summary,
   open,
   onOpenChange,
 }: {
   lineUp: readonly PublicLineUpEntry[];
-  selected: PublicLineUpEntry | null;
-  onSelect: (entry: PublicLineUpEntry) => void;
+  index: number | null;
+  onSelect: (index: number) => void;
+  summary: ArtistSummary | null | undefined;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const handle = selected?.creatorProfile.handle;
-
-  // Fetched on first open, not on page load: a bill of six would otherwise be
-  // six queries nobody asked for. React Query keeps each artist, so switching
-  // back to one already read is instant.
-  const { data } = api.creatorProfiles.publicSummary.useQuery(
-    { handle: handle ?? "" },
-    { enabled: open && !!handle, staleTime: 5 * 60 * 1000 },
-  );
-
+  const selected = index === null ? null : lineUp[index];
   if (!selected) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        showCloseButton={false}
         bodyClassName="gap-0"
-        className="gap-0 rounded-none border-white/20 bg-black p-0 text-white sm:max-w-[560px]"
+        className="gap-0 border-0 bg-transparent p-0 shadow-none sm:max-w-[560px]"
       >
         {lineUp.length > 1 && (
-          <div className="flex gap-2 overflow-x-auto border-b border-white/10 py-3.5 pr-12 pl-5">
-            {lineUp.map((entry) => {
-              const isActive = entry.id === selected.id;
+          <div className="mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
+            {lineUp.map((entry, i) => {
+              const isActive = i === index;
               return (
                 <button
                   key={entry.id}
@@ -139,16 +150,16 @@ function ArtistDialog({
                   title={entry.creatorProfile.displayName}
                   aria-label={entry.creatorProfile.displayName}
                   aria-current={isActive}
-                  onClick={() => onSelect(entry)}
+                  onClick={() => onSelect(i)}
                   className="shrink-0 cursor-pointer"
                 >
                   <ArtistAvatar
                     profile={entry.creatorProfile}
                     className={cn(
-                      "h-9 w-9 text-xs transition-all",
+                      "h-10 w-10 text-sm shadow-lg transition-all",
                       isActive
                         ? "ring-2 ring-white"
-                        : "opacity-45 hover:opacity-100",
+                        : "opacity-55 ring-1 ring-white/25 hover:opacity-100",
                     )}
                   />
                 </button>
@@ -157,11 +168,24 @@ function ArtistDialog({
           </div>
         )}
 
-        {data ? (
-          <SummaryBody summary={data} onNavigate={() => onOpenChange(false)} />
-        ) : (
-          <LoadingBody profile={selected.creatorProfile} role={selected.role} />
-        )}
+        <div className="relative border border-white/20 bg-black">
+          <DialogClose className="absolute top-3.5 right-3.5 z-10 cursor-pointer text-white/50 transition-colors hover:text-white">
+            <XIcon className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </DialogClose>
+
+          {summary ? (
+            <SummaryBody
+              summary={summary}
+              onNavigate={() => onOpenChange(false)}
+            />
+          ) : (
+            <LoadingBody
+              profile={selected.creatorProfile}
+              role={selected.role}
+            />
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -277,9 +301,12 @@ function SummaryBody({
 }
 
 /**
- * Holds the dialog's shape while a summary loads, so switching artists does not
- * collapse the box. Static blocks rather than a shimmer: the gig page behind is
- * already running parallax on scroll.
+ * Shown until the prefetched summary lands, and as the fallback if a profile
+ * has gone missing since the page loaded. The line-up entry already carries the
+ * name and role, so the dialog opens with something to read either way.
+ *
+ * Static blocks rather than a shimmer: the gig page behind is already running
+ * parallax on scroll.
  */
 function LoadingBody({
   profile,
