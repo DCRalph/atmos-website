@@ -17,24 +17,91 @@ export const NIGHT_ROLLOVER_HOUR = 6;
 
 const MINUTES_PER_DAY = 24 * 60;
 
-/** "22:15" or "2215" or "9:05" to minutes past midnight. Null if it is not a time. */
-export function parseTimeOfDay(raw: string): number | null {
-  const text = raw.trim();
-  if (!text) return null;
+/**
+ * Reading a typed time.
+ *
+ * Returns every reading that is plausible, best first, because "9:30" is two
+ * times and guessing silently is how a set gets announced twelve hours out. The
+ * field shows the alternatives and commits the first one, so a wrong guess is
+ * visible in the field and one click from being fixed.
+ *
+ * The rules, in the order they apply:
+ *
+ *   * An explicit `am` or `pm` settles it.
+ *   * An hour of 13 or more settles it, and so does a leading zero — somebody
+ *     typing `01:00` is typing 24-hour time and means one in the morning.
+ *   * `12` is noon before midnight.
+ *   * Anything else is offered as the evening first. Gig nights are evenings,
+ *     and a load-in at ten in the morning is two more keystrokes.
+ */
+export function parseClock(raw: string): number[] {
+  const text = raw.trim().toLowerCase().replace(/\s+/g, "");
+  if (!text) return [];
+  if (text === "noon" || text === "midday") return [12 * 60];
+  if (text === "midnight") return [0];
 
-  const match = /^(\d{1,2})[:.\s]?(\d{2})$/.exec(text);
-  if (!match) return null;
+  const match = /^(\d{1,2})[:.]?(\d{2})?(am?|pm?)?$/.exec(text);
+  if (!match) return [];
 
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  if (hours > 23 || minutes > 59) return null;
+  const hourText = match[1]!;
+  const hour = Number(hourText);
+  const minutes = match[2] ? Number(match[2]) : 0;
+  const meridiem = match[3]?.startsWith("p")
+    ? "pm"
+    : match[3]
+      ? "am"
+      : null;
 
-  return hours * 60 + minutes;
+  if (hour > 23 || minutes > 59) return [];
+
+  if (meridiem) {
+    if (hour === 0 || hour > 12) return [];
+    const base = hour === 12 ? 0 : hour * 60;
+    return [base + minutes + (meridiem === "pm" ? 12 * 60 : 0)];
+  }
+
+  // 24-hour, said plainly.
+  const isTwentyFourHour =
+    hour === 0 || hour > 12 || hourText.startsWith("0");
+  if (isTwentyFourHour) return [hour * 60 + minutes];
+
+  if (hour === 12) return [12 * 60 + minutes, minutes];
+
+  return [(hour + 12) * 60 + minutes, hour * 60 + minutes];
 }
 
-/** The clock face, for putting a stored moment back in the input. */
-export function formatTimeOfDay(at: Date): string {
-  return `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
+/** The reading a field commits to. Null if what was typed is not a time. */
+export function parseTimeOfDay(raw: string): number | null {
+  return parseClock(raw)[0] ?? null;
+}
+
+/** Minutes past midnight, for a moment. */
+export function minutesOfDay(at: Date): number {
+  return at.getHours() * 60 + at.getMinutes();
+}
+
+/** "9:30 pm". The one way a time is written in the admin. */
+export function formatClock(minutesPastMidnight: number): string {
+  const wrapped = ((minutesPastMidnight % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+  const hour = Math.floor(wrapped / 60);
+  const minutes = wrapped % 60;
+  const meridiem = hour < 12 ? "am" : "pm";
+  const shown = hour % 12 === 0 ? 12 : hour % 12;
+  return `${shown}:${String(minutes).padStart(2, "0")} ${meridiem}`;
+}
+
+/**
+ * Every time on the clock at a given spacing, for the list behind the field.
+ *
+ * Starts at midnight rather than at the start of a night, because the list is a
+ * clock and a clock starts at twelve.
+ */
+export function clockOptions(stepMinutes: number): number[] {
+  const options: number[] = [];
+  for (let minutes = 0; minutes < MINUTES_PER_DAY; minutes += stepMinutes) {
+    options.push(minutes);
+  }
+  return options;
 }
 
 /** Midnight starting the night a gig belongs to. */

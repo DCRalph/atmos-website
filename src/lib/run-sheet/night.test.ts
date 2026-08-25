@@ -2,35 +2,85 @@ import { describe, test } from "bun:test";
 import assert from "node:assert/strict";
 
 import {
-  formatTimeOfDay,
+  clockOptions,
+  formatClock,
+  minutesOfDay,
   nightsBetween,
+  parseClock,
   parseTimeOfDay,
   rebaseSchedule,
   resolveNightTime,
   rollsOver,
 } from "./night";
 
+const clockOf = (at: Date) => formatClock(minutesOfDay(at));
+
 /** A Friday night gig, in whatever zone the test runs in. */
 const friday = new Date(2026, 2, 13, 21, 0);
 
 describe("typing a time", () => {
-  test("takes the shapes people actually type", () => {
+  test("takes 24-hour, however it is punctuated", () => {
     assert.equal(parseTimeOfDay("22:15"), 22 * 60 + 15);
     assert.equal(parseTimeOfDay("2215"), 22 * 60 + 15);
-    assert.equal(parseTimeOfDay("9:05"), 9 * 60 + 5);
-    assert.equal(parseTimeOfDay(" 01.00 "), 60);
+    assert.equal(parseTimeOfDay("22.15"), 22 * 60 + 15);
+  });
+
+  test("an explicit meridiem settles it", () => {
+    assert.deepEqual(parseClock("9pm"), [21 * 60]);
+    assert.deepEqual(parseClock("9 PM"), [21 * 60]);
+    assert.deepEqual(parseClock("9:30pm"), [21 * 60 + 30]);
+    assert.deepEqual(parseClock("930 p"), [21 * 60 + 30]);
+    assert.deepEqual(parseClock("9am"), [9 * 60]);
+    assert.deepEqual(parseClock("12am"), [0]);
+    assert.deepEqual(parseClock("12pm"), [12 * 60]);
+  });
+
+  test("a leading zero means somebody is typing 24-hour time", () => {
+    assert.deepEqual(parseClock("01.00"), [60]);
+    assert.deepEqual(parseClock("0930"), [9 * 60 + 30]);
+  });
+
+  test("a bare hour offers the evening first, and the morning second", () => {
+    assert.deepEqual(parseClock("9"), [21 * 60, 9 * 60]);
+    assert.deepEqual(parseClock("9:30"), [21 * 60 + 30, 9 * 60 + 30]);
+    assert.deepEqual(parseClock("1"), [13 * 60, 60]);
+    assert.deepEqual(parseClock("12"), [12 * 60, 0]);
   });
 
   test("refuses what is not a time", () => {
-    assert.equal(parseTimeOfDay(""), null);
-    assert.equal(parseTimeOfDay("late"), null);
-    assert.equal(parseTimeOfDay("25:00"), null);
-    assert.equal(parseTimeOfDay("22:75"), null);
+    assert.deepEqual(parseClock(""), []);
+    assert.deepEqual(parseClock("late"), []);
+    assert.deepEqual(parseClock("25:00"), []);
+    assert.deepEqual(parseClock("22:75"), []);
+    assert.deepEqual(parseClock("13pm"), []);
+    assert.deepEqual(parseClock("0am"), []);
   });
 
-  test("round-trips through the input", () => {
+  test("takes the words for the two times that have them", () => {
+    assert.deepEqual(parseClock("noon"), [12 * 60]);
+    assert.deepEqual(parseClock("midnight"), [0]);
+  });
+
+  test("round-trips through the field", () => {
     const at = resolveNightTime(friday, parseTimeOfDay("22:15")!);
-    assert.equal(formatTimeOfDay(at), "22:15");
+    assert.equal(clockOf(at), "10:15 pm");
+  });
+});
+
+describe("writing a time", () => {
+  test("reads as a clock, not as a timestamp", () => {
+    assert.equal(formatClock(0), "12:00 am");
+    assert.equal(formatClock(12 * 60), "12:00 pm");
+    assert.equal(formatClock(9 * 60 + 5), "9:05 am");
+    assert.equal(formatClock(21 * 60 + 30), "9:30 pm");
+    assert.equal(formatClock(23 * 60 + 59), "11:59 pm");
+  });
+
+  test("the list behind the field covers the whole clock", () => {
+    const options = clockOptions(15);
+    assert.equal(options.length, 96);
+    assert.equal(formatClock(options[0]!), "12:00 am");
+    assert.equal(formatClock(options.at(-1)!), "11:45 pm");
   });
 });
 
@@ -69,9 +119,9 @@ describe("moving the gig", () => {
   test("takes the run sheet with it, keeping the times of night", () => {
     const saturday = new Date(2026, 2, 14, 21, 0);
     const moved = rebaseSchedule(rows, friday, saturday);
-    assert.equal(formatTimeOfDay(moved[0]!.startsAt), "20:00");
+    assert.equal(clockOf(moved[0]!.startsAt), "8:00 pm");
     assert.equal(moved[0]!.startsAt.getDate(), 14);
-    assert.equal(formatTimeOfDay(moved[1]!.startsAt), "01:00");
+    assert.equal(clockOf(moved[1]!.startsAt), "1:00 am");
     assert.equal(moved[1]!.startsAt.getDate(), 15);
   });
 
@@ -91,6 +141,6 @@ describe("moving the gig", () => {
       before,
       after,
     );
-    assert.equal(formatTimeOfDay(row!.startsAt), "22:00");
+    assert.equal(clockOf(row!.startsAt), "10:00 pm");
   });
 });

@@ -41,11 +41,11 @@ import {
   type ScheduleGroup,
 } from "~/lib/run-sheet/schedule";
 import {
-  formatTimeOfDay,
-  parseTimeOfDay,
+  minutesOfDay,
   resolveNightTime,
   rollsOver,
 } from "~/lib/run-sheet/night";
+import { TimeField } from "~/components/ui/time-field";
 import { cn } from "~/lib/utils";
 import type { GigScheduleKind } from "~Prisma/browser";
 import { CreatorAvatar, CreatorPicker, CreatorStatusBadges } from "./creator-picker";
@@ -391,7 +391,7 @@ function ScheduleRowEditor({
           <GripVertical className="h-4 w-4" />
         </button>
 
-        <TimeField
+        <RowTimeField
           row={row}
           gigStart={gigStart}
           disabled={disabled}
@@ -513,13 +513,13 @@ function ScheduleRowEditor({
 }
 
 /**
- * A clock time, resolved against the gig's night.
+ * A row's time.
  *
- * Held as text while it is being typed so a half-typed "2" is not read as 2am,
- * and committed on blur. A time that lands on the morning after says so rather
- * than leaving somebody to work out which day 01:00 is.
+ * The field itself knows nothing about nights; it hands back minutes past
+ * midnight and this resolves them against the gig's date, so a 1 am curfew
+ * lands on the morning after and says so.
  */
-function TimeField({
+function RowTimeField({
   row,
   gigStart,
   disabled,
@@ -530,62 +530,26 @@ function TimeField({
   disabled?: boolean;
   onPatch: (changes: Partial<DraftScheduleItem>) => void;
 }) {
-  const stored = row.startsAt ? formatTimeOfDay(row.startsAt) : "";
-  const [text, setText] = useState(stored);
-  const [editing, setEditing] = useState(false);
-
-  const value = editing ? text : stored;
-  const nextDay = gigStart && row.startsAt && rollsOver(gigStart, row.startsAt);
-
-  const commit = () => {
-    setEditing(false);
-    const trimmed = text.trim();
-    if (!trimmed) {
-      onPatch({ startsAt: null });
-      return;
-    }
-    const minutes = parseTimeOfDay(trimmed);
-    if (minutes === null || !gigStart) {
-      // Not a time. Snap back rather than storing a guess.
-      setText(stored);
-      return;
-    }
-    onPatch({ startsAt: resolveNightTime(gigStart, minutes) });
-  };
+  const nextDay = Boolean(
+    gigStart && row.startsAt && rollsOver(gigStart, row.startsAt),
+  );
 
   return (
-    <div className="relative w-[86px] shrink-0">
-      <Input
-        aria-label="Time"
-        placeholder="--:--"
-        inputMode="numeric"
-        value={value}
-        disabled={!!disabled || !gigStart}
-        onFocus={() => {
-          setText(stored);
-          setEditing(true);
-        }}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") e.currentTarget.blur();
-          if (e.key === "Escape") {
-            setText(stored);
-            setEditing(false);
-            e.currentTarget.blur();
-          }
-        }}
-        className="h-7 pr-6 text-sm tabular-nums"
-      />
-      {nextDay ? (
-        <span
-          title="The morning after"
-          className="text-muted-foreground pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-[10px]"
-        >
-          +1
-        </span>
-      ) : null}
-    </div>
+    <TimeField
+      ariaLabel="Time"
+      className="w-[108px] shrink-0"
+      value={row.startsAt ? minutesOfDay(row.startsAt) : null}
+      disabled={!!disabled || !gigStart}
+      suffix={nextDay ? "+1" : null}
+      onChange={(minutes) =>
+        onPatch({
+          startsAt:
+            minutes === null || !gigStart
+              ? null
+              : resolveNightTime(gigStart, minutes),
+        })
+      }
+    />
   );
 }
 
