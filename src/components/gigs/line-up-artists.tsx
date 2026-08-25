@@ -140,7 +140,9 @@ function ArtistDialog({
         className="gap-0 border-0 bg-transparent p-0 shadow-none sm:max-w-[560px]"
       >
         {lineUp.length > 1 && (
-          <div className="mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
+          // `overflow-x-auto` makes the cross axis clip as well, so the row
+          // needs vertical padding or it shaves the top off every ring.
+          <div className="mb-2 flex gap-2 overflow-x-auto px-1 py-1.5">
             {lineUp.map((entry, i) => {
               const isActive = i === index;
               return (
