@@ -395,7 +395,7 @@ import { formatDate, formatTime, isGigPast } from "~/lib/date-utils";
 import { GigTagList } from "~/components/gig-tag-list";
 import { LexicalContent } from "~/components/lexical";
 import { MediaGallery } from "~/components/gigs/media-gallery";
-import { LineUpArtistPopover } from "~/components/gigs/line-up-artist-popover";
+import { LineUpAvatars } from "~/components/gigs/line-up-artists";
 import {
   GigTicketCta,
   GigTicketPanel,
@@ -643,17 +643,7 @@ export default function GigPage({ params }: PageProps) {
                   {gig.lineUp && gig.lineUp.length > 0 && (
                     <>
                       <span className="text-white/20">|</span>
-                      <div className="group/lineup flex items-center">
-                        {gig.lineUp.map((gc, i) => (
-                          <LineUpArtistPopover
-                            key={gc.id}
-                            entry={gc}
-                            className={
-                              i === 0 ? "ml-0" : "-ml-2 group-hover/lineup:ml-1"
-                            }
-                          />
-                        ))}
-                      </div>
+                      <LineUpAvatars lineUp={gig.lineUp} />
                     </>
                   )}
                 </motion.div>
