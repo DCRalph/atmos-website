@@ -12,11 +12,10 @@ import { Body, Caption, Eyebrow, Loading, Notice, Pill, Title } from "@/componen
 /**
  * Which run sheet.
  *
- * Almost always one, often none, which is why this is a short list and not a
- * search. A gig counts as "on" from twelve hours before its first cue — so a
- * load-in at four in the afternoon puts the night on this screen before the
- * gig has started — until a day after it ends, for the morning-after check of
- * what actually happened.
+ * Usually short, which is why this is a list and not a search. Every future
+ * gig with a run sheet is here — a run sheet is worth reading as soon as it
+ * exists — and a gig only leaves a day after it ends, for the morning-after
+ * check of what actually happened.
  *
  * An organiser sees every gig. A door person sees the gigs they are rostered
  * on, and the server decides which those are.
@@ -61,7 +60,7 @@ export default function RunSheetListScreen() {
       {gigs.data?.length === 0 ? (
         <Notice
           title="Nothing on"
-          detail="A gig appears here from a few hours before its first cue until a day after it ends."
+          detail="A gig appears here once its run sheet has rows, and stays until a day after it ends."
         />
       ) : null}
 
