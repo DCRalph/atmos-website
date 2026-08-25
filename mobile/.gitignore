@@ -42,3 +42,4 @@ yarn-error.*
 
 # expo export verification output
 .export-check/
+.shotbundle/

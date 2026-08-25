@@ -20,11 +20,18 @@ export function Eyebrow({ children }: { children: ReactNode }) {
 export function Title({
   children,
   style,
+  numberOfLines,
 }: {
   children: ReactNode;
   style?: StyleProp<TextStyle>;
+  /** For a title in a header bar, where a long gig name must not wrap. */
+  numberOfLines?: number;
 }) {
-  return <Text style={[styles.title, style]}>{children}</Text>;
+  return (
+    <Text numberOfLines={numberOfLines} style={[styles.title, style]}>
+      {children}
+    </Text>
+  );
 }
 
 export function Body({

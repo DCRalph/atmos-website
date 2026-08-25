@@ -57,28 +57,30 @@ export default function GigScreen() {
   const soldByUs = event.data;
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: colors.bg }}
-      contentContainerStyle={{ paddingBottom: space.xxl }}
-    >
-      {poster ? (
-        <Image
-          source={{ uri: poster }}
-          style={styles.poster}
-          contentFit="cover"
-          transition={200}
-        />
-      ) : (
-        <View style={[styles.poster, { backgroundColor: colors.surfaceRaised }]} />
-      )}
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <View style={[styles.header, { paddingTop: insets.top + space.sm }]}>
+        <Pressable onPress={() => router.back()} hitSlop={16}>
+          <ArrowLeft color={colors.text} size={22} strokeWidth={2.5} />
+        </Pressable>
+        <Title style={styles.headerTitle} numberOfLines={1}>
+          {data.title}
+        </Title>
+      </View>
 
-      <Pressable
-        onPress={() => router.back()}
-        hitSlop={16}
-        style={[styles.back, { top: insets.top + space.sm }]}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: space.xxl }}
       >
-        <ArrowLeft color={colors.text} size={20} strokeWidth={2.5} />
-      </Pressable>
+        {poster ? (
+          <Image
+            source={{ uri: poster }}
+            style={styles.poster}
+            contentFit="cover"
+            transition={200}
+          />
+        ) : (
+          <View style={[styles.poster, { backgroundColor: colors.surfaceRaised }]} />
+        )}
 
       <View style={{ padding: space.lg, gap: space.md }}>
         <View style={{ gap: 4 }}>
@@ -147,23 +149,31 @@ export default function GigScreen() {
           </View>
         ) : null}
       </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   poster: { width: "100%", aspectRatio: 4 / 5 },
-  back: {
-    position: "absolute",
-    left: space.lg,
-    width: 36,
-    height: 36,
-    borderWidth: stroke.hard,
-    borderColor: colors.borderHard,
+  /**
+   * A bar rather than a button floating over the poster.
+   *
+   * The poster used to run to the top of the display, which put artwork — and
+   * on a light poster, nothing legible — underneath the clock and the battery.
+   * A header costs the top of the image and buys a title that says which gig
+   * you are on while you scroll.
+   */
+  header: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.55)",
+    gap: space.md,
+    paddingHorizontal: space.lg,
+    paddingBottom: space.md,
+    borderBottomWidth: stroke.hair,
+    borderBottomColor: colors.border,
   },
+  headerTitle: { flex: 1, minWidth: 0, fontSize: 16 },
   creator: {
     padding: space.md,
     backgroundColor: colors.surface,
