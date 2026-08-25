@@ -32,8 +32,15 @@ fail() { echo "error: $*" >&2; exit 1; }
 
 DEVICE="${1:-}"
 if [ -z "$DEVICE" ]; then
-  DEVICE="$(xcrun devicectl list devices 2>/dev/null |
-    awk '/iPhone/ && /available/ {print $1; exit}')"
+  # CoreDevice drops a phone from this list for a few seconds around tunnel
+  # activity (an install or launch that just finished), so poll briefly rather
+  # than failing on the first empty read.
+  for _ in 1 2 3 4 5; do
+    DEVICE="$(xcrun devicectl list devices 2>/dev/null |
+      awk '/iPhone/ && /available/ {print $1; exit}')"
+    [ -n "$DEVICE" ] && break
+    sleep 3
+  done
   [ -n "$DEVICE" ] || fail "no available iPhone found — pass a device name or UDID"
 fi
 echo "==> Installing to: $DEVICE"
