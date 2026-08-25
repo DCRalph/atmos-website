@@ -49,8 +49,16 @@ import {
 import { TimeField } from "~/components/ui/time-field";
 import { cn } from "~/lib/utils";
 import type { GigScheduleKind } from "~Prisma/browser";
-import { CreatorAvatar, CreatorPicker, CreatorStatusBadges } from "./creator-picker";
-import { CueRecipientsField, GigRecipientsField, useStaffDirectory } from "./recipients-field";
+import {
+  CreatorAvatar,
+  CreatorPicker,
+  CreatorStatusBadges,
+} from "./creator-picker";
+import {
+  CueRecipientsField,
+  GigRecipientsField,
+  useStaffDirectory,
+} from "./recipients-field";
 import { newScheduleItem, type DraftScheduleItem } from "./types";
 
 /**
@@ -287,7 +295,10 @@ export function RunSheetField({
                     variant="ghost"
                     disabled={disabled}
                     onClick={() =>
-                      addToGroup(entry.group, newScheduleItem({ kind: "CUSTOM" }))
+                      addToGroup(
+                        entry.group,
+                        newScheduleItem({ kind: "CUSTOM" }),
+                      )
                     }
                   >
                     <Plus className="h-3.5 w-3.5" />
@@ -300,9 +311,9 @@ export function RunSheetField({
         </DndContext>
 
         <p className="text-muted-foreground border-t px-6 py-3 text-xs">
-          A cue goes out on the minute and, where set, the minutes before it. Two
-          sets in a row make a changeover on their own. Profiles are managed on
-          the{" "}
+          A cue goes out on the minute and, where set, the minutes before it.
+          Two sets in a row make a changeover on their own. Profiles are managed
+          on the{" "}
           <Link
             href="/admin/creator-profiles"
             target="_blank"
@@ -383,11 +394,16 @@ function ScheduleRowEditor({
       }}
       className="border-t px-6 py-2 first:border-t-0"
     >
-      <div className="flex items-center gap-3">
+      {/* Top-aligned, not centered: the artist block can run to two or three
+          lines, and centering it against the single-line controls is what made
+          the pills overlap them. The controls live in one shrink-proof cluster
+          that wraps below the artists as a whole when the row runs out of
+          room. */}
+      <div className="flex items-start gap-3">
         <button
           type="button"
           aria-label={`Reorder ${name}`}
-          className="text-muted-foreground hover:text-foreground shrink-0 cursor-grab touch-none active:cursor-grabbing"
+          className="text-muted-foreground hover:text-foreground mt-1.5 shrink-0 cursor-grab touch-none active:cursor-grabbing"
           {...attributes}
           {...listeners}
         >
@@ -401,92 +417,82 @@ function ScheduleRowEditor({
           onPatch={onPatch}
         />
 
-        <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-start gap-x-2 gap-y-1">
           {row.kind === "SET" ? (
-            <>
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {row.artists.map((artist, index) => (
-                    <span
-                      key={artist.creatorProfileId}
-                      className="flex items-center gap-1.5"
-                    >
-                      {index > 0 ? (
-                        <span className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
-                          b2b
-                        </span>
-                      ) : null}
-                      <span className="flex items-center gap-1.5 rounded border py-0.5 pr-1 pl-0.5">
-                        <CreatorAvatar
-                          fileId={artist.avatarFileId}
-                          name={artist.displayName}
-                          size={22}
-                        />
-                        <Link
-                          href={`/@${artist.handle}`}
-                          target="_blank"
-                          className="truncate text-sm font-semibold hover:underline"
-                        >
-                          {artist.displayName}
-                        </Link>
-                        <CreatorStatusBadges
-                          claimStatus={artist.claimStatus}
-                          isPublished={artist.isPublished}
-                        />
-                        {/* A slot needs somebody in it, so the last name is
-                            removed by removing the row. */}
-                        {row.artists.length > 1 ? (
-                          <button
-                            type="button"
-                            disabled={disabled}
-                            aria-label={`Remove ${artist.displayName} from this slot`}
-                            className="text-muted-foreground hover:text-foreground"
-                            onClick={() =>
-                              onPatch({
-                                artists: row.artists.filter(
-                                  (candidate) =>
-                                    candidate.creatorProfileId !==
-                                    artist.creatorProfileId,
-                                ),
-                              })
-                            }
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        ) : null}
+            <div className="flex min-w-0 flex-1 basis-56 flex-col gap-0.5">
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                {row.artists.map((artist, index) => (
+                  <span
+                    key={artist.creatorProfileId}
+                    className="flex min-w-0 items-center gap-1.5"
+                  >
+                    {index > 0 ? (
+                      <span className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+                        b2b
                       </span>
+                    ) : null}
+                    <span className="flex min-w-0 items-center gap-1.5 rounded border py-0.5 pr-1 pl-0.5">
+                      <CreatorAvatar
+                        fileId={artist.avatarFileId}
+                        name={artist.displayName}
+                        size={22}
+                      />
+                      <Link
+                        href={`/@${artist.handle}`}
+                        target="_blank"
+                        className="truncate text-sm font-semibold hover:underline"
+                      >
+                        {artist.displayName}
+                      </Link>
+                      <CreatorStatusBadges
+                        claimStatus={artist.claimStatus}
+                        isPublished={artist.isPublished}
+                      />
+                      {/* A slot needs somebody in it, so the last name is
+                            removed by removing the row. */}
+                      {row.artists.length > 1 ? (
+                        <button
+                          type="button"
+                          disabled={disabled}
+                          aria-label={`Remove ${artist.displayName} from this slot`}
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={() =>
+                            onPatch({
+                              artists: row.artists.filter(
+                                (candidate) =>
+                                  candidate.creatorProfileId !==
+                                  artist.creatorProfileId,
+                              ),
+                            })
+                          }
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      ) : null}
                     </span>
-                  ))}
-
-                  <CreatorPicker
-                    label="b2b"
-                    compact
-                    disabled={disabled}
-                    excludeIds={row.artists.map(
-                      (artist) => artist.creatorProfileId,
-                    )}
-                    onPick={(creator) =>
-                      onPatch({ artists: [...row.artists, creator] })
-                    }
-                  />
-                </div>
-                {previousSetName ? (
-                  <span className="text-muted-foreground truncate text-xs">
-                    Changeover from {previousSetName}
                   </span>
-                ) : null}
+                ))}
+
+                <CreatorPicker
+                  label="b2b"
+                  compact
+                  disabled={disabled}
+                  excludeIds={row.artists.map(
+                    (artist) => artist.creatorProfileId,
+                  )}
+                  onPick={(creator) =>
+                    onPatch({ artists: [...row.artists, creator] })
+                  }
+                />
               </div>
-              <Input
-                aria-label={`Role for ${name}`}
-                placeholder="Role"
-                value={row.role}
-                disabled={disabled}
-                onChange={(e) => onPatch({ role: e.target.value })}
-                className="h-7 max-w-[130px] shrink-0 text-xs"
-              />
-            </>
+              {previousSetName ? (
+                <span className="text-muted-foreground truncate text-xs">
+                  Changeover from {previousSetName}
+                </span>
+              ) : null}
+            </div>
           ) : (
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex min-w-0 flex-1 basis-56 flex-col">
               <Input
                 aria-label="What this is"
                 placeholder={kindLabel(row.kind)}
@@ -503,49 +509,62 @@ function ScheduleRowEditor({
               ) : null}
             </div>
           )}
+
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            {row.kind === "SET" ? (
+              <Input
+                aria-label={`Role for ${name}`}
+                placeholder="Role"
+                value={row.role}
+                disabled={disabled}
+                onChange={(e) => onPatch({ role: e.target.value })}
+                className="h-7 w-[110px] text-xs"
+              />
+            ) : null}
+
+            <LeadField row={row} disabled={disabled} onPatch={onPatch} />
+
+            <CueRecipientsField
+              gigUserIds={gigUserIds}
+              value={row.recipientUserIds}
+              onChange={(recipientUserIds) => onPatch({ recipientUserIds })}
+              disabled={disabled}
+            />
+
+            {hasFired ? (
+              <span className="text-[10px] tracking-wide text-emerald-500 uppercase">
+                sent
+              </span>
+            ) : null}
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={disabled}
+              onClick={onToggleNotes}
+              aria-label={`Notes for ${name}`}
+              className={cn(
+                "h-7 w-7 p-0",
+                row.notes.trim() && "text-foreground",
+              )}
+            >
+              <StickyNote className="h-3.5 w-3.5" />
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={disabled}
+              onClick={onRemove}
+              aria-label={`Remove ${name}`}
+              className="h-7 w-7 p-0"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
-
-        <LeadField row={row} disabled={disabled} onPatch={onPatch} />
-
-        <CueRecipientsField
-          gigUserIds={gigUserIds}
-          value={row.recipientUserIds}
-          onChange={(recipientUserIds) => onPatch({ recipientUserIds })}
-          disabled={disabled}
-        />
-
-        {hasFired ? (
-          <span className="shrink-0 text-[10px] tracking-wide text-emerald-500 uppercase">
-            sent
-          </span>
-        ) : null}
-
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={disabled}
-          onClick={onToggleNotes}
-          aria-label={`Notes for ${name}`}
-          className={cn(
-            "h-7 w-7 shrink-0 p-0",
-            row.notes.trim() && "text-foreground",
-          )}
-        >
-          <StickyNote className="h-3.5 w-3.5" />
-        </Button>
-
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={disabled}
-          onClick={onRemove}
-          aria-label={`Remove ${name}`}
-          className="h-7 w-7 shrink-0 p-0"
-        >
-          <X className="h-3.5 w-3.5" />
-        </Button>
       </div>
 
       {notesOpen ? (
