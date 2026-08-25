@@ -2,14 +2,19 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GripVertical, Trash2, Settings2, Plus } from "lucide-react";
-import { BlockRenderer } from "./block-renderer";
+import {
+  BlockRenderer,
+  type PublicGigAttribution,
+  type PublicSocial,
+} from "./block-renderer";
 import { InlineBlockEditor } from "./inline-block-editor";
 import {
   applyLayoutChange,
   BLOCK_TYPES,
   findFreeSlot,
+  fitRows,
+  getBlockSizing,
   type ClientBlock,
-  type CreatorBlockTypeName,
 } from "./block-types";
 import { cn } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
@@ -26,7 +31,13 @@ type GridEditorProps = {
   selectedBlockId: string | null;
   cols: number;
   rowHeightPx: number;
+  /** Grid gap in px — must match the public grid's density gap, or blocks
+   * arranged here land on a differently-spaced grid when published. */
+  gapPx?: number;
   accent?: string | null;
+  /** Real data for previews, so intrinsic blocks measure at their true size. */
+  socials?: PublicSocial[];
+  gigAttributions?: PublicGigAttribution[];
 };
 
 type DragState =
@@ -48,6 +59,9 @@ type DragState =
  * Grid editor with pointer-based drag & resize. We intentionally do not use
  * @dnd-kit here because absolute-positioned CSS grid resize requires custom
  * pointer arithmetic against the measured cell size.
+ *
+ * Intrinsic blocks (see `BlockSizing`) manage their own height: their content
+ * is measured and `h` snaps to fit, and the resize handle only changes width.
  */
 export function CreatorGridEditor({
   blocks,
@@ -56,7 +70,10 @@ export function CreatorGridEditor({
   selectedBlockId,
   cols,
   rowHeightPx,
+  gapPx = 12,
   accent,
+  socials,
+  gigAttributions,
 }: GridEditorProps) {
   const gridRef = useRef<HTMLDivElement | null>(null);
   const [drag, setDrag] = useState<DragState>({ kind: "idle" });
@@ -70,16 +87,15 @@ export function CreatorGridEditor({
 
   const gridMetrics = useCallback(() => {
     const el = gridRef.current;
-    if (!el) return { colWidth: 0, gapPx: 16 };
+    if (!el) return { colWidth: 0, gapPx };
     const rect = el.getBoundingClientRect();
-    const gapPx = 16;
     const colWidth = (rect.width - gapPx * (cols - 1)) / cols;
     return { colWidth, gapPx };
-  }, [cols]);
+  }, [cols, gapPx]);
 
   const toGridDelta = useCallback(
     (dx: number, dy: number) => {
-      const { colWidth, gapPx } = gridMetrics();
+      const { colWidth } = gridMetrics();
       const colStep = colWidth + gapPx;
       const rowStep = rowHeightPx + gapPx;
       return {
@@ -87,8 +103,65 @@ export function CreatorGridEditor({
         dyCells: rowStep > 0 ? Math.round(dy / rowStep) : 0,
       };
     },
-    [gridMetrics, rowHeightPx],
+    [gridMetrics, gapPx, rowHeightPx],
   );
+
+  // ---------------------------------------------------------------------
+  // Intrinsic height fitting. Each intrinsic block registers its measurable
+  // content node; one ResizeObserver watches them all and snaps every
+  // mismatched `h` in a single onChange, so parallel corrections (e.g. on
+  // first load) can't clobber each other with stale block arrays.
+  // ---------------------------------------------------------------------
+  const measureNodes = useRef(new Map<string, HTMLElement>());
+  const measureRef = useCallback(
+    (id: string) => (node: HTMLDivElement | null) => {
+      if (node) measureNodes.current.set(id, node);
+      else measureNodes.current.delete(id);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (drag.kind !== "idle") return; // don't fight an in-flight drag
+    const fitAll = () => {
+      let next = blocks;
+      let changed = false;
+      for (const [id, node] of measureNodes.current) {
+        const block = next.find((b) => b.id === id);
+        if (!block || getBlockSizing(block.type) !== "intrinsic") continue;
+        const root = node.closest<HTMLElement>("[data-editor-block-type]");
+        const header = root?.querySelector<HTMLElement>(
+          "[data-editor-block-header]",
+        );
+        if (!root || !header) continue;
+        const rootCs = getComputedStyle(root);
+        const area = header.nextElementSibling
+          ? getComputedStyle(header.nextElementSibling)
+          : null;
+        const chrome =
+          header.offsetHeight +
+          parseFloat(rootCs.borderTopWidth) +
+          parseFloat(rootCs.borderBottomWidth) +
+          (area
+            ? parseFloat(area.paddingTop) + parseFloat(area.paddingBottom)
+            : 0);
+        const rows = fitRows(
+          Math.ceil(node.offsetHeight + chrome),
+          rowHeightPx,
+          gapPx,
+        );
+        if (rows !== block.h) {
+          next = applyLayoutChange(next, { ...block, h: rows }, cols);
+          changed = true;
+        }
+      }
+      if (changed) onChange(next);
+    };
+
+    const observer = new ResizeObserver(fitAll);
+    for (const node of measureNodes.current.values()) observer.observe(node);
+    return () => observer.disconnect();
+  }, [blocks, cols, rowHeightPx, gapPx, onChange, drag.kind]);
 
   const onPointerDownMove = useCallback(
     (e: React.PointerEvent, block: ClientBlock) => {
@@ -152,7 +225,12 @@ export function CreatorGridEditor({
           1,
           Math.min(cols - block.x, drag.startSize.w + dxCells),
         );
-        const nextH = Math.max(1, drag.startSize.h + dyCells);
+        // Intrinsic blocks derive their height from content; only fill
+        // blocks resize vertically.
+        const nextH =
+          getBlockSizing(block.type) === "intrinsic"
+            ? block.h
+            : Math.max(1, drag.startSize.h + dyCells);
         setHoverPreview({
           id: block.id,
           x: block.x,
@@ -203,8 +281,8 @@ export function CreatorGridEditor({
         display: "grid",
         gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
         gridAutoRows: `${rowHeightPx}px`,
-        gridGap: 16,
-        minHeight: totalRows * (rowHeightPx + 16),
+        gridGap: gapPx,
+        minHeight: totalRows * (rowHeightPx + gapPx),
       }}
     >
       {/* Background grid lines */}
@@ -213,17 +291,18 @@ export function CreatorGridEditor({
         className="pointer-events-none absolute inset-0"
         style={{
           backgroundImage: `repeating-linear-gradient(to right, rgba(127,127,127,0.12), rgba(127,127,127,0.12) 1px, transparent 1px, transparent calc((100% - ${
-            (cols - 1) * 16
-          }px) / ${cols} + 16px)), repeating-linear-gradient(to bottom, rgba(127,127,127,0.07), rgba(127,127,127,0.07) 1px, transparent 1px, transparent ${
-            rowHeightPx + 16
+            (cols - 1) * gapPx
+          }px) / ${cols} + ${gapPx}px)), repeating-linear-gradient(to bottom, rgba(127,127,127,0.07), rgba(127,127,127,0.07) 1px, transparent 1px, transparent ${
+            rowHeightPx + gapPx
           }px)`,
         }}
       />
 
       {blocks.map((block) => {
         const isSelected = selectedBlockId === block.id;
+        const intrinsic = getBlockSizing(block.type) === "intrinsic";
         const preview =
-          hoverPreview && hoverPreview.id === block.id ? hoverPreview : null;
+          hoverPreview?.id === block.id ? hoverPreview : null;
         const x = preview?.x ?? block.x;
         const y = preview?.y ?? block.y;
         const w = preview?.w ?? block.w;
@@ -234,7 +313,7 @@ export function CreatorGridEditor({
             data-editor-block-type={block.type}
             data-editor-block-size={`${w}x${h}`}
             className={cn(
-              "group bg-card/50 relative overflow-hidden rounded-md border backdrop-blur",
+              "group bg-card/50 relative flex flex-col overflow-hidden rounded-md border backdrop-blur",
               isSelected && "ring-primary ring-2",
               drag.kind !== "idle" &&
                 drag.blockId === block.id &&
@@ -249,7 +328,10 @@ export function CreatorGridEditor({
             }}
           >
             {/* Block header */}
-            <div className="bg-muted/30 flex items-center justify-between border-b px-2 py-1">
+            <div
+              data-editor-block-header
+              className="bg-muted/30 flex flex-none items-center justify-between border-b px-2 py-1"
+            >
               <button
                 type="button"
                 className="flex cursor-grab items-center gap-1 text-xs font-medium active:cursor-grabbing"
@@ -283,28 +365,53 @@ export function CreatorGridEditor({
               </div>
             </div>
             {/* Content */}
-            <div className="h-[calc(100%-28px)] p-2">
+            <div className="min-h-0 flex-1 p-2">
               {block.type === "RICH_TEXT" || block.type === "HEADING" ? (
-                <div className="h-full w-full">
-                  <InlineBlockEditor
-                    block={block}
-                    onChange={(nb) =>
-                      onChange(blocks.map((b) => (b.id === nb.id ? nb : b)))
-                    }
-                    onFocus={() => onSelectBlock(block.id)}
-                  />
+                <div className="flex h-full flex-col justify-center">
+                  <div ref={measureRef(block.id)} className="min-w-0 flow-root">
+                    <InlineBlockEditor
+                      block={block}
+                      onChange={(nb) =>
+                        onChange(blocks.map((b) => (b.id === nb.id ? nb : b)))
+                      }
+                      onFocus={() => onSelectBlock(block.id)}
+                    />
+                  </div>
+                </div>
+              ) : intrinsic ? (
+                <div className="pointer-events-none flex h-full flex-col justify-center">
+                  <div ref={measureRef(block.id)} className="min-w-0 flow-root">
+                    <BlockRenderer
+                      block={block}
+                      socials={socials}
+                      gigAttributions={gigAttributions}
+                      accent={accent}
+                    />
+                  </div>
                 </div>
               ) : (
                 <div className="pointer-events-none h-full w-full">
-                  <BlockRenderer block={block} accent={accent} />
+                  <BlockRenderer
+                    block={block}
+                    socials={socials}
+                    gigAttributions={gigAttributions}
+                    accent={accent}
+                  />
                 </div>
               )}
             </div>
             {/* Resize handle */}
             <div
               onPointerDown={(e) => onPointerDownResize(e, block)}
-              className="bg-primary/40 hover:bg-primary absolute right-0 bottom-0 h-4 w-4 cursor-nwse-resize rounded-tl-md"
-              title="Drag to resize"
+              className={cn(
+                "bg-primary/40 hover:bg-primary absolute right-0 bottom-0 h-4 w-4 rounded-tl-md",
+                intrinsic ? "cursor-ew-resize" : "cursor-nwse-resize",
+              )}
+              title={
+                intrinsic
+                  ? "Drag to resize width (height follows content)"
+                  : "Drag to resize"
+              }
             />
           </div>
         );
@@ -347,7 +454,7 @@ export function AddBlockPopover({
                 const newBlock: ClientBlock = {
                   id: `tmp_${Math.random().toString(36).slice(2, 10)}`,
                   isNew: true,
-                  type: def.type as CreatorBlockTypeName,
+                  type: def.type,
                   x: pos.x,
                   y: pos.y,
                   w: def.defaultW,

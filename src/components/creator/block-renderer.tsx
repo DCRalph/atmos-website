@@ -83,6 +83,57 @@ function getArray<T>(data: Record<string, unknown>, key: string): T[] {
   return Array.isArray(v) ? (v as T[]) : [];
 }
 
+/**
+ * Whether a block has anything to show a visitor. The public page skips
+ * blocks that fail this — the "No image selected" / "Empty gallery" states
+ * are editor affordances and must never ship on a published profile.
+ */
+export function blockHasContent(
+  block: PublicBlock,
+  socials: PublicSocial[],
+  gigAttributions: PublicGigAttribution[],
+): boolean {
+  switch (block.type) {
+    case "HEADING":
+      return getString(block.data, "text").trim().length > 0;
+    case "RICH_TEXT": {
+      const lexical = block.data.lexical;
+      return (
+        typeof lexical === "object" &&
+        lexical !== null &&
+        "root" in (lexical as Record<string, unknown>)
+      );
+    }
+    case "IMAGE":
+      return getString(block.data, "fileId").length > 0;
+    case "GALLERY":
+      return getArray<string>(block.data, "fileIds").length > 0;
+    case "SOUNDCLOUD_TRACK":
+    case "SOUNDCLOUD_PLAYLIST":
+    case "CUSTOM_EMBED":
+      return getString(block.data, "url").length > 0;
+    case "YOUTUBE_VIDEO":
+      return getYouTubeId(getString(block.data, "url")) !== null;
+    case "SPOTIFY_EMBED":
+      return toSpotifyEmbedSrc(getString(block.data, "url")) !== null;
+    case "SOCIAL_LINKS":
+      return socials.length > 0;
+    case "LINK_LIST":
+      return (
+        getArray<{ label: string; url: string }>(block.data, "links").length > 0
+      );
+    case "GIG_LIST":
+    case "PAST_GIGS":
+      return gigAttributions.length > 0;
+    case "DIVIDER":
+    case "SPACER":
+      return true;
+    default:
+      // CONTENT_LIST and anything else the renderer doesn't know.
+      return false;
+  }
+}
+
 export function BlockRenderer({
   block,
   socials,
@@ -96,7 +147,7 @@ export function BlockRenderer({
 }) {
   switch (block.type) {
     case "HEADING": {
-      const level = Number((block.data as Record<string, unknown>).level) || 2;
+      const level = Number((block.data).level) || 2;
       const text = getString(block.data, "text") || "Heading";
       const align = getString(block.data, "align") || "left";
       const Tag = (
@@ -126,14 +177,18 @@ export function BlockRenderer({
         lexical !== null &&
         "root" in (lexical as Record<string, unknown>);
       if (!hasLexical) {
-        return <div className="h-full overflow-auto" />;
+        return null;
       }
       return (
-        <div className="h-full overflow-auto">
+        <div className="min-w-0">
+          {/* !whitespace-normal: Lexical puts `white-space: pre-wrap` inline
+              on the content element, and trailing spaces at wrap points then
+              hang a couple of px past the box. Line breaks are <br> nodes, so
+              normal wrapping loses nothing in this read-only render. */}
           <LexicalContent
             value={lexical}
             namespace={`creator-block-render-${block.id}`}
-            contentClassName="text-foreground text-sm leading-relaxed"
+            contentClassName="text-foreground text-sm leading-relaxed break-words !whitespace-normal"
           />
         </div>
       );
@@ -169,14 +224,16 @@ export function BlockRenderer({
         );
       }
       return (
-        <div className="grid h-full w-full grid-cols-2 gap-2 md:grid-cols-3">
+        // auto-rows-fr divides the block's height evenly between image rows —
+        // without it the rows size to the images' natural height and overflow.
+        <div className="grid h-full w-full auto-rows-fr grid-cols-2 gap-2 md:grid-cols-3">
           {fileIds.map((id, i) => (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               key={`${id}-${i}`}
               src={buildMediaUrl(id)}
               alt=""
-              className="h-full w-full rounded-md object-cover"
+              className="h-full min-h-0 w-full rounded-md object-cover"
             />
           ))}
         </div>
@@ -210,6 +267,7 @@ export function BlockRenderer({
         <SoundCloudPlayer
           url={url}
           size="square"
+          className="h-full"
           params={accent ? { color: accent.replace("#", "") } : undefined}
         />
       );
@@ -254,7 +312,7 @@ export function BlockRenderer({
         "links",
       );
       return (
-        <div className="flex h-full flex-col gap-2 overflow-auto">
+        <div className="flex flex-col gap-2">
           {links.map((l, i) => (
             <Link
               key={i}
@@ -282,7 +340,9 @@ export function BlockRenderer({
         );
       }
       return (
-        <div className="grid h-full grid-cols-2 gap-3 overflow-auto md:grid-cols-3">
+        // Column count follows the block's actual width, so a narrow block
+        // gets one readable column instead of three crushed ones.
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-3">
           {attributions.map((g) => (
             <Link
               key={g.id}
@@ -329,19 +389,12 @@ export function BlockRenderer({
           includeUpcoming={includeUpcoming}
           showRole={showRole}
           blockW={block.w}
-          blockH={block.h}
           accent={accent}
         />
       );
     }
-    case "CONTENT_LIST":
-      return (
-        <div className="text-muted-foreground text-sm">
-          Content list — coming soon
-        </div>
-      );
     case "DIVIDER":
-      return <div className="border-border h-full border-t-2" />;
+      return <div className="border-border w-full border-t-2" />;
     case "SPACER":
       return <div className="h-full w-full" />;
     case "CUSTOM_EMBED": {

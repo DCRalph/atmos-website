@@ -29,20 +29,36 @@ export type ClientBlock = {
   data: Record<string, unknown>;
 };
 
+/**
+ * How a block relates to the height it is given:
+ *
+ * - `"intrinsic"` — the content has a natural height (text, link lists, fixed
+ *   embeds, aspect-ratio video). The block's `h` is derived from the rendered
+ *   content, never set by hand: the editor measures and snaps it, and the
+ *   public grid re-fits it at the published width. Resizing changes width only.
+ * - `"fill"` — the content stretches to whatever box it's given (cover images,
+ *   galleries, scalable embeds, spacers). `h` is freely user-resizable.
+ */
+export type BlockSizing = "intrinsic" | "fill";
+
 export type BlockTypeDefinition = {
   type: CreatorBlockTypeName;
   label: string;
   description: string;
+  sizing: BlockSizing;
   defaultW: number;
   defaultH: number;
   defaultData: Record<string, unknown>;
 };
 
+// CONTENT_LIST stays in the type union (the DB enum has it) but is not offered
+// or rendered anywhere until the block actually exists.
 export const BLOCK_TYPES: BlockTypeDefinition[] = [
   {
     type: "HEADING",
     label: "Heading",
     description: "Large text header",
+    sizing: "intrinsic",
     defaultW: 12,
     defaultH: 2,
     defaultData: { text: "Section heading", level: 2, align: "left" },
@@ -51,6 +67,7 @@ export const BLOCK_TYPES: BlockTypeDefinition[] = [
     type: "RICH_TEXT",
     label: "Text",
     description: "Bio or description",
+    sizing: "intrinsic",
     defaultW: 8,
     defaultH: 4,
     defaultData: {},
@@ -59,6 +76,7 @@ export const BLOCK_TYPES: BlockTypeDefinition[] = [
     type: "IMAGE",
     label: "Image",
     description: "Single image",
+    sizing: "fill",
     defaultW: 6,
     defaultH: 6,
     defaultData: { fileId: null as string | null, alt: "" },
@@ -67,6 +85,7 @@ export const BLOCK_TYPES: BlockTypeDefinition[] = [
     type: "GALLERY",
     label: "Gallery",
     description: "Multiple images grid",
+    sizing: "fill",
     defaultW: 12,
     defaultH: 6,
     defaultData: { fileIds: [] as string[] },
@@ -75,6 +94,7 @@ export const BLOCK_TYPES: BlockTypeDefinition[] = [
     type: "SOUNDCLOUD_TRACK",
     label: "SoundCloud track",
     description: "Embed a single SoundCloud track",
+    sizing: "intrinsic",
     defaultW: 12,
     defaultH: 3,
     defaultData: { url: "" },
@@ -83,6 +103,7 @@ export const BLOCK_TYPES: BlockTypeDefinition[] = [
     type: "SOUNDCLOUD_PLAYLIST",
     label: "SoundCloud playlist",
     description: "Embed a SoundCloud playlist",
+    sizing: "fill",
     defaultW: 12,
     defaultH: 7,
     defaultData: { url: "" },
@@ -91,6 +112,7 @@ export const BLOCK_TYPES: BlockTypeDefinition[] = [
     type: "YOUTUBE_VIDEO",
     label: "YouTube video",
     description: "Embed a YouTube video",
+    sizing: "intrinsic",
     defaultW: 8,
     defaultH: 6,
     defaultData: { url: "" },
@@ -99,6 +121,7 @@ export const BLOCK_TYPES: BlockTypeDefinition[] = [
     type: "SPOTIFY_EMBED",
     label: "Spotify embed",
     description: "Track, album or playlist",
+    sizing: "fill",
     defaultW: 6,
     defaultH: 6,
     defaultData: { url: "" },
@@ -107,6 +130,7 @@ export const BLOCK_TYPES: BlockTypeDefinition[] = [
     type: "SOCIAL_LINKS",
     label: "Social links",
     description: "Display your social links",
+    sizing: "intrinsic",
     defaultW: 12,
     defaultH: 2,
     defaultData: {},
@@ -115,6 +139,7 @@ export const BLOCK_TYPES: BlockTypeDefinition[] = [
     type: "LINK_LIST",
     label: "Link list",
     description: "Custom list of buttons/links",
+    sizing: "intrinsic",
     defaultW: 6,
     defaultH: 5,
     defaultData: { links: [] as Array<{ label: string; url: string }> },
@@ -123,6 +148,7 @@ export const BLOCK_TYPES: BlockTypeDefinition[] = [
     type: "GIG_LIST",
     label: "Gigs",
     description: "Gigs you're attributed to",
+    sizing: "intrinsic",
     defaultW: 12,
     defaultH: 6,
     defaultData: { source: "auto", gigIds: [] as string[] },
@@ -131,6 +157,7 @@ export const BLOCK_TYPES: BlockTypeDefinition[] = [
     type: "PAST_GIGS",
     label: "Past gigs",
     description: "Auto-pulled highlight of gigs you played",
+    sizing: "intrinsic",
     defaultW: 12,
     defaultH: 5,
     defaultData: {
@@ -140,17 +167,10 @@ export const BLOCK_TYPES: BlockTypeDefinition[] = [
     },
   },
   {
-    type: "CONTENT_LIST",
-    label: "Content",
-    description: "Mixes, videos, etc.",
-    defaultW: 12,
-    defaultH: 6,
-    defaultData: { contentIds: [] as string[] },
-  },
-  {
     type: "DIVIDER",
     label: "Divider",
     description: "Horizontal rule",
+    sizing: "intrinsic",
     defaultW: 12,
     defaultH: 1,
     defaultData: {},
@@ -159,6 +179,7 @@ export const BLOCK_TYPES: BlockTypeDefinition[] = [
     type: "SPACER",
     label: "Spacer",
     description: "Empty vertical space",
+    sizing: "fill",
     defaultW: 12,
     defaultH: 2,
     defaultData: {},
@@ -167,6 +188,7 @@ export const BLOCK_TYPES: BlockTypeDefinition[] = [
     type: "CUSTOM_EMBED",
     label: "Custom embed",
     description: "Paste any iframe URL",
+    sizing: "fill",
     defaultW: 12,
     defaultH: 6,
     defaultData: { url: "" },
@@ -177,6 +199,44 @@ export function getBlockDef(
   type: CreatorBlockTypeName,
 ): BlockTypeDefinition | undefined {
   return BLOCK_TYPES.find((b) => b.type === type);
+}
+
+/** Unknown/legacy types measure as intrinsic so they can never reserve space. */
+export function getBlockSizing(type: CreatorBlockTypeName): BlockSizing {
+  return getBlockDef(type)?.sizing ?? "intrinsic";
+}
+
+/**
+ * Smallest number of grid rows whose box fits `neededPx` of content.
+ * A block spanning `h` rows is `h * rowPx + (h - 1) * gapPx` tall.
+ */
+export function fitRows(
+  neededPx: number,
+  rowPx: number,
+  gapPx: number,
+): number {
+  return Math.max(1, Math.ceil((neededPx + gapPx) / (rowPx + gapPx)));
+}
+
+/**
+ * Re-pack a layout after some blocks changed height (or were filtered out),
+ * keeping every block's x/w and the original top-to-bottom, left-to-right
+ * order. For an already-compact layout with no height changes this is the
+ * identity, so it is safe to run on the server render too.
+ */
+export function fitLayout<B extends ClientBlock>(
+  blocks: B[],
+  heightFor: (block: B) => number,
+): B[] {
+  const sorted = [...blocks].sort((a, b) => a.y - b.y || a.x - b.x);
+  const placed: B[] = [];
+  for (const block of sorted) {
+    const h = Math.max(1, heightFor(block));
+    let y = 0;
+    while (collides(placed, { x: block.x, y, w: block.w, h })) y += 1;
+    placed.push({ ...block, y, h });
+  }
+  return placed;
 }
 
 /**

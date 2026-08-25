@@ -30,6 +30,7 @@ import {
 } from "~/lib/seo-constants";
 import { RightMenuRail } from "~/components/right-menu-rail";
 import { StripTicketHash } from "~/components/ticketing/strip-ticket-hash";
+import { PostHogInit } from "~/components/posthog-init";
 
 export const metadata: Metadata = {
   title: {
@@ -111,6 +112,7 @@ export default function RootLayout({
                       endpoint="/fuckoffaddblockers"
                       scriptSrc="/fuckoffaddblocker/script.js"
                     />
+                    <PostHogInit />
                   </ConfirmProvider>
                 </MobileMenuProvider>
               </MerchCartProvider>

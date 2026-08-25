@@ -118,7 +118,9 @@ open(path, "w").write(src)
 PY
 
   echo "==> $name  ($route)"
-  npx expo run:ios --device "$SIM" --configuration Release >"/tmp/shot-$name.log" 2>&1 || true
+  # `--no-bundler`, or expo starts a Metro server after installing and never
+  # exits — a Release build carries its bundle embedded and needs no server.
+  npx expo run:ios --device "$SIM" --configuration Release --no-bundler >"/tmp/shot-$name.log" 2>&1 || true
 
   # `expo run:ios` ends by opening a dev-client URL, which is not what a Release
   # build wants. Relaunch by bundle id so every capture is a clean cold start

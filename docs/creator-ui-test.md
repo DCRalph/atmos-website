@@ -53,16 +53,36 @@ nothing else needs updating.
 ## What it reports
 
 - **hydration-mismatch** — the server markup didn't match the client, so React
-  threw it away and re-rendered. Visible as a flash on the real site.
+  threw it away and re-rendered. Visible as a flash on the real site. The full
+  React diff (naming the mismatched element) is kept in `report.json`.
 - **empty-block** — a block reserves height and paints nothing (`SPACER` is
   exempt).
-- **dead-space** — content leaves more than 24px of its content box unused, with
-  the fill percentage.
+- **dead-space** — content leaves more than one grid row-step (80px: 60px row
+  + the widest density gap) of its content box unused. Blocks can only span
+  whole rows, so up to one step of slack is inherent to the grid; intrinsic
+  blocks self-fit to within that (see below), and anything past it is space
+  nothing can ever use.
 - **overflow** / **overflow-x** — content is taller or wider than its box and
   gets clipped or scrolls inside the block.
 - **page-overflow-x** — the page itself scrolls sideways.
 - **grid gap mismatch** — the editor grid and the published grid use different
   gaps, so an arrangement doesn't survive publishing.
+
+## The sizing contract the audit leans on
+
+Every block type declares a `sizing` in `block-types.ts`:
+
+- **intrinsic** (text, link lists, socials, gigs, fixed/aspect embeds) — `h`
+  is derived from the rendered content. The editor measures each block and
+  snaps its row span (the resize handle only changes width); the public grid
+  re-measures at the published width and re-packs the layout around any
+  corrected heights. Forced fixture sizes on these blocks are therefore
+  self-corrected, which is exactly what `blocks-short`/`blocks-tall` verify.
+- **fill** (cover images, galleries, scalable embeds, spacers) — content
+  stretches to whatever box the user drew, at any size.
+
+The public page also skips blocks with nothing to show (`blockHasContent`):
+"No image selected"-style placeholders are editor affordances and never ship.
 
 ## Notes on trusting the numbers
 

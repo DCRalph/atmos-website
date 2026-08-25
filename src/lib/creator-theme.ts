@@ -298,6 +298,14 @@ const DENSITY_GAP: Record<Density, string> = {
   spacious: "20px",
 };
 
+/**
+ * The grid gap for a density, as a number. The editor grid and the intrinsic
+ * block height math both need the same value the public grid renders with.
+ */
+export function densityGapPx(density: Density): number {
+  return parseInt(DENSITY_GAP[density], 10);
+}
+
 function tokensToVarRecord(tokens: ThemeTokens): Record<string, string> {
   return {
     "--creator-page-bg": tokens.pageBg,

@@ -295,14 +295,16 @@ gives the first three the most prominence.
 | Order | File | Shows |
 | --- | --- | --- |
 | 1 | `01-home.png` | Home — brand, and the next date's poster filling the screen |
-| 2 | `04-gig-bright.png` | A date doing its job: bright poster, venue, time, genre, **Tickets**, line-up |
+| 2 | `04-gig-bright.png` | A date doing its job: bright poster, line-up, genre, rich description with linked artists, photo gallery |
 | 3 | `05-gig-dark.png` | The same screen with a dark cinematic poster — deliberately unlike 2 |
 | 4 | `02-gigs.png` | Gigs — upcoming above, been-and-gone below |
 
 Four gig posters would read as four pictures of one gig, so the two detail
 screens are picked to disagree: a bright photographic poster against a dark one.
-Both show the **Tickets** button, which the earlier Daffodil capture did not
-because that date has no tiers on sale.
+Neither currently shows the **Tickets** CTA — both dates have since passed, and
+the only upcoming date sells through an external link and shares Home's poster.
+Recapture `04`/`05` (`ATMOS_SHOT_GIG_BRIGHT=<id>`) when the next Atmos-ticketed
+gig is announced so the from-price button is in shot.
 
 **Held back** — `screenshots/_not-ready/`, with a reason per file in its README.
 

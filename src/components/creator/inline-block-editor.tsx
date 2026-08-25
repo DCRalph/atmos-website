@@ -33,6 +33,8 @@ export function InlineBlockEditor({
     );
   }
   if (block.type === "RICH_TEXT") {
+    // Natural height on purpose: the grid editor measures this and snaps the
+    // block's row span to fit, so the editor never scrolls inside a block.
     return (
       <LexicalRichTextEditor
         value={block.data.lexical}
@@ -44,12 +46,9 @@ export function InlineBlockEditor({
         }
         namespace={`creator-block-${block.id}`}
         showToolbar
-        fillParent
         placeholder="Write something..."
         ariaLabel="Edit text block"
-        minHeight="0"
-        className="h-full"
-        contentClassName="h-full overflow-auto"
+        minHeight="1.5rem"
         onFocus={onFocus}
       />
     );

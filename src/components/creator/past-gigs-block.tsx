@@ -22,13 +22,14 @@ type Props = {
   includeUpcoming?: boolean;
   showRole?: boolean;
   blockW: number;
-  blockH: number;
   accent?: string | null;
 };
 
-function computeVisibleCount(w: number, h: number): number {
-  if (w <= 4 || h <= 2) return 1;
-  if (w <= 8 || h <= 3) return 2;
+// Width only: the block's height follows its content (intrinsic sizing), so
+// how many cards fit is purely a question of how wide the block is.
+function computeVisibleCount(w: number): number {
+  if (w <= 4) return 1;
+  if (w <= 8) return 2;
   return 3;
 }
 
@@ -38,7 +39,6 @@ export function PastGigsBlock({
   includeUpcoming = false,
   showRole = true,
   blockW,
-  blockH,
   accent,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -55,7 +55,7 @@ export function PastGigsBlock({
     );
   }, [attributions, includeUpcoming]);
 
-  const visibleCount = computeVisibleCount(blockW, blockH);
+  const visibleCount = computeVisibleCount(blockW);
   const visible = sorted.slice(0, visibleCount);
   const hidden = sorted.length - visible.length;
 
@@ -63,9 +63,11 @@ export function PastGigsBlock({
     ? ({ ["--past-gigs-accent" as string]: accent } as React.CSSProperties)
     : {};
 
+  // Editor-only state: the public page filters attribution-less blocks out
+  // before rendering, so a visitor never sees this.
   if (sorted.length === 0) {
     return (
-      <div className="bg-card/40 flex h-full w-full flex-col items-center justify-center rounded-xl border border-dashed p-6 text-center">
+      <div className="bg-card/40 flex w-full flex-col items-center justify-center rounded-xl border border-dashed p-6 text-center">
         <Music2 className="text-muted-foreground mb-2 h-6 w-6" />
         <p className="text-muted-foreground text-sm">
           No past gigs yet — they'll show up here once you're added to a lineup.
@@ -75,10 +77,7 @@ export function PastGigsBlock({
   }
 
   return (
-    <div
-      className="relative flex h-full w-full flex-col gap-3 overflow-hidden"
-      style={accentStyle}
-    >
+    <div className="relative flex w-full flex-col gap-3" style={accentStyle}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span
@@ -145,7 +144,7 @@ export function PastGigsBlock({
       </div>
 
       <div
-        className="grid min-h-0 flex-1 gap-3"
+        className="grid gap-3"
         style={{
           gridTemplateColumns: `repeat(${visible.length}, minmax(0, 1fr))`,
         }}

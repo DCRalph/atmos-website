@@ -111,12 +111,18 @@ function renderSection(id: SectionId) {
     case "blocks-short":
       return (
         <>
-          <Caption>Every block forced to h=1 (60px row)</Caption>
+          {/* Intrinsic blocks self-fit and ignore the forced height; this
+              exercises fill blocks at their extremes plus the fitting. */}
+          <Caption>
+            Every block forced to h=1 (intrinsic blocks re-fit themselves)
+          </Caption>
           <PublicPage
             blocks={buildBlocks({ data: "populated", forceH: 1 })}
             tokens={DEFAULT_THEME_TOKENS}
           />
-          <Caption>Every block forced to h=2 (120px)</Caption>
+          <Caption>
+            Every block forced to h=2 (intrinsic blocks re-fit themselves)
+          </Caption>
           <PublicPage
             blocks={buildBlocks({ data: "populated", forceH: 2 })}
             tokens={DEFAULT_THEME_TOKENS}
@@ -125,10 +131,15 @@ function renderSection(id: SectionId) {
       );
     case "blocks-tall":
       return (
-        <PublicPage
-          blocks={buildBlocks({ data: "populated", forceH: 10 })}
-          tokens={DEFAULT_THEME_TOKENS}
-        />
+        <>
+          <Caption>
+            Every block forced to h=10 (intrinsic blocks re-fit themselves)
+          </Caption>
+          <PublicPage
+            blocks={buildBlocks({ data: "populated", forceH: 10 })}
+            tokens={DEFAULT_THEME_TOKENS}
+          />
+        </>
       );
     case "blocks-narrow":
       return (
@@ -320,7 +331,10 @@ function EditorSection({ data }: { data: "populated" | "empty" }) {
               blocks={blocks}
               cols={FIXTURE_COLS}
               rowHeightPx={FIXTURE_ROW_HEIGHT}
+              gapPx={12}
               accent={DEFAULT_THEME_TOKENS.accent}
+              socials={FIXTURE_SOCIALS}
+              gigAttributions={FIXTURE_GIGS}
               selectedBlockId={selectedBlockId}
               onSelectBlock={setSelectedBlockId}
               onChange={setBlocks}

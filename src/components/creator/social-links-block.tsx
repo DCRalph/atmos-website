@@ -25,10 +25,7 @@ export function SocialLinksBlock({ socials, accent }: Props) {
     : {};
 
   return (
-    <div
-      className="flex h-full w-full flex-wrap content-start gap-2"
-      style={accentStyle}
-    >
+    <div className="flex w-full flex-wrap gap-2" style={accentStyle}>
       {socials.map((s, i) => {
         const platform = resolveSocialPlatform(s.platform, s.url);
         return (

@@ -47,6 +47,7 @@ import { BlockInspector } from "./block-inspector";
 import { type ClientBlock, type CreatorBlockTypeName } from "./block-types";
 import { useUnsavedChangesWarning } from "~/hooks/use-unsaved-changes-warning";
 import { ThemePicker } from "~/components/creator-themes/theme-picker";
+import { densityGapPx, resolveProfileTokens } from "~/lib/creator-theme";
 
 type Props = {
   /** When provided (admin mode), edits this specific profile. */
@@ -70,6 +71,7 @@ type Profile = {
     isPublic: boolean;
     isSystem: boolean;
     ownerUserId: string | null;
+    tokens: unknown;
   } | null;
   isPublished: boolean;
   gridCols: number;
@@ -291,6 +293,14 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
 
   const selectedBlock = blocks.find((b) => b.id === selectedBlockId) ?? null;
 
+  // The editor grid must use the same gap the published page renders with,
+  // or the arrangement shifts on publish.
+  const themeTokens = resolveProfileTokens(
+    profile.themeRef?.tokens,
+    identity.accentColor,
+  );
+  const gridGapPx = densityGapPx(themeTokens.density);
+
   function onAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -436,7 +446,9 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
               blocks={blocks}
               cols={profile.gridCols}
               rowHeightPx={profile.rowHeightPx}
+              gapPx={gridGapPx}
               accent={identity.accentColor}
+              socials={socials ?? []}
               selectedBlockId={selectedBlockId}
               onSelectBlock={setSelectedBlockId}
               onChange={(next) => {

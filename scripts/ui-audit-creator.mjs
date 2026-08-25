@@ -55,8 +55,13 @@ const DESKTOP_ONLY = new Set(["editor-grid", "editor-empty", "editor-inspector"]
 /** Blocks whose whole job is to be empty. */
 const INTENTIONALLY_EMPTY = new Set(["SPACER"]);
 
-/** Slack below this many px is just breathing room, not a bug. */
-const SLACK_THRESHOLD_PX = 24;
+/**
+ * Slack below this many px is not a bug: blocks can only span whole grid rows,
+ * so content that doesn't stretch always leaves up to one row-step of slack
+ * (fixture row 60px + the widest density gap 20px). Intrinsic blocks self-fit
+ * to within one row; anything past a full step is reserved space nothing uses.
+ */
+const SLACK_THRESHOLD_PX = 80;
 
 // ---------------------------------------------------------------------------
 // args
@@ -316,12 +321,14 @@ async function scrollThroughPage(page) {
   });
 }
 
-async function waitForHydration(page) {
+async function waitForHydration(page, { expectRichText = true } = {}) {
   // Hard fail: an unhydrated page reports every block as empty, which would be
   // a screenful of fake findings.
   await page.waitForSelector('[data-uitest-root][data-hydrated="1"]', {
     timeout: 30_000,
   });
+
+  if (!expectRichText) return; // the empty-data passes have nothing to wait on
 
   await page
     .waitForFunction(
@@ -334,7 +341,6 @@ async function waitForHydration(page) {
       { timeout: 20_000 },
     )
     .catch(() => {
-      // Genuine when the fixture has no rich text (e.g. the empty-data pass).
       console.warn("\n    (rich text stayed empty — measuring anyway)");
     });
 }
@@ -410,7 +416,9 @@ async function main() {
           content: "nextjs-portal { display: none !important; }",
         });
         await page.evaluate(() => document.fonts.ready);
-        await waitForHydration(page);
+        await waitForHydration(page, {
+          expectRichText: !section.includes("empty"),
+        });
         await scrollThroughPage(page);
         const result = await measureWhenSettled(page);
 
@@ -443,6 +451,9 @@ async function main() {
               kind: "hydration-mismatch",
               id: `page/${section}`,
               detail: firstLine(err),
+              // The React diff naming the mismatched element lives in the
+              // later lines; keep it so report.json says what actually broke.
+              full: String(err),
             });
           }
         }
