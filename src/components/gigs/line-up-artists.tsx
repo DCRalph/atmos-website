@@ -36,8 +36,7 @@ const STRIP_LIMIT = 5;
 const INSTAGRAM = getPlatform("instagram");
 
 /**
- * The bill on a gig page: the overlapping avatar stack, and the dialog it
- * opens.
+ * The bill on a gig page: the wrapping avatar row, and the dialog it opens.
  *
  * The stack used to link straight out to `/@handle`, which is a dead end for
  * every profile that is not published. The dialog shows the artist's history
@@ -70,7 +69,7 @@ export function LineUpAvatars({
 
   return (
     <>
-      <div className="group/lineup flex items-center">
+      <div className="flex flex-wrap items-center gap-1">
         {lineUp.map((entry, i) => (
           <button
             key={entry.id}
@@ -80,14 +79,11 @@ export function LineUpAvatars({
               setIndex(i);
               setOpen(true);
             }}
-            className={cn(
-              "group/avatar relative block h-8 w-8 cursor-pointer transition-[margin-left,transform,z-index] duration-300 ease-out hover:z-20",
-              i === 0 ? "ml-0" : "-ml-2 group-hover/lineup:ml-1",
-            )}
+            className="group/avatar relative block h-8 w-8 cursor-pointer hover:z-20"
           >
             <ArtistAvatar
               profile={entry.creatorProfile}
-              className="h-8 w-8 text-[11px] ring-2 ring-black transition-all group-hover/avatar:ring-white/70"
+              className="h-8 w-8 text-[11px] ring-2 ring-black transition-all duration-200 ease-out group-hover/avatar:scale-125 group-hover/avatar:ring-white/70"
             />
             <span className="pointer-events-none absolute top-full left-1/2 z-30 mt-2 -translate-x-1/2 translate-y-1 border border-white/15 bg-black/90 px-2 py-1 text-[10px] font-bold tracking-wider whitespace-nowrap text-white uppercase opacity-0 shadow-lg backdrop-blur-md transition-all duration-200 group-hover/avatar:translate-y-0 group-hover/avatar:opacity-100">
               {entry.creatorProfile.displayName}

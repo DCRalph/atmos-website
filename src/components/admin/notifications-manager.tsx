@@ -5,9 +5,20 @@ import { formatDistanceToNowStrict } from "date-fns";
 import { toast } from "sonner";
 
 import { api } from "~/trpc/react";
+import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
+import { DataTable, type DataTableColumn } from "~/components/data-table";
 import { DEFAULT_PRIORITY, type NotifyPriority } from "~/lib/notify/topics";
 
 /**
@@ -16,11 +27,12 @@ import { DEFAULT_PRIORITY, type NotifyPriority } from "~/lib/notify/topics";
  * Laid out audience-first: the riskiest part of this screen is not writing the
  * message, it is picking the topic. `announcements` reaches every install and
  * `team` reaches six of us, and in a dropdown those look identical. So the
- * topic list carries its device count, and the panel beside the composer names
- * the handsets that are about to light up before the button is pressed.
+ * topic list carries its device count, and the devices card beside the
+ * composer names the handsets that are about to light up before the button is
+ * pressed.
  *
- * The same panel is where a handset is subscribed or unsubscribed, which saves
- * a separate device-management page.
+ * The same card is where a handset is subscribed or unsubscribed (the Switch
+ * column), which saves a separate device-management page.
  */
 
 const PRIORITY_LABELS: Record<
@@ -68,258 +80,282 @@ export function NotificationsManager() {
 
   const canSend = message.trim().length > 0 && !send.isPending;
 
+  // One table of staff handsets: the Switch shows and edits whether each is
+  // subscribed to the selected topic.
+  const devices = [
+    ...(audience.data?.listening ?? []).map((device) => ({
+      ...device,
+      subscribed: true,
+    })),
+    ...(audience.data?.missing ?? []).map((device) => ({
+      ...device,
+      subscribed: false,
+    })),
+  ];
+  type DeviceRow = (typeof devices)[number];
+  const deviceColumns: DataTableColumn<DeviceRow>[] = [
+    {
+      id: "device",
+      header: "Device",
+      accessor: (row) => row.label ?? row.platform,
+      className: "font-medium",
+    },
+    {
+      id: "user",
+      header: "User",
+      cell: (row) => (
+        <span className="text-muted-foreground">
+          {row.user?.name ?? "Signed out"}
+        </span>
+      ),
+    },
+    {
+      id: "lastSeen",
+      header: "Last seen",
+      cell: (row) => (
+        <span className="text-muted-foreground text-xs">
+          {ago(row.lastSeenAt)}
+        </span>
+      ),
+    },
+    {
+      id: "subscribed",
+      header: "Subscribed",
+      align: "right",
+      hideable: false,
+      cell: (row) => (
+        <Switch
+          checked={row.subscribed}
+          disabled={setDeviceTopic.isPending}
+          onCheckedChange={(checked) =>
+            setDeviceTopic.mutate({
+              deviceId: row.id,
+              topic,
+              subscribed: checked,
+            })
+          }
+        />
+      ),
+    },
+  ];
+
+  const sentRows = recent.data ?? [];
+  type SentRow = (typeof sentRows)[number];
+  const sentColumns: DataTableColumn<SentRow>[] = [
+    {
+      id: "sent",
+      header: "Sent",
+      cell: (row) => (
+        <span className="text-muted-foreground text-xs tabular-nums">
+          {ago(row.createdAt)}
+        </span>
+      ),
+    },
+    {
+      id: "topic",
+      header: "Topic",
+      cell: (row) => (
+        <Badge variant="outline" className="font-mono">
+          {row.topic}
+        </Badge>
+      ),
+    },
+    {
+      id: "message",
+      header: "Message",
+      cell: (row) => (
+        <>
+          {row.title && <span className="font-medium">{row.title} </span>}
+          <span className="text-muted-foreground">{row.message}</span>
+        </>
+      ),
+    },
+    {
+      id: "sender",
+      header: "Sender",
+      cell: (row) => (
+        <span className="text-muted-foreground">
+          {row.sender?.name ?? <span className="font-mono">api</span>}
+        </span>
+      ),
+    },
+    {
+      id: "delivered",
+      header: "Delivered",
+      align: "right",
+      cell: (row) => (
+        <span className="text-muted-foreground text-xs tabular-nums">
+          {row.delivered}/{row.devices}
+        </span>
+      ),
+    },
+  ];
+
   return (
-    <div className="grid gap-8 lg:grid-cols-2">
-      <section className="flex flex-col gap-4">
-        <Field label="Topic">
-          <div className="border-border divide-border divide-y border">
-            {(topics.data ?? []).map((entry) => {
-              const selected = entry.name === topic;
-              // Everything else here reaches staff. This one reaches punters.
-              const reachesPunters = entry.name === "announcements";
-              return (
-                <button
-                  key={entry.name}
-                  type="button"
-                  onClick={() => setTopic(entry.name)}
-                  className={`flex w-full items-baseline justify-between gap-4 px-3 py-2 text-left text-sm ${
-                    selected
-                      ? "bg-foreground text-background"
-                      : "hover:bg-muted/50"
-                  }`}
-                >
-                  <span className="font-mono">{entry.name}</span>
-                  <span
-                    className={`ml-auto truncate text-xs ${
+    <div className="grid items-start gap-6 lg:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>Send Notification</CardTitle>
+          <CardDescription>
+            Pick the topic first: it decides which devices this reaches
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="space-y-2">
+            <Label>Topic</Label>
+            <div className="divide-border divide-y overflow-hidden rounded-md border">
+              {(topics.data ?? []).map((entry) => {
+                const selected = entry.name === topic;
+                // Everything else here reaches staff. This one reaches punters.
+                const reachesPunters = entry.name === "announcements";
+                return (
+                  <button
+                    key={entry.name}
+                    type="button"
+                    onClick={() => setTopic(entry.name)}
+                    className={`flex w-full items-baseline justify-between gap-4 px-3 py-2 text-left text-sm ${
                       selected
-                        ? "opacity-70"
-                        : reachesPunters
-                          ? "text-amber-500"
-                          : "text-muted-foreground"
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-muted/50"
                     }`}
                   >
-                    {entry.description}
-                  </span>
-                  <span className="tabular-nums">{entry.devices}</span>
-                </button>
-              );
-            })}
-            {topics.isLoading && (
-              <p className="text-muted-foreground px-3 py-2 text-sm">
-                Loading topics
-              </p>
-            )}
+                    <span className="font-mono">{entry.name}</span>
+                    <span
+                      className={`ml-auto truncate text-xs ${
+                        selected
+                          ? "opacity-70"
+                          : reachesPunters
+                            ? "text-amber-500"
+                            : "text-muted-foreground"
+                      }`}
+                    >
+                      {entry.description}
+                    </span>
+                    <span className="tabular-nums">{entry.devices}</span>
+                  </button>
+                );
+              })}
+              {topics.isLoading && (
+                <p className="text-muted-foreground px-3 py-2 text-sm">
+                  Loading topics
+                </p>
+              )}
+            </div>
           </div>
-        </Field>
 
-        <Field label="Title">
-          <Input
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            maxLength={250}
-            // A blank title is legal: the topic names itself instead.
-            placeholder={topic}
-          />
-        </Field>
-
-        <Field label="Message">
-          <Textarea
-            value={message}
-            onChange={(event) => setMessage(event.target.value)}
-            maxLength={4096}
-            rows={4}
-          />
-        </Field>
-
-        <Field label="Priority">
-          <div className="flex">
-            {([1, 2, 3, 4, 5] as const).map((value) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setPriority(value)}
-                className={`border-border flex-1 border py-2 text-sm not-first:border-l-0 ${
-                  value === priority
-                    ? "bg-foreground text-background font-semibold"
-                    : "text-muted-foreground hover:bg-muted/50"
-                }`}
-              >
-                {PRIORITY_LABELS[value].name}
-              </button>
-            ))}
-          </div>
-          <p className="text-muted-foreground mt-1 text-xs">
-            {PRIORITY_LABELS[priority].effect}
-          </p>
-        </Field>
-
-        <div className="flex items-center gap-4">
-          <Button
-            disabled={!canSend}
-            onClick={() =>
-              send.mutate({
-                topic,
-                title: title.trim() || undefined,
-                message: message.trim(),
-                priority,
-                tags: [],
-              })
-            }
-          >
-            {send.isPending
-              ? "Sending"
-              : `Send to ${audience.data?.subscribed ?? 0} devices`}
-          </Button>
-        </div>
-      </section>
-
-      <section className="flex flex-col gap-6">
-        <div>
-          <Legend>Will reach</Legend>
-          {audience.data?.listening.length === 0 && (
-            <p className="text-muted-foreground text-sm">
-              No staff handset is subscribed to{" "}
-              <span className="font-mono">{topic}</span>.
-            </p>
-          )}
-          <DeviceTable
-            devices={audience.data?.listening ?? []}
-            action="Remove"
-            busy={setDeviceTopic.isPending}
-            onAction={(deviceId) =>
-              setDeviceTopic.mutate({ deviceId, topic, subscribed: false })
-            }
-          />
-          {(audience.data?.others ?? 0) > 0 && (
-            <p className="text-muted-foreground mt-2 text-xs">
-              And {audience.data?.others} other installs subscribed to{" "}
-              <span className="font-mono">{topic}</span>. Counted rather than
-              listed, because they are not staff.
-            </p>
-          )}
-        </div>
-
-        {(audience.data?.missing.length ?? 0) > 0 && (
-          <div>
-            <Legend>Staff handsets not on this topic</Legend>
-            <DeviceTable
-              devices={audience.data?.missing ?? []}
-              action="Add"
-              busy={setDeviceTopic.isPending}
-              onAction={(deviceId) =>
-                setDeviceTopic.mutate({ deviceId, topic, subscribed: true })
-              }
+          <div className="space-y-2">
+            <Label htmlFor="notify-title">Title</Label>
+            <Input
+              id="notify-title"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              maxLength={250}
+              // A blank title is legal: the topic names itself instead.
+              placeholder={topic}
             />
           </div>
-        )}
 
-        <div>
-          <Legend>Recently sent</Legend>
-          <table className="w-full text-sm">
-            <tbody>
-              {(recent.data ?? []).map((sent) => (
-                <tr key={sent.id} className="border-border border-b">
-                  <td className="text-muted-foreground w-16 py-2 align-top text-xs tabular-nums">
-                    {ago(sent.createdAt)}
-                  </td>
-                  <td className="py-2 align-top">
-                    <span className="font-mono text-xs">{sent.topic}</span>{" "}
-                    {sent.title && (
-                      <span className="font-medium">{sent.title}</span>
-                    )}{" "}
-                    <span className="text-muted-foreground">
-                      {sent.message}
-                    </span>
-                  </td>
-                  <td className="text-muted-foreground w-28 py-2 text-right align-top text-xs">
-                    {sent.sender?.name ?? (
-                      <span className="font-mono">api</span>
-                    )}{" "}
-                    {sent.delivered}/{sent.devices}
-                  </td>
-                </tr>
+          <div className="space-y-2">
+            <Label htmlFor="notify-message">Message</Label>
+            <Textarea
+              id="notify-message"
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              maxLength={4096}
+              rows={4}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Priority</Label>
+            <div className="divide-border grid grid-cols-5 divide-x overflow-hidden rounded-md border">
+              {([1, 2, 3, 4, 5] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setPriority(value)}
+                  className={`py-2 text-sm ${
+                    value === priority
+                      ? "bg-primary text-primary-foreground font-semibold"
+                      : "text-muted-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  {PRIORITY_LABELS[value].name}
+                </button>
               ))}
-            </tbody>
-          </table>
-          {recent.data?.length === 0 && (
-            <p className="text-muted-foreground text-sm">Nothing sent yet.</p>
-          )}
-        </div>
-      </section>
+            </div>
+            <p className="text-muted-foreground text-xs">
+              {PRIORITY_LABELS[priority].effect}
+            </p>
+          </div>
+
+          <div>
+            <Button
+              disabled={!canSend}
+              onClick={() =>
+                send.mutate({
+                  topic,
+                  title: title.trim() || undefined,
+                  message: message.trim(),
+                  priority,
+                  tags: [],
+                })
+              }
+            >
+              {send.isPending
+                ? "Sending..."
+                : `Send to ${audience.data?.subscribed ?? 0} devices`}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex flex-col gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Devices</CardTitle>
+            <CardDescription>
+              Staff handsets and whether they are subscribed to{" "}
+              <span className="font-mono">{topic}</span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DataTable
+              columns={deviceColumns}
+              data={devices}
+              getRowId={(row) => row.id}
+              isLoading={audience.isLoading}
+              storageKey="admin-notify-devices"
+              emptyMessage="No staff handsets registered"
+            />
+            {(audience.data?.others ?? 0) > 0 && (
+              <p className="text-muted-foreground mt-2 text-xs">
+                And {audience.data?.others} other installs subscribed to{" "}
+                <span className="font-mono">{topic}</span>. Counted rather than
+                listed, because they are not staff.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Recently Sent</CardTitle>
+            <CardDescription>The last 10 notifications</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DataTable
+              columns={sentColumns}
+              data={sentRows}
+              getRowId={(row) => row.id}
+              isLoading={recent.isLoading}
+              storageKey="admin-notify-recent"
+              emptyMessage="Nothing sent yet"
+            />
+          </CardContent>
+        </Card>
+      </div>
     </div>
-  );
-}
-
-type Device = {
-  id: string;
-  label: string | null;
-  platform: string;
-  lastSeenAt: Date;
-  user: { id: string; name: string; email: string } | null;
-};
-
-function DeviceTable({
-  devices,
-  action,
-  busy,
-  onAction,
-}: {
-  devices: readonly Device[];
-  action: string;
-  busy: boolean;
-  onAction: (deviceId: string) => void;
-}) {
-  if (devices.length === 0) return null;
-
-  return (
-    <table className="w-full text-sm">
-      <tbody>
-        {devices.map((device) => (
-          <tr key={device.id} className="border-border border-b">
-            <td className="py-2">{device.label ?? device.platform}</td>
-            <td className="text-muted-foreground py-2">
-              {device.user?.name ?? "Signed out"}
-            </td>
-            <td className="text-muted-foreground py-2 text-right text-xs">
-              {ago(device.lastSeenAt)}
-            </td>
-            <td className="w-20 py-2 text-right">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={busy}
-                onClick={() => onAction(device.id)}
-              >
-                {action}
-              </Button>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <Legend>{label}</Legend>
-      {children}
-    </div>
-  );
-}
-
-function Legend({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-muted-foreground mb-1.5 text-xs tracking-widest uppercase">
-      {children}
-    </p>
   );
 }
 
