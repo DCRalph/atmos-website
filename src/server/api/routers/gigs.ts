@@ -20,10 +20,10 @@ import {
   type GigMedia,
 } from "~Prisma/client";
 import { toPublicLineUp } from "~/lib/run-sheet/line-up";
-import { gigSlug } from "~/lib/gig-url";
+import { resolveGigId } from "~/server/gig-lookup";
 import { userHasPermission } from "~/server/utils/permissions";
 import type { SerializedEditorState } from "lexical";
-import { Prisma, type PrismaClient } from "~Prisma/client";
+import { Prisma } from "~Prisma/client";
 
 /**
  * A serialized Lexical editor state. We only check that the value is an
@@ -267,29 +267,6 @@ const redactGigForPublic = <T extends { mode?: GigMode }>(gig: T) => {
 
 const redactGigsForPublic = <T extends { mode?: GigMode }>(gigs: T[]) =>
   gigs.map(redactGigForPublic);
-
-/**
- * A gig page URL carries either the cuid or a slug of the title — see
- * `gigPath` in ~/lib/gig-url. The cuid wins; failing that, every title is
- * slugged and compared, newest night first, so a reused title resolves to the
- * most recent gig.
- */
-async function resolveGigId(
-  db: PrismaClient,
-  idOrSlug: string,
-): Promise<string | null> {
-  const byId = await db.gig.findUnique({
-    where: { id: idOrSlug },
-    select: { id: true },
-  });
-  if (byId) return byId.id;
-
-  const gigs = await db.gig.findMany({
-    select: { id: true, title: true },
-    orderBy: { gigStartTime: "desc" },
-  });
-  return gigs.find((gig) => gigSlug(gig.title) === idOrSlug)?.id ?? null;
-}
 
 async function getFileUploadInfoById(
   db: any,

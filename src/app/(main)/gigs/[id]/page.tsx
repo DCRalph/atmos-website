@@ -1,18 +1,25 @@
-"use client";
-
-import { use } from "react";
-import GigDetailPage from "./GigDetail";
-import { EventJsonLd, BreadcrumbJsonLd } from "~/components/seo/json-ld";
-import { usePageMetadata } from "~/hooks/use-page-metadata";
-import { api } from "~/trpc/react";
-import { getMediaDisplayUrl } from "~/lib/media-url";
+import { type Metadata } from "next";
+import { db } from "~/server/db";
+import { resolveGigId } from "~/server/gig-lookup";
 import { gigPath } from "~/lib/gig-url";
+import { FileUploadStatus } from "~Prisma/client";
 import {
   DEFAULT_OG_IMAGE,
   DESCRIPTION_SHORT,
   SITE_NAME,
   SITE_URL,
+  formatFullTitle,
 } from "~/lib/seo-constants";
+import GigPageClient from "./gig-page-client";
+
+/**
+ * The server half of the gig page: real meta tags in the initial HTML, so
+ * link scrapers (which do not run JavaScript) see the gig's name, poster and
+ * short description. Everything visible is client-rendered — see
+ * gig-page-client.tsx.
+ */
+
+export const revalidate = 60;
 
 const cleanText = (value?: string | null) =>
   value?.replace(/\s+/g, " ").trim() ?? "";
@@ -20,71 +27,80 @@ const cleanText = (value?: string | null) =>
 const truncate = (value: string, length: number) =>
   value.length > length ? `${value.slice(0, length - 1)}…` : value;
 
-export default function page({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const { data: gig } = api.gigs.getById.useQuery({ id });
-
-  const isTba = gig?.mode === "TO_BE_ANNOUNCED";
-  const baseTitle = isTba ? "TBA..." : (gig?.title ?? "Gig");
-  const subtitle = cleanText(isTba ? "" : gig?.subtitle);
-  const shortDescription = cleanText(isTba ? "" : gig?.shortDescription);
-  const description =
-    shortDescription ||
-    subtitle ||
-    truncate(`ATMOS — ${DESCRIPTION_SHORT}`, 160);
-
-  const posterImage = gig?.posterFileUpload?.url ?? null;
-  const firstPhoto =
-    gig?.media?.find((item) => item.type === "photo") ?? gig?.media?.[0];
-  const mediaImage =
-    posterImage ||
-    (firstPhoto ? getMediaDisplayUrl(firstPhoto) : DEFAULT_OG_IMAGE);
-  // The pretty slug URL is canonical; the cuid form of the same page defers
-  // to it. Falls back to the requested param until the gig loads.
-  const canonical = `${SITE_URL}${gig ? gigPath(gig) : `/gigs/${id}`}`;
-  const fullTitle = `${baseTitle} | Gig | ${SITE_NAME}`;
-
-  // Set up page metadata
-  usePageMetadata({
-    title: fullTitle,
-    description,
-    image: mediaImage,
-    canonical,
+/** The poster's URL, unless the file has since been deleted. */
+async function posterUrl(fileUploadId: string | null): Promise<string | null> {
+  if (!fileUploadId) return null;
+  const file = await db.file_upload.findUnique({
+    where: { id: fileUploadId },
+    select: { url: true, status: true },
   });
+  const gone: FileUploadStatus[] = [
+    FileUploadStatus.DELETED,
+    FileUploadStatus.SOFT_DELETED,
+  ];
+  if (!file || gone.includes(file.status)) return null;
+  return file.url;
+}
 
-  return (
-    <>
-      {/* JSON-LD Structured Data for Google Rich Results */}
-      {gig && !isTba && (
-        <>
-          <EventJsonLd
-            name={gig.title}
-            description={
-              gig.shortDescription ||
-              gig.subtitle ||
-              "Wellington electronic music event by ATMOS"
-            }
-            startDate={gig.gigStartTime}
-            endDate={gig.gigEndTime ?? undefined}
-            venue={{
-              name: gig.subtitle || "Wellington Venue",
-            }}
-            image={mediaImage}
-            ticketUrl={gig.ticketLink ?? undefined}
-            eventStatus="EventScheduled"
-            eventAttendanceMode="OfflineEventAttendanceMode"
-          />
-          <BreadcrumbJsonLd
-            items={[
-              { name: "Home", url: "/" },
-              { name: "Events", url: "/gigs" },
-              { name: gig.title, url: gigPath(gig) },
-            ]}
-          />
-        </>
-      )}
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const gigId = await resolveGigId(db, id);
+  const gig = gigId
+    ? await db.gig.findUnique({
+        where: { id: gigId },
+        select: {
+          id: true,
+          title: true,
+          subtitle: true,
+          shortDescription: true,
+          mode: true,
+          posterFileUploadId: true,
+        },
+      })
+    : null;
 
-      <GigDetailPage params={params} />
-    </>
-  );
+  if (!gig) return { title: "Gig not found", robots: { index: false } };
+
+  // A TBA gig keeps its secret: redacted name, site description. The poster
+  // stays — the public page shows it as the teaser.
+  const isTba = gig.mode === "TO_BE_ANNOUNCED";
+  const name = isTba ? "TBA..." : gig.title;
+  const description =
+    (isTba ? "" : cleanText(gig.shortDescription) || cleanText(gig.subtitle)) ||
+    truncate(`ATMOS — ${DESCRIPTION_SHORT}`, 160);
+  const image = (await posterUrl(gig.posterFileUploadId)) ?? DEFAULT_OG_IMAGE;
+  const canonical = `${SITE_URL}${gigPath(gig)}`;
+
+  return {
+    // The root layout's template appends "| ATMOS".
+    title: `${name} | Gig`,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      title: formatFullTitle(name),
+      description,
+      url: canonical,
+      siteName: SITE_NAME,
+      images: [image],
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: formatFullTitle(name),
+      description,
+      images: [image],
+    },
+  };
+}
+
+export default function Page({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  return <GigPageClient params={params} />;
 }
