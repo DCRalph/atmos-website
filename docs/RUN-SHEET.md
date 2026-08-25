@@ -27,16 +27,24 @@ the same rows.
 the migration as a `SET` with no times.
 
 - `kind` is `LOAD_IN`, `SOUND_CHECK`, `DOORS`, `SET`, `CURFEW` or `CUSTOM`.
-- `creatorProfileId` is set on a `SET` and null on everything else.
+- Who is playing a `SET` lives in `gig_set_artist`, one row per name, ordered by
+  billing. Every other kind has none.
 - `startsAt` is optional throughout. A gig with names and no times behaves
   exactly as it did before run sheets existed, and announces nothing.
 - `leadMinutes` is how far ahead to warn. `[5]` means one warning five minutes
   out, plus the cue itself. `[]` means the cue only.
 - `notes` is internal and is never selected by a public procedure.
 
-There is no unique constraint on (gig, artist), so an artist can open and close
-the same night. The public line-up de-duplicates them to one name, at the
-position of their first set.
+A slot holds as many artists as it needs, so a back to back is **one set with
+two or three people in it** rather than two sets stacked on the same minute.
+That matters twice over: two rows would announce a changeover between the two
+halves of a b2b, and would print the slot twice on the public bill. A slot bills
+itself as "Nova b2b Kessler"; anything that wants to read differently is what the
+row's `label` is for.
+
+Nothing stops the same artist appearing in more than one slot, so an artist can
+open and close the same night. The public line-up de-duplicates every name to
+one entry, at the position of its first slot.
 
 **Changeovers are not stored.** A set with an earlier set in front of it implies
 one, and the cue copy reads the row in front rather than a row somebody has to

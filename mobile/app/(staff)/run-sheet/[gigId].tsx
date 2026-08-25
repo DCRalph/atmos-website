@@ -12,10 +12,14 @@ import { Body, Caption, Eyebrow, Loading, Notice, Pill, Title } from "@/componen
 /**
  * Tonight's run sheet.
  *
- * Read-only, like the rest of organiser mode. What it is for is the ten seconds
- * after a cue lands on a lock screen: what just happened, what is next, and how
- * long there is. Everything is drawn from the same rows the notifications are
- * derived from, so the screen and the push cannot disagree.
+ * Read-only. What it is for is the ten seconds after a cue lands on a lock
+ * screen: what just happened, what is next, and how long there is. Everything
+ * is drawn from the same rows the notifications are derived from, so the screen
+ * and the push cannot disagree.
+ *
+ * Open to everybody working the night. A door person sees the shape of it;
+ * internal notes and who is being told what stay with the organisers, and the
+ * server is what withholds them rather than this screen.
  *
  * `previousSetName` comes from the server rather than being worked out here for
  * the same reason: a changeover is defined by the row in front of it, and two
@@ -66,8 +70,8 @@ export default function RunSheetScreen() {
 
       {runSheet.isError ? (
         <Notice
-          title="Not an organiser"
-          detail="Run sheets are for the team running the night."
+          title="Not on this one"
+          detail="You can see the run sheet for gigs you are working. Ask an organiser if this should be one of them."
         />
       ) : null}
 

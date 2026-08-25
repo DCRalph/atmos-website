@@ -1,5 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+
+import {
+  APPEARANCE_ORDER,
+  APPEARANCE_SELECT,
+  toGigAttributions,
+} from "~/server/creator-appearances";
 import {
   createTRPCRouter,
   publicProcedure,
@@ -176,27 +182,9 @@ export const creatorProfilesRouter = createTRPCRouter({
             select: { platform: true, url: true },
             orderBy: { sortOrder: "asc" },
           },
-          // One row per gig, most recent first. `creatorProfileId` is only ever
-          // set on a SET row today; naming the kind keeps that true if it ever
-          // stops being.
-          scheduleItems: {
-            where: { kind: "SET" },
-            distinct: ["gigId"],
-            orderBy: { gig: { gigStartTime: "desc" } },
-            select: {
-              role: true,
-              gig: {
-                select: {
-                  id: true,
-                  title: true,
-                  subtitle: true,
-                  gigStartTime: true,
-                  gigEndTime: true,
-                  posterFileUploadId: true,
-                  mode: true,
-                },
-              },
-            },
+          setAppearances: {
+            orderBy: APPEARANCE_ORDER,
+            select: APPEARANCE_SELECT,
           },
         },
       });
@@ -217,9 +205,9 @@ export const creatorProfilesRouter = createTRPCRouter({
         avatarFileId: profile.avatarFileId,
         isPublished: profile.isPublished,
         instagramUrl: instagram?.url ?? null,
-        gigs: profile.scheduleItems.map((item) => ({
-          role: item.role,
-          ...item.gig,
+        gigs: toGigAttributions(profile.setAppearances).map((entry) => ({
+          role: entry.role,
+          ...entry.gig,
         })),
       };
     }),
@@ -344,18 +332,22 @@ export const creatorProfilesRouter = createTRPCRouter({
         },
       });
 
-      // Counted separately because `_count` counts rows, and an artist opening
-      // and closing the same night is two run sheet rows and one gig.
-      const pairs = await ctx.db.gigScheduleItem.groupBy({
-        by: ["creatorProfileId", "gigId"],
+      // Counted here because `_count` counts rows, and an artist can hold two
+      // of them for one night: an opening set and a closing one, or a solo slot
+      // and a back to back.
+      const appearances = await ctx.db.gigSetArtist.findMany({
         where: { creatorProfileId: { in: profiles.map((row) => row.id) } },
+        select: { creatorProfileId: true, item: { select: { gigId: true } } },
       });
+      const seenPairs = new Set<string>();
       const gigCounts = new Map<string, number>();
-      for (const pair of pairs) {
-        if (!pair.creatorProfileId) continue;
+      for (const appearance of appearances) {
+        const pair = `${appearance.creatorProfileId}:${appearance.item.gigId}`;
+        if (seenPairs.has(pair)) continue;
+        seenPairs.add(pair);
         gigCounts.set(
-          pair.creatorProfileId,
-          (gigCounts.get(pair.creatorProfileId) ?? 0) + 1,
+          appearance.creatorProfileId,
+          (gigCounts.get(appearance.creatorProfileId) ?? 0) + 1,
         );
       }
 
@@ -834,7 +826,7 @@ export const creatorProfilesRouter = createTRPCRouter({
             where: { profileId: existingMine.id },
             data: { profileId: input.profileId },
           });
-          await tx.gigScheduleItem.updateMany({
+          await tx.gigSetArtist.updateMany({
             where: { creatorProfileId: existingMine.id },
             data: { creatorProfileId: input.profileId },
           });

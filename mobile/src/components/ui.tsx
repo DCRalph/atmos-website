@@ -59,13 +59,20 @@ export function Caption({
   children,
   style,
   numberOfLines,
+  onPress,
 }: {
   children: ReactNode;
   style?: StyleProp<TextStyle>;
   numberOfLines?: number;
+  /** For an inline link inside a sentence, where a Pressable cannot go. */
+  onPress?: () => void;
 }) {
   return (
-    <Text numberOfLines={numberOfLines} style={[styles.caption, style]}>
+    <Text
+      numberOfLines={numberOfLines}
+      onPress={onPress}
+      style={[styles.caption, style]}
+    >
       {children}
     </Text>
   );

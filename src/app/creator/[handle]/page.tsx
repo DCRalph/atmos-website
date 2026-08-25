@@ -3,6 +3,11 @@ import { type Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { db } from "~/server/db";
+import {
+  APPEARANCE_ORDER,
+  APPEARANCE_SELECT,
+  toGigAttributions,
+} from "~/server/creator-appearances";
 import { auth } from "~/server/auth";
 import { buildMediaUrl } from "~/lib/media-url";
 import { PublicProfileGrid } from "~/components/creator/public-profile-grid";
@@ -31,26 +36,9 @@ async function loadProfile(handle: string) {
       blocks: { orderBy: [{ y: "asc" }, { x: "asc" }] },
       socials: { orderBy: { sortOrder: "asc" } },
       themeRef: true,
-      // One row per gig, naming its columns: a run sheet row also carries set
-      // times and internal notes, and this page is public.
-      scheduleItems: {
-        distinct: ["gigId"],
-        orderBy: { sortOrder: "asc" },
-        select: {
-          id: true,
-          role: true,
-          gig: {
-            select: {
-              id: true,
-              title: true,
-              subtitle: true,
-              gigStartTime: true,
-              gigEndTime: true,
-              posterFileUploadId: true,
-              mode: true,
-            },
-          },
-        },
+      setAppearances: {
+        orderBy: APPEARANCE_ORDER,
+        select: APPEARANCE_SELECT,
       },
     },
   });
@@ -147,11 +135,7 @@ export default async function PublicCreatorProfilePage({
     label: s.label,
   }));
 
-  const gigAttributions = profile.scheduleItems.map((g) => ({
-    id: g.id,
-    role: g.role,
-    gig: g.gig,
-  }));
+  const gigAttributions = toGigAttributions(profile.setAppearances);
 
   return (
     <div

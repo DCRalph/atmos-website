@@ -23,17 +23,21 @@ function row(over: Partial<ScheduleRow> & { id: string }): ScheduleRow {
     endsAt: null,
     sortOrder: 0,
     leadMinutes: [5],
-    creatorProfile: null,
+    artists: [],
     ...over,
   };
 }
 
 const artist = (id: string, name: string, startsAt: Date, sortOrder: number) =>
+  row({ id, startsAt, sortOrder, artists: [{ displayName: name }] });
+
+/** A slot with more than one person in it. */
+const b2b = (id: string, names: string[], startsAt: Date, sortOrder: number) =>
   row({
     id,
     startsAt,
     sortOrder,
-    creatorProfile: { displayName: name },
+    artists: names.map((displayName) => ({ displayName })),
   });
 
 const cues = (rows: ScheduleRow[]) => cuesFor(rows, { gigTitle: "Neon Church" });
@@ -242,5 +246,48 @@ describe("parts of the night", () => {
       flattenGroups(groupSchedule(rows)).map((r) => r.id),
       ["check", "set"],
     );
+  });
+});
+
+describe("back to back", () => {
+  test("a slot with two people is billed as one", () => {
+    const [lead, now] = order(
+      cues([b2b("a", ["Nova", "Kessler"], at("22:00"), 0)]),
+    );
+    assert.equal(lead?.title, "Nova b2b Kessler on in 5 min");
+    assert.equal(now?.title, "Nova b2b Kessler on now");
+  });
+
+  test("three people chain, in billing order", () => {
+    const [, now] = order(
+      cues([b2b("a", ["Nova", "Kessler", "Ari"], at("22:00"), 0)]),
+    );
+    assert.equal(now?.title, "Nova b2b Kessler b2b Ari on now");
+  });
+
+  test("a back to back is one changeover, not two", () => {
+    const all = cues([
+      artist("a", "Opener", at("21:00"), 0),
+      b2b("b", ["Nova", "Kessler"], at("22:00"), 1),
+    ]);
+    assert.equal(all.filter((cue) => cue.itemId === "b").length, 2);
+    const [lead] = order(all.filter((cue) => cue.itemId === "b"));
+    assert.equal(lead?.title, "Changeover in 5 min");
+    assert.equal(
+      lead?.body,
+      "Opener off, Nova b2b Kessler on at 10:00 pm. Neon Church.",
+    );
+  });
+
+  test("a label overrides the billing, and it is still a set going on", () => {
+    const [, now] = order(
+      cues([
+        {
+          ...b2b("a", ["Nova", "Kessler"], at("22:00"), 0),
+          label: "The b3b",
+        },
+      ]),
+    );
+    assert.equal(now?.title, "The b3b on now");
   });
 });

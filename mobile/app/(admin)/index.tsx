@@ -10,7 +10,6 @@ import { colors, radius, space, stroke } from "@/lib/theme";
 import {
   Body,
   Caption,
-  Eyebrow,
   Loading,
   Notice,
   Pill,
@@ -29,10 +28,6 @@ import { MeterBar } from "@/components/admin/stat";
 export default function AdminEventsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-
-  // Gigs with something on the run sheet around now. Nearly always empty, and
-  // the one thing worth seeing first when it is not.
-  const tonight = api.runSheet.tonight.useQuery(undefined, { retry: false });
 
   const events = api.ticketEvents.list.useQuery(
     { includeArchived: false },
@@ -57,31 +52,6 @@ export default function AdminEventsScreen() {
         </Pressable>
         <Title>Events</Title>
       </View>
-
-      {tonight.data && tonight.data.length > 0 ? (
-        <View style={{ gap: space.sm }}>
-          <Eyebrow>Run sheet</Eyebrow>
-          {tonight.data.map((gig) => (
-            <Pressable
-              key={gig.id}
-              onPress={() =>
-                router.push({
-                  pathname: "/run-sheet/[gigId]",
-                  params: { gigId: gig.id },
-                })
-              }
-              style={styles.row}
-            >
-              <Text numberOfLines={2} style={styles.name}>
-                {gig.title}
-              </Text>
-              <Caption numberOfLines={1}>
-                {formatGigDateLong(gig.gigStartTime)}
-              </Caption>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
 
       {events.isPending ? <Loading label="Loading events" /> : null}
 

@@ -256,6 +256,24 @@ case "$ENTS" in
   *) printf '    ok   %-26s %s\n' "tap-to-pay entitlement" "absent (correct for store)" ;;
 esac
 
+# Sign in with Apple. App Store Guideline 4.8 requires it wherever a
+# third-party social login is offered, and the sign-in screen offers Google.
+# Without the entitlement the button is on screen and cannot work, which is a
+# rejection either way — better to fail here.
+case "$ENTS" in
+  *applesignin*) printf '    ok   %-26s %s\n' "sign in with apple" "present" ;;
+  *) fail "Sign in with Apple entitlement missing — Guideline 4.8. Enable the capability on the App ID and regenerate the profiles" ;;
+esac
+
+# Associated domains. Without this the emailed ticket links open Safari rather
+# than the app, silently, and the only symptom is that universal links never
+# work. The site half of it is the /.well-known/apple-app-site-association
+# route handler.
+case "$ENTS" in
+  *associated-domains*) printf '    ok   %-26s %s\n' "associated domains" "present" ;;
+  *) fail "associated-domains entitlement missing — ticket links would open Safari instead of the app" ;;
+esac
+
 # ------------------------------------------------------------------- 6. done
 
 echo

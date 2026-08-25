@@ -183,7 +183,10 @@ async function gigsWithCuesNear(from: Date, to: Date): Promise<string[]> {
 const RUN_SHEET_INCLUDE = {
   scheduleItems: {
     include: {
-      creatorProfile: { select: { displayName: true } },
+      artists: {
+        orderBy: { sortOrder: "asc" },
+        select: { creatorProfile: { select: { displayName: true } } },
+      },
       recipients: { select: { userId: true } },
     },
   },
@@ -209,6 +212,6 @@ export function toScheduleRow(
     endsAt: item.endsAt,
     sortOrder: item.sortOrder,
     leadMinutes: item.leadMinutes,
-    creatorProfile: item.creatorProfile,
+    artists: item.artists.map((artist) => artist.creatorProfile),
   };
 }

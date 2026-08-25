@@ -2,15 +2,19 @@ import { Image } from "expo-image";
 import { Link } from "expo-router";
 import { Pressable, StyleSheet, View } from "react-native";
 
+import type { GigMode } from "~Prisma/client";
+
 import { Body, Caption, Pill } from "@/components/ui";
 import { colors, radius, space, stroke } from "@/lib/theme";
-import { formatGigDate, formatGigTime } from "@/lib/dates";
+import { gigWhen, gigWhenLong } from "@/lib/gig";
 
 export type GigCardData = {
   id: string;
   title: string;
   subtitle: string;
   gigStartTime: Date;
+  /** `TO_BE_ANNOUNCED` means the date is a placeholder — see `@/lib/gig`. */
+  mode: GigMode;
   posterFileUpload?: { url: string } | null;
 };
 
@@ -36,10 +40,7 @@ export function NextGigCard({ gig }: { gig: GigCardData }) {
               <View style={[styles.heroImage, styles.heroFallback]} />
             )}
             <View style={styles.heroBody}>
-              <Pill tone="in">
-                {formatGigDate(gig.gigStartTime)} ·{" "}
-                {formatGigTime(gig.gigStartTime)}
-              </Pill>
+              <Pill tone="in">{gigWhenLong(gig)}</Pill>
               <Body style={styles.heroTitle} numberOfLines={2}>
                 {gig.title}
               </Body>
@@ -84,7 +85,7 @@ export function GigTile({
               <View style={[styles.tileImage, styles.heroFallback]} />
             )}
             <View style={{ padding: space.md, gap: 2 }}>
-              <Caption>{formatGigDate(gig.gigStartTime)}</Caption>
+              <Caption>{gigWhen(gig)}</Caption>
               <Body
                 numberOfLines={1}
                 style={{ fontWeight: "900", textTransform: "uppercase" }}

@@ -15,7 +15,7 @@ import { api } from "@/lib/api";
 import { API_URL } from "@/lib/env";
 import { signOut, useAuth } from "@/lib/auth";
 import { useBiometrics, useBiometricGate } from "@/lib/biometrics";
-import { getRegisteredPushToken } from "@/lib/push";
+import { clearRegisteredPushToken, getRegisteredPushToken } from "@/lib/push";
 import { useStaff } from "@/lib/staff";
 import { colors, radius, space, stroke } from "@/lib/theme";
 import { Body, Button, Caption, Eyebrow, Title } from "@/components/ui";
@@ -84,11 +84,28 @@ export default function MoreScreen() {
                 // moment they log out, not whenever it next launches.
                 const token = getRegisteredPushToken();
                 if (token) unregister.mutate({ token });
+                clearRegisteredPushToken();
                 void signOut();
               }}
             >
               Sign out
             </Button>
+            {/*
+              App Store Guideline 5.1.1(v). Last on the card and worded
+              plainly, rather than hidden behind a support email — which is the
+              arrangement the guideline exists to ban.
+            */}
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push("/settings/delete-account")}
+              hitSlop={8}
+              style={({ pressed }) => [
+                { marginTop: space.md },
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <Caption style={{ color: colors.deny }}>Delete account</Caption>
+            </Pressable>
           </View>
         ) : (
           <View style={styles.account}>
@@ -111,9 +128,9 @@ export default function MoreScreen() {
         on the way to Terms, and throwing a scan at them for scrolling would be
         absurd. The tap is what asks.
 
-        The lock here guards the way in, not the destinations. `(door)` and
-        `(admin)` keep their own `BiometricGate` so a deep link or a
-        notification tap lands on the same challenge.
+        The lock here guards the way in, not the destinations. `(door)`,
+        `(admin)` and `(staff)` keep their own `BiometricGate` so a deep link or
+        a notification tap lands on the same challenge.
       */}
       {staffReady && isStaff ? (
         <View style={{ gap: space.sm }}>
@@ -139,6 +156,9 @@ export default function MoreScreen() {
               {isDoorStaff && (
                 <Row label="Door mode" onPress={() => router.push("/(door)")} />
               )}
+              {/* Above event analytics on purpose: on a gig night this is the
+                  row anybody opening this section actually wants. */}
+              <Row label="Run sheet" onPress={() => router.push("/run-sheet")} />
               {isOrganiser && (
                 <Row
                   label="Event analytics"
@@ -188,6 +208,19 @@ export default function MoreScreen() {
           )}
         </View>
       ) : null}
+
+      {/*
+        Notifications, above the Atmos links rather than buried under them: the
+        listing tells people they can mute these at any time, so "at any time"
+        has to be somewhere they will actually find it.
+      */}
+      <View style={{ gap: space.sm }}>
+        <Eyebrow>Settings</Eyebrow>
+        <Row
+          label="Notifications"
+          onPress={() => router.push("/settings/notifications")}
+        />
+      </View>
 
       <View style={{ gap: space.sm }}>
         <Eyebrow>Atmos</Eyebrow>

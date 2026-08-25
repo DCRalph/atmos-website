@@ -117,14 +117,16 @@ type LoadedGig = {
     leadMinutes: number[];
     recipients: { userId: string }[];
     fires: { offsetMinutes: number; skipped: boolean }[];
-    creatorProfile: {
-      id: string;
-      handle: string;
-      displayName: string;
-      avatarFileId: string | null;
-      claimStatus: DraftScheduleItem["claimStatus"];
-      isPublished: boolean;
-    } | null;
+    artists: {
+      creatorProfile: {
+        id: string;
+        handle: string;
+        displayName: string;
+        avatarFileId: string | null;
+        claimStatus: DraftScheduleItem["artists"][number]["claimStatus"];
+        isPublished: boolean;
+      };
+    }[];
   }[];
   notifyRecipients: { userId: string }[];
   ticketEvents: { id: string; doorsAt: Date | null }[];
@@ -163,12 +165,14 @@ const draftFromGig = (gig: LoadedGig): GigDraft => ({
       key: row.id,
       id: row.id,
       kind: row.kind,
-      creatorProfileId: row.creatorProfile?.id ?? null,
-      handle: row.creatorProfile?.handle ?? null,
-      displayName: row.creatorProfile?.displayName ?? null,
-      avatarFileId: row.creatorProfile?.avatarFileId ?? null,
-      claimStatus: row.creatorProfile?.claimStatus ?? null,
-      isPublished: row.creatorProfile?.isPublished ?? true,
+      artists: row.artists.map((artist) => ({
+        creatorProfileId: artist.creatorProfile.id,
+        handle: artist.creatorProfile.handle,
+        displayName: artist.creatorProfile.displayName,
+        avatarFileId: artist.creatorProfile.avatarFileId,
+        claimStatus: artist.creatorProfile.claimStatus,
+        isPublished: artist.creatorProfile.isPublished,
+      })),
       label: row.label ?? "",
       role: row.role ?? "",
       startsAt: row.startsAt ? new Date(row.startsAt) : null,
@@ -200,7 +204,7 @@ const fingerprint = (draft: GigDraft): string =>
     schedule: draft.schedule.map((row) => [
       row.id ?? row.key,
       row.kind,
-      row.creatorProfileId,
+      row.artists.map((artist) => artist.creatorProfileId),
       row.label.trim(),
       row.role.trim(),
       row.startsAt?.getTime() ?? null,
@@ -403,7 +407,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
       scheduleItems: draft.schedule.map((row) => ({
         id: row.id,
         kind: row.kind,
-        creatorProfileId: row.creatorProfileId,
+        creatorProfileIds: row.artists.map((artist) => artist.creatorProfileId),
         label: row.label.trim() || null,
         role: row.role.trim() || null,
         startsAt: row.startsAt,

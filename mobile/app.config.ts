@@ -41,8 +41,16 @@ const config: ExpoConfig = {
     supportsTablet: false,
     // Lets the existing emailed ticket links
     // (https://atmosmedia.co.nz/tickets/...) open the app instead of Safari
-    // when it is installed.
-    associatedDomains: ["applinks:atmosmedia.co.nz"],
+    // when it is installed, and lets iOS offer a saved atmosmedia.co.nz
+    // password on the sign-in screen instead of making somebody type it.
+    //
+    // Both only work if the site serves
+    // `/.well-known/apple-app-site-association` — see the route handler of that
+    // name in the website. Claiming a domain that 404s is silently inert.
+    associatedDomains: [
+      "applinks:atmosmedia.co.nz",
+      "webcredentials:atmosmedia.co.nz",
+    ],
     /**
      * Tap to Pay, and push. Both entitlements differ between a build installed
      * straight to a device and one going to the App Store, so both follow the
@@ -115,6 +123,23 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
+    /**
+     * Sign in with Apple. Adds the `com.apple.developer.applesignin`
+     * entitlement, which App Store Guideline 4.8 requires because the sign-in
+     * screen also offers Google.
+     *
+     * The capability has to be switched on for this bundle identifier in the
+     * Apple Developer portal and the provisioning profiles regenerated, or the
+     * archive fails to sign against an entitlement the profile does not carry.
+     *
+     * `APPLE_SIGNIN=0` drops it, same shape as `TAP_TO_PAY=0`: a personal
+     * device build signed against a cached profile that predates the
+     * capability can still ship without it — the Apple button then fails with
+     * the in-app error rather than the build failing to sign. Never set it
+     * for a store build; `scripts/build-ipa.sh` fails if the entitlement is
+     * absent there.
+     */
+    ...(process.env.APPLE_SIGNIN === "0" ? [] : ["expo-apple-authentication"]),
     [
       "expo-splash-screen",
       {

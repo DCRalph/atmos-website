@@ -34,6 +34,7 @@ import {
   PopoverTrigger,
 } from "~/components/ui/popover";
 import {
+  billing,
   flattenGroups,
   groupSchedule,
   kindLabel,
@@ -109,10 +110,6 @@ export function RunSheetField({
 
   const grouped = groupSchedule(schedule);
   const flat = flattenGroups(grouped);
-  const setRows = schedule.filter((row) => row.kind === "SET");
-  const assignedCreatorIds = setRows.flatMap((row) =>
-    row.creatorProfileId ? [row.creatorProfileId] : [],
-  );
   const hasDoors = schedule.some((row) => row.kind === "DOORS");
 
   /**
@@ -245,13 +242,15 @@ export function RunSheetField({
 
                 <div className="flex flex-wrap gap-2 px-6 py-2">
                   {entry.group === "SHOW" ? (
+                    // Nothing is excluded: an artist opening and closing the
+                    // same night is two slots, and that is allowed.
                     <CreatorPicker
-                      excludeIds={assignedCreatorIds}
+                      excludeIds={[]}
                       disabled={disabled}
                       onPick={(creator) =>
                         addToGroup(
                           "SHOW",
-                          newScheduleItem({ kind: "SET", ...creator }),
+                          newScheduleItem({ kind: "SET", artists: [creator] }),
                         )
                       }
                     />
@@ -328,7 +327,7 @@ function previousSetName(
   for (let i = index - 1; i >= 0; i -= 1) {
     const candidate = ordered[i];
     if (candidate?.kind === "SET") {
-      return candidate.displayName ?? candidate.label ?? null;
+      return candidate.label.trim() || billing(candidate.artists);
     }
   }
   return null;
@@ -368,7 +367,11 @@ function ScheduleRowEditor({
     isDragging,
   } = useSortable({ id: row.key });
 
-  const name = row.displayName ?? row.label ?? kindLabel(row.kind);
+  // A label wins, then the billing, then what kind of thing this is. Empty is
+  // a real answer for `label`, so this is not a nullish fallback.
+  const typed = row.label.trim();
+  const name =
+    typed !== "" ? typed : (billing(row.artists) ?? kindLabel(row.kind));
 
   return (
     <div
@@ -401,36 +404,85 @@ function ScheduleRowEditor({
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {row.kind === "SET" ? (
             <>
-              <CreatorAvatar
-                fileId={row.avatarFileId}
-                name={name}
-                size={26}
-              />
-              <div className="flex min-w-0 flex-col">
-                <Link
-                  href={`/@${row.handle}`}
-                  target="_blank"
-                  className="truncate text-sm font-semibold hover:underline"
-                >
-                  {name}
-                </Link>
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {row.artists.map((artist, index) => (
+                    <span
+                      key={artist.creatorProfileId}
+                      className="flex items-center gap-1.5"
+                    >
+                      {index > 0 ? (
+                        <span className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+                          b2b
+                        </span>
+                      ) : null}
+                      <span className="flex items-center gap-1.5 rounded border py-0.5 pr-1 pl-0.5">
+                        <CreatorAvatar
+                          fileId={artist.avatarFileId}
+                          name={artist.displayName}
+                          size={22}
+                        />
+                        <Link
+                          href={`/@${artist.handle}`}
+                          target="_blank"
+                          className="truncate text-sm font-semibold hover:underline"
+                        >
+                          {artist.displayName}
+                        </Link>
+                        <CreatorStatusBadges
+                          claimStatus={artist.claimStatus}
+                          isPublished={artist.isPublished}
+                        />
+                        {/* A slot needs somebody in it, so the last name is
+                            removed by removing the row. */}
+                        {row.artists.length > 1 ? (
+                          <button
+                            type="button"
+                            disabled={disabled}
+                            aria-label={`Remove ${artist.displayName} from this slot`}
+                            className="text-muted-foreground hover:text-foreground"
+                            onClick={() =>
+                              onPatch({
+                                artists: row.artists.filter(
+                                  (candidate) =>
+                                    candidate.creatorProfileId !==
+                                    artist.creatorProfileId,
+                                ),
+                              })
+                            }
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        ) : null}
+                      </span>
+                    </span>
+                  ))}
+
+                  <CreatorPicker
+                    label="b2b"
+                    compact
+                    disabled={disabled}
+                    excludeIds={row.artists.map(
+                      (artist) => artist.creatorProfileId,
+                    )}
+                    onPick={(creator) =>
+                      onPatch({ artists: [...row.artists, creator] })
+                    }
+                  />
+                </div>
                 {previousSetName ? (
                   <span className="text-muted-foreground truncate text-xs">
                     Changeover from {previousSetName}
                   </span>
                 ) : null}
               </div>
-              <CreatorStatusBadges
-                claimStatus={row.claimStatus}
-                isPublished={row.isPublished}
-              />
               <Input
                 aria-label={`Role for ${name}`}
                 placeholder="Role"
                 value={row.role}
                 disabled={disabled}
                 onChange={(e) => onPatch({ role: e.target.value })}
-                className="h-7 max-w-[130px] text-xs"
+                className="h-7 max-w-[130px] shrink-0 text-xs"
               />
             </>
           ) : (
@@ -574,7 +626,7 @@ function LeadField({
     <label className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-xs">
       <Clock className="h-3 w-3" />
       <Input
-        aria-label={`Minutes of warning before ${row.displayName ?? kindLabel(row.kind)}`}
+        aria-label={`Minutes of warning before ${billing(row.artists) ?? kindLabel(row.kind)}`}
         inputMode="numeric"
         placeholder="0"
         value={lead === undefined ? "" : String(lead)}

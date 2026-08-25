@@ -1,10 +1,11 @@
 import * as WebBrowser from "expo-web-browser";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SvgXml } from "react-native-svg";
 
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { API_URL } from "@/lib/env";
 import { accessLevel, isElevated } from "~/lib/ticketing/access-levels";
 import { colors, radius, space } from "@/lib/theme";
@@ -22,15 +23,46 @@ import { Body, Button, Caption, Loading, Notice, Title } from "@/components/ui";
 export default function OrderScreen() {
   const { orderId, token } = useLocalSearchParams<{
     orderId: string;
-    token: string;
+    token?: string;
   }>();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
+  /**
+   * The access token, from wherever it came in.
+   *
+   * From the tickets list it arrives as a query param alongside the order id.
+   * From a universal link — `https://atmosmedia.co.nz/tickets/<token>`, the URL
+   * in every confirmation email — the token *is* the path segment, and there is
+   * no query at all. Reading both is what lets an emailed link open the app
+   * instead of stranding it on a screen with nothing to fetch.
+   */
+  const accessToken = token ?? orderId;
+
   const order = api.tickets.byAccessToken.useQuery(
-    { accessToken: token },
-    { enabled: !!token },
+    { accessToken },
+    { enabled: !!accessToken },
   );
+
+  /**
+   * Whether this order is already on the signed-in account.
+   *
+   * Read off the list the Tickets tab already loads rather than asked for
+   * separately — the answer is the same, and the query is usually warm.
+   */
+  const { user } = useAuth();
+  const mine = api.tickets.mine.useQuery(undefined, { enabled: !!user });
+  const utils = api.useUtils();
+  const claim = api.tickets.claim.useMutation({
+    onSuccess: () => {
+      void utils.tickets.mine.invalidate();
+    },
+  });
+
+  const goBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace("/(tabs)/tickets");
+  };
 
   if (order.isPending) return <Loading label="Loading tickets" />;
 
@@ -40,13 +72,17 @@ export default function OrderScreen() {
         <Notice
           title="Couldn't open that order"
           detail="The link may have been reissued. Pull your tickets again from the list."
-          action={<Button onPress={() => router.back()}>Back</Button>}
+          action={<Button onPress={goBack}>Back</Button>}
         />
       </View>
     );
   }
 
   const data = order.data;
+  // Assumed until the list says otherwise, so the prompt does not flash on
+  // every open while that query is still in flight.
+  const isMine =
+    !mine.isSuccess || mine.data.some((row) => row.orderId === data.orderId);
 
   return (
     <ScrollView
@@ -73,6 +109,32 @@ export default function OrderScreen() {
         <Notice
           title="Not issued yet"
           detail="This order hasn't finished paying. Tickets appear once it does."
+        />
+      ) : null}
+
+      {/*
+        The other half of the Tickets tab's "bought on another email?".
+        Somebody who opened a forwarded link, or a ticket bought before they
+        made an account, can put it on that account from here — the token they
+        already hold is the proof, so this grants nothing they cannot reach.
+      */}
+      {user && data.issued && !isMine ? (
+        <Notice
+          title="Not saved to your account"
+          detail={
+            claim.isError
+              ? claim.error.message
+              : "Save it and it shows up in your Tickets tab on any phone you sign in on."
+          }
+          action={
+            <Button
+              variant="outline"
+              loading={claim.isPending}
+              onPress={() => claim.mutate({ accessToken })}
+            >
+              Save to my account
+            </Button>
+          }
         />
       ) : null}
 
@@ -128,7 +190,9 @@ export default function OrderScreen() {
                   Add to Apple Wallet
                 </Button>
               ) : null}
-              {ticket.googleWalletUrl ? (
+              {/* Google Wallet has no iOS app, so on a handset the button
+                  would open a page that cannot finish. */}
+              {ticket.googleWalletUrl && Platform.OS !== "ios" ? (
                 <Button
                   variant="outline"
                   onPress={() =>

@@ -45,19 +45,26 @@ export default function DoneScreen() {
             ? `${order.ticketCount} ${order.ticketCount === 1 ? "ticket" : "tickets"} · order ${order.orderNumber}`
             : "Your tickets are issued."}
         </Body>
+        {/* Only claim an email was sent when the order actually carries an
+            address to send it to. A free ticket claimed while signed out has
+            none, and telling somebody to check an inbox that will never get
+            anything is worse than telling them where the ticket really is. */}
         <Caption style={{ textAlign: "center" }}>
           {order?.buyerEmail
             ? `A copy is on its way to ${order.buyerEmail}.`
-            : "A copy has been emailed to you."}
+            : "Your ticket lives in the Tickets tab. Add it to Apple Wallet so it works without signal."}
         </Caption>
       </View>
 
       <View style={{ gap: space.sm }}>
         <Button
           onPress={() =>
+            // The token is the path segment, exactly as in the emailed link —
+            // `order` here carries an order *number*, which is not a credential
+            // and would not open anything.
             router.replace({
               pathname: "/tickets/[orderId]",
-              params: { orderId: order?.orderNumber ?? "", token },
+              params: { orderId: token },
             })
           }
         >

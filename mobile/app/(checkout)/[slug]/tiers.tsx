@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
+import * as WebBrowser from "expo-web-browser";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Check, Minus, Plus, X } from "lucide-react-native";
 
 import { api } from "@/lib/api";
+import { API_URL } from "@/lib/env";
 import { colors, radius, space } from "@/lib/theme";
 import {
   Body,
@@ -64,6 +66,11 @@ export default function TiersScreen() {
           expiresAt: order.expiresAt
             ? new Date(order.expiresAt).toISOString()
             : "",
+          // A free basket is claimed rather than paid for, and a gated tier has
+          // to know who is claiming it. Both are decided server-side at `start`
+          // and carried through, so the next screen never has to guess.
+          free: order.isFree ? "1" : "",
+          needsDetails: order.needsDetailsUpFront ? "1" : "",
         },
       });
     },
@@ -171,8 +178,23 @@ export default function TiersScreen() {
               ) : null}
             </View>
             <Caption style={{ flex: 1 }}>
-              I accept the ticket terms. Tickets are non-refundable except as
-              required by the Consumer Guarantees Act.
+              I accept the{" "}
+              {/* A tick-box for terms nobody can open is not consent. */}
+              <Caption
+                style={styles.link}
+                onPress={() =>
+                  void WebBrowser.openBrowserAsync(`${API_URL}/tickets/terms`, {
+                    presentationStyle:
+                      WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+                    controlsColor: colors.text,
+                    toolbarColor: colors.bg,
+                  })
+                }
+              >
+                ticket terms
+              </Caption>
+              . Tickets are non-refundable except as required by the Consumer
+              Guarantees Act.
             </Caption>
           </Pressable>
         ) : null}
@@ -297,6 +319,7 @@ const styles = StyleSheet.create({
   line: { flexDirection: "row", justifyContent: "space-between" },
   rule: { height: 1, backgroundColor: colors.border, marginVertical: space.xs },
   terms: { flexDirection: "row", gap: space.md, alignItems: "flex-start" },
+  link: { color: colors.text, textDecorationLine: "underline" },
   box: {
     width: 22,
     height: 22,

@@ -6,7 +6,22 @@ import { db } from "~/server/db";
 // import { z } from "zod";
 import { lastLoginMethod } from "better-auth/plugins";
 import { expo } from "@better-auth/expo";
-import { sendVerificationEmail } from "~/server/auth-emails";
+import {
+  sendAccountDeletionEmail,
+  sendPasswordResetEmail,
+  sendVerificationEmail,
+} from "~/server/auth-emails";
+import { anonymiseAndDeleteUser } from "~/server/account-deletion";
+
+/**
+ * The iOS bundle identifier, which is also the `aud` of every Sign in with
+ * Apple identity token the app produces.
+ *
+ * Not an env var: it is a constant of the app, it is not a secret, and it has
+ * to match `ios.bundleIdentifier` in `mobile/app.config.ts` exactly or every
+ * Apple sign-in fails audience verification.
+ */
+const IOS_BUNDLE_ID = "nz.co.atmosmedia.app";
 
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
@@ -37,11 +52,85 @@ export const auth = betterAuth({
     requireEmailVerification: false,
     // Unverified users can still ask for a fresh link from the account screen.
     sendOnSignIn: false,
+    /**
+     * Forgotten passwords.
+     *
+     * The link lands on `/reset-password` on the website, for the app as well
+     * as the browser: a reset has to work from the mail app on a handset that
+     * may not have Atmos installed, and a web page is the only surface that is
+     * always there.
+     */
+    sendResetPassword: async ({ user, url }) => {
+      await sendPasswordResetEmail({
+        to: user.email,
+        name: user.name || null,
+        url,
+      });
+    },
   },
   socialProviders: {
     google: {
       clientId: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
+    },
+    /**
+     * Sign in with Apple — native only.
+     *
+     * App Store Guideline 4.8 requires an equivalent privacy-preserving login
+     * anywhere a third-party social login is offered, and the app offers
+     * Google. So this exists for the app; the website keeps Google and email.
+     *
+     * Native-only is why there is no client secret here. The iOS app gets an
+     * identity token straight from `expo-apple-authentication` and posts it to
+     * `signIn.social({ provider: "apple", idToken })`, which better-auth
+     * verifies against Apple's public keys with `appBundleIdentifier` as the
+     * expected audience. No Services ID, no `.p8`, and no six-monthly client
+     * secret JWT to forget to rotate.
+     *
+     * What it does need, once, outside this codebase: the "Sign In with Apple"
+     * capability enabled on the App ID in the Apple Developer portal, and the
+     * provisioning profiles regenerated afterwards.
+     */
+    apple: {
+      clientId: IOS_BUNDLE_ID,
+      appBundleIdentifier: IOS_BUNDLE_ID,
+    },
+  },
+  /**
+   * Delete my account — App Store Guideline 5.1.1(v).
+   *
+   * `deleteUser` rather than a tRPC mutation of our own so that better-auth
+   * tears its own session and account rows down with it. The hook is where the
+   * part it cannot know about happens: orders are financial records and have to
+   * outlive the account, so they are detached and scrubbed rather than dropped.
+   * See `anonymiseAndDeleteUser`.
+   */
+  user: {
+    deleteUser: {
+      enabled: true,
+      /**
+       * Confirmed by email rather than in the app.
+       *
+       * Not ceremony. Without it better-auth needs either the account password
+       * — which an Apple or Google account does not have — or a session
+       * created in the last day, and an app session restored out of SecureStore
+       * is usually weeks old. Between them that would leave a good share of
+       * accounts unable to delete themselves, which is exactly the failure
+       * Guideline 5.1.1(v) exists to stop.
+       *
+       * It also means an unlocked handset in the wrong hands cannot destroy an
+       * account without also holding the mailbox.
+       */
+      sendDeleteAccountVerification: async ({ user, url }) => {
+        await sendAccountDeletionEmail({
+          to: user.email,
+          name: user.name || null,
+          url,
+        });
+      },
+      beforeDelete: async (user) => {
+        await anonymiseAndDeleteUser(user.id);
+      },
     },
   },
   // The mobile app has no cookie jar and comes back from OAuth through a deep

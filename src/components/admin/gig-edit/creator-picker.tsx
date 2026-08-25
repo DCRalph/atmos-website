@@ -35,12 +35,15 @@ export function CreatorPicker({
   onPick,
   disabled,
   label = "Add artist",
+  compact = false,
 }: {
-  /** Profiles already on the bill, kept out of the results and the count. */
+  /** Profiles to keep out of the results and the count. */
   excludeIds: string[];
   onPick: (creator: PickedCreator) => void;
   disabled?: boolean;
   label?: string;
+  /** The inline "b2b" trigger inside a slot, rather than a button of its own. */
+  compact?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -127,8 +130,14 @@ export function CreatorPicker({
     <>
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
-          <Button type="button" size="sm" variant="outline" disabled={disabled}>
-            <Plus className="h-3.5 w-3.5" />
+          <Button
+            type="button"
+            size="sm"
+            variant={compact ? "ghost" : "outline"}
+            disabled={disabled}
+            className={cn(compact && "text-muted-foreground h-6 px-1.5 text-xs")}
+          >
+            <Plus className={compact ? "h-3 w-3" : "h-3.5 w-3.5"} />
             {label}
           </Button>
         </PopoverTrigger>

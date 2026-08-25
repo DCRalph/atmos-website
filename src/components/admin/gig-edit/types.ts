@@ -9,6 +9,16 @@ import { defaultLeadMinutes } from "~/lib/run-sheet/schedule";
 
 export type ClaimStatus = "ACTIVE" | "UNCLAIMED" | "PENDING_CLAIM";
 
+/** A creator profile as the picker hands it over, before it joins a slot. */
+export type PickedCreator = {
+  creatorProfileId: string;
+  handle: string;
+  displayName: string;
+  avatarFileId: string | null;
+  claimStatus: ClaimStatus;
+  isPublished: boolean;
+};
+
 /**
  * One run sheet row, with everything needed to render it without another fetch.
  *
@@ -17,21 +27,20 @@ export type ClaimStatus = "ACTIVE" | "UNCLAIMED" | "PENDING_CLAIM";
  *
  * `key` is what the editor drags and what React keys by. It is the database id
  * once a row has been saved and a local one before that. It cannot be the
- * creator, because an artist can open and close the same night.
+ * artist: one can open and close the same night, and a back to back has
+ * several in the same slot.
  */
 export type DraftScheduleItem = {
   key: string;
   /** Absent until the row has been saved once. */
   id?: string;
   kind: GigScheduleKind;
-  /** Set on `SET` rows, null on every other kind. */
-  creatorProfileId: string | null;
-  handle: string | null;
-  displayName: string | null;
-  avatarFileId: string | null;
-  claimStatus: ClaimStatus | null;
-  isPublished: boolean;
-  /** Names a cue, or overrides an artist's name. Empty means neither. */
+  /**
+   * Who is playing this slot, in billing order. Two or more is a back to back,
+   * which is one set rather than two. Empty on every kind that is not a `SET`.
+   */
+  artists: PickedCreator[];
+  /** Names a cue, or overrides the billing on a set. Empty means neither. */
   label: string;
   /** Free text, e.g. "Headliner". Empty means no role. */
   role: string;
@@ -47,33 +56,18 @@ export type DraftScheduleItem = {
   recipientUserIds: string[];
 };
 
-/** A creator profile as the picker hands it over, before it becomes a row. */
-export type PickedCreator = {
-  creatorProfileId: string;
-  handle: string;
-  displayName: string;
-  avatarFileId: string | null;
-  claimStatus: ClaimStatus;
-  isPublished: boolean;
-};
-
 /**
  * A blank row of a given kind, ready to drop on the timeline.
  *
  * Leads come from the kind rather than from the caller, so a row created by the
- * line-up picker warns the same way as one created by the timeline.
+ * artist picker warns the same way as one created by the timeline.
  */
 export function newScheduleItem(
   over: Partial<DraftScheduleItem> & { kind: GigScheduleKind },
 ): DraftScheduleItem {
   return {
     key: crypto.randomUUID(),
-    creatorProfileId: null,
-    handle: null,
-    displayName: null,
-    avatarFileId: null,
-    claimStatus: null,
-    isPublished: true,
+    artists: [],
     label: "",
     role: "",
     startsAt: null,

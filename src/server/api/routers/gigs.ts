@@ -65,7 +65,8 @@ const SCHEDULE_ITEM_INPUT = z
       /** Absent on a row that has never been saved. */
       id: z.string().min(1).optional(),
       kind: z.enum(GigScheduleKind),
-      creatorProfileId: z.string().min(1).nullish(),
+      /** Who is playing this slot, in billing order. A back to back is two or more. */
+      creatorProfileIds: z.array(z.string().min(1)).max(6).default([]),
       label: z.string().max(120).nullish(),
       role: z.string().max(80).nullish(),
       startsAt: z.coerce.date().nullish(),
@@ -79,18 +80,19 @@ const SCHEDULE_ITEM_INPUT = z
   )
   .superRefine((rows, ctx) => {
     rows.forEach((row, index) => {
-      if (row.kind === GigScheduleKind.SET && !row.creatorProfileId) {
+      const artists = uniqueStrings(row.creatorProfileIds);
+      if (row.kind === GigScheduleKind.SET && artists.length === 0) {
         ctx.addIssue({
           code: "custom",
           message: "A set needs somebody playing it",
-          path: [index, "creatorProfileId"],
+          path: [index, "creatorProfileIds"],
         });
       }
-      if (row.kind !== GigScheduleKind.SET && row.creatorProfileId) {
+      if (row.kind !== GigScheduleKind.SET && artists.length > 0) {
         ctx.addIssue({
           code: "custom",
-          message: "Only a set carries a creator profile",
-          path: [index, "creatorProfileId"],
+          message: "Only a set carries artists",
+          path: [index, "creatorProfileIds"],
         });
       }
       if (row.startsAt && row.endsAt && row.endsAt < row.startsAt) {
@@ -123,7 +125,6 @@ const uniqueLeads = (minutes: number[]): number[] =>
 /** One run sheet row's columns. `sortOrder` comes from the submitted order. */
 const scheduleItemData = (row: ScheduleItemInput[number], index: number) => ({
   kind: row.kind,
-  creatorProfileId: row.creatorProfileId ?? null,
   label: normalizeText(row.label),
   role: normalizeRole(row.role),
   startsAt: row.startsAt ?? null,
@@ -135,9 +136,7 @@ const scheduleItemData = (row: ScheduleItemInput[number], index: number) => ({
 
 /** Every distinct artist named by a run sheet, for reference checks. */
 const creatorIdsIn = (rows: ScheduleItemInput): string[] =>
-  uniqueStrings(
-    rows.flatMap((row) => (row.creatorProfileId ? [row.creatorProfileId] : [])),
-  );
+  uniqueStrings(rows.flatMap((row) => row.creatorProfileIds));
 
 /**
  * The columns a public line-up is allowed to be built from. Times are absent by
@@ -150,15 +149,21 @@ const LINE_UP_SELECT = {
   role: true,
   startsAt: true,
   sortOrder: true,
-  creatorProfile: {
+  artists: {
+    orderBy: { sortOrder: "asc" },
     select: {
       id: true,
-      handle: true,
-      displayName: true,
-      avatarFileId: true,
-      tagline: true,
-      isPublished: true,
-      claimStatus: true,
+      creatorProfile: {
+        select: {
+          id: true,
+          handle: true,
+          displayName: true,
+          avatarFileId: true,
+          tagline: true,
+          isPublished: true,
+          claimStatus: true,
+        },
+      },
     },
   },
 } satisfies Prisma.GigScheduleItemSelect;
@@ -652,11 +657,21 @@ export const gigsRouter = createTRPCRouter({
     const now = new Date();
     const gigs = await ctx.db.gig.findMany({
       where: {
-        gigEndTime: {
-          gte: now,
-        },
+        // A `TO_BE_ANNOUNCED` gig is a date nobody has picked yet, but
+        // `gigStartTime` is not nullable, so it carries a placeholder — and a
+        // placeholder in the past used to drop it out of here and into the past
+        // list, where it rendered as a show that happened in 1970. It belongs
+        // here regardless of what its stand-in date says.
+        OR: [
+          { gigEndTime: { gte: now } },
+          { mode: GigMode.TO_BE_ANNOUNCED },
+        ],
       },
-      orderBy: { gigStartTime: "asc" },
+      // Announced dates first, in order; anything unannounced after them,
+      // rather than sorted by a placeholder into the hero slot on the home
+      // screen. Postgres orders an enum by its declaration order, and `NORMAL`
+      // is declared first.
+      orderBy: [{ mode: "asc" }, { gigStartTime: "asc" }],
       include: {
         media: {
           orderBy: [
@@ -696,6 +711,8 @@ export const gigsRouter = createTRPCRouter({
           gigEndTime: {
             lt: now,
           },
+          // See `getUpcoming`: an unannounced date has not been and gone.
+          mode: { not: GigMode.TO_BE_ANNOUNCED },
         },
         orderBy: [{ pastSortOrder: "asc" }, { gigEndTime: "desc" }],
         include: {
@@ -907,15 +924,19 @@ export const gigsRouter = createTRPCRouter({
           scheduleItems: {
             orderBy: { sortOrder: "asc" },
             include: {
-              creatorProfile: {
+              artists: {
+                orderBy: { sortOrder: "asc" },
                 select: {
-                  id: true,
-                  handle: true,
-                  displayName: true,
-                  avatarFileId: true,
-                  tagline: true,
-                  isPublished: true,
-                  claimStatus: true,
+                  creatorProfile: {
+                    select: {
+                      id: true,
+                      handle: true,
+                      displayName: true,
+                      avatarFileId: true,
+                      isPublished: true,
+                      claimStatus: true,
+                    },
+                  },
                 },
               },
               recipients: { select: { userId: true } },
@@ -995,6 +1016,14 @@ export const gigsRouter = createTRPCRouter({
                 scheduleItems: {
                   create: scheduleItems.map((row, index) => ({
                     ...scheduleItemData(row, index),
+                    artists: {
+                      create: uniqueStrings(row.creatorProfileIds).map(
+                        (creatorProfileId, billing) => ({
+                          creatorProfileId,
+                          sortOrder: billing,
+                        }),
+                      ),
+                    },
                     recipients: {
                       create: uniqueStrings(row.recipientUserIds).map(
                         (userId) => ({ userId }),
@@ -1100,8 +1129,12 @@ export const gigsRouter = createTRPCRouter({
           scheduleItems: {
             select: {
               id: true,
-              creatorProfileId: true,
-              creatorProfile: { select: { handle: true } },
+              artists: {
+                select: {
+                  creatorProfileId: true,
+                  creatorProfile: { select: { handle: true } },
+                },
+              },
             },
           },
         },
@@ -1136,16 +1169,24 @@ export const gigsRouter = createTRPCRouter({
 
       const hadCreatorIds = new Set(
         existing.scheduleItems.flatMap((row) =>
-          row.creatorProfileId ? [row.creatorProfileId] : [],
+          row.artists.map((artist) => artist.creatorProfileId),
         ),
       );
       const addedCreatorIds = wantedCreatorIds.filter(
         (creatorProfileId) => !hadCreatorIds.has(creatorProfileId),
       );
-      const removedCreators = removedItems.filter(
-        (row) =>
-          row.creatorProfileId && !wantedCreatorIds.includes(row.creatorProfileId),
-      );
+      // Somebody is off the bill when no slot names them any more, not merely
+      // when the slot they were in went away — a back to back that loses one
+      // name keeps the other.
+      const removedCreators = [...hadCreatorIds]
+        .filter((creatorProfileId) => !wantedCreatorIds.includes(creatorProfileId))
+        .map((creatorProfileId) => ({
+          creatorProfileId,
+          handle: existing.scheduleItems
+            .flatMap((row) => row.artists)
+            .find((artist) => artist.creatorProfileId === creatorProfileId)
+            ?.creatorProfile.handle,
+        }));
 
       // Legacy rows: `gig_tag_relationship` has no unique constraint, so the
       // same tag can appear twice. Keep the first row per tag and drop the rest.
@@ -1215,6 +1256,20 @@ export const gigsRouter = createTRPCRouter({
                   })
                 ).id;
 
+          // Billing order changes as often as the line-up does, and the rows
+          // carry nothing else, so they are replaced rather than reconciled.
+          const artists = uniqueStrings(row.creatorProfileIds);
+          await tx.gigSetArtist.deleteMany({ where: { itemId } });
+          if (artists.length > 0) {
+            await tx.gigSetArtist.createMany({
+              data: artists.map((creatorProfileId, billing) => ({
+                itemId,
+                creatorProfileId,
+                sortOrder: billing,
+              })),
+            });
+          }
+
           await tx.gigScheduleRecipient.deleteMany({
             where:
               recipients.length > 0
@@ -1262,7 +1317,7 @@ export const gigsRouter = createTRPCRouter({
       for (const row of removedCreators) {
         await logUserActivity(
           ActivityType.GIG_CREATOR_REMOVED,
-          `Removed @${row.creatorProfile?.handle ?? "someone"} from gig "${rest.title}"`,
+          `Removed @${row.handle ?? "someone"} from gig "${rest.title}"`,
           ctx.session.user.id,
           undefined,
           { gigId: id, creatorProfileId: row.creatorProfileId },

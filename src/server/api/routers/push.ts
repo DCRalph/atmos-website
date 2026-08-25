@@ -76,6 +76,23 @@ export const pushRouter = createTRPCRouter({
       return { ok: true as const };
     }),
 
+  /**
+   * What this device is currently set to.
+   *
+   * Keyed on the token rather than the session for the same reason `register`
+   * is: preferences belong to the handset, and a signed-out install still has
+   * them. Returns `null` for a token the server has never seen, which is what
+   * the settings screen shows as "not registered".
+   */
+  preferences: publicProcedure
+    .input(z.object({ token: z.string().min(10).max(200) }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db.deviceToken.findUnique({
+        where: { token: input.token },
+        select: { gigAnnouncements: true, doorReminders: true },
+      });
+    }),
+
   /** Per-device notification preferences. */
   setPreferences: publicProcedure
     .input(

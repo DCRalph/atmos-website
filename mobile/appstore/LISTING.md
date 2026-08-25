@@ -194,6 +194,9 @@ Suggested review notes:
 Atmos is a consumer ticketing app for our own live-music events in Wellington,
 New Zealand. Atmos Media is a single merchant on one Stripe account.
 
+Sign in with Apple, Google and email/password are all offered. An account can
+be deleted from inside the app at More > Account > Delete account.
+
 CUSTOMER ACCOUNT (main app):
   email: ⚠️
   password: ⚠️
@@ -316,22 +319,46 @@ the correct source images to build them from.
 
 ## 10. Pre-submission checklist
 
-- [ ] ⚠️ **Serve `/.well-known/apple-app-site-association`.** `app.config.ts`
-      declares `associatedDomains: ["applinks:atmosmedia.co.nz"]`, but the site
-      returns 404 for it, so **ticket links emailed to customers do not open the
-      app** — they open Safari. Either serve the file or drop the claim.
-- [ ] ⚠️ **Add Sign in with Apple, or remove Google sign-in.** Guideline 4.8
-      requires an equivalent privacy-preserving login wherever a third-party
-      social login is offered. `src/server/auth.ts` configures `google` as the
-      only social provider and the sign-in screen offers only Google plus
-      email/password, so as it stands this is a likely rejection. Email/password
-      alone would not trigger 4.8; offering Google does.
+### Done in the code
+
+- [x] **Sign in with Apple** — Guideline 4.8. `src/server/auth.ts` configures
+      the `apple` provider against the bundle identifier, and the sign-in screen
+      renders Apple's own button above Google. Native-only, so there is no
+      Services ID or `.p8` client secret to manage.
+- [x] **Delete account** — Guideline 5.1.1(v). More > Account > Delete account,
+      confirmed by an emailed link. Personal details go; orders are detached and
+      scrubbed rather than dropped, because they are sales records. See
+      `src/server/account-deletion.ts`.
+- [x] **`/.well-known/apple-app-site-association`** is served by a route handler
+      of that name in the website, claiming `/gigs/*` and `/tickets/*`. The app
+      reads the path segment of a ticket link as the order access token, so an
+      emailed link now opens the order in the app.
+- [x] **Notification settings** — More > Settings > Notifications, per handset,
+      which is what the description's "you can mute them any time" promises.
+- [x] **Forgotten password** — on the sign-in screen; the link lands on
+      `/reset-password` on the website.
+- [x] **Free and RSVP tiers** now claim through `ticketCheckout.claimFree`
+      instead of presenting a Stripe sheet that was never initialised.
+- [x] **Buyer email is collected by the payment sheet**, so a signed-out
+      purchase actually gets a confirmation email.
+- [x] **A `TO_BE_ANNOUNCED` gig no longer appears under "Been and gone"** dated
+      1970. It sits at the end of Upcoming, labelled "Date TBA".
+
+### Still needs a human
+
+- [ ] ⚠️ **Enable the "Sign In with Apple" capability** on App ID
+      `nz.co.atmosmedia.app` in the Apple Developer portal, then regenerate the
+      provisioning profiles. Without it the archive will not export.
+      `scripts/build-ipa.sh` fails the build if the entitlement is missing.
+- [ ] ⚠️ **Deploy the website before submitting.** The app's associated-domains
+      claim, Sign in with Apple, account deletion and password reset all depend
+      on server routes that are in this change and not yet live.
 - [ ] ⚠️ Create and test the two review accounts above.
 - [ ] ⚠️ Confirm the Apple Wallet pass builds for the review account's ticket.
-- [ ] ⚠️ Fix the past-gigs row titled `TBA...` dated `1970-01-01`, which is a
-      `TO_BE_ANNOUNCED` gig with no date and reads as a bug in a screenshot.
+- [ ] ⚠️ The Tickets screenshot is still missing — see section 9.
 - [ ] Build with `scripts/build-ipa.sh` — it verifies version, build number,
-      icon, and that the Tap to Pay entitlement is absent.
+      icon, that the Tap to Pay entitlement is absent, and that the Sign in with
+      Apple and associated-domains entitlements are present.
 - [ ] Upload the `.ipa` with Transporter.
 - [ ] Email Apple the completed App Review Requirements Checklist v1.6 —
       `docs/ticketing/APP-REVIEW-ANSWERS.md`.

@@ -414,7 +414,8 @@ model CreatorProfile {
   themeRef      CreatorProfileTheme?  @relation(fields: [themeId], references: [id], onDelete: SetNull)
   blocks        CreatorBlock[]
   socials       CreatorSocial[]
-  scheduleItems GigScheduleItem[]
+  /// Every slot this artist is in, across every gig. See `GigSetArtist`.
+  setAppearances GigSetArtist[]
   crewMembers   CrewMember[]
   claimRequests CreatorClaimRequest[]
 
@@ -521,11 +522,9 @@ model GigScheduleItem {
   gigId String
   kind  GigScheduleKind @default(SET)
 
-  /// Set on `SET` rows, null on every other kind.
-  creatorProfileId String?
-  /// Names a non-`SET` row, or overrides the artist's name on a `SET`.
+  /// Names a non-`SET` row, or overrides who a `SET` says is playing.
   label String?
-  /// Free text, as the line-up always had it: "Headliner", "B2B", "Support".
+  /// Free text, as the line-up always had it: "Headliner", "Support".
   role  String?
 
   startsAt DateTime?
@@ -543,8 +542,11 @@ model GigScheduleItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  gig            Gig             @relation(fields: [gigId], references: [id], onDelete: Cascade)
-  creatorProfile CreatorProfile? @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  gig Gig @relation(fields: [gigId], references: [id], onDelete: Cascade)
+
+  /// Who is playing this slot. One name usually, more for a back to back.
+  /// Empty on every kind that is not a `SET`.
+  artists GigSetArtist[]
 
   /// Narrows the gig's recipients for this one cue. Empty means "the gig's list".
   recipients GigScheduleRecipient[]
@@ -552,8 +554,29 @@ model GigScheduleItem {
 
   @@index([gigId, startsAt])
   @@index([gigId, sortOrder])
-  @@index([creatorProfileId])
   @@map("gig_schedule_item")
+}
+
+/// One artist in one slot.
+///
+/// A slot is a join rather than a column because a back to back is one set with
+/// two or three people in it, and modelling that as two sets would mean the run
+/// sheet announced a changeover between them and the public bill printed the
+/// slot twice. `sortOrder` is the billing within the slot: "Nova b2b Kessler"
+/// is not the same as "Kessler b2b Nova" to the people in it.
+model GigSetArtist {
+  id               String @id @default(cuid())
+  itemId           String
+  creatorProfileId String
+  sortOrder        Int    @default(0)
+
+  item           GigScheduleItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  creatorProfile CreatorProfile  @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, creatorProfileId])
+  @@index([creatorProfileId])
+  @@index([itemId, sortOrder])
+  @@map("gig_set_artist")
 }
 
 /// Who hears a gig's cues by default.

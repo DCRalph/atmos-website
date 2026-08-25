@@ -9,31 +9,35 @@ import { sortSchedule } from "./schedule";
  *
  * Set times never appear, and neither does anything that is not a set. Running
  * order does, because it always has: it is the order of the array. An artist
- * playing twice is one name on the bill, at the position of their first set.
+ * playing twice is one name on the bill, at the position of their first set,
+ * and a back to back is both names in billing order.
  */
 
-/** What a run sheet row has to offer before it can become a line-up entry. */
+/** What a run sheet row has to offer before it can become line-up entries. */
 export type LineUpSource = {
-  id: string;
   kind: string;
   role: string | null;
   startsAt: Date | null;
   sortOrder: number;
-  creatorProfile: {
+  artists: readonly {
+    /** The slot-artist row's own id, which is what a name on the bill is. */
     id: string;
-    handle: string;
-    displayName: string;
-    avatarFileId: string | null;
-    tagline: string | null;
-    isPublished: boolean;
-    claimStatus: string;
-  } | null;
+    creatorProfile: {
+      id: string;
+      handle: string;
+      displayName: string;
+      avatarFileId: string | null;
+      tagline: string | null;
+      isPublished: boolean;
+      claimStatus: string;
+    };
+  }[];
 };
 
 export type PublicLineUpEntry = {
   id: string;
   role: string | null;
-  creatorProfile: NonNullable<LineUpSource["creatorProfile"]>;
+  creatorProfile: LineUpSource["artists"][number]["creatorProfile"];
 };
 
 /** The keys a public line-up entry has. Asserted by the test. */
@@ -45,25 +49,28 @@ export function toPublicLineUp<T extends LineUpSource>(
   const seen = new Set<string>();
 
   return sortSchedule(items).flatMap((item) => {
-    const profile = item.creatorProfile;
-    if (item.kind !== "SET" || !profile) return [];
-    if (seen.has(profile.id)) return [];
-    seen.add(profile.id);
+    if (item.kind !== "SET") return [];
 
-    return [
-      {
-        id: item.id,
-        role: item.role,
-        creatorProfile: {
-          id: profile.id,
-          handle: profile.handle,
-          displayName: profile.displayName,
-          avatarFileId: profile.avatarFileId,
-          tagline: profile.tagline,
-          isPublished: profile.isPublished,
-          claimStatus: profile.claimStatus,
+    return item.artists.flatMap((artist) => {
+      const profile = artist.creatorProfile;
+      if (seen.has(profile.id)) return [];
+      seen.add(profile.id);
+
+      return [
+        {
+          id: artist.id,
+          role: item.role,
+          creatorProfile: {
+            id: profile.id,
+            handle: profile.handle,
+            displayName: profile.displayName,
+            avatarFileId: profile.avatarFileId,
+            tagline: profile.tagline,
+            isPublished: profile.isPublished,
+            claimStatus: profile.claimStatus,
+          },
         },
-      },
-    ];
+      ];
+    });
   });
 }

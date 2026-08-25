@@ -126,7 +126,8 @@ export type ScheduleRow = {
   sortOrder: number;
   /** Minutes before `startsAt` to warn. Empty warns only on the cue itself. */
   leadMinutes: number[];
-  creatorProfile: { displayName: string } | null;
+  /** Who is playing this slot, in billing order. Empty on anything but a set. */
+  artists: readonly { displayName: string }[];
 };
 
 /**
@@ -150,6 +151,21 @@ export function sortSchedule<T extends Pick<ScheduleRow, "startsAt" | "sortOrder
 }
 
 /**
+ * How a slot is billed: "Nova", or "Nova b2b Kessler" for a back to back.
+ *
+ * Joined with `b2b` rather than commas because that is what the line-up poster
+ * says and what the people in the slot call it. Anything else — a live band and
+ * a DJ, a three-way that wants to read as "b3b" — is what the row's `label` is
+ * for, and a label always wins.
+ */
+export function billing(
+  artists: readonly { displayName: string }[],
+): string | null {
+  if (artists.length === 0) return null;
+  return artists.map((artist) => artist.displayName).join(" b2b ");
+}
+
+/**
  * What a row calls itself in a notification.
  *
  * A hand-typed `label` always wins, so a second door can be "Side door" rather
@@ -159,7 +175,7 @@ export function rowName(row: ScheduleRow): string {
   const label = row.label?.trim();
   if (label) return label;
   if (row.kind === "SET") {
-    return row.creatorProfile?.displayName ?? "Set";
+    return billing(row.artists) ?? "Set";
   }
   return kindLabel(row.kind);
 }

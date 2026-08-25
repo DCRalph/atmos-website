@@ -1,9 +1,13 @@
 import { z } from "zod";
 
+import { TRPCError } from "@trpc/server";
+
+import type { db as Database } from "~/server/db";
+
 import {
   createTRPCRouter,
   adminProcedure,
-  eventOrganiserProcedure,
+  doorProcedure,
 } from "~/server/api/trpc";
 import { rowName, sortSchedule } from "~/lib/run-sheet/schedule";
 
@@ -15,10 +19,41 @@ import { rowName, sortSchedule } from "~/lib/run-sheet/schedule";
  * the app shows a staff member on the night, and what the editor needs to know
  * about cues that have already gone out.
  *
- * Everything here is behind `eventOrganiserProcedure` or stricter. A run sheet
- * carries set times, internal notes and who is being told what, none of which
- * belongs on a public gig page.
+ * Who can read one:
+ *
+ *   * Admins and organisers, for every gig.
+ *   * Door staff, for a gig they are rostered on. Somebody scanning wristbands
+ *     needs to know when doors are and when the headliner is on as much as
+ *     anybody, and a run sheet they cannot see is a run sheet they will ask
+ *     about over the radio instead.
+ *
+ * Internal notes are the exception and stay with the organisers. Everything
+ * else on a run sheet is the shape of the night; a note is somebody writing
+ * something down for a specific person to read.
+ *
+ * Nothing here is public. `doorProcedure` refuses nobody by itself — it only
+ * resolves who is asking — so every procedure below checks for itself.
  */
+
+/** Gigs this account may read, or `null` for "all of them". */
+async function visibleGigIds(ctx: {
+  hasGlobalDoorAccess: boolean;
+  session: { user: { id: string } };
+  db: typeof Database;
+}): Promise<string[] | null> {
+  if (ctx.hasGlobalDoorAccess) return null;
+
+  const rostered = await ctx.db.ticketEventStaff.findMany({
+    where: { userId: ctx.session.user.id, event: { gigId: { not: null } } },
+    select: { event: { select: { gigId: true } } },
+  });
+
+  return [
+    ...new Set(
+      rostered.flatMap((row) => (row.event.gigId ? [row.event.gigId] : [])),
+    ),
+  ];
+}
 
 /** How far either side of now a gig counts as "on". */
 const TONIGHT_HOURS = 12;
@@ -26,7 +61,14 @@ const TONIGHT_HOURS = 12;
 const RUN_SHEET_INCLUDE = {
   scheduleItems: {
     include: {
-      creatorProfile: { select: { id: true, handle: true, displayName: true } },
+      artists: {
+        orderBy: { sortOrder: "asc" },
+        select: {
+          creatorProfile: {
+            select: { id: true, handle: true, displayName: true },
+          },
+        },
+      },
       recipients: { select: { userId: true } },
       fires: {
         select: {
@@ -55,9 +97,16 @@ export const runSheetRouter = createTRPCRouter({
    * changeover is defined by the row in front of it, and the app and the cue
    * copy must not disagree about which row that is.
    */
-  forGig: eventOrganiserProcedure
+  forGig: doorProcedure
     .input(z.object({ gigId: z.string() }))
     .query(async ({ ctx, input }) => {
+      const visible = await visibleGigIds(ctx);
+      if (visible !== null && !visible.includes(input.gigId)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You are not on this gig",
+        });
+      }
       const gig = await ctx.db.gig.findUnique({
         where: { id: input.gigId },
         select: {
@@ -84,7 +133,7 @@ export const runSheetRouter = createTRPCRouter({
           endsAt: item.endsAt,
           sortOrder: item.sortOrder,
           leadMinutes: item.leadMinutes,
-          creatorProfile: item.creatorProfile,
+          artists: item.artists.map((artist) => artist.creatorProfile),
         });
         const row = {
           id: item.id,
@@ -93,9 +142,13 @@ export const runSheetRouter = createTRPCRouter({
           role: item.role,
           startsAt: item.startsAt,
           endsAt: item.endsAt,
-          notes: item.notes,
+          // Organisers only. A note is something somebody wrote down for a
+          // particular person, not part of the shape of the night.
+          notes: ctx.hasGlobalDoorAccess ? item.notes : null,
           leadMinutes: item.leadMinutes,
-          handle: item.creatorProfile?.handle ?? null,
+          // Everybody in the slot, so a back to back reads as one line and the
+          // app can still link each name.
+          artists: item.artists.map((artist) => artist.creatorProfile),
           recipientUserIds: item.recipients.map((r) => r.userId),
           fires: item.fires,
           previousSetName: item.kind === "SET" ? previousSetName : null,
@@ -111,7 +164,10 @@ export const runSheetRouter = createTRPCRouter({
         gigStartTime: gig.gigStartTime,
         gigEndTime: gig.gigEndTime,
         items,
-        recipients: gig.notifyRecipients.map((row) => row.user),
+        // Who is being told what is an organiser's business.
+        recipients: ctx.hasGlobalDoorAccess
+          ? gig.notifyRecipients.map((row) => row.user)
+          : [],
       };
     }),
 
@@ -121,9 +177,11 @@ export const runSheetRouter = createTRPCRouter({
    * Keyed off the rows rather than off `gigStartTime`, because a load-in is
    * hours before the gig starts and that is exactly when somebody opens this.
    */
-  tonight: eventOrganiserProcedure.query(async ({ ctx }) => {
+  tonight: doorProcedure.query(async ({ ctx }) => {
     const span = TONIGHT_HOURS * 60 * 60 * 1000;
     const now = Date.now();
+    const visible = await visibleGigIds(ctx);
+    if (visible !== null && visible.length === 0) return [];
 
     const items = await ctx.db.gigScheduleItem.findMany({
       where: {
@@ -131,6 +189,7 @@ export const runSheetRouter = createTRPCRouter({
           gte: new Date(now - span),
           lte: new Date(now + span),
         },
+        ...(visible === null ? {} : { gigId: { in: visible } }),
       },
       select: { gigId: true },
       distinct: ["gigId"],

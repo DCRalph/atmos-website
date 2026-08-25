@@ -40,9 +40,22 @@ type PushTicket = {
   details?: { error?: string };
 };
 
+/** The per-device switches somebody can turn off in the app's settings. */
+export type PushChannel = "gigAnnouncements" | "doorReminders";
+
 export type Audience =
-  | { kind: "everyone"; channel: "gigAnnouncements" | "doorReminders" }
-  | { kind: "users"; userIds: string[] }
+  | { kind: "everyone"; channel: PushChannel }
+  /**
+   * Named accounts.
+   *
+   * `channel` is optional and deliberately so. A cue on a run sheet, a message
+   * in a gig room and the Tap to Pay launch notice are operational — somebody
+   * working a door does not get to mute the radio — so those pass no channel
+   * and reach every handset the account has. A doors-open reminder is a
+   * courtesy to a customer, so that one names its channel and honours the
+   * switch.
+   */
+  | { kind: "users"; userIds: string[]; channel?: PushChannel }
   | { kind: "topic"; topic: string };
 
 /**
@@ -142,7 +155,10 @@ export async function countAudience(audience: Audience): Promise<number> {
 function audienceFilter(audience: Audience): Prisma.DeviceTokenWhereInput {
   switch (audience.kind) {
     case "users":
-      return { userId: { in: audience.userIds } };
+      return {
+        userId: { in: audience.userIds },
+        ...(audience.channel ? { [audience.channel]: true } : {}),
+      };
     case "topic":
       return { topics: { has: audience.topic } };
     case "everyone":
@@ -195,7 +211,7 @@ export async function remindDoorsOpen({
   if (userIds.length === 0) return;
 
   await sendPush({
-    audience: { kind: "users", userIds },
+    audience: { kind: "users", userIds, channel: "doorReminders" },
     title: `Tonight — ${eventName}`,
     body: `Doors ${doorsAt}. Your ticket is in the app.`,
     data: { url: "/tickets" },

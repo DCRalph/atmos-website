@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { Linking, Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
@@ -25,13 +25,38 @@ Notifications.setNotificationHandler({
 /**
  * The token this install registered.
  *
- * Module-level rather than state because sign-out needs it from a different
- * screen, and re-deriving it there would mean asking the OS again mid-logout.
+ * Module-level rather than component state because two screens need it from
+ * outside the tree that registered it — sign-out, to drop the device, and the
+ * notification settings screen, to read and write this handset's preferences.
+ * Re-deriving it in either place would mean asking the OS again mid-flow.
+ *
+ * Published through `useSyncExternalStore` so a screen mounted before
+ * registration finishes still updates when it does, rather than sitting on a
+ * stale `null` until something else happens to re-render it.
  */
 let currentToken: string | null = null;
+const listeners = new Set<() => void>();
+
+function setToken(next: string | null): void {
+  if (currentToken === next) return;
+  currentToken = next;
+  for (const listener of listeners) listener();
+}
 
 export function getRegisteredPushToken(): string | null {
   return currentToken;
+}
+
+/** The registered token, as state. `null` until the OS hands one over. */
+export function usePushToken(): string | null {
+  return useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    getRegisteredPushToken,
+    getRegisteredPushToken,
+  );
 }
 
 /** Ask, register, and route taps. Mounted once, from the root layout. */
@@ -70,7 +95,7 @@ export function usePushRegistration(): void {
       });
       if (cancelled || !token) return;
 
-      currentToken = token;
+      setToken(token);
       register.mutate({
         token,
         platform: Platform.OS === "ios" ? "ios" : "android",
@@ -105,4 +130,14 @@ export function usePushRegistration(): void {
     );
     return () => subscription.remove();
   }, [router]);
+}
+
+/**
+ * Forget this handset.
+ *
+ * Clears the local copy as well as telling the server, so a sign-out followed
+ * by a sign-in as somebody else does not re-send the previous person's token.
+ */
+export function clearRegisteredPushToken(): void {
+  setToken(null);
 }
