@@ -919,9 +919,16 @@ export const gigsRouter = createTRPCRouter({
                 },
               },
               recipients: { select: { userId: true } },
+              // Which cues have already gone out, so "running late" can leave
+              // them alone and the row can say it has been announced.
+              fires: {
+                select: { offsetMinutes: true, skipped: true, createdAt: true },
+              },
             },
           },
           notifyRecipients: { select: { userId: true } },
+          // Only for seeding the doors row. The two are independent afterwards.
+          ticketEvents: { select: { id: true, doorsAt: true } },
         },
       });
 

@@ -37,6 +37,8 @@ export type DraftScheduleItem = {
   role: string;
   startsAt: Date | null;
   endsAt: Date | null;
+  /** Running order, and the tiebreak when two rows share a time or have none. */
+  sortOrder: number;
   /** Internal. Never leaves the admin and staff screens. */
   notes: string;
   /** Minutes before `startsAt` to warn. Empty warns only on the cue. */
@@ -76,6 +78,7 @@ export function newScheduleItem(
     role: "",
     startsAt: null,
     endsAt: null,
+    sortOrder: 0,
     notes: "",
     leadMinutes: defaultLeadMinutes(over.kind),
     recipientUserIds: [],

@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import {
   classifyCues,
   cuesFor,
+  flattenGroups,
+  groupSchedule,
   shiftSchedule,
   sortSchedule,
   type ScheduleRow,
@@ -176,13 +178,13 @@ describe("running late", () => {
   ];
 
   test("shifts what has not fired and leaves what has", () => {
-    const shifted = shiftSchedule(rows, 20, new Set(["a"]));
+    const shifted = shiftSchedule(rows, 20, (row) => row.id === "a");
     assert.equal(shifted[0]?.startsAt?.toISOString(), at("22:00").toISOString());
     assert.equal(shifted[1]?.startsAt?.toISOString(), at("23:20").toISOString());
   });
 
   test("a row with no time stays a row with no time", () => {
-    const shifted = shiftSchedule(rows, 20, new Set());
+    const shifted = shiftSchedule(rows, 20, () => false);
     assert.equal(shifted[2]?.startsAt, null);
   });
 });
@@ -191,3 +193,54 @@ describe("running late", () => {
 function order<T extends { offsetMinutes: number }>(list: T[]): T[] {
   return [...list].sort((a, b) => b.offsetMinutes - a.offsetMinutes);
 }
+
+describe("parts of the night", () => {
+  test("each kind lands where it belongs, and empty groups still show", () => {
+    const grouped = groupSchedule([
+      artist("set", "Nova", at("22:00"), 3),
+      row({ id: "doors", kind: "DOORS", startsAt: at("20:00"), sortOrder: 2 }),
+      row({ id: "check", kind: "SOUND_CHECK", startsAt: at("19:00"), sortOrder: 1 }),
+    ]);
+    assert.deepEqual(
+      grouped.map((entry) => [entry.group, entry.rows.map((r) => r.id)]),
+      [
+        ["BEFORE", ["check"]],
+        ["DOORS", ["doors"]],
+        ["SHOW", ["set"]],
+        ["AFTER", []],
+      ],
+    );
+  });
+
+  test("a custom cue takes the group of the row in front of it", () => {
+    const grouped = groupSchedule([
+      row({ id: "doors", kind: "DOORS", startsAt: at("20:00"), sortOrder: 0 }),
+      row({ id: "raffle", kind: "CUSTOM", startsAt: at("20:30"), sortOrder: 1 }),
+      artist("set", "Nova", at("22:00"), 2),
+      row({ id: "bar", kind: "CUSTOM", startsAt: at("23:30"), sortOrder: 3 }),
+    ]);
+    const byGroup = Object.fromEntries(
+      grouped.map((entry) => [entry.group, entry.rows.map((r) => r.id)]),
+    );
+    assert.deepEqual(byGroup.DOORS, ["doors", "raffle"]);
+    assert.deepEqual(byGroup.SHOW, ["set", "bar"]);
+  });
+
+  test("a custom cue with nothing in front of it starts the night", () => {
+    const grouped = groupSchedule([
+      row({ id: "meet", kind: "CUSTOM", startsAt: at("17:00"), sortOrder: 0 }),
+    ]);
+    assert.deepEqual(grouped[0]?.rows.map((r) => r.id), ["meet"]);
+  });
+
+  test("flattening gives the order the page is in", () => {
+    const rows = [
+      artist("set", "Nova", at("22:00"), 0),
+      row({ id: "check", kind: "SOUND_CHECK", startsAt: at("19:00"), sortOrder: 1 }),
+    ];
+    assert.deepEqual(
+      flattenGroups(groupSchedule(rows)).map((r) => r.id),
+      ["check", "set"],
+    );
+  });
+});

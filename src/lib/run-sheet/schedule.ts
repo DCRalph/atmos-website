@@ -49,6 +49,72 @@ export function defaultLeadMinutes(kind: GigScheduleKind): number[] {
   ];
 }
 
+/**
+ * The parts of a night.
+ *
+ * Presentational, and derived rather than stored: a kind already says which
+ * part of the night it belongs to. The exception is `CUSTOM`, which has no
+ * inherent home and takes the group of the row in front of it — so adding
+ * "anything else" under a heading puts it under that heading, and dragging it
+ * somewhere else moves it.
+ */
+export const SCHEDULE_GROUPS = [
+  { group: "BEFORE", label: "Before doors", kinds: ["LOAD_IN", "SOUND_CHECK"] },
+  { group: "DOORS", label: "Doors", kinds: ["DOORS"] },
+  { group: "SHOW", label: "Show", kinds: ["SET"] },
+  { group: "AFTER", label: "After", kinds: ["CURFEW"] },
+] as const;
+
+export type ScheduleGroup = (typeof SCHEDULE_GROUPS)[number]["group"];
+
+export function groupOfKind(kind: GigScheduleKind): ScheduleGroup | null {
+  return (
+    SCHEDULE_GROUPS.find((entry) =>
+      (entry.kinds as readonly string[]).includes(kind),
+    )?.group ?? null
+  );
+}
+
+export type GroupedSchedule<T> = {
+  group: ScheduleGroup;
+  label: string;
+  rows: T[];
+}[];
+
+/**
+ * Bucket a run sheet into the parts of a night, each bucket in running order.
+ *
+ * Every group is returned even when empty, because an empty "Before doors" is
+ * the prompt to add a sound check.
+ */
+export function groupSchedule<
+  T extends Pick<ScheduleRow, "kind" | "startsAt" | "sortOrder">,
+>(rows: readonly T[]): GroupedSchedule<T> {
+  const buckets = new Map<ScheduleGroup, T[]>(
+    SCHEDULE_GROUPS.map((entry) => [entry.group, []]),
+  );
+
+  let current: ScheduleGroup = "BEFORE";
+  for (const row of sortSchedule(rows)) {
+    current = groupOfKind(row.kind) ?? current;
+    buckets.get(current)?.push(row);
+  }
+
+  return SCHEDULE_GROUPS.map((entry) => ({
+    group: entry.group,
+    label: entry.label,
+    rows: buckets.get(entry.group) ?? [],
+  }));
+}
+
+/**
+ * The grouped order, flattened. This is the order `sortOrder` is written from,
+ * so what is saved is what was on screen.
+ */
+export function flattenGroups<T>(grouped: GroupedSchedule<T>): T[] {
+  return grouped.flatMap((entry) => entry.rows);
+}
+
 /** The least a row needs for ordering and for naming itself. */
 export type ScheduleRow = {
   id: string;
@@ -281,11 +347,11 @@ export function classifyCues(
  * only make the run sheet disagree with what people were told.
  */
 export function shiftSchedule<
-  T extends { id: string; startsAt: Date | null; endsAt: Date | null },
->(rows: readonly T[], minutes: number, firedItemIds: ReadonlySet<string>): T[] {
+  T extends { startsAt: Date | null; endsAt: Date | null },
+>(rows: readonly T[], minutes: number, hasFired: (row: T) => boolean): T[] {
   const delta = minutes * 60_000;
   return rows.map((row) => {
-    if (firedItemIds.has(row.id)) return row;
+    if (hasFired(row)) return row;
     return {
       ...row,
       startsAt: row.startsAt ? new Date(row.startsAt.getTime() + delta) : null,

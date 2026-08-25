@@ -52,9 +52,10 @@ import { useUnsavedChangesWarning } from "~/hooks/use-unsaved-changes-warning";
 import { useUpload } from "~/hooks/use-upload";
 import { GigMode } from "~Prisma/browser";
 import { GigChatPanel } from "./gig-chat-panel";
-import { LineUpField } from "./line-up-field";
+import { RunSheetField } from "./run-sheet-field";
 import { PosterField } from "./poster-field";
 import { TagsField } from "./tags-field";
+import { rebaseSchedule } from "~/lib/run-sheet/night";
 import { newScheduleItem, type DraftScheduleItem, type GigDraft } from "./types";
 
 /**
@@ -111,9 +112,11 @@ type LoadedGig = {
     role: string | null;
     startsAt: Date | null;
     endsAt: Date | null;
+    sortOrder: number;
     notes: string | null;
     leadMinutes: number[];
     recipients: { userId: string }[];
+    fires: { offsetMinutes: number; skipped: boolean }[];
     creatorProfile: {
       id: string;
       handle: string;
@@ -124,6 +127,7 @@ type LoadedGig = {
     } | null;
   }[];
   notifyRecipients: { userId: string }[];
+  ticketEvents: { id: string; doorsAt: Date | null }[];
 };
 
 const emptyDraft = (): GigDraft => ({
@@ -169,6 +173,7 @@ const draftFromGig = (gig: LoadedGig): GigDraft => ({
       role: row.role ?? "",
       startsAt: row.startsAt ? new Date(row.startsAt) : null,
       endsAt: row.endsAt ? new Date(row.endsAt) : null,
+      sortOrder: row.sortOrder,
       notes: row.notes ?? "",
       leadMinutes: row.leadMinutes,
       recipientUserIds: row.recipients.map((entry) => entry.userId),
@@ -261,9 +266,24 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
     { id: gigId ?? "" },
     { enabled: gigId !== null },
   );
-  // `getById` redacts its result for non-admins, which widens the inferred type;
-  // this page is admin-only, so the full shape is what actually arrives.
+  // The query returns Prisma's own payload type; `LoadedGig` is the same shape
+  // spelled out, so the draft mapping below reads without chasing generics.
   const gig = (query.data ?? null) as unknown as LoadedGig | null;
+
+  // A cue that has already gone out is history: "running late" leaves it alone
+  // and the row says so.
+  const firedItemIds = useMemo(
+    () =>
+      new Set(
+        (gig?.scheduleItems ?? [])
+          .filter((row) => row.fires.some((fire) => !fire.skipped))
+          .map((row) => row.id),
+      ),
+    [gig],
+  );
+
+  // Seeds a new doors row once. The buy page keeps its own door time.
+  const ticketEventDoorsAt = gig?.ticketEvents[0]?.doorsAt ?? null;
 
   const isDirty = useMemo(
     () => fingerprint(draft) !== fingerprint(baseline),
@@ -307,6 +327,30 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
     },
     [],
   );
+
+  /**
+   * Moving the gig moves its run sheet.
+   *
+   * Times on the run sheet are times of night, resolved against the gig's date.
+   * Change the date without carrying them along and a gig moved from Friday to
+   * Saturday keeps announcing itself on Friday.
+   */
+  const moveGigTo = useCallback((value: Date | undefined) => {
+    setDraft((current) => ({
+      ...current,
+      startTime: value,
+      schedule:
+        current.startTime && value
+          ? rebaseSchedule(current.schedule, current.startTime, value)
+          : current.schedule,
+    }));
+    setErrors((current) => {
+      if (!("startTime" in current)) return current;
+      const next = { ...current };
+      delete next.startTime;
+      return next;
+    });
+  }, []);
 
   const createGig = api.gigs.create.useMutation();
   const saveGig = api.gigs.saveAll.useMutation();
@@ -681,9 +725,16 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
             </CardContent>
           </Card>
 
-          <LineUpField
-            creators={draft.schedule}
+          <RunSheetField
+            schedule={draft.schedule}
             onChange={(schedule) => update("schedule", schedule)}
+            notifyUserIds={draft.notifyUserIds}
+            onNotifyChange={(notifyUserIds) =>
+              update("notifyUserIds", notifyUserIds)
+            }
+            gigStart={draft.startTime}
+            firedItemIds={firedItemIds}
+            ticketEventDoorsAt={ticketEventDoorsAt}
             disabled={isSaving}
           />
 
@@ -721,7 +772,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
               >
                 <DateTimePicker
                   date={draft.startTime}
-                  onDateChange={(value) => update("startTime", value)}
+                  onDateChange={moveGigTo}
                   placeholder="Select start time"
                   showTime
                 />
