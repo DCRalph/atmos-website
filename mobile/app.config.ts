@@ -1,4 +1,20 @@
+import { readFileSync } from "node:fs";
+
 import type { ExpoConfig } from "expo/config";
+
+/**
+ * The version, from one place.
+ *
+ * Read out of package.json rather than written here as well, because two copies
+ * of a version number are two copies that disagree the first time somebody bumps
+ * only one of them. Read with `fs` rather than imported so the config does not
+ * depend on `resolveJsonModule` being on wherever Expo loads it from.
+ *
+ * `APP_VERSION` overrides it for a one-off build without a commit.
+ */
+const pkg = JSON.parse(
+  readFileSync(new URL("./package.json", import.meta.url), "utf8"),
+) as { version: string };
 
 /**
  * Atmos app config.
@@ -10,7 +26,7 @@ import type { ExpoConfig } from "expo/config";
 const config: ExpoConfig = {
   name: "Atmos",
   slug: "atmos",
-  version: "1.0.0",
+  version: process.env.APP_VERSION ?? pkg.version,
   orientation: "portrait",
   scheme: "atmos",
   userInterfaceStyle: "dark",
@@ -76,6 +92,15 @@ const config: ExpoConfig = {
       NSFaceIDUsageDescription:
         "Atmos uses Face ID to unlock this handset for door mode and your tickets.",
       ITSAppUsesNonExemptEncryption: false,
+      /**
+       * Which commit this binary is.
+       *
+       * A build number says which build; it does not say what is in it. With
+       * this, a TestFlight build that misbehaves can be traced back to a commit
+       * without keeping a spreadsheet. Written by `scripts/build-ipa.sh`;
+       * "dev" for anything built off a laptop by hand.
+       */
+      ATMOSGitCommit: process.env.GIT_COMMIT ?? "dev",
     },
   },
   android: {

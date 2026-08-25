@@ -395,7 +395,7 @@ import { formatDate, formatTime, isGigPast } from "~/lib/date-utils";
 import { GigTagList } from "~/components/gig-tag-list";
 import { LexicalContent } from "~/components/lexical";
 import { MediaGallery } from "~/components/gigs/media-gallery";
-import { buildMediaUrl } from "~/lib/media-url";
+import { LineUpArtistPopover } from "~/components/gigs/line-up-artist-popover";
 import {
   GigTicketCta,
   GigTicketPanel,
@@ -644,43 +644,15 @@ export default function GigPage({ params }: PageProps) {
                     <>
                       <span className="text-white/20">|</span>
                       <div className="group/lineup flex items-center">
-                        {gig.lineUp.map((gc, i) => {
-                          const cp = gc.creatorProfile;
-                          const avatar = cp.avatarFileId
-                            ? buildMediaUrl(cp.avatarFileId)
-                            : null;
-                          return (
-                            <Link
-                              key={gc.id}
-                              href={`/@${cp.handle}`}
-                              aria-label={cp.displayName}
-                              className={`group/avatar relative block h-8 w-8 transition-[margin-left,transform,z-index] duration-300 ease-out hover:z-20 ${
-                                i === 0
-                                  ? "ml-0"
-                                  : "-ml-2 group-hover/lineup:ml-1"
-                              }`}
-                            >
-                              <div className="relative h-8 w-8 overflow-hidden rounded-full bg-white/10 ring-2 ring-black transition-all group-hover/avatar:ring-white/70">
-                                {avatar ? (
-                                  <Image
-                                    src={avatar}
-                                    alt={cp.displayName}
-                                    fill
-                                    sizes="32px"
-                                    className="object-cover"
-                                  />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center text-[11px] font-black text-white/60">
-                                    {cp.displayName.slice(0, 1).toUpperCase()}
-                                  </div>
-                                )}
-                              </div>
-                              <span className="pointer-events-none absolute top-full left-1/2 z-30 mt-2 -translate-x-1/2 translate-y-1 border border-white/15 bg-black/90 px-2 py-1 text-[10px] font-bold tracking-wider whitespace-nowrap text-white uppercase opacity-0 shadow-lg backdrop-blur-md transition-all duration-200 group-hover/avatar:translate-y-0 group-hover/avatar:opacity-100">
-                                {cp.displayName}
-                              </span>
-                            </Link>
-                          );
-                        })}
+                        {gig.lineUp.map((gc, i) => (
+                          <LineUpArtistPopover
+                            key={gc.id}
+                            entry={gc}
+                            className={
+                              i === 0 ? "ml-0" : "-ml-2 group-hover/lineup:ml-1"
+                            }
+                          />
+                        ))}
                       </div>
                     </>
                   )}

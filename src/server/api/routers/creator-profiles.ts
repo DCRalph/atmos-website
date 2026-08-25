@@ -10,6 +10,7 @@ import {
 import { logUserActivity } from "~/server/utils/activity-log";
 import { softDeleteFile } from "~/server/uploads/files";
 import { resolveTargetProfileId } from "~/server/utils/creator-profile-access";
+import { resolveSocialPlatform } from "~/lib/social-pills";
 import { grantUserPermission } from "~/server/utils/permissions";
 import {
   ActivityType,
@@ -149,6 +150,78 @@ export const creatorProfilesRouter = createTRPCRouter({
       });
       if (!profile) return null;
       return profile;
+    }),
+
+  /**
+   * Everything the line-up popover on a gig page draws: who the artist is,
+   * every gig they have done for us, and the two links out.
+   *
+   * Not `getByHandle`, which also carries blocks, the theme and the linked user
+   * row, none of which a popover renders. Set times and run sheet notes stay
+   * behind for the same reason they do in `toPublicLineUp`: this is public.
+   */
+  publicSummary: publicProcedure
+    .input(z.object({ handle: handleSchema }))
+    .query(async ({ ctx, input }) => {
+      const profile = await ctx.db.creatorProfile.findUnique({
+        where: { handle: input.handle.toLowerCase() },
+        select: {
+          id: true,
+          handle: true,
+          displayName: true,
+          tagline: true,
+          avatarFileId: true,
+          isPublished: true,
+          socials: {
+            select: { platform: true, url: true },
+            orderBy: { sortOrder: "asc" },
+          },
+          // One row per gig, most recent first. `creatorProfileId` is only ever
+          // set on a SET row today; naming the kind keeps that true if it ever
+          // stops being.
+          scheduleItems: {
+            where: { kind: "SET" },
+            distinct: ["gigId"],
+            orderBy: { gig: { gigStartTime: "desc" } },
+            select: {
+              role: true,
+              gig: {
+                select: {
+                  id: true,
+                  title: true,
+                  subtitle: true,
+                  gigStartTime: true,
+                  gigEndTime: true,
+                  posterFileUploadId: true,
+                  mode: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      if (!profile) return null;
+
+      // The stored `platform` is free text, so the URL is the fallback tell.
+      const instagram = profile.socials.find(
+        (social) =>
+          resolveSocialPlatform(social.platform, social.url)?.id ===
+          "instagram",
+      );
+
+      return {
+        id: profile.id,
+        handle: profile.handle,
+        displayName: profile.displayName,
+        tagline: profile.tagline,
+        avatarFileId: profile.avatarFileId,
+        isPublished: profile.isPublished,
+        instagramUrl: instagram?.url ?? null,
+        gigs: profile.scheduleItems.map((item) => ({
+          role: item.role,
+          ...item.gig,
+        })),
+      };
     }),
 
   // ---------- Owner & admin reads ----------
