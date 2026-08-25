@@ -9,8 +9,46 @@ import {
   type TextStyle,
   type ViewStyle,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ArrowLeft } from "lucide-react-native";
 
 import { colors, radius, space, stroke, type } from "@/lib/theme";
+
+/**
+ * Pinned screen header: safe-area padding, the screen's name, a hard bottom
+ * rule — the same furniture as Home's wordmark bar. Without it these black
+ * screens scroll white type straight under the clock and battery, and a pushed
+ * screen has no way back.
+ */
+export function Header({
+  title,
+  onBack,
+  right,
+}: {
+  title: ReactNode;
+  onBack?: () => void;
+  right?: ReactNode;
+}) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={[styles.headerBar, { paddingTop: insets.top + space.sm }]}>
+      {onBack ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          onPress={onBack}
+          hitSlop={12}
+        >
+          <ArrowLeft color={colors.text} size={22} strokeWidth={2.5} />
+        </Pressable>
+      ) : null}
+      <Title numberOfLines={1} style={styles.headerTitle}>
+        {title}
+      </Title>
+      {right}
+    </View>
+  );
+}
 
 /** Section marker — the uppercase letterspaced label used across the site. */
 export function Eyebrow({ children }: { children: ReactNode }) {
@@ -168,7 +206,9 @@ export function Loading({ label }: { label?: string }) {
   return (
     <View style={styles.loading}>
       <ActivityIndicator color={colors.textFaint} />
-      {label ? <Caption style={{ marginTop: space.sm }}>{label}</Caption> : null}
+      {label ? (
+        <Caption style={{ marginTop: space.sm }}>{label}</Caption>
+      ) : null}
     </View>
   );
 }
@@ -190,12 +230,25 @@ export function Pill({
 
   return (
     <View style={[styles.pill, { backgroundColor: toneStyle.bg }]}>
-      <Text style={[styles.pillLabel, { color: toneStyle.fg }]}>{children}</Text>
+      <Text style={[styles.pillLabel, { color: toneStyle.fg }]}>
+        {children}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  headerBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    paddingHorizontal: space.lg,
+    paddingBottom: space.md,
+    backgroundColor: colors.bg,
+    borderBottomWidth: stroke.hard,
+    borderBottomColor: colors.border,
+  },
+  headerTitle: { flex: 1, minWidth: 0, fontSize: 17, letterSpacing: -0.2 },
   eyebrow: {
     color: colors.textFaint,
     fontSize: type.eyebrow.fontSize,

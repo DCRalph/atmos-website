@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Image } from "expo-image";
 import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
 import {
+  Animated,
+  Easing,
   Modal,
   Pressable,
   ScrollView,
@@ -122,18 +124,68 @@ function ArtistSheet({
 }) {
   const insets = useSafeAreaInsets();
   const selected = index === null ? null : lineUp[index];
-  if (!selected) return null;
+
+  /**
+   * The scrim fades while the sheet slides. Modal's own "slide" animates the
+   * whole layer, which sends the darkening backdrop sweeping up the screen
+   * with the sheet — so the modal shows instantly and the two pieces animate
+   * themselves. `mounted` keeps it visible until the way out finishes playing.
+   */
+  const progress = useRef(new Animated.Value(0)).current;
+  const [mounted, setMounted] = useState(false);
+  const [sheetHeight, setSheetHeight] = useState(0);
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      Animated.timing(progress, {
+        toValue: 1,
+        duration: 260,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(progress, {
+        toValue: 0,
+        duration: 200,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) setMounted(false);
+      });
+    }
+  }, [open, progress]);
+
+  if (!selected || !mounted) return null;
+
+  const translateY = progress.interpolate({
+    inputRange: [0, 1],
+    // Until the first layout the height is a guess; it only has to be "past
+    // the bottom edge", and the real number replaces it within a frame.
+    outputRange: [sheetHeight || 480, 0],
+  });
 
   return (
-    <Modal
-      visible={open}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
+    <Modal visible transparent animationType="none" onRequestClose={onClose}>
+      <Animated.View
+        style={[StyleSheet.absoluteFill, styles.scrim, { opacity: progress }]}
+      />
       {/* The scrim is the dismiss surface; the sheet itself swallows taps. */}
-      <Pressable style={styles.scrim} onPress={onClose} />
-      <View style={[styles.sheet, { paddingBottom: insets.bottom + space.sm }]}>
+      <Pressable
+        accessibilityLabel="Close"
+        style={{ flex: 1 }}
+        onPress={onClose}
+      />
+      <Animated.View
+        onLayout={(e) => setSheetHeight(e.nativeEvent.layout.height)}
+        style={[
+          styles.sheet,
+          {
+            paddingBottom: insets.bottom + space.sm,
+            transform: [{ translateY }],
+          },
+        ]}
+      >
         {lineUp.length > 1 ? (
           <ScrollView
             horizontal
@@ -182,7 +234,7 @@ function ArtistSheet({
             ))}
           </View>
         )}
-      </View>
+      </Animated.View>
     </Modal>
   );
 }
@@ -444,7 +496,7 @@ function monthRange(from: Date, to: Date): string {
 const VIOLET = "#c4b5fd";
 
 const styles = StyleSheet.create({
-  scrim: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)" },
+  scrim: { backgroundColor: "rgba(0,0,0,0.6)" },
   sheet: {
     backgroundColor: colors.bg,
     borderTopWidth: stroke.hard,
@@ -455,6 +507,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: space.sm,
     paddingHorizontal: space.lg,
+    // The horizontal ScrollView clips its cross axis too, and the selected
+    // ring sits 2px proud of its avatar — without headroom it loses its top.
+    paddingTop: 2,
     paddingBottom: space.sm,
   },
   switchOn: {

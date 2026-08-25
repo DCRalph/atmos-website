@@ -2,21 +2,20 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
-import {
-  Linking,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ArrowLeft } from "lucide-react-native";
+import { Linking, ScrollView, StyleSheet, Switch, View } from "react-native";
 
 import { api } from "@/lib/api";
 import { usePushToken } from "@/lib/push";
 import { colors, radius, space, stroke } from "@/lib/theme";
-import { Body, Button, Caption, Eyebrow, Loading, Notice, Title } from "@/components/ui";
+import {
+  Body,
+  Button,
+  Caption,
+  Eyebrow,
+  Header,
+  Loading,
+  Notice,
+} from "@/components/ui";
 
 /**
  * Notifications, per handset.
@@ -30,7 +29,6 @@ import { Body, Button, Caption, Eyebrow, Loading, Notice, Title } from "@/compon
  * has never signed in still gets to choose.
  */
 export default function NotificationSettingsScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const token = usePushToken();
 
@@ -77,82 +75,81 @@ export default function NotificationSettingsScreen() {
       optimistic?.doorReminders ?? preferences.data?.doorReminders ?? true,
   };
 
-  const set = (patch: { gigAnnouncements?: boolean; doorReminders?: boolean }) => {
+  const set = (patch: {
+    gigAnnouncements?: boolean;
+    doorReminders?: boolean;
+  }) => {
     if (!token) return;
     save.mutate({ token, ...current, ...patch });
   };
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: colors.bg }}
-      contentContainerStyle={{
-        paddingTop: insets.top + space.lg,
-        paddingBottom: space.xxl,
-        paddingHorizontal: space.lg,
-        gap: space.lg,
-      }}
-    >
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <ArrowLeft color={colors.text} size={22} strokeWidth={2.5} />
-        </Pressable>
-        <Title>Notifications</Title>
-      </View>
-
-      {granted === false ? (
-        <Notice
-          title="Notifications are off"
-          detail={
-            Device.isDevice
-              ? "Atmos can't send anything until you turn them on for it in iOS Settings."
-              : "A simulator can't receive notifications. Try this on a real handset."
-          }
-          action={
-            Device.isDevice ? (
-              <Button
-                variant="outline"
-                onPress={() => void Linking.openSettings()}
-              >
-                Open Settings
-              </Button>
-            ) : undefined
-          }
-        />
-      ) : null}
-
-      {granted === null || (granted && !token) ? <Loading /> : null}
-
-      {granted && token ? (
-        <View style={{ gap: space.sm }}>
-          <Eyebrow>This phone</Eyebrow>
-
-          <Toggle
-            label="New dates"
-            detail="When a show is announced. This is the one the app is for."
-            value={current.gigAnnouncements}
-            onChange={(gigAnnouncements) => set({ gigAnnouncements })}
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Header title="Notifications" onBack={() => router.back()} />
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingTop: space.lg,
+          paddingBottom: space.xxl,
+          paddingHorizontal: space.lg,
+          gap: space.lg,
+        }}
+      >
+        {granted === false ? (
+          <Notice
+            title="Notifications are off"
+            detail={
+              Device.isDevice
+                ? "Atmos can't send anything until you turn them on for it in iOS Settings."
+                : "A simulator can't receive notifications. Try this on a real handset."
+            }
+            action={
+              Device.isDevice ? (
+                <Button
+                  variant="outline"
+                  onPress={() => void Linking.openSettings()}
+                >
+                  Open Settings
+                </Button>
+              ) : undefined
+            }
           />
+        ) : null}
 
-          <Toggle
-            label="Doors open"
-            detail="A reminder on the night, only for shows you hold a ticket to."
-            value={current.doorReminders}
-            onChange={(doorReminders) => set({ doorReminders })}
-          />
+        {granted === null || (granted && !token) ? <Loading /> : null}
 
-          {save.isError ? (
-            <Caption style={{ color: colors.deny }}>
-              That didn&apos;t save. Check your connection and try again.
+        {granted && token ? (
+          <View style={{ gap: space.sm }}>
+            <Eyebrow>This phone</Eyebrow>
+
+            <Toggle
+              label="New dates"
+              detail="When a show is announced. This is the one the app is for."
+              value={current.gigAnnouncements}
+              onChange={(gigAnnouncements) => set({ gigAnnouncements })}
+            />
+
+            <Toggle
+              label="Doors open"
+              detail="A reminder on the night, only for shows you hold a ticket to."
+              value={current.doorReminders}
+              onChange={(doorReminders) => set({ doorReminders })}
+            />
+
+            {save.isError ? (
+              <Caption style={{ color: colors.deny }}>
+                That didn&apos;t save. Check your connection and try again.
+              </Caption>
+            ) : null}
+
+            <Caption style={{ marginTop: space.sm }}>
+              These are for this handset. Signing in on another phone gives that
+              one its own settings.
             </Caption>
-          ) : null}
-
-          <Caption style={{ marginTop: space.sm }}>
-            These are for this handset. Signing in on another phone gives that
-            one its own settings.
-          </Caption>
-        </View>
-      ) : null}
-    </ScrollView>
+          </View>
+        ) : null}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -184,7 +181,6 @@ function Toggle({
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "center", gap: space.md },
   row: {
     flexDirection: "row",
     alignItems: "center",

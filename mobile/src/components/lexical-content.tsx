@@ -29,12 +29,19 @@ type LexicalNode = {
   type?: string;
   text?: string;
   format?: number | string;
+  /** Inline CSS the editor's colour picker writes, e.g. `color: #ec4899;`. */
+  style?: string;
   tag?: string;
   url?: string;
   listType?: string;
   start?: number;
   children?: LexicalNode[];
 };
+
+/** The one CSS property the editor can set on a text node. */
+function colorOf(style?: string): string | undefined {
+  return /(?:^|;)\s*color:\s*([^;]+)/.exec(style ?? "")?.[1]?.trim();
+}
 
 export function LexicalContent({ value }: { value: unknown }) {
   const root = rootOf(value);
@@ -55,7 +62,21 @@ export function hasLexicalContent(value: unknown): boolean {
   return !!root?.children?.some((node) => textOf(node).trim().length > 0);
 }
 
+/**
+ * Older rows hold the state as a JSON string rather than an object — the web
+ * renderer normalizes both (see `src/components/lexical/normalize.ts`), and
+ * this has to as well or those gigs silently fall back to plain text.
+ */
 function rootOf(value: unknown): LexicalNode | null {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    try {
+      return rootOf(JSON.parse(trimmed));
+    } catch {
+      return null;
+    }
+  }
   if (!value || typeof value !== "object") return null;
   const root = (value as { root?: LexicalNode }).root;
   return root ?? null;
@@ -142,14 +163,19 @@ function Inline({ nodes }: { nodes?: LexicalNode[] }) {
 function InlineNode({ node }: { node: LexicalNode }) {
   if (node.type === "linebreak") return "\n";
 
-  if (node.type === "link" || node.type === "autolink") {
+  // Anything carrying a URL is a link — this also catches the editor's
+  // social-pill nodes, which serialize as a LinkNode subclass under their own
+  // type name.
+  if (
+    typeof node.url === "string" ||
+    node.type === "link" ||
+    node.type === "autolink"
+  ) {
     const url = node.url;
     return (
       <Text
         style={{ color: colors.text, textDecorationLine: "underline" }}
-        onPress={
-          url ? () => void WebBrowser.openBrowserAsync(url) : undefined
-        }
+        onPress={url ? () => void WebBrowser.openBrowserAsync(url) : undefined}
       >
         <Inline nodes={node.children} />
       </Text>
@@ -158,6 +184,7 @@ function InlineNode({ node }: { node: LexicalNode }) {
 
   if (typeof node.text === "string") {
     const format = typeof node.format === "number" ? node.format : 0;
+    const color = colorOf(node.style);
     return (
       <Text
         style={[
@@ -168,6 +195,7 @@ function InlineNode({ node }: { node: LexicalNode }) {
             ? { textDecorationLine: "line-through" }
             : null,
           format & CODE ? { fontFamily: "Menlo" } : null,
+          color ? { color } : null,
         ]}
       >
         {node.text}

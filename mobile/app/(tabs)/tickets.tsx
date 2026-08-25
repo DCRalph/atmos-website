@@ -1,7 +1,12 @@
 import { useCallback, useState } from "react";
 import { Link, useRouter } from "expo-router";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -12,10 +17,10 @@ import {
   Button,
   Caption,
   Eyebrow,
+  Header,
   Loading,
   Notice,
   Pill,
-  Title,
 } from "@/components/ui";
 import { VerifyBanner } from "@/components/verify-banner";
 
@@ -27,7 +32,6 @@ import { VerifyBanner } from "@/components/verify-banner";
  * into the wallet, and manage them afterwards.
  */
 export default function TicketsScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, isPending: sessionPending } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
@@ -48,80 +52,81 @@ export default function TicketsScreen() {
   const past = orders.filter((o) => new Date(o.event.startsAt).getTime() < now);
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: colors.bg }}
-      contentContainerStyle={{
-        paddingTop: insets.top + space.lg,
-        paddingBottom: space.xxl,
-        paddingHorizontal: space.lg,
-        gap: space.xl,
-      }}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor={colors.textFaint}
-        />
-      }
-    >
-      <Title>Tickets</Title>
-
-      {/* Sits above the list: an unverified account is the single most likely
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Header title="Tickets" />
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingTop: space.lg,
+          paddingBottom: space.xxl,
+          paddingHorizontal: space.lg,
+          gap: space.xl,
+        }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.textFaint}
+          />
+        }
+      >
+        {/* Sits above the list: an unverified account is the single most likely
           reason somebody's tickets are missing from it. */}
-      <VerifyBanner />
+        <VerifyBanner />
 
-      {sessionPending ? (
-        <Loading />
-      ) : !user ? (
-        <Notice
-          title="Sign in to see your tickets"
-          detail="Tickets you already bought will appear here once your email is verified."
-          action={
-            <Button onPress={() => router.push("/(auth)/sign-in")}>
-              Sign in
-            </Button>
-          }
-        />
-      ) : mine.isPending ? (
-        <Loading />
-      ) : orders.length === 0 ? (
-        <Notice
-          title="No tickets yet"
-          detail={
-            user.emailVerified
-              ? "Anything you buy shows up here. Bought on another email? Add it with the link from your confirmation."
-              : "Verify your email to see tickets you bought before installing the app."
-          }
-          action={
-            <Button
-              variant="outline"
-              onPress={() => router.push("/(tabs)/gigs")}
-            >
-              See what's on
-            </Button>
-          }
-        />
-      ) : (
-        <>
-          {upcoming.length > 0 && (
-            <View style={{ gap: space.md }}>
-              <Eyebrow>Coming up</Eyebrow>
-              {upcoming.map((order) => (
-                <OrderCard key={order.orderId} order={order} />
-              ))}
-            </View>
-          )}
-          {past.length > 0 && (
-            <View style={{ gap: space.md }}>
-              <Eyebrow>Been there</Eyebrow>
-              {past.map((order) => (
-                <OrderCard key={order.orderId} order={order} past />
-              ))}
-            </View>
-          )}
-        </>
-      )}
-    </ScrollView>
+        {sessionPending ? (
+          <Loading />
+        ) : !user ? (
+          <Notice
+            title="Sign in to see your tickets"
+            detail="Tickets you already bought will appear here once your email is verified."
+            action={
+              <Button onPress={() => router.push("/(auth)/sign-in")}>
+                Sign in
+              </Button>
+            }
+          />
+        ) : mine.isPending ? (
+          <Loading />
+        ) : orders.length === 0 ? (
+          <Notice
+            title="No tickets yet"
+            detail={
+              user.emailVerified
+                ? "Anything you buy shows up here. Bought on another email? Add it with the link from your confirmation."
+                : "Verify your email to see tickets you bought before installing the app."
+            }
+            action={
+              <Button
+                variant="outline"
+                onPress={() => router.push("/(tabs)/gigs")}
+              >
+                See what's on
+              </Button>
+            }
+          />
+        ) : (
+          <>
+            {upcoming.length > 0 && (
+              <View style={{ gap: space.md }}>
+                <Eyebrow>Coming up</Eyebrow>
+                {upcoming.map((order) => (
+                  <OrderCard key={order.orderId} order={order} />
+                ))}
+              </View>
+            )}
+            {past.length > 0 && (
+              <View style={{ gap: space.md }}>
+                <Eyebrow>Been there</Eyebrow>
+                {past.map((order) => (
+                  <OrderCard key={order.orderId} order={order} past />
+                ))}
+              </View>
+            )}
+          </>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 

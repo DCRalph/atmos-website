@@ -10,7 +10,14 @@ import { API_URL } from "@/lib/env";
 import { accessLevel, isElevated } from "~/lib/ticketing/access-levels";
 import { colors, radius, space } from "@/lib/theme";
 import { formatGigDateLong, formatGigTime } from "@/lib/dates";
-import { Body, Button, Caption, Loading, Notice, Title } from "@/components/ui";
+import {
+  Body,
+  Button,
+  Caption,
+  Header,
+  Loading,
+  Notice,
+} from "@/components/ui";
 
 /**
  * One order's tickets.
@@ -85,134 +92,141 @@ export default function OrderScreen() {
     !mine.isSuccess || mine.data.some((row) => row.orderId === data.orderId);
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: colors.bg }}
-      contentContainerStyle={{
-        paddingTop: insets.top + space.lg,
-        paddingBottom: space.xxl,
-        paddingHorizontal: space.lg,
-        gap: space.lg,
-      }}
-    >
-      <View style={{ gap: 4 }}>
-        <Title>{data.event.name}</Title>
-        <Caption>
-          {formatGigDateLong(data.event.startsAt)} ·{" "}
-          {formatGigTime(data.event.startsAt)}
-        </Caption>
-        {data.event.venueName ? (
-          <Caption>{data.event.venueName}</Caption>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      {/* A universal link from a confirmation email lands here with no screen
+          behind it, so the header's back has to work either way — see goBack. */}
+      <Header title={data.event.name} onBack={goBack} />
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingTop: space.lg,
+          paddingBottom: insets.bottom + space.xxl,
+          paddingHorizontal: space.lg,
+          gap: space.lg,
+        }}
+      >
+        <View style={{ gap: 4 }}>
+          <Caption>
+            {formatGigDateLong(data.event.startsAt)} ·{" "}
+            {formatGigTime(data.event.startsAt)}
+          </Caption>
+          {data.event.venueName ? (
+            <Caption>{data.event.venueName}</Caption>
+          ) : null}
+        </View>
+
+        {!data.issued ? (
+          <Notice
+            title="Not issued yet"
+            detail="This order hasn't finished paying. Tickets appear once it does."
+          />
         ) : null}
-      </View>
 
-      {!data.issued ? (
-        <Notice
-          title="Not issued yet"
-          detail="This order hasn't finished paying. Tickets appear once it does."
-        />
-      ) : null}
-
-      {/*
+        {/*
         The other half of the Tickets tab's "bought on another email?".
         Somebody who opened a forwarded link, or a ticket bought before they
         made an account, can put it on that account from here — the token they
         already hold is the proof, so this grants nothing they cannot reach.
       */}
-      {user && data.issued && !isMine ? (
-        <Notice
-          title="Not saved to your account"
-          detail={
-            claim.isError
-              ? claim.error.message
-              : "Save it and it shows up in your Tickets tab on any phone you sign in on."
-          }
-          action={
-            <Button
-              variant="outline"
-              loading={claim.isPending}
-              onPress={() => claim.mutate({ accessToken })}
-            >
-              Save to my account
-            </Button>
-          }
-        />
-      ) : null}
+        {user && data.issued && !isMine ? (
+          <Notice
+            title="Not saved to your account"
+            detail={
+              claim.isError
+                ? claim.error.message
+                : "Save it and it shows up in your Tickets tab on any phone you sign in on."
+            }
+            action={
+              <Button
+                variant="outline"
+                loading={claim.isPending}
+                onPress={() => claim.mutate({ accessToken })}
+              >
+                Save to my account
+              </Button>
+            }
+          />
+        ) : null}
 
-      {data.tickets.map((ticket) => (
-        <View key={ticket.id} style={styles.ticket}>
-          <View style={styles.qrWrap}>
-            {/* The QR is static for a given qrVersion, so it is safe to cache
+        {data.tickets.map((ticket) => (
+          <View key={ticket.id} style={styles.ticket}>
+            <View style={styles.qrWrap}>
+              {/* The QR is static for a given qrVersion, so it is safe to cache
                 and safe to show offline — the door validates server-side
                 regardless, which is where the security actually lives. */}
-            <SvgXml xml={ticket.qrSvg} width="100%" height="100%" />
-          </View>
+              <SvgXml xml={ticket.qrSvg} width="100%" height="100%" />
+            </View>
 
-          <View style={{ padding: space.lg, gap: 4 }}>
-            <Body style={{ fontWeight: "700" }}>
-              {ticket.attendeeName ?? "No name on this ticket"}
-            </Body>
-            {/* The level leads: it is what the door acts on. The tier is what
+            <View style={{ padding: space.lg, gap: 4 }}>
+              <Body style={{ fontWeight: "700" }}>
+                {ticket.attendeeName ?? "No name on this ticket"}
+              </Body>
+              {/* The level leads: it is what the door acts on. The tier is what
                 was bought, and sits under it as a detail. */}
-            <View style={styles.typeRow}>
-              {isElevated(ticket.accessLevel) ? (
-                <View
-                  style={[
-                    styles.levelChip,
-                    { backgroundColor: accessLevel(ticket.accessLevel).badgeBg },
-                  ]}
-                >
-                  <Text
+              <View style={styles.typeRow}>
+                {isElevated(ticket.accessLevel) ? (
+                  <View
                     style={[
-                      styles.levelChipLabel,
-                      { color: accessLevel(ticket.accessLevel).badgeFg },
+                      styles.levelChip,
+                      {
+                        backgroundColor: accessLevel(ticket.accessLevel)
+                          .badgeBg,
+                      },
                     ]}
                   >
-                    {accessLevel(ticket.accessLevel).short}
-                  </Text>
-                </View>
-              ) : null}
-              <Text style={styles.tierDetail}>{ticket.tierName}</Text>
-            </View>
-            <Caption style={{ fontFamily: "Menlo" }}>
-              {ticket.ticketNumber}
-            </Caption>
+                    <Text
+                      style={[
+                        styles.levelChipLabel,
+                        { color: accessLevel(ticket.accessLevel).badgeFg },
+                      ]}
+                    >
+                      {accessLevel(ticket.accessLevel).short}
+                    </Text>
+                  </View>
+                ) : null}
+                <Text style={styles.tierDetail}>{ticket.tierName}</Text>
+              </View>
+              <Caption style={{ fontFamily: "Menlo" }}>
+                {ticket.ticketNumber}
+              </Caption>
 
-            <View style={{ gap: space.sm, marginTop: space.md }}>
-              {ticket.appleWalletUrl ? (
-                <Button
-                  variant="outline"
-                  onPress={() =>
-                    void WebBrowser.openBrowserAsync(
-                      absolute(ticket.appleWalletUrl!),
-                    )
-                  }
-                >
-                  Add to Apple Wallet
-                </Button>
-              ) : null}
-              {/* Google Wallet has no iOS app, so on a handset the button
+              <View style={{ gap: space.sm, marginTop: space.md }}>
+                {ticket.appleWalletUrl ? (
+                  <Button
+                    variant="outline"
+                    onPress={() =>
+                      void WebBrowser.openBrowserAsync(
+                        absolute(ticket.appleWalletUrl!),
+                      )
+                    }
+                  >
+                    Add to Apple Wallet
+                  </Button>
+                ) : null}
+                {/* Google Wallet has no iOS app, so on a handset the button
                   would open a page that cannot finish. */}
-              {ticket.googleWalletUrl && Platform.OS !== "ios" ? (
-                <Button
-                  variant="outline"
-                  onPress={() =>
-                    void WebBrowser.openBrowserAsync(
-                      absolute(ticket.googleWalletUrl!),
-                    )
-                  }
-                >
-                  Add to Google Wallet
-                </Button>
-              ) : null}
+                {ticket.googleWalletUrl && Platform.OS !== "ios" ? (
+                  <Button
+                    variant="outline"
+                    onPress={() =>
+                      void WebBrowser.openBrowserAsync(
+                        absolute(ticket.googleWalletUrl!),
+                      )
+                    }
+                  >
+                    Add to Google Wallet
+                  </Button>
+                ) : null}
+              </View>
             </View>
           </View>
-        </View>
-      ))}
+        ))}
 
-      <Caption style={{ textAlign: "center" }}>
-        Order {data.orderNumber}
-      </Caption>
-    </ScrollView>
+        <Caption style={{ textAlign: "center" }}>
+          Order {data.orderNumber}
+        </Caption>
+      </ScrollView>
+    </View>
   );
 }
 

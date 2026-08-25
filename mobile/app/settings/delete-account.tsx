@@ -1,21 +1,20 @@
 import { useState } from "react";
 import { useRouter } from "expo-router";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ArrowLeft } from "lucide-react-native";
+import { ScrollView, StyleSheet, TextInput, View } from "react-native";
 
 import { api } from "@/lib/api";
 import { API_URL } from "@/lib/env";
 import { authClient, signOut, useAuth } from "@/lib/auth";
 import { clearRegisteredPushToken, getRegisteredPushToken } from "@/lib/push";
 import { colors, radius, space, stroke } from "@/lib/theme";
-import { Body, Button, Caption, Eyebrow, Notice, Title } from "@/components/ui";
+import {
+  Body,
+  Button,
+  Caption,
+  Eyebrow,
+  Header,
+  Notice,
+} from "@/components/ui";
 
 /** Typed in full, so this cannot happen by fat finger on a night out. */
 const CONFIRMATION = "DELETE";
@@ -33,7 +32,6 @@ const CONFIRMATION = "DELETE";
  * with no password to re-enter. See `user.deleteUser` in `src/server/auth.ts`.
  */
 export default function DeleteAccountScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
 
@@ -71,99 +69,94 @@ export default function DeleteAccountScreen() {
   };
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: colors.bg }}
-      contentContainerStyle={{
-        paddingTop: insets.top + space.lg,
-        paddingBottom: space.xxl,
-        paddingHorizontal: space.lg,
-        gap: space.lg,
-      }}
-      keyboardShouldPersistTaps="handled"
-    >
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <ArrowLeft color={colors.text} size={22} strokeWidth={2.5} />
-        </Pressable>
-        <Title>Delete account</Title>
-      </View>
-
-      {sent ? (
-        <>
-          <Notice
-            title="Check your email"
-            detail={`We've sent a confirmation link to ${user?.email ?? "your address"}. Your account is deleted when you open it, and not before.`}
-          />
-          <Button
-            onPress={() => {
-              void signOut();
-              router.replace("/(tabs)");
-            }}
-          >
-            Sign out on this phone
-          </Button>
-          <Button variant="outline" onPress={() => router.back()}>
-            I&apos;ve changed my mind
-          </Button>
-        </>
-      ) : (
-        <>
-          <View style={styles.panel}>
-            <Eyebrow>What goes</Eyebrow>
-            <Body soft style={styles.line}>
-              Your name, your email address and any phone number on your orders.
-              Your newsletter subscription. Every device signed in to this
-              account.
-            </Body>
-          </View>
-
-          <View style={styles.panel}>
-            <Eyebrow>What stays</Eyebrow>
-            <Body soft style={styles.line}>
-              Tickets you have already bought keep working at the door — use the
-              QR code in your confirmation email or your wallet pass. The orders
-              behind them stay on our books with your details stripped off,
-              because we are required to keep sales records.
-            </Body>
-          </View>
-
-          <View style={{ gap: space.xs }}>
-            <Caption>Type {CONFIRMATION} to confirm</Caption>
-            <TextInput
-              value={typed}
-              onChangeText={setTyped}
-              autoCapitalize="characters"
-              autoCorrect={false}
-              style={styles.input}
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Header title="Delete account" onBack={() => router.back()} />
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingTop: space.lg,
+          paddingBottom: space.xxl,
+          paddingHorizontal: space.lg,
+          gap: space.lg,
+        }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {sent ? (
+          <>
+            <Notice
+              title="Check your email"
+              detail={`We've sent a confirmation link to ${user?.email ?? "your address"}. Your account is deleted when you open it, and not before.`}
             />
-          </View>
-
-          {error ? (
-            <View style={styles.error}>
-              <Caption style={{ color: colors.deny }}>{error}</Caption>
+            <Button
+              onPress={() => {
+                void signOut();
+                router.replace("/(tabs)");
+              }}
+            >
+              Sign out on this phone
+            </Button>
+            <Button variant="outline" onPress={() => router.back()}>
+              I&apos;ve changed my mind
+            </Button>
+          </>
+        ) : (
+          <>
+            <View style={styles.panel}>
+              <Eyebrow>What goes</Eyebrow>
+              <Body soft style={styles.line}>
+                Your name, your email address and any phone number on your
+                orders. Your newsletter subscription. Every device signed in to
+                this account.
+              </Body>
             </View>
-          ) : null}
 
-          <Button
-            disabled={typed.trim().toUpperCase() !== CONFIRMATION}
-            loading={pending}
-            onPress={() => void request()}
-          >
-            Delete my account
-          </Button>
+            <View style={styles.panel}>
+              <Eyebrow>What stays</Eyebrow>
+              <Body soft style={styles.line}>
+                Tickets you have already bought keep working at the door — use
+                the QR code in your confirmation email or your wallet pass. The
+                orders behind them stay on our books with your details stripped
+                off, because we are required to keep sales records.
+              </Body>
+            </View>
 
-          <Caption style={{ textAlign: "center" }}>
-            We&apos;ll email you a link to confirm. Nothing is deleted until you
-            open it.
-          </Caption>
-        </>
-      )}
-    </ScrollView>
+            <View style={{ gap: space.xs }}>
+              <Caption>Type {CONFIRMATION} to confirm</Caption>
+              <TextInput
+                value={typed}
+                onChangeText={setTyped}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                style={styles.input}
+              />
+            </View>
+
+            {error ? (
+              <View style={styles.error}>
+                <Caption style={{ color: colors.deny }}>{error}</Caption>
+              </View>
+            ) : null}
+
+            <Button
+              disabled={typed.trim().toUpperCase() !== CONFIRMATION}
+              loading={pending}
+              onPress={() => void request()}
+            >
+              Delete my account
+            </Button>
+
+            <Caption style={{ textAlign: "center" }}>
+              We&apos;ll email you a link to confirm. Nothing is deleted until
+              you open it.
+            </Caption>
+          </>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "center", gap: space.md },
   panel: {
     gap: space.xs,
     padding: space.lg,

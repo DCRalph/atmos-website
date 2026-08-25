@@ -22,8 +22,19 @@ import { api, type RouterOutputs } from "@/lib/api";
 import { colors, radius, space, stroke } from "@/lib/theme";
 import { formatGigDateLong, formatGigTime } from "@/lib/dates";
 import { isTba } from "@/lib/gig";
-import { Body, Button, Caption, Eyebrow, Loading, Notice, Pill } from "@/components/ui";
-import { LexicalContent, hasLexicalContent } from "@/components/lexical-content";
+import {
+  Body,
+  Button,
+  Caption,
+  Eyebrow,
+  Loading,
+  Notice,
+  Pill,
+} from "@/components/ui";
+import {
+  LexicalContent,
+  hasLexicalContent,
+} from "@/components/lexical-content";
 import { LineUpAvatars } from "@/components/gig/line-up";
 import { MediaGallery } from "@/components/gig/media-gallery";
 
@@ -325,7 +336,8 @@ function TicketCta({
         variant="outline"
         onPress={() =>
           void WebBrowser.openBrowserAsync(fallbackLink, {
-            presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+            presentationStyle:
+              WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
             controlsColor: colors.text,
             toolbarColor: colors.bg,
           })
@@ -347,13 +359,7 @@ function TicketCta({
  * panel is the part of that screen worth having early — what exists, what it
  * costs, what is nearly gone — and every row is a way in.
  */
-function TierPanel({
-  event,
-  onBuy,
-}: {
-  event: GigEvent;
-  onBuy: () => void;
-}) {
+function TierPanel({ event, onBuy }: { event: GigEvent; onBuy: () => void }) {
   if (event.tiers.length === 0) return null;
 
   return (
@@ -403,14 +409,17 @@ function Tag({ tag }: { tag: { name: string; color: string } }) {
   );
 }
 
-/** The black fade that pulls the artwork into the page. */
+/**
+ * The black fade that pulls the artwork into the page. The top stop is dark
+ * enough to hold the clock and battery legible over a light poster.
+ */
 function Fade() {
   return (
     <Svg style={StyleSheet.absoluteFill} preserveAspectRatio="none">
       <Defs>
         <SvgLinearGradient id="heroFade" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#000" stopOpacity="0.35" />
-          <Stop offset="0.35" stopColor="#000" stopOpacity="0.05" />
+          <Stop offset="0" stopColor="#000" stopOpacity="0.65" />
+          <Stop offset="0.3" stopColor="#000" stopOpacity="0.05" />
           <Stop offset="0.62" stopColor="#000" stopOpacity="0.55" />
           <Stop offset="0.94" stopColor="#000" stopOpacity="1" />
         </SvgLinearGradient>
@@ -422,9 +431,7 @@ function Fade() {
 
 /** "$35", or "$35.50" only when the cents are real. */
 function money(cents: number): string {
-  return cents % 100 === 0
-    ? `$${cents / 100}`
-    : `$${(cents / 100).toFixed(2)}`;
+  return cents % 100 === 0 ? `$${cents / 100}` : `$${(cents / 100).toFixed(2)}`;
 }
 
 const styles = StyleSheet.create({
