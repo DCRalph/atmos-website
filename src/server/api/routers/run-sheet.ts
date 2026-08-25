@@ -55,8 +55,10 @@ async function visibleGigIds(ctx: {
   ];
 }
 
-/** How far either side of now a gig counts as "on". */
-const TONIGHT_HOURS = 12;
+/** How long before a gig's first cue it appears in the app's list. */
+const TONIGHT_LEAD_HOURS = 12;
+/** How long after a gig ends its run sheet stays listed. */
+const TONIGHT_TAIL_HOURS = 24;
 
 const RUN_SHEET_INCLUDE = {
   scheduleItems: {
@@ -174,29 +176,27 @@ export const runSheetRouter = createTRPCRouter({
   /**
    * Gigs with a run sheet running around now, for the app's way in.
    *
-   * Keyed off the rows rather than off `gigStartTime`, because a load-in is
-   * hours before the gig starts and that is exactly when somebody opens this.
+   * The way in opens off the rows rather than off `gigStartTime`, because a
+   * load-in is hours before the gig starts and that is exactly when somebody
+   * opens this. The way out is a day after the gig ends: the morning after is
+   * when set times get checked against what actually happened.
    */
   tonight: doorProcedure.query(async ({ ctx }) => {
-    const span = TONIGHT_HOURS * 60 * 60 * 1000;
     const now = Date.now();
+    const leadEdge = new Date(now + TONIGHT_LEAD_HOURS * 60 * 60 * 1000);
+    const tailEdge = new Date(now - TONIGHT_TAIL_HOURS * 60 * 60 * 1000);
     const visible = await visibleGigIds(ctx);
     if (visible !== null && visible.length === 0) return [];
 
-    const items = await ctx.db.gigScheduleItem.findMany({
-      where: {
-        startsAt: {
-          gte: new Date(now - span),
-          lte: new Date(now + span),
-        },
-        ...(visible === null ? {} : { gigId: { in: visible } }),
-      },
-      select: { gigId: true },
-      distinct: ["gigId"],
-    });
-
     return ctx.db.gig.findMany({
-      where: { id: { in: items.map((row) => row.gigId) } },
+      where: {
+        scheduleItems: { some: { startsAt: { lte: leadEdge } } },
+        OR: [
+          { gigEndTime: { gte: tailEdge } },
+          { gigEndTime: null, gigStartTime: { gte: tailEdge } },
+        ],
+        ...(visible === null ? {} : { id: { in: visible } }),
+      },
       orderBy: { gigStartTime: "asc" },
       select: {
         id: true,

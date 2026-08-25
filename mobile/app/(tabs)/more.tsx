@@ -30,7 +30,7 @@ export default function MoreScreen() {
   // Nothing internal renders until the server has confirmed this account is
   // staff — see `useStaff`. `ready` matters as much as the answer: drawing the
   // section optimistically would flash "Internal" at a punter on every launch.
-  const { isDoorStaff, isOrganiser, isStaff, ready: staffReady } = useStaff();
+  const { isOrganiser, isStaff, ready: staffReady } = useStaff();
 
   // One number, so the way into the rooms can say whether it is worth opening.
   // Gated on `isStaff` rather than fired for everybody: a punter's More tab
@@ -154,12 +154,10 @@ export default function MoreScreen() {
               </Pressable>
             ) : (
               <>
-                {isDoorStaff && (
-                  <Row
-                    label="Door mode"
-                    onPress={() => router.push("/(door)")}
-                  />
-                )}
+                {/* For all staff, not just tonight's roster: the picker inside
+                    says "you're not on the door" better than a missing row
+                    does, and the server refuses scans regardless. */}
+                <Row label="Door mode" onPress={() => router.push("/(door)")} />
                 {/* Above event analytics on purpose: on a gig night this is the
                   row anybody opening this section actually wants. */}
                 <Row

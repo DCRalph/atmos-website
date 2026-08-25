@@ -30,18 +30,28 @@ fail() { echo "error: $*" >&2; exit 1; }
 
 # ---------------------------------------------------------------- 0. device
 
+# The list is fixed-width columns three-plus spaces apart: Name, Hostname,
+# Identifier, State, Model. Matching the State column against `^available`
+# matters — a bare /available/ also matches "unavailable", which once aimed a
+# ten-minute build at a phone that had gone to sleep. The identifier comes
+# back rather than the name, so a name with spaces cannot break the install.
+pick_device() {
+  xcrun devicectl list devices 2>/dev/null |
+    awk -F '   +' '$5 ~ /iPhone/ && $4 ~ /^available/ {print $3; exit}'
+}
+
 DEVICE="${1:-}"
 if [ -z "$DEVICE" ]; then
   # CoreDevice drops a phone from this list for a few seconds around tunnel
   # activity (an install or launch that just finished), so poll briefly rather
   # than failing on the first empty read.
   for _ in 1 2 3 4 5; do
-    DEVICE="$(xcrun devicectl list devices 2>/dev/null |
-      awk '/iPhone/ && /available/ {print $1; exit}')"
+    DEVICE="$(pick_device)"
     [ -n "$DEVICE" ] && break
     sleep 3
   done
-  [ -n "$DEVICE" ] || fail "no available iPhone found — pass a device name or UDID"
+  [ -n "$DEVICE" ] ||
+    fail "no available iPhone found — unlock it or plug it in, or pass a device name or UDID"
 fi
 echo "==> Installing to: $DEVICE"
 
@@ -105,7 +115,20 @@ IPA="$(ls "$OUT/device"/*.ipa 2>/dev/null | head -1)"
 # ---------------------------------------------------------------- 4. install
 
 echo "==> Installing $(basename "$IPA")"
-xcrun devicectl device install app --device "$DEVICE" "$IPA"
+# The archive runs long enough for a phone to lock and drop its CoreDevice
+# tunnel, so the install is retried while the phone reconnects rather than
+# throwing the build away on the first refusal.
+installed=false
+for attempt in 1 2 3 4 5; do
+  if xcrun devicectl device install app --device "$DEVICE" "$IPA"; then
+    installed=true
+    break
+  fi
+  echo "==> Install failed ($attempt/5) — is the phone awake and nearby? Retrying in 10s"
+  sleep 10
+done
+[ "$installed" = true ] ||
+  fail "could not reach $DEVICE — unlock the phone and rerun; the signed .ipa is already in $OUT/device"
 
 # Best-effort: bring it to the front. Fails harmlessly if the phone is locked.
 xcrun devicectl device process launch --device "$DEVICE" "$BUNDLE_ID" >/dev/null 2>&1 || true
