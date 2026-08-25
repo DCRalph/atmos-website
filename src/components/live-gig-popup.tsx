@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { api } from "~/trpc/react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { formatTime } from "~/lib/date-utils";
+import { gigPath } from "~/lib/gig-url";
 import Link from "next/link";
 
 export function LiveGigPopup() {
@@ -204,7 +205,7 @@ export function LiveGigPopup() {
                   {/* Buttons */}
                   <div className="flex flex-1 items-center justify-end gap-2 sm:gap-3">
                     <Link
-                      href={`/gigs/${liveGig.id}`}
+                      href={gigPath(liveGig)}
                       onClick={() => handleMinimize()}
                       className="rounded-md border-2 border-red-500/60 bg-transparent px-4 py-2 text-center text-xs font-semibold whitespace-nowrap text-white transition-all hover:border-red-500 hover:bg-red-500/10 sm:px-6 sm:py-2.5 sm:text-sm"
                     >

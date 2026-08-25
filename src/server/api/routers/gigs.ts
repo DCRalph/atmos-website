@@ -20,9 +20,10 @@ import {
   type GigMedia,
 } from "~Prisma/client";
 import { toPublicLineUp } from "~/lib/run-sheet/line-up";
+import { gigSlug } from "~/lib/gig-url";
 import { userHasPermission } from "~/server/utils/permissions";
 import type { SerializedEditorState } from "lexical";
-import { Prisma } from "~Prisma/client";
+import { Prisma, type PrismaClient } from "~Prisma/client";
 
 /**
  * A serialized Lexical editor state. We only check that the value is an
@@ -266,6 +267,29 @@ const redactGigForPublic = <T extends { mode?: GigMode }>(gig: T) => {
 
 const redactGigsForPublic = <T extends { mode?: GigMode }>(gigs: T[]) =>
   gigs.map(redactGigForPublic);
+
+/**
+ * A gig page URL carries either the cuid or a slug of the title — see
+ * `gigPath` in ~/lib/gig-url. The cuid wins; failing that, every title is
+ * slugged and compared, newest night first, so a reused title resolves to the
+ * most recent gig.
+ */
+async function resolveGigId(
+  db: PrismaClient,
+  idOrSlug: string,
+): Promise<string | null> {
+  const byId = await db.gig.findUnique({
+    where: { id: idOrSlug },
+    select: { id: true },
+  });
+  if (byId) return byId.id;
+
+  const gigs = await db.gig.findMany({
+    select: { id: true, title: true },
+    orderBy: { gigStartTime: "desc" },
+  });
+  return gigs.find((gig) => gigSlug(gig.title) === idOrSlug)?.id ?? null;
+}
 
 async function getFileUploadInfoById(
   db: any,
@@ -866,20 +890,24 @@ export const gigsRouter = createTRPCRouter({
   getById: publicProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const gig = await ctx.db.gig.findUnique({
-        where: { id: input.id },
-        include: {
-          media: {
-            orderBy: [
-              { section: "asc" },
-              { sortOrder: "asc" },
-              { createdAt: "asc" },
-            ],
-          },
-          gigTags: { include: { gigTag: true } },
-          scheduleItems: { select: LINE_UP_SELECT },
-        },
-      });
+      // The page URL may carry a title slug instead of the cuid.
+      const gigId = await resolveGigId(ctx.db, input.id);
+      const gig = gigId
+        ? await ctx.db.gig.findUnique({
+            where: { id: gigId },
+            include: {
+              media: {
+                orderBy: [
+                  { section: "asc" },
+                  { sortOrder: "asc" },
+                  { createdAt: "asc" },
+                ],
+              },
+              gigTags: { include: { gigTag: true } },
+              scheduleItems: { select: LINE_UP_SELECT },
+            },
+          })
+        : null;
 
       if (!gig) return null;
 

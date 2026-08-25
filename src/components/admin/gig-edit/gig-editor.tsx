@@ -15,6 +15,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { api } from "~/trpc/react";
+import { gigPath } from "~/lib/gig-url";
 import { AdminSection } from "~/components/admin/admin-section";
 import { GigMediaManager } from "~/components/admin/gig-media-manager";
 import { SaveStatusPill } from "~/components/admin/save-status";
@@ -552,7 +553,11 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
         <div className="flex items-center gap-2">
           {gigId ? (
             <Button variant="outline" asChild>
-              <a href={`/gigs/${gigId}`} target="_blank" rel="noreferrer">
+              <a
+                href={gig ? gigPath(gig) : `/gigs/${gigId}`}
+                target="_blank"
+                rel="noreferrer"
+              >
                 <ExternalLink className="h-4 w-4" />
                 View gig
               </a>

@@ -13,6 +13,7 @@ import { BuyPanel } from "~/components/ticketing/buy-panel";
 import { LexicalContent } from "~/components/lexical";
 import { Skeleton } from "~/components/ui/skeleton";
 import { usePageMetadata } from "~/hooks/use-page-metadata";
+import { gigPath } from "~/lib/gig-url";
 import { SITE_URL } from "~/lib/seo-constants";
 
 /** Public event page. The buy panel sticks to the side on desktop. */
@@ -125,7 +126,7 @@ export default function EventPage() {
 
           {data.gig && (
             <Link
-              href={`/gigs/${data.gig.id}`}
+              href={gigPath(data.gig)}
               className="mt-8 inline-block text-sm text-white/50 underline underline-offset-4 hover:text-white"
             >
               More about this gig

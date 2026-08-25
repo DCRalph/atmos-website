@@ -31,6 +31,10 @@ const PILL_TITLES = new Set(SOCIAL_PLATFORMS.map((p) => p.pillTitle));
 const PILL_BASE_CLASSES = [
   "social-pill",
   "inline-flex",
+  // `align-middle` keeps surrounding text vertically centered with the pill;
+  // without it the browser baseline-aligns off the icon image and the pill
+  // rides high relative to the line.
+  "align-middle",
   "items-center",
   "gap-1.5",
   "rounded-full",

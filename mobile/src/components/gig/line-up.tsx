@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import {
   Animated,
   Easing,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -344,6 +345,25 @@ function Actions({ summary }: { summary: ArtistSummary }) {
       toolbarColor: colors.bg,
     });
 
+  /**
+   * Into the Instagram app when it is installed, not a web view of a login
+   * wall. `openURL` with the app's scheme rejects when it has nobody to hand
+   * to (and needs no LSApplicationQueriesSchemes entry, unlike `canOpenURL`),
+   * so the in-app browser is the catch, not the default.
+   */
+  const openInstagram = async (url: string) => {
+    const username = instagramUsername(url);
+    if (username) {
+      try {
+        await Linking.openURL(`instagram://user?username=${username}`);
+        return;
+      } catch {
+        // Not installed — fall through to the browser.
+      }
+    }
+    open(url);
+  };
+
   return (
     <View style={styles.actions}>
       {profileUrl ? (
@@ -359,7 +379,7 @@ function Actions({ summary }: { summary: ArtistSummary }) {
       {summary.instagramUrl ? (
         <Pressable
           accessibilityRole="button"
-          onPress={() => open(summary.instagramUrl!)}
+          onPress={() => void openInstagram(summary.instagramUrl!)}
           style={({ pressed }) => [
             styles.action,
             profileUrl && styles.actionDivider,
@@ -464,6 +484,19 @@ function Poster({ gig, width }: { gig: SummaryGig; width?: number }) {
       )}
     </View>
   );
+}
+
+/**
+ * The username out of a profile URL — `https://www.instagram.com/atmos.nz/?hl=en`
+ * gives `atmos.nz`. Post and reel paths are not profiles, so they stay on the
+ * web URL rather than opening the wrong screen in the app.
+ */
+function instagramUsername(url: string): string | null {
+  const name = /instagram\.com\/([A-Za-z0-9._]+)/.exec(url)?.[1];
+  if (!name) return null;
+  return ["p", "reel", "reels", "stories", "explore"].includes(name)
+    ? null
+    : name;
 }
 
 /** A TBA gig keeps its secret here too. */

@@ -70,9 +70,13 @@ export default function GigScreen() {
   };
 
   const gig = api.gigs.getById.useQuery({ id }, { enabled: !!id });
+  // The URL may carry a title slug instead of the cuid (the website's pretty
+  // links, see src/lib/gig-url.ts), so the ticket lookup waits for the real
+  // id to come back with the gig.
+  const gigDbId = gig.data?.id;
   const event = api.ticketEvents.forGig.useQuery(
-    { gigId: id },
-    { enabled: !!id },
+    { gigId: gigDbId ?? "" },
+    { enabled: !!gigDbId },
   );
 
   if (gig.isPending) return <Loading label="Loading gig" />;

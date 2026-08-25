@@ -194,6 +194,7 @@ import { GigPhotoCarousel } from "./gig-photo-carousel";
 import Link from "next/link";
 import { AccentGlowCard } from "~/components/ui/accent-glow-card";
 import { motion } from "framer-motion";
+import { gigPath } from "~/lib/gig-url";
 
 type MediaItem = {
   id: string;
@@ -245,7 +246,7 @@ export function PastGigHomeCard({
         }}
       >
         <MotionLink
-          href={`/gigs/${gig.id}`}
+          href={gigPath(gig)}
           className="flex h-full flex-col justify-between gap-4"
         >
           {/* <div className=""> */}
@@ -282,7 +283,7 @@ export function PastGigHomeCard({
       }}
     >
       <MotionLink
-        href={`/gigs/${gig.id}`}
+        href={gigPath(gig)}
         className="flex h-full flex-col gap-4 md:h-full lg:gap-6"
       >
         <div className="order-2 flex min-w-0 flex-col gap-3 lg:order-1 lg:basis-1/3 lg:gap-4">

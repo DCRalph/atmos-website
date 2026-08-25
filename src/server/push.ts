@@ -2,6 +2,7 @@ import "server-only";
 
 import type { Prisma } from "~Prisma/client";
 
+import { gigPath } from "~/lib/gig-url";
 import { db } from "~/server/db";
 
 /**
@@ -182,7 +183,7 @@ export async function announceGig({
     audience: { kind: "everyone", channel: "gigAnnouncements" },
     title: "New date announced",
     body: `${title} — ${when}`,
-    data: { url: `/gigs/${gigId}` },
+    data: { url: gigPath({ id: gigId, title }) },
   });
 }
 

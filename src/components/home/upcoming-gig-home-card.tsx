@@ -8,6 +8,7 @@ import { motion } from "motion/react";
 import Image from "next/image";
 import { api } from "~/trpc/react";
 import { GigPoster } from "~/components/gigs/gig-poster";
+import { gigParam, gigPath } from "~/lib/gig-url";
 
 type Gig = {
   id: string;
@@ -35,11 +36,11 @@ export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
   const posterLayoutId = `gig-poster-${gig.id}`;
   const utils = api.useUtils();
   const router = useRouter();
-  const gigHref = `/gigs/${gig.id}`;
+  const gigHref = gigPath(gig);
 
   const prefetchGig = useCallback(() => {
     void router.prefetch(gigHref);
-    void utils.gigs.getById.prefetch({ id: gig.id });
+    void utils.gigs.getById.prefetch({ id: gigParam(gig) });
   }, [gig.id, gigHref, router, utils.gigs.getById]);
 
   useEffect(() => {

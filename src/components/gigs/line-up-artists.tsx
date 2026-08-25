@@ -19,6 +19,7 @@ import {
   formatDateTime,
   isGigPast,
 } from "~/lib/date-utils";
+import { gigPath } from "~/lib/gig-url";
 import { type PublicLineUpEntry } from "~/lib/run-sheet/line-up";
 import { getPlatform } from "~/lib/social-pills";
 import { cn } from "~/lib/utils";
@@ -236,7 +237,7 @@ function SummaryBody({
         <div className="px-5 pb-4">
           <SectionHeading label="Upcoming" count={upcoming.length} highlight />
           <Link
-            href={`/gigs/${next.id}`}
+            href={gigPath(next)}
             onClick={onNavigate}
             className="from-accent-strong/40 hover:from-accent-strong/60 flex items-center gap-4 bg-linear-to-r to-transparent p-2.5 transition-colors"
           >
@@ -272,7 +273,7 @@ function SummaryBody({
             {strip.map((gig) => (
               <Link
                 key={gig.id}
-                href={`/gigs/${gig.id}`}
+                href={gigPath(gig)}
                 onClick={onNavigate}
                 title={`${gigTitle(gig)} · ${formatDate(gig.gigStartTime, "short")}`}
                 className="min-w-0 flex-1 transition-opacity hover:opacity-80"

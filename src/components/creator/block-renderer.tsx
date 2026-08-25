@@ -7,6 +7,7 @@ import { SoundCloudPlayer } from "~/components/soundcloud-player";
 import { YouTubePlayer } from "~/components/youtube-player";
 import { LexicalContent } from "~/components/lexical";
 import { buildMediaUrl } from "~/lib/media-url";
+import { gigPath } from "~/lib/gig-url";
 import { type CreatorBlockTypeName } from "./block-types";
 import { PastGigsBlock } from "./past-gigs-block";
 import { SocialLinksBlock } from "./social-links-block";
@@ -285,7 +286,7 @@ export function BlockRenderer({
           {attributions.map((g) => (
             <Link
               key={g.id}
-              href={`/gigs/${g.gig.id}`}
+              href={gigPath(g.gig)}
               className="bg-card hover:bg-accent/40 rounded-md border p-3 text-sm"
             >
               {g.gig.posterFileUploadId && (

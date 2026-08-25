@@ -6,6 +6,7 @@ import { EventJsonLd, BreadcrumbJsonLd } from "~/components/seo/json-ld";
 import { usePageMetadata } from "~/hooks/use-page-metadata";
 import { api } from "~/trpc/react";
 import { getMediaDisplayUrl } from "~/lib/media-url";
+import { gigPath } from "~/lib/gig-url";
 import {
   DEFAULT_OG_IMAGE,
   DESCRIPTION_SHORT,
@@ -38,7 +39,9 @@ export default function page({ params }: { params: Promise<{ id: string }> }) {
   const mediaImage =
     posterImage ||
     (firstPhoto ? getMediaDisplayUrl(firstPhoto) : DEFAULT_OG_IMAGE);
-  const canonical = `${SITE_URL}/gigs/${id}`;
+  // The pretty slug URL is canonical; the cuid form of the same page defers
+  // to it. Falls back to the requested param until the gig loads.
+  const canonical = `${SITE_URL}${gig ? gigPath(gig) : `/gigs/${id}`}`;
   const fullTitle = `${baseTitle} | Gig | ${SITE_NAME}`;
 
   // Set up page metadata
@@ -75,7 +78,7 @@ export default function page({ params }: { params: Promise<{ id: string }> }) {
             items={[
               { name: "Home", url: "/" },
               { name: "Events", url: "/gigs" },
-              { name: gig.title, url: `/gigs/${id}` },
+              { name: gig.title, url: gigPath(gig) },
             ]}
           />
         </>

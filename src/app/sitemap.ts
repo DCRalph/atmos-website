@@ -1,6 +1,7 @@
 import { type MetadataRoute } from "next";
 import { db } from "~/server/db";
 import { env } from "~/env";
+import { gigPath } from "~/lib/gig-url";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = env.NEXT_PUBLIC_APP_URL ?? "https://atmosmedia.co.nz";
@@ -81,6 +82,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const gigs = await db.gig.findMany({
       select: {
         id: true,
+        title: true,
+        mode: true,
         updatedAt: true,
         gigStartTime: true,
       },
@@ -90,7 +93,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
 
     gigPages = gigs.map((gig) => ({
-      url: `${siteUrl}/gigs/${gig.id}`,
+      url: `${siteUrl}${gigPath(gig)}`,
       lastModified: gig.updatedAt,
       changeFrequency: "weekly" as const,
       // Upcoming events get higher priority

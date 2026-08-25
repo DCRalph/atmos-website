@@ -12,6 +12,7 @@ import { FaInstagram } from "react-icons/fa6";
 
 import { orbitron } from "~/lib/fonts";
 import { formatDate, formatTime } from "~/lib/date-utils";
+import { gigPath } from "~/lib/gig-url";
 
 import { api, type RouterOutputs } from "~/trpc/react";
 
@@ -369,7 +370,7 @@ const UpcomingGigLink = ({ gig }: { gig: UpcomingGig }) => {
             {!isTba && (
               <div className="flex gap-3">
                 <Link
-                  href={`/gigs/${gig.id}`}
+                  href={gigPath(gig)}
                   className="group/btn relative flex flex-1 items-center justify-center gap-2 overflow-hidden border-2 border-white/30 bg-transparent px-4 py-2.5 text-center text-xs font-black tracking-wider text-white uppercase transition-all duration-200 hover:border-white hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.15)]"
                 >
                   <span className="relative z-10 transition-transform duration-200 group-hover/btn:-translate-x-0.5">

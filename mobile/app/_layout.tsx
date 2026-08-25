@@ -1,5 +1,4 @@
-import { Stack, useRouter } from "expo-router";
-import { useEffect } from "react";
+import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -8,11 +7,6 @@ import { Providers } from "@/components/providers";
 import { colors } from "@/lib/theme";
 
 export default function RootLayout() {
-  const __shotRouter = useRouter();
-  useEffect(() => {
-    const t = setTimeout(() => __shotRouter.replace("/"), 600);
-    return () => clearTimeout(t);
-  }, []);
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
       <SafeAreaProvider>

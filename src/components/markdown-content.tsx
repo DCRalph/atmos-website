@@ -158,7 +158,7 @@ export function MarkdownContent({
                   target="_blank"
                   rel="noopener noreferrer"
                   className={clsx(
-                    "inline-flex items-center rounded-full border font-semibold no-underline transition-colors",
+                    "inline-flex items-center rounded-full border align-middle font-semibold no-underline transition-colors",
                     pillPlatform.pillClassName,
                     pill.wrapper,
                   )}

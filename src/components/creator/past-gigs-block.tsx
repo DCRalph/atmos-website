@@ -13,6 +13,7 @@ import {
 } from "~/components/ui/dialog";
 import { buildMediaUrl } from "~/lib/media-url";
 import { formatDate } from "~/lib/date-utils";
+import { gigPath } from "~/lib/gig-url";
 import { type PublicGigAttribution } from "./block-renderer";
 
 type Props = {
@@ -169,7 +170,7 @@ function PastGigCard({
   const title = isTba ? "TBA" : gig.title;
   return (
     <Link
-      href={`/gigs/${gig.id}`}
+      href={gigPath(gig)}
       className="group bg-card/60 hover:bg-card relative flex flex-col overflow-hidden rounded-xl border transition-all hover:-translate-y-0.5 hover:shadow-lg"
       style={{
         borderColor:
@@ -249,7 +250,7 @@ function PastGigRow({
   const title = isTba ? "TBA" : gig.title;
   return (
     <Link
-      href={`/gigs/${gig.id}`}
+      href={gigPath(gig)}
       onClick={onNavigate}
       className="group hover:bg-accent/40 flex items-center gap-3 rounded-lg border p-2 transition-colors"
     >
