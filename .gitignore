@@ -59,3 +59,5 @@ yarn-error.log*
 /.ui-audit/
 
 /mobile/build/
+# creator directory export (bun run creators:export)
+/creator-export/

@@ -13,6 +13,7 @@
     "db:generate": "prisma migrate dev",
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
+    "creators:export": "bun prisma/export-creators.ts",
     "db:backfill-verified": "bun prisma/backfill-email-verified.ts",
     "db:seed": "bun prisma/seed.ts",
     "db:seed-themes": "bun prisma/seed-themes.ts",
