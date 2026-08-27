@@ -57,7 +57,11 @@ import { RunSheetField } from "./run-sheet-field";
 import { PosterField } from "./poster-field";
 import { TagsField } from "./tags-field";
 import { rebaseSchedule } from "~/lib/run-sheet/night";
-import { newScheduleItem, type DraftScheduleItem, type GigDraft } from "./types";
+import {
+  newScheduleItem,
+  type DraftScheduleItem,
+  type GigDraft,
+} from "./types";
 
 /**
  * The gig admin form, for both creating and editing.
@@ -744,6 +748,8 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
             gigStart={draft.startTime}
             firedItemIds={firedItemIds}
             ticketEventDoorsAt={ticketEventDoorsAt}
+            gigId={gigId}
+            hasUnsavedChanges={isDirty}
             disabled={isSaving}
           />
 

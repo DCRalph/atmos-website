@@ -96,6 +96,10 @@ type RunSheetFieldProps = {
   firedItemIds: Set<string>;
   /** A linked ticket event's door time, used to seed the doors row once. */
   ticketEventDoorsAt: Date | null;
+  /** The saved gig, or null while it is still being created. Export needs one. */
+  gigId: string | null;
+  /** Whether the draft on screen has moved away from what was saved. */
+  hasUnsavedChanges: boolean;
   disabled?: boolean;
 };
 
@@ -107,6 +111,8 @@ export function RunSheetField({
   gigStart,
   firedItemIds,
   ticketEventDoorsAt,
+  gigId,
+  hasUnsavedChanges,
   disabled,
 }: RunSheetFieldProps) {
   const [openNotes, setOpenNotes] = useState<Set<string>>(new Set());
@@ -188,6 +194,7 @@ export function RunSheetField({
                   }`}
             </span>
             <RunningLate onShift={runLate} disabled={disabled} />
+            <ExportButton gigId={gigId} hasUnsavedChanges={hasUnsavedChanges} />
           </div>
         </div>
 
@@ -660,6 +667,47 @@ function LeadField({
       />
       min before
     </label>
+  );
+}
+
+/**
+ * The run sheet as a JSON file, for whoever wants it somewhere that is not this
+ * page: a venue's own paperwork, a promoter, a spreadsheet.
+ *
+ * A plain link rather than a fetch, because the browser already knows how to
+ * save a file and the route already names it. Not offered until the gig exists
+ * and there is nothing unsaved: the export reads the database, so offering it
+ * over a modified draft would hand somebody the wrong night without saying so.
+ */
+function ExportButton({
+  gigId,
+  hasUnsavedChanges,
+}: {
+  gigId: string | null;
+  hasUnsavedChanges: boolean;
+}) {
+  if (!gigId) return null;
+
+  if (hasUnsavedChanges) {
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled
+        title="Save first. An export reads the saved run sheet."
+      >
+        Export JSON
+      </Button>
+    );
+  }
+
+  return (
+    <Button type="button" size="sm" variant="outline" asChild>
+      <a href={`/api/gigs/${gigId}/run-sheet`} download>
+        Export JSON
+      </a>
+    </Button>
   );
 }
 
