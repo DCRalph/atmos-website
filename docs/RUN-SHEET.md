@@ -146,6 +146,23 @@ A missed poke is not reserved or written off the way a cue is. It leaves a lock
 screen briefly naming the wrong item, which rights itself at the next item or
 the next time the app is opened, and that is not worth a table.
 
+### Trying it without a gig
+
+**More → Internal → Test lock screen** puts a fake night up: forty-five seconds
+of countdown, then four items over three minutes, then it takes itself down. It
+exercises every state the widget draws without a gig, a roster or a run sheet to
+type in first.
+
+It does not exercise the silent push. The test is ticked by a timer in the app,
+and iOS suspends those in the background, so watching it from a locked handset
+shows the bars and the countdown moving but the names holding until you come
+back. That difference is the reason the real thing is pushed from the server
+rather than ticked on the phone.
+
+While a test is up it owns the lock screen and the real run sheet stands back —
+`useRunSheetLiveActivity` drives both, so there is only ever one owner. The real
+one goes back up in full the moment the test ends.
+
 ### What it cannot do
 
 **iOS will not let an app start a Live Activity from the background.** One goes

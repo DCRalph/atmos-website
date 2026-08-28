@@ -16,6 +16,7 @@ import { signOut, useAuth } from "@/lib/auth";
 import { useBiometrics, useBiometricGate } from "@/lib/biometrics";
 import { clearRegisteredPushToken, getRegisteredPushToken } from "@/lib/push";
 import { useStaff } from "@/lib/staff";
+import { useLiveActivityTest } from "@/lib/live-activity";
 import { colors, radius, space, stroke } from "@/lib/theme";
 import { Body, Button, Caption, Eyebrow, Header } from "@/components/ui";
 
@@ -26,6 +27,7 @@ export default function MoreScreen() {
   const biometrics = useBiometrics();
   const gate = useBiometricGate();
   const unregister = api.push.unregister.useMutation();
+  const lockScreen = useLiveActivityTest();
 
   // Nothing internal renders until the server has confirmed this account is
   // staff — see `useStaff`. `ready` matters as much as the answer: drawing the
@@ -187,6 +189,35 @@ export default function MoreScreen() {
                   label="Tap to Pay guides"
                   onPress={() => router.push("/(door)/tap-to-pay")}
                 />
+                {/* A four minute fake night, for checking the widget renders at
+                    all without waiting for a real one. Hidden where iOS cannot
+                    show a Live Activity — a test that can only fail is not a
+                    test. */}
+                {lockScreen.supported && (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={
+                      lockScreen.running ? lockScreen.stop : lockScreen.start
+                    }
+                    style={({ pressed }) => [
+                      styles.row,
+                      pressed && { opacity: 0.7 },
+                    ]}
+                  >
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Body>
+                        {lockScreen.running
+                          ? "Stop lock screen test"
+                          : "Test lock screen"}
+                      </Body>
+                      <Caption>
+                        {lockScreen.running
+                          ? "A fake night, four minutes long. Lock the handset to watch it."
+                          : "Puts a fake run sheet on the lock screen for four minutes."}
+                      </Caption>
+                    </View>
+                  </Pressable>
+                )}
                 {/* Checklist 1.7. Hidden entirely when the handset has no
                   biometric enrolled — a switch that cannot be turned on is
                   worse than no switch. */}
