@@ -10,6 +10,10 @@ import {
   doorProcedure,
 } from "~/server/api/trpc";
 import { rowName, sortSchedule } from "~/lib/run-sheet/schedule";
+import {
+  activityMoments,
+  activityRows,
+} from "~/lib/run-sheet/live-activity";
 
 /**
  * Reading a run sheet.
@@ -201,6 +205,87 @@ export const runSheetRouter = createTRPCRouter({
         gigStartTime: true,
       },
     });
+  }),
+
+  /**
+   * The one run sheet this handset's lock screen is about, or nothing.
+   *
+   * Deliberately not a filtered `tonight`: the app needs the *rows*, because
+   * the Live Activity re-derives what is on now from them on every render.
+   * That is what keeps a locked phone right between one push and the next
+   * without asking the server anything.
+   *
+   * The window is wider than the activity itself — a gig is returned before it
+   * is time to show anything — so the phone can put the activity up at exactly
+   * an hour out rather than at whatever minute it next happened to refetch.
+   */
+  live: doorProcedure.query(async ({ ctx }) => {
+    const visible = await visibleGigIds(ctx);
+    if (visible !== null && visible.length === 0) return null;
+
+    const span = 12 * 60 * 60 * 1000;
+    const now = Date.now();
+
+    const gigs = await ctx.db.gig.findMany({
+      where: {
+        scheduleItems: {
+          some: {
+            startsAt: {
+              gte: new Date(now - span),
+              lte: new Date(now + span),
+            },
+          },
+        },
+        ...(visible === null ? {} : { id: { in: visible } }),
+      },
+      select: {
+        id: true,
+        title: true,
+        scheduleItems: {
+          select: {
+            id: true,
+            kind: true,
+            label: true,
+            role: true,
+            startsAt: true,
+            endsAt: true,
+            sortOrder: true,
+            leadMinutes: true,
+            artists: {
+              orderBy: { sortOrder: "asc" },
+              select: { creatorProfile: { select: { displayName: true } } },
+            },
+          },
+        },
+      },
+    });
+
+    const candidates = gigs
+      .map((gig) => ({
+        id: gig.id,
+        title: gig.title,
+        rows: activityRows(
+          gig.scheduleItems.map((item) => ({
+            ...item,
+            artists: item.artists.map((artist) => artist.creatorProfile),
+          })),
+        ),
+      }))
+      .filter((gig) => {
+        // Still ahead of us, or still running. `activityMoments` ends at the
+        // instant the activity would come down, so the last one is the whole
+        // test.
+        const moments = activityMoments(gig.rows);
+        const last = moments.at(-1);
+        return last !== undefined && last.getTime() > now;
+      })
+      .sort(
+        (a, b) =>
+          (a.rows[0]?.startsAt.getTime() ?? 0) -
+          (b.rows[0]?.startsAt.getTime() ?? 0),
+      );
+
+    return candidates[0] ?? null;
   }),
 
   /**

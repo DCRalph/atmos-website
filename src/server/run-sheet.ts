@@ -4,6 +4,14 @@ import { Prisma } from "~Prisma/client";
 
 import { db } from "~/server/db";
 import { publish } from "~/server/notify";
+import { sendSilentPush } from "~/server/push";
+import {
+  activityMoments,
+  activityPayload,
+  activityRows,
+  momentsDue,
+  runSheetActivity,
+} from "~/lib/run-sheet/live-activity";
 import {
   CATCH_UP_MINUTES,
   classifyCues,
@@ -39,13 +47,20 @@ export type SweepResult = {
   sent: number;
   /** Cues too far overdue, or with nobody to tell. Recorded, not delivered. */
   written_off: number;
+  /** Handsets woken to move a lock screen on. See `pokeLiveActivities`. */
+  woken: number;
 };
 
 export async function sweepRunSheets(now = new Date()): Promise<SweepResult> {
   const span = GIG_WINDOW_HOURS * 60 * 60 * 1000;
   const gigIds = await gigsWithCuesNear(new Date(now.getTime() - span), new Date(now.getTime() + span));
 
-  const result: SweepResult = { gigs: gigIds.length, sent: 0, written_off: 0 };
+  const result: SweepResult = {
+    gigs: gigIds.length,
+    sent: 0,
+    written_off: 0,
+    woken: 0,
+  };
 
   for (const gigId of gigIds) {
     const gig = await loadRunSheet(gigId);
@@ -106,9 +121,63 @@ export async function sweepRunSheets(now = new Date()): Promise<SweepResult> {
       });
       result.sent += 1;
     }
+
+    result.woken += await pokeLiveActivities(gig, rows, now);
   }
 
   return result;
+}
+
+/**
+ * Move the lock screen on.
+ *
+ * The Live Activity draws its countdown and its progress bar from a pair of
+ * dates, so a locked handset stays right minute to minute with nothing running
+ * on it. What it cannot do by itself is notice that one item has ended and
+ * another has begun — that changes the *names*, and names only arrive from
+ * here.
+ *
+ * So this sends nothing on an ordinary minute, and on the minute an item
+ * changes it sends one silent push carrying the whole new state. The phone
+ * does not fetch anything when it wakes: the push is the answer, worked out by
+ * the same function the app itself would have used.
+ *
+ * Unlike a cue, this is not reserved first and not written off. A missed poke
+ * is a lock screen that is briefly out of date and rights itself at the next
+ * item or the next time the app is opened, which is not worth a table.
+ */
+async function pokeLiveActivities(
+  gig: LoadedGig,
+  rows: ScheduleRow[],
+  now: Date,
+): Promise<number> {
+  const live = activityRows(rows);
+
+  if (momentsDue(activityMoments(live), now).length === 0) return 0;
+
+  // Everybody who hears anything about this night, whether they were named on
+  // the gig or on one of its items. A lock screen is about the night rather
+  // than about a cue, so it is the union rather than the override.
+  const userIds = [
+    ...new Set([
+      ...gig.notifyRecipients.map((row) => row.userId),
+      ...gig.scheduleItems.flatMap((item) =>
+        item.recipients.map((row) => row.userId),
+      ),
+    ]),
+  ];
+  if (userIds.length === 0) return 0;
+
+  const payload = activityPayload(
+    gig,
+    runSheetActivity({ id: gig.id, title: gig.title, rows: live }, now),
+  );
+
+  const { sent } = await sendSilentPush({
+    audience: { kind: "users", userIds },
+    data: { runSheetActivity: JSON.stringify(payload) },
+  });
+  return sent;
 }
 
 /**

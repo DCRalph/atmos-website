@@ -18,7 +18,12 @@ the same rows.
 | `src/app/api/cron/run-sheet/route.ts`     | The endpoint an external scheduler calls every minute.                       |
 | `src/server/api/routers/run-sheet.ts`     | Reads, for the app and for the editor. Organiser or admin only.              |
 | `src/server/api/routers/gigs.ts`          | Writes, through `gigs.saveAll`. There is no separate run sheet mutation.     |
-| `mobile/app/(admin)/run-sheet/[gigId].tsx`| The read-only run sheet in the app.                                          |
+| `mobile/app/(staff)/run-sheet/[gigId].tsx`| The read-only run sheet in the app.                                          |
+| `src/lib/run-sheet/live-activity.ts`      | What the lock screen shows, and when a phone needs waking. Pure.             |
+| `mobile/src/lib/live-activity.ts`         | Puts the Live Activity up and keeps it right while the app is open.          |
+| `mobile/modules/run-sheet-activity/`      | The native side: ActivityKit, and the silent push that moves it on.          |
+| `mobile/widget/`                          | The SwiftUI the lock screen actually draws.                                  |
+| `mobile/plugins/with-run-sheet-widget.js` | Writes the widget extension target into the generated Xcode project.         |
 
 ## The data
 
@@ -105,3 +110,70 @@ public procedure whose select has no room for a set time, a note or a non-set
 cue; `gigs.getForEditor` is a different procedure behind an admin guard, and is
 the only way to read a run sheet over tRPC. `src/lib/run-sheet/line-up.test.ts`
 asserts the key set of a public line-up entry and fails if it ever grows.
+
+## On the lock screen
+
+From an hour before the first item, an iPhone that is on the gig shows a Live
+Activity: what is on now, how long until the next thing and what that thing is.
+Before the night starts it is a countdown to the first item instead.
+
+Two bars under the name. The bright one is the current item; the faint one is
+the whole night, first row to last, so a load-in at two in the afternoon is part
+of the night rather than the night starting at doors. The night's bar only
+appears once the night has started — one that cannot have moved yet says
+nothing. Neither is labelled: the weight is the label.
+
+`src/lib/run-sheet/live-activity.ts` decides all of it, and both ends read from
+it — so the lock screen and the run sheet screen cannot disagree about what is
+on. `activityRows` reduces the schedule to a name and a span; `runSheetActivity`
+says what to show; `activityMoments` says when that answer changes.
+
+**Nothing ticks.** The countdown is a SwiftUI `Text(timerInterval:)` and the bar
+is a `ProgressView(timerInterval:)`, both drawn from a pair of dates by the
+system on a locked, suspended handset. Neither the app nor the server advances
+them. The only thing that ever has to be delivered is the *names*, and names
+change only when an item does.
+
+So the sweep sends nothing on an ordinary minute. On the minute an item changes
+— `momentsDue` — `pokeLiveActivities` sends one silent push carrying the whole
+new state, and `RunSheetActivitySubscriber` applies it in Swift. Nothing is
+fetched on that wake-up: the push is the answer, worked out by the same function
+the app would have used. That matters because a background wake-up is a couple
+of seconds, which is not enough to start JavaScript, restore a session and make
+a request.
+
+A missed poke is not reserved or written off the way a cue is. It leaves a lock
+screen briefly naming the wrong item, which rights itself at the next item or
+the next time the app is opened, and that is not worth a table.
+
+### What it cannot do
+
+**iOS will not let an app start a Live Activity from the background.** One goes
+up when somebody opens the app during the window, not on its own at T-60. On a
+night that is what tapping the lead cue notification does. Pushes can move an
+activity on and take it down; only the app in front can put one up. Doing it
+without that needs ActivityKit push-to-start tokens and a direct APNs client,
+which is a second push transport alongside Expo's and was not worth it for the
+case where nobody has opened the app all evening.
+
+iOS also allows an app only a handful of silent pushes an hour and drops the
+rest, which is the other reason the sweep pokes at item boundaries rather than
+on a timer.
+
+### The widget target
+
+A Live Activity is drawn by a widget extension: a second binary, with its own
+target, bundle identifier and Info.plist, embedded in the app's PlugIns folder.
+`expo prebuild` cannot produce one, and `ios/` is regenerated and gitignored, so
+a target added in Xcode by hand survives until the next build.
+`mobile/plugins/with-run-sheet-widget.js` writes it into the generated project
+instead, from the sources in `mobile/widget/`.
+
+`RunSheetActivityAttributes.swift` is compiled into both binaries — ActivityKit
+pairs an activity with the widget that draws it by the name of that type. It is
+copied out of the module by the plugin at prebuild rather than kept in two
+places.
+
+Signing stays automatic: `scripts/build-ipa.sh` archives with
+`-allowProvisioningUpdates`, so Xcode issues a profile for the extension's
+identifier the first time it is asked.

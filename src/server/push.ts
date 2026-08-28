@@ -25,13 +25,19 @@ const BATCH_SIZE = 100;
 
 type PushMessage = {
   to: string;
-  title: string;
-  body: string;
+  title?: string;
+  body?: string;
   data?: Record<string, string>;
   sound?: "default" | null;
   badge?: number;
   /** Expo's own scale, not ntfy's — a low-priority push may be held back. */
   priority?: "normal" | "high";
+  /**
+   * APNs `content-available`. Wakes the app rather than the person: no banner,
+   * no sound, a few seconds of background time. Expo's name for it, hence the
+   * underscore.
+   */
+  _contentAvailable?: boolean;
 };
 
 type PushTicket = {
@@ -80,6 +86,50 @@ export async function sendPush({
   sound?: "default" | null;
   priority?: "normal" | "high";
 }): Promise<{ sent: number; removed: number }> {
+  return deliver(audience, (token) => ({
+    to: token,
+    title,
+    body,
+    data,
+    sound,
+    priority,
+  }));
+}
+
+/**
+ * Say nothing; just wake the app.
+ *
+ * No banner and no sound — the app gets a few seconds of background time and
+ * the person gets nothing. iOS allows only a handful of these an hour and
+ * silently drops the rest, so one is only worth sending when something on a
+ * lock screen would otherwise start being wrong. The run sheet sweep is the
+ * only caller.
+ *
+ * High priority, because iOS holds a normal-priority silent push back until it
+ * feels like delivering it, which for a cue that has already happened is the
+ * same as not sending it.
+ */
+export async function sendSilentPush({
+  audience,
+  data,
+}: {
+  audience: Audience;
+  data: Record<string, string>;
+}): Promise<{ sent: number; removed: number }> {
+  return deliver(audience, (token) => ({
+    to: token,
+    data,
+    sound: null,
+    priority: "high",
+    _contentAvailable: true,
+  }));
+}
+
+/** Build a message per device, post it in batches, and drop dead tokens. */
+async function deliver(
+  audience: Audience,
+  message: (token: string) => PushMessage,
+): Promise<{ sent: number; removed: number }> {
   const devices = await db.deviceToken.findMany({
     where: audienceFilter(audience),
     select: { token: true },
@@ -87,14 +137,7 @@ export async function sendPush({
 
   if (devices.length === 0) return { sent: 0, removed: 0 };
 
-  const messages: PushMessage[] = devices.map((device) => ({
-    to: device.token,
-    title,
-    body,
-    data,
-    sound,
-    priority,
-  }));
+  const messages = devices.map((device) => message(device.token));
 
   let sent = 0;
   const dead: string[] = [];

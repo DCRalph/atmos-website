@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { authCookieHeader } from "@/lib/auth";
 import { TRPC_URL } from "@/lib/env";
 import { usePushRegistration } from "@/lib/push";
+import { useRunSheetLiveActivity } from "@/lib/live-activity";
 import { BiometricLockProvider } from "@/lib/biometrics";
 import { TapToPayProvider } from "@/lib/tap-to-pay";
 import { TapToPaySplash } from "@/components/tap-to-pay-splash";
@@ -60,6 +61,11 @@ export function Providers({ children }: { children: ReactNode }) {
       <api.Provider client={trpcClient} queryClient={queryClient}>
         {/* Inside the tRPC provider, since registering calls the API. */}
         <PushRegistration />
+        {/* At the root rather than on the run sheet screen: the lock screen is
+            for the hours somebody is *not* looking at the app, so it has to go
+            up whenever they open it during a night, not only if they happen to
+            visit that tab. Inert for anybody with no run sheet. */}
+        <RunSheetLiveActivity />
         {/* Also inside it, and at the root rather than around the door stack:
             Apple's checklist 1.5 wants Tap to Pay warmed up at app launch, and
             a provider that mounts when somebody enters door mode is already too
@@ -84,5 +90,11 @@ export function Providers({ children }: { children: ReactNode }) {
 /** Renders nothing; exists so the hook sits under the providers it needs. */
 function PushRegistration() {
   usePushRegistration();
+  return null;
+}
+
+/** Likewise: it queries the run sheet, so it lives under tRPC. */
+function RunSheetLiveActivity() {
+  useRunSheetLiveActivity();
   return null;
 }

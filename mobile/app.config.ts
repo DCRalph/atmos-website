@@ -33,6 +33,15 @@ const config: ExpoConfig = {
   icon: "./assets/icon.png",
   ios: {
     bundleIdentifier: "nz.co.atmosmedia.app",
+    /**
+     * The team the widget extension is signed by.
+     *
+     * Here rather than only in `scripts/build-ipa.sh` because the extension is
+     * a second target, and a target with no team is a target Xcode cannot pick
+     * a profile for — an archive fails on the widget rather than on the app,
+     * which reads as a signing bug in something nobody touched.
+     */
+    appleTeamId: "QB4T85D6S2",
     // App Store Connect rejects a build whose number it has already seen, so
     // this has to go up on every upload of the same version.
     buildNumber: process.env.BUILD_NUMBER ?? "1",
@@ -109,6 +118,12 @@ const config: ExpoConfig = {
        * "dev" for anything built off a laptop by hand.
        */
       ATMOSGitCommit: process.env.GIT_COMMIT ?? "dev",
+      /**
+       * Tonight's run sheet, on the lock screen. Without this iOS refuses the
+       * `Activity.request` outright, and the failure is a thrown error in the
+       * app rather than anything visible on the handset.
+       */
+      NSSupportsLiveActivities: true,
     },
   },
   android: {
@@ -123,6 +138,13 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
+    /**
+     * The Live Activity's widget extension. A second binary inside the app,
+     * with its own target and bundle identifier, which `expo prebuild` has no
+     * way to produce on its own — so the plugin writes one into the generated
+     * project from the sources in `widget/`.
+     */
+    "./plugins/with-run-sheet-widget",
     /**
      * Sign in with Apple. Adds the `com.apple.developer.applesignin`
      * entitlement, which App Store Guideline 4.8 requires because the sign-in
@@ -163,6 +185,19 @@ const config: ExpoConfig = {
         // what the monochrome adaptive icon already is.
         icon: "./assets/android-icon-monochrome.png",
         color: "#000000",
+        /**
+         * `UIBackgroundModes: remote-notification`, which is what lets iOS
+         * hand the app a silent push while it is in the background.
+         *
+         * The run sheet sweep sends one on the minute an item changes, and
+         * `RunSheetActivitySubscriber` moves the lock screen on with it.
+         * Nothing is fetched on that wake-up — the push carries the new state
+         * — so this buys a couple of seconds, not a background job.
+         *
+         * Set here rather than as a raw `infoPlist` entry because this plugin
+         * owns the key and overwrites anything written beside it.
+         */
+        enableBackgroundRemoteNotifications: true,
       },
     ],
     // Tap to Pay. The entitlement itself is requested through Stripe and
