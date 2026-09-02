@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 
 import { api, type RouterOutputs } from "~/trpc/react";
+import { formatDate } from "~/lib/date-utils";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -183,11 +184,7 @@ export function TicketLinksPanel({ event }: { event: AdminEvent }) {
         header: "Created",
         type: "date",
         accessor: (row) => row.createdAt,
-        cell: (row) =>
-          new Date(row.createdAt).toLocaleDateString("en-NZ", {
-            day: "numeric",
-            month: "short",
-          }),
+        cell: (row) => formatDate(new Date(row.createdAt), "extra-short"),
       },
       {
         id: "actions",

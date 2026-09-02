@@ -68,7 +68,7 @@ export function AdminEditCreatorProfileView({ id }: { id: string }) {
       subtitle={profile ? `@${profile.handle}` : undefined}
       backLink={{
         href: "/admin/creator-profiles",
-        label: "← Back to profiles",
+        label: "Creator profiles",
       }}
       maxWidth="max-w-7xl"
       actions={

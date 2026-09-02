@@ -2,23 +2,25 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowDown, ArrowUp, Info, Link2, Unlink } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Info,
+  Link2,
+  Loader2,
+  Plus,
+  Search,
+  Unlink,
+} from "lucide-react";
+import { toast } from "sonner";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { DataTable, type DataTableColumn } from "~/components/data-table";
 import { resolveCrewDisplay } from "~/lib/crew-display";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "~/components/ui/alert-dialog";
+import { useConfirm } from "~/components/confirm-provider";
+import { useDebouncedValue } from "~/hooks/use-debounced-value";
 import {
   Dialog,
   DialogContent,
@@ -27,21 +29,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "~/components/ui/dialog";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
+import { Card, CardContent } from "~/components/ui/card";
 
+/**
+ * The crew directory.
+ *
+ * Rows carry a hand-set order that the public page follows, which is why no
+ * column here is sortable and the move buttons switch off while a search is
+ * narrowing the list: both would move a row relative to neighbours that are not
+ * the ones on screen.
+ */
 export function CrewManager() {
+  const confirm = useConfirm();
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [instagram, setInstagram] = useState("");
@@ -54,40 +55,50 @@ export function CrewManager() {
   const [profileQuery, setProfileQuery] = useState("");
   const [search, setSearch] = useState("");
 
+  const debouncedSearch = useDebouncedValue(search).trim();
   const {
     data: crewMembers,
     isLoading,
+    isFetching,
     refetch,
-  } = api.crew.getAll.useQuery(search ? { search } : undefined);
+  } = api.crew.getAll.useQuery(
+    debouncedSearch ? { search: debouncedSearch } : undefined,
+  );
+
+  const onSaved = async (message: string) => {
+    toast.success(message);
+    await refetch();
+    setIsOpen(false);
+    resetForm();
+  };
+
   const createMember = api.crew.create.useMutation({
-    onSuccess: async () => {
-      await refetch();
-      setIsOpen(false);
-      resetForm();
-    },
+    onSuccess: () => onSaved("Crew member added"),
+    onError: (error) => toast.error(error.message),
   });
   const updateMember = api.crew.update.useMutation({
-    onSuccess: async () => {
-      await refetch();
-      setIsOpen(false);
-      resetForm();
-    },
+    onSuccess: () => onSaved("Crew member updated"),
+    onError: (error) => toast.error(error.message),
   });
   const deleteMember = api.crew.delete.useMutation({
     onSuccess: async () => {
-      setDeleteTarget(null);
+      toast.success("Crew member deleted");
       await refetch();
     },
+    onError: (error) => toast.error(error.message),
   });
   const moveMember = api.crew.move.useMutation({
     onSuccess: async () => {
       await refetch();
     },
+    onError: (error) => toast.error(error.message),
   });
   const linkCreatorProfile = api.crew.linkCreatorProfile.useMutation({
     onSuccess: async () => {
+      toast.success("Creator profile unlinked");
       await refetch();
     },
+    onError: (error) => toast.error(error.message),
   });
 
   const profileSearch = api.creatorProfiles.listAll.useQuery(
@@ -248,12 +259,13 @@ export function CrewManager() {
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "",
+      align: "right",
       hideable: false,
       cell: (member) => {
         const index = rows.indexOf(member);
         return (
-          <div className="flex gap-2">
+          <div className="flex justify-end gap-2">
             <Button
               variant="outline"
               size="icon-sm"
@@ -293,10 +305,17 @@ export function CrewManager() {
             <Button
               variant="destructive"
               size="sm"
-              onClick={() =>
-                setDeleteTarget({ id: member.id, name: member.name })
-              }
               disabled={deleteMember.isPending || moveMember.isPending}
+              onClick={async () => {
+                const ok = await confirm({
+                  title: `Delete ${member.name}?`,
+                  description:
+                    "They come off the public crew page. Any linked creator profile is left alone. This cannot be undone.",
+                  confirmLabel: "Delete",
+                  variant: "destructive",
+                });
+                if (ok) deleteMember.mutate({ id: member.id });
+              }}
             >
               Delete
             </Button>
@@ -308,13 +327,25 @@ export function CrewManager() {
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col gap-2">
-            <CardTitle>Crew Members</CardTitle>
-            <CardDescription>
-              Manage crew members and their information
-            </CardDescription>
+      <CardContent className="space-y-4 pt-6">
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <div className="relative min-w-60 flex-1">
+            <Search
+              className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
+              aria-hidden
+            />
+            <Input
+              placeholder="Search by name or role…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+            {isFetching ? (
+              <Loader2
+                className="text-muted-foreground absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 animate-spin"
+                aria-hidden
+              />
+            ) : null}
           </div>
           <Dialog
             open={isOpen}
@@ -324,15 +355,20 @@ export function CrewManager() {
             }}
           >
             <DialogTrigger asChild>
-              <Button onClick={() => resetForm()}>Add Member</Button>
+              <Button onClick={() => resetForm()}>
+                <Plus className="h-4 w-4" aria-hidden />
+                Add member
+              </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>
-                  {editingId ? "Edit" : "Add"} Crew Member
+                  {editingId ? "Edit crew member" : "Add crew member"}
                 </DialogTitle>
                 <DialogDescription>
-                  {editingId ? "Update" : "Create"} a new crew member
+                  {editingId
+                    ? "Changes show on the public crew page straight away."
+                    : "New members are added to the end of the crew page; reorder them from the list."}
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -424,7 +460,7 @@ export function CrewManager() {
                 </div>
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="image">Image Path</Label>
+                    <Label htmlFor="image">Image path</Label>
                     <span className="text-muted-foreground text-xs">
                       {creatorProfileId
                         ? "Fallback — profile's avatar is used if set"
@@ -526,27 +562,19 @@ export function CrewManager() {
                   type="submit"
                   disabled={createMember.isPending || updateMember.isPending}
                 >
-                  {editingId ? "Update" : "Create"}
+                  {editingId ? "Save" : "Create"}
                 </Button>
               </form>
             </DialogContent>
           </Dialog>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="mb-4">
-          <Input
-            placeholder="Search by name or role..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="max-w-sm"
-          />
-        </div>
+
         {search ? (
-          <p className="text-muted-foreground mb-4 text-sm">
-            Clear search to reorder crew members.
+          <p className="text-muted-foreground text-sm">
+            Clear the search to reorder crew members.
           </p>
         ) : null}
+
         <DataTable
           columns={columns}
           data={rows}
@@ -557,41 +585,6 @@ export function CrewManager() {
             search ? "No crew members found" : "No crew members yet"
           }
         />
-
-        <AlertDialog
-          open={!!deleteTarget}
-          onOpenChange={(open) => {
-            if (!open) setDeleteTarget(null);
-          }}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete crew member?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete{" "}
-                <span className="text-foreground font-medium">
-                  {deleteTarget?.name ?? "this crew member"}
-                </span>
-                . This action can’t be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={deleteMember.isPending}>
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => {
-                  if (!deleteTarget) return;
-                  deleteMember.mutate({ id: deleteTarget.id });
-                }}
-                disabled={deleteMember.isPending}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                {deleteMember.isPending ? "Deleting..." : "Delete"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </CardContent>
     </Card>
   );

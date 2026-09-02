@@ -14,8 +14,9 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import { formatDateInUserTimezone } from "~/lib/date-utils";
-import Image from "next/image";
+import { formatDateTime } from "~/lib/date-utils";
+import UserAvatar from "~/components/UserAvatar";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +30,12 @@ import {
 import { Badge } from "~/components/ui/badge";
 import { Loader2, CheckCircle2, XCircle, Calendar, Clock } from "lucide-react";
 import { UserActivityLogs } from "~/components/admin/user-activity-logs";
+import {
+  LoginMethodBadge,
+  PERMISSIONS,
+  permissionLabel,
+  type PermissionName,
+} from "~/components/admin/user-badges";
 import { DataTable, type DataTableColumn } from "~/components/data-table";
 import { useConfirm } from "~/components/confirm-provider";
 
@@ -54,6 +61,7 @@ const accountColumns: DataTableColumn<ConnectedAccount>[] = [
   {
     id: "provider",
     header: "Provider",
+    sortable: true,
     accessor: (row) => titleizeProvider(row.providerId),
     className: "font-medium",
   },
@@ -66,45 +74,9 @@ const accountColumns: DataTableColumn<ConnectedAccount>[] = [
     id: "createdAt",
     header: "Connected",
     type: "date",
+    sortable: true,
     accessor: (row) => row.createdAt,
-    cell: (row) =>
-      formatDateInUserTimezone(row.createdAt, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      }),
   },
-];
-
-function getLoginMethodBadge(method: string | null) {
-  if (!method) return null;
-
-  const methodMap: Record<
-    string,
-    { label: string; variant: "default" | "secondary" | "outline" }
-  > = {
-    email: { label: "Email", variant: "default" },
-    google: { label: "Google", variant: "secondary" },
-    github: { label: "GitHub", variant: "outline" },
-  };
-
-  const config = methodMap[method.toLowerCase()] ?? {
-    label: method,
-    variant: "outline" as const,
-  };
-
-  return (
-    <Badge variant={config.variant} className="text-xs">
-      {config.label}
-    </Badge>
-  );
-}
-
-type PermissionName = "EVENT_ORGANISER" | "CREATOR" | "ADMIN";
-const ALL_PERMISSIONS: PermissionName[] = [
-  "EVENT_ORGANISER",
-  "CREATOR",
-  "ADMIN",
 ];
 
 export default function UserManagementPage({ params }: PageProps) {
@@ -118,14 +90,18 @@ export default function UserManagementPage({ params }: PageProps) {
   const { data: user, isLoading, refetch } = api.users.getById.useQuery({ id });
   const setPermissions = api.users.setPermissions.useMutation({
     onSuccess: async () => {
+      toast.success("Permissions updated");
       await refetch();
       setSelectedPermissions(null);
     },
+    onError: (error) => toast.error(error.message),
   });
   const deleteUser = api.users.delete.useMutation({
     onSuccess: () => {
+      toast.success("User deleted");
       router.push("/admin/users");
     },
+    onError: (error) => toast.error(error.message),
   });
 
   const userPermissions = useMemo<PermissionName[]>(() => {
@@ -136,13 +112,16 @@ export default function UserManagementPage({ params }: PageProps) {
   if (isLoading) {
     return (
       <AdminSection
-        title="Manage User"
-        backLink={{ href: "/admin/users", label: "← Back to Users" }}
+        title="Manage user"
+        backLink={{ href: "/admin/users", label: "Users" }}
         maxWidth="max-w-4xl"
       >
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
-          <span className="text-muted-foreground ml-2">Loading user...</span>
+          <Loader2
+            className="text-muted-foreground h-8 w-8 animate-spin"
+            aria-hidden
+          />
+          <span className="text-muted-foreground ml-2">Loading user…</span>
         </div>
       </AdminSection>
     );
@@ -151,8 +130,8 @@ export default function UserManagementPage({ params }: PageProps) {
   if (!user) {
     return (
       <AdminSection
-        title="Manage User"
-        backLink={{ href: "/admin/users", label: "← Back to Users" }}
+        title="Manage user"
+        backLink={{ href: "/admin/users", label: "Users" }}
         maxWidth="max-w-4xl"
       >
         <Card>
@@ -184,9 +163,9 @@ export default function UserManagementPage({ params }: PageProps) {
 
   return (
     <AdminSection
-      title="Manage User"
+      title="Manage user"
       subtitle={user.name}
-      backLink={{ href: "/admin/users", label: "← Back to Users" }}
+      backLink={{ href: "/admin/users", label: "Users" }}
       maxWidth="max-w-4xl"
       actions={
         <div className="flex gap-2">
@@ -198,34 +177,30 @@ export default function UserManagementPage({ params }: PageProps) {
             {deleteUser.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Deleting...
+                Deleting…
               </>
             ) : (
-              "Delete User"
+              "Delete user"
             )}
           </Button>
         </div>
       }
     >
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* User Details */}
+        {/* User details */}
         <Card>
           <CardHeader>
-            <CardTitle>User Details</CardTitle>
+            <CardTitle>Details</CardTitle>
             <CardDescription>Basic user information</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex items-center gap-4">
-              {user.image && (
-                <div className="relative h-16 w-16 overflow-hidden rounded-full">
-                  <Image
-                    src={user.image}
-                    alt={user.name}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              )}
+              <UserAvatar
+                className="size-16 shrink-0"
+                size={28}
+                src={user.image}
+                name={user.name}
+              />
               <div>
                 <p className="font-semibold">{user.name}</p>
                 <p className="text-muted-foreground text-sm">{user.email}</p>
@@ -233,16 +208,16 @@ export default function UserManagementPage({ params }: PageProps) {
             </div>
 
             <div className="space-y-2">
-              <Label>Email Verified</Label>
+              <Label>Email verified</Label>
               <div>
                 {user.emailVerified ? (
                   <Badge variant="outline" className="text-xs text-green-600">
-                    <CheckCircle2 className="mr-1 h-3 w-3" />
+                    <CheckCircle2 className="mr-1 h-3 w-3" aria-hidden />
                     Verified
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="text-xs">
-                    <XCircle className="mr-1 h-3 w-3" />
+                    <XCircle className="mr-1 h-3 w-3" aria-hidden />
                     Unverified
                   </Badge>
                 )}
@@ -250,19 +225,14 @@ export default function UserManagementPage({ params }: PageProps) {
             </div>
 
             <div className="space-y-2">
-              <Label>Last Login Method</Label>
+              <Label>Last login</Label>
               <div className="flex items-center gap-2">
                 {user.lastLoginMethod ? (
                   <>
-                    {getLoginMethodBadge(user.lastLoginMethod)}
+                    <LoginMethodBadge method={user.lastLoginMethod} />
                     {user.lastLoginAt && (
                       <span className="text-muted-foreground text-xs">
-                        {formatDateInUserTimezone(user.lastLoginAt, {
-                          month: "short",
-                          day: "numeric",
-                          hour: "numeric",
-                          minute: "2-digit",
-                        })}
+                        {formatDateTime(user.lastLoginAt)}
                       </span>
                     )}
                   </>
@@ -275,30 +245,18 @@ export default function UserManagementPage({ params }: PageProps) {
             </div>
 
             <div className="space-y-2">
-              <Label>Account Created</Label>
+              <Label>Account created</Label>
               <div className="text-muted-foreground flex items-center gap-1 text-sm">
-                <Calendar className="h-3 w-3" />
-                {formatDateInUserTimezone(user.createdAt, {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
+                <Calendar className="h-3 w-3" aria-hidden />
+                {formatDateTime(user.createdAt)}
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Last Updated</Label>
+              <Label>Last updated</Label>
               <div className="text-muted-foreground flex items-center gap-1 text-sm">
-                <Clock className="h-3 w-3" />
-                {formatDateInUserTimezone(user.updatedAt, {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
+                <Clock className="h-3 w-3" aria-hidden />
+                {formatDateTime(user.updatedAt)}
               </div>
             </div>
           </CardContent>
@@ -315,39 +273,26 @@ export default function UserManagementPage({ params }: PageProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-col gap-3">
-              {ALL_PERMISSIONS.map((permission) => {
-                const checked = nextPermissionsSet.has(permission);
-                return (
-                  <label
-                    key={permission}
-                    className="hover:bg-accent/30 flex cursor-pointer items-center gap-3 rounded-md border p-3"
-                  >
-                    <Checkbox
-                      checked={checked}
-                      onCheckedChange={(value) =>
-                        togglePermission(permission, Boolean(value))
-                      }
-                      disabled={setPermissions.isPending}
-                    />
-                    <div className="flex flex-col">
-                      <span className="font-medium">
-                        {permission === "EVENT_ORGANISER"
-                          ? "Event organiser"
-                          : permission === "CREATOR"
-                            ? "Creator"
-                            : "Admin"}
-                      </span>
-                      <span className="text-muted-foreground text-xs">
-                        {permission === "EVENT_ORGANISER"
-                          ? "Can view every event and analytics, manage every door, scan tickets, override duplicates, and undo admissions."
-                          : permission === "CREATOR"
-                            ? "Can own, edit, and publish their creator profile and themes."
-                            : "Full application administration rights."}
-                      </span>
-                    </div>
-                  </label>
-                );
-              })}
+              {PERMISSIONS.map(({ name, label, description }) => (
+                <label
+                  key={name}
+                  className="hover:bg-accent/30 flex cursor-pointer items-center gap-3 rounded-md border p-3"
+                >
+                  <Checkbox
+                    checked={nextPermissionsSet.has(name)}
+                    onCheckedChange={(value) =>
+                      togglePermission(name, Boolean(value))
+                    }
+                    disabled={setPermissions.isPending}
+                  />
+                  <div className="flex flex-col">
+                    <span className="font-medium">{label}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {description}
+                    </span>
+                  </div>
+                </label>
+              ))}
             </div>
 
             {hasPermissionsChanged && (
@@ -356,7 +301,8 @@ export default function UserManagementPage({ params }: PageProps) {
                   const ok = await confirm({
                     title: "Update permissions",
                     description: `Update ${user.name}'s permissions to: ${
-                      [...nextPermissionsSet].join(", ") || "(none)"
+                      [...nextPermissionsSet].map(permissionLabel).join(", ") ||
+                      "none"
                     }?`,
                     confirmLabel: "Update",
                   });
@@ -373,7 +319,7 @@ export default function UserManagementPage({ params }: PageProps) {
                 {setPermissions.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Updating...
+                    Updating…
                   </>
                 ) : (
                   "Save permissions"
@@ -386,7 +332,7 @@ export default function UserManagementPage({ params }: PageProps) {
         {/* Connected Accounts */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Connected Accounts</CardTitle>
+            <CardTitle>Connected accounts</CardTitle>
             <CardDescription>
               Authentication providers linked to this account
             </CardDescription>
@@ -415,7 +361,7 @@ export default function UserManagementPage({ params }: PageProps) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogTitle>Delete user?</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete {user.name}? This action cannot be
               undone and will permanently delete their account and all
@@ -436,10 +382,10 @@ export default function UserManagementPage({ params }: PageProps) {
               {deleteUser.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
+                  Deleting…
                 </>
               ) : (
-                "Delete User"
+                "Delete user"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

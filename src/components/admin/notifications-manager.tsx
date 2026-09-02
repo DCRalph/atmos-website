@@ -97,6 +97,7 @@ export function NotificationsManager() {
     {
       id: "device",
       header: "Device",
+      sortable: true,
       accessor: (row) => row.label ?? row.platform,
       className: "font-medium",
     },
@@ -112,6 +113,8 @@ export function NotificationsManager() {
     {
       id: "lastSeen",
       header: "Last seen",
+      sortable: true,
+      accessor: (row) => row.lastSeenAt,
       cell: (row) => (
         <span className="text-muted-foreground text-xs">
           {ago(row.lastSeenAt)}
@@ -145,6 +148,8 @@ export function NotificationsManager() {
     {
       id: "sent",
       header: "Sent",
+      sortable: true,
+      accessor: (row) => row.createdAt,
       cell: (row) => (
         <span className="text-muted-foreground text-xs tabular-nums">
           {ago(row.createdAt)}
@@ -195,7 +200,7 @@ export function NotificationsManager() {
     <div className="grid items-start gap-6 lg:grid-cols-2">
       <Card>
         <CardHeader>
-          <CardTitle>Send Notification</CardTitle>
+          <CardTitle>Send a notification</CardTitle>
           <CardDescription>
             Pick the topic first: it decides which devices this reaches
           </CardDescription>
@@ -203,7 +208,11 @@ export function NotificationsManager() {
         <CardContent className="flex flex-col gap-4">
           <div className="space-y-2">
             <Label>Topic</Label>
-            <div className="divide-border divide-y overflow-hidden rounded-md border">
+            <div
+              role="radiogroup"
+              aria-label="Topic"
+              className="divide-border divide-y overflow-hidden rounded-md border"
+            >
               {(topics.data ?? []).map((entry) => {
                 const selected = entry.name === topic;
                 // Everything else here reaches staff. This one reaches punters.
@@ -212,6 +221,8 @@ export function NotificationsManager() {
                   <button
                     key={entry.name}
                     type="button"
+                    role="radio"
+                    aria-checked={selected}
                     onClick={() => setTopic(entry.name)}
                     className={`flex w-full items-baseline justify-between gap-4 px-3 py-2 text-left text-sm ${
                       selected
@@ -268,11 +279,18 @@ export function NotificationsManager() {
 
           <div className="space-y-2">
             <Label>Priority</Label>
-            <div className="divide-border grid grid-cols-5 divide-x overflow-hidden rounded-md border">
+            <div
+              role="radiogroup"
+              aria-label="Priority"
+              className="divide-border grid grid-cols-5 divide-x overflow-hidden rounded-md border"
+            >
               {([1, 2, 3, 4, 5] as const).map((value) => (
                 <button
                   key={value}
                   type="button"
+                  role="radio"
+                  aria-checked={value === priority}
+                  aria-label={`${PRIORITY_LABELS[value].name} — ${PRIORITY_LABELS[value].effect}`}
                   onClick={() => setPriority(value)}
                   className={`py-2 text-sm ${
                     value === priority
@@ -303,7 +321,7 @@ export function NotificationsManager() {
               }
             >
               {send.isPending
-                ? "Sending..."
+                ? "Sending…"
                 : `Send to ${audience.data?.subscribed ?? 0} devices`}
             </Button>
           </div>
@@ -340,7 +358,7 @@ export function NotificationsManager() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Recently Sent</CardTitle>
+            <CardTitle>Recently sent</CardTitle>
             <CardDescription>The last 10 notifications</CardDescription>
           </CardHeader>
           <CardContent>
@@ -360,5 +378,5 @@ export function NotificationsManager() {
 }
 
 function ago(at: Date): string {
-  return formatDistanceToNowStrict(at, { addSuffix: false });
+  return formatDistanceToNowStrict(at, { addSuffix: true });
 }

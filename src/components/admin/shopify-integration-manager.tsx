@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   DndContext,
+  KeyboardSensor,
   PointerSensor,
   closestCenter,
   useSensor,
@@ -13,6 +14,7 @@ import {
   SortableContext,
   arrayMove,
   useSortable,
+  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -42,15 +44,17 @@ import {
 } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 import { useUnsavedChangesWarning } from "~/hooks/use-unsaved-changes-warning";
+import { formatDateTime } from "~/lib/date-utils";
 import { toast } from "sonner";
+import { SaveStatusPill, type SaveStatus } from "./save-status";
 
 type ShopifyProduct = RouterOutputs["shopify"]["getProducts"][number];
 
 function formatPrice(price: number, currencyCode: string) {
   try {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("en-NZ", {
       style: "currency",
-      currency: currencyCode || "USD",
+      currency: currencyCode || "NZD",
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     }).format(price);
@@ -163,13 +167,8 @@ export function ShopifyIntegrationManager() {
 
   const [order, setOrder] = useState<string[]>([]);
   const [savedOrder, setSavedOrder] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (!products) return;
-    const serverIds = products.map((p) => p.id);
-    setOrder((prev) => reconcileOrder(prev, serverIds));
-    setSavedOrder(serverIds);
-  }, [products]);
+  const [saveState, setSaveState] = useState<SaveStatus>("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const productMap = useMemo(() => {
     const map = new Map<string, ShopifyProduct>();
@@ -178,11 +177,11 @@ export function ShopifyIntegrationManager() {
   }, [products]);
 
   const hasChanges = JSON.stringify(order) !== JSON.stringify(savedOrder);
-  useUnsavedChangesWarning({ enabled: hasChanges });
 
   const reorderMutation = api.shopify.reorderProducts.useMutation({
     onSuccess: async () => {
       setSavedOrder(order);
+      setSaveState("saved");
       toast.success("Display order saved.");
       await Promise.all([
         utils.shopify.getProducts.invalidate(),
@@ -190,9 +189,44 @@ export function ShopifyIntegrationManager() {
       ]);
     },
     onError: (err) => {
+      setSaveError(err.message);
+      setSaveState("error");
       toast.error(err.message ?? "Could not save the order.");
     },
   });
+
+  const isSaving = reorderMutation.isPending;
+
+  /**
+   * Adopt the synced catalogue, but never on top of an unsaved drag or
+   * mid-save. Products keep their arranged position; anything newly synced
+   * lands at the end and anything removed drops out.
+   */
+  const serverIds = useMemo(
+    () => (products ?? []).map((p) => p.id),
+    [products],
+  );
+  const serverKey = products ? JSON.stringify(serverIds) : null;
+  const [hydratedKey, setHydratedKey] = useState<string | null>(null);
+  if (serverKey && serverKey !== hydratedKey && !isSaving && !hasChanges) {
+    setHydratedKey(serverKey);
+    setOrder((prev) => reconcileOrder(prev, serverIds));
+    setSavedOrder(serverIds);
+  }
+
+  useUnsavedChangesWarning({ enabled: hasChanges && !isSaving });
+
+  // "Saved" is a flash of confirmation, not a resting state.
+  useEffect(() => {
+    if (saveState !== "saved") return;
+    const timer = setTimeout(() => setSaveState("idle"), 2500);
+    return () => clearTimeout(timer);
+  }, [saveState]);
+
+  const saveStatus: SaveStatus =
+    hasChanges && (saveState === "idle" || saveState === "saved")
+      ? "dirty"
+      : saveState;
 
   const syncMutation = api.shopify.syncProducts.useMutation({
     onSuccess: async (result) => {
@@ -215,6 +249,11 @@ export function ShopifyIntegrationManager() {
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    // Reordering has to be possible without a mouse: focus a grip, space to
+    // pick up, arrows to move, space to drop.
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -225,8 +264,6 @@ export function ShopifyIntegrationManager() {
     if (oldIndex === -1 || newIndex === -1) return;
     setOrder(arrayMove(order, oldIndex, newIndex));
   };
-
-  const isSaving = reorderMutation.isPending;
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -256,7 +293,7 @@ export function ShopifyIntegrationManager() {
                 <p>
                   Last sync:{" "}
                   {status?.lastSyncedAt
-                    ? new Date(status.lastSyncedAt).toLocaleString()
+                    ? formatDateTime(new Date(status.lastSyncedAt))
                     : "Never"}
                 </p>
               </>
@@ -296,7 +333,11 @@ export function ShopifyIntegrationManager() {
                 Discard
               </Button>
               <Button
-                onClick={() => reorderMutation.mutate({ ids: order })}
+                onClick={() => {
+                  setSaveError(null);
+                  setSaveState("saving");
+                  reorderMutation.mutate({ ids: order });
+                }}
                 disabled={!hasChanges || isSaving || order.length === 0}
               >
                 {isSaving ? (
@@ -310,11 +351,14 @@ export function ShopifyIntegrationManager() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 pt-2">
-            {hasChanges ? (
-              <Badge variant="secondary">Unsaved changes</Badge>
-            ) : (
-              <Badge variant="outline">Up to date</Badge>
-            )}
+            {/* The same pill the item editors use, so "unsaved" reads the same
+                everywhere in the admin. */}
+            <SaveStatusPill status={saveStatus} errorMessage={saveError} />
+            {saveStatus === "idle" ? (
+              <span className="text-muted-foreground text-xs">
+                This order is up to date.
+              </span>
+            ) : null}
           </div>
         </CardHeader>
 

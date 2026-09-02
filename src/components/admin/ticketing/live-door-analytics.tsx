@@ -37,7 +37,7 @@ export function LiveDoorAnalytics({
     <AdminSection
       title="Live door"
       subtitle={event.data?.name}
-      backLink={{ href: backHref, label: "← Event" }}
+      backLink={{ href: backHref, label: "Event" }}
       actions={
         <Badge variant="outline" className="gap-1.5">
           <span className="size-2 animate-pulse rounded-full bg-emerald-500" />

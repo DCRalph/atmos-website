@@ -9,6 +9,7 @@ import {
   Search,
   TriangleAlert,
 } from "lucide-react";
+import { toast } from "sonner";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -28,6 +29,7 @@ import {
 import { useConfirm } from "~/components/confirm-provider";
 import { useDebouncedValue } from "~/hooks/use-debounced-value";
 import { findPlatform } from "~/lib/content-platforms";
+import { formatDate } from "~/lib/date-utils";
 
 /**
  * The content list. Editing lives on its own page (`/admin/content/[id]`), so
@@ -49,17 +51,26 @@ export function ContentManager() {
 
   const deleteItem = api.content.delete.useMutation({
     onSuccess: async () => {
+      toast.success("Deleted");
       await refetch();
     },
+    onError: (error) => toast.error(error.message),
   });
 
   const rows = contentItems ?? [];
   type ContentRow = (typeof rows)[number];
   const columns: DataTableColumn<ContentRow>[] = [
-    { id: "type", header: "Type", accessor: (row) => row.type },
+    {
+      id: "type",
+      header: "Type",
+      sortable: true,
+      accessor: (row) => row.type,
+    },
     {
       id: "title",
       header: "Title",
+      sortable: true,
+      accessor: (row) => row.title,
       cell: (row) => (
         <Link
           href={`/admin/content/${row.id}`}
@@ -69,10 +80,18 @@ export function ContentManager() {
         </Link>
       ),
     },
-    { id: "dj", header: "DJ", cell: (row) => row.dj ?? "—" },
+    {
+      id: "dj",
+      header: "DJ",
+      sortable: true,
+      accessor: (row) => row.dj,
+      cell: (row) => row.dj ?? "—",
+    },
     {
       id: "platform",
       header: "Platform",
+      sortable: true,
+      accessor: (row) => row.platform,
       cell: (row) =>
         row.platform ? (
           <span className="flex items-center gap-1.5">
@@ -98,11 +117,13 @@ export function ContentManager() {
     {
       id: "date",
       header: "Date",
-      cell: (row) => row.date.toLocaleDateString(),
+      sortable: true,
+      accessor: (row) => row.date,
+      cell: (row) => formatDate(row.date, "short"),
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "",
       align: "right",
       hideable: false,
       cell: (item) => (
@@ -177,6 +198,7 @@ export function ContentManager() {
           data={rows}
           getRowId={(row) => row.id}
           isLoading={isLoading}
+          isFetching={isFetching}
           storageKey="admin-content-items"
           emptyMessage={
             search ? "No content items found" : "No content items yet"

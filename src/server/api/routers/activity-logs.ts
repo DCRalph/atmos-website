@@ -59,7 +59,7 @@ export const activityLogsRouter = createTRPCRouter({
       return {
         logs: logs.map((log) => ({
           ...log,
-          details: log.details ? JSON.parse(log.details) : null,
+          details: log.details ? (JSON.parse(log.details) as unknown) : null,
         })),
         nextCursor,
       };
@@ -113,7 +113,7 @@ export const activityLogsRouter = createTRPCRouter({
       return {
         logs: logs.map((log) => ({
           ...log,
-          details: log.details ? JSON.parse(log.details) : null,
+          details: log.details ? (JSON.parse(log.details) as unknown) : null,
         })),
         nextCursor,
       };

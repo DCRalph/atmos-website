@@ -13,6 +13,7 @@ import {
   Trash2,
   ShieldCheck,
 } from "lucide-react";
+import { toast } from "sonner";
 import { api } from "~/trpc/react";
 import {
   LinkUserDialog,
@@ -22,7 +23,8 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Badge } from "~/components/ui/badge";
 import { DataTable, type DataTableColumn } from "~/components/data-table";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Card, CardContent } from "~/components/ui/card";
+import { useDebouncedValue } from "~/hooks/use-debounced-value";
 import {
   Dialog,
   DialogContent,
@@ -41,16 +43,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
 import { Label } from "~/components/ui/label";
+import { FilterSelect, ListFilters } from "./list-filters";
 
-type ClaimFilter = "ALL" | "ACTIVE" | "UNCLAIMED" | "PENDING_CLAIM";
+type ClaimStatus = "ACTIVE" | "UNCLAIMED" | "PENDING_CLAIM";
+
+const CLAIM_STATUSES = [
+  { value: "ACTIVE", label: "Active" },
+  { value: "UNCLAIMED", label: "Unclaimed" },
+  { value: "PENDING_CLAIM", label: "Pending claim" },
+] as const satisfies readonly { value: ClaimStatus; label: string }[];
 
 function ClaimBadge({ status }: { status: string }) {
   if (status === "ACTIVE") {
@@ -65,7 +67,7 @@ function ClaimBadge({ status }: { status: string }) {
 export function CreatorProfilesManager() {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<ClaimFilter>("ALL");
+  const [filter, setFilter] = useState<ClaimStatus | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [linkTarget, setLinkTarget] = useState<LinkUserTarget | null>(null);
   const [unlinkTarget, setUnlinkTarget] = useState<{
@@ -77,9 +79,10 @@ export function CreatorProfilesManager() {
     handle: string;
   } | null>(null);
 
+  const debouncedSearch = useDebouncedValue(search).trim();
   const list = api.creatorProfiles.listAll.useQuery({
-    search: search || undefined,
-    claimStatus: filter === "ALL" ? undefined : filter,
+    search: debouncedSearch || undefined,
+    claimStatus: filter ?? undefined,
   });
   const pendingClaims = api.creatorProfiles.listClaimRequests.useQuery({
     status: "PENDING",
@@ -88,15 +91,19 @@ export function CreatorProfilesManager() {
 
   const deleteProfile = api.creatorProfiles.deleteProfile.useMutation({
     onSuccess: () => {
+      toast.success("Profile deleted");
       setDeleteTarget(null);
       void list.refetch();
     },
+    onError: (error) => toast.error(error.message),
   });
   const unlinkUser = api.creatorProfiles.unlinkUser.useMutation({
     onSuccess: () => {
+      toast.success("User unlinked");
       setUnlinkTarget(null);
       void list.refetch();
     },
+    onError: (error) => toast.error(error.message),
   });
 
   const profiles = list.data ?? [];
@@ -105,6 +112,8 @@ export function CreatorProfilesManager() {
     {
       id: "handle",
       header: "Handle",
+      sortable: true,
+      accessor: (profile) => profile.handle,
       cell: (profile) => (
         <Link
           href={`/admin/creator-profiles/${profile.id}`}
@@ -117,11 +126,14 @@ export function CreatorProfilesManager() {
     {
       id: "displayName",
       header: "Display name",
+      sortable: true,
       accessor: (row) => row.displayName,
     },
     {
       id: "user",
       header: "Linked user",
+      sortable: true,
+      accessor: (profile) => profile.user?.name,
       cell: (profile) =>
         profile.user ? (
           <Link
@@ -137,11 +149,15 @@ export function CreatorProfilesManager() {
     {
       id: "status",
       header: "Status",
+      sortable: true,
+      accessor: (row) => row.claimStatus,
       cell: (row) => <ClaimBadge status={row.claimStatus} />,
     },
     {
       id: "published",
       header: "Published",
+      sortable: true,
+      accessor: (row) => row.isPublished,
       cell: (row) =>
         row.isPublished ? (
           <Badge variant="outline" className="text-green-600">
@@ -151,22 +167,42 @@ export function CreatorProfilesManager() {
           <Badge variant="outline">Draft</Badge>
         ),
     },
-    { id: "blocks", header: "Blocks", accessor: (row) => row._count.blocks },
-    { id: "gigs", header: "Gigs", accessor: (row) => row.gigCount },
+    {
+      id: "blocks",
+      header: "Blocks",
+      type: "number",
+      align: "right",
+      sortable: true,
+      accessor: (row) => row._count.blocks,
+    },
+    {
+      id: "gigs",
+      header: "Gigs",
+      type: "number",
+      align: "right",
+      sortable: true,
+      accessor: (row) => row.gigCount,
+    },
     {
       id: "actions",
-      header: "Actions",
+      header: "",
       align: "right",
       hideable: false,
       cell: (profile) => (
         <div className="flex justify-end gap-1">
-          <Button size="sm" variant="ghost" asChild>
-            <Link href={`/@${profile.handle}`} target="_blank">
-              <ExternalLink className="h-4 w-4" />
+          <Button size="icon" variant="ghost" asChild>
+            <Link
+              href={`/@${profile.handle}`}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`Open @${profile.handle} in a new tab`}
+              title="Open public profile"
+            >
+              <ExternalLink className="h-4 w-4" aria-hidden />
             </Link>
           </Button>
           <Button
-            size="sm"
+            size="icon"
             variant="ghost"
             onClick={() =>
               setLinkTarget({
@@ -176,15 +212,20 @@ export function CreatorProfilesManager() {
                 currentUserName: profile.user?.name ?? null,
               })
             }
+            aria-label={
+              profile.user
+                ? `Relink @${profile.handle} to a different user`
+                : `Link @${profile.handle} to a user`
+            }
             title={
               profile.user ? "Relink to a different user" : "Link to a user"
             }
           >
-            <Link2 className="h-4 w-4" />
+            <Link2 className="h-4 w-4" aria-hidden />
           </Button>
           {profile.user && (
             <Button
-              size="sm"
+              size="icon"
               variant="ghost"
               onClick={() =>
                 setUnlinkTarget({
@@ -192,20 +233,22 @@ export function CreatorProfilesManager() {
                   handle: profile.handle,
                 })
               }
+              aria-label={`Unlink the user from @${profile.handle}`}
               title="Unlink user"
             >
-              <Unlink className="h-4 w-4" />
+              <Unlink className="h-4 w-4" aria-hidden />
             </Button>
           )}
           <Button
-            size="sm"
+            size="icon"
             variant="ghost"
             onClick={() =>
               setDeleteTarget({ id: profile.id, handle: profile.handle })
             }
+            aria-label={`Delete @${profile.handle}`}
             title="Delete"
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-4 w-4" aria-hidden />
           </Button>
         </div>
       ),
@@ -215,53 +258,55 @@ export function CreatorProfilesManager() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle>Profiles</CardTitle>
-            <div className="flex items-center gap-2">
+        <CardContent className="space-y-4 pt-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative min-w-60 flex-1">
+              <Search
+                className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
+                aria-hidden
+              />
+              <Input
+                placeholder="Search handle or display name…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+              {list.isFetching ? (
+                <Loader2
+                  className="text-muted-foreground absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 animate-spin"
+                  aria-hidden
+                />
+              ) : null}
+            </div>
+            <ListFilters
+              activeCount={filter ? 1 : 0}
+              onClear={() => setFilter(null)}
+            >
+              <FilterSelect
+                label="Status"
+                value={filter}
+                onChange={setFilter}
+                options={CLAIM_STATUSES}
+                anyLabel="All statuses"
+              />
+            </ListFilters>
+            <div className="ml-auto flex items-center gap-2">
               <Button variant="outline" asChild>
                 <Link href="/admin/creator-profiles/claims">
-                  <ShieldCheck className="mr-2 h-4 w-4" />
+                  <ShieldCheck className="h-4 w-4" aria-hidden />
                   Claim requests
                   {pendingClaimCount > 0 && (
-                    <Badge variant="destructive" className="ml-2">
+                    <Badge variant="destructive" className="ml-1">
                       {pendingClaimCount}
                     </Badge>
                   )}
                 </Link>
               </Button>
               <Button onClick={() => setCreateOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
+                <Plus className="h-4 w-4" aria-hidden />
                 Create profile
               </Button>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative min-w-60 flex-1">
-              <Search className="text-muted-foreground absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2" />
-              <Input
-                placeholder="Search handle or display name..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-            <Select
-              value={filter}
-              onValueChange={(v) => setFilter(v as ClaimFilter)}
-            >
-              <SelectTrigger className="w-52">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All statuses</SelectItem>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="UNCLAIMED">Unclaimed</SelectItem>
-                <SelectItem value="PENDING_CLAIM">Pending claim</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           <DataTable
@@ -309,14 +354,17 @@ export function CreatorProfilesManager() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={unlinkUser.isPending}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
+              disabled={unlinkUser.isPending}
               onClick={() =>
                 unlinkTarget &&
                 unlinkUser.mutate({ profileId: unlinkTarget.profileId })
               }
             >
-              Unlink
+              {unlinkUser.isPending ? "Unlinking…" : "Unlink"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -335,14 +383,17 @@ export function CreatorProfilesManager() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteProfile.isPending}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteProfile.isPending}
               onClick={() =>
                 deleteTarget && deleteProfile.mutate({ id: deleteTarget.id })
               }
             >
-              Delete
+              {deleteProfile.isPending ? "Deleting…" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -516,7 +567,7 @@ function CreateProfileDialog({
             onClick={() =>
               create.mutate({
                 handle,
-                displayName: displayName || handle,
+                displayName,
                 tagline: tagline || null,
                 userId: pickedUser?.id ?? null,
               })
@@ -525,7 +576,8 @@ function CreateProfileDialog({
           >
             {create.isPending ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />{" "}
+                Creating…
               </>
             ) : (
               "Create & edit"

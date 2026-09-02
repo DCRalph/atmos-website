@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
 
 export function AdminSection({
   title,
@@ -15,17 +17,24 @@ export function AdminSection({
   title: string;
   subtitle?: string;
   description?: string;
+  /**
+   * Where "back" goes. The arrow is drawn here, so a label is just the
+   * destination — "Events", not "← Back to Events".
+   */
   backLink?: { href: string; label: string };
   actions?: React.ReactNode;
   maxWidth?: "max-w-2xl" | "max-w-4xl" | "max-w-7xl";
   children: React.ReactNode;
 }) {
   return (
-    <div className="px-4 py-5 sm:px-6 sm:py-6 lg:p-8">
+    <div className={cn("mx-auto px-4 py-5 sm:px-6 sm:py-6 lg:p-8", maxWidth)}>
       {backLink && (
         <div className="mb-3 sm:mb-4">
           <Button variant="outline" size="sm" asChild className="sm:h-9">
-            <Link href={backLink.href}>{backLink.label}</Link>
+            <Link href={backLink.href}>
+              <ArrowLeft className="size-4" aria-hidden />
+              {backLink.label}
+            </Link>
           </Button>
         </div>
       )}

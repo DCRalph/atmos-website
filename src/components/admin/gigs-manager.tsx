@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { Loader2, Plus, Search } from "lucide-react";
+
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -12,34 +15,42 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import { formatDateInUserTimezone, isGigUpcoming } from "~/lib/date-utils";
-import Link from "next/link";
+import { useDebouncedValue } from "~/hooks/use-debounced-value";
+import { formatDateTime, isGigUpcoming } from "~/lib/date-utils";
 
 export function GigsManager() {
   const [search, setSearch] = useState("");
-  const { data: gigs, isLoading } = api.gigs.getAll.useQuery(
-    search ? { search } : undefined,
+  const debouncedSearch = useDebouncedValue(search).trim();
+  const {
+    data: gigs,
+    isLoading,
+    isFetching,
+  } = api.gigs.getAll.useQuery(
+    debouncedSearch ? { search: debouncedSearch } : undefined,
   );
-  const rows = (gigs ?? []).filter((gig) => gig.gigStartTime);
+
+  const rows = gigs ?? [];
   type GigRow = (typeof rows)[number];
+
   const columns: DataTableColumn<GigRow>[] = [
     {
       id: "start",
-      header: "Start Time",
-      cell: (gig) =>
-        formatDateInUserTimezone(gig.gigStartTime, {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-        }),
+      header: "Starts",
+      sortable: true,
+      accessor: (gig) => gig.gigStartTime,
+      cell: (gig) => formatDateTime(gig.gigStartTime),
     },
-    { id: "title", header: "Title", accessor: (row) => row.title },
+    {
+      id: "title",
+      header: "Title",
+      sortable: true,
+      accessor: (row) => row.title,
+    },
     {
       id: "status",
       header: "Status",
-      cell: (gig) =>
+      sortable: true,
+      accessor: (gig) =>
         isGigUpcoming({
           gigStartTime: gig.gigStartTime,
           gigEndTime: gig.gigEndTime,
@@ -50,11 +61,15 @@ export function GigsManager() {
     {
       id: "media",
       header: "Media",
-      accessor: (gig) => (gig.media as Array<{ id: string }>).length,
+      type: "number",
+      align: "right",
+      sortable: true,
+      accessor: (gig) => gig.media.length,
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "",
+      align: "right",
       hideable: false,
       cell: (gig) => (
         <Button variant="outline" size="sm" asChild>
@@ -67,24 +82,39 @@ export function GigsManager() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-col gap-2">
             <CardTitle>Gigs</CardTitle>
-            <CardDescription>Manage upcoming and past gigs</CardDescription>
+            <CardDescription>
+              Every gig, newest first. Editing opens on its own page.
+            </CardDescription>
           </div>
-          <Link href="/admin/gigs/new">
-            <Button>Create New Gig</Button>
-          </Link>
+          <Button asChild>
+            <Link href="/admin/gigs/new">
+              <Plus className="h-4 w-4" aria-hidden />
+              Add gig
+            </Link>
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="mb-4">
+        <div className="relative mb-4 max-w-sm">
+          <Search
+            className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
+            aria-hidden
+          />
           <Input
-            placeholder="Search by title, subtitle, or short/long description..."
+            placeholder="Search by title, subtitle, or description…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="max-w-sm"
+            className="pl-9"
           />
+          {isFetching ? (
+            <Loader2
+              className="text-muted-foreground absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 animate-spin"
+              aria-hidden
+            />
+          ) : null}
         </div>
         <DataTable
           columns={columns}
