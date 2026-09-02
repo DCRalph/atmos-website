@@ -3,20 +3,16 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Check, ExternalLink, Loader2, Search, X } from "lucide-react";
+import { toast } from "sonner";
 import { api } from "~/trpc/react";
 import UserAvatar from "~/components/UserAvatar";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { DataTable, type DataTableColumn } from "~/components/data-table";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
+import { FilterSelect, ListFilters } from "./list-filters";
+import { formatDateTime } from "~/lib/date-utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,7 +24,13 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 
-type StatusFilter = "PENDING" | "APPROVED" | "REJECTED" | "ALL";
+type ClaimStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+const CLAIM_STATUSES = [
+  { value: "PENDING", label: "Pending" },
+  { value: "APPROVED", label: "Approved" },
+  { value: "REJECTED", label: "Rejected" },
+] as const satisfies readonly { value: ClaimStatus; label: string }[];
 
 type ClaimRequest = {
   id: string;
@@ -63,42 +65,39 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge variant="secondary">{status}</Badge>;
 }
 
-function formatDate(d: Date | string | null | undefined) {
+function whenever(d: Date | string | null | undefined) {
   if (!d) return "—";
-  const date = typeof d === "string" ? new Date(d) : d;
-  return date.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDateTime(typeof d === "string" ? new Date(d) : d);
 }
 
 export function ClaimRequestsManager() {
-  const [status, setStatus] = useState<StatusFilter>("PENDING");
+  const [status, setStatus] = useState<ClaimStatus | null>("PENDING");
   const [search, setSearch] = useState("");
   const [approveTarget, setApproveTarget] = useState<ClaimRequest | null>(null);
   const [rejectTarget, setRejectTarget] = useState<ClaimRequest | null>(null);
 
   const utils = api.useUtils();
   const list = api.creatorProfiles.listClaimRequests.useQuery({
-    status: status === "ALL" ? undefined : status,
+    status: status ?? undefined,
   });
 
   const approve = api.creatorProfiles.approveClaim.useMutation({
     onSuccess: async () => {
+      toast.success("Claim approved");
       setApproveTarget(null);
       await utils.creatorProfiles.listClaimRequests.invalidate();
       await utils.creatorProfiles.listAll.invalidate();
     },
+    onError: (error) => toast.error(error.message),
   });
   const reject = api.creatorProfiles.rejectClaim.useMutation({
     onSuccess: async () => {
+      toast.success("Claim rejected");
       setRejectTarget(null);
       await utils.creatorProfiles.listClaimRequests.invalidate();
       await utils.creatorProfiles.listAll.invalidate();
     },
+    onError: (error) => toast.error(error.message),
   });
 
   const requests = useMemo(() => {
@@ -120,14 +119,17 @@ export function ClaimRequestsManager() {
     });
   }, [list.data, search]);
 
-  const pendingCount = useMemo(() => {
-    if (status === "PENDING") return requests.length;
-    return (list.data ?? []).filter((r) => r.status === "PENDING").length;
-  }, [list.data, requests, status]);
+  /** Only shown while some other filter is selected, as a nudge back. */
+  const pendingCount = useMemo(
+    () => (list.data ?? []).filter((r) => r.status === "PENDING").length,
+    [list.data],
+  );
   const columns: DataTableColumn<ClaimRequest>[] = [
     {
       id: "profile",
       header: "Profile",
+      sortable: true,
+      accessor: (request) => request.profile?.handle,
       cell: (request) =>
         request.profile ? (
           <div className="flex flex-col">
@@ -148,6 +150,8 @@ export function ClaimRequestsManager() {
     {
       id: "requester",
       header: "Requested by",
+      sortable: true,
+      accessor: (request) => request.requestingUser?.name,
       cell: (request) =>
         request.requestingUser ? (
           <Link
@@ -176,10 +180,11 @@ export function ClaimRequestsManager() {
     {
       id: "message",
       header: "Message",
-      className: "max-w-sm",
+      // `max-width` on a table cell is only a suggestion in auto layout, so the
+      // clamp goes on the block inside it.
       cell: (request) =>
         request.message ? (
-          <p className="line-clamp-3 text-sm whitespace-pre-wrap">
+          <p className="line-clamp-3 max-w-sm text-sm whitespace-pre-wrap">
             {request.message}
           </p>
         ) : (
@@ -191,57 +196,68 @@ export function ClaimRequestsManager() {
     {
       id: "status",
       header: "Status",
+      sortable: true,
+      accessor: (request) => request.status,
       cell: (request) => <StatusBadge status={request.status} />,
     },
     {
       id: "requested",
       header: "Requested",
       className: "text-muted-foreground text-xs whitespace-nowrap",
-      cell: (request) => formatDate(request.createdAt),
+      sortable: true,
+      accessor: (request) => new Date(request.createdAt),
+      cell: (request) => whenever(request.createdAt),
     },
     {
       id: "decided",
       header: "Decided",
       className: "text-muted-foreground text-xs whitespace-nowrap",
-      cell: (request) => formatDate(request.decidedAt),
+      sortable: true,
+      accessor: (request) =>
+        request.decidedAt ? new Date(request.decidedAt) : null,
+      cell: (request) => whenever(request.decidedAt),
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "",
       align: "right",
       hideable: false,
       cell: (request) => (
         <div className="flex justify-end gap-1">
           {request.profile && (
-            <Button size="sm" variant="ghost" asChild>
+            <Button size="icon" variant="ghost" asChild>
               <Link
                 href={`/@${request.profile.handle}`}
                 target="_blank"
-                title="Open profile"
+                rel="noreferrer"
+                aria-label={`Open @${request.profile.handle} in a new tab`}
+                title="Open public profile"
               >
-                <ExternalLink className="h-4 w-4" />
+                <ExternalLink className="h-4 w-4" aria-hidden />
               </Link>
             </Button>
           )}
           {request.status === "PENDING" && (
             <>
               <Button
-                size="sm"
+                size="icon"
                 variant="ghost"
                 className="text-green-600 hover:text-green-700"
                 onClick={() => setApproveTarget(request)}
+                aria-label={`Approve the claim on @${request.profile?.handle ?? "this profile"}`}
                 title="Approve"
               >
-                <Check className="h-4 w-4" />
+                <Check className="h-4 w-4" aria-hidden />
               </Button>
               <Button
-                size="sm"
+                size="icon"
                 variant="ghost"
                 className="text-destructive hover:text-destructive"
                 onClick={() => setRejectTarget(request)}
+                aria-label={`Reject the claim on @${request.profile?.handle ?? "this profile"}`}
                 title="Reject"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden />
               </Button>
             </>
           )}
@@ -253,41 +269,41 @@ export function ClaimRequestsManager() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="flex items-center gap-2">
-              Claim requests
-              {pendingCount > 0 && status !== "PENDING" && (
-                <Badge variant="outline">{pendingCount} pending</Badge>
-              )}
-            </CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pt-6">
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative min-w-60 flex-1">
-              <Search className="text-muted-foreground absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2" />
+              <Search
+                className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
+                aria-hidden
+              />
               <Input
                 placeholder="Search handle, user or message…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-8"
+                className="pl-9"
               />
             </div>
-            <Select
-              value={status}
-              onValueChange={(v) => setStatus(v as StatusFilter)}
+            <ListFilters
+              activeCount={status ? 1 : 0}
+              onClear={() => setStatus(null)}
             >
-              <SelectTrigger className="w-52">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="PENDING">Pending</SelectItem>
-                <SelectItem value="APPROVED">Approved</SelectItem>
-                <SelectItem value="REJECTED">Rejected</SelectItem>
-                <SelectItem value="ALL">All</SelectItem>
-              </SelectContent>
-            </Select>
+              <FilterSelect
+                label="Status"
+                value={status}
+                onChange={setStatus}
+                options={CLAIM_STATUSES}
+                anyLabel="All"
+              />
+              {pendingCount > 0 && status !== "PENDING" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setStatus("PENDING")}
+                >
+                  <Badge variant="outline">{pendingCount} pending</Badge>
+                </Button>
+              )}
+            </ListFilters>
           </div>
 
           <DataTable
@@ -295,6 +311,7 @@ export function ClaimRequestsManager() {
             data={requests}
             getRowId={(row) => row.id}
             isLoading={list.isLoading}
+            isFetching={list.isFetching}
             storageKey="admin-claim-requests"
             emptyMessage={
               status === "PENDING"

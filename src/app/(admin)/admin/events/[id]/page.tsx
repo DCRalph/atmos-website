@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { useConfirm } from "~/components/confirm-provider";
+import { useTabParam } from "~/hooks/use-tab-param";
 import { EventForm } from "~/components/admin/ticketing/event-form";
 import { TierManager } from "~/components/admin/ticketing/tier-manager";
 import { EventOverview } from "~/components/admin/ticketing/event-overview";
@@ -32,18 +33,28 @@ import { ShareLinkCard } from "~/components/admin/ticketing/share-link-card";
 import { formatEventDateTime } from "~/lib/ticketing/dates";
 
 const STATUSES = [
-  "DRAFT",
-  "PUBLISHED",
-  "SALES_PAUSED",
-  "SOLD_OUT",
-  "CANCELLED",
-  "ARCHIVED",
+  { value: "DRAFT", label: "Draft" },
+  { value: "PUBLISHED", label: "Published" },
+  { value: "SALES_PAUSED", label: "Sales paused" },
+  { value: "SOLD_OUT", label: "Sold out" },
+  { value: "CANCELLED", label: "Cancelled" },
+  { value: "ARCHIVED", label: "Archived" },
 ] as const;
 
 export default function AdminEventPage() {
   const params = useParams<{ id: string }>();
   const utils = api.useUtils();
   const confirm = useConfirm();
+  const tab = useTabParam([
+    "overview",
+    "tiers",
+    "orders",
+    "tickets",
+    "comps",
+    "links",
+    "staff",
+    "settings",
+  ]);
 
   const event = api.ticketEvents.byId.useQuery(
     { id: params.id },
@@ -83,7 +94,7 @@ export default function AdminEventPage() {
     <AdminSection
       title={data.name}
       subtitle={`${formatEventDateTime(data.startsAt, data.timezone)}${data.venueName ? ` · ${data.venueName}` : ""}`}
-      backLink={{ href: "/admin/events", label: "← Events" }}
+      backLink={{ href: "/admin/events", label: "Events" }}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline">{data.tiers.length} tiers</Badge>
@@ -102,7 +113,7 @@ export default function AdminEventPage() {
               }
               setStatus.mutate({
                 id: data.id,
-                status: value as (typeof STATUSES)[number],
+                status: value as (typeof STATUSES)[number]["value"],
               });
             }}
           >
@@ -111,21 +122,25 @@ export default function AdminEventPage() {
             </SelectTrigger>
             <SelectContent>
               {STATUSES.map((status) => (
-                <SelectItem key={status} value={status}>
-                  {status.replace("_", " ").toLowerCase()}
+                <SelectItem key={status.value} value={status.value}>
+                  {status.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
           <Button variant="outline" asChild>
-            <Link href={`/events/${data.slug}`} target="_blank">
-              <ExternalLink className="size-4" /> View
+            <Link
+              href={`/events/${data.slug}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <ExternalLink className="size-4" aria-hidden /> View
             </Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href={`/door/${data.id}`} target="_blank">
-              <ScanLine className="size-4" /> Scanner
+            <Link href={`/door/${data.id}`} target="_blank" rel="noreferrer">
+              <ScanLine className="size-4" aria-hidden /> Scanner
             </Link>
           </Button>
           <Button asChild>
@@ -138,7 +153,7 @@ export default function AdminEventPage() {
         <ApprovalQueue eventId={data.id} count={approvals.data.length} />
       )}
 
-      <Tabs defaultValue="overview">
+      <Tabs {...tab}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="tiers">Tiers</TabsTrigger>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -245,10 +245,11 @@ export function AccessLevelsPanel() {
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "",
+      align: "right",
       hideable: false,
       cell: (level) => (
-        <div className="flex gap-2">
+        <div className="flex justify-end gap-2">
           <Button variant="outline" size="sm" onClick={() => openEdit(level)}>
             Edit
           </Button>
@@ -276,7 +277,7 @@ export function AccessLevelsPanel() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-col gap-2">
             <CardTitle>Access levels</CardTitle>
             <CardDescription>
@@ -296,6 +297,7 @@ export function AccessLevelsPanel() {
                   setForm({ ...BLANK });
                 }}
               >
+                <Plus className="size-4" aria-hidden />
                 Add level
               </Button>
             </DialogTrigger>
@@ -349,7 +351,10 @@ export function AccessLevelsPanel() {
                       id="short"
                       value={form.short}
                       onChange={(e) =>
-                        setForm({ ...form, short: e.target.value.toUpperCase() })
+                        setForm({
+                          ...form,
+                          short: e.target.value.toUpperCase(),
+                        })
                       }
                       placeholder="BACK"
                     />
@@ -427,6 +432,7 @@ export function AccessLevelsPanel() {
           data={rows}
           isLoading={isLoading}
           getRowId={(row) => row.code}
+          storageKey="admin-access-levels"
           rowClassName={(row) => (row.archived ? "opacity-50" : undefined)}
         />
       </CardContent>
@@ -449,7 +455,9 @@ function ColourField({
   optional?: boolean;
   hint?: string;
 }) {
-  const valid = optional ? value === "" || isHexColour(value) : isHexColour(value);
+  const valid = optional
+    ? value === "" || isHexColour(value)
+    : isHexColour(value);
   return (
     <div className="flex flex-col gap-2">
       <Label htmlFor={id}>{label}</Label>

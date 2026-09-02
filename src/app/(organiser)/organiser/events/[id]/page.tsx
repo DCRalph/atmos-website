@@ -30,7 +30,7 @@ export default function OrganiserEventPage() {
       subtitle={`${formatEventDateTime(data.startsAt, data.timezone)}${
         data.venueName ? ` · ${data.venueName}` : ""
       }`}
-      backLink={{ href: "/organiser/events", label: "← Events" }}
+      backLink={{ href: "/organiser/events", label: "Events" }}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline">{data.status.toLowerCase()}</Badge>

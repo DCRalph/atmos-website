@@ -3,7 +3,10 @@ import { NewsletterManager } from "~/components/admin/newsletter-manager";
 
 export default function AdminNewsletterPage() {
   return (
-    <AdminSection title="Newsletter" description="Manage newsletter signups">
+    <AdminSection
+      title="Newsletter"
+      description="Everyone signed up, and whether they are still being sent to."
+    >
       <NewsletterManager />
     </AdminSection>
   );

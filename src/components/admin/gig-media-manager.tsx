@@ -25,6 +25,7 @@ import { CSS } from "@dnd-kit/utilities";
 import Image from "next/image";
 import { toast } from "sonner";
 import { api } from "~/trpc/react";
+import { formatDateTime } from "~/lib/date-utils";
 import { useUpload } from "~/hooks/use-upload";
 import { UploadProgressList } from "~/components/uploads/upload-progress-list";
 import { Button } from "~/components/ui/button";
@@ -222,7 +223,7 @@ function SortableMediaItem({
           <div className="text-muted-foreground flex flex-col items-center gap-2">
             <ImageIcon className="h-12 w-12" />
             <p className="text-xs">
-              {hasError ? "Failed to load" : "Loading..."}
+              {hasError ? "Failed to load" : "Loading…"}
             </p>
           </div>
         </div>
@@ -950,13 +951,8 @@ export function GigMediaManager({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
-  const formatDate = (date: Date | string) => {
-    const d = typeof date === "string" ? new Date(date) : date;
-    return d.toLocaleString("en-US", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
-  };
+  const formatUploaded = (date: Date | string) =>
+    formatDateTime(typeof date === "string" ? new Date(date) : date);
 
   return (
     <div className="space-y-6">
@@ -1019,10 +1015,9 @@ export function GigMediaManager({
             <Save className="h-4 w-4 text-orange-500" />
           </div>
           <div className="flex-1">
-            <p className="font-medium text-orange-500">Unsaved Changes</p>
+            <p className="font-medium text-orange-500">Unsaved changes</p>
             <p className="text-muted-foreground text-sm">
-              You have rearranged media items. Click "Save Changes" to persist
-              your changes.
+              You have rearranged media items. Save to keep the new order.
             </p>
           </div>
         </div>
@@ -1332,7 +1327,7 @@ export function GigMediaManager({
                     </p>
                     <p className="text-sm font-medium">
                       {infoMedia.fileUpload?.createdAt
-                        ? formatDate(infoMedia.fileUpload.createdAt)
+                        ? formatUploaded(infoMedia.fileUpload.createdAt)
                         : "Unknown"}
                     </p>
                   </div>
@@ -1611,8 +1606,7 @@ export function GigMediaManager({
                   ))}
                 </ul>
                 <p className="text-sm">
-                  You can use the "Select from Uploaded" button to add existing
-                  files to this gig.
+                  Use “Select from uploaded” to add existing files to this gig.
                 </p>
               </div>
             </AlertDialogDescription>

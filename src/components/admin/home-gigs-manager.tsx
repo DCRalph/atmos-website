@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   DndContext,
+  KeyboardSensor,
   PointerSensor,
   closestCenter,
   useDroppable,
@@ -14,6 +15,7 @@ import {
   SortableContext,
   useSortable,
   arrayMove,
+  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -44,7 +46,10 @@ import {
   TooltipTrigger,
 } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
+import { useDebouncedValue } from "~/hooks/use-debounced-value";
 import { useUnsavedChangesWarning } from "~/hooks/use-unsaved-changes-warning";
+import { formatDate } from "~/lib/date-utils";
+import { SaveStatusPill, type SaveStatus } from "./save-status";
 
 const HOME_FEATURED_COUNT = 1;
 const HOME_PAST_SHOWN_COUNT = 4;
@@ -69,11 +74,7 @@ function formatGigDateLabel(gig: GigSummary | undefined) {
   const date = gig?.gigStartTime ?? gig?.gigEndTime ?? null;
   if (!date) return null;
   try {
-    return date.toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    return formatDate(date, "short");
   } catch {
     return null;
   }
@@ -228,7 +229,7 @@ export function HomeGigsManager() {
   const { data: pastPlacement, isLoading: isLoadingPast } =
     api.homeGigs.getPlacements.useQuery({ section: "PAST" });
 
-  const setPlacements = api.homeGigs.setPlacements.useMutation();
+  const setAllPlacements = api.homeGigs.setAllPlacements.useMutation();
 
   const [featuredIds, setFeaturedIds] = useState<string[]>([]);
   const [pastIds, setPastIds] = useState<string[]>([]);
@@ -236,7 +237,7 @@ export function HomeGigsManager() {
   const [savedPastIds, setSavedPastIds] = useState<string[]>([]);
 
   const [search, setSearch] = useState("");
-  const trimmedSearch = search.trim();
+  const trimmedSearch = useDebouncedValue(search).trim();
 
   const { data: gigsList, isLoading: isLoadingGigsList } =
     api.gigs.getAll.useQuery(undefined, { staleTime: 60_000 });
@@ -246,7 +247,7 @@ export function HomeGigsManager() {
       { enabled: !!trimmedSearch },
     );
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [saveState, setSaveState] = useState<SaveStatus>("idle");
 
   // Build gig info map from placements + gig list
   const gigMap = useMemo(() => {
@@ -271,27 +272,67 @@ export function HomeGigsManager() {
     return map;
   }, [featuredPlacement, pastPlacement, gigsList]);
 
-  useEffect(() => {
-    const nextFeatured = (featuredPlacement ?? []).map((p) => p.gigId);
-    const nextPast = (pastPlacement ?? []).map((p) => p.gigId);
-
-    setFeaturedIds(nextFeatured.slice(0, HOME_FEATURED_COUNT));
-    setPastIds(nextPast);
-    setSavedFeaturedIds(nextFeatured.slice(0, HOME_FEATURED_COUNT));
-    setSavedPastIds(nextPast);
-  }, [featuredPlacement, pastPlacement]);
-
   const hasChanges =
     JSON.stringify(featuredIds) !== JSON.stringify(savedFeaturedIds) ||
     JSON.stringify(pastIds) !== JSON.stringify(savedPastIds);
 
-  useUnsavedChangesWarning({ enabled: hasChanges });
+  const isSaving = setAllPlacements.isPending;
+
+  const serverFeatured = useMemo(
+    () =>
+      (featuredPlacement ?? [])
+        .map((p) => p.gigId)
+        .slice(0, HOME_FEATURED_COUNT),
+    [featuredPlacement],
+  );
+  const serverPast = useMemo(
+    () => (pastPlacement ?? []).map((p) => p.gigId),
+    [pastPlacement],
+  );
+
+  /**
+   * Adopt the stored arrangement when it is genuinely different, but never on
+   * top of unsaved dragging or mid-save. This used to be an effect keyed on the
+   * query data, which meant any background refetch — a window refocus was
+   * enough — silently threw away a reordering that had not been saved yet.
+   */
+  const serverKey =
+    featuredPlacement && pastPlacement
+      ? JSON.stringify([serverFeatured, serverPast])
+      : null;
+  const [hydratedKey, setHydratedKey] = useState<string | null>(null);
+  if (serverKey && serverKey !== hydratedKey && !isSaving && !hasChanges) {
+    setHydratedKey(serverKey);
+    setFeaturedIds(serverFeatured);
+    setPastIds(serverPast);
+    setSavedFeaturedIds(serverFeatured);
+    setSavedPastIds(serverPast);
+  }
+
+  useUnsavedChangesWarning({ enabled: hasChanges && !isSaving });
+
+  // "Saved" is a flash of confirmation, not a resting state.
+  useEffect(() => {
+    if (saveState !== "saved") return;
+    const timer = setTimeout(() => setSaveState("idle"), 2500);
+    return () => clearTimeout(timer);
+  }, [saveState]);
+
+  const status: SaveStatus =
+    hasChanges && (saveState === "idle" || saveState === "saved")
+      ? "dirty"
+      : saveState;
 
   const now = useMemo(() => new Date(), []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
+    }),
+    // Reordering has to be possible without a mouse: focus a grip, space to
+    // pick up, arrows to move, space to drop.
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
 
@@ -378,47 +419,41 @@ export function HomeGigsManager() {
 
   const handleDiscard = () => {
     setSaveError(null);
-    setLastSavedAt(null);
+    setSaveState("idle");
     setFeaturedIds(savedFeaturedIds);
     setPastIds(savedPastIds);
   };
 
   const handleSave = async () => {
     setSaveError(null);
+    setSaveState("saving");
+    const nextFeatured = featuredIds.slice(0, HOME_FEATURED_COUNT);
     try {
-      await Promise.all([
-        setPlacements.mutateAsync({
-          section: "FEATURED",
-          gigIds: featuredIds.slice(0, HOME_FEATURED_COUNT),
-        }),
-        setPlacements.mutateAsync({
-          section: "PAST",
-          gigIds: pastIds,
-        }),
-      ]);
+      // One mutation, one transaction: featured and past can no longer
+      // half-apply and leave Home showing an arrangement nobody asked for.
+      await setAllPlacements.mutateAsync({
+        featuredGigIds: nextFeatured,
+        pastGigIds: pastIds,
+      });
 
-      setSavedFeaturedIds(featuredIds.slice(0, HOME_FEATURED_COUNT));
+      setSavedFeaturedIds(nextFeatured);
       setSavedPastIds(pastIds);
-      setLastSavedAt(Date.now());
+      setSaveState("saved");
 
       await Promise.all([
-        utils.homeGigs.getPlacements.invalidate({
-          section: "FEATURED",
-        }),
-        utils.homeGigs.getPlacements.invalidate({
-          section: "PAST",
-        }),
+        utils.homeGigs.getPlacements.invalidate({ section: "FEATURED" }),
+        utils.homeGigs.getPlacements.invalidate({ section: "PAST" }),
         utils.homeGigs.getHomeRecent.invalidate(),
       ]);
     } catch (e) {
-      setSaveError(
-        e instanceof Error ? e.message : "Failed to save. Please try again.",
-      );
+      const message =
+        e instanceof Error ? e.message : "Failed to save. Please try again.";
+      setSaveError(message);
+      setSaveState("error");
     }
   };
 
   const isLoading = isLoadingFeatured || isLoadingPast;
-  const isSaving = setPlacements.isPending;
   const selectedIds = useMemo(
     () => new Set<string>([...featuredIds, ...pastIds]),
     [featuredIds, pastIds],
@@ -469,22 +504,13 @@ export function HomeGigsManager() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 pt-2">
-          {hasChanges ? (
-            <Badge variant="secondary">Unsaved changes</Badge>
-          ) : (
-            <Badge variant="outline">Up to date</Badge>
-          )}
-          {lastSavedAt ? (
+          {/* The same pill the item editors use, so "unsaved" reads the same
+              everywhere in the admin. */}
+          <SaveStatusPill status={status} errorMessage={saveError} />
+          {status === "idle" ? (
             <span className="text-muted-foreground text-xs">
-              Saved{" "}
-              {new Date(lastSavedAt).toLocaleTimeString(undefined, {
-                hour: "numeric",
-                minute: "2-digit",
-              })}
+              This arrangement is up to date.
             </span>
-          ) : null}
-          {saveError ? (
-            <span className="text-destructive text-xs">{saveError}</span>
           ) : null}
         </div>
       </CardHeader>

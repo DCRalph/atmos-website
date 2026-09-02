@@ -10,6 +10,8 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { useConfirm } from "~/components/confirm-provider";
+import { useDebouncedValue } from "~/hooks/use-debounced-value";
+import { formatDate } from "~/lib/date-utils";
 import { denyReasonLabel } from "~/lib/ticketing/deny-reasons";
 
 /**
@@ -32,7 +34,9 @@ export default function PatronsPage() {
   const utils = api.useUtils();
 
   const retention = api.patrons.retention.useQuery();
-  const results = api.patrons.search.useQuery({ query });
+  const results = api.patrons.search.useQuery({
+    query: useDebouncedValue(query),
+  });
 
   const purge = api.patrons.purge.useMutation({
     onSuccess: () => {
@@ -192,12 +196,16 @@ function PatronDetail({
           <Field label="Date of birth">{person.dateOfBirth}</Field>
           <Field label="Document">{person.documentLabel}</Field>
           <Field label="Number">{person.documentNumber ?? "—"}</Field>
-          <Field label="First seen">{formatDate(person.firstSeenAt)}</Field>
-          <Field label="Last seen">{formatDate(person.lastSeenAt)}</Field>
+          <Field label="First seen">
+            {formatDate(person.firstSeenAt, "short")}
+          </Field>
+          <Field label="Last seen">
+            {formatDate(person.lastSeenAt, "short")}
+          </Field>
           <Field label="Checks">{person.checkCount}</Field>
           <Field label="Deleted on">
             {person.purgeAfter
-              ? formatDate(person.purgeAfter)
+              ? formatDate(person.purgeAfter, "short")
               : "Held — a ban is standing"}
           </Field>
         </dl>
@@ -226,11 +234,13 @@ function PatronDetail({
                 </p>
                 {ban.note && <p className="mt-1">“{ban.note}”</p>}
                 <p className="text-muted-foreground mt-1 text-xs">
-                  {formatDate(ban.startsAt)}
+                  {formatDate(ban.startsAt, "short")}
                   {ban.createdByName ? ` · by ${ban.createdByName}` : ""}
-                  {ban.expiresAt ? ` · until ${formatDate(ban.expiresAt)}` : ""}
+                  {ban.expiresAt
+                    ? ` · until ${formatDate(ban.expiresAt, "short")}`
+                    : ""}
                   {ban.liftedAt
-                    ? ` · lifted ${formatDate(ban.liftedAt)}${ban.liftedByName ? ` by ${ban.liftedByName}` : ""}`
+                    ? ` · lifted ${formatDate(ban.liftedAt, "short")}${ban.liftedByName ? ` by ${ban.liftedByName}` : ""}`
                     : ""}
                 </p>
               </div>
@@ -260,7 +270,7 @@ function PatronDetail({
           <ul className="text-muted-foreground space-y-1 text-sm">
             {person.visits.map((visit, index) => (
               <li key={`${visit.at.toISOString()}-${index}`}>
-                {formatDate(visit.at)} · {visit.eventName} ·{" "}
+                {formatDate(visit.at, "short")} · {visit.eventName} ·{" "}
                 {visit.result.toLowerCase().replaceAll("_", " ")}
                 {visit.deviceLabel ? ` · ${visit.deviceLabel}` : ""}
               </li>
@@ -304,13 +314,4 @@ function Field({
       <dd className="font-medium">{children}</dd>
     </div>
   );
-}
-
-function formatDate(value: Date): string {
-  return new Intl.DateTimeFormat("en-NZ", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "Pacific/Auckland",
-  }).format(value);
 }

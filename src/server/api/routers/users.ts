@@ -8,6 +8,42 @@ import {
 } from "~/server/utils/permissions";
 import { ActivityType } from "~Prisma/client";
 
+/**
+ * When somebody last signed in, and how.
+ *
+ * Better Auth's `lastLoginMethod` plugin owns this table and it is not in our
+ * Prisma schema, so the delegate is reached dynamically and may simply not be
+ * there. Narrowed to a real type here rather than left as `any`: the admin
+ * renders both fields, and an untyped value meant a wrong shape would only show
+ * up as a broken cell.
+ */
+type LastLogin = { method: string | null; updatedAt: Date | null };
+
+async function readLastLogin(
+  db: unknown,
+  userId: string,
+): Promise<LastLogin | null> {
+  const delegate = (
+    db as {
+      lastLoginMethod?: {
+        findUnique: (args: unknown) => Promise<LastLogin | null>;
+      };
+    }
+  ).lastLoginMethod;
+  if (!delegate) return null;
+
+  try {
+    return await delegate
+      .findUnique({
+        where: { userId },
+        select: { method: true, updatedAt: true },
+      })
+      .catch(() => null);
+  } catch {
+    return null;
+  }
+}
+
 export const usersRouter = createTRPCRouter({
   getAll: adminProcedure
     .input(
@@ -44,42 +80,16 @@ export const usersRouter = createTRPCRouter({
         },
       });
 
-      // Fetch last login method for each user
-      // Note: Better Auth plugin tables may not exist yet, so we handle errors gracefully
-      const usersWithLastLogin = await Promise.all(
+      return await Promise.all(
         users.map(async (user) => {
-          let lastLoginMethod = null;
-          let lastLoginAt = null;
-
-          try {
-            // @ts-expect-error - Better Auth plugin table, may not exist in Prisma types yet
-            const lastLogin = await ctx.db.lastLoginMethod
-              ?.findUnique({
-                where: { userId: user.id },
-                select: {
-                  method: true,
-                  updatedAt: true,
-                },
-              })
-              .catch(() => null);
-
-            if (lastLogin) {
-              lastLoginMethod = lastLogin.method ?? null;
-              lastLoginAt = lastLogin.updatedAt ?? null;
-            }
-          } catch {
-            // Table may not exist yet
-          }
-
+          const lastLogin = await readLastLogin(ctx.db, user.id);
           return {
             ...user,
-            lastLoginMethod,
-            lastLoginAt,
+            lastLoginMethod: lastLogin?.method ?? null,
+            lastLoginAt: lastLogin?.updatedAt ?? null,
           };
         }),
       );
-
-      return usersWithLastLogin;
     }),
 
   addPermission: adminProcedure
@@ -222,33 +232,12 @@ export const usersRouter = createTRPCRouter({
         return null;
       }
 
-      let lastLoginMethod = null;
-      let lastLoginAt = null;
-
-      try {
-        // @ts-expect-error - Better Auth plugin table, may not exist in Prisma types yet
-        const lastLogin = await ctx.db.lastLoginMethod
-          ?.findUnique({
-            where: { userId: user.id },
-            select: {
-              method: true,
-              updatedAt: true,
-            },
-          })
-          .catch(() => null);
-
-        if (lastLogin) {
-          lastLoginMethod = lastLogin.method ?? null;
-          lastLoginAt = lastLogin.updatedAt ?? null;
-        }
-      } catch {
-        // Table might not exist yet
-      }
+      const lastLogin = await readLastLogin(ctx.db, user.id);
 
       return {
         ...user,
-        lastLoginMethod,
-        lastLoginAt,
+        lastLoginMethod: lastLogin?.method ?? null,
+        lastLoginAt: lastLogin?.updatedAt ?? null,
       };
     }),
 

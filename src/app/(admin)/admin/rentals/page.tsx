@@ -4,8 +4,8 @@ import { GearRentalManager } from "~/components/admin/gear-rental-manager";
 export default function AdminRentalsPage() {
   return (
     <AdminSection
-      title="Rental Packages"
-      description="Manage inventory items, rentable packages, and package booking requests"
+      title="Rentals"
+      description="Gear available to hire, the packages it is sold in, and the requests that come back."
     >
       <GearRentalManager />
     </AdminSection>

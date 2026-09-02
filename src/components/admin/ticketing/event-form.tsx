@@ -40,10 +40,7 @@ const VISIBILITIES = [
 import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { PickerSelect } from "~/components/ui/picker-select";
 import { formatNZD, parsePriceToCents } from "~/lib/ticketing/money";
-import {
-  DEFAULT_PASS_THEME,
-  type PassStripStyle,
-} from "~/lib/ticketing/pass-theme";
+import { DEFAULT_PASS_THEME } from "~/lib/ticketing/pass-theme";
 import {
   PassThemeField,
   type PassThemeDraft,
@@ -92,7 +89,7 @@ export function EventForm({ event }: { event?: AdminEvent }) {
     (event?.maxTicketsPerOrder ?? 10).toString(),
   );
   const [visibility, setVisibility] = useState<Visibility>(
-    (event?.visibility as Visibility | undefined) ?? "PUBLIC",
+    event?.visibility ?? "PUBLIC",
   );
   const [isR18, setIsR18] = useState(event?.isR18 ?? true);
   const [reentryAllowed, setReentryAllowed] = useState(
@@ -113,14 +110,10 @@ export function EventForm({ event }: { event?: AdminEvent }) {
   );
 
   const [passTheme, setPassTheme] = useState<PassThemeDraft>({
-    stripStyle:
-      (event?.passStripStyle as PassStripStyle | undefined) ??
-      DEFAULT_PASS_THEME.stripStyle,
+    stripStyle: event?.passStripStyle ?? DEFAULT_PASS_THEME.stripStyle,
     accentHex: event?.passAccentHex ?? DEFAULT_PASS_THEME.accentHex,
-    backgroundHex:
-      event?.passBackgroundHex ?? DEFAULT_PASS_THEME.backgroundHex,
-    foregroundHex:
-      event?.passForegroundHex ?? DEFAULT_PASS_THEME.foregroundHex,
+    backgroundHex: event?.passBackgroundHex ?? DEFAULT_PASS_THEME.backgroundHex,
+    foregroundHex: event?.passForegroundHex ?? DEFAULT_PASS_THEME.foregroundHex,
     labelHex: event?.passLabelHex ?? DEFAULT_PASS_THEME.labelHex,
   });
 

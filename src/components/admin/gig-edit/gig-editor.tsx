@@ -526,7 +526,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
     return (
       <AdminSection
         title="Manage gig"
-        backLink={{ href: "/admin/gigs", label: "← Back to gigs" }}
+        backLink={{ href: "/admin/gigs", label: "Gigs" }}
       >
         <div className="text-muted-foreground flex items-center gap-2 py-12">
           <Loader2 className="h-5 w-5 animate-spin" />
@@ -540,7 +540,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
     return (
       <AdminSection
         title="Gig not found"
-        backLink={{ href: "/admin/gigs", label: "← Back to gigs" }}
+        backLink={{ href: "/admin/gigs", label: "Gigs" }}
       >
         <p className="text-muted-foreground py-12">
           That gig does not exist, or it has been deleted.

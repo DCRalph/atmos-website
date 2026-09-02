@@ -31,7 +31,7 @@ export function SaveStatusPill({
     },
     saving: {
       icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
-      label: "Saving...",
+      label: "Saving…",
       classes: "border-sky-500/40 bg-sky-500/10 text-sky-600 dark:text-sky-400",
     },
     saved: {

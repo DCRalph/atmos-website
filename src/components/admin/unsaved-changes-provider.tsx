@@ -29,6 +29,9 @@ type UnsavedChangesContextValue = {
   requestNavigation: (nav: PendingNavigation, message?: string) => void;
 };
 
+const DEFAULT_MESSAGE =
+  "You have unsaved changes. Are you sure you want to leave?";
+
 const UnsavedChangesContext = createContext<UnsavedChangesContextValue | null>(
   null,
 );
@@ -51,15 +54,15 @@ export function UnsavedChangesProvider({
   const router = useRouter();
 
   const [open, setOpen] = useState(false);
-  const [message, setMessage] = useState(
-    "You have unsaved changes. Are you sure you want to leave?",
-  );
+  const [message, setMessage] = useState(DEFAULT_MESSAGE);
   const pendingRef = useRef<PendingNavigation | null>(null);
 
   const requestNavigation = useCallback(
     (nav: PendingNavigation, nextMessage?: string) => {
       pendingRef.current = nav;
-      if (nextMessage) setMessage(nextMessage);
+      // Reset rather than keep the last one: a caller that passes no message
+      // wants the default, not whatever some other editor said last.
+      setMessage(nextMessage ?? DEFAULT_MESSAGE);
       setOpen(true);
     },
     [],
@@ -93,7 +96,12 @@ export function UnsavedChangesProvider({
   return (
     <UnsavedChangesContext.Provider value={value}>
       {children}
-      <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!next) onCancel();
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Leave without saving?</AlertDialogTitle>

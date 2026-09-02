@@ -8,7 +8,7 @@ export default function NewTicketEventPage() {
     <AdminSection
       title="New ticketed event"
       description="Create the event first, then add tiers before publishing."
-      backLink={{ href: "/admin/events", label: "← Events" }}
+      backLink={{ href: "/admin/events", label: "Events" }}
       maxWidth="max-w-4xl"
     >
       <EventForm />

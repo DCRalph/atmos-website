@@ -13,7 +13,7 @@ export function AdminEditThemeView({ id }: { id: string }) {
       subtitle={subtitle}
       backLink={{
         href: "/admin/creator-themes",
-        label: "← Back to themes",
+        label: "Creator themes",
       }}
     >
       <ThemeEditor themeId={id} mode="admin" />

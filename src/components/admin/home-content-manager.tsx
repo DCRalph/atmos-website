@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import {
   DndContext,
+  KeyboardSensor,
   PointerSensor,
   closestCenter,
   useDroppable,
@@ -14,6 +15,7 @@ import {
   SortableContext,
   arrayMove,
   useSortable,
+  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -45,6 +47,7 @@ import {
 } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 import { useUnsavedChangesWarning } from "~/hooks/use-unsaved-changes-warning";
+import { formatDate } from "~/lib/date-utils";
 import { useDebouncedValue } from "~/hooks/use-debounced-value";
 import {
   SaveStatusPill,
@@ -62,11 +65,7 @@ function formatContentDateLabel(item: ContentSummary | undefined) {
   const date = item?.date ?? null;
   if (!date) return null;
   try {
-    return date.toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    return formatDate(date, "short");
   } catch {
     return null;
   }
@@ -344,6 +343,11 @@ export function HomeContentManager() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
+    }),
+    // Reordering has to be possible without a mouse: focus a grip, space to
+    // pick up, arrows to move, space to drop.
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
 

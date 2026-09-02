@@ -5,7 +5,7 @@ export default function AdminMerchPage() {
   return (
     <AdminSection
       title="Merch"
-      description="Sync products from Shopify and set the order they appear on the merch page"
+      description="Products synced from Shopify, and the order they appear in on the merch page."
     >
       <ShopifyIntegrationManager />
     </AdminSection>

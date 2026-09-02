@@ -11,7 +11,13 @@ import { buildMediaUrl } from "~/lib/media-url";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { DataTable, type DataTableColumn } from "~/components/data-table";
+import {
+  DataTable,
+  useDataTable,
+  type DataTableColumn,
+} from "~/components/data-table";
+import { useDebouncedValue } from "~/hooks/use-debounced-value";
+import { FilterSelect, ListFilters } from "./list-filters";
 import {
   Card,
   CardContent,
@@ -45,7 +51,6 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 import { Badge } from "~/components/ui/badge";
-import { Checkbox } from "~/components/ui/checkbox";
 import { PaginationControls } from "~/components/ui/pagination-controls";
 import {
   Loader2,
@@ -132,10 +137,26 @@ type FileInfo = {
   linkedEntity: { type: string; id: string; title: string } | null;
 };
 
+const MIME_FILTERS = [
+  { value: "image/", label: "Images" },
+  { value: "video/", label: "Videos" },
+  { value: "audio/", label: "Audio" },
+  { value: "application/pdf", label: "PDFs" },
+] as const;
+type MimeFilter = (typeof MIME_FILTERS)[number]["value"] | "all";
+
+const STATUS_FILTERS = [
+  { value: "active", label: "Active" },
+  { value: "deleted", label: "Soft deleted" },
+  { value: "all", label: "All" },
+] as const;
+type StatusFilter = (typeof STATUS_FILTERS)[number]["value"];
+
 export function FilesManager() {
   const [search, setSearch] = useState("");
-  const [mimeFilter, setMimeFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("active");
+  const debouncedSearch = useDebouncedValue(search).trim();
+  const [mimeFilter, setMimeFilter] = useState<MimeFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [tagFilter, setTagFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 25;
@@ -175,9 +196,8 @@ export function FilesManager() {
   const [deleteTagId, setDeleteTagId] = useState<string | null>(null);
 
   // Bulk selection state
-  const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(
-    new Set(),
-  );
+  /** Which files a bulk tag action is about to touch. */
+  const [bulkTargetIds, setBulkTargetIds] = useState<string[]>([]);
   const [bulkTagDialogOpen, setBulkTagDialogOpen] = useState(false);
   const [bulkTagMode, setBulkTagMode] = useState<"add" | "remove">("add");
   const [bulkTagIds, setBulkTagIds] = useState<string[]>([]);
@@ -186,7 +206,7 @@ export function FilesManager() {
   const queryParams = {
     limit: PAGE_SIZE,
     page: currentPage,
-    search: search || undefined,
+    search: debouncedSearch || undefined,
     mimeTypePrefix: mimeFilter !== "all" ? mimeFilter : undefined,
     status:
       statusFilter === "active"
@@ -219,23 +239,29 @@ export function FilesManager() {
 
   const softDelete = api.files.softDelete.useMutation({
     onSuccess: () => {
+      toast.success("File moved to deleted");
       setDeleteFileId(null);
       void refetch();
     },
+    onError: (error) => toast.error(error.message),
   });
 
   const permanentDelete = api.files.delete.useMutation({
     onSuccess: () => {
+      toast.success("File deleted");
       setDeleteFileId(null);
       setDeletePermanently(false);
       void refetch();
     },
+    onError: (error) => toast.error(error.message),
   });
 
   const restore = api.files.restore.useMutation({
     onSuccess: () => {
+      toast.success("File restored");
       void refetch();
     },
+    onError: (error) => toast.error(error.message),
   });
 
   // One uploader for the whole media library. Constraints, accepted types and
@@ -257,46 +283,52 @@ export function FilesManager() {
 
   const updateFile = api.files.updateFile.useMutation({
     onSuccess: () => {
+      toast.success("File updated");
       void refetch();
       setIsEditing(false);
       setInfoFile(null);
     },
+    onError: (error) => toast.error(error.message),
   });
 
   const createTag = api.files.createTag.useMutation({
     onSuccess: () => {
+      toast.success("Tag created");
       void refetchTags();
       setNewTagName("");
       setNewTagDescription("");
       setIsCreatingTag(false);
     },
+    onError: (error) => toast.error(error.message),
   });
 
   const deleteTag = api.files.deleteTag.useMutation({
     onSuccess: () => {
+      toast.success("Tag deleted");
       void refetchTags();
       setDeleteTagId(null);
     },
+    onError: (error) => toast.error(error.message),
   });
 
+  const onBulkTagged = (message: string) => {
+    toast.success(message);
+    void refetch();
+    void refetchTags();
+    setBulkTagDialogOpen(false);
+    setBulkTagIds([]);
+    setBulkTargetIds([]);
+    table.clearSelection();
+  };
+
   const bulkAddTags = api.files.bulkAddTags.useMutation({
-    onSuccess: () => {
-      void refetch();
-      void refetchTags();
-      setBulkTagDialogOpen(false);
-      setBulkTagIds([]);
-      setSelectedFileIds(new Set());
-    },
+    onSuccess: () => onBulkTagged("Tags added"),
+    onError: (error) => toast.error(error.message),
   });
 
   const bulkRemoveTags = api.files.bulkRemoveTags.useMutation({
-    onSuccess: () => {
-      void refetch();
-      void refetchTags();
-      setBulkTagDialogOpen(false);
-      setBulkTagIds([]);
-      setSelectedFileIds(new Set());
-    },
+    onSuccess: () => onBulkTagged("Tags removed"),
+    onError: (error) => toast.error(error.message),
   });
 
   // Initialize edit state when opening file info
@@ -311,16 +343,11 @@ export function FilesManager() {
     }
   }, [infoFile, isEditing]);
 
-  // Reset to page 1 and clear selection when filters change
+  // A selection made against the previous filter is meaningless. Paging is the
+  // table's own business; it clears the selection itself.
   useEffect(() => {
     setCurrentPage(1);
-    setSelectedFileIds(new Set());
-  }, [search, mimeFilter, statusFilter, tagFilter]);
-
-  // Clear selection when page changes
-  useEffect(() => {
-    setSelectedFileIds(new Set());
-  }, [currentPage]);
+  }, [debouncedSearch, mimeFilter, statusFilter, tagFilter]);
 
   // Upload handlers
   const handleFileSelect = useCallback((files: FileList | null) => {
@@ -393,13 +420,10 @@ export function FilesManager() {
     setTimeout(() => setCopiedField(null), 2000);
   }, []);
 
-  const handleDelete = useCallback(
-    (fileId: string, permanent: boolean = false) => {
-      setDeleteFileId(fileId);
-      setDeletePermanently(permanent);
-    },
-    [],
-  );
+  const handleDelete = useCallback((fileId: string, permanent = false) => {
+    setDeleteFileId(fileId);
+    setDeletePermanently(permanent);
+  }, []);
 
   const confirmDelete = useCallback(() => {
     if (!deleteFileId) return;
@@ -481,73 +505,34 @@ export function FilesManager() {
 
   const files = filesData?.files ?? [];
   const isDeleting = softDelete.isPending || permanentDelete.isPending;
-  const hasSelection = selectedFileIds.size > 0;
-  const allSelected = files.length > 0 && selectedFileIds.size === files.length;
 
-  // Selection handlers
-  const toggleFileSelection = useCallback((fileId: string) => {
-    setSelectedFileIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(fileId)) {
-        next.delete(fileId);
-      } else {
-        next.add(fileId);
-      }
-      return next;
-    });
-  }, []);
-
-  const toggleSelectAll = useCallback(() => {
-    const currentFiles = filesData?.files ?? [];
-    if (
-      selectedFileIds.size === currentFiles.length &&
-      currentFiles.length > 0
-    ) {
-      setSelectedFileIds(new Set());
-    } else {
-      setSelectedFileIds(new Set(currentFiles.map((f) => f.id)));
-    }
-  }, [filesData?.files, selectedFileIds.size]);
-
-  const clearSelection = useCallback(() => {
-    setSelectedFileIds(new Set());
-  }, []);
-
-  const openBulkTagDialog = useCallback((mode: "add" | "remove") => {
-    setBulkTagMode(mode);
-    setBulkTagIds([]);
-    setBulkTagDialogOpen(true);
-  }, []);
+  const openBulkTagDialog = useCallback(
+    (mode: "add" | "remove", fileIds: string[]) => {
+      setBulkTagMode(mode);
+      setBulkTagIds([]);
+      setBulkTargetIds(fileIds);
+      setBulkTagDialogOpen(true);
+    },
+    [],
+  );
 
   const handleBulkTagAction = useCallback(async () => {
-    if (bulkTagIds.length === 0 || selectedFileIds.size === 0) return;
+    if (bulkTagIds.length === 0 || bulkTargetIds.length === 0) return;
 
     setIsBulkTagging(true);
     try {
-      const fileIds = Array.from(selectedFileIds);
+      const args = { fileIds: bulkTargetIds, tagIds: bulkTagIds };
       if (bulkTagMode === "add") {
-        await bulkAddTags.mutateAsync({ fileIds, tagIds: bulkTagIds });
+        await bulkAddTags.mutateAsync(args);
       } else {
-        await bulkRemoveTags.mutateAsync({ fileIds, tagIds: bulkTagIds });
+        await bulkRemoveTags.mutateAsync(args);
       }
     } finally {
       setIsBulkTagging(false);
     }
-  }, [bulkTagIds, selectedFileIds, bulkTagMode, bulkAddTags, bulkRemoveTags]);
+  }, [bulkTagIds, bulkTargetIds, bulkTagMode, bulkAddTags, bulkRemoveTags]);
   type FileRow = (typeof files)[number];
   const columns: DataTableColumn<FileRow>[] = [
-    {
-      id: "select",
-      header: "Select",
-      hideable: false,
-      cell: (file) => (
-        <Checkbox
-          checked={selectedFileIds.has(file.id)}
-          onCheckedChange={() => toggleFileSelection(file.id)}
-          aria-label={`Select ${file.name}`}
-        />
-      ),
-    },
     {
       id: "preview",
       header: "Preview",
@@ -710,13 +695,38 @@ export function FilesManager() {
     },
   ];
 
+  // Held here rather than inside the table so a bulk tag can drop the selection
+  // it just acted on.
+  const table = useDataTable<FileRow>({
+    columns,
+    getRowId: (row) => row.id,
+    storageKey: "admin-files",
+  });
+
+  // Paging and filtering happen out here, so the table cannot know its rows
+  // have been swapped underneath the selection. Left alone, the banner would
+  // keep counting files a bulk action can no longer reach — it only ever sees
+  // the page currently loaded.
+  const selectionScope = [
+    currentPage,
+    debouncedSearch,
+    mimeFilter,
+    statusFilter,
+    tagFilter,
+  ].join("|");
+  const [lastSelectionScope, setLastSelectionScope] = useState(selectionScope);
+  if (selectionScope !== lastSelectionScope) {
+    setLastSelectionScope(selectionScope);
+    table.clearSelection();
+  }
+
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Files</CardTitle>
+            <CardTitle className="text-sm font-medium">Total files</CardTitle>
             <FileCheck className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
@@ -726,7 +736,7 @@ export function FilesManager() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Size</CardTitle>
+            <CardTitle className="text-sm font-medium">Total size</CardTitle>
             <HardDrive className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
@@ -754,7 +764,7 @@ export function FilesManager() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">By Status</CardTitle>
+            <CardTitle className="text-sm font-medium">By status</CardTitle>
             <FileText className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
@@ -776,9 +786,9 @@ export function FilesManager() {
       {/* Filters */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <CardTitle>All Files</CardTitle>
+              <CardTitle>All files</CardTitle>
               <CardDescription>
                 Manage all uploaded files across the site
               </CardDescription>
@@ -790,7 +800,7 @@ export function FilesManager() {
                 onClick={() => setTagDialogOpen(true)}
               >
                 <Tag className="mr-2 h-4 w-4" />
-                Manage Tags
+                Manage tags
               </Button>
               <Button
                 variant="default"
@@ -798,7 +808,7 @@ export function FilesManager() {
                 onClick={() => setUploadDialogOpen(true)}
               >
                 <Upload className="mr-2 h-4 w-4" />
-                Upload Files
+                Upload files
               </Button>
               <Button
                 variant="outline"
@@ -819,97 +829,57 @@ export function FilesManager() {
             <div className="relative min-w-[200px] flex-1">
               <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
               <Input
-                placeholder="Search by name or key..."
+                placeholder="Search by name or key…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
               />
             </div>
 
-            <Select value={mimeFilter} onValueChange={setMimeFilter}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="File type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="image/">Images</SelectItem>
-                <SelectItem value="video/">Videos</SelectItem>
-                <SelectItem value="audio/">Audio</SelectItem>
-                <SelectItem value="application/pdf">PDFs</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="deleted">Soft Deleted</SelectItem>
-                <SelectItem value="all">All</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={tagFilter} onValueChange={setTagFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by tag" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Tags</SelectItem>
-                {tags?.map((tag) => (
-                  <SelectItem key={tag.id} value={tag.id}>
-                    <div className="flex items-center gap-2">
-                      <Tag className="h-3 w-3" />
-                      {tag.name}
-                      <span className="text-muted-foreground text-xs">
-                        ({tag._count.fileUploads})
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ListFilters
+              activeCount={
+                (mimeFilter === "all" ? 0 : 1) +
+                (statusFilter === "active" ? 0 : 1) +
+                (tagFilter === "all" ? 0 : 1)
+              }
+              onClear={() => {
+                setMimeFilter("all");
+                setStatusFilter("active");
+                setTagFilter("all");
+              }}
+            >
+              <FilterSelect
+                label="Type"
+                value={mimeFilter === "all" ? null : mimeFilter}
+                onChange={(value) => setMimeFilter(value ?? "all")}
+                options={MIME_FILTERS}
+                anyLabel="All types"
+              />
+              <FilterSelect
+                label="Status"
+                value={statusFilter}
+                onChange={(value) => setStatusFilter(value ?? "all")}
+                options={STATUS_FILTERS}
+                anyLabel="All"
+              />
+              <FilterSelect
+                label="Tag"
+                value={tagFilter === "all" ? null : tagFilter}
+                onChange={(value) => setTagFilter(value ?? "all")}
+                options={(tags ?? []).map((tag) => ({
+                  value: tag.id,
+                  label: `${tag.name} (${tag._count.fileUploads})`,
+                }))}
+                anyLabel="All tags"
+              />
+            </ListFilters>
           </div>
 
-          {/* Bulk Actions Bar */}
-          {hasSelection && (
-            <div className="bg-muted/50 mb-4 flex items-center gap-4 rounded-lg border p-3">
-              <div className="flex items-center gap-2">
-                <Tags className="text-muted-foreground h-4 w-4" />
-                <span className="text-sm font-medium">
-                  {selectedFileIds.size} file
-                  {selectedFileIds.size !== 1 ? "s" : ""} selected
-                </span>
-              </div>
-              <div className="bg-border h-4 w-px" />
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openBulkTagDialog("add")}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Tags
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openBulkTagDialog("remove")}
-                >
-                  <Minus className="mr-2 h-4 w-4" />
-                  Remove Tags
-                </Button>
-              </div>
-              <div className="ml-auto">
-                <Button variant="ghost" size="sm" onClick={clearSelection}>
-                  <X className="mr-2 h-4 w-4" />
-                  Clear Selection
-                </Button>
-              </div>
-            </div>
-          )}
-
+          {/* Selection, the select-all checkbox and the bulk bar are all the
+              table's own; this screen used to hand-roll a second set that
+              looked nothing like the one on the ticket lists. */}
           <DataTable
+            api={table}
             columns={columns}
             data={files}
             getRowId={(file) => file.id}
@@ -917,19 +887,25 @@ export function FilesManager() {
             isFetching={isFetching}
             storageKey="admin-files"
             emptyMessage="No files found"
-            rowClassName={(file) =>
-              selectedFileIds.has(file.id) ? "bg-muted/50" : undefined
-            }
-            toolbarActions={
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={allSelected}
-                  onCheckedChange={toggleSelectAll}
-                  aria-label="Select all files on this page"
-                />
-                Select page
-              </label>
-            }
+            enableSelection
+            bulkActions={[
+              {
+                label: "Add tags",
+                onClick: (rows) =>
+                  openBulkTagDialog(
+                    "add",
+                    rows.map((row) => row.id),
+                  ),
+              },
+              {
+                label: "Remove tags",
+                onClick: (rows) =>
+                  openBulkTagDialog(
+                    "remove",
+                    rows.map((row) => row.id),
+                  ),
+              },
+            ]}
           />
           {/* Pagination Controls */}
           {filesData?.pagination && (
@@ -1729,15 +1705,15 @@ export function FilesManager() {
             <DialogTitle className="flex items-center gap-2">
               {bulkTagMode === "add" ? (
                 <>
-                  <Plus className="h-5 w-5" />
-                  Add Tags to {selectedFileIds.size} File
-                  {selectedFileIds.size !== 1 ? "s" : ""}
+                  <Plus className="h-5 w-5" aria-hidden />
+                  Add tags to {bulkTargetIds.length} file
+                  {bulkTargetIds.length !== 1 ? "s" : ""}
                 </>
               ) : (
                 <>
-                  <Minus className="h-5 w-5" />
-                  Remove Tags from {selectedFileIds.size} File
-                  {selectedFileIds.size !== 1 ? "s" : ""}
+                  <Minus className="h-5 w-5" aria-hidden />
+                  Remove tags from {bulkTargetIds.length} file
+                  {bulkTargetIds.length !== 1 ? "s" : ""}
                 </>
               )}
             </DialogTitle>
@@ -1750,7 +1726,7 @@ export function FilesManager() {
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Select Tags</Label>
+              <Label>Tags</Label>
               <div className="flex max-h-[200px] min-h-[100px] flex-wrap gap-2 overflow-y-auto rounded-md border p-3">
                 {tags?.map((tag) => (
                   <Badge
@@ -1803,19 +1779,19 @@ export function FilesManager() {
               {isBulkTagging ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {bulkTagMode === "add" ? "Adding..." : "Removing..."}
+                  {bulkTagMode === "add" ? "Adding…" : "Removing…"}
                 </>
               ) : (
                 <>
                   {bulkTagMode === "add" ? (
                     <>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Tags
+                      <Plus className="mr-2 h-4 w-4" aria-hidden />
+                      Add tags
                     </>
                   ) : (
                     <>
-                      <Minus className="mr-2 h-4 w-4" />
-                      Remove Tags
+                      <Minus className="mr-2 h-4 w-4" aria-hidden />
+                      Remove tags
                     </>
                   )}
                 </>

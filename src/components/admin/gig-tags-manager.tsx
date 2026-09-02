@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Plus } from "lucide-react";
+import { toast } from "sonner";
+
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -11,18 +14,16 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "~/components/ui/dialog";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
+import { Card, CardContent } from "~/components/ui/card";
 import { useConfirm } from "~/components/confirm-provider";
+
+const DEFAULT_COLOUR = "#FFFFFF";
+const isHexColour = (value: string) => /^#[0-9a-f]{6}$/i.test(value);
 
 export function GigTagsManager() {
   const confirm = useConfirm();
@@ -30,105 +31,127 @@ export function GigTagsManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [color, setColor] = useState("#ffffff");
+  const [colour, setColour] = useState(DEFAULT_COLOUR);
 
-  const { data: tags, isLoading, refetch } = api.gigTags.getAll.useQuery();
+  const {
+    data: tags,
+    isLoading,
+    isFetching,
+    refetch,
+  } = api.gigTags.getAll.useQuery();
+
+  const onSaved = async (message: string) => {
+    toast.success(message);
+    await refetch();
+    setIsOpen(false);
+    resetForm();
+  };
+
   const createTag = api.gigTags.create.useMutation({
-    onSuccess: async () => {
-      await refetch();
-      setIsOpen(false);
-      resetForm();
-    },
+    onSuccess: () => onSaved("Tag created"),
+    onError: (error) => toast.error(error.message),
   });
   const updateTag = api.gigTags.update.useMutation({
-    onSuccess: async () => {
-      await refetch();
-      setIsOpen(false);
-      resetForm();
-    },
+    onSuccess: () => onSaved("Tag updated"),
+    onError: (error) => toast.error(error.message),
   });
   const deleteTag = api.gigTags.delete.useMutation({
     onSuccess: async () => {
+      toast.success("Tag deleted");
       await refetch();
     },
+    onError: (error) => toast.error(error.message),
   });
 
   const resetForm = () => {
     setEditingId(null);
     setName("");
     setDescription("");
-    setColor("#ffffff");
+    setColour(DEFAULT_COLOUR);
   };
 
-  const handleEdit = (tag: NonNullable<typeof tags>[0]) => {
+  const handleEdit = (tag: NonNullable<typeof tags>[number]) => {
     setEditingId(tag.id);
     setName(tag.name);
     setDescription(tag.description ?? "");
-    setColor(tag.color);
+    setColour(tag.color);
     setIsOpen(true);
   };
 
+  const canSubmit = name.trim().length > 0 && isHexColour(colour);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canSubmit) return;
     if (editingId) {
       updateTag.mutate({
         id: editingId,
         name,
         description: description || null,
-        color,
+        color: colour,
       });
     } else {
       createTag.mutate({
         name,
         description: description || undefined,
-        color,
+        color: colour,
       });
     }
   };
+
   const rows = tags ?? [];
   type TagRow = (typeof rows)[number];
   const columns: DataTableColumn<TagRow>[] = [
     {
       id: "name",
       header: "Name",
+      sortable: true,
       accessor: (row) => row.name,
       className: "font-medium",
     },
     {
       id: "description",
       header: "Description",
+      sortable: true,
+      accessor: (row) => row.description,
       cell: (row) => row.description ?? "—",
     },
     {
-      id: "color",
-      header: "Color",
+      id: "colour",
+      header: "Colour",
+      sortable: true,
+      accessor: (row) => row.color,
       cell: (tag) => (
         <div className="flex items-center gap-2">
           <div
-            className="border-border h-6 w-6 rounded border"
+            className="border-border size-6 rounded border"
             style={{ backgroundColor: tag.color }}
           />
-          <span className="text-muted-foreground text-sm">{tag.color}</span>
+          <span className="text-muted-foreground font-mono text-sm">
+            {tag.color}
+          </span>
         </div>
       ),
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "",
+      align: "right",
       hideable: false,
       cell: (tag) => (
-        <div className="flex gap-2">
+        <div className="flex justify-end gap-2">
           <Button variant="outline" size="sm" onClick={() => handleEdit(tag)}>
             Edit
           </Button>
           <Button
             variant="destructive"
             size="sm"
+            disabled={deleteTag.isPending}
             onClick={async () => {
               const ok = await confirm({
-                title: "Delete tag",
+                title: `Delete ${tag.name}?`,
                 description:
-                  "Are you sure you want to delete this tag? This action cannot be undone.",
+                  "The tag comes off every gig carrying it. This cannot be undone.",
                 confirmLabel: "Delete",
                 variant: "destructive",
               });
@@ -144,12 +167,8 @@ export function GigTagsManager() {
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col gap-2">
-            <CardTitle>Gig Tags</CardTitle>
-            <CardDescription>Manage tags for categorizing gigs</CardDescription>
-          </div>
+      <CardContent className="space-y-4 pt-6">
+        <div className="flex justify-end">
           <Dialog
             open={isOpen}
             onOpenChange={(open) => {
@@ -158,75 +177,95 @@ export function GigTagsManager() {
             }}
           >
             <DialogTrigger asChild>
-              <Button onClick={() => resetForm()}>Add Tag</Button>
+              <Button onClick={resetForm}>
+                <Plus className="h-4 w-4" aria-hidden />
+                Add tag
+              </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editingId ? "Edit" : "Add"} Gig Tag</DialogTitle>
+                <DialogTitle>
+                  {editingId ? "Edit gig tag" : "Add gig tag"}
+                </DialogTitle>
                 <DialogDescription>
-                  {editingId ? "Update" : "Create"} a new gig tag
+                  {editingId
+                    ? "Changes apply everywhere this tag is already used."
+                    : "Tags group gigs together and carry a colour used wherever they are shown."}
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="name">Name</Label>
+                  <Label htmlFor="tag-name">Name</Label>
                   <Input
-                    id="name"
+                    id="tag-name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="description">Description (optional)</Label>
+                  <Label htmlFor="tag-description">Description</Label>
                   <Textarea
-                    id="description"
+                    id="tag-description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     rows={3}
                   />
+                  <p className="text-muted-foreground text-xs">Optional.</p>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="color">Color</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="color"
+                  <Label htmlFor="tag-colour">Colour</Label>
+                  <div className="flex items-center gap-2">
+                    <input
                       type="color"
-                      value={color}
-                      onChange={(e) => setColor(e.target.value)}
-                      className="h-10 w-20"
-                      required
+                      aria-label="Colour picker"
+                      value={isHexColour(colour) ? colour : DEFAULT_COLOUR}
+                      onChange={(e) => setColour(e.target.value.toUpperCase())}
+                      className="border-border size-9 shrink-0 cursor-pointer rounded border bg-transparent p-1"
                     />
                     <Input
-                      type="text"
-                      value={color}
-                      onChange={(e) => setColor(e.target.value)}
-                      placeholder="#ffffff"
-                      className="flex-1"
+                      id="tag-colour"
+                      value={colour}
+                      onChange={(e) => setColour(e.target.value)}
+                      placeholder={DEFAULT_COLOUR}
+                      className={`font-mono ${isHexColour(colour) ? "" : "border-destructive"}`}
                       required
                     />
                   </div>
-                  <p className="text-muted-foreground text-xs">
-                    Choose a color for this tag (used for display)
-                  </p>
+                  {!isHexColour(colour) && (
+                    <p className="text-destructive text-xs">
+                      Six-digit hex, like {DEFAULT_COLOUR}.
+                    </p>
+                  )}
                 </div>
-                <Button
-                  type="submit"
-                  disabled={createTag.isPending || updateTag.isPending}
-                >
-                  {editingId ? "Update" : "Create"}
-                </Button>
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={
+                      !canSubmit || createTag.isPending || updateTag.isPending
+                    }
+                  >
+                    {editingId ? "Save" : "Create"}
+                  </Button>
+                </DialogFooter>
               </form>
             </DialogContent>
           </Dialog>
         </div>
-      </CardHeader>
-      <CardContent>
+
         <DataTable
           columns={columns}
           data={rows}
           getRowId={(row) => row.id}
           isLoading={isLoading}
+          isFetching={isFetching}
           storageKey="admin-gig-tags"
           emptyMessage="No gig tags yet"
         />

@@ -1,136 +1,47 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { Calendar, CheckCircle2, Loader2, Search, XCircle } from "lucide-react";
+
 import { api } from "~/trpc/react";
+import UserAvatar from "~/components/UserAvatar";
+import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { Card, CardContent } from "~/components/ui/card";
 import { DataTable, type DataTableColumn } from "~/components/data-table";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
-import { formatDateInUserTimezone } from "~/lib/date-utils";
-import Link from "next/link";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
-import { Badge } from "~/components/ui/badge";
-import {
-  MoreHorizontal,
-  ShieldCheck,
-  User,
-  UserCog,
-  Calendar,
-  Search,
-  CheckCircle2,
-  XCircle,
-} from "lucide-react";
-
-function getLoginMethodBadge(method: string | null) {
-  if (!method) return null;
-
-  const methodMap: Record<
-    string,
-    { label: string; variant: "default" | "secondary" | "outline" }
-  > = {
-    email: { label: "Email", variant: "default" },
-    google: { label: "Google", variant: "secondary" },
-    github: { label: "GitHub", variant: "outline" },
-  };
-
-  const config = methodMap[method.toLowerCase()] ?? {
-    label: method,
-    variant: "outline" as const,
-  };
-
-  return (
-    <Badge variant={config.variant} className="text-xs">
-      {config.label}
-    </Badge>
-  );
-}
-
-function getPermissionBadge(permission: string) {
-  const permissionMap: Record<
-    string,
-    { label: string; variant: "default" | "secondary" | "destructive" }
-  > = {
-    ADMIN: { label: "Admin", variant: "destructive" },
-    CREATOR: { label: "Creator", variant: "secondary" },
-    EVENT_ORGANISER: { label: "Event organiser", variant: "default" },
-  };
-
-  const config = permissionMap[permission] ?? {
-    label: permission,
-    variant: "default" as const,
-  };
-
-  return (
-    <Badge variant={config.variant} className="text-xs font-medium">
-      {config.label}
-    </Badge>
-  );
-}
-
-function getPermissionBadges(user: { permissions?: { permission: string }[] }) {
-  const permissions = user.permissions?.map((row) => row.permission) ?? [];
-  const order: Record<string, number> = {
-    ADMIN: 0,
-    EVENT_ORGANISER: 1,
-    CREATOR: 2,
-  };
-  const sorted = [...new Set(permissions)].sort(
-    (a, b) => (order[a] ?? 99) - (order[b] ?? 99),
-  );
-  if (sorted.length === 0) {
-    return (
-      <span className="text-muted-foreground text-xs">No permissions</span>
-    );
-  }
-  return (
-    <div className="flex flex-wrap gap-1">
-      {sorted.map((r) => (
-        <span key={r}>{getPermissionBadge(r)}</span>
-      ))}
-    </div>
-  );
-}
+import { useDebouncedValue } from "~/hooks/use-debounced-value";
+import { formatDate, formatDateTime } from "~/lib/date-utils";
+import { LoginMethodBadge, PermissionBadges } from "./user-badges";
 
 export function UsersManager() {
-  const [userSearch, setUserSearch] = useState("");
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search).trim();
 
-  const { data: users, isLoading: usersLoading } = api.users.getAll.useQuery(
-    userSearch ? { search: userSearch } : undefined,
+  const {
+    data: users,
+    isLoading,
+    isFetching,
+  } = api.users.getAll.useQuery(
+    debouncedSearch ? { search: debouncedSearch } : undefined,
   );
+
   const rows = users ?? [];
   type UserRow = (typeof rows)[number];
   const columns: DataTableColumn<UserRow>[] = [
     {
       id: "user",
       header: "User",
+      sortable: true,
+      accessor: (user) => user.name,
       cell: (user) => (
         <div className="flex items-center gap-3">
-          {user.image ? (
-            <div className="relative h-8 w-8 overflow-hidden rounded-full">
-              <img
-                src={user.image}
-                alt={user.name}
-                className="h-full w-full object-cover"
-              />
-            </div>
-          ) : (
-            <div className="bg-muted flex h-8 w-8 items-center justify-center rounded-full">
-              <User className="h-4 w-4" />
-            </div>
-          )}
+          <UserAvatar
+            className="size-8 shrink-0"
+            src={user.image}
+            name={user.name}
+          />
           <div>
             <div className="font-medium">{user.name}</div>
             <div className="text-muted-foreground text-sm">{user.email}</div>
@@ -141,25 +52,21 @@ export function UsersManager() {
     {
       id: "permissions",
       header: "Permissions",
-      cell: (user) => getPermissionBadges(user),
+      cell: (user) => <PermissionBadges permissions={user.permissions} />,
     },
     {
       id: "lastLogin",
-      header: "Last Login",
+      header: "Last login",
+      sortable: true,
+      accessor: (user) => user.lastLoginAt,
       cell: (user) => (
         <div className="flex flex-col gap-1">
-          {user.lastLoginMethod && getLoginMethodBadge(user.lastLoginMethod)}
-          {user.lastLoginAt && (
+          <LoginMethodBadge method={user.lastLoginMethod} />
+          {user.lastLoginAt ? (
             <span className="text-muted-foreground text-xs">
-              {formatDateInUserTimezone(user.lastLoginAt, {
-                month: "short",
-                day: "numeric",
-                hour: "numeric",
-                minute: "2-digit",
-              })}
+              {formatDateTime(user.lastLoginAt)}
             </span>
-          )}
-          {!user.lastLoginAt && !user.lastLoginMethod && (
+          ) : user.lastLoginMethod ? null : (
             <span className="text-muted-foreground text-xs">Never</span>
           )}
         </div>
@@ -168,15 +75,17 @@ export function UsersManager() {
     {
       id: "verified",
       header: "Verified",
+      sortable: true,
+      accessor: (user) => user.emailVerified,
       cell: (user) =>
         user.emailVerified ? (
           <Badge variant="outline" className="text-xs text-green-600">
-            <CheckCircle2 className="mr-1 h-3 w-3" />
+            <CheckCircle2 className="mr-1 h-3 w-3" aria-hidden />
             Verified
           </Badge>
         ) : (
           <Badge variant="outline" className="text-xs">
-            <XCircle className="mr-1 h-3 w-3" />
+            <XCircle className="mr-1 h-3 w-3" aria-hidden />
             Unverified
           </Badge>
         ),
@@ -184,82 +93,57 @@ export function UsersManager() {
     {
       id: "created",
       header: "Created",
+      sortable: true,
+      accessor: (user) => user.createdAt,
       cell: (user) => (
         <div className="text-muted-foreground flex items-center gap-1 text-sm">
-          <Calendar className="h-3 w-3" />
-          {formatDateInUserTimezone(user.createdAt, {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          })}
+          <Calendar className="h-3 w-3" aria-hidden />
+          {formatDate(user.createdAt, "short")}
         </div>
       ),
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "",
       align: "right",
       hideable: false,
       cell: (user) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link
-                href={`/admin/users/${user.id}`}
-                className="flex items-center gap-2"
-              >
-                <UserCog className="h-4 w-4" />
-                Manage User
-              </Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button variant="outline" size="sm" asChild>
+          <Link href={`/admin/users/${user.id}`}>Manage</Link>
+        </Button>
       ),
     },
   ];
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex flex-col gap-2">
-          <CardTitle className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5" />
-            User Management
-          </CardTitle>
-          <CardDescription>
-            Manage user accounts and permissions. View last login methods and
-            manage user access.
-          </CardDescription>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {/* Search Bar */}
-        <div className="mb-6">
-          <div className="relative max-w-sm">
-            <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-            <Input
-              placeholder="Search users by name or email..."
-              value={userSearch}
-              onChange={(e) => setUserSearch(e.target.value)}
-              className="pl-9"
+      <CardContent className="pt-6">
+        <div className="relative mb-4 max-w-sm">
+          <Search
+            className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
+            aria-hidden
+          />
+          <Input
+            placeholder="Search users by name or email…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+          {isFetching ? (
+            <Loader2
+              className="text-muted-foreground absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 animate-spin"
+              aria-hidden
             />
-          </div>
+          ) : null}
         </div>
 
         <DataTable
           columns={columns}
           data={rows}
           getRowId={(row) => row.id}
-          isLoading={usersLoading}
+          isLoading={isLoading}
           storageKey="admin-users"
-          emptyMessage={userSearch ? "No users found" : "No users yet"}
+          emptyMessage={search ? "No users found" : "No users yet"}
         />
       </CardContent>
     </Card>

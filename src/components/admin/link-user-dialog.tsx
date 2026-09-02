@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import {
@@ -35,13 +36,18 @@ export function LinkUserDialog({
   const [pickedUserId, setPickedUserId] = useState<string | null>(null);
   const [mergeConfirm, setMergeConfirm] = useState(false);
 
-  useEffect(() => {
+  // Closing the dialog empties it, so reopening on another profile does not
+  // show the last one's search and selection. Reset during render rather than
+  // in an effect: an effect leaves one frame of stale state on screen.
+  const [wasOpen, setWasOpen] = useState(Boolean(target));
+  if (Boolean(target) !== wasOpen) {
+    setWasOpen(Boolean(target));
     if (!target) {
       setQuery("");
       setPickedUserId(null);
       setMergeConfirm(false);
     }
-  }, [target]);
+  }
 
   const users = api.users.getAll.useQuery(
     query ? { search: query } : undefined,
@@ -49,10 +55,15 @@ export function LinkUserDialog({
   );
   const link = api.creatorProfiles.linkUserToProfile.useMutation({
     onSuccess: () => {
+      toast.success("User linked");
       onLinked();
       setPickedUserId(null);
       setMergeConfirm(false);
       setQuery("");
+    },
+    // A CONFLICT is the merge prompt below, not a failure worth shouting about.
+    onError: (error) => {
+      if (error.data?.code !== "CONFLICT") toast.error(error.message);
     },
   });
 
@@ -111,7 +122,7 @@ export function LinkUserDialog({
                 )}
               </button>
             ))}
-            {users.data && users.data.length === 0 && (
+            {users.data?.length === 0 && (
               <div className="text-muted-foreground px-3 py-4 text-sm">
                 No users match.
               </div>

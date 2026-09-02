@@ -19,6 +19,7 @@ import {
   Ticket,
   User,
   Users,
+  UsersRound,
 } from "lucide-react";
 
 export type AdminNavigationItem = {
@@ -123,7 +124,7 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
       },
       {
         title: "Rentals",
-        description: "Manage gear available for rental",
+        description: "Gear, packages, and booking requests",
         url: "/admin/rentals",
         icon: ShoppingBag,
         keywords: ["equipment", "gear"],
@@ -135,9 +136,9 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
     items: [
       {
         title: "Crew",
-        description: "Manage the Atmos crew directory",
+        description: "The Atmos crew directory",
         url: "/admin/crew",
-        icon: Users,
+        icon: UsersRound,
         keywords: ["team"],
       },
       {
@@ -149,7 +150,7 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
       },
       {
         title: "Creator claims",
-        description: "Review creator profile ownership requests",
+        description: "Review profile ownership requests",
         url: "/admin/creator-profiles/claims",
         icon: User,
         keywords: ["requests", "approvals"],
@@ -200,14 +201,14 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
     items: [
       {
         title: "Activity logs",
-        description: "Review administrative account activity",
+        description: "Every administrative action, and who took it",
         url: "/admin/activity-logs",
         icon: FileText,
         keywords: ["audit", "history"],
       },
       {
         title: "Settings",
-        description: "Configure site and ticketing defaults",
+        description: "Site configuration and the key-value store",
         url: "/admin/settings",
         icon: Settings,
         keywords: ["configuration"],
