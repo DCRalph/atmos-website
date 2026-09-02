@@ -630,7 +630,7 @@ export function HomeGigsManager() {
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
         >
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid min-w-0 gap-6 lg:grid-cols-2 [&>*]:min-w-0">
             <div className="space-y-4">
               <Card>
                 <CardHeader className="pb-3">

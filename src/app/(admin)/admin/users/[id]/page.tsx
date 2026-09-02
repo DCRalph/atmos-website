@@ -186,7 +186,7 @@ export default function UserManagementPage({ params }: PageProps) {
         </div>
       }
     >
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-2 [&>*]:min-w-0">
         {/* User details */}
         <Card>
           <CardHeader>
