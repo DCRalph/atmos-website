@@ -826,7 +826,7 @@ function Suggestions({
           type="button"
           disabled={disabled}
           onClick={() => onPick(value)}
-          className="hover:bg-accent rounded border px-1.5 py-0.5 text-xs disabled:opacity-50"
+          className="hover:bg-accent inline-flex min-h-9 items-center rounded border px-2.5 text-xs disabled:opacity-50 lg:min-h-0 lg:px-1.5 lg:py-0.5"
         >
           {value}
         </button>

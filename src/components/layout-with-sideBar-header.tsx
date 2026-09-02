@@ -21,7 +21,9 @@ export function LayoutWithSideBarHeader({
         {sidebar}
         {/* The inset/rounding is a desktop treatment only, and is done in CSS
             rather than JS so the first paint matches the server render. */}
-        <div className="bg-background flex w-full flex-1 flex-col overflow-x-hidden rounded-none lg:mt-2 lg:rounded-tl-xl">
+        {/* `min-w-0` so a wide page shrinks to the viewport and scrolls inside
+            itself, rather than stretching this column and being clipped. */}
+        <div className="bg-background flex w-full min-w-0 flex-1 flex-col overflow-x-hidden rounded-none lg:mt-2 lg:rounded-tl-xl">
           {header}
           {children}
         </div>

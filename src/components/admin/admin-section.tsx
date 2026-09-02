@@ -27,7 +27,12 @@ export function AdminSection({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("mx-auto px-4 py-5 sm:px-6 sm:py-6 lg:p-8", maxWidth)}>
+    <div
+      className={cn(
+        "mx-auto w-full min-w-0 px-4 py-5 sm:px-6 sm:py-6 lg:p-8",
+        maxWidth,
+      )}
+    >
       {backLink && (
         <div className="mb-3 sm:mb-4">
           <Button variant="outline" size="sm" asChild className="sm:h-9">

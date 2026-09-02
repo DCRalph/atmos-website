@@ -185,7 +185,7 @@ export function RunSheetField({
               the line-up; the public page shows those names and nothing else.
             </CardDescription>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-muted-foreground text-xs">
               {notifyUserIds.length === 0
                 ? "Nobody is being told"
@@ -517,7 +517,7 @@ function ScheduleRowEditor({
             </div>
           )}
 
-          <div className="ml-auto flex shrink-0 items-center gap-2">
+          <div className="ml-auto flex flex-wrap items-center gap-2">
             {row.kind === "SET" ? (
               <Input
                 aria-label={`Role for ${name}`}

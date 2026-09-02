@@ -197,7 +197,7 @@ export function NotificationsManager() {
   ];
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-2">
+    <div className="grid min-w-0 items-start gap-6 lg:grid-cols-2 [&>*]:min-w-0">
       <Card>
         <CardHeader>
           <CardTitle>Send a notification</CardTitle>
