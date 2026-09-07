@@ -50,6 +50,7 @@ const STATIC_PATH_LABELS: Record<string, string> = {
   "/admin/notifications": "Notifications",
   "/admin/users": "Users",
   "/admin/files": "Files",
+  "/admin/wallet-debugger": "Wallet Debugger",
   "/dashboard": "Dashboard",
 };
 
@@ -138,7 +139,7 @@ function buildCrumbs(
       acc += `/${seg}`;
 
       // Check if this segment should use a smart label
-      if (smartLabel && acc === smartLabel.path) {
+      if (smartLabel?.path === acc) {
         crumbs.push({
           href: acc,
           label: smartLabel.label,
@@ -279,7 +280,7 @@ export function DashboardHeader() {
           <SidebarTrigger size={"icon"} className="shrink-0" />
           <Separator
             orientation="vertical"
-            className="h-8! hidden shrink-0 sm:block"
+            className="hidden h-8! shrink-0 sm:block"
           />
           <div className="min-w-0 flex-1 overflow-hidden">
             <Breadcrumb>

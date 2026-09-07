@@ -20,6 +20,7 @@ import {
   User,
   Users,
   UsersRound,
+  WalletCards,
 } from "lucide-react";
 
 export type AdminNavigationItem = {
@@ -199,6 +200,13 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
   {
     title: "System",
     items: [
+      {
+        title: "Wallet debugger",
+        description: "Build and send standalone Apple Wallet passes",
+        url: "/admin/wallet-debugger",
+        icon: WalletCards,
+        keywords: ["apple", "passkit", "pkpass", "ios", "ticket"],
+      },
       {
         title: "Activity logs",
         description: "Every administrative action, and who took it",
