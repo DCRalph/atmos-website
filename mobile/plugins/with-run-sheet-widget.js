@@ -17,9 +17,12 @@ const { withDangerousMod, withXcodeProject } = require("@expo/config-plugins");
  * is the piece that has no Expo equivalent, which is why it is here rather than
  * in `app.config.ts`.
  *
- * Signing is left automatic. `scripts/build-ipa.sh` archives with
- * `-allowProvisioningUpdates`, so Xcode issues a profile for the extension's
- * identifier the first time it is asked and the store build needs no new key.
+ * Signing is left automatic. App Store export cannot register a new bundle
+ * identifier — it can only issue a profile for one that already exists — and a
+ * widget with no entitlements is archived against the team wildcard, so the
+ * identifier is never created. App Groups cannot live on a wildcard, so the
+ * archive step with `-allowProvisioningUpdates` has to register
+ * `nz.co.atmosmedia.app.RunSheetWidget` itself, and export then finds it.
  */
 
 const TARGET = "RunSheetWidget";
@@ -52,7 +55,7 @@ module.exports = function withRunSheetWidget(config) {
   });
 };
 
-/** Copy the Swift and the plist into the generated project. */
+/** Copy the Swift and the plist into the generated project, and write entitlements. */
 function withWidgetSources(config) {
   return withDangerousMod(config, [
     "ios",
@@ -64,9 +67,38 @@ function withWidgetSources(config) {
       for (const [dir, file] of [...SOURCES, INFO_PLIST]) {
         fs.copyFileSync(path.join(from, dir, file), path.join(to, file));
       }
+      writeEntitlements(to, config.ios?.bundleIdentifier);
       return config;
     },
   ]);
+}
+
+/**
+ * App Groups on the widget, so archive cannot use a wildcard App ID.
+ *
+ * The group is named after the app rather than the widget because it is the
+ * app's container — the widget is a guest in it, even though nothing reads
+ * from it yet. ActivityKit carries the lock-screen state; this entitlement
+ * exists for signing, not for I/O.
+ */
+function writeEntitlements(to, appBundleId) {
+  if (!appBundleId) {
+    throw new Error(`${TARGET}: the app has no bundle identifier to name the App Group.`);
+  }
+  fs.writeFileSync(
+    path.join(to, `${TARGET}.entitlements`),
+    `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.${appBundleId}</string>
+	</array>
+</dict>
+</plist>
+`,
+  );
 }
 
 /**
@@ -147,6 +179,7 @@ function rootGroupKey(project) {
 function applyBuildSettings(project, targetUuid, options) {
   const settings = {
     CLANG_ENABLE_MODULES: "YES",
+    CODE_SIGN_ENTITLEMENTS: `${TARGET}/${TARGET}.entitlements`,
     CODE_SIGN_STYLE: "Automatic",
     CURRENT_PROJECT_VERSION: `"${options.buildNumber}"`,
     GENERATE_INFOPLIST_FILE: "NO",
