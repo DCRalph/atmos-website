@@ -245,15 +245,16 @@ export function useDataTable<TRow>(
     [debouncedCriteria, page, pageSize],
   );
   const queryKey = JSON.stringify(queryInput);
-  const firstSelectionClear = useRef(true);
 
-  useEffect(() => {
-    if (firstSelectionClear.current) {
-      firstSelectionClear.current = false;
-      return;
-    }
-    setSelected(new Set());
-  }, [queryKey]);
+  // Searching or filtering changes which rows exist, so a selection made
+  // against the old set is meaningless. Adjusted during render rather than in
+  // an effect: this is derived state, and an effect would leave one frame where
+  // the banner counts rows that are already gone.
+  const [selectionQueryKey, setSelectionQueryKey] = useState(queryKey);
+  if (queryKey !== selectionQueryKey) {
+    setSelectionQueryKey(queryKey);
+    if (selected.size > 0) setSelected(new Set());
+  }
 
   const firstUrlSync = useRef(true);
   useEffect(() => {

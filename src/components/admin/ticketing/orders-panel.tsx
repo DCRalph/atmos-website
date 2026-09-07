@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import type { PaymentMethodKind } from "~Prisma/client";
 import { api, type RouterOutputs } from "~/trpc/react";
+import { formatDateTime } from "~/lib/date-utils";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Badge } from "~/components/ui/badge";
@@ -24,7 +25,7 @@ import {
   PAYMENT_METHODS,
   paymentMethodLabel,
 } from "~/lib/ticketing/payment-methods";
-import { FilterSelect, ListFilters } from "./list-filters";
+import { FilterSelect, ListFilters } from "../list-filters";
 import {
   ACCESS_LEVELS,
   type AccessLevelValue,
@@ -494,7 +495,7 @@ function OrderDetail({
                 key={email.id}
                 className="text-muted-foreground text-xs break-words"
               >
-                {email.createdAt.toLocaleString("en-NZ")} · {email.type} ·{" "}
+                {formatDateTime(email.createdAt)} · {email.type} ·{" "}
                 {email.toEmail} ·{" "}
                 <span
                   className={

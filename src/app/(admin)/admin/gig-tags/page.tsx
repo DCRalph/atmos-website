@@ -3,7 +3,10 @@ import { GigTagsManager } from "~/components/admin/gig-tags-manager";
 
 export default function AdminGigTagsPage() {
   return (
-    <AdminSection title="Gig Tags" description="Create and manage gig tags">
+    <AdminSection
+      title="Gig tags"
+      description="Reusable tags for grouping gigs, and the colour each one carries."
+    >
       <GigTagsManager />
     </AdminSection>
   );

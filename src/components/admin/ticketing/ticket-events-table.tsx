@@ -22,7 +22,16 @@ const STATUS_VARIANT: Record<
   ARCHIVED: "outline",
 };
 
-const statusLabel = (status: string) => status.replace("_", " ").toLowerCase();
+const STATUS_LABELS: Record<string, string> = {
+  DRAFT: "Draft",
+  PUBLISHED: "Published",
+  SALES_PAUSED: "Sales paused",
+  SOLD_OUT: "Sold out",
+  CANCELLED: "Cancelled",
+  ARCHIVED: "Archived",
+};
+
+const statusLabel = (status: string) => STATUS_LABELS[status] ?? status;
 
 const faceValueCents = (event: TicketEventRow) =>
   event.tiers.reduce((sum, tier) => sum + tier.soldCount * tier.priceCents, 0);
@@ -52,6 +61,7 @@ export function TicketEventsTable({
     {
       id: "name",
       header: "Event",
+      sortable: true,
       accessor: (row) => row.name,
       className: "font-medium",
     },
@@ -59,6 +69,7 @@ export function TicketEventsTable({
       id: "status",
       header: "Status",
       type: "badge",
+      sortable: true,
       accessor: (row) => statusLabel(row.status),
       badge: (_value, row) => ({
         label: statusLabel(row.status),
@@ -69,12 +80,15 @@ export function TicketEventsTable({
       id: "startsAt",
       header: "Starts",
       type: "date",
+      sortable: true,
       accessor: (row) => row.startsAt,
       cell: (row) => formatEventDateTime(row.startsAt, row.timezone),
     },
     {
       id: "venue",
       header: "Venue",
+      sortable: true,
+      accessor: (row) => row.venueName,
       cell: (row) => row.venueName ?? "—",
     },
     {
@@ -87,6 +101,7 @@ export function TicketEventsTable({
       id: "sold",
       header: "Sold",
       type: "number",
+      sortable: true,
       align: "right",
       accessor: (row) => row.totalSold,
       cell: (row) => (
@@ -100,6 +115,7 @@ export function TicketEventsTable({
       id: "faceValue",
       header: "Face value",
       type: "number",
+      sortable: true,
       align: "right",
       accessor: faceValueCents,
       cell: (row) => (

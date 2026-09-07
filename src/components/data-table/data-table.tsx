@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { cn } from "~/lib/utils";
-import { DataTableCell } from "./cells";
+import { DataTableCell, getCellValue } from "./cells";
 import { DataTablePagination } from "./data-table-pagination";
 import { DataTableToolbar } from "./data-table-toolbar";
 import type { BulkAction, DataTableColumn } from "./types";
@@ -57,6 +57,53 @@ function alignClass(align?: "left" | "right" | "center") {
   return "text-left";
 }
 
+/** Anything an accessor returns that we know how to put in order. */
+function comparableText(value: unknown): string {
+  return typeof value === "string" ? value : (JSON.stringify(value) ?? "");
+}
+
+/** Nulls last in both directions: "no value" is never the interesting end. */
+function compareValues(a: unknown, b: unknown): number {
+  const aEmpty = a == null || a === "";
+  const bEmpty = b == null || b === "";
+  if (aEmpty || bEmpty) return aEmpty === bEmpty ? 0 : aEmpty ? 1 : -1;
+
+  if (a instanceof Date && b instanceof Date) return a.getTime() - b.getTime();
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  if (typeof a === "boolean" && typeof b === "boolean") {
+    return Number(a) - Number(b);
+  }
+  return comparableText(a).localeCompare(comparableText(b), undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+/**
+ * Sort the rows we were handed.
+ *
+ * Only for tables that own their data outright. A caller that passes its own
+ * `api` is driving a server list from `api.queryInput`, and re-sorting one page
+ * of that here would produce an order that is right for the page and wrong for
+ * the set.
+ */
+function sortRows<TRow>(
+  rows: TRow[],
+  columns: DataTableColumn<TRow>[],
+  sort: { id: string; desc: boolean } | undefined,
+): TRow[] {
+  if (!sort) return rows;
+  const column = columns.find((candidate) => candidate.id === sort.id);
+  if (!column?.sortable) return rows;
+
+  const direction = sort.desc ? -1 : 1;
+  return [...rows].sort(
+    (a, b) =>
+      direction *
+      compareValues(getCellValue(column, a), getCellValue(column, b)),
+  );
+}
+
 export function DataTable<TRow>({
   api: suppliedApi,
   columns,
@@ -89,7 +136,8 @@ export function DataTable<TRow>({
   const visibleColumns = columns.filter((column) =>
     api.isColumnVisible(column.id),
   );
-  const pageIds = data.map((row) => api.getRowId(row));
+  const rows = suppliedApi ? data : sortRows(data, columns, api.sort[0]);
+  const pageIds = rows.map((row) => api.getRowId(row));
   const allSelected =
     pageIds.length > 0 && pageIds.every((id) => api.isSelected(id));
   const someSelected = pageIds.some((id) => api.isSelected(id));
@@ -129,7 +177,7 @@ export function DataTable<TRow>({
                   key={action.label}
                   size="sm"
                   variant={action.variant ?? "outline"}
-                  onClick={() => action.onClick(api.getSelectedRows(data))}
+                  onClick={() => action.onClick(api.getSelectedRows(rows))}
                 >
                   {action.icon && (
                     <HugeiconsIcon icon={action.icon} strokeWidth={2} />
@@ -172,57 +220,76 @@ export function DataTable<TRow>({
               {visibleColumns.map((column) => {
                 const sortState = api.sort[0];
                 const isSorted = sortState?.id === column.id;
+                const inner = (
+                  <>
+                    {column.icon && (
+                      <HugeiconsIcon
+                        icon={column.icon}
+                        strokeWidth={2}
+                        className="text-muted-foreground size-4"
+                      />
+                    )}
+                    {column.header}
+                    {column.sortable &&
+                      (isSorted ? (
+                        <HugeiconsIcon
+                          icon={
+                            sortState?.desc ? ArrowDown01Icon : ArrowUp01Icon
+                          }
+                          strokeWidth={2}
+                        />
+                      ) : (
+                        <HugeiconsIcon
+                          icon={ArrowUpDownIcon}
+                          strokeWidth={2}
+                          className="text-muted-foreground/40 opacity-0 transition-opacity group-hover/th:opacity-100"
+                        />
+                      ))}
+                  </>
+                );
+
                 return (
                   <TableHead
                     key={column.id}
+                    aria-sort={
+                      column.sortable
+                        ? isSorted
+                          ? sortState?.desc
+                            ? "descending"
+                            : "ascending"
+                          : "none"
+                        : undefined
+                    }
                     className={cn(
                       "text-foreground/80",
                       alignClass(column.align),
-                      column.sortable &&
-                        "hover:text-foreground cursor-pointer transition-colors select-none",
                       column.headerClassName,
                     )}
-                    onClick={
-                      column.sortable
-                        ? () => api.toggleSort(column.id)
-                        : undefined
-                    }
                   >
-                    <span
-                      className={cn(
-                        "group/th inline-flex items-center gap-1.5",
-                        column.align === "right" && "flex-row-reverse",
-                      )}
-                    >
-                      {column.icon && (
-                        <HugeiconsIcon
-                          icon={column.icon}
-                          strokeWidth={2}
-                          className="text-muted-foreground size-4"
-                        />
-                      )}
-                      {column.header}
-                      {column.sortable &&
-                        (isSorted ? (
-                          sortState?.desc ? (
-                            <HugeiconsIcon
-                              icon={ArrowDown01Icon}
-                              strokeWidth={2}
-                            />
-                          ) : (
-                            <HugeiconsIcon
-                              icon={ArrowUp01Icon}
-                              strokeWidth={2}
-                            />
-                          )
-                        ) : (
-                          <HugeiconsIcon
-                            icon={ArrowUpDownIcon}
-                            strokeWidth={2}
-                            className="text-muted-foreground/40 opacity-0 transition-opacity group-hover/th:opacity-100"
-                          />
-                        ))}
-                    </span>
+                    {column.sortable ? (
+                      // A button, not a click handler on the cell: sorting has
+                      // to be reachable from the keyboard like every other
+                      // control in the table.
+                      <button
+                        type="button"
+                        onClick={() => api.toggleSort(column.id)}
+                        className={cn(
+                          "group/th hover:text-foreground focus-visible:ring-ring inline-flex items-center gap-1.5 rounded-sm transition-colors outline-none select-none focus-visible:ring-2",
+                          column.align === "right" && "flex-row-reverse",
+                        )}
+                      >
+                        {inner}
+                      </button>
+                    ) : (
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1.5",
+                          column.align === "right" && "flex-row-reverse",
+                        )}
+                      >
+                        {inner}
+                      </span>
+                    )}
                   </TableHead>
                 );
               })}
@@ -249,7 +316,7 @@ export function DataTable<TRow>({
               ))}
 
             {!isLoading &&
-              data.map((row) => {
+              rows.map((row) => {
                 const id = api.getRowId(row);
                 const selected = api.isSelected(id);
                 return (
@@ -290,7 +357,7 @@ export function DataTable<TRow>({
                 );
               })}
 
-            {!isLoading && data.length === 0 && (
+            {!isLoading && rows.length === 0 && (
               <TableRow className="border-border hover:bg-transparent">
                 <TableCell
                   colSpan={colSpan}

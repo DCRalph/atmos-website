@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 
 import { api, type RouterOutputs } from "~/trpc/react";
+import { formatDate } from "~/lib/date-utils";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -42,7 +43,7 @@ import {
   type AccessLevelValue,
   accessLevel as accessLevelMeta,
 } from "~/lib/ticketing/access-levels";
-import { FilterSelect, ListFilters } from "./list-filters";
+import { FilterSelect, ListFilters } from "../list-filters";
 
 type AdminEvent = RouterOutputs["ticketEvents"]["byId"];
 type Comp = RouterOutputs["ticketAdmin"]["comps"][number];
@@ -243,11 +244,7 @@ export function CompsPanel({ event }: { event: AdminEvent }) {
         header: "Issued",
         type: "date",
         accessor: (row) => row.createdAt,
-        cell: (row) =>
-          new Date(row.createdAt).toLocaleDateString("en-NZ", {
-            day: "numeric",
-            month: "short",
-          }),
+        cell: (row) => formatDate(new Date(row.createdAt), "extra-short"),
       },
       {
         id: "notes",

@@ -13,17 +13,18 @@ import {
 import { cn } from "~/lib/utils";
 
 /**
- * The filter row above an admin ticketing list.
+ * The filter row above an admin list.
  *
  * Deliberately a handful of named questions — "named or not", "arrived or not"
  * — rather than the generic column filters the data table can build. The
- * questions people actually ask of a door list are about the state of a ticket,
- * not the contents of a column, and each one here maps to a single `where`
- * clause the server can answer without loading the list first.
+ * questions people actually ask of a list are about the state of a thing, not
+ * the contents of a column, and each one here maps to a single `where` clause
+ * the server can answer without loading the list first.
  *
  * `null` is "any", which is why the value type is nullable rather than carrying
  * an `"ALL"` member: no caller should have to handle a sentinel that means the
- * filter is off.
+ * filter is off. Every admin list that filters uses this, so an active filter
+ * looks the same whichever screen you are on.
  */
 
 export type FilterChoice<T extends string> = {

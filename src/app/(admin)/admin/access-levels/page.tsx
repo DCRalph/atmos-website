@@ -5,7 +5,7 @@ export default function AdminAccessLevelsPage() {
   return (
     <AdminSection
       title="Access levels"
-      description="What a ticket gets you past — on door badges, and as the colour a wallet pass tints itself with."
+      description="What a ticket gets you past, on door badges and as the colour a wallet pass tints itself with."
     >
       <AccessLevelsPanel />
     </AdminSection>

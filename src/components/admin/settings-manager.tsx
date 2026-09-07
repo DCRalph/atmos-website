@@ -27,7 +27,11 @@ export function SettingsManager() {
   const [value, setValue] = useState("");
 
   const utils = api.useUtils();
-  const { data: settings, isLoading } = api.settings.getAll.useQuery();
+  const {
+    data: settings,
+    isLoading,
+    isFetching,
+  } = api.settings.getAll.useQuery();
 
   const upsertMutation = api.settings.upsert.useMutation({
     onSuccess: () => {
@@ -69,44 +73,48 @@ export function SettingsManager() {
     upsertMutation.mutate({ key, value });
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="text-primary h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
   const rows = settings ?? [];
   type SettingRow = (typeof rows)[number];
   const columns: DataTableColumn<SettingRow>[] = [
     {
       id: "key",
       header: "Key",
+      sortable: true,
       accessor: (row) => row.key,
-      className: "font-medium",
+      className: "font-mono font-medium",
     },
     {
       id: "value",
       header: "Value",
+      sortable: true,
       accessor: (row) => row.value,
-      className: "max-w-md truncate",
+      // `max-width` on a table cell is only a suggestion in auto layout, so the
+      // clamp goes on a block inside it or a long value stretches the table.
+      cell: (row) => (
+        <div className="max-w-md truncate" title={row.value}>
+          {row.value}
+        </div>
+      ),
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "",
+      align: "right",
       hideable: false,
       cell: (setting) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2">
           <Button
             variant="ghost"
             size="icon"
+            aria-label={`Edit ${setting.key}`}
             onClick={() => handleEdit(setting)}
           >
-            <Edit2 className="h-4 w-4" />
+            <Edit2 className="h-4 w-4" aria-hidden />
           </Button>
           <Button
             variant="ghost"
             size="icon"
+            aria-label={`Delete ${setting.key}`}
             className="text-destructive hover:bg-destructive/10 hover:text-destructive"
             onClick={async () => {
               const ok = await confirm({
@@ -118,7 +126,7 @@ export function SettingsManager() {
               if (ok) deleteMutation.mutate({ key: setting.key });
             }}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-4 w-4" aria-hidden />
           </Button>
         </div>
       ),
@@ -138,7 +146,7 @@ export function SettingsManager() {
             <form onSubmit={handleSubmit}>
               <DialogHeader>
                 <DialogTitle>
-                  {editingKey ? "Edit Setting" : "Add New Setting"}
+                  {editingKey ? "Edit setting" : "Add setting"}
                 </DialogTitle>
                 <DialogDescription>
                   Create or update a key-value pair in the system settings.
@@ -179,7 +187,7 @@ export function SettingsManager() {
                   {upsertMutation.isPending && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  {editingKey ? "Update" : "Create"}
+                  {editingKey ? "Save" : "Create"}
                 </Button>
               </DialogFooter>
             </form>
@@ -191,8 +199,10 @@ export function SettingsManager() {
         columns={columns}
         data={rows}
         getRowId={(row) => row.key}
+        isLoading={isLoading}
+        isFetching={isFetching}
         storageKey="admin-settings"
-        emptyMessage="No settings found."
+        emptyMessage="No settings yet."
       />
     </div>
   );

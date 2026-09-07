@@ -384,7 +384,7 @@ export function ContentEditor({
     return (
       <AdminSection
         title="Manage content"
-        backLink={{ href: "/admin/content", label: "← Back to content" }}
+        backLink={{ href: "/admin/content", label: "Content" }}
       >
         <div className="text-muted-foreground flex items-center gap-2 py-12">
           <Loader2 className="h-5 w-5 animate-spin" />
@@ -398,7 +398,7 @@ export function ContentEditor({
     return (
       <AdminSection
         title="Content item not found"
-        backLink={{ href: "/admin/content", label: "← Back to content" }}
+        backLink={{ href: "/admin/content", label: "Content" }}
       >
         <p className="text-muted-foreground py-12">
           That content item does not exist, or it has been deleted.
@@ -826,7 +826,7 @@ function Suggestions({
           type="button"
           disabled={disabled}
           onClick={() => onPick(value)}
-          className="hover:bg-accent rounded border px-1.5 py-0.5 text-xs disabled:opacity-50"
+          className="hover:bg-accent inline-flex min-h-9 items-center rounded border px-2.5 text-xs disabled:opacity-50 lg:min-h-0 lg:px-1.5 lg:py-0.5"
         >
           {value}
         </button>

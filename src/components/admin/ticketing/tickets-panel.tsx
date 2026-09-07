@@ -32,7 +32,7 @@ import {
 } from "~/components/ui/dialog";
 import { useConfirm } from "~/components/confirm-provider";
 import { useDebouncedValue } from "~/hooks/use-debounced-value";
-import { FilterSelect, ListFilters } from "./list-filters";
+import { FilterSelect, ListFilters } from "../list-filters";
 import { formatNZD } from "~/lib/ticketing/money";
 import {
   ACCESS_LEVELS,

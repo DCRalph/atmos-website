@@ -4,14 +4,17 @@ import { AdminSection } from "~/components/admin/admin-section";
 import { FilesManager } from "~/components/admin/files-manager";
 import { UploadPresetsPanel } from "~/components/admin/upload-presets-panel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { useTabParam } from "~/hooks/use-tab-param";
 
 export default function FilesAdminPage() {
+  const tab = useTabParam(["files", "targets"]);
+
   return (
     <AdminSection
-      title="Media Files"
-      description="View and manage all uploaded files across the site"
+      title="Media files"
+      description="Everything uploaded across the site, and the limits enforced where it was uploaded."
     >
-      <Tabs defaultValue="files" className="space-y-4">
+      <Tabs {...tab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="files">Files</TabsTrigger>
           <TabsTrigger value="targets">Upload targets</TabsTrigger>

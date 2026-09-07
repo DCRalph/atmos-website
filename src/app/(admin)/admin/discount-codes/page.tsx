@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { useConfirm } from "~/components/confirm-provider";
+import { formatDate } from "~/lib/date-utils";
 import { formatNZD, parsePriceToCents } from "~/lib/ticketing/money";
 
 type CodeListItem = RouterOutputs["discountCodes"]["list"][number];
@@ -59,6 +60,7 @@ export default function DiscountCodesPage() {
     {
       id: "code",
       header: "Code",
+      sortable: true,
       accessor: (row) => row.code,
       cell: (row) => <span className="font-mono font-medium">{row.code}</span>,
     },
@@ -91,6 +93,7 @@ export default function DiscountCodesPage() {
       header: "Used",
       type: "number",
       align: "right",
+      sortable: true,
       accessor: (row) => row.redemptionCount,
       cell: (row) => (
         <div className="flex items-center justify-end gap-2">
@@ -106,13 +109,15 @@ export default function DiscountCodesPage() {
       id: "endsAt",
       header: "Expires",
       type: "date",
+      sortable: true,
       accessor: (row) => row.endsAt,
-      cell: (row) =>
-        row.endsAt ? row.endsAt.toLocaleDateString("en-NZ") : "—",
+      cell: (row) => (row.endsAt ? formatDate(row.endsAt, "short") : "—"),
     },
     {
       id: "isActive",
       header: "Active",
+      sortable: true,
+      accessor: (row) => row.isActive,
       cell: (row) => (
         <Switch
           checked={row.isActive}
@@ -133,6 +138,7 @@ export default function DiscountCodesPage() {
           variant="ghost"
           size="icon"
           aria-label={`Delete ${row.code}`}
+          disabled={remove.isPending}
           onClick={async () => {
             const ok = await confirm({
               title: `Delete ${row.code}?`,
@@ -144,7 +150,7 @@ export default function DiscountCodesPage() {
             if (ok) remove.mutate({ id: row.id });
           }}
         >
-          <Trash2 className="size-4" />
+          <Trash2 className="size-4" aria-hidden />
         </Button>
       ),
     },
@@ -156,7 +162,7 @@ export default function DiscountCodesPage() {
       description="Percentage or fixed-amount codes, optionally scoped to one event."
       actions={
         <Button onClick={() => setCreating(true)} disabled={creating}>
-          <Plus className="size-4" /> New code
+          <Plus className="size-4" aria-hidden /> New code
         </Button>
       }
     >
@@ -199,6 +205,14 @@ function CodeForm({ onDone }: { onDone: () => void }) {
     onError: (error) => toast.error(error.message),
   });
 
+  const valueCents =
+    type === "PERCENT"
+      ? /^\d+(\.\d+)?$/.test(value.trim())
+        ? Math.round(Number.parseFloat(value) * 100)
+        : null
+      : parsePriceToCents(value);
+  const valueValid = valueCents !== null && valueCents > 0;
+
   return (
     <div className="grid gap-4 rounded-lg border p-5 md:grid-cols-2">
       <div className="space-y-1.5">
@@ -237,7 +251,15 @@ function CodeForm({ onDone }: { onDone: () => void }) {
           inputMode="decimal"
           value={value}
           onChange={(e) => setValue(e.target.value)}
+          className={valueValid || value === "" ? "" : "border-destructive"}
         />
+        {value !== "" && !valueValid && (
+          <p className="text-destructive text-xs">
+            {type === "PERCENT"
+              ? "A percentage above zero, like 10 or 12.5."
+              : "An amount above zero, like 5 or 7.50."}
+          </p>
+        )}
       </div>
 
       <div className="space-y-1.5">
@@ -306,15 +328,12 @@ function CodeForm({ onDone }: { onDone: () => void }) {
 
       <div className="flex gap-2 md:col-span-2">
         <Button
-          disabled={create.isPending || !code}
+          disabled={create.isPending || !code || !valueValid}
           onClick={() =>
             create.mutate({
               code,
               type,
-              value:
-                type === "PERCENT"
-                  ? Math.round(Number.parseFloat(value) * 100)
-                  : (parsePriceToCents(value) ?? 0),
+              value: valueCents ?? 0,
               eventId,
               tierIds: [],
               maxRedemptions: maxRedemptions
@@ -332,7 +351,7 @@ function CodeForm({ onDone }: { onDone: () => void }) {
         >
           {create.isPending ? (
             <>
-              <Loader2 className="size-4 animate-spin" /> Creating…
+              <Loader2 className="size-4 animate-spin" aria-hidden /> Creating…
             </>
           ) : (
             "Create code"

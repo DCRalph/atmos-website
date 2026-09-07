@@ -15,10 +15,21 @@ const isDefined = <T>(value: T | null | undefined): value is T =>
 
 type PosterInfo = { id: string; url: string; name: string; mimeType: string };
 
+/**
+ * Just the slice of the client this needs. `file_upload` is a raw table name
+ * rather than a mapped model, so it is reached through this narrow shape
+ * instead of leaving the whole client untyped.
+ */
+type PosterReader = {
+  file_upload: {
+    findMany: (args: unknown) => Promise<PosterInfo[]>;
+  };
+};
+
 async function enrichGigsWithPosterFileUploads<
   T extends { posterFileUploadId: string | null },
 >(
-  db: any,
+  db: unknown,
   gigs: T[],
 ): Promise<
   (T & {
@@ -42,7 +53,7 @@ async function enrichGigsWithPosterFileUploads<
     return gigs.map((g) => ({ ...g, posterFileUpload: null }));
   }
 
-  const posters = (await db.file_upload.findMany({
+  const posters = await (db as PosterReader).file_upload.findMany({
     where: {
       id: { in: posterIds },
       status: {
@@ -55,7 +66,7 @@ async function enrichGigsWithPosterFileUploads<
       name: true,
       mimeType: true,
     },
-  })) as PosterInfo[];
+  });
 
   const posterMap = new Map<string, PosterInfo>(posters.map((p) => [p.id, p]));
 
@@ -227,6 +238,71 @@ export const homeGigsRouter = createTRPCRouter({
           },
         },
       });
+    }),
+
+  /**
+   * Both sections in one transaction.
+   *
+   * The reorder tab commits featured and past together behind a single Save, and
+   * doing that as two `setPlacements` calls meant one could land while the other
+   * failed — leaving Home showing a half-applied arrangement that matched
+   * neither what was there before nor what was asked for.
+   */
+  setAllPlacements: adminProcedure
+    .input(
+      z.object({
+        featuredGigIds: z.array(z.string()),
+        pastGigIds: z.array(z.string()),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const featured = Array.from(new Set(input.featuredGigIds));
+      const past = Array.from(new Set(input.pastGigIds));
+
+      if (featured.length > HOME_RECENT_PAST_FEATURED_COUNT) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Featured placement can only contain ${HOME_RECENT_PAST_FEATURED_COUNT} gig.`,
+        });
+      }
+
+      const referenced = Array.from(new Set([...featured, ...past]));
+      if (referenced.length > 0) {
+        const found = await ctx.db.gig.count({
+          where: { id: { in: referenced } },
+        });
+        if (found !== referenced.length) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "One or more of those gigs no longer exists",
+          });
+        }
+      }
+
+      await ctx.db.$transaction(async (tx) => {
+        for (const [section, gigIds] of [
+          [HomeGigSection.FEATURED, featured],
+          [HomeGigSection.PAST, past],
+        ] as const) {
+          // Spelled out rather than relying on `notIn: []`, so clearing a
+          // section actually clears it.
+          await tx.homeGigPlacement.deleteMany({
+            where:
+              gigIds.length > 0
+                ? { section, gigId: { notIn: gigIds } }
+                : { section },
+          });
+          for (const [sortOrder, gigId] of gigIds.entries()) {
+            await tx.homeGigPlacement.upsert({
+              where: { section_gigId: { section, gigId } },
+              create: { section, gigId, sortOrder },
+              update: { sortOrder },
+            });
+          }
+        }
+      });
+
+      return { ok: true as const };
     }),
 
   setPlacements: adminProcedure

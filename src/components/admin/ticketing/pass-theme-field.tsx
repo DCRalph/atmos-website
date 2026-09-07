@@ -86,9 +86,13 @@ export function PassThemeField({
                 >
                   <span
                     aria-hidden
-                    className="block h-8 w-full"
+                    className="block h-8 w-full [&>svg]:block [&>svg]:h-full [&>svg]:w-full"
                     dangerouslySetInnerHTML={{
-                      __html: stripSvg({ ...theme, stripStyle: style }, 240, 40),
+                      __html: stripSvg(
+                        { ...theme, stripStyle: style },
+                        240,
+                        40,
+                      ),
                     }}
                   />
                   <span className="mt-1.5 block text-xs font-semibold">
@@ -142,7 +146,7 @@ export function PassThemeField({
         <button
           type="button"
           onClick={() => onChange({ ...DEFAULT_PASS_THEME })}
-          className="text-xs text-white/50 underline underline-offset-4 hover:text-white"
+          className="inline-flex min-h-9 items-center self-start text-xs text-white/50 underline underline-offset-4 hover:text-white lg:min-h-0"
         >
           Reset to Atmos house style
         </button>
@@ -196,7 +200,7 @@ function PassPreview({
           {theme.stripStyle !== "NONE" && (
             <span
               aria-hidden
-              className="block [&>svg]:block [&>svg]:h-full [&>svg]:w-full"
+              className="block w-full [&>svg]:block [&>svg]:h-full [&>svg]:w-full [&>svg]:max-w-full"
               dangerouslySetInnerHTML={{ __html: stripSvg(theme, 750, 196) }}
             />
           )}

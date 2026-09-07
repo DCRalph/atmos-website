@@ -1,0 +1,1852 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Atmos Wallet Pass Debugger: UI directions</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #000;
+        --panel: #0a0a0a;
+        --raised: #111113;
+        --line: #29292d;
+        --line-strong: #424248;
+        --text: #fff;
+        --muted: #a1a1aa;
+        --faint: #71717a;
+        --violet: #7c3aed;
+        --violet-soft: #2e174f;
+        --green: #36d399;
+        --amber: #f5b942;
+        --red: #ff5b6e;
+        --focus: #a78bfa;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        background: var(--bg);
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      ::selection {
+        background: var(--violet);
+        color: #fff;
+      }
+
+      a {
+        color: inherit;
+        text-underline-offset: 4px;
+      }
+
+      .document-head {
+        position: sticky;
+        z-index: 50;
+        top: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        min-height: 64px;
+        padding: 12px max(20px, calc((100vw - 1480px) / 2));
+        border-bottom: 1px solid var(--line);
+        background: #000;
+      }
+
+      .document-title {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .document-title strong {
+        font-size: 15px;
+      }
+
+      .document-title span {
+        overflow: hidden;
+        color: var(--muted);
+        font-size: 13px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .jump-links {
+        display: flex;
+        gap: 6px;
+      }
+
+      .jump-links a {
+        padding: 7px 10px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        color: var(--muted);
+        text-decoration: none;
+      }
+
+      .jump-links a:first-child {
+        border-color: var(--line-strong);
+        color: var(--text);
+      }
+
+      main {
+        max-width: 1520px;
+        margin: 0 auto;
+        padding: 44px 20px 88px;
+      }
+
+      .intro {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(300px, 520px);
+        gap: 48px;
+        align-items: end;
+        padding: 10px 4px 32px;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        max-width: 760px;
+        margin-bottom: 0;
+        font-size: clamp(36px, 5vw, 72px);
+        line-height: 0.98;
+        letter-spacing: -0.035em;
+      }
+
+      .intro p {
+        max-width: 58ch;
+        margin-bottom: 2px;
+        color: var(--muted);
+        font-size: 16px;
+      }
+
+      .option {
+        margin-top: 72px;
+        scroll-margin-top: 88px;
+      }
+
+      .option-head {
+        display: grid;
+        grid-template-columns: 1fr minmax(280px, 520px);
+        gap: 32px;
+        align-items: end;
+        margin-bottom: 16px;
+      }
+
+      .option-head h2 {
+        margin-bottom: 4px;
+        font-size: 28px;
+        letter-spacing: -0.025em;
+      }
+
+      .option-head p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .tradeoff {
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+      }
+
+      .mock-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--line-strong);
+        background: var(--panel);
+      }
+
+      .mock {
+        min-width: 1180px;
+        min-height: 820px;
+        background: var(--bg);
+      }
+
+      .app-frame {
+        display: grid;
+        grid-template-columns: 216px minmax(0, 1fr);
+        min-height: 820px;
+      }
+
+      .sidebar {
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid #1e1e21;
+        background: #0d0d0f;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 64px;
+        padding: 0 14px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .brand-mark {
+        display: grid;
+        width: 36px;
+        height: 36px;
+        place-items: center;
+        border-radius: 9px;
+        background: #000;
+        font-size: 9px;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+      }
+
+      .brand-copy strong,
+      .brand-copy span {
+        display: block;
+      }
+
+      .brand-copy strong {
+        font-size: 13px;
+      }
+
+      .brand-copy span {
+        color: var(--faint);
+        font-size: 11px;
+      }
+
+      .side-content {
+        flex: 1;
+        padding: 12px 8px;
+      }
+
+      .side-label {
+        margin: 14px 8px 5px;
+        color: var(--faint);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .side-item {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        min-height: 34px;
+        padding: 0 9px;
+        border-radius: 6px;
+        color: #b8b8bf;
+        font-size: 12px;
+      }
+
+      .side-item.active {
+        background: #242428;
+        color: #fff;
+      }
+
+      .ico {
+        width: 14px;
+        height: 14px;
+        flex: 0 0 auto;
+        opacity: 0.8;
+      }
+
+      .app-main {
+        min-width: 0;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 56px;
+        padding: 0 20px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .crumbs {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .crumbs strong {
+        color: #fff;
+        font-weight: 600;
+      }
+
+      .avatar {
+        display: grid;
+        width: 28px;
+        height: 28px;
+        place-items: center;
+        border: 1px solid var(--line-strong);
+        border-radius: 50%;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .page-title {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 22px 24px 18px;
+      }
+
+      .page-title h3 {
+        margin: 0 0 3px;
+        font-size: 25px;
+        letter-spacing: -0.025em;
+      }
+
+      .page-title p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .btn-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 34px;
+        padding: 0 12px;
+        border: 1px solid var(--line-strong);
+        border-radius: 6px;
+        background: #0b0b0c;
+        color: #fff;
+        font-size: 12px;
+        font-weight: 650;
+      }
+
+      .btn.primary {
+        border-color: #fff;
+        background: #fff;
+        color: #050505;
+      }
+
+      .btn.violet {
+        border-color: var(--violet);
+        background: var(--violet);
+        color: #fff;
+      }
+
+      .btn.subtle {
+        color: var(--muted);
+      }
+
+      .label {
+        margin-bottom: 5px;
+        color: #d4d4d8;
+        font-size: 11px;
+        font-weight: 650;
+      }
+
+      .control {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 34px;
+        padding: 7px 10px;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        background: #101012;
+        color: #e7e7ea;
+        font-size: 12px;
+      }
+
+      .control.mono,
+      .mono {
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .control .hint {
+        color: var(--faint);
+      }
+
+      .select::after {
+        width: 0;
+        height: 0;
+        border-top: 5px solid var(--faint);
+        border-right: 4px solid transparent;
+        border-left: 4px solid transparent;
+        content: "";
+      }
+
+      .field-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .span-2 {
+        grid-column: 1 / -1;
+      }
+
+      .section-title {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 12px;
+      }
+
+      .section-title strong {
+        font-size: 13px;
+      }
+
+      .section-title span {
+        color: var(--faint);
+        font-size: 11px;
+      }
+
+      .rule-section {
+        padding: 16px 18px;
+        border-top: 1px solid var(--line);
+      }
+
+      .state-line {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--green);
+      }
+
+      .dot.amber {
+        background: var(--amber);
+      }
+
+      .ticket-preview {
+        width: 236px;
+        overflow: hidden;
+        border: 1px solid #333339;
+        border-radius: 14px;
+        background: #0b0b0c;
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+      }
+
+      .ticket-top {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        padding: 12px 13px 10px;
+      }
+
+      .ticket-logo {
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+      }
+
+      .ticket-mini-label,
+      .ticket-field span {
+        display: block;
+        margin-bottom: 1px;
+        color: #a0a0aa;
+        font-size: 7px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+      }
+
+      .ticket-value {
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .ticket-band {
+        min-height: 76px;
+        padding: 14px;
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        background: var(--violet);
+      }
+
+      .ticket-band span {
+        display: block;
+        margin-bottom: 2px;
+        color: #ddd2ef;
+        font-size: 7px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+      }
+
+      .ticket-band strong {
+        display: block;
+        max-width: 175px;
+        font-size: 18px;
+        line-height: 1.05;
+        letter-spacing: -0.025em;
+      }
+
+      .ticket-fields {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        padding: 13px;
+      }
+
+      .ticket-field strong {
+        display: block;
+        font-size: 10px;
+      }
+
+      .qr {
+        display: grid;
+        grid-template-columns: repeat(9, 1fr);
+        gap: 1px;
+        width: 104px;
+        height: 104px;
+        margin: 12px auto 8px;
+        padding: 7px;
+        background: white;
+      }
+
+      .qr i {
+        background: #050505;
+      }
+
+      .qr i:nth-child(3n),
+      .qr i:nth-child(7n),
+      .qr i:nth-child(11n) {
+        background: transparent;
+      }
+
+      .ticket-number {
+        padding-bottom: 14px;
+        color: #b4b4bc;
+        text-align: center;
+        font-size: 9px;
+        letter-spacing: 0.08em;
+      }
+
+      .mini-toggle {
+        width: 28px;
+        height: 16px;
+        padding: 2px;
+        border: 1px solid #4b4b51;
+        border-radius: 10px;
+        background: #27272a;
+      }
+
+      .mini-toggle::after {
+        display: block;
+        width: 10px;
+        height: 10px;
+        margin-left: 12px;
+        border-radius: 50%;
+        background: #fff;
+        content: "";
+      }
+
+      .warning {
+        padding: 10px 12px;
+        border: 1px solid #574218;
+        border-radius: 5px;
+        background: #171207;
+        color: #f0cc76;
+        font-size: 11px;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 4px;
+        overflow: hidden;
+      }
+
+      .tab {
+        padding: 8px 10px;
+        border-bottom: 2px solid transparent;
+        color: var(--muted);
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .tab.active {
+        border-color: #fff;
+        color: #fff;
+      }
+
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .small {
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      /* Option A */
+      .cockpit-body {
+        display: grid;
+        grid-template-columns: 172px minmax(410px, 1fr) 292px;
+        min-height: 660px;
+        border-top: 1px solid var(--line);
+      }
+
+      .local-nav {
+        padding: 14px 10px;
+        border-right: 1px solid var(--line);
+      }
+
+      .local-nav .side-item {
+        min-height: 36px;
+      }
+
+      .local-nav .side-item.active {
+        background: var(--violet-soft);
+      }
+
+      .count {
+        margin-left: auto;
+        color: var(--faint);
+        font-size: 10px;
+      }
+
+      .cockpit-editor {
+        min-width: 0;
+        border-right: 1px solid var(--line);
+      }
+
+      .source-strip {
+        display: grid;
+        grid-template-columns: 1.3fr 0.7fr auto;
+        gap: 10px;
+        padding: 14px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .asset-row {
+        display: grid;
+        grid-template-columns: 80px minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+        padding: 9px 0;
+        border-top: 1px solid #1d1d20;
+      }
+
+      .asset-thumb {
+        height: 38px;
+        border: 1px solid var(--line);
+        background: #161619;
+      }
+
+      .cockpit-preview {
+        display: flex;
+        flex-direction: column;
+        background: #070708;
+      }
+
+      .preview-stage {
+        display: grid;
+        flex: 1;
+        place-items: center;
+        padding: 22px;
+      }
+
+      .send-dock {
+        padding: 14px;
+        border-top: 1px solid var(--line);
+        background: #0d0d0f;
+      }
+
+      .send-dock .control {
+        margin: 8px 0 10px;
+      }
+
+      .send-dock .btn {
+        width: 100%;
+      }
+
+      /* Option B */
+      .tabbed-shell {
+        padding: 0 24px 24px;
+      }
+
+      .source-banner {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr auto;
+        gap: 12px;
+        align-items: end;
+        padding: 14px 0 16px;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .wide-tabs {
+        margin: 16px 0 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .tabbed-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 300px;
+        min-height: 520px;
+      }
+
+      .tab-editor {
+        padding: 18px 22px 18px 0;
+        border-right: 1px solid var(--line);
+      }
+
+      .tab-preview {
+        display: flex;
+        flex-direction: column;
+        padding: 18px 0 0 22px;
+      }
+
+      .swatches {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .swatch .color {
+        height: 58px;
+        margin-bottom: 7px;
+        border: 1px solid var(--line-strong);
+      }
+
+      .swatch:nth-child(1) .color {
+        background: #7c3aed;
+      }
+
+      .swatch:nth-child(2) .color {
+        background: #0b0b0c;
+      }
+
+      .swatch:nth-child(3) .color {
+        background: #fff;
+      }
+
+      .swatch:nth-child(4) .color {
+        background: #a0a0aa;
+      }
+
+      .swatch strong,
+      .swatch span {
+        display: block;
+        font-size: 10px;
+      }
+
+      .swatch span {
+        margin-top: 2px;
+        color: var(--faint);
+      }
+
+      .style-options {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .style-option {
+        padding: 8px;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .style-option.active {
+        border-color: #fff;
+        color: #fff;
+      }
+
+      .style-sample {
+        height: 28px;
+        margin-bottom: 6px;
+        background: #222226;
+      }
+
+      .style-option.active .style-sample {
+        background: var(--violet);
+      }
+
+      .delivery-bar {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 10px;
+        align-items: center;
+        padding: 14px 0 0;
+        border-top: 1px solid var(--line);
+      }
+
+      /* Option C */
+      .matrix-shell {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 310px;
+        gap: 0;
+        min-height: 690px;
+        border-top: 1px solid var(--line);
+      }
+
+      .matrix-main {
+        min-width: 0;
+        padding: 16px 18px 18px 24px;
+        border-right: 1px solid var(--line);
+      }
+
+      .matrix-tools {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+      }
+
+      th {
+        padding: 8px 9px;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        color: var(--faint);
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-align: left;
+        text-transform: uppercase;
+      }
+
+      td {
+        height: 43px;
+        padding: 8px 9px;
+        border-bottom: 1px solid #1e1e21;
+        color: #d4d4d8;
+        vertical-align: middle;
+      }
+
+      tr.active td {
+        background: #1b1326;
+      }
+
+      .drag {
+        width: 22px;
+        color: var(--faint);
+      }
+
+      .drag::before {
+        display: block;
+        width: 2px;
+        height: 2px;
+        margin-left: 3px;
+        background: currentColor;
+        box-shadow:
+          5px 0 currentColor,
+          0 5px currentColor,
+          5px 5px currentColor,
+          0 10px currentColor,
+          5px 10px currentColor;
+        content: "";
+      }
+
+      .slot {
+        color: var(--muted);
+      }
+
+      .source-tag {
+        display: inline-block;
+        padding: 2px 6px;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        color: #c7c7cd;
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 9px;
+      }
+
+      .matrix-aside {
+        display: flex;
+        flex-direction: column;
+        background: #080809;
+      }
+
+      .compact-preview {
+        display: grid;
+        place-items: center;
+        min-height: 390px;
+        padding: 18px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .inspector {
+        flex: 1;
+        padding: 14px 16px;
+      }
+
+      .inspector .field-grid {
+        gap: 9px;
+      }
+
+      .manifest-drawer {
+        margin-top: 16px;
+        padding: 11px 12px;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        background: #09090a;
+      }
+
+      .manifest-code {
+        margin-top: 9px;
+        color: #c4b5fd;
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 10px;
+        line-height: 1.6;
+      }
+
+      .matrix-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-top: 14px;
+      }
+
+      .pick-note {
+        margin-top: 18px;
+        padding: 16px 18px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--muted);
+      }
+
+      .pick-note strong {
+        color: var(--text);
+      }
+
+      @media (max-width: 860px) {
+        .document-head {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .jump-links {
+          width: 100%;
+          overflow-x: auto;
+        }
+
+        .intro,
+        .option-head {
+          grid-template-columns: 1fr;
+          gap: 16px;
+        }
+
+        main {
+          padding-top: 28px;
+        }
+
+        .mock-wrap {
+          margin-right: -20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="document-head">
+      <div class="document-title">
+        <strong>Atmos Wallet debugger</strong>
+        <span>Three admin-page structures</span>
+      </div>
+      <nav class="jump-links" aria-label="Mock options">
+        <a href="#control-room">A · Control room</a>
+        <a href="#tabbed-manifest">B · Tabbed manifest</a>
+        <a href="#field-matrix">C · Field matrix</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="intro">
+        <h1>One real ticket. Every pass detail exposed.</h1>
+        <p>
+          Each direction starts from the same existing ticket, preserves its
+          identity and QR by default, allows complete PassKit overrides, and
+          sends the resulting signed pass through a fixed email template.
+        </p>
+      </section>
+
+      <section class="option" id="control-room">
+        <div class="option-head">
+          <div>
+            <h2>A. Control room</h2>
+            <p>
+              All editing groups stay one click away while the pass and send
+              action remain visible.
+            </p>
+          </div>
+          <p class="tradeoff">
+            Best for frequent debugging and fast comparison across categories.
+            It is the densest option and assumes the admin understands PassKit.
+          </p>
+        </div>
+
+        <div class="mock-wrap">
+          <div class="mock app-frame">
+            <aside class="sidebar">
+              <div class="brand">
+                <div class="brand-mark">ATMOS</div>
+                <div class="brand-copy">
+                  <strong>Atmos Admin</strong><span>Control centre</span>
+                </div>
+              </div>
+              <div class="side-content">
+                <div class="side-label">Workspace</div>
+                <div class="side-item">
+                  <svg
+                    class="ico"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    <rect x="3" y="3" width="7" height="7" />
+                    <rect x="14" y="3" width="7" height="7" />
+                    <rect x="3" y="14" width="7" height="7" />
+                    <rect x="14" y="14" width="7" height="7" /></svg
+                  >Dashboard
+                </div>
+                <div class="side-label">Events &amp; sales</div>
+                <div class="side-item">
+                  <svg
+                    class="ico"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    <path d="M3 9h18v6H3zM7 9V6h10v3M7 15v3h10v-3" /></svg
+                  >Ticketed events
+                </div>
+                <div class="side-item">
+                  <svg
+                    class="ico"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    <path
+                      d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"
+                    /></svg
+                  >Door scanner
+                </div>
+                <div class="side-label">System</div>
+                <div class="side-item active">
+                  <svg
+                    class="ico"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    <path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h4" /></svg
+                  >Wallet debugger
+                </div>
+                <div class="side-item">
+                  <svg
+                    class="ico"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg
+                  >Settings
+                </div>
+              </div>
+            </aside>
+
+            <div class="app-main">
+              <div class="topbar">
+                <div class="crumbs">
+                  Admin / <strong>Wallet debugger</strong>
+                </div>
+                <div class="avatar">WA</div>
+              </div>
+              <div class="page-title">
+                <div>
+                  <h3>Wallet pass debugger</h3>
+                  <p>Override and send a signed pass for an existing ticket.</p>
+                </div>
+                <div class="state-line">
+                  <span class="dot"></span>Signing certificate ready
+                </div>
+              </div>
+
+              <div class="cockpit-body">
+                <nav class="local-nav" aria-label="Pass sections">
+                  <div class="side-item active">Ticket source</div>
+                  <div class="side-item">
+                    Identity <span class="count">8</span>
+                  </div>
+                  <div class="side-item">
+                    Appearance <span class="count">9</span>
+                  </div>
+                  <div class="side-item">
+                    Front fields <span class="count">6</span>
+                  </div>
+                  <div class="side-item">
+                    Back fields <span class="count">5</span>
+                  </div>
+                  <div class="side-item">
+                    Barcode <span class="count">4</span>
+                  </div>
+                  <div class="side-item">
+                    Relevance <span class="count">7</span>
+                  </div>
+                  <div class="side-item">
+                    Web service <span class="count">3</span>
+                  </div>
+                  <div class="side-item">
+                    Localization <span class="count">2</span>
+                  </div>
+                  <div class="side-item">Raw manifest</div>
+                </nav>
+
+                <div class="cockpit-editor">
+                  <div class="source-strip">
+                    <div>
+                      <div class="label">Existing ticket</div>
+                      <div class="control select">
+                        ATM-86Q2 · Mara Lee · Nerve Centre
+                      </div>
+                    </div>
+                    <div>
+                      <div class="label">Environment</div>
+                      <div class="control select">Production</div>
+                    </div>
+                    <div class="state-line"><span class="dot"></span>VALID</div>
+                  </div>
+                  <section class="rule-section">
+                    <div class="section-title">
+                      <strong>Ticket source</strong
+                      ><span>Defaults refresh when the ticket changes</span>
+                    </div>
+                    <div class="field-grid">
+                      <div>
+                        <div class="label">Event</div>
+                        <div class="control">Nerve Centre</div>
+                      </div>
+                      <div>
+                        <div class="label">Ticket number</div>
+                        <div class="control mono">ATM-86Q2</div>
+                      </div>
+                      <div>
+                        <div class="label">Attendee</div>
+                        <div class="control">Mara Lee</div>
+                      </div>
+                      <div>
+                        <div class="label">Access</div>
+                        <div class="control">General admission</div>
+                      </div>
+                    </div>
+                  </section>
+                  <section class="rule-section">
+                    <div class="section-title">
+                      <strong>Required identity</strong
+                      ><span
+                        >Advanced identifiers are editable with validation</span
+                      >
+                    </div>
+                    <div class="field-grid">
+                      <div>
+                        <div class="label">Organization name</div>
+                        <div class="control">Atmos Media</div>
+                      </div>
+                      <div>
+                        <div class="label">Description</div>
+                        <div class="control">Ticket · Nerve Centre</div>
+                      </div>
+                      <div>
+                        <div class="label">Pass type identifier</div>
+                        <div class="control mono">pass.nz.co.atmos.ticket</div>
+                      </div>
+                      <div>
+                        <div class="label">Team identifier</div>
+                        <div class="control mono">7K4•••••9A</div>
+                      </div>
+                      <div>
+                        <div class="label">Serial number</div>
+                        <div class="control mono">clx9d2k3q0001...</div>
+                      </div>
+                      <div>
+                        <div class="label">Format version</div>
+                        <div class="control mono">1</div>
+                      </div>
+                    </div>
+                  </section>
+                  <section class="rule-section">
+                    <div class="section-title">
+                      <strong>Pass assets</strong
+                      ><span>PNG only · required scales checked</span>
+                    </div>
+                    <div class="asset-row">
+                      <div class="asset-thumb"></div>
+                      <div>
+                        <strong>icon.png</strong>
+                        <div class="small">29 × 29 · @2x and @3x present</div>
+                      </div>
+                      <div class="btn subtle">Replace</div>
+                    </div>
+                    <div class="asset-row">
+                      <div class="asset-thumb"></div>
+                      <div>
+                        <strong>logo.png</strong>
+                        <div class="small">160 × 50 · Atmos white</div>
+                      </div>
+                      <div class="btn subtle">Replace</div>
+                    </div>
+                    <div class="asset-row">
+                      <div
+                        class="asset-thumb"
+                        style="background: #7c3aed"
+                      ></div>
+                      <div>
+                        <strong>strip.png</strong>
+                        <div class="small">Generated from event theme</div>
+                      </div>
+                      <div class="btn subtle">Replace</div>
+                    </div>
+                  </section>
+                </div>
+
+                <aside class="cockpit-preview">
+                  <div
+                    class="row"
+                    style="padding: 14px; border-bottom: 1px solid var(--line)"
+                  >
+                    <strong>Live preview</strong
+                    ><span class="small">Front · iPhone</span>
+                  </div>
+                  <div class="preview-stage">
+                    <div class="ticket-preview">
+                      <div class="ticket-top">
+                        <div class="ticket-logo">ATMOS</div>
+                        <div style="text-align: right">
+                          <span class="ticket-mini-label">DOORS</span
+                          ><strong class="ticket-value">9:30 pm</strong>
+                        </div>
+                      </div>
+                      <div class="ticket-band">
+                        <span>EVENT</span><strong>Nerve Centre</strong>
+                      </div>
+                      <div class="ticket-fields">
+                        <div class="ticket-field">
+                          <span>DATE</span><strong>Fri 18 Sep 2026</strong>
+                        </div>
+                        <div class="ticket-field">
+                          <span>VENUE</span><strong>The Boat Shed</strong>
+                        </div>
+                        <div class="ticket-field">
+                          <span>ACCESS</span><strong>General admission</strong>
+                        </div>
+                        <div class="ticket-field">
+                          <span>NAME</span><strong>Mara Lee</strong>
+                        </div>
+                      </div>
+                      <div class="qr" aria-hidden="true">
+                        <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                        ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                        ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                        ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                        ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                        ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                        ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                        ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                        ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                        ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                        ><i></i>
+                      </div>
+                      <div class="ticket-number mono">ATM-86Q2</div>
+                    </div>
+                  </div>
+                  <div class="send-dock">
+                    <div class="row">
+                      <strong>Send test pass</strong
+                      ><span class="state-line"
+                        ><span class="dot"></span>Valid</span
+                      >
+                    </div>
+                    <div class="control">mara@example.com</div>
+                    <div class="btn violet">Sign and send .pkpass</div>
+                    <div class="row" style="margin-top: 9px">
+                      <span class="small">Fixed Atmos email</span
+                      ><span class="small"><u>Download only</u></span>
+                    </div>
+                  </div>
+                </aside>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="option" id="tabbed-manifest">
+        <div class="option-head">
+          <div>
+            <h2>B. Tabbed manifest</h2>
+            <p>
+              One customization category at a time, with a persistent preview
+              and delivery bar.
+            </p>
+          </div>
+          <p class="tradeoff">
+            Best balance of approachability and complete control. Cross-category
+            comparison takes more tab switching than the control room.
+          </p>
+        </div>
+
+        <div class="mock-wrap">
+          <div class="mock app-frame">
+            <aside class="sidebar">
+              <div class="brand">
+                <div class="brand-mark">ATMOS</div>
+                <div class="brand-copy">
+                  <strong>Atmos Admin</strong><span>Control centre</span>
+                </div>
+              </div>
+              <div class="side-content">
+                <div class="side-label">Workspace</div>
+                <div class="side-item">Dashboard</div>
+                <div class="side-label">Events &amp; sales</div>
+                <div class="side-item">Ticketed events</div>
+                <div class="side-item">Door scanner</div>
+                <div class="side-label">System</div>
+                <div class="side-item active">Wallet debugger</div>
+                <div class="side-item">Settings</div>
+              </div>
+            </aside>
+            <div class="app-main">
+              <div class="topbar">
+                <div class="crumbs">
+                  Admin / <strong>Wallet debugger</strong>
+                </div>
+                <div class="avatar">WA</div>
+              </div>
+              <div class="page-title">
+                <div>
+                  <h3>Wallet pass debugger</h3>
+                  <p>
+                    Customize the selected ticket without creating another one.
+                  </p>
+                </div>
+                <div class="state-line">
+                  <span class="dot"></span>Apple signing ready
+                </div>
+              </div>
+              <div class="tabbed-shell">
+                <div class="source-banner">
+                  <div>
+                    <div class="label">Existing ticket</div>
+                    <div class="control select">
+                      ATM-86Q2 · Mara Lee · Nerve Centre
+                    </div>
+                  </div>
+                  <div>
+                    <div class="label">Loaded from</div>
+                    <div class="control">Production · current ticket data</div>
+                  </div>
+                  <div class="btn">Reset all overrides</div>
+                </div>
+                <nav class="tabs wide-tabs" aria-label="Pass categories">
+                  <div class="tab">Identity</div>
+                  <div class="tab active">Appearance</div>
+                  <div class="tab">Front</div>
+                  <div class="tab">Back</div>
+                  <div class="tab">Barcode</div>
+                  <div class="tab">Relevance</div>
+                  <div class="tab">Updates</div>
+                  <div class="tab">Locales</div>
+                  <div class="tab mono">JSON</div>
+                </nav>
+                <div class="tabbed-body">
+                  <section class="tab-editor">
+                    <div class="section-title">
+                      <strong>Appearance</strong
+                      ><span>9 values · current event defaults</span>
+                    </div>
+                    <div class="style-options">
+                      <div class="style-option active">
+                        <div class="style-sample"></div>
+                        Hatch
+                      </div>
+                      <div class="style-option">
+                        <div class="style-sample"></div>
+                        Gradient
+                      </div>
+                      <div class="style-option">
+                        <div class="style-sample"></div>
+                        Solid
+                      </div>
+                      <div class="style-option">
+                        <div class="style-sample"></div>
+                        Bars
+                      </div>
+                      <div class="style-option">
+                        <div class="style-sample"></div>
+                        None
+                      </div>
+                    </div>
+                    <div class="swatches">
+                      <div class="swatch">
+                        <div class="color"></div>
+                        <strong>Accent</strong><span class="mono">#7C3AED</span>
+                      </div>
+                      <div class="swatch">
+                        <div class="color"></div>
+                        <strong>Background</strong
+                        ><span class="mono">#0B0B0C</span>
+                      </div>
+                      <div class="swatch">
+                        <div class="color"></div>
+                        <strong>Foreground</strong
+                        ><span class="mono">#FFFFFF</span>
+                      </div>
+                      <div class="swatch">
+                        <div class="color"></div>
+                        <strong>Labels</strong><span class="mono">#A0A0AA</span>
+                      </div>
+                    </div>
+                    <div
+                      class="rule-section"
+                      style="
+                        margin-top: 18px;
+                        padding-left: 0;
+                        padding-right: 0;
+                      "
+                    >
+                      <div class="section-title">
+                        <strong>Artwork</strong
+                        ><span
+                          >Apple scale variants generated when possible</span
+                        >
+                      </div>
+                      <div class="asset-row">
+                        <div class="asset-thumb"></div>
+                        <div>
+                          <strong>Icon</strong>
+                          <div class="small">Atmos app icon · 1x, 2x, 3x</div>
+                        </div>
+                        <div class="btn subtle">Replace</div>
+                      </div>
+                      <div class="asset-row">
+                        <div class="asset-thumb"></div>
+                        <div>
+                          <strong>Logo</strong>
+                          <div class="small">Atmos white · 160 × 50</div>
+                        </div>
+                        <div class="btn subtle">Replace</div>
+                      </div>
+                      <div class="asset-row">
+                        <div
+                          class="asset-thumb"
+                          style="background: #7c3aed"
+                        ></div>
+                        <div>
+                          <strong>Strip</strong>
+                          <div class="small">
+                            Generated hatch · custom upload allowed
+                          </div>
+                        </div>
+                        <div class="btn subtle">Replace</div>
+                      </div>
+                      <div class="asset-row">
+                        <div class="asset-thumb"></div>
+                        <div>
+                          <strong>Footer</strong>
+                          <div class="small">Not set</div>
+                        </div>
+                        <div class="btn subtle">Add</div>
+                      </div>
+                    </div>
+                    <div class="warning">
+                      Contrast passes. Custom artwork still needs a real iPhone
+                      check before customer use.
+                    </div>
+                  </section>
+                  <aside class="tab-preview">
+                    <div class="row">
+                      <strong>Preview</strong
+                      ><span class="small">Front · Back</span>
+                    </div>
+                    <div
+                      style="
+                        display: grid;
+                        place-items: center;
+                        flex: 1;
+                        padding: 18px 0;
+                      "
+                    >
+                      <div class="ticket-preview">
+                        <div class="ticket-top">
+                          <div class="ticket-logo">ATMOS</div>
+                          <div style="text-align: right">
+                            <span class="ticket-mini-label">DOORS</span
+                            ><strong class="ticket-value">9:30 pm</strong>
+                          </div>
+                        </div>
+                        <div class="ticket-band">
+                          <span>EVENT</span><strong>Nerve Centre</strong>
+                        </div>
+                        <div class="ticket-fields">
+                          <div class="ticket-field">
+                            <span>DATE</span><strong>Fri 18 Sep 2026</strong>
+                          </div>
+                          <div class="ticket-field">
+                            <span>VENUE</span><strong>The Boat Shed</strong>
+                          </div>
+                          <div class="ticket-field">
+                            <span>ACCESS</span
+                            ><strong>General admission</strong>
+                          </div>
+                          <div class="ticket-field">
+                            <span>NAME</span><strong>Mara Lee</strong>
+                          </div>
+                        </div>
+                        <div class="qr" aria-hidden="true">
+                          <i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                          ><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                          ><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                          ><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                          ><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                          ><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                          ><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                          ><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                          ><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                          ><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                          ><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                          ><i></i><i></i><i></i><i></i>
+                        </div>
+                        <div class="ticket-number mono">ATM-86Q2</div>
+                      </div>
+                    </div>
+                    <div
+                      class="row"
+                      style="padding: 12px 0; border-top: 1px solid var(--line)"
+                    >
+                      <div class="state-line">
+                        <span class="dot"></span>Manifest valid
+                      </div>
+                      <span class="small">2 overrides</span>
+                    </div>
+                  </aside>
+                </div>
+                <div class="delivery-bar">
+                  <div class="control">
+                    mara@example.com <span class="hint">Recipient</span>
+                  </div>
+                  <div class="btn">Download .pkpass</div>
+                  <div class="btn violet">Sign and send</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="option" id="field-matrix">
+        <div class="option-head">
+          <div>
+            <h2>C. Field matrix</h2>
+            <p>
+              The manifest is the interface: reorder, relabel, and inspect every
+              field in one dense table.
+            </p>
+          </div>
+          <p class="tradeoff">
+            Best for exact front and back field work, localization, and finding
+            provenance. Appearance and delivery feel secondary to the manifest.
+          </p>
+        </div>
+
+        <div class="mock-wrap">
+          <div class="mock app-frame">
+            <aside class="sidebar">
+              <div class="brand">
+                <div class="brand-mark">ATMOS</div>
+                <div class="brand-copy">
+                  <strong>Atmos Admin</strong><span>Control centre</span>
+                </div>
+              </div>
+              <div class="side-content">
+                <div class="side-label">Workspace</div>
+                <div class="side-item">Dashboard</div>
+                <div class="side-label">Events &amp; sales</div>
+                <div class="side-item">Ticketed events</div>
+                <div class="side-item">Door scanner</div>
+                <div class="side-label">System</div>
+                <div class="side-item active">Wallet debugger</div>
+                <div class="side-item">Settings</div>
+              </div>
+            </aside>
+            <div class="app-main">
+              <div class="topbar">
+                <div class="crumbs">
+                  Admin / <strong>Wallet debugger</strong>
+                </div>
+                <div class="avatar">WA</div>
+              </div>
+              <div class="page-title">
+                <div>
+                  <h3>Wallet pass debugger</h3>
+                  <p>Edit the complete manifest for one existing ticket.</p>
+                </div>
+                <div class="btn-row">
+                  <div class="btn">Appearance</div>
+                  <div class="btn mono">Raw JSON</div>
+                </div>
+              </div>
+              <div class="matrix-shell">
+                <main class="matrix-main">
+                  <div class="matrix-tools">
+                    <div class="control select">
+                      ATM-86Q2 · Mara Lee · Nerve Centre
+                    </div>
+                    <div class="btn">Add field</div>
+                    <div class="btn">Add locale</div>
+                  </div>
+                  <nav class="tabs" aria-label="Manifest sections">
+                    <div class="tab active">Front fields · 6</div>
+                    <div class="tab">Back fields · 5</div>
+                    <div class="tab">Metadata · 11</div>
+                    <div class="tab">Relevance · 7</div>
+                    <div class="tab">Web service · 3</div>
+                  </nav>
+                  <table aria-label="Pass fields">
+                    <thead>
+                      <tr>
+                        <th></th>
+                        <th>Slot</th>
+                        <th>Key</th>
+                        <th>Label</th>
+                        <th>Value</th>
+                        <th>Source</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="drag"></td>
+                        <td class="slot">Header</td>
+                        <td class="mono">doors</td>
+                        <td>DOORS</td>
+                        <td>9:30 pm</td>
+                        <td><span class="source-tag">event.doorsAt</span></td>
+                      </tr>
+                      <tr>
+                        <td class="drag"></td>
+                        <td class="slot">Primary</td>
+                        <td class="mono">event</td>
+                        <td>EVENT</td>
+                        <td>Nerve Centre</td>
+                        <td><span class="source-tag">event.name</span></td>
+                      </tr>
+                      <tr class="active">
+                        <td class="drag"></td>
+                        <td class="slot">Secondary</td>
+                        <td class="mono">date</td>
+                        <td>DATE</td>
+                        <td>Fri 18 Sep 2026</td>
+                        <td><span class="source-tag">event.startsAt</span></td>
+                      </tr>
+                      <tr>
+                        <td class="drag"></td>
+                        <td class="slot">Secondary</td>
+                        <td class="mono">venue</td>
+                        <td>VENUE</td>
+                        <td>The Boat Shed</td>
+                        <td><span class="source-tag">event.venueName</span></td>
+                      </tr>
+                      <tr>
+                        <td class="drag"></td>
+                        <td class="slot">Auxiliary</td>
+                        <td class="mono">access</td>
+                        <td>ACCESS</td>
+                        <td>General admission</td>
+                        <td>
+                          <span class="source-tag">ticket.accessLevel</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="drag"></td>
+                        <td class="slot">Auxiliary</td>
+                        <td class="mono">name</td>
+                        <td>NAME</td>
+                        <td>Mara Lee</td>
+                        <td>
+                          <span class="source-tag">ticket.attendeeName</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div class="manifest-drawer">
+                    <div class="row">
+                      <strong>Full manifest coverage</strong
+                      ><span class="small"
+                        >Defaults shown until overridden</span
+                      >
+                    </div>
+                    <div class="manifest-code">
+                      identity · colors · assets · fields · barcode · NFC ·
+                      locations · beacons · dates · semantics · sharing · web
+                      service · localization · userInfo
+                    </div>
+                  </div>
+                  <div class="matrix-footer">
+                    <div class="state-line">
+                      <span class="dot"></span>41 default values · 1 override ·
+                      no validation errors
+                    </div>
+                    <div class="btn-row">
+                      <div class="btn">Download .pkpass</div>
+                      <div class="btn violet">Review send</div>
+                    </div>
+                  </div>
+                </main>
+                <aside class="matrix-aside">
+                  <div class="compact-preview">
+                    <div class="ticket-preview">
+                      <div class="ticket-top">
+                        <div class="ticket-logo">ATMOS</div>
+                        <div style="text-align: right">
+                          <span class="ticket-mini-label">DOORS</span
+                          ><strong class="ticket-value">9:30 pm</strong>
+                        </div>
+                      </div>
+                      <div class="ticket-band">
+                        <span>EVENT</span><strong>Nerve Centre</strong>
+                      </div>
+                      <div class="ticket-fields">
+                        <div class="ticket-field">
+                          <span>DATE</span><strong>Fri 18 Sep 2026</strong>
+                        </div>
+                        <div class="ticket-field">
+                          <span>VENUE</span><strong>The Boat Shed</strong>
+                        </div>
+                        <div class="ticket-field">
+                          <span>ACCESS</span><strong>General admission</strong>
+                        </div>
+                        <div class="ticket-field">
+                          <span>NAME</span><strong>Mara Lee</strong>
+                        </div>
+                      </div>
+                      <div class="qr" aria-hidden="true">
+                        <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                        ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                        ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                        ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                        ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                        ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                        ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                        ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                        ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                        ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                        ><i></i>
+                      </div>
+                      <div class="ticket-number mono">ATM-86Q2</div>
+                    </div>
+                  </div>
+                  <div class="inspector">
+                    <div class="section-title">
+                      <strong>Selected field</strong
+                      ><span class="source-tag">secondary</span>
+                    </div>
+                    <div class="field-grid">
+                      <div>
+                        <div class="label">Key</div>
+                        <div class="control mono">date</div>
+                      </div>
+                      <div>
+                        <div class="label">Label</div>
+                        <div class="control">DATE</div>
+                      </div>
+                      <div class="span-2">
+                        <div class="label">Value</div>
+                        <div class="control">Fri 18 Sep 2026</div>
+                      </div>
+                      <div>
+                        <div class="label">Text alignment</div>
+                        <div class="control select">Natural</div>
+                      </div>
+                      <div>
+                        <div class="label">Date style</div>
+                        <div class="control select">Full</div>
+                      </div>
+                      <div class="span-2">
+                        <div class="label">Localization key</div>
+                        <div class="control mono">
+                          <span class="hint">Optional</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row" style="margin-top: 13px">
+                      <div class="state-line">
+                        <span class="dot amber"></span>Overridden
+                      </div>
+                      <span class="small"><u>Restore default</u></span>
+                    </div>
+                    <div
+                      class="rule-section"
+                      style="padding: 14px 0 0; margin-top: 14px"
+                    >
+                      <div class="label">Email recipient</div>
+                      <div class="control">mara@example.com</div>
+                      <div class="small" style="margin-top: 7px">
+                        Fixed Atmos test-pass email. The selected ticket is
+                        unchanged.
+                      </div>
+                    </div>
+                  </div>
+                </aside>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="pick-note">
+        <strong>My recommendation: B, Tabbed manifest.</strong> It keeps the
+        full PassKit surface available without presenting every expert control
+        at once. Choose A if this will be used constantly by people who already
+        know the manifest, or C if field ordering and localization are the main
+        reason the page exists.
+      </div>
+    </main>
+  </body>
+</html>

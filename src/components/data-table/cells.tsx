@@ -2,6 +2,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { MinusSignIcon, Tick02Icon } from "@hugeicons/core-free-icons";
 
 import { Badge } from "~/components/ui/badge";
+import { formatDate as formatAdminDate } from "~/lib/date-utils";
 import { cn } from "~/lib/utils";
 import type { DataTableColumn } from "./types";
 
@@ -22,11 +23,9 @@ function formatDate(value: unknown): string {
         ? new Date(value)
         : null;
   if (!date || Number.isNaN(date.getTime())) return formatValue(value);
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  // The shared formatter, so a date in a table reads the same as a date
+  // anywhere else in the admin — user's timezone, "15 Jan 2024".
+  return formatAdminDate(date, "short");
 }
 
 function formatValue(value: unknown): string {

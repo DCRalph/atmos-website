@@ -3,7 +3,10 @@ import { CrewManager } from "~/components/admin/crew-manager";
 
 export default function AdminCrewPage() {
   return (
-    <AdminSection title="Crew" description="Manage crew members">
+    <AdminSection
+      title="Crew"
+      description="The Atmos crew directory, in the order it appears on the site."
+    >
       <CrewManager />
     </AdminSection>
   );

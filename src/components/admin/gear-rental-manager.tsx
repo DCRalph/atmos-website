@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from "~/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import { format } from "date-fns";
+import { toast } from "sonner";
 import { Loader2, Plus, Trash2, Check, X, Pencil } from "lucide-react";
 import { Badge } from "~/components/ui/badge";
 import {
@@ -37,6 +37,18 @@ import {
 } from "~/components/ui/select";
 import { Checkbox } from "~/components/ui/checkbox";
 import { useConfirm } from "~/components/confirm-provider";
+import { useTabParam } from "~/hooks/use-tab-param";
+import { formatDate } from "~/lib/date-utils";
+import { formatNZD } from "~/lib/ticketing/money";
+
+/** Rental prices are whole dollars in the database, not cents. */
+const price = (dollars: number) => formatNZD(Math.round(dollars * 100));
+
+const RENTAL_STATUS_LABELS: Record<string, string> = {
+  PENDING: "Pending",
+  APPROVED: "Approved",
+  REJECTED: "Rejected",
+};
 
 const DISCOUNT_TYPE = {
   FIXED_AMOUNT: "FIXED_AMOUNT",
@@ -112,7 +124,12 @@ function createEmptyDiscountRule(): DiscountRuleForm {
 
 export function GearRentalManager() {
   const confirm = useConfirm();
-  const [activeTab, setActiveTab] = useState("requests");
+  const { value: activeTab, onValueChange: setActiveTab } = useTabParam([
+    "requests",
+    "inventory",
+    "packages",
+    "discounts",
+  ]);
   const [isAddingInventoryItem, setIsAddingInventoryItem] = useState(false);
   const [isAddingPackage, setIsAddingPackage] = useState(false);
   const [newInventoryItem, setNewInventoryItem] = useState(
@@ -167,7 +184,9 @@ export function GearRentalManager() {
   };
 
   const createInventoryItem = api.rentals.adminCreateInventoryItem.useMutation({
+    onError: (error) => toast.error(error.message),
     onSuccess: async () => {
+      toast.success("Item added");
       await invalidateCatalog();
       setIsAddingInventoryItem(false);
       setNewInventoryItem(createEmptyInventoryItem());
@@ -175,20 +194,26 @@ export function GearRentalManager() {
   });
 
   const updateInventoryItem = api.rentals.adminUpdateInventoryItem.useMutation({
+    onError: (error) => toast.error(error.message),
     onSuccess: async () => {
+      toast.success("Item updated");
       await invalidateCatalog();
       setEditingInventoryItem(null);
     },
   });
 
   const deleteInventoryItem = api.rentals.adminDeleteInventoryItem.useMutation({
+    onError: (error) => toast.error(error.message),
     onSuccess: async () => {
+      toast.success("Item deleted");
       await invalidateCatalog();
     },
   });
 
   const createPackage = api.rentals.adminCreatePackage.useMutation({
+    onError: (error) => toast.error(error.message),
     onSuccess: async () => {
+      toast.success("Package created");
       await invalidateCatalog();
       setIsAddingPackage(false);
       setNewPackage(createEmptyPackage());
@@ -196,20 +221,26 @@ export function GearRentalManager() {
   });
 
   const updatePackage = api.rentals.adminUpdatePackage.useMutation({
+    onError: (error) => toast.error(error.message),
     onSuccess: async () => {
+      toast.success("Package updated");
       await invalidateCatalog();
       setEditingPackage(null);
     },
   });
 
   const deletePackage = api.rentals.adminDeletePackage.useMutation({
+    onError: (error) => toast.error(error.message),
     onSuccess: async () => {
+      toast.success("Package deleted");
       await invalidateCatalog();
     },
   });
 
   const createDiscountRule = api.rentals.adminCreateDiscountRule.useMutation({
+    onError: (error) => toast.error(error.message),
     onSuccess: async () => {
+      toast.success("Discount rule created");
       await invalidateCatalog();
       setIsAddingDiscountRule(false);
       setNewDiscountRule(createEmptyDiscountRule());
@@ -217,32 +248,42 @@ export function GearRentalManager() {
   });
 
   const updateDiscountRule = api.rentals.adminUpdateDiscountRule.useMutation({
+    onError: (error) => toast.error(error.message),
     onSuccess: async () => {
+      toast.success("Discount rule updated");
       await invalidateCatalog();
       setEditingDiscountRule(null);
     },
   });
 
   const deleteDiscountRule = api.rentals.adminDeleteDiscountRule.useMutation({
+    onError: (error) => toast.error(error.message),
     onSuccess: async () => {
+      toast.success("Discount rule deleted");
       await invalidateCatalog();
     },
   });
 
   const approveRental = api.rentals.adminApproveRental.useMutation({
+    onError: (error) => toast.error(error.message),
     onSuccess: async () => {
+      toast.success("Request approved");
       await invalidateCatalog();
     },
   });
 
   const rejectRental = api.rentals.adminRejectRental.useMutation({
+    onError: (error) => toast.error(error.message),
     onSuccess: async () => {
+      toast.success("Request rejected");
       await invalidateCatalog();
     },
   });
 
   const deleteRental = api.rentals.adminDeleteRental.useMutation({
+    onError: (error) => toast.error(error.message),
     onSuccess: async () => {
+      toast.success("Request deleted");
       await invalidateCatalog();
     },
   });
@@ -318,6 +359,7 @@ export function GearRentalManager() {
     {
       id: "user",
       header: "User",
+      sortable: true,
       accessor: (rental) => rental.userName,
       className: "font-medium",
     },
@@ -330,14 +372,14 @@ export function GearRentalManager() {
     {
       id: "selection",
       header: "Selection",
-      cell: (rental) => rental.gearPackage?.name ?? "Individual Items",
+      cell: (rental) => rental.gearPackage?.name ?? "Individual items",
     },
     {
       id: "includes",
       header: "Includes",
-      className: "max-w-[280px] whitespace-normal",
+      className: "whitespace-normal",
       cell: (rental) => (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex max-w-[280px] flex-wrap gap-1">
           {(rental.rentalItems.length > 0
             ? rental.rentalItems
             : (rental.gearPackage?.items ?? [])
@@ -359,10 +401,12 @@ export function GearRentalManager() {
       id: "dates",
       header: "Dates",
       className: "text-xs",
+      sortable: true,
+      accessor: (rental) => new Date(rental.startDate),
       cell: (rental) => (
         <>
-          {format(new Date(rental.startDate), "MMM d, yyyy")} -{" "}
-          {format(new Date(rental.endDate), "MMM d, yyyy")}
+          {formatDate(new Date(rental.startDate), "short")} –{" "}
+          {formatDate(new Date(rental.endDate), "short")}
         </>
       ),
     },
@@ -370,11 +414,16 @@ export function GearRentalManager() {
       id: "total",
       header: "Total",
       className: "text-xs",
-      cell: (rental) => `$${rental.estimatedTotalPrice}`,
+      align: "right",
+      sortable: true,
+      accessor: (rental) => rental.estimatedTotalPrice,
+      cell: (rental) => price(rental.estimatedTotalPrice),
     },
     {
       id: "status",
       header: "Status",
+      sortable: true,
+      accessor: (rental) => rental.status,
       cell: (rental) => (
         <Badge
           variant={
@@ -390,13 +439,13 @@ export function GearRentalManager() {
               : ""
           }
         >
-          {rental.status}
+          {RENTAL_STATUS_LABELS[rental.status] ?? rental.status}
         </Badge>
       ),
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "",
       align: "right",
       hideable: false,
       cell: (rental) => (
@@ -404,27 +453,36 @@ export function GearRentalManager() {
           {rental.status === "PENDING" && (
             <>
               <Button
-                size="sm"
+                size="icon"
                 variant="outline"
                 className="text-green-500"
+                aria-label={`Approve the request from ${rental.userName}`}
+                title="Approve"
+                disabled={approveRental.isPending || rejectRental.isPending}
                 onClick={() => approveRental.mutate({ id: rental.id })}
               >
-                <Check className="h-4 w-4" />
+                <Check className="h-4 w-4" aria-hidden />
               </Button>
               <Button
-                size="sm"
+                size="icon"
                 variant="outline"
                 className="text-red-500"
+                aria-label={`Reject the request from ${rental.userName}`}
+                title="Reject"
+                disabled={approveRental.isPending || rejectRental.isPending}
                 onClick={() => rejectRental.mutate({ id: rental.id })}
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden />
               </Button>
             </>
           )}
           <Button
-            size="sm"
+            size="icon"
             variant="ghost"
             className="text-muted-foreground hover:text-destructive"
+            aria-label={`Delete the request from ${rental.userName}`}
+            title="Delete"
+            disabled={deleteRental.isPending}
             onClick={async () => {
               const ok = await confirm({
                 title: "Delete rental record",
@@ -446,35 +504,58 @@ export function GearRentalManager() {
     {
       id: "name",
       header: "Name",
+      sortable: true,
       accessor: (item) => item.name,
       className: "font-medium",
     },
     {
       id: "shortName",
-      header: "Short Name",
+      header: "Short name",
       cell: (item) => item.shortName ?? "—",
       className: "text-muted-foreground text-xs uppercase",
     },
     {
       id: "description",
       header: "Description",
-      accessor: (item) => item.description,
-      className: "max-w-[300px] truncate text-sm",
+      className: "text-sm",
+      cell: (item) => (
+        <div className="max-w-[300px] truncate" title={item.description ?? ""}>
+          {item.description ?? "—"}
+        </div>
+      ),
     },
     {
       id: "note",
       header: "Note",
-      cell: (item) => item.note ?? "—",
-      className: "max-w-[300px] truncate text-sm",
+      className: "text-sm",
+      cell: (item) => (
+        <div className="max-w-[300px] truncate" title={item.note ?? ""}>
+          {item.note ?? "—"}
+        </div>
+      ),
     },
-    { id: "quantity", header: "Quantity", accessor: (item) => item.quantity },
-    { id: "price", header: "Price/Day", cell: (item) => `$${item.price}` },
+    {
+      id: "quantity",
+      header: "Quantity",
+      type: "number",
+      align: "right",
+      sortable: true,
+      accessor: (item) => item.quantity,
+    },
+    {
+      id: "price",
+      header: "Price per day",
+      align: "right",
+      sortable: true,
+      accessor: (item) => item.price,
+      cell: (item) => price(item.price),
+    },
     {
       id: "packages",
-      header: "Used In Packages",
-      className: "max-w-[220px] whitespace-normal",
+      header: "Used in packages",
+      className: "whitespace-normal",
       cell: (item) => (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex max-w-[220px] flex-wrap gap-1">
           {item.packageItems.length > 0 ? (
             item.packageItems.map((packageItem) => (
               <Badge
@@ -493,7 +574,7 @@ export function GearRentalManager() {
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "",
       align: "right",
       hideable: false,
       cell: (item) => (
@@ -554,21 +635,21 @@ export function GearRentalManager() {
     },
     {
       id: "shortName",
-      header: "Short Name",
+      header: "Short name",
       cell: (gearPackage) => gearPackage.shortName ?? "—",
       className: "text-muted-foreground text-xs uppercase",
     },
     {
       id: "price",
-      header: "Daily Price",
-      cell: (gearPackage) => `$${gearPackage.price}`,
+      header: "Daily price",
+      cell: (gearPackage) => price(gearPackage.price),
     },
     {
       id: "contents",
       header: "Contents",
-      className: "max-w-[320px] whitespace-normal",
+      className: "whitespace-normal",
       cell: (gearPackage) => (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex max-w-[320px] flex-wrap gap-1">
           {gearPackage.items.map((item) => (
             <PackageItemBadge
               key={item.id}
@@ -585,7 +666,7 @@ export function GearRentalManager() {
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "",
       align: "right",
       hideable: false,
       cell: (gearPackage) => (
@@ -646,7 +727,7 @@ export function GearRentalManager() {
       cell: (rule) =>
         rule.discountMode === DISCOUNT_MODE.TOTAL
           ? rule.discountType === DISCOUNT_TYPE.FIXED_AMOUNT
-            ? `$${rule.discountValue} off/day`
+            ? `${price(rule.discountValue)} off/day`
             : `${rule.discountValue}% off/day`
           : rule.discountType === DISCOUNT_TYPE.FIXED_AMOUNT
             ? "Per-item dollar discount"
@@ -655,9 +736,9 @@ export function GearRentalManager() {
     {
       id: "requirements",
       header: "Requirements",
-      className: "max-w-[320px] whitespace-normal",
+      className: "whitespace-normal",
       cell: (rule) => (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex max-w-[320px] flex-wrap gap-1">
           {rule.requirements.map((item) => (
             <PackageItemBadge
               key={item.id}
@@ -674,7 +755,7 @@ export function GearRentalManager() {
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "",
       align: "right",
       hideable: false,
       cell: (rule) => (
@@ -732,16 +813,16 @@ export function GearRentalManager() {
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
       <TabsList>
-        <TabsTrigger value="requests">Rental Requests</TabsTrigger>
-        <TabsTrigger value="inventory">Inventory Items</TabsTrigger>
+        <TabsTrigger value="requests">Requests</TabsTrigger>
+        <TabsTrigger value="inventory">Inventory</TabsTrigger>
         <TabsTrigger value="packages">Packages</TabsTrigger>
-        <TabsTrigger value="discounts">Discount Rules</TabsTrigger>
+        <TabsTrigger value="discounts">Discount rules</TabsTrigger>
       </TabsList>
 
       <TabsContent value="requests" className="space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle>Rental Requests</CardTitle>
+            <CardTitle>Rental requests</CardTitle>
             <CardDescription>
               Review package booking requests and approve them only when the
               underlying inventory is still available.
@@ -764,7 +845,7 @@ export function GearRentalManager() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Inventory Items</CardTitle>
+              <CardTitle>Inventory items</CardTitle>
               <CardDescription>
                 Manage the underlying stock counts that packages consume.
               </CardDescription>
@@ -1051,7 +1132,7 @@ export function GearRentalManager() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Rental Packages</CardTitle>
+              <CardTitle>Rental packages</CardTitle>
               <CardDescription>
                 Create rentable packages by combining inventory items with the
                 quantities each package consumes.
@@ -1328,8 +1409,7 @@ export function GearRentalManager() {
                     }
                     disabled={
                       updatePackage.isPending ||
-                      !editingPackage ||
-                      !editingPackage.name.trim() ||
+                      !editingPackage?.name.trim() ||
                       !packageHasItems(editingPackage)
                     }
                   >
@@ -1359,7 +1439,7 @@ export function GearRentalManager() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Discount Rules</CardTitle>
+              <CardTitle>Discount rules</CardTitle>
               <CardDescription>
                 Define item quantity combinations that trigger a best single
                 discount for individual-item rentals.
@@ -1459,8 +1539,7 @@ export function GearRentalManager() {
                     }
                     disabled={
                       updateDiscountRule.isPending ||
-                      !editingDiscountRule ||
-                      !editingDiscountRule.name.trim() ||
+                      !editingDiscountRule?.name.trim() ||
                       !discountRuleHasRequirements(editingDiscountRule) ||
                       !discountRuleHasValidDiscountValues(editingDiscountRule)
                     }

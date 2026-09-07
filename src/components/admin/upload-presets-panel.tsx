@@ -22,7 +22,11 @@ import { describeAcceptedTypes, formatBytes } from "~/lib/uploads/validate";
  * actually enforced and where.
  */
 export function UploadPresetsPanel() {
-  const { data: presets, isLoading } = api.uploads.presets.useQuery();
+  const {
+    data: presets,
+    isLoading,
+    isFetching,
+  } = api.uploads.presets.useQuery();
   const utils = api.useUtils();
 
   const sweep = api.uploads.sweepStale.useMutation({
@@ -38,14 +42,6 @@ export function UploadPresetsPanel() {
     onError: (err) => toast.error(err.message),
   });
 
-  if (isLoading) {
-    return (
-      <div className="text-muted-foreground flex items-center justify-center gap-2 py-12">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading upload targets...
-      </div>
-    );
-  }
-
   const totalStored = presets?.reduce((sum, p) => sum + p.storedBytes, 0) ?? 0;
   const totalOriginal =
     presets?.reduce((sum, p) => sum + p.originalBytes, 0) ?? 0;
@@ -56,6 +52,8 @@ export function UploadPresetsPanel() {
     {
       id: "target",
       header: "Target",
+      sortable: true,
+      accessor: (preset) => preset.label,
       cell: (preset) => (
         <div>
           <div className="font-medium">{preset.label}</div>
@@ -80,8 +78,14 @@ export function UploadPresetsPanel() {
     {
       id: "accepted",
       header: "Accepted",
-      cell: (preset) => describeAcceptedTypes(preset.accept),
-      className: "max-w-56 text-xs",
+      // `max-width` on a table cell is only a suggestion in auto layout, so the
+      // clamp goes on a block inside it.
+      cell: (preset) => (
+        <div className="max-w-56 whitespace-normal">
+          {describeAcceptedTypes(preset.accept)}
+        </div>
+      ),
+      className: "text-xs",
     },
     {
       id: "perFile",
@@ -131,6 +135,8 @@ export function UploadPresetsPanel() {
     {
       id: "stored",
       header: "Stored",
+      sortable: true,
+      accessor: (preset) => preset.storedBytes,
       align: "right",
       className: "text-xs whitespace-nowrap",
       cell: (preset) => (
@@ -165,9 +171,9 @@ export function UploadPresetsPanel() {
               disabled={sweep.isPending}
             >
               {sweep.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
               ) : (
-                <Trash2 className="mr-2 h-4 w-4" />
+                <Trash2 className="h-4 w-4" aria-hidden />
               )}
               Clean up abandoned uploads
             </Button>
@@ -194,6 +200,8 @@ export function UploadPresetsPanel() {
         columns={columns}
         data={rows}
         getRowId={(row) => row.name}
+        isLoading={isLoading}
+        isFetching={isFetching}
         storageKey="admin-upload-presets"
         emptyMessage="No upload targets found."
       />
