@@ -39,6 +39,34 @@ export type InstagramPost = {
   images: InstagramImage[];
 };
 
+/**
+ * Who the token belongs to, or null if there is no working token.
+ *
+ * The wizard shows this on step one. Only this account's posts can ever be
+ * read, and that is not obvious from the outside, so naming it is the
+ * difference between a URL failing for an understandable reason and failing
+ * mysteriously. It doubles as a liveness check: a token that has passed its
+ * sixty days returns null here rather than looking connected until used.
+ */
+export async function fetchConnectedAccount(): Promise<{
+  username: string;
+} | null> {
+  const token = env.INSTAGRAM_ACCESS_TOKEN;
+  if (!token) return null;
+
+  try {
+    const response = await fetch(
+      `${GRAPH_BASE}/me?fields=username&access_token=${encodeURIComponent(token)}`,
+      { cache: "no-store", signal: AbortSignal.timeout(10_000) },
+    );
+    if (!response.ok) return null;
+    const body = (await response.json()) as { username?: string };
+    return body.username ? { username: body.username } : null;
+  } catch {
+    return null;
+  }
+}
+
 export class InstagramUnavailableError extends Error {
   constructor(
     message: string,
@@ -168,8 +196,14 @@ export async function fetchInstagramPost(url: string): Promise<InstagramPost> {
     next = body.paging?.next ?? "";
   }
 
+  // Naming the account is the whole value of this message: the usual cause is
+  // a post belonging to somebody else, and "not on the connected account" does
+  // not say which account that is.
+  const account = await fetchConnectedAccount();
   throw new InstagramUnavailableError(
-    "That post is not on the connected Atmos account, so its caption cannot be read.",
+    account
+      ? `That post is not on @${account.username}, which is the connected account. Only its own posts can be read. Paste the caption instead.`
+      : "That post is not on the connected account, so its caption cannot be read.",
     true,
   );
 }
