@@ -17,6 +17,12 @@ import type { PrismaClient } from "~Prisma/client";
 
 /** One slot on the bill, after handles have been looked up. */
 export type ResolvedSlot = {
+  /**
+   * Every handle the post billed in this slot, in billing order, matched or
+   * not. Kept because a handle's position here is its position on the slot,
+   * which is how a name resolved later lands in the right place.
+   */
+  handles: string[];
   /** Matched profiles, in billing order. Empty when nothing matched. */
   creatorProfileIds: string[];
   /** How the caption billed them, for a slot that has no matched profile. */
@@ -114,6 +120,7 @@ export async function resolveExtraction(
   const slots: ResolvedSlot[] = entries.map((entry) => {
     const handles = entry.handles.map(normalizeHandle).filter(Boolean);
     return {
+      handles,
       creatorProfileIds: handles.flatMap(
         (handle) => profileByHandle.get(handle) ?? [],
       ),

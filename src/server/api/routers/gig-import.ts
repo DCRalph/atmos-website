@@ -8,6 +8,7 @@ import {
   type GigExtraction,
 } from "~/lib/gig-import/extraction";
 import { plainTextToLexical } from "~/lib/gig-import/lexical";
+import { unresolvedHandles } from "~/lib/gig-import/line-up";
 import {
   extractionModel,
   ExtractionUnavailableError,
@@ -74,59 +75,45 @@ const asJson = (value: unknown): Prisma.InputJsonValue =>
   JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 
 /**
- * Rebuild the draft's sets from the extraction and whatever profiles exist now.
+ * Build the draft's sets from the extraction.
  *
- * Called after an admin creates a profile for a handle the post named but the
- * site did not have. Rebuilding rather than patching keeps one definition of
- * what the bill is: the post said it, and these are the profiles behind it.
- *
- * Deliberately limited to sets on a draft. A published gig's run sheet has been
- * worked on by somebody, and this would throw that away.
+ * `sortOrder` is the slot's own index in the post's line-up, not its position
+ * among the slots that happened to match. Slots nobody could be found for are
+ * simply absent, leaving their index free, which is what lets a name resolved
+ * later be dropped into the slot the caption put it in rather than onto the
+ * end of the bill.
  */
-async function syncLineUpFromExtraction(
+async function createLineUpFromExtraction(
   db: PrismaClient,
   gigId: string,
   extraction: GigExtraction,
 ) {
-  const gig = await db.gig.findUnique({
-    where: { id: gigId },
-    select: { id: true, status: true },
-  });
-  if (gig?.status !== GigStatus.DRAFT) return;
-
   const resolved = await resolveExtraction(db, extraction, new Date());
-  const slots = resolved.slots.filter(
-    (slot) => slot.creatorProfileIds.length > 0,
-  );
 
-  await db.$transaction(async (tx) => {
-    await tx.gigScheduleItem.deleteMany({
-      where: { gigId, kind: GigScheduleKind.SET },
+  for (const [index, slot] of resolved.slots.entries()) {
+    if (slot.creatorProfileIds.length === 0) continue;
+
+    const item = await db.gigScheduleItem.create({
+      data: {
+        gigId,
+        kind: GigScheduleKind.SET,
+        role: slot.role,
+        // Billing comes from the profiles; a label would only repeat them.
+        label: null,
+        sortOrder: index,
+        leadMinutes: [5],
+      },
+      select: { id: true },
     });
-
-    for (const [index, slot] of slots.entries()) {
-      const item = await tx.gigScheduleItem.create({
-        data: {
-          gigId,
-          kind: GigScheduleKind.SET,
-          role: slot.role,
-          // Billing comes from the profiles; a label would only repeat them.
-          label: null,
-          sortOrder: index,
-          leadMinutes: [5],
-        },
-        select: { id: true },
-      });
-      await tx.gigSetArtist.createMany({
-        data: slot.creatorProfileIds.map((creatorProfileId, billing) => ({
-          itemId: item.id,
-          creatorProfileId,
-          sortOrder: billing,
-        })),
-        skipDuplicates: true,
-      });
-    }
-  });
+    await db.gigSetArtist.createMany({
+      data: slot.creatorProfileIds.map((creatorProfileId, billing) => ({
+        itemId: item.id,
+        creatorProfileId,
+        sortOrder: billing,
+      })),
+      skipDuplicates: true,
+    });
+  }
 }
 
 /** Fetch the post's first image and make it the draft's poster. */
@@ -313,7 +300,7 @@ export const gigImportRouter = createTRPCRouter({
         select: { id: true, title: true },
       });
 
-      await syncLineUpFromExtraction(ctx.db, gig.id, extraction);
+      await createLineUpFromExtraction(ctx.db, gig.id, extraction);
 
       // Recorded before the poster is fetched: that step reaches out to a CDN
       // and is allowed to fail, and a draft with no record of what produced it
@@ -377,6 +364,10 @@ export const gigImportRouter = createTRPCRouter({
               title: true,
               status: true,
               posterFileUploadId: true,
+              scheduleItems: {
+                where: { kind: GigScheduleKind.SET },
+                select: { sortOrder: true, artists: { select: { id: true } } },
+              },
             },
           },
         },
@@ -400,6 +391,14 @@ export const gigImportRouter = createTRPCRouter({
         new Date(post.postedAt),
       );
 
+      const unresolved = unresolvedHandles(
+        resolved.slots,
+        (record.gig?.scheduleItems ?? []).map((item) => ({
+          sortOrder: item.sortOrder,
+          artistCount: item.artists.length,
+        })),
+      );
+
       return {
         id: record.id,
         source: record.source,
@@ -409,25 +408,38 @@ export const gigImportRouter = createTRPCRouter({
         post,
         extraction,
         gig: record.gig,
-        unmatchedHandles: resolved.unmatchedHandles,
+        /** Handles the post billed that still have nobody standing in. */
+        unresolvedHandles: unresolved,
         unmatchedTagNames: resolved.unmatchedTagNames,
-        /** Slots the post named that put nobody on the bill. */
-        unplacedSlots: resolved.slots.filter(
-          (slot) => slot.creatorProfileIds.length === 0,
-        ),
       };
     }),
 
   /**
-   * Re-derive the draft's sets after a profile has been created for a handle
-   * the post named. See `syncLineUpFromExtraction`.
+   * Put somebody behind a handle the post named.
+   *
+   * Covers both answers the wizard offers: a profile just created for the
+   * handle, and an existing profile the site already had under a different
+   * one. They are the same operation, because what the draft records is who is
+   * playing, not what Instagram calls them.
+   *
+   * Only touches drafts. A published gig's run sheet has been worked on.
    */
-  syncLineUp: adminProcedure
-    .input(z.object({ importId: z.string().min(1) }))
+  resolveHandle: adminProcedure
+    .input(
+      z.object({
+        importId: z.string().min(1),
+        handle: z.string().min(1),
+        creatorProfileId: z.string().min(1),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const record = await ctx.db.gigImport.findUnique({
         where: { id: input.importId },
-        select: { gigId: true, extraction: true },
+        select: {
+          gigId: true,
+          extraction: true,
+          gig: { select: { status: true } },
+        },
       });
       const extraction = record ? parseExtraction(record.extraction) : null;
       if (!record?.gigId || !extraction) {
@@ -436,7 +448,77 @@ export const gigImportRouter = createTRPCRouter({
           message: "That import no longer has a draft to update.",
         });
       }
-      await syncLineUpFromExtraction(ctx.db, record.gigId, extraction);
+      if (record.gig?.status !== GigStatus.DRAFT) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "That gig is live. Edit its run sheet instead.",
+        });
+      }
+
+      const profile = await ctx.db.creatorProfile.findUnique({
+        where: { id: input.creatorProfileId },
+        select: { id: true },
+      });
+      if (!profile) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "That creator profile no longer exists",
+        });
+      }
+
+      const resolved = await resolveExtraction(ctx.db, extraction, new Date());
+      const wanted = input.handle.trim().replace(/^@+/, "").toLowerCase();
+      const slotIndex = resolved.slots.findIndex((slot) =>
+        slot.handles.includes(wanted),
+      );
+      const slot = resolved.slots[slotIndex];
+      if (!slot) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `The post does not bill @${wanted}`,
+        });
+      }
+
+      // The slot keeps its place on the bill whether it was filled at import
+      // or is being filled now, so the row is found by the slot's own index.
+      const existing = await ctx.db.gigScheduleItem.findFirst({
+        where: {
+          gigId: record.gigId,
+          kind: GigScheduleKind.SET,
+          sortOrder: slotIndex,
+        },
+        select: { id: true },
+      });
+
+      const itemId =
+        existing?.id ??
+        (
+          await ctx.db.gigScheduleItem.create({
+            data: {
+              gigId: record.gigId,
+              kind: GigScheduleKind.SET,
+              role: slot.role,
+              label: null,
+              sortOrder: slotIndex,
+              leadMinutes: [5],
+            },
+            select: { id: true },
+          })
+        ).id;
+
+      // Billing order is the caption's order, so a back to back reads the way
+      // the post wrote it however late the second name is filled in.
+      await ctx.db.gigSetArtist.createMany({
+        data: [
+          {
+            itemId,
+            creatorProfileId: profile.id,
+            sortOrder: Math.max(0, slot.handles.indexOf(wanted)),
+          },
+        ],
+        skipDuplicates: true,
+      });
+
       return { ok: true as const };
     }),
 

@@ -22,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import { CreatorPicker } from "~/components/admin/gig-edit/creator-picker";
 import { CreatorQuickCreateDialog } from "~/components/admin/gig-edit/creator-quick-create-dialog";
 import { useUpload } from "~/hooks/use-upload";
 import { buildMediaUrl } from "~/lib/media-url";
@@ -51,7 +52,7 @@ export function StepLineUp({
   gigId,
   importId,
   slots,
-  unmatchedHandles,
+  unresolvedHandles,
   posterFileUploadId,
   isSaving,
   onContinue,
@@ -59,7 +60,8 @@ export function StepLineUp({
   gigId: string;
   importId: string;
   slots: Slot[];
-  unmatchedHandles: string[];
+  /** Handles the post billed that nobody stands behind yet. */
+  unresolvedHandles: string[];
   posterFileUploadId: string | null;
   isSaving: boolean;
   onContinue: () => void;
@@ -68,7 +70,7 @@ export function StepLineUp({
   const [skipped, setSkipped] = useState<string[]>([]);
   const [creatingFor, setCreatingFor] = useState<string | null>(null);
 
-  const syncLineUp = api.gigImport.syncLineUp.useMutation({
+  const resolveHandle = api.gigImport.resolveHandle.useMutation({
     onSuccess: async () => {
       await Promise.all([
         utils.gigs.getForEditor.invalidate({ id: gigId }),
@@ -78,7 +80,7 @@ export function StepLineUp({
     onError: (error) => toast.error(error.message),
   });
 
-  const pending = unmatchedHandles.filter(
+  const pending = unresolvedHandles.filter(
     (handle) => !skipped.includes(handle),
   );
 
@@ -151,8 +153,9 @@ export function StepLineUp({
           <CardHeader>
             <CardTitle>Names with no profile</CardTitle>
             <CardDescription>
-              The post billed these, and the site has never heard of them.
-              Import will not create a profile on its own.
+              The post billed these and the site has never heard of them. Point
+              each one at somebody, or leave them off. Import will not create a
+              profile on its own.
             </CardDescription>
           </CardHeader>
           <CardContent className="divide-border divide-y">
@@ -167,11 +170,25 @@ export function StepLineUp({
                     Skipping leaves them off the bill.
                   </p>
                 </div>
+                {/* An artist the site already has under a different handle is
+                    the common case: Instagram names change, profiles do not. */}
+                <CreatorPicker
+                  label="Use existing"
+                  excludeIds={[]}
+                  disabled={resolveHandle.isPending}
+                  onPick={(creator) =>
+                    resolveHandle.mutate({
+                      importId,
+                      handle,
+                      creatorProfileId: creator.creatorProfileId,
+                    })
+                  }
+                />
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setCreatingFor(handle)}
-                  disabled={syncLineUp.isPending}
+                  disabled={resolveHandle.isPending}
                 >
                   <UserPlus className="size-4" aria-hidden />
                   Create profile
@@ -180,7 +197,7 @@ export function StepLineUp({
                   variant="ghost"
                   size="sm"
                   onClick={() => setSkipped((all) => [...all, handle])}
-                  disabled={syncLineUp.isPending}
+                  disabled={resolveHandle.isPending}
                 >
                   Skip
                 </Button>
@@ -214,11 +231,18 @@ export function StepLineUp({
             if (!open) setCreatingFor(null);
           }}
           initialName={creatingFor}
-          onCreated={() => {
+          onCreated={(creator) => {
+            const handle = creatingFor;
             setCreatingFor(null);
-            // The bill is re-derived from the post rather than patched, so a
-            // handle that now resolves lands in the slot the caption put it in.
-            syncLineUp.mutate({ importId });
+            // Same operation as picking an existing profile: what the draft
+            // records is who is playing, not what Instagram calls them.
+            if (handle) {
+              resolveHandle.mutate({
+                importId,
+                handle,
+                creatorProfileId: creator.creatorProfileId,
+              });
+            }
           }}
         />
       ) : null}

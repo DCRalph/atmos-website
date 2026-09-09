@@ -134,7 +134,8 @@ export function ImportWizard() {
 
   const checklist = useMemo((): ChecklistEntry[] => {
     if (!record.data || !gig || !draft) return [];
-    const { extraction, unmatchedHandles } = record.data;
+    const { extraction, unresolvedHandles } = record.data;
+    const pendingHandles = unresolvedHandles.map((entry) => entry.handle);
     const sets = gig.scheduleItems.filter((item) => item.kind === "SET");
 
     return [
@@ -187,12 +188,12 @@ export function ImportWizard() {
         step: "lineup",
       },
       {
-        label: "Every name matched",
-        ok: unmatchedHandles.length === 0,
+        label: "Every name placed",
+        ok: pendingHandles.length === 0,
         detail:
-          unmatchedHandles.length === 0
-            ? "All handles have profiles"
-            : `${unmatchedHandles.map((handle) => `@${handle}`).join(", ")} has no profile`,
+          pendingHandles.length === 0
+            ? "Everybody the post billed is on the bill"
+            : `${pendingHandles.map((handle) => `@${handle}`).join(", ")} is not on the bill`,
         step: "lineup",
       },
     ];
@@ -302,7 +303,9 @@ export function ImportWizard() {
                 gigId={record.data.gig.id}
                 importId={record.data.id}
                 slots={gig.scheduleItems.filter((item) => item.kind === "SET")}
-                unmatchedHandles={record.data.unmatchedHandles}
+                unresolvedHandles={record.data.unresolvedHandles.map(
+                  (entry) => entry.handle,
+                )}
                 posterFileUploadId={gig.posterFileUploadId}
                 isSaving={isSaving}
                 onContinue={() => goTo("publish")}
