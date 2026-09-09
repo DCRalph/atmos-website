@@ -268,14 +268,18 @@ export function getTodayRangeEnd(): Date {
 }
 
 /**
- * Determines if a gig is upcoming based on its start/end time.
- * A gig is considered upcoming from the day before it happens
- * until the day after it happens, up until 5am UTC.
+ * Whether a gig is happening right about now: from the day before it until 5am
+ * the day after.
+ *
+ * This is a narrow window, not "is in the future". It was called
+ * `isGigUpcoming`, and the name cost us: a gig two months out is not in this
+ * window, so anything reading it as "upcoming or past" labelled every future
+ * gig as past. If you want that question, use `isGigPast`.
  *
  * @param gig - Gig object with gigStartTime (required) and optional gigEndTime
- * @returns true if the gig is upcoming, false if it's past
+ * @returns true while the gig is on, false before and after
  */
-export function isGigUpcoming(gig: {
+export function isGigHappeningNow(gig: {
   gigStartTime: Date;
   gigEndTime?: Date | null;
 }): boolean {
@@ -316,10 +320,20 @@ export function isGigUpcoming(gig: {
   return now >= dayBefore && now < dayAfter5am;
 }
 
+/**
+ * Whether a gig has finished.
+ *
+ * The end time when there is one, the start when there is not. A gig that began
+ * at 10pm and runs until 2am is not past at 11pm, which is what comparing
+ * against the start alone used to claim.
+ *
+ * This is the single answer to "past or upcoming". Anything asking that question
+ * should call this rather than derive its own, which is how a December gig came
+ * to be labelled past.
+ */
 export function isGigPast(gig: {
   gigStartTime: Date;
   gigEndTime?: Date | null;
 }): boolean {
-  const now = getUTCNow();
-  return now >= gig.gigStartTime;
+  return (gig.gigEndTime ?? gig.gigStartTime) < getUTCNow();
 }
