@@ -1,0 +1,2513 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Atmos: Instagram gig import, UI directions</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        /* Lifted from src/styles/globals.css .dark, converted to hex */
+        --bg: #0a0a0a;
+        --card: #171717;
+        --raised: #1f1f1f;
+        --secondary: #262626;
+        --line: rgba(255, 255, 255, 0.1);
+        --line-input: rgba(255, 255, 255, 0.15);
+        --line-strong: rgba(255, 255, 255, 0.24);
+        --text: #fafafa;
+        --muted: #a1a1a1;
+        --faint: #737373;
+        --primary: #ebebeb;
+        --on-primary: #171717;
+        --violet: #8b5cf6;
+        --violet-deep: #470082;
+        --amber: #f5b942;
+        --green: #34d399;
+        --sky: #38bdf8;
+        --rose: #fb7185;
+        --teal: #2dd4bf;
+        --red: #ef5350;
+        --r-sm: 6px;
+        --r-md: 8px;
+        --r-lg: 10px;
+        --r-xl: 14px;
+        font-family:
+          Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        background: var(--bg);
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-size: 14px;
+        line-height: 1.45;
+      }
+      ::selection {
+        background: var(--violet-deep);
+        color: #fff;
+      }
+      a {
+        color: inherit;
+        text-underline-offset: 4px;
+      }
+      h1,
+      h2,
+      h3,
+      h4 {
+        margin: 0;
+      }
+      p {
+        margin: 0;
+      }
+
+      /* ---------- document chrome ---------- */
+      .document-head {
+        position: sticky;
+        z-index: 50;
+        top: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        min-height: 64px;
+        padding: 12px max(20px, calc((100vw - 1400px) / 2));
+        border-bottom: 1px solid var(--line);
+        background: #0a0a0aee;
+        backdrop-filter: blur(8px);
+      }
+      .document-title {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        min-width: 0;
+      }
+      .document-title strong {
+        font-size: 15px;
+      }
+      .document-title span {
+        overflow: hidden;
+        color: var(--muted);
+        font-size: 13px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .jump-links {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .jump-links a {
+        padding: 7px 10px;
+        border: 1px solid var(--line);
+        border-radius: var(--r-sm);
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 13px;
+      }
+      .jump-links a:first-child {
+        border-color: var(--line-strong);
+        color: var(--text);
+      }
+
+      main {
+        max-width: 1440px;
+        margin: 0 auto;
+        padding: 44px 20px 96px;
+      }
+
+      .intro {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(300px, 460px);
+        gap: 48px;
+        align-items: start;
+        margin-bottom: 56px;
+      }
+      .intro h1 {
+        font-size: 34px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin-bottom: 14px;
+      }
+      .intro .lede {
+        color: var(--muted);
+        font-size: 15px;
+        max-width: 62ch;
+      }
+      .intro .lede + .lede {
+        margin-top: 12px;
+      }
+      .intro-aside {
+        border: 1px solid var(--line);
+        border-radius: var(--r-xl);
+        background: var(--card);
+        padding: 20px;
+      }
+      .intro-aside h4 {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--faint);
+        margin-bottom: 12px;
+      }
+      .intro-aside ul {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--muted);
+      }
+      .intro-aside li + li {
+        margin-top: 8px;
+      }
+      .intro-aside li strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .note {
+        border: 1px solid var(--line);
+        border-left: 2px solid var(--amber);
+        border-radius: var(--r-lg);
+        background: #f5b9420d;
+        padding: 14px 16px;
+        color: var(--muted);
+        margin-top: 20px;
+        max-width: 78ch;
+      }
+      .note strong {
+        color: var(--text);
+      }
+
+      /* ---------- direction sections ---------- */
+      .option {
+        margin-top: 72px;
+        scroll-margin-top: 88px;
+      }
+      .option-head {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+        gap: 40px;
+        align-items: end;
+        padding-bottom: 20px;
+        margin-bottom: 24px;
+        border-bottom: 1px solid var(--line);
+      }
+      .option-head h2 {
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        margin-bottom: 8px;
+      }
+      .option-head p {
+        color: var(--muted);
+        max-width: 60ch;
+      }
+      .tradeoff {
+        font-size: 13px;
+        color: var(--faint) !important;
+        border-left: 1px solid var(--line-strong);
+        padding-left: 16px;
+      }
+      .frame-label {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        margin: 32px 0 12px;
+      }
+      .frame-label strong {
+        font-size: 13px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--faint);
+      }
+      .frame-label span {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      /* ---------- app frame ---------- */
+      .app-frame {
+        display: flex;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: var(--r-xl);
+        background: var(--card);
+      }
+      .sidebar {
+        display: flex;
+        flex-direction: column;
+        width: 232px;
+        flex: 0 0 232px;
+        background: var(--card);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 64px;
+        padding: 0 14px;
+        border-bottom: 1px solid var(--line);
+      }
+      .brand-mark {
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        border-radius: var(--r-lg);
+        background: var(--bg);
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+      }
+      .brand-copy {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.25;
+      }
+      .brand-copy strong {
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .brand-copy span {
+        font-size: 11px;
+        color: var(--faint);
+      }
+      .side-content {
+        padding: 10px 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .side-label {
+        padding: 10px 8px 4px;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--faint);
+      }
+      .side-item {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        height: 34px;
+        padding: 0 8px;
+        border-radius: var(--r-md);
+        font-size: 13px;
+        color: #d4d4d4;
+      }
+      .side-item.active {
+        background: var(--secondary);
+        color: var(--text);
+        font-weight: 500;
+      }
+      .side-item.sub {
+        margin-left: 18px;
+        font-size: 12.5px;
+        color: var(--muted);
+      }
+      .ico {
+        width: 15px;
+        height: 15px;
+        flex: 0 0 15px;
+        stroke-width: 1.7;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .app-main {
+        flex: 1;
+        min-width: 0;
+        background: var(--bg);
+        border-left: 1px solid var(--line);
+      }
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 64px;
+        padding: 0 22px;
+        border-bottom: 1px solid var(--line);
+      }
+      .crumbs {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .crumbs strong {
+        color: var(--text);
+        font-weight: 500;
+      }
+      .avatar {
+        display: grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 999px;
+        background: var(--secondary);
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .page-body {
+        padding: 26px 30px 34px;
+      }
+      .page-title {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-bottom: 22px;
+      }
+      .page-title h3 {
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      .page-title p {
+        color: var(--muted);
+        margin-top: 4px;
+      }
+
+      /* ---------- primitives ---------- */
+      .card {
+        border: 1px solid var(--line);
+        border-radius: var(--r-xl);
+        background: var(--card);
+        padding: 22px;
+      }
+      .card + .card {
+        margin-top: 22px;
+      }
+      .card-head {
+        margin-bottom: 18px;
+      }
+      .card-head h4 {
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .card-head p {
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .card-head-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        height: 36px;
+        padding: 0 15px;
+        border: 1px solid transparent;
+        border-radius: var(--r-md);
+        font-size: 13.5px;
+        font-weight: 500;
+        white-space: nowrap;
+      }
+      .btn.primary {
+        background: var(--primary);
+        color: var(--on-primary);
+      }
+      .btn.outline {
+        border-color: var(--line-input);
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text);
+      }
+      .btn.ghost {
+        color: var(--muted);
+      }
+      .btn.danger {
+        background: #ef535099;
+        color: #fff;
+      }
+      .btn.sm {
+        height: 30px;
+        padding: 0 11px;
+        font-size: 12.5px;
+        border-radius: var(--r-sm);
+      }
+      .btn.xs {
+        height: 24px;
+        padding: 0 8px;
+        font-size: 11.5px;
+        border-radius: var(--r-sm);
+      }
+      .btn.wide {
+        padding: 0 22px;
+      }
+
+      .label {
+        display: block;
+        font-size: 13px;
+        font-weight: 500;
+        margin-bottom: 7px;
+      }
+      .label .req {
+        color: var(--red);
+        margin-left: 2px;
+      }
+      .input {
+        display: flex;
+        align-items: center;
+        min-height: 36px;
+        padding: 8px 12px;
+        border: 1px solid var(--line-input);
+        border-radius: var(--r-md);
+        background: rgba(255, 255, 255, 0.03);
+        font-size: 13.5px;
+      }
+      .input.placeholder {
+        color: var(--faint);
+      }
+      .input.tall {
+        min-height: 74px;
+        align-items: flex-start;
+        line-height: 1.5;
+        color: #d4d4d4;
+      }
+      .input.focus {
+        border-color: var(--line-strong);
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
+      }
+      .input.lg {
+        min-height: 44px;
+        font-size: 15px;
+      }
+      .input .caret {
+        margin-left: auto;
+        color: var(--faint);
+      }
+      .hint {
+        margin-top: 6px;
+        font-size: 11.5px;
+        color: var(--faint);
+      }
+      .field + .field {
+        margin-top: 16px;
+      }
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .grid3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 9px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        font-size: 11.5px;
+        font-weight: 500;
+        color: var(--muted);
+      }
+      .pill.draft {
+        border-color: #f5b94266;
+        background: #f5b9421a;
+        color: #f5c869;
+      }
+      .pill.live {
+        border-color: #34d39966;
+        background: #34d3991a;
+        color: #6ee7b7;
+      }
+      .pill.past {
+        border-color: var(--line);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--muted);
+      }
+      .pill.warn {
+        border-color: #f5b94266;
+        background: #f5b9421a;
+        color: #f5c869;
+      }
+      .pill.ok {
+        border-color: #34d39966;
+        background: #34d3991a;
+        color: #6ee7b7;
+      }
+      .pill.info {
+        border-color: #38bdf866;
+        background: #38bdf81a;
+        color: #7dd3fc;
+      }
+      .pill.violet {
+        border-color: #8b5cf680;
+        background: #8b5cf61f;
+        color: #c4b5fd;
+      }
+      .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: currentColor;
+      }
+
+      table.tbl {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      table.tbl th {
+        text-align: left;
+        font-size: 11.5px;
+        font-weight: 500;
+        color: var(--faint);
+        padding: 0 12px 10px;
+        border-bottom: 1px solid var(--line);
+      }
+      table.tbl td {
+        padding: 11px 12px;
+        border-bottom: 1px solid var(--line);
+        color: #d4d4d4;
+      }
+      table.tbl tr:last-child td {
+        border-bottom: 0;
+      }
+      table.tbl td.right,
+      table.tbl th.right {
+        text-align: right;
+      }
+      table.tbl td strong {
+        color: var(--text);
+        font-weight: 500;
+      }
+
+      .tabs {
+        display: inline-flex;
+        gap: 3px;
+        padding: 3px;
+        border-radius: var(--r-lg);
+        background: var(--secondary);
+        margin-bottom: 18px;
+      }
+      .tabs div {
+        padding: 5px 13px;
+        border-radius: var(--r-md);
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .tabs div.active {
+        background: var(--card);
+        color: var(--text);
+        font-weight: 500;
+        box-shadow: 0 1px 2px #0006;
+      }
+
+      .stickybar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        padding: 12px 16px;
+        border: 1px solid var(--line);
+        border-radius: var(--r-lg);
+        background: rgba(10, 10, 10, 0.9);
+        margin-bottom: 22px;
+      }
+      .stickybar .spacer {
+        margin-left: auto;
+      }
+      .stickybar .msg {
+        color: var(--muted);
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <style>
+      /* ---------- import-specific primitives ---------- */
+      .rail {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        border: 1px solid var(--line);
+        border-radius: var(--r-lg);
+        background: var(--card);
+        overflow: hidden;
+        margin-bottom: 22px;
+      }
+      .rail-step {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+        padding: 12px 16px;
+        border-right: 1px solid var(--line);
+        color: var(--faint);
+        font-size: 13px;
+      }
+      .rail-step:last-child {
+        border-right: 0;
+      }
+      .rail-step .num {
+        display: grid;
+        place-items: center;
+        width: 21px;
+        height: 21px;
+        border-radius: 999px;
+        border: 1px solid var(--line-input);
+        font-size: 11px;
+      }
+      .rail-step.done {
+        color: var(--muted);
+      }
+      .rail-step.done .num {
+        border-color: #34d39966;
+        background: #34d3991a;
+        color: #6ee7b7;
+      }
+      .rail-step.current {
+        background: var(--secondary);
+        color: var(--text);
+        font-weight: 500;
+      }
+      .rail-step.current .num {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: var(--on-primary);
+        font-weight: 600;
+      }
+
+      /* the Instagram source panel */
+      .source {
+        display: grid;
+        grid-template-columns: 132px minmax(0, 1fr);
+        gap: 16px;
+      }
+      .ig-thumb {
+        aspect-ratio: 4 / 5;
+        border-radius: var(--r-lg);
+        border: 1px solid var(--line);
+        background:
+          radial-gradient(
+            120% 90% at 20% 15%,
+            #470082 0%,
+            #1b0b33 45%,
+            #0a0a0a 100%
+          ),
+          #0a0a0a;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding: 10px;
+        font-size: 10px;
+        letter-spacing: 0.16em;
+        color: #e9d5ff;
+        font-weight: 700;
+      }
+      .ig-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        font-size: 12px;
+        color: var(--faint);
+        margin-bottom: 10px;
+      }
+      .ig-meta .handle {
+        color: var(--text);
+        font-weight: 500;
+      }
+      .caption {
+        border: 1px solid var(--line);
+        border-radius: var(--r-lg);
+        background: var(--bg);
+        padding: 14px 16px;
+        font-size: 13px;
+        line-height: 1.75;
+        white-space: pre-wrap;
+        color: #d4d4d4;
+        font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      }
+      mark {
+        border-radius: 4px;
+        padding: 1px 3px;
+        background: transparent;
+        color: inherit;
+        box-shadow: inset 0 -1.5px 0 currentColor;
+      }
+      mark .m {
+        display: inline-grid;
+        place-items: center;
+        width: 14px;
+        height: 14px;
+        margin-left: 5px;
+        border-radius: 3px;
+        font-size: 9px;
+        font-weight: 700;
+        font-family: Inter, sans-serif;
+        vertical-align: 1px;
+        color: #0a0a0a;
+      }
+      .m1 { color: #c4b5fd; } .m1 .m { background: #c4b5fd; }
+      .m2 { color: #7dd3fc; } .m2 .m { background: #7dd3fc; }
+      .m3 { color: #6ee7b7; } .m3 .m { background: #6ee7b7; }
+      .m4 { color: #f5c869; } .m4 .m { background: #f5c869; }
+      .m5 { color: #fda4af; } .m5 .m { background: #fda4af; }
+      .m6 { color: #5eead4; } .m6 .m { background: #5eead4; }
+
+      .marker {
+        display: inline-grid;
+        place-items: center;
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        font-size: 9px;
+        font-weight: 700;
+        color: #0a0a0a;
+        vertical-align: 1px;
+      }
+      .k1 { background: #c4b5fd; }
+      .k2 { background: #7dd3fc; }
+      .k3 { background: #6ee7b7; }
+      .k4 { background: #f5c869; }
+      .k5 { background: #fda4af; }
+      .k6 { background: #5eead4; }
+
+      /* a field that carries provenance */
+      .pfield {
+        padding: 13px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .pfield:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+      }
+      .pfield:first-child {
+        padding-top: 0;
+      }
+      .pfield-top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 7px;
+      }
+      .pfield-top .label {
+        margin: 0;
+      }
+      .pfield-top .spacer {
+        margin-left: auto;
+      }
+      .prov {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-top: 6px;
+        font-size: 11.5px;
+        color: var(--faint);
+      }
+      .prov .quote {
+        font-family: ui-monospace, Menlo, monospace;
+        color: var(--muted);
+      }
+      .edited {
+        border-left: 2px solid var(--violet);
+        padding-left: 11px;
+        margin-left: -13px;
+      }
+      .flagged {
+        border-left: 2px solid var(--amber);
+        padding-left: 11px;
+        margin-left: -13px;
+      }
+
+      /* artist match rows */
+      .match {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 11px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .match:last-child {
+        border-bottom: 0;
+      }
+      .av {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        flex: 0 0 32px;
+        border-radius: 999px;
+        background: var(--secondary);
+        font-size: 11px;
+        font-weight: 600;
+        color: #d4d4d4;
+      }
+      .av.empty {
+        background: transparent;
+        border: 1px dashed var(--line-input);
+        color: var(--faint);
+      }
+      .match-copy {
+        min-width: 0;
+      }
+      .match-copy strong {
+        font-size: 13.5px;
+        font-weight: 500;
+      }
+      .match-copy p {
+        font-size: 11.5px;
+        color: var(--faint);
+        margin-top: 2px;
+      }
+      .match-actions {
+        margin-left: auto;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+
+      /* poster crop */
+      .crop {
+        display: grid;
+        grid-template-columns: 148px minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+      }
+      .crop-canvas {
+        position: relative;
+        aspect-ratio: 1 / 1;
+        border-radius: var(--r-lg);
+        border: 1px solid var(--line);
+        background:
+          radial-gradient(
+            120% 90% at 20% 15%,
+            #470082 0%,
+            #1b0b33 45%,
+            #0a0a0a 100%
+          ),
+          #0a0a0a;
+        overflow: hidden;
+      }
+      .crop-canvas::after {
+        content: "3:4";
+        position: absolute;
+        inset: 0 12.5%;
+        border: 1px solid #fafafacc;
+        border-radius: 4px;
+        box-shadow: 0 0 0 999px rgba(10, 10, 10, 0.55);
+        color: #fafafacc;
+        font-size: 10px;
+        display: grid;
+        place-items: end center;
+        padding-bottom: 4px;
+      }
+
+      /* checklist */
+      .check {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 0;
+        border-bottom: 1px solid var(--line);
+        font-size: 13px;
+      }
+      .check:last-child {
+        border-bottom: 0;
+      }
+      .check .box {
+        display: grid;
+        place-items: center;
+        width: 17px;
+        height: 17px;
+        flex: 0 0 17px;
+        border-radius: 5px;
+        font-size: 10px;
+        font-weight: 700;
+      }
+      .check .box.ok {
+        background: #34d3991a;
+        border: 1px solid #34d39966;
+        color: #6ee7b7;
+      }
+      .check .box.no {
+        background: #f5b9421a;
+        border: 1px solid #f5b94266;
+        color: #f5c869;
+      }
+      .check .spacer {
+        margin-left: auto;
+      }
+
+      /* split layout */
+      .split {
+        display: grid;
+        grid-template-columns: minmax(0, 380px) minmax(0, 1fr);
+        gap: 22px;
+        align-items: start;
+      }
+      .split-b {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
+        gap: 22px;
+        align-items: start;
+      }
+
+      /* dialog */
+      .scrim {
+        position: relative;
+        padding: 34px 20px;
+        background: rgba(10, 10, 10, 0.72);
+      }
+      .dialog {
+        max-width: 560px;
+        margin: 0 auto;
+        border: 1px solid var(--line);
+        border-radius: var(--r-xl);
+        background: var(--card);
+        padding: 22px;
+        box-shadow: 0 24px 60px #000000cc;
+      }
+      .dialog h4 {
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .dialog > p {
+        color: var(--muted);
+        font-size: 13px;
+        margin-top: 5px;
+      }
+      .dialog-foot {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        margin-top: 20px;
+      }
+
+      /* imported-value inline treatment for direction C */
+      .imported {
+        border-left: 2px solid var(--sky);
+        padding-left: 12px;
+      }
+      .strip {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        padding: 11px 15px;
+        border: 1px solid #38bdf833;
+        border-left: 2px solid var(--sky);
+        border-radius: var(--r-lg);
+        background: #38bdf80d;
+        margin-bottom: 22px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .strip strong {
+        color: var(--text);
+        font-weight: 500;
+      }
+      .strip .spacer {
+        margin-left: auto;
+      }
+
+      .runsheet-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: var(--r-md);
+        background: var(--bg);
+        font-size: 13px;
+      }
+      .runsheet-row + .runsheet-row {
+        margin-top: 8px;
+      }
+      .runsheet-row .time {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 12.5px;
+        color: var(--muted);
+        width: 62px;
+        flex: 0 0 62px;
+      }
+      .runsheet-row .grip {
+        color: var(--faint);
+      }
+
+      /* closing section */
+      .under {
+        margin-top: 80px;
+        padding-top: 28px;
+        border-top: 1px solid var(--line);
+      }
+      .under h2 {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+      .under > p {
+        color: var(--muted);
+        max-width: 70ch;
+      }
+      .under-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 18px;
+        margin-top: 24px;
+      }
+      .under-grid .card h4 {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 10px;
+      }
+      .under-grid .card p,
+      .under-grid .card li {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .under-grid .card ul {
+        margin: 0;
+        padding-left: 17px;
+      }
+      .under-grid .card li + li {
+        margin-top: 7px;
+      }
+      code {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 12px;
+        padding: 1px 5px;
+        border-radius: 4px;
+        background: var(--secondary);
+        color: #e4e4e7;
+      }
+
+      @media (max-width: 1100px) {
+        .intro,
+        .option-head {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 22px;
+        }
+        .sidebar {
+          display: none;
+        }
+        .split,
+        .split-b,
+        .grid2,
+        .grid3 {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+    </style>
+
+    <header class="document-head">
+      <div class="document-title">
+        <strong>Instagram gig import</strong>
+        <span>Three directions for the import wizard and the draft system</span>
+      </div>
+      <nav class="jump-links">
+        <a href="#intro">Brief</a>
+        <a href="#stepped">A. Stepped</a>
+        <a href="#split">B. Split review</a>
+        <a href="#inline">C. In the editor</a>
+        <a href="#shared">Drafts</a>
+        <a href="#under">Underneath</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="intro" id="intro">
+        <div>
+          <h1>Paste a link, get a gig</h1>
+          <p class="lede">
+            An admin pastes an Instagram post or reel, the caption and image are
+            read, and a gig comes back filled in. Nothing is public until it is
+            checked. Everything the import guessed can be overridden, and every
+            filled field says where it came from.
+          </p>
+          <p class="lede">
+            All three directions share the same pieces: a source panel showing
+            the post, prefilled fields carrying provenance, artist handles
+            matched against creator profiles, the post image cropped to the 3:4
+            poster, and a draft that has to be published deliberately.
+          </p>
+          <p class="lede">
+            They differ in where the work happens. A is a guided route of its
+            own. B is one dense screen with the post beside the form. C keeps
+            the existing gig editor and treats import as a way to fill it.
+          </p>
+          <div class="note">
+            <strong>Worth knowing before we build.</strong> Instagram will only
+            hand over captions and media for accounts we own, through the Graph
+            API. An @atmos.nz post imports cleanly. A venue or promoter post
+            does not, so every direction keeps a manual path: paste the caption,
+            drop the image in, and the same extraction runs on it.
+          </div>
+        </div>
+        <aside class="intro-aside">
+          <h4>What gets extracted</h4>
+          <ul>
+            <li><strong>Title</strong> and <strong>venue</strong></li>
+            <li>
+              <strong>Start and end time</strong>, resolved to a real date in
+              Pacific/Auckland
+            </li>
+            <li><strong>Short description</strong> and long description</li>
+            <li><strong>Ticket link</strong>, including link-in-bio text</li>
+            <li>
+              <strong>Line-up</strong> as run sheet SET rows, back to backs kept
+              as one slot
+            </li>
+            <li><strong>Tags</strong> matched to existing gig tags only</li>
+            <li><strong>Poster</strong> from the post image, cropped to 3:4</li>
+          </ul>
+        </aside>
+      </section>
+      <!-- ================= DIRECTION A ================= -->
+      <section class="option" id="stepped">
+        <div class="option-head">
+          <div>
+            <h2>A. Stepped wizard</h2>
+            <p>
+              Import gets its own route at
+              <code>/admin/gigs/import</code>. Four steps: source, review,
+              line-up and poster, publish. Each step is finished before the next
+              one appears, and the gig only exists as a draft from step two
+              onwards.
+            </p>
+          </div>
+          <p class="tradeoff">
+            Easiest to get right the first time and the safest for someone who
+            imports occasionally. It is also the most clicks, and the run sheet
+            and poster are seen apart from the fields they belong with.
+          </p>
+        </div>
+
+        <div class="frame-label">
+          <strong>A1</strong><span>Step 1, source. The only thing asked for is a link.</span>
+        </div>
+        <div class="app-frame">
+          <aside class="sidebar">
+            <div class="brand">
+              <div class="brand-mark">ATMOS</div>
+              <div class="brand-copy">
+                <strong>Atmos Admin</strong><span>Control centre</span>
+              </div>
+            </div>
+            <div class="side-content">
+              <div class="side-label">Content &amp; site</div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 7v14M3 5h6a3 3 0 0 1 3 3 3 3 0 0 1 3-3h6v13h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3H3z"/></svg>Content
+              </div>
+              <div class="side-item active">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Gigs
+              </div>
+              <div class="side-item sub">Import</div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11V4h7l10 10-7 7z"/><circle cx="7.5" cy="7.5" r="1"/></svg>Gig tags
+              </div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Media files
+              </div>
+              <div class="side-label">Events &amp; sales</div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9h18v6H3zM7 9V6h10v3M7 15v3h10v-3"/></svg>Ticketed events
+              </div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M3 12h18"/></svg>Door scanner
+              </div>
+            </div>
+          </aside>
+          <div class="app-main">
+            <div class="topbar">
+              <div class="crumbs">Admin / Gigs / <strong>Import</strong></div>
+              <div class="avatar">WG</div>
+            </div>
+            <div class="page-body">
+              <div class="page-title">
+                <div>
+                  <h3>Import a gig</h3>
+                  <p>Read a post and fill a gig from it. Nothing goes live here.</p>
+                </div>
+                <a class="btn outline" href="#stepped">Back to gigs</a>
+              </div>
+
+              <div class="rail">
+                <div class="rail-step current"><span class="num">1</span>Source</div>
+                <div class="rail-step"><span class="num">2</span>Review details</div>
+                <div class="rail-step"><span class="num">3</span>Line-up and poster</div>
+                <div class="rail-step"><span class="num">4</span>Publish</div>
+              </div>
+
+              <div class="card">
+                <div class="card-head">
+                  <h4>Instagram post</h4>
+                  <p>A post or reel URL. Atmos posts import in full. Other accounts need the caption pasted below.</p>
+                </div>
+                <div class="field">
+                  <label class="label">Post URL</label>
+                  <div class="input lg focus">https://www.instagram.com/p/C9xR2sPvQ1m/</div>
+                  <p class="hint">instagram.com/p/..., /reel/... or a share link.</p>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:18px;align-items:center">
+                  <span class="btn primary wide">
+                    <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>
+                    Read post
+                  </span>
+                  <span class="btn ghost">Paste caption instead</span>
+                  <span class="pill info" style="margin-left:auto"><span class="dot"></span>Instagram connected as @atmos.nz</span>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-head card-head-row">
+                  <div>
+                    <h4>Recent imports</h4>
+                    <p>The last posts read, and what became of them.</p>
+                  </div>
+                  <span class="btn outline sm">View all gigs</span>
+                </div>
+                <table class="tbl">
+                  <thead>
+                    <tr>
+                      <th>Source</th>
+                      <th>Imported</th>
+                      <th>Gig</th>
+                      <th>Status</th>
+                      <th class="right"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>instagram.com/p/C8kL0vRt2Zy</td>
+                      <td>7 Sep, 4:12 pm</td>
+                      <td><strong>Basement Frequencies</strong></td>
+                      <td><span class="pill draft"><span class="dot"></span>Draft</span></td>
+                      <td class="right"><span class="btn outline sm">Resume</span></td>
+                    </tr>
+                    <tr>
+                      <td>instagram.com/reel/C7pQ4mNs9Ab</td>
+                      <td>2 Sep, 11:48 am</td>
+                      <td><strong>Sunset Sessions vol. 4</strong></td>
+                      <td><span class="pill live"><span class="dot"></span>Live</span></td>
+                      <td class="right"><span class="btn outline sm">Open</span></td>
+                    </tr>
+                    <tr>
+                      <td>instagram.com/p/C6dW1xYt8Kp</td>
+                      <td>28 Aug, 9:03 pm</td>
+                      <td><span style="color:var(--faint)">Discarded</span></td>
+                      <td><span class="pill past">Not kept</span></td>
+                      <td class="right"><span class="btn outline sm">Retry</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="frame-label">
+          <strong>A2</strong><span>Step 2, review. The post sits on the left and never moves. Every field says which line filled it.</span>
+        </div>
+        <div class="app-frame">
+          <aside class="sidebar">
+            <div class="brand">
+              <div class="brand-mark">ATMOS</div>
+              <div class="brand-copy">
+                <strong>Atmos Admin</strong><span>Control centre</span>
+              </div>
+            </div>
+            <div class="side-content">
+              <div class="side-label">Content &amp; site</div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 7v14M3 5h6a3 3 0 0 1 3 3 3 3 0 0 1 3-3h6v13h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3H3z"/></svg>Content
+              </div>
+              <div class="side-item active">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Gigs
+              </div>
+              <div class="side-item sub">Import</div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11V4h7l10 10-7 7z"/><circle cx="7.5" cy="7.5" r="1"/></svg>Gig tags
+              </div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Media files
+              </div>
+              <div class="side-label">Events &amp; sales</div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9h18v6H3zM7 9V6h10v3M7 15v3h10v-3"/></svg>Ticketed events
+              </div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M3 12h18"/></svg>Door scanner
+              </div>
+            </div>
+          </aside>
+          <div class="app-main">
+            <div class="topbar">
+              <div class="crumbs">Admin / Gigs / <strong>Import</strong></div>
+              <div class="avatar">WG</div>
+            </div>
+            <div class="page-body">
+              <div class="page-title">
+                <div>
+                  <h3>Neon Church</h3>
+                  <p>Read from @atmos.nz, 4 September. Saved as a draft.</p>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <span class="pill draft"><span class="dot"></span>Draft</span>
+                  <span class="btn outline">Re-read post</span>
+                </div>
+              </div>
+
+              <div class="rail">
+                <div class="rail-step done"><span class="num">&#10003;</span>Source</div>
+                <div class="rail-step current"><span class="num">2</span>Review details</div>
+                <div class="rail-step"><span class="num">3</span>Line-up and poster</div>
+                <div class="rail-step"><span class="num">4</span>Publish</div>
+              </div>
+
+              <div class="split">
+                <div class="card" style="position:sticky;top:0">
+                  <div class="card-head">
+                    <h4>The post</h4>
+                    <p>Highlights show what each field was taken from.</p>
+                  </div>
+                  <div class="ig-meta">
+                    <span class="handle">@atmos.nz</span>
+                    <span>&#183;</span><span>4 Sep 2026</span>
+                    <span>&#183;</span><a href="#stepped">Open on Instagram</a>
+                  </div>
+                  <div class="ig-thumb" style="aspect-ratio:4/5;margin-bottom:12px">NEON CHURCH</div>
+                  <div class="caption">ATMOS PRESENTS <mark class="m1">NEON CHURCH<span class="m">1</span></mark>
+<mark class="m3">Friday 23 October<span class="m">3</span></mark> / <mark class="m2">Whammy Bar<span class="m">2</span></mark>, Karangahape Rd
+<mark class="m3">10pm<span class="m">3</span></mark> <mark class="m4">til late<span class="m">4</span></mark> / R18
+
+Line up
+<mark class="m6">@wickedjay b2b @nvrland_<span class="m">6</span></mark>
+<mark class="m6">@kaia.sound<span class="m">6</span></mark>
+<mark class="m6">@teiko<span class="m">6</span></mark>
+
+$25 early bird, link in bio
+<mark class="m5">undertheradar.co.nz/neon-church<span class="m">5</span></mark></div>
+                </div>
+
+                <div>
+                  <div class="card">
+                    <div class="card-head card-head-row">
+                      <div>
+                        <h4>Core details</h4>
+                        <p>Change anything. Edited fields keep a way back to what was read.</p>
+                      </div>
+                      <span class="btn ghost sm">Reset all to imported</span>
+                    </div>
+
+                    <div class="pfield">
+                      <div class="pfield-top">
+                        <label class="label">Title<span class="req">*</span></label>
+                        <span class="marker k1">1</span>
+                        <span class="spacer"></span>
+                        <span class="pill ok">High confidence</span>
+                      </div>
+                      <div class="input">Neon Church</div>
+                      <div class="prov">
+                        Cased from <span class="quote">"NEON CHURCH"</span>, line 1
+                      </div>
+                    </div>
+
+                    <div class="pfield edited">
+                      <div class="pfield-top">
+                        <label class="label">Subtitle (venue)<span class="req">*</span></label>
+                        <span class="marker k2">2</span>
+                        <span class="spacer"></span>
+                        <span class="pill violet">Edited</span>
+                      </div>
+                      <div class="input focus">Whammy Bar, K Rd</div>
+                      <div class="prov">
+                        Imported <span class="quote">"Whammy Bar"</span>
+                        <span class="btn xs outline">Revert</span>
+                      </div>
+                    </div>
+
+                    <div class="grid2" style="margin-top:16px">
+                      <div class="pfield" style="border-bottom:0;padding-bottom:0">
+                        <div class="pfield-top">
+                          <label class="label">Starts<span class="req">*</span></label>
+                          <span class="marker k3">3</span>
+                        </div>
+                        <div class="input">Fri 23 Oct 2026, 10:00 pm <span class="caret">&#9662;</span></div>
+                        <div class="prov">Year assumed 2026, next 23 October that is a Friday</div>
+                      </div>
+                      <div class="pfield flagged" style="border-bottom:0;padding-bottom:0">
+                        <div class="pfield-top">
+                          <label class="label">Ends</label>
+                          <span class="marker k4">4</span>
+                          <span class="spacer"></span>
+                          <span class="pill warn">Guessed</span>
+                        </div>
+                        <div class="input">Sat 24 Oct 2026, 2:00 am <span class="caret">&#9662;</span></div>
+                        <div class="prov">
+                          <span class="quote">"til late"</span> has no time in it. 2am is the venue default.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="pfield" style="margin-top:16px">
+                      <div class="pfield-top">
+                        <label class="label">Short description</label>
+                        <span class="spacer"></span>
+                        <span class="pill info">Written from the caption</span>
+                      </div>
+                      <div class="input tall">Late night club show at Whammy Bar on K Rd. Doors 10pm, R18.</div>
+                      <div class="prov">Summarised, not copied. Used on cards and listings.</div>
+                    </div>
+
+                    <div class="pfield">
+                      <div class="pfield-top">
+                        <label class="label">Description</label>
+                      </div>
+                      <div class="input tall">The full caption, tidied into paragraphs, with the line-up removed because it is on the run sheet.</div>
+                    </div>
+
+                    <div class="grid2" style="margin-top:16px">
+                      <div class="pfield" style="border-bottom:0;padding-bottom:0">
+                        <div class="pfield-top">
+                          <label class="label">Ticket link</label>
+                          <span class="marker k5">5</span>
+                        </div>
+                        <div class="input">https://undertheradar.co.nz/neon-church</div>
+                        <div class="prov">Bare domain in the caption, https added</div>
+                      </div>
+                      <div class="pfield" style="border-bottom:0;padding-bottom:0">
+                        <div class="pfield-top">
+                          <label class="label">Mode</label>
+                        </div>
+                        <div class="input">Normal <span class="caret">&#9662;</span></div>
+                        <div class="prov">Line-up is named, so not a to-be-announced</div>
+                      </div>
+                    </div>
+
+                    <div class="pfield" style="margin-top:16px">
+                      <div class="pfield-top">
+                        <label class="label">Tags</label>
+                        <span class="spacer"></span>
+                        <span class="pill">2 of 3 matched</span>
+                      </div>
+                      <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
+                        <span class="pill violet">Club night <span style="opacity:.6">&#215;</span></span>
+                        <span class="pill violet">R18 <span style="opacity:.6">&#215;</span></span>
+                        <span class="btn xs outline">+ Add tag</span>
+                      </div>
+                      <div class="prov">
+                        <span class="quote">"early bird"</span> had no matching tag and was dropped. Import never creates tags.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="stickybar" style="margin:22px 0 0">
+                    <span class="pill draft"><span class="dot"></span>Draft saved 12 seconds ago</span>
+                    <span class="spacer"></span>
+                    <span class="btn ghost">Discard import</span>
+                    <span class="btn primary">Continue to line-up</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="frame-label">
+          <strong>A3</strong><span>Step 4, publish. Nothing can go live with a hole in it.</span>
+        </div>
+        <div class="app-frame">
+          <aside class="sidebar">
+            <div class="brand">
+              <div class="brand-mark">ATMOS</div>
+              <div class="brand-copy">
+                <strong>Atmos Admin</strong><span>Control centre</span>
+              </div>
+            </div>
+            <div class="side-content">
+              <div class="side-label">Content &amp; site</div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 7v14M3 5h6a3 3 0 0 1 3 3 3 3 0 0 1 3-3h6v13h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3H3z"/></svg>Content
+              </div>
+              <div class="side-item active">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Gigs
+              </div>
+              <div class="side-item sub">Import</div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11V4h7l10 10-7 7z"/><circle cx="7.5" cy="7.5" r="1"/></svg>Gig tags
+              </div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Media files
+              </div>
+              <div class="side-label">Events &amp; sales</div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9h18v6H3zM7 9V6h10v3M7 15v3h10v-3"/></svg>Ticketed events
+              </div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M3 12h18"/></svg>Door scanner
+              </div>
+            </div>
+          </aside>
+          <div class="app-main">
+            <div class="topbar">
+              <div class="crumbs">Admin / Gigs / <strong>Import</strong></div>
+              <div class="avatar">WG</div>
+            </div>
+            <div class="page-body">
+              <div class="page-title">
+                <div>
+                  <h3>Neon Church</h3>
+                  <p>Everything checked. This is the only screen that can make it public.</p>
+                </div>
+                <span class="pill draft"><span class="dot"></span>Draft</span>
+              </div>
+
+              <div class="rail">
+                <div class="rail-step done"><span class="num">&#10003;</span>Source</div>
+                <div class="rail-step done"><span class="num">&#10003;</span>Review details</div>
+                <div class="rail-step done"><span class="num">&#10003;</span>Line-up and poster</div>
+                <div class="rail-step current"><span class="num">4</span>Publish</div>
+              </div>
+
+              <div class="split-b">
+                <div>
+                  <div class="card">
+                    <div class="card-head">
+                      <h4>Before it goes live</h4>
+                      <p>Publish stays disabled until the required rows pass.</p>
+                    </div>
+                    <div class="check">
+                      <span class="box ok">&#10003;</span>Title and venue
+                      <span class="spacer"></span>
+                      <span style="color:var(--faint);font-size:12px">Neon Church, Whammy Bar</span>
+                    </div>
+                    <div class="check">
+                      <span class="box ok">&#10003;</span>Start time
+                      <span class="spacer"></span>
+                      <span style="color:var(--faint);font-size:12px">Fri 23 Oct, 10:00 pm</span>
+                    </div>
+                    <div class="check">
+                      <span class="box ok">&#10003;</span>Poster
+                      <span class="spacer"></span>
+                      <span style="color:var(--faint);font-size:12px">Cropped from the post</span>
+                    </div>
+                    <div class="check">
+                      <span class="box no">!</span>End time was guessed, not read
+                      <span class="spacer"></span>
+                      <span class="btn xs outline">Review</span>
+                    </div>
+                    <div class="check">
+                      <span class="box no">!</span>@teiko has no creator profile
+                      <span class="spacer"></span>
+                      <span class="btn xs outline">Create or skip</span>
+                    </div>
+                  </div>
+
+                  <div class="card">
+                    <div class="card-head card-head-row">
+                      <div>
+                        <h4>Run sheet</h4>
+                        <p>Three sets from the caption. Times spread from the start, drag to fix.</p>
+                      </div>
+                      <span class="btn outline sm">Edit</span>
+                    </div>
+                    <div class="runsheet-row">
+                      <span class="grip">&#8942;&#8942;</span>
+                      <span class="time">10:00 pm</span>
+                      <div class="av">TK</div>
+                      <strong>@teiko</strong>
+                      <span class="pill">Opening</span>
+                      <span style="margin-left:auto" class="pill warn">No profile</span>
+                    </div>
+                    <div class="runsheet-row">
+                      <span class="grip">&#8942;&#8942;</span>
+                      <span class="time">11:15 pm</span>
+                      <div class="av">KA</div>
+                      <strong>Kaia</strong>
+                      <span class="pill">Support</span>
+                    </div>
+                    <div class="runsheet-row">
+                      <span class="grip">&#8942;&#8942;</span>
+                      <span class="time">12:30 am</span>
+                      <div class="av">WJ</div>
+                      <strong>Wicked Jay b2b nvrland</strong>
+                      <span class="pill">Headliner</span>
+                      <span class="pill violet">Back to back</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="card">
+                    <div class="card-head">
+                      <h4>Poster</h4>
+                      <p>The post image, cropped to the 3:4 the gig page wants.</p>
+                    </div>
+                    <div class="crop-canvas" style="aspect-ratio:1/1"></div>
+                    <div style="display:flex;gap:6px;margin-top:12px">
+                      <span class="btn outline sm">Recrop</span>
+                      <span class="btn outline sm">Replace</span>
+                    </div>
+                  </div>
+                  <div class="card">
+                    <div class="card-head">
+                      <h4>Publish</h4>
+                      <p>A draft stays out of every public list until this is pressed.</p>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                      <span class="btn primary">Publish gig</span>
+                      <span class="btn outline">Preview public page</span>
+                      <span class="btn ghost">Keep as draft</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- ================= DIRECTION B ================= -->
+      <section class="option" id="split">
+        <div class="option-head">
+          <div>
+            <h2>B. Split review</h2>
+            <p>
+              One screen. The post is pinned on the left and the whole gig form
+              is on the right, already filled. No steps, no next button. Scroll
+              down the form, fix what is wrong, publish from the bar at the top.
+            </p>
+          </div>
+          <p class="tradeoff">
+            Fastest for someone importing several gigs in a sitting, and the
+            only direction where you can see the caption while editing the run
+            sheet. Dense, and it wants a wide screen to be comfortable.
+          </p>
+        </div>
+
+        <div class="frame-label">
+          <strong>B1</strong><span>The whole import on one page. The numbers in the caption match the numbers on the fields.</span>
+        </div>
+        <div class="app-frame">
+          <aside class="sidebar">
+            <div class="brand">
+              <div class="brand-mark">ATMOS</div>
+              <div class="brand-copy">
+                <strong>Atmos Admin</strong><span>Control centre</span>
+              </div>
+            </div>
+            <div class="side-content">
+              <div class="side-label">Content &amp; site</div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 7v14M3 5h6a3 3 0 0 1 3 3 3 3 0 0 1 3-3h6v13h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3H3z"/></svg>Content
+              </div>
+              <div class="side-item active">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Gigs
+              </div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11V4h7l10 10-7 7z"/><circle cx="7.5" cy="7.5" r="1"/></svg>Gig tags
+              </div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Media files
+              </div>
+              <div class="side-label">Events &amp; sales</div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9h18v6H3zM7 9V6h10v3M7 15v3h10v-3"/></svg>Ticketed events
+              </div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M3 12h18"/></svg>Door scanner
+              </div>
+            </div>
+          </aside>
+          <div class="app-main">
+            <div class="topbar">
+              <div class="crumbs">Admin / Gigs / <strong>Import</strong></div>
+              <div class="avatar">WG</div>
+            </div>
+            <div class="page-body">
+              <div class="page-title">
+                <div>
+                  <h3>Neon Church</h3>
+                  <p>Imported from @atmos.nz. Draft, not visible on the site.</p>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <span class="btn outline">Preview</span>
+                  <span class="btn danger">Discard</span>
+                </div>
+              </div>
+
+              <div class="stickybar">
+                <span class="pill draft"><span class="dot"></span>Draft</span>
+                <span class="msg">3 fields changed since import. End time still needs a look.</span>
+                <span class="spacer"></span>
+                <span class="btn ghost">Save draft</span>
+                <span class="btn primary">Publish gig</span>
+              </div>
+
+              <div class="split">
+                <div style="position:sticky;top:0;display:flex;flex-direction:column;gap:22px">
+                  <div class="card">
+                    <div class="card-head card-head-row">
+                      <div>
+                        <h4>Source post</h4>
+                        <p>Stays here while you work down the form.</p>
+                      </div>
+                      <span class="btn outline sm">Re-read</span>
+                    </div>
+                    <div class="ig-meta">
+                      <span class="handle">@atmos.nz</span>
+                      <span>&#183;</span><span>4 Sep 2026</span>
+                      <span>&#183;</span><a href="#split">Open on Instagram</a>
+                    </div>
+                    <div class="source">
+                      <div class="ig-thumb">NEON CHURCH</div>
+                      <div>
+                        <div class="caption" style="font-size:12.5px">ATMOS PRESENTS <mark class="m1">NEON CHURCH<span class="m">1</span></mark>
+<mark class="m3">Friday 23 October<span class="m">3</span></mark> / <mark class="m2">Whammy Bar<span class="m">2</span></mark>, K Rd
+<mark class="m3">10pm<span class="m">3</span></mark> <mark class="m4">til late<span class="m">4</span></mark> / R18
+
+Line up
+<mark class="m6">@wickedjay b2b @nvrland_<span class="m">6</span></mark>
+<mark class="m6">@kaia.sound<span class="m">6</span></mark>
+<mark class="m6">@teiko<span class="m">6</span></mark>
+
+$25 early bird, link in bio
+<mark class="m5">undertheradar.co.nz/neon-church<span class="m">5</span></mark></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="card">
+                    <div class="card-head">
+                      <h4>Not used</h4>
+                      <p>Read, but nothing was done with it. Worth a glance.</p>
+                    </div>
+                    <div class="check">
+                      <span class="box no">?</span><span class="quote" style="font-family:ui-monospace,Menlo,monospace">"$25 early bird"</span>
+                      <span class="spacer"></span>
+                      <span style="color:var(--faint);font-size:12px">Price lives on the ticket event</span>
+                    </div>
+                    <div class="check">
+                      <span class="box no">?</span><span class="quote" style="font-family:ui-monospace,Menlo,monospace">"link in bio"</span>
+                      <span class="spacer"></span>
+                      <span style="color:var(--faint);font-size:12px">Resolved to the URL below it</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="card">
+                    <div class="card-head">
+                      <h4>Core details</h4>
+                      <p>The same fields as the gig editor, filled in.</p>
+                    </div>
+                    <div class="grid2">
+                      <div>
+                        <div class="pfield-top">
+                          <label class="label">Title<span class="req">*</span></label>
+                          <span class="marker k1">1</span>
+                        </div>
+                        <div class="input">Neon Church</div>
+                      </div>
+                      <div>
+                        <div class="pfield-top">
+                          <label class="label">Subtitle (venue)<span class="req">*</span></label>
+                          <span class="marker k2">2</span>
+                          <span class="spacer"></span>
+                          <span class="pill violet">Edited</span>
+                        </div>
+                        <div class="input focus">Whammy Bar, K Rd</div>
+                      </div>
+                    </div>
+                    <div class="field">
+                      <div class="pfield-top">
+                        <label class="label">Short description</label>
+                        <span class="spacer"></span>
+                        <span class="pill info">Written from the caption</span>
+                      </div>
+                      <div class="input tall">Late night club show at Whammy Bar on K Rd. Doors 10pm, R18.</div>
+                    </div>
+                    <div class="field">
+                      <label class="label">Description</label>
+                      <div class="input tall">The caption as paragraphs, with the line-up lines removed. They are on the run sheet instead.</div>
+                    </div>
+                    <div class="grid2" style="margin-top:16px">
+                      <div>
+                        <label class="label">Mode</label>
+                        <div class="input">Normal <span class="caret">&#9662;</span></div>
+                      </div>
+                      <div>
+                        <div class="pfield-top">
+                          <label class="label">Ticket link</label>
+                          <span class="marker k5">5</span>
+                        </div>
+                        <div class="input">https://undertheradar.co.nz/neon-church</div>
+                      </div>
+                    </div>
+                    <div class="field">
+                      <label class="label">Tags</label>
+                      <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
+                        <span class="pill violet">Club night <span style="opacity:.6">&#215;</span></span>
+                        <span class="pill violet">R18 <span style="opacity:.6">&#215;</span></span>
+                        <span class="btn xs outline">+ Add tag</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="card">
+                    <div class="card-head card-head-row">
+                      <div>
+                        <h4>Date and time</h4>
+                        <p>Read in Pacific/Auckland. The year is inferred.</p>
+                      </div>
+                      <span class="pill warn"><span class="dot"></span>End time guessed</span>
+                    </div>
+                    <div class="grid2">
+                      <div>
+                        <div class="pfield-top">
+                          <label class="label">Starts<span class="req">*</span></label>
+                          <span class="marker k3">3</span>
+                        </div>
+                        <div class="input">Fri 23 Oct 2026, 10:00 pm <span class="caret">&#9662;</span></div>
+                        <div class="prov">From <span class="quote">"Friday 23 October"</span> and <span class="quote">"10pm"</span></div>
+                      </div>
+                      <div class="flagged">
+                        <div class="pfield-top">
+                          <label class="label">Ends</label>
+                          <span class="marker k4">4</span>
+                        </div>
+                        <div class="input">Sat 24 Oct 2026, 2:00 am <span class="caret">&#9662;</span></div>
+                        <div class="prov"><span class="quote">"til late"</span> is not a time. 2am is a default, confirm it.</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="card">
+                    <div class="card-head card-head-row">
+                      <div>
+                        <h4>Line-up <span class="marker k6" style="vertical-align:2px">6</span></h4>
+                        <p>Handles matched against creator profiles. Times spread from the start.</p>
+                      </div>
+                      <span class="btn outline sm">Open run sheet</span>
+                    </div>
+                    <div class="match">
+                      <div class="av">TK</div>
+                      <div class="match-copy">
+                        <strong>@teiko</strong>
+                        <p>No profile with this handle</p>
+                      </div>
+                      <div class="match-actions">
+                        <span class="btn outline sm">Create profile</span>
+                        <span class="btn ghost sm">Name only</span>
+                      </div>
+                    </div>
+                    <div class="match">
+                      <div class="av">KA</div>
+                      <div class="match-copy">
+                        <strong>Kaia</strong>
+                        <p>@kaia.sound, published profile</p>
+                      </div>
+                      <div class="match-actions">
+                        <span class="pill ok"><span class="dot"></span>Matched</span>
+                        <span class="btn ghost sm">Change</span>
+                      </div>
+                    </div>
+                    <div class="match">
+                      <div class="av">WJ</div>
+                      <div class="match-copy">
+                        <strong>Wicked Jay b2b nvrland</strong>
+                        <p>One slot, two artists. Both profiles found.</p>
+                      </div>
+                      <div class="match-actions">
+                        <span class="pill ok"><span class="dot"></span>Matched</span>
+                        <span class="btn ghost sm">Split</span>
+                      </div>
+                    </div>
+                    <div class="match">
+                      <div class="av empty">+</div>
+                      <div class="match-copy">
+                        <strong style="color:var(--muted)">Add someone the caption missed</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="card">
+                    <div class="card-head card-head-row">
+                      <div>
+                        <h4>Poster</h4>
+                        <p>The post image is square. The gig page wants 3:4.</p>
+                      </div>
+                      <span class="pill info">From the post</span>
+                    </div>
+                    <div class="crop">
+                      <div class="crop-canvas"></div>
+                      <div>
+                        <div class="check"><span class="box ok">&#10003;</span>1080 x 1080, well above the minimum</div>
+                        <div class="check"><span class="box no">!</span>Crop cuts the right edge of the artwork</div>
+                        <div style="display:flex;gap:6px;margin-top:14px">
+                          <span class="btn outline sm">Recrop</span>
+                          <span class="btn outline sm">Use carousel image 2</span>
+                          <span class="btn ghost sm">Upload my own</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="frame-label">
+          <strong>B2</strong><span>Publish confirms once, and shows what was kept from the import against what was changed.</span>
+        </div>
+        <div class="app-frame">
+          <div class="app-main" style="border-left:0">
+            <div class="scrim">
+              <div class="dialog">
+                <h4>Publish Neon Church?</h4>
+                <p>It appears on the gigs page and the home page selection straight away.</p>
+                <div style="margin-top:18px">
+                  <div class="check">
+                    <span class="box ok">&#10003;</span>Title, venue, start time, poster
+                  </div>
+                  <div class="check">
+                    <span class="box ok">&#10003;</span>3 sets on the run sheet
+                  </div>
+                  <div class="check">
+                    <span class="box no">!</span>End time is the 2am default, not from the post
+                  </div>
+                  <div class="check">
+                    <span class="box no">!</span>@teiko will show as a name with no profile link
+                  </div>
+                </div>
+                <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:12.5px;color:var(--faint)">
+                  Changed since import: subtitle, short description, headline set time.
+                  The import stays on record either way.
+                </div>
+                <div class="dialog-foot">
+                  <span class="btn ghost">Cancel</span>
+                  <span class="btn primary">Publish</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- ================= DIRECTION C ================= -->
+      <section class="option" id="inline">
+        <div class="option-head">
+          <div>
+            <h2>C. Import into the editor you already have</h2>
+            <p>
+              No new page. Import is a dialog on the gigs list, and it drops its
+              values straight into the existing gig editor. Every field the
+              import filled is marked and can be undone one at a time. The gig
+              is a draft until the publish switch is thrown.
+            </p>
+          </div>
+          <p class="tradeoff">
+            By far the least new surface, and an imported gig is edited with the
+            exact controls as any other. The post is behind a link rather than
+            beside the form, so checking the extraction against the caption is
+            slower.
+          </p>
+        </div>
+
+        <div class="frame-label">
+          <strong>C1</strong><span>The dialog reads the post and shows what it found before anything is created.</span>
+        </div>
+        <div class="app-frame">
+          <div class="app-main" style="border-left:0">
+            <div class="scrim">
+              <div class="dialog">
+                <h4>Import from Instagram</h4>
+                <p>Reads the caption and image, then opens a draft gig you can edit.</p>
+                <div style="margin-top:18px">
+                  <label class="label">Post URL</label>
+                  <div class="input focus">https://www.instagram.com/p/C9xR2sPvQ1m/</div>
+                </div>
+                <div style="margin-top:18px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--bg);padding:14px">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                    <span class="pill ok"><span class="dot"></span>Post read</span>
+                    <span style="font-size:12px;color:var(--faint)">@atmos.nz, 4 Sep 2026</span>
+                  </div>
+                  <div class="source" style="grid-template-columns:76px minmax(0,1fr);gap:14px">
+                    <div class="ig-thumb" style="font-size:8px;padding:7px">NEON CHURCH</div>
+                    <div style="font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:6px">
+                      <div><strong style="color:var(--text)">Neon Church</strong> at Whammy Bar</div>
+                      <div>Fri 23 Oct 2026, 10:00 pm</div>
+                      <div>3 sets, 2 artists matched, 1 new</div>
+                      <div>Ticket link and 2 tags found</div>
+                      <div style="color:#f5c869">End time not stated, will be guessed</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="dialog-foot">
+                  <span class="btn ghost">Cancel</span>
+                  <span class="btn outline">Paste caption instead</span>
+                  <span class="btn primary">Open draft</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="frame-label">
+          <strong>C2</strong><span>The normal gig editor, holding a draft. Blue rules mark what the import wrote.</span>
+        </div>
+        <div class="app-frame">
+          <aside class="sidebar">
+            <div class="brand">
+              <div class="brand-mark">ATMOS</div>
+              <div class="brand-copy">
+                <strong>Atmos Admin</strong><span>Control centre</span>
+              </div>
+            </div>
+            <div class="side-content">
+              <div class="side-label">Content &amp; site</div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 7v14M3 5h6a3 3 0 0 1 3 3 3 3 0 0 1 3-3h6v13h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3H3z"/></svg>Content
+              </div>
+              <div class="side-item active">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Gigs
+              </div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11V4h7l10 10-7 7z"/><circle cx="7.5" cy="7.5" r="1"/></svg>Gig tags
+              </div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Media files
+              </div>
+              <div class="side-label">Events &amp; sales</div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9h18v6H3zM7 9V6h10v3M7 15v3h10v-3"/></svg>Ticketed events
+              </div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M3 12h18"/></svg>Door scanner
+              </div>
+            </div>
+          </aside>
+          <div class="app-main">
+            <div class="topbar">
+              <div class="crumbs">Admin / Gigs / <strong>Manage gig</strong></div>
+              <div class="avatar">WG</div>
+            </div>
+            <div class="page-body">
+              <div class="page-title">
+                <div>
+                  <h3>Manage gig</h3>
+                  <p>Neon Church</p>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <span class="btn outline">View gig</span>
+                  <span class="btn danger">Delete</span>
+                </div>
+              </div>
+
+              <div class="strip">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width:16px;height:16px;color:var(--sky)"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg>
+                <span>Imported from <strong>@atmos.nz</strong>, 4 Sep. 11 fields filled, 3 changed since.</span>
+                <span class="spacer"></span>
+                <span class="btn outline sm">See the post</span>
+                <span class="btn ghost sm">Re-import over my edits</span>
+              </div>
+
+              <div class="stickybar">
+                <span class="pill draft"><span class="dot"></span>Draft, not on the site</span>
+                <span class="msg">Unsaved changes</span>
+                <span class="spacer"></span>
+                <span class="btn ghost">Discard changes</span>
+                <span class="btn outline">Save draft</span>
+                <span class="btn primary">Save and publish</span>
+              </div>
+
+              <div class="split-b">
+                <div>
+                  <div class="card">
+                    <div class="card-head card-head-row">
+                      <div>
+                        <h4>Core details</h4>
+                        <p>Title, description, mode and ticket link</p>
+                      </div>
+                      <span class="pill info">7 imported</span>
+                    </div>
+                    <div class="grid2">
+                      <div class="imported">
+                        <div class="pfield-top">
+                          <label class="label">Title<span class="req">*</span></label>
+                          <span class="spacer"></span>
+                          <span class="btn xs ghost">Undo import</span>
+                        </div>
+                        <div class="input">Neon Church</div>
+                      </div>
+                      <div class="edited">
+                        <div class="pfield-top">
+                          <label class="label">Subtitle (venue)<span class="req">*</span></label>
+                          <span class="spacer"></span>
+                          <span class="pill violet">Yours</span>
+                        </div>
+                        <div class="input focus">Whammy Bar, K Rd</div>
+                        <div class="prov">Imported as <span class="quote">"Whammy Bar"</span> <span class="btn xs outline">Revert</span></div>
+                      </div>
+                    </div>
+                    <div class="field imported">
+                      <label class="label">Short description</label>
+                      <div class="input tall">Late night club show at Whammy Bar on K Rd. Doors 10pm, R18.</div>
+                      <p class="hint">Used on cards and listings.</p>
+                    </div>
+                    <div class="field imported">
+                      <label class="label">Description</label>
+                      <div class="input tall">The caption as paragraphs, line-up removed.</div>
+                    </div>
+                    <div class="grid2" style="margin-top:16px">
+                      <div>
+                        <label class="label">Mode</label>
+                        <div class="input">Normal <span class="caret">&#9662;</span></div>
+                        <p class="hint">To be announced hides the details and blurs the poster.</p>
+                      </div>
+                      <div class="imported">
+                        <label class="label">Ticket link</label>
+                        <div class="input">https://undertheradar.co.nz/neon-church</div>
+                        <p class="hint">Leave empty if tickets are sold on this site.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="card">
+                    <div class="card-head card-head-row">
+                      <div>
+                        <h4>Run sheet</h4>
+                        <p>Line-up and cues on one timeline</p>
+                      </div>
+                      <span class="pill info">3 imported</span>
+                    </div>
+                    <div class="runsheet-row imported" style="border-left:2px solid var(--sky)">
+                      <span class="grip">&#8942;&#8942;</span>
+                      <span class="time">10:00 pm</span>
+                      <div class="av">TK</div>
+                      <strong>@teiko</strong>
+                      <span class="pill warn">No profile</span>
+                      <span style="margin-left:auto" class="btn xs outline">Create</span>
+                    </div>
+                    <div class="runsheet-row imported" style="border-left:2px solid var(--sky)">
+                      <span class="grip">&#8942;&#8942;</span>
+                      <span class="time">11:15 pm</span>
+                      <div class="av">KA</div>
+                      <strong>Kaia</strong>
+                      <span class="pill">Support</span>
+                    </div>
+                    <div class="runsheet-row edited" style="border-left:2px solid var(--violet);margin-left:0;padding-left:12px">
+                      <span class="grip">&#8942;&#8942;</span>
+                      <span class="time">12:30 am</span>
+                      <div class="av">WJ</div>
+                      <strong>Wicked Jay b2b nvrland</strong>
+                      <span class="pill">Headliner</span>
+                      <span style="margin-left:auto" class="pill violet">Time changed</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="card">
+                    <div class="card-head">
+                      <h4>Date &amp; time</h4>
+                      <p>When the gig starts and ends</p>
+                    </div>
+                    <div class="field imported">
+                      <label class="label">Starts<span class="req">*</span></label>
+                      <div class="input">Fri 23 Oct 2026, 10:00 pm <span class="caret">&#9662;</span></div>
+                    </div>
+                    <div class="field flagged">
+                      <div class="pfield-top">
+                        <label class="label">Ends</label>
+                        <span class="spacer"></span>
+                        <span class="pill warn">Guessed</span>
+                      </div>
+                      <div class="input">Sat 24 Oct 2026, 2:00 am <span class="caret">&#9662;</span></div>
+                      <p class="hint">The post said "til late". Confirm before publishing.</p>
+                    </div>
+                  </div>
+
+                  <div class="card">
+                    <div class="card-head">
+                      <h4>Poster</h4>
+                      <p>Portrait 3:4, cropped from the post</p>
+                    </div>
+                    <div class="crop-canvas" style="aspect-ratio:3/4"></div>
+                    <div style="display:flex;gap:6px;margin-top:12px">
+                      <span class="btn outline sm">Recrop</span>
+                      <span class="btn outline sm">Replace</span>
+                    </div>
+                  </div>
+
+                  <div class="card">
+                    <div class="card-head">
+                      <h4>Tags</h4>
+                    </div>
+                    <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
+                      <span class="pill violet">Club night <span style="opacity:.6">&#215;</span></span>
+                      <span class="pill violet">R18 <span style="opacity:.6">&#215;</span></span>
+                      <span class="btn xs outline">+ Add tag</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= SHARED ================= -->
+      <section class="option" id="shared">
+        <div class="option-head">
+          <div>
+            <h2>Drafts, whichever direction wins</h2>
+            <p>
+              A gig gains a status. Draft gigs are invisible on the site, in the
+              home page selection, in search, and in the mobile app. They still
+              show in the admin list, filed under their own tab, so a half
+              finished import cannot be lost or accidentally shipped.
+            </p>
+          </div>
+          <p class="tradeoff">
+            This is the piece that has to exist first. Import writes drafts;
+            everything else about it is presentation.
+          </p>
+        </div>
+
+        <div class="frame-label">
+          <strong>S1</strong><span>The gigs list, with a Drafts tab and a status column.</span>
+        </div>
+        <div class="app-frame">
+          <aside class="sidebar">
+            <div class="brand">
+              <div class="brand-mark">ATMOS</div>
+              <div class="brand-copy">
+                <strong>Atmos Admin</strong><span>Control centre</span>
+              </div>
+            </div>
+            <div class="side-content">
+              <div class="side-label">Content &amp; site</div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 7v14M3 5h6a3 3 0 0 1 3 3 3 3 0 0 1 3-3h6v13h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3H3z"/></svg>Content
+              </div>
+              <div class="side-item active">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Gigs
+              </div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 11V4h7l10 10-7 7z"/><circle cx="7.5" cy="7.5" r="1"/></svg>Gig tags
+              </div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Media files
+              </div>
+              <div class="side-label">Events &amp; sales</div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9h18v6H3zM7 9V6h10v3M7 15v3h10v-3"/></svg>Ticketed events
+              </div>
+              <div class="side-item">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M3 12h18"/></svg>Door scanner
+              </div>
+            </div>
+          </aside>
+          <div class="app-main">
+            <div class="topbar">
+              <div class="crumbs">Admin / <strong>Gigs</strong></div>
+              <div class="avatar">WG</div>
+            </div>
+            <div class="page-body">
+              <div class="page-title">
+                <div>
+                  <h3>Gigs</h3>
+                  <p>Upcoming and past gigs, and which of them the home page shows.</p>
+                </div>
+              </div>
+
+              <div class="tabs">
+                <div class="active">Gigs</div>
+                <div>Drafts <span style="opacity:.7">2</span></div>
+                <div>Reorder</div>
+              </div>
+
+              <div class="card">
+                <div class="card-head card-head-row">
+                  <div>
+                    <h4>Gigs</h4>
+                    <p>Every gig, newest first. Editing opens on its own page.</p>
+                  </div>
+                  <div style="display:flex;gap:8px">
+                    <span class="btn outline">
+                      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg>
+                      Import from Instagram
+                    </span>
+                    <span class="btn primary">+ Add gig</span>
+                  </div>
+                </div>
+                <div class="input placeholder" style="max-width:340px;margin-bottom:18px">Search by title, subtitle, or description...</div>
+                <table class="tbl">
+                  <thead>
+                    <tr>
+                      <th>Starts</th>
+                      <th>Title</th>
+                      <th>Status</th>
+                      <th>Source</th>
+                      <th class="right">Media</th>
+                      <th class="right"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>23 Oct 2026, 10:00 pm</td>
+                      <td><strong>Neon Church</strong></td>
+                      <td><span class="pill draft"><span class="dot"></span>Draft</span></td>
+                      <td><span class="pill info">Instagram</span></td>
+                      <td class="right">0</td>
+                      <td class="right"><span class="btn outline sm">Manage</span></td>
+                    </tr>
+                    <tr>
+                      <td>11 Oct 2026, 9:00 pm</td>
+                      <td><strong>Basement Frequencies</strong></td>
+                      <td><span class="pill draft"><span class="dot"></span>Draft</span></td>
+                      <td><span class="pill info">Instagram</span></td>
+                      <td class="right">0</td>
+                      <td class="right"><span class="btn outline sm">Manage</span></td>
+                    </tr>
+                    <tr>
+                      <td>3 Oct 2026, 8:00 pm</td>
+                      <td><strong>Golden Hour</strong></td>
+                      <td><span class="pill live"><span class="dot"></span>Live</span></td>
+                      <td><span style="color:var(--faint)">Manual</span></td>
+                      <td class="right">6</td>
+                      <td class="right"><span class="btn outline sm">Manage</span></td>
+                    </tr>
+                    <tr>
+                      <td>19 Sep 2026, 9:30 pm</td>
+                      <td><strong>Sunset Sessions vol. 4</strong></td>
+                      <td><span class="pill live"><span class="dot"></span>Live</span></td>
+                      <td><span class="pill info">Instagram</span></td>
+                      <td class="right">14</td>
+                      <td class="right"><span class="btn outline sm">Manage</span></td>
+                    </tr>
+                    <tr>
+                      <td>22 Aug 2026, 9:00 pm</td>
+                      <td><strong>Winter Warmer</strong></td>
+                      <td><span class="pill past">Past</span></td>
+                      <td><span style="color:var(--faint)">Manual</span></td>
+                      <td class="right">31</td>
+                      <td class="right"><span class="btn outline sm">Manage</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- ================= UNDERNEATH ================= -->
+      <section class="under" id="under">
+        <h2>What has to change underneath</h2>
+        <p>
+          Same for all three directions. The only part that differs between them
+          is which screens read it.
+        </p>
+        <div class="under-grid">
+          <div class="card">
+            <h4>Draft status on a gig</h4>
+            <ul>
+              <li>
+                <code>status</code> on <code>Gig</code>, <code>DRAFT</code> or
+                <code>PUBLISHED</code>, defaulting to
+                <code>PUBLISHED</code> so nothing already in the database
+                disappears.
+              </li>
+              <li>
+                Every public read filters to published: the gigs pages, home
+                placements, featured and past lists, sitemap, and the mobile
+                feed. This is the part worth being thorough about.
+              </li>
+              <li>
+                A published gig can be pulled back to draft. Useful beyond
+                import.
+              </li>
+            </ul>
+          </div>
+          <div class="card">
+            <h4>A record of the import</h4>
+            <ul>
+              <li>
+                <code>GigImport</code> holds the source URL, the raw payload
+                Instagram returned, the structured extraction, and which gig it
+                produced.
+              </li>
+              <li>
+                Keeping the extraction is what lets a field say where it came
+                from and offer a revert, long after the import.
+              </li>
+              <li>
+                Re-reading the same post updates the record rather than making a
+                second gig.
+              </li>
+            </ul>
+          </div>
+          <div class="card">
+            <h4>Reading the post</h4>
+            <ul>
+              <li>
+                Instagram Graph API for Atmos owned media. Caption, media URL,
+                permalink and timestamp come back directly.
+              </li>
+              <li>
+                Anything else needs the caption pasted and the image dropped in.
+                The same extraction runs either way, so this is a smaller branch
+                than it sounds.
+              </li>
+              <li>
+                Carousels give several images. The first is the poster, the rest
+                are offered.
+              </li>
+            </ul>
+          </div>
+          <div class="card">
+            <h4>Caption to fields</h4>
+            <ul>
+              <li>
+                One Claude call returning a schema-validated object. Each field
+                carries the caption substring it came from and a confidence, so
+                provenance is data rather than a guess made in the UI.
+              </li>
+              <li>
+                Dates resolve in Pacific/Auckland against the post date, which is
+                how "Friday 23 October" becomes a real timestamp.
+              </li>
+              <li>
+                Tags only ever match existing gig tags. Import never invents
+                one.
+              </li>
+              <li>
+                Handles are looked up against creator profiles. No match means a
+                name on the run sheet, never a silent new profile.
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="note" style="margin-top:28px">
+          <strong>Two calls worth making before I build.</strong>
+          First, whether import should ever create a creator profile on its own,
+          or always stop and ask. Second, whether a draft gig should be reachable
+          by direct URL for sharing a preview, or be fully invisible until
+          published.
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

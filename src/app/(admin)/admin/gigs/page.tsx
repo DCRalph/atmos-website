@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { useTabParam } from "~/hooks/use-tab-param";
 
 export default function AdminGigsPage() {
-  const tab = useTabParam(["gigs", "reorder"]);
+  const tab = useTabParam(["gigs", "drafts", "reorder"]);
   // Mount the reorder tab lazily, then keep it mounted so drag changes and the
   // unsaved-changes warning survive switching back to the gigs tab.
   const [reorderOpened, setReorderOpened] = useState(tab.value === "reorder");
@@ -16,7 +16,7 @@ export default function AdminGigsPage() {
   return (
     <AdminSection
       title="Gigs"
-      description="Upcoming and past gigs, and which of them the home page shows."
+      description="Upcoming and past gigs, drafts waiting to go live, and which of them the home page shows."
     >
       <Tabs
         value={tab.value}
@@ -28,10 +28,14 @@ export default function AdminGigsPage() {
       >
         <TabsList>
           <TabsTrigger value="gigs">Gigs</TabsTrigger>
+          <TabsTrigger value="drafts">Drafts</TabsTrigger>
           <TabsTrigger value="reorder">Reorder</TabsTrigger>
         </TabsList>
         <TabsContent value="gigs">
           <GigsManager />
+        </TabsContent>
+        <TabsContent value="drafts">
+          <GigsManager onlyDrafts />
         </TabsContent>
         <TabsContent
           value="reorder"

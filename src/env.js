@@ -67,6 +67,17 @@ export const env = createEnv({
     GOOGLE_WALLET_ISSUER_ID: z.string().optional(),
     GOOGLE_WALLET_SERVICE_ACCOUNT_JSON: z.string().optional(),
 
+    /// Gig import — reading an Instagram post into a draft gig.
+    /// Unset means the import wizard is off; it says so rather than failing.
+    OPENROUTER_API_KEY: z.string().optional(),
+    /// The OpenRouter model slug the extraction runs on. It has to accept
+    /// images and JSON schema output; posters carry half the details, and the
+    /// wizard is built on getting a validated object back.
+    OPENROUTER_MODEL: z.string().default("anthropic/claude-opus-5"),
+    /// Long-lived Instagram token for the Atmos account. Without it the wizard
+    /// still works, but only from a pasted caption.
+    INSTAGRAM_ACCESS_TOKEN: z.string().optional(),
+
     /// Shared secret for the Vercel cron endpoints.
     CRON_SECRET: z.string().optional(),
 
@@ -117,7 +128,8 @@ export const env = createEnv({
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
 
     SHOPIFY_STORE_DOMAIN: process.env.SHOPIFY_STORE_DOMAIN,
-    NEXT_PUBLIC_SHOPIFY_PUBLIC_ACCESS_TOKEN: process.env.NEXT_PUBLIC_SHOPIFY_PUBLIC_ACCESS_TOKEN,
+    NEXT_PUBLIC_SHOPIFY_PUBLIC_ACCESS_TOKEN:
+      process.env.NEXT_PUBLIC_SHOPIFY_PUBLIC_ACCESS_TOKEN,
     SHOPIFY_PRIVATE_ACCESS_TOKEN: process.env.SHOPIFY_PRIVATE_ACCESS_TOKEN,
     SHOPIFY_COLLECTION_HANDLE: process.env.SHOPIFY_COLLECTION_HANDLE,
 
@@ -143,6 +155,10 @@ export const env = createEnv({
     GOOGLE_WALLET_ISSUER_ID: process.env.GOOGLE_WALLET_ISSUER_ID,
     GOOGLE_WALLET_SERVICE_ACCOUNT_JSON:
       process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_JSON,
+
+    OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+    OPENROUTER_MODEL: process.env.OPENROUTER_MODEL,
+    INSTAGRAM_ACCESS_TOKEN: process.env.INSTAGRAM_ACCESS_TOKEN,
 
     CRON_SECRET: process.env.CRON_SECRET,
     NOTIFY_TOKEN: process.env.NOTIFY_TOKEN,
