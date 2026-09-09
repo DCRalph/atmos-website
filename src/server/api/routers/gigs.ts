@@ -8,7 +8,7 @@ import {
 import {
   getTodayRangeStart,
   getTodayRangeEnd,
-  isGigUpcoming,
+  isGigHappeningNow,
 } from "~/lib/date-utils";
 import { softDeleteFile } from "~/server/uploads/files";
 import { logUserActivity } from "~/server/utils/activity-log";
@@ -279,6 +279,28 @@ const redactGigsForPublic = <T extends { mode?: GigMode }>(gigs: T[]) =>
  */
 const draftsHiddenFrom = (isAdmin: boolean) =>
   isAdmin ? {} : { status: GigStatus.PUBLISHED };
+
+/**
+ * "Has finished" and "has not", in SQL.
+ *
+ * The same rule as `isGigPast`: the end time when there is one, the start when
+ * there is not. Both lists used to test `gigEndTime` alone, so a gig with no
+ * end time — and most have none — matched neither, and fell out of the upcoming
+ * list and the past list at once.
+ */
+const hasFinished = (now: Date): Prisma.GigWhereInput => ({
+  OR: [
+    { gigEndTime: { lt: now } },
+    { gigEndTime: null, gigStartTime: { lt: now } },
+  ],
+});
+
+const hasNotFinished = (now: Date): Prisma.GigWhereInput => ({
+  OR: [
+    { gigEndTime: { gte: now } },
+    { gigEndTime: null, gigStartTime: { gte: now } },
+  ],
+});
 
 async function getFileUploadInfoById(
   db: any,
@@ -683,7 +705,7 @@ export const gigsRouter = createTRPCRouter({
         // placeholder in the past used to drop it out of here and into the past
         // list, where it rendered as a show that happened in 1970. It belongs
         // here regardless of what its stand-in date says.
-        OR: [{ gigEndTime: { gte: now } }, { mode: GigMode.TO_BE_ANNOUNCED }],
+        OR: [hasNotFinished(now), { mode: GigMode.TO_BE_ANNOUNCED }],
       },
       // Announced dates first, in order; anything unannounced after them,
       // rather than sorted by a placeholder into the hero slot on the home
@@ -726,13 +748,17 @@ export const gigsRouter = createTRPCRouter({
       const gigs = await ctx.db.gig.findMany({
         where: {
           ...draftsHiddenFrom(isAdmin),
-          gigEndTime: {
-            lt: now,
-          },
+          ...hasFinished(now),
           // See `getUpcoming`: an unannounced date has not been and gone.
           mode: { not: GigMode.TO_BE_ANNOUNCED },
         },
-        orderBy: [{ pastSortOrder: "asc" }, { gigEndTime: "desc" }],
+        // `gigStartTime` breaks the tie, because a gig with no end time sorts
+        // as a null and Postgres puts those first on a descending order.
+        orderBy: [
+          { pastSortOrder: "asc" },
+          { gigEndTime: "desc" },
+          { gigStartTime: "desc" },
+        ],
         include: {
           media: {
             orderBy: [
@@ -860,7 +886,7 @@ export const gigsRouter = createTRPCRouter({
       },
     });
 
-    const filteredGigs = todayGigs.filter((gig) => isGigUpcoming(gig));
+    const filteredGigs = todayGigs.filter((gig) => isGigHappeningNow(gig));
     const enrichedGigs = await enrichGigsWithFileUploads(ctx.db, filteredGigs);
     const withPosters = await enrichGigsWithPosterFileUploads(
       ctx.db,

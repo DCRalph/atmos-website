@@ -1,5 +1,5 @@
 import { cn } from "~/lib/utils";
-import { isGigUpcoming } from "~/lib/date-utils";
+import { isGigPast } from "~/lib/date-utils";
 import type { GigStatus } from "~Prisma/browser";
 
 /**
@@ -25,7 +25,7 @@ export function GigStatusBadge({
   const isPast =
     status === "PUBLISHED" &&
     startsAt !== null &&
-    !isGigUpcoming({ gigStartTime: startsAt, gigEndTime: endsAt ?? null });
+    isGigPast({ gigStartTime: startsAt, gigEndTime: endsAt ?? null });
 
   const { label, tone } =
     status === "DRAFT"
