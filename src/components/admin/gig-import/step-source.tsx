@@ -35,7 +35,10 @@ export function StepSource({
 }) {
   const [url, setUrl] = useState("");
   const [caption, setCaption] = useState("");
-  const [mode, setMode] = useState<"instagram" | "caption">("instagram");
+  // Derived rather than stored, so an environment with no working token opens
+  // on the field that can actually be used instead of on one that cannot.
+  // `chosen` is only the admin overriding that.
+  const [chosen, setChosen] = useState<"instagram" | "caption" | null>(null);
 
   const availability = api.gigImport.availability.useQuery();
   const recent = api.gigImport.recent.useQuery({ limit: 5 });
@@ -51,12 +54,15 @@ export function StepSource({
       toast.error(error.message);
       // Instagram refusing a post is the common case, and pasting the caption
       // is what to do about it, so put the admin in front of that field.
-      if (mode === "instagram") setMode("caption");
+      if (mode === "instagram") setChosen("caption");
     },
   });
 
   const canExtract = availability.data?.canExtract ?? false;
-  const canReadInstagram = availability.data?.canReadInstagram ?? false;
+  /** Whose posts the token can read. Only these can be imported by URL. */
+  const account = availability.data?.instagramAccount ?? null;
+  const mode =
+    chosen ?? (availability.data && !account ? "caption" : "instagram");
   const isBusy = read.isPending;
 
   const submit = () => {
@@ -80,7 +86,9 @@ export function StepSource({
               </CardTitle>
               <CardDescription>
                 {mode === "instagram"
-                  ? "A post or reel URL from the Atmos account. Other accounts need the caption pasted."
+                  ? account
+                    ? `A post or reel URL from @${account}. Posts on any other account have to be pasted as a caption.`
+                    : "Instagram is not connected, so posts have to be pasted as a caption."
                   : "Anything the post says. The poster image can be added at step three."}
               </CardDescription>
             </div>
@@ -89,8 +97,8 @@ export function StepSource({
                 <FaInstagram className="size-3.5" aria-hidden />
                 {availability.isLoading
                   ? "Checking..."
-                  : canReadInstagram
-                    ? "Instagram connected"
+                  : account
+                    ? `Reading posts from @${account}`
                     : "Instagram not connected"}
               </span>
               {availability.data?.model ? (
@@ -166,7 +174,7 @@ export function StepSource({
               variant="ghost"
               disabled={isBusy}
               onClick={() =>
-                setMode(mode === "instagram" ? "caption" : "instagram")
+                setChosen(mode === "instagram" ? "caption" : "instagram")
               }
             >
               <ClipboardPaste className="size-4" aria-hidden />

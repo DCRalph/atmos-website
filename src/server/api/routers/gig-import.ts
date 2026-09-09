@@ -14,6 +14,7 @@ import {
   extractGigFromPost,
 } from "~/server/gig-import/extract";
 import {
+  fetchConnectedAccount,
   fetchImageBytes,
   fetchInstagramPost,
   InstagramUnavailableError,
@@ -171,14 +172,20 @@ export const gigImportRouter = createTRPCRouter({
    * What the wizard can actually do right now, so step one can say so up front
    * instead of failing after the admin has pasted a link.
    */
-  availability: adminProcedure.query(() => ({
-    canExtract: Boolean(env.OPENROUTER_API_KEY),
-    canReadInstagram: Boolean(
-      env.OPENROUTER_API_KEY && env.INSTAGRAM_ACCESS_TOKEN,
-    ),
-    /** Shown on step one, so a bad slug is diagnosable without a deploy. */
-    model: env.OPENROUTER_MODEL,
-  })),
+  availability: adminProcedure.query(async () => {
+    // Asking Instagram who the token is for, rather than only whether one is
+    // set. A token that has expired still looks present in the environment,
+    // and the wizard should not claim to be connected on that basis.
+    const account = await fetchConnectedAccount();
+    return {
+      canExtract: Boolean(env.OPENROUTER_API_KEY),
+      canReadInstagram: Boolean(env.OPENROUTER_API_KEY) && account !== null,
+      /** Whose posts can be read. Null when there is no working token. */
+      instagramAccount: account?.username ?? null,
+      /** Shown on step one, so a bad slug is diagnosable without a deploy. */
+      model: env.OPENROUTER_MODEL,
+    };
+  }),
 
   /** The last few runs, and what became of each. */
   recent: adminProcedure
