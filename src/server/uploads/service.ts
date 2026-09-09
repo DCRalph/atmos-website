@@ -178,6 +178,60 @@ export const startUpload = async (
   };
 };
 
+/**
+ * The same pipeline, for bytes the server already holds.
+ *
+ * The three-step flow exists so the browser can PUT straight to S3; when the
+ * bytes came from a server-side fetch there is no browser in it, but every rule
+ * about presets, validation, dedupe, processing and bookkeeping still applies.
+ * So this puts the bytes where the browser would have put them and hands over
+ * to `finishUpload`, rather than opening a second way into `file_upload`.
+ *
+ * Used by the gig import wizard to turn an Instagram image into a poster.
+ */
+export const uploadFromBuffer = async (
+  input: {
+    preset: UploadPresetName;
+    context?: unknown;
+    file: { name: string; type: string; body: Buffer };
+    tagIds?: string[];
+  },
+  ctx: UploadAuthContext,
+): Promise<UploadedFile> => {
+  const sourceHash = sha256(input.file.body);
+  const started = await startUpload(
+    {
+      preset: input.preset,
+      context: input.context,
+      tagIds: input.tagIds,
+      file: {
+        name: input.file.name,
+        size: input.file.body.length,
+        type: input.file.type,
+        sourceHash,
+      },
+    },
+    ctx,
+  );
+
+  // Already stored under this destination, so there is nothing to transfer.
+  if (started.status === "duplicate") return started.file;
+
+  try {
+    await putBuffer({
+      key: stagingKeyFor(started.uploadId),
+      body: input.file.body,
+      contentType: resolveMimeType(input.file.name, input.file.type),
+      acl: "private",
+    });
+  } catch (error) {
+    await abortUpload({ uploadId: started.uploadId }, ctx);
+    throw error;
+  }
+
+  return finishUpload({ uploadId: started.uploadId }, ctx);
+};
+
 export const finishUpload = async (
   input: { uploadId: string },
   ctx: UploadAuthContext,

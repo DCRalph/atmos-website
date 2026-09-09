@@ -17,6 +17,7 @@ import {
 import { api } from "~/trpc/react";
 import { gigPath } from "~/lib/gig-url";
 import { AdminSection } from "~/components/admin/admin-section";
+import { GigStatusBadge } from "~/components/admin/gig-status-badge";
 import { GigMediaManager } from "~/components/admin/gig-media-manager";
 import { SaveStatusPill } from "~/components/admin/save-status";
 import { Button } from "~/components/ui/button";
@@ -51,7 +52,7 @@ import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { LexicalRichTextEditor } from "~/components/lexical";
 import { useUnsavedChangesWarning } from "~/hooks/use-unsaved-changes-warning";
 import { useUpload } from "~/hooks/use-upload";
-import { GigMode } from "~Prisma/browser";
+import { GigMode, GigStatus } from "~Prisma/browser";
 import { GigChatPanel } from "./gig-chat-panel";
 import { RunSheetField } from "./run-sheet-field";
 import { PosterField } from "./poster-field";
@@ -99,6 +100,7 @@ type MediaRow = {
 type LoadedGig = {
   id: string;
   title: string;
+  status: GigStatus;
   subtitle: string;
   shortDescription: string | null;
   descriptionLexical: unknown;
@@ -373,6 +375,26 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
     onError: (err) => toast.error(err.message || "Failed to delete the gig"),
   });
 
+  // Draft and live is one flag on the gig, so the same two mutations serve the
+  // import wizard and this page. A gig that arrived by import can be finished
+  // here, and a gig typed in by hand can be pulled off the site the same way.
+  const publishGig = api.gigImport.publish.useMutation({
+    onSuccess: async () => {
+      await utils.gigs.getForEditor.invalidate({ id: gigId ?? "" });
+      await utils.gigs.getAll.invalidate();
+      toast.success("The gig is live");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  const unpublishGig = api.gigImport.unpublish.useMutation({
+    onSuccess: async () => {
+      await utils.gigs.getForEditor.invalidate({ id: gigId ?? "" });
+      await utils.gigs.getAll.invalidate();
+      toast.success("Taken off the site");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const {
     upload: uploadPoster,
     items: posterItems,
@@ -554,7 +576,37 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
       title={isNew ? "Create gig" : "Manage gig"}
       subtitle={isNew ? undefined : (gig?.title ?? undefined)}
       actions={
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {gig ? (
+            <GigStatusBadge
+              status={gig.status}
+              startsAt={gig.gigStartTime}
+              endsAt={gig.gigEndTime}
+            />
+          ) : null}
+          {gig?.status === GigStatus.DRAFT ? (
+            <Button
+              onClick={() => publishGig.mutate({ gigId: gig.id })}
+              disabled={publishGig.isPending || isSaving}
+            >
+              {publishGig.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : null}
+              Publish
+            </Button>
+          ) : null}
+          {gig?.status === GigStatus.PUBLISHED ? (
+            <Button
+              variant="outline"
+              onClick={() => unpublishGig.mutate({ gigId: gig.id })}
+              disabled={unpublishGig.isPending || isSaving}
+            >
+              {unpublishGig.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : null}
+              Take off site
+            </Button>
+          ) : null}
           {gigId ? (
             <Button variant="outline" asChild>
               <a

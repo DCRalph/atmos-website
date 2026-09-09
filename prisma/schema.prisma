@@ -54,6 +54,21 @@ enum GigMode {
   TO_BE_ANNOUNCED
 }
 
+/// Whether a gig is on the public site. Every public read filters on this;
+/// see `PUBLISHED_ONLY` in `~/server/api/routers/gigs.ts`.
+enum GigStatus {
+  DRAFT
+  PUBLISHED
+}
+
+/// Where a `GigImport` got its caption and image from.
+enum GigImportSource {
+  /// Fetched from the Instagram Graph API by permalink.
+  INSTAGRAM
+  /// Pasted by hand, because the post belongs to somebody else's account.
+  MANUAL
+}
+
 model User {
   id                   String                     @id
   name                 String
@@ -358,6 +373,13 @@ model Gig {
   // Optional "poster" image for this gig (stored as a file_upload record)
   posterFileUploadId String?
 
+  /// Draft gigs exist only in the admin. They are absent from every public
+  /// list, the gig page, the sitemap and the app. Defaults to `PUBLISHED` so
+  /// every gig that predates the import wizard stays exactly where it was.
+  status      GigStatus @default(PUBLISHED)
+  /// When it first went live. Null while it is still a draft.
+  publishedAt DateTime?
+
   // Home/site ordering controls
   // - `isFeatured`: whether this gig is eligible for the featured slot (used on home + can be reused elsewhere)
   // - `featuredSortOrder`: lower shows earlier among featured gigs
@@ -387,8 +409,46 @@ model Gig {
   /// the gig page shows the buy panel instead of the external `ticketLink`.
   ticketEvents TicketEvent[]
 
+  /// Where this gig came from, when it was not typed in by hand.
+  imports GigImport[]
+
+  @@index([status, gigStartTime])
   @@index([posterFileUploadId])
   @@map("gig")
+}
+
+/// One run of the import wizard: what was read, what was made of it, and what
+/// it produced. Kept after the gig is published so a field can still say where
+/// its value came from, and so a bad extraction can be traced to its input.
+model GigImport {
+  id     String          @id @default(cuid())
+  source GigImportSource
+
+  /// The Instagram permalink. Null on a pasted caption.
+  sourceUrl String?
+  /// The post as fetched: caption, image URLs, permalink, posted time. Shape is
+  /// `InstagramPost` in `~/server/gig-import/instagram.ts`.
+  raw       Json
+  /// The structured reading of `raw`, with per-field provenance and confidence.
+  /// Shape is `GigExtraction` in `~/lib/gig-import/extraction.ts`.
+  extraction Json
+  /// Which model produced `extraction`. A re-read on a newer model is a new row.
+  model      String
+
+  /// The draft this import created. Null once the draft has been discarded.
+  gigId String?
+  gig   Gig?   @relation(fields: [gigId], references: [id], onDelete: SetNull)
+
+  /// Who ran it. Not a relation: this is an audit trail, and it should outlive
+  /// the account that made it.
+  createdById String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([gigId])
+  @@index([createdById, createdAt])
+  @@map("gig_import")
 }
 
 model CreatorProfile {
@@ -1087,6 +1147,9 @@ enum ActivityType {
   CREATOR_THEME_DUPLICATED
   GIG_CREATOR_ADDED
   GIG_CREATOR_REMOVED
+  GIG_IMPORTED
+  GIG_PUBLISHED
+  GIG_UNPUBLISHED
   TICKET_EVENT_CREATED
   TICKET_EVENT_UPDATED
   TICKET_EVENT_DELETED

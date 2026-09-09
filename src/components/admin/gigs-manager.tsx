@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Loader2, Plus, Search } from "lucide-react";
+import { FaInstagram } from "react-icons/fa6";
 
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
@@ -15,10 +16,24 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import { GigStatusBadge } from "~/components/admin/gig-status-badge";
 import { useDebouncedValue } from "~/hooks/use-debounced-value";
-import { formatDateTime, isGigUpcoming } from "~/lib/date-utils";
+import { formatDateTime } from "~/lib/date-utils";
 
-export function GigsManager() {
+/**
+ * The gigs list.
+ *
+ * Drafts live in the same table as everything else rather than in a separate
+ * screen, and the tab is a filter over it. An imported gig that was never
+ * finished should be one click from where gigs are, not somewhere it can be
+ * forgotten about.
+ */
+export function GigsManager({
+  /** The Drafts tab. Everything else about the table is identical. */
+  onlyDrafts = false,
+}: {
+  onlyDrafts?: boolean;
+} = {}) {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search).trim();
   const {
@@ -29,7 +44,11 @@ export function GigsManager() {
     debouncedSearch ? { search: debouncedSearch } : undefined,
   );
 
-  const rows = gigs ?? [];
+  const all = gigs ?? [];
+  const rows = useMemo(
+    () => (onlyDrafts ? all.filter((gig) => gig.status === "DRAFT") : all),
+    [all, onlyDrafts],
+  );
   type GigRow = (typeof rows)[number];
 
   const columns: DataTableColumn<GigRow>[] = [
@@ -50,13 +69,14 @@ export function GigsManager() {
       id: "status",
       header: "Status",
       sortable: true,
-      accessor: (gig) =>
-        isGigUpcoming({
-          gigStartTime: gig.gigStartTime,
-          gigEndTime: gig.gigEndTime,
-        })
-          ? "Upcoming"
-          : "Past",
+      accessor: (gig) => gig.status,
+      cell: (gig) => (
+        <GigStatusBadge
+          status={gig.status}
+          startsAt={gig.gigStartTime}
+          endsAt={gig.gigEndTime}
+        />
+      ),
     },
     {
       id: "media",
@@ -84,17 +104,27 @@ export function GigsManager() {
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-col gap-2">
-            <CardTitle>Gigs</CardTitle>
+            <CardTitle>{onlyDrafts ? "Drafts" : "Gigs"}</CardTitle>
             <CardDescription>
-              Every gig, newest first. Editing opens on its own page.
+              {onlyDrafts
+                ? "Imported gigs that have not been published. Nobody but an admin can see these."
+                : "Every gig, newest first. Editing opens on its own page."}
             </CardDescription>
           </div>
-          <Button asChild>
-            <Link href="/admin/gigs/new">
-              <Plus className="h-4 w-4" aria-hidden />
-              Add gig
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" asChild>
+              <Link href="/admin/gigs/import">
+                <FaInstagram className="h-4 w-4" aria-hidden />
+                Import from Instagram
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href="/admin/gigs/new">
+                <Plus className="h-4 w-4" aria-hidden />
+                Add gig
+              </Link>
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -121,8 +151,14 @@ export function GigsManager() {
           data={rows}
           getRowId={(row) => row.id}
           isLoading={isLoading}
-          storageKey="admin-gigs"
-          emptyMessage={search ? "No gigs found" : "No gigs yet"}
+          storageKey={onlyDrafts ? "admin-gig-drafts" : "admin-gigs"}
+          emptyMessage={
+            search
+              ? "No gigs found"
+              : onlyDrafts
+                ? "Nothing waiting to be published"
+                : "No gigs yet"
+          }
         />
       </CardContent>
     </Card>

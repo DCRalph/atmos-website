@@ -17,6 +17,7 @@ import {
   FileUploadStatus,
   GigMode,
   GigScheduleKind,
+  GigStatus,
   type GigMedia,
 } from "~Prisma/client";
 import { toPublicLineUp } from "~/lib/run-sheet/line-up";
@@ -267,6 +268,17 @@ const redactGigForPublic = <T extends { mode?: GigMode }>(gig: T) => {
 
 const redactGigsForPublic = <T extends { mode?: GigMode }>(gigs: T[]) =>
   gigs.map(redactGigForPublic);
+
+/**
+ * A draft gig is not on the site. Unlike `TO_BE_ANNOUNCED`, which is a real gig
+ * with its details withheld, a draft is unfinished work and has nothing worth
+ * showing, so it is filtered out in the query rather than redacted afterwards.
+ *
+ * Spread into the `where` of every public read. Admins see drafts, which is how
+ * the import wizard previews one before it goes live.
+ */
+const draftsHiddenFrom = (isAdmin: boolean) =>
+  isAdmin ? {} : { status: GigStatus.PUBLISHED };
 
 async function getFileUploadInfoById(
   db: any,
@@ -539,21 +551,27 @@ export const gigsRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const search = input?.search?.toLowerCase().trim();
+      const isAdmin = await isAdminSession(ctx);
 
-      const where = search
-        ? {
-            OR: [
-              { title: { contains: search, mode: "insensitive" as const } },
-              { subtitle: { contains: search, mode: "insensitive" as const } },
-              {
-                shortDescription: {
-                  contains: search,
-                  mode: "insensitive" as const,
+      const where = {
+        ...draftsHiddenFrom(isAdmin),
+        ...(search
+          ? {
+              OR: [
+                { title: { contains: search, mode: "insensitive" as const } },
+                {
+                  subtitle: { contains: search, mode: "insensitive" as const },
                 },
-              },
-            ],
-          }
-        : undefined;
+                {
+                  shortDescription: {
+                    contains: search,
+                    mode: "insensitive" as const,
+                  },
+                },
+              ],
+            }
+          : {}),
+      };
 
       const gigs = await ctx.db.gig.findMany({
         where,
@@ -579,9 +597,7 @@ export const gigsRouter = createTRPCRouter({
         ctx.db,
         enriched,
       );
-      return (await isAdminSession(ctx))
-        ? withPosters
-        : redactGigsForPublic(withPosters);
+      return isAdmin ? withPosters : redactGigsForPublic(withPosters);
     }),
 
   /**
@@ -600,10 +616,12 @@ export const gigsRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const now = new Date();
       const pastLimit = input?.pastLimit ?? 2;
+      const isAdmin = await isAdminSession(ctx);
 
       // Fetch enough rows to reliably build featured+past lists.
       const gigs = await ctx.db.gig.findMany({
         where: {
+          ...draftsHiddenFrom(isAdmin),
           gigEndTime: {
             lt: now,
           },
@@ -644,7 +662,7 @@ export const gigsRouter = createTRPCRouter({
         .filter((g) => (featuredGig ? g.id !== featuredGig.id : true))
         .slice(0, pastLimit);
 
-      if (await isAdminSession(ctx)) {
+      if (isAdmin) {
         return { featuredGig, pastGigs };
       }
 
@@ -656,17 +674,16 @@ export const gigsRouter = createTRPCRouter({
 
   getUpcoming: publicProcedure.query(async ({ ctx }) => {
     const now = new Date();
+    const isAdmin = await isAdminSession(ctx);
     const gigs = await ctx.db.gig.findMany({
       where: {
+        ...draftsHiddenFrom(isAdmin),
         // A `TO_BE_ANNOUNCED` gig is a date nobody has picked yet, but
         // `gigStartTime` is not nullable, so it carries a placeholder — and a
         // placeholder in the past used to drop it out of here and into the past
         // list, where it rendered as a show that happened in 1970. It belongs
         // here regardless of what its stand-in date says.
-        OR: [
-          { gigEndTime: { gte: now } },
-          { mode: GigMode.TO_BE_ANNOUNCED },
-        ],
+        OR: [{ gigEndTime: { gte: now } }, { mode: GigMode.TO_BE_ANNOUNCED }],
       },
       // Announced dates first, in order; anything unannounced after them,
       // rather than sorted by a placeholder into the hero slot on the home
@@ -691,9 +708,7 @@ export const gigsRouter = createTRPCRouter({
 
     const enriched = await enrichGigsWithFileUploads(ctx.db, gigs);
     const withPosters = await enrichGigsWithPosterFileUploads(ctx.db, enriched);
-    return (await isAdminSession(ctx))
-      ? withPosters
-      : redactGigsForPublic(withPosters);
+    return isAdmin ? withPosters : redactGigsForPublic(withPosters);
   }),
 
   getPast: publicProcedure
@@ -706,9 +721,11 @@ export const gigsRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const now = new Date();
+      const isAdmin = await isAdminSession(ctx);
 
       const gigs = await ctx.db.gig.findMany({
         where: {
+          ...draftsHiddenFrom(isAdmin),
           gigEndTime: {
             lt: now,
           },
@@ -738,9 +755,7 @@ export const gigsRouter = createTRPCRouter({
         ctx.db,
         enriched,
       );
-      return (await isAdminSession(ctx))
-        ? withPosters
-        : redactGigsForPublic(withPosters);
+      return isAdmin ? withPosters : redactGigsForPublic(withPosters);
     }),
 
   /**
@@ -818,9 +833,11 @@ export const gigsRouter = createTRPCRouter({
     // Use UTC time for all comparisons
     const startDate = getTodayRangeStart();
     const endDate = getTodayRangeEnd();
+    const isAdmin = await isAdminSession(ctx);
 
     const todayGigs = await ctx.db.gig.findMany({
       where: {
+        ...draftsHiddenFrom(isAdmin),
         // gigStartTime: {
         //   gte: startDate,
         //   lt: endDate,
@@ -850,9 +867,7 @@ export const gigsRouter = createTRPCRouter({
       enrichedGigs,
     );
 
-    return (await isAdminSession(ctx))
-      ? withPosters
-      : redactGigsForPublic(withPosters);
+    return isAdmin ? withPosters : redactGigsForPublic(withPosters);
   }),
 
   /**
@@ -868,10 +883,15 @@ export const gigsRouter = createTRPCRouter({
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       // The page URL may carry a title slug instead of the cuid.
-      const gigId = await resolveGigId(ctx.db, input.id);
+      const isAdmin = await isAdminSession(ctx);
+      const gigId = await resolveGigId(
+        ctx.db,
+        input.id,
+        draftsHiddenFrom(isAdmin),
+      );
       const gig = gigId
-        ? await ctx.db.gig.findUnique({
-            where: { id: gigId },
+        ? await ctx.db.gig.findFirst({
+            where: { id: gigId, ...draftsHiddenFrom(isAdmin) },
             include: {
               media: {
                 orderBy: [
@@ -902,7 +922,7 @@ export const gigsRouter = createTRPCRouter({
         lineUp: toPublicLineUp(scheduleItems),
       };
 
-      return (await isAdminSession(ctx)) ? result : redactGigForPublic(result);
+      return isAdmin ? result : redactGigForPublic(result);
     }),
 
   /**
@@ -989,8 +1009,13 @@ export const gigsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { descriptionLexical, tagIds, scheduleItems, notifyUserIds, ...rest } =
-        input;
+      const {
+        descriptionLexical,
+        tagIds,
+        scheduleItems,
+        notifyUserIds,
+        ...rest
+      } = input;
       const wantedTagIds = uniqueStrings(tagIds);
       const wantedRecipients = uniqueStrings(notifyUserIds);
 
@@ -1184,7 +1209,9 @@ export const gigsRouter = createTRPCRouter({
       // when the slot they were in went away — a back to back that loses one
       // name keeps the other.
       const removedCreators = [...hadCreatorIds]
-        .filter((creatorProfileId) => !wantedCreatorIds.includes(creatorProfileId))
+        .filter(
+          (creatorProfileId) => !wantedCreatorIds.includes(creatorProfileId),
+        )
         .map((creatorProfileId) => ({
           creatorProfileId,
           handle: existing.scheduleItems
@@ -1541,15 +1568,16 @@ export const gigsRouter = createTRPCRouter({
   getMedia: publicProcedure
     .input(z.object({ gigId: z.string() }))
     .query(async ({ ctx, input }) => {
+      const isAdmin = await isAdminSession(ctx);
       const gig = await ctx.db.gig.findUnique({
         where: { id: input.gigId },
-        select: { mode: true },
+        select: { mode: true, status: true },
       });
 
-      if (
-        gig?.mode === GigMode.TO_BE_ANNOUNCED &&
-        !(await isAdminSession(ctx))
-      ) {
+      const withheld =
+        gig?.mode === GigMode.TO_BE_ANNOUNCED ||
+        gig?.status !== GigStatus.PUBLISHED;
+      if (withheld && !isAdmin) {
         return { featured: [], gallery: [], all: [] };
       }
 

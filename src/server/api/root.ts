@@ -2,6 +2,7 @@ import { crewRouter } from "~/server/api/routers/crew";
 import { contentRouter } from "~/server/api/routers/content";
 import { gigsRouter } from "~/server/api/routers/gigs";
 import { gigTagsRouter } from "~/server/api/routers/gig-tags";
+import { gigImportRouter } from "~/server/api/routers/gig-import";
 import { contactRouter } from "~/server/api/routers/contact";
 import { userRouter } from "~/server/api/routers/user";
 import { invitesRouter } from "~/server/api/routers/invites";
@@ -47,6 +48,8 @@ export const appRouter = createTRPCRouter({
   content: contentRouter,
   gigs: gigsRouter,
   gigTags: gigTagsRouter,
+  /** Reading an Instagram post into a draft gig. */
+  gigImport: gigImportRouter,
   homeGigs: homeGigsRouter,
   homeContent: homeContentRouter,
   contact: contactRouter,

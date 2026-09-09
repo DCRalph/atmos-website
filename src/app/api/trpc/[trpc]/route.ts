@@ -9,6 +9,15 @@ import { createTRPCContext } from "~/server/api/trpc";
  * This wraps the `createTRPCContext` helper and provides the required context for the tRPC API when
  * handling a HTTP request (e.g. when you make requests from Client Components).
  */
+/**
+ * Reading an Instagram post into a gig is the one procedure here that is slow
+ * by nature: a model call with the poster attached, on top of downloading the
+ * image. The platform default cuts it off well before it finishes, and every
+ * other procedure is unaffected by a longer ceiling because they return in
+ * milliseconds either way.
+ */
+export const maxDuration = 300;
+
 const createContext = async (opts: { req: Request; resHeaders: Headers }) => {
   return createTRPCContext({
     headers: opts.req.headers,

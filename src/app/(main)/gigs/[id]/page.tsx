@@ -2,7 +2,7 @@ import { type Metadata } from "next";
 import { db } from "~/server/db";
 import { resolveGigId } from "~/server/gig-lookup";
 import { gigPath } from "~/lib/gig-url";
-import { FileUploadStatus } from "~Prisma/client";
+import { FileUploadStatus, GigStatus } from "~Prisma/client";
 import {
   DEFAULT_OG_IMAGE,
   DESCRIPTION_SHORT,
@@ -58,12 +58,23 @@ export async function generateMetadata({
           subtitle: true,
           shortDescription: true,
           mode: true,
+          status: true,
           posterFileUploadId: true,
         },
       })
     : null;
 
   if (!gig) return { title: "Gig not found", robots: { index: false } };
+
+  // A draft still renders for an admin previewing it, so the page has to exist.
+  // Metadata is cached and served to everyone who hits the URL, so it carries
+  // nothing from the gig itself — not even the title — and is never indexed.
+  if (gig.status !== GigStatus.PUBLISHED) {
+    return {
+      title: "Draft gig",
+      robots: { index: false, follow: false },
+    };
+  }
 
   // A TBA gig keeps its secret: redacted name, site description. The poster
   // stays — the public page shows it as the teaser.
@@ -97,10 +108,6 @@ export async function generateMetadata({
   };
 }
 
-export default function Page({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function Page({ params }: { params: Promise<{ id: string }> }) {
   return <GigPageClient params={params} />;
 }
