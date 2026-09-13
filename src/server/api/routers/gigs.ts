@@ -21,6 +21,7 @@ import {
   type GigMedia,
 } from "~Prisma/client";
 import { toPublicLineUp } from "~/lib/run-sheet/line-up";
+import { AFFILIATED_LEAD_MS } from "~/lib/gig-visibility";
 import { resolveGigId } from "~/server/gig-lookup";
 import { userHasPermission } from "~/server/utils/permissions";
 import type { SerializedEditorState } from "lexical";
@@ -275,8 +276,8 @@ const redactGigsForPublic = <T extends { mode?: GigMode }>(gigs: T[]) =>
  * showing, so it is filtered out in the query rather than redacted afterwards.
  *
  * Admins see drafts, which is how the import wizard previews one before it goes
- * live. Lists want `listVisibleTo` instead; this is for the places that resolve
- * a single gig by id.
+ * live. That preview is the only place on the site an unpublished gig appears,
+ * and it is reached by opening the gig's own URL. Lists use `listVisibleTo`.
  */
 const draftsHiddenFrom = (isAdmin: boolean) =>
   isAdmin ? {} : { status: GigStatus.PUBLISHED };
@@ -303,9 +304,6 @@ const hasNotFinished = (now: Date): Prisma.GigWhereInput => ({
   ],
 });
 
-/** How long before it starts an `AFFILIATED` gig appears on the site. */
-const AFFILIATED_LEAD_MS = 24 * 60 * 60 * 1000;
-
 /**
  * The window an `AFFILIATED` gig is listed in: from a day before it starts
  * until it finishes, and never again. That is the whole mode — a night we are
@@ -323,12 +321,19 @@ const affiliatedInWindow = (now: Date): Prisma.GigWhereInput => ({
 });
 
 /**
- * What the public may see in a list: not a draft, and not an affiliated gig
- * outside its window.
+ * What a list may contain: not a draft, and not an affiliated gig outside its
+ * window.
  *
- * Spread into the `where` of every public list. It nests under `AND` so that it
- * cannot collide with a query's own top-level `OR` — `getUpcoming` and
- * `getPast` both have one, and a second `OR` key would silently replace it.
+ * An admin sees past that, because the site is where they check their own work
+ * — but the rows they get and nobody else does are the ones `gigOffSiteNotice`
+ * puts a banner on, so "why is this here" is answered on the card rather than
+ * left to be mistaken for a gig the public can see. The two must agree: that
+ * function is the same rule in JavaScript, and `gig-visibility.test.ts` holds
+ * them together.
+ *
+ * Spread into the `where` of every list. It nests under `AND` so that it cannot
+ * collide with a query's own top-level `OR` — `getUpcoming` and `getPast` both
+ * have one, and a second `OR` key would silently replace it.
  */
 const listVisibleTo = (isAdmin: boolean, now: Date): Prisma.GigWhereInput =>
   isAdmin
@@ -610,6 +615,12 @@ async function enrichGigsWithFileUploads<T extends { media: GigMedia[] }>(
 }
 
 export const gigsRouter = createTRPCRouter({
+  /**
+   * Every gig, for the admin gigs table and the home page arranger.
+   *
+   * Unlike the lists below this one is not a page on the site, so it carries no
+   * banner and needs none: an admin reading it is already in the admin.
+   */
   getAll: publicProcedure
     .input(
       z

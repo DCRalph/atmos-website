@@ -9,7 +9,8 @@ import Image from "next/image";
 import { api } from "~/trpc/react";
 import { GigPoster } from "~/components/gigs/gig-poster";
 import { gigParam, gigPath } from "~/lib/gig-url";
-import type { GigMode } from "~Prisma/browser";
+import type { GigMode, GigStatus } from "~Prisma/browser";
+import { GigAdminBanner } from "~/components/gigs/gig-admin-banner";
 
 type Gig = {
   id: string;
@@ -17,7 +18,8 @@ type Gig = {
   title: string;
   subtitle: string;
   shortDescription?: string | null;
-  mode?: GigMode;
+  mode: GigMode;
+  status: GigStatus;
   gigEndTime?: Date | null;
   ticketLink?: string | null;
   posterFileUpload?: { url: string } | null;
@@ -56,6 +58,8 @@ export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
       viewport={{ once: true, amount: 0.1 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
     >
+      <GigAdminBanner gig={gig} className="mb-2 rounded" />
+
       {/* Poster - full width on mobile, side on desktop */}
       <Link
         href={gigHref}

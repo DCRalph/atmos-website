@@ -13,6 +13,7 @@ import {
 import {
   ActivityType,
   EventStaffRole,
+  GigStatus,
   Prisma,
   TicketEventStatus,
   TicketEventVisibility,
@@ -961,7 +962,7 @@ export const ticketEventsRouter = createTRPCRouter({
         where: { slug: input.slug },
         include: {
           tiers: { orderBy: { sortOrder: "asc" } },
-          gig: { select: { id: true, title: true } },
+          gig: { select: { id: true, title: true, status: true } },
         },
       });
 
@@ -992,7 +993,7 @@ export const ticketEventsRouter = createTRPCRouter({
         orderBy: { startsAt: "asc" },
         include: {
           tiers: { orderBy: { sortOrder: "asc" } },
-          gig: { select: { id: true, title: true } },
+          gig: { select: { id: true, title: true, status: true } },
         },
       });
 
@@ -1025,7 +1026,9 @@ export const ticketEventsRouter = createTRPCRouter({
 
 type EventWithTiers = Prisma.TicketEventGetPayload<{
   include: { tiers: true };
-}> & { gig?: { id: string; title: string } | null };
+}> & {
+  gig?: { id: string; title: string; status: GigStatus } | null;
+};
 
 /**
  * Public projection of an event.
@@ -1092,7 +1095,13 @@ function toPublicEvent(
     isR18: event.isR18,
     maxTicketsPerOrder: event.maxTicketsPerOrder,
     requireAttendeeNames: event.requireAttendeeNames,
-    gig: event.gig ?? null,
+    // The event has its own name and its own status, so it can be on sale while
+    // the gig it belongs to is still a draft. Linking to that gig would name it
+    // and lead to a page only an admin can open.
+    gig:
+      event.gig?.status === GigStatus.PUBLISHED
+        ? { id: event.gig.id, title: event.gig.title }
+        : null,
     tiers,
     onSale,
     fromPriceCents: cheapest,

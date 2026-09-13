@@ -400,6 +400,7 @@ import {
   GigTicketCta,
   GigTicketPanel,
 } from "~/components/ticketing/gig-tickets";
+import { GigAdminBanner } from "~/components/gigs/gig-admin-banner";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -489,6 +490,8 @@ export default function GigPage({ params }: PageProps) {
       ref={containerRef}
       className="relative min-h-screen bg-black text-white"
     >
+      <GigAdminBanner gig={gig} className="py-1.5 text-xs" />
+
       {/* Hero Section - Full viewport immersive */}
       <section ref={heroRef} className="relative h-[90vh] overflow-hidden">
         {/* Background Poster with Parallax */}

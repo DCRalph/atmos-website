@@ -9,6 +9,7 @@ import { useCallback, useEffect } from "react";
 import { api, type RouterOutputs } from "~/trpc/react";
 import Link from "next/link";
 import { GigPoster } from "~/components/gigs/gig-poster";
+import { GigAdminBanner } from "~/components/gigs/gig-admin-banner";
 import { gigParam, gigPath } from "~/lib/gig-url";
 
 type Gig = RouterOutputs["gigs"]["getToday"][number];
@@ -52,6 +53,8 @@ export function PastGigCard({ gig, upcomming = false }: PastGigCardProps) {
         })
       }
     >
+      <GigAdminBanner gig={gig} />
+
       <GigPoster
         posterUrl={gig.posterFileUpload?.url}
         title={gig.title}

@@ -6,6 +6,7 @@ import { db } from "~/server/db";
 import {
   APPEARANCE_ORDER,
   APPEARANCE_SELECT,
+  APPEARANCE_WHERE,
   toGigAttributions,
 } from "~/server/creator-appearances";
 import { auth } from "~/server/auth";
@@ -37,6 +38,7 @@ async function loadProfile(handle: string) {
       socials: { orderBy: { sortOrder: "asc" } },
       themeRef: true,
       setAppearances: {
+        where: APPEARANCE_WHERE,
         orderBy: APPEARANCE_ORDER,
         select: APPEARANCE_SELECT,
       },

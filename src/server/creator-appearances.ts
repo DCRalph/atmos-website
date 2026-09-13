@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { Prisma } from "~Prisma/client";
+import { GigStatus, type Prisma } from "~Prisma/client";
 
 /**
  * The gigs an artist has been on.
@@ -15,6 +15,15 @@ import type { Prisma } from "~Prisma/client";
  * Columns are named rather than included: a run sheet row also carries set
  * times and internal notes, and every caller of this is a public page.
  */
+
+/**
+ * Credits are only ever read on a public page, so an unpublished gig has no
+ * business being one. Without this an artist's profile named a draft — title,
+ * venue and date — before anybody had decided to announce it.
+ */
+export const APPEARANCE_WHERE = {
+  item: { gig: { status: GigStatus.PUBLISHED } },
+} satisfies Prisma.GigSetArtistWhereInput;
 
 export const APPEARANCE_SELECT = {
   id: true,

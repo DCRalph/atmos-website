@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   APPEARANCE_ORDER,
   APPEARANCE_SELECT,
+  APPEARANCE_WHERE,
   toGigAttributions,
 } from "~/server/creator-appearances";
 import {
@@ -183,6 +184,7 @@ export const creatorProfilesRouter = createTRPCRouter({
             orderBy: { sortOrder: "asc" },
           },
           setAppearances: {
+            where: APPEARANCE_WHERE,
             orderBy: APPEARANCE_ORDER,
             select: APPEARANCE_SELECT,
           },
