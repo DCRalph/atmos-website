@@ -1,4 +1,4 @@
-import { TICKET_TOKEN_PREFIX } from "~/lib/ticketing/qr-token";
+import { TOKEN_PREFIXES } from "~/lib/ticketing/qr-token";
 
 /**
  * Takes a ticket token out of the address bar the instant the page is parsed.
@@ -21,14 +21,18 @@ import { TICKET_TOKEN_PREFIX } from "~/lib/ticketing/qr-token";
  * fragment on any route is one we would rather drop than keep.
  */
 
-const MARKER = JSON.stringify(`#${TICKET_TOKEN_PREFIX}.`);
+// A ticket's token and a lifetime pass's both hang off a page as a fragment,
+// so both are dropped.
+const MARKERS = JSON.stringify(TOKEN_PREFIXES.map((prefix) => `#${prefix}.`));
 
 // `replaceState` rather than `pushState` so the token is not one Back press
 // away, and the path and query are preserved untouched — a private event's
 // `?k=` key has to survive this.
 const SCRIPT = `(function(){try{
-if(window.location.hash.indexOf(${MARKER})!==0)return;
+var h=window.location.hash,m=${MARKERS},i;
+for(i=0;i<m.length;i++){if(h.indexOf(m[i])===0){
 window.history.replaceState(window.history.state,"",window.location.pathname+window.location.search);
+return;}}
 }catch(e){}})();`;
 
 export function StripTicketHash() {

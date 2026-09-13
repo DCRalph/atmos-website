@@ -70,6 +70,7 @@ function themeKey(
   intensity: number,
   badge: StripBadge | null,
   title: string | null,
+  titleLabel: string,
 ): string {
   return [
     theme.stripStyle,
@@ -80,6 +81,7 @@ function themeKey(
     intensity.toFixed(2),
     badge ? `${badge.text}:${badge.background}:${badge.foreground}` : "-",
     title ?? "-",
+    titleLabel,
   ].join("|");
 }
 
@@ -338,11 +340,13 @@ async function fitTitle({
 async function renderTitleBlock(
   theme: PassTheme,
   title: string,
+  /** The small caps above the title — "EVENT" on a ticket. */
+  titleLabel: string,
   box: { x: number; y: number; width: number; height: number },
   stripHeight: number,
 ): Promise<OverlayOptions[] | null> {
   const label = await renderText({
-    text: "EVENT",
+    text: titleLabel,
     colour: theme.labelHex,
     sizePx: Math.max(6, Math.round(stripHeight * LABEL_SIZE_RATIO)),
     letterSpacing: LABEL_TRACKING,
@@ -445,6 +449,7 @@ async function renderStrip(
   intensity: number,
   badge: StripBadge | null,
   title: string | null,
+  titleLabel: string,
   width: number,
   height: number,
 ): Promise<{ image: Buffer; titleDrawn: boolean }> {
@@ -468,7 +473,7 @@ async function renderStrip(
     // Wallet draw the name over the band than to squeeze it into nothing.
     const block =
       box.width >= width * 0.35
-        ? await renderTitleBlock(theme, title, box, height)
+        ? await renderTitleBlock(theme, title, titleLabel, box, height)
         : null;
     if (block) {
       overlays.push(...block);
@@ -496,8 +501,13 @@ export async function getPassImages(
   intensity = 0,
   badge: StripBadge | null = null,
   title: string | null = null,
+  /**
+   * What the band calls the title. "EVENT" for a ticket; a lifetime pass sets
+   * the holder's name there instead, under a label that says what it is.
+   */
+  titleLabel = "EVENT",
 ): Promise<PassArtwork> {
-  const key = themeKey(theme, intensity, badge, title);
+  const key = themeKey(theme, intensity, badge, title, titleLabel);
   const hit = themedCache.get(key);
   if (hit) return hit;
 
@@ -507,9 +517,9 @@ export async function getPassImages(
   // upscaled, so the hatch and bar edges stay hard on a 3x screen.
   const render = (wanted: string | null) =>
     Promise.all([
-      renderStrip(theme, intensity, badge, wanted, 375, 98),
-      renderStrip(theme, intensity, badge, wanted, 750, 196),
-      renderStrip(theme, intensity, badge, wanted, 1125, 294),
+      renderStrip(theme, intensity, badge, wanted, titleLabel, 375, 98),
+      renderStrip(theme, intensity, badge, wanted, titleLabel, 750, 196),
+      renderStrip(theme, intensity, badge, wanted, titleLabel, 1125, 294),
     ]);
 
   // A themeless band would be a black bar over the title rather than no band at

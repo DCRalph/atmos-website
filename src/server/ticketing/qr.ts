@@ -3,8 +3,11 @@ import "server-only";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 import { env } from "~/env";
-import { TICKET_TOKEN_PREFIX } from "~/lib/ticketing/qr-token";
-import { eventUrl } from "~/server/ticketing/urls";
+import {
+  LIFETIME_TOKEN_PREFIX,
+  TICKET_TOKEN_PREFIX,
+} from "~/lib/ticketing/qr-token";
+import { eventUrl, eventsUrl } from "~/server/ticketing/urls";
 
 /**
  * Ticket QR payloads.
@@ -35,6 +38,12 @@ import { eventUrl } from "~/server/ticketing/urls";
  *
  * `qrVersion` lets us invalidate an issued code (reissue, transfer) without
  * changing the ticket's identity.
+ *
+ * A lifetime pass carries the same construction under its own prefix:
+ * `atl1.<lifetimeId>.<qrVersion>.<signature>`, hung off the events listing
+ * rather than one event's page, because the pass is for all of them. The
+ * signature is keyed over a different domain string, so a ticket's signature
+ * can never be presented as a pass's or the other way round.
  */
 
 const PREFIX = TICKET_TOKEN_PREFIX;
@@ -54,6 +63,18 @@ function qrSigningKey(): string {
 function sign(ticketId: string, qrVersion: number, qrSecret: string): string {
   return createHmac("sha256", qrSigningKey())
     .update(`${ticketId}.${qrVersion}.${qrSecret}`)
+    .digest()
+    .subarray(0, SIG_BYTES)
+    .toString("base64url");
+}
+
+function signLifetime(
+  lifetimeId: string,
+  qrVersion: number,
+  qrSecret: string,
+): string {
+  return createHmac("sha256", qrSigningKey())
+    .update(`lifetime.${lifetimeId}.${qrVersion}.${qrSecret}`)
     .digest()
     .subarray(0, SIG_BYTES)
     .toString("base64url");
@@ -88,11 +109,45 @@ export function buildTicketQrPayload(
   return `${eventUrl(eventSlug)}#${buildTicketToken(ticket)}`;
 }
 
+/** The credential on a lifetime pass. */
+export function buildLifetimeToken(lifetime: {
+  id: string;
+  qrVersion: number;
+  qrSecret: string;
+}): string {
+  const signature = signLifetime(
+    lifetime.id,
+    lifetime.qrVersion,
+    lifetime.qrSecret,
+  );
+  return `${LIFETIME_TOKEN_PREFIX}.${lifetime.id}.${lifetime.qrVersion}.${signature}`;
+}
+
+/** What goes in a lifetime pass's QR: the token as a fragment on `/events`. */
+export function buildLifetimeQrPayload(lifetime: {
+  id: string;
+  qrVersion: number;
+  qrSecret: string;
+}): string {
+  return `${eventsUrl()}#${buildLifetimeToken(lifetime)}`;
+}
+
 export type ParsedTicketToken = {
   ticketId: string;
   qrVersion: number;
   signature: string;
 };
+
+export type ParsedLifetimeToken = {
+  lifetimeId: string;
+  qrVersion: number;
+  signature: string;
+};
+
+/** Whichever kind of credential the scanner was handed. */
+export type ParsedToken =
+  | ({ kind: "ticket" } & ParsedTicketToken)
+  | ({ kind: "lifetime" } & ParsedLifetimeToken);
 
 /**
  * Take the token out of whatever the scanner handed us.
@@ -115,20 +170,37 @@ function stripToToken(raw: string): string {
  * a smudge that decoded to garbage.
  */
 export function parseTicketToken(raw: string): ParsedTicketToken | null {
+  const parsed = parseToken(raw);
+  if (parsed?.kind !== "ticket") return null;
+  return {
+    ticketId: parsed.ticketId,
+    qrVersion: parsed.qrVersion,
+    signature: parsed.signature,
+  };
+}
+
+/**
+ * The same cheap parse, for either kind of credential. `parseTicketToken`
+ * stays for the callers that only ever mean a ticket; the door goes through
+ * this so one camera reads both.
+ */
+export function parseToken(raw: string): ParsedToken | null {
   const parts = stripToToken(raw).split(".");
   if (parts.length !== 4) return null;
 
-  const [prefix, ticketId, versionRaw, signature] = parts;
-  if (prefix !== PREFIX) return null;
-  if (!ticketId || !/^[a-z0-9]{20,40}$/i.test(ticketId)) return null;
+  const [prefix, id, versionRaw, signature] = parts;
+  if (!id || !/^[a-z0-9]{20,40}$/i.test(id)) return null;
   if (!versionRaw || !/^\d{1,4}$/.test(versionRaw)) return null;
   if (!signature || !/^[A-Za-z0-9_-]{20,32}$/.test(signature)) return null;
 
-  return {
-    ticketId,
-    qrVersion: Number(versionRaw),
-    signature,
-  };
+  const qrVersion = Number(versionRaw);
+  if (prefix === PREFIX) {
+    return { kind: "ticket", ticketId: id, qrVersion, signature };
+  }
+  if (prefix === LIFETIME_TOKEN_PREFIX) {
+    return { kind: "lifetime", lifetimeId: id, qrVersion, signature };
+  }
+  return null;
 }
 
 /**
@@ -144,6 +216,23 @@ export function verifyTicketToken(
 
   const expected = Buffer.from(
     sign(ticket.id, ticket.qrVersion, ticket.qrSecret),
+    "utf8",
+  );
+  const provided = Buffer.from(parsed.signature, "utf8");
+  if (expected.length !== provided.length) return false;
+  return timingSafeEqual(expected, provided);
+}
+
+/** Constant-time check of a lifetime token against the pass it names. */
+export function verifyLifetimeToken(
+  parsed: ParsedLifetimeToken,
+  lifetime: { id: string; qrVersion: number; qrSecret: string },
+): boolean {
+  if (parsed.lifetimeId !== lifetime.id) return false;
+  if (parsed.qrVersion !== lifetime.qrVersion) return false;
+
+  const expected = Buffer.from(
+    signLifetime(lifetime.id, lifetime.qrVersion, lifetime.qrSecret),
     "utf8",
   );
   const provided = Buffer.from(parsed.signature, "utf8");

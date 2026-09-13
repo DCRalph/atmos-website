@@ -64,6 +64,22 @@ export const DEFAULT_PASS_THEME: PassTheme = {
   labelHex: "#A0A0AA",
 };
 
+/**
+ * The lifetime pass, which no event theme touches.
+ *
+ * Gold bars on black, so it reads as a different object from every event
+ * ticket in the same wallet — those run the event's own theme, purple hatch by
+ * default. The band carries the holder's name rather than an event, because
+ * there is no event: this pass is for all of them.
+ */
+export const LIFETIME_PASS_THEME: PassTheme = {
+  stripStyle: "BARS",
+  accentHex: "#C9A227",
+  backgroundHex: "#0B0B0C",
+  foregroundHex: "#FFFFFF",
+  labelHex: "#C9A227",
+};
+
 /** `#abc` and `#aabbcc`, the two forms the colour inputs can produce. */
 export const HEX_COLOUR_PATTERN = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 

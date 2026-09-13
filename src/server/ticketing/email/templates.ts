@@ -427,6 +427,85 @@ ${handouts}
   };
 }
 
+export type LifetimeEmailInput = {
+  holderName: string;
+  number: string;
+  accessLabel: string;
+  accessBadgeBg: string;
+  accessBadgeFg: string;
+  qrCid: string;
+  lifetimeUrl: string;
+  appleWalletUrl?: string;
+  appleWalletBadgeCid?: string;
+  supportEmail: string | null;
+};
+
+/**
+ * A lifetime pass, delivered.
+ *
+ * No date, no venue, no receipt: there is no event and nothing was paid. What
+ * it does carry is the same QR card the ticket emails use, so the door scans
+ * it the same way, and the line that matters — this is in your name, for
+ * every Atmos event, and it is not for passing on.
+ */
+export function renderLifetimeEmail(input: LifetimeEmailInput): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const walletRow =
+    input.appleWalletUrl && input.appleWalletBadgeCid
+      ? appleWalletBadge(input.appleWalletUrl, input.appleWalletBadgeCid)
+      : "";
+
+  const body = `
+<tr><td style="padding:0 0 18px;">
+  <div style="font-size:30px;line-height:1.2;font-weight:800;letter-spacing:-0.02em;color:${TEXT};margin-bottom:14px;">Your Atmos lifetime pass</div>
+  <div style="font-size:15px;color:${MUTED};line-height:1.6;">This gets you into every Atmos event. Show the code at the door, or add it to your wallet so it's always there.</div>
+</td></tr>
+<tr><td style="padding:0 0 14px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CARD};border:2px solid #4a3b12;">
+<tr><td style="padding:20px;text-align:center;">
+  <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.14em;color:#C9A227;margin-bottom:12px;">Lifetime pass</div>
+  <div style="background:#ffffff;padding:12px;display:inline-block;">
+    <img src="cid:${input.qrCid}" width="220" height="220" alt="Entry QR code for lifetime pass ${escapeHtml(input.number)}" style="display:block;width:220px;height:220px;">
+  </div>
+  <div style="margin-top:10px;display:inline-block;padding:5px 12px;background:${input.accessBadgeBg};color:${input.accessBadgeFg};font-size:12px;font-weight:700;letter-spacing:0.08em;">${escapeHtml(input.accessLabel.toUpperCase())}</div>
+  <div style="margin-top:14px;font-size:18px;font-weight:700;color:${TEXT};">${escapeHtml(input.holderName)}</div>
+  <div style="margin-top:4px;font-size:13px;color:${MUTED};">This pass is in your name — bring photo ID.</div>
+  <div style="margin-top:8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;color:${MUTED};">${escapeHtml(input.number)}</div>
+  ${walletRow ? `<div style="margin-top:14px;">${walletRow}</div>` : ""}
+</td></tr>
+</table>
+</td></tr>
+<tr><td style="padding:4px 0 0;">
+  <a href="${escapeHtml(input.lifetimeUrl)}" style="display:inline-block;padding:12px 18px;border:2px solid ${BORDER};color:${TEXT};text-decoration:none;font-size:14px;font-weight:600;">View your pass</a>
+</td></tr>`;
+
+  const support = input.supportEmail
+    ? `Questions? <a href="mailto:${input.supportEmail}" style="color:${MUTED};">${escapeHtml(input.supportEmail)}</a><br>`
+    : "";
+
+  const footer = `${support}This pass is in your name and can't be transferred — the door checks it against your ID. One entry per event.`;
+
+  const text = [
+    "Your Atmos lifetime pass",
+    "",
+    "This gets you into every Atmos event. Show the code at the door, or add it to your wallet.",
+    "",
+    `${input.number} (${input.accessLabel})`,
+    `In the name of ${input.holderName} — bring photo ID.`,
+    "",
+    `Your pass: ${input.lifetimeUrl}`,
+  ].join("\n");
+
+  return {
+    subject: "Your Atmos lifetime pass",
+    html: layout("Your Atmos lifetime pass", body, footer),
+    text,
+  };
+}
+
 export function renderRefundEmail({
   eventName,
   orderNumber,
@@ -532,7 +611,14 @@ export function renderDoorReceiptEmail({
 
   const rows: [string, string][] = [
     ["Amount", formatNZD(amountCents)],
-    ["Status", approved ? "Approved" : outcome === "DECLINED" ? "Declined" : "Not completed"],
+    [
+      "Status",
+      approved
+        ? "Approved"
+        : outcome === "DECLINED"
+          ? "Declined"
+          : "Not completed",
+    ],
     ...(card ? ([["Card", card]] as [string, string][]) : []),
     ...(orderNumber ? ([["Order", orderNumber]] as [string, string][]) : []),
     ["When", takenAt.toLocaleString("en-NZ", { timeZone: "Pacific/Auckland" })],
@@ -667,7 +753,11 @@ export function renderTapToPayLaunchEmail({
 
   return {
     subject: "Tap to Pay on iPhone is now available in Atmos",
-    html: layout("Tap to Pay on iPhone is now available in Atmos", body, footer),
+    html: layout(
+      "Tap to Pay on iPhone is now available in Atmos",
+      body,
+      footer,
+    ),
     text,
   };
 }

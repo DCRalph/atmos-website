@@ -97,17 +97,26 @@ export function isElevated(value: string | null | undefined): boolean {
   return Boolean(value) && value !== "GENERAL";
 }
 
+/** What a lifetime pass is called wherever a tier name is printed. */
+export const LIFETIME_TYPE_NAME = "Lifetime pass";
+
 /**
  * What to call a ticket wherever a tier name used to be printed.
  *
  * A comp is minted rather than drawn, so it belongs to no tier and has no tier
  * name to show. It falls back to what it gets you past — an AAA comp reads
  * "Access all areas" instead of leaving a blank on a door screen.
+ *
+ * A lifetime pass turning up at an event is a minted ticket too, and it says
+ * so: the level is already on the badge beside it, and "Lifetime pass" is the
+ * fact the door actually wants to read.
  */
 export function ticketTypeName(ticket: {
   tier?: { name: string } | null;
   accessLevel: string;
+  lifetimeTicketId?: string | null;
 }): string {
+  if (ticket.lifetimeTicketId) return LIFETIME_TYPE_NAME;
   return ticket.tier?.name ?? accessLevel(ticket.accessLevel).label;
 }
 

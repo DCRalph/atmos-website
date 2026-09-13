@@ -87,6 +87,31 @@ export async function generateOrderNumbers(count: number): Promise<string[]> {
   return [...chosen];
 }
 
+/**
+ * A lifetime pass number, `LT-4F7K2X`.
+ *
+ * Its own prefix so nobody at a door mistakes it for an order, and so the
+ * manual-entry box can be handed either kind and look in the right place.
+ */
+const LIFETIME_PREFIX = "LT";
+
+export async function generateLifetimeNumber(): Promise<string> {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const candidate = `${LIFETIME_PREFIX}-${randomCode(ORDER_NUMBER_LENGTH)}`;
+    const existing = await db.lifetimeTicket.findUnique({
+      where: { number: candidate },
+      select: { id: true },
+    });
+    if (!existing) return candidate;
+  }
+  return `${LIFETIME_PREFIX}-${randomCode(ORDER_NUMBER_LENGTH + 4)}`;
+}
+
+/** Whether a typed number is shaped like a lifetime pass rather than a ticket. */
+export function looksLikeLifetimeNumber(value: string): boolean {
+  return value.trim().toUpperCase().startsWith(`${LIFETIME_PREFIX}-`);
+}
+
 /** `ATN-4F7K2X` + seat 3 -> `ATN-4F7K2X-03`. */
 export function buildTicketNumber(orderNumber: string, index: number): string {
   return `${orderNumber}-${String(index + 1).padStart(2, "0")}`;
@@ -180,6 +205,53 @@ export function verifyTicketAccessToken(
 
 function ticketSignature(ticketId: string, version: number): string {
   return sign(`ticket-access.${ticketId}.${version}`);
+}
+
+/**
+ * The token in a lifetime pass holder's `/lifetime/[token]` link.
+ *
+ * Same derivation again, over the pass. Bumping `accessTokenVersion` kills a
+ * link that was sent to the wrong address without touching the QR already in
+ * somebody's wallet.
+ */
+export function buildLifetimeAccessToken(
+  lifetimeId: string,
+  accessTokenVersion: number,
+): string {
+  return `${lifetimeId}.${lifetimeSignature(lifetimeId, accessTokenVersion)}`;
+}
+
+export type ParsedLifetimeAccessToken = {
+  lifetimeId: string;
+  signature: string;
+};
+
+export function parseLifetimeAccessToken(
+  raw: string,
+): ParsedLifetimeAccessToken | null {
+  const parts = raw.trim().split(".");
+  if (parts.length !== 2) return null;
+  const [lifetimeId, signature] = parts;
+  if (!lifetimeId || !/^[a-z0-9]{20,40}$/i.test(lifetimeId)) return null;
+  if (!signature || !/^[A-Za-z0-9_-]{20,64}$/.test(signature)) return null;
+  return { lifetimeId, signature };
+}
+
+export function verifyLifetimeAccessToken(
+  parsed: ParsedLifetimeAccessToken,
+  lifetime: { id: string; accessTokenVersion: number },
+): boolean {
+  const expected = Buffer.from(
+    lifetimeSignature(lifetime.id, lifetime.accessTokenVersion),
+    "utf8",
+  );
+  const provided = Buffer.from(parsed.signature, "utf8");
+  if (expected.length !== provided.length) return false;
+  return timingSafeEqual(expected, provided);
+}
+
+function lifetimeSignature(lifetimeId: string, version: number): string {
+  return sign(`lifetime-access.${lifetimeId}.${version}`);
 }
 
 function sign(payload: string): string {

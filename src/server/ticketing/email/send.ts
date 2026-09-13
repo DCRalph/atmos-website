@@ -2,13 +2,21 @@ import "server-only";
 
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { TicketEmailType, TicketStatus } from "~Prisma/client";
+import {
+  LifetimeTicketStatus,
+  TicketEmailType,
+  TicketStatus,
+} from "~Prisma/client";
 import { db } from "~/server/db";
 import { isAppleWalletConfigured } from "~/server/wallet/apple-config";
 import { isGoogleWalletConfigured } from "~/server/wallet/google-config";
-import { buildTicketQrPayload } from "~/server/ticketing/qr";
+import {
+  buildLifetimeQrPayload,
+  buildTicketQrPayload,
+} from "~/server/ticketing/qr";
 import { renderQrPng } from "~/server/ticketing/qr-image";
 import { orderAccessToken, ticketAccessToken } from "~/server/ticketing/orders";
+import { lifetimeAccessToken } from "~/server/ticketing/lifetime";
 import { getTicketingSettings } from "~/server/ticketing/settings";
 import {
   accessLevel,
@@ -18,6 +26,8 @@ import {
 import {
   applePassUrl,
   googleWalletSaveUrl,
+  lifetimePassUrl,
+  lifetimeUrl,
   ticketDetailsUrl,
   ticketUrl,
   ticketsUrl,
@@ -27,6 +37,7 @@ import { sendTransactional } from "./provider";
 import {
   renderCompEmail,
   renderDoorReceiptEmail,
+  renderLifetimeEmail,
   renderRefundEmail,
   renderTicketEmail,
   type EmailTicket,
@@ -300,6 +311,84 @@ export async function sendCompTicketEmail({
   return { ok: result.ok, error: result.error };
 }
 
+/**
+ * A lifetime pass to its holder.
+ *
+ * Nothing on an order to log against — a pass has no order — so the log row
+ * carries the address alone. A revoked pass is never sent: the email would
+ * show a code the door refuses.
+ */
+export async function sendLifetimeEmail({
+  lifetimeId,
+  overrideEmail,
+}: {
+  lifetimeId: string;
+  overrideEmail?: string;
+}): Promise<{ ok: boolean; error?: string; sentTo?: string }> {
+  const lifetime = await db.lifetimeTicket.findUnique({
+    where: { id: lifetimeId },
+  });
+  if (!lifetime) return { ok: false, error: "Pass not found" };
+  if (lifetime.status !== LifetimeTicketStatus.ACTIVE) {
+    return { ok: false, error: "That pass has been revoked" };
+  }
+
+  const to = overrideEmail ?? lifetime.holderEmail;
+  if (!to) return { ok: false, error: "This pass has no email address" };
+
+  const settings = await getTicketingSettings();
+  const token = lifetimeAccessToken(lifetime);
+  const cid = "lifetime-pass";
+  const appleWalletConfigured = isAppleWalletConfigured();
+  const attachments = [
+    {
+      filename: `${lifetime.number}.png`,
+      content: await renderQrPng(buildLifetimeQrPayload(lifetime)),
+      cid,
+      contentType: "image/png",
+    },
+  ];
+  if (appleWalletConfigured) {
+    attachments.push(await appleWalletBadgeAttachment());
+  }
+  const level = accessLevel(lifetime.accessLevel);
+
+  const { subject, html, text } = renderLifetimeEmail({
+    holderName: lifetime.holderName,
+    number: lifetime.number,
+    accessLabel: level.label,
+    accessBadgeBg: level.badgeBg,
+    accessBadgeFg: level.badgeFg,
+    qrCid: cid,
+    lifetimeUrl: lifetimeUrl(token),
+    appleWalletUrl: appleWalletConfigured
+      ? lifetimePassUrl(lifetime.id, token)
+      : undefined,
+    appleWalletBadgeCid: appleWalletConfigured
+      ? APPLE_WALLET_BADGE_CID
+      : undefined,
+    supportEmail: settings.supportEmail,
+  });
+
+  const result = await sendTransactional({
+    to,
+    subject,
+    html,
+    text,
+    attachments,
+    replyTo: settings.supportEmail ?? undefined,
+  });
+
+  await logEmail({
+    orderId: null,
+    type: TicketEmailType.LIFETIME,
+    toEmail: to,
+    result,
+  });
+
+  return { ok: result.ok, error: result.error, sentTo: to };
+}
+
 export async function sendRefundEmail({
   orderId,
   amountCents,
@@ -354,7 +443,8 @@ async function logEmail({
   toEmail,
   result,
 }: {
-  orderId: string;
+  /** Null for mail that has no order behind it — a lifetime pass. */
+  orderId: string | null;
   type: TicketEmailType;
   toEmail: string;
   result: { ok: boolean; messageId?: string; error?: string };

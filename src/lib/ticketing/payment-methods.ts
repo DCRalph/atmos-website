@@ -28,6 +28,7 @@ export const PAYMENT_METHODS = [
   "COMP",
   "FREE",
   "ADMIN",
+  "LIFETIME",
 ] as const satisfies readonly PaymentMethodKind[];
 
 const LABELS: Record<PaymentMethodKind, string> = {
@@ -38,6 +39,7 @@ const LABELS: Record<PaymentMethodKind, string> = {
   COMP: "Comp",
   FREE: "Free ticket",
   ADMIN: "Admin link",
+  LIFETIME: "Lifetime pass",
 };
 
 /** Short form, for a table column or a chip that shares its line. */
@@ -49,6 +51,7 @@ const SHORT: Record<PaymentMethodKind, string> = {
   COMP: "Comp",
   FREE: "Free",
   ADMIN: "Admin",
+  LIFETIME: "Lifetime",
 };
 
 /**

@@ -89,7 +89,11 @@ export const ticketAnalyticsRouter = createTRPCRouter({
             eventId: event.id,
             status: { in: paidStatuses },
             paymentMethod: {
-              notIn: [PaymentMethodKind.COMP, PaymentMethodKind.ADMIN],
+              notIn: [
+                PaymentMethodKind.COMP,
+                PaymentMethodKind.ADMIN,
+                PaymentMethodKind.LIFETIME,
+              ],
             },
           },
         }),

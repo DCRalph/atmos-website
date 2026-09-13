@@ -1181,6 +1181,10 @@ enum ActivityType {
   TICKET_COMPED
   TICKET_HANDOUT_SENT
   TICKET_LINK_BATCH_CREATED
+  LIFETIME_TICKET_CREATED
+  LIFETIME_TICKET_UPDATED
+  LIFETIME_TICKET_REVOKED
+  LIFETIME_TICKET_DELETED
   DISCOUNT_CODE_CREATED
   DISCOUNT_CODE_UPDATED
   DISCOUNT_CODE_DELETED
@@ -1366,8 +1370,9 @@ model AccessLevel {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tiers   TicketTier[]
-  tickets Ticket[]
+  tiers           TicketTier[]
+  tickets         Ticket[]
+  lifetimeTickets LifetimeTicket[]
 
   @@index([archived, rank])
   @@map("access_level")
@@ -1417,6 +1422,9 @@ enum PaymentMethodKind {
   /// Admin-issued bearer links drawn from a tier. Zero-value, not a sale and
   /// not a comp — they consume allocation the same way a paid ticket does.
   ADMIN
+  /// The per-event order behind a lifetime pass, minted the first time the
+  /// pass is scanned at that event. Zero-value, drawn from no tier.
+  LIFETIME
 }
 
 enum TicketEmailType {
@@ -1428,6 +1436,7 @@ enum TicketEmailType {
   APPROVAL_REQUIRED
   COMP
   HANDOUT
+  LIFETIME
 }
 
 enum EventStaffRole {
@@ -1680,6 +1689,13 @@ model Ticket {
   linkBatchId String?
   linkBatch   TicketLinkBatch? @relation(fields: [linkBatchId], references: [id], onDelete: SetNull)
 
+  /// Set when this ticket is a lifetime pass turning up at one event. Minted
+  /// on the pass's first scan at that event, so the door, the headcount and
+  /// the scan log all see an ordinary ticket — see `LifetimeTicket`.
+  lifetimeTicketId String?
+  lifetimeTicket   LifetimeTicket? @relation(fields: [lifetimeTicketId], references: [id], onDelete: SetNull)
+
+  @@unique([lifetimeTicketId, eventId])
   @@index([eventId, status])
   @@index([orderId])
   @@index([tierId])
@@ -1687,6 +1703,60 @@ model Ticket {
   @@index([hostTicketId])
   @@index([linkBatchId])
   @@map("ticket")
+}
+
+enum LifetimeTicketStatus {
+  ACTIVE
+  REVOKED
+}
+
+/// A pass that gets one named person into every Atmos event.
+///
+/// Not a `Ticket`: a ticket belongs to one event and one order, and a lifetime
+/// pass belongs to neither. Instead the pass carries its own signed QR, and
+/// the first time it is scanned at an event a real `Ticket` is minted for that
+/// event and linked back here (`Ticket.lifetimeTicketId`). From then on that
+/// night's admission, re-entry, refusal and headcount are the ordinary ticket
+/// machinery — nothing on the door has a second set of rules to get wrong, and
+/// the pass's usage log is simply the scans of the tickets it minted.
+///
+/// The level is read at the moment each event ticket is minted, so an upgrade
+/// in admin takes effect at the next event rather than rewriting history.
+model LifetimeTicket {
+  id String @id @default(cuid())
+  /// LT-4F7K2X — read aloud and typed into the manual-entry box like any
+  /// other ticket number, so the same unambiguous alphabet.
+  number String @unique
+
+  holderName  String
+  holderEmail String?
+
+  accessLevel String      @default("GENERAL")
+  level       AccessLevel @relation(fields: [accessLevel], references: [code], onUpdate: Cascade)
+
+  notes String?
+
+  status       LifetimeTicketStatus @default(ACTIVE)
+  revokedAt    DateTime?
+  revokeReason String?
+
+  /// Signed into the QR alongside the server secret, exactly as on a ticket.
+  qrSecret  String
+  qrVersion Int    @default(1)
+
+  /// Behind the holder's `/lifetime/[token]` link. Bumping it revokes a link
+  /// already sent without touching the QR in their wallet.
+  accessTokenVersion Int @default(1)
+
+  createdByUserId String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  /// One per event the pass has been used at.
+  tickets Ticket[]
+
+  @@index([status, createdAt])
+  @@map("lifetime_ticket")
 }
 
 /// A set of unnamed, immediately usable ticket links drawn from a tier.
