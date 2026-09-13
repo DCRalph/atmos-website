@@ -5,7 +5,12 @@ import {
   publicProcedure,
   adminProcedure,
 } from "~/server/api/trpc";
-import { FileUploadStatus, GigStatus, HomeGigSection } from "~Prisma/client";
+import {
+  FileUploadStatus,
+  GigMode,
+  GigStatus,
+  HomeGigSection,
+} from "~Prisma/client";
 
 const HOME_RECENT_PAST_FEATURED_COUNT = 1;
 const HOME_RECENT_PAST_LIST_COUNT = 2;
@@ -19,8 +24,16 @@ const isDefined = <T>(value: T | null | undefined): value is T =>
  * every `where` below, including the placement lookups: an admin can pin a gig
  * to the home page while it is still a draft, and it must not appear until it
  * is published.
+ *
+ * Affiliated gigs are excluded for the same reason they are absent from the
+ * past gigs page — the mode exists so that somebody else's night leaves the
+ * site once it is over — and every gig read here is a past one. Pinning one is
+ * allowed and simply has no effect, exactly as pinning a draft does.
  */
-const PUBLISHED_ONLY = { status: GigStatus.PUBLISHED } as const;
+const HOME_ELIGIBLE = {
+  status: GigStatus.PUBLISHED,
+  mode: { not: GigMode.AFFILIATED },
+} as const;
 
 type PosterInfo = { id: string; url: string; name: string; mimeType: string };
 
@@ -116,7 +129,7 @@ export const homeGigsRouter = createTRPCRouter({
     const gigsFromPlacements = placementIds.length
       ? await ctx.db.gig.findMany({
           where: {
-            ...PUBLISHED_ONLY,
+            ...HOME_ELIGIBLE,
             id: { in: placementIds },
             gigEndTime: { lt: now },
           },
@@ -156,7 +169,7 @@ export const homeGigsRouter = createTRPCRouter({
     // If still no featured, fall back to latest past gig.
     if (!featuredGig) {
       const fallbackFeatured = await ctx.db.gig.findFirst({
-        where: { ...PUBLISHED_ONLY, gigEndTime: { lt: now } },
+        where: { ...HOME_ELIGIBLE, gigEndTime: { lt: now } },
         orderBy: { gigEndTime: "desc" },
         include: {
           media: {
@@ -187,7 +200,7 @@ export const homeGigsRouter = createTRPCRouter({
     if (missingPastCount > 0) {
       const fallbackPast = await ctx.db.gig.findMany({
         where: {
-          ...PUBLISHED_ONLY,
+          ...HOME_ELIGIBLE,
           gigEndTime: { lt: now },
           id: { notIn: Array.from(selectedIds) },
         },

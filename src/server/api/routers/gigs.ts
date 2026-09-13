@@ -274,8 +274,9 @@ const redactGigsForPublic = <T extends { mode?: GigMode }>(gigs: T[]) =>
  * with its details withheld, a draft is unfinished work and has nothing worth
  * showing, so it is filtered out in the query rather than redacted afterwards.
  *
- * Spread into the `where` of every public read. Admins see drafts, which is how
- * the import wizard previews one before it goes live.
+ * Admins see drafts, which is how the import wizard previews one before it goes
+ * live. Lists want `listVisibleTo` instead; this is for the places that resolve
+ * a single gig by id.
  */
 const draftsHiddenFrom = (isAdmin: boolean) =>
   isAdmin ? {} : { status: GigStatus.PUBLISHED };
@@ -301,6 +302,52 @@ const hasNotFinished = (now: Date): Prisma.GigWhereInput => ({
     { gigEndTime: null, gigStartTime: { gte: now } },
   ],
 });
+
+/** How long before it starts an `AFFILIATED` gig appears on the site. */
+const AFFILIATED_LEAD_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The window an `AFFILIATED` gig is listed in: from a day before it starts
+ * until it finishes, and never again. That is the whole mode — a night we are
+ * on the bill for but do not own, which we will plug on the day and then would
+ * rather not have sitting in our archive.
+ */
+const affiliatedInWindow = (now: Date): Prisma.GigWhereInput => ({
+  OR: [
+    { mode: { not: GigMode.AFFILIATED } },
+    {
+      gigStartTime: { lte: new Date(now.getTime() + AFFILIATED_LEAD_MS) },
+      ...hasNotFinished(now),
+    },
+  ],
+});
+
+/**
+ * What the public may see in a list: not a draft, and not an affiliated gig
+ * outside its window.
+ *
+ * Spread into the `where` of every public list. It nests under `AND` so that it
+ * cannot collide with a query's own top-level `OR` — `getUpcoming` and
+ * `getPast` both have one, and a second `OR` key would silently replace it.
+ */
+const listVisibleTo = (isAdmin: boolean, now: Date): Prisma.GigWhereInput =>
+  isAdmin
+    ? {}
+    : { AND: [{ status: GigStatus.PUBLISHED }, affiliatedInWindow(now)] };
+
+/**
+ * Announced dates in date order, then everything unannounced.
+ *
+ * A `TO_BE_ANNOUNCED` gig carries a placeholder `gigStartTime`, so sorting the
+ * upcoming list on the date alone drops it into the hero slot. This used to be
+ * an `orderBy` on `mode` leaning on Postgres sorting an enum by declaration
+ * order, which quietly stopped meaning "unannounced last" the moment a third
+ * mode was added. It is spelled out here instead.
+ */
+const announcedFirst = <T extends { mode: GigMode }>(gigs: T[]): T[] => [
+  ...gigs.filter((gig) => gig.mode !== GigMode.TO_BE_ANNOUNCED),
+  ...gigs.filter((gig) => gig.mode === GigMode.TO_BE_ANNOUNCED),
+];
 
 async function getFileUploadInfoById(
   db: any,
@@ -572,11 +619,12 @@ export const gigsRouter = createTRPCRouter({
         .optional(),
     )
     .query(async ({ ctx, input }) => {
+      const now = new Date();
       const search = input?.search?.toLowerCase().trim();
       const isAdmin = await isAdminSession(ctx);
 
       const where = {
-        ...draftsHiddenFrom(isAdmin),
+        ...listVisibleTo(isAdmin, now),
         ...(search
           ? {
               OR: [
@@ -643,7 +691,7 @@ export const gigsRouter = createTRPCRouter({
       // Fetch enough rows to reliably build featured+past lists.
       const gigs = await ctx.db.gig.findMany({
         where: {
-          ...draftsHiddenFrom(isAdmin),
+          ...listVisibleTo(isAdmin, now),
           gigEndTime: {
             lt: now,
           },
@@ -699,7 +747,7 @@ export const gigsRouter = createTRPCRouter({
     const isAdmin = await isAdminSession(ctx);
     const gigs = await ctx.db.gig.findMany({
       where: {
-        ...draftsHiddenFrom(isAdmin),
+        ...listVisibleTo(isAdmin, now),
         // A `TO_BE_ANNOUNCED` gig is a date nobody has picked yet, but
         // `gigStartTime` is not nullable, so it carries a placeholder — and a
         // placeholder in the past used to drop it out of here and into the past
@@ -707,11 +755,7 @@ export const gigsRouter = createTRPCRouter({
         // here regardless of what its stand-in date says.
         OR: [hasNotFinished(now), { mode: GigMode.TO_BE_ANNOUNCED }],
       },
-      // Announced dates first, in order; anything unannounced after them,
-      // rather than sorted by a placeholder into the hero slot on the home
-      // screen. Postgres orders an enum by its declaration order, and `NORMAL`
-      // is declared first.
-      orderBy: [{ mode: "asc" }, { gigStartTime: "asc" }],
+      orderBy: [{ gigStartTime: "asc" }],
       include: {
         media: {
           orderBy: [
@@ -729,7 +773,9 @@ export const gigsRouter = createTRPCRouter({
     });
 
     const enriched = await enrichGigsWithFileUploads(ctx.db, gigs);
-    const withPosters = await enrichGigsWithPosterFileUploads(ctx.db, enriched);
+    const withPosters = announcedFirst(
+      await enrichGigsWithPosterFileUploads(ctx.db, enriched),
+    );
     return isAdmin ? withPosters : redactGigsForPublic(withPosters);
   }),
 
@@ -747,7 +793,7 @@ export const gigsRouter = createTRPCRouter({
 
       const gigs = await ctx.db.gig.findMany({
         where: {
-          ...draftsHiddenFrom(isAdmin),
+          ...listVisibleTo(isAdmin, now),
           ...hasFinished(now),
           // See `getUpcoming`: an unannounced date has not been and gone.
           mode: { not: GigMode.TO_BE_ANNOUNCED },
@@ -792,6 +838,9 @@ export const gigsRouter = createTRPCRouter({
     return ctx.db.gig.findMany({
       where: {
         gigEndTime: { lt: now },
+        // An affiliated gig is never on a past list, so there is nothing to
+        // order it against.
+        mode: { not: GigMode.AFFILIATED },
       },
       orderBy: [
         { isFeatured: "desc" },
@@ -857,13 +906,14 @@ export const gigsRouter = createTRPCRouter({
 
   getToday: publicProcedure.query(async ({ ctx }) => {
     // Use UTC time for all comparisons
+    const now = new Date();
     const startDate = getTodayRangeStart();
     const endDate = getTodayRangeEnd();
     const isAdmin = await isAdminSession(ctx);
 
     const todayGigs = await ctx.db.gig.findMany({
       where: {
-        ...draftsHiddenFrom(isAdmin),
+        ...listVisibleTo(isAdmin, now),
         // gigStartTime: {
         //   gte: startDate,
         //   lt: endDate,

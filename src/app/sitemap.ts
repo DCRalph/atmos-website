@@ -2,7 +2,7 @@ import { type MetadataRoute } from "next";
 import { db } from "~/server/db";
 import { env } from "~/env";
 import { gigPath } from "~/lib/gig-url";
-import { GigStatus } from "~Prisma/client";
+import { GigMode, GigStatus } from "~Prisma/client";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = env.NEXT_PUBLIC_APP_URL ?? "https://atmosmedia.co.nz";
@@ -82,7 +82,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const gigs = await db.gig.findMany({
       // Drafts are not on the site, so they are not in the sitemap either.
-      where: { status: GigStatus.PUBLISHED },
+      // Nor is an affiliated gig: it is on the site for a night and then gone,
+      // and a crawler that indexed it would outlive it.
+      where: {
+        status: GigStatus.PUBLISHED,
+        mode: { not: GigMode.AFFILIATED },
+      },
       select: {
         id: true,
         title: true,

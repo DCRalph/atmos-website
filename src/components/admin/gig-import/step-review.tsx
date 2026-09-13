@@ -24,6 +24,7 @@ import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { Label } from "~/components/ui/label";
 import { TagsField } from "~/components/admin/gig-edit/tags-field";
 import { GigMode } from "~Prisma/browser";
+import { GIG_MODES, gigModeLabel } from "~/lib/gig-mode";
 import type { GigExtraction } from "~/lib/gig-import/extraction";
 import { ProvenanceField } from "./provenance-field";
 import type { ImportDraft } from "./use-import-draft";
@@ -211,14 +212,12 @@ export function StepReview({
               quote={extraction.mode.quote}
               note={
                 extraction.mode.note ||
-                "To be announced hides the details and blurs the poster."
+                (GIG_MODES.find((option) => option.value === draft.mode)
+                  ?.summary ??
+                  "")
               }
               isEdited={changed("mode")}
-              importedLabel={
-                imported.mode === GigMode.TO_BE_ANNOUNCED
-                  ? "To be announced"
-                  : "Normal"
-              }
+              importedLabel={gigModeLabel(imported.mode)}
               onRevert={() => onRevert("mode")}
             >
               <Select
@@ -229,10 +228,11 @@ export function StepReview({
                   <SelectValue placeholder="Select mode" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={GigMode.NORMAL}>Normal</SelectItem>
-                  <SelectItem value={GigMode.TO_BE_ANNOUNCED}>
-                    To be announced
-                  </SelectItem>
+                  {GIG_MODES.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </ProvenanceField>

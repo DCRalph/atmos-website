@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { gigPath } from "~/lib/gig-url";
+import { GIG_MODES } from "~/lib/gig-mode";
 import { AdminSection } from "~/components/admin/admin-section";
 import { GigStatusBadge } from "~/components/admin/gig-status-badge";
 import { GigMediaManager } from "~/components/admin/gig-media-manager";
@@ -761,14 +762,18 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
                       <SelectValue placeholder="Select mode" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={GigMode.NORMAL}>Normal</SelectItem>
-                      <SelectItem value={GigMode.TO_BE_ANNOUNCED}>
-                        To be announced
-                      </SelectItem>
+                      {GIG_MODES.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <p className="text-muted-foreground text-xs">
-                    To be announced hides the details and blurs the poster.
+                    {
+                      GIG_MODES.find((option) => option.value === draft.mode)
+                        ?.summary
+                    }
                   </p>
                 </div>
                 <Field

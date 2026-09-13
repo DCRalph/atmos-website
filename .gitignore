@@ -61,3 +61,6 @@ yarn-error.log*
 /mobile/build/
 # creator directory export (bun run creators:export)
 /creator-export/
+
+# Local UI mocks, published to Postplan rather than shipped.
+.mocks/

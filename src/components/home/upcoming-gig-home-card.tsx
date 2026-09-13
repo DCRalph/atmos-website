@@ -9,6 +9,7 @@ import Image from "next/image";
 import { api } from "~/trpc/react";
 import { GigPoster } from "~/components/gigs/gig-poster";
 import { gigParam, gigPath } from "~/lib/gig-url";
+import type { GigMode } from "~Prisma/browser";
 
 type Gig = {
   id: string;
@@ -16,7 +17,7 @@ type Gig = {
   title: string;
   subtitle: string;
   shortDescription?: string | null;
-  mode?: "NORMAL" | "TO_BE_ANNOUNCED";
+  mode?: GigMode;
   gigEndTime?: Date | null;
   ticketLink?: string | null;
   posterFileUpload?: { url: string } | null;
