@@ -1,41 +1,64 @@
 "use client";
 
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
+
 import { StaticBackground } from "~/components/static-background";
 import { PastGigCard } from "~/components/gigs/past-gig-card";
-import { api } from "~/trpc/react";
-import { Loader2 } from "lucide-react";
 import { AnimatedPageHeader } from "~/components/animated-page-header";
 import { MainPageSection } from "~/components/main-page-section";
-import { useMemo } from "react";
-import { orbitron } from "~/lib/fonts";
+import { api } from "~/trpc/react";
+import { cn } from "~/lib/utils";
+
+/**
+ * The gigs page: one grid at a time, chosen by the tabs under the header.
+ *
+ * The three lists are fetched together rather than on demand, so switching tabs
+ * is instant and the counts beside each label are known without a query of
+ * their own. None of them is paginated, so the counts are exact.
+ *
+ * Nothing is re-sorted here. Every list arrives in the order the server means
+ * it to be in — unannounced gigs after announced ones, and past gigs in the
+ * order an admin arranged them — and sorting again in the browser threw both
+ * away. It used to sort upcoming gigs by start time, which put TBA gigs, whose
+ * stand-in date is redacted to 1970, at the top of the page.
+ */
+
+const TABS = [
+  { id: "upcoming", label: "Upcoming" },
+  { id: "past", label: "Past" },
+  { id: "affiliated", label: "Past affiliated" },
+] as const;
+
+type TabId = (typeof TABS)[number]["id"];
 
 export default function GigsPage() {
-  const { data: upcomingGigs, isLoading: isLoadingUpcomingGigs } =
-    api.gigs.getUpcoming.useQuery();
-  const { data: pastGigs, isLoading: isLoadingPastGigs } =
-    api.gigs.getPast.useQuery();
+  const [activeTab, setActiveTab] = useState<TabId>("upcoming");
 
-  const sortedUpcoming = useMemo(() => {
-    const upcoming = (upcomingGigs ?? []).filter((gig) => gig.gigStartTime);
-    // Sort by start time ascending (soonest first - next upcoming gig first)
-    return [...upcoming].sort((a, b) => {
-      const aTime = a.gigStartTime!.getTime();
-      const bTime = b.gigStartTime!.getTime();
-      return aTime - bTime;
-    });
-  }, [upcomingGigs]);
+  const upcoming = api.gigs.getUpcoming.useQuery();
+  const past = api.gigs.getPast.useQuery({ kind: "OURS" });
+  const affiliated = api.gigs.getPast.useQuery({ kind: "AFFILIATED" });
 
-  const sortedPast = useMemo(() => {
-    const past = (pastGigs ?? []).filter((gig) => gig.gigStartTime);
-    // Sort past by end time descending (most recent first)
-    return [...past].sort((a, b) => {
-      const aTime = (a.gigEndTime ?? a.gigStartTime!)!.getTime();
-      const bTime = (b.gigEndTime ?? b.gigStartTime!)!.getTime();
-      return bTime - aTime;
-    });
-  }, [pastGigs]);
+  const panels = {
+    upcoming: {
+      query: upcoming,
+      empty: "No upcoming gigs",
+      isUpcoming: true,
+    },
+    past: {
+      query: past,
+      empty: "No past gigs yet",
+      isUpcoming: false,
+    },
+    affiliated: {
+      query: affiliated,
+      empty: "No affiliated gigs yet",
+      isUpcoming: false,
+    },
+  } satisfies Record<TabId, unknown>;
 
-  const isLoading = isLoadingUpcomingGigs || isLoadingPastGigs;
+  const active = panels[activeTab];
+  const gigs = active.query.data ?? [];
 
   return (
     <main className="min-h-content bg-black text-white">
@@ -47,86 +70,63 @@ export default function GigsPage() {
           subtitle="Upcoming events and past nights from Atmos"
         />
 
-        <div className="mb-8 flex flex-col gap-4 border-b-2 border-white/10 pb-4 sm:mb-10 sm:flex-row sm:items-end sm:justify-between sm:pb-6">
-          <div>
-            <h2
-              className={`text-2xl font-black tracking-tight uppercase sm:text-3xl md:text-4xl ${orbitron.className}`}
-            >
-              Upcoming Gigs
-            </h2>
-            {/* <p className="mt-2 max-w-2xl text-sm text-white/50 sm:text-base">
-              Tap into the newest mixes, live captures, and community releases.
-            </p> */}
+        {/* The rail is pulled down two pixels so each tab's own bottom border
+            lands on the track below it. */}
+        <div className="mb-8 border-b-2 border-white/10 sm:mb-10">
+          <div
+            role="tablist"
+            aria-label="Gigs"
+            className="-mb-[2px] flex items-center gap-5 overflow-x-auto sm:gap-7"
+          >
+            {TABS.map((tab) => {
+              const isActive = tab.id === activeTab;
+              const count = panels[tab.id].query.data?.length;
+
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "border-b-2 pb-3 text-[11px] font-black tracking-wider whitespace-nowrap uppercase transition-colors sm:pb-4 sm:text-sm md:text-base",
+                    isActive
+                      ? "border-accent-muted text-white"
+                      : "border-transparent text-white/40 hover:text-white/75",
+                  )}
+                >
+                  {tab.label}
+                  {/* Hidden on the narrowest phones, where three labels and
+                      three counts are wider than the screen. */}
+                  {count !== undefined && (
+                    <span className="ml-2 hidden text-[11px] text-white/30 sm:inline">
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
-          {/* <div className="flex items-center gap-3 text-xs font-bold tracking-wider text-white/50 uppercase">
-            {sortedUpcoming.length > 0 && (
-              <span className="text-white/70">{sortedUpcoming.length} items</span>
-            )}
-          </div> */}
         </div>
 
-        {/* Upcoming Gigs */}
-        {sortedUpcoming.length > 0 && (
-          <div className="mb-16 sm:mb-20">
-            {/* <h2 className="border-accent-strong mb-6 border-l-4 pl-4 text-2xl font-black tracking-wider uppercase sm:mb-8 sm:text-3xl md:text-4xl">
-              Upcoming Gigs
-            </h2>
-            <div className="flex items-center gap-3 text-xs font-bold tracking-wider text-white/50 uppercase">
-              {sortedUpcoming.length > 0 && (
-                <span className="text-white/70">{sortedUpcoming.length} items</span>
-              )}
-            </div> */}
-            <div className="grid grid-cols-2 gap-2 md:gap-4 lg:grid-cols-3">
-              {sortedUpcoming.map((gig) => (
-                <PastGigCard
-                  key={gig.id}
-                  gig={{ ...gig, gigStartTime: gig.gigStartTime! }}
-                  upcomming
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Past Gigs */}
-
-        <div className="mb-8 flex flex-col gap-4 border-b-2 border-white/10 pb-4 sm:mb-10 sm:flex-row sm:items-end sm:justify-between sm:pb-6">
-          <div>
-            <h2
-              className={`text-2xl font-black tracking-tight uppercase sm:text-3xl md:text-4xl ${orbitron.className}`}
-            >
-              Past Gigs
-            </h2>
-            {/* <p className="mt-2 max-w-2xl text-sm text-white/50 sm:text-base">
-              Tap into the newest mixes, live captures, and community releases.
-            </p> */}
-          </div>
-          {/* <div className="flex items-center gap-3 text-xs font-bold tracking-wider text-white/50 uppercase">
-            {sortedPast.length > 0 && (
-              <span className="text-white/70">{sortedPast.length} items</span>
-            )}
-          </div> */}
-        </div>
-
-        {/* <h2 className="border-accent-strong mb-6 border-l-4 pl-4 text-2xl font-black tracking-wider uppercase sm:mb-8 sm:text-3xl md:text-4xl">
-            Past Gigs
-          </h2> */}
         <div className="grid grid-cols-2 gap-2 md:gap-4 lg:grid-cols-3">
-          {isLoading ? (
+          {active.query.isLoading ? (
             <div className="col-span-full flex items-center justify-center border-2 border-white/10 bg-black/80 py-12 backdrop-blur-sm">
               <Loader2 className="text-accent-muted h-6 w-6 animate-spin" />
             </div>
-          ) : sortedPast.length > 0 ? (
-            sortedPast.map((gig) => (
+          ) : gigs.length > 0 ? (
+            gigs.map((gig) => (
               <PastGigCard
                 key={gig.id}
-                gig={{ ...gig, gigStartTime: gig.gigStartTime! }}
+                gig={gig}
+                upcomming={active.isUpcoming}
               />
             ))
           ) : (
             <div className="col-span-full border-2 border-white/10 bg-black/80 p-8 text-center backdrop-blur-sm">
               <p className="font-bold tracking-wider text-white/60 uppercase">
-                No past gigs yet
+                {active.empty}
               </p>
             </div>
           )}

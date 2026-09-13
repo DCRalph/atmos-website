@@ -110,6 +110,9 @@ const SCHEDULE_ITEM_INPUT = z
 
 type ScheduleItemInput = z.infer<typeof SCHEDULE_ITEM_INPUT>;
 
+/** Which shelf of finished gigs `getPast` reads. */
+const PAST_GIG_KIND = z.enum(["OURS", "AFFILIATED"]);
+
 const uniqueStrings = (values: string[]): string[] => [...new Set(values)];
 
 const normalizeRole = (role: string | null | undefined): string | null =>
@@ -321,8 +324,10 @@ const affiliatedInWindow = (now: Date): Prisma.GigWhereInput => ({
 });
 
 /**
- * What a list may contain: not a draft, and not an affiliated gig outside its
- * window.
+ * What a forward-looking list may contain: not a draft, and not an affiliated
+ * gig outside its window. Past lists do not use this — `getPast` picks a shelf
+ * by mode instead, and an affiliated night that has been and gone belongs on
+ * one of them rather than nowhere.
  *
  * An admin sees past that, because the site is where they check their own work
  * — but the rows they get and nobody else does are the ones `gigOffSiteNotice`
@@ -790,24 +795,41 @@ export const gigsRouter = createTRPCRouter({
     return isAdmin ? withPosters : redactGigsForPublic(withPosters);
   }),
 
+  /**
+   * Finished gigs, on one of two shelves.
+   *
+   * `OURS` is the archive: our own nights. `AFFILIATED` is the ones we were
+   * only on the bill for, which the gigs page keeps in its own tab — off the
+   * archive, as the mode requires, but not gone.
+   *
+   * The two are disjoint and neither depends on who is looking. An admin used
+   * to find affiliated nights in the archive as well, on the strength of the
+   * blanket admin exemption in `listVisibleTo`, which is not wanted now that
+   * they have a shelf of their own.
+   */
   getPast: publicProcedure
     .input(
       z
         .object({
-          limit: z.number(),
+          limit: z.number().optional(),
+          kind: PAST_GIG_KIND.default("OURS"),
         })
         .optional(),
     )
     .query(async ({ ctx, input }) => {
       const now = new Date();
       const isAdmin = await isAdminSession(ctx);
+      const kind = input?.kind ?? "OURS";
 
       const gigs = await ctx.db.gig.findMany({
         where: {
-          ...listVisibleTo(isAdmin, now),
+          ...draftsHiddenFrom(isAdmin),
           ...hasFinished(now),
           // See `getUpcoming`: an unannounced date has not been and gone.
-          mode: { not: GigMode.TO_BE_ANNOUNCED },
+          mode:
+            kind === "AFFILIATED"
+              ? GigMode.AFFILIATED
+              : { notIn: [GigMode.TO_BE_ANNOUNCED, GigMode.AFFILIATED] },
         },
         // `gigStartTime` breaks the tie, because a gig with no end time sorts
         // as a null and Postgres puts those first on a descending order.

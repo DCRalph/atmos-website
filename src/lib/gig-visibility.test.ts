@@ -61,20 +61,10 @@ describe("gigOffSiteNotice", () => {
     );
   });
 
-  test("an affiliated gig that has finished is off, and stays off", () => {
-    assert.match(
-      gigOffSiteNotice(affiliated(-hours(2))) ?? "",
-      /now that it has finished/,
-    );
-    assert.match(
-      gigOffSiteNotice(affiliated(-hours(24 * 365))) ?? "",
-      /now that it has finished/,
-    );
-  });
-
-  test("the end time decides, not the start", () => {
-    // The gig began two hours ago and runs for another three. Comparing on the
-    // start alone would call it finished and pull it off the site mid-set.
-    assert.equal(gigOffSiteNotice(affiliated(-hours(2), hours(3))), null);
+  test("an affiliated gig that has finished is not off the site", () => {
+    // It moves to the gigs page's affiliated tab, where the public can see it,
+    // so a banner claiming otherwise would be a lie on a public card.
+    assert.equal(gigOffSiteNotice(affiliated(-hours(2))), null);
+    assert.equal(gigOffSiteNotice(affiliated(-hours(24 * 365))), null);
   });
 });
