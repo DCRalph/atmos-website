@@ -71,6 +71,17 @@ export function CheckResult({
             <Body>{check.detail}</Body>
           </View>
 
+          {check.lifetime ? (
+            <View style={{ marginTop: space.lg, gap: space.xs }}>
+              <Text style={styles.lifetimeLabel}>
+                LIFETIME PASS · {check.lifetime.number}
+              </Text>
+              {!ticket ? (
+                <Text style={styles.name}>{check.lifetime.holderName}</Text>
+              ) : null}
+            </View>
+          ) : null}
+
           {ticket ? (
             <>
               <View style={{ marginTop: space.xl, gap: space.xs }}>
@@ -281,6 +292,17 @@ function Row({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#111" },
+  lifetimeLabel: {
+    alignSelf: "flex-start",
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "900",
+    letterSpacing: 2,
+    borderWidth: 2,
+    borderColor: colors.borderHard,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+  },
   body: { padding: space.xl, paddingBottom: space.xxl },
   eyebrow: {
     color: colors.textFaint,

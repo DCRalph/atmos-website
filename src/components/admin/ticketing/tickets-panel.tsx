@@ -136,7 +136,7 @@ function describeDelete(tickets: TicketRow[]): string {
 
 type TicketFilters = {
   status: "VALID" | "VOID" | "REFUNDED" | null;
-  kind: "SOLD" | "COMP" | "LINK" | null;
+  kind: "SOLD" | "COMP" | "LINK" | "LIFETIME" | null;
   named: "NAMED" | "UNNAMED" | null;
   door: "ARRIVED" | "NOT_ARRIVED" | null;
   accessLevel: AccessLevelValue | null;
@@ -339,6 +339,7 @@ export function TicketsPanel({ eventId }: { eventId: string }) {
             { value: "SOLD", label: "Sold" },
             { value: "COMP", label: "Comp" },
             { value: "LINK", label: "Ticket link" },
+            { value: "LIFETIME", label: "Lifetime pass" },
           ]}
         />
         <FilterSelect

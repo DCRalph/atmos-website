@@ -59,7 +59,7 @@ import { schedulePassUpdate } from "~/server/wallet/apple-push";
  * on the tickets tab as it does on the orders tab — the whole point of a filter
  * is that the answer matches the question you thought you asked.
  */
-const TICKET_KINDS = ["SOLD", "COMP", "LINK"] as const;
+const TICKET_KINDS = ["SOLD", "COMP", "LINK", "LIFETIME"] as const;
 const NAMED_STATES = ["NAMED", "UNNAMED"] as const;
 const DOOR_STATES = ["ARRIVED", "NOT_ARRIVED"] as const;
 
@@ -85,15 +85,17 @@ function doorWhere(
 /**
  * Where a ticket came from.
  *
- * A comp was minted, a link was issued as a bearer link out of a tier, and
- * everything else was sold — including free tiers, which are still a checkout.
+ * A comp was minted, a link was issued as a bearer link out of a tier, a
+ * lifetime pass minted its own on the night, and everything else was sold —
+ * including free tiers, which are still a checkout.
  */
 function kindWhere(
   kind: (typeof TICKET_KINDS)[number],
 ): Prisma.TicketWhereInput {
   if (kind === "COMP") return { isComp: true };
   if (kind === "LINK") return { linkBatchId: { not: null } };
-  return { isComp: false, linkBatchId: null };
+  if (kind === "LIFETIME") return { lifetimeTicketId: { not: null } };
+  return { isComp: false, linkBatchId: null, lifetimeTicketId: null };
 }
 
 function refundableCentsForTicket(
@@ -134,6 +136,7 @@ export const ticketAdminRouter = createTRPCRouter({
             PaymentMethodKind.COMP,
             PaymentMethodKind.FREE,
             PaymentMethodKind.ADMIN,
+            PaymentMethodKind.LIFETIME,
           ])
           .optional(),
         /**

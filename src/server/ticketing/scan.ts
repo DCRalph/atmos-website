@@ -1,8 +1,9 @@
 import "server-only";
 
 import {
+  LifetimeTicketStatus,
   type PaymentMethodKind,
-  type TicketAccessLevel,
+  type Prisma,
   type TicketDenyReason,
   TicketOrderStatus,
   TicketScanResult,
@@ -10,7 +11,14 @@ import {
 } from "~Prisma/client";
 import { db } from "~/server/db";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
-import { parseTicketToken, verifyTicketToken } from "~/server/ticketing/qr";
+import {
+  parseToken,
+  verifyLifetimeToken,
+  verifyTicketToken,
+  type ParsedLifetimeToken,
+} from "~/server/ticketing/qr";
+import { materialiseLifetimeTicket } from "~/server/ticketing/lifetime";
+import { looksLikeLifetimeNumber } from "~/server/ticketing/numbering";
 
 /**
  * The admit decision.
@@ -29,6 +37,12 @@ import { parseTicketToken, verifyTicketToken } from "~/server/ticketing/qr";
  * next scanner sees red and reads back exactly what the last one wrote, which
  * is the only thing that stops a knocked-back punter walking twenty metres to
  * the other scanner and trying again.
+ *
+ * A lifetime pass comes through the same door. Its token names a pass rather
+ * than a ticket, so the scan first turns the pass into this event's ticket
+ * (minting one on the first scan of the night — see
+ * `~/server/ticketing/lifetime`) and then decides exactly as it would for any
+ * other ticket. One set of rules, whatever was scanned.
  */
 
 /** Results that mean the person is inside. */
@@ -46,11 +60,24 @@ export type PreviousDenial = {
   scannedByName: string | null;
 };
 
+/** The pass behind a scan, when a lifetime pass is what was scanned. */
+export type LifetimeInfo = {
+  id: string;
+  number: string;
+  holderName: string;
+};
+
 export type ScanOutcome = {
   result: TicketScanResult;
   /** Whether the person should be let in. */
   admit: boolean;
   message: string;
+  /**
+   * Set whenever the code was a lifetime pass, whether or not it got as far as
+   * a ticket — a revoked pass has no ticket to show but the door still has to
+   * be told what it is looking at.
+   */
+  lifetime: LifetimeInfo | null;
   ticket: {
     id: string;
     ticketNumber: string;
@@ -95,12 +122,87 @@ function outcome(
     result,
     admit: (ADMITTING_RESULTS as readonly TicketScanResult[]).includes(result),
     message,
+    lifetime: null,
     ticket: null,
     previousAdmission: null,
     previousDenial: null,
     isR18: false,
     canOverride: false,
     ...extras,
+  };
+}
+
+/**
+ * Everything a scan, a refusal and a check load about a ticket.
+ *
+ * One shape, so the three of them cannot drift — and so `ticketInfo` below
+ * can be the single place a ticket is turned into what the door displays.
+ */
+const SCAN_TICKET_INCLUDE = {
+  tier: { select: { name: true } },
+  lifetimeTicket: { select: { id: true, number: true, holderName: true } },
+  event: { select: { id: true, isR18: true, reentryAllowed: true } },
+  order: {
+    select: {
+      orderNumber: true,
+      status: true,
+      buyerName: true,
+      buyerEmail: true,
+      paymentMethod: true,
+      _count: { select: { tickets: true } },
+    },
+  },
+} satisfies Prisma.TicketInclude;
+
+type ScanTicket = Prisma.TicketGetPayload<{
+  include: typeof SCAN_TICKET_INCLUDE;
+}>;
+
+type Reader = Pick<typeof db, "ticket" | "ticketScan" | "user">;
+
+function loadScanTicket(
+  tx: Reader,
+  where: { id: string } | { ticketNumber: string },
+): Promise<ScanTicket | null> {
+  return tx.ticket.findUnique({ where, include: SCAN_TICKET_INCLUDE });
+}
+
+/** "2 of 4": where this ticket sits on its order. */
+function orderPosition(tx: Reader, ticket: ScanTicket): Promise<number> {
+  return tx.ticket.count({
+    where: {
+      orderId: ticket.orderId,
+      ticketNumber: { lte: ticket.ticketNumber },
+    },
+  });
+}
+
+/** What the door shows about a ticket, from the row. */
+function ticketInfo(
+  ticket: ScanTicket,
+  position: number,
+): NonNullable<ScanOutcome["ticket"]> {
+  return {
+    id: ticket.id,
+    ticketNumber: ticket.ticketNumber,
+    tierName: ticketTypeName(ticket),
+    accessLevel: ticket.accessLevel,
+    attendeeName: ticket.attendeeName,
+    buyerName: ticket.order.buyerName,
+    buyerEmail: ticket.order.buyerEmail,
+    orderNumber: ticket.order.orderNumber,
+    isComp: ticket.isComp,
+    // Who put this person on the list. The door is standing in front of
+    // somebody they don't recognise, and this is the fact that settles it.
+    invitedByName: ticket.invitedByName,
+    // Drives the "check their ID" prompt: a locked ticket is one where the
+    // name on it is meant to match the person holding it.
+    nameLocked: ticket.nameLockedAt !== null,
+    // The host is always the first ticket on a grant, so the hand-outs number
+    // from there: "handout 1 of 2" rather than a confusing "2 of 3".
+    positionInOrder: ticket.hostTicketId
+      ? `handout ${position - 1} of ${ticket.order._count.tickets - 1}`
+      : `${position} of ${ticket.order._count.tickets}`,
   };
 }
 
@@ -117,21 +219,22 @@ async function staffName(
   return user?.name ?? null;
 }
 
+type ScanArgs = {
+  eventId: string;
+  scannedByUserId: string;
+  deviceLabel?: string | null;
+  /** Manager forcing a duplicate through. */
+  override?: boolean;
+};
+
 export async function scanTicket({
   rawToken,
   eventId,
   scannedByUserId,
   deviceLabel,
   override = false,
-}: {
-  rawToken: string;
-  eventId: string;
-  scannedByUserId: string;
-  deviceLabel?: string | null;
-  /** Manager forcing a duplicate through. */
-  override?: boolean;
-}): Promise<ScanOutcome> {
-  const parsed = parseTicketToken(rawToken);
+}: ScanArgs & { rawToken: string }): Promise<ScanOutcome> {
+  const parsed = parseToken(rawToken);
 
   if (!parsed) {
     await recordFailure({
@@ -144,26 +247,21 @@ export async function scanTicket({
     return outcome(TicketScanResult.NOT_FOUND, "Not an Atmos ticket");
   }
 
+  if (parsed.kind === "lifetime") {
+    return scanLifetime(parsed, {
+      rawToken,
+      eventId,
+      scannedByUserId,
+      deviceLabel,
+      override,
+    });
+  }
+
   return db.$transaction(async (tx) => {
     // Serialise concurrent scans of this specific ticket.
     await tx.$queryRaw`SELECT id FROM "ticket" WHERE id = ${parsed.ticketId} FOR UPDATE`;
 
-    const ticket = await tx.ticket.findUnique({
-      where: { id: parsed.ticketId },
-      include: {
-        tier: { select: { name: true } },
-        event: { select: { id: true, isR18: true, reentryAllowed: true } },
-        order: {
-          select: {
-            orderNumber: true,
-            status: true,
-            buyerName: true,
-            buyerEmail: true,
-            _count: { select: { tickets: true } },
-          },
-        },
-      },
-    });
+    const ticket = await loadScanTicket(tx, { id: parsed.ticketId });
 
     if (!ticket) {
       await tx.ticketScan.create({
@@ -195,283 +293,385 @@ export async function scanTicket({
       );
     }
 
-    const position = await tx.ticket.count({
-      where: {
-        orderId: ticket.orderId,
-        ticketNumber: { lte: ticket.ticketNumber },
-      },
+    return decideAdmission(tx, ticket, {
+      eventId,
+      scannedByUserId,
+      deviceLabel,
+      override,
+    });
+  });
+}
+
+/**
+ * A lifetime pass at the door.
+ *
+ * The pass row is locked rather than a ticket row, because until the first
+ * scan of the night there is no ticket: two doors scanning the same pass at
+ * the same instant must mint one ticket between them, and the lock is what
+ * makes the second one find it. Revocation is checked before anything is
+ * minted, so a revoked pass never gains a ticket it could be argued in on.
+ */
+async function scanLifetime(
+  parsed: ParsedLifetimeToken,
+  {
+    rawToken,
+    eventId,
+    scannedByUserId,
+    deviceLabel,
+    override = false,
+  }: ScanArgs & { rawToken: string },
+): Promise<ScanOutcome> {
+  return db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "lifetime_ticket" WHERE id = ${parsed.lifetimeId} FOR UPDATE`;
+
+    const lifetime = await tx.lifetimeTicket.findUnique({
+      where: { id: parsed.lifetimeId },
     });
 
-    const ticketInfo: NonNullable<ScanOutcome["ticket"]> = {
-      id: ticket.id,
-      ticketNumber: ticket.ticketNumber,
-      tierName: ticketTypeName(ticket),
-      accessLevel: ticket.accessLevel,
-      attendeeName: ticket.attendeeName,
-      buyerName: ticket.order.buyerName,
-      buyerEmail: ticket.order.buyerEmail,
-      orderNumber: ticket.order.orderNumber,
-      isComp: ticket.isComp,
-      // Who put this person on the list. The door is standing in front of
-      // somebody they don't recognise, and this is the fact that settles it.
-      invitedByName: ticket.invitedByName,
-      // Drives the "check their ID" prompt: a locked ticket is one where the
-      // name on it is meant to match the person holding it.
-      nameLocked: ticket.nameLockedAt !== null,
-      // The host is always the first ticket on a grant, so the hand-outs number
-      // from there: "handout 1 of 2" rather than a confusing "2 of 3".
-      positionInOrder: ticket.hostTicketId
-        ? `handout ${position - 1} of ${ticket.order._count.tickets - 1}`
-        : `${position} of ${ticket.order._count.tickets}`,
-    };
-
-    const base = { ticket: ticketInfo, isR18: ticket.event.isR18 };
-
-    const fail = async (
-      result: TicketScanResult,
-      message: string,
-    ): Promise<ScanOutcome> => {
-      await tx.ticketScan.create({
+    // Failures before a ticket exists are logged against the event alone, as
+    // an unknown code would be — the raw token is what makes them auditable.
+    const bare = (result: TicketScanResult) =>
+      tx.ticketScan.create({
         data: {
-          ticketId: ticket.id,
           eventId,
           result,
           scannedByUserId,
           deviceLabel: deviceLabel ?? null,
+          rawToken,
         },
       });
-      return outcome(result, message, base);
+
+    if (!lifetime) {
+      await bare(TicketScanResult.NOT_FOUND);
+      return outcome(TicketScanResult.NOT_FOUND, "Lifetime pass not found");
+    }
+
+    const info: LifetimeInfo = {
+      id: lifetime.id,
+      number: lifetime.number,
+      holderName: lifetime.holderName,
     };
 
-    /**
-     * Write an admitting scan, and weld the ticket to whoever just walked in.
-     *
-     * Locking here is what stops a name being fitted to a ticket after it has
-     * been used: from this moment the name on it is the record of who came in,
-     * so the door has the last word rather than the office. It also ends any
-     * chance of the ticket being reassigned out from under an admission.
-     */
-    const admit = async (
-      result: (typeof ADMITTING_RESULTS)[number],
-      wasOverride = false,
-    ): Promise<void> => {
-      await tx.ticketScan.create({
-        data: {
-          ticketId: ticket.id,
-          eventId,
-          result,
-          wasOverride,
-          scannedByUserId,
-          deviceLabel: deviceLabel ?? null,
-        },
-      });
-      if (!ticket.nameLockedAt) {
-        await tx.ticket.update({
-          where: { id: ticket.id },
-          data: { nameLockedAt: new Date() },
-        });
-      }
-    };
-
-    if (ticket.eventId !== eventId) {
-      return fail(TicketScanResult.WRONG_EVENT, "Ticket is for another event");
-    }
-    if (ticket.status === TicketStatus.REFUNDED) {
-      return fail(TicketScanResult.REFUNDED_TICKET, "Ticket was refunded");
-    }
-    if (ticket.status === TicketStatus.VOID) {
-      return fail(TicketScanResult.VOIDED, "Ticket was cancelled");
-    }
-    if (ticket.order.status !== TicketOrderStatus.PAID) {
-      return fail(TicketScanResult.ORDER_UNPAID, "Order not paid");
-    }
-
-    const priorAdmissions = await tx.ticketScan.findMany({
-      where: {
-        ticketId: ticket.id,
-        result: { in: [...ADMITTING_RESULTS] },
-      },
-      orderBy: { createdAt: "desc" },
-      select: {
-        createdAt: true,
-        deviceLabel: true,
-        scannedByUserId: true,
-      },
-    });
-
-    // A manager may have reverted a mistaken admission; only count admissions
-    // that happened after the most recent revert.
-    const lastRevert = await tx.ticketScan.findFirst({
-      where: {
-        ticketId: ticket.id,
-        result: TicketScanResult.ADMISSION_REVERTED,
-      },
-      orderBy: { createdAt: "desc" },
-      select: { createdAt: true },
-    });
-
-    // Somebody may also have marked them out of the building. That does not
-    // undo the admission — it ends it — so the two are tracked apart.
-    const lastDeparture = await tx.ticketScan.findFirst({
-      where: { ticketId: ticket.id, result: TicketScanResult.DEPARTED },
-      orderBy: { createdAt: "desc" },
-      select: { createdAt: true },
-    });
-
-    const liveAdmissions = lastRevert
-      ? priorAdmissions.filter((scan) => scan.createdAt > lastRevert.createdAt)
-      : priorAdmissions;
-
-    /**
-     * The last admission that counts, whether or not they are still inside.
-     *
-     * This is the one a refusal is measured against: being let in after a
-     * refusal overrules it, and walking back out later does not bring it back.
-     */
-    const lastAdmission = liveAdmissions[0] ?? null;
-
-    // Admissions that still have them in the building. A departure ends the
-    // ones before it, so `previous` is presence, not history.
-    const insideAdmissions = lastDeparture
-      ? liveAdmissions.filter(
-          (scan) => scan.createdAt > lastDeparture.createdAt,
-        )
-      : liveAdmissions;
-
-    const previous = insideAdmissions[0] ?? null;
-    /** Been in, marked out, now standing at the door again. */
-    const departed = previous === null && lastAdmission !== null;
-
-    // A refusal outranks everything below it until somebody deliberately
-    // admits the ticket afterwards.
-    const denial = await tx.ticketScan.findFirst({
-      where: { ticketId: ticket.id, result: TicketScanResult.DENIED },
-      orderBy: { createdAt: "desc" },
-      select: {
-        createdAt: true,
-        denyReason: true,
-        denyNote: true,
-        deviceLabel: true,
-        scannedByUserId: true,
-      },
-    });
-
-    const denialRevert = await tx.ticketScan.findFirst({
-      where: { ticketId: ticket.id, result: TicketScanResult.DENIAL_REVERTED },
-      orderBy: { createdAt: "desc" },
-      select: { createdAt: true },
-    });
-
-    const denialStands =
-      denial !== null &&
-      (lastAdmission === null || denial.createdAt > lastAdmission.createdAt) &&
-      (denialRevert === null || denial.createdAt > denialRevert.createdAt);
-
-    if (denialStands) {
-      const previousDenial: PreviousDenial = {
-        at: denial.createdAt,
-        reason: denial.denyReason,
-        note: denial.denyNote,
-        deviceLabel: denial.deviceLabel,
-        scannedByName: await staffName(tx, denial.scannedByUserId),
-      };
-
-      if (!override) {
-        await tx.ticketScan.create({
-          data: {
-            ticketId: ticket.id,
-            eventId,
-            result: TicketScanResult.PREVIOUSLY_DENIED,
-            scannedByUserId,
-            deviceLabel: deviceLabel ?? null,
-          },
-        });
-        return outcome(
-          TicketScanResult.PREVIOUSLY_DENIED,
-          "Refused entry earlier",
-          { ...base, previousDenial, canOverride: true },
-        );
-      }
-
-      await admit(TicketScanResult.OVERRIDE_ADMITTED, true);
+    if (!verifyLifetimeToken(parsed, lifetime)) {
+      await bare(TicketScanResult.INVALID_SIGNATURE);
       return outcome(
-        TicketScanResult.OVERRIDE_ADMITTED,
-        "Admitted despite earlier refusal",
-        { ...base, previousDenial },
+        TicketScanResult.INVALID_SIGNATURE,
+        "Invalid or expired code",
+        { lifetime: info },
       );
     }
 
-    if (previous) {
-      const previousAdmission = {
-        at: previous.createdAt,
-        deviceLabel: previous.deviceLabel,
-        scannedByName: await staffName(tx, previous.scannedByUserId),
-        admissionCount: liveAdmissions.length,
-      };
+    if (lifetime.status === LifetimeTicketStatus.REVOKED) {
+      // Against this event's ticket if the pass was used here before it was
+      // revoked, so the attempt lands in that ticket's history too.
+      const existing = await tx.ticket.findUnique({
+        where: {
+          lifetimeTicketId_eventId: { lifetimeTicketId: lifetime.id, eventId },
+        },
+        select: { id: true },
+      });
+      await tx.ticketScan.create({
+        data: {
+          ticketId: existing?.id ?? null,
+          eventId,
+          result: TicketScanResult.VOIDED,
+          scannedByUserId,
+          deviceLabel: deviceLabel ?? null,
+          rawToken,
+        },
+      });
+      return outcome(TicketScanResult.VOIDED, "Lifetime pass revoked", {
+        lifetime: info,
+      });
+    }
 
-      if (ticket.event.reentryAllowed) {
-        await admit(TicketScanResult.REENTRY);
-        return outcome(
-          TicketScanResult.REENTRY,
-          `Re-entry #${liveAdmissions.length + 1}`,
-          { ...base, previousAdmission },
-        );
-      }
+    const { ticketId } = await materialiseLifetimeTicket(tx, lifetime, eventId);
 
-      if (override) {
-        await admit(TicketScanResult.OVERRIDE_ADMITTED, true);
-        return outcome(
-          TicketScanResult.OVERRIDE_ADMITTED,
-          "Admitted by override",
-          { ...base, previousAdmission },
-        );
-      }
+    // The pass lock covers the mint; the ticket lock covers the decision, the
+    // same way it does for a ticket scanned by its own code. Always taken in
+    // this order, pass then ticket, so two lifetime scans cannot deadlock.
+    await tx.$queryRaw`SELECT id FROM "ticket" WHERE id = ${ticketId} FOR UPDATE`;
+    const ticket = await loadScanTicket(tx, { id: ticketId });
+    if (!ticket) {
+      // Cannot happen inside the transaction that just minted it; handled so
+      // the type narrows rather than because it is expected.
+      await bare(TicketScanResult.NOT_FOUND);
+      return outcome(TicketScanResult.NOT_FOUND, "Ticket not found", {
+        lifetime: info,
+      });
+    }
 
+    return decideAdmission(tx, ticket, {
+      eventId,
+      scannedByUserId,
+      deviceLabel,
+      override,
+    });
+  });
+}
+
+/**
+ * The admit decision for a ticket already loaded and locked.
+ *
+ * Everything after "is this a real code" lives here, so a ticket scanned by
+ * its own QR and a lifetime pass turned into a ticket are judged by exactly
+ * the same rules.
+ */
+async function decideAdmission(
+  tx: Prisma.TransactionClient,
+  ticket: ScanTicket,
+  { eventId, scannedByUserId, deviceLabel, override = false }: ScanArgs,
+): Promise<ScanOutcome> {
+  const position = await orderPosition(tx, ticket);
+
+  const base = {
+    ticket: ticketInfo(ticket, position),
+    lifetime: ticket.lifetimeTicket,
+    isR18: ticket.event.isR18,
+  };
+
+  const fail = async (
+    result: TicketScanResult,
+    message: string,
+  ): Promise<ScanOutcome> => {
+    await tx.ticketScan.create({
+      data: {
+        ticketId: ticket.id,
+        eventId,
+        result,
+        scannedByUserId,
+        deviceLabel: deviceLabel ?? null,
+      },
+    });
+    return outcome(result, message, base);
+  };
+
+  /**
+   * Write an admitting scan, and weld the ticket to whoever just walked in.
+   *
+   * Locking here is what stops a name being fitted to a ticket after it has
+   * been used: from this moment the name on it is the record of who came in,
+   * so the door has the last word rather than the office. It also ends any
+   * chance of the ticket being reassigned out from under an admission.
+   */
+  const admit = async (
+    result: (typeof ADMITTING_RESULTS)[number],
+    wasOverride = false,
+  ): Promise<void> => {
+    await tx.ticketScan.create({
+      data: {
+        ticketId: ticket.id,
+        eventId,
+        result,
+        wasOverride,
+        scannedByUserId,
+        deviceLabel: deviceLabel ?? null,
+      },
+    });
+    if (!ticket.nameLockedAt) {
+      await tx.ticket.update({
+        where: { id: ticket.id },
+        data: { nameLockedAt: new Date() },
+      });
+    }
+  };
+
+  if (ticket.eventId !== eventId) {
+    return fail(TicketScanResult.WRONG_EVENT, "Ticket is for another event");
+  }
+  if (ticket.status === TicketStatus.REFUNDED) {
+    return fail(TicketScanResult.REFUNDED_TICKET, "Ticket was refunded");
+  }
+  if (ticket.status === TicketStatus.VOID) {
+    return fail(TicketScanResult.VOIDED, "Ticket was cancelled");
+  }
+  if (ticket.order.status !== TicketOrderStatus.PAID) {
+    return fail(TicketScanResult.ORDER_UNPAID, "Order not paid");
+  }
+
+  const priorAdmissions = await tx.ticketScan.findMany({
+    where: {
+      ticketId: ticket.id,
+      result: { in: [...ADMITTING_RESULTS] },
+    },
+    orderBy: { createdAt: "desc" },
+    select: {
+      createdAt: true,
+      deviceLabel: true,
+      scannedByUserId: true,
+    },
+  });
+
+  // A manager may have reverted a mistaken admission; only count admissions
+  // that happened after the most recent revert.
+  const lastRevert = await tx.ticketScan.findFirst({
+    where: {
+      ticketId: ticket.id,
+      result: TicketScanResult.ADMISSION_REVERTED,
+    },
+    orderBy: { createdAt: "desc" },
+    select: { createdAt: true },
+  });
+
+  // Somebody may also have marked them out of the building. That does not
+  // undo the admission — it ends it — so the two are tracked apart.
+  const lastDeparture = await tx.ticketScan.findFirst({
+    where: { ticketId: ticket.id, result: TicketScanResult.DEPARTED },
+    orderBy: { createdAt: "desc" },
+    select: { createdAt: true },
+  });
+
+  const liveAdmissions = lastRevert
+    ? priorAdmissions.filter((scan) => scan.createdAt > lastRevert.createdAt)
+    : priorAdmissions;
+
+  /**
+   * The last admission that counts, whether or not they are still inside.
+   *
+   * This is the one a refusal is measured against: being let in after a
+   * refusal overrules it, and walking back out later does not bring it back.
+   */
+  const lastAdmission = liveAdmissions[0] ?? null;
+
+  // Admissions that still have them in the building. A departure ends the
+  // ones before it, so `previous` is presence, not history.
+  const insideAdmissions = lastDeparture
+    ? liveAdmissions.filter((scan) => scan.createdAt > lastDeparture.createdAt)
+    : liveAdmissions;
+
+  const previous = insideAdmissions[0] ?? null;
+  /** Been in, marked out, now standing at the door again. */
+  const departed = previous === null && lastAdmission !== null;
+
+  // A refusal outranks everything below it until somebody deliberately
+  // admits the ticket afterwards.
+  const denial = await tx.ticketScan.findFirst({
+    where: { ticketId: ticket.id, result: TicketScanResult.DENIED },
+    orderBy: { createdAt: "desc" },
+    select: {
+      createdAt: true,
+      denyReason: true,
+      denyNote: true,
+      deviceLabel: true,
+      scannedByUserId: true,
+    },
+  });
+
+  const denialRevert = await tx.ticketScan.findFirst({
+    where: { ticketId: ticket.id, result: TicketScanResult.DENIAL_REVERTED },
+    orderBy: { createdAt: "desc" },
+    select: { createdAt: true },
+  });
+
+  const denialStands =
+    denial !== null &&
+    (lastAdmission === null || denial.createdAt > lastAdmission.createdAt) &&
+    (denialRevert === null || denial.createdAt > denialRevert.createdAt);
+
+  if (denialStands) {
+    const previousDenial: PreviousDenial = {
+      at: denial.createdAt,
+      reason: denial.denyReason,
+      note: denial.denyNote,
+      deviceLabel: denial.deviceLabel,
+      scannedByName: await staffName(tx, denial.scannedByUserId),
+    };
+
+    if (!override) {
       await tx.ticketScan.create({
         data: {
           ticketId: ticket.id,
           eventId,
-          result: TicketScanResult.DUPLICATE,
+          result: TicketScanResult.PREVIOUSLY_DENIED,
           scannedByUserId,
           deviceLabel: deviceLabel ?? null,
         },
       });
-      return outcome(TicketScanResult.DUPLICATE, "Already admitted", {
-        ...base,
-        previousAdmission,
-        canOverride: true,
-      });
+      return outcome(
+        TicketScanResult.PREVIOUSLY_DENIED,
+        "Refused entry earlier",
+        { ...base, previousDenial, canOverride: true },
+      );
     }
 
-    /**
-     * They were in, somebody marked them out, and here they are again.
-     *
-     * Admitted regardless of what the event says about re-entry: marking
-     * somebody out is the deliberate act that grants the return, and turning
-     * them away at the door afterwards would make the whole thing a trap for
-     * the staffer who did it.
-     */
-    if (departed) {
+    await admit(TicketScanResult.OVERRIDE_ADMITTED, true);
+    return outcome(
+      TicketScanResult.OVERRIDE_ADMITTED,
+      "Admitted despite earlier refusal",
+      { ...base, previousDenial },
+    );
+  }
+
+  if (previous) {
+    const previousAdmission = {
+      at: previous.createdAt,
+      deviceLabel: previous.deviceLabel,
+      scannedByName: await staffName(tx, previous.scannedByUserId),
+      admissionCount: liveAdmissions.length,
+    };
+
+    if (ticket.event.reentryAllowed) {
       await admit(TicketScanResult.REENTRY);
       return outcome(
         TicketScanResult.REENTRY,
-        `Back in — re-entry #${liveAdmissions.length + 1}`,
-        {
-          ...base,
-          previousAdmission: {
-            at: lastAdmission.createdAt,
-            deviceLabel: lastAdmission.deviceLabel,
-            scannedByName: await staffName(tx, lastAdmission.scannedByUserId),
-            admissionCount: liveAdmissions.length,
-          },
-        },
+        `Re-entry #${liveAdmissions.length + 1}`,
+        { ...base, previousAdmission },
       );
     }
 
-    await admit(TicketScanResult.ADMITTED);
+    if (override) {
+      await admit(TicketScanResult.OVERRIDE_ADMITTED, true);
+      return outcome(
+        TicketScanResult.OVERRIDE_ADMITTED,
+        "Admitted by override",
+        { ...base, previousAdmission },
+      );
+    }
 
-    return outcome(TicketScanResult.ADMITTED, "Welcome in", base);
-  });
+    await tx.ticketScan.create({
+      data: {
+        ticketId: ticket.id,
+        eventId,
+        result: TicketScanResult.DUPLICATE,
+        scannedByUserId,
+        deviceLabel: deviceLabel ?? null,
+      },
+    });
+    return outcome(TicketScanResult.DUPLICATE, "Already admitted", {
+      ...base,
+      previousAdmission,
+      canOverride: true,
+    });
+  }
+
+  /**
+   * They were in, somebody marked them out, and here they are again.
+   *
+   * Admitted regardless of what the event says about re-entry: marking
+   * somebody out is the deliberate act that grants the return, and turning
+   * them away at the door afterwards would make the whole thing a trap for
+   * the staffer who did it.
+   */
+  if (departed) {
+    await admit(TicketScanResult.REENTRY);
+    return outcome(
+      TicketScanResult.REENTRY,
+      `Back in — re-entry #${liveAdmissions.length + 1}`,
+      {
+        ...base,
+        previousAdmission: {
+          at: lastAdmission.createdAt,
+          deviceLabel: lastAdmission.deviceLabel,
+          scannedByName: await staffName(tx, lastAdmission.scannedByUserId),
+          admissionCount: liveAdmissions.length,
+        },
+      },
+    );
+  }
+
+  await admit(TicketScanResult.ADMITTED);
+
+  return outcome(TicketScanResult.ADMITTED, "Welcome in", base);
 }
 
 /**
@@ -503,32 +703,13 @@ export async function denyTicket({
   return db.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "ticket" WHERE id = ${ticketId} FOR UPDATE`;
 
-    const ticket = await tx.ticket.findUnique({
-      where: { id: ticketId },
-      include: {
-        tier: { select: { name: true } },
-        event: { select: { isR18: true } },
-        order: {
-          select: {
-            orderNumber: true,
-            buyerName: true,
-            buyerEmail: true,
-            _count: { select: { tickets: true } },
-          },
-        },
-      },
-    });
+    const ticket = await loadScanTicket(tx, { id: ticketId });
 
-    if (!ticket || ticket.eventId !== eventId) {
+    if (ticket?.eventId !== eventId) {
       return outcome(TicketScanResult.NOT_FOUND, "Ticket not found");
     }
 
-    const position = await tx.ticket.count({
-      where: {
-        orderId: ticket.orderId,
-        ticketNumber: { lte: ticket.ticketNumber },
-      },
-    });
+    const position = await orderPosition(tx, ticket);
 
     const denial = await tx.ticketScan.create({
       data: {
@@ -580,22 +761,8 @@ export async function denyTicket({
     }
 
     return outcome(TicketScanResult.DENIED, "Entry refused", {
-      ticket: {
-        id: ticket.id,
-        ticketNumber: ticket.ticketNumber,
-        tierName: ticketTypeName(ticket),
-        accessLevel: ticket.accessLevel,
-        attendeeName: ticket.attendeeName,
-        buyerName: ticket.order.buyerName,
-        buyerEmail: ticket.order.buyerEmail,
-        orderNumber: ticket.order.orderNumber,
-        isComp: ticket.isComp,
-        invitedByName: ticket.invitedByName,
-        nameLocked: ticket.nameLockedAt !== null,
-        positionInOrder: ticket.hostTicketId
-          ? `handout ${position - 1} of ${ticket.order._count.tickets - 1}`
-          : `${position} of ${ticket.order._count.tickets}`,
-      },
+      ticket: ticketInfo(ticket, position),
+      lifetime: ticket.lifetimeTicket,
       isR18: ticket.event.isR18,
       previousDenial: {
         at: denial.createdAt,
@@ -887,6 +1054,8 @@ export type TicketCheck = {
   headline: string;
   /** The sentence under it. Never contains a time — those go stale. */
   detail: string;
+  /** The pass, when what was checked is a lifetime pass. */
+  lifetime: LifetimeInfo | null;
   ticket:
     | (NonNullable<ScanOutcome["ticket"]> & {
         status: TicketStatus;
@@ -942,6 +1111,7 @@ export async function inspectTicket({
     wouldScanAs: TicketScanResult.NOT_FOUND,
     headline,
     detail,
+    lifetime: null,
     ticket: null,
     admittedAt: null,
     admittedBy: null,
@@ -957,41 +1127,105 @@ export async function inspectTicket({
     reentryAllowed: false,
   });
 
-  const parsed =
-    lookup.kind === "token" ? parseTicketToken(lookup.token) : null;
+  const parsed = lookup.kind === "token" ? parseToken(lookup.token) : null;
   const ticketNumber =
     lookup.kind === "ticketNumber" ? lookup.ticketNumber.toUpperCase() : null;
 
-  const where = parsed
-    ? { id: parsed.ticketId }
-    : ticketNumber
-      ? { ticketNumber }
-      : null;
-
-  if (!where) {
+  if (lookup.kind === "token" && !parsed) {
     return nothing(
       "Not an Atmos ticket",
       "That code isn't one of ours. It might be a pass for another event, or any other QR code entirely.",
     );
   }
 
-  const ticket = await db.ticket.findUnique({
-    where,
-    include: {
-      tier: { select: { name: true } },
-      event: { select: { id: true, isR18: true, reentryAllowed: true } },
-      order: {
-        select: {
-          orderNumber: true,
-          status: true,
-          buyerName: true,
-          buyerEmail: true,
-          paymentMethod: true,
-          _count: { select: { tickets: true } },
-        },
-      },
-    },
-  });
+  /**
+   * A lifetime pass, by its code or its number.
+   *
+   * Resolved to this event's ticket if it has one — after which it is read
+   * exactly like any other ticket — and otherwise answered from the pass
+   * alone. Nothing is minted here: a check must not create the ticket a scan
+   * would.
+   */
+  let lifetimeInfo: LifetimeInfo | null = null;
+  let where: { id: string } | { ticketNumber: string };
+
+  const lifetimeWhere =
+    parsed?.kind === "lifetime"
+      ? { id: parsed.lifetimeId }
+      : ticketNumber && looksLikeLifetimeNumber(ticketNumber)
+        ? { number: ticketNumber }
+        : null;
+
+  if (lifetimeWhere) {
+    const lifetime = await db.lifetimeTicket.findUnique({
+      where: lifetimeWhere,
+      include: { tickets: { where: { eventId }, select: { id: true } } },
+    });
+    if (!lifetime) {
+      return nothing(
+        "No such lifetime pass",
+        ticketNumber
+          ? `Nothing on record for ${ticketNumber}. Worth a second look for a typo — 0 and O are the usual one.`
+          : "This code doesn't match any lifetime pass we've issued.",
+      );
+    }
+
+    lifetimeInfo = {
+      id: lifetime.id,
+      number: lifetime.number,
+      holderName: lifetime.holderName,
+    };
+    const fromPass = (verdict: {
+      verdict?: TicketCheckVerdict;
+      wouldScanAs: TicketScanResult;
+      headline: string;
+      detail: string;
+    }): TicketCheck => ({
+      ...nothing(verdict.headline, verdict.detail),
+      ...verdict,
+      found: true,
+      lifetime: lifetimeInfo,
+    });
+
+    if (parsed?.kind === "lifetime" && !verifyLifetimeToken(parsed, lifetime)) {
+      return fromPass({
+        wouldScanAs: TicketScanResult.INVALID_SIGNATURE,
+        headline: "Code doesn't check out",
+        detail:
+          "This pass's QR was reissued, so they're holding an old copy. Look the pass up by its number instead.",
+      });
+    }
+    if (lifetime.status === LifetimeTicketStatus.REVOKED) {
+      return fromPass({
+        wouldScanAs: TicketScanResult.VOIDED,
+        headline: "Revoked",
+        detail: "This lifetime pass has been revoked and won't scan.",
+      });
+    }
+
+    const eventTicket = lifetime.tickets[0];
+    if (!eventTicket) {
+      return fromPass({
+        verdict: "OK",
+        wouldScanAs: TicketScanResult.ADMITTED,
+        headline: "Valid",
+        detail:
+          "Lifetime pass, not used at this event yet. Scanning it would let them in.",
+      });
+    }
+    where = { id: eventTicket.id };
+  } else if (parsed?.kind === "ticket") {
+    where = { id: parsed.ticketId };
+  } else if (ticketNumber) {
+    where = { ticketNumber };
+  } else {
+    return nothing(
+      "Not an Atmos ticket",
+      "That code isn't one of ours. It might be a pass for another event, or any other QR code entirely.",
+    );
+  }
+
+  const ticket = await loadScanTicket(db, where);
 
   if (!ticket) {
     return nothing(
@@ -1003,12 +1237,7 @@ export async function inspectTicket({
   }
 
   const [position, scans] = await Promise.all([
-    db.ticket.count({
-      where: {
-        orderId: ticket.orderId,
-        ticketNumber: { lte: ticket.ticketNumber },
-      },
-    }),
+    orderPosition(db, ticket),
     // Uncapped: the state below is derived from these rows, and a `take` that
     // cut off an old admission would quietly change the answer.
     db.ticketScan.findMany({
@@ -1045,20 +1274,7 @@ export async function inspectTicket({
   const state = reduceAdmissionState(scans);
 
   const info: NonNullable<TicketCheck["ticket"]> = {
-    id: ticket.id,
-    ticketNumber: ticket.ticketNumber,
-    tierName: ticketTypeName(ticket),
-    accessLevel: ticket.accessLevel,
-    attendeeName: ticket.attendeeName,
-    buyerName: ticket.order.buyerName,
-    buyerEmail: ticket.order.buyerEmail,
-    orderNumber: ticket.order.orderNumber,
-    isComp: ticket.isComp,
-    invitedByName: ticket.invitedByName,
-    nameLocked: ticket.nameLockedAt !== null,
-    positionInOrder: ticket.hostTicketId
-      ? `handout ${position - 1} of ${ticket.order._count.tickets - 1}`
-      : `${position} of ${ticket.order._count.tickets}`,
+    ...ticketInfo(ticket, position),
     status: ticket.status,
     paymentMethod: ticket.order.paymentMethod,
   };
@@ -1069,7 +1285,7 @@ export async function inspectTicket({
   > => {
     // A code that no longer matches the ticket it names — reissued, transferred,
     // or forged. Checked first, exactly as a scan checks it first.
-    if (parsed && !verifyTicketToken(parsed, ticket)) {
+    if (parsed?.kind === "ticket" && !verifyTicketToken(parsed, ticket)) {
       return {
         verdict: "NOT_VALID",
         wouldScanAs: TicketScanResult.INVALID_SIGNATURE,
@@ -1158,6 +1374,7 @@ export async function inspectTicket({
   return {
     ...verdict,
     found: true,
+    lifetime: lifetimeInfo ?? ticket.lifetimeTicket,
     ticket: info,
     admittedAt: state.admittedAt,
     admittedBy: nameOf(state.admission?.scannedByUserId ?? null),

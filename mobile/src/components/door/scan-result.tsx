@@ -114,6 +114,20 @@ export function ScanResult({
             {tone.heading}
           </Text>
 
+          {/* Before anything about the ticket: a lifetime pass is the one
+              code that is right at every event, and a staffer who has never
+              seen one needs to be told that is what this is. */}
+          {current.lifetime ? (
+            <View style={styles.lifetime}>
+              <Text style={styles.lifetimeLabel}>
+                LIFETIME PASS · {current.lifetime.number}
+              </Text>
+              {!ticket ? (
+                <Text style={styles.name}>{current.lifetime.holderName}</Text>
+              ) : null}
+            </View>
+          ) : null}
+
           {ticket ? (
             <>
               <Text style={styles.name}>
@@ -336,6 +350,22 @@ function toneFor(outcome: ScanOutcome): { bg: string; heading: string } {
 
 const styles = StyleSheet.create({
   idCheck: { borderColor: "rgba(255,255,255,0.55)" },
+  lifetime: {
+    marginTop: space.md,
+    alignItems: "center",
+    gap: space.xs,
+  },
+  lifetimeLabel: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "900",
+    letterSpacing: 2,
+    borderWidth: 2,
+    borderColor: "#fff",
+    backgroundColor: "rgba(0,0,0,0.3)",
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+  },
   invited: {
     color: "#fff",
     fontSize: 17,

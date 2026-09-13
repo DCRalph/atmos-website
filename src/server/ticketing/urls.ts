@@ -50,6 +50,23 @@ export function googleWalletSaveUrl(
   return `${base()}/api/tickets/${ticketId}/google-wallet?t=${encodeURIComponent(accessToken)}`;
 }
 
+/** The holder's own page for a lifetime pass: their QR, and nothing else. */
+export function lifetimeUrl(lifetimeAccessToken: string): string {
+  return `${base()}/lifetime/${lifetimeAccessToken}`;
+}
+
+export function lifetimePassUrl(
+  lifetimeId: string,
+  lifetimeAccessToken: string,
+): string {
+  return `${base()}/api/lifetime/${lifetimeId}/pkpass?t=${encodeURIComponent(lifetimeAccessToken)}`;
+}
+
+/** Where a lifetime pass's QR sends a camera: the listing of what's on. */
+export function eventsUrl(): string {
+  return `${base()}/events`;
+}
+
 export function termsUrl(): string {
   return `${base()}/tickets/terms`;
 }

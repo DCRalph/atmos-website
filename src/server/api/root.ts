@@ -35,6 +35,7 @@ import { notifyRouter } from "~/server/api/routers/notify";
 import { discountCodesRouter } from "~/server/api/routers/discount-codes";
 import { ticketAdminRouter } from "~/server/api/routers/ticket-admin";
 import { ticketAnalyticsRouter } from "~/server/api/routers/ticket-analytics";
+import { lifetimeTicketsRouter } from "~/server/api/routers/lifetime-tickets";
 import { pickersRouter } from "~/server/api/routers/pickers";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
@@ -78,6 +79,8 @@ export const appRouter = createTRPCRouter({
   ticketAnalytics: ticketAnalyticsRouter,
   discountCodes: discountCodesRouter,
   accessLevels: accessLevelsRouter,
+  /** Passes that admit one named person to every event. */
+  lifetimeTickets: lifetimeTicketsRouter,
   door: doorRouter,
   /** ID checks at the door, from the office: bans, lookups, erasure requests. */
   patrons: patronsRouter,

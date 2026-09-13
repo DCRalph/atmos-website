@@ -7,6 +7,7 @@ import {
   FileText,
   FolderOpen,
   IdCard,
+  Infinity,
   LayoutDashboard,
   Mail,
   Palette,
@@ -115,6 +116,14 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         url: "/admin/access-levels",
         icon: ShieldCheck,
         keywords: ["vip", "guest list", "aaa", "artist", "crew", "backstage"],
+      },
+      {
+        title: "Lifetime tickets",
+        description:
+          "Passes that get one person into every event, and where they've been used",
+        url: "/admin/lifetime-tickets",
+        icon: Infinity,
+        keywords: ["lifetime", "pass", "membership", "founder", "wallet"],
       },
       {
         title: "Merch",

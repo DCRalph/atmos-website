@@ -40,7 +40,8 @@ import {
   doorReceiptUrl,
   recordDoorReceipt,
 } from "~/server/ticketing/door-receipts";
-import { buildTicketToken } from "~/server/ticketing/qr";
+import { buildLifetimeToken, buildTicketToken } from "~/server/ticketing/qr";
+import { looksLikeLifetimeNumber } from "~/server/ticketing/numbering";
 import { banPatron, checkIdentity, liftBan } from "~/server/ticketing/id-check";
 import { DENY_REASON_VALUES } from "~/lib/ticketing/deny-reasons";
 import { idReadingSchema } from "~/lib/ticketing/id-reading";
@@ -271,16 +272,31 @@ export const doorRouter = createTRPCRouter({
         });
       }
 
-      const ticket = await ctx.db.ticket.findUnique({
-        where: { ticketNumber: input.ticketNumber.toUpperCase() },
-        select: { id: true, qrVersion: true, qrSecret: true },
-      });
+      const number = input.ticketNumber.toUpperCase();
 
-      if (!ticket) {
+      // A lifetime pass has a number of its own, and a holder with a dead
+      // phone reads it out like anybody else. Rebuilt into the pass's token so
+      // it goes through the identical scan path.
+      const rawToken = looksLikeLifetimeNumber(number)
+        ? await ctx.db.lifetimeTicket
+            .findUnique({
+              where: { number },
+              select: { id: true, qrVersion: true, qrSecret: true },
+            })
+            .then((pass) => (pass ? buildLifetimeToken(pass) : null))
+        : await ctx.db.ticket
+            .findUnique({
+              where: { ticketNumber: number },
+              select: { id: true, qrVersion: true, qrSecret: true },
+            })
+            .then((ticket) => (ticket ? buildTicketToken(ticket) : null));
+
+      if (!rawToken) {
         return {
           result: TicketScanResult.NOT_FOUND,
           admit: false,
           message: "No ticket with that number",
+          lifetime: null,
           ticket: null,
           previousAdmission: null,
           previousDenial: null,
@@ -291,7 +307,7 @@ export const doorRouter = createTRPCRouter({
       }
 
       const outcome = await scanTicket({
-        rawToken: buildTicketToken(ticket),
+        rawToken,
         eventId: input.eventId,
         scannedByUserId: ctx.user.id,
         deviceLabel: input.deviceLabel ?? null,
@@ -787,6 +803,7 @@ export const doorRouter = createTRPCRouter({
             accessLevel: true,
             isComp: true,
             invitedByName: true,
+            lifetimeTicketId: true,
             tier: { select: { name: true } },
             order: {
               select: {
@@ -903,6 +920,7 @@ export const doorRouter = createTRPCRouter({
           invitedByName: true,
           nameLockedAt: true,
           hostTicketId: true,
+          lifetimeTicketId: true,
           tier: { select: { name: true } },
           event: {
             select: { isR18: true, reentryAllowed: true, timezone: true },
@@ -919,7 +937,7 @@ export const doorRouter = createTRPCRouter({
         },
       });
 
-      if (!ticket || ticket.eventId !== input.eventId) {
+      if (ticket?.eventId !== input.eventId) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Ticket not found" });
       }
 
@@ -1070,6 +1088,7 @@ export const doorRouter = createTRPCRouter({
           status: true,
           isComp: true,
           invitedByName: true,
+          lifetimeTicketId: true,
           tier: { select: { name: true } },
         },
       });

@@ -1,6 +1,12 @@
 "use client";
 
-import { AlertTriangle, Ban, Check, Info } from "lucide-react";
+import {
+  AlertTriangle,
+  Ban,
+  Check,
+  Infinity as InfinityIcon,
+  Info,
+} from "lucide-react";
 
 import {
   AccessBadge,
@@ -83,6 +89,20 @@ export function CheckResultScreen({
           <p className="mt-2 text-sm opacity-90">{check.detail}</p>
         </div>
 
+        {check.lifetime && (
+          <div className="mt-6">
+            <p className="inline-flex items-center gap-2 border-2 border-white/60 px-3 py-1.5 text-sm font-black tracking-[0.14em] uppercase">
+              <InfinityIcon className="size-4" aria-hidden />
+              Lifetime pass · {check.lifetime.number}
+            </p>
+            {!ticket && (
+              <p className="mt-2 text-2xl font-bold">
+                {check.lifetime.holderName}
+              </p>
+            )}
+          </div>
+        )}
+
         {ticket && (
           <>
             <div className="mt-6">
@@ -121,7 +141,9 @@ export function CheckResultScreen({
               <Row
                 label="Paid by"
                 value={
-                  ticket.isComp ? "Comp" : paymentMethodLabel(ticket.paymentMethod)
+                  ticket.isComp
+                    ? "Comp"
+                    : paymentMethodLabel(ticket.paymentMethod)
                 }
               />
               <Row
@@ -251,4 +273,3 @@ function Row({ label, value }: { label: string; value: string }) {
 function countLabel(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
 }
-

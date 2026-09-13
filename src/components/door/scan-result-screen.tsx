@@ -7,6 +7,7 @@ import {
   BadgeCheck,
   Check,
   History,
+  Infinity as InfinityIcon,
   RotateCcw,
   X,
 } from "lucide-react";
@@ -172,6 +173,23 @@ export function ScanResultScreen({
         <Icon className="size-20" aria-hidden />
         <p className="mt-4 text-3xl font-black tracking-tight">{tone.label}</p>
         <p className="mt-1 text-lg opacity-90">{outcome.message}</p>
+
+        {/* Said before anything else about the ticket: a lifetime pass is the
+            one kind of code that is right at every event, and staff who have
+            never seen one need to know that is what they are looking at. */}
+        {outcome.lifetime && (
+          <div className="mt-6">
+            <p className="inline-flex items-center gap-2 border-2 border-white bg-black/30 px-4 py-2 text-base font-black tracking-[0.14em] uppercase">
+              <InfinityIcon className="size-5" aria-hidden />
+              Lifetime pass · {outcome.lifetime.number}
+            </p>
+            {!outcome.ticket && (
+              <p className="mt-2 text-2xl font-bold">
+                {outcome.lifetime.holderName}
+              </p>
+            )}
+          </div>
+        )}
 
         {outcome.ticket && (
           <div className="mt-8 space-y-1">
