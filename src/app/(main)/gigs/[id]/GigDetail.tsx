@@ -376,14 +376,15 @@
 
 "use client";
 
-import { use, useRef } from "react";
-import { motion, useScroll, useTransform } from "motion/react";
+import { use, useRef, useState } from "react";
+import { AnimatePresence, motion, useScroll, useTransform } from "motion/react";
 import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowLeft,
   Calendar,
   Clock,
+  Expand,
   Ticket,
   Pencil,
   MapPin,
@@ -401,6 +402,7 @@ import {
   GigTicketPanel,
 } from "~/components/ticketing/gig-tickets";
 import { GigAdminBanner } from "~/components/gigs/gig-admin-banner";
+import { PosterLightbox } from "~/components/gigs/poster-lightbox";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -414,6 +416,7 @@ export default function GigPage({ params }: PageProps) {
 
   const upcoming = gig ? !isGigPast(gig) : true;
   const hasPoster = !!gig?.posterFileUpload?.url;
+  const [posterOpen, setPosterOpen] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
@@ -551,7 +554,7 @@ export default function GigPage({ params }: PageProps) {
           transition={{ duration: 0.6 }}
           className="absolute top-0 right-0 left-0 z-30 px-4 py-4"
         >
-          <div className="mx-auto flex max-w-7xl items-center gap-4">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4">
             <Link
               href="/gigs"
               className="group flex items-center gap-2 border border-white/20 bg-black/30 px-4 py-2.5 text-sm font-bold tracking-wider text-white uppercase backdrop-blur-md transition-all hover:border-white/50 hover:bg-black/50"
@@ -559,6 +562,16 @@ export default function GigPage({ params }: PageProps) {
               <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
               Back
             </Link>
+            {hasPoster && !isTba && (
+              <button
+                type="button"
+                onClick={() => setPosterOpen(true)}
+                className="group flex items-center gap-2 border border-white/20 bg-black/30 px-4 py-2.5 text-sm font-bold tracking-wider text-white uppercase backdrop-blur-md transition-all hover:border-white/50 hover:bg-black/50"
+              >
+                <Expand className="h-4 w-4" />
+                View poster
+              </button>
+            )}
             {isAdmin && (
               <Link
                 href={`/admin/gigs/${gig.id}`}
@@ -743,6 +756,16 @@ export default function GigPage({ params }: PageProps) {
           </div>
         </section>
       )}
+
+      <AnimatePresence>
+        {posterOpen && hasPoster && (
+          <PosterLightbox
+            url={gig.posterFileUpload!.url}
+            title={gig.title}
+            onClose={() => setPosterOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </main>
   );
 }
