@@ -14,11 +14,13 @@ export function ClosingSection() {
     offset: ["start end", "end end"],
   });
 
-  const opacity = useTransform(scrollYProgress, [0, 0.8], [0, 1]);
-  const scale = useTransform(scrollYProgress, [0, 0.8], [0.85, 1]);
-  const y = useTransform(scrollYProgress, [0, 0.8], [60, 0]);
+  // Every range ends at 1. Motion turns this offset into a native ViewTimeline
+  // animation, and a last keyframe below 1 makes the browser interpolate back
+  // to the inline start values (opacity 0) as the section reaches the bottom.
+  const opacity = useTransform(scrollYProgress, [0, 0.8, 1], [0, 1, 1]);
+  const scale = useTransform(scrollYProgress, [0, 0.8, 1], [0.85, 1, 1]);
+  const y = useTransform(scrollYProgress, [0, 0.8, 1], [60, 0, 0]);
   const backgroundScale = useTransform(scrollYProgress, [0, 1], [1.08, 1]);
-  const footerOpacity = useTransform(scrollYProgress, [0.35, 0.8], [0, 1]);
 
   return (
     <section
