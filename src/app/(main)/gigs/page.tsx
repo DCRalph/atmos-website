@@ -8,7 +8,7 @@ import { SITE_URL } from "~/lib/seo-constants";
 export default function GigsRoute() {
   usePageMetadata({
     title: "Events",
-    description: "Immersive curated electronic music events in Pōneke",
+    description: "Immersive curated electronic music events",
     canonical: `${SITE_URL}/gigs`,
   });
 

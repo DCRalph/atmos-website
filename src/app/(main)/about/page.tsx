@@ -9,7 +9,7 @@ export default function page() {
   usePageMetadata({
     title: "About",
     description:
-      "ATMOS is Wellington's electronic music promoter & collective. We curate underground club nights and immersive DJ events in Pōneke.",
+      "ATMOS is an electronic music promoter and collective. We curate underground club nights and immersive DJ events.",
     canonical: `${SITE_URL}/about`,
   });
 

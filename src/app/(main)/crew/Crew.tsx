@@ -29,7 +29,7 @@ export default function CrewPage() {
         <div className="relative px-5 pt-28 pb-10 md:px-10 md:pb-14">
           <h1 className="t-heading text-[clamp(3rem,11vw,9rem)]">The crew</h1>
           <p className="mt-5 max-w-[40ch] text-[16px] text-white/75 md:text-[17px]">
-            DJs, producers and creatives powering Atmos in Pōneke.
+            DJs, producers and creatives powering Atmos.
           </p>
         </div>
       </section>

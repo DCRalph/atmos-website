@@ -5,13 +5,12 @@ import { env } from "~/env";
 /*                                  Constants                                 */
 /* -------------------------------------------------------------------------- */
 export const SITE_NAME = "ATMOS";
-export const SITE_TAGLINE = "Electronic music events in Pōneke";
-export const SITE_NAME_FULL = `${SITE_NAME} electronic music events in Pōneke`;
+export const SITE_TAGLINE = "Electronic music events";
+export const SITE_NAME_FULL = `${SITE_NAME} electronic music events`;
 
 export const SITE_URL = env.NEXT_PUBLIC_APP_URL ?? "https://atmosmedia.co.nz";
 
-export const DESCRIPTION_SHORT =
-  "Immersive curated music experiences in Pōneke";
+export const DESCRIPTION_SHORT = "Immersive curated music experiences";
 
 export const DESCRIPTION_LONG =
   "Gig tickets, weekly radio show, merch drops, dive into the galleries from our past events. Everything Atmos - all in one place";
@@ -27,7 +26,7 @@ export const OG_IMAGE = {
   url: DEFAULT_OG_IMAGE,
   width: 1200,
   height: 630,
-  alt: `${SITE_NAME} electronic music events in Pōneke`,
+  alt: `${SITE_NAME} electronic music events`,
 } as const;
 
 /* -------------------------------------------------------------------------- */
@@ -35,14 +34,12 @@ export const OG_IMAGE = {
 /* -------------------------------------------------------------------------- */
 
 export const COMMON_KEYWORDS = [
-  "wellington electronic music events",
-  "wellington club nights",
-  "wellington dj events",
-  "pōneke nightlife",
-  "underground club night wellington",
-  "nz electronic music events",
-  "electronic music promoter wellington",
-  "dance music collective wellington",
+  "electronic music events",
+  "club nights",
+  "dj events",
+  "underground club nights",
+  "electronic music promoter",
+  "dance music collective",
 ] as const;
 
 export const DEFAULT_ROBOTS: Metadata["robots"] = {
@@ -146,29 +143,24 @@ export const PAGE_METADATA = {
 
   gigs: basePage({
     title: "Events",
-    // ogTitle: "Immersive curated electronic music events in Pōneke | ATMOS",
     description: DESCRIPTION_LONG,
     keywords: [
-      "wellington dj events",
-      "wellington club nights",
-      "wellington nightlife events",
-      "techno night wellington",
-      "house music night wellington",
-      "things to do in wellington at night",
-      "wellington gig guide electronic",
-      "pōneke nightlife events",
+      "dj events",
+      "club nights",
+      "techno nights",
+      "house music nights",
+      "electronic gig guide",
     ],
   }),
 
   about: basePage({
     title: "About",
-    // ogTitle: "About ATMOS — Wellington Electronic Music Collective",
     description: DESCRIPTION_LONG,
   }),
 
   crew: basePage({
     title: "Crew",
-    ogTitle: "Wellington DJs & Artists | ATMOS",
+    ogTitle: "DJs & Artists | ATMOS",
     // description:
   }),
 

@@ -54,7 +54,7 @@ function R18() {
 export default function EventsPage() {
   usePageMetadata({
     title: "Tickets",
-    description: "Buy tickets to upcoming Atmos events in Pōneke.",
+    description: "Buy tickets to upcoming Atmos events.",
     canonical: `${SITE_URL}/events`,
   });
 

@@ -35,8 +35,7 @@ export default function EventPage() {
 
   usePageMetadata({
     title: event.data?.name ?? "Event",
-    description:
-      event.data?.shortDescription ?? "Tickets to an Atmos event in Pōneke.",
+    description: event.data?.shortDescription ?? "Tickets to an Atmos event.",
     canonical: `${SITE_URL}/events/${slug}`,
     // An event nobody can find without a link shouldn't turn up in a search.
     noindex: event.data ? event.data.visibility !== "PUBLIC" : true,

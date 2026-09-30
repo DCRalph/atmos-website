@@ -39,7 +39,7 @@ const priority: Record<LivePhase, number> = { on: 0, tonight: 1, wrap: 2 };
  * hasn't finished, which covers tonight and on now however long the night
  * runs. `gigs.getToday` adds the just-finished ones for the wrap. It can't be
  * the only source: its window is keyed to the start date in UTC and closes at
- * 5am UTC the next day (about 6pm in Pōneke), so it drops a gig that's still
+ * 5am UTC the next day (about 6pm in New Zealand), so it drops a gig that's still
  * going that evening.
  */
 export function useLiveGig() {

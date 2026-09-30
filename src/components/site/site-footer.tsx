@@ -36,7 +36,7 @@ export function SiteFooter() {
         <div>
           <AtmosLogo className="w-40" />
           <p className="mt-5 max-w-[36ch] text-[14px] text-white/60">
-            Immersive electronic music events in Pōneke, Wellington.
+            Immersive electronic music events.
           </p>
           <div className="mt-6 -ml-3 flex gap-1">
             {footerSocials.map(({ label, href, Icon }) => (

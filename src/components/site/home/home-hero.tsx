@@ -89,7 +89,7 @@ export function HomeHero() {
             ? `On now at ${venue.name}`
             : live?.phase === "tonight"
               ? `Tonight at ${venue.name}`
-              : "Electronic music · Pōneke"}
+              : "Electronic music"}
         </p>
       </div>
 
@@ -272,9 +272,7 @@ function useVenue(gig: TodayGig | undefined): Venue {
     { enabled: !!gig },
   );
   const name = event.data?.venueName ?? gig?.subtitle ?? "";
-  const query = [name, event.data?.venueAddress, "Wellington"]
-    .filter(Boolean)
-    .join(", ");
+  const query = [name, event.data?.venueAddress].filter(Boolean).join(", ");
   return {
     name,
     mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`,

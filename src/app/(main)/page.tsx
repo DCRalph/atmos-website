@@ -8,9 +8,9 @@ import { SITE_URL } from "~/lib/seo-constants";
 export default function Home() {
   // Set up page metadata
   usePageMetadata({
-    title: "ATMOS · Immersive electronic music events in Pōneke",
+    title: "ATMOS · Immersive electronic music events",
     description:
-      "Discover Wellington's best electronic music events. Curated club nights, underground DJ sets & immersive nightlife in Pōneke.",
+      "Curated club nights, underground DJ sets and immersive electronic music events from Atmos.",
     canonical: `${SITE_URL}/`,
   });
 
