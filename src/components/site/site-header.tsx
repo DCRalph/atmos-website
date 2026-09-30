@@ -164,18 +164,21 @@ function MobileMenu({
   const links = [{ label: "Home", href: "/" }, ...primaryNav, ...secondaryNav];
 
   return (
+    // No animation on this wrapper: tw-animate keyframes set `filter`, and a
+    // filtered ancestor stops the backdrop blur below from seeing the page.
     <div
       role="dialog"
       aria-modal="true"
       aria-label="Menu"
-      className={cn(
-        "fill-mode-forwards fixed inset-0 z-[65]",
-        closing
-          ? "animate-out fade-out-0 duration-200"
-          : "animate-in fade-in-0 duration-200",
-      )}
+      className="fixed inset-0 z-[65]"
     >
-      <div className="glass-dark absolute inset-0 border-0 bg-black/80" />
+      {/* Heavy blur with a light tint: the page stays visible, just out of focus. */}
+      <div
+        className={cn(
+          "absolute inset-0 bg-black/45 backdrop-blur-2xl backdrop-saturate-150",
+          closing ? "site-fade-out" : "site-fade-in",
+        )}
+      />
       <div className="relative flex h-full flex-col">
         <div className="flex h-16 items-center justify-between px-5">
           <Link href="/" onClick={onClose} aria-label="Atmos home">
