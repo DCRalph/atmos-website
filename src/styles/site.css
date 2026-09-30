@@ -92,14 +92,26 @@
       0 24px 48px -16px rgb(0 0 0 / 0.8);
   }
 
-  /* Opacity-only fades, for layers that carry a backdrop-filter (tw-animate's
+  /* Opacity-only fades, for layers near a backdrop-filter (tw-animate's
      keyframes also set filter, which would switch the blur off). */
   .site .site-fade-in {
-    animation: site-fade 200ms ease-out both;
+    animation: site-fade 480ms ease-out both;
   }
 
   .site .site-fade-out {
-    animation: site-fade 200ms ease-in reverse both;
+    animation: site-fade-out 480ms ease-in both;
+  }
+
+  /* Menu veil: the blur radius and tint ramp together, so the page drifts
+     out of focus instead of popping behind a sheet. 480ms both ways. Exits
+     have their own keyframes: swapping to the same name with `reverse`
+     wouldn't restart the animation. */
+  .site .site-veil-in {
+    animation: site-veil 480ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  .site .site-veil-out {
+    animation: site-veil-out 480ms cubic-bezier(0.4, 0, 0.8, 0.3) both;
   }
 
   /* SiteSelect: the list unrolls downward from under its trigger. */
@@ -152,5 +164,37 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+@keyframes site-veil {
+  from {
+    background-color: rgb(0 0 0 / 0);
+    -webkit-backdrop-filter: blur(0) saturate(1);
+    backdrop-filter: blur(0) saturate(1);
+  }
+  to {
+    background-color: rgb(0 0 0 / 0.45);
+    -webkit-backdrop-filter: blur(40px) saturate(1.5);
+    backdrop-filter: blur(40px) saturate(1.5);
+  }
+}
+
+@keyframes site-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes site-veil-out {
+  from {
+    background-color: rgb(0 0 0 / 0.45);
+    -webkit-backdrop-filter: blur(40px) saturate(1.5);
+    backdrop-filter: blur(40px) saturate(1.5);
+  }
+  to {
+    background-color: rgb(0 0 0 / 0);
+    -webkit-backdrop-filter: blur(0) saturate(1);
+    backdrop-filter: blur(0) saturate(1);
   }
 }

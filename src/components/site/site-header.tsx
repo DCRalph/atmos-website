@@ -139,13 +139,18 @@ const menuSocials = [
   { ...SOCIALS.soundcloud, Icon: FaSoundcloud },
 ];
 
-// How long the menu takes to leave; unmount waits for it.
-const MENU_EXIT_MS = 220;
+// Link slide timing, shared by entry and exit so they mirror each other.
+const LINK_MS = 320;
+const LINK_STAGGER_MS = 35;
+// How long the veil takes to blur in or clear. Keep in step with site.css.
+const VEIL_MS = 480;
 
 /**
  * Full-screen phone menu: the page blurs behind it, links go huge. `closing`
  * plays the exit (links slide back out, the veil fades) before unmount.
  */
+const menuLinkCount = 1 + primaryNav.length + secondaryNav.length;
+
 function MobileMenu({
   pathname,
   closing,
@@ -172,14 +177,19 @@ function MobileMenu({
       aria-label="Menu"
       className="fixed inset-0 z-[65]"
     >
-      {/* Heavy blur with a light tint: the page stays visible, just out of focus. */}
+      {/* The blur itself ramps up and back down, the page going in and out of focus. */}
       <div
         className={cn(
-          "absolute inset-0 bg-black/45 backdrop-blur-2xl backdrop-saturate-150",
-          closing ? "site-fade-out" : "site-fade-in",
+          "absolute inset-0",
+          closing ? "site-veil-out" : "site-veil-in",
         )}
       />
-      <div className="relative flex h-full flex-col">
+      <div
+        className={cn(
+          "relative flex h-full flex-col",
+          closing ? "site-fade-out" : "site-fade-in",
+        )}
+      >
         <div className="flex h-16 items-center justify-between px-5">
           <Link href="/" onClick={onClose} aria-label="Atmos home">
             <AtmosLogo className="w-24" />
@@ -197,14 +207,15 @@ function MobileMenu({
                 <li
                   key={l.href}
                   className={cn(
-                    "fill-mode-both",
+                    "fill-mode-both py-1.5",
                     closing
-                      ? "animate-out fade-out-0 slide-out-to-left-3 duration-200"
-                      : "animate-in fade-in-0 slide-in-from-left-3 duration-300",
+                      ? "animate-out fade-out-0 slide-out-to-left-6"
+                      : "animate-in fade-in-0 slide-in-from-left-6",
                   )}
-                  // Stagger in top-down, back out bottom-up.
+                  // Same slide both ways: in top-down, back out bottom-up.
                   style={{
-                    animationDelay: `${(closing ? links.length - 1 - i : i) * (closing ? 12 : 25)}ms`,
+                    animationDuration: `${LINK_MS}ms`,
+                    animationDelay: `${(closing ? links.length - 1 - i : i) * LINK_STAGGER_MS}ms`,
                   }}
                 >
                   <Link
@@ -212,7 +223,8 @@ function MobileMenu({
                     onClick={onClose}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "t-display flex py-2.5 text-[2rem]",
+                      // Hit area is the word itself, not the whole row.
+                      "t-display inline-block text-[2rem]",
                       active ? "text-[var(--site-accent-text)]" : "text-white",
                     )}
                   >
@@ -253,7 +265,10 @@ export function SiteHeader() {
 
   const closeMenu = () => {
     setMenu("closing");
-    setTimeout(() => setMenu("closed"), MENU_EXIT_MS);
+    setTimeout(
+      () => setMenu("closed"),
+      Math.max(VEIL_MS, (menuLinkCount - 1) * LINK_STAGGER_MS + LINK_MS),
+    );
   };
 
   return (
