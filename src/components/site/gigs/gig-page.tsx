@@ -18,8 +18,9 @@ import {
 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
-import { buildMediaUrl, getMediaDisplayUrl } from "~/lib/media-url";
+import { getMediaDisplayUrl } from "~/lib/media-url";
 import { LexicalContent } from "~/components/lexical";
+import { Lineup } from "./lineup";
 import { BuyPanel } from "~/components/ticketing/buy-panel";
 import { NewsletterForm } from "../newsletter-form";
 import { Lightbox, useLightbox } from "../overlays";
@@ -197,69 +198,6 @@ function Actions({
           <Pencil className="size-4" /> Edit
         </Link>
       ) : null}
-    </div>
-  );
-}
-
-/** Artists from the run sheet; published creator profiles link through. */
-function Lineup({ gig }: { gig: DetailGig }) {
-  if (!gig.lineUp.length) return null;
-  return (
-    <div>
-      <h2 className="t-label mb-4 text-[12px] text-white/60">Line-up</h2>
-      <ul className="flex flex-wrap gap-x-6 gap-y-4">
-        {gig.lineUp.map(({ id, role, creatorProfile: p }, i) => {
-          const body = (
-            <>
-              {p.avatarFileId ? (
-                <Image
-                  src={buildMediaUrl(p.avatarFileId)}
-                  alt=""
-                  width={40}
-                  height={40}
-                  className="size-10 rounded-full object-cover"
-                />
-              ) : (
-                <span
-                  className="t-label flex size-10 items-center justify-center rounded-full bg-white/10 text-[12px]"
-                  aria-hidden
-                >
-                  {p.displayName.slice(0, 1)}
-                </span>
-              )}
-              <span>
-                <span
-                  className={cn(
-                    "t-display block",
-                    i === 0 ? "text-lg" : "text-base text-white/85",
-                  )}
-                >
-                  {p.displayName}
-                </span>
-                {role ? (
-                  <span className="t-label mt-1 block text-[9px] text-white/50">
-                    {role}
-                  </span>
-                ) : null}
-              </span>
-            </>
-          );
-          return (
-            <li key={id}>
-              {p.isPublished ? (
-                <Link
-                  href={`/@${p.handle}`}
-                  className="flex items-center gap-3 hover:text-[var(--site-accent-text)]"
-                >
-                  {body}
-                </Link>
-              ) : (
-                <span className="flex items-center gap-3">{body}</span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
     </div>
   );
 }
