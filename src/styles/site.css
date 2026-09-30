@@ -1,7 +1,7 @@
 /* Public site design system, scoped to `.site` so the admin is untouched.
  *
- *  - Stretched type: one wide display voice (Anybody on its width axis) for
- *    headings, nav, buttons and meta. Body copy stays normal width.
+ *  - Type: Orbitron headings echo the logo; stretched Anybody (on its width
+ *    axis) carries nav, buttons and meta. Body copy stays normal width.
  *  - Hard + round: square where things meet imagery or the viewport edge,
  *    pills for anything pressable, 16px for floating glass panels. The notch
  *    (one square corner) marks a panel that belongs to what's next to it.
@@ -43,14 +43,14 @@
     outline-offset: 3px;
   }
 
+  /* Headings: Orbitron, the closest match to the logo's lettering. */
   .site .t-display {
     font-family:
-      var(--font-site-display-ext), var(--font-site-display), ui-sans-serif,
+      var(--font-site-display-ext), var(--font-site-heading), ui-sans-serif,
       sans-serif;
-    font-stretch: 135%;
-    font-weight: 800;
+    font-weight: 900;
     text-transform: uppercase;
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
     line-height: 0.92;
     text-wrap: balance;
   }

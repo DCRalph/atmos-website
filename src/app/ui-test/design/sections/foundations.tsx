@@ -3,7 +3,7 @@
 import { ArrowRight } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { photos } from "../fixtures";
-import { Button, Media, VariantTag } from "../primitives";
+import { AtmosLogo, Button, Media, VariantTag } from "../primitives";
 import {
   accentVars,
   accents,
@@ -66,20 +66,34 @@ function TypeScale() {
   );
 }
 
+/** Every heading candidate on the same copy, with the logo first for reference. */
 function FaceCompare() {
   return (
-    <div className="grid border-y border-white/10 md:grid-cols-3 md:divide-x md:divide-white/10">
+    <div className="grid grid-cols-1 gap-px border-y border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="flex flex-col justify-between gap-6 bg-black px-5 py-8 md:px-8">
+        <p className="font-mono text-[11px] text-white/45 uppercase">
+          Logo (custom lettering)
+        </p>
+        <AtmosLogo className="w-full max-w-[260px]" />
+        <p className="text-[13px] text-white/55">
+          Flat-topped A, square O and M, heavy, arched.
+        </p>
+      </div>
       {(Object.keys(faces) as FaceKey[]).map((key) => (
         <div
           key={key}
           style={faceVars(key)}
-          className="border-b border-white/10 px-5 py-8 md:border-b-0 md:px-8"
+          className="bg-black px-5 py-8 md:px-8"
         >
           <p className="mb-6 font-mono text-[11px] text-white/45 uppercase">
             {faces[key].name}
+            {"headingsOnly" in faces[key] ? " · headings only" : ""}
           </p>
           <p className="mx-display text-[clamp(1.75rem,2.6vw,2.5rem)]">
             Join the atmosphere
+          </p>
+          <p className="mx-display mt-3 text-[clamp(1.1rem,1.6vw,1.5rem)] text-white/80">
+            Intuition Vol.3 · Pōneke
           </p>
           <p className="mx-label mt-5 text-[12px] text-white/70">
             Gigs · Content · Merch · Crew
@@ -227,7 +241,7 @@ export function FoundationsSection() {
   return (
     <div className="space-y-14 pb-16">
       <div>
-        <VariantTag>Display face · same copy in each candidate</VariantTag>
+        <VariantTag>Heading face · same copy in each candidate</VariantTag>
         <FaceCompare />
       </div>
       <div>

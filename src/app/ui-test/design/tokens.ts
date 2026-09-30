@@ -40,6 +40,15 @@ export const accentVars = (key: AccentKey) => {
 };
 
 /** Display face candidates, all driven by the same `.mx-display` rules. */
+type Face = {
+  name: string;
+  font: string;
+  stretch: string;
+  weight: number;
+  /** Logo-style heading faces keep nav, buttons and labels on Anybody Wide. */
+  headingsOnly?: boolean;
+};
+
 export const faces = {
   archivo: {
     name: "Archivo Expanded",
@@ -59,15 +68,49 @@ export const faces = {
     stretch: "100%",
     weight: 700,
   },
-} as const;
+  orbitron: {
+    name: "Orbitron",
+    font: "var(--font-mx-orbitron)",
+    stretch: "100%",
+    weight: 900,
+    headingsOnly: true,
+  },
+  russo: {
+    name: "Russo One",
+    font: "var(--font-mx-russo)",
+    stretch: "100%",
+    weight: 400,
+    headingsOnly: true,
+  },
+  oxanium: {
+    name: "Oxanium",
+    font: "var(--font-mx-oxanium)",
+    stretch: "100%",
+    weight: 800,
+    headingsOnly: true,
+  },
+  tomorrow: {
+    name: "Tomorrow",
+    font: "var(--font-mx-tomorrow)",
+    stretch: "100%",
+    weight: 900,
+    headingsOnly: true,
+  },
+} as const satisfies Record<string, Face>;
 
 export type FaceKey = keyof typeof faces;
 
 export const faceVars = (key: FaceKey) => {
-  const f = faces[key];
+  const f: Face = faces[key];
   return {
     "--mx-display-font": f.font,
     "--mx-display-stretch": f.stretch,
     "--mx-display-weight": f.weight,
+    ...(f.headingsOnly
+      ? {
+          "--mx-label-font": faces.anybody.font,
+          "--mx-label-stretch": faces.anybody.stretch,
+        }
+      : {}),
   } as CSSProperties;
 };

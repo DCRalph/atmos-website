@@ -63,8 +63,9 @@
   /* Small stretched caps for nav, buttons, meta. Wide + tracked reads as the
      same voice as the display face at 11-14px. */
   .mx .mx-label {
-    font-family: var(--mx-display-font), ui-sans-serif, sans-serif;
-    font-stretch: var(--mx-display-stretch);
+    font-family:
+      var(--mx-label-font, var(--mx-display-font)), ui-sans-serif, sans-serif;
+    font-stretch: var(--mx-label-stretch, var(--mx-display-stretch));
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
