@@ -301,8 +301,7 @@ export function CreatorGridEditor({
       {blocks.map((block) => {
         const isSelected = selectedBlockId === block.id;
         const intrinsic = getBlockSizing(block.type) === "intrinsic";
-        const preview =
-          hoverPreview?.id === block.id ? hoverPreview : null;
+        const preview = hoverPreview?.id === block.id ? hoverPreview : null;
         const x = preview?.x ?? block.x;
         const y = preview?.y ?? block.y;
         const w = preview?.w ?? block.w;
@@ -368,7 +367,7 @@ export function CreatorGridEditor({
             <div className="min-h-0 flex-1 p-2">
               {block.type === "RICH_TEXT" || block.type === "HEADING" ? (
                 <div className="flex h-full flex-col justify-center">
-                  <div ref={measureRef(block.id)} className="min-w-0 flow-root">
+                  <div ref={measureRef(block.id)} className="flow-root min-w-0">
                     <InlineBlockEditor
                       block={block}
                       onChange={(nb) =>
@@ -380,7 +379,7 @@ export function CreatorGridEditor({
                 </div>
               ) : intrinsic ? (
                 <div className="pointer-events-none flex h-full flex-col justify-center">
-                  <div ref={measureRef(block.id)} className="min-w-0 flow-root">
+                  <div ref={measureRef(block.id)} className="flow-root min-w-0">
                     <BlockRenderer
                       block={block}
                       socials={socials}

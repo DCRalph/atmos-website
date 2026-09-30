@@ -7,11 +7,7 @@ import {
   PopoverAnchor,
   PopoverContent,
 } from "~/components/ui/popover";
-import {
-  clockOptions,
-  formatClock,
-  parseClock,
-} from "~/lib/run-sheet/night";
+import { clockOptions, formatClock, parseClock } from "~/lib/run-sheet/night";
 import { cn } from "~/lib/utils";
 
 /**
@@ -179,11 +175,7 @@ export function TimeField({
         onCloseAutoFocus={(e) => e.preventDefault()}
         className="w-[136px] p-1"
       >
-        <div
-          ref={listRef}
-          role="listbox"
-          className="max-h-60 overflow-y-auto"
-        >
+        <div ref={listRef} role="listbox" className="max-h-60 overflow-y-auto">
           {options.length === 0 ? (
             <p className="text-muted-foreground px-2 py-2 text-xs">
               Not a time.

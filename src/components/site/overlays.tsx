@@ -21,6 +21,7 @@ export function SiteDialog({
   trigger,
   children,
   className,
+  titleAsWritten,
 }: {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -30,6 +31,8 @@ export function SiteDialog({
   trigger?: ReactNode;
   children: ReactNode;
   className?: string;
+  /** Title keeps its own casing (e.g. an artist or gig name). */
+  titleAsWritten?: boolean;
 }) {
   const { portalContainer } = useSite();
   return (
@@ -52,7 +55,12 @@ export function SiteDialog({
         >
           <div className="flex items-start justify-between gap-4 border-b border-white/10 p-5">
             <div>
-              <Dialog.Title className="t-display text-2xl">
+              <Dialog.Title
+                className={cn(
+                  "t-display text-2xl",
+                  titleAsWritten && "normal-case",
+                )}
+              >
                 {title}
               </Dialog.Title>
               <Dialog.Description

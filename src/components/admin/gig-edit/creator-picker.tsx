@@ -135,7 +135,9 @@ export function CreatorPicker({
             size="sm"
             variant={compact ? "ghost" : "outline"}
             disabled={disabled}
-            className={cn(compact && "text-muted-foreground h-6 px-1.5 text-xs")}
+            className={cn(
+              compact && "text-muted-foreground h-6 px-1.5 text-xs",
+            )}
           >
             <Plus className={compact ? "h-3 w-3" : "h-3.5 w-3.5"} />
             {label}

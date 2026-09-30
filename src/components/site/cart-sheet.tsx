@@ -85,7 +85,7 @@ export function CartSheet() {
                   <Link
                     href={`/merch/${item.productHandle}`}
                     onClick={() => setCartOpen(false)}
-                    className="t-display block truncate text-base hover:text-[var(--site-accent-text)]"
+                    className="t-display block truncate text-base normal-case hover:text-[var(--site-accent-text)]"
                   >
                     {item.productTitle}
                   </Link>

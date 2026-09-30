@@ -247,7 +247,9 @@ export function PersonSheet({
           {person.buyerEmail && <Row label="Email" value={person.buyerEmail} />}
           <Row
             label="Paid by"
-            value={person.isComp ? "Comp" : paymentMethodLabel(person.paymentMethod)}
+            value={
+              person.isComp ? "Comp" : paymentMethodLabel(person.paymentMethod)
+            }
           />
         </dl>
 
@@ -383,4 +385,3 @@ function Row({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-

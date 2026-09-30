@@ -219,7 +219,7 @@ export function CoverCard({
       </div>
       <h3
         className={cn(
-          "t-display mt-4 break-words",
+          "t-display mt-4 break-words normal-case",
           featured
             ? "text-[clamp(1.75rem,3.2vw,2.75rem)]"
             : "line-clamp-2 text-base sm:text-xl",

@@ -402,7 +402,7 @@ export function GigPage({ params }: { params: Promise<{ id: string }> }) {
 
         <div className="flex min-w-0 flex-col gap-8">
           <div className="space-y-5">
-            <h1 className="t-display text-[clamp(1.9rem,5.2vw,5rem)] [overflow-wrap:anywhere]">
+            <h1 className="t-display text-[clamp(1.9rem,5.2vw,5rem)] [overflow-wrap:anywhere] normal-case">
               {gigTitle(gig)}
             </h1>
             <MetaLine gig={gig} past={past} />

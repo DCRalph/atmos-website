@@ -81,7 +81,7 @@ function UpcomingRow({
         </div>
         <div className="min-w-0">
           {onNow ? <OnNowChip className="mb-2" /> : null}
-          <p className="t-display line-clamp-2 text-base leading-[1.05] md:text-2xl">
+          <p className="t-display line-clamp-2 text-base leading-[1.05] normal-case md:text-2xl">
             {gigTitle(gig)}
           </p>
           <p className="mt-1.5 truncate text-[13px] text-white/60">
@@ -117,7 +117,7 @@ function PastRow({ gig }: { gig: ListGig }) {
           {fmtDay(gig.gigStartTime).slice(4)}
         </p>
         <div className="min-w-0">
-          <p className="t-display line-clamp-2 text-sm leading-[1.1] md:text-lg">
+          <p className="t-display line-clamp-2 text-sm leading-[1.1] normal-case md:text-lg">
             {gig.title}
           </p>
           <p className="mt-1 truncate text-[13px] text-white/55">
@@ -240,7 +240,7 @@ function NextShowHero({
           </div>
         ) : next ? (
           <div className="min-w-0">
-            <h1 className="t-display max-w-[14ch] text-[clamp(1.75rem,6.4vw,5.5rem)] [overflow-wrap:anywhere]">
+            <h1 className="t-display max-w-[14ch] text-[clamp(1.75rem,6.4vw,5.5rem)] [overflow-wrap:anywhere] normal-case">
               <Link
                 href={gigPath(next)}
                 className="hover:text-[var(--site-accent-text)]"
@@ -303,7 +303,7 @@ function NextShowHero({
                       tbaSize="text-[10px]"
                     />
                     <div className="min-w-0">
-                      <p className="t-display truncate text-sm">
+                      <p className="t-display truncate text-sm normal-case">
                         {gigTitle(g)}
                       </p>
                       <p className="mt-1 truncate text-[12px] text-white/60">

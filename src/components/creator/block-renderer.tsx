@@ -147,7 +147,7 @@ export function BlockRenderer({
 }) {
   switch (block.type) {
     case "HEADING": {
-      const level = Number((block.data).level) || 2;
+      const level = Number(block.data.level) || 2;
       const text = getString(block.data, "text") || "Heading";
       const align = getString(block.data, "align") || "left";
       const Tag = (

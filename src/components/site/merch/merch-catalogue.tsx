@@ -102,7 +102,7 @@ function CatalogueCard({ product }: { product: Product }) {
         ) : null}
       </Link>
       <div className="flex flex-col gap-1.5 pt-4 xl:flex-row xl:items-baseline xl:justify-between xl:gap-3">
-        <h2 className="t-display min-w-0 text-[15px] [overflow-wrap:anywhere] md:text-lg">
+        <h2 className="t-display min-w-0 text-[15px] [overflow-wrap:anywhere] normal-case md:text-lg">
           <Link href={href} className="hover:text-[var(--site-accent-text)]">
             {product.title}
           </Link>

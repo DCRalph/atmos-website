@@ -123,7 +123,7 @@ export default function EventPage() {
           ) : null}
           <div>
             <EventOnNow start={data.startsAt} end={data.endsAt} />
-            <h1 className="t-display text-[clamp(1.9rem,4.6vw,4.25rem)] [overflow-wrap:anywhere]">
+            <h1 className="t-display text-[clamp(1.9rem,4.6vw,4.25rem)] [overflow-wrap:anywhere] normal-case">
               {data.name}
             </h1>
           </div>

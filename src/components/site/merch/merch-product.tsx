@@ -251,7 +251,7 @@ function ProductBody({ product }: { product: Product }) {
         ) : null}
       </div>
       <div className="lg:sticky lg:top-24 lg:self-start">
-        <h1 className="t-display text-[clamp(2.25rem,4.5vw,4rem)] [overflow-wrap:anywhere]">
+        <h1 className="t-display text-[clamp(2.25rem,4.5vw,4rem)] [overflow-wrap:anywhere] normal-case">
           {product.title}
         </h1>
         <p className="t-display mt-4 text-2xl tabular-nums">
@@ -321,7 +321,7 @@ function NotFound() {
                   sizes="(min-width: 1024px) 25vw, 50vw"
                   className={cn("aspect-[4/5]", isSoldOut(p) && "grayscale")}
                 />
-                <p className="t-display mt-3 text-[15px] [overflow-wrap:anywhere] group-hover:text-[var(--site-accent-text)]">
+                <p className="t-display mt-3 text-[15px] [overflow-wrap:anywhere] normal-case group-hover:text-[var(--site-accent-text)]">
                   {p.title}
                 </p>
                 <p className="mt-1 text-[13px] text-white/60 tabular-nums">

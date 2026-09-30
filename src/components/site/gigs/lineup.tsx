@@ -134,7 +134,7 @@ export function Lineup({ gig }: { gig: DetailGig }) {
               <span>
                 <span
                   className={cn(
-                    "t-display block transition-colors group-hover:text-[var(--site-accent-text)]",
+                    "t-display block normal-case transition-colors group-hover:text-[var(--site-accent-text)]",
                     i === 0 ? "text-lg" : "text-base text-white/85",
                   )}
                 >
@@ -207,6 +207,7 @@ function ArtistDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={p.displayName}
+      titleAsWritten
       description={description}
       className="max-w-[560px] overflow-y-auto"
     >
@@ -268,7 +269,7 @@ function ArtistDialog({
                       >
                         <Poster gig={g} className="w-14" />
                         <span className="min-w-0">
-                          <span className="t-display block truncate text-base">
+                          <span className="t-display block truncate text-base normal-case">
                             {gigTitle(g)}
                           </span>
                           <span className="mt-1 block truncate text-[13px] text-white/60">

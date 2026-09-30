@@ -164,7 +164,7 @@ export function ItemRows({ b }: { b: Booking }) {
               <div className="min-w-0 flex-1">
                 <p
                   className={cn(
-                    "t-display text-base",
+                    "t-display text-base normal-case",
                     n ? "text-white" : "text-white/85",
                   )}
                 >
@@ -483,7 +483,7 @@ export function BookingSummary({ b }: { b: Booking }) {
   return (
     <div className="space-y-4 text-[14px]">
       <div>
-        <p className="t-display text-lg">
+        <p className="t-display text-lg normal-case">
           {b.mode === "PACKAGE"
             ? (b.pkg?.name ?? "No package selected")
             : b.hasGear

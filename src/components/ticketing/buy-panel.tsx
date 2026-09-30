@@ -209,7 +209,7 @@ export function BuyPanel({ event }: { event: PublicEvent }) {
                 <p className="flex flex-wrap items-baseline gap-x-2">
                   <span
                     className={cn(
-                      "t-display text-base",
+                      "t-display text-base normal-case",
                       disabled && "text-white/45",
                     )}
                   >

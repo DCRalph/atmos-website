@@ -148,7 +148,7 @@ function GigRow({ gig }: { gig: UpcomingGig }) {
         </div>
         <div className="min-w-0">
           {onNow ? <OnNowChip className="mb-2" /> : null}
-          <p className="t-display line-clamp-2 text-lg break-words transition-colors group-hover:text-[var(--site-accent-text)] md:text-2xl">
+          <p className="t-display line-clamp-2 text-lg break-words normal-case transition-colors group-hover:text-[var(--site-accent-text)] md:text-2xl">
             {tba ? "TBA" : gig.title}
           </p>
           <p className="mt-1.5 truncate text-[13px] text-white/60">

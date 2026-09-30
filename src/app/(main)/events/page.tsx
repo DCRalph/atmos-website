@@ -104,7 +104,7 @@ export default function EventsPage() {
                   {formatEventDate(event.startsAt, event.timezone)} ·{" "}
                   {formatEventTime(event.startsAt, event.timezone)}
                 </p>
-                <h2 className="t-display mt-3 text-[clamp(1.4rem,3vw,2.25rem)] [overflow-wrap:anywhere]">
+                <h2 className="t-display mt-3 text-[clamp(1.4rem,3vw,2.25rem)] [overflow-wrap:anywhere] normal-case">
                   {event.name}
                 </h2>
                 {event.venueName ? (

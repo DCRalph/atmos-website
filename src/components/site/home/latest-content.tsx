@@ -103,7 +103,7 @@ function FeaturedItem({ item }: { item: ContentItem }) {
       className="group block border-t border-white/15 py-6"
     >
       <Meta item={item} />
-      <h3 className="t-display mt-6 text-[clamp(1.75rem,3.5vw,3rem)] break-words transition-colors group-hover:text-[var(--site-accent-text)]">
+      <h3 className="t-display mt-6 text-[clamp(1.75rem,3.5vw,3rem)] break-words normal-case transition-colors group-hover:text-[var(--site-accent-text)]">
         {item.title}
       </h3>
       {item.dj ? (
@@ -130,7 +130,7 @@ function ItemRow({ item }: { item: ContentItem }) {
       >
         <div className="min-w-0">
           <Meta item={item} />
-          <p className="t-display mt-4 line-clamp-2 text-xl break-words transition-colors group-hover:text-[var(--site-accent-text)]">
+          <p className="t-display mt-4 line-clamp-2 text-xl break-words normal-case transition-colors group-hover:text-[var(--site-accent-text)]">
             {item.title}
           </p>
           <p className="mt-2 truncate text-[14px] text-white/60">

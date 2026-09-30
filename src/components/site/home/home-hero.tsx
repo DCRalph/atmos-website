@@ -148,7 +148,7 @@ function NextGigStrip() {
           href={gigPath(gig)}
           className="block after:absolute after:inset-0 hover:text-[var(--site-accent-text)]"
         >
-          <span className="t-display line-clamp-2 text-lg break-words sm:text-xl md:line-clamp-1 md:text-2xl">
+          <span className="t-display line-clamp-2 text-lg break-words normal-case sm:text-xl md:line-clamp-1 md:text-2xl">
             {gig.title}
           </span>
         </Link>
@@ -360,7 +360,7 @@ function LiveStrip({
               !on && "hover:text-[var(--site-accent-text)]",
             )}
           >
-            <span className="t-display line-clamp-2 text-lg break-words sm:text-xl md:line-clamp-1 md:text-2xl">
+            <span className="t-display line-clamp-2 text-lg break-words normal-case sm:text-xl md:line-clamp-1 md:text-2xl">
               {gig.title}
             </span>
           </Link>

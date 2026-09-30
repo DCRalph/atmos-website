@@ -108,7 +108,7 @@ function PackageTiles({ b }: { b: Booking }) {
             )}
           >
             <span className="flex w-full items-start justify-between gap-3">
-              <span className="t-display text-lg">{p.name}</span>
+              <span className="t-display text-lg normal-case">{p.name}</span>
               {on ? <Check className="size-5 shrink-0" /> : null}
             </span>
             <GearChips lines={lines} inverted={on} />
@@ -305,7 +305,7 @@ export function EquipmentWizard() {
               </Button>
             ) : null}
             <div className="mr-auto min-w-0">
-              <p className="t-display truncate text-[13px] md:text-base">
+              <p className="t-display truncate text-[13px] normal-case md:text-base">
                 {b.mode === "PACKAGE"
                   ? (b.pkg?.name ?? "No package yet")
                   : b.hasGear

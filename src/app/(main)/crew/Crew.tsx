@@ -82,7 +82,7 @@ export default function CrewPage() {
                     <div className="min-w-0 flex-1">
                       <h2
                         className={cn(
-                          "t-display text-[clamp(1.35rem,4.2vw,3.5rem)] break-words transition-colors duration-200",
+                          "t-display text-[clamp(1.35rem,4.2vw,3.5rem)] break-words normal-case transition-colors duration-200",
                           m.id === current?.id
                             ? "lg:text-white"
                             : "lg:text-white/60",
