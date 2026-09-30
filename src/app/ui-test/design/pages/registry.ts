@@ -1,5 +1,6 @@
 import type { PageSpec } from "./types";
 import { gigsPage } from "./gigs";
+import { homeLivePage } from "./home-live";
 import { gigDetailPage } from "./gig-detail";
 import { eventsPage } from "./events";
 import { eventPage } from "./event";
@@ -15,6 +16,7 @@ import { legalPage } from "./legal";
 
 /** Every `(main)` page, in the order they appear in the Pages picker. */
 export const pageSpecs: readonly PageSpec[] = [
+  homeLivePage,
   gigsPage,
   gigDetailPage,
   eventsPage,
