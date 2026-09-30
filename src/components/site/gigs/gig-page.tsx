@@ -36,6 +36,7 @@ import {
   ticketCta,
   type DetailGig,
 } from "./gig-parts";
+import { OnNowPanel, nightOf, nightPhase, useMinuteClock } from "../on-now";
 
 /** Date, time (upcoming only) and venue. */
 function MetaLine({ gig, past }: { gig: DetailGig; past: boolean }) {
@@ -467,6 +468,7 @@ export function GigPage({ params }: { params: Promise<{ id: string }> }) {
               {gigTitle(gig)}
             </h1>
             <MetaLine gig={gig} past={past} />
+            {!tba ? <OnNowIfRunning gig={gig} /> : null}
             <Tags gig={gig} />
             <div className="flex flex-wrap items-center gap-3">
               {!tba && !past ? <TicketCta gig={gig} /> : null}
@@ -550,4 +552,12 @@ function TicketCta({ gig }: { gig: DetailGig }) {
       <CtaPill cta={cta} size="md" />
     </a>
   );
+}
+
+/** The on-now panel, only while the gig is running. */
+function OnNowIfRunning({ gig }: { gig: DetailGig }) {
+  const now = useMinuteClock();
+  const night = nightOf(gig);
+  if (now === null || nightPhase(night, now) !== "on") return null;
+  return <OnNowPanel night={night} now={now} />;
 }

@@ -13,6 +13,11 @@ import { Media, Skeleton, buttonVariants } from "~/components/site/ui";
 import { usePageMetadata } from "~/hooks/use-page-metadata";
 import { gigPath } from "~/lib/gig-url";
 import { SITE_URL } from "~/lib/seo-constants";
+import {
+  OnNowPanel,
+  nightPhase,
+  useMinuteClock,
+} from "~/components/site/on-now";
 
 /** Public event page. The buy panel sticks to the side on desktop. */
 export default function EventPage() {
@@ -116,9 +121,12 @@ export default function EventPage() {
               priority
             />
           ) : null}
-          <h1 className="t-display text-[clamp(1.9rem,4.6vw,4.25rem)] [overflow-wrap:anywhere]">
-            {data.name}
-          </h1>
+          <div>
+            <EventOnNow start={data.startsAt} end={data.endsAt} />
+            <h1 className="t-display text-[clamp(1.9rem,4.6vw,4.25rem)] [overflow-wrap:anywhere]">
+              {data.name}
+            </h1>
+          </div>
         </div>
         {data.shortDescription ? (
           <p className="max-w-[60ch] text-[17px] text-white/70">
@@ -179,6 +187,17 @@ export default function EventPage() {
       <div className="lg:sticky lg:top-28 lg:self-start">
         <BuyPanel event={data} />
       </div>
+    </div>
+  );
+}
+
+/** The on-now panel above the title, only while the event is running. */
+function EventOnNow({ start, end }: { start: Date; end: Date | null }) {
+  const now = useMinuteClock();
+  if (now === null || nightPhase({ start, end }, now) !== "on") return null;
+  return (
+    <div className="mb-5">
+      <OnNowPanel night={{ start, end }} now={now} compact />
     </div>
   );
 }

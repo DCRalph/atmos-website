@@ -23,6 +23,7 @@ import {
   type TodayGig,
 } from "./live-gig";
 import { nzDate } from "./parts";
+import { GigCountdown, nightOf } from "../on-now";
 
 type UpcomingGig = RouterOutputs["gigs"]["getUpcoming"][number];
 /** What the ticket pill needs from any gig shape. */
@@ -162,7 +163,7 @@ function NextGigStrip() {
         </p>
       </div>
       <div className="hidden lg:block">
-        <CountdownTiles target={gig.gigStartTime} compact />
+        <GigCountdown night={nightOf(gig)} compact />
       </div>
       <TicketPill gig={gig} />
     </div>

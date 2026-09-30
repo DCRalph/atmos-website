@@ -1,8 +1,8 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { gigOffSiteNotice } from "~/lib/gig-visibility";
+import { nightEnd as sharedNightEnd, nightOf, useMinuteClock } from "../on-now";
 
 export type TodayGig =
   | RouterOutputs["gigs"]["getToday"][number]
@@ -12,30 +12,12 @@ export type LivePhase = "tonight" | "on" | "wrap";
 const HOUR = 3_600_000;
 /** "Tonight" only once doors are this close; earlier it's just the next gig. */
 const TONIGHT_LEAD = 12 * HOUR;
-/** Length assumed for a gig with no end time, for its "on now" window. */
-const DEFAULT_LENGTH = 6 * HOUR;
 /** How long "That's a wrap" stays up after close. */
 const WRAP_FOR = 6 * HOUR;
 
-const subscribeHalfMinutes = (tick: () => void) => {
-  const id = setInterval(tick, 30_000);
-  return () => clearInterval(id);
-};
-
-/**
- * Now, to the minute; null on the server and during hydration so the live
- * state never disagrees with the server render.
- */
-export const useMinuteClock = () =>
-  useSyncExternalStore(
-    subscribeHalfMinutes,
-    () => Math.floor(Date.now() / 60_000) * 60_000,
-    () => null,
-  );
-
 /** When a gig's night ends: its end time, or a default length after start. */
 export const nightEnd = (gig: Pick<TodayGig, "gigStartTime" | "gigEndTime">) =>
-  gig.gigEndTime ?? new Date(gig.gigStartTime.getTime() + DEFAULT_LENGTH);
+  sharedNightEnd(nightOf(gig));
 
 function phaseOf(gig: TodayGig, now: number): LivePhase | null {
   const start = gig.gigStartTime.getTime();

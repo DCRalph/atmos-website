@@ -7,7 +7,7 @@ import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
 import { gigPath } from "~/lib/gig-url";
 import { NewsletterForm } from "../newsletter-form";
-import { Button, CountdownTiles, Media, Skeleton, buttonVariants } from "../ui";
+import { Button, Media, Skeleton, buttonVariants } from "../ui";
 import {
   AdminStrip,
   CtaPill,
@@ -27,6 +27,7 @@ import {
   type ListGig,
   type PublicTicketEvent,
 } from "./gig-parts";
+import { GigCountdown, OnNowChip, nightOf, useIsOnNow } from "../on-now";
 
 const TABS = [
   { id: "upcoming", label: "Upcoming", empty: "No upcoming gigs" },
@@ -49,6 +50,7 @@ function UpcomingRow({
 }) {
   const cta = ticketCta(gig, event);
   const tba = isTba(gig);
+  const onNow = useIsOnNow(tba ? null : nightOf(gig));
   return (
     <li>
       <AdminStrip gig={gig} className="text-left" />
@@ -78,6 +80,7 @@ function UpcomingRow({
           )}
         </div>
         <div className="min-w-0">
+          {onNow ? <OnNowChip className="mb-2" /> : null}
           <p className="t-display line-clamp-2 text-base leading-[1.05] md:text-2xl">
             {gigTitle(gig)}
           </p>
@@ -250,7 +253,7 @@ function NextShowHero({
               {fmtTime(next.gigStartTime)}
             </p>
             <div className="mt-8 w-fit max-w-full">
-              <CountdownTiles target={next.gigStartTime} />
+              <GigCountdown night={nightOf(next)} />
             </div>
             <div className="mt-8 flex flex-wrap gap-3">
               {cta?.href ? (

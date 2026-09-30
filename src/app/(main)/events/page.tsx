@@ -10,6 +10,7 @@ import { BreadcrumbJsonLd } from "~/components/seo/json-ld";
 import { usePageMetadata } from "~/hooks/use-page-metadata";
 import { SITE_URL } from "~/lib/seo-constants";
 import { Media, PageTitle, Skeleton } from "~/components/site/ui";
+import { OnNowChip, useIsOnNow } from "~/components/site/on-now";
 
 type PublicEvent = RouterOutputs["ticketEvents"]["upcoming"][number];
 
@@ -33,6 +34,12 @@ function StatusPill({ event }: { event: PublicEvent }) {
         : `From ${formatNZDCompact(event.fromPriceCents ?? 0)}`}
     </span>
   );
+}
+
+/** Chip on an event that's running right now. */
+function EventOnNow({ event }: { event: PublicEvent }) {
+  const on = useIsOnNow({ start: event.startsAt, end: event.endsAt });
+  return on ? <OnNowChip className="mb-3" /> : null;
 }
 
 function R18() {
@@ -92,6 +99,7 @@ export default function EventsPage() {
                 <div className="aspect-square bg-white/[0.06]" />
               )}
               <div className="min-w-0">
+                <EventOnNow event={event} />
                 <p className="t-label text-[11px] text-white/60">
                   {formatEventDate(event.startsAt, event.timezone)} ·{" "}
                   {formatEventTime(event.startsAt, event.timezone)}
