@@ -10,13 +10,11 @@ import {
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
-import { Loader2, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { env } from "~/env";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
+import { Button, inputClass } from "~/components/site/ui";
 import { api } from "~/trpc/react";
 import { formatNZD } from "~/lib/ticketing/money";
 
@@ -66,7 +64,7 @@ export function CheckoutSection({ session }: { session: CheckoutSession }) {
 
   if (!stripe || !session.clientSecret) {
     return (
-      <p className="text-sm text-red-300">
+      <p className="text-[14px] text-[var(--site-danger-text)]">
         Card payments aren&apos;t available right now. Try again shortly.
       </p>
     );
@@ -81,12 +79,16 @@ export function CheckoutSection({ session }: { session: CheckoutSession }) {
       stripe={stripe}
       options={{
         clientSecret: session.clientSecret,
+        // Matches the site: true black, acid accent, soft 12px fields.
         appearance: {
           theme: "night",
           variables: {
-            colorBackground: "#0b0b0c",
-            colorText: "#f4f4f5",
-            borderRadius: "0px",
+            colorPrimary: "#c6ff33",
+            colorBackground: "#0b0b0b",
+            colorText: "#ffffff",
+            colorTextSecondary: "rgba(255,255,255,0.6)",
+            colorDanger: "#ff8a8a",
+            borderRadius: "12px",
             fontFamily: "system-ui, sans-serif",
           },
         },
@@ -154,39 +156,37 @@ function PaidCheckout({ session }: { session: CheckoutSession }) {
         onConfirm={() => void pay()}
       />
 
-      <div className="flex items-center gap-3 text-xs text-white/30">
+      <p className="flex items-center gap-3 text-[12px] text-white/45">
         <span className="h-px flex-1 bg-white/10" />
-        OR PAY BY CARD
+        or pay by card
         <span className="h-px flex-1 bg-white/10" />
-      </div>
+      </p>
 
       <PaymentElement options={{ layout: "tabs" }} />
 
       {error && (
-        <p role="alert" className="text-sm text-red-300">
+        <p
+          role="alert"
+          className="rounded-[var(--site-r-chip)] border border-[var(--site-danger)]/50 bg-[var(--site-danger)]/10 px-4 py-3 text-[14px] text-[var(--site-danger-text)]"
+        >
           {error}
         </p>
       )}
 
       <Button
-        type="button"
+        variant="accent"
         size="lg"
         className="w-full"
         disabled={!stripe || busy}
+        aria-busy={busy}
         onClick={() => void pay()}
       >
-        {busy ? (
-          <>
-            <Loader2 className="size-4 animate-spin" /> Processing…
-          </>
-        ) : (
-          `Pay ${formatNZD(session.totalCents)}`
-        )}
+        {busy ? "Paying…" : `Pay ${formatNZD(session.totalCents)}`}
       </Button>
 
-      <p className="flex items-center justify-center gap-1.5 text-xs text-white/30">
+      <p className="flex items-center justify-center gap-1.5 text-[12px] text-white/45">
         <ShieldCheck className="size-3.5" aria-hidden />
-        Card details go straight to Stripe — we never see them.
+        Card details go straight to Stripe. We never see them.
       </p>
     </div>
   );
@@ -212,7 +212,7 @@ function FreeClaim({ session }: { session: CheckoutSession }) {
   const claim = api.ticketCheckout.claimFree.useMutation({
     onSuccess: (result) => {
       if ("awaitingApproval" in result && result.awaitingApproval) {
-        toast.success("Request sent — we'll email you once it's approved.");
+        toast.success("Request sent. We'll email you once it's approved.");
         router.push(`/tickets/${session.accessToken}`);
         return;
       }
@@ -235,57 +235,57 @@ function FreeClaim({ session }: { session: CheckoutSession }) {
     >
       {askUpFront && (
         <>
-          <div className="space-y-2">
-            <Label htmlFor="claim-name">Your name</Label>
-            <Input
-              id="claim-name"
+          <label className="block">
+            <span className="t-label mb-2 block text-[10px] text-white/70">
+              Your name
+            </span>
+            <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
               autoComplete="name"
+              className={inputClass}
             />
-          </div>
+          </label>
 
-          <div className="space-y-2">
-            <Label htmlFor="claim-email">Email</Label>
-            <Input
-              id="claim-email"
+          <label className="block">
+            <span className="t-label mb-2 block text-[10px] text-white/70">
+              Email
+            </span>
+            <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
+              className={inputClass}
             />
-            <p className="text-xs text-white/40">
+            <span className="mt-2 block pl-5 text-[12px] text-white/50">
               This ticket has to be checked against your email before it can be
               issued.
-            </p>
-          </div>
+            </span>
+          </label>
         </>
       )}
 
       {error && (
-        <p role="alert" className="text-sm text-red-300">
+        <p role="alert" className="text-[14px] text-[var(--site-danger-text)]">
           {error}
         </p>
       )}
 
       <Button
         type="submit"
+        variant="accent"
         size="lg"
         className="w-full"
         disabled={claim.isPending}
+        aria-busy={claim.isPending}
       >
-        {claim.isPending ? (
-          <>
-            <Loader2 className="size-4 animate-spin" /> Getting your ticket…
-          </>
-        ) : (
-          "Get my ticket"
-        )}
+        {claim.isPending ? "Getting your ticket…" : "Get my ticket"}
       </Button>
 
-      <p className="text-center text-xs text-white/40">
+      <p className="text-center text-[12px] text-white/50">
         We&apos;ll ask who you are on the next page, once the ticket is yours.
       </p>
     </form>

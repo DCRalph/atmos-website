@@ -1,19 +1,49 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { motion } from "motion/react";
-
-import { api } from "~/trpc/react";
+import { api, type RouterOutputs } from "~/trpc/react";
+import { cn } from "~/lib/utils";
 import { buildMediaUrl } from "~/lib/media-url";
 import { formatEventDate, formatEventTime } from "~/lib/ticketing/dates";
 import { formatNZDCompact } from "~/lib/ticketing/money";
 import { BreadcrumbJsonLd } from "~/components/seo/json-ld";
 import { usePageMetadata } from "~/hooks/use-page-metadata";
 import { SITE_URL } from "~/lib/seo-constants";
-import { Skeleton } from "~/components/ui/skeleton";
+import { Media, PageTitle, Skeleton } from "~/components/site/ui";
 
-/** What's on — every event with tickets currently available. */
+type PublicEvent = RouterOutputs["ticketEvents"]["upcoming"][number];
+
+/** Price or sale-state pill, following the event's status. */
+function StatusPill({ event }: { event: PublicEvent }) {
+  if (
+    event.status === "SOLD_OUT" ||
+    event.status === "SALES_PAUSED" ||
+    !event.onSale
+  ) {
+    return (
+      <span className="t-label rounded-full border border-white/20 px-3 py-2 text-[10px] text-white/60">
+        {event.status === "SOLD_OUT" ? "Sold out" : "Not on sale"}
+      </span>
+    );
+  }
+  return (
+    <span className="t-label rounded-full bg-white px-3 py-2 text-[10px] text-black transition-colors group-hover:bg-[var(--site-accent)] group-hover:text-[var(--site-accent-ink)]">
+      {event.fromPriceCents === 0
+        ? "Free"
+        : `From ${formatNZDCompact(event.fromPriceCents ?? 0)}`}
+    </span>
+  );
+}
+
+function R18() {
+  return (
+    <span className="t-label rounded-[var(--site-r-chip)] border border-white/20 px-2 py-1 text-[9px] text-white/60">
+      R18
+    </span>
+  );
+}
+
+/** What's on: every event with tickets currently available. */
 export default function EventsPage() {
   usePageMetadata({
     title: "Tickets",
@@ -31,109 +61,67 @@ export default function EventsPage() {
           { name: "Tickets", url: "/events" },
         ]}
       />
-
-      <main className="mx-auto w-full max-w-5xl px-5 py-16 md:px-8">
-        <h1 className="text-4xl font-bold tracking-tight text-white md:text-5xl">
-          Tickets
-        </h1>
-        <p className="mt-2 text-white/50">Everything on sale right now.</p>
-
-        <div className="mt-10 space-y-4">
-          {events.isPending && (
-            <>
-              <Skeleton className="h-40 w-full" />
-              <Skeleton className="h-40 w-full" />
-            </>
-          )}
-
-          {events.data?.length === 0 && (
-            <p className="border-2 border-white/10 bg-black/60 p-8 text-center text-white/50">
-              Nothing on sale at the moment. Check back soon.
-            </p>
-          )}
-
-          {events.data?.map((event, index) => (
-            <motion.div
+      <PageTitle title="Tickets" intro="Everything on sale right now." />
+      <div className="space-y-3 px-5 pb-20 md:px-10">
+        {events.isPending ? (
+          Array.from({ length: 2 }, (_, i) => (
+            <Skeleton key={i} className="h-44 w-full" />
+          ))
+        ) : events.data?.length === 0 ? (
+          <p className="border border-white/10 px-6 py-16 text-center text-[15px] text-white/60">
+            Nothing on sale at the moment. Check back soon.
+          </p>
+        ) : (
+          events.data?.map((event) => (
+            <Link
               key={event.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.04 }}
+              href={`/events/${event.slug}`}
+              className="group grid grid-cols-1 gap-5 border border-white/10 p-4 transition-colors hover:border-white/25 sm:grid-cols-[160px_minmax(0,1fr)] md:grid-cols-[200px_minmax(0,1fr)_auto] md:items-center md:gap-8"
             >
-              <Link
-                href={`/events/${event.slug}`}
-                className="group hover:border-accent-muted/50 flex flex-col gap-5 border-2 border-white/10 bg-black/80 p-5 backdrop-blur-sm transition-all hover:shadow-[0_0_15px_var(--accent-muted)] md:flex-row"
-              >
-                {event.posterFileUploadId && (
-                  <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-black/20 md:w-48">
-                    <Image
-                      src={buildMediaUrl(event.posterFileUploadId)}
-                      alt=""
-                      fill
-                      sizes="(max-width: 768px) 100vw, 192px"
-                      className="object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  </div>
-                )}
-
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm tracking-[0.14em] text-white/50 uppercase">
-                    {formatEventDate(event.startsAt, event.timezone)} ·{" "}
-                    {formatEventTime(event.startsAt, event.timezone)}
+              {event.posterFileUploadId ? (
+                <Media
+                  src={buildMediaUrl(event.posterFileUploadId)}
+                  alt=""
+                  sizes="200px"
+                  className={cn(
+                    "aspect-square",
+                    event.status === "SOLD_OUT" && "opacity-60 grayscale",
+                  )}
+                />
+              ) : (
+                <div className="aspect-square bg-white/[0.06]" />
+              )}
+              <div className="min-w-0">
+                <p className="t-label text-[11px] text-white/60">
+                  {formatEventDate(event.startsAt, event.timezone)} ·{" "}
+                  {formatEventTime(event.startsAt, event.timezone)}
+                </p>
+                <h2 className="t-display mt-3 text-[clamp(1.4rem,3vw,2.25rem)] [overflow-wrap:anywhere]">
+                  {event.name}
+                </h2>
+                {event.venueName ? (
+                  <p className="mt-2 text-[14px] text-white/65">
+                    {event.venueName}
                   </p>
-                  <h2 className="mt-1 text-2xl font-semibold text-white">
-                    {event.name}
-                  </h2>
-                  {event.venueName && (
-                    <p className="mt-1 text-white/60">{event.venueName}</p>
-                  )}
-                  {event.shortDescription && (
-                    <p className="mt-3 line-clamp-2 text-sm text-white/50">
-                      {event.shortDescription}
-                    </p>
-                  )}
-
-                  <div className="mt-4 flex flex-wrap items-center gap-3">
-                    <StatusPill event={event} />
-                    {event.isR18 && (
-                      <span className="border border-white/15 px-2 py-1 text-xs text-white/50">
-                        R18
-                      </span>
-                    )}
-                  </div>
+                ) : null}
+                {event.shortDescription ? (
+                  <p className="mt-2 line-clamp-2 text-[14px] text-white/55">
+                    {event.shortDescription}
+                  </p>
+                ) : null}
+                <div className="mt-4 flex flex-wrap items-center gap-2 md:hidden">
+                  <StatusPill event={event} />
+                  {event.isR18 ? <R18 /> : null}
                 </div>
-              </Link>
-            </motion.div>
-          ))}
-        </div>
-      </main>
+              </div>
+              <div className="hidden flex-col items-end gap-3 md:flex">
+                <StatusPill event={event} />
+                {event.isR18 ? <R18 /> : null}
+              </div>
+            </Link>
+          ))
+        )}
+      </div>
     </>
-  );
-}
-
-function StatusPill({
-  event,
-}: {
-  event: { status: string; onSale: boolean; fromPriceCents: number | null };
-}) {
-  if (event.status === "SOLD_OUT") {
-    return (
-      <span className="bg-white/10 px-3 py-1 text-sm font-medium text-white/70">
-        Sold out
-      </span>
-    );
-  }
-  if (event.status === "SALES_PAUSED" || !event.onSale) {
-    return (
-      <span className="bg-white/10 px-3 py-1 text-sm font-medium text-white/70">
-        Not on sale
-      </span>
-    );
-  }
-  return (
-    <span className="bg-white px-3 py-1 text-sm font-semibold text-black">
-      {event.fromPriceCents === 0
-        ? "Free"
-        : `From ${formatNZDCompact(event.fromPriceCents ?? 0)}`}
-    </span>
   );
 }

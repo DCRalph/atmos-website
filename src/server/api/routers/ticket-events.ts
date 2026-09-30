@@ -1016,7 +1016,12 @@ export const ticketEventsRouter = createTRPCRouter({
         startsAt: { gte: new Date(Date.now() - 6 * 60 * 60 * 1000) },
       },
       orderBy: { startsAt: "asc" },
-      include: { tiers: { orderBy: { sortOrder: "asc" } } },
+      include: {
+        tiers: { orderBy: { sortOrder: "asc" } },
+        // The gigs list matches events to gigs by this; `toPublicEvent` still
+        // drops it unless the gig is published.
+        gig: { select: { id: true, title: true, status: true } },
+      },
     });
 
     const settings = await getTicketingSettings();

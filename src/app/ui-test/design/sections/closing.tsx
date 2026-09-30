@@ -10,6 +10,7 @@ import {
   FaYoutube,
 } from "react-icons/fa6";
 import { cn } from "~/lib/utils";
+import { CONTACT } from "~/lib/site-constants";
 import { navLinks, photos, upcomingGigs } from "../fixtures";
 import { GlassDialog } from "../overlays";
 import {
@@ -284,8 +285,8 @@ export function Footer() {
           <a href="#" className="hover:text-white">
             Privacy
           </a>
-          <a href="#" className="hover:text-white">
-            hello@atmosmedia.co.nz
+          <a href={`mailto:${CONTACT.email}`} className="hover:text-white">
+            {CONTACT.email}
           </a>
         </div>
       </div>

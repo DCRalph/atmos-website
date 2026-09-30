@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Minus, Plus, Ticket } from "lucide-react";
+import { Minus, Plus, Ticket } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "~/components/ui/button";
-import { Checkbox } from "~/components/ui/checkbox";
-import { Input } from "~/components/ui/input";
+import { SiteCheckbox } from "~/components/site/inputs";
+import { Button } from "~/components/site/ui";
+import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { formatCountdown } from "~/lib/ticketing/dates";
 import { formatNZD, formatNZDCompact } from "~/lib/ticketing/money";
@@ -154,10 +154,15 @@ export function BuyPanel({ event }: { event: PublicEvent }) {
   if (event.status === "CANCELLED") {
     return (
       <PanelShell>
-        <p className="text-sm text-red-300">
-          This event has been cancelled. If you bought tickets, check your email
-          for refund details.
-        </p>
+        <div className="space-y-2 p-5">
+          <p className="t-display text-xl text-[var(--site-danger-text)]">
+            Cancelled
+          </p>
+          <p className="text-[14px] text-white/70">
+            This event has been cancelled. If you bought tickets, check your
+            email for refund details.
+          </p>
+        </div>
       </PanelShell>
     );
   }
@@ -165,16 +170,18 @@ export function BuyPanel({ event }: { event: PublicEvent }) {
   if (event.status === "SOLD_OUT" || !event.onSale) {
     return (
       <PanelShell>
-        <p className="text-lg font-semibold text-white">
-          {event.status === "SOLD_OUT" ? "Sold out" : "Not on sale"}
-        </p>
-        <p className="mt-1 text-sm text-white/50">
-          {event.status === "SOLD_OUT"
-            ? "Every ticket is gone."
-            : event.salesOpenAt
-              ? `Tickets go on sale ${event.salesOpenAt.toLocaleDateString("en-NZ", { day: "numeric", month: "long" })}.`
-              : "Tickets aren't available for this event."}
-        </p>
+        <div className="space-y-2 p-5">
+          <p className="t-display text-2xl">
+            {event.status === "SOLD_OUT" ? "Sold out" : "Not on sale"}
+          </p>
+          <p className="text-[14px] text-white/65">
+            {event.status === "SOLD_OUT"
+              ? "Every ticket is gone."
+              : event.salesOpenAt
+                ? `Tickets go on sale ${event.salesOpenAt.toLocaleDateString("en-NZ", { day: "numeric", month: "long" })}.`
+                : "Tickets aren't available for this event."}
+          </p>
+        </div>
       </PanelShell>
     );
   }
@@ -183,117 +190,132 @@ export function BuyPanel({ event }: { event: PublicEvent }) {
     0,
     event.maxTicketsPerOrder - totalTickets,
   );
+
   // Only a session priced for the basket currently on screen may be paid.
   const payable =
     session !== null && sessionKey === basketKey && !start.isPending;
   const preparing = accepted && !payable;
 
   return (
-    <PanelShell>
-      <div className="flex items-center gap-2 border-b-2 border-white/10 pb-3">
-        <Ticket className="size-4 text-white/60" aria-hidden />
-        <h2 className="text-sm font-semibold tracking-[0.18em] text-white/70 uppercase">
-          Tickets
-        </h2>
-      </div>
-
-      <ul className="divide-y-2 divide-white/5">
+    <PanelShell r18={event.isR18}>
+      <ul className="divide-y divide-white/10">
         {event.tiers.map((tier) => {
           const quantity = quantities[tier.id] ?? 0;
           const disabled = !tier.available;
 
           return (
-            <li key={tier.id} className="flex items-start gap-4 py-4">
+            <li key={tier.id} className="flex items-start gap-4 px-5 py-4">
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-baseline gap-x-2">
-                  <span className="font-semibold text-white">{tier.name}</span>
-                  <span className="text-white/60">
+                <p className="flex flex-wrap items-baseline gap-x-2">
+                  <span
+                    className={cn(
+                      "t-display text-base",
+                      disabled && "text-white/45",
+                    )}
+                  >
+                    {tier.name}
+                  </span>
+                  <span
+                    className={cn(
+                      "text-[14px] tabular-nums",
+                      disabled ? "text-white/40" : "text-white/75",
+                    )}
+                  >
                     {tier.isFree ? "Free" : formatNZDCompact(tier.priceCents)}
                   </span>
-                </div>
-
+                </p>
                 {tier.description && (
-                  <p className="mt-1 text-sm text-white/50">
+                  <p className="mt-1 text-[13px] text-white/55">
                     {tier.description}
                   </p>
                 )}
-
                 {tier.lowStock && tier.available && (
-                  <p className="mt-1 text-xs font-medium text-amber-300">
+                  <p className="mt-1.5 text-[12px] font-medium text-[var(--site-warn)]">
                     Only {tier.remainingIfLow} left
                   </p>
                 )}
-
                 {disabled && (
-                  <p className="mt-1 text-xs text-white/40">
+                  <p className="mt-1.5 text-[12px] text-white/50">
                     {unavailableLabel(tier)}
                   </p>
                 )}
               </div>
 
-              <div className="flex shrink-0 items-center gap-1">
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  aria-label={`One fewer ${tier.name}`}
-                  disabled={disabled || quantity === 0}
-                  onClick={() => setQuantity(tier, quantity - 1)}
-                >
-                  <Minus className="size-4" />
-                </Button>
-                <span
-                  className="w-8 text-center tabular-nums"
-                  aria-live="polite"
-                  aria-label={`${quantity} ${tier.name}`}
-                >
-                  {quantity}
-                </span>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  aria-label={`One more ${tier.name}`}
-                  disabled={
-                    disabled ||
-                    remainingAllowance === 0 ||
-                    quantity >= tier.maxPerOrder
-                  }
-                  onClick={() => setQuantity(tier, quantity + 1)}
-                >
-                  <Plus className="size-4" />
-                </Button>
-              </div>
+              {disabled ? null : (
+                <div className="inline-flex h-10 shrink-0 items-center rounded-full border border-white/20">
+                  <button
+                    type="button"
+                    aria-label={`One fewer ${tier.name}`}
+                    disabled={quantity === 0}
+                    onClick={() => setQuantity(tier, quantity - 1)}
+                    className="flex size-10 items-center justify-center text-white/70 hover:text-white disabled:opacity-30"
+                  >
+                    <Minus className="size-4" />
+                  </button>
+                  <span
+                    className="t-display w-6 text-center tabular-nums"
+                    aria-live="polite"
+                    aria-label={`${quantity} ${tier.name}`}
+                  >
+                    {quantity}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={`One more ${tier.name}`}
+                    disabled={
+                      remainingAllowance === 0 || quantity >= tier.maxPerOrder
+                    }
+                    onClick={() => setQuantity(tier, quantity + 1)}
+                    className="flex size-10 items-center justify-center text-white/70 hover:text-white disabled:opacity-30"
+                  >
+                    <Plus className="size-4" />
+                  </button>
+                </div>
+              )}
             </li>
           );
         })}
       </ul>
 
-      {totalTickets > 0 && (
-        <div className="space-y-4 border-t-2 border-white/10 pt-4">
-          <div className="flex gap-2">
-            <Input
-              value={codeInput}
-              onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
-              placeholder="Discount code"
-              className="uppercase"
-              aria-label="Discount code"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setAppliedCode(codeInput.trim() || null)}
-              disabled={!codeInput.trim() || quote.isFetching}
+      {totalTickets === 0 ? (
+        <p className="border-t border-white/10 px-5 py-4 text-[13px] text-white/55">
+          Up to {event.maxTicketsPerOrder} tickets per order.
+        </p>
+      ) : (
+        <div className="space-y-4 border-t border-white/10 p-5">
+          <div>
+            <form
+              className="flex h-11 items-center rounded-full border border-white/15 bg-white/[0.03] p-1 pl-4 focus-within:border-white/50"
+              onSubmit={(e) => {
+                e.preventDefault();
+                setAppliedCode(codeInput.trim() || null);
+              }}
             >
-              Apply
-            </Button>
+              <input
+                value={codeInput}
+                onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
+                placeholder="Discount code"
+                aria-label="Discount code"
+                className="t-label min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-white/40"
+              />
+              <Button
+                type="submit"
+                variant="outline"
+                size="sm"
+                className="h-full"
+                disabled={!codeInput.trim() || quote.isFetching}
+              >
+                Apply
+              </Button>
+            </form>
+            {quote.data?.discountError && (
+              <p className="mt-2 pl-4 text-[13px] text-[var(--site-danger-text)]">
+                {quote.data.discountError}
+              </p>
+            )}
           </div>
 
-          {quote.data?.discountError && (
-            <p className="text-sm text-red-300">{quote.data.discountError}</p>
-          )}
-
-          <dl className="space-y-1.5 text-sm">
+          <dl className="space-y-1.5 text-[14px]">
             <Row
               label={`Tickets (${totalTickets})`}
               value={formatNZD(quote.data?.subtotalCents ?? 0)}
@@ -311,57 +333,55 @@ export function BuyPanel({ event }: { event: PublicEvent }) {
                 value={formatNZD(quote.data?.bookingFeeCents ?? 0)}
               />
             )}
-            <div className="flex items-baseline justify-between border-t border-white/10 pt-2 text-base font-semibold text-white">
-              <dt>Total</dt>
-              <dd className="tabular-nums">
-                {quote.isPending ? "—" : formatNZD(quote.data?.totalCents ?? 0)}
+            <div className="flex items-baseline justify-between border-t border-white/10 pt-3">
+              <dt className="t-label text-[12px]">Total</dt>
+              <dd className="t-display text-2xl tabular-nums">
+                {quote.isPending
+                  ? "--"
+                  : formatNZD(quote.data?.totalCents ?? 0)}
               </dd>
             </div>
             {(quote.data?.gstCents ?? 0) > 0 && (
-              <p className="text-xs text-white/40">
+              <p className="text-right text-[12px] text-white/45">
                 Includes GST {formatNZD(quote.data?.gstCents ?? 0)}
               </p>
             )}
           </dl>
 
-          <label className="flex cursor-pointer items-start gap-3 border-t-2 border-white/10 pt-4 text-sm text-white/70">
-            <Checkbox
-              checked={accepted}
-              onCheckedChange={(value) => setAccepted(Boolean(value))}
-              aria-describedby="terms-note"
-            />
-            <span id="terms-note">
-              I accept the{" "}
-              <a
-                href="/tickets/terms"
-                target="_blank"
-                rel="noreferrer"
-                className="underline underline-offset-2"
-              >
-                ticket terms
-              </a>{" "}
-              and{" "}
-              <a
-                href="/privacy"
-                target="_blank"
-                rel="noreferrer"
-                className="underline underline-offset-2"
-              >
-                privacy policy
-              </a>
-              {event.isR18 ? ", and I'm 18 or over" : ""}.
-            </span>
-          </label>
+          <SiteCheckbox
+            id={`terms-${event.id}`}
+            checked={accepted}
+            onCheckedChange={setAccepted}
+          >
+            I accept the{" "}
+            <a
+              href="/tickets/terms"
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-2"
+            >
+              ticket terms
+            </a>{" "}
+            and{" "}
+            <a
+              href="/privacy"
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-2"
+            >
+              privacy policy
+            </a>
+            {event.isR18 ? ", and I'm 18 or over" : ""}.
+          </SiteCheckbox>
 
           {!accepted && (
-            <p className="text-sm text-white/40">
+            <p className="text-[13px] text-white/50">
               Tick to hold your tickets and pay.
             </p>
           )}
 
           {preparing && (
-            <p className="flex items-center gap-2 text-sm text-white/50">
-              <Loader2 className="size-4 animate-spin" aria-hidden />
+            <p className="text-[13px] text-white/60" aria-live="polite">
               Holding your tickets…
             </p>
           )}
@@ -379,8 +399,8 @@ export function BuyPanel({ event }: { event: PublicEvent }) {
           )}
 
           {event.isR18 && (
-            <p className="text-center text-xs text-white/40">
-              R18 — photo ID required at the door
+            <p className="text-center text-[12px] text-white/50">
+              R18. Photo ID required at the door.
             </p>
           )}
         </div>
@@ -423,17 +443,45 @@ function HoldCountdown({
 
   return (
     <p
-      className={`text-sm tabular-nums ${urgent ? "text-amber-300" : "text-white/40"}`}
+      className={cn(
+        "flex items-center justify-between rounded-[var(--site-r-chip)] px-3 py-2 text-[13px] tabular-nums",
+        urgent
+          ? "bg-[var(--site-warn)]/12 text-[var(--site-warn)]"
+          : "bg-white/[0.05] text-white/65",
+      )}
       aria-live="polite"
     >
-      Held for {formatCountdown(remaining)}
+      <span>
+        {urgent ? "Your hold is about to lapse" : "Tickets held for you"}
+      </span>
+      <span className="t-label text-[13px]">{formatCountdown(remaining)}</span>
     </p>
   );
 }
 
-function PanelShell({ children }: { children: React.ReactNode }) {
+/** Notched panel with the "Tickets" header every state shares. */
+function PanelShell({
+  children,
+  r18,
+}: {
+  children: React.ReactNode;
+  r18?: boolean;
+}) {
   return (
-    <section className="space-y-4 border-2 border-white/10 bg-black/80 p-5 backdrop-blur-sm">
+    <section
+      aria-label="Tickets"
+      className="rounded-[var(--site-r-panel)] rounded-tl-none border border-white/12 bg-white/[0.03]"
+    >
+      <div className="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
+        <h2 className="t-label flex items-center gap-2 text-[12px]">
+          <Ticket className="size-4 text-white/60" aria-hidden /> Tickets
+        </h2>
+        {r18 ? (
+          <span className="t-label rounded-[var(--site-r-chip)] border border-white/25 px-2 py-1 text-[10px] text-white/70">
+            R18
+          </span>
+        ) : null}
+      </div>
       {children}
     </section>
   );
@@ -449,13 +497,14 @@ function Row({
   accent?: boolean;
 }) {
   return (
-    <div className="flex items-baseline justify-between">
-      <dt className={accent ? "text-emerald-300" : "text-white/60"}>{label}</dt>
-      <dd
-        className={`tabular-nums ${accent ? "text-emerald-300" : "text-white/80"}`}
-      >
-        {value}
-      </dd>
+    <div
+      className={cn(
+        "flex items-baseline justify-between",
+        accent ? "text-[var(--site-accent-text)]" : "text-white/65",
+      )}
+    >
+      <dt>{label}</dt>
+      <dd className="tabular-nums">{value}</dd>
     </div>
   );
 }

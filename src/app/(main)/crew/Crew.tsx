@@ -1,93 +1,138 @@
 "use client";
 
-import { StaticBackground } from "~/components/static-background";
-import { CrewMember } from "~/components/crew/crew-member";
-import Link from "next/link";
-import { api } from "~/trpc/react";
-import { Skeleton } from "~/components/ui/skeleton";
-import { AnimatedPageHeader } from "~/components/animated-page-header";
-import { MainPageSection } from "~/components/main-page-section";
+import { useState } from "react";
+import {
+  JoinCrew,
+  MemberLinks,
+  Portrait,
+} from "~/components/site/crew/crew-kit";
+import { Button, Media, Skeleton } from "~/components/site/ui";
 import { resolveCrewDisplay } from "~/lib/crew-display";
+import { cn } from "~/lib/utils";
+import { api } from "~/trpc/react";
 
-function CrewMemberSkeleton() {
-  return (
-    <div className="group border-zinc/20 relative overflow-hidden rounded-lg border bg-black/20 p-4 backdrop-blur-sm sm:p-6 md:p-8">
-      <div className="relative mx-auto mb-4 flex aspect-square h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-white/10 sm:mb-6 sm:h-28 sm:w-28 md:h-32 md:w-32">
-        <Skeleton className="h-full w-full rounded-full bg-white/20" />
-      </div>
-
-      <div className="text-center">
-        <Skeleton className="mx-auto mb-2 h-6 w-32 bg-white/20 sm:h-7" />
-        <Skeleton className="mx-auto mb-4 h-4 w-24 bg-white/10 sm:mb-6" />
-
-        <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-          <Skeleton className="h-4 w-20 bg-white/10" />
-          <Skeleton className="h-4 w-24 bg-white/10" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
+/** Crew roster: names set big; the hovered or focused one lights the sticky portrait on desktop. */
 export default function CrewPage() {
-  const { data: crewMembers, isLoading: isLoadingCrewMembers } =
-    api.crew.getAll.useQuery();
+  const { data, isLoading, isError, refetch } = api.crew.getAll.useQuery();
+  const members = data?.map(resolveCrewDisplay) ?? [];
+  const [active, setActive] = useState(0);
+  const current = members[active] ?? members[0];
+
   return (
-    <main className="min-h-content bg-black text-white">
-      <StaticBackground imageSrc="/home/atmos-2.jpg" />
-
-      <MainPageSection>
-        {/* <div className="mb-12">
-          <Link href="/" className="text-white/60 hover:text-white transition-colors">
-            ← Back
-          </Link>
-        </div> */}
-
-        <AnimatedPageHeader
-          title="THE CREW"
-          subtitle="DJs, producers, and creatives powering Atmos in Pōneke"
+    <main>
+      <section className="relative flex min-h-[520px] items-end overflow-hidden md:min-h-[600px]">
+        <Media
+          src="/home/atmos-2.jpg"
+          alt=""
+          sizes="100vw"
+          className="absolute inset-0"
+          priority
         />
-
-        <div className="grid grid-cols-2 gap-6 sm:gap-8 md:grid-cols-3">
-          {isLoadingCrewMembers ? (
-            <>
-              {Array.from({ length: 6 }).map((_, i) => (
-                <CrewMemberSkeleton key={i} />
-              ))}
-            </>
-          ) : (
-            crewMembers?.map((member) => {
-              const d = resolveCrewDisplay(member);
-              return (
-                <CrewMember
-                  key={d.id}
-                  id={d.id}
-                  name={d.name}
-                  role={d.role}
-                  image={d.image}
-                  instagram={d.instagram}
-                  soundcloud={d.soundcloud}
-                  profileHandle={d.profileHandle}
-                />
-              );
-            })
-          )}
-        </div>
-
-        <div className="mt-16 hidden text-center">
-          <h2 className="mb-6 text-3xl font-bold">Join The Crew</h2>
-          <p className="mx-auto mb-8 max-w-xl text-white/60">
-            Interested in collaborating or becoming part of Atmos? We&apos;re
-            always looking for talented artists who share our vision.
+        <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/75 to-transparent" />
+        <div className="scrim-bottom absolute inset-0" />
+        <div className="relative px-5 pt-28 pb-10 md:px-10 md:pb-14">
+          <h1 className="t-display text-[clamp(3rem,11vw,9rem)]">The crew</h1>
+          <p className="mt-5 max-w-[40ch] text-[16px] text-white/75 md:text-[17px]">
+            DJs, producers and creatives powering Atmos in Pōneke.
           </p>
-          <Link
-            href="/contact"
-            className="inline-block rounded-md bg-white px-8 py-3 font-semibold text-black transition-all hover:bg-white/90"
-          >
-            Get In Touch
-          </Link>
         </div>
-      </MainPageSection>
+      </section>
+
+      <div
+        className="grid gap-10 px-5 py-14 md:px-10 md:py-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)]"
+        aria-busy={isLoading}
+      >
+        {isError ? (
+          <div className="flex flex-wrap items-center justify-between gap-4 border-y border-white/10 py-8">
+            <p className="text-[15px] text-white/70">
+              Couldn&apos;t load the crew.
+            </p>
+            <Button variant="outline" size="sm" onClick={() => void refetch()}>
+              Try again
+            </Button>
+          </div>
+        ) : (
+          <ol className="border-t border-white/10">
+            {isLoading
+              ? [0, 1, 2, 3, 4, 5].map((i) => (
+                  <li
+                    key={i}
+                    aria-hidden
+                    className="flex items-center gap-4 border-b border-white/10 py-5 md:gap-6"
+                  >
+                    <Skeleton className="aspect-square w-16 lg:hidden" />
+                    <Skeleton className="h-3 w-6 rounded-full max-lg:hidden" />
+                    <div className="flex-1 space-y-3">
+                      <Skeleton className="h-8 w-3/5 max-w-[420px] rounded-full md:h-12" />
+                      <Skeleton className="h-3 w-32 rounded-full" />
+                    </div>
+                  </li>
+                ))
+              : members.map((m, i) => (
+                  <li
+                    key={m.id}
+                    onMouseEnter={() => setActive(i)}
+                    onFocus={() => setActive(i)}
+                    className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-white/10 py-5 md:gap-x-6"
+                  >
+                    <Portrait
+                      member={m}
+                      sizes="64px"
+                      className="aspect-square w-16 shrink-0 lg:hidden"
+                    />
+                    <span className="w-8 shrink-0 text-[13px] text-white/45 tabular-nums max-lg:hidden">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <h2
+                        className={cn(
+                          "t-display text-[clamp(1.35rem,4.2vw,3.5rem)] break-words transition-colors duration-200",
+                          m.id === current?.id
+                            ? "lg:text-white"
+                            : "lg:text-white/60",
+                        )}
+                      >
+                        {m.name}
+                      </h2>
+                      {m.role ? (
+                        <p className="t-label mt-2.5 text-[10px] text-white/60">
+                          {m.role}
+                        </p>
+                      ) : null}
+                    </div>
+                    <MemberLinks
+                      member={m}
+                      className="max-sm:w-full max-sm:pl-20"
+                    />
+                  </li>
+                ))}
+          </ol>
+        )}
+
+        <div className="max-lg:hidden">
+          <div className="sticky top-28">
+            {current ? (
+              <>
+                <Portrait
+                  key={current.id}
+                  member={current}
+                  sizes="380px"
+                  className="animate-in fade-in-0 aspect-[4/5] duration-300"
+                />
+                <p className="t-label mt-4 text-[10px] text-white/60">
+                  {[current.name, current.role].filter(Boolean).join(" · ")}
+                </p>
+              </>
+            ) : (
+              <Skeleton className="aspect-[4/5]" />
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="pb-20">
+        <JoinCrew />
+      </div>
     </main>
   );
 }

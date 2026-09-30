@@ -1,108 +1,143 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
-import { StaticBackground } from "~/components/static-background";
+import { useState } from "react";
+import { SiteSelect } from "~/components/site/inputs";
+import { PageTitle, Skeleton } from "~/components/site/ui";
+import {
+  baseKinds,
+  channels,
+  ContentEmpty,
+  ContentError,
+  ContentNoResults,
+  CoverCard,
+  CoverDialog,
+  KindFilter,
+  kindLabel,
+  toEntry,
+} from "~/components/site/content/content-kit";
+import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
-import { AnimatedPageHeader } from "~/components/animated-page-header";
-import { ContentCard } from "~/components/content/content-card";
-import { orbitron } from "~/lib/fonts";
-import { AccentGlowCard } from "~/components/ui/accent-glow-card";
-import { MainPageSection } from "~/components/main-page-section";
 
+/** Content: a record-shop cover grid with type and platform filters; a cover opens its player in a dialog. */
 export default function ContentPage() {
-  const { data: contentItems, isLoading } = api.content.getAll.useQuery();
-  const featuredItem = contentItems?.[0];
-  const remainingItems = contentItems?.slice(1) ?? [];
+  const { data, isLoading, isError, refetch } = api.content.getAll.useQuery();
+  const [kind, setKind] = useState("all");
+  const [platform, setPlatform] = useState("all");
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const entries = data?.map(toEntry) ?? [];
+  const kinds = [...new Set([...baseKinds, ...entries.map((e) => e.kind)])];
+  const platformOptions = [
+    ...new Map(
+      entries.flatMap((e) =>
+        e.platformKey && e.platformLabel
+          ? [[e.platformKey, e.platformLabel] as const]
+          : [],
+      ),
+    ),
+  ].map(([value, label]) => ({ value, label }));
+  const shown = entries.filter(
+    (e) =>
+      (kind === "all" || e.kind === kind) &&
+      (platform === "all" || e.platformKey === platform),
+  );
+  const platformName = platformOptions.find((p) => p.value === platform)?.label;
+  const clear = () => {
+    setKind("all");
+    setPlatform("all");
+  };
 
   return (
-    <main className="min-h-content bg-black text-white">
-      <StaticBackground imageSrc="/home/atmos-1.jpg" />
-
-      <MainPageSection>
-        <AnimatedPageHeader
-          title="CONTENT"
-          subtitle="Releases, mixes, and highlights from the Atmos community"
-        />
-
-        <div className="mb-8 flex flex-col gap-4 border-b-2 border-white/10 pb-4 sm:mb-10 sm:flex-row sm:items-end sm:justify-between sm:pb-6">
-          <div>
-            <h2
-              className={`text-2xl font-black tracking-tight uppercase sm:text-3xl md:text-4xl ${orbitron.className}`}
+    <main className="pb-20">
+      <PageTitle
+        title="Content"
+        intro="Releases, mixes and highlights from the Atmos community."
+      >
+        <div className="mt-8 flex flex-wrap gap-2">
+          {channels.map(({ key, label, Icon, href }) => (
+            <a
+              key={key}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="t-label inline-flex h-10 items-center gap-2 rounded-full border border-white/25 px-4 text-[10px] text-white/80 transition-colors hover:border-white hover:text-white"
             >
-              Latest Drops
-            </h2>
-            {/* <p className="mt-2 max-w-2xl text-sm text-white/50 sm:text-base">
-              Tap into the newest mixes, live captures, and community releases.
-            </p> */}
+              <Icon className="size-4" /> {label}
+            </a>
+          ))}
+        </div>
+      </PageTitle>
+
+      <div className="px-5 md:px-10" aria-busy={isLoading}>
+        {entries.length ? (
+          <div className="mb-8 flex flex-wrap items-center gap-3 border-t border-white/10 pt-6">
+            <KindFilter
+              entries={entries}
+              kinds={kinds}
+              value={kind}
+              onChange={setKind}
+              className="min-w-0 flex-[2]"
+            />
+            {platformOptions.length > 1 ? (
+              <div className="w-full sm:w-[220px]">
+                <SiteSelect
+                  label="Platform"
+                  value={platform}
+                  onValueChange={setPlatform}
+                  options={[
+                    { value: "all", label: "All platforms" },
+                    ...platformOptions,
+                  ]}
+                />
+              </div>
+            ) : null}
           </div>
-          {/* <div className="flex items-center gap-3 text-xs font-bold tracking-wider text-white/50 uppercase">
-            {contentItems && (
-              <span className="text-white/70">{contentItems.length} items</span>
-            )}
-          </div> */}
-        </div>
+        ) : null}
 
-        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
-          {isLoading ? (
-            <div className="col-span-full flex items-center justify-center border-2 border-white/10 bg-black/80 py-12 backdrop-blur-sm">
-              <Loader2 className="text-accent-muted h-6 w-6 animate-spin" />
-            </div>
-          ) : featuredItem ? (
-            <>
-              <ContentCard featured contentItem={featuredItem} />
-              {remainingItems.map((item) => (
-                <ContentCard key={item.id} contentItem={item} />
-              ))}
-            </>
-          ) : (
-            <div className="col-span-full border-2 border-white/10 bg-black/80 p-8 text-center backdrop-blur-sm">
-              <p className="font-bold tracking-wider text-white/60 uppercase">
-                No content available
-              </p>
-              <p className="mt-2 text-sm text-white/40">
-                Check back soon for new drops.
-              </p>
-            </div>
-          )}
-        </div>
+        {isLoading ? (
+          <div className="grid grid-cols-2 gap-x-3 gap-y-10 border-t border-white/10 pt-6 sm:gap-x-4 lg:grid-cols-4">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                aria-hidden
+                className={cn(
+                  "space-y-3",
+                  i === 0 && "col-span-2 lg:row-span-2",
+                )}
+              >
+                <Skeleton className="aspect-square" />
+                <Skeleton className="h-5 w-3/4 rounded-full" />
+                <Skeleton className="h-3 w-1/2 rounded-full" />
+              </div>
+            ))}
+          </div>
+        ) : isError ? (
+          <ContentError onRetry={() => void refetch()} />
+        ) : entries.length === 0 ? (
+          <ContentEmpty />
+        ) : shown.length === 0 ? (
+          <ContentNoResults
+            body={`No ${kind === "all" ? "items" : kindLabel(kind, true).toLowerCase()}${platformName ? ` on ${platformName}` : ""} yet.`}
+            onClear={clear}
+          />
+        ) : (
+          <div className="grid grid-cols-2 gap-x-3 gap-y-10 sm:gap-x-4 lg:grid-cols-4">
+            {shown.map((e, n) => (
+              <CoverCard
+                key={e.id}
+                entry={e}
+                featured={n === 0 && kind === "all" && platform === "all"}
+                onOpen={() => setOpenId(e.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
-        <div className="mt-10 hidden sm:mt-14">
-          <AccentGlowCard>
-            <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-              <div className="space-y-3">
-                <p className="text-xs font-bold tracking-wider text-white/60 uppercase">
-                  Spotlight
-                </p>
-                <h3 className="text-2xl font-black tracking-tight uppercase sm:text-3xl">
-                  Atmos highlights, curated regularly
-                </h3>
-                <p className="text-sm text-white/60 sm:text-base">
-                  Every week we pull the sharpest new mixes and live moments
-                  into one place so you can press play fast.
-                </p>
-              </div>
-              <div className="flex flex-col justify-between gap-4 border-t border-white/10 pt-4 text-sm text-white/60 lg:border-t-0 lg:border-l lg:pl-6">
-                <div>
-                  <p className="text-xs font-bold tracking-wider text-white/50 uppercase">
-                    Updated
-                  </p>
-                  <p className="mt-2 text-white/80">
-                    Fresh picks added over time.
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-bold tracking-wider text-white/50 uppercase">
-                    Want in?
-                  </p>
-                  <p className="mt-2 text-white/80">
-                    Share your latest set with the crew.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </AccentGlowCard>
-        </div>
-      </MainPageSection>
+      <CoverDialog
+        entry={entries.find((e) => e.id === openId)}
+        onClose={() => setOpenId(null)}
+      />
     </main>
   );
 }

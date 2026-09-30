@@ -1,6 +1,5 @@
-import { EquipmentBooking } from "~/components/equipment/equipment-booking";
-import { orbitron } from "~/lib/fonts";
 import { type Metadata } from "next";
+import { EquipmentWizard } from "~/components/site/equipment/equipment-wizard";
 
 export const metadata: Metadata = {
   title: "Equipment",
@@ -8,21 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function EquipmentPage() {
-  return (
-    <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mb-12 text-center">
-        <h1
-          className={`text-4xl font-black tracking-tighter uppercase sm:text-6xl ${orbitron.className}`}
-        >
-          Equipment
-        </h1>
-        <p className="text-muted-foreground mt-4 text-xl">
-          Professional rental packages for your next event. Check availability
-          and request a booking below.
-        </p>
-      </div>
-
-      <EquipmentBooking />
-    </div>
-  );
+  return <EquipmentWizard />;
 }
