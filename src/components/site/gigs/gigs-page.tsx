@@ -240,7 +240,7 @@ function NextShowHero({
           </div>
         ) : next ? (
           <div className="min-w-0">
-            <h1 className="t-display max-w-[14ch] text-[clamp(2.25rem,6.4vw,5.5rem)]">
+            <h1 className="t-display max-w-[14ch] text-[clamp(1.75rem,6.4vw,5.5rem)] [overflow-wrap:anywhere]">
               <Link
                 href={gigPath(next)}
                 className="hover:text-[var(--site-accent-text)]"
@@ -278,7 +278,7 @@ function NextShowHero({
           </div>
         ) : (
           <div>
-            <h1 className="t-display text-[clamp(2.75rem,8vw,6.5rem)]">Gigs</h1>
+            <h1 className="t-heading text-[clamp(2.75rem,8vw,6.5rem)]">Gigs</h1>
             <p className="mt-4 max-w-[44ch] text-[16px] text-white/75">
               Upcoming events and past nights from Atmos.
             </p>

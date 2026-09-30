@@ -259,7 +259,7 @@ function Gallery({ gig }: { gig: DetailGig }) {
   return (
     <div>
       <div className="mb-6 flex items-baseline justify-between gap-4">
-        <h2 className="t-display text-[clamp(1.75rem,3.5vw,2.75rem)]">
+        <h2 className="t-heading text-[clamp(1.75rem,3.5vw,2.75rem)]">
           Photos
         </h2>
         <span className="t-label text-[11px] text-white/60 tabular-nums">
@@ -331,7 +331,7 @@ function LoadingView() {
 function NotFound() {
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-5 px-5 py-24 text-center">
-      <h1 className="t-display text-[clamp(2.25rem,7vw,5rem)]">
+      <h1 className="t-heading text-[clamp(2.25rem,7vw,5rem)]">
         Gig not found
       </h1>
       <p className="max-w-[40ch] text-[15px] text-white/60">

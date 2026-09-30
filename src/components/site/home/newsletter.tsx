@@ -11,7 +11,7 @@ export function HomeNewsletter() {
     >
       <h2
         id="home-newsletter"
-        className="t-display text-[clamp(2.1rem,7.5vw,6rem)]"
+        className="t-heading text-[clamp(2.1rem,7.5vw,6rem)]"
       >
         Join the{" "}
         <span className="text-[var(--site-accent-text)]">atmosphere</span>

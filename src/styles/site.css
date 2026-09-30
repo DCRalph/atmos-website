@@ -1,13 +1,14 @@
 /* Public site design system, scoped to `.site` so the admin is untouched.
  *
- *  - Type: Orbitron headings echo the logo; stretched Anybody (on its width
- *    axis) carries nav, buttons and meta. Body copy stays normal width.
+ *  - Type: Orbitron for large section headings (`t-heading`), echoing the
+ *    logo; stretched Anybody (on its width axis) for other display text and
+ *    labels. Body copy stays normal width.
  *  - Hard + round: square where things meet imagery or the viewport edge,
  *    pills for anything pressable, 16px for floating glass panels. The notch
  *    (one square corner) marks a panel that belongs to what's next to it.
  *  - Glass only over imagery. Below a hero everything sits on true black.
  *
- * Utilities: `t-display`, `t-label`, `glass`, `glass-dark`, `glass-float`,
+ * Utilities: `t-heading`, `t-display`, `t-label`, `glass`, `glass-dark`, `glass-float`,
  * `scrim-bottom`, `scrim-left`. Numbers use Tailwind's `tabular-nums`.
  * Colours: `--site-accent` (fills), `--site-accent-ink` (text on a fill),
  * `--site-accent-text` (accent as text on black).
@@ -43,14 +44,29 @@
     outline-offset: 3px;
   }
 
-  /* Headings: Orbitron, the closest match to the logo's lettering. */
-  .site .t-display {
+  /* Large section and page headings only: Orbitron, the closest match to
+     the logo's lettering. Item names (gigs, products, list rows) stay on
+     `t-display`. */
+  .site .t-heading {
     font-family:
       var(--font-site-display-ext), var(--font-site-heading), ui-sans-serif,
       sans-serif;
     font-weight: 900;
     text-transform: uppercase;
     letter-spacing: 0;
+    line-height: 0.92;
+    text-wrap: balance;
+  }
+
+  /* Display type for everything else big: gig and product names, rows, prices. */
+  .site .t-display {
+    font-family:
+      var(--font-site-display-ext), var(--font-site-display), ui-sans-serif,
+      sans-serif;
+    font-stretch: 135%;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
     line-height: 0.92;
     text-wrap: balance;
   }

@@ -303,7 +303,7 @@ function NotFound() {
         <span className="flex size-12 items-center justify-center rounded-full border border-white/15">
           <SearchX className="size-5 text-white/60" />
         </span>
-        <h1 className="t-display text-[clamp(2.25rem,6vw,4.5rem)]">
+        <h1 className="t-heading text-[clamp(2.25rem,6vw,4.5rem)]">
           Product not found
         </h1>
         <p className="max-w-[44ch] text-[16px] text-white/65">

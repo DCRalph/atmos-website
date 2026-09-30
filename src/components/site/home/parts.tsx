@@ -120,7 +120,7 @@ export function SectionHeader({
 }) {
   return (
     <div className="mb-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 md:mb-10">
-      <h2 id={id} className="t-display text-[clamp(1.75rem,4.5vw,3.5rem)]">
+      <h2 id={id} className="t-heading text-[clamp(1.75rem,4.5vw,3.5rem)]">
         {title}
       </h2>
       <div className="flex items-center gap-2">

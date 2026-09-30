@@ -1,7 +1,7 @@
 import { Anybody, Archivo, Orbitron } from "next/font/google";
 import localFont from "next/font/local";
 
-// Public-site type. Orbitron sets headings: the closest free match to the
+// Public-site type. Orbitron sets large section headings: the closest free match to the
 // logo's lettering (flat-topped A, square M and O). Anybody carries labels,
 // nav and buttons through its width axis (font-stretch), Archivo sets body
 // copy at normal width. Kept out of `fonts.ts` so the admin never loads them.

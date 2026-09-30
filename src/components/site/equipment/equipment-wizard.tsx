@@ -201,7 +201,7 @@ export function EquipmentWizard() {
         <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/75 to-transparent" />
         <div className="scrim-bottom absolute inset-0" />
         <div className="relative w-full px-5 pb-8 md:px-10 md:pb-12">
-          <h1 className="t-display text-[clamp(2.25rem,10vw,9rem)]">
+          <h1 className="t-heading text-[clamp(2.25rem,10vw,9rem)]">
             Equipment
           </h1>
           <p className="mt-4 max-w-[52ch] text-[16px] text-white/75 md:text-[17px]">
@@ -226,7 +226,7 @@ export function EquipmentWizard() {
           {current === "Gear" ? (
             <section className="animate-in fade-in-0 duration-200">
               <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <h2 className="t-display text-3xl">Pick your gear</h2>
+                <h2 className="t-heading text-3xl">Pick your gear</h2>
                 <ModeSwitch b={b} />
               </div>
               {b.error ? (
@@ -264,7 +264,7 @@ export function EquipmentWizard() {
 
           {current === "Dates" ? (
             <section className="animate-in fade-in-0 duration-200">
-              <h2 className="t-display mb-8 text-3xl">When do you need it?</h2>
+              <h2 className="t-heading mb-8 text-3xl">When do you need it?</h2>
               <BookingCalendar b={b} />
               <div className="mt-4">
                 <ClashNotice b={b} />
@@ -275,11 +275,11 @@ export function EquipmentWizard() {
           {current === "Details" ? (
             <section className="animate-in fade-in-0 grid gap-12 duration-200 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <div>
-                <h2 className="t-display mb-8 text-3xl">Who&apos;s it for?</h2>
+                <h2 className="t-heading mb-8 text-3xl">Who&apos;s it for?</h2>
                 <RequestForm b={b} />
               </div>
               <div className="md:border-l md:border-white/10 md:pl-10">
-                <h2 className="t-display mb-8 text-3xl">Summary</h2>
+                <h2 className="t-heading mb-8 text-3xl">Summary</h2>
                 <BookingSummary b={b} />
               </div>
             </section>

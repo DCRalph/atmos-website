@@ -604,7 +604,7 @@ export function Submitted({ b }: { b: Booking }) {
       <span className="flex size-12 items-center justify-center rounded-full bg-[var(--site-accent)] text-[var(--site-accent-ink)]">
         <Check className="size-6" />
       </span>
-      <h2 className="t-display text-3xl">Request sent</h2>
+      <h2 className="t-heading text-3xl">Request sent</h2>
       <p className="max-w-[40ch] text-[16px] text-white/75">
         {successCopy(b.submittedMode ?? "PACKAGE")}
       </p>

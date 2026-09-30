@@ -63,7 +63,7 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
     <div className="px-5 md:px-10">
       <header className="pt-10 pb-10 md:pt-16 md:pb-14 lg:pl-[calc(240px+4rem)]">
         <DocSwitch current={doc.id} />
-        <h1 className="t-display mt-8 text-[clamp(2.25rem,6.5vw,5.5rem)] break-words">
+        <h1 className="t-heading mt-8 text-[clamp(2.25rem,6.5vw,5.5rem)] break-words">
           {doc.title}
         </h1>
         <p className="mt-5 text-[14px] text-white/60 tabular-nums">

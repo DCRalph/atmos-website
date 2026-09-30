@@ -181,7 +181,7 @@ export function MerchCatalogue() {
     <div className="pb-20">
       <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-6 px-5 pt-12 pb-8 md:px-10 md:pt-20 md:pb-12">
         <div>
-          <h1 className="t-display text-[clamp(2.75rem,9vw,7rem)]">Merch</h1>
+          <h1 className="t-heading text-[clamp(2.75rem,9vw,7rem)]">Merch</h1>
           <p className="mt-5 text-[16px] text-white/65 md:text-[17px]">
             Limited drops and Atmos staples
           </p>

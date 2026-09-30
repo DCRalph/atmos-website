@@ -84,7 +84,7 @@ export default function ContactPage() {
   return (
     <main className="mx-auto max-w-[1100px]">
       <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-4 px-5 pt-12 pb-10 md:px-10 md:pt-20 md:pb-14">
-        <h1 className="t-display text-[clamp(2.75rem,9vw,5.5rem)]">
+        <h1 className="t-heading text-[clamp(2.75rem,9vw,5.5rem)]">
           Hit us up
         </h1>
         <p className="max-w-[36ch] text-[16px] text-white/70 md:pb-2 md:text-[17px]">
@@ -120,7 +120,7 @@ export default function ContactPage() {
       </ul>
 
       <section className="grid gap-8 px-5 py-16 md:px-10 md:py-24 lg:grid-cols-[minmax(0,1fr)_minmax(0,600px)] lg:gap-12">
-        <h2 className="t-display text-[clamp(1.75rem,4vw,2.75rem)]">
+        <h2 className="t-heading text-[clamp(1.75rem,4vw,2.75rem)]">
           Drop us a line
         </h2>
         <ContactForm />

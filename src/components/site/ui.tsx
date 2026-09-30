@@ -208,7 +208,7 @@ export function PageTitle({
 }) {
   return (
     <div className="px-5 pt-12 pb-10 md:px-10 md:pt-20 md:pb-14">
-      <h1 className="t-display text-[clamp(2.5rem,8vw,6.5rem)]">{title}</h1>
+      <h1 className="t-heading text-[clamp(2.5rem,8vw,6.5rem)]">{title}</h1>
       {intro ? (
         <p className="mt-5 max-w-[52ch] text-[16px] text-white/65 md:text-[17px]">
           {intro}

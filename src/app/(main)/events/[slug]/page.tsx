@@ -60,7 +60,7 @@ export default function EventPage() {
   if (!event.data) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-5 px-5 py-24 text-center">
-        <h1 className="t-display text-[clamp(2.25rem,7vw,5rem)]">
+        <h1 className="t-heading text-[clamp(2.25rem,7vw,5rem)]">
           Event not found
         </h1>
         <p className="max-w-[40ch] text-[15px] text-white/60">
