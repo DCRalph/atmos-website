@@ -4,7 +4,9 @@ import { useSyncExternalStore } from "react";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { gigOffSiteNotice } from "~/lib/gig-visibility";
 
-export type TodayGig = RouterOutputs["gigs"]["getToday"][number];
+export type TodayGig =
+  | RouterOutputs["gigs"]["getToday"][number]
+  | RouterOutputs["gigs"]["getUpcoming"][number];
 export type LivePhase = "tonight" | "on" | "wrap";
 
 const HOUR = 3_600_000;
@@ -48,19 +50,33 @@ const priority: Record<LivePhase, number> = { on: 0, tonight: 1, wrap: 2 };
 
 /**
  * The gig the home page should treat as live, and which part of its night
- * it's in. `gigs.getToday` gives candidates (the day before until 5am after);
- * this narrows that to tonight, on now, or just finished, by the gig's own
- * times. Unannounced gigs and ones the public can't see never go live.
+ * it's in, by the gig's own start and end times. Unannounced gigs and ones
+ * the public can't see never go live.
+ *
+ * Candidates come from two lists. `gigs.getUpcoming` has every gig that
+ * hasn't finished, which covers tonight and on now however long the night
+ * runs. `gigs.getToday` adds the just-finished ones for the wrap. It can't be
+ * the only source: its window is keyed to the start date in UTC and closes at
+ * 5am UTC the next day (about 6pm in Pōneke), so it drops a gig that's still
+ * going that evening.
  */
 export function useLiveGig() {
+  // Refetching keeps the phase honest if someone leaves the page open all night.
+  const upcoming = api.gigs.getUpcoming.useQuery(undefined, {
+    refetchInterval: 5 * 60_000,
+  });
   const today = api.gigs.getToday.useQuery(undefined, {
-    // Keeps the phase honest if someone leaves the page open all night.
     refetchInterval: 5 * 60_000,
   });
   const now = useMinuteClock();
-  if (now === null || !today.data) return null;
+  if (now === null || (!upcoming.data && !today.data)) return null;
 
-  const live = today.data
+  const byId = new Map<string, TodayGig>();
+  for (const g of [...(upcoming.data ?? []), ...(today.data ?? [])]) {
+    byId.set(g.id, g);
+  }
+
+  const live = [...byId.values()]
     .filter((g) => g.mode !== "TO_BE_ANNOUNCED" && gigOffSiteNotice(g) === null)
     .flatMap((gig) => {
       const phase = phaseOf(gig, now);
