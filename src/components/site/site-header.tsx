@@ -184,11 +184,17 @@ function MobileMenu({
           closing ? "site-veil-out" : "site-veil-in",
         )}
       />
+      {/* A tap anywhere that isn't a link or button closes the menu. */}
       <div
         className={cn(
           "relative flex h-full flex-col",
           closing ? "site-fade-out" : "site-fade-in",
         )}
+        onClick={(e) => {
+          if (e.target instanceof Element && !e.target.closest("a, button")) {
+            onClose();
+          }
+        }}
       >
         <div className="flex h-16 items-center justify-between px-5">
           <Link href="/" onClick={onClose} aria-label="Atmos home">
@@ -235,7 +241,7 @@ function MobileMenu({
             })}
           </ul>
         </nav>
-        <div className="flex justify-between p-5">
+        <div className="flex justify-between px-3 pt-4 pb-6">
           {menuSocials.map(({ label, href, Icon }) => (
             <a
               key={label}
@@ -243,9 +249,9 @@ function MobileMenu({
               target="_blank"
               rel="noopener noreferrer"
               aria-label={label}
-              className="flex size-11 items-center justify-center text-white/70 hover:text-white"
+              className="flex size-16 items-center justify-center text-white/75 hover:text-white"
             >
-              <Icon className="size-5" />
+              <Icon className="size-8" />
             </a>
           ))}
         </div>
@@ -264,6 +270,8 @@ export function SiteHeader() {
   const [menu, setMenu] = useState<"closed" | "open" | "closing">("closed");
 
   const closeMenu = () => {
+    // Taps during the exit animation shouldn't restart it.
+    if (menu !== "open") return;
     setMenu("closing");
     setTimeout(
       () => setMenu("closed"),
