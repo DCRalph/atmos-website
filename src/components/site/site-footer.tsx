@@ -18,17 +18,27 @@ const footerSocials = [
   { ...SOCIALS.spotify, Icon: FaSpotify },
 ];
 
-/** Public site footer: brand, socials, every page, legal, and the oversized logo sign-off. */
+/**
+ * Public site footer: brand, socials, every page and the legal links, all in
+ * one block with the oversized logo watermarked behind it, cropped by the
+ * bottom edge.
+ */
 export function SiteFooter() {
   return (
-    <footer className="border-t border-white/10 bg-black">
-      <div className="grid gap-10 px-5 py-12 md:px-10 lg:grid-cols-[1fr_auto]">
+    <footer className="relative isolate overflow-hidden border-t border-white/10 bg-black">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-5 -bottom-[4vw] -z-10 opacity-[0.07] select-none md:inset-x-10"
+      >
+        <AtmosLogo className="w-full" />
+      </div>
+      <div className="grid gap-10 px-5 pt-12 pb-[clamp(3.5rem,7vw,6.5rem)] md:px-10 lg:grid-cols-[1fr_auto]">
         <div>
           <AtmosLogo className="w-40" />
           <p className="mt-5 max-w-[36ch] text-[14px] text-white/60">
             Immersive electronic music events in Pōneke, Wellington.
           </p>
-          <div className="mt-6 flex gap-1">
+          <div className="mt-6 -ml-3 flex gap-1">
             {footerSocials.map(({ label, href, Icon }) => (
               <a
                 key={label}
@@ -42,8 +52,11 @@ export function SiteFooter() {
               </a>
             ))}
           </div>
+          <p className="mt-6 text-[12px] text-white/50">
+            © {new Date().getFullYear()} ATMOS. All rights reserved.
+          </p>
         </div>
-        <nav aria-label="Footer">
+        <nav aria-label="Footer" className="space-y-8">
           <ul className="grid grid-cols-2 gap-x-12 gap-y-4 sm:grid-cols-3">
             {[
               ...primaryNav,
@@ -60,27 +73,20 @@ export function SiteFooter() {
               </li>
             ))}
           </ul>
+          <ul className="flex flex-wrap gap-x-6 gap-y-2 text-[12px] text-white/55">
+            {[
+              { label: "Terms", href: "/terms" },
+              { label: "Privacy", href: "/privacy" },
+              { label: "Login", href: "/login" },
+            ].map((l) => (
+              <li key={l.href}>
+                <Link href={l.href} className="hover:text-white">
+                  {l.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </nav>
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 px-5 py-5 text-[12px] text-white/55 md:px-10">
-        <p>© {new Date().getFullYear()} ATMOS. All rights reserved.</p>
-        <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <Link href="/terms" className="hover:text-white">
-            Terms
-          </Link>
-          <Link href="/privacy" className="hover:text-white">
-            Privacy
-          </Link>
-          <Link href="/login" className="hover:text-white">
-            Login
-          </Link>
-        </div>
-      </div>
-      <div
-        aria-hidden
-        className="h-[clamp(4rem,14vw,13rem)] overflow-hidden px-5 opacity-[0.07] select-none md:px-10"
-      >
-        <AtmosLogo className="w-full" />
       </div>
     </footer>
   );
