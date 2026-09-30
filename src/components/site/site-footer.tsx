@@ -28,11 +28,11 @@ export function SiteFooter() {
     <footer className="relative isolate overflow-hidden border-t border-white/10 bg-black">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-5 -bottom-[4vw] -z-10 opacity-[0.07] select-none md:inset-x-10"
+        className="pointer-events-none absolute inset-x-5 -bottom-[10vw] -z-10 opacity-[0.07] select-none md:inset-x-10"
       >
         <AtmosLogo className="w-full" />
       </div>
-      <div className="grid gap-10 px-5 pt-12 pb-[clamp(3.5rem,7vw,6.5rem)] md:px-10 lg:grid-cols-[1fr_auto]">
+      <div className="grid gap-10 px-5 pt-12 pb-12 md:px-10 md:pb-14 lg:grid-cols-[1fr_auto]">
         <div>
           <AtmosLogo className="w-40" />
           <p className="mt-5 max-w-[36ch] text-[14px] text-white/60">
