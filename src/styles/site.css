@@ -92,6 +92,15 @@
       0 24px 48px -16px rgb(0 0 0 / 0.8);
   }
 
+  /* SiteSelect: the list unrolls downward from under its trigger. */
+  .site .site-select-drop[data-state="open"] {
+    animation: site-select-unroll 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .site .site-select-drop [role="option"] {
+    animation: site-select-item 260ms ease-out both;
+  }
+
   .site .scrim-bottom {
     background: linear-gradient(
       to top,
@@ -108,5 +117,21 @@
       rgb(0 0 0 / 0.35) 55%,
       transparent 100%
     );
+  }
+}
+
+@keyframes site-select-unroll {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes site-select-item {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
   }
 }

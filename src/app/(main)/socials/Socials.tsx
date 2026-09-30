@@ -97,10 +97,11 @@ export default function SocialsPage() {
       <ul className="mx-5 border-t border-white/10 md:mx-10">
         {directory.map((s) => (
           <li key={s.label} className="group relative border-b border-white/10">
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 py-5 md:grid-cols-[40px_minmax(0,1.6fr)_minmax(0,0.8fr)_minmax(0,1fr)_auto] md:gap-x-6 md:py-6">
+            <div className="grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-2 py-5 md:grid-cols-[64px_minmax(0,1.6fr)_minmax(0,0.8fr)_minmax(0,1fr)_auto] md:gap-x-6 md:py-6">
               <s.Icon
-                className="size-6 max-md:hidden"
+                className="size-8 max-md:row-span-2 md:size-12"
                 style={{ color: s.color }}
+                aria-hidden
               />
               <a
                 href={s.href}
@@ -113,21 +114,17 @@ export default function SocialsPage() {
                 }
                 className="min-w-0 after:absolute after:inset-0"
               >
-                <span className="t-display block truncate text-[clamp(1.25rem,3.6vw,3rem)] leading-[1.05]">
+                <span className="t-display block truncate text-[clamp(1.1rem,5.2vw,3rem)] leading-[1.05] md:text-[clamp(1.25rem,3.6vw,3rem)]">
                   {s.label}
                 </span>
               </a>
-              <p className="t-label flex min-w-0 items-center gap-2 text-[12px] text-white/85 max-md:col-start-1 max-md:row-start-2">
-                <s.Icon
-                  className="size-4 shrink-0 md:hidden"
-                  style={{ color: s.color }}
-                />
+              <p className="t-label flex min-w-0 items-center gap-2 text-[12px] text-white/85 max-md:col-start-2 max-md:row-start-2">
                 <span className="truncate">{s.handle}</span>
               </p>
               <p className="truncate text-[14px] text-white/60 max-md:hidden">
                 {s.what}
               </p>
-              <div className="pointer-events-none relative z-10 flex items-center gap-2 max-md:col-start-2 max-md:row-span-2 max-md:row-start-1">
+              <div className="pointer-events-none relative z-10 flex items-center gap-2 max-md:col-start-3 max-md:row-span-2 max-md:row-start-1">
                 <button
                   type="button"
                   onClick={() => void copy(s.label, s.handle)}

@@ -7,7 +7,11 @@ import { Check, ChevronDown } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { useSite } from "./site-provider";
 
-/** Pill trigger, glass listbox. Keyboard and typeahead come from Radix. */
+/**
+ * Select that opens as one piece: the pill trigger squares its bottom corners
+ * and the options unroll from underneath it, same width and surface, so the
+ * trigger reads as the lid of the list. Keyboard and typeahead from Radix.
+ */
 export function SiteSelect<T extends string>({
   value,
   onValueChange,
@@ -35,31 +39,36 @@ export function SiteSelect<T extends string>({
         aria-label={label}
         aria-invalid={invalid}
         className={cn(
-          "t-label flex h-12 w-full items-center justify-between gap-3 rounded-full border border-white/15 bg-white/[0.04] pr-4 pl-5 text-[12px] text-white outline-none hover:border-white/30 aria-[invalid=true]:border-[var(--site-danger)] data-[placeholder]:text-white/45 data-[state=open]:border-white/60",
+          "group t-label flex h-12 w-full items-center justify-between gap-3 rounded-[24px] border border-white/15 bg-white/[0.04] pr-4 pl-5 text-[12px] text-white outline-none",
+          "transition-[border-radius,background-color,border-color] duration-200 ease-out hover:border-white/30",
+          "data-[state=open]:rounded-b-none data-[state=open]:border-white/25 data-[state=open]:bg-[var(--site-raised)]",
+          "aria-[invalid=true]:border-[var(--site-danger)] data-[placeholder]:text-white/45",
           className,
         )}
       >
         <Select.Value placeholder={placeholder} />
         <Select.Icon>
-          <ChevronDown className="size-4 text-white/60" />
+          <ChevronDown className="size-4 text-white/60 transition-transform duration-200 ease-out group-data-[state=open]:rotate-180" />
         </Select.Icon>
       </Select.Trigger>
       <Select.Portal container={portalContainer}>
         <Select.Content
           position="popper"
-          sideOffset={6}
-          className="glass-dark glass-float data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 z-[90] max-h-[var(--radix-select-content-available-height)] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-[var(--site-r-panel)] rounded-tl-none p-1.5"
+          side="bottom"
+          sideOffset={-1}
+          avoidCollisions={false}
+          className="site-select-drop glass-float z-[90] max-h-[min(22rem,var(--radix-select-content-available-height))] w-[var(--radix-select-trigger-width)] overflow-hidden rounded-b-[24px] border border-t-0 border-white/25 bg-[var(--site-raised)]"
         >
-          <Select.Viewport>
+          <Select.Viewport className="border-t border-white/10 p-1.5">
             {options.map((o) => (
               <Select.Item
                 key={o.value}
                 value={o.value}
                 disabled={o.disabled}
-                className="t-label relative flex h-11 cursor-default items-center rounded-[10px] pr-10 pl-4 text-[11px] text-white/80 outline-none select-none data-[disabled]:opacity-35 data-[highlighted]:bg-white/10 data-[highlighted]:text-white data-[state=checked]:text-white"
+                className="t-label relative flex h-11 cursor-default items-center rounded-[14px] pr-10 pl-3.5 text-[11px] text-white/75 outline-none select-none data-[disabled]:opacity-35 data-[highlighted]:bg-white/10 data-[highlighted]:text-white data-[state=checked]:text-white"
               >
                 <Select.ItemText>{o.label}</Select.ItemText>
-                <Select.ItemIndicator className="absolute right-4">
+                <Select.ItemIndicator className="absolute right-3.5">
                   <Check className="size-4 text-[var(--site-accent-text)]" />
                 </Select.ItemIndicator>
               </Select.Item>

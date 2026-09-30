@@ -5,7 +5,7 @@ import { ArrowUpRight } from "lucide-react";
 import { FaInstagram, FaSoundcloud } from "react-icons/fa6";
 import type { ResolvedCrewDisplay } from "~/lib/crew-display";
 import { cn } from "~/lib/utils";
-import { buttonVariants, Media } from "../ui";
+import { Media } from "../ui";
 
 /** Member photo with hard edges, or their initial when there's no photo. */
 export function Portrait({
@@ -91,25 +91,5 @@ export function MemberLinks({
         </Link>
       ) : null}
     </div>
-  );
-}
-
-/** "Join the crew" call to action, pointing at the contact page. */
-export function JoinCrew() {
-  return (
-    <section className="mx-5 grid gap-6 border-t border-white/10 pt-10 md:mx-10 md:pt-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)] lg:items-end">
-      <h2 className="t-display text-[clamp(2.25rem,6vw,5rem)]">
-        Join the crew
-      </h2>
-      <div className="space-y-5">
-        <p className="max-w-[44ch] text-[16px] text-white/70">
-          Want to collaborate or be part of Atmos? We&apos;re always looking for
-          artists who share the vision.
-        </p>
-        <Link href="/contact" className={buttonVariants({ size: "lg" })}>
-          Get in touch <ArrowUpRight className="size-4" />
-        </Link>
-      </div>
-    </section>
   );
 }

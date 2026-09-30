@@ -6,7 +6,7 @@ import {
   FaTiktok,
   FaYoutube,
 } from "react-icons/fa6";
-import { CONTACT, SOCIALS } from "~/lib/site-constants";
+import { SOCIALS } from "~/lib/site-constants";
 import { primaryNav, secondaryNav } from "./nav";
 import { AtmosLogo } from "./ui";
 
@@ -74,9 +74,6 @@ export function SiteFooter() {
           <Link href="/login" className="hover:text-white">
             Login
           </Link>
-          <a href={`mailto:${CONTACT.email}`} className="hover:text-white">
-            {CONTACT.email}
-          </a>
         </div>
       </div>
       <div

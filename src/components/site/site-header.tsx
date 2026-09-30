@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
@@ -16,7 +16,7 @@ import { authClient } from "~/lib/auth-client";
 import { SOCIALS } from "~/lib/site-constants";
 import { cn } from "~/lib/utils";
 import { useMerchCart } from "~/components/merch/merch-cart-provider";
-import { ScrollContainerContext } from "~/components/scroll-container-provider";
+import { GradientBlur } from "~/components/gradient-blur";
 import { HERO_ROUTES, primaryNav, secondaryNav } from "./nav";
 import { useSite } from "./site-provider";
 import { AtmosLogo, IconButton, buttonVariants } from "./ui";
@@ -139,12 +139,20 @@ const menuSocials = [
   { ...SOCIALS.soundcloud, Icon: FaSoundcloud },
 ];
 
-/** Full-screen phone menu: the page blurs behind it, links go huge. */
+// How long the menu takes to leave; unmount waits for it.
+const MENU_EXIT_MS = 220;
+
+/**
+ * Full-screen phone menu: the page blurs behind it, links go huge. `closing`
+ * plays the exit (links slide back out, the veil fades) before unmount.
+ */
 function MobileMenu({
   pathname,
+  closing,
   onClose,
 }: {
   pathname: string;
+  closing: boolean;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -153,12 +161,19 @@ function MobileMenu({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  const links = [{ label: "Home", href: "/" }, ...primaryNav, ...secondaryNav];
+
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label="Menu"
-      className="animate-in fade-in-0 fixed inset-0 z-[65] duration-200"
+      className={cn(
+        "fill-mode-forwards fixed inset-0 z-[65]",
+        closing
+          ? "animate-out fade-out-0 duration-200"
+          : "animate-in fade-in-0 duration-200",
+      )}
     >
       <div className="glass-dark absolute inset-0 border-0 bg-black/80" />
       <div className="relative flex h-full flex-col">
@@ -172,35 +187,37 @@ function MobileMenu({
         </div>
         <nav aria-label="Main" className="mt-4 flex-1 overflow-y-auto px-5">
           <ul>
-            {[{ label: "Home", href: "/" }, ...primaryNav, ...secondaryNav].map(
-              (l, i) => {
-                const active =
-                  l.href === "/"
-                    ? pathname === "/"
-                    : isActive(pathname, l.href);
-                return (
-                  <li
-                    key={l.href}
-                    className="animate-in fade-in-0 slide-in-from-left-3 fill-mode-both border-b border-white/10 duration-300"
-                    style={{ animationDelay: `${i * 25}ms` }}
+            {links.map((l, i) => {
+              const active =
+                l.href === "/" ? pathname === "/" : isActive(pathname, l.href);
+              return (
+                <li
+                  key={l.href}
+                  className={cn(
+                    "fill-mode-both",
+                    closing
+                      ? "animate-out fade-out-0 slide-out-to-left-3 duration-200"
+                      : "animate-in fade-in-0 slide-in-from-left-3 duration-300",
+                  )}
+                  // Stagger in top-down, back out bottom-up.
+                  style={{
+                    animationDelay: `${(closing ? links.length - 1 - i : i) * (closing ? 12 : 25)}ms`,
+                  }}
+                >
+                  <Link
+                    href={l.href}
+                    onClick={onClose}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "t-display flex py-2.5 text-[2rem]",
+                      active ? "text-[var(--site-accent-text)]" : "text-white",
+                    )}
                   >
-                    <Link
-                      href={l.href}
-                      onClick={onClose}
-                      aria-current={active ? "page" : undefined}
-                      className={cn(
-                        "t-display flex py-3 text-[2rem]",
-                        active
-                          ? "text-[var(--site-accent-text)]"
-                          : "text-white",
-                      )}
-                    >
-                      {l.label}
-                    </Link>
-                  </li>
-                );
-              },
-            )}
+                    {l.label}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </nav>
         <div className="flex justify-between p-5">
@@ -223,38 +240,27 @@ function MobileMenu({
 }
 
 /**
- * Public site header. Transparent over a hero until the page scrolls, then a
- * solid black bar with a hairline. Below `lg` the links move into a
+ * Public site header. A progressive blur fades down behind it, so it reads
+ * over any page without a flat background. Below `lg` the links move into a
  * full-screen menu.
  */
 export function SiteHeader() {
   const pathname = usePathname();
-  const scrollRef = useContext(ScrollContainerContext);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const overHero = HERO_ROUTES.includes(pathname);
+  const [menu, setMenu] = useState<"closed" | "open" | "closing">("closed");
 
-  useEffect(() => {
-    const el = scrollRef?.current;
-    if (!el) return;
-    const onScroll = () => setScrolled(el.scrollTop > 40);
-    onScroll();
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, [scrollRef, pathname]);
-
-  const solid = !overHero || scrolled;
+  const closeMenu = () => {
+    setMenu("closing");
+    setTimeout(() => setMenu("closed"), MENU_EXIT_MS);
+  };
 
   return (
     <>
-      <header
-        className={cn(
-          "fixed inset-x-0 top-0 z-40 flex h-16 items-center gap-8 px-5 transition-colors duration-200 md:h-20 md:px-10",
-          solid
-            ? "border-b border-white/10 bg-black/90"
-            : "border-b border-transparent bg-gradient-to-b from-black/60 to-transparent",
-        )}
-      >
+      <header className="fixed inset-x-0 top-0 isolate z-40 flex h-16 items-center gap-8 px-5 md:h-20 md:px-10">
+        {/* Blur strongest at the top edge, gone a little below the bar. */}
+        <GradientBlur
+          direction="to-bottom"
+          className="absolute inset-0 -bottom-14 -z-10 rotate-180"
+        />
         <Link href="/" aria-label="Atmos home">
           <AtmosLogo className="w-24 md:w-28" />
         </Link>
@@ -271,7 +277,7 @@ export function SiteHeader() {
                       "t-label relative text-[11px] transition-colors",
                       active
                         ? "text-white after:absolute after:inset-x-0 after:-bottom-2 after:h-0.5 after:bg-[var(--site-accent)]"
-                        : "text-white/65 hover:text-white",
+                        : "text-white/70 hover:text-white",
                     )}
                   >
                     {l.label}
@@ -295,15 +301,19 @@ export function SiteHeader() {
           </Link>
           <IconButton
             label="Open menu"
-            onClick={() => setMenuOpen(true)}
+            onClick={() => setMenu("open")}
             className="ml-1 lg:hidden"
           >
             <Menu className="size-5" />
           </IconButton>
         </div>
       </header>
-      {menuOpen ? (
-        <MobileMenu pathname={pathname} onClose={() => setMenuOpen(false)} />
+      {menu !== "closed" ? (
+        <MobileMenu
+          pathname={pathname}
+          closing={menu === "closing"}
+          onClose={closeMenu}
+        />
       ) : null}
     </>
   );

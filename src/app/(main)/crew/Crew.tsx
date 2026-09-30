@@ -1,11 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  JoinCrew,
-  MemberLinks,
-  Portrait,
-} from "~/components/site/crew/crew-kit";
+import { MemberLinks, Portrait } from "~/components/site/crew/crew-kit";
 import { Button, Media, Skeleton } from "~/components/site/ui";
 import { resolveCrewDisplay } from "~/lib/crew-display";
 import { cn } from "~/lib/utils";
@@ -128,10 +124,6 @@ export default function CrewPage() {
             )}
           </div>
         </div>
-      </div>
-
-      <div className="pb-20">
-        <JoinCrew />
       </div>
     </main>
   );

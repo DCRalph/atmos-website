@@ -31,7 +31,10 @@ export default function MainLayout({
         ref={scrollRef}
         id="main-layout-container"
         className={cn(
-          "site h-dvh w-full overflow-x-hidden overflow-y-scroll",
+          // `relative` makes this the containing block for every absolutely
+          // positioned descendant (sr-only labels included). Without it they
+          // anchor to the document and give the page a second scrollbar.
+          "site relative h-dvh w-full overflow-x-hidden overflow-y-scroll",
           siteFontVariables,
         )}
       >

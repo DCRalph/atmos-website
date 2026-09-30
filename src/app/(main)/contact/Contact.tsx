@@ -47,6 +47,7 @@ const lines = [
     meta: "Instagram DM · Quickest reply",
     href: SOCIALS.instagram.href,
     external: true,
+    copy: "Instagram handle",
   },
   {
     type: "phone",
@@ -68,8 +69,15 @@ const lines = [
   meta: string;
   href: string;
   external?: true;
-  copy?: string;
+  copy: string;
 }[];
+
+/** Shared href, new-tab handling and analytics for a contact line's links. */
+const linkProps = (l: (typeof lines)[number]) => ({
+  href: l.href,
+  ...("external" in l ? { target: "_blank", rel: "noopener noreferrer" } : {}),
+  onClick: () => posthog.capture("contact_link_clicked", { type: l.type }),
+});
 
 /** Contact as a poster: the details are huge tappable lines, then the form. Held to a centred column on wide screens. */
 export default function ContactPage() {
@@ -90,29 +98,23 @@ export default function ContactPage() {
             key={l.type}
             className="flex items-center gap-3 border-b border-white/10 px-5 py-6 md:gap-5 md:px-10 md:py-8"
           >
-            <a
-              href={l.href}
-              {...("external" in l
-                ? { target: "_blank", rel: "noopener noreferrer" }
-                : {})}
-              onClick={() =>
-                posthog.capture("contact_link_clicked", { type: l.type })
-              }
-              className="group flex min-w-0 flex-1 items-center gap-5"
-            >
-              <span className="@container min-w-0 flex-1">
-                <span className="t-display block text-[min(5.2cqw,3.25rem)] tabular-nums transition-colors group-hover:text-[var(--site-accent-text)]">
-                  {l.value}
-                </span>
-                <span className="mt-3 block text-[13px] text-white/60 md:text-[14px]">
-                  {l.meta}
-                </span>
+            <a {...linkProps(l)} className="group @container min-w-0 flex-1">
+              <span className="t-display block text-[min(5.2cqw,3.25rem)] tabular-nums transition-colors group-hover:text-[var(--site-accent-text)]">
+                {l.value}
               </span>
-              <span className="hidden size-12 shrink-0 items-center justify-center rounded-full bg-white text-black transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 md:flex">
-                <ArrowUpRight className="size-5" />
+              <span className="mt-3 block text-[13px] text-white/60 md:text-[14px]">
+                {l.meta}
               </span>
             </a>
-            {"copy" in l ? <CopyButton value={l.value} label={l.copy} /> : null}
+            {/* Copy first, then open: open is the louder action and ends the row. */}
+            <CopyButton value={l.value} label={l.copy} />
+            <a
+              {...linkProps(l)}
+              aria-label={`Open ${l.copy.toLowerCase()}`}
+              className="hidden size-12 shrink-0 items-center justify-center rounded-full bg-white text-black transition-transform hover:translate-x-0.5 hover:-translate-y-0.5 md:flex"
+            >
+              <ArrowUpRight className="size-5" />
+            </a>
           </li>
         ))}
       </ul>
