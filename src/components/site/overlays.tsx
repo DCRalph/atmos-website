@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
 import * as Dialog from "@radix-ui/react-dialog";
+import useEmblaCarousel from "embla-carousel-react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { useSite } from "./site-provider";
@@ -86,21 +87,22 @@ export function SiteDialog({
 
 export const DialogClose = Dialog.Close;
 
-/** Full-screen image viewer. Arrow keys step, Escape closes; images are never cropped. */
+type LightboxImage = { src: string; alt: string };
+
+/**
+ * Full-screen image viewer. Swipe or drag (mouse too), arrow keys or the
+ * buttons slide between images; Escape closes. Images are never cropped.
+ */
 export function Lightbox({
   images,
   index,
   onIndexChange,
 }: {
-  images: readonly { src: string; alt: string }[];
+  images: readonly LightboxImage[];
   index: number | null;
   onIndexChange: (index: number | null) => void;
 }) {
   const { portalContainer } = useSite();
-  const current = index === null ? undefined : images[index];
-  const step = (dir: 1 | -1) =>
-    index !== null &&
-    onIndexChange((index + dir + images.length) % images.length);
 
   return (
     <Dialog.Root
@@ -109,63 +111,140 @@ export function Lightbox({
     >
       <Dialog.Portal container={portalContainer}>
         <Dialog.Overlay className="data-[state=open]:animate-in data-[state=open]:fade-in-0 fixed inset-0 z-[70] bg-black/90 backdrop-blur-md" />
-        <Dialog.Content
-          className="fixed inset-0 z-[71] flex flex-col outline-none"
-          onKeyDown={(e) => {
-            if (e.key === "ArrowRight") step(1);
-            if (e.key === "ArrowLeft") step(-1);
-          }}
-        >
-          <div className="flex items-center justify-between p-4 md:p-6">
-            <Dialog.Title className="t-label text-[12px] text-white/70 tabular-nums">
-              {index === null ? "" : `${index + 1} / ${images.length}`}
-            </Dialog.Title>
-            <Dialog.Description className="sr-only">
-              Use the arrow keys to move between images.
-            </Dialog.Description>
-            <Dialog.Close asChild>
-              <IconButton label="Close viewer">
-                <X className="size-5" />
-              </IconButton>
-            </Dialog.Close>
-          </div>
-          <div className="relative flex-1">
-            {current ? (
-              <Image
-                key={current.src}
-                src={current.src}
-                alt={current.alt}
-                fill
-                sizes="100vw"
-                unoptimized={current.src.endsWith(".gif")}
-                className="animate-in fade-in-0 object-contain duration-200"
-              />
-            ) : null}
-            {images.length > 1 ? (
-              <>
-                <IconButton
-                  label="Previous image"
-                  onClick={() => step(-1)}
-                  className="absolute top-1/2 left-3 -translate-y-1/2 md:left-6"
-                >
-                  <ChevronLeft className="size-5" />
-                </IconButton>
-                <IconButton
-                  label="Next image"
-                  onClick={() => step(1)}
-                  className="absolute top-1/2 right-3 -translate-y-1/2 md:right-6"
-                >
-                  <ChevronRight className="size-5" />
-                </IconButton>
-              </>
-            ) : null}
-          </div>
-          <p className="p-4 text-center text-[14px] text-white/70 md:p-6">
-            {current?.alt}
-          </p>
-        </Dialog.Content>
+        {index === null ? null : (
+          <LightboxContent
+            images={images}
+            index={index}
+            onIndexChange={onIndexChange}
+          />
+        )}
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+/** How many images either side of the current one to load ahead. */
+const PRELOAD = 2;
+
+/**
+ * The open viewer. Mounted per open, so the carousel starts on the tapped
+ * image. Only images near the current one render, so neighbours are
+ * preloaded and long galleries don't fetch everything at once.
+ */
+function LightboxContent({
+  images,
+  index,
+  onIndexChange,
+}: {
+  images: readonly LightboxImage[];
+  index: number;
+  onIndexChange: (index: number) => void;
+}) {
+  const many = images.length > 1;
+  // Frozen at open: a changing option makes Embla re-init and jump.
+  const [startIndex] = useState(index);
+  const [track, api] = useEmblaCarousel({
+    loop: many,
+    startIndex,
+    // Flicks carry momentum: harder ones glide past several photos, then
+    // ease onto one. Higher duration means a longer, softer glide.
+    skipSnaps: true,
+    duration: 30,
+    watchDrag: many,
+  });
+
+  useEffect(() => {
+    if (!api) return;
+    const select = () => onIndexChange(api.selectedScrollSnap());
+    api.on("select", select);
+    return () => {
+      api.off("select", select);
+    };
+  }, [api, onIndexChange]);
+
+  const near = (i: number) => {
+    const d = Math.abs(i - index);
+    return Math.min(d, images.length - d) <= PRELOAD;
+  };
+
+  return (
+    <Dialog.Content
+      className="fixed inset-0 z-[71] flex flex-col outline-none"
+      onKeyDown={(e) => {
+        if (e.key === "ArrowRight") api?.scrollNext();
+        if (e.key === "ArrowLeft") api?.scrollPrev();
+      }}
+    >
+      <div className="flex items-center justify-between p-4 md:p-6">
+        <Dialog.Title className="t-label text-[12px] text-white/70 tabular-nums">
+          {`${index + 1} / ${images.length}`}
+        </Dialog.Title>
+        <Dialog.Description className="sr-only">
+          Swipe or use the arrow keys to move between images.
+        </Dialog.Description>
+        <Dialog.Close asChild>
+          <IconButton label="Close viewer">
+            <X className="size-5" />
+          </IconButton>
+        </Dialog.Close>
+      </div>
+      <div className="relative min-h-0 flex-1">
+        <div
+          ref={track}
+          className={cn(
+            "h-full overflow-hidden",
+            many && "cursor-grab active:cursor-grabbing",
+          )}
+        >
+          <div className="flex h-full [touch-action:pan-y_pinch-zoom]">
+            {images.map((img, i) => (
+              <div
+                key={i}
+                aria-hidden={i !== index}
+                className={cn(
+                  "relative h-full min-w-0 shrink-0 grow-0 basis-full transition-[opacity,scale] duration-300 ease-out motion-reduce:transition-none",
+                  i !== index && "scale-90 opacity-30",
+                )}
+              >
+                {near(i) ? (
+                  <Image
+                    src={img.src}
+                    alt={img.alt}
+                    fill
+                    sizes="100vw"
+                    loading="eager"
+                    draggable={false}
+                    unoptimized={img.src.endsWith(".gif")}
+                    className="object-contain select-none"
+                  />
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+        {many ? (
+          <>
+            <IconButton
+              label="Previous image"
+              onClick={() => api?.scrollPrev()}
+              className="absolute top-1/2 left-3 -translate-y-1/2 md:left-6"
+            >
+              <ChevronLeft className="size-5" />
+            </IconButton>
+            <IconButton
+              label="Next image"
+              onClick={() => api?.scrollNext()}
+              className="absolute top-1/2 right-3 -translate-y-1/2 md:right-6"
+            >
+              <ChevronRight className="size-5" />
+            </IconButton>
+          </>
+        ) : null}
+      </div>
+      <p className="p-4 text-center text-[14px] text-white/70 md:p-6">
+        {images[index]?.alt}
+      </p>
+    </Dialog.Content>
   );
 }
 

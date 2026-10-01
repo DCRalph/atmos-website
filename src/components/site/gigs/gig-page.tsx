@@ -23,6 +23,7 @@ import { LexicalContent } from "~/components/lexical";
 import { Lineup } from "./lineup";
 import { BuyPanel } from "~/components/ticketing/buy-panel";
 import { NewsletterForm } from "../newsletter-form";
+import { useHoverCursor } from "../hover-cursor";
 import { Lightbox, useLightbox } from "../overlays";
 import { Button, Media, Skeleton, buttonVariants } from "../ui";
 import {
@@ -237,6 +238,7 @@ function TicketsBlock({ gig }: { gig: DetailGig }) {
 /** Past gig photos and videos; photos open the lightbox. */
 function Gallery({ gig }: { gig: DetailGig }) {
   const lb = useLightbox();
+  const cursor = useHoverCursor(<Expand />);
   const photos = gig.media
     .filter((m) => m.type === "photo")
     .map((m, i) => ({
@@ -273,8 +275,10 @@ function Gallery({ gig }: { gig: DetailGig }) {
             type="button"
             onClick={() => lb.open(i)}
             aria-label={`Open photo ${i + 1}`}
+            {...cursor.targets}
             className={cn(
               "relative overflow-hidden bg-white/5",
+              cursor.targets.className,
               i === 0 ? "col-span-2 row-span-2 aspect-square" : "aspect-square",
             )}
           >
@@ -282,7 +286,13 @@ function Gallery({ gig }: { gig: DetailGig }) {
               src={m.src}
               alt=""
               fill
-              sizes="(min-width: 768px) 25vw, 50vw"
+              // Tiles are square crops of mostly 3:2 shots, so ask for ~1.5x
+              // the tile width. The first tile spans two columns.
+              sizes={
+                i === 0
+                  ? "(min-width: 768px) 75vw, 150vw"
+                  : "(min-width: 768px) 38vw, 75vw"
+              }
               className="object-cover transition-transform duration-500 ease-out hover:scale-[1.03]"
             />
           </button>
@@ -307,6 +317,7 @@ function Gallery({ gig }: { gig: DetailGig }) {
         ))}
       </div>
       <Lightbox images={photos} {...lb.props} />
+      {cursor.circle}
     </div>
   );
 }

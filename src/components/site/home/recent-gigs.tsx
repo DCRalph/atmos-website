@@ -2,9 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Images } from "lucide-react";
+import {
+  ArrowUpRight,
+  ChevronLeft,
+  ChevronRight,
+  Images,
+} from "lucide-react";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { gigPath } from "~/lib/gig-url";
+import { cn } from "~/lib/utils";
+import { useHoverCursor } from "../hover-cursor";
 import { Button, Skeleton } from "../ui";
 import {
   GigPoster,
@@ -94,6 +101,7 @@ function Shell({
 function PosterRail({ gigs }: { gigs: RecentGig[] }) {
   const railRef = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ start: true, end: true });
+  const cursor = useHoverCursor(<ArrowUpRight />);
 
   useEffect(() => {
     const rail = railRef.current;
@@ -156,7 +164,8 @@ function PosterRail({ gigs }: { gigs: RecentGig[] }) {
             <Link
               key={gig.id}
               href={gigPath(gig)}
-              className={`group ${cardClass}`}
+              {...cursor.targets}
+              className={cn("group", cardClass, cursor.targets.className)}
             >
               <div className="relative">
                 <GigPoster
@@ -182,6 +191,7 @@ function PosterRail({ gigs }: { gigs: RecentGig[] }) {
           );
         })}
       </div>
+      {cursor.circle}
     </Shell>
   );
 }
