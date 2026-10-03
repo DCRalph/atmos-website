@@ -531,7 +531,7 @@ export function BookingSummary({ b }: { b: Booking }) {
   );
 }
 
-/** Promoter, private contact, submit. Says what's missing instead of leaving a dead button. */
+/** Promoter, email, submit. Says what's missing instead of leaving a dead button. */
 export function RequestForm({ b }: { b: Booking }) {
   return (
     <form onSubmit={b.submit} noValidate className="space-y-5">
@@ -556,14 +556,16 @@ export function RequestForm({ b }: { b: Booking }) {
           htmlFor="eq-contact"
           className="t-label mb-2 block text-[10px] text-white/70"
         >
-          Private contact info
+          Email
         </label>
         <input
           id="eq-contact"
+          type="email"
           value={b.contact}
           onChange={(e) => b.setContact(e.target.value)}
           className={inputClass}
-          placeholder="Phone number or email"
+          placeholder="you@example.com"
+          autoComplete="email"
         />
       </div>
       <Button

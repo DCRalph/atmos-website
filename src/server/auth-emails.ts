@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sendTransactional } from "~/server/ticketing/email/provider";
+import { escapeHtml } from "~/server/utils/email";
 
 /**
  * The account mails: confirm your email, reset your password, delete your
@@ -20,14 +21,6 @@ const CARD = "#141416";
 const BORDER = "#2a2a2e";
 const TEXT = "#f4f4f5";
 const MUTED = "#a1a1aa";
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
 
 /**
  * The shared shell: wordmark, card, one button, the paste-this fallback.

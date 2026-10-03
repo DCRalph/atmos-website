@@ -8,6 +8,7 @@ import {
   startOfDay,
 } from "date-fns";
 import { toast } from "sonner";
+import { z } from "zod";
 import { api, type RouterOutputs } from "~/trpc/react";
 
 export type Mode = "PACKAGE" | "ITEMS";
@@ -43,7 +44,7 @@ export const successCopy = (mode: Mode) =>
 /**
  * The rental request flow: one mode per request (switching clears the other),
  * a date range checked live against approved rentals via the quote query,
- * promoter and private contact, then `rentals.createRentalRequest`.
+ * promoter and email, then `rentals.createRentalRequest`.
  */
 export function useBooking() {
   const packagesQuery = api.rentals.getPublicPackages.useQuery();
@@ -132,7 +133,7 @@ export function useBooking() {
     !hasGear && (mode === "PACKAGE" ? "pick a package" : "add items"),
     !hasDates && "choose dates",
     !promoter.trim() && "add a promoter",
-    !contact.trim() && "add contact info",
+    !z.email().safeParse(contact.trim()).success && "add a valid email",
   ].filter((m) => m !== false);
 
   const createRental = api.rentals.createRentalRequest.useMutation({

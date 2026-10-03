@@ -19,7 +19,7 @@ import { useMerchCart } from "~/components/merch/merch-cart-provider";
 import { GradientBlur } from "~/components/gradient-blur";
 import { HERO_ROUTES, primaryNav, secondaryNav } from "./nav";
 import { useSite } from "./site-provider";
-import { AtmosLogo, IconButton, buttonVariants } from "./ui";
+import { AtmosLogo, IconButton } from "./ui";
 
 const isActive = (pathname: string, href: string) =>
   pathname === href || pathname.startsWith(`${href}/`);
@@ -316,15 +316,6 @@ export function SiteHeader() {
         <div className="ml-auto flex items-center gap-1">
           <AccountMenu />
           <CartButton />
-          <Link
-            href="/events"
-            className={cn(
-              buttonVariants({ size: "sm" }),
-              "ml-2 h-10 max-sm:hidden",
-            )}
-          >
-            Tickets
-          </Link>
           <IconButton
             label="Open menu"
             onClick={() => setMenu("open")}
