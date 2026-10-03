@@ -2,19 +2,26 @@
 
 import { useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
-import { CalendarDays, Check, Loader2, MapPin } from "lucide-react";
+import { Check } from "lucide-react";
 import { toast } from "sonner";
 
 import { api, type RouterOutputs } from "~/trpc/react";
-import { Button } from "~/components/ui/button";
-import { Checkbox } from "~/components/ui/checkbox";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import { Skeleton } from "~/components/ui/skeleton";
+import { SiteCheckbox } from "~/components/site/inputs";
+import { Button, Skeleton, inputClass } from "~/components/site/ui";
+import {
+  PassCard,
+  PassField,
+  PassFields,
+  PassHeader,
+  TicketMessage,
+  TicketShell,
+  fieldLabelClass,
+  ticketPanelClass,
+} from "~/components/tickets/ticket-shell";
 import { buildMediaUrl } from "~/lib/media-url";
-import { formatEventDateLong, formatEventTime } from "~/lib/ticketing/dates";
+import { formatEventDate, formatEventTime } from "~/lib/ticketing/dates";
+import { cn } from "~/lib/utils";
 import { useIssuedOrder } from "~/hooks/use-issued-order";
 
 type TicketOrderView = NonNullable<RouterOutputs["tickets"]["byAccessToken"]>;
@@ -42,8 +49,9 @@ function splitName(full: string | null): { first: string; last: string } {
  * buyer says who they are and, for a free order, where the email that the
  * ticket gets sent to finally arrives.
  *
- * The event leads: poster, name, when, where. Someone who has just paid wants
- * to see what they bought before they start typing.
+ * The event leads, as the same pass the tickets page shows: poster, name,
+ * when, where. Someone who has just paid wants to see what they bought before
+ * they start typing.
  */
 export default function TicketDetailsPage() {
   const params = useParams<{ token: string }>();
@@ -55,63 +63,60 @@ export default function TicketDetailsPage() {
 
   if (order.isPending) {
     return (
-      <main className="mx-auto w-full max-w-2xl px-5 py-16 md:px-8">
-        <Skeleton className="h-64 w-full" />
-        <Skeleton className="mt-6 h-10 w-2/3" />
-      </main>
+      <TicketShell>
+        <Skeleton className="h-64 rounded-[var(--site-r-panel)] rounded-tl-none" />
+        <Skeleton className="mt-6 h-80 rounded-[var(--site-r-panel)] rounded-tl-none" />
+      </TicketShell>
     );
   }
 
   if (!order.data) {
     return (
-      <main className="mx-auto w-full max-w-2xl px-5 py-24 text-center md:px-8">
-        <h1 className="text-3xl font-bold text-white">Tickets not found</h1>
-        <p className="mt-3 text-white/50">
+      <TicketShell>
+        <TicketMessage title="Tickets not found" showEventsLink>
           This link is wrong, or it&apos;s been replaced by a newer one. Check
           the most recent email we sent you.
-        </p>
-        <Link
-          href="/events"
-          className="mt-6 inline-block border-2 border-white/20 px-5 py-2.5 text-white transition-colors hover:bg-white hover:text-black"
-        >
-          What&apos;s on
-        </Link>
-      </main>
+        </TicketMessage>
+      </TicketShell>
     );
   }
 
   const data = order.data;
+  const poster = data.event.posterFileUploadId
+    ? buildMediaUrl(data.event.posterFileUploadId)
+    : null;
 
   if (!data.issued) {
+    // No spinner: the page polls and swaps itself in when the tickets exist.
     return (
-      <main className="mx-auto w-full max-w-2xl px-5 py-24 text-center md:px-8">
-        <Loader2 className="mx-auto size-8 animate-spin text-white/40" />
-        <h1 className="mt-6 text-2xl font-semibold text-white">
-          {data.status === "AWAITING_APPROVAL"
-            ? "Request received"
-            : "Finishing up…"}
-        </h1>
-        <p className="mt-3 text-white/50">
+      <TicketShell poster={poster}>
+        <TicketMessage
+          title={
+            data.status === "AWAITING_APPROVAL"
+              ? "Request received"
+              : "Finishing up"
+          }
+        >
           {data.status === "AWAITING_APPROVAL"
             ? "We'll email your ticket once someone approves it."
             : "Your tickets are being issued. This page will update on its own."}
-        </p>
-      </main>
+        </TicketMessage>
+      </TicketShell>
     );
   }
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-5 py-10 md:px-8 md:py-14">
+    <TicketShell poster={poster}>
       <Banner
         ticketCount={data.tickets.length}
         emailed={Boolean(data.buyerEmail)}
         returning={Boolean(data.detailsCompletedAt)}
       />
 
-      <EventHeader event={data.event} />
+      <EventPass event={data.event} poster={poster} />
 
       <DetailsForm token={token} data={data} />
-    </main>
+    </TicketShell>
   );
 }
 
@@ -135,9 +140,11 @@ function Banner({
   const subject = ticketCount === 1 ? "Your ticket is" : "Your tickets are";
 
   return (
-    <div className="flex items-center gap-3 border-2 border-emerald-500/30 bg-emerald-500/10 p-4">
-      <Check className="size-5 shrink-0 text-emerald-300" aria-hidden />
-      <p className="text-sm text-emerald-100">
+    <div className="mb-6">
+      <p className="t-label inline-flex items-center gap-1.5 rounded-full bg-[var(--site-accent)] py-2 pr-3.5 pl-3 text-[10px] text-[var(--site-accent-ink)]">
+        <Check className="size-3.5" aria-hidden /> You&apos;re in
+      </p>
+      <p className="mt-3 text-[14px] text-white/70">
         {subject} sorted.{" "}
         {emailed
           ? "Just tell us who's coming."
@@ -147,50 +154,41 @@ function Banner({
   );
 }
 
-function EventHeader({ event }: { event: TicketOrderView["event"] }) {
+/** What they bought, before anything is asked of them. No QR yet. */
+function EventPass({
+  event,
+  poster,
+}: {
+  event: TicketOrderView["event"];
+  poster: string | null;
+}) {
   return (
-    <header className="mt-8">
-      {event.posterFileUploadId && (
-        <div className="relative mb-6 aspect-square w-full max-w-xs overflow-hidden border-2 border-white/10 bg-black/20">
-          <Image
-            src={buildMediaUrl(event.posterFileUploadId)}
-            alt={`${event.name} poster`}
-            fill
-            sizes="(max-width: 768px) 100vw, 320px"
-            className="object-cover"
-            priority
-          />
-        </div>
-      )}
-
-      <h1 className="text-3xl font-bold tracking-tight text-white md:text-4xl">
-        {event.name}
-      </h1>
-
-      <div className="mt-4 space-y-1.5 text-white/60">
-        <p className="flex items-center gap-2">
-          <CalendarDays className="size-4 text-white/40" aria-hidden />
-          {formatEventDateLong(event.startsAt, event.timezone)}
-          {" · "}
-          {event.doorsAt
-            ? `doors ${formatEventTime(event.doorsAt, event.timezone)}`
-            : formatEventTime(event.startsAt, event.timezone)}
-        </p>
-        {event.venueName && (
-          <p className="flex items-center gap-2">
-            <MapPin className="size-4 text-white/40" aria-hidden />
+    <PassCard>
+      <PassHeader
+        as="h1"
+        poster={poster}
+        kicker={`${formatEventDate(event.startsAt, event.timezone)} · ${formatEventTime(event.startsAt, event.timezone)}`}
+        title={event.name}
+      />
+      <PassFields>
+        <PassField label={event.doorsAt ? "Doors" : "Starts"}>
+          {formatEventTime(event.doorsAt ?? event.startsAt, event.timezone)}
+        </PassField>
+        {event.venueName ? (
+          <PassField label="Venue">
             {event.venueName}
-            {event.venueAddress ? `, ${event.venueAddress}` : ""}
-          </p>
-        )}
-      </div>
-
-      {event.isR18 && (
-        <p className="mt-4 inline-block border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-sm text-red-200">
-          R18 — bring photo ID
-        </p>
-      )}
-    </header>
+            {event.venueAddress ? (
+              <span className="mt-0.5 block text-[12px] text-white/55">
+                {event.venueAddress}
+              </span>
+            ) : null}
+          </PassField>
+        ) : null}
+        {event.isR18 ? (
+          <PassField label="Age">R18, bring photo ID</PassField>
+        ) : null}
+      </PassFields>
+    </PassCard>
   );
 }
 
@@ -236,7 +234,7 @@ function DetailsForm({
       toast.success(
         result.emailedTo
           ? `Sent to ${result.emailedTo}. See you there.`
-          : "Saved — see you there.",
+          : "Saved. See you there.",
       );
       // Both pages read the same query, so the tickets page would otherwise
       // render the pre-save order and ask for the email all over again.
@@ -248,7 +246,7 @@ function DetailsForm({
 
   return (
     <form
-      className="mt-10 space-y-10"
+      className="mt-6 space-y-6"
       onSubmit={(e) => {
         e.preventDefault();
         save.mutate({
@@ -270,19 +268,22 @@ function DetailsForm({
         });
       }}
     >
-      <section className="border-2 border-white/10 bg-black/60 p-5">
-        <h2 className="text-lg font-semibold text-white">Who are you?</h2>
-        <p className="mt-1 text-sm text-white/50">
+      <section className={ticketPanelClass}>
+        <h2 className="t-display text-xl normal-case">Who are you?</h2>
+        <p className="mt-2 text-[14px] text-white/60">
           {data.buyerEmail
-            ? "We've got this from your payment — change it if it's wrong."
+            ? "We've got this from your payment. Change it if it's wrong."
             : `We'll email ${isGroup ? "the tickets" : "your ticket"} here. Nothing else without your say-so.`}
         </p>
 
         <div className="mt-5 space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="first-name">First name</Label>
-              <Input
+            <div className="space-y-2">
+              <label htmlFor="first-name" className={fieldLabelClass}>
+                First name
+              </label>
+              <input
+                className={inputClass}
                 id="first-name"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
@@ -290,9 +291,12 @@ function DetailsForm({
                 required
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="last-name">Last name</Label>
-              <Input
+            <div className="space-y-2">
+              <label htmlFor="last-name" className={fieldLabelClass}>
+                Last name
+              </label>
+              <input
+                className={inputClass}
                 id="last-name"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
@@ -302,9 +306,12 @@ function DetailsForm({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="buyer-email">Email</Label>
-            <Input
+          <div className="space-y-2">
+            <label htmlFor="buyer-email" className={fieldLabelClass}>
+              Email
+            </label>
+            <input
+              className={inputClass}
               id="buyer-email"
               type="email"
               value={buyerEmail}
@@ -318,39 +325,42 @@ function DetailsForm({
           {/* The only marketing ask in the whole flow, and it lives here
               rather than beside the pay button on purpose: consent given
               next to a payment is consent nobody read. */}
-          <label className="mt-1 flex cursor-pointer items-start gap-3 border-t-2 border-white/10 pt-4 text-sm text-white/60">
-            <Checkbox
+          <div className="border-t border-white/10 pt-4">
+            <SiteCheckbox
+              id="marketing"
               checked={marketing}
-              onCheckedChange={(value) => setMarketing(Boolean(value))}
-            />
-            <span>
+              onCheckedChange={setMarketing}
+            >
               Email me about future Atmos events.
-              <span className="mt-0.5 block text-xs text-white/40">
-                Entirely optional — your ticket works either way, and you can
+              <span className="mt-1 block text-[12px] text-white/50">
+                Entirely optional. Your ticket works either way, and you can
                 unsubscribe from any email we send.
               </span>
-            </span>
-          </label>
+            </SiteCheckbox>
+          </div>
         </div>
       </section>
 
       {isGroup && (
-        <section className="border-2 border-white/10 bg-black/60 p-5">
-          <h2 className="text-lg font-semibold text-white">
-            Who&apos;s coming?
-          </h2>
-          <p className="mt-1 text-sm text-white/50">
+        <section className={ticketPanelClass}>
+          <h2 className="t-display text-xl normal-case">Who&apos;s coming?</h2>
+          <p className="mt-2 text-[14px] text-white/60">
             A name on each ticket gets your group through the door faster. You
             can change these any time before the doors open.
           </p>
 
           <div className="mt-5 space-y-4">
             {tickets.map((ticket, index) => (
-              <div key={ticket.id} className="space-y-1.5">
-                <Label htmlFor={`name-${ticket.id}`}>
-                  Ticket {index + 1} · {ticket.tierName}
-                </Label>
-                <Input
+              <div key={ticket.id} className="space-y-2">
+                <label
+                  htmlFor={`name-${ticket.id}`}
+                  className={fieldLabelClass}
+                >
+                  Ticket {index + 1}
+                  <span className="ml-2 text-white/40">{ticket.tierName}</span>
+                </label>
+                <input
+                  className={cn(inputClass, "disabled:opacity-50")}
                   id={`name-${ticket.id}`}
                   value={attendeeName(ticket, index)}
                   // A locked ticket already belongs to somebody: it went out in
@@ -367,8 +377,8 @@ function DetailsForm({
                   autoComplete="off"
                 />
                 {ticket.nameLocked && (
-                  <p className="text-xs text-white/40">
-                    Set for good — get in touch if this needs changing.
+                  <p className="pl-5 text-[12px] text-white/50">
+                    Set for good. Get in touch if this needs changing.
                   </p>
                 )}
               </div>
@@ -384,21 +394,15 @@ function DetailsForm({
           className="w-full"
           disabled={save.isPending}
         >
-          {save.isPending ? (
-            <>
-              <Loader2 className="size-4 animate-spin" /> Saving…
-            </>
-          ) : (
-            "Save and show my tickets"
-          )}
+          {save.isPending ? "Saving…" : "Save and show my tickets"}
         </Button>
 
         <p className="text-center">
           <Link
             href={`/tickets/${token}`}
-            className="text-sm text-white/40 underline underline-offset-4 transition-colors hover:text-white"
+            className="text-[14px] text-white/55 underline underline-offset-4 transition-colors hover:text-white"
           >
-            Skip — take me to my tickets
+            Skip, take me to my tickets
           </Link>
         </p>
       </div>

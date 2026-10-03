@@ -67,7 +67,10 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
           {doc.title}
         </h1>
         <p className="mt-5 text-[14px] text-white/60 tabular-nums">
-          Last updated {doc.updated} · {readingMinutes(doc)} min read
+          {doc.version
+            ? `Version ${doc.version}`
+            : `Last updated ${doc.updated}`}{" "}
+          · {readingMinutes(doc)} min read
         </p>
       </header>
 
@@ -161,14 +164,15 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
   );
 }
 
-/** Privacy / Terms pills, one per route. */
+/** Privacy / Terms / Ticket terms pills, one per route. */
 function DocSwitch({ current }: { current: LegalDoc["id"] }) {
   const docs = [
     { id: "privacy", label: "Privacy", href: "/privacy" },
     { id: "terms", label: "Terms", href: "/terms" },
+    { id: "ticket-terms", label: "Ticket terms", href: "/tickets/terms" },
   ] as const;
   return (
-    <nav className="flex gap-2" aria-label="Legal documents">
+    <nav className="flex flex-wrap gap-2" aria-label="Legal documents">
       {docs.map((d) => (
         <Link
           key={d.id}

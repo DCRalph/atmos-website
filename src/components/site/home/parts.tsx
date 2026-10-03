@@ -30,6 +30,30 @@ export const nzDate = {
   full: nz({ day: "numeric", month: "short", year: "numeric" }),
 };
 
+/**
+ * Month tab heading a month of listings: accent month over the year. With no
+ * month it's the dashed TBA tab.
+ */
+export function MonthBadge({ month, year }: { month?: string; year?: string }) {
+  if (!month) {
+    return (
+      <span className="t-label flex h-[52px] w-14 items-center justify-center rounded-[var(--site-r-chip)] border border-dashed border-white/30 text-[10px] text-white/70">
+        TBA
+      </span>
+    );
+  }
+  return (
+    <span className="flex w-14 flex-col overflow-hidden rounded-[var(--site-r-chip)] text-center">
+      <span className="t-label bg-[var(--site-accent)] py-1.5 text-[10px] text-[var(--site-accent-ink)]">
+        {month}
+      </span>
+      <span className="t-label bg-white/10 py-1.5 text-[10px] text-white/80 tabular-nums">
+        {year}
+      </span>
+    </span>
+  );
+}
+
 /** The fields a poster needs. Past gigs from the home router may lack `posterFileUpload`. */
 type PosterGig = {
   title: string;

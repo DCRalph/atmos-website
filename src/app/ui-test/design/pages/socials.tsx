@@ -8,7 +8,6 @@ import {
   FaSoundcloud,
   FaSpotify,
   FaTiktok,
-  FaXTwitter,
   FaYoutube,
 } from "react-icons/fa6";
 import type { IconType } from "react-icons";
@@ -78,14 +77,6 @@ const socials: Social[] = [
     color: "#1877F2",
     Icon: FaFacebook,
     what: "Events and updates",
-  },
-  {
-    label: "X",
-    href: "https://twitter.com/atmosmedia",
-    handle: "@atmosmedia",
-    color: "#FFFFFF",
-    Icon: FaXTwitter,
-    what: "Updates",
   },
 ];
 

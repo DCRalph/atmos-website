@@ -2,10 +2,14 @@
 
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, Clock, EyeOff, MapPin } from "lucide-react";
+import { ArrowLeft, ArrowRight, EyeOff } from "lucide-react";
 import { api } from "~/trpc/react";
 import { buildMediaUrl } from "~/lib/media-url";
-import { formatEventDateLong, formatEventTime } from "~/lib/ticketing/dates";
+import {
+  formatEventDate,
+  formatEventDateLong,
+  formatEventTime,
+} from "~/lib/ticketing/dates";
 import { formatNZD } from "~/lib/ticketing/money";
 import { BuyPanel } from "~/components/ticketing/buy-panel";
 import { LexicalContent } from "~/components/lexical";
@@ -18,8 +22,12 @@ import {
   nightPhase,
   useMinuteClock,
 } from "~/components/site/on-now";
+import { cn } from "~/lib/utils";
 
-/** Public event page. The buy panel sticks to the side on desktop. */
+/**
+ * Public event page. Opens on the poster full bleed; on desktop the buy panel
+ * is glass lifting up over the bottom of it, then sticks as you scroll.
+ */
 export default function EventPage() {
   const params = useParams<{ slug: string }>();
   const searchParams = useSearchParams();
@@ -43,22 +51,19 @@ export default function EventPage() {
 
   if (event.isPending) {
     return (
-      <div
-        aria-busy
-        className="grid grid-cols-1 gap-10 px-5 py-12 md:px-10 lg:grid-cols-[minmax(0,1fr)_400px]"
-      >
-        <div className="space-y-5">
-          <Skeleton className="h-14 w-2/3" />
-          <Skeleton className="aspect-square max-w-md" />
+      <div aria-busy>
+        <Skeleton className="h-[520px] md:h-[620px]" />
+        <div className="grid grid-cols-1 gap-10 px-5 pt-8 md:px-10 lg:grid-cols-[minmax(0,1fr)_400px]">
+          <Skeleton className="h-40" />
+          <Skeleton className="h-80 rounded-[var(--site-r-panel)] rounded-tl-none" />
         </div>
-        <Skeleton className="h-80 rounded-[var(--site-r-panel)] rounded-tl-none" />
       </div>
     );
   }
 
   if (!event.data) {
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-5 px-5 py-24 text-center">
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-5 px-5 pt-40 pb-24 text-center">
         <h1 className="t-heading text-[clamp(2.25rem,7vw,5rem)]">
           Event not found
         </h1>
@@ -73,120 +78,159 @@ export default function EventPage() {
   }
 
   const data = event.data;
+  const poster = data.posterFileUploadId
+    ? buildMediaUrl(data.posterFileUploadId)
+    : null;
   const hasFee =
     data.bookingFee.fixedCents > 0 || data.bookingFee.percentBp > 0;
-  const details = [
+  const startTime = formatEventTime(data.startsAt, data.timezone);
+  const doorsTime = data.doorsAt
+    ? formatEventTime(data.doorsAt, data.timezone)
+    : null;
+  const facts = [
+    { label: "When", value: formatEventDateLong(data.startsAt, data.timezone) },
     {
-      Icon: CalendarDays,
-      label: "Date",
-      value: formatEventDateLong(data.startsAt, data.timezone),
-    },
-    {
-      Icon: Clock,
       label: "Time",
-      value: data.doorsAt
-        ? `Doors ${formatEventTime(data.doorsAt, data.timezone)} · Starts ${formatEventTime(data.startsAt, data.timezone)}`
-        : formatEventTime(data.startsAt, data.timezone),
+      value: doorsTime ? `Doors ${doorsTime} · Starts ${startTime}` : startTime,
     },
     ...(data.venueName
-      ? [
-          {
-            Icon: MapPin,
-            label: "Venue",
-            value: data.venueName,
-            sub: data.venueAddress,
-          },
-        ]
+      ? [{ label: "Where", value: data.venueName, sub: data.venueAddress }]
+      : []),
+    ...(data.isR18
+      ? [{ label: "Age", value: "R18, photo ID at the door" }]
       : []),
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-10 px-5 pt-10 pb-20 md:px-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] lg:gap-16 lg:pt-14">
-      <div className="min-w-0 space-y-8">
-        {data.visibility !== "PUBLIC" ? (
-          <p className="flex items-start gap-3 rounded-[var(--site-r-chip)] border border-white/15 px-4 py-3 text-[14px] text-white/70">
-            <EyeOff className="mt-0.5 size-4 shrink-0" aria-hidden /> This event
-            isn&apos;t listed. You can see it because you have the link, so
-            share it with care.
-          </p>
-        ) : null}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-end">
-          {data.posterFileUploadId ? (
+    <>
+      <section
+        className={cn(
+          "relative flex flex-col justify-end overflow-hidden",
+          poster ? "min-h-[520px] md:min-h-[620px]" : "pt-32 md:pt-40",
+        )}
+      >
+        {poster ? (
+          <>
             <Media
-              src={buildMediaUrl(data.posterFileUploadId)}
+              src={poster}
               alt={`${data.name} poster`}
-              sizes="180px"
-              className="aspect-square"
+              sizes="100vw"
+              className="absolute inset-0"
               priority
             />
-          ) : null}
-          <div>
-            <EventOnNow start={data.startsAt} end={data.endsAt} />
-            <h1 className="t-display text-[clamp(1.9rem,4.6vw,4.25rem)] [overflow-wrap:anywhere] normal-case">
-              {data.name}
-            </h1>
-          </div>
-        </div>
-        {data.shortDescription ? (
-          <p className="max-w-[60ch] text-[17px] text-white/70">
-            {data.shortDescription}
-          </p>
+            <div className="scrim-bottom absolute inset-0" />
+            <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/70 to-transparent" />
+          </>
         ) : null}
-        <dl className="divide-y divide-white/10 border-y border-white/10">
-          {details.map(({ Icon, label, value, ...rest }) => (
-            <div key={label} className="flex gap-4 py-4">
-              <Icon
-                className="mt-0.5 size-4 shrink-0 text-white/50"
-                aria-hidden
-              />
-              <div>
-                <dt className="sr-only">{label}</dt>
-                <dd className="text-[15px] text-white/85">
-                  {value}
-                  {"sub" in rest && rest.sub ? (
-                    <span className="mt-1 block text-[13px] text-white/55">
-                      {rest.sub}
-                    </span>
-                  ) : null}
-                </dd>
-              </div>
+        {/* Clear of the panel that lifts into the bottom right on desktop. */}
+        <div
+          className={cn(
+            "relative space-y-5 px-5 pt-28 pb-10 md:px-10 md:pb-14",
+            poster && "lg:pr-[496px]",
+          )}
+        >
+          <Link
+            href="/events"
+            className="t-label inline-flex items-center gap-2 text-[11px] text-white/75 hover:text-white"
+          >
+            <ArrowLeft className="size-4" /> All tickets
+          </Link>
+          {data.visibility !== "PUBLIC" ? (
+            <p className="glass-dark flex w-fit items-start gap-3 rounded-[var(--site-r-chip)] px-4 py-3 text-[14px] text-white/75">
+              <EyeOff className="mt-0.5 size-4 shrink-0" aria-hidden /> This
+              event isn&apos;t listed. You can see it because you have the link,
+              so share it with care.
+            </p>
+          ) : null}
+          <EventOnNow start={data.startsAt} end={data.endsAt} />
+          <h1 className="t-display max-w-[16ch] text-[clamp(2rem,6.4vw,5.5rem)] [overflow-wrap:anywhere] normal-case">
+            {data.name}
+          </h1>
+          <p className="t-label text-[12px] text-white/85 md:text-[13px]">
+            {[
+              formatEventDate(data.startsAt, data.timezone),
+              data.venueName,
+              doorsTime ? `Doors ${doorsTime}` : startTime,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        </div>
+      </section>
+
+      {/* DOM order is the phone order: facts, then tickets, then the rest. */}
+      <div className="grid grid-cols-1 gap-10 px-5 pt-8 pb-20 md:px-10 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-14">
+        <dl className="grid grid-cols-1 border-t border-white/10 sm:grid-cols-2 sm:gap-x-8 lg:col-start-1 lg:row-start-1">
+          {facts.map(({ label, value, ...rest }) => (
+            <div key={label} className="border-b border-white/10 py-4">
+              <dt className="t-label text-[10px] text-white/55">{label}</dt>
+              <dd className="mt-2 text-[15px] text-white/90">
+                {value}
+                {"sub" in rest && rest.sub ? (
+                  <span className="mt-1 block text-[13px] text-white/55">
+                    {rest.sub}
+                  </span>
+                ) : null}
+              </dd>
             </div>
           ))}
         </dl>
-        {data.descriptionLexical != null ? (
-          <LexicalContent
-            value={data.descriptionLexical}
-            namespace={`event-description-${data.id}`}
-            contentClassName="max-w-[62ch] text-[16px] leading-relaxed text-white/70 [&_a]:text-white [&_a]:underline [&_a]:underline-offset-4 [&_p]:mb-4 [&_strong]:text-white"
-          />
-        ) : null}
-        {data.gig ? (
-          <Link
-            href={gigPath(data.gig)}
-            className="inline-block text-[14px] text-white/60 underline underline-offset-4 hover:text-white"
-          >
-            More about this gig
-          </Link>
-        ) : null}
-        {/* Fees disclosed on the page itself, not just at the payment step. */}
-        {hasFee ? (
-          <p className="text-[13px] text-white/50">
-            Prices include GST. A booking fee of{" "}
-            {data.bookingFee.fixedCents > 0 &&
-              `${formatNZD(data.bookingFee.fixedCents)} per ticket`}
-            {data.bookingFee.fixedCents > 0 && data.bookingFee.percentBp > 0
-              ? " plus "
-              : ""}
-            {data.bookingFee.percentBp > 0 &&
-              `${data.bookingFee.percentBp / 100}%`}{" "}
-            is added at checkout.
-          </p>
-        ) : null}
+
+        <div
+          id="tickets"
+          className={cn(
+            "relative z-10 scroll-mt-28 lg:col-start-2 lg:row-span-2 lg:row-start-1",
+            poster && "lg:-mt-64",
+          )}
+        >
+          <div className="lg:sticky lg:top-28">
+            <BuyPanel
+              event={data}
+              className={
+                poster ? "glass-dark glass-float bg-black/60" : undefined
+              }
+            />
+          </div>
+        </div>
+
+        <div className="min-w-0 space-y-8 lg:col-start-1 lg:row-start-2">
+          {data.shortDescription ? (
+            <p className="max-w-[60ch] text-[17px] text-white/75">
+              {data.shortDescription}
+            </p>
+          ) : null}
+          {data.descriptionLexical != null ? (
+            <LexicalContent
+              value={data.descriptionLexical}
+              namespace={`event-description-${data.id}`}
+              contentClassName="max-w-[62ch] text-[16px] leading-relaxed text-white/70 [&_a]:text-white [&_a]:underline [&_a]:underline-offset-4 [&_p]:mb-4 [&_strong]:text-white"
+            />
+          ) : null}
+          {data.gig ? (
+            <Link
+              href={gigPath(data.gig)}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              More about this gig <ArrowRight className="size-4" />
+            </Link>
+          ) : null}
+          {/* Fees disclosed on the page itself, not just at the payment step. */}
+          {hasFee ? (
+            <p className="text-[13px] text-white/50">
+              Prices include GST. A booking fee of{" "}
+              {data.bookingFee.fixedCents > 0 &&
+                `${formatNZD(data.bookingFee.fixedCents)} per ticket`}
+              {data.bookingFee.fixedCents > 0 && data.bookingFee.percentBp > 0
+                ? " plus "
+                : ""}
+              {data.bookingFee.percentBp > 0 &&
+                `${data.bookingFee.percentBp / 100}%`}{" "}
+              is added at checkout.
+            </p>
+          ) : null}
+        </div>
       </div>
-      <div className="lg:sticky lg:top-28 lg:self-start">
-        <BuyPanel event={data} />
-      </div>
-    </div>
+    </>
   );
 }
 
@@ -195,7 +239,7 @@ function EventOnNow({ start, end }: { start: Date; end: Date | null }) {
   const now = useMinuteClock();
   if (now === null || nightPhase({ start, end }, now) !== "on") return null;
   return (
-    <div className="mb-5">
+    <div>
       <OnNowPanel night={{ start, end }} now={now} compact />
     </div>
   );

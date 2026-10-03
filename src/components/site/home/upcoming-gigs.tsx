@@ -9,6 +9,7 @@ import { formatEventDate, formatEventTime } from "~/lib/ticketing/dates";
 import { Skeleton } from "../ui";
 import {
   GigPoster,
+  MonthBadge,
   SectionEmpty,
   SectionError,
   SectionHeader,
@@ -82,18 +83,12 @@ function MonthGroup({ gigs, tba }: { gigs: UpcomingGig[]; tba: boolean }) {
     <div>
       <header className="flex items-center gap-4 border-b border-white/10 pb-4">
         {tba ? (
-          <span className="t-label flex h-[52px] w-14 items-center justify-center rounded-[var(--site-r-chip)] border border-dashed border-white/30 text-[10px] text-white/70">
-            TBA
-          </span>
+          <MonthBadge />
         ) : (
-          <span className="flex w-14 flex-col overflow-hidden rounded-[var(--site-r-chip)] text-center">
-            <span className="t-label bg-[var(--site-accent)] py-1.5 text-[10px] text-[var(--site-accent-ink)]">
-              {nzDate.shortMonth.format(first.gigStartTime)}
-            </span>
-            <span className="t-label bg-white/10 py-1.5 text-[10px] text-white/80 tabular-nums">
-              {nzDate.year.format(first.gigStartTime)}
-            </span>
-          </span>
+          <MonthBadge
+            month={nzDate.shortMonth.format(first.gigStartTime)}
+            year={nzDate.year.format(first.gigStartTime)}
+          />
         )}
         <h3 className="t-display text-2xl">
           {tba ? "To be announced" : nzDate.month.format(first.gigStartTime)}

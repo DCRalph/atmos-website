@@ -41,11 +41,6 @@ export const SOCIALS = {
     handle: "atmos.nz",
     href: "https://facebook.com/atmos.nz",
   },
-  twitter: {
-    label: "X",
-    handle: "@atmosmedia",
-    href: "https://twitter.com/atmosmedia",
-  },
 } as const;
 
 export type SocialKey = keyof typeof SOCIALS;

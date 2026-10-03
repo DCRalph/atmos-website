@@ -26,7 +26,6 @@ export function OrganizationJsonLd() {
       links.facebook,
       links.soundcloud,
       links.spotify,
-      links.twitter,
     ],
     knowsAbout: [
       "Electronic Music",

@@ -6,6 +6,12 @@ import { format } from "date-fns";
 import { RentalStatus } from "~Prisma/client";
 import { decideRental } from "~/server/api/routers/rentals";
 import { db } from "~/server/db";
+import {
+  TicketShell,
+  outlinePillClass,
+  ticketPanelClass,
+} from "~/components/tickets/ticket-shell";
+import { cn } from "~/lib/utils";
 
 /**
  * Where the Approve / Deny buttons in the staff rental email land.
@@ -17,7 +23,7 @@ import { db } from "~/server/db";
  */
 
 export const metadata: Metadata = {
-  title: "Rental request — Atmos",
+  title: "Rental request · Atmos",
   robots: { index: false, follow: false },
 };
 
@@ -39,7 +45,7 @@ export default async function RentalDecisionPage({
       <Shell
         heading={query.done === "approve" ? "Rental approved" : "Rental denied"}
       >
-        <p className="mt-3 text-sm leading-relaxed text-white/60">
+        <p className="mt-4 text-[15px] leading-relaxed text-white/65">
           If they left an email, the requester has been told.
         </p>
         <AdminLink />
@@ -58,7 +64,7 @@ export default async function RentalDecisionPage({
   if (rental?.status !== RentalStatus.PENDING) {
     return (
       <Shell heading="Link already used">
-        <p className="mt-3 text-sm leading-relaxed text-white/60">
+        <p className="mt-4 text-[15px] leading-relaxed text-white/65">
           This request has already been decided, or the link is wrong.
         </p>
         <AdminLink />
@@ -113,7 +119,7 @@ export default async function RentalDecisionPage({
 
   return (
     <Shell heading={action === "approve" ? "Approve rental?" : "Deny rental?"}>
-      <dl className="mt-8 border-2 border-white/10">
+      <dl className={cn(ticketPanelClass, "mt-8 p-0")}>
         {rows.map(([label, value], index) => (
           <div
             key={label}
@@ -121,8 +127,8 @@ export default async function RentalDecisionPage({
               index > 0 ? "border-t border-white/10" : ""
             }`}
           >
-            <dt className="text-sm text-white/50">{label}</dt>
-            <dd className="text-right text-sm font-medium break-all text-white">
+            <dt className="text-[14px] text-white/55">{label}</dt>
+            <dd className="text-right text-[14px] break-all text-white">
               {value}
             </dd>
           </div>
@@ -130,7 +136,10 @@ export default async function RentalDecisionPage({
       </dl>
 
       {query.error === "unavailable" ? (
-        <p role="alert" className="mt-6 text-sm text-red-400">
+        <p
+          role="alert"
+          className="mt-6 text-[14px] text-[var(--site-danger-text)]"
+        >
           Some of this gear is already booked for these dates. Sort it out in
           the admin dashboard.
         </p>
@@ -140,11 +149,12 @@ export default async function RentalDecisionPage({
         <input type="hidden" name="action" value={action} />
         <button
           type="submit"
-          className={`w-full px-6 py-4 text-sm font-black tracking-[0.18em] uppercase ${
+          className={cn(
+            "t-label inline-flex h-14 w-full items-center justify-center rounded-full px-9 text-[13px] transition-[filter,background-color]",
             action === "approve"
-              ? "bg-white text-black"
-              : "bg-red-600 text-white"
-          }`}
+              ? "bg-[var(--site-accent)] text-[var(--site-accent-ink)] hover:brightness-110"
+              : "bg-[var(--site-danger)] text-black hover:brightness-110",
+          )}
         >
           {action === "approve"
             ? "Approve and email requester"
@@ -154,7 +164,7 @@ export default async function RentalDecisionPage({
 
       <a
         href={`/rental-decision/${token}?action=${action === "approve" ? "deny" : "approve"}`}
-        className="mt-4 block text-center text-xs text-white/50 underline hover:text-white/70"
+        className="mt-4 block text-center text-[14px] text-white/55 underline underline-offset-4 hover:text-white"
       >
         {action === "approve" ? "Deny instead" : "Approve instead"}
       </a>
@@ -170,25 +180,18 @@ function Shell({
   children: React.ReactNode;
 }) {
   return (
-    <main className="mx-auto w-full max-w-lg px-5 py-16 md:px-8">
-      <p className="text-xs font-bold tracking-[0.22em] text-white/40 uppercase">
-        Atmos
-      </p>
-      <h1 className="mt-4 text-3xl font-black tracking-tight uppercase">
-        {heading}
-      </h1>
+    <TicketShell>
+      <p className="t-label text-[11px] text-white/55">Gear rental</p>
+      <h1 className="t-heading mt-3 text-[clamp(2rem,9vw,3rem)]">{heading}</h1>
       {children}
-    </main>
+    </TicketShell>
   );
 }
 
 function AdminLink() {
   return (
-    <a
-      href="/admin/rentals"
-      className="mt-8 inline-block text-sm text-white/60 underline hover:text-white"
-    >
-      Open rentals in the admin dashboard
+    <a href="/admin/rentals" className={cn(outlinePillClass, "mt-8")}>
+      Open rentals in the admin
     </a>
   );
 }

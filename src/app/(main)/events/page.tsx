@@ -1,56 +1,39 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { cn } from "~/lib/utils";
-import { buildMediaUrl } from "~/lib/media-url";
-import { formatEventDate, formatEventTime } from "~/lib/ticketing/dates";
+import { eventDateParts, formatEventTime } from "~/lib/ticketing/dates";
 import { formatNZDCompact } from "~/lib/ticketing/money";
 import { BreadcrumbJsonLd } from "~/components/seo/json-ld";
 import { usePageMetadata } from "~/hooks/use-page-metadata";
 import { SITE_URL } from "~/lib/seo-constants";
-import { Media, PageTitle, Skeleton } from "~/components/site/ui";
+import { PageTitle, Skeleton } from "~/components/site/ui";
+import { MonthBadge } from "~/components/site/home/parts";
 import { OnNowChip, useIsOnNow } from "~/components/site/on-now";
 
 type PublicEvent = RouterOutputs["ticketEvents"]["upcoming"][number];
 
-/** Price or sale-state pill, following the event's status. */
-function StatusPill({ event }: { event: PublicEvent }) {
-  if (
-    event.status === "SOLD_OUT" ||
-    event.status === "SALES_PAUSED" ||
-    !event.onSale
-  ) {
-    return (
-      <span className="t-label rounded-full border border-white/20 px-3 py-2 text-[10px] text-white/60">
-        {event.status === "SOLD_OUT" ? "Sold out" : "Not on sale"}
-      </span>
-    );
+const isBuyable = (event: PublicEvent) =>
+  event.onSale &&
+  event.status !== "SOLD_OUT" &&
+  event.status !== "SALES_PAUSED";
+
+/** Consecutive events sharing a month (in their own timezone), in date order. */
+function groupByMonth(events: PublicEvent[]) {
+  const groups: { key: string; events: PublicEvent[] }[] = [];
+  for (const event of events) {
+    const { month, year } = eventDateParts(event.startsAt, event.timezone);
+    const key = `${month} ${year}`;
+    const last = groups.at(-1);
+    if (last?.key === key) last.events.push(event);
+    else groups.push({ key, events: [event] });
   }
-  return (
-    <span className="t-label rounded-full bg-white px-3 py-2 text-[10px] text-black transition-colors group-hover:bg-[var(--site-accent)] group-hover:text-[var(--site-accent-ink)]">
-      {event.fromPriceCents === 0
-        ? "Free"
-        : `From ${formatNZDCompact(event.fromPriceCents ?? 0)}`}
-    </span>
-  );
+  return groups;
 }
 
-/** Chip on an event that's running right now. */
-function EventOnNow({ event }: { event: PublicEvent }) {
-  const on = useIsOnNow({ start: event.startsAt, end: event.endsAt });
-  return on ? <OnNowChip className="mb-3" /> : null;
-}
-
-function R18() {
-  return (
-    <span className="t-label rounded-[var(--site-r-chip)] border border-white/20 px-2 py-1 text-[9px] text-white/60">
-      R18
-    </span>
-  );
-}
-
-/** What's on: every event with tickets currently available. */
+/** What's on: every event with tickets, grouped by month like the home page. */
 export default function EventsPage() {
   usePageMetadata({
     title: "Tickets",
@@ -69,67 +52,140 @@ export default function EventsPage() {
         ]}
       />
       <PageTitle title="Tickets" intro="Everything on sale right now." />
-      <div className="space-y-3 px-5 pb-20 md:px-10">
+      <div className="px-5 pb-20 md:px-10">
         {events.isPending ? (
-          Array.from({ length: 2 }, (_, i) => (
-            <Skeleton key={i} className="h-44 w-full" />
-          ))
+          <ListSkeleton />
         ) : events.data?.length === 0 ? (
           <p className="border border-white/10 px-6 py-16 text-center text-[15px] text-white/60">
             Nothing on sale at the moment. Check back soon.
           </p>
         ) : (
-          events.data?.map((event) => (
-            <Link
-              key={event.id}
-              href={`/events/${event.slug}`}
-              className="group grid grid-cols-1 gap-5 border border-white/10 p-4 transition-colors hover:border-white/25 sm:grid-cols-[160px_minmax(0,1fr)] md:grid-cols-[200px_minmax(0,1fr)_auto] md:items-center md:gap-8"
-            >
-              {event.posterFileUploadId ? (
-                <Media
-                  src={buildMediaUrl(event.posterFileUploadId)}
-                  alt=""
-                  sizes="200px"
-                  className={cn(
-                    "aspect-square",
-                    event.status === "SOLD_OUT" && "opacity-60 grayscale",
-                  )}
-                />
-              ) : (
-                <div className="aspect-square bg-white/[0.06]" />
-              )}
-              <div className="min-w-0">
-                <EventOnNow event={event} />
-                <p className="t-label text-[11px] text-white/60">
-                  {formatEventDate(event.startsAt, event.timezone)} ·{" "}
-                  {formatEventTime(event.startsAt, event.timezone)}
-                </p>
-                <h2 className="t-display mt-3 text-[clamp(1.4rem,3vw,2.25rem)] [overflow-wrap:anywhere] normal-case">
-                  {event.name}
-                </h2>
-                {event.venueName ? (
-                  <p className="mt-2 text-[14px] text-white/65">
-                    {event.venueName}
-                  </p>
-                ) : null}
-                {event.shortDescription ? (
-                  <p className="mt-2 line-clamp-2 text-[14px] text-white/55">
-                    {event.shortDescription}
-                  </p>
-                ) : null}
-                <div className="mt-4 flex flex-wrap items-center gap-2 md:hidden">
-                  <StatusPill event={event} />
-                  {event.isR18 ? <R18 /> : null}
-                </div>
-              </div>
-              <div className="hidden flex-col items-end gap-3 md:flex">
-                <StatusPill event={event} />
-                {event.isR18 ? <R18 /> : null}
-              </div>
-            </Link>
-          ))
+          <div className="space-y-12">
+            {groupByMonth(events.data ?? []).map(({ key, events }) => (
+              <MonthGroup key={key} events={events} />
+            ))}
+          </div>
         )}
       </div>
     </>
+  );
+}
+
+function MonthGroup({ events }: { events: PublicEvent[] }) {
+  const first = events[0];
+  if (!first) return null;
+  const { shortMonth, month, year } = eventDateParts(
+    first.startsAt,
+    first.timezone,
+  );
+  return (
+    <section>
+      <header className="flex items-center gap-4 border-b border-white/10 pb-4">
+        <MonthBadge month={shortMonth} year={year} />
+        <h2 className="t-display text-2xl">{month}</h2>
+      </header>
+      <ul>
+        {events.map((event) => (
+          <EventRow key={event.id} event={event} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** Big day number, name and venue, then the price. Sold out rows go quiet. */
+function EventRow({ event }: { event: PublicEvent }) {
+  const onNow = useIsOnNow({ start: event.startsAt, end: event.endsAt });
+  const buyable = isBuyable(event);
+  const { day, weekday } = eventDateParts(event.startsAt, event.timezone);
+  const time = formatEventTime(event.doorsAt ?? event.startsAt, event.timezone);
+  const meta = [
+    event.venueName,
+    event.doorsAt ? `Doors ${time}` : time,
+    event.isR18 ? "R18" : null,
+  ].filter(Boolean);
+
+  return (
+    <li>
+      <Link
+        href={`/events/${event.slug}`}
+        className="group grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 border-b border-white/10 py-5 transition-colors hover:bg-white/[0.03] md:grid-cols-[112px_minmax(0,1fr)_auto_40px] md:gap-6 md:px-3"
+      >
+        <div className={cn(!buyable && "text-white/35")}>
+          <p
+            className={cn(
+              "t-heading text-[2.75rem] tabular-nums md:text-6xl",
+              buyable &&
+                "transition-colors group-hover:text-[var(--site-accent-text)]",
+            )}
+          >
+            {day}
+          </p>
+          <p className="t-label mt-2 text-[10px] text-white/55">{weekday}</p>
+        </div>
+        <div className="min-w-0">
+          {onNow ? <OnNowChip className="mb-2" /> : null}
+          <p
+            className={cn(
+              "t-display line-clamp-2 text-lg leading-[1.05] [overflow-wrap:anywhere] normal-case md:text-3xl",
+              !buyable && "text-white/45",
+            )}
+          >
+            {event.name}
+          </p>
+          <p className="mt-2 text-[13px] text-white/60 md:truncate">
+            {meta.join(" · ")}
+          </p>
+        </div>
+        <Price event={event} buyable={buyable} />
+        <span className="hidden size-10 items-center justify-center rounded-full border border-white/20 text-white/70 transition-colors group-hover:border-white group-hover:text-white md:flex">
+          <ArrowRight className="size-4" />
+        </span>
+      </Link>
+    </li>
+  );
+}
+
+function Price({ event, buyable }: { event: PublicEvent; buyable: boolean }) {
+  if (!buyable) {
+    return (
+      <p className="t-display text-right text-base text-white/35 md:text-2xl">
+        {event.status === "SOLD_OUT" ? "Sold out" : "Not on sale"}
+      </p>
+    );
+  }
+  const free = event.fromPriceCents === 0;
+  return (
+    <div className="text-right">
+      <p className="t-display text-xl tabular-nums md:text-3xl">
+        {free ? "Free" : formatNZDCompact(event.fromPriceCents ?? 0)}
+      </p>
+      <p className="t-label mt-1.5 text-[10px] text-white/55">
+        {free ? "Entry" : "From"}
+      </p>
+    </div>
+  );
+}
+
+function ListSkeleton() {
+  return (
+    <div aria-busy>
+      <div className="flex items-center gap-4 border-b border-white/10 pb-4">
+        <Skeleton className="h-[52px] w-14 rounded-[var(--site-r-chip)]" />
+        <Skeleton className="h-6 w-40 rounded-full" />
+      </div>
+      {Array.from({ length: 3 }, (_, i) => (
+        <div
+          key={i}
+          className="grid grid-cols-[64px_1fr] items-center gap-4 border-b border-white/10 py-5 md:grid-cols-[112px_1fr] md:gap-6 md:px-3"
+        >
+          <Skeleton className="h-12 w-14 md:h-14 md:w-20" />
+          <div className="space-y-2.5">
+            <Skeleton className="h-6 w-1/2 rounded-full" />
+            <Skeleton className="h-3.5 w-1/3 rounded-full" />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

@@ -17,7 +17,12 @@ import { SOCIALS } from "~/lib/site-constants";
 import { cn } from "~/lib/utils";
 import { useMerchCart } from "~/components/merch/merch-cart-provider";
 import { GradientBlur } from "~/components/gradient-blur";
-import { HERO_ROUTES, primaryNav, secondaryNav } from "./nav";
+import {
+  HERO_ROUTES,
+  HERO_ROUTE_PREFIXES,
+  primaryNav,
+  secondaryNav,
+} from "./nav";
 import { useSite } from "./site-provider";
 import { AtmosLogo, IconButton } from "./ui";
 
@@ -337,4 +342,10 @@ export function SiteHeader() {
 }
 
 /** Whether the current route opens on a full-bleed hero (no top padding needed). */
-export const useHeroRoute = () => HERO_ROUTES.includes(usePathname());
+export const useHeroRoute = () => {
+  const pathname = usePathname();
+  return (
+    HERO_ROUTES.includes(pathname) ||
+    HERO_ROUTE_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+  );
+};

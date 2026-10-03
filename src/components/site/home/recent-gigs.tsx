@@ -2,12 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import {
-  ArrowUpRight,
-  ChevronLeft,
-  ChevronRight,
-  Images,
-} from "lucide-react";
+import { ArrowUpRight, ChevronLeft, ChevronRight, Images } from "lucide-react";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { gigPath } from "~/lib/gig-url";
 import { cn } from "~/lib/utils";

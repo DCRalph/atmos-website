@@ -20,9 +20,11 @@ export type LegalSection = {
 };
 
 export type LegalDoc = {
-  id: "privacy" | "terms";
+  id: "privacy" | "terms" | "ticket-terms";
   title: string;
   updated: string;
+  /** Shown instead of "Last updated" for versioned documents. */
+  version?: string;
   sections: readonly LegalSection[];
 };
 
@@ -521,6 +523,188 @@ const blockText = (b: LegalBlock): string =>
         : "terms" in b
           ? b.terms.map((t) => `${t.term} ${t.text}`).join(" ")
           : "";
+
+/**
+ * Terms of ticket sale, version v1, from the previous /tickets/terms page.
+ *
+ * `TicketOrder.termsVersion` records which version a buyer agreed to. If these
+ * change materially, bump `version` (and the version on new orders) rather
+ * than editing in place, so historical orders still point at what was agreed.
+ * Em dashes were rewritten as commas, colons or full stops; wording is
+ * otherwise unchanged.
+ */
+export const ticketTermsDoc: LegalDoc = {
+  id: "ticket-terms",
+  title: "Ticket terms",
+  updated: LEGAL_UPDATED,
+  version: "v1",
+  sections: [
+    {
+      id: "buying",
+      n: "1",
+      title: "Buying a ticket",
+      blocks: [
+        {
+          p: "Tickets are sold by Atmos Media. All prices are in New Zealand dollars and include GST. Any booking fee is shown before you pay and forms part of the total.",
+        },
+        {
+          p: "Your ticket is confirmed once payment succeeds and we issue it. A reservation held during checkout is not a ticket until that happens.",
+        },
+      ],
+    },
+    {
+      id: "refunds",
+      n: "2",
+      title: "Refunds and transfers",
+      blocks: [
+        {
+          p: "No refunds are offered because your plans changed. Please be sure before you buy.",
+        },
+        {
+          p: "If an event is cancelled, we refund the full amount you paid, including the booking fee, to the card you used. If an event is materially changed (a different date, or a venue that changes the nature of the event) you may request a refund by contacting us before the event.",
+        },
+        {
+          p: "Nothing here limits your rights under the Consumer Guarantees Act 1993 or the Fair Trading Act 1986.",
+        },
+        {
+          p: "Tickets are transferable. You are welcome to pass one on to a friend or resell it through a platform like Tixel, just not above face value. We may cancel tickets we reasonably believe have been resold for profit, without a refund.",
+        },
+      ],
+    },
+    {
+      id: "age-and-entry",
+      n: "3",
+      title: "Age and entry",
+      blocks: [
+        {
+          p: "All of our ticketed events are strictly 18+ because of liquor licensing and liability requirements. You must be able to show valid photo ID at the door. No ID, no entry, no refund.",
+        },
+        {
+          p: "Each ticket admits one person once. The first scan of a QR code is the one that gets in, so if you pass a ticket on, don't try to use it yourself as well.",
+        },
+        {
+          p: "Entry is subject to the venue's conditions and the law, including the Sale and Supply of Alcohol Act 2012.",
+        },
+        {
+          p: "Unless an event says otherwise, leaving the venue ends your admission. There are no pass-outs.",
+        },
+      ],
+    },
+    {
+      id: "safe-environment",
+      n: "4",
+      title: "A safe environment",
+      blocks: [
+        {
+          p: "We have a zero-tolerance policy for harmful or antisocial behaviour. If you feel unsafe or uncomfortable at one of our events, tell venue security, bar staff or an Atmos crew member immediately.",
+        },
+        {
+          p: "We and the venue may refuse entry to, or remove, anyone who is threatening or behaving unsafely. No refund is given in those circumstances.",
+        },
+      ],
+    },
+    {
+      id: "intoxication",
+      n: "5",
+      title: "Intoxication and drug use",
+      blocks: [
+        { p: "We do not condone drug use or excessive drinking." },
+        {
+          p: "Free drinking water is available at all of our events. If you or someone else needs medical assistance, alert staff immediately. We are here to help, not to judge.",
+        },
+        {
+          p: "Anyone visibly overly intoxicated, or endangering themselves or others, will be removed from the event without a refund.",
+        },
+      ],
+    },
+    {
+      id: "health-and-safety",
+      n: "6",
+      title: "Health and safety",
+      blocks: [
+        {
+          terms: [
+            {
+              term: "Hearing protection",
+              text: "Loud volumes are expected, and free earplugs are available.",
+            },
+            {
+              term: "Epilepsy warning",
+              text: "Our events include strobe lighting and haze effects.",
+            },
+            {
+              term: "Hazards",
+              text: "We take reasonable precautions to prevent risks, but if you notice something that isn't right, report it to venue staff or an Atmos crew member.",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "lost-tickets",
+      n: "7",
+      title: "Lost tickets",
+      blocks: [
+        {
+          p: "Your tickets always live at the link we email you, and you can have that email re-sent from the ticket page. If you lose access to the email address you bought with, contact us and we'll sort it out.",
+        },
+      ],
+    },
+    {
+      id: "cancelled-events",
+      n: "8",
+      title: "Cancelled or rescheduled events",
+      blocks: [
+        {
+          p: "Events can be affected by things outside our control. If we have to cancel, we'll email everyone who bought a ticket and refund in full. If we reschedule, your ticket is valid for the new date, and you can request a refund instead.",
+        },
+      ],
+    },
+    {
+      id: "photography",
+      n: "9",
+      title: "Photography and recording",
+      blocks: [
+        {
+          p: "All Atmos events are photographed and filmed for promotional purposes. By purchasing a ticket you consent to being featured in recap content and future marketing material.",
+        },
+        {
+          p: "If you would rather not be filmed or photographed, let one of our photographers or crew members know and we'll do our best to accommodate you.",
+        },
+      ],
+    },
+    {
+      id: "your-information",
+      n: "10",
+      title: "Your information",
+      blocks: [
+        {
+          p: "To sell you a ticket we collect your name, email address and payment details, and we record when your ticket is scanned at the door. We use that to issue and deliver your tickets, manage entry, and handle refunds and support.",
+        },
+        {
+          p: "Payments are processed by Stripe, email is delivered by Resend, and files are stored with Amazon Web Services, which means some of your information is held overseas under comparable privacy safeguards. We handle it in line with the Privacy Act 2020 and our privacy policy.",
+          link: { text: "privacy policy", href: "/privacy" },
+        },
+        {
+          p: "We only email you about future events if you asked us to. You can unsubscribe at any time, and that never affects tickets you've already bought.",
+        },
+      ],
+    },
+    {
+      id: "contact",
+      n: "11",
+      title: "Contact",
+      blocks: [
+        { p: "Questions about a ticket or an order? Get in touch:" },
+        {
+          contact: [
+            { label: "Website", value: "Contact page", href: "/contact" },
+          ],
+        },
+      ],
+    },
+  ],
+};
 
 /** Minutes to read at ~230 words a minute, rounded up. */
 export const readingMinutes = (doc: LegalDoc) => {

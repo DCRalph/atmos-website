@@ -2,30 +2,27 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
-import {
-  CalendarDays,
-  Check,
-  Copy,
-  Loader2,
-  MapPin,
-  Send,
-  Undo2,
-} from "lucide-react";
+import { Check, Copy, Send, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { WalletButtons } from "~/components/tickets/wallet-buttons";
 import {
-  AddToAppleWalletButton,
-  AddToGoogleWalletButton,
-} from "~/components/tickets/wallet-buttons";
-
+  DangerNotice,
+  LevelChip,
+  PassCard,
+  PassCode,
+  PassField,
+  PassFields,
+  PassHeader,
+  TicketMessage,
+  TicketShell,
+  fieldLabelClass,
+  ticketPanelClass,
+} from "~/components/tickets/ticket-shell";
 import { api, type RouterOutputs } from "~/trpc/react";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import { Skeleton } from "~/components/ui/skeleton";
-import { formatEventDateLong, formatEventTime } from "~/lib/ticketing/dates";
-import { accessLevel as accessLevelMeta } from "~/lib/ticketing/access-levels";
+import { Button, Skeleton, inputClass } from "~/components/site/ui";
+import { buildMediaUrl } from "~/lib/media-url";
+import { formatEventDate, formatEventTime } from "~/lib/ticketing/dates";
 
 type TicketView = NonNullable<RouterOutputs["tickets"]["byTicketToken"]>;
 type Handout = TicketView["handouts"][number];
@@ -51,125 +48,87 @@ export default function TicketPage() {
 
   if (ticket.isPending) {
     return (
-      <main className="mx-auto w-full max-w-2xl px-5 py-16 md:px-8">
-        <Skeleton className="h-10 w-2/3" />
-        <Skeleton className="mt-6 h-80 w-full" />
-      </main>
+      <TicketShell>
+        <Skeleton className="h-[560px] rounded-[var(--site-r-panel)] rounded-tl-none" />
+      </TicketShell>
     );
   }
 
   if (!ticket.data) {
     return (
-      <main className="mx-auto w-full max-w-2xl px-5 py-24 text-center md:px-8">
-        <h1 className="text-3xl font-bold text-white">Ticket not found</h1>
-        <p className="mt-3 text-white/50">
+      <TicketShell>
+        <TicketMessage title="Ticket not found" showEventsLink>
           This link is wrong, or it&apos;s been replaced by a newer one. Check
           the most recent email you were sent.
-        </p>
-        <Link
-          href="/events"
-          className="mt-6 inline-block border-2 border-white/20 px-5 py-2.5 text-white transition-colors hover:bg-white hover:text-black"
-        >
-          What&apos;s on
-        </Link>
-      </main>
+        </TicketMessage>
+      </TicketShell>
     );
   }
 
   const data = ticket.data;
-  const level = accessLevelMeta(data.accessLevel);
+  const { event } = data;
+  const poster = event.posterFileUploadId
+    ? buildMediaUrl(event.posterFileUploadId)
+    : null;
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-5 py-12 md:px-8 md:py-16">
-      <header>
-        {data.invitedByName && (
-          <p className="mb-3 text-sm text-white/50">
-            {data.invitedByName} put you on the list
-          </p>
-        )}
-        <h1 className="text-3xl font-bold tracking-tight text-white md:text-4xl">
-          {data.event.name}
-        </h1>
-        <div className="mt-4 space-y-1.5 text-white/60">
-          <p className="flex items-center gap-2">
-            <CalendarDays className="size-4 text-white/40" aria-hidden />
-            {formatEventDateLong(data.event.startsAt, data.event.timezone)}
-            {" · "}
-            {data.event.doorsAt
-              ? `doors ${formatEventTime(data.event.doorsAt, data.event.timezone)}`
-              : formatEventTime(data.event.startsAt, data.event.timezone)}
-          </p>
-          {data.event.venueName && (
-            <p className="flex items-center gap-2">
-              <MapPin className="size-4 text-white/40" aria-hidden />
-              {data.event.venueName}
-              {data.event.venueAddress ? `, ${data.event.venueAddress}` : ""}
-            </p>
-          )}
-        </div>
+    <TicketShell poster={poster}>
+      {data.invitedByName && (
+        <p className="t-label mb-6 text-[11px] text-[var(--site-accent-text)]">
+          {data.invitedByName} put you on the list
+        </p>
+      )}
 
-        {data.event.isR18 && (
-          <p className="mt-4 inline-block border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-sm text-red-200">
-            R18 — bring photo ID
-          </p>
-        )}
+      {event.status === "CANCELLED" && (
+        <DangerNotice>
+          This event has been cancelled. This ticket is no longer valid.
+        </DangerNotice>
+      )}
 
-        {data.event.status === "CANCELLED" && (
-          <p className="mt-4 border-2 border-red-500/40 bg-red-500/10 p-4 text-sm text-red-100">
-            This event has been cancelled. This ticket is no longer valid.
-          </p>
-        )}
-      </header>
-
-      <section className="mt-10">
-        <article className="border-2 border-white/10 bg-black/80 p-5 text-center backdrop-blur-sm">
-          <p className="text-xs tracking-[0.14em] text-white/40 uppercase">
+      <PassCard>
+        <PassHeader
+          as="h1"
+          poster={poster}
+          kicker={`${formatEventDate(event.startsAt, event.timezone)} · ${formatEventTime(event.startsAt, event.timezone)}`}
+          title={event.name}
+        />
+        <PassFields>
+          <PassField label="Name">
+            {data.attendeeName ?? (
+              <span className="text-white/45">Not named yet</span>
+            )}
+          </PassField>
+          <PassField label="Ticket">
             {data.typeName}
-          </p>
-
-          <div
-            className="mx-auto mt-4 w-full max-w-70 bg-white p-3 [&>svg]:h-auto [&>svg]:w-full"
-            // The SVG comes from our own QR renderer, not user input.
-            dangerouslySetInnerHTML={{ __html: data.qrSvg }}
-          />
-
-          <p
-            className="mt-4 inline-block px-3 py-1 text-xs font-bold tracking-[0.08em]"
-            style={{ backgroundColor: level.badgeBg, color: level.badgeFg }}
-          >
-            {level.short}
-          </p>
-
-          {data.attendeeName && (
-            <p className="mt-3 text-lg font-semibold text-white">
-              {data.attendeeName}
+            <LevelChip accessLevel={data.accessLevel} always />
+          </PassField>
+          <PassField label={event.doorsAt ? "Doors" : "Starts"}>
+            {formatEventTime(event.doorsAt ?? event.startsAt, event.timezone)}
+          </PassField>
+          {event.venueName ? (
+            <PassField label="Venue">{event.venueName}</PassField>
+          ) : null}
+        </PassFields>
+        <PassCode qrSvg={data.qrSvg} number={data.ticketNumber}>
+          {event.isR18 && (
+            <p className="t-label mt-3 text-[10px] text-white/60">
+              R18 · Bring photo ID
             </p>
           )}
-          <p className="mt-1 font-mono text-sm text-white/40">
-            {data.ticketNumber}
-          </p>
-
           {/* Said plainly, because it is the reason the ticket is safe to send
               by email at all. */}
           {data.nameLocked && data.attendeeName && (
-            <p className="mt-4 text-sm text-white/50">
-              This ticket is in your name — bring photo ID. It can&apos;t be
+            <p className="mt-3 text-[13px] text-white/60">
+              This ticket is in your name. Bring photo ID; it can&apos;t be
               transferred.
             </p>
           )}
-
-          {(data.appleWalletUrl ?? data.googleWalletUrl) && (
-            <div className="mt-5 flex flex-wrap justify-center gap-2">
-              {data.appleWalletUrl && (
-                  <AddToAppleWalletButton href={data.appleWalletUrl} />
-                )}
-              {data.googleWalletUrl && (
-                  <AddToGoogleWalletButton href={data.googleWalletUrl} />
-                )}
-            </div>
-          )}
-        </article>
-      </section>
+          <WalletButtons
+            apple={data.appleWalletUrl}
+            google={data.googleWalletUrl}
+          />
+        </PassCode>
+      </PassCard>
 
       {data.handouts.length > 0 && (
         <HandoutSection
@@ -178,7 +137,7 @@ export default function TicketPage() {
           onChanged={() => void ticket.refetch()}
         />
       )}
-    </main>
+    </TicketShell>
   );
 }
 
@@ -195,14 +154,14 @@ function HandoutSection({
 
   return (
     <section className="mt-12">
-      <h2 className="text-xl font-bold text-white">
+      <h2 className="t-display text-2xl normal-case">
         {handouts.length === 1
           ? "You have a ticket to hand out"
           : `You have ${handouts.length} tickets to hand out`}
       </h2>
-      <p className="mt-2 text-sm text-white/50">
+      <p className="mt-2 text-[14px] text-white/60">
         {unsent.length > 0
-          ? "Send each one to whoever's coming with you. They get their own ticket, in their name — you don't have to pass anything on yourself."
+          ? "Send each one to whoever's coming with you. They get their own ticket, in their name. You don't have to pass anything on yourself."
           : "All sent. Everyone's got their own ticket."}
       </p>
 
@@ -235,14 +194,12 @@ function HandoutCard({
   const [link, setLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const level = accessLevelMeta(handout.accessLevel);
-
   const send = api.tickets.sendHandout.useMutation({
     onSuccess: (result) => {
       toast.success(
         result.emailedTo
           ? `Sent to ${result.emailedTo}.`
-          : "Sorted — copy the link and send it over.",
+          : "Sorted. Copy the link and send it over.",
       );
       if (!result.emailedTo) setLink(result.ticketUrl);
       setName("");
@@ -264,7 +221,7 @@ function HandoutCard({
 
   const takeBack = api.tickets.reassignHandout.useMutation({
     onSuccess: () => {
-      toast.success("Taken back — the old link no longer works.");
+      toast.success("Taken back. The old link no longer works.");
       setLink(null);
       onChanged();
     },
@@ -280,23 +237,16 @@ function HandoutCard({
   const arrived = handout.admittedAt !== null;
 
   return (
-    <div className="border-2 border-white/10 bg-black/60 p-5">
-      <div className="flex flex-wrap items-center gap-2">
-        <span
-          className="px-2.5 py-1 text-xs font-bold tracking-[0.08em]"
-          style={{ backgroundColor: level.badgeBg, color: level.badgeFg }}
-        >
-          {level.short}
-        </span>
-        <span className="text-sm text-white/50">{handout.typeName}</span>
-      </div>
+    <div className={ticketPanelClass}>
+      <p className="flex flex-wrap items-center text-[13px] text-white/60">
+        {handout.typeName}
+        <LevelChip accessLevel={handout.accessLevel} always />
+      </p>
 
       {handout.sentAt ? (
         <div className="mt-4">
-          <p className="text-lg font-semibold text-white">
-            {handout.guestName}
-          </p>
-          <p className="mt-1 text-sm text-white/40">
+          <p className="t-display text-lg normal-case">{handout.guestName}</p>
+          <p className="mt-1.5 text-[13px] text-white/55">
             {arrived
               ? `Arrived ${new Date(handout.admittedAt!).toLocaleTimeString(
                   "en-NZ",
@@ -310,7 +260,6 @@ function HandoutCard({
           <div className="mt-4 flex flex-wrap gap-2">
             {handout.guestEmail && !arrived && (
               <Button
-                type="button"
                 variant="outline"
                 size="sm"
                 disabled={resend.isPending}
@@ -321,12 +270,8 @@ function HandoutCard({
                   })
                 }
               >
-                {resend.isPending ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <Send className="size-3.5" />
-                )}
-                Resend
+                <Send className="size-3.5" />
+                {resend.isPending ? "Sending…" : "Resend"}
               </Button>
             )}
 
@@ -334,7 +279,6 @@ function HandoutCard({
                 and putting a different name on it now would rewrite who. */}
             {!arrived && (
               <Button
-                type="button"
                 variant="outline"
                 size="sm"
                 disabled={takeBack.isPending}
@@ -345,11 +289,7 @@ function HandoutCard({
                   })
                 }
               >
-                {takeBack.isPending ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <Undo2 className="size-3.5" />
-                )}
+                <Undo2 className="size-3.5" />
                 Give to someone else
               </Button>
             )}
@@ -357,7 +297,7 @@ function HandoutCard({
         </div>
       ) : (
         <form
-          className="mt-4 space-y-3"
+          className="mt-4 space-y-4"
           onSubmit={(e) => {
             e.preventDefault();
             send.mutate({
@@ -368,9 +308,12 @@ function HandoutCard({
             });
           }}
         >
-          <div className="space-y-1.5">
-            <Label htmlFor={`name-${handout.id}`}>Who&apos;s it for</Label>
-            <Input
+          <div className="space-y-2">
+            <label htmlFor={`name-${handout.id}`} className={fieldLabelClass}>
+              Who&apos;s it for
+            </label>
+            <input
+              className={inputClass}
               id={`name-${handout.id}`}
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -379,9 +322,12 @@ function HandoutCard({
               required
             />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor={`email-${handout.id}`}>Email (optional)</Label>
-            <Input
+          <div className="space-y-2">
+            <label htmlFor={`email-${handout.id}`} className={fieldLabelClass}>
+              Email (optional)
+            </label>
+            <input
+              className={inputClass}
               id={`email-${handout.id}`}
               type="email"
               value={email}
@@ -389,7 +335,7 @@ function HandoutCard({
               placeholder="them@example.com"
               autoComplete="off"
             />
-            <p className="text-xs text-white/40">
+            <p className="pl-5 text-[12px] text-white/50">
               With an email we send it straight to them. Without one you&apos;ll
               get a link to pass on.
             </p>
@@ -397,18 +343,10 @@ function HandoutCard({
 
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={send.isPending || !name.trim()}>
-              {send.isPending ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" /> Sending…
-                </>
-              ) : (
-                <>
-                  <Send className="size-4" /> Send it
-                </>
-              )}
+              <Send className="size-4" />
+              {send.isPending ? "Sending…" : "Send it"}
             </Button>
             <Button
-              type="button"
               variant="outline"
               disabled={reveal.isPending}
               onClick={() =>
@@ -425,16 +363,11 @@ function HandoutCard({
       )}
 
       {link && (
-        <div className="mt-4 flex items-center gap-2 border border-white/15 bg-white/5 p-3">
-          <code className="min-w-0 flex-1 truncate font-mono text-xs text-white/70">
+        <div className="mt-4 flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] p-1 pl-4">
+          <code className="min-w-0 flex-1 truncate font-mono text-[12px] text-white/70">
             {link}
           </code>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => copy(link)}
-          >
+          <Button size="sm" variant="outline" onClick={() => copy(link)}>
             {copied ? (
               <Check className="size-3.5" />
             ) : (

@@ -62,3 +62,20 @@ export function AddToGoogleWalletButton({ href }: { href: string }) {
     </a>
   );
 }
+
+/** Both badges side by side, or nothing when neither wallet is configured. */
+export function WalletButtons({
+  apple,
+  google,
+}: {
+  apple: string | null;
+  google?: string | null;
+}) {
+  if (!apple && !google) return null;
+  return (
+    <div className="mt-4 flex flex-wrap justify-center gap-2">
+      {apple && <AddToAppleWalletButton href={apple} />}
+      {google && <AddToGoogleWalletButton href={google} />}
+    </div>
+  );
+}

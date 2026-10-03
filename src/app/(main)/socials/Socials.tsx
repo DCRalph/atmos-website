@@ -10,7 +10,6 @@ import {
   FaSoundcloud,
   FaSpotify,
   FaTiktok,
-  FaXTwitter,
   FaYoutube,
 } from "react-icons/fa6";
 import { PageTitle } from "~/components/site/ui";
@@ -62,7 +61,6 @@ const directory = [
     color: "#1877F2",
     what: "Events and updates",
   },
-  { ...SOCIALS.twitter, Icon: FaXTwitter, color: "#FFFFFF", what: "Updates" },
 ];
 
 /** Copies a handle, confirms with a toast, and flags which row to tick for two seconds. */

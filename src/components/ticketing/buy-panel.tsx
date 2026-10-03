@@ -29,7 +29,14 @@ type PublicTier = PublicEvent["tiers"][number];
  * fair-trading rules mean unavoidable fees can't appear for the first time at
  * the payment step.
  */
-export function BuyPanel({ event }: { event: PublicEvent }) {
+export function BuyPanel({
+  event,
+  className,
+}: {
+  event: PublicEvent;
+  /** Restyles the panel shell, e.g. as glass when it sits over a poster. */
+  className?: string;
+}) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [codeInput, setCodeInput] = useState("");
   const [appliedCode, setAppliedCode] = useState<string | null>(null);
@@ -153,7 +160,7 @@ export function BuyPanel({ event }: { event: PublicEvent }) {
 
   if (event.status === "CANCELLED") {
     return (
-      <PanelShell>
+      <PanelShell className={className}>
         <div className="space-y-2 p-5">
           <p className="t-display text-xl text-[var(--site-danger-text)]">
             Cancelled
@@ -169,7 +176,7 @@ export function BuyPanel({ event }: { event: PublicEvent }) {
 
   if (event.status === "SOLD_OUT" || !event.onSale) {
     return (
-      <PanelShell>
+      <PanelShell className={className}>
         <div className="space-y-2 p-5">
           <p className="t-display text-2xl">
             {event.status === "SOLD_OUT" ? "Sold out" : "Not on sale"}
@@ -197,7 +204,7 @@ export function BuyPanel({ event }: { event: PublicEvent }) {
   const preparing = accepted && !payable;
 
   return (
-    <PanelShell r18={event.isR18}>
+    <PanelShell r18={event.isR18} className={className}>
       <ul className="divide-y divide-white/10">
         {event.tiers.map((tier) => {
           const quantity = quantities[tier.id] ?? 0;
@@ -463,14 +470,19 @@ function HoldCountdown({
 function PanelShell({
   children,
   r18,
+  className,
 }: {
   children: React.ReactNode;
   r18?: boolean;
+  className?: string;
 }) {
   return (
     <section
       aria-label="Tickets"
-      className="rounded-[var(--site-r-panel)] rounded-tl-none border border-white/12 bg-white/[0.03]"
+      className={cn(
+        "rounded-[var(--site-r-panel)] rounded-tl-none border border-white/12 bg-white/[0.03]",
+        className,
+      )}
     >
       <div className="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
         <h2 className="t-label flex items-center gap-2 text-[12px]">

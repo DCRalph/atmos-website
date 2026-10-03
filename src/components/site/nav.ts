@@ -20,3 +20,6 @@ export const HERO_ROUTES: readonly string[] = [
   "/crew",
   "/equipment",
 ];
+
+/** Route prefixes whose pages all open on a hero (event pages, on their poster). */
+export const HERO_ROUTE_PREFIXES: readonly string[] = ["/events/"];
