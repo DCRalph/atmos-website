@@ -1,22 +1,33 @@
 "use client";
 
 import { useParams, useSearchParams } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
-import { CalendarDays, Clock, MapPin } from "lucide-react";
-
+import { ArrowLeft, ArrowRight, EyeOff } from "lucide-react";
 import { api } from "~/trpc/react";
 import { buildMediaUrl } from "~/lib/media-url";
-import { formatEventDateLong, formatEventTime } from "~/lib/ticketing/dates";
+import {
+  formatEventDate,
+  formatEventDateLong,
+  formatEventTime,
+} from "~/lib/ticketing/dates";
 import { formatNZD } from "~/lib/ticketing/money";
 import { BuyPanel } from "~/components/ticketing/buy-panel";
 import { LexicalContent } from "~/components/lexical";
-import { Skeleton } from "~/components/ui/skeleton";
+import { Media, Skeleton, buttonVariants } from "~/components/site/ui";
 import { usePageMetadata } from "~/hooks/use-page-metadata";
 import { gigPath } from "~/lib/gig-url";
 import { SITE_URL } from "~/lib/seo-constants";
+import {
+  OnNowPanel,
+  nightPhase,
+  useMinuteClock,
+} from "~/components/site/on-now";
+import { cn } from "~/lib/utils";
 
-/** Public event page. The buy panel sticks to the side on desktop. */
+/**
+ * Public event page. Opens on the poster full bleed; on desktop the buy panel
+ * is glass lifting up over the bottom of it, then sticks as you scroll.
+ */
 export default function EventPage() {
   const params = useParams<{ slug: string }>();
   const searchParams = useSearchParams();
@@ -32,8 +43,7 @@ export default function EventPage() {
 
   usePageMetadata({
     title: event.data?.name ?? "Event",
-    description:
-      event.data?.shortDescription ?? "Tickets to an Atmos event in Pōneke.",
+    description: event.data?.shortDescription ?? "Tickets to an Atmos event.",
     canonical: `${SITE_URL}/events/${slug}`,
     // An event nobody can find without a link shouldn't turn up in a search.
     noindex: event.data ? event.data.visibility !== "PUBLIC" : true,
@@ -41,102 +51,172 @@ export default function EventPage() {
 
   if (event.isPending) {
     return (
-      <main className="mx-auto w-full max-w-6xl px-5 py-16 md:px-8">
-        <Skeleton className="h-12 w-2/3" />
-        <Skeleton className="mt-6 h-96 w-full" />
-      </main>
+      <div aria-busy>
+        <Skeleton className="h-[520px] md:h-[620px]" />
+        <div className="grid grid-cols-1 gap-10 px-5 pt-8 md:px-10 lg:grid-cols-[minmax(0,1fr)_400px]">
+          <Skeleton className="h-40" />
+          <Skeleton className="h-80 rounded-[var(--site-r-panel)] rounded-tl-none" />
+        </div>
+      </div>
     );
   }
 
   if (!event.data) {
     return (
-      <main className="mx-auto w-full max-w-3xl px-5 py-24 text-center md:px-8">
-        <h1 className="text-3xl font-bold text-white">Event not found</h1>
-        <p className="mt-3 text-white/50">
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-5 px-5 pt-40 pb-24 text-center">
+        <h1 className="t-heading text-[clamp(2.25rem,7vw,5rem)]">
+          Event not found
+        </h1>
+        <p className="max-w-[40ch] text-[15px] text-white/60">
           This event might have finished, or the link is wrong.
         </p>
-        <Link
-          href="/events"
-          className="mt-6 inline-block border-2 border-white/20 px-5 py-2.5 text-white transition-colors hover:bg-white hover:text-black"
-        >
-          See what&apos;s on
+        <Link href="/events" className={buttonVariants({ variant: "outline" })}>
+          <ArrowLeft className="size-4" /> See what&apos;s on
         </Link>
-      </main>
+      </div>
     );
   }
 
   const data = event.data;
+  const poster = data.posterFileUploadId
+    ? buildMediaUrl(data.posterFileUploadId)
+    : null;
+  const hasFee =
+    data.bookingFee.fixedCents > 0 || data.bookingFee.percentBp > 0;
+  const startTime = formatEventTime(data.startsAt, data.timezone);
+  const doorsTime = data.doorsAt
+    ? formatEventTime(data.doorsAt, data.timezone)
+    : null;
+  const facts = [
+    { label: "When", value: formatEventDateLong(data.startsAt, data.timezone) },
+    {
+      label: "Time",
+      value: doorsTime ? `Doors ${doorsTime} · Starts ${startTime}` : startTime,
+    },
+    ...(data.venueName
+      ? [{ label: "Where", value: data.venueName, sub: data.venueAddress }]
+      : []),
+    ...(data.isR18
+      ? [{ label: "Age", value: "R18, photo ID at the door" }]
+      : []),
+  ];
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-5 py-12 md:px-8 md:py-16">
-      <div className="grid gap-10 lg:grid-cols-[1fr_380px] lg:gap-14">
-        <div className="min-w-0">
-          {data.posterFileUploadId && (
-            <div className="relative mb-8 aspect-square w-full max-w-md overflow-hidden border-2 border-white/10 bg-black/20">
-              <Image
-                src={buildMediaUrl(data.posterFileUploadId)}
-                alt={`${data.name} poster`}
-                fill
-                sizes="(max-width: 1024px) 100vw, 448px"
-                className="object-cover"
-                priority
-              />
-            </div>
+    <>
+      <section
+        className={cn(
+          "relative flex flex-col justify-end overflow-hidden",
+          poster ? "min-h-[520px] md:min-h-[620px]" : "pt-32 md:pt-40",
+        )}
+      >
+        {poster ? (
+          <>
+            <Media
+              src={poster}
+              alt={`${data.name} poster`}
+              sizes="100vw"
+              className="absolute inset-0"
+              priority
+            />
+            <div className="scrim-bottom absolute inset-0" />
+            <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/70 to-transparent" />
+          </>
+        ) : null}
+        {/* Clear of the panel that lifts into the bottom right on desktop. */}
+        <div
+          className={cn(
+            "relative space-y-5 px-5 pt-28 pb-10 md:px-10 md:pb-14",
+            poster && "lg:pr-[496px]",
           )}
-
-          <h1 className="text-4xl font-bold tracking-tight text-white md:text-5xl">
+        >
+          <Link
+            href="/events"
+            className="t-label inline-flex items-center gap-2 text-[11px] text-white/75 hover:text-white"
+          >
+            <ArrowLeft className="size-4" /> All tickets
+          </Link>
+          {data.visibility !== "PUBLIC" ? (
+            <p className="glass-dark flex w-fit items-start gap-3 rounded-[var(--site-r-chip)] px-4 py-3 text-[14px] text-white/75">
+              <EyeOff className="mt-0.5 size-4 shrink-0" aria-hidden /> This
+              event isn&apos;t listed. You can see it because you have the link,
+              so share it with care.
+            </p>
+          ) : null}
+          <EventOnNow start={data.startsAt} end={data.endsAt} />
+          <h1 className="t-display max-w-[16ch] text-[clamp(2rem,6.4vw,5.5rem)] [overflow-wrap:anywhere] normal-case">
             {data.name}
           </h1>
+          <p className="t-label text-[12px] text-white/85 md:text-[13px]">
+            {[
+              formatEventDate(data.startsAt, data.timezone),
+              data.venueName,
+              doorsTime ? `Doors ${doorsTime}` : startTime,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        </div>
+      </section>
 
-          {data.shortDescription && (
-            <p className="mt-3 text-lg text-white/60">
+      {/* DOM order is the phone order: facts, then tickets, then the rest. */}
+      <div className="grid grid-cols-1 gap-10 px-5 pt-8 pb-20 md:px-10 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-14">
+        <dl className="grid grid-cols-1 border-t border-white/10 sm:grid-cols-2 sm:gap-x-8 lg:col-start-1 lg:row-start-1">
+          {facts.map(({ label, value, ...rest }) => (
+            <div key={label} className="border-b border-white/10 py-4">
+              <dt className="t-label text-[10px] text-white/55">{label}</dt>
+              <dd className="mt-2 text-[15px] text-white/90">
+                {value}
+                {"sub" in rest && rest.sub ? (
+                  <span className="mt-1 block text-[13px] text-white/55">
+                    {rest.sub}
+                  </span>
+                ) : null}
+              </dd>
+            </div>
+          ))}
+        </dl>
+
+        <div
+          id="tickets"
+          className={cn(
+            "relative z-10 scroll-mt-28 lg:col-start-2 lg:row-span-2 lg:row-start-1",
+            poster && "lg:-mt-64",
+          )}
+        >
+          <div className="lg:sticky lg:top-28">
+            <BuyPanel
+              event={data}
+              className={
+                poster ? "glass-dark glass-float bg-black/60" : undefined
+              }
+            />
+          </div>
+        </div>
+
+        <div className="min-w-0 space-y-8 lg:col-start-1 lg:row-start-2">
+          {data.shortDescription ? (
+            <p className="max-w-[60ch] text-[17px] text-white/75">
               {data.shortDescription}
             </p>
-          )}
-
-          <dl className="mt-8 space-y-3 border-y-2 border-white/10 py-6">
-            <DetailRow icon={CalendarDays} label="Date">
-              {formatEventDateLong(data.startsAt, data.timezone)}
-            </DetailRow>
-            <DetailRow icon={Clock} label="Time">
-              {data.doorsAt
-                ? `Doors ${formatEventTime(data.doorsAt, data.timezone)} · Starts ${formatEventTime(data.startsAt, data.timezone)}`
-                : formatEventTime(data.startsAt, data.timezone)}
-            </DetailRow>
-            {data.venueName && (
-              <DetailRow icon={MapPin} label="Venue">
-                {data.venueName}
-                {data.venueAddress && (
-                  <span className="block text-white/40">
-                    {data.venueAddress}
-                  </span>
-                )}
-              </DetailRow>
-            )}
-          </dl>
-
-          {data.descriptionLexical != null && (
+          ) : null}
+          {data.descriptionLexical != null ? (
             <LexicalContent
               value={data.descriptionLexical}
               namespace={`event-description-${data.id}`}
-              className="mt-8"
-              contentClassName="prose prose-invert max-w-none"
+              contentClassName="max-w-[62ch] text-[16px] leading-relaxed text-white/70 [&_a]:text-white [&_a]:underline [&_a]:underline-offset-4 [&_p]:mb-4 [&_strong]:text-white"
             />
-          )}
-
-          {data.gig && (
+          ) : null}
+          {data.gig ? (
             <Link
               href={gigPath(data.gig)}
-              className="mt-8 inline-block text-sm text-white/50 underline underline-offset-4 hover:text-white"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
             >
-              More about this gig
+              More about this gig <ArrowRight className="size-4" />
             </Link>
-          )}
-
+          ) : null}
           {/* Fees disclosed on the page itself, not just at the payment step. */}
-          {(data.bookingFee.fixedCents > 0 ||
-            data.bookingFee.percentBp > 0) && (
-            <p className="mt-8 text-xs text-white/40">
+          {hasFee ? (
+            <p className="text-[13px] text-white/50">
               Prices include GST. A booking fee of{" "}
               {data.bookingFee.fixedCents > 0 &&
                 `${formatNZD(data.bookingFee.fixedCents)} per ticket`}
@@ -147,33 +227,20 @@ export default function EventPage() {
                 `${data.bookingFee.percentBp / 100}%`}{" "}
               is added at checkout.
             </p>
-          )}
-        </div>
-
-        <div className="lg:sticky lg:top-8 lg:self-start">
-          <BuyPanel event={data} />
+          ) : null}
         </div>
       </div>
-    </main>
+    </>
   );
 }
 
-function DetailRow({
-  icon: Icon,
-  label,
-  children,
-}: {
-  icon: typeof CalendarDays;
-  label: string;
-  children: React.ReactNode;
-}) {
+/** The on-now panel above the title, only while the event is running. */
+function EventOnNow({ start, end }: { start: Date; end: Date | null }) {
+  const now = useMinuteClock();
+  if (now === null || nightPhase({ start, end }, now) !== "on") return null;
   return (
-    <div className="flex gap-3">
-      <Icon className="mt-0.5 size-4 shrink-0 text-white/40" aria-hidden />
-      <div className="min-w-0">
-        <dt className="sr-only">{label}</dt>
-        <dd className="text-white/80">{children}</dd>
-      </div>
+    <div>
+      <OnNowPanel night={{ start, end }} now={now} compact />
     </div>
   );
 }

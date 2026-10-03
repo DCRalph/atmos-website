@@ -1,178 +1,160 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import posthog from "posthog-js";
-import Link from "next/link";
-import Image from "next/image";
-import { StaticBackground } from "~/components/static-background";
-import { motion } from "motion/react";
-import { AnimatedPageHeader } from "~/components/animated-page-header";
-import { MainPageSection } from "~/components/main-page-section";
+import { toast } from "sonner";
+import { ArrowUpRight, Check, Copy } from "lucide-react";
+import {
+  FaFacebook,
+  FaInstagram,
+  FaSoundcloud,
+  FaSpotify,
+  FaTiktok,
+  FaYoutube,
+} from "react-icons/fa6";
+import { PageTitle } from "~/components/site/ui";
+import { SOCIALS, type SocialKey } from "~/lib/site-constants";
+import { cn } from "~/lib/utils";
 
-type SocialLink = {
-  label: string;
-  href: string;
-  image: string;
-  username: string;
-  color: string;
+/** Profile URLs by platform. Kept as the existing import point; the data lives in site-constants. */
+export const links = Object.fromEntries(
+  Object.entries(SOCIALS).map(([key, { href }]) => [key, href]),
+) as {
+  [K in SocialKey]: (typeof SOCIALS)[K]["href"];
 };
 
-export const links = {
-  instagram: "https://instagram.com/atmos.nz",
-  tiktok: "https://tiktok.com/@atmos_tv",
-  youtube: "https://www.youtube.com/@Atmosmediatv",
-  facebook: "https://facebook.com/atmos.nz",
-  soundcloud: "https://soundcloud.com/atmosmedia",
-  spotify:
-    "https://open.spotify.com/user/31zgkcouzyfpwhb3pfixdpvlfaom?si=a7f5f0fae13e4b1b",
-  twitter: "https://twitter.com/atmosmedia",
-} as const;
-
-const socialLinks: SocialLink[] = [
+/** Directory rows in display order. Brand colour only tints the icon. */
+const directory = [
   {
-    label: "INSTAGRAM",
-    href: links.instagram,
-    image: "/socials/instagram.png",
-    username: "@atmos.nz",
+    ...SOCIALS.instagram,
+    Icon: FaInstagram,
     color: "#E1306C",
+    what: "Gig announcements, posters and photos",
   },
   {
-    label: "TIKTOK",
-    href: links.tiktok,
-    image: "/socials/tiktok.png",
-    username: "@atmos_tv",
+    ...SOCIALS.tiktok,
+    Icon: FaTiktok,
     color: "#00F2EA",
+    what: "Clips from the floor",
   },
   {
-    label: "YOUTUBE",
-    href: links.youtube,
-    image: "/socials/youtube.png",
-    username: "@Atmosmediatv",
+    ...SOCIALS.youtube,
+    Icon: FaYoutube,
     color: "#FF0000",
+    what: "Sets and videos",
   },
   {
-    label: "FACEBOOK",
-    href: links.facebook,
-    image: "/socials/facebook.png",
-    username: "atmos.nz",
-    color: "#1877F2",
-  },
-  {
-    label: "SOUNDCLOUD",
-    href: links.soundcloud,
-    image: "/socials/soundcloud.png",
-    username: "atmosmedia",
+    ...SOCIALS.soundcloud,
+    Icon: FaSoundcloud,
     color: "#FF5500",
+    what: "Atmos Radio and Atmos Selects",
   },
   {
-    label: "SPOTIFY",
-    href: links.spotify,
-    image: "/socials/spotify.png",
-    username: "ATMOS",
+    ...SOCIALS.spotify,
+    Icon: FaSpotify,
     color: "#1DB954",
+    what: "Atmos Selects, updated weekly",
+  },
+  {
+    ...SOCIALS.facebook,
+    Icon: FaFacebook,
+    color: "#1877F2",
+    what: "Events and updates",
   },
 ];
 
+/** Copies a handle, confirms with a toast, and flags which row to tick for two seconds. */
+function useCopiedHandle() {
+  const [copied, setCopied] = useState<string | null>(null);
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(null), 2000);
+    return () => clearTimeout(t);
+  }, [copied]);
+  const copy = async (label: string, handle: string) => {
+    try {
+      await navigator.clipboard.writeText(handle);
+      setCopied(label);
+      toast.success(`${label} handle copied`);
+    } catch {
+      toast.error("Couldn't copy. Long-press the link instead.");
+    }
+  };
+  return { copied, copy };
+}
+
+/** Socials directory: one row per platform with handle, what's there, copy and open. */
 export default function SocialsPage() {
+  const { copied, copy } = useCopiedHandle();
   return (
-    <main className="min-h-content bg-black text-white">
-      <StaticBackground imageSrc="/home/CAGED 2-95.jpg" />
-
-      <MainPageSection>
-        {/* Header */}
-        <AnimatedPageHeader
-          title="SOCIALS"
-          subtitle="One presence across every platform"
-        />
-
-        {/* Social Links Grid */}
-        <div className="mx-auto mt-18 grid max-w-4xl grid-cols-2 gap-8 sm:grid-cols-3 md:gap-12">
-          {socialLinks.map((social, index) => (
-            <SocialItem key={social.label} social={social} index={index} />
-          ))}
-        </div>
-      </MainPageSection>
+    <main className="pb-20">
+      <PageTitle
+        title="Socials"
+        intro="Gig drops, sets and clips. Pick your platform."
+      />
+      <ul className="mx-5 border-t border-white/10 md:mx-10">
+        {directory.map((s) => (
+          <li key={s.label} className="group relative border-b border-white/10">
+            <div className="grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-2 py-5 md:grid-cols-[64px_minmax(0,1.6fr)_minmax(0,0.8fr)_minmax(0,1fr)_auto] md:gap-x-6 md:py-6">
+              <s.Icon
+                className="size-8 max-md:row-span-2 md:size-12"
+                style={{ color: s.color }}
+                aria-hidden
+              />
+              <a
+                href={s.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() =>
+                  posthog.capture("social_link_clicked", {
+                    platform: s.label.toUpperCase(),
+                  })
+                }
+                className="min-w-0 after:absolute after:inset-0"
+              >
+                <span className="t-display block truncate text-[clamp(1.1rem,5.2vw,3rem)] leading-[1.05] md:text-[clamp(1.25rem,3.6vw,3rem)]">
+                  {s.label}
+                </span>
+              </a>
+              <p className="t-label flex min-w-0 items-center gap-2 text-[12px] text-white/85 max-md:col-start-2 max-md:row-start-2">
+                <span className="truncate">{s.handle}</span>
+              </p>
+              <p className="truncate text-[14px] text-white/60 max-md:hidden">
+                {s.what}
+              </p>
+              <div className="pointer-events-none relative z-10 flex items-center gap-2 max-md:col-start-3 max-md:row-span-2 max-md:row-start-1">
+                <button
+                  type="button"
+                  onClick={() => void copy(s.label, s.handle)}
+                  aria-label={
+                    copied === s.label
+                      ? `${s.label} handle copied`
+                      : `Copy ${s.label} handle ${s.handle}`
+                  }
+                  className={cn(
+                    "pointer-events-auto flex size-11 shrink-0 items-center justify-center rounded-full border transition-colors",
+                    copied === s.label
+                      ? "border-transparent bg-[var(--site-accent)] text-[var(--site-accent-ink)]"
+                      : "border-white/20 text-white/75 hover:border-white hover:text-white",
+                  )}
+                >
+                  {copied === s.label ? (
+                    <Check className="size-4" />
+                  ) : (
+                    <Copy className="size-4" />
+                  )}
+                </button>
+                <span
+                  aria-hidden
+                  className="flex size-11 items-center justify-center rounded-full bg-white text-black transition-colors group-hover:bg-[var(--site-accent)] group-hover:text-[var(--site-accent-ink)]"
+                >
+                  <ArrowUpRight className="size-5" />
+                </span>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
     </main>
-  );
-}
-
-function SocialItem({ social, index }: { social: SocialLink; index: number }) {
-  const { label, href, image, username, color } = social;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{
-        duration: 0.5,
-        delay: index * 0.08,
-        ease: [0.22, 1, 0.36, 1],
-      }}
-      className="relative"
-    >
-      {/* Radial blur behind everything */}
-      {/* <RadialBlur /> */}
-
-      <Link
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="group relative z-10 flex flex-col items-center text-center"
-        onClick={() =>
-          posthog.capture("social_link_clicked", { platform: label })
-        }
-      >
-        {/* Image */}
-        <Image
-          src={image}
-          alt={label}
-          width={64}
-          height={64}
-          className="mb-3 h-12 w-12 object-contain transition-transform duration-300 group-hover:scale-110 sm:h-14 sm:w-14 md:h-16 md:w-16"
-        />
-
-        {/* Platform Name */}
-        <h3
-          className="text-sm font-black tracking-wider uppercase sm:text-base"
-          style={{ color }}
-        >
-          {label}
-        </h3>
-
-        {/* Handle */}
-        <p className="mt-1 text-xs text-white/70 sm:text-sm">{username}</p>
-      </Link>
-    </motion.div>
-  );
-}
-
-function RadialBlur() {
-  // Gradual blur layers - strongest in center, fading to zero at edges
-  // Each layer covers from center to its outer edge, with decreasing blur
-  const layers = [
-    { blur: 16, outer: 20 },
-    { blur: 12, outer: 30 },
-    { blur: 8, outer: 40 },
-    { blur: 5, outer: 50 },
-    { blur: 3, outer: 60 },
-    { blur: 1.5, outer: 75 },
-    { blur: 0.5, outer: 90 },
-  ];
-
-  return (
-    <div className="pointer-events-none absolute -inset-16 sm:-inset-20 md:-inset-24">
-      {layers.map((layer, i) => (
-        <div
-          key={i}
-          className="absolute inset-0"
-          style={{
-            zIndex: layers.length - i,
-            backdropFilter: `blur(${layer.blur}px)`,
-            WebkitBackdropFilter: `blur(${layer.blur}px)`,
-            mask: `radial-gradient(circle, rgba(0,0,0,1) 0%, rgba(0,0,0,1) ${layer.outer * 0.6}%, rgba(0,0,0,0) ${layer.outer}%)`,
-            WebkitMask: `radial-gradient(circle, rgba(0,0,0,1) 0%, rgba(0,0,0,1) ${layer.outer * 0.6}%, rgba(0,0,0,0) ${layer.outer}%)`,
-          }}
-        />
-      ))}
-    </div>
   );
 }

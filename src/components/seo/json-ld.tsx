@@ -26,19 +26,7 @@ export function OrganizationJsonLd() {
       links.facebook,
       links.soundcloud,
       links.spotify,
-      links.twitter,
     ],
-    address: {
-      "@type": "PostalAddress",
-      addressLocality: "Wellington",
-      addressRegion: "Wellington",
-      addressCountry: "NZ",
-    },
-    areaServed: {
-      "@type": "City",
-      name: "Wellington",
-      alternateName: "Pōneke",
-    },
     knowsAbout: [
       "Electronic Music",
       "Club Nights",
@@ -65,7 +53,7 @@ export function WebSiteJsonLd() {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: SITE_NAME,
-    alternateName: "ATMOS Events Wellington",
+    alternateName: "ATMOS Events",
     url: SITE_URL,
     description: DESCRIPTION_SHORT,
     inLanguage: "en-NZ",
@@ -137,12 +125,10 @@ export function EventJsonLd({
         ? {
             "@type": "PostalAddress",
             streetAddress: venue.address,
-            addressLocality: "Wellington",
             addressCountry: "NZ",
           }
         : {
             "@type": "PostalAddress",
-            addressLocality: "Wellington",
             addressCountry: "NZ",
           },
     },
@@ -234,7 +220,6 @@ export function EventListJsonLd({ events }: { events: EventListItem[] }) {
           "@type": "Place",
           address: {
             "@type": "PostalAddress",
-            addressLocality: "Wellington",
             addressCountry: "NZ",
           },
         },

@@ -53,12 +53,12 @@ export default function GigPageClient({
             description={
               gig.shortDescription ||
               gig.subtitle ||
-              "Wellington electronic music event by ATMOS"
+              "Electronic music event by ATMOS"
             }
             startDate={gig.gigStartTime}
             endDate={gig.gigEndTime ?? undefined}
             venue={{
-              name: gig.subtitle || "Wellington Venue",
+              name: gig.subtitle || "Venue to be announced",
             }}
             image={mediaImage}
             ticketUrl={gig.ticketLink ?? undefined}

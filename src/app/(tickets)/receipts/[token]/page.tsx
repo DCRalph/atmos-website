@@ -4,6 +4,10 @@ import { notFound } from "next/navigation";
 import { db } from "~/server/db";
 import { getTicketingSettings } from "~/server/ticketing/settings";
 import { formatNZD } from "~/lib/ticketing/money";
+import {
+  TicketShell,
+  ticketPanelClass,
+} from "~/components/tickets/ticket-shell";
 
 /**
  * A receipt for a card payment taken at a door.
@@ -25,7 +29,7 @@ import { formatNZD } from "~/lib/ticketing/money";
  */
 
 export const metadata: Metadata = {
-  title: "Receipt — Atmos",
+  title: "Receipt · Atmos",
   robots: { index: false, follow: false },
 };
 
@@ -80,7 +84,7 @@ export default async function DoorReceiptPage({
   const rows: [string, string][] = [
     ["Amount", formatNZD(receipt.amountCents)],
     ["Status", copy.status],
-    ...(receipt.cardBrand ?? receipt.last4
+    ...((receipt.cardBrand ?? receipt.last4)
       ? ([
           [
             "Card",
@@ -108,16 +112,13 @@ export default async function DoorReceiptPage({
   ];
 
   return (
-    <main className="mx-auto w-full max-w-lg px-5 py-16 md:px-8">
-      <p className="text-xs font-bold tracking-[0.22em] text-white/40 uppercase">
-        Atmos
-      </p>
-
-      <h1 className="mt-4 text-3xl font-black tracking-tight uppercase">
+    <TicketShell>
+      <p className="t-label text-[11px] text-white/55">Receipt</p>
+      <h1 className="t-heading mt-3 text-[clamp(2rem,9vw,3rem)]">
         {copy.heading}
       </h1>
 
-      <p className="mt-3 text-sm leading-relaxed text-white/60">
+      <p className="mt-4 text-[15px] leading-relaxed text-white/65">
         {receipt.event.name}
         <br />
         {copy.explain}
@@ -126,7 +127,7 @@ export default async function DoorReceiptPage({
           : null}
       </p>
 
-      <dl className="mt-8 border-2 border-white/10">
+      <dl className={`${ticketPanelClass} mt-8 p-0`}>
         {rows.map(([label, value], index) => (
           <div
             key={label}
@@ -134,15 +135,15 @@ export default async function DoorReceiptPage({
               index > 0 ? "border-t border-white/10" : ""
             }`}
           >
-            <dt className="text-sm text-white/50">{label}</dt>
-            <dd className="text-right text-sm font-medium text-white">
+            <dt className="text-[14px] text-white/55">{label}</dt>
+            <dd className="text-right text-[14px] text-white tabular-nums">
               {value}
             </dd>
           </div>
         ))}
       </dl>
 
-      <p className="mt-8 text-xs leading-relaxed text-white/40">
+      <p className="mt-8 text-[13px] leading-relaxed text-white/50">
         Atmos never sees or stores your full card number. The payment was read
         by Apple on the staff member&rsquo;s iPhone and processed by Stripe.
         {settings.supportEmail ? (
@@ -150,7 +151,7 @@ export default async function DoorReceiptPage({
             {" "}
             Questions?{" "}
             <a
-              className="underline hover:text-white/70"
+              className="text-white underline decoration-white/30 underline-offset-4 hover:decoration-white"
               href={`mailto:${settings.supportEmail}`}
             >
               {settings.supportEmail}
@@ -158,6 +159,6 @@ export default async function DoorReceiptPage({
           </>
         ) : null}
       </p>
-    </main>
+    </TicketShell>
   );
 }

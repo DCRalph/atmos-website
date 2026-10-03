@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { differenceInCalendarDays, format, startOfDay } from "date-fns";
 import { z } from "zod";
@@ -13,7 +14,7 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import { env } from "~/env";
-import { sendEmail } from "~/server/utils/email";
+import { escapeHtml, sendEmail } from "~/server/utils/email";
 import { getRequestMetadata, logActivity } from "~/server/utils/activity-log";
 
 const packageItemInputSchema = z.object({
@@ -267,7 +268,7 @@ const quoteRentalSelectionInputSchema = rentalDatesSchema
 const createRentalRequestInputSchema = quoteRentalSelectionInputSchema
   .extend({
     userName: z.string().trim().min(1),
-    contactInfo: z.string().trim().min(1),
+    contactInfo: z.string().trim().pipe(z.email("Enter a valid email.")),
   })
   .superRefine((input, ctx) => {
     if (input.mode === "ITEMS" && input.items.length === 0) {
@@ -1074,6 +1075,137 @@ function getRentalDisplayName(rental: IncludedRental) {
   return "Rental";
 }
 
+type RentalDecision =
+  typeof RentalStatus.APPROVED | typeof RentalStatus.REJECTED;
+
+/**
+ * Approve or reject a rental, then email the requester. Used by the admin
+ * panel (`{ id }`) and the one-time links in the staff email
+ * (`{ decisionToken }`). A token only works on a pending request, and the
+ * same update that sets the status clears it, so a link can't be used twice.
+ */
+export async function decideRental(
+  ctx: { db: typeof import("~/server/db").db },
+  {
+    where,
+    decision,
+    userId,
+  }: {
+    where: { id: string } | { decisionToken: string };
+    decision: RentalDecision;
+    userId?: string;
+  },
+) {
+  const viaLink = "decisionToken" in where;
+  const existingRental = (await ctx.db.rental.findUnique({
+    where,
+    include: rentalInclude,
+  })) as IncludedRental | null;
+
+  if (
+    !existingRental ||
+    (viaLink && existingRental.status !== RentalStatus.PENDING)
+  ) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Rental request not found.",
+    });
+  }
+
+  if (decision === RentalStatus.APPROVED) {
+    const selection = getRentalSelectionInput(existingRental);
+    await assertSelectionAvailabilityOrThrow(
+      ctx,
+      {
+        ...selection,
+        startDate: existingRental.startDate,
+        endDate: existingRental.endDate,
+      },
+      { excludeRentalId: existingRental.id },
+    );
+  }
+
+  const { count } = await ctx.db.rental.updateMany({
+    where: viaLink
+      ? { ...where, status: RentalStatus.PENDING }
+      : { id: existingRental.id },
+    data: { status: decision, decisionToken: null },
+  });
+
+  if (count === 0) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "This request has already been decided.",
+    });
+  }
+
+  const rental: IncludedRental = { ...existingRental, status: decision };
+  const approved = decision === RentalStatus.APPROVED;
+
+  await logActivity({
+    type: approved
+      ? ActivityType.RENTAL_APPROVED
+      : ActivityType.RENTAL_REJECTED,
+    action: `Rental ${approved ? "approved" : "rejected"} for ${rental.userName} (${getRentalDisplayName(rental)})${viaLink ? " via email link" : ""}`,
+    details: { rentalId: rental.id },
+    userId,
+  });
+
+  if (existingRental.status !== decision) {
+    await sendRentalDecisionEmail(ctx, rental);
+  }
+
+  return rental;
+}
+
+/**
+ * Tell the requester their rental was approved or declined. Older requests
+ * may hold a phone number instead of an email, so those are skipped. Failures
+ * are logged, never thrown: the decision already stands.
+ */
+async function sendRentalDecisionEmail(
+  ctx: { db: typeof import("~/server/db").db },
+  rental: IncludedRental,
+) {
+  const to = z.email().safeParse(rental.contactInfo);
+  if (!to.success) return;
+
+  const approved = rental.status === RentalStatus.APPROVED;
+  const dates = `${format(rental.startDate, "PPP")} to ${format(rental.endDate, "PPP")}`;
+  const gear = getRentalDisplayName(rental);
+  const message = approved
+    ? "Your gear rental request has been approved. We'll be in touch to sort out pickup and payment."
+    : "Unfortunately we can't fulfil your gear rental request for these dates.";
+
+  try {
+    const staff = await ctx.db.keyValueStore.findUnique({
+      where: { key: "gearRentalNotification" },
+    });
+
+    await sendEmail({
+      to: to.data,
+      replyTo: staff?.value,
+      subject: `Your Atmos gear rental request was ${approved ? "approved" : "declined"}`,
+      text:
+        `Hi ${rental.userName},\n\n${message}\n\n` +
+        `Gear: ${gear}\nDates: ${dates}\n` +
+        `Estimated total: $${rental.estimatedTotalPrice}\n\n` +
+        `Reply to this email with any questions.`,
+      html: `
+              <h1>Rental request ${approved ? "approved" : "declined"}</h1>
+              <p>Hi ${escapeHtml(rental.userName)},</p>
+              <p>${message}</p>
+              <p><strong>Gear:</strong> ${escapeHtml(gear)}</p>
+              <p><strong>Dates:</strong> ${dates}</p>
+              <p><strong>Estimated total:</strong> $${rental.estimatedTotalPrice}</p>
+              <p>Reply to this email with any questions.</p>
+            `,
+    });
+  } catch (error) {
+    console.error("Failed to send rental decision email:", error);
+  }
+}
+
 export const rentalsRouter = createTRPCRouter({
   getPublicPackages: publicProcedure.query(async ({ ctx }) => {
     return ctx.db.gearPackage.findMany({
@@ -1098,6 +1230,8 @@ export const rentalsRouter = createTRPCRouter({
     return ctx.db.rental.findMany({
       where: { status: RentalStatus.APPROVED },
       include: rentalInclude,
+      // The calendar only needs dates and gear, not who booked it.
+      omit: { contactInfo: true, decisionToken: true },
       orderBy: { startDate: "asc" },
     });
   }),
@@ -1106,8 +1240,10 @@ export const rentalsRouter = createTRPCRouter({
     .input(createRentalRequestInputSchema)
     .mutation(async ({ ctx, input }) => {
       const quote = await assertSelectionAvailabilityOrThrow(ctx, input);
+      const decisionToken = randomBytes(32).toString("base64url");
       const rental = await ctx.db.rental.create({
         data: {
+          decisionToken,
           packageId:
             quote.mode === "PACKAGE" ? quote.gearPackage.id : undefined,
           userName: input.userName,
@@ -1138,6 +1274,8 @@ export const rentalsRouter = createTRPCRouter({
               : undefined,
         },
         include: rentalInclude,
+        // The token belongs to staff; handing it back would let the requester approve themselves.
+        omit: { decisionToken: true },
       });
 
       const metadata = await getRequestMetadata();
@@ -1172,6 +1310,7 @@ export const rentalsRouter = createTRPCRouter({
             ? `Package: ${quote.gearPackage.name}`
             : "Selection: Individual items";
         const selectionBreakdown = formatLineItems(quote.selectedItems);
+        const decisionUrl = `${env.NEXT_PUBLIC_APP_URL}/rental-decision/${decisionToken}`;
         const discountSummary = quote.appliedDiscount
           ? quote.appliedDiscount.discountMode === DiscountRuleMode.PER_ITEM
             ? `$${quote.appliedDiscount.discountAmount}/day item discounts via ${quote.appliedDiscount.name}`
@@ -1193,11 +1332,13 @@ export const rentalsRouter = createTRPCRouter({
             `Discount: ${discountSummary}\n` +
             `Start Date: ${format(input.startDate, "PPP")}\n` +
             `End Date: ${format(input.endDate, "PPP")}\n\n` +
-            `Review this request in the admin dashboard.`,
+            `Approve: ${decisionUrl}?action=approve\n` +
+            `Deny: ${decisionUrl}?action=deny\n\n` +
+            `Or review this request in the admin dashboard.`,
           html: `
               <h1>New Gear Rental Request</h1>
-              <p><strong>User:</strong> ${input.userName}</p>
-              <p><strong>Contact:</strong> ${input.contactInfo}</p>
+              <p><strong>User:</strong> ${escapeHtml(input.userName)}</p>
+              <p><strong>Contact:</strong> ${escapeHtml(input.contactInfo)}</p>
               <p><strong>${selectionTitle}</strong></p>
               <p><strong>Items:</strong> ${selectionBreakdown}</p>
               <p><strong>Estimated Total:</strong> $${quote.estimatedTotalPrice}</p>
@@ -1205,6 +1346,11 @@ export const rentalsRouter = createTRPCRouter({
               <p><strong>Start Date:</strong> ${format(input.startDate, "PPP")}</p>
               <p><strong>End Date:</strong> ${format(input.endDate, "PPP")}</p>
               <br/>
+              <p>
+                <a href="${decisionUrl}?action=approve" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 24px;border-radius:8px;margin-right:8px;">Approve</a>
+                <a href="${decisionUrl}?action=deny" style="display:inline-block;background:#dc2626;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 24px;border-radius:8px;">Deny</a>
+              </p>
+              <p>Each link asks you to confirm, and works once.</p>
               <p><a href="${env.NEXT_PUBLIC_APP_URL}/admin/rentals">Review Request in Admin Dashboard</a></p>
             `,
         });
@@ -1562,64 +1708,23 @@ export const rentalsRouter = createTRPCRouter({
 
   adminApproveRental: adminProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async ({ ctx, input }) => {
-      const existingRental = (await ctx.db.rental.findUnique({
+    .mutation(({ ctx, input }) =>
+      decideRental(ctx, {
         where: { id: input.id },
-        include: rentalInclude,
-      })) as IncludedRental | null;
-
-      if (!existingRental) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Rental request not found.",
-        });
-      }
-
-      const selection = getRentalSelectionInput(existingRental);
-      await assertSelectionAvailabilityOrThrow(
-        ctx,
-        {
-          ...selection,
-          startDate: existingRental.startDate,
-          endDate: existingRental.endDate,
-        },
-        { excludeRentalId: existingRental.id },
-      );
-
-      const rental = (await ctx.db.rental.update({
-        where: { id: input.id },
-        data: { status: RentalStatus.APPROVED },
-        include: rentalInclude,
-      })) as IncludedRental;
-
-      await logActivity({
-        type: ActivityType.RENTAL_APPROVED,
-        action: `Rental approved for ${rental.userName} (${getRentalDisplayName(rental)})`,
-        details: { rentalId: rental.id },
+        decision: RentalStatus.APPROVED,
         userId: ctx.user.id,
-      });
-
-      return rental;
-    }),
+      }),
+    ),
 
   adminRejectRental: adminProcedure
     .input(z.object({ id: z.string().min(1) }))
-    .mutation(async ({ ctx, input }) => {
-      const rental = (await ctx.db.rental.update({
+    .mutation(({ ctx, input }) =>
+      decideRental(ctx, {
         where: { id: input.id },
-        data: { status: RentalStatus.REJECTED },
-        include: rentalInclude,
-      })) as IncludedRental;
-
-      await logActivity({
-        type: ActivityType.RENTAL_REJECTED,
-        action: `Rental rejected for ${rental.userName} (${getRentalDisplayName(rental)})`,
-        details: { rentalId: rental.id },
+        decision: RentalStatus.REJECTED,
         userId: ctx.user.id,
-      });
-
-      return rental;
-    }),
+      }),
+    ),
 
   adminDeleteRental: adminProcedure
     .input(z.object({ id: z.string().min(1) }))

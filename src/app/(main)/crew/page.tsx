@@ -5,11 +5,11 @@ import { BreadcrumbJsonLd } from "~/components/seo/json-ld";
 import { usePageMetadata } from "~/hooks/use-page-metadata";
 import { SITE_URL } from "~/lib/seo-constants";
 
-export default function page() {
+export default function Page() {
   usePageMetadata({
     title: "Crew",
     description:
-      "Meet the ATMOS crew — Wellington's finest DJs, producers, and electronic music artists from the Pōneke underground scene.",
+      "Meet the ATMOS crew: the DJs, producers and creatives behind Atmos.",
     canonical: `${SITE_URL}/crew`,
   });
 

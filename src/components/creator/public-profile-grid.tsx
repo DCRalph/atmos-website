@@ -147,7 +147,7 @@ export function PublicProfileGrid({
             {getBlockSizing(b.type) === "intrinsic" ? (
               <div className="flex h-full flex-col justify-center">
                 {/* flow-root so child margins can't collapse out of the measurement */}
-                <div ref={measureRef(b.id)} className="min-w-0 flow-root">
+                <div ref={measureRef(b.id)} className="flow-root min-w-0">
                   <BlockRenderer
                     block={b}
                     socials={socials}
@@ -169,10 +169,7 @@ export function PublicProfileGrid({
       </div>
       {/* Mobile: single column. Intrinsic blocks hug their content; fill
           blocks keep the height they were given on the grid. */}
-      <div
-        className="flex flex-col md:hidden"
-        style={{ gap: `${gapPx}px` }}
-      >
+      <div className="flex flex-col md:hidden" style={{ gap: `${gapPx}px` }}>
         {[...visible]
           .sort((a, b) => a.y - b.y || a.x - b.x)
           .map((b) => (

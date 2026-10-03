@@ -1,0 +1,122 @@
+/* Proposed public-site design system, scoped to the mock board under `.mx`.
+ *
+ * Three ideas carry the whole system:
+ *  - Stretched type: one wide display voice, driven by the font's width axis.
+ *  - Hard + round: edges that meet imagery or the viewport are square; things
+ *    you press are pills; floating glass panels are 16px. The "notch" (one
+ *    square corner) marks a panel that belongs to something next to it.
+ *  - Glass only over imagery: blur is used where there is a photo or poster
+ *    behind it to blur, never as flat decoration on black.
+ */
+
+/* In the components layer so Tailwind utilities can override per use. */
+@layer components {
+  .mx {
+    --mx-bg: #000;
+    --mx-raised: #0b0b0b;
+    --mx-text: #fff;
+    --mx-muted: rgb(255 255 255 / 0.62);
+    --mx-faint: rgb(255 255 255 / 0.4);
+    --mx-line: rgb(255 255 255 / 0.12);
+    --mx-line-soft: rgb(255 255 255 / 0.07);
+
+    --mx-r-panel: 16px;
+    --mx-r-chip: 6px;
+
+    /* Set per display face by the board toolbar. */
+    --mx-display-font: var(--font-mx-archivo);
+    --mx-display-stretch: 125%;
+    --mx-display-weight: 800;
+    --mx-body-font: var(--font-mx-archivo);
+
+    background: var(--mx-bg);
+    color: var(--mx-text);
+    font-family: var(--mx-body-font), ui-sans-serif, system-ui, sans-serif;
+    font-stretch: 100%;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .mx ::selection {
+    background: var(--mx-accent);
+    color: var(--mx-accent-ink);
+  }
+
+  .mx :focus-visible {
+    outline: 2px solid var(--mx-accent-text);
+    outline-offset: 3px;
+  }
+
+  .mx {
+    scrollbar-color: rgb(255 255 255 / 0.25) transparent;
+  }
+
+  .mx .mx-display {
+    font-family: var(--mx-display-font), ui-sans-serif, sans-serif;
+    font-stretch: var(--mx-display-stretch);
+    font-weight: var(--mx-display-weight);
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    line-height: 0.92;
+    text-wrap: balance;
+  }
+
+  /* Small stretched caps for nav, buttons, meta. Wide + tracked reads as the
+     same voice as the display face at 11-14px. */
+  .mx .mx-label {
+    font-family:
+      var(--mx-label-font, var(--mx-display-font)), ui-sans-serif, sans-serif;
+    font-stretch: var(--mx-label-stretch, var(--mx-display-stretch));
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1;
+  }
+
+  .mx .mx-num {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Glass over imagery. Border carries the edge, inset highlight carries the
+     light; no outer shadow so panels stay flat on the photo. */
+  .mx .mx-glass {
+    background: rgb(255 255 255 / 0.07);
+    border: 1px solid rgb(255 255 255 / 0.14);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    backdrop-filter: blur(18px) saturate(150%);
+  }
+
+  /* Darker glass for panels that hold dense text over busy imagery. */
+  .mx .mx-glass-dark {
+    background: rgb(8 8 8 / 0.55);
+    border: 1px solid rgb(255 255 255 / 0.12);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
+    -webkit-backdrop-filter: blur(22px) saturate(140%);
+    backdrop-filter: blur(22px) saturate(140%);
+  }
+
+  /* Floating overlays (popups, toasts) sit above content, so they earn depth. */
+  .mx .mx-float {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.1),
+      0 24px 48px -16px rgb(0 0 0 / 0.8);
+  }
+
+  .mx .mx-scrim-bottom {
+    background: linear-gradient(
+      to top,
+      #000 0%,
+      rgb(0 0 0 / 0.7) 35%,
+      transparent 75%
+    );
+  }
+
+  .mx .mx-scrim-left {
+    background: linear-gradient(
+      to right,
+      rgb(0 0 0 / 0.85) 0%,
+      rgb(0 0 0 / 0.35) 55%,
+      transparent 100%
+    );
+  }
+}

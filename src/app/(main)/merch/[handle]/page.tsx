@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { SITE_URL } from "~/lib/seo-constants";
-import { MerchProductDetail } from "./MerchProductDetail";
+import { MerchProduct } from "~/components/site/merch/merch-product";
 
 type MerchProductPageProps = {
   params: Promise<{ handle: string }>;
@@ -23,5 +23,5 @@ export default async function MerchProductPage({
 }: MerchProductPageProps) {
   const { handle } = await params;
 
-  return <MerchProductDetail handle={handle} />;
+  return <MerchProduct handle={handle} />;
 }

@@ -147,10 +147,7 @@ export function EventOverview({
               </div>
               {/* Below the total, not a step in it: GST is already inside every
                   line above, and listing it as a deduction would double-count. */}
-              <Row
-                label="of which GST"
-                value={formatNZD(money.gstCents)}
-              />
+              <Row label="of which GST" value={formatNZD(money.gstCents)} />
             </dl>
           </div>
 

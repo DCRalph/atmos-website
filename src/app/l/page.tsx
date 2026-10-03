@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Ticket, Globe, ArrowRight, ExternalLink } from "lucide-react";
 import Image from "next/image";
 import { cn } from "~/lib/utils";
-import { FaFacebook, FaSoundcloud, FaTwitter } from "react-icons/fa6";
+import { FaFacebook, FaSoundcloud } from "react-icons/fa6";
 import { FaSpotify } from "react-icons/fa6";
 import { FaYoutube } from "react-icons/fa6";
 import { FaInstagram } from "react-icons/fa6";
@@ -87,13 +87,6 @@ const smallLinks: SocialLink[] = [
     handle: "@atmosmedia",
     url: links.facebook,
     icon: FaFacebook,
-    color: "#E4405F",
-  },
-  {
-    platform: "Twitter",
-    handle: "@atmosmedia",
-    url: links.twitter,
-    icon: FaTwitter,
     color: "#E4405F",
   },
 ];

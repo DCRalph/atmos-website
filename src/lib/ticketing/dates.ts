@@ -34,6 +34,17 @@ export function formatEventDate(
   });
 }
 
+/** The pieces a calendar-style listing lays out separately: `14`, `Sat`, `Mar`, `March`, `2026`. */
+export function eventDateParts(date: Date, timeZone = DEFAULT_EVENT_TIMEZONE) {
+  return {
+    day: fmt(date, timeZone, { day: "2-digit" }),
+    weekday: fmt(date, timeZone, { weekday: "short" }),
+    shortMonth: fmt(date, timeZone, { month: "short" }),
+    month: fmt(date, timeZone, { month: "long" }),
+    year: fmt(date, timeZone, { year: "numeric" }),
+  };
+}
+
 /** `Sat 14 March 2026` */
 export function formatEventDateLong(
   date: Date,

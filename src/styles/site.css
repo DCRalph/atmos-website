@@ -1,0 +1,216 @@
+/* Public site design system, scoped to `.site` so the admin is untouched.
+ *
+ *  - Type: Orbitron for large section headings (`t-heading`), echoing the
+ *    logo; stretched Anybody (on its width axis) for other display text and
+ *    labels. Body copy stays normal width.
+ *  - Hard + round: square where things meet imagery or the viewport edge,
+ *    pills for anything pressable, 16px for floating glass panels. The notch
+ *    (one square corner) marks a panel that belongs to what's next to it.
+ *  - Glass only over imagery. Below a hero everything sits on true black.
+ *
+ * Utilities: `t-heading`, `t-display`, `t-label`, `glass`, `glass-dark`, `glass-float`,
+ * `scrim-bottom`, `scrim-left`. Numbers use Tailwind's `tabular-nums`.
+ * Colours: `--site-accent` (fills), `--site-accent-ink` (text on a fill),
+ * `--site-accent-text` (accent as text on black).
+ */
+
+/* In the components layer so Tailwind utilities can override per use. */
+@layer components {
+  .site {
+    --site-accent: #c6ff33;
+    --site-accent-ink: #000;
+    --site-accent-text: #c6ff33;
+    --site-danger: #ff6b6b;
+    --site-danger-text: #ff8a8a;
+    --site-warn: #ffcc4d;
+    --site-raised: #0b0b0b;
+    --site-r-panel: 16px;
+    --site-r-chip: 6px;
+
+    background: #000;
+    color: #fff;
+    font-family: var(--font-site-body), ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    scrollbar-color: rgb(255 255 255 / 0.25) transparent;
+  }
+
+  .site ::selection {
+    background: var(--site-accent);
+    color: var(--site-accent-ink);
+  }
+
+  .site :focus-visible {
+    outline: 2px solid var(--site-accent-text);
+    outline-offset: 3px;
+  }
+
+  /* Large section and page headings only: Orbitron, the closest match to
+     the logo's lettering. Item names (gigs, products, list rows) stay on
+     `t-display`. */
+  .site .t-heading {
+    font-family:
+      var(--font-site-display-ext), var(--font-site-heading), ui-sans-serif,
+      sans-serif;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0;
+    line-height: 0.92;
+    text-wrap: balance;
+  }
+
+  /* Display type for everything else big: gig and product names, rows, prices. */
+  .site .t-display {
+    font-family:
+      var(--font-site-display-ext), var(--font-site-display), ui-sans-serif,
+      sans-serif;
+    font-stretch: 135%;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    line-height: 0.92;
+    text-wrap: balance;
+  }
+
+  /* Small stretched caps for nav, buttons and meta. */
+  .site .t-label {
+    font-family:
+      var(--font-site-display-ext), var(--font-site-display), ui-sans-serif,
+      sans-serif;
+    font-stretch: 135%;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1;
+  }
+
+  /* Glass over imagery: border carries the edge, inset highlight the light. */
+  .site .glass {
+    background: rgb(255 255 255 / 0.07);
+    border: 1px solid rgb(255 255 255 / 0.14);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    backdrop-filter: blur(18px) saturate(150%);
+  }
+
+  /* Darker glass for panels holding real text over busy imagery. */
+  .site .glass-dark {
+    background: rgb(8 8 8 / 0.55);
+    border: 1px solid rgb(255 255 255 / 0.12);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
+    -webkit-backdrop-filter: blur(22px) saturate(140%);
+    backdrop-filter: blur(22px) saturate(140%);
+  }
+
+  /* Overlays above content earn depth. */
+  .site .glass-float {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.1),
+      0 24px 48px -16px rgb(0 0 0 / 0.8);
+  }
+
+  /* Opacity-only fades, for layers near a backdrop-filter (tw-animate's
+     keyframes also set filter, which would switch the blur off). */
+  .site .site-fade-in {
+    animation: site-fade 480ms ease-out both;
+  }
+
+  .site .site-fade-out {
+    animation: site-fade-out 480ms ease-in both;
+  }
+
+  /* Menu veil: the blur radius and tint ramp together, so the page drifts
+     out of focus instead of popping behind a sheet. 480ms both ways. Exits
+     have their own keyframes: swapping to the same name with `reverse`
+     wouldn't restart the animation. */
+  .site .site-veil-in {
+    animation: site-veil 480ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  .site .site-veil-out {
+    animation: site-veil-out 480ms cubic-bezier(0.4, 0, 0.8, 0.3) both;
+  }
+
+  /* SiteSelect: the list unrolls downward from under its trigger. */
+  .site .site-select-drop[data-state="open"] {
+    animation: site-select-unroll 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .site .site-select-drop [role="option"] {
+    animation: site-select-item 260ms ease-out both;
+  }
+
+  .site .scrim-bottom {
+    background: linear-gradient(
+      to top,
+      #000 0%,
+      rgb(0 0 0 / 0.7) 35%,
+      transparent 75%
+    );
+  }
+
+  .site .scrim-left {
+    background: linear-gradient(
+      to right,
+      rgb(0 0 0 / 0.85) 0%,
+      rgb(0 0 0 / 0.35) 55%,
+      transparent 100%
+    );
+  }
+}
+
+@keyframes site-select-unroll {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes site-select-item {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes site-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes site-veil {
+  from {
+    background-color: rgb(0 0 0 / 0);
+    -webkit-backdrop-filter: blur(0) saturate(1);
+    backdrop-filter: blur(0) saturate(1);
+  }
+  to {
+    background-color: rgb(0 0 0 / 0.45);
+    -webkit-backdrop-filter: blur(40px) saturate(1.5);
+    backdrop-filter: blur(40px) saturate(1.5);
+  }
+}
+
+@keyframes site-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes site-veil-out {
+  from {
+    background-color: rgb(0 0 0 / 0.45);
+    -webkit-backdrop-filter: blur(40px) saturate(1.5);
+    backdrop-filter: blur(40px) saturate(1.5);
+  }
+  to {
+    background-color: rgb(0 0 0 / 0);
+    -webkit-backdrop-filter: blur(0) saturate(1);
+    backdrop-filter: blur(0) saturate(1);
+  }
+}

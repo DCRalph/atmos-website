@@ -1034,6 +1034,8 @@ model Rental {
   startDate             DateTime
   endDate               DateTime
   status                RentalStatus      @default(PENDING)
+  /// One-time secret behind the approve/deny links in the staff email. Cleared once a decision is made.
+  decisionToken         String?           @unique
   baseDailyPrice        Float             @default(0)
   discountDailyAmount   Float             @default(0)
   discountedDailyPrice  Float             @default(0)

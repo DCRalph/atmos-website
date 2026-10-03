@@ -56,7 +56,7 @@ export function SpacesSection() {
 
           <motion.p className="text-muted-foreground mb-6 text-lg leading-relaxed">
             {
-              "We work with existing venues but we also use spaces you wouldn\u2019t expect. Basements, warehouses, places around Poneke that most people walk past without a second look."
+              "We work with existing venues but we also use spaces you wouldn\u2019t expect. Basements, warehouses, places most people walk past without a second look."
             }
           </motion.p>
 
