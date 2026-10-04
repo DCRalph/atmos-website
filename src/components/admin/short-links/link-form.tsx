@@ -34,8 +34,9 @@ type ShortLink = RouterOutputs["shortLinks"]["byId"];
  * Create or edit a short link. The same rules the router enforces are run here
  * as you type, so a bad slug is caught before it reaches a poster proof.
  *
- * A link goes on one domain or on all of them. Only links that answer on the
- * main site are kept off its pages' paths; on an extra domain any path goes.
+ * A link goes on one domain or on all of them, picked from the domain prefix
+ * in front of the path. Only links that answer on the main site are kept off
+ * its pages' paths; on an extra domain any path goes.
  */
 export function LinkForm({
   link,
@@ -87,43 +88,36 @@ export function LinkForm({
         if (valid) save();
       }}
     >
-      <div className="space-y-1.5">
-        <Label htmlFor="link-domain">Domain</Label>
-        <Select value={domain} onValueChange={setDomain}>
-          <SelectTrigger id="link-domain">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_DOMAINS}>All domains</SelectItem>
-            <SelectItem value={SITE_LINK_DOMAIN}>{SITE_LINK_DOMAIN}</SelectItem>
-            {domains.data?.extra.map((extra) => (
-              <SelectItem key={extra.id} value={extra.host}>
-                {extra.host}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <p className="text-muted-foreground text-xs">
-          {domain === ALL_DOMAINS
-            ? "Answers on every domain, the main site included."
-            : servesMainSite(domain)
-              ? "Can't use a path the main site already has a page on."
-              : "Any path works here, even ones the main site uses."}
-        </p>
-      </div>
-
-      <div className="space-y-1.5">
+      <div className="space-y-1.5 md:col-span-2">
         <Label htmlFor="link-slug">Path</Label>
         <div className="flex items-center">
-          <span className="text-muted-foreground bg-muted flex h-9 items-center rounded-l-md border border-r-0 px-3 font-mono text-sm">
-            {domain === ALL_DOMAINS ? "any domain" : domain}/
-          </span>
+          <Select value={domain} onValueChange={setDomain}>
+            <SelectTrigger
+              aria-label="Domain"
+              className="bg-muted dark:bg-muted hover:text-foreground dark:hover:bg-muted/70 text-muted-foreground shrink-0 rounded-r-none border-r-0 font-mono"
+            >
+              <SelectValue>
+                {domain === ALL_DOMAINS ? "any domain" : domain}/
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent align="start">
+              <SelectItem value={ALL_DOMAINS}>All domains</SelectItem>
+              <SelectItem value={SITE_LINK_DOMAIN}>
+                {SITE_LINK_DOMAIN}
+              </SelectItem>
+              {domains.data?.extra.map((extra) => (
+                <SelectItem key={extra.id} value={extra.host}>
+                  {extra.host}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Input
             id="link-slug"
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             onBlur={() => setSlug(normalised)}
-            placeholder="vol3"
+            placeholder="my-link"
             className={cn(
               "rounded-l-none font-mono",
               slugError && "border-destructive",
@@ -131,7 +125,17 @@ export function LinkForm({
             autoComplete="off"
           />
         </div>
-        {slugError && <p className="text-destructive text-xs">{slugError}</p>}
+        {slugError ? (
+          <p className="text-destructive text-xs">{slugError}</p>
+        ) : (
+          <p className="text-muted-foreground text-xs">
+            {domain === ALL_DOMAINS
+              ? "Answers on every domain, the main site included, so it can't use a path the main site has a page on."
+              : servesMainSite(domain)
+                ? "Can't use a path the main site already has a page on."
+                : "Any path works here, even ones the main site uses."}
+          </p>
+        )}
       </div>
 
       <div className="space-y-1.5 md:col-span-2">
@@ -140,7 +144,7 @@ export function LinkForm({
           id="link-destination"
           value={destination}
           onChange={(e) => setDestination(e.target.value)}
-          placeholder="https://www.moshtix.co.nz/v2/event/… or /events/vol-3"
+          placeholder="https://example.com/tickets or /events"
           className={destinationError ? "border-destructive" : ""}
           autoComplete="off"
         />
@@ -159,7 +163,7 @@ export function LinkForm({
           id="link-label"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          placeholder="Vol. 3 tickets, for the poster run"
+          placeholder="What this link is for"
         />
         <p className="text-muted-foreground text-xs">
           Only shown in the admin.
