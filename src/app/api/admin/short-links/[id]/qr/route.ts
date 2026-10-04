@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 
-import { shortLinkUrl } from "~/lib/short-links/domains";
+import { linkHosts, shortLinkUrl } from "~/lib/short-links/domains";
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import { renderQrPng, renderQrSvg } from "~/server/ticketing/qr-image";
@@ -21,7 +21,8 @@ async function isAdmin() {
 /**
  * A short link's QR code as a download: `?format=svg` for print, `?format=png`
  * for everything else. `?code=` picks one of its named QR codes; without it the
- * code is the plain link.
+ * code is the plain link. `?host=` picks which of the link's domains it
+ * encodes, for a link on every domain; without it, the first.
  *
  * Encodes the link's own domain, never the origin this was requested from, so
  * a code downloaded from localhost still works on a poster.
@@ -37,6 +38,7 @@ export async function GET(
   const query = new URL(request.url).searchParams;
   const png = query.get("format") === "png";
   const code = query.get("code");
+  const requestedHost = query.get("host");
 
   const link = await db.shortLink.findUnique({
     where: { id },
@@ -51,11 +53,28 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
 
-  const url = shortLinkUrl(link.domain, link.slug, code);
+  const extra = await db.shortLinkDomain.findMany({
+    orderBy: { createdAt: "asc" },
+    select: { host: true },
+  });
+  const hosts = linkHosts(
+    link.domain,
+    extra.map((row) => row.host),
+  );
+  const host = requestedHost ?? hosts[0];
+  if (!host || !hosts.includes(host)) {
+    return new Response("Not found", { status: 404 });
+  }
+
+  const url = shortLinkUrl(host, link.slug, code);
   const suffix = qr
     ? `-${qr.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`
     : "";
-  const filename = `${link.slug}${suffix}`.replace(/-+$/, "");
+  // The host goes in the name too, so two domains' codes for one link are
+  // never mistaken for each other on a print proof.
+  const filename = `${host}-${link.slug}${suffix}`
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-+$/, "");
 
   const common = {
     "content-disposition": `attachment; filename="${filename}.${png ? "png" : "svg"}"`,

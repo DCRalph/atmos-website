@@ -8,7 +8,11 @@ import { after } from "next/server";
 import { env } from "~/env";
 import { SITE_URL } from "~/lib/seo-constants";
 import { readClient, resolveSource } from "~/lib/short-links/clicks";
-import { LINK_DOMAINS, type LinkDomain } from "~/lib/short-links/domains";
+import {
+  ALL_DOMAINS,
+  SITE_LINK_DOMAIN,
+  normaliseHost,
+} from "~/lib/short-links/domains";
 import { normaliseSlug } from "~/lib/short-links/rules";
 import { db } from "~/server/db";
 
@@ -78,7 +82,7 @@ function visitorHash(address: string | null, userAgent: string) {
  * failures: a link that breaks because the stats table is unhappy would be the
  * worst trade available.
  */
-async function recordClick(linkId: string, click: ClickContext) {
+async function recordClick(linkId: string, host: string, click: ClickContext) {
   try {
     // A named QR code beats every other source. An unknown or deleted code
     // is just a visit.
@@ -96,6 +100,7 @@ async function recordClick(linkId: string, click: ClickContext) {
         source: qr?.name ?? resolveSource(click.tag, click.referrer),
         referrer: click.referrer?.slice(0, 512) ?? null,
         country: click.country,
+        domain: host,
         visitor: visitorHash(click.address, click.userAgent),
       },
     });
@@ -105,35 +110,75 @@ async function recordClick(linkId: string, click: ClickContext) {
 }
 
 /**
- * Answer a short link request: redirect to its destination, or the site's 404.
- *
- * Shared by both ways in: `/[slug]` for links on the site domain, and
- * `/go/[domain]/[slug]` for dedicated short domains, which `src/proxy.ts`
- * rewrites into.
+ * The live link for this slug on this host. A link saved for the host itself
+ * wins over one saved for every domain; the router keeps both from existing,
+ * but the order here is the one that would make sense if they did.
  */
-export async function serveShortLink(
-  domain: LinkDomain,
-  rawSlug: string,
+async function findLink(host: string, rawSlug: string) {
+  const links = await db.shortLink.findMany({
+    where: {
+      slug: normaliseSlug(rawSlug),
+      domain: { in: [host, ALL_DOMAINS] },
+      active: true,
+    },
+    select: { id: true, domain: true, destination: true },
+  });
+  return links.find((link) => link.domain === host) ?? links[0] ?? null;
+}
+
+/** Count the click once the response has gone, then redirect. */
+async function follow(
+  link: { id: string; destination: string },
+  host: string,
   query: SearchParams,
 ): Promise<never> {
-  const link = await db.shortLink.findUnique({
-    where: { domain_slug: { domain, slug: normaliseSlug(rawSlug) } },
-    select: { id: true, destination: true, active: true },
-  });
-  if (!link?.active) notFound();
-
   const click = await readClickContext(query);
-  after(() => recordClick(link.id, click));
+  after(() => recordClick(link.id, host, click));
 
-  // A path means a page on the main site. On a dedicated domain that page does
-  // not exist, so it is made absolute.
+  // A path means a page on the main site. Served from another domain that
+  // page does not exist there, so it is made absolute.
   const destination =
-    link.destination.startsWith("/") &&
-    LINK_DOMAINS[domain].kind === "dedicated"
+    link.destination.startsWith("/") && host !== SITE_LINK_DOMAIN
       ? new URL(link.destination, SITE_URL).toString()
       : link.destination;
 
   // Temporary, always: where a short link goes is meant to change, and a
   // browser that cached a permanent redirect would never ask again.
   redirect(destination);
+}
+
+/**
+ * A short link on the main site, from `/[slug]`. No link is the site's own
+ * 404, the same as any other mistyped path.
+ */
+export async function serveSiteLink(
+  rawSlug: string,
+  query: SearchParams,
+): Promise<never> {
+  const link = await findLink(SITE_LINK_DOMAIN, rawSlug);
+  if (!link) notFound();
+  return follow(link, SITE_LINK_DOMAIN, query);
+}
+
+/**
+ * A short link on an extra domain, from `/go/[host]/[slug]`, which
+ * `src/proxy.ts` rewrites every single-segment path on those domains into.
+ *
+ * Anything that is not a live link here, including a host nobody has added in
+ * the admin, goes to the main site's home page rather than a 404: these
+ * domains only exist to be links.
+ */
+export async function serveDomainLink(
+  rawHost: string,
+  rawSlug: string,
+  query: SearchParams,
+): Promise<never> {
+  const host = normaliseHost(rawHost);
+  const known = await db.shortLinkDomain.findUnique({
+    where: { host },
+    select: { id: true },
+  });
+  const link = known ? await findLink(host, rawSlug) : null;
+  if (!link) redirect(new URL("/", SITE_URL).toString());
+  return follow(link, host, query);
 }

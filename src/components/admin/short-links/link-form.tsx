@@ -18,10 +18,9 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import {
-  LINK_DOMAIN_VALUES,
+  ALL_DOMAINS,
   SITE_LINK_DOMAIN,
-  isLinkDomain,
-  type LinkDomain,
+  servesMainSite,
 } from "~/lib/short-links/domains";
 import {
   destinationProblem,
@@ -35,7 +34,8 @@ type ShortLink = RouterOutputs["shortLinks"]["byId"];
  * Create or edit a short link. The same rules the router enforces are run here
  * as you type, so a bad slug is caught before it reaches a poster proof.
  *
- * The domain picker only appears once there is more than one domain to pick.
+ * A link goes on one domain or on all of them. Only links that answer on the
+ * main site are kept off its pages' paths; on an extra domain any path goes.
  */
 export function LinkForm({
   link,
@@ -48,10 +48,9 @@ export function LinkForm({
   onCancel?: () => void;
 }) {
   const utils = api.useUtils();
+  const domains = api.shortLinks.domains.useQuery();
 
-  const [domain, setDomain] = useState<LinkDomain>(
-    link && isLinkDomain(link.domain) ? link.domain : SITE_LINK_DOMAIN,
-  );
+  const [domain, setDomain] = useState(link?.domain ?? SITE_LINK_DOMAIN);
   const [slug, setSlug] = useState(link?.slug ?? "");
   const [destination, setDestination] = useState(link?.destination ?? "");
   const [label, setLabel] = useState(link?.label ?? "");
@@ -88,34 +87,36 @@ export function LinkForm({
         if (valid) save();
       }}
     >
-      {LINK_DOMAIN_VALUES.length > 1 && (
-        <div className="space-y-1.5">
-          <Label>Domain</Label>
-          <Select
-            value={domain}
-            onValueChange={(value) => {
-              if (isLinkDomain(value)) setDomain(value);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {LINK_DOMAIN_VALUES.map((value) => (
-                <SelectItem key={value} value={value}>
-                  {value}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
+      <div className="space-y-1.5">
+        <Label htmlFor="link-domain">Domain</Label>
+        <Select value={domain} onValueChange={setDomain}>
+          <SelectTrigger id="link-domain">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_DOMAINS}>All domains</SelectItem>
+            <SelectItem value={SITE_LINK_DOMAIN}>{SITE_LINK_DOMAIN}</SelectItem>
+            {domains.data?.extra.map((extra) => (
+              <SelectItem key={extra.id} value={extra.host}>
+                {extra.host}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-muted-foreground text-xs">
+          {domain === ALL_DOMAINS
+            ? "Answers on every domain, the main site included."
+            : servesMainSite(domain)
+              ? "Can't use a path the main site already has a page on."
+              : "Any path works here, even ones the main site uses."}
+        </p>
+      </div>
 
       <div className="space-y-1.5">
         <Label htmlFor="link-slug">Path</Label>
         <div className="flex items-center">
           <span className="text-muted-foreground bg-muted flex h-9 items-center rounded-l-md border border-r-0 px-3 font-mono text-sm">
-            {domain}/
+            {domain === ALL_DOMAINS ? "any domain" : domain}/
           </span>
           <Input
             id="link-slug"

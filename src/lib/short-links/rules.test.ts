@@ -49,8 +49,14 @@ describe("normaliseSlug", () => {
 });
 
 describe("slugProblem", () => {
-  test("refuses a page's path on the site domain", () => {
+  test("refuses a page's path anywhere the main site answers", () => {
     assert.match(slugProblem("events", "atmosmedia.co.nz") ?? "", /already/);
+    assert.match(slugProblem("admin", "*") ?? "", /already/);
+  });
+
+  test("allows a page's path on an extra domain", () => {
+    assert.equal(slugProblem("admin", "atms.nz"), null);
+    assert.equal(slugProblem("about", "atms.nz"), null);
   });
 
   test("refuses anything but lowercase words and dashes", () => {

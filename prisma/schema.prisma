@@ -1193,6 +1193,8 @@ enum ActivityType {
   SHORT_LINK_CREATED
   SHORT_LINK_UPDATED
   SHORT_LINK_DELETED
+  SHORT_LINK_DOMAIN_ADDED
+  SHORT_LINK_DOMAIN_REMOVED
   DOOR_STAFF_ASSIGNED
   DOOR_STAFF_REMOVED
   BOX_OFFICE_SALE
@@ -2170,16 +2172,17 @@ model IdCheck {
   @@map("id_check")
 }
 
-/// A short link: one path on one of our domains that sends people somewhere
-/// else, so a flyer, a story sticker and a bio link can all point at
-/// `atmosmedia.co.nz/vol3` while the ticketing agency's URL changes underneath.
+/// A short link: one path that sends people somewhere else, so a flyer, a
+/// story sticker and a bio link can all point at `atmosmedia.co.nz/vol3` while
+/// the ticketing agency's URL changes underneath.
 ///
-/// Slugs are unique per domain, not globally: the same `/vol3` can mean
-/// different things on the site and on a dedicated short domain. Which domains
-/// exist is code, not data — see `~/lib/short-links/domains`.
+/// A link lives on one domain, or on every domain at once (`domain` = "*").
+/// Slugs are unique per domain, and a slug on "*" is unique across all of
+/// them — see the `shortLinks` router.
 model ShortLink {
   id          String  @id @default(cuid())
-  /// A key of `LINK_DOMAINS`: "atmosmedia.co.nz".
+  /// A host ("atmosmedia.co.nz", or a `ShortLinkDomain`), or "*" for every
+  /// domain, the main site included.
   domain      String
   /// Lowercase, no leading slash: "wellington-tickets".
   slug        String
@@ -2247,6 +2250,8 @@ model ShortLinkClick {
   referrer String?
   /// Two-letter country, from the platform in front of the app.
   country  String?
+  /// The host the click arrived on. Tells the domains of a "*" link apart.
+  domain   String?
   /// Salted hash of address + user agent. Not reversible.
   visitor  String
 
@@ -2254,4 +2259,21 @@ model ShortLinkClick {
 
   @@index([linkId, createdAt])
   @@map("short_link_click")
+}
+
+/// An extra domain short links can live on, besides the main site.
+///
+/// Every path on one of these is a link or nothing: a path with no live link
+/// redirects to the main site's home page, even where the main site has a page
+/// at that path. See `src/proxy.ts`. The domain only receives traffic once its
+/// DNS points at Vercel and it has been added to the Vercel project.
+model ShortLinkDomain {
+  id   String @id @default(cuid())
+  /// Lowercase, no scheme, port or `www.`: "atms.nz".
+  host String @unique
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@map("short_link_domain")
 }
