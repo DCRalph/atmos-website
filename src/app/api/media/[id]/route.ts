@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "~/server/db";
-import { getObjectStream } from "~/server/uploads/s3";
+import { getObjectStream } from "~/server/uploads/r2";
 import { FileUploadStatus } from "~Prisma/client";
 
 // 1 year in seconds

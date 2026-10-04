@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
-import { getObjectStream } from "~/server/uploads/s3";
+import { getObjectStream } from "~/server/uploads/r2";
 import { userHasPermission } from "~/server/utils/permissions";
 
 /**

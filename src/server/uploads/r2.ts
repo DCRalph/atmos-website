@@ -8,54 +8,58 @@ import {
   CopyObjectCommand,
   DeleteObjectCommand,
   DeleteObjectsCommand,
-  type ObjectCannedACL,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "~/env";
 
 /**
- * Low-level S3 object operations. No database, no validation, no policy — the
- * only module in the app that talks to the bucket directly.
+ * Low-level Cloudflare R2 object operations, over R2's S3-compatible API. No
+ * database, no validation, no policy — the only module in the app that talks
+ * to the bucket directly.
+ *
+ * R2 has no per-object ACLs: the bucket is reachable through its public domain
+ * (`R2_PUBLIC_URL`) or not at all. Objects that must stay private, like ID
+ * portraits, rely on unguessable keys and are only ever served through routes
+ * that check access.
  */
 
 let cachedClient: S3Client | null = null;
 
 const client = () => {
   cachedClient ??= new S3Client({
-    region: env.AWS_REGION,
-    endpoint: env.AWS_S3_ENDPOINT,
-    forcePathStyle: Boolean(env.AWS_S3_ENDPOINT),
+    region: "auto",
+    endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
     credentials: {
-      accessKeyId: env.AWS_ACCESS_KEY_ID,
-      secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
+      accessKeyId: env.R2_ACCESS_KEY_ID,
+      secretAccessKey: env.R2_SECRET_ACCESS_KEY,
     },
+    // The SDK otherwise signs a CRC32 checksum into presigned URLs, which the
+    // browser's PUT can never match, and R2 does not support every checksum
+    // the SDK would send.
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
   });
   return cachedClient;
 };
 
-const Bucket = () => env.AWS_S3_BUCKET;
+const Bucket = () => env.R2_BUCKET;
 
 /** How long a presigned upload URL stays valid. */
 export const PRESIGN_EXPIRY_SECONDS = 15 * 60;
 
-/** Public URL for a stored object, via the CDN base when one is configured. */
-export const buildPublicUrl = (key: string): string => {
-  if (env.AWS_S3_PUBLIC_URL_BASE) {
-    return `${env.AWS_S3_PUBLIC_URL_BASE.replace(/\/$/, "")}/${key}`;
-  }
-  return `https://${env.AWS_S3_BUCKET}.s3.${env.AWS_REGION}.amazonaws.com/${key}`;
-};
+/** Public URL for a stored object, on the bucket's public domain. */
+export const buildPublicUrl = (key: string): string =>
+  `${env.R2_PUBLIC_URL.replace(/\/$/, "")}/${key}`;
 
 /**
- * Presigned `PUT` so the browser can send bytes straight to S3. The signature
+ * Presigned `PUT` so the browser can send bytes straight to R2. The signature
  * covers the content type, so a client cannot upload a different type than the
  * one the server approved.
  *
- * Neither Content-Length nor the ACL is signed. Signing them would force the
- * browser to send matching `content-length`/`x-amz-acl` headers, which drags
- * extra entries into the bucket's CORS `AllowedHeaders` for no benefit: the
- * real size is verified with `headObject` before the file is accepted, and the
- * final ACL is applied server-side when the object is moved out of staging.
+ * Content-Length is not signed. Signing it would force the browser to send a
+ * matching header, which drags an extra entry into the bucket's CORS
+ * `AllowedHeaders` for no benefit: the real size is verified with `headObject`
+ * before the file is accepted.
  */
 export const presignPut = async (opts: {
   key: string;
@@ -98,7 +102,6 @@ export const putBuffer = async (opts: {
   key: string;
   body: Buffer;
   contentType: string;
-  acl: ObjectCannedACL;
   cacheControl?: string;
 }): Promise<void> => {
   await client().send(
@@ -107,7 +110,6 @@ export const putBuffer = async (opts: {
       Key: opts.key,
       Body: opts.body,
       ContentType: opts.contentType,
-      ACL: opts.acl,
       CacheControl: opts.cacheControl,
     }),
   );
@@ -118,7 +120,6 @@ export const copyObject = async (opts: {
   fromKey: string;
   toKey: string;
   contentType: string;
-  acl: ObjectCannedACL;
 }): Promise<void> => {
   await client().send(
     new CopyObjectCommand({
@@ -127,7 +128,6 @@ export const copyObject = async (opts: {
       Key: opts.toKey,
       ContentType: opts.contentType,
       MetadataDirective: "REPLACE",
-      ACL: opts.acl,
     }),
   );
 };
@@ -136,7 +136,7 @@ export const deleteObject = async (key: string): Promise<void> => {
   await client().send(new DeleteObjectCommand({ Bucket: Bucket(), Key: key }));
 };
 
-/** Batch delete, chunked to S3's 1000-key limit. */
+/** Batch delete, chunked to the API's 1000-key limit. */
 export const deleteObjects = async (keys: string[]): Promise<void> => {
   for (let i = 0; i < keys.length; i += 1000) {
     const chunk = keys.slice(i, i + 1000);

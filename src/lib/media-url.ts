@@ -16,7 +16,7 @@ const getAppUrl = (): string => {
 
 /**
  * Build a media URL using the app's media API endpoint.
- * This route serves files from S3 with 1-year cache headers.
+ * This route serves files from R2 with 1-year cache headers.
  *
  * @param fileUploadId - The file_upload record ID
  * @returns Full URL to the media endpoint (e.g., https://example.com/api/media/abc123)
@@ -38,7 +38,7 @@ export const buildGigImageUrl = (fileUploadId: string): string => {
 
 /**
  * Get the display URL for a media item.
- * Prefers the internal media API URL for caching, falls back to direct S3 URL.
+ * Prefers the internal media API URL for caching, falls back to direct R2 URL.
  *
  * @param media - Object with optional fileUploadId and url fields
  * @returns URL to display the media

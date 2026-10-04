@@ -1554,7 +1554,7 @@ export const gigsRouter = createTRPCRouter({
     }),
 
   /**
-   * Delete media (and optionally the S3 file)
+   * Delete media (and optionally the R2 file)
    */
   deleteMedia: adminProcedure
     .input(

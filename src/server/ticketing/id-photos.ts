@@ -2,7 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import { deleteObject, putBuffer } from "~/server/uploads/s3";
+import { deleteObject, putBuffer } from "~/server/uploads/r2";
 
 /**
  * Where the portrait off an ID card lives.
@@ -65,7 +65,6 @@ export async function storePortrait({
       key,
       body,
       contentType: "image/jpeg",
-      acl: "private",
       // Belt and braces alongside the route's own headers: if the bucket is
       // ever fronted by a CDN, the object itself says not to keep a copy.
       cacheControl: "private, no-store",

@@ -228,7 +228,7 @@ export const filesRouter = createTRPCRouter({
     }),
 
   /**
-   * Soft delete a file (mark as deleted but keep in S3)
+   * Soft delete a file (mark as deleted but keep in R2)
    */
   softDelete: adminProcedure
     .input(z.object({ id: z.string() }))
@@ -237,7 +237,7 @@ export const filesRouter = createTRPCRouter({
     }),
 
   /**
-   * Permanently delete a file from S3 and database
+   * Permanently delete a file from R2 and database
    */
   delete: adminProcedure
     .input(z.object({ id: z.string() }))

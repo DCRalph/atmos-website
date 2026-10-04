@@ -24,7 +24,7 @@ const presetNames = Object.keys(uploadPresets) as [
 
 /**
  * Control plane for uploads. The bytes never pass through here — they go
- * straight from the browser to S3 via the presigned URL handed out by `start`.
+ * straight from the browser to R2 via the presigned URL handed out by `start`.
  */
 export const uploadsRouter = createTRPCRouter({
   /**

@@ -89,10 +89,8 @@ export type UploadPreset<TContext = Record<string, string>> = {
   for: string;
   /** Value written to `file_upload.forId`, derived from the upload context. */
   forId: (context: TContext) => string;
-  /** S3 key prefix (no leading or trailing slash), derived from the context. */
+  /** Object key prefix (no leading or trailing slash), derived from the context. */
   keyPrefix: (context: TContext) => string;
-  /** Object ACL. Files served through `/api/media/[id]` can stay private. */
-  acl: "private" | "public-read";
   /** Image processing rules. Omit to store images byte-for-byte. */
   image?: ImageProcessing;
 };
