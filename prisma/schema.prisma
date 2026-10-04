@@ -2252,6 +2252,9 @@ model ShortLinkClick {
   country  String?
   /// The host the click arrived on. Tells the domains of a "*" link apart.
   domain   String?
+  /// The address as visited, host and path: "example.com/tix". Kept because a
+  /// link's slug can be edited later, and the poster still says the old one.
+  url      String?
   /// Salted hash of address + user agent. Not reversible.
   visitor  String
 
