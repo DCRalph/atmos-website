@@ -4,7 +4,13 @@ import { z } from "zod";
 import { ActivityType } from "~Prisma/client";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { newQrCode } from "~/lib/short-links/clicks";
-import { LINK_DOMAIN_VALUES, shortLinkUrl } from "~/lib/short-links/domains";
+import {
+  ALL_DOMAINS,
+  SITE_LINK_DOMAIN,
+  hostProblem,
+  linkHosts,
+  normaliseHost,
+} from "~/lib/short-links/domains";
 import {
   destinationProblem,
   normaliseSlug,
@@ -23,7 +29,8 @@ import { db } from "~/server/db";
  */
 
 const linkInputSchema = z.object({
-  domain: z.enum(LINK_DOMAIN_VALUES),
+  /** A host, or `ALL_DOMAINS`. Checked against the domain list on save. */
+  domain: z.string().max(253),
   slug: z.string().max(200),
   destination: z.string().max(2000),
   label: z.string().max(120),
@@ -32,8 +39,28 @@ const linkInputSchema = z.object({
 
 type LinkInput = z.infer<typeof linkInputSchema>;
 
+/** The extra domains' hosts, oldest first, the order every list shows them in. */
+async function extraHosts(): Promise<string[]> {
+  const rows = await db.shortLinkDomain.findMany({
+    orderBy: { createdAt: "asc" },
+    select: { host: true },
+  });
+  return rows.map((row) => row.host);
+}
+
 /** The input, normalised and checked, or a BAD_REQUEST naming what's wrong. */
-function readLinkInput(input: LinkInput) {
+async function readLinkInput(input: LinkInput) {
+  const known =
+    input.domain === ALL_DOMAINS ||
+    input.domain === SITE_LINK_DOMAIN ||
+    (await extraHosts()).includes(input.domain);
+  if (!known) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `${input.domain} isn't one of the link domains.`,
+    });
+  }
+
   const slug = normaliseSlug(input.slug);
   const problem =
     slugProblem(slug, input.domain) ?? destinationProblem(input.destination);
@@ -48,19 +75,33 @@ function readLinkInput(input: LinkInput) {
   };
 }
 
+/**
+ * Refuse a slug some other link already answers on. A link on every domain
+ * clashes with that slug on any domain, and the other way round, so a request
+ * never has two links to choose between.
+ */
 async function assertSlugFree(
   domain: string,
   slug: string,
   excludingId?: string,
 ) {
-  const existing = await db.shortLink.findUnique({
-    where: { domain_slug: { domain, slug } },
-    select: { id: true },
+  const clash = await db.shortLink.findFirst({
+    where: {
+      slug,
+      id: excludingId ? { not: excludingId } : undefined,
+      ...(domain === ALL_DOMAINS
+        ? {}
+        : { domain: { in: [domain, ALL_DOMAINS] } }),
+    },
+    select: { domain: true },
   });
-  if (existing && existing.id !== excludingId) {
+  if (clash) {
     throw new TRPCError({
       code: "CONFLICT",
-      message: `${domain}/${slug} is already a link.`,
+      message:
+        clash.domain === ALL_DOMAINS
+          ? `/${slug} is already a link on every domain.`
+          : `${clash.domain}/${slug} is already a link.`,
     });
   }
 }
@@ -82,11 +123,11 @@ function recentNzDays(count: number): string[] {
 type Slice = { label: string; n: number };
 
 /** The columns a link's traffic is broken down by. */
-type Dimension = "source" | "device" | "browser" | "os";
+type Dimension = "source" | "domain" | "device" | "browser" | "os";
 
 export const shortLinksRouter = createTRPCRouter({
   list: adminProcedure.query(async ({ ctx }) => {
-    const [links, counts] = await Promise.all([
+    const [links, counts, hosts] = await Promise.all([
       ctx.db.shortLink.findMany({ orderBy: { createdAt: "desc" } }),
       ctx.db.$queryRaw<
         {
@@ -103,6 +144,7 @@ export const shortLinksRouter = createTRPCRouter({
         from short_link_click
         group by "linkId"
       `,
+      extraHosts(),
     ]);
 
     const byLink = new Map(counts.map((row) => [row.linkId, row]));
@@ -110,7 +152,7 @@ export const shortLinksRouter = createTRPCRouter({
       const count = byLink.get(link.id);
       return {
         ...link,
-        url: shortLinkUrl(link.domain, link.slug),
+        hosts: linkHosts(link.domain, hosts),
         clicks: count?.clicks ?? 0,
         visitors: count?.visitors ?? 0,
         lastClickAt: count?.lastClickAt ?? null,
@@ -131,7 +173,7 @@ export const shortLinksRouter = createTRPCRouter({
       }
 
       const days = recentNzDays(30);
-      const [[totals], daily, slices, recent] = await Promise.all([
+      const [[totals], daily, slices, recent, hosts] = await Promise.all([
         ctx.db.$queryRaw<{ clicks: number; visitors: number; bots: number }[]>`
           select
             (count(*) filter (where device <> 'bot'))::int as clicks,
@@ -157,6 +199,7 @@ export const shortLinksRouter = createTRPCRouter({
           from short_link_click c,
             lateral (values
               ('source', c.source),
+              ('domain', coalesce(c.domain, 'unknown')),
               ('device', c.device),
               ('browser', c.browser),
               ('os', c.os)
@@ -171,11 +214,13 @@ export const shortLinksRouter = createTRPCRouter({
           orderBy: { createdAt: "desc" },
           take: 100,
         }),
+        extraHosts(),
       ]);
 
       const perDay = new Map(daily.map((row) => [row.day, row.n]));
       const breakdown: Record<Dimension, Slice[]> = {
         source: [],
+        domain: [],
         device: [],
         browser: [],
         os: [],
@@ -186,11 +231,8 @@ export const shortLinksRouter = createTRPCRouter({
 
       return {
         ...link,
-        url: shortLinkUrl(link.domain, link.slug),
-        qrCodes: link.qrCodes.map((qr) => ({
-          ...qr,
-          url: shortLinkUrl(link.domain, link.slug, qr.code),
-        })),
+        /** Every host it answers on, main site first. Downloads pick one. */
+        hosts: linkHosts(link.domain, hosts),
         totals: totals ?? { clicks: 0, visitors: 0, bots: 0 },
         daily: days.map((day) => ({ day, n: perDay.get(day) ?? 0 })),
         breakdown,
@@ -201,7 +243,7 @@ export const shortLinksRouter = createTRPCRouter({
   create: adminProcedure
     .input(linkInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const values = readLinkInput(input);
+      const values = await readLinkInput(input);
       await assertSlugFree(values.domain, values.slug);
 
       const created = await ctx.db.shortLink.create({
@@ -222,7 +264,7 @@ export const shortLinksRouter = createTRPCRouter({
     .input(linkInputSchema.extend({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const { id, ...rest } = input;
-      const values = readLinkInput(rest);
+      const values = await readLinkInput(rest);
       await assertSlugFree(values.domain, values.slug, id);
 
       const updated = await ctx.db.shortLink.update({
@@ -312,6 +354,99 @@ export const shortLinksRouter = createTRPCRouter({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db.shortLinkQrCode.delete({ where: { id: input.id } });
+      return { ok: true };
+    }),
+
+  /* ------------------------------------------------------------------------ */
+  /* Domains                                                                  */
+  /* ------------------------------------------------------------------------ */
+
+  /** The main site, then every extra domain with how many links it holds. */
+  domains: adminProcedure.query(async ({ ctx }) => {
+    const [domains, counts] = await Promise.all([
+      ctx.db.shortLinkDomain.findMany({ orderBy: { createdAt: "asc" } }),
+      ctx.db.shortLink.groupBy({ by: ["domain"], _count: { _all: true } }),
+    ]);
+    const perDomain = new Map(
+      counts.map((row) => [row.domain, row._count._all]),
+    );
+
+    return {
+      site: SITE_LINK_DOMAIN,
+      extra: domains.map((domain) => ({
+        ...domain,
+        links: perDomain.get(domain.host) ?? 0,
+      })),
+    };
+  }),
+
+  addDomain: adminProcedure
+    .input(z.object({ host: z.string().max(300) }))
+    .mutation(async ({ ctx, input }) => {
+      const host = normaliseHost(input.host);
+      const problem = hostProblem(host);
+      if (problem) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: problem });
+      }
+
+      const existing = await ctx.db.shortLinkDomain.findUnique({
+        where: { host },
+        select: { id: true },
+      });
+      if (existing) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: `${host} is already a link domain.`,
+        });
+      }
+
+      const created = await ctx.db.shortLinkDomain.create({
+        data: { host, createdBy: ctx.session.user.id },
+      });
+
+      await logActivity({
+        type: ActivityType.SHORT_LINK_DOMAIN_ADDED,
+        action: `Added short link domain ${host}`,
+        userId: ctx.session.user.id,
+        details: { domainId: created.id },
+      });
+
+      return created;
+    }),
+
+  /**
+   * Only an empty domain can go, so no link is left pointing at a host that
+   * no longer answers. Links on every domain simply stop answering on it.
+   */
+  removeDomain: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const domain = await ctx.db.shortLinkDomain.findUnique({
+        where: { id: input.id },
+      });
+      if (!domain) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Domain not found" });
+      }
+
+      const links = await ctx.db.shortLink.count({
+        where: { domain: domain.host },
+      });
+      if (links > 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `${domain.host} still has ${links} ${links === 1 ? "link" : "links"}. Move or delete them first.`,
+        });
+      }
+
+      await ctx.db.shortLinkDomain.delete({ where: { id: domain.id } });
+
+      await logActivity({
+        type: ActivityType.SHORT_LINK_DOMAIN_REMOVED,
+        action: `Removed short link domain ${domain.host}`,
+        userId: ctx.session.user.id,
+        details: { domainId: domain.id },
+      });
+
       return { ok: true };
     }),
 });

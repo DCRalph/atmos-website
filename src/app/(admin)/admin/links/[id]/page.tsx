@@ -13,20 +13,41 @@ import { LinkForm } from "~/components/admin/short-links/link-form";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { DataTable, type DataTableColumn } from "~/components/data-table";
 import { useConfirm } from "~/components/confirm-provider";
 import { useTabParam } from "~/hooks/use-tab-param";
 import { formatDateTime } from "~/lib/date-utils";
+import { domainLabel, shortLinkUrl } from "~/lib/short-links/domains";
 
 type ShortLink = RouterOutputs["shortLinks"]["byId"];
 type Click = ShortLink["recent"][number];
 type Slice = ShortLink["breakdown"]["source"][number];
 
-/** Where a link's QR code downloads from. `code` picks a named one. */
-function qrHref(linkId: string, format: "svg" | "png", code?: string): string {
-  const query = new URLSearchParams({ format, ...(code ? { code } : {}) });
+/**
+ * Where a link's QR code downloads from, encoding the link on `host`. `code`
+ * picks a named one.
+ */
+function qrHref(
+  linkId: string,
+  host: string,
+  format: "svg" | "png",
+  code?: string,
+): string {
+  const query = new URLSearchParams({
+    format,
+    host,
+    ...(code ? { code } : {}),
+  });
   return `/api/admin/short-links/${linkId}/qr?${query}`;
 }
 
@@ -51,18 +72,20 @@ export default function ShortLinkPage() {
   }
 
   const data = link.data;
+  // Copy and Open use the first host: the main site for a link on all domains.
+  const url = shortLinkUrl(data.hosts[0] ?? data.domain, data.slug);
 
   return (
     <AdminSection
       title={`/${data.slug}`}
-      subtitle={data.label ?? data.domain}
+      subtitle={`${domainLabel(data.domain)}${data.label ? ` · ${data.label}` : ""}`}
       backLink={{ href: "/admin/links", label: "Links" }}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           {!data.active && <Badge variant="secondary">Switched off</Badge>}
-          <CopyButton value={data.url} />
+          <CopyButton value={url} />
           <Button variant="outline" asChild>
-            <a href={data.url} target="_blank" rel="noreferrer">
+            <a href={url} target="_blank" rel="noreferrer">
               <ExternalLink className="size-4" aria-hidden /> Open
             </a>
           </Button>
@@ -141,6 +164,9 @@ function Overview({ link }: { link: ShortLink }) {
 
       <div className="grid gap-4 md:grid-cols-2">
         <Breakdown title="Where from" slices={breakdown.source} />
+        {link.hosts.length > 1 && (
+          <Breakdown title="Domain" slices={breakdown.domain} />
+        )}
         <Breakdown title="Device" slices={breakdown.device} />
         <Breakdown title="Browser" slices={breakdown.browser} />
         <Breakdown title="System" slices={breakdown.os} />
@@ -191,16 +217,24 @@ function Breakdown({ title, slices }: { title: string; slices: Slice[] }) {
 /* QR codes                                                                   */
 /* -------------------------------------------------------------------------- */
 
-function DownloadButtons({ linkId, code }: { linkId: string; code?: string }) {
+function DownloadButtons({
+  linkId,
+  host,
+  code,
+}: {
+  linkId: string;
+  host: string;
+  code?: string;
+}) {
   return (
     <>
       <Button variant="outline" size="sm" asChild>
-        <a href={qrHref(linkId, "svg", code)} download>
+        <a href={qrHref(linkId, host, "svg", code)} download>
           <Download className="size-4" aria-hidden /> SVG
         </a>
       </Button>
       <Button variant="outline" size="sm" asChild>
-        <a href={qrHref(linkId, "png", code)} download>
+        <a href={qrHref(linkId, host, "png", code)} download>
           <Download className="size-4" aria-hidden /> PNG
         </a>
       </Button>
@@ -211,10 +245,14 @@ function DownloadButtons({ linkId, code }: { linkId: string; code?: string }) {
 /**
  * The plain QR code, plus named ones. Every named code lands on the same link;
  * the `?c=` on the end is what lets "Cuba St lamp post" be counted apart from
- * "Flyer, Vol. 3 run".
+ * "Flyer, Vol. 3 run". A link on every domain gets a domain picker, which
+ * decides which address every code on the tab encodes.
  */
 function QrCodes({ link }: { link: ShortLink }) {
   const [name, setName] = useState("");
+  const [picked, setHost] = useState(link.hosts[0] ?? link.domain);
+  // A removed domain drops out of `hosts`; fall back rather than 404.
+  const host = link.hosts.includes(picked) ? picked : link.domain;
   const utils = api.useUtils();
   const confirm = useConfirm();
 
@@ -237,24 +275,42 @@ function QrCodes({ link }: { link: ShortLink }) {
 
   return (
     <div className="space-y-6">
+      {link.hosts.length > 1 && (
+        <div className="flex flex-wrap items-center gap-3">
+          <Label htmlFor="qr-host">QR codes for</Label>
+          <Select value={host} onValueChange={setHost}>
+            <SelectTrigger id="qr-host" className="w-64 font-mono">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {link.hosts.map((value) => (
+                <SelectItem key={value} value={value} className="font-mono">
+                  {value}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       <section className="flex flex-wrap items-center gap-5 rounded-lg border p-5">
         {/* eslint-disable-next-line @next/next/no-img-element -- an admin-only SVG from our own route */}
         <img
-          src={qrHref(link.id, "svg")}
-          alt={`QR code for ${link.url}`}
+          src={qrHref(link.id, host, "svg")}
+          alt={`QR code for ${shortLinkUrl(host, link.slug)}`}
           className="size-32 rounded-md bg-white"
         />
         <div className="min-w-0 flex-1 space-y-2">
           <h2 className="text-lg font-semibold">Plain QR code</h2>
           <p className="text-muted-foreground font-mono text-sm break-all">
-            {link.url}
+            {shortLinkUrl(host, link.slug)}
           </p>
           <p className="text-muted-foreground text-sm">
             Scans count as &ldquo;direct&rdquo;. Make a named code below to tell
             one poster run from another.
           </p>
           <div className="flex gap-2">
-            <DownloadButtons linkId={link.id} />
+            <DownloadButtons linkId={link.id} host={host} />
           </div>
         </div>
       </section>
@@ -293,13 +349,13 @@ function QrCodes({ link }: { link: ShortLink }) {
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{qr.name}</p>
                   <p className="text-muted-foreground font-mono text-xs break-all">
-                    {qr.url}
+                    {shortLinkUrl(host, link.slug, qr.code)}
                   </p>
                 </div>
                 <span className="text-muted-foreground text-sm tabular-nums">
                   {scans.get(qr.name) ?? 0} scans
                 </span>
-                <DownloadButtons linkId={link.id} code={qr.code} />
+                <DownloadButtons linkId={link.id} host={host} code={qr.code} />
                 <Button
                   variant="ghost"
                   size="icon"
@@ -341,6 +397,12 @@ const clickColumns: DataTableColumn<Click>[] = [
     cell: (row) => formatDateTime(row.createdAt),
   },
   { id: "source", header: "Where from", accessor: (row) => row.source },
+  {
+    id: "domain",
+    header: "Domain",
+    accessor: (row) => row.domain,
+    cell: (row) => row.domain ?? "—",
+  },
   {
     id: "device",
     header: "Device",

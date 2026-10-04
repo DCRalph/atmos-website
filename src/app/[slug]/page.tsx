@@ -1,5 +1,4 @@
-import { SITE_LINK_DOMAIN } from "~/lib/short-links/domains";
-import { serveShortLink } from "~/server/short-links";
+import { serveSiteLink } from "~/server/short-links";
 
 /**
  * Short links on the main site, at the root: `atmosmedia.co.nz/vol3`.
@@ -16,5 +15,5 @@ export const dynamic = "force-dynamic";
 
 export default async function ShortLinkPage(props: PageProps<"/[slug]">) {
   const { slug } = await props.params;
-  return serveShortLink(SITE_LINK_DOMAIN, slug, await props.searchParams);
+  return serveSiteLink(slug, await props.searchParams);
 }

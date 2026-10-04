@@ -1,4 +1,4 @@
-import { LINK_DOMAINS, type LinkDomain } from "./domains";
+import { servesMainSite } from "./domains";
 
 /**
  * The rules a short link has to satisfy, shared by the admin form that types
@@ -72,15 +72,19 @@ export function normaliseSlug(input: string): string {
     .replace(/\s+/g, "-");
 }
 
-/** Why this slug cannot be used on this domain, or null if it can. */
-export function slugProblem(slug: string, domain: LinkDomain): string | null {
+/**
+ * Why this slug cannot be used on this domain, or null if it can. Only links
+ * that answer on the main site are kept off its pages: on an extra domain,
+ * `/admin` and `/about` are free to be links.
+ */
+export function slugProblem(slug: string, domain: string): string | null {
   if (!slug) return "The link needs a path.";
   if (slug.length > 64) return "That path is too long.";
   if (!SLUG.test(slug)) {
     return "Use lowercase letters, numbers and dashes: wellington-tickets.";
   }
-  if (LINK_DOMAINS[domain].kind === "site" && RESERVED_SLUGS.has(slug)) {
-    return `/${slug} is already a page on this site.`;
+  if (servesMainSite(domain) && RESERVED_SLUGS.has(slug)) {
+    return `/${slug} is already a page on the main site.`;
   }
   return null;
 }

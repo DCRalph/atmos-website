@@ -11,17 +11,23 @@ import { LinkForm } from "~/components/admin/short-links/link-form";
 import { Button } from "~/components/ui/button";
 import { Switch } from "~/components/ui/switch";
 import { DataTable, type DataTableColumn } from "~/components/data-table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { DomainsPanel } from "~/components/admin/short-links/domains-panel";
+import { useTabParam } from "~/hooks/use-tab-param";
 import { formatDate } from "~/lib/date-utils";
+import { domainLabel } from "~/lib/short-links/domains";
 
 type LinkRow = RouterOutputs["shortLinks"]["list"][number];
 
 /**
  * Short links. One path that can point anywhere, so a flyer, a story sticker
  * and a bio link all survive the destination changing, and every hit is
- * counted on the way through.
+ * counted on the way through. The Domains tab is where extra short domains
+ * are added.
  */
 export default function ShortLinksPage() {
   const router = useRouter();
+  const tab = useTabParam(["links", "domains"]);
   const [creating, setCreating] = useState(false);
   const utils = api.useUtils();
   const links = api.shortLinks.list.useQuery();
@@ -36,18 +42,14 @@ export default function ShortLinksPage() {
       id: "link",
       header: "Link",
       sortable: true,
-      accessor: (row) => `${row.domain}/${row.slug}`,
+      accessor: (row) => row.slug,
       cell: (row) => (
         <div className="min-w-0">
-          <p className="font-mono font-medium">
-            <span className="text-muted-foreground">{row.domain}/</span>
-            {row.slug}
+          <p className="font-mono font-medium">/{row.slug}</p>
+          <p className="text-muted-foreground truncate text-xs">
+            {domainLabel(row.domain)}
+            {row.label && ` · ${row.label}`}
           </p>
-          {row.label && (
-            <p className="text-muted-foreground truncate text-xs">
-              {row.label}
-            </p>
-          )}
         </div>
       ),
     },
@@ -111,30 +113,43 @@ export default function ShortLinksPage() {
       title="Links"
       description="Short links for posters, stories and bios. Change where one goes without reprinting anything."
       actions={
-        <Button onClick={() => setCreating(true)} disabled={creating}>
-          <Plus className="size-4" aria-hidden /> New link
-        </Button>
+        tab.value === "links" && (
+          <Button onClick={() => setCreating(true)} disabled={creating}>
+            <Plus className="size-4" aria-hidden /> New link
+          </Button>
+        )
       }
     >
-      {creating && (
-        <LinkForm
-          onSaved={(saved) => router.push(`/admin/links/${saved.id}`)}
-          onCancel={() => setCreating(false)}
-        />
-      )}
+      <Tabs {...tab}>
+        <TabsList>
+          <TabsTrigger value="links">Links</TabsTrigger>
+          <TabsTrigger value="domains">Domains</TabsTrigger>
+        </TabsList>
 
-      <div className="mt-4">
-        <DataTable
-          columns={columns}
-          data={links.data ?? []}
-          getRowId={(row) => row.id}
-          isLoading={links.isPending}
-          isFetching={links.isFetching}
-          onRowClick={(row) => router.push(`/admin/links/${row.id}`)}
-          storageKey="admin-short-links"
-          emptyMessage="No links yet."
-        />
-      </div>
+        <TabsContent value="links" className="mt-6 space-y-4">
+          {creating && (
+            <LinkForm
+              onSaved={(saved) => router.push(`/admin/links/${saved.id}`)}
+              onCancel={() => setCreating(false)}
+            />
+          )}
+
+          <DataTable
+            columns={columns}
+            data={links.data ?? []}
+            getRowId={(row) => row.id}
+            isLoading={links.isPending}
+            isFetching={links.isFetching}
+            onRowClick={(row) => router.push(`/admin/links/${row.id}`)}
+            storageKey="admin-short-links"
+            emptyMessage="No links yet."
+          />
+        </TabsContent>
+
+        <TabsContent value="domains" className="mt-6">
+          <DomainsPanel />
+        </TabsContent>
+      </Tabs>
     </AdminSection>
   );
 }
