@@ -241,11 +241,14 @@ export function BucketBarChart({
   buckets,
   title,
   formatX,
+  unit = ["person", "people"],
   height = 180,
 }: {
   buckets: { x: Date; y: number }[];
   title: string;
   formatX: (date: Date) => string;
+  /** What one bar counts, singular and plural, for the hover label. */
+  unit?: [string, string];
   height?: number;
 }) {
   const [hover, setHover] = useState<number | null>(null);
@@ -343,7 +346,7 @@ export function BucketBarChart({
         {active && (
           <div className="bg-popover text-popover-foreground pointer-events-none absolute top-2 right-2 rounded-md border px-2.5 py-1.5 text-xs shadow-sm">
             <p className="font-medium tabular-nums">
-              {active.y} {active.y === 1 ? "person" : "people"}
+              {active.y} {active.y === 1 ? unit[0] : unit[1]}
             </p>
             <p className="text-muted-foreground">{formatX(active.x)}</p>
           </div>

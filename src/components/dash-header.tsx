@@ -68,6 +68,12 @@ const SMART_CRUMB_RESOLVERS: SmartCrumbResolver[] = [
     fallbackLabel: "Gig",
     parentPath: "/admin/gigs",
   },
+  {
+    pattern: /^\/admin\/links\/([^/]+)$/,
+    key: "link",
+    fallbackLabel: "Link",
+    parentPath: "/admin/links",
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -209,6 +215,21 @@ function useGigCrumb(gigId: string | null) {
 }
 
 /**
+ * Hook to resolve a short link's path from ID. Same query as the link's own
+ * page, so it is served from that page's cache rather than fetched twice.
+ */
+function useLinkCrumb(linkId: string | null) {
+  const { data, isLoading } = api.shortLinks.byId.useQuery(
+    { id: linkId ?? "" },
+    { enabled: !!linkId },
+  );
+  return {
+    label: data ? `/${data.slug}` : null,
+    isLoading: !!linkId && isLoading,
+  };
+}
+
+/**
  * Combined hook that resolves the appropriate smart crumb based on path
  */
 function useSmartCrumb(pathname: string): {
@@ -221,10 +242,12 @@ function useSmartCrumb(pathname: string): {
   // Determine which ID to pass to each resolver
   const userId = smartMatch?.resolver.key === "user" ? smartMatch.id : null;
   const gigId = smartMatch?.resolver.key === "gig" ? smartMatch.id : null;
+  const linkId = smartMatch?.resolver.key === "link" ? smartMatch.id : null;
 
   // Call all resolver hooks (React hooks must be called unconditionally)
   const userCrumb = useUserCrumb(userId);
   const gigCrumb = useGigCrumb(gigId);
+  const linkCrumb = useLinkCrumb(linkId);
 
   // Return the appropriate result based on which resolver matched
   if (!smartMatch) return null;
@@ -251,6 +274,12 @@ function useSmartCrumb(pathname: string): {
         path: pathname,
         label: gigCrumb.label ?? resolver.fallbackLabel,
         isLoading: gigCrumb.isLoading,
+      };
+    case "link":
+      return {
+        path: pathname,
+        label: linkCrumb.label ?? resolver.fallbackLabel,
+        isLoading: linkCrumb.isLoading,
       };
     default:
       return null;
