@@ -398,10 +398,12 @@ const clickColumns: DataTableColumn<Click>[] = [
   },
   { id: "source", header: "Where from", accessor: (row) => row.source },
   {
-    id: "domain",
-    header: "Domain",
-    accessor: (row) => row.domain,
-    cell: (row) => row.domain ?? "—",
+    id: "url",
+    header: "Link used",
+    accessor: (row) => row.url ?? row.domain,
+    cell: (row) => (
+      <span className="font-mono text-xs">{row.url ?? row.domain ?? "—"}</span>
+    ),
   },
   {
     id: "device",

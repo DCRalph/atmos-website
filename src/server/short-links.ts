@@ -82,7 +82,12 @@ function visitorHash(address: string | null, userAgent: string) {
  * failures: a link that breaks because the stats table is unhappy would be the
  * worst trade available.
  */
-async function recordClick(linkId: string, host: string, click: ClickContext) {
+async function recordClick(
+  link: { id: string; slug: string },
+  host: string,
+  click: ClickContext,
+) {
+  const linkId = link.id;
   try {
     // A named QR code beats every other source. An unknown or deleted code
     // is just a visit.
@@ -101,6 +106,9 @@ async function recordClick(linkId: string, host: string, click: ClickContext) {
         referrer: click.referrer?.slice(0, 512) ?? null,
         country: click.country,
         domain: host,
+        // The address as visited. The link's slug can be edited later; this
+        // keeps what was actually on the poster at the time.
+        url: `${host}/${link.slug}`,
         visitor: visitorHash(click.address, click.userAgent),
       },
     });
@@ -121,19 +129,19 @@ async function findLink(host: string, rawSlug: string) {
       domain: { in: [host, ALL_DOMAINS] },
       active: true,
     },
-    select: { id: true, domain: true, destination: true },
+    select: { id: true, domain: true, slug: true, destination: true },
   });
   return links.find((link) => link.domain === host) ?? links[0] ?? null;
 }
 
 /** Count the click once the response has gone, then redirect. */
 async function follow(
-  link: { id: string; destination: string },
+  link: { id: string; slug: string; destination: string },
   host: string,
   query: SearchParams,
 ): Promise<never> {
   const click = await readClickContext(query);
-  after(() => recordClick(link.id, host, click));
+  after(() => recordClick(link, host, click));
 
   // A path means a page on the main site. Served from another domain that
   // page does not exist there, so it is made absolute.
