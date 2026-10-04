@@ -128,7 +128,6 @@ type FileInfo = {
   width: number | null;
   height: number | null;
   createdAt: Date | string;
-  acl: string;
   /** Upload preset this file came from; null for pre-unified-upload rows. */
   preset: string | null;
   /** Size before image processing, when it differs from `size`. */
@@ -973,7 +972,7 @@ export function FilesManager() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {deletePermanently
-                ? "This will permanently delete the file from S3 and the database. This action cannot be undone."
+                ? "This will permanently delete the file from storage and the database. This action cannot be undone."
                 : "This will mark the file as deleted. You can restore it later or permanently delete it."}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1360,7 +1359,7 @@ export function FilesManager() {
                     mono
                   />
                   <InfoRow
-                    label="S3 Key"
+                    label="Key"
                     value={infoFile.key}
                     onCopy={() => copyToClipboard(infoFile.key, "key")}
                     copied={copiedField === "key"}
@@ -1369,20 +1368,16 @@ export function FilesManager() {
                   <LinkRow
                     label="Website URL"
                     url={buildMediaUrl(infoFile.id)}
-                    hint="Served through the app with long-lived cache headers. Works regardless of the object's ACL — use this one in the site."
+                    hint="Served through the app with long-lived cache headers. Use this one in the site."
                     onCopy={() =>
                       copyToClipboard(buildMediaUrl(infoFile.id), "mediaUrl")
                     }
                     copied={copiedField === "mediaUrl"}
                   />
                   <LinkRow
-                    label="Direct S3 URL"
+                    label="Direct URL"
                     url={infoFile.url}
-                    hint={
-                      infoFile.acl === "private"
-                        ? "This object is private, so the direct link will return Access Denied to anyone without S3 credentials."
-                        : "Straight from the bucket, bypassing the app."
-                    }
+                    hint="Straight from the bucket, bypassing the app."
                     onCopy={() => copyToClipboard(infoFile.url, "url")}
                     copied={copiedField === "url"}
                   />
@@ -1439,37 +1434,6 @@ export function FilesManager() {
                           No tags
                         </span>
                       )}
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-muted-foreground text-xs">ACL</Label>
-                    <div className="flex flex-col gap-1">
-                      <Badge
-                        variant={
-                          infoFile.acl === "public-read" ||
-                          infoFile.acl === "public-read-write"
-                            ? "default"
-                            : "secondary"
-                        }
-                      >
-                        {infoFile.acl === "public-read"
-                          ? "Public Read"
-                          : infoFile.acl === "public-read-write"
-                            ? "Public Read/Write"
-                            : infoFile.acl === "authenticated-read"
-                              ? "Authenticated Read"
-                              : "Private"}
-                      </Badge>
-                      <p className="text-muted-foreground text-xs">
-                        {infoFile.acl === "private" &&
-                          "Only accessible with credentials"}
-                        {infoFile.acl === "public-read" &&
-                          "Anyone can read, only owner can write"}
-                        {infoFile.acl === "public-read-write" &&
-                          "Anyone can read and write"}
-                        {infoFile.acl === "authenticated-read" &&
-                          "Only authenticated AWS users can read"}
-                      </p>
                     </div>
                   </div>
                   <InfoRow

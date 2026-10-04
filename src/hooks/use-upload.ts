@@ -15,7 +15,7 @@ import { acceptAttribute, validateBatch } from "~/lib/uploads/validate";
  *
  * Every file in the app goes through here: validate against the preset, hash
  * for dedupe, ask the server for a presigned URL, PUT the bytes straight to
- * S3 with real progress, then have the server verify and process them.
+ * R2 with real progress, then have the server verify and process them.
  *
  * ```tsx
  * const { upload, items, isUploading, accept } = useUpload("gigPoster", {
@@ -66,7 +66,7 @@ export type UseUploadOptions<K extends UploadPresetName> = {
 /** Above this size, hashing in the browser costs more than the dedupe saves. */
 const HASH_LIMIT_BYTES = 256 * 1024 * 1024;
 
-/** Share of the progress bar given to the S3 transfer; the rest is processing. */
+/** Share of the progress bar given to the R2 transfer; the rest is processing. */
 const TRANSFER_SHARE = 0.9;
 
 /** Statuses a file can be retried from. */
@@ -365,7 +365,7 @@ async function hashFile(file: File): Promise<string | undefined> {
 
 /**
  * `fetch` cannot report upload progress, so the transfer uses XHR. This is the
- * only place in the app that talks to S3 from the browser.
+ * only place in the app that talks to R2 from the browser.
  */
 function putToS3(opts: {
   url: string;

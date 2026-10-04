@@ -567,7 +567,7 @@ export function GigMediaManager({
     },
   });
 
-  // Bytes go straight to S3 through the shared uploader; each finished file is
+  // Bytes go straight to R2 through the shared uploader; each finished file is
   // then attached to the chosen section as a GigMedia row.
   const {
     upload,
@@ -1420,8 +1420,8 @@ export function GigMediaManager({
               Select from Uploaded Media
             </DialogTitle>
             <DialogDescription>
-              Choose media files that have already been uploaded to S3 to add to
-              this gig
+              Choose media files that have already been uploaded to add to this
+              gig
             </DialogDescription>
           </DialogHeader>
 

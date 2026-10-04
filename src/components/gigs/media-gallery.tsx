@@ -7,7 +7,7 @@ import { Check, Download } from "lucide-react";
 import { getMediaDisplayUrl } from "~/lib/media-url";
 import useMasonry from "~/hooks/useMasonry";
 
-/** Use local API URL for fetches to avoid S3 CORS. Relative path = same origin. */
+/** Use local API URL for fetches to avoid R2 CORS. Relative path = same origin. */
 function getDownloadUrl(item: MediaItem): string | null {
   const id = item.fileUpload?.id ?? item.fileUploadId;
   if (id) return `/api/media/${id}`;

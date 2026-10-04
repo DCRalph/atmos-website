@@ -1,12 +1,12 @@
 # Uploads
 
-One system for every file that reaches the S3 bucket. Adding a new upload
+One system for every file that reaches the R2 bucket. Adding a new upload
 location means adding a preset — not writing an upload path.
 
-## How a file gets to S3
+## How a file gets to R2
 
 ```
-browser                         server (tRPC)                    S3
+browser                         server (tRPC)                    R2
    |                                 |                            |
    |  1. hash the file (SHA-256)     |                            |
    |  2. uploads.start ------------->| authorize (permission + owner) |
@@ -46,7 +46,6 @@ published.
      maxFiles: 5,
      maxTotalSize: mb(150),
      for: "press_kit",
-     acl: "public-read",
      image: { maxDimension: 2048, format: "webp", quality: 82, maxOutputSize: mb(1) },
      context: z.object({ year: z.string().min(4) }),
      forId: (c) => c.year,
@@ -102,7 +101,7 @@ skipped hashing (files over 256 MB, or no `crypto.subtle`).
 
 ## Required bucket CORS
 
-Direct-to-S3 uploads need the bucket to accept cross-origin `PUT`s. Without
+Direct-to-R2 uploads need the bucket to accept cross-origin `PUT`s. Without
 this, uploads fail with a network error and the UI says so explicitly.
 
 ```json
@@ -120,17 +119,21 @@ this, uploads fail with a network error and the UI says so explicitly.
 ]
 ```
 
-Apply it under **S3 → bucket → Permissions → Cross-origin resource sharing**,
+Apply it under **R2 → bucket → Settings → CORS Policy**,
 adding any preview domains you upload from.
 
-Only `content-type` is signed into the presigned URL. Content-Length and the
-ACL deliberately are not: signing them would drag more headers into
+Only `content-type` is signed into the presigned URL. Content-Length
+deliberately is not: signing it would drag another header into
 `AllowedHeaders` for no benefit, since the real size is verified server-side
-with `HeadObject` and the ACL is applied when the object leaves staging.
+with `HeadObject`.
 
-> If the bucket has Object Ownership set to *Bucket owner enforced* (ACLs
-> disabled), set `acl: "private"` on the presets and serve everything through
-> `/api/media/[id]`, which reads objects with the app's credentials.
+## Public access
+
+R2 has no per-object ACLs. Every object is reachable on the bucket's public
+domain (`R2_PUBLIC_URL`) if you know its key. Keys end in a random UUID, so
+objects that must stay private (staging uploads, ID portraits) cannot be
+guessed, and the app only hands those out through routes that check access.
+The site itself serves media through `/api/media/[id]`.
 
 ## Abandoned uploads
 

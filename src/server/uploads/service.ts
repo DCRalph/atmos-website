@@ -28,7 +28,7 @@ import {
   presignPut,
   putBuffer,
   PRESIGN_EXPIRY_SECONDS,
-} from "./s3";
+} from "./r2";
 import {
   canProcessImage,
   processImage,
@@ -40,7 +40,7 @@ import {
  *
  *   1. `startUpload`  — authorize, validate, reserve a `file_upload` row in
  *                       UPLOADING state, hand back a presigned PUT URL.
- *   2. (browser)      — PUT the bytes straight to S3 staging. No size limit,
+ *   2. (browser)      — PUT the bytes straight to R2 staging. No size limit,
  *                       real progress, no request body through this app.
  *   3. `finishUpload` — verify what actually landed, run image processing,
  *                       move it to its final key, flip the row to OK.
@@ -151,7 +151,6 @@ export const startUpload = async (
       size: input.file.size,
       originalSize: input.file.size,
       mimeType,
-      acl: preset.acl,
       status: FileUploadStatus.UPLOADING,
       preset: input.preset,
       sourceHash: input.file.sourceHash ?? null,
@@ -181,7 +180,7 @@ export const startUpload = async (
 /**
  * The same pipeline, for bytes the server already holds.
  *
- * The three-step flow exists so the browser can PUT straight to S3; when the
+ * The three-step flow exists so the browser can PUT straight to R2; when the
  * bytes came from a server-side fetch there is no browser in it, but every rule
  * about presets, validation, dedupe, processing and bookkeeping still applies.
  * So this puts the bytes where the browser would have put them and hands over
@@ -222,7 +221,6 @@ export const uploadFromBuffer = async (
       key: stagingKeyFor(started.uploadId),
       body: input.file.body,
       contentType: resolveMimeType(input.file.name, input.file.type),
-      acl: "private",
     });
   } catch (error) {
     await abortUpload({ uploadId: started.uploadId }, ctx);
@@ -318,7 +316,6 @@ export const finishUpload = async (
         key: finalKey,
         body: processed.buffer,
         contentType: finalMime,
-        acl: preset.acl,
         cacheControl: "public, max-age=31536000, immutable",
       });
     } else {
@@ -345,7 +342,6 @@ export const finishUpload = async (
         fromKey: stagingKey,
         toKey: finalKey,
         contentType: finalMime,
-        acl: preset.acl,
       });
     }
 

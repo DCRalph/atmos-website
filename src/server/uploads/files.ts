@@ -2,7 +2,7 @@ import "server-only";
 
 import { db } from "~/server/db";
 import { FileCategory, FileUploadStatus } from "~Prisma/client";
-import { deleteObject } from "./s3";
+import { deleteObject } from "./r2";
 
 /**
  * Database-side operations on `file_upload` rows. Anything that needs both the
@@ -33,14 +33,14 @@ const identifierOf = (ref: FileIdentifier) => {
   throw new Error("A file reference requires either an id or a key");
 };
 
-/** Marks a file as deleted but leaves the object in S3 (recoverable). */
+/** Marks a file as deleted but leaves the object in R2 (recoverable). */
 export const softDeleteFile = async (ref: FileIdentifier) =>
   db.file_upload.update({
     where: identifierOf(ref),
     data: { status: FileUploadStatus.SOFT_DELETED },
   });
 
-/** Removes the object from S3 and marks the row DELETED. */
+/** Removes the object from R2 and marks the row DELETED. */
 export const deleteFile = async (ref: FileIdentifier) => {
   const existing = await db.file_upload.findUnique({
     where: identifierOf(ref),

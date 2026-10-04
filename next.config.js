@@ -31,10 +31,20 @@ const config = {
         protocol: "https",
         hostname: "picsum.photos",
       },
+      // Legacy bucket, until stored URLs are rewritten by
+      // `prisma/migrate-to-r2-urls.ts`.
       {
         protocol: "https",
         hostname: "atmosmedia-temp.s3.ap-southeast-2.amazonaws.com",
       },
+      ...(process.env.R2_PUBLIC_URL
+        ? [
+            {
+              protocol: /** @type {const} */ ("https"),
+              hostname: new URL(process.env.R2_PUBLIC_URL).hostname,
+            },
+          ]
+        : []),
       {
         protocol: "https",
         hostname: "cdn.shopify.com",

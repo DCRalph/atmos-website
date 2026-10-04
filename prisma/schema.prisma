@@ -924,7 +924,7 @@ model file_upload {
 
   fileTags file_tag[]
 
-  /// SHA-256 of the bytes actually stored in S3 (post-processing).
+  /// SHA-256 of the bytes actually stored in R2 (post-processing).
   hash String?
 
   /// SHA-256 of the original file the user picked, before any resize/convert.
@@ -2073,7 +2073,7 @@ model Patron {
   /// Date only — the time component is meaningless and is stored as midnight UTC.
   dateOfBirth DateTime
 
-  /// Private S3 key of the portrait crop. Never a `file_upload` row: that path
+  /// Private R2 key of the portrait crop. Never a `file_upload` row: that path
   /// is served publicly and cached for a year.
   photoKey String?
 

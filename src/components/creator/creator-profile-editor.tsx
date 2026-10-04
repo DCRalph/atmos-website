@@ -197,7 +197,7 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
   const targetProfileId = profile?.id;
   const mutationProfileIdArg = mode === "admin" ? targetProfileId : undefined;
 
-  // Avatar and banner bytes go straight to S3 through the shared upload
+  // Avatar and banner bytes go straight to R2 through the shared upload
   // system; the mutations below only move the profile's FK.
   const avatarUpload = useUpload("creatorAvatar", {
     context: { profileId: mutationProfileIdArg },

@@ -396,7 +396,7 @@ export async function checkIdentity({
     countRefusals(previous.ticketIds),
   ]);
 
-  // Kept outside the transaction above on purpose: an S3 write is a network
+  // Kept outside the transaction above on purpose: an R2 write is a network
   // call, and holding a row lock open across one is how a busy door ends up
   // queueing behind a slow bucket.
   const storedPhotoKey = portrait

@@ -4,10 +4,10 @@
  * To accept files somewhere new: add a preset here, then use
  * `useUpload("yourPreset")` (or one of the components in
  * `~/components/uploads`) at the call site. Nothing else needs to change —
- * validation, resizing, format conversion, S3 keys, ACL and the `file_upload`
+ * validation, resizing, format conversion, object keys and the `file_upload`
  * bookkeeping are all driven from this file.
  *
- * Client-safe: no `sharp`, no AWS SDK, no database imports.
+ * Client-safe: no `sharp`, no storage SDK, no database imports.
  */
 import { z } from "zod";
 import { mb, type ImageProcessing, type UploadAccess } from "./types";
@@ -39,7 +39,6 @@ type PresetDefinition<
   maxFiles: number;
   maxTotalSize: number;
   for: string;
-  acl: "private" | "public-read";
   image?: ImageProcessing;
   context: TContext;
   resolved?: TResolved;
@@ -80,7 +79,6 @@ export const uploadPresets = {
     maxFiles: 40,
     maxTotalSize: mb(1024),
     for: "gig",
-    acl: "public-read",
     image: {
       maxDimension: 2048,
       format: "webp",
@@ -108,7 +106,6 @@ export const uploadPresets = {
      * and replacing the poster then soft-deleted the gallery image with it.
      */
     for: "gig_poster",
-    acl: "public-read",
     image: {
       maxDimension: 2048,
       format: "webp",
@@ -130,7 +127,6 @@ export const uploadPresets = {
     maxFiles: 1,
     maxTotalSize: mb(25),
     for: "creator_profile_avatar",
-    acl: "public-read",
     image: {
       maxDimension: 896,
       format: "webp",
@@ -153,7 +149,6 @@ export const uploadPresets = {
     maxFiles: 1,
     maxTotalSize: mb(25),
     for: "creator_profile_banner",
-    acl: "public-read",
     image: {
       maxDimension: 2048,
       format: "webp",
@@ -176,7 +171,6 @@ export const uploadPresets = {
     maxFiles: 1,
     maxTotalSize: mb(25),
     for: "creator_profile_theme_bg",
-    acl: "public-read",
     image: {
       maxDimension: 2048,
       format: "webp",
@@ -199,7 +193,6 @@ export const uploadPresets = {
     maxFiles: 12,
     maxTotalSize: mb(150),
     for: "creator_profile_block_image",
-    acl: "public-read",
     image: {
       maxDimension: 1600,
       format: "webp",
@@ -235,7 +228,6 @@ export const uploadPresets = {
     maxFiles: 40,
     maxTotalSize: mb(1024),
     for: "library",
-    acl: "public-read",
     image: {
       maxDimension: 2560,
       format: "webp",

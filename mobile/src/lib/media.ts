@@ -3,7 +3,7 @@ import { API_URL } from "@/lib/env";
 /**
  * URLs for uploaded media, matching the web's `buildMediaUrl`.
  *
- * Everything goes through `/api/media/[id]` rather than straight to S3: that
+ * Everything goes through `/api/media/[id]` rather than straight to R2: that
  * endpoint sets long cache headers and survives the bucket moving, and it is
  * what the web already uses, so both surfaces hit the same cache.
  */
