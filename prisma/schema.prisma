@@ -1190,6 +1190,9 @@ enum ActivityType {
   DISCOUNT_CODE_CREATED
   DISCOUNT_CODE_UPDATED
   DISCOUNT_CODE_DELETED
+  SHORT_LINK_CREATED
+  SHORT_LINK_UPDATED
+  SHORT_LINK_DELETED
   DOOR_STAFF_ASSIGNED
   DOOR_STAFF_REMOVED
   BOX_OFFICE_SALE
@@ -2165,4 +2168,90 @@ model IdCheck {
   @@index([patronId, createdAt])
   @@index([ticketId])
   @@map("id_check")
+}
+
+/// A short link: one path on one of our domains that sends people somewhere
+/// else, so a flyer, a story sticker and a bio link can all point at
+/// `atmosmedia.co.nz/vol3` while the ticketing agency's URL changes underneath.
+///
+/// Slugs are unique per domain, not globally: the same `/vol3` can mean
+/// different things on the site and on a dedicated short domain. Which domains
+/// exist is code, not data — see `~/lib/short-links/domains`.
+model ShortLink {
+  id          String  @id @default(cuid())
+  /// A key of `LINK_DOMAINS`: "atmosmedia.co.nz".
+  domain      String
+  /// Lowercase, no leading slash: "wellington-tickets".
+  slug        String
+  /// An absolute http(s) URL, or a path on the main site starting with "/".
+  destination String
+  /// What this link is for, for the admin list. Never shown publicly.
+  label       String?
+  /// A retired link 404s but keeps its clicks, which is why this is a flag
+  /// rather than a delete.
+  active      Boolean @default(true)
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  qrCodes ShortLinkQrCode[]
+  clicks  ShortLinkClick[]
+
+  @@unique([domain, slug])
+  @@map("short_link")
+}
+
+/// A named QR code for one short link: "Cuba St lamp post".
+///
+/// Every QR code for a link lands on the same path; what tells them apart is an
+/// opaque `?c=` on the end. A click carrying a known code is counted with this
+/// row's `name` as its source. The name is copied onto the click rather than
+/// referenced, so deleting a QR code keeps its history in the numbers.
+model ShortLinkQrCode {
+  id     String    @id @default(cuid())
+  linkId String
+  link   ShortLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  /// Where it is going up, as the admin typed it. Never shown publicly.
+  name String
+  /// Random lowercase letters and numbers, the value of `?c=`.
+  code String
+
+  createdAt DateTime @default(now())
+
+  @@unique([linkId, code])
+  /// Names are what clicks are counted under, so two alike would merge.
+  @@unique([linkId, name])
+  @@map("short_link_qr_code")
+}
+
+/// One hit on a short link.
+///
+/// Derived from request headers and the query string only. No cookie and no IP
+/// address: `visitor` is a salted hash that exists so "clicks" and "people" can
+/// be told apart. The raw user agent is not kept.
+model ShortLinkClick {
+  id     String    @id @default(cuid())
+  linkId String
+  link   ShortLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  /// "mobile", "tablet", "desktop", "bot" or "unknown".
+  device   String
+  os       String
+  /// Includes in-app browsers, which is most of what a story link sends.
+  browser  String
+  /// A QR code's name, a utm_source or ref, a referring host, or "direct".
+  source   String
+  /// The Referer header as sent, for when the resolved source is not enough.
+  referrer String?
+  /// Two-letter country, from the platform in front of the app.
+  country  String?
+  /// Salted hash of address + user agent. Not reversible.
+  visitor  String
+
+  createdAt DateTime @default(now())
+
+  @@index([linkId, createdAt])
+  @@map("short_link_click")
 }
