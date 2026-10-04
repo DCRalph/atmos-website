@@ -81,7 +81,7 @@ export function slugProblem(slug: string, domain: string): string | null {
   if (!slug) return "The link needs a path.";
   if (slug.length > 64) return "That path is too long.";
   if (!SLUG.test(slug)) {
-    return "Use lowercase letters, numbers and dashes: wellington-tickets.";
+    return "Use lowercase letters, numbers and dashes: my-link.";
   }
   if (servesMainSite(domain) && RESERVED_SLUGS.has(slug)) {
     return `/${slug} is already a page on the main site.`;

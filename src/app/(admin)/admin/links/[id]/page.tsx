@@ -328,7 +328,7 @@ function QrCodes({ link }: { link: ShortLink }) {
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Where it's going up: Cuba St lamp posts"
+            placeholder="Where it's going up, like city centre flyers"
             maxLength={48}
             className="max-w-sm"
           />

@@ -62,8 +62,8 @@ export function isMainSiteHost(host: string, siteUrl: string): boolean {
 
 /** Why this host cannot be added as a short link domain, or null if it can. */
 export function hostProblem(host: string): string | null {
-  if (!host) return "Type the domain, like atms.nz.";
-  if (!HOST.test(host)) return "That isn't a domain. Type it like atms.nz.";
+  if (!host) return "Type the domain, like example.com.";
+  if (!HOST.test(host)) return "That isn't a domain. Type it like example.com.";
   if (host === SITE_LINK_DOMAIN || host.endsWith(".vercel.app")) {
     return "That's the main site, which already has links.";
   }

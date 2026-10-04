@@ -74,7 +74,7 @@ export function DomainsPanel() {
             <Input
               value={host}
               onChange={(e) => setHost(e.target.value)}
-              placeholder="atms.nz"
+              placeholder="example.com"
               className="max-w-sm font-mono"
               autoComplete="off"
               aria-label="Domain"
