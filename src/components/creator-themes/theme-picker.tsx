@@ -9,11 +9,7 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import {
-  DEFAULT_THEME_TOKENS,
-  parseTokens,
-  type ThemeTokens,
-} from "~/lib/creator-theme";
+import { ThemeSwatch } from "./theme-swatch";
 
 type ThemeCardRow = {
   id: string;
@@ -28,12 +24,9 @@ type ThemeCardRow = {
 export function ThemePicker({
   selectedThemeId,
   onSelect,
-  currentUserId,
 }: {
   selectedThemeId: string | null;
   onSelect: (themeId: string | null) => void;
-  /** Used to tell "my themes" apart from public ones in the "All" list if we ever merge. */
-  currentUserId?: string;
 }) {
   const router = useRouter();
   const utils = api.useUtils();
@@ -97,9 +90,9 @@ export function ThemePicker({
                   canEdit
                 />
               ))}
-              {mineQ.data && mineQ.data.length === 0 && (
+              {mineQ.data?.length === 0 && (
                 <p className="text-muted-foreground col-span-full text-xs">
-                  You don't have any themes yet.
+                  You don&apos;t have any themes yet.
                 </p>
               )}
             </div>
@@ -184,7 +177,6 @@ function ThemeCard({
   duplicating?: boolean;
   canEdit?: boolean;
 }) {
-  const tokens = parseTokens(theme.tokens);
   return (
     <div
       className={`relative flex flex-col gap-2 rounded-md border p-2 transition ${
@@ -198,7 +190,7 @@ function ThemeCard({
         onClick={onSelect}
         className="flex flex-1 flex-col items-stretch gap-2 text-left"
       >
-        <Swatch tokens={tokens} />
+        <ThemeSwatch tokens={theme.tokens} />
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <div className="truncate text-sm font-medium">{theme.name}</div>
@@ -233,39 +225,9 @@ function ThemeCard({
             onClick={onDuplicate}
             disabled={duplicating}
           >
-            <Copy className="mr-1 h-3 w-3" /> Duplicate & customize
+            <Copy className="mr-1 h-3 w-3" /> Copy and edit
           </Button>
         )}
-      </div>
-    </div>
-  );
-}
-
-function Swatch({ tokens }: { tokens: ThemeTokens }) {
-  return (
-    <div
-      className="h-12 w-full overflow-hidden rounded border"
-      style={{
-        background: tokens.pageBg,
-        color: tokens.pageFg,
-      }}
-    >
-      <div className="flex h-full items-stretch">
-        <div
-          className="w-1/3"
-          style={{ background: tokens.accent }}
-          aria-hidden="true"
-        />
-        <div className="flex-1 p-1.5">
-          <div
-            className="mb-1 h-2 w-10 rounded"
-            style={{ background: tokens.blockBg, opacity: 0.9 }}
-          />
-          <div
-            className="h-1.5 w-16 rounded"
-            style={{ background: tokens.blockBorder }}
-          />
-        </div>
       </div>
     </div>
   );

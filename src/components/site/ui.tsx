@@ -105,10 +105,17 @@ export function Media({
   );
 }
 
-export function AtmosLogo({ className }: { className?: string }) {
+/** The wordmark. `tone="light"` is the black version, for light grounds. */
+export function AtmosLogo({
+  className,
+  tone = "dark",
+}: {
+  className?: string;
+  tone?: "dark" | "light";
+}) {
   return (
     <Image
-      src="/logo/atmos-white.png"
+      src={tone === "light" ? "/logo/atmos-black.png" : "/logo/atmos-white.png"}
       alt="Atmos"
       width={5001}
       height={1120}

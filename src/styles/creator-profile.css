@@ -9,18 +9,20 @@
  * `cp-scrim-left`, `cp-scrim-top`.
  */
 @layer components {
-  .cp {
+  /* `.site.cp`, not `.cp`: these override `.site`'s own black ground, white
+     text, selection and focus ring, and site.css can load after this file. */
+  .site.cp {
     background: var(--cp-ground);
     color: var(--cp-ink);
     scrollbar-color: var(--cp-faint) transparent;
   }
 
-  .cp ::selection {
+  .site.cp ::selection {
     background: var(--cp-accent);
     color: var(--cp-accent-ink);
   }
 
-  .cp :focus-visible {
+  .site.cp :focus-visible {
     outline: 2px solid var(--cp-accent-text);
     outline-offset: 3px;
   }
@@ -70,6 +72,28 @@
       color-mix(in oklab, var(--cp-ground) 75%, transparent),
       transparent
     );
+  }
+
+  /* Rich text from the profile builder (Lexical), recoloured for the theme by
+     resetting the shadcn variables its classes read. */
+  .cp .cp-prose {
+    --foreground: color-mix(in oklab, var(--cp-ink) 84%, transparent);
+    --primary: var(--cp-accent-text);
+    --muted: var(--cp-raised);
+    --muted-foreground: var(--cp-muted);
+    --border: var(--cp-line);
+    font-size: 17px;
+    line-height: 1.65;
+  }
+
+  .cp .cp-prose :is(h1, h2, h3, h4) {
+    font-family: var(--cp-display-font), ui-sans-serif, sans-serif;
+    font-stretch: var(--cp-display-stretch);
+    font-weight: var(--cp-display-weight);
+    text-transform: var(--cp-display-case);
+    letter-spacing: -0.01em;
+    line-height: 1;
+    color: var(--cp-ink);
   }
 
   /* Photo treatments. Only the creator's own photos carry `cp-photo`; gig

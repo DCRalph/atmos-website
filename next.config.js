@@ -11,6 +11,10 @@ const config = {
   // The app reads the same list through `~/lib/dev-hosts`.
   allowedDevOrigins: process.env.DEV_ORIGINS?.split(","),
   images: {
+    // In dev, media URLs point at this same server (`/api/media` on
+    // localhost), which Next 16 refuses to optimise by default. Production
+    // media is on the public domain, so this stays off there.
+    dangerouslyAllowLocalIP: process.env.NODE_ENV === "development",
     remotePatterns: [
       {
         protocol: "http",

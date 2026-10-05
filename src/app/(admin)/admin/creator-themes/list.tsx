@@ -14,7 +14,7 @@ import { DataTable, type DataTableColumn } from "~/components/data-table";
 import { FilterSelect, ListFilters } from "~/components/admin/list-filters";
 import { useConfirm } from "~/components/confirm-provider";
 import { useDebouncedValue } from "~/hooks/use-debounced-value";
-import { parseTokens } from "~/lib/creator-theme";
+import { ThemeSwatch } from "~/components/creator-themes/theme-swatch";
 
 type Visibility = "private" | "public" | "system";
 
@@ -79,20 +79,9 @@ export function AdminCreatorThemesList() {
     {
       id: "preview",
       header: "Preview",
-      cell: (theme) => {
-        const tokens = parseTokens(theme.tokens);
-        return (
-          <div
-            className="h-7 w-10 overflow-hidden rounded border"
-            style={{ background: tokens.pageBg }}
-          >
-            <div className="flex h-full">
-              <div className="w-1/3" style={{ background: tokens.accent }} />
-              <div className="flex-1" style={{ background: tokens.blockBg }} />
-            </div>
-          </div>
-        );
-      },
+      cell: (theme) => (
+        <ThemeSwatch tokens={theme.tokens} compact className="w-14" />
+      ),
     },
     {
       id: "name",
