@@ -1,0 +1,20 @@
+appId: nz.co.atmosmedia.app
+---
+- tapOn:
+    text: "SIGN IN"
+    above: "SETTINGS"
+- runFlow:
+    file: _sign-in.yaml
+    env:
+      EMAIL: review-door@atmosmedia.co.nz
+- extendedWaitUntil:
+    visible: "TAP TO PAY ON IPHONE"
+    timeout: 15000
+- runFlow: _pause.yaml
+- runFlow: _beat.yaml
+- tapOn: "NOT NOW"
+- tapOn: "More, tab, 4 of 4"
+- extendedWaitUntil:
+    visible: "INTERNAL"
+    timeout: 10000
+- runFlow: _pause.yaml

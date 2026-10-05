@@ -17,6 +17,7 @@
     "db:backfill-verified": "bun prisma/backfill-email-verified.ts",
     "db:seed": "bun prisma/seed.ts",
     "db:seed-themes": "bun prisma/seed-themes.ts",
+    "db:seed-app-review": "bun --conditions=react-server prisma/seed-app-review.ts",
     "db:studio": "prisma studio",
     "dev": "next dev",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",

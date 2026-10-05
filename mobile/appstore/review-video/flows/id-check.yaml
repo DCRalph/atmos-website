@@ -1,0 +1,18 @@
+appId: nz.co.atmosmedia.app
+---
+- tapOn: "ID"
+- runFlow: _beat.yaml
+# Driver licence, the first document type.
+- tapOn:
+    point: "26%,40%"
+- tapOn: "Jane Anne Smith"
+- inputText: "Jamie Lee"
+- tapOn: "Which document"
+- tapOn: "15/01/1990"
+- inputText: "14/02/2010"
+- tapOn: "Which document"
+- runFlow: _beat.yaml
+- tapOn: "CHECK THIS PERSON"
+- runFlow: _pause.yaml
+- runFlow: _pause.yaml
+- tapOn: "Next"

@@ -1,0 +1,15 @@
+appId: nz.co.atmosmedia.app
+---
+- tapOn: "SELL"
+- runFlow: _beat.yaml
+# The + beside General Admission.
+- tapOn:
+    point: "88%,46%"
+- runFlow: _pause.yaml
+# Cash, the second payment option.
+- tapOn:
+    point: "50%,74%"
+- runFlow: _beat.yaml
+- tapOn: "TOOK .* — ISSUE TICKET"
+- runFlow: _pause.yaml
+- tapOn: "NEXT"

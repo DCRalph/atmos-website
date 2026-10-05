@@ -1,0 +1,24 @@
+appId: nz.co.atmosmedia.app
+---
+# Fills and submits the open sign-in sheet as ${EMAIL}.
+- tapOn:
+    below: "Email"
+    index: 0
+- inputText: ${EMAIL}
+- tapOn:
+    below: "Password"
+    index: 0
+- inputText: ${PASSWORD}
+# The keyboard covers the button. Tapping the sheet's copy dismisses it.
+- tapOn: "WELCOME BACK"
+- runFlow: _beat.yaml
+- tapOn:
+    text: "SIGN IN"
+    below: "Password"
+- runFlow:
+    when:
+      visible: "Save Password\\?"
+    commands:
+      - tapOn:
+          text: "Not Now"
+          below: "Save Password\\?"

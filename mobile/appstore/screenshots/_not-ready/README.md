@@ -9,5 +9,6 @@ All real captures. Each is here for a reason.
 | `04-tickets-signed-out.png` | Near-black screen with a Sign In button. This is the most important screenshot for a ticketing app, and it needs a signed-in account holding a real ticket so the QR code and Add to Apple Wallet render. |
 | `05-more-signed-out.png` | Correct behaviour — note that **Internal** is absent, which is the staff gating working — but a settings list is weak marketing. |
 
-To produce a usable Tickets screenshot: sign the simulator into the review
-account, give it a comp ticket, then `ATMOS_SHOTS=07 ./scripts/screenshots.sh`.
+To produce a usable Tickets screenshot: sign the simulator into
+`review-customer@atmosmedia.co.nz` (it holds two tickets once
+`bun run db:seed-app-review` has run), then `ATMOS_SHOTS=07 ./scripts/screenshots.sh`.

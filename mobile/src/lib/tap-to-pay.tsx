@@ -197,7 +197,7 @@ function Lifecycle({ children }: { children: ReactNode }) {
   const { user } = useAuth();
 
   /**
-   * `terminal.config` is a `doorProcedure`, so a punter's call is refused
+   * `terminal.config` is a `doorStaffProcedure`, so a punter's call is refused
    * server-side and lands here as an error — which is exactly the eligibility
    * answer we want. No second permission model in the app to drift from the
    * server's.
