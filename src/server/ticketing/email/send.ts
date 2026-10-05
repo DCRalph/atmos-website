@@ -33,7 +33,7 @@ import {
   ticketsUrl,
 } from "~/server/ticketing/urls";
 import { doorReceiptUrl } from "~/server/ticketing/door-receipts";
-import { sendTransactional } from "./provider";
+import { sendEmail } from "~/server/email/send";
 import {
   renderCompEmail,
   renderDoorReceiptEmail,
@@ -189,7 +189,8 @@ export async function sendTicketEmail({
     needsAttendeeNames,
   });
 
-  const result = await sendTransactional({
+  const result = await sendEmail({
+    from: "tickets",
     to,
     subject,
     html,
@@ -297,7 +298,8 @@ export async function sendCompTicketEmail({
     supportEmail: settings.supportEmail,
   });
 
-  const result = await sendTransactional({
+  const result = await sendEmail({
+    from: "tickets",
     to,
     subject,
     html,
@@ -370,7 +372,8 @@ export async function sendLifetimeEmail({
     supportEmail: settings.supportEmail,
   });
 
-  const result = await sendTransactional({
+  const result = await sendEmail({
+    from: "tickets",
     to,
     subject,
     html,
@@ -419,7 +422,8 @@ export async function sendRefundEmail({
     supportEmail: settings.supportEmail,
   });
 
-  const result = await sendTransactional({
+  const result = await sendEmail({
+    from: "tickets",
     to: order.buyerEmail,
     subject,
     html,
@@ -508,7 +512,8 @@ export async function sendDoorReceiptEmail({
     supportEmail: settings.supportEmail,
   });
 
-  const result = await sendTransactional({
+  const result = await sendEmail({
+    from: "tickets",
     to,
     subject,
     html,

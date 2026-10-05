@@ -1,7 +1,6 @@
 import "server-only";
 
-import { sendTransactional } from "~/server/ticketing/email/provider";
-import { escapeHtml } from "~/server/utils/email";
+import { escapeHtml, sendEmail } from "~/server/email/send";
 
 /**
  * The account mails: confirm your email, reset your password, delete your
@@ -180,7 +179,7 @@ export async function sendVerificationEmail({
   url: string;
 }): Promise<void> {
   const { subject, html, text } = renderVerificationEmail({ name, url });
-  const result = await sendTransactional({ to, subject, html, text });
+  const result = await sendEmail({ from: "account", to, subject, html, text });
 
   if (!result.ok) {
     // Signing up should not fail because the mail provider hiccupped — the
@@ -207,7 +206,7 @@ export async function sendPasswordResetEmail({
   url: string;
 }): Promise<void> {
   const { subject, html, text } = renderPasswordResetEmail({ name, url });
-  const result = await sendTransactional({ to, subject, html, text });
+  const result = await sendEmail({ from: "account", to, subject, html, text });
 
   if (!result.ok) {
     console.error("[auth] password reset email failed:", result.error);
@@ -233,9 +232,11 @@ export async function sendAccountDeletionEmail({
   url: string;
 }): Promise<void> {
   const { subject, html, text } = renderAccountDeletionEmail({ name, url });
-  const result = await sendTransactional({ to, subject, html, text });
+  const result = await sendEmail({ from: "account", to, subject, html, text });
 
   if (!result.ok) {
-    throw new Error(`Could not send the account deletion email: ${result.error}`);
+    throw new Error(
+      `Could not send the account deletion email: ${result.error}`,
+    );
   }
 }

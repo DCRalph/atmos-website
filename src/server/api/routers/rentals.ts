@@ -14,7 +14,7 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import { env } from "~/env";
-import { escapeHtml, sendEmail } from "~/server/utils/email";
+import { escapeHtml, sendEmail } from "~/server/email/send";
 import { getRequestMetadata, logActivity } from "~/server/utils/activity-log";
 
 const packageItemInputSchema = z.object({
@@ -1182,7 +1182,8 @@ async function sendRentalDecisionEmail(
       where: { key: "gearRentalNotification" },
     });
 
-    await sendEmail({
+    const result = await sendEmail({
+      from: "rentals",
       to: to.data,
       replyTo: staff?.value,
       subject: `Your Atmos gear rental request was ${approved ? "approved" : "declined"}`,
@@ -1201,6 +1202,9 @@ async function sendRentalDecisionEmail(
               <p>Reply to this email with any questions.</p>
             `,
     });
+    if (!result.ok) {
+      console.error("Failed to send rental decision email:", result.error);
+    }
   } catch (error) {
     console.error("Failed to send rental decision email:", error);
   }
@@ -1319,7 +1323,8 @@ export const rentalsRouter = createTRPCRouter({
               : `${quote.appliedDiscount.discountValue}% off/day via ${quote.appliedDiscount.name}`
           : "None";
 
-        await sendEmail({
+        const result = await sendEmail({
+          from: "notifications",
           to: notificationEmailSetting.value,
           subject: `New Gear Rental Request: ${input.userName}`,
           text:
@@ -1354,6 +1359,12 @@ export const rentalsRouter = createTRPCRouter({
               <p><a href="${env.NEXT_PUBLIC_APP_URL}/admin/rentals">Review Request in Admin Dashboard</a></p>
             `,
         });
+        if (!result.ok) {
+          console.error(
+            "Failed to send rental notification email:",
+            result.error,
+          );
+        }
       } catch (error) {
         console.error("Failed to send rental notification email:", error);
       }

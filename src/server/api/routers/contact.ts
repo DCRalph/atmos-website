@@ -4,7 +4,7 @@ import {
   publicProcedure,
   adminProcedure,
 } from "~/server/api/trpc";
-import { sendEmail } from "~/server/utils/email";
+import { sendEmail } from "~/server/email/send";
 
 export const contactRouter = createTRPCRouter({
   getAll: adminProcedure
@@ -69,7 +69,8 @@ export const contactRouter = createTRPCRouter({
         });
 
         if (notificationEmailSetting?.value) {
-          await sendEmail({
+          const result = await sendEmail({
+            from: "notifications",
             to: notificationEmailSetting.value,
             subject: `New Contact Submission: ${input.reason}`,
             text:
@@ -89,6 +90,12 @@ export const contactRouter = createTRPCRouter({
               <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/contact">View all submissions in Admin Dashboard</a></p>
             `,
           });
+          if (!result.ok) {
+            console.error(
+              "Failed to send contact notification email:",
+              result.error,
+            );
+          }
         }
       } catch (error) {
         console.error("Failed to send contact notification email:", error);

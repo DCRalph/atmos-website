@@ -120,13 +120,12 @@ export async function POST(request: Request): Promise<Response> {
       details: {
         recipient,
         serialNumber: input.draft.manifest.serialNumber ?? null,
-        provider: result.provider,
         messageId: result.messageId ?? null,
       },
     });
 
     return Response.json(
-      { ok: true, provider: result.provider },
+      { ok: true },
       { headers: { "cache-control": "no-store" } },
     );
   } catch (cause) {

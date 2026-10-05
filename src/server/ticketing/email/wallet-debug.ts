@@ -1,6 +1,6 @@
 import "server-only";
 
-import { sendTransactional } from "~/server/ticketing/email/provider";
+import { sendEmail } from "~/server/email/send";
 
 function escapeHtml(value: string): string {
   return value
@@ -51,7 +51,8 @@ export async function sendWalletDebugEmail({
   passName: string;
 }) {
   const rendered = renderWalletDebugEmail({ passName });
-  return sendTransactional({
+  return sendEmail({
+    from: "tickets",
     to,
     ...rendered,
     attachments: [
