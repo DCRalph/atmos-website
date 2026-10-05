@@ -9,7 +9,7 @@ import Image from "next/image";
 import { api } from "~/trpc/react";
 import { GigPoster } from "~/components/gigs/gig-poster";
 import { gigParam, gigPath } from "~/lib/gig-url";
-import type { GigMode, GigStatus } from "~Prisma/browser";
+import type { GigStatus } from "~Prisma/browser";
 import { GigAdminBanner } from "~/components/gigs/gig-admin-banner";
 
 type Gig = {
@@ -18,7 +18,8 @@ type Gig = {
   title: string;
   subtitle: string;
   shortDescription?: string | null;
-  mode: GigMode;
+  isTba: boolean;
+  isAffiliated: boolean;
   status: GigStatus;
   gigEndTime?: Date | null;
   ticketLink?: string | null;
@@ -34,7 +35,7 @@ type UpcomingGigCardProps = {
 
 export function UpcomingGigHomeCard({ gig }: UpcomingGigCardProps) {
   const posterUrl = gig.posterFileUpload?.url ?? null;
-  const isTba = gig.mode === "TO_BE_ANNOUNCED";
+  const isTba = gig.isTba;
   const displayTitle = isTba ? "TBA..." : gig.title;
   const posterLayoutId = `gig-poster-${gig.id}`;
   const utils = api.useUtils();

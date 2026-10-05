@@ -19,7 +19,7 @@ import { OnNowChip, nightOf, useIsOnNow } from "../on-now";
 
 type UpcomingGig = RouterOutputs["gigs"]["getUpcoming"][number];
 
-const isTba = (gig: UpcomingGig) => gig.mode === "TO_BE_ANNOUNCED";
+const isTba = (gig: UpcomingGig) => gig.isTba;
 
 /** Consecutive gigs sharing a month, in server order (dated first, TBA last). */
 function groupByMonth(gigs: UpcomingGig[]) {

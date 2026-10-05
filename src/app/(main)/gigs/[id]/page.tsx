@@ -57,7 +57,7 @@ export async function generateMetadata({
           title: true,
           subtitle: true,
           shortDescription: true,
-          mode: true,
+          isTba: true,
           status: true,
           posterFileUploadId: true,
         },
@@ -78,7 +78,7 @@ export async function generateMetadata({
 
   // A TBA gig keeps its secret: redacted name, site description. The poster
   // stays — the public page shows it as the teaser.
-  const isTba = gig.mode === "TO_BE_ANNOUNCED";
+  const isTba = gig.isTba;
   const name = isTba ? "TBA..." : gig.title;
   const description =
     (isTba ? "" : cleanText(gig.shortDescription) || cleanText(gig.subtitle)) ||

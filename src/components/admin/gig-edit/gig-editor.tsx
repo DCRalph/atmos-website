@@ -16,8 +16,8 @@ import {
 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { gigPath } from "~/lib/gig-url";
-import { GIG_MODES } from "~/lib/gig-mode";
 import { AdminSection } from "~/components/admin/admin-section";
+import { GigFlagsField } from "~/components/admin/gig-flags-field";
 import { GigStatusBadge } from "~/components/admin/gig-status-badge";
 import { GigMediaManager } from "~/components/admin/gig-media-manager";
 import { SaveStatusPill } from "~/components/admin/save-status";
@@ -33,13 +33,6 @@ import {
   CardTitle,
 } from "~/components/ui/card";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -53,7 +46,7 @@ import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { LexicalRichTextEditor } from "~/components/lexical";
 import { useUnsavedChangesWarning } from "~/hooks/use-unsaved-changes-warning";
 import { useUpload } from "~/hooks/use-upload";
-import { GigMode, GigStatus } from "~Prisma/browser";
+import { GigStatus } from "~Prisma/browser";
 import { GigChatPanel } from "./gig-chat-panel";
 import { RunSheetField } from "./run-sheet-field";
 import { PosterField } from "./poster-field";
@@ -105,7 +98,8 @@ type LoadedGig = {
   subtitle: string;
   shortDescription: string | null;
   descriptionLexical: unknown;
-  mode: GigMode | null;
+  isTba: boolean;
+  isAffiliated: boolean;
   ticketLink: string | null;
   gigStartTime: Date | null;
   gigEndTime: Date | null;
@@ -145,7 +139,8 @@ const emptyDraft = (): GigDraft => ({
   subtitle: "",
   shortDescription: "",
   descriptionLexical: null,
-  mode: GigMode.NORMAL,
+  isTba: false,
+  isAffiliated: false,
   ticketLink: "",
   startTime: undefined,
   endTime: undefined,
@@ -161,7 +156,8 @@ const draftFromGig = (gig: LoadedGig): GigDraft => ({
   shortDescription: gig.shortDescription ?? "",
   descriptionLexical:
     (gig.descriptionLexical as SerializedEditorState | null) ?? null,
-  mode: gig.mode ?? GigMode.NORMAL,
+  isTba: gig.isTba,
+  isAffiliated: gig.isAffiliated,
   ticketLink: gig.ticketLink ?? "",
   startTime: gig.gigStartTime ? new Date(gig.gigStartTime) : undefined,
   endTime: gig.gigEndTime ? new Date(gig.gigEndTime) : undefined,
@@ -204,7 +200,8 @@ const fingerprint = (draft: GigDraft): string =>
     description: draft.descriptionLexical
       ? JSON.stringify(draft.descriptionLexical)
       : null,
-    mode: draft.mode,
+    isTba: draft.isTba,
+    isAffiliated: draft.isAffiliated,
     ticketLink: draft.ticketLink.trim(),
     startTime: draft.startTime?.getTime() ?? null,
     endTime: draft.endTime?.getTime() ?? null,
@@ -427,7 +424,8 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
       subtitle: draft.subtitle.trim(),
       shortDescription: draft.shortDescription.trim(),
       descriptionLexical: draft.descriptionLexical,
-      mode: draft.mode,
+      isTba: draft.isTba,
+      isAffiliated: draft.isAffiliated,
       ticketLink: draft.ticketLink.trim() || null,
       gigStartTime: draft.startTime,
       gigEndTime: draft.endTime ?? null,
@@ -583,6 +581,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
               status={gig.status}
               startsAt={gig.gigStartTime}
               endsAt={gig.gigEndTime}
+              flags={gig}
             />
           ) : null}
           {gig?.status === GigStatus.DRAFT ? (
@@ -754,26 +753,13 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="gig-mode">Mode</Label>
-                  <Select
-                    value={draft.mode}
-                    onValueChange={(value) => update("mode", value as GigMode)}
-                  >
-                    <SelectTrigger id="gig-mode" className="w-full">
-                      <SelectValue placeholder="Select mode" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {GIG_MODES.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <GigFlagsField
+                    id="gig-mode"
+                    value={draft}
+                    onChange={update}
+                  />
                   <p className="text-muted-foreground text-xs">
-                    {
-                      GIG_MODES.find((option) => option.value === draft.mode)
-                        ?.summary
-                    }
+                    Both off is a normal gig.
                   </p>
                 </div>
                 <Field

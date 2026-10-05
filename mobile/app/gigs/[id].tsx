@@ -21,7 +21,6 @@ import { ArrowLeft, Calendar, Clock, MapPin } from "lucide-react-native";
 import { api, type RouterOutputs } from "@/lib/api";
 import { colors, radius, space, stroke } from "@/lib/theme";
 import { formatGigDateLong, formatGigTime } from "@/lib/dates";
-import { isTba } from "@/lib/gig";
 import {
   Body,
   Button,
@@ -96,7 +95,7 @@ export default function GigScreen() {
   const data = gig.data;
   const poster = data.posterFileUpload?.url ?? null;
   const soldByUs = event.data;
-  const tba = isTba(data);
+  const tba = data.isTba;
   const upcoming =
     (data.gigEndTime ?? data.gigStartTime).getTime() >= Date.now();
   const heroHeight = Math.round(screenHeight * (tba ? 0.9 : 0.6));

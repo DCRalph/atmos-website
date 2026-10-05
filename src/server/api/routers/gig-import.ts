@@ -28,7 +28,6 @@ import { logUserActivity } from "~/server/utils/activity-log";
 import {
   ActivityType,
   GigImportSource,
-  GigMode,
   GigScheduleKind,
   GigStatus,
   Prisma,
@@ -273,10 +272,8 @@ export const gigImportRouter = createTRPCRouter({
       // No date found is exactly what to-be-announced already means here, and
       // it is why `gigStartTime` can stay non-null without anybody inventing a
       // date: the site knows to hide a TBA gig's stand-in.
-      const mode =
-        resolved.dateUnknown || extraction.mode.value === "TO_BE_ANNOUNCED"
-          ? GigMode.TO_BE_ANNOUNCED
-          : GigMode.NORMAL;
+      const isTba =
+        resolved.dateUnknown || extraction.mode.value === "TO_BE_ANNOUNCED";
 
       const description = plainTextToLexical(resolved.descriptionText);
 
@@ -289,7 +286,7 @@ export const gigImportRouter = createTRPCRouter({
           descriptionLexical: description
             ? (description as unknown as Prisma.InputJsonValue)
             : Prisma.JsonNull,
-          mode,
+          isTba,
           ticketLink: resolved.ticketLink,
           gigStartTime: resolved.startsAt,
           gigEndTime: resolved.endsAt,

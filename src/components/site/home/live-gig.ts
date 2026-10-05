@@ -59,7 +59,7 @@ export function useLiveGig() {
   }
 
   const live = [...byId.values()]
-    .filter((g) => g.mode !== "TO_BE_ANNOUNCED" && gigOffSiteNotice(g) === null)
+    .filter((g) => !g.isTba && gigOffSiteNotice(g) === null)
     .flatMap((gig) => {
       const phase = phaseOf(gig, now);
       return phase ? [{ gig, phase }] : [];

@@ -5,12 +5,7 @@ import {
   publicProcedure,
   adminProcedure,
 } from "~/server/api/trpc";
-import {
-  FileUploadStatus,
-  GigMode,
-  GigStatus,
-  HomeGigSection,
-} from "~Prisma/client";
+import { FileUploadStatus, GigStatus, HomeGigSection } from "~Prisma/client";
 
 const HOME_RECENT_PAST_FEATURED_COUNT = 1;
 const HOME_RECENT_PAST_LIST_COUNT = 2;
@@ -26,13 +21,13 @@ const isDefined = <T>(value: T | null | undefined): value is T =>
  * is published.
  *
  * Affiliated gigs are excluded for the same reason they are absent from the
- * past gigs page — the mode exists so that somebody else's night leaves the
+ * past gigs page — the flag exists so that somebody else's night leaves the
  * site once it is over — and every gig read here is a past one. Pinning one is
  * allowed and simply has no effect, exactly as pinning a draft does.
  */
 const HOME_ELIGIBLE = {
   status: GigStatus.PUBLISHED,
-  mode: { not: GigMode.AFFILIATED },
+  isAffiliated: false,
 } as const;
 
 type PosterInfo = { id: string; url: string; name: string; mimeType: string };

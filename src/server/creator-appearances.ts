@@ -39,7 +39,7 @@ export const APPEARANCE_SELECT = {
           gigStartTime: true,
           gigEndTime: true,
           posterFileUploadId: true,
-          mode: true,
+          isTba: true,
           ticketLink: true,
         },
       },

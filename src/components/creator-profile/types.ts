@@ -35,7 +35,7 @@ export type PublicSocial = {
 export type ProfileSet = {
   id: string;
   /** What the site's ticket and link helpers need (`ticketCta`, `gigPath`). */
-  gig: Pick<ListGig, "id" | "title" | "mode" | "ticketLink">;
+  gig: Pick<ListGig, "id" | "title" | "isTba" | "ticketLink">;
   venue: string;
   start: Date;
   end: Date | null;

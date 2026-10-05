@@ -59,7 +59,7 @@ function set(
     gig: {
       id: `sample-${id}`,
       title,
-      mode: extra.tba ? "TO_BE_ANNOUNCED" : "NORMAL",
+      isTba: Boolean(extra.tba),
       ticketLink: extra.ticketLink ?? null,
     },
     venue,

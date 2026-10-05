@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import type { SerializedEditorState } from "lexical";
 
 import { api } from "~/trpc/react";
-import { GigMode } from "~Prisma/browser";
 
 /**
  * The draft the wizard is editing.
@@ -21,7 +20,8 @@ export type ImportDraft = {
   title: string;
   subtitle: string;
   shortDescription: string;
-  mode: GigMode;
+  isTba: boolean;
+  isAffiliated: boolean;
   ticketLink: string;
   startTime: Date | undefined;
   endTime: Date | undefined;
@@ -45,7 +45,8 @@ export function useImportDraft(gigId: string | null) {
       title: gig.title,
       subtitle: gig.subtitle,
       shortDescription: gig.shortDescription ?? "",
-      mode: gig.mode ?? GigMode.NORMAL,
+      isTba: gig.isTba,
+      isAffiliated: gig.isAffiliated,
       ticketLink: gig.ticketLink ?? "",
       startTime: gig.gigStartTime ?? undefined,
       endTime: gig.gigEndTime ?? undefined,
@@ -89,7 +90,8 @@ export function useImportDraft(gigId: string | null) {
         shortDescription: draft.shortDescription.trim() || null,
         descriptionLexical:
           (gig.descriptionLexical as SerializedEditorState | null) ?? null,
-        mode: draft.mode,
+        isTba: draft.isTba,
+        isAffiliated: draft.isAffiliated,
         ticketLink: draft.ticketLink.trim() || null,
         gigStartTime: draft.startTime,
         gigEndTime: draft.endTime ?? null,

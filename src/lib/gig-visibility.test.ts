@@ -15,14 +15,16 @@ const at = (ms: number) => new Date(Date.now() + ms);
 
 const normal = {
   status: "PUBLISHED",
-  mode: "NORMAL",
+  isTba: false,
+  isAffiliated: false,
   gigStartTime: at(hours(24 * 30)),
 } as const;
 
 const affiliated = (startsIn: number, endsIn?: number) =>
   ({
     status: "PUBLISHED",
-    mode: "AFFILIATED",
+    isTba: false,
+    isAffiliated: true,
     gigStartTime: at(startsIn),
     gigEndTime: endsIn === undefined ? null : at(endsIn),
   }) as const;
@@ -66,5 +68,15 @@ describe("gigOffSiteNotice", () => {
     // so a banner claiming otherwise would be a lie on a public card.
     assert.equal(gigOffSiteNotice(affiliated(-hours(2))), null);
     assert.equal(gigOffSiteNotice(affiliated(-hours(24 * 365))), null);
+  });
+
+  test("an affiliated TBA gig is off the site once its date has passed", () => {
+    // TBA keeps it off the past lists, so it has nowhere left to be.
+    const tba = (startsIn: number) => ({
+      ...affiliated(startsIn),
+      isTba: true,
+    });
+    assert.equal(gigOffSiteNotice(tba(hours(2))), null);
+    assert.match(gigOffSiteNotice(tba(-hours(2))) ?? "", /^Affiliated and TBA/);
   });
 });

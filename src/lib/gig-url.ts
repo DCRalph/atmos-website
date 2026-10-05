@@ -27,9 +27,9 @@ export function gigSlug(title: string): string {
 export function gigParam(gig: {
   id: string;
   title: string;
-  mode?: string | null;
+  isTba?: boolean;
 }): string {
-  if (gig.mode === "TO_BE_ANNOUNCED") return gig.id;
+  if (gig.isTba) return gig.id;
   const slug = gigSlug(gig.title);
   return slug && slug !== "tba" ? slug : gig.id;
 }

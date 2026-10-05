@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
-import type { GigMode } from "~Prisma/browser";
 import { cn } from "~/lib/utils";
 import { DEFAULT_EVENT_TIMEZONE } from "~/lib/ticketing/dates";
 import { AtmosLogo, Button, Media, buttonVariants } from "../ui";
@@ -57,7 +56,7 @@ export function MonthBadge({ month, year }: { month?: string; year?: string }) {
 /** The fields a poster needs. Past gigs from the home router may lack `posterFileUpload`. */
 type PosterGig = {
   title: string;
-  mode: GigMode;
+  isTba: boolean;
   posterFileUpload?: { url: string } | null;
   media?: { url: string | null }[];
 };
@@ -80,7 +79,7 @@ export function GigPoster({
   const src =
     gig.posterFileUpload?.url ?? gig.media?.find((m) => m.url)?.url ?? null;
 
-  if (gig.mode === "TO_BE_ANNOUNCED") {
+  if (gig.isTba) {
     return (
       <div className={cn("relative overflow-hidden bg-white/5", className)}>
         {src ? (

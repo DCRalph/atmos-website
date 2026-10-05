@@ -2,8 +2,6 @@ import { Image } from "expo-image";
 import { Link } from "expo-router";
 import { Pressable, StyleSheet, View } from "react-native";
 
-import type { GigMode } from "~Prisma/client";
-
 import { Body, Caption, Pill } from "@/components/ui";
 import { colors, radius, space, stroke } from "@/lib/theme";
 import { gigWhen, gigWhenLong } from "@/lib/gig";
@@ -13,8 +11,8 @@ export type GigCardData = {
   title: string;
   subtitle: string;
   gigStartTime: Date;
-  /** `TO_BE_ANNOUNCED` means the date is a placeholder — see `@/lib/gig`. */
-  mode: GigMode;
+  /** The date is a placeholder — see `@/lib/gig`. */
+  isTba: boolean;
   posterFileUpload?: { url: string } | null;
 };
 
