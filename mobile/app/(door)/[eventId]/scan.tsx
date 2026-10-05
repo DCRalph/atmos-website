@@ -2,13 +2,15 @@ import { useCallback, useRef, useState } from "react";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Keyboard } from "lucide-react-native";
 
 import { api } from "@/lib/api";
 import { labelArg, useDeviceLabel } from "@/lib/device-label";
-import { colors, radius, space, stroke } from "@/lib/theme";
-import { Body, Button, Caption, Loading, Notice } from "@/components/ui";
+import { colors, concentric, radius, space, type } from "@/lib/theme";
+import { Button, Eyebrow, Loading, Notice } from "@/components/ui";
+import { Glass } from "@/components/glass";
 import { ScanResult, type ScanOutcome } from "@/components/door/scan-result";
 import { DoorHeader } from "@/components/door/door-header";
 import { RecentScans } from "@/components/door/recent-scans";
@@ -94,65 +96,77 @@ export default function ScanScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+    <View style={{ flex: 1, backgroundColor: "#000" }}>
+      {/* The camera is the whole screen; everything else floats over it. */}
+      <CameraView
+        style={StyleSheet.absoluteFill}
+        facing="back"
+        barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+        onBarcodeScanned={outcome || scan.isPending ? undefined : onScanned}
+      />
+
       <DoorHeader
         eventId={eventId}
         summary={summary.data}
         active="scan"
         onBack={() => router.replace("/(door)")}
+        overlay
       />
 
-      <View style={styles.viewfinder}>
-        <CameraView
-          style={StyleSheet.absoluteFill}
-          facing="back"
-          barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-          onBarcodeScanned={outcome || scan.isPending ? undefined : onScanned}
-        />
-        <View pointerEvents="none" style={styles.reticle} />
+      <View pointerEvents="none" style={styles.aim}>
+        <View style={styles.reticle}>
+          <View style={[styles.corner, styles.tl]} />
+          <View style={[styles.corner, styles.tr]} />
+          <View style={[styles.corner, styles.bl]} />
+          <View style={[styles.corner, styles.br]} />
+        </View>
+        <Text style={styles.hint}>
+          {scan.isPending ? "Checking…" : "Point at the ticket QR"}
+        </Text>
       </View>
 
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ padding: space.lg, gap: space.lg }}
-        keyboardShouldPersistTaps="handled"
+      <Glass
+        dark
+        style={[
+          styles.panel,
+          { bottom: insets.bottom > 0 ? PANEL_INSET : space.lg, borderRadius: concentric(PANEL_INSET) },
+        ]}
       >
-        <View style={{ gap: space.sm }}>
-          <Body soft style={{ textAlign: "center" }}>
-            {scan.isPending ? "Checking…" : "Point at the ticket QR"}
-          </Body>
-          <Pressable
-            onPress={() =>
-              router.push({
-                pathname: "/(door)/[eventId]/manual",
-                params: { eventId },
-              })
-            }
-            hitSlop={8}
-          >
-            <Caption style={{ textAlign: "center" }}>
-              No phone? Enter a ticket number
-            </Caption>
-          </Pressable>
-        </View>
-
-        <View style={{ gap: space.xs }}>
-          <Caption>This device — shows on every scan you take</Caption>
-          <TextInput
-            value={deviceLabel}
-            onChangeText={setDeviceLabel}
-            placeholder="Front door"
-            placeholderTextColor={colors.textFaint}
-            autoCorrect={false}
-            style={styles.label}
+        <ScrollView
+          style={{ maxHeight: 260 }}
+          contentContainerStyle={{ gap: space.lg }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <RecentScans
+            eventId={eventId}
+            isManager={summary.data?.isManager ?? false}
           />
-        </View>
-
-        <RecentScans
-          eventId={eventId}
-          isManager={summary.data?.isManager ?? false}
-        />
-      </ScrollView>
+          <View style={{ gap: space.sm }}>
+            <Eyebrow>This device · shows on every scan you take</Eyebrow>
+            <TextInput
+              value={deviceLabel}
+              onChangeText={setDeviceLabel}
+              placeholder="Front door"
+              placeholderTextColor={colors.textFaint}
+              autoCorrect={false}
+              style={styles.label}
+            />
+          </View>
+        </ScrollView>
+        <Button
+          variant="glass"
+          icon={Keyboard}
+          style={{ marginTop: space.md }}
+          onPress={() =>
+            router.push({
+              pathname: "/(door)/[eventId]/manual",
+              params: { eventId },
+            })
+          }
+        >
+          No phone? Type the number
+        </Button>
+      </Glass>
 
       {outcome ? (
         <ScanResult
@@ -166,36 +180,47 @@ export default function ScanScreen() {
   );
 }
 
+/** Gap between the bottom panel and the screen's edges. */
+const PANEL_INSET = 12;
+const CORNER = 36;
+
 const styles = StyleSheet.create({
   centre: { flex: 1, paddingHorizontal: space.lg },
-  label: {
-    height: 48,
-    borderWidth: stroke.hard,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: space.md,
-    color: colors.text,
-    fontSize: 15,
+  aim: {
+    ...StyleSheet.absoluteFill,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingBottom: 120,
   },
-  viewfinder: {
-    // Square and fixed rather than flex: the camera stays put while the
-    // recent-scans list scrolls under it, so the framing a staffer has learned
-    // does not move when the list grows.
-    aspectRatio: 1,
-    margin: space.lg,
-    borderRadius: radius.lg,
-    overflow: "hidden",
-    backgroundColor: "#000",
-  },
-  reticle: {
+  // Square: it frames the image, and imagery never takes a radius.
+  reticle: { width: 240, height: 240 },
+  corner: {
     position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.25)",
-    borderRadius: radius.lg,
-    margin: space.xl,
+    width: CORNER,
+    height: CORNER,
+    borderColor: colors.accent,
+  },
+  tl: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3 },
+  tr: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3 },
+  bl: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3 },
+  br: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3 },
+  hint: { ...type.label, fontSize: 11, color: colors.text, marginTop: space.lg },
+  panel: {
+    position: "absolute",
+    left: PANEL_INSET,
+    right: PANEL_INSET,
+    paddingHorizontal: space.xl,
+    paddingTop: space.lg,
+    paddingBottom: space.xl,
+  },
+  label: {
+    ...type.body,
+    height: 44,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "rgba(255,255,255,0.04)",
+    paddingHorizontal: space.lg,
+    color: colors.text,
   },
 });

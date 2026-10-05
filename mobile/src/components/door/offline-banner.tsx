@@ -3,7 +3,7 @@ import * as Network from "expo-network";
 import { StyleSheet, View } from "react-native";
 
 import { colors, space } from "@/lib/theme";
-import { Body, Caption } from "@/components/ui";
+import { Caption, Display } from "@/components/ui";
 
 /**
  * "No signal" — said plainly, because the alternative is worse.
@@ -45,7 +45,9 @@ export function OfflineBanner() {
 
   return (
     <View style={styles.wrap}>
-      <Body style={{ color: "#000", fontWeight: "800" }}>No signal</Body>
+      <Display size={14} style={{ color: "#000" }}>
+        No signal
+      </Display>
       <Caption style={{ color: "rgba(0,0,0,0.75)" }}>
         Scans can&apos;t be checked right now. The list below still works — use
         it, and scan again once you&apos;re back on.

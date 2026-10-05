@@ -21,7 +21,7 @@ import { api, type RouterOutputs } from "@/lib/api";
 import { API_URL } from "@/lib/env";
 import { mediaUrl } from "@/lib/media";
 import { formatGigDate, formatGigTime } from "@/lib/dates";
-import { colors, space, stroke } from "@/lib/theme";
+import { colors, space, stroke, type } from "@/lib/theme";
 import { Caption } from "@/components/ui";
 
 /**
@@ -48,9 +48,12 @@ const STRIP_LIMIT = 5;
 export function LineUpAvatars({
   lineUp,
   size = 28,
+  rows,
 }: {
   lineUp: readonly LineUpEntry[];
   size?: number;
+  /** One row per artist (face, name, role) instead of the overlapping stack. */
+  rows?: boolean;
 }) {
   const [index, setIndex] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
@@ -68,8 +71,31 @@ export function LineUpAvatars({
 
   if (lineUp.length === 0) return null;
 
+  const show = (i: number) => {
+    setIndex(i);
+    setOpen(true);
+  };
+
   return (
     <>
+      {rows ? (
+        <View>
+          {lineUp.map((entry, i) => (
+            <Pressable
+              key={entry.id}
+              accessibilityRole="button"
+              onPress={() => show(i)}
+              style={({ pressed }) => [styles.listRow, pressed && { opacity: 0.7 }]}
+            >
+              <ArtistAvatar profile={entry.creatorProfile} size={44} />
+              <Text numberOfLines={1} style={styles.listName}>
+                {entry.creatorProfile.displayName}
+              </Text>
+              {entry.role ? <Text style={styles.listRole}>{entry.role}</Text> : null}
+            </Pressable>
+          ))}
+        </View>
+      ) : (
       <View style={{ flexDirection: "row", alignItems: "center" }}>
         {lineUp.map((entry, i) => (
           <Pressable
@@ -77,10 +103,7 @@ export function LineUpAvatars({
             accessibilityRole="button"
             accessibilityLabel={entry.creatorProfile.displayName}
             hitSlop={6}
-            onPress={() => {
-              setIndex(i);
-              setOpen(true);
-            }}
+            onPress={() => show(i)}
             style={{ marginLeft: i === 0 ? 0 : -Math.round(size * 0.3) }}
           >
             <ArtistAvatar
@@ -91,6 +114,7 @@ export function LineUpAvatars({
           </Pressable>
         ))}
       </View>
+      )}
 
       <ArtistSheet
         lineUp={lineUp}
@@ -529,6 +553,16 @@ function monthRange(from: Date, to: Date): string {
 const VIOLET = "#c4b5fd";
 
 const styles = StyleSheet.create({
+  listRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.lg,
+    paddingVertical: space.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  listName: { ...type.display, flex: 1, fontSize: 16, lineHeight: 19, color: colors.text, textTransform: "none" },
+  listRole: { ...type.label, fontSize: 9, color: colors.textFaint },
   scrim: { backgroundColor: "rgba(0,0,0,0.6)" },
   sheet: {
     backgroundColor: colors.bg,

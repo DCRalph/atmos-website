@@ -4,7 +4,7 @@ import { StyleSheet, View } from "react-native";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { colors, radius, space, stroke } from "@/lib/theme";
-import { Body, Button, Caption } from "@/components/ui";
+import { Button, Caption, Display } from "@/components/ui";
 
 /**
  * "Confirm your email" — shown only to signed-in users who have not.
@@ -25,10 +25,8 @@ export function VerifyBanner() {
 
   return (
     <View style={styles.wrap}>
-      <Body style={{ fontWeight: "900", textTransform: "uppercase" }}>
-        Confirm your email
-      </Body>
-      <Caption style={{ marginTop: 2 }}>
+      <Display size={15}>Confirm your email</Display>
+      <Caption style={{ marginTop: space.xs, color: colors.textSoft }}>
         {sent
           ? `Sent to ${user.email}. Tap the link and your tickets appear here.`
           : "It links tickets you already bought to this account."}
@@ -36,7 +34,8 @@ export function VerifyBanner() {
       {!sent ? (
         <Button
           variant="outline"
-          style={{ marginTop: space.md, height: 44 }}
+          size="sm"
+          style={{ marginTop: space.md }}
           loading={resend.isPending}
           onPress={() => resend.mutate()}
         >
@@ -55,8 +54,9 @@ export function VerifyBanner() {
 const styles = StyleSheet.create({
   wrap: {
     padding: space.lg,
-    borderRadius: radius.md,
-    borderWidth: stroke.hard,
+    borderRadius: radius.lg,
+    borderTopLeftRadius: 0,
+    borderWidth: stroke.hair,
     borderColor: colors.warn,
     backgroundColor: colors.warnDim,
   },
