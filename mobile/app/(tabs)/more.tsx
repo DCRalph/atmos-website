@@ -192,8 +192,9 @@ export default function MoreScreen() {
                 {/* A four minute fake night, for checking the widget renders at
                     all without waiting for a real one. Hidden where iOS cannot
                     show a Live Activity — a test that can only fail is not a
-                    test. */}
-                {lockScreen.supported && (
+                    test — and from door staff, who have no use for a
+                    diagnostic and should not meet a button called "Test". */}
+                {isOrganiser && lockScreen.supported && (
                   <Pressable
                     accessibilityRole="button"
                     onPress={

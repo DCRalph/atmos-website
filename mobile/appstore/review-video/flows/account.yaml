@@ -1,0 +1,23 @@
+appId: nz.co.atmosmedia.app
+---
+# Back out of checkout, which releases the hold.
+- runFlow:
+    when:
+      visible: "PAYMENT"
+    commands:
+      - tapOn:
+          point: "6%,16%"
+- runFlow:
+    when:
+      visible: "TICKETS"
+    commands:
+      - tapOn:
+          point: "6%,16%"
+- tapOn: "More, tab, 4 of 4"
+- runFlow: _pause.yaml
+- tapOn: "Delete account"
+- runFlow: _pause.yaml
+- tapOn: "Back"
+- runFlow: _beat.yaml
+- tapOn: "SIGN OUT"
+- runFlow: _beat.yaml

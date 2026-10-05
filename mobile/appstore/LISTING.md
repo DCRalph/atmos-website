@@ -22,31 +22,34 @@ running against production. Regenerate with `scripts/screenshots.sh`.
 | Primary category | Entertainment |
 | Secondary category | Music |
 | Content rights | Contains no third-party content |
-| Age rating | **17+** (see below — may be **18+** under Apple's current tiers) |
+| Age rating | **18+**, via Override to Higher Age Rating (see below) |
 
-### Age rating — 17+
+### Age rating — 18+
 
-Set deliberately, overriding the 4+ that the questionnaire would otherwise
-produce. Every Atmos event is R18 (`TicketEvent.isR18` defaults to true), the
-venues are licensed, and the app is the way in to them. Rating it for the
-audience it actually serves is the honest answer, and it removes any argument
-that the listing understates what it sells.
+Every Atmos event is R18 (`TicketEvent.isR18` defaults to true), the venues are
+licensed, and the app is the way in to them. Rating it for the audience it
+actually serves is the honest answer.
 
-Answer the questionnaire like this. Each of these is **true of this app** — none
-is inflated to reach a number, which matters, because Apple treats an inaccurate
-questionnaire as a misrepresentation regardless of which direction it errs in.
+The questionnaire on its own lands lower than 18+, and that is fine: answer it
+**accurately**, then raise the result with **Age Categories and Override ›
+Override to Higher Age Rating › 18+**. Apple lets you raise the calculated
+rating but never lower it, and the content descriptions keep reflecting the
+real answers.
 
-| Question | Answer | Why it is true |
-| --- | --- | --- |
-| Alcohol, Tobacco, or Drug Use or References | **Infrequent/Mild** | Events are held in licensed venues and the app sells entry to them |
-| Age assurance / age-restricted content | **Yes — 18+** where offered | Every event is R18 and ID is checked at the door |
-| Everything else (violence, sexual content, gambling, horror, contests) | **None** | Accurate — the app contains none of it |
+Do not reach 18+ by inflating an answer. Apple treats an inaccurate
+questionnaire as misrepresentation whichever way it errs, and 1.0 was rejected
+under Guideline 2.3.6 for exactly that: Age Assurance was answered Yes, and the
+app has no age assurance.
 
-⚠️ **The tier may not be called 17+ any more.** Apple replaced the old 4+/9+/12+/17+
-ladder with **4+/9+/13+/16+/18+** in its 2025 age-rating update. If App Store
-Connect no longer offers 17+, take **18+** — it is the correct equivalent for
-R18-only events, not 16+. Confirm against what the questionnaire actually shows
-you on the day.
+| Section | Question | Answer | Why it is true |
+| --- | --- | --- | --- |
+| In-App Controls | Parental Controls | **None** | There are no parental controls. |
+| In-App Controls | Age Assurance | **None** | The app never checks its user's age. Apple means the Declared Age Range API, age estimation, or verifying the user's ID. Door staff checking a patron's ID at the venue is not that. |
+| Capabilities | Unrestricted Web Access | **No** | More opens fixed atmosmedia.co.nz pages in a Safari sheet with no address bar. |
+| Capabilities | User-Generated Content, Social Media, Advertising | **No** | None of it exists. |
+| Capabilities | Messaging and Chat | **No** | Customers cannot message anybody. Gig rooms are an internal tool for Atmos organisers and never render for a customer. |
+| Mature themes | Alcohol, Tobacco, or Drug Use or References | **Infrequent** | Events are held in licensed venues and the app sells entry to them. |
+| Everything else | Violence, sexual content, profanity, horror, gambling, contests, medical | **None** | The app contains none of it. |
 
 The R18 door policy also stays in the description, because that is where a
 customer actually reads it.
@@ -169,58 +172,104 @@ All four returned 200 at the time of writing.
 | Phone | ⚠️ |
 | Email | ⚠️ |
 | Sign-in required | **Yes** |
-| Demo account | ⚠️ see below |
+| Demo account | `review-customer@atmosmedia.co.nz` — see below |
+| Attachment | The review walkthrough video (see below) |
 
-### Demo account — the thing most likely to get this rejected
+### Demo accounts
 
-Two separate problems, and they need two different answers.
+1.0 was rejected under Guideline 2.1(a) without them: the reviewer made their
+own account with Sign in with Apple and landed on an empty Tickets tab.
 
-**A customer account.** A reviewer must be able to see a ticket. Sign-up is
-email-based, so leaving this blank means a reviewer lands on an empty Tickets tab
-and cannot evaluate the app's main purpose.
-
-> ⚠️ Create a review account and issue it a comp ticket to a real upcoming
-> event, so the Tickets tab and the QR code both render. `src/server/ticketing/comps.ts`.
-
-**A door-staff account.** This is already documented in
-`docs/ticketing/APP-REVIEW-ANSWERS.md`, and it matters more than it looks:
-Tap to Pay and every door screen render *only* for an account the server
-recognises as staff. A reviewer signed in as a customer sees no internal tooling
-at all, because for them none exists.
-
-Suggested review notes:
+Both accounts, and everything they show, come from one script:
 
 ```
-Atmos is a consumer ticketing app for our own live-music events in Wellington,
-New Zealand. Atmos Media is a single merchant on one Stripe account.
-
-Sign in with Apple, Google and email/password are all offered. An account can
-be deleted from inside the app at More > Account > Delete account.
-
-CUSTOMER ACCOUNT (main app):
-  email: ⚠️
-  password: ⚠️
-This account holds a ticket to an upcoming event. Tickets tab shows the ticket
-and its QR code, and the ticket can be added to Apple Wallet.
-
-DOOR STAFF ACCOUNT (internal tooling):
-  email: ⚠️
-  password: ⚠️
-Sign in with this account to reach More > Internal, which is where door mode
-and Tap to Pay on iPhone live. These screens do not render for a customer
-account, and the server refuses the calls behind them, so the customer account
-above cannot be used to review them.
-
-Tap to Pay on iPhone is internal box-office tooling used by our own staff at our
-own events. It is not offered to customers. Apple has granted the entitlement
-for development only, so this build ships without it and the sell sheet reports
-Tap to Pay as unavailable. See our completed App Review Requirements Checklist
-v1.6, emailed separately.
-
-The app requires iOS 16.4 or later. Tap to Pay additionally requires iPhone XS
-or later, enforced at runtime rather than by UIRequiredDeviceCapabilities, so
-that a customer with an older iPhone is not locked out of their own ticket.
+APP_REVIEW_PASSWORD=... bun run db:seed-app-review
 ```
+
+**Run it before every submission.** It resets whatever the last reviewer did
+(check-ins, door sales, ID checks), moves the demo night about six months
+ahead so it is never in the past, and resets both passwords to the value
+given. It sends no email. The password is not kept in the repo: use the same
+one each time and keep it with the App Store Connect login.
+
+| Account | Email | What it shows |
+| --- | --- | --- |
+| Customer | `review-customer@atmosmedia.co.nz` | Two tickets to **Atmos Demo Night**, with QR codes and Add to Apple Wallet |
+| Door staff | `review-door@atmosmedia.co.nz` | Manager on Atmos Demo Night only: door mode with a 12-name guest list, the run sheet, Tap to Pay guides |
+
+The demo night is invisible to the public: its gig is a draft and its ticket
+event is unlisted. Atmos admins and organisers will see it in their own door
+and run sheet lists, named so nobody mistakes it for a real show. Every ticket
+is a comp, so it adds nothing to takings.
+
+Put the customer account in the **Sign-in information** fields, and both
+accounts in the notes:
+
+```
+Atmos is the ticketing app for our own live music events in Wellington, New
+Zealand. Atmos Media is a single merchant on one Stripe account.
+
+Sign in with Apple, Google and email/password are all offered. Use
+email/password with the accounts below (More > Sign in, or Tickets > Sign in).
+
+CUSTOMER ACCOUNT
+  email:    review-customer@atmosmedia.co.nz
+  password: <password>
+Tickets tab > Atmos Demo Night shows two tickets with their QR codes, and each
+can be added to Apple Wallet. More > Settings > Notifications controls push.
+More > Account > Delete account deletes the account, confirmed by an emailed
+link.
+
+DOOR STAFF ACCOUNT
+  email:    review-door@atmosmedia.co.nz
+  password: <password>
+Sign out of the customer account first (More > Sign out). This account is door
+staff on the demo event. More > Internal > Door mode > Atmos Demo Night opens
+the door tools:
+  - List: search the guest list, tap a name to check them in
+  - Manual: type a ticket number to admit it, e.g. one shown on the customer
+    account's ticket
+  - Sell: sell or comp a ticket at the door (cash and eftpos are recorded only;
+    no card is charged)
+  - ID: record an ID check by typing the details
+  - Log: everything scanned tonight
+More > Internal > Run sheet shows the night's running order. More > Internal >
+Tap to Pay guides explains Tap to Pay on iPhone.
+
+These door screens never render for a customer account, and the server refuses
+the calls behind them, so they can only be reviewed with the door account. The
+demo event and its guest list are fictional and reset before each submission.
+Event analytics, gig rooms and team notifications are internal tools for Atmos
+Media's own organisers. They show real events, takings and customer details,
+so they are not on the review account.
+
+Ticket purchases: when a gig is sold through Atmos, its page shows a Tickets
+button that opens checkout (Stripe payment sheet, or a free claim for RSVP
+tiers). Current gigs sell through external sellers, so their Tickets button
+opens that seller's page instead. The attached video shows the in-app
+checkout.
+
+Tap to Pay on iPhone is internal box-office tooling used by our own staff at
+our own events. It is not offered to customers. Apple has granted the
+entitlement for development only, so this build ships without it and the Sell
+screen reports Tap to Pay as unavailable. See our completed App Review
+Requirements Checklist v1.6, emailed separately.
+
+The app is built for iPhone. The camera is only used by door staff to scan
+tickets; every door action can also be done by typing.
+```
+
+⚠️ The checkout paragraph only holds while no upcoming gig sells through
+Atmos ticketing. Once one does, replace it with the gig's name so the reviewer
+can open its checkout directly.
+
+### Review video
+
+`appstore/review-video/atmos-app-review.mp4`, attached under App Review
+Information. Apple is explicit that a video does not replace demo accounts, so
+it is there to show what a single review device cannot: the in-app checkout,
+and the door flow end to end. Regenerate it with
+`appstore/review-video/record.sh` (see its header).
 
 ---
 
@@ -346,21 +395,46 @@ the correct source images to build them from.
 - [x] **A `TO_BE_ANNOUNCED` gig no longer appears under "Been and gone"** dated
       1970. It sits at the end of Upcoming, labelled "Date TBA".
 
-### Still needs a human
+### Done for the 1.0 resubmission
 
-- [ ] ⚠️ **Enable the "Sign In with Apple" capability** on App ID
-      `nz.co.atmosmedia.app` in the Apple Developer portal, then regenerate the
-      provisioning profiles. Without it the archive will not export.
-      `scripts/build-ipa.sh` fails the build if the entitlement is missing.
-- [ ] ⚠️ **Deploy the website before submitting.** The app's associated-domains
-      claim, Sign in with Apple, account deletion and password reset all depend
-      on server routes that are in this change and not yet live.
-- [ ] ⚠️ Create and test the two review accounts above.
-- [ ] ⚠️ Confirm the Apple Wallet pass builds for the review account's ticket.
-- [ ] ⚠️ The Tickets screenshot is still missing — see section 9.
+- [x] **Guideline 2.3.6** — the age rating answers above. Age Assurance was
+      answered Yes for 1.0; the app has none.
+- [x] **Guideline 2.1(a)** — demo accounts with pre-populated tickets, from
+      `bun run db:seed-app-review` (section 7).
+- [x] **Customers were shown the Tap to Pay splash.** `tapToPay.announcement`
+      and the `terminal.*` calls used `doorProcedure`, which refuses nobody, so
+      every signed-in customer was offered Tap to Pay setup and the Stripe
+      Terminal SDK started up on their phone. Apple's own reviewer hit it in
+      1.0. They now use `doorStaffProcedure`. Server-side, so it needs a
+      deploy, not a build.
+- [x] **Add to Apple Wallet opened a blank sheet on iPad**, which has no
+      Wallet and is where App Review tests an iPhone-only app. The button is
+      now hidden where PassKit says passes cannot be added
+      (`modules/apple-wallet`). Native, so it needs a new build — as do the
+      two app fixes below.
+- [x] **Switching accounts kept the last account's answers.** Nothing reset
+      the query cache on sign-out, so a door account signed in after a
+      customer saw no Internal section for five minutes — exactly the order a
+      reviewer goes in — and could briefly see the customer's tickets. The
+      cache now resets whenever the signed-in account changes.
+- [x] **"Test lock screen" is organiser-only.** iPad has no Live Activities,
+      so on the review device it did nothing visible, and a button called
+      "Test" invites a Guideline 2.2 question.
+- [x] The website routes the app depends on (associated domains, Sign in with
+      Apple, password reset, account deletion) are live.
+
+### Every submission
+
+- [ ] **Deploy the website first.** Server fixes reach the build under review
+      only once they are live.
+- [ ] `APP_REVIEW_PASSWORD=... bun run db:seed-app-review`, then sign in to
+      both accounts once to check.
 - [ ] Build with `scripts/build-ipa.sh` — it verifies version, build number,
       icon, that the Tap to Pay entitlement is absent, and that the Sign in with
       Apple and associated-domains entitlements are present.
 - [ ] Upload the `.ipa` with Transporter.
+- [ ] Age rating answers, demo account and notes as in sections 1 and 7, with
+      the review video attached.
 - [ ] Email Apple the completed App Review Requirements Checklist v1.6 —
       `docs/ticketing/APP-REVIEW-ANSWERS.md`.
+- [ ] ⚠️ The Tickets screenshot is still missing — see section 9.

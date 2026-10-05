@@ -4,7 +4,7 @@ import { ActivityType } from "~Prisma/client";
 import {
   adminProcedure,
   createTRPCRouter,
-  doorProcedure,
+  doorStaffProcedure,
 } from "~/server/api/trpc";
 import {
   eligibleStaffUserIds,
@@ -25,10 +25,10 @@ export const tapToPayRouter = createTRPCRouter({
   /**
    * Should this handset show the launch splash?
    *
-   * `doorProcedure`, so a punter is refused and the app never asks again — the
-   * splash is only for people who could actually use the feature.
+   * `doorStaffProcedure`, so a punter is refused and the app never asks again —
+   * the splash is only for people who could actually use the feature.
    */
-  announcement: doorProcedure.query(async ({ ctx }) => {
+  announcement: doorStaffProcedure.query(async ({ ctx }) => {
     const record = await ctx.db.tapToPayAnnouncement.findUnique({
       where: { userId: ctx.user.id },
       select: { splashSeenAt: true },
@@ -44,7 +44,7 @@ export const tapToPayRouter = createTRPCRouter({
    * kept on the device would be lost on reinstall and duplicated across the
    * shared handsets a door actually runs on.
    */
-  markSplashSeen: doorProcedure.mutation(async ({ ctx }) => {
+  markSplashSeen: doorStaffProcedure.mutation(async ({ ctx }) => {
     await ctx.db.tapToPayAnnouncement.upsert({
       where: { userId: ctx.user.id },
       create: { userId: ctx.user.id, splashSeenAt: new Date() },

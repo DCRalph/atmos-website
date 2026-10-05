@@ -1,0 +1,8 @@
+appId: nz.co.atmosmedia.app
+---
+# Holds the shot for a beat. Maestro has no sleep, so this waits for
+# an element that never appears and is allowed to give up.
+- extendedWaitUntil:
+    visible: "zz-never-zz"
+    timeout: 1200
+    optional: true

@@ -202,6 +202,27 @@ export const doorProcedure = protectedProcedure.use(async ({ ctx, next }) => {
 });
 
 /**
+ * Door staff only
+ *
+ * `doorProcedure` refuses nobody: its handlers check access per event. This is
+ * for calls that belong to no single event, like the Tap to Pay reader, and
+ * refuses anybody who is not an admin, an organiser, or rostered on at least
+ * one event — the same audience as `eligibleStaffUserIds`.
+ */
+export const doorStaffProcedure = doorProcedure.use(async ({ ctx, next }) => {
+  if (!ctx.hasGlobalDoorAccess) {
+    const rostered = await ctx.db.ticketEventStaff.findFirst({
+      where: { userId: ctx.user.id },
+      select: { id: true },
+    });
+    if (!rostered) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Door staff only" });
+    }
+  }
+  return next();
+});
+
+/**
  * Admin procedure
  *
  * Only accessible to users with the ADMIN permission.

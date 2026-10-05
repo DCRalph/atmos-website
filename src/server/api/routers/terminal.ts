@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
-import { createTRPCRouter, doorProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, doorStaffProcedure } from "~/server/api/trpc";
 import { getStripe, isStripeConfigured } from "~/server/stripe";
 import { env } from "~/env";
 
@@ -17,11 +17,11 @@ const TEST_CHARGE_CENTS = 100;
  * account. It is short-lived and the SDK asks for a fresh one whenever it
  * needs to.
  *
- * `doorProcedure` guards it, so only somebody already rostered on a door can
- * mint one at all.
+ * `doorStaffProcedure` guards it, so only somebody already rostered on a door
+ * can mint one at all.
  */
 export const terminalRouter = createTRPCRouter({
-  connectionToken: doorProcedure.mutation(async () => {
+  connectionToken: doorStaffProcedure.mutation(async () => {
     if (!isStripeConfigured()) {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
@@ -45,11 +45,11 @@ export const terminalRouter = createTRPCRouter({
   /**
    * What the app needs to know before touching the Terminal SDK.
    *
-   * Reaching this at all is the eligibility answer — `doorProcedure` refuses
-   * everybody who is not rostered on a door, so the app does not carry a second
-   * copy of that rule.
+   * Reaching this at all is the eligibility answer — `doorStaffProcedure`
+   * refuses everybody who is not rostered on a door, so the app does not carry a
+   * second copy of that rule.
    */
-  config: doorProcedure.query(({ ctx }) => {
+  config: doorStaffProcedure.query(({ ctx }) => {
     return {
       available: isStripeConfigured(),
       locationId: env.STRIPE_TERMINAL_LOCATION_ID ?? null,
@@ -84,7 +84,7 @@ export const terminalRouter = createTRPCRouter({
    * verified end to end without money ever moving. Anything left uncancelled
    * expires on Stripe's side within days rather than settling.
    */
-  createTestIntent: doorProcedure.mutation(async ({ ctx }) => {
+  createTestIntent: doorStaffProcedure.mutation(async ({ ctx }) => {
     if (!isStripeConfigured()) {
       throw new TRPCError({
         code: "PRECONDITION_FAILED",
@@ -116,7 +116,7 @@ export const terminalRouter = createTRPCRouter({
   }),
 
   /** Release the practice authorisation. Safe to call more than once. */
-  voidTestIntent: doorProcedure
+  voidTestIntent: doorStaffProcedure
     .input(z.object({ paymentIntentId: z.string() }))
     .mutation(async ({ input }) => {
       if (!isStripeConfigured()) return { ok: true as const };

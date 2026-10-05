@@ -1,0 +1,38 @@
+appId: nz.co.atmosmedia.app
+---
+# No gig sells through Atmos right now, so checkout is opened on the demo night
+# directly — the same screen a gig's Tickets button opens.
+- openLink: "atmos://app-review-demo/tiers"
+- runFlow:
+    when:
+      visible: "Open"
+    commands:
+      - tapOn: "Open"
+- extendedWaitUntil:
+    visible: "General Admission"
+    timeout: 10000
+- runFlow: _beat.yaml
+# The + beside General Admission.
+- tapOn:
+    point: "87%,25%"
+- runFlow: _beat.yaml
+- tapOn: "checkbox, unchecked"
+- runFlow: _beat.yaml
+- tapOn: "PAY \\$30.00"
+- extendedWaitUntil:
+    visible: "Held for.*"
+    timeout: 10000
+- runFlow: _beat.yaml
+- tapOn: "PAY \\$30.00"
+- extendedWaitUntil:
+    visible: "Card"
+    timeout: 15000
+- runFlow: _pause.yaml
+- tapOn: "Card"
+- runFlow: _pause.yaml
+# Stripe's own Back, to the list of methods, then its Close. While its sheet
+# is up, nothing of the app's is visible to match instead.
+- tapOn: "Back"
+- runFlow: _beat.yaml
+- tapOn: "Close"
+- runFlow: _beat.yaml

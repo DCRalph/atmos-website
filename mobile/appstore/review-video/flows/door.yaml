@@ -1,0 +1,26 @@
+appId: nz.co.atmosmedia.app
+---
+- tapOn: "Door mode"
+- runFlow: _beat.yaml
+- tapOn: ".*Atmos Demo Night.*"
+- runFlow: _pause.yaml
+- tapOn: "MANUAL"
+- tapOn: "ATN-4F7K2X-03"
+# The customer account's own ticket, as shown in the tickets segment.
+- inputText: ${TICKET}
+- tapOn: "LOOK IT UP"
+- runFlow: _pause.yaml
+- runFlow: _beat.yaml
+- tapOn: "Next"
+- tapOn: "LIST"
+- runFlow: _pause.yaml
+- tapOn: "Name, email or order number"
+- inputText: "Grace"
+- runFlow: _beat.yaml
+# The first tap only closes the keyboard.
+- tapOn: "Admit"
+- tapOn: "Admit"
+- runFlow: _pause.yaml
+- tapOn: "Next"
+- tapOn: "LOG"
+- runFlow: _pause.yaml

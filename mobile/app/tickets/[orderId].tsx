@@ -6,6 +6,7 @@ import { SvgXml } from "react-native-svg";
 
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { canAddPasses } from "@/lib/apple-wallet";
 import { API_URL } from "@/lib/env";
 import { accessLevel, isElevated } from "~/lib/ticketing/access-levels";
 import { colors, radius, space } from "@/lib/theme";
@@ -191,7 +192,9 @@ export default function OrderScreen() {
               </Caption>
 
               <View style={{ gap: space.sm, marginTop: space.md }}>
-                {ticket.appleWalletUrl ? (
+                {/* Not offered on iPad, which has no Wallet app: the pass
+                  would open onto a blank sheet. */}
+                {ticket.appleWalletUrl && canAddPasses() ? (
                   <Button
                     variant="outline"
                     onPress={() =>
