@@ -10,11 +10,11 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "@/lib/api";
 import { colors, radius, space, stroke } from "@/lib/theme";
-import { Body, Button, Caption, Loading, Notice } from "@/components/ui";
+import { Body, Button, Caption, Loading } from "@/components/ui";
+import { CameraNeeded } from "@/components/door/camera-needed";
 import { DoorHeader } from "@/components/door/door-header";
 import { CheckResult } from "@/components/door/check-result";
 
@@ -37,7 +37,6 @@ type Lookup =
  */
 export default function CheckScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const insets = useSafeAreaInsets();
 
   const [permission, requestPermission] = useCameraPermissions();
   const [lookup, setLookup] = useState<Lookup | null>(null);
@@ -91,17 +90,18 @@ export default function CheckScreen() {
 
   if (!permission.granted) {
     return (
-      <View style={[styles.centre, { paddingTop: insets.top + space.xxl }]}>
-        <Notice
-          title="Camera access needed"
-          detail="Checking a ticket by QR needs the camera. Nothing is recorded — frames are read on the phone and discarded."
-          action={
-            <Button onPress={() => void requestPermission()}>
-              Allow camera
-            </Button>
-          }
-        />
-      </View>
+      <CameraNeeded
+        header={
+          <DoorHeader
+            eventId={eventId}
+            summary={summary.data}
+            active="check"
+          />
+        }
+        detail="Checking a ticket by QR needs the camera. Nothing is recorded — frames are read on the phone and discarded."
+        canAskAgain={permission.canAskAgain}
+        onAllow={() => void requestPermission()}
+      />
     );
   }
 
@@ -185,7 +185,6 @@ export default function CheckScreen() {
 }
 
 const styles = StyleSheet.create({
-  centre: { flex: 1, paddingHorizontal: space.lg },
   explain: {
     padding: space.md,
     borderWidth: 1,

@@ -9,9 +9,10 @@ import { Keyboard } from "lucide-react-native";
 import { api } from "@/lib/api";
 import { labelArg, useDeviceLabel } from "@/lib/device-label";
 import { colors, concentric, radius, space, type } from "@/lib/theme";
-import { Button, Eyebrow, Loading, Notice } from "@/components/ui";
+import { Button, Eyebrow, Loading } from "@/components/ui";
 import { Glass } from "@/components/glass";
 import { ScanResult, type ScanOutcome } from "@/components/door/scan-result";
+import { CameraNeeded } from "@/components/door/camera-needed";
 import { DoorHeader } from "@/components/door/door-header";
 import { RecentScans } from "@/components/door/recent-scans";
 
@@ -81,17 +82,19 @@ export default function ScanScreen() {
 
   if (!permission.granted) {
     return (
-      <View style={[styles.centre, { paddingTop: insets.top + space.xxl }]}>
-        <Notice
-          title="Camera access needed"
-          detail="Scanning tickets needs the camera. Nothing is recorded — frames are read on the phone and discarded."
-          action={
-            <Button onPress={() => void requestPermission()}>
-              Allow camera
-            </Button>
-          }
-        />
-      </View>
+      <CameraNeeded
+        header={
+          <DoorHeader
+            eventId={eventId}
+            summary={summary.data}
+            active="scan"
+            onBack={() => router.replace("/(door)")}
+          />
+        }
+        detail="Scanning tickets needs the camera. Nothing is recorded — frames are read on the phone and discarded."
+        canAskAgain={permission.canAskAgain}
+        onAllow={() => void requestPermission()}
+      />
     );
   }
 
@@ -185,7 +188,6 @@ const PANEL_INSET = 12;
 const CORNER = 36;
 
 const styles = StyleSheet.create({
-  centre: { flex: 1, paddingHorizontal: space.lg },
   aim: {
     ...StyleSheet.absoluteFill,
     alignItems: "center",

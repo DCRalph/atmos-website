@@ -41,7 +41,7 @@ answerable, and it is true.
 > flow and there will not be one.
 >
 > Tap to Pay is internal box-office tooling and is not surfaced to customers at
-> all. Every entry point lives behind **More › Internal**, which renders only for
+> all. Every entry point lives behind **More › Staff**, which renders only for
 > an account the server recognises as door staff or an organiser, and the
 > `(door)` routes are gated the same way so a deep link cannot reach them either.
 
@@ -62,7 +62,7 @@ none exist. `review-door@atmosmedia.co.nz` is rostered on the demo night by
 | 1.4 | ✅ | The iOS version is checked **before** any SDK call, against `MIN_TAP_TO_PAY_IOS` (17.6). Below it the app says: "This iPhone is on iOS *x*. Tap to Pay needs iOS 17.6 or later — update it in Settings › General › Software Update." Checked first precisely so an old OS never surfaces as a generic reader failure. |
 | 1.5 | ✅ | The Terminal provider is mounted at the app root, not around door mode. On launch and on every `AppState` transition to active, the app initializes, checks support, discovers and connects. `mobile/src/components/providers.tsx` → `mobile/src/lib/tap-to-pay.tsx`. |
 | 1.6 | ✅ | Never stored. Acceptance is re-derived on every launch by attempting a connect with `tosAcceptancePermitted: false` — Apple is the source of truth and is asked again each time. No boolean is persisted anywhere, on device or server. |
-| 1.7 | ✅ | Face ID / Touch ID unlock, opt-in from More › Account, with device-passcode fallback. `mobile/src/lib/biometrics.tsx`. |
+| 1.7 | ✅ | Face ID / Touch ID unlock, opt-in from More › Staff, with device-passcode fallback. `mobile/src/lib/biometrics.tsx`. |
 | 1.8 | ✅ | Custom UI follows the HIG. Apple's payment sheet is themed to match via `setTapToPayUxConfiguration`. |
 | 1.9 | ✅ | "Tap to Pay on iPhone" is written in full everywhere it appears — payment option, checkout button, settings row, education, splash, email. ⚠️ Marketing copy for the splash/push/email is placeholder pending the approved assets (see 6.x). |
 
@@ -70,7 +70,7 @@ none exist. `review-door@atmosmedia.co.nz` is rostered on the demo night by
 
 | # | Status | Answer |
 | --- | --- | --- |
-| 2.1 | **N/A** | No third-party merchant onboarding to discover — see the explanation above. Tap to Pay is internal tooling, deliberately invisible to customers: the entry point at **More › Internal** renders only for door staff and organisers. The App Review notes carry a door-staff demo account, `review-door@atmosmedia.co.nz`, for this. |
+| 2.1 | **N/A** | No third-party merchant onboarding to discover — see the explanation above. Tap to Pay is internal tooling, deliberately invisible to customers: the entry point at **More › Staff** renders only for door staff and organisers. The App Review notes carry a door-staff demo account, `review-door@atmosmedia.co.nz`, for this. |
 | 2.2 | **N/A** | Single-merchant closed-loop app. There is no third-party merchant onboarding, digital or otherwise — see the explanation above. |
 | 2.3 | **N/A** | Same. For reference, a newly-rostered staff member goes from being granted door access to taking a tap in well under 15 minutes, and the New User Flow recording shows exactly that. |
 
@@ -78,12 +78,12 @@ none exist. `review-door@atmosmedia.co.nz` is rostered on the demo night by
 
 | # | Status | Answer |
 | --- | --- | --- |
-| 3.1 | ✅ | A dedicated Tap to Pay on iPhone screen, reachable from **More › Internal** and from door mode, plus the one-time launch splash. Staff only, by design. |
+| 3.1 | ✅ | A dedicated Tap to Pay on iPhone screen, reachable from **More › Staff** and from door mode, plus the one-time launch splash. Staff only, by design. |
 | 3.2 | ✅ | Full-screen modal splash shown once per eligible user. `mobile/src/components/tap-to-pay-splash.tsx`. ⚠️ Hero artwork and copy are placeholder. |
 | 3.3 | ✅ | Push notification to all eligible staff, sent once each and recorded per user. Admin trigger at **Admin › Settings › Tap to Pay launch campaign**. ⚠️ Copy is placeholder. |
 | 3.4 | **N/A** | No merchant onboarding to end. Its function is served instead by the launch splash and the enable flow, which fire the first time a user is granted door access. |
 | 3.5 | ✅ | **Set up Tap to Pay on iPhone** on the hub screen. This is the only path in the app that connects with `tosAcceptancePermitted: true`, and therefore the only one that can raise Apple's acceptance sheet. |
-| 3.6 | ✅ | That action lives in settings, entirely outside checkout — More › Internal › Tap to Pay guides. |
+| 3.6 | ✅ | That action lives in settings, entirely outside checkout — More › Staff › Tap to Pay guides. |
 | 3.7 | ✅ | Both, in effect. Tap to Pay is the first payment option at checkout and is always present; choosing it when the handset is not set up opens the acceptance flow rather than failing. |
 | 3.8 | ✅ | **Admin only.** The server answers `canAcceptTerms` from `ctx.isAdmin` and the app cannot decide it for itself — that answer is what gates `tosAcceptancePermitted`. Event organisers and per-event door managers are deliberately excluded: accepting binds the Atmos merchant identity to that person's personal Apple Account. |
 | 3.8.1 | ✅ | Everybody else sees: "An Atmos admin needs to accept the Tap to Pay on iPhone Terms and Conditions on this handset before it can take card. Ask one to sign in here, or take cash and eftpos in the meantime." |
@@ -97,7 +97,7 @@ none exist. `review-door@atmosmedia.co.nz` is rostered on the demo night by
 | --- | --- | --- |
 | 4.1 | ✅ | `ProximityReaderDiscovery` via a purpose-built native module — `content(for: .payment(.howToTap))` then `presentContent(_:from:)`, guarded on iOS 18 and presented from the topmost view controller. Not exposed by the Stripe React Native SDK, so written directly against Apple's framework. `mobile/modules/proximity-education`. |
 | 4.2 | ✅ | Education is pushed automatically off the SDK's own terms-acceptance callback, so it follows acceptance however acceptance was reached. |
-| 4.3 | ✅ | Permanently at More › Internal › Tap to Pay guides › How to take a payment. |
+| 4.3 | ✅ | Permanently at More › Staff › Tap to Pay guides › How to take a payment. |
 | 4.4 | ✅ | Covered by 4.1 per the checklist's own note. |
 | 4.5 | ✅ | Covered by 4.1, and by our own screen for iOS 17 — holding a contactless card to the top edge, and which schemes work. |
 | 4.6 | ✅ | Covered by 4.1, and by our own screen — Apple Pay, Google Pay, Samsung Pay, and that watches need to be held closer than a card. |
@@ -175,7 +175,7 @@ actually takes. Say so at the start of the recording.
    or state it.)
 2. The user opens the Atmos app. **The launch splash appears** — full screen,
    Tap to Pay on iPhone. *(3.2, 6.2)*
-3. Tap **Set it up**, landing on More › Internal › Tap to Pay guides. *(3.1, 3.6)*
+3. Tap **Set it up**, landing on More › Staff › Tap to Pay guides. *(3.1, 3.6)*
 4. **Signed in as a non-admin first**: show the "An Atmos admin needs to accept…"
    message. *(3.8, 3.8.1)*
 5. Sign in as an admin. Tap **Set up Tap to Pay on iPhone** → Apple's Terms and
@@ -187,7 +187,7 @@ actually takes. Say so at the start of the recording.
 8. **Configuration progress bar** while the reader prepares, then completion.
    *(3.9.1)*
 9. The "Try Tap to Pay on iPhone" screen; take the $1 test payment. *(3.9)*
-10. Go back to More › Internal › Tap to Pay guides › How to take a payment to
+10. Go back to More › Staff › Tap to Pay guides › How to take a payment to
     show education is permanently reachable. *(4.3)*
 
 ### Existing User Flow
