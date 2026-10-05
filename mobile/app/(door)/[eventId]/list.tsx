@@ -17,7 +17,7 @@ import { labelArg, useDeviceLabel } from "@/lib/device-label";
 import { colors, radius, space, stroke } from "@/lib/theme";
 import { formatTimeAgo } from "@/lib/dates";
 import { Body, Button, Caption, Loading, Notice, Pill } from "@/components/ui";
-import { DoorHeader } from "@/components/door/door-header";
+import { DoorHeaderSpace } from "@/components/door/door-header";
 import { AccessBadge } from "@/components/door/access-badge";
 import { ScanResult, type ScanOutcome } from "@/components/door/scan-result";
 import { PersonSheet } from "@/components/door/person-sheet";
@@ -87,7 +87,7 @@ export default function DoorListScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <DoorHeader eventId={eventId} summary={summary.data} active="list" />
+      <DoorHeaderSpace />
 
       <View style={{ padding: space.lg, gap: space.md }}>
         <TextInput

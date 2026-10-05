@@ -63,7 +63,7 @@ SEGMENTS = [
     ("checkout", "Customer account", "Buying tickets", "Shown on the demo night: a gig's Tickets button opens this when Atmos sells it. Payment is Stripe's sheet."),
     ("account", "Customer account", "Your account", "Delete account is in the app, under More. Then sign out, to switch to the door staff account."),
     ("door-sign-in", "Door staff account", "Door staff", "Staff sign in to the same app. Tap to Pay on iPhone is announced once, to staff only."),
-    ("door", "Door staff account", "Door mode", "The door for tonight: admit a ticket by number, find somebody on the list, see the log."),
+    ("door", "Door staff account", "Door mode", "The door for tonight: scan or type a ticket, find somebody on the list, see the log."),
     ("sell", "Door staff account", "Selling at the door", "Tap to Pay on iPhone is always first. It is unavailable here, so this sale is recorded as cash."),
     ("id-check", "Door staff account", "ID checks", "Record an ID check against the night. Under 18s are refused, as every Atmos event is R18."),
     ("staff-tools", "Door staff account", "Run sheet and Tap to Pay guides", "The night's running order, and Apple's Tap to Pay on iPhone setup and education."),

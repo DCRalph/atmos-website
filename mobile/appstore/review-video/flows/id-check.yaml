@@ -4,7 +4,7 @@ appId: nz.co.atmosmedia.app
 - runFlow: _beat.yaml
 # Driver licence, the first document type.
 - tapOn:
-    point: "26%,40%"
+    point: "26%,29%"
 - tapOn: "Jane Anne Smith"
 - inputText: "Jamie Lee"
 - tapOn: "Which document"

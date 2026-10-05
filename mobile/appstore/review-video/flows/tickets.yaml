@@ -1,7 +1,17 @@
 appId: nz.co.atmosmedia.app
 ---
-- tapOn: ".*Atmos Demo Night.*"
 - runFlow: _pause.yaml
+# The order's second ticket, then back to the first.
+- swipe:
+    start: 75%, 42%
+    end: 20%, 42%
+    duration: 700
+- runFlow: _pause.yaml
+- swipe:
+    start: 20%, 42%
+    end: 75%, 42%
+    duration: 700
+- runFlow: _beat.yaml
 - tapOn: "ADD TO APPLE WALLET"
 - extendedWaitUntil:
     visible: "zz-never-zz"
@@ -10,9 +20,4 @@ appId: nz.co.atmosmedia.app
 # Wallet's own sheet, which Maestro cannot see into: Add is top right.
 - tapOn:
     point: "88%,10%"
-- runFlow: _beat.yaml
-- swipe:
-    direction: UP
-    duration: 1400
 - runFlow: _pause.yaml
-- tapOn: "Back"

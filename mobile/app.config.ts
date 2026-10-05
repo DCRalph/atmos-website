@@ -139,6 +139,11 @@ const config: ExpoConfig = {
   plugins: [
     "expo-router",
     /**
+     * The UIScene life cycle. Without it an iOS 27 SDK build dies on launch on
+     * iOS 27 — see the plugin for why the SDK 57 template does not do this.
+     */
+    "./plugins/with-scene-lifecycle",
+    /**
      * The Live Activity's widget extension. A second binary inside the app,
      * with its own target and bundle identifier, which `expo prebuild` has no
      * way to produce on its own — so the plugin writes one into the generated

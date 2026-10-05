@@ -215,16 +215,17 @@ email/password with the accounts below (More > Sign in, or Tickets > Sign in).
 CUSTOMER ACCOUNT
   email:    review-customer@atmosmedia.co.nz
   password: <password>
-Tickets tab > Atmos Demo Night shows two tickets with their QR codes, and each
-can be added to Apple Wallet. More > Settings > Notifications controls push.
-More > Account > Delete account deletes the account, confirmed by an emailed
-link.
+Tickets tab > Atmos Demo Night shows two tickets with their QR codes. On
+iPhone each can be added to Apple Wallet; iPad has no Wallet app, so the
+button is not shown there. More > Settings > Notifications controls push.
+More > Delete account, under the account's name, deletes the account,
+confirmed by an emailed link.
 
 DOOR STAFF ACCOUNT
   email:    review-door@atmosmedia.co.nz
   password: <password>
 Sign out of the customer account first (More > Sign out). This account is door
-staff on the demo event. More > Internal > Door mode > Atmos Demo Night opens
+staff on the demo event. More > Staff > Door mode > Atmos Demo Night opens
 the door tools:
   - List: search the guest list, tap a name to check them in
   - Manual: type a ticket number to admit it, e.g. one shown on the customer
@@ -233,7 +234,7 @@ the door tools:
     no card is charged)
   - ID: record an ID check by typing the details
   - Log: everything scanned tonight
-More > Internal > Run sheet shows the night's running order. More > Internal >
+More > Staff > Run sheet shows the night's running order. More > Staff >
 Tap to Pay guides explains Tap to Pay on iPhone.
 
 These door screens never render for a customer account, and the server refuses
@@ -376,7 +377,7 @@ the correct source images to build them from.
       the `apple` provider against the bundle identifier, and the sign-in screen
       renders Apple's own button above Google. Native-only, so there is no
       Services ID or `.p8` client secret to manage.
-- [x] **Delete account** — Guideline 5.1.1(v). More > Account > Delete account,
+- [x] **Delete account** — Guideline 5.1.1(v). More > Delete account,
       confirmed by an emailed link. Personal details go; orders are detached and
       scrubbed rather than dropped, because they are sales records. See
       `src/server/account-deletion.ts`.
@@ -414,12 +415,35 @@ the correct source images to build them from.
       two app fixes below.
 - [x] **Switching accounts kept the last account's answers.** Nothing reset
       the query cache on sign-out, so a door account signed in after a
-      customer saw no Internal section for five minutes — exactly the order a
+      customer saw no Staff section for five minutes — exactly the order a
       reviewer goes in — and could briefly see the customer's tickets. The
       cache now resets whenever the signed-in account changes.
 - [x] **"Test lock screen" is organiser-only.** iPad has no Live Activities,
       so on the review device it did nothing visible, and a button called
       "Test" invites a Guideline 2.2 question.
+- [x] **Builds from Xcode 27 died on launch on iOS 27.** iOS 27 requires the
+      UIScene life cycle of anything built with its SDK, and SDK 57's prebuild
+      template does not adopt it. `plugins/with-scene-lifecycle.js` does,
+      with `expo` 57.0.26's scene delegate. Simulators on the build Mac only
+      run iOS 26, which does not enforce this, so check every build on a
+      phone running iOS 27 before uploading it.
+- [x] **Door mode had no way out before the camera was allowed.** On a fresh
+      install door mode opens on Scan, which showed only "Camera access
+      needed": no back button, no Manual or List. Refuse the camera and the
+      door was unusable. The header now stays, and once iOS has been refused
+      the button opens Settings.
+- [x] **Door tabs slid in like new pages.** Scan, Manual, List and the rest
+      now sit under one floating header (`app/(door)/[eventId]/_layout.tsx`):
+      its pill slides to the tab picked, as the main tab bar's does, and the
+      screen under it cross-fades. Close pops back to the door picker instead
+      of pushing it.
+- [x] **Swiping back flashed near-white at the screen's corners.** React
+      Navigation's default theme is light, and the native stack paints its
+      container in it. The root layout now gives it the app's black.
+- [x] **The scanner did not match the redesign.** It now follows the
+      `DoorScan` mock: one scrolling row of tabs, the last three scans, and
+      Type number / Search / Torch under them. Naming the handset moved to the
+      door picker.
 - [x] The website routes the app depends on (associated domains, Sign in with
       Apple, password reset, account deletion) are live.
 

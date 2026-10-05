@@ -3,7 +3,7 @@ appId: nz.co.atmosmedia.app
 # Not recorded: a cold start, signed out, on Home.
 - stopApp
 - launchApp
-- tapOn: "More, tab, 4 of 4"
+- tapOn: "More"
 # A saved session takes a moment to restore after launch; until it does the
 # screen reads as signed out.
 - extendedWaitUntil:
@@ -15,4 +15,4 @@ appId: nz.co.atmosmedia.app
       visible: "SIGN OUT"
     commands:
       - tapOn: "SIGN OUT"
-- tapOn: "Home, tab, 1 of 4"
+- tapOn: "Home"

@@ -9,7 +9,7 @@ import { denyReasonLabel } from "~/lib/ticketing/deny-reasons";
 import { scanResultLabel } from "~/lib/ticketing/scan-results";
 import { scanToneColor } from "@/lib/scan-tone";
 import { Body, Caption, Loading, Notice } from "@/components/ui";
-import { DoorHeader } from "@/components/door/door-header";
+import { DoorHeaderSpace } from "@/components/door/door-header";
 import { PersonSheet } from "@/components/door/person-sheet";
 
 /**
@@ -50,7 +50,7 @@ export default function ActivityScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <DoorHeader eventId={eventId} summary={summary.data} active="activity" />
+      <DoorHeaderSpace />
 
       <View style={styles.filters}>
         {FILTERS.map(([value, label]) => (

@@ -13,7 +13,7 @@ import { api } from "@/lib/api";
 import { labelArg, useDeviceLabel } from "@/lib/device-label";
 import { colors, radius, space } from "@/lib/theme";
 import { Body, Button, Caption } from "@/components/ui";
-import { DoorHeader } from "@/components/door/door-header";
+import { DoorHeaderSpace } from "@/components/door/door-header";
 import { ScanResult, type ScanOutcome } from "@/components/door/scan-result";
 
 /**
@@ -56,7 +56,7 @@ export default function ManualScreen() {
       style={{ flex: 1, backgroundColor: colors.bg }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <DoorHeader eventId={eventId} summary={summary.data} active="manual" />
+      <DoorHeaderSpace />
 
       <View style={{ padding: space.lg, gap: space.lg }}>
         <View style={{ gap: space.xs }}>

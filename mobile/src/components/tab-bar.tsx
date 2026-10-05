@@ -32,9 +32,10 @@ const ICON = 20;
  * label all land together. Just under critical damping: it settles with the
  * faint give of the system's own glass controls, never a wobble, and never
  * overshoots far enough to poke the pill past the capsule's ends.
- * Reanimated drops it to an instant change under Reduce Motion.
+ * Reanimated drops it to an instant change under Reduce Motion. The door's
+ * tabs (`DoorHeader`) use it too, so every tab change in the app feels alike.
  */
-const SPRING = { damping: 26, stiffness: 260, mass: 0.9 } as const;
+export const SPRING = { damping: 26, stiffness: 260, mass: 0.9 } as const;
 /** How much wider the pill gets halfway between two tabs. */
 const STRETCH = 16;
 
@@ -158,7 +159,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
  * shared value: Reanimated only re-runs an animated style for shared values
  * it reads directly.
  */
-function shareOf(position: number, index: number) {
+export function shareOf(position: number, index: number) {
   "worklet";
   return Math.max(0, 1 - Math.abs(position - index));
 }

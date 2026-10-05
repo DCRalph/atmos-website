@@ -10,12 +10,12 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "@/lib/api";
 import { colors, radius, space, stroke } from "@/lib/theme";
-import { Body, Button, Caption, Loading, Notice } from "@/components/ui";
-import { DoorHeader } from "@/components/door/door-header";
+import { Body, Button, Caption, Loading } from "@/components/ui";
+import { CameraNeeded } from "@/components/door/camera-needed";
+import { DoorHeaderSpace } from "@/components/door/door-header";
 import { CheckResult } from "@/components/door/check-result";
 
 type Lookup =
@@ -37,18 +37,12 @@ type Lookup =
  */
 export default function CheckScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const insets = useSafeAreaInsets();
 
   const [permission, requestPermission] = useCameraPermissions();
   const [lookup, setLookup] = useState<Lookup | null>(null);
   const [typed, setTyped] = useState("");
   /** Stops one code re-firing while the result sheet animates in. */
   const lastToken = useRef<string | null>(null);
-
-  const summary = api.door.summary.useQuery(
-    { eventId },
-    { enabled: !!eventId, refetchInterval: 15_000 },
-  );
 
   const check = api.door.checkTicket.useQuery(
     { eventId, lookup: lookup! },
@@ -91,17 +85,11 @@ export default function CheckScreen() {
 
   if (!permission.granted) {
     return (
-      <View style={[styles.centre, { paddingTop: insets.top + space.xxl }]}>
-        <Notice
-          title="Camera access needed"
-          detail="Checking a ticket by QR needs the camera. Nothing is recorded — frames are read on the phone and discarded."
-          action={
-            <Button onPress={() => void requestPermission()}>
-              Allow camera
-            </Button>
-          }
-        />
-      </View>
+      <CameraNeeded
+        detail="Checking a ticket by QR needs the camera. Nothing is recorded — frames are read on the phone and discarded."
+        canAskAgain={permission.canAskAgain}
+        onAllow={() => void requestPermission()}
+      />
     );
   }
 
@@ -110,7 +98,7 @@ export default function CheckScreen() {
       style={{ flex: 1, backgroundColor: colors.bg }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <DoorHeader eventId={eventId} summary={summary.data} active="check" />
+      <DoorHeaderSpace />
 
       <View style={styles.viewfinder}>
         <CameraView
@@ -185,7 +173,6 @@ export default function CheckScreen() {
 }
 
 const styles = StyleSheet.create({
-  centre: { flex: 1, paddingHorizontal: space.lg },
   explain: {
     padding: space.md,
     borderWidth: 1,
