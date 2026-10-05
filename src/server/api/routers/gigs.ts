@@ -15,7 +15,6 @@ import { logUserActivity } from "~/server/utils/activity-log";
 import {
   ActivityType,
   FileUploadStatus,
-  GigMode,
   GigScheduleKind,
   GigStatus,
   type GigMedia,
@@ -249,8 +248,8 @@ const isAdminSession = async (ctx: GigsContext): Promise<boolean> => {
   return user ? userHasPermission(user, "ADMIN") : false;
 };
 
-const redactGigForPublic = <T extends { mode?: GigMode }>(gig: T) => {
-  if (gig.mode !== GigMode.TO_BE_ANNOUNCED) return gig;
+const redactGigForPublic = <T extends { isTba?: boolean }>(gig: T) => {
+  if (!gig.isTba) return gig;
   const redacted = {
     ...gig,
     title: TBA_TITLE,
@@ -270,11 +269,11 @@ const redactGigForPublic = <T extends { mode?: GigMode }>(gig: T) => {
   return redacted;
 };
 
-const redactGigsForPublic = <T extends { mode?: GigMode }>(gigs: T[]) =>
+const redactGigsForPublic = <T extends { isTba?: boolean }>(gigs: T[]) =>
   gigs.map(redactGigForPublic);
 
 /**
- * A draft gig is not on the site. Unlike `TO_BE_ANNOUNCED`, which is a real gig
+ * A draft gig is not on the site. Unlike a TBA gig, which is a real gig
  * with its details withheld, a draft is unfinished work and has nothing worth
  * showing, so it is filtered out in the query rather than redacted afterwards.
  *
@@ -308,14 +307,14 @@ const hasNotFinished = (now: Date): Prisma.GigWhereInput => ({
 });
 
 /**
- * The window an `AFFILIATED` gig is listed in: from a day before it starts
- * until it finishes, and never again. That is the whole mode — a night we are
+ * The window an affiliated gig is listed in: from a day before it starts
+ * until it finishes, and never again. That is the whole flag — a night we are
  * on the bill for but do not own, which we will plug on the day and then would
  * rather not have sitting in our archive.
  */
 const affiliatedInWindow = (now: Date): Prisma.GigWhereInput => ({
   OR: [
-    { mode: { not: GigMode.AFFILIATED } },
+    { isAffiliated: false },
     {
       gigStartTime: { lte: new Date(now.getTime() + AFFILIATED_LEAD_MS) },
       ...hasNotFinished(now),
@@ -326,7 +325,7 @@ const affiliatedInWindow = (now: Date): Prisma.GigWhereInput => ({
 /**
  * What a forward-looking list may contain: not a draft, and not an affiliated
  * gig outside its window. Past lists do not use this — `getPast` picks a shelf
- * by mode instead, and an affiliated night that has been and gone belongs on
+ * by flag instead, and an affiliated night that has been and gone belongs on
  * one of them rather than nowhere.
  *
  * An admin sees past that, because the site is where they check their own work
@@ -348,15 +347,12 @@ const listVisibleTo = (isAdmin: boolean, now: Date): Prisma.GigWhereInput =>
 /**
  * Announced dates in date order, then everything unannounced.
  *
- * A `TO_BE_ANNOUNCED` gig carries a placeholder `gigStartTime`, so sorting the
- * upcoming list on the date alone drops it into the hero slot. This used to be
- * an `orderBy` on `mode` leaning on Postgres sorting an enum by declaration
- * order, which quietly stopped meaning "unannounced last" the moment a third
- * mode was added. It is spelled out here instead.
+ * A TBA gig carries a placeholder `gigStartTime`, so sorting the upcoming
+ * list on the date alone drops it into the hero slot.
  */
-const announcedFirst = <T extends { mode: GigMode }>(gigs: T[]): T[] => [
-  ...gigs.filter((gig) => gig.mode !== GigMode.TO_BE_ANNOUNCED),
-  ...gigs.filter((gig) => gig.mode === GigMode.TO_BE_ANNOUNCED),
+const announcedFirst = <T extends { isTba: boolean }>(gigs: T[]): T[] => [
+  ...gigs.filter((gig) => !gig.isTba),
+  ...gigs.filter((gig) => gig.isTba),
 ];
 
 async function getFileUploadInfoById(
@@ -764,12 +760,12 @@ export const gigsRouter = createTRPCRouter({
     const gigs = await ctx.db.gig.findMany({
       where: {
         ...listVisibleTo(isAdmin, now),
-        // A `TO_BE_ANNOUNCED` gig is a date nobody has picked yet, but
+        // A TBA gig is a date nobody has picked yet, but
         // `gigStartTime` is not nullable, so it carries a placeholder — and a
         // placeholder in the past used to drop it out of here and into the past
         // list, where it rendered as a show that happened in 1970. It belongs
         // here regardless of what its stand-in date says.
-        OR: [hasNotFinished(now), { mode: GigMode.TO_BE_ANNOUNCED }],
+        OR: [hasNotFinished(now), { isTba: true }],
       },
       orderBy: [{ gigStartTime: "asc" }],
       include: {
@@ -800,7 +796,7 @@ export const gigsRouter = createTRPCRouter({
    *
    * `OURS` is the archive: our own nights. `AFFILIATED` is the ones we were
    * only on the bill for, which the gigs page keeps in its own tab — off the
-   * archive, as the mode requires, but not gone.
+   * archive, as the flag requires, but not gone.
    *
    * The two are disjoint and neither depends on who is looking. An admin used
    * to find affiliated nights in the archive as well, on the strength of the
@@ -826,10 +822,8 @@ export const gigsRouter = createTRPCRouter({
           ...draftsHiddenFrom(isAdmin),
           ...hasFinished(now),
           // See `getUpcoming`: an unannounced date has not been and gone.
-          mode:
-            kind === "AFFILIATED"
-              ? GigMode.AFFILIATED
-              : { notIn: [GigMode.TO_BE_ANNOUNCED, GigMode.AFFILIATED] },
+          isTba: false,
+          isAffiliated: kind === "AFFILIATED",
         },
         // `gigStartTime` breaks the tie, because a gig with no end time sorts
         // as a null and Postgres puts those first on a descending order.
@@ -873,7 +867,7 @@ export const gigsRouter = createTRPCRouter({
         gigEndTime: { lt: now },
         // An affiliated gig is never on a past list, so there is nothing to
         // order it against.
-        mode: { not: GigMode.AFFILIATED },
+        isAffiliated: false,
       },
       orderBy: [
         { isFeatured: "desc" },
@@ -1105,7 +1099,8 @@ export const gigsRouter = createTRPCRouter({
         subtitle: z.string().min(1),
         shortDescription: z.string().optional(),
         descriptionLexical: LEXICAL_STATE_SCHEMA.optional().nullable(),
-        mode: z.nativeEnum(GigMode).optional(),
+        isTba: z.boolean().optional(),
+        isAffiliated: z.boolean().optional(),
         gigStartTime: z.date(),
         gigEndTime: z.date().optional(),
         ticketLink: z.string().optional(),
@@ -1205,7 +1200,8 @@ export const gigsRouter = createTRPCRouter({
         subtitle: z.string().min(1).optional(),
         shortDescription: z.string().optional().nullable(),
         descriptionLexical: LEXICAL_STATE_SCHEMA.optional().nullable(),
-        mode: z.enum(GigMode).optional(),
+        isTba: z.boolean().optional(),
+        isAffiliated: z.boolean().optional(),
         gigStartTime: z.date().optional(),
         gigEndTime: z.date().optional().nullable(),
         ticketLink: z.string().optional().nullable(),
@@ -1237,7 +1233,8 @@ export const gigsRouter = createTRPCRouter({
         subtitle: z.string().min(1),
         shortDescription: z.string().nullish(),
         descriptionLexical: LEXICAL_STATE_SCHEMA.optional().nullable(),
-        mode: z.enum(GigMode),
+        isTba: z.boolean(),
+        isAffiliated: z.boolean(),
         ticketLink: z.string().nullish(),
         gigStartTime: z.date(),
         gigEndTime: z.date().nullish(),
@@ -1680,12 +1677,11 @@ export const gigsRouter = createTRPCRouter({
       const isAdmin = await isAdminSession(ctx);
       const gig = await ctx.db.gig.findUnique({
         where: { id: input.gigId },
-        select: { mode: true, status: true },
+        select: { isTba: true, status: true },
       });
 
       const withheld =
-        gig?.mode === GigMode.TO_BE_ANNOUNCED ||
-        gig?.status !== GigStatus.PUBLISHED;
+        gig?.isTba === true || gig?.status !== GigStatus.PUBLISHED;
       if (withheld && !isAdmin) {
         return { featured: [], gallery: [], all: [] };
       }

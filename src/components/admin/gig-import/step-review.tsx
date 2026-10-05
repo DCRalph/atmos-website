@@ -13,18 +13,11 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { Label } from "~/components/ui/label";
 import { TagsField } from "~/components/admin/gig-edit/tags-field";
-import { GigMode } from "~Prisma/browser";
-import { GIG_MODES, gigModeLabel } from "~/lib/gig-mode";
+import { gigFlagsLabel } from "~/lib/gig-flags";
+import { GigFlagsField } from "~/components/admin/gig-flags-field";
 import type { GigExtraction } from "~/lib/gig-import/extraction";
 import { ProvenanceField } from "./provenance-field";
 import type { ImportDraft } from "./use-import-draft";
@@ -210,31 +203,15 @@ export function StepReview({
               label="Mode"
               confidence={extraction.mode.confidence}
               quote={extraction.mode.quote}
-              note={
-                extraction.mode.note ||
-                (GIG_MODES.find((option) => option.value === draft.mode)
-                  ?.summary ??
-                  "")
-              }
-              isEdited={changed("mode")}
-              importedLabel={gigModeLabel(imported.mode)}
-              onRevert={() => onRevert("mode")}
+              note={extraction.mode.note}
+              isEdited={changed("isTba") || changed("isAffiliated")}
+              importedLabel={gigFlagsLabel(imported)}
+              onRevert={() => {
+                onRevert("isTba");
+                onRevert("isAffiliated");
+              }}
             >
-              <Select
-                value={draft.mode}
-                onValueChange={(value) => update("mode", value as GigMode)}
-              >
-                <SelectTrigger id="import-mode" className="w-full">
-                  <SelectValue placeholder="Select mode" />
-                </SelectTrigger>
-                <SelectContent>
-                  {GIG_MODES.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <GigFlagsField id="import-mode" value={draft} onChange={update} />
             </ProvenanceField>
 
             <ProvenanceField

@@ -21,7 +21,6 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 import { gigPath } from "~/lib/gig-url";
-import { GigMode } from "~Prisma/browser";
 import { SourcePanel } from "./source-panel";
 import { StepLineUp } from "./step-line-up";
 import { StepPublish, type ChecklistEntry } from "./step-publish";
@@ -109,10 +108,9 @@ export function ImportWizard() {
       title: extraction.title.value ?? gig.title,
       subtitle: extraction.venue.value ?? gig.subtitle,
       shortDescription: extraction.shortDescription.value ?? "",
-      mode:
-        extraction.mode.value === "TO_BE_ANNOUNCED"
-          ? GigMode.TO_BE_ANNOUNCED
-          : GigMode.NORMAL,
+      isTba: extraction.mode.value === "TO_BE_ANNOUNCED",
+      // The import never marks a gig affiliated.
+      isAffiliated: false,
       ticketLink: extraction.ticketUrl.value ?? "",
       // The instants the import resolved are on the gig; the extraction only
       // holds the wall times it read them from.
@@ -147,17 +145,16 @@ export function ImportWizard() {
       },
       {
         label: "Start time",
-        ok: draft.mode !== GigMode.TO_BE_ANNOUNCED && Boolean(draft.startTime),
-        detail:
-          draft.mode === GigMode.TO_BE_ANNOUNCED
-            ? "Publishing as to be announced"
-            : (draft.startTime?.toLocaleString("en-NZ", {
-                weekday: "short",
-                day: "numeric",
-                month: "short",
-                hour: "numeric",
-                minute: "2-digit",
-              }) ?? "Not set"),
+        ok: !draft.isTba && Boolean(draft.startTime),
+        detail: draft.isTba
+          ? "Publishing as to be announced"
+          : (draft.startTime?.toLocaleString("en-NZ", {
+              weekday: "short",
+              day: "numeric",
+              month: "short",
+              hour: "numeric",
+              minute: "2-digit",
+            }) ?? "Not set"),
         step: "review",
       },
       {
@@ -318,7 +315,7 @@ export function ImportWizard() {
                 gigPath={gigPath({
                   id: gigForPublish,
                   title: draft.title,
-                  mode: draft.mode,
+                  isTba: draft.isTba,
                 })}
                 checklist={checklist}
                 isPublishing={publish.isPending}

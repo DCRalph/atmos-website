@@ -74,10 +74,7 @@ function Poster({ gig, className }: { gig: SummaryGig; className?: string }) {
           alt=""
           fill
           sizes="120px"
-          className={cn(
-            "object-cover",
-            gig.mode === "TO_BE_ANNOUNCED" && "blur-sm",
-          )}
+          className={cn("object-cover", gig.isTba && "blur-sm")}
         />
       ) : (
         <span className="t-display flex size-full items-center justify-center text-white/30">
@@ -274,9 +271,7 @@ function ArtistDialog({
                           </span>
                           <span className="mt-1 block truncate text-[13px] text-white/60">
                             {[
-                              g.mode === "TO_BE_ANNOUNCED"
-                                ? "Date TBA"
-                                : fmtDay(g.gigStartTime),
+                              g.isTba ? "Date TBA" : fmtDay(g.gigStartTime),
                               g.role,
                             ]
                               .filter(Boolean)

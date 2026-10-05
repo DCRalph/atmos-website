@@ -464,7 +464,7 @@ export function ArtistAvatar({
 
 /** A gig's artwork, or a marked placeholder when it has none. */
 function Poster({ gig, width }: { gig: SummaryGig; width?: number }) {
-  const isTba = gig.mode === "TO_BE_ANNOUNCED";
+  const isTba = gig.isTba;
   return (
     <View style={[styles.poster, width ? { width, flex: 0 } : null]}>
       {gig.posterFileUploadId ? (
@@ -501,7 +501,7 @@ function instagramUsername(url: string): string | null {
 
 /** A TBA gig keeps its secret here too. */
 function gigTitle(gig: SummaryGig): string {
-  return gig.mode === "TO_BE_ANNOUNCED" ? "TBA" : gig.title;
+  return gig.isTba ? "TBA" : gig.title;
 }
 
 function gigEnd(gig: SummaryGig): number {

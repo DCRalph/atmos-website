@@ -452,7 +452,7 @@ function ArtistAvatar({
 
 /** A gig's artwork, or a marked placeholder when it has none. */
 function Poster({ gig, className }: { gig: SummaryGig; className?: string }) {
-  const isTba = gig.mode === "TO_BE_ANNOUNCED";
+  const isTba = gig.isTba;
   return (
     <span
       className={cn(
@@ -479,7 +479,7 @@ function Poster({ gig, className }: { gig: SummaryGig; className?: string }) {
 
 /** A TBA gig keeps its secret here too. */
 function gigTitle(gig: SummaryGig): string {
-  return gig.mode === "TO_BE_ANNOUNCED" ? "TBA" : gig.title;
+  return gig.isTba ? "TBA" : gig.title;
 }
 
 function countLabel(total: number): string {

@@ -31,7 +31,7 @@ export type PublicProfileRow = Prisma.CreatorProfileGetPayload<{
   include: typeof PUBLIC_PROFILE_INCLUDE;
 }>;
 
-const isTba = (set: ProfileSet) => set.gig.mode === "TO_BE_ANNOUNCED";
+const isTba = (set: ProfileSet) => set.gig.isTba;
 
 /** Trimmed text, or null when there's nothing left. */
 const text = (value: string | null) => value?.trim() || null; // eslint-disable-line @typescript-eslint/prefer-nullish-coalescing -- an empty string should become null too
@@ -44,7 +44,7 @@ export function toPublicProfile(row: PublicProfileRow): PublicProfile {
       gig: {
         id: gig.id,
         title: gig.title,
-        mode: gig.mode,
+        isTba: gig.isTba,
         ticketLink: gig.ticketLink,
       },
       venue: gig.subtitle,

@@ -1,11 +1,12 @@
-import { GigMode, GigStatus } from "~Prisma/browser";
+import { GigStatus } from "~Prisma/browser";
 
-/** How long before it starts an `AFFILIATED` gig appears on the site. */
+/** How long before it starts an affiliated gig appears on the site. */
 export const AFFILIATED_LEAD_MS = 24 * 60 * 60 * 1000;
 
 type GigVisibility = {
   status: GigStatus;
-  mode: GigMode;
+  isTba: boolean;
+  isAffiliated: boolean;
   gigStartTime: Date;
   gigEndTime?: Date | null;
 };
@@ -33,12 +34,17 @@ export function gigOffSiteNotice(
     return "Draft. Nobody but an admin can see this.";
   }
 
-  if (gig.mode !== GigMode.AFFILIATED) return null;
+  if (!gig.isAffiliated) return null;
 
-  // Nothing for one that has finished: it moves to the gigs page's affiliated
-  // tab rather than off the site, so the public can see it there too.
   if (gig.gigStartTime.getTime() - now.getTime() > AFFILIATED_LEAD_MS) {
     return "Affiliated. Goes on the site a day before it starts.";
+  }
+
+  // A finished affiliated gig moves to the gigs page's affiliated tab, so the
+  // public can still see it. A TBA one does not: TBA gigs never reach a past
+  // list, so once its date has gone by it is on no list at all.
+  if (gig.isTba && (gig.gigEndTime ?? gig.gigStartTime) < now) {
+    return "Affiliated and TBA. Off the site until it has a date within a day.";
   }
 
   return null;

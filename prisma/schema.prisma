@@ -49,20 +49,6 @@ enum HomeContentSection {
   PAST
 }
 
-/// How a gig behaves on the public site. Values are appended, never reordered:
-/// Postgres sorts an enum by the order its values were added, and `db push`
-/// appends, so a value inserted in the middle here would not sort where it
-/// reads. Nothing should order by this column - see `gigs.getUpcoming`.
-enum GigMode {
-  NORMAL
-  TO_BE_ANNOUNCED
-  /// Somebody else's night that we are on the bill for. It appears a day out
-  /// and stays up through the night, then leaves the site: an affiliated gig
-  /// never reaches the past gigs page. See `listVisibleTo` in
-  /// `~/server/api/routers/gigs.ts`.
-  AFFILIATED
-}
-
 /// Whether a gig is on the public site. Every public read filters on this;
 /// see `PUBLISHED_ONLY` in `~/server/api/routers/gigs.ts`.
 enum GigStatus {
@@ -374,7 +360,13 @@ model Gig {
   /// (`SerializedEditorState`). Replaces the old markdown `description`
   /// column — see `prisma/migrate-gig-descriptions-lexical.ts` history.
   descriptionLexical Json?
-  mode               GigMode   @default(NORMAL)
+  /// To be announced: listed with the title, line-up, date and poster
+  /// withheld. See `redactGigForPublic` in `~/server/api/routers/gigs.ts`.
+  isTba              Boolean   @default(false)
+  /// Somebody else's night that we are on the bill for. It appears a day out
+  /// and stays up through the night, then moves to the past gigs page's
+  /// affiliated tab. See `listVisibleTo` in `~/server/api/routers/gigs.ts`.
+  isAffiliated       Boolean   @default(false)
   gigStartTime       DateTime
   gigEndTime         DateTime?
   ticketLink         String?

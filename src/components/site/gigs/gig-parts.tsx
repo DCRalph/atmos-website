@@ -19,7 +19,8 @@ type GigLike = Pick<
   ListGig,
   | "id"
   | "title"
-  | "mode"
+  | "isTba"
+  | "isAffiliated"
   | "status"
   | "gigStartTime"
   | "gigEndTime"
@@ -62,17 +63,16 @@ export const fmtWeekday = (d: Date) => weekdayF.format(d);
 export const fmtShortMonth = (d: Date) => shortMonthF.format(d);
 export const fmtYear = (d: Date) => yearF.format(d);
 
-export const isTba = (gig: Pick<ListGig, "mode">) =>
-  gig.mode === "TO_BE_ANNOUNCED";
+export const isTba = (gig: Pick<ListGig, "isTba">) => gig.isTba;
 
 /** Finished, by end time when there is one (mirrors `isGigPast`). */
 export const isPast = (
-  gig: Pick<ListGig, "mode" | "gigStartTime" | "gigEndTime">,
+  gig: Pick<ListGig, "isTba" | "gigStartTime" | "gigEndTime">,
   now = Date.now(),
 ) => !isTba(gig) && (gig.gigEndTime ?? gig.gigStartTime).getTime() < now;
 
 /** The display title: a TBA gig's real name is a secret. */
-export const gigTitle = (gig: Pick<ListGig, "mode" | "title">) =>
+export const gigTitle = (gig: Pick<ListGig, "isTba" | "title">) =>
   isTba(gig) ? "TBA" : gig.title;
 
 /** Groups items by a key, keeping input order (the server's order is meaningful). */
@@ -104,7 +104,7 @@ export type TicketCta = {
  * ticket event wins, the legacy `ticketLink` is the fallback.
  */
 export function ticketCta(
-  gig: Pick<ListGig, "id" | "title" | "mode" | "ticketLink">,
+  gig: Pick<ListGig, "id" | "title" | "isTba" | "ticketLink">,
   event: PublicTicketEvent | undefined,
 ): TicketCta {
   if (isTba(gig)) return { label: "Details", tone: "none", href: null };
@@ -256,7 +256,10 @@ export function AdminStrip({
   gig,
   className,
 }: {
-  gig: Pick<ListGig, "status" | "mode" | "gigStartTime" | "gigEndTime">;
+  gig: Pick<
+    ListGig,
+    "status" | "isTba" | "isAffiliated" | "gigStartTime" | "gigEndTime"
+  >;
   className?: string;
 }) {
   const notice = gigOffSiteNotice(gig);
@@ -280,7 +283,7 @@ export function GigLink({
   children,
   onMouseEnter,
 }: {
-  gig: Pick<ListGig, "id" | "title" | "mode">;
+  gig: Pick<ListGig, "id" | "title" | "isTba">;
   className?: string;
   children: ReactNode;
   onMouseEnter?: () => void;

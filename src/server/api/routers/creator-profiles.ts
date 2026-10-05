@@ -147,7 +147,7 @@ export const creatorProfilesRouter = createTRPCRouter({
                   gigStartTime: true,
                   gigEndTime: true,
                   posterFileUploadId: true,
-                  mode: true,
+                  isTba: true,
                 },
               },
             },

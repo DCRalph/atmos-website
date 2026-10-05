@@ -19,7 +19,7 @@ type UpcomingGigCardProps = {
 };
 
 export function UpcomingGigCard({ gig }: UpcomingGigCardProps) {
-  const isTba = gig.mode === "TO_BE_ANNOUNCED";
+  const isTba = gig.isTba;
   const displayTitle = isTba ? "TBA..." : gig.title;
   const posterLayoutId = `gig-poster-${gig.id}`;
   const utils = api.useUtils();

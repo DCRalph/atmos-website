@@ -23,7 +23,7 @@ export default function GigPageClient({
   const { id } = use(params);
   const { data: gig } = api.gigs.getById.useQuery({ id });
 
-  const isTba = gig?.mode === "TO_BE_ANNOUNCED";
+  const isTba = gig?.isTba === true;
 
   // A cuid URL quietly becomes the pretty one once the gig is known. A
   // history replace, not a redirect: nothing remounts and nothing refetches.

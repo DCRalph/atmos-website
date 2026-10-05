@@ -27,7 +27,7 @@ import { GigCountdown, nightOf } from "../on-now";
 
 type UpcomingGig = RouterOutputs["gigs"]["getUpcoming"][number];
 /** What the ticket pill needs from any gig shape. */
-type CtaGig = Pick<UpcomingGig, "id" | "title" | "mode" | "ticketLink">;
+type CtaGig = Pick<UpcomingGig, "id" | "title" | "isTba" | "ticketLink">;
 
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
 const subscribeToMotionPref = (onChange: () => void) => {
@@ -128,7 +128,7 @@ function NextGigStrip() {
   }
 
   const gig = upcoming.data?.find(
-    (g) => g.mode !== "TO_BE_ANNOUNCED" && gigOffSiteNotice(g) === null,
+    (g) => !g.isTba && gigOffSiteNotice(g) === null,
   );
   if (!gig) return null;
 
@@ -422,10 +422,7 @@ function LiveStrip({
 function NextGigLink({ skipId }: { skipId: string }) {
   const upcoming = api.gigs.getUpcoming.useQuery();
   const next = upcoming.data?.find(
-    (g) =>
-      g.id !== skipId &&
-      g.mode !== "TO_BE_ANNOUNCED" &&
-      gigOffSiteNotice(g) === null,
+    (g) => g.id !== skipId && !g.isTba && gigOffSiteNotice(g) === null,
   );
   return (
     <Link

@@ -1,5 +1,5 @@
 import type { SerializedEditorState } from "lexical";
-import type { GigMode, GigScheduleKind } from "~Prisma/browser";
+import type { GigScheduleKind } from "~Prisma/browser";
 import { defaultLeadMinutes } from "~/lib/run-sheet/schedule";
 
 /**
@@ -93,7 +93,8 @@ export type GigDraft = {
   subtitle: string;
   shortDescription: string;
   descriptionLexical: SerializedEditorState | null;
-  mode: GigMode;
+  isTba: boolean;
+  isAffiliated: boolean;
   ticketLink: string;
   startTime: Date | undefined;
   endTime: Date | undefined;

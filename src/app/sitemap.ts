@@ -2,7 +2,7 @@ import { type MetadataRoute } from "next";
 import { db } from "~/server/db";
 import { env } from "~/env";
 import { gigPath } from "~/lib/gig-url";
-import { GigMode, GigStatus } from "~Prisma/client";
+import { GigStatus } from "~Prisma/client";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = env.NEXT_PUBLIC_APP_URL ?? "https://atmosmedia.co.nz";
@@ -86,12 +86,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // and a crawler that indexed it would outlive it.
       where: {
         status: GigStatus.PUBLISHED,
-        mode: { not: GigMode.AFFILIATED },
+        isAffiliated: false,
       },
       select: {
         id: true,
         title: true,
-        mode: true,
+        isTba: true,
         updatedAt: true,
         gigStartTime: true,
       },

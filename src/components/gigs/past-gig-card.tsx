@@ -22,7 +22,7 @@ type PastGigCardProps = {
 const MotionLink = motion.create(Link);
 
 export function PastGigCard({ gig, upcomming = false }: PastGigCardProps) {
-  const isTba = gig.mode === "TO_BE_ANNOUNCED";
+  const isTba = gig.isTba;
   const displayTitle = isTba ? "TBA..." : gig.title;
   const posterLayoutId = `gig-poster-${gig.id}`;
   const utils = api.useUtils();

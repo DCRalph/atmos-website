@@ -254,7 +254,7 @@ const SmallLinks = ({
 type UpcomingGig = RouterOutputs["gigs"]["getUpcoming"][number];
 
 const UpcomingGigLink = ({ gig }: { gig: UpcomingGig }) => {
-  const isTba = gig.mode === "TO_BE_ANNOUNCED";
+  const isTba = gig.isTba;
   const displayTitle = isTba ? "TBA..." : gig.title;
 
   return (

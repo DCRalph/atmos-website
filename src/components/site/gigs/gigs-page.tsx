@@ -215,7 +215,7 @@ function NextShowHero({
   loading: boolean;
 }) {
   const next = gigs.find(
-    (g) => !isTba(g) && g.status === "PUBLISHED" && g.mode !== "AFFILIATED",
+    (g) => !isTba(g) && g.status === "PUBLISHED" && !g.isAffiliated,
   );
   const then = gigs.filter((g) => g !== next).slice(0, 3);
   const cta = next ? ticketCta(next, events.get(next.id)) : null;

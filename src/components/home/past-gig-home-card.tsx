@@ -47,7 +47,7 @@
 //   gig,
 //   featured = false,
 // }: PastGigHomeCardProps) {
-//   const isTba = gig.mode === "TO_BE_ANNOUNCED";
+//   const isTba = gig.isTba;
 //   const displayTitle = isTba ? "TBA..." : gig.title;
 //   const posterUrl = gig.posterFileUpload?.url ?? null;
 
