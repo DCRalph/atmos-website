@@ -14,6 +14,7 @@ import { SvgXml } from "react-native-svg";
 import { Wallet } from "lucide-react-native";
 
 import type { RouterOutputs } from "@/lib/api";
+import { canAddPasses } from "@/lib/apple-wallet";
 import { API_URL } from "@/lib/env";
 import { mediaUrl } from "@/lib/media";
 import { colors, radius, space, type } from "@/lib/theme";
@@ -146,7 +147,9 @@ export function Pass({
         ) : null}
       </Glass>
 
-      {ticket?.appleWalletUrl ? (
+      {/* Not offered on iPad, which has no Wallet app: the pass would open
+          onto a blank sheet. */}
+      {ticket?.appleWalletUrl && canAddPasses() ? (
         <WalletButton label="Add to Apple Wallet" url={ticket.appleWalletUrl} />
       ) : null}
       {/* Google Wallet has no iOS app, so on a handset the button would open

@@ -361,8 +361,12 @@ model Gig {
   /// column — see `prisma/migrate-gig-descriptions-lexical.ts` history.
   descriptionLexical Json?
   /// To be announced: listed with the title, line-up, date and poster
-  /// withheld. See `redactGigForPublic` in `~/server/api/routers/gigs.ts`.
+  /// withheld. See `forPublic` in `~/server/api/routers/gigs.ts`.
   isTba              Boolean   @default(false)
+  /// When a TBA gig announces itself. The minute ticker turns `isTba` off at
+  /// this time and clears it — see `announceDueGigs`. Null on a gig that is
+  /// not TBA, or one that will be announced by hand.
+  announceAt         DateTime?
   /// Somebody else's night that we are on the bill for. It appears a day out
   /// and stays up through the night, then moves to the past gigs page's
   /// affiliated tab. See `listVisibleTo` in `~/server/api/routers/gigs.ts`.

@@ -104,8 +104,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${siteUrl}${gigPath(gig)}`,
       lastModified: gig.updatedAt,
       changeFrequency: "weekly" as const,
-      // Upcoming events get higher priority
-      priority: gig.gigStartTime > new Date() ? 0.9 : 0.6,
+      // Upcoming events get higher priority. A TBA gig is always upcoming, and
+      // its real date must not decide.
+      priority: gig.isTba || gig.gigStartTime > new Date() ? 0.9 : 0.6,
     }));
   } catch (error) {
     // If database is unavailable, continue with static pages only

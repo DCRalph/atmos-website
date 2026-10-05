@@ -242,8 +242,8 @@ not around the door stack. Apple's checklist row 1.5 wants the reader warmed up
 at app launch and again on foreground, and a provider that only mounts when
 somebody navigates into door mode is already too late — by then there is a queue.
 It stays completely inert for anybody the server does not recognise as door
-staff: `terminal.config` is a `doorProcedure`, so a punter's call is refused and
-nothing is ever initialized.
+staff: `terminal.config` is a `doorStaffProcedure`, so a punter's call is
+refused and nothing is ever initialized.
 
 ## Terms and Conditions, and who may accept them
 

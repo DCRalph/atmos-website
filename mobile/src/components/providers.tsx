@@ -1,10 +1,14 @@
-import { useState, type ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { httpBatchLink, loggerLink } from "@trpc/client";
 import SuperJSON from "superjson";
 
 import { api } from "@/lib/api";
-import { authCookieHeader } from "@/lib/auth";
+import { authCookieHeader, useAuth } from "@/lib/auth";
 import { TRPC_URL } from "@/lib/env";
 import { usePushRegistration } from "@/lib/push";
 import { useRunSheetLiveActivity } from "@/lib/live-activity";
@@ -59,6 +63,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <api.Provider client={trpcClient} queryClient={queryClient}>
+        <ResetOnAccountChange />
         {/* Inside the tRPC provider, since registering calls the API. */}
         <PushRegistration />
         {/* At the root rather than on the run sheet screen: the lock screen is
@@ -85,6 +90,32 @@ export function Providers({ children }: { children: ReactNode }) {
       </api.Provider>
     </QueryClientProvider>
   );
+}
+
+/**
+ * Forgets every cached answer when the signed-in account changes.
+ *
+ * Query keys carry no user, so without this the next account on the handset
+ * inherits the last one's answers until they go stale: a customer's empty door
+ * roster hides door mode from the staff member who signs in after them, and
+ * their tickets show to whoever is next. Reset rather than cleared, so the
+ * screens already on display refetch as the new account.
+ */
+function ResetOnAccountChange() {
+  const queryClient = useQueryClient();
+  const { user, isPending } = useAuth();
+  const userId = user?.id ?? null;
+  const previous = useRef<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (isPending) return;
+    if (previous.current !== undefined && previous.current !== userId) {
+      void queryClient.resetQueries();
+    }
+    previous.current = userId;
+  }, [isPending, userId, queryClient]);
+
+  return null;
 }
 
 /** Renders nothing; exists so the hook sits under the providers it needs. */

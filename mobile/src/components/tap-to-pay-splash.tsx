@@ -36,8 +36,8 @@ export function TapToPaySplash() {
   const router = useRouter();
   const [dismissed, setDismissed] = useState(false);
 
-  // `doorProcedure` on the server, so this is refused for anybody who is not
-  // door staff — a punter never sees the splash and never asks twice.
+  // `doorStaffProcedure` on the server, so this is refused for anybody who is
+  // not door staff — a punter never sees the splash and never asks twice.
   const announcement = api.tapToPay.announcement.useQuery(undefined, {
     enabled: !!user,
     retry: false,

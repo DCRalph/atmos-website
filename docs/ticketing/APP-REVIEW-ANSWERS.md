@@ -44,10 +44,11 @@ answerable, and it is true.
 > all. Every entry point lives behind **More › Internal**, which renders only for
 > an account the server recognises as door staff or an organiser, and the
 > `(door)` routes are gated the same way so a deep link cannot reach them either.
->
-> ⚠️ **App Review therefore needs door-staff credentials.** A reviewer signed in
-> as an ordinary customer cannot reach a single Tap to Pay screen, because for
-> them none exist. Put a rostered account in the App Review Information notes.
+
+**App Review therefore needs door-staff credentials.** A reviewer signed in as
+an ordinary customer cannot reach a single Tap to Pay screen, because for them
+none exist. `review-door@atmosmedia.co.nz` is rostered on the demo night by
+`bun run db:seed-app-review` — see `mobile/appstore/LISTING.md` §7.
 
 ---
 
@@ -69,7 +70,7 @@ answerable, and it is true.
 
 | # | Status | Answer |
 | --- | --- | --- |
-| 2.1 | **N/A** | No third-party merchant onboarding to discover — see the explanation above. Tap to Pay is internal tooling, deliberately invisible to customers: the entry point at **More › Internal** renders only for door staff and organisers. ⚠️ Supply door-staff credentials in the App Review notes or the reviewer sees nothing. |
+| 2.1 | **N/A** | No third-party merchant onboarding to discover — see the explanation above. Tap to Pay is internal tooling, deliberately invisible to customers: the entry point at **More › Internal** renders only for door staff and organisers. The App Review notes carry a door-staff demo account, `review-door@atmosmedia.co.nz`, for this. |
 | 2.2 | **N/A** | Single-merchant closed-loop app. There is no third-party merchant onboarding, digital or otherwise — see the explanation above. |
 | 2.3 | **N/A** | Same. For reference, a newly-rostered staff member goes from being granted door access to taking a tap in well under 15 minutes, and the New User Flow recording shows exactly that. |
 

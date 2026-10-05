@@ -20,9 +20,12 @@ import { GigStatus, type Prisma } from "~Prisma/client";
  * Credits are only ever read on a public page, so an unpublished gig has no
  * business being one. Without this an artist's profile named a draft — title,
  * venue and date — before anybody had decided to announce it.
+ *
+ * A TBA gig is left off too. Its line-up is one of the things it withholds,
+ * and every artist on it listing the gig would put that line-up back together.
  */
 export const APPEARANCE_WHERE = {
-  item: { gig: { status: GigStatus.PUBLISHED } },
+  item: { gig: { status: GigStatus.PUBLISHED, isTba: false } },
 } satisfies Prisma.GigSetArtistWhereInput;
 
 export const APPEARANCE_SELECT = {

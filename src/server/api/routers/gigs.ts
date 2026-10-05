@@ -22,6 +22,7 @@ import {
 import { toPublicLineUp } from "~/lib/run-sheet/line-up";
 import { AFFILIATED_LEAD_MS } from "~/lib/gig-visibility";
 import { resolveGigId } from "~/server/gig-lookup";
+import { teaserPosterUrl } from "~/server/gig-teaser";
 import { userHasPermission } from "~/server/utils/permissions";
 import type { SerializedEditorState } from "lexical";
 import { Prisma } from "~Prisma/client";
@@ -248,29 +249,62 @@ const isAdminSession = async (ctx: GigsContext): Promise<boolean> => {
   return user ? userHasPermission(user, "ADMIN") : false;
 };
 
-const redactGigForPublic = <T extends { isTba?: boolean }>(gig: T) => {
-  if (!gig.isTba) return gig;
-  const redacted = {
+/** The parts of an enriched gig `forPublic` reads. */
+type PublicGigInput = {
+  id: string;
+  isTba: boolean;
+  posterFileUploadId: string | null;
+  posterFileUpload: FileUploadInfo;
+  media: EnrichedMedia[];
+  gigTags: unknown[];
+};
+
+/**
+ * A gig as a public procedure hands it to anybody who is not an admin.
+ *
+ * Every gig loses who uploaded its files, which the enrichment helpers attach
+ * for the admin, and its poster is cut down to the one thing a page draws.
+ *
+ * A TBA gig also loses everything it withholds. Its poster becomes the
+ * server-blurred teaser and the poster's file id goes with it, because either
+ * the id or the file's URL opens the real thing. Its announce time goes too:
+ * when the secret comes out is part of the secret.
+ */
+const forPublic = <T extends PublicGigInput>(gig: T) => {
+  const poster = gig.posterFileUpload;
+  const media = gig.media.map((item) => ({
+    ...item,
+    fileUpload: item.fileUpload && { ...item.fileUpload, uploadedBy: null },
+  }));
+
+  if (!gig.isTba) {
+    return {
+      ...gig,
+      media,
+      announceAt: null,
+      posterFileUpload: poster && { url: poster.url },
+    };
+  }
+
+  return {
     ...gig,
     title: TBA_TITLE,
     subtitle: "",
     shortDescription: "",
     descriptionLexical: null,
     ticketLink: null,
-    gigTags: [],
-    media: [],
+    gigStartTime: new Date(0),
+    gigEndTime: null,
+    announceAt: null,
+    gigTags: [] as T["gigTags"],
+    media: [] as typeof media,
+    posterFileUploadId: null,
+    posterFileUpload:
+      poster && gig.posterFileUploadId
+        ? { url: teaserPosterUrl(gig.id, gig.posterFileUploadId) }
+        : null,
   };
-  if ("gigStartTime" in gig) {
-    (redacted as { gigStartTime?: Date }).gigStartTime = new Date(0);
-  }
-  if ("gigEndTime" in gig) {
-    (redacted as { gigEndTime?: Date | null }).gigEndTime = null;
-  }
-  return redacted;
 };
-
-const redactGigsForPublic = <T extends { isTba?: boolean }>(gigs: T[]) =>
-  gigs.map(redactGigForPublic);
 
 /**
  * A draft gig is not on the site. Unlike a TBA gig, which is a real gig
@@ -348,11 +382,15 @@ const listVisibleTo = (isAdmin: boolean, now: Date): Prisma.GigWhereInput =>
  * Announced dates in date order, then everything unannounced.
  *
  * A TBA gig carries a placeholder `gigStartTime`, so sorting the upcoming
- * list on the date alone drops it into the hero slot.
+ * list on the date alone drops it into the hero slot. The unannounced ones go
+ * in id order, which is creation order: left in date order they would give
+ * away which of them comes first.
  */
-const announcedFirst = <T extends { isTba: boolean }>(gigs: T[]): T[] => [
+const announcedFirst = <T extends { id: string; isTba: boolean }>(
+  gigs: T[],
+): T[] => [
   ...gigs.filter((gig) => !gig.isTba),
-  ...gigs.filter((gig) => gig.isTba),
+  ...gigs.filter((gig) => gig.isTba).sort((a, b) => a.id.localeCompare(b.id)),
 ];
 
 async function getFileUploadInfoById(
@@ -619,10 +657,11 @@ export const gigsRouter = createTRPCRouter({
   /**
    * Every gig, for the admin gigs table and the home page arranger.
    *
-   * Unlike the lists below this one is not a page on the site, so it carries no
-   * banner and needs none: an admin reading it is already in the admin.
+   * Admin only. It used to be public and redacted, but its search matched the
+   * real titles of TBA gigs, so a stranger could guess at a secret title and
+   * watch whether a row came back.
    */
-  getAll: publicProcedure
+  getAll: adminProcedure
     .input(
       z
         .object({
@@ -631,29 +670,24 @@ export const gigsRouter = createTRPCRouter({
         .optional(),
     )
     .query(async ({ ctx, input }) => {
-      const now = new Date();
       const search = input?.search?.toLowerCase().trim();
-      const isAdmin = await isAdminSession(ctx);
 
-      const where = {
-        ...listVisibleTo(isAdmin, now),
-        ...(search
-          ? {
-              OR: [
-                { title: { contains: search, mode: "insensitive" as const } },
-                {
-                  subtitle: { contains: search, mode: "insensitive" as const },
+      const where = search
+        ? {
+            OR: [
+              { title: { contains: search, mode: "insensitive" as const } },
+              {
+                subtitle: { contains: search, mode: "insensitive" as const },
+              },
+              {
+                shortDescription: {
+                  contains: search,
+                  mode: "insensitive" as const,
                 },
-                {
-                  shortDescription: {
-                    contains: search,
-                    mode: "insensitive" as const,
-                  },
-                },
-              ],
-            }
-          : {}),
-      };
+              },
+            ],
+          }
+        : {};
 
       const gigs = await ctx.db.gig.findMany({
         where,
@@ -675,11 +709,7 @@ export const gigsRouter = createTRPCRouter({
       });
 
       const enriched = await enrichGigsWithFileUploads(ctx.db, gigs);
-      const withPosters = await enrichGigsWithPosterFileUploads(
-        ctx.db,
-        enriched,
-      );
-      return isAdmin ? withPosters : redactGigsForPublic(withPosters);
+      return enrichGigsWithPosterFileUploads(ctx.db, enriched);
     }),
 
   /**
@@ -707,6 +737,8 @@ export const gigsRouter = createTRPCRouter({
           gigEndTime: {
             lt: now,
           },
+          // See `getUpcoming`: an unannounced date has not been and gone.
+          isTba: false,
         },
         orderBy: [
           { isFeatured: "desc" },
@@ -749,8 +781,8 @@ export const gigsRouter = createTRPCRouter({
       }
 
       return {
-        featuredGig: featuredGig ? redactGigForPublic(featuredGig) : null,
-        pastGigs: redactGigsForPublic(pastGigs),
+        featuredGig: featuredGig ? forPublic(featuredGig) : null,
+        pastGigs: pastGigs.map(forPublic),
       };
     }),
 
@@ -788,7 +820,7 @@ export const gigsRouter = createTRPCRouter({
     const withPosters = announcedFirst(
       await enrichGigsWithPosterFileUploads(ctx.db, enriched),
     );
-    return isAdmin ? withPosters : redactGigsForPublic(withPosters);
+    return isAdmin ? withPosters : withPosters.map(forPublic);
   }),
 
   /**
@@ -854,7 +886,7 @@ export const gigsRouter = createTRPCRouter({
         ctx.db,
         enriched,
       );
-      return isAdmin ? withPosters : redactGigsForPublic(withPosters);
+      return isAdmin ? withPosters : withPosters.map(forPublic);
     }),
 
   /**
@@ -941,6 +973,8 @@ export const gigsRouter = createTRPCRouter({
     const todayGigs = await ctx.db.gig.findMany({
       where: {
         ...listVisibleTo(isAdmin, now),
+        // A TBA gig is never "on now": turning up here would give away its date.
+        ...(isAdmin ? {} : { isTba: false }),
         // gigStartTime: {
         //   gte: startDate,
         //   lt: endDate,
@@ -970,7 +1004,7 @@ export const gigsRouter = createTRPCRouter({
       enrichedGigs,
     );
 
-    return isAdmin ? withPosters : redactGigsForPublic(withPosters);
+    return isAdmin ? withPosters : withPosters.map(forPublic);
   }),
 
   /**
@@ -1022,10 +1056,11 @@ export const gigsRouter = createTRPCRouter({
         ...rest,
         media: enrichedMedia,
         posterFileUpload,
-        lineUp: toPublicLineUp(scheduleItems),
+        // The line-up is one of the things a TBA gig withholds.
+        lineUp: isAdmin || !gig.isTba ? toPublicLineUp(scheduleItems) : [],
       };
 
-      return isAdmin ? result : redactGigForPublic(result);
+      return isAdmin ? result : forPublic(result);
     }),
 
   /**
@@ -1100,6 +1135,8 @@ export const gigsRouter = createTRPCRouter({
         shortDescription: z.string().optional(),
         descriptionLexical: LEXICAL_STATE_SCHEMA.optional().nullable(),
         isTba: z.boolean().optional(),
+        /** Only kept on a TBA gig. */
+        announceAt: z.date().nullish(),
         isAffiliated: z.boolean().optional(),
         gigStartTime: z.date(),
         gigEndTime: z.date().optional(),
@@ -1137,6 +1174,7 @@ export const gigsRouter = createTRPCRouter({
       const created = await ctx.db.gig.create({
         data: {
           ...rest,
+          announceAt: rest.isTba ? (rest.announceAt ?? null) : null,
           descriptionLexical: toLexicalJsonInput(descriptionLexical),
           ...(wantedTagIds.length > 0
             ? {
@@ -1213,6 +1251,8 @@ export const gigsRouter = createTRPCRouter({
         where: { id },
         data: {
           ...rest,
+          // An announce time means nothing on a gig that is not TBA.
+          ...(rest.isTba === false ? { announceAt: null } : {}),
           descriptionLexical: toLexicalJsonInput(descriptionLexical),
         },
       });
@@ -1234,6 +1274,8 @@ export const gigsRouter = createTRPCRouter({
         shortDescription: z.string().nullish(),
         descriptionLexical: LEXICAL_STATE_SCHEMA.optional().nullable(),
         isTba: z.boolean(),
+        /** Only kept on a TBA gig. */
+        announceAt: z.date().nullish(),
         isAffiliated: z.boolean(),
         ticketLink: z.string().nullish(),
         gigStartTime: z.date(),
@@ -1343,6 +1385,7 @@ export const gigsRouter = createTRPCRouter({
           where: { id },
           data: {
             ...rest,
+            announceAt: rest.isTba ? (rest.announceAt ?? null) : null,
             descriptionLexical: toLexicalJsonInput(descriptionLexical),
           },
         });

@@ -38,7 +38,8 @@ export const gigTagsRouter = createTRPCRouter({
       });
     }),
 
-  getById: publicProcedure
+  // Admin only: it returns whole gig rows, drafts and TBA gigs included.
+  getById: adminProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       return ctx.db.gigTag.findUnique({
