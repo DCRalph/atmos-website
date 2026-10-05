@@ -1,0 +1,120 @@
+/* Themed creator profile, scoped to `.cp` (always inside `.site`).
+ *
+ * The root carries every `--cp-*` variable from `themeVars` plus three data
+ * attributes: `data-tone` (dark | light), `data-photo` (color | mono |
+ * duotone) and `data-corners`. Everything below reads those, so a block never
+ * needs to know which theme it's in.
+ *
+ * Utilities: `cp-display`, `cp-glass`, `cp-photo`, `cp-scrim-bottom`,
+ * `cp-scrim-left`, `cp-scrim-top`.
+ */
+@layer components {
+  .cp {
+    background: var(--cp-ground);
+    color: var(--cp-ink);
+    scrollbar-color: var(--cp-faint) transparent;
+  }
+
+  .cp ::selection {
+    background: var(--cp-accent);
+    color: var(--cp-accent-ink);
+  }
+
+  .cp :focus-visible {
+    outline: 2px solid var(--cp-accent-text);
+    outline-offset: 3px;
+  }
+
+  /* The creator's display face: their name and section headings. */
+  .cp .cp-display {
+    font-family: var(--cp-display-font), ui-sans-serif, sans-serif;
+    font-stretch: var(--cp-display-stretch);
+    font-weight: var(--cp-display-weight);
+    text-transform: var(--cp-display-case);
+    letter-spacing: -0.01em;
+    line-height: 0.92;
+    text-wrap: balance;
+  }
+
+  /* Glass over imagery, tinted from the ground so it works light or dark. */
+  .cp .cp-glass {
+    background: color-mix(in oklab, var(--cp-ground) 42%, transparent);
+    border: 1px solid color-mix(in oklab, var(--cp-ink) 16%, transparent);
+    box-shadow: inset 0 1px 0
+      color-mix(in oklab, var(--cp-ink) 10%, transparent);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    backdrop-filter: blur(18px) saturate(150%);
+  }
+
+  .cp .cp-scrim-bottom {
+    background: linear-gradient(
+      to top,
+      var(--cp-ground) 0%,
+      color-mix(in oklab, var(--cp-ground) 72%, transparent) 35%,
+      transparent 75%
+    );
+  }
+
+  .cp .cp-scrim-left {
+    background: linear-gradient(
+      to right,
+      color-mix(in oklab, var(--cp-ground) 90%, transparent) 0%,
+      color-mix(in oklab, var(--cp-ground) 50%, transparent) 40%,
+      transparent 85%
+    );
+  }
+
+  .cp .cp-scrim-top {
+    background: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--cp-ground) 75%, transparent),
+      transparent
+    );
+  }
+
+  /* Photo treatments. Only the creator's own photos carry `cp-photo`; gig
+     posters are someone's artwork and always show as made. */
+  .cp .cp-photo {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    background: var(--cp-raised);
+  }
+
+  .cp[data-photo="mono"] .cp-photo img {
+    filter: grayscale(1) contrast(1.08);
+  }
+
+  .cp[data-photo="duotone"] .cp-photo img {
+    filter: grayscale(1) contrast(1.15) brightness(1.04);
+  }
+
+  .cp[data-photo="duotone"] .cp-photo::before,
+  .cp[data-photo="duotone"] .cp-photo::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* Dark ground: shadows fall to the ground, highlights to the accent. */
+  .cp[data-photo="duotone"] .cp-photo::before {
+    background: var(--cp-accent);
+    mix-blend-mode: multiply;
+  }
+
+  .cp[data-photo="duotone"] .cp-photo::after {
+    background: var(--cp-ground);
+    mix-blend-mode: lighten;
+  }
+
+  /* Light ground: the reverse, highlights fall to the ground. */
+  .cp[data-tone="light"][data-photo="duotone"] .cp-photo::before {
+    mix-blend-mode: screen;
+  }
+
+  .cp[data-tone="light"][data-photo="duotone"] .cp-photo::after {
+    mix-blend-mode: multiply;
+  }
+}

@@ -9,6 +9,8 @@ export const env = createEnv({
 
     DATABASE_URL: z.string().url(),
     BETTER_AUTH_SECRET: z.string(),
+    /// Extra hosts `next dev` is opened on, comma-separated. See `~/lib/dev-hosts`.
+    DEV_ORIGINS: z.string().optional(),
 
     GOOGLE_CLIENT_ID: z.string(),
     GOOGLE_CLIENT_SECRET: z.string(),
@@ -96,6 +98,7 @@ export const env = createEnv({
 
     DATABASE_URL: process.env.DATABASE_URL,
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+    DEV_ORIGINS: process.env.DEV_ORIGINS,
 
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,

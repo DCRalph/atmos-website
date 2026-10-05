@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { env } from "~/env";
+import { DEV_HOSTS } from "~/lib/dev-hosts";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { db } from "~/server/db";
 // import { createAuthMiddleware } from "better-auth/api";
@@ -134,8 +135,13 @@ export const auth = betterAuth({
     },
   },
   // The mobile app has no cookie jar and comes back from OAuth through a deep
-  // link, so its scheme has to be trusted explicitly.
-  trustedOrigins: ["atmos://", "atmos://*"],
+  // link, so its scheme has to be trusted explicitly. In dev, so do the extra
+  // names `next dev` is opened on (Tailscale, LAN), on any port.
+  trustedOrigins: [
+    "atmos://",
+    "atmos://*",
+    ...DEV_HOSTS.map((host) => `http://${host}:*`),
+  ],
   plugins: [lastLoginMethod(), expo()],
   // hooks: {
   //   before: createAuthMiddleware(async (ctx) => {

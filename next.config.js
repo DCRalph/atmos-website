@@ -7,7 +7,8 @@ import "./src/env.js";
 /** @type {import("next").NextConfig} */
 const config = {
   // Extra hostnames allowed to load dev assets, for opening `next dev` via a
-  // machine name instead of localhost. Comma-separated, e.g. DEV_ORIGINS=my-box
+  // machine name instead of localhost. Comma-separated, e.g. DEV_ORIGINS=my-box.
+  // The app reads the same list through `~/lib/dev-hosts`.
   allowedDevOrigins: process.env.DEV_ORIGINS?.split(","),
   images: {
     remotePatterns: [

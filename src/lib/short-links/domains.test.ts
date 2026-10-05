@@ -26,6 +26,16 @@ describe("isMainSiteHost", () => {
     );
     assert.equal(isMainSiteHost("atms.nz", site), false);
   });
+
+  test("knows the extra names dev is opened on", () => {
+    const site = "http://localhost:3000";
+    const dev = ["my-box", "*.tailnet.ts.net", "100.64.0.1"];
+    assert.ok(isMainSiteHost("my-box:3000", site, dev));
+    assert.ok(isMainSiteHost("my-box.tailnet.ts.net:3000", site, dev));
+    assert.ok(isMainSiteHost("100.64.0.1:3000", site, dev));
+    assert.equal(isMainSiteHost("atms.nz", site, dev), false);
+    assert.equal(isMainSiteHost("my-box", site), false);
+  });
 });
 
 describe("hostProblem", () => {

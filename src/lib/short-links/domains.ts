@@ -46,17 +46,28 @@ const HOST = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
 
 /**
  * Hosts that are the main site itself, in any of its guises: production,
- * Vercel previews and local dev. `src/proxy.ts` lets these through untouched
- * and treats every other host as a short link domain.
+ * Vercel previews and local dev. `devHosts` are the extra names `next dev` is
+ * opened on (Tailscale, LAN), as listed in `DEV_ORIGINS`; `*.example.ts.net`
+ * covers its subdomains. `src/proxy.ts` lets these through untouched and
+ * treats every other host as a short link domain.
  */
-export function isMainSiteHost(host: string, siteUrl: string): boolean {
+export function isMainSiteHost(
+  host: string,
+  siteUrl: string,
+  devHosts: readonly string[] = [],
+): boolean {
   const bare = normaliseHost(host);
   return (
     bare === SITE_LINK_DOMAIN ||
     bare === normaliseHost(siteUrl) ||
     bare === "localhost" ||
     bare === "127.0.0.1" ||
-    bare.endsWith(".vercel.app")
+    bare.endsWith(".vercel.app") ||
+    devHosts.some((dev) =>
+      dev.startsWith("*.")
+        ? bare.endsWith(normaliseHost(dev.slice(1)))
+        : bare === normaliseHost(dev),
+    )
   );
 }
 
