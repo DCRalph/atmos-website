@@ -709,7 +709,9 @@ export async function findOrderByAccessToken(token: string) {
     include: {
       // The gig comes along for its poster: an event linked to a gig inherits
       // that artwork when it has none of its own.
-      event: { include: { gig: { select: { posterFileUploadId: true } } } },
+      event: {
+        include: { gig: { select: { posterFileUploadId: true, isTba: true } } },
+      },
       items: { include: { tier: true } },
       tickets: {
         where: { status: { not: TicketStatus.VOID } },
@@ -740,7 +742,9 @@ export async function findTicketByAccessToken(token: string) {
     where: { id: parsed.ticketId },
     include: {
       tier: true,
-      event: { include: { gig: { select: { posterFileUploadId: true } } } },
+      event: {
+        include: { gig: { select: { posterFileUploadId: true, isTba: true } } },
+      },
       order: {
         select: { orderNumber: true, paymentMethod: true, notes: true },
       },

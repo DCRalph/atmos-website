@@ -962,7 +962,7 @@ export const ticketEventsRouter = createTRPCRouter({
         where: { slug: input.slug },
         include: {
           tiers: { orderBy: { sortOrder: "asc" } },
-          gig: { select: { id: true, title: true, status: true } },
+          gig: { select: { id: true, title: true, status: true, isTba: true } },
         },
       });
 
@@ -978,6 +978,9 @@ export const ticketEventsRouter = createTRPCRouter({
       const event = await ctx.db.ticketEvent.findFirst({
         where: {
           gigId: input.gigId,
+          // A TBA gig's page withholds its tickets, and an event would tell
+          // anybody holding the gig's id its name and date.
+          gig: { isTba: false },
           // A gig page is a public listing; an unlisted or private event must
           // not be discoverable through one.
           visibility: TicketEventVisibility.PUBLIC,
@@ -993,7 +996,7 @@ export const ticketEventsRouter = createTRPCRouter({
         orderBy: { startsAt: "asc" },
         include: {
           tiers: { orderBy: { sortOrder: "asc" } },
-          gig: { select: { id: true, title: true, status: true } },
+          gig: { select: { id: true, title: true, status: true, isTba: true } },
         },
       });
 
@@ -1020,7 +1023,7 @@ export const ticketEventsRouter = createTRPCRouter({
         tiers: { orderBy: { sortOrder: "asc" } },
         // The gigs list matches events to gigs by this; `toPublicEvent` still
         // drops it unless the gig is published.
-        gig: { select: { id: true, title: true, status: true } },
+        gig: { select: { id: true, title: true, status: true, isTba: true } },
       },
     });
 
@@ -1032,7 +1035,12 @@ export const ticketEventsRouter = createTRPCRouter({
 type EventWithTiers = Prisma.TicketEventGetPayload<{
   include: { tiers: true };
 }> & {
-  gig?: { id: string; title: string; status: GigStatus } | null;
+  gig?: {
+    id: string;
+    title: string;
+    status: GigStatus;
+    isTba: boolean;
+  } | null;
 };
 
 /**
@@ -1102,9 +1110,10 @@ function toPublicEvent(
     requireAttendeeNames: event.requireAttendeeNames,
     // The event has its own name and its own status, so it can be on sale while
     // the gig it belongs to is still a draft. Linking to that gig would name it
-    // and lead to a page only an admin can open.
+    // and lead to a page only an admin can open. A TBA gig is not linked either:
+    // the link carries its real title.
     gig:
-      event.gig?.status === GigStatus.PUBLISHED
+      event.gig?.status === GigStatus.PUBLISHED && !event.gig.isTba
         ? { id: event.gig.id, title: event.gig.title }
         : null,
     tiers,

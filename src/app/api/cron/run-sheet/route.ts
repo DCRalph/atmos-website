@@ -1,10 +1,11 @@
 import type { NextRequest } from "next/server";
 
 import { env } from "~/env";
+import { announceDueGigs } from "~/server/gig-announce";
 import { sweepRunSheets } from "~/server/run-sheet";
 
 /**
- * The run sheet ticker.
+ * The minute ticker: run sheet cues, and TBA gigs whose announce time has come.
  *
  * Called every minute by an external scheduler — cron-job.org, a GitHub Action,
  * the Uptime Kuma that already watches the site. Not a Vercel cron, because
@@ -40,8 +41,11 @@ async function run(request: NextRequest): Promise<Response> {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const result = await sweepRunSheets();
-  return Response.json(result);
+  const [result, announced] = await Promise.all([
+    sweepRunSheets(),
+    announceDueGigs(),
+  ]);
+  return Response.json({ ...result, announced });
 }
 
 function authorized(request: NextRequest): boolean {

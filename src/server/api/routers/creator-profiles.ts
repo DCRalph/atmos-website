@@ -121,7 +121,9 @@ async function assertUsableImage(db: PrismaClient, fileId: string) {
 
 export const creatorProfilesRouter = createTRPCRouter({
   // ---------- Public reads ----------
-  getByHandle: publicProcedure
+  // Admin only: it returns the raw rows, drafts and TBA gigs included, and
+  // the public pages read `PUBLIC_PROFILE_INCLUDE` and `publicSummary` instead.
+  getByHandle: adminProcedure
     .input(z.object({ handle: handleSchema }))
     .query(async ({ ctx, input }) => {
       const profile = await ctx.db.creatorProfile.findUnique({

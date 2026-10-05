@@ -1,9 +1,5 @@
 import { z } from "zod";
-import {
-  createTRPCRouter,
-  publicProcedure,
-  adminProcedure,
-} from "~/server/api/trpc";
+import { createTRPCRouter, adminProcedure } from "~/server/api/trpc";
 import { softDeleteFile, deleteFile } from "~/server/uploads/files";
 import {
   FileUploadStatus,
@@ -180,9 +176,10 @@ export const filesRouter = createTRPCRouter({
     }),
 
   /**
-   * Get a single file by ID
+   * Get a single file by ID. Admin only, like everything that names files: a
+   * TBA gig's poster is a file, and its URL is the unblurred poster.
    */
-  getById: publicProcedure
+  getById: adminProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const file = await ctx.db.file_upload.findUnique({
@@ -201,10 +198,10 @@ export const filesRouter = createTRPCRouter({
     }),
 
   /**
-   * Get files for a specific entity (gig, etc.)
-   * Cached response
+   * Get files for a specific entity (gig, etc.). Admin only: asking for a TBA
+   * gig's `gig_poster` files would hand over the poster it is withholding.
    */
-  getForEntity: publicProcedure
+  getForEntity: adminProcedure
     .input(
       z.object({
         for: z.string(),

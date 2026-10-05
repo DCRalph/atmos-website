@@ -31,8 +31,6 @@ export type PublicProfileRow = Prisma.CreatorProfileGetPayload<{
   include: typeof PUBLIC_PROFILE_INCLUDE;
 }>;
 
-const isTba = (set: ProfileSet) => set.gig.isTba;
-
 /** Trimmed text, or null when there's nothing left. */
 const text = (value: string | null) => value?.trim() || null; // eslint-disable-line @typescript-eslint/prefer-nullish-coalescing -- an empty string should become null too
 
@@ -57,17 +55,10 @@ export function toPublicProfile(row: PublicProfileRow): PublicProfile {
     }),
   );
 
-  // A TBA gig's date is a placeholder, so it's always still to come, and last.
+  // TBA gigs never get here — see `APPEARANCE_WHERE` — so every date is real.
   const upcoming = sets
-    .filter(
-      (s) =>
-        isTba(s) || !isGigPast({ gigStartTime: s.start, gigEndTime: s.end }),
-    )
-    .sort(
-      (a, b) =>
-        Number(isTba(a)) - Number(isTba(b)) ||
-        a.start.getTime() - b.start.getTime(),
-    );
+    .filter((s) => !isGigPast({ gigStartTime: s.start, gigEndTime: s.end }))
+    .sort((a, b) => a.start.getTime() - b.start.getTime());
   const past = sets.filter((s) => !upcoming.includes(s));
 
   return {

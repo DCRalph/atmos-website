@@ -8,6 +8,9 @@ import { gigSlug } from "~/lib/gig-url";
  * `gigPath` in ~/lib/gig-url. The cuid wins; failing that, every title is
  * slugged and compared, newest night first, so a reused title resolves to the
  * most recent gig.
+ *
+ * A TBA gig is never matched by slug. Its links use the cuid, and matching
+ * its real title would let anybody confirm a guess at it.
  */
 export async function resolveGigId(
   db: PrismaClient,
@@ -26,7 +29,7 @@ export async function resolveGigId(
   if (byId) return byId.id;
 
   const gigs = await db.gig.findMany({
-    where,
+    where: { ...where, isTba: false },
     select: { id: true, title: true },
     orderBy: { gigStartTime: "desc" },
   });
