@@ -420,6 +420,12 @@ the correct source images to build them from.
 - [x] **"Test lock screen" is organiser-only.** iPad has no Live Activities,
       so on the review device it did nothing visible, and a button called
       "Test" invites a Guideline 2.2 question.
+- [x] **Builds from Xcode 27 died on launch on iOS 27.** iOS 27 requires the
+      UIScene life cycle of anything built with its SDK, and SDK 57's prebuild
+      template does not adopt it. `plugins/with-scene-lifecycle.js` does,
+      with `expo` 57.0.26's scene delegate. Simulators on the build Mac only
+      run iOS 26, which does not enforce this, so check every build on a
+      phone running iOS 27 before uploading it.
 - [x] The website routes the app depends on (associated domains, Sign in with
       Apple, password reset, account deletion) are live.
 
