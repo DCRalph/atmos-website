@@ -1,6 +1,6 @@
 appId: nz.co.atmosmedia.app
 ---
-- tapOn: "Tickets, tab, 3 of 4"
+- tapOn: "Tickets"
 - runFlow: _beat.yaml
 - tapOn: "SIGN IN"
 - runFlow: _pause.yaml
@@ -9,6 +9,6 @@ appId: nz.co.atmosmedia.app
     env:
       EMAIL: review-customer@atmosmedia.co.nz
 - extendedWaitUntil:
-    visible: ".*Atmos Demo Night.*"
+    visible: "Atmos Demo Night"
     timeout: 15000
 - runFlow: _pause.yaml

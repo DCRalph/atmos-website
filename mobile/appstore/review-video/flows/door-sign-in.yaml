@@ -13,8 +13,8 @@ appId: nz.co.atmosmedia.app
 - runFlow: _pause.yaml
 - runFlow: _beat.yaml
 - tapOn: "NOT NOW"
-- tapOn: "More, tab, 4 of 4"
+- tapOn: "More"
 - extendedWaitUntil:
-    visible: "INTERNAL"
+    visible: "STAFF"
     timeout: 10000
 - runFlow: _pause.yaml

@@ -14,7 +14,7 @@ import { api } from "@/lib/api";
 import { labelArg, useDeviceLabel } from "@/lib/device-label";
 import { colors, space, stroke } from "@/lib/theme";
 import { Button, Caption } from "@/components/ui";
-import { DoorHeader } from "@/components/door/door-header";
+import { DoorHeaderSpace } from "@/components/door/door-header";
 import { IdResult, type IdOutcome } from "@/components/door/id-result";
 import { ID_DOCUMENTS } from "~/lib/ticketing/id-documents";
 
@@ -86,12 +86,7 @@ export default function IdScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <DoorHeader
-        eventId={eventId}
-        summary={summary.data}
-        active="id"
-        onBack={() => router.replace("/(door)")}
-      />
+      <DoorHeaderSpace />
 
       <ScrollView
         style={{ flex: 1 }}

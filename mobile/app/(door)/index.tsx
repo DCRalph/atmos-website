@@ -1,9 +1,16 @@
 import { Link, useRouter } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "@/lib/api";
-import { colors, radius, space, stroke } from "@/lib/theme";
+import { useDeviceLabel } from "@/lib/device-label";
+import { colors, radius, space, stroke, type } from "@/lib/theme";
 import { formatGigDate, formatGigTime } from "@/lib/dates";
 import {
   Body,
@@ -23,11 +30,15 @@ import {
  * every event for an admin or organiser, otherwise the ones they are rostered
  * on. No new permission logic here, deliberately: a second implementation is a
  * second thing to drift.
+ *
+ * Which door this handset is gets named here too, on the way in, rather than
+ * on the scanner, whose screen belongs to the camera.
  */
 export default function DoorPickerScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const events = api.door.myEvents.useQuery(undefined, { retry: false });
+  const { deviceLabel, setDeviceLabel } = useDeviceLabel();
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -95,6 +106,22 @@ export default function DoorPickerScreen() {
           ))
         )}
 
+        {events.data?.length ? (
+          <View style={{ gap: space.sm, marginTop: space.lg }}>
+            <Eyebrow>This handset</Eyebrow>
+            <TextInput
+              value={deviceLabel}
+              onChangeText={setDeviceLabel}
+              placeholder="Front door"
+              placeholderTextColor={colors.textFaint}
+              autoCorrect={false}
+              style={styles.label}
+            />
+            <Caption>
+              Shows on every scan you take, so the log can tell doors apart.
+            </Caption>
+          </View>
+        ) : null}
       </ScrollView>
 
       {/* Pinned to the bottom and full width: leaving the door is a deliberate
@@ -121,6 +148,15 @@ const styles = StyleSheet.create({
     borderWidth: stroke.hair,
     borderColor: colors.border,
     borderRadius: radius.md,
+  },
+  label: {
+    ...type.body,
+    height: 46,
+    borderRadius: radius.pill,
+    borderWidth: stroke.hair,
+    borderColor: colors.borderStrong,
+    paddingHorizontal: space.lg,
+    color: colors.text,
   },
   footer: {
     paddingHorizontal: space.lg,

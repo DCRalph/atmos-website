@@ -15,7 +15,7 @@ import { api } from "@/lib/api";
 import { colors, radius, space, stroke } from "@/lib/theme";
 import { Body, Button, Caption, Loading } from "@/components/ui";
 import { CameraNeeded } from "@/components/door/camera-needed";
-import { DoorHeader } from "@/components/door/door-header";
+import { DoorHeaderSpace } from "@/components/door/door-header";
 import { CheckResult } from "@/components/door/check-result";
 
 type Lookup =
@@ -43,11 +43,6 @@ export default function CheckScreen() {
   const [typed, setTyped] = useState("");
   /** Stops one code re-firing while the result sheet animates in. */
   const lastToken = useRef<string | null>(null);
-
-  const summary = api.door.summary.useQuery(
-    { eventId },
-    { enabled: !!eventId, refetchInterval: 15_000 },
-  );
 
   const check = api.door.checkTicket.useQuery(
     { eventId, lookup: lookup! },
@@ -91,13 +86,6 @@ export default function CheckScreen() {
   if (!permission.granted) {
     return (
       <CameraNeeded
-        header={
-          <DoorHeader
-            eventId={eventId}
-            summary={summary.data}
-            active="check"
-          />
-        }
         detail="Checking a ticket by QR needs the camera. Nothing is recorded — frames are read on the phone and discarded."
         canAskAgain={permission.canAskAgain}
         onAllow={() => void requestPermission()}
@@ -110,7 +98,7 @@ export default function CheckScreen() {
       style={{ flex: 1, backgroundColor: colors.bg }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <DoorHeader eventId={eventId} summary={summary.data} active="check" />
+      <DoorHeaderSpace />
 
       <View style={styles.viewfinder}>
         <CameraView

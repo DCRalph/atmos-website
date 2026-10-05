@@ -1,10 +1,9 @@
 appId: nz.co.atmosmedia.app
 ---
-- tapOn:
-    point: "6%,10%"
+- tapOn: "Close"
 - tapOn: "LEAVE DOOR MODE"
-- tapOn: "More, tab, 4 of 4"
-- tapOn: "Run sheet"
+- tapOn: "More"
+- tapOn: "RUN SHEET"
 - runFlow: _beat.yaml
 - tapOn: ".*Atmos Demo Night.*"
 - runFlow: _pause.yaml
@@ -14,7 +13,7 @@ appId: nz.co.atmosmedia.app
     point: "6%,10%"
 - tapOn:
     point: "6%,10%"
-- tapOn: "Tap to Pay guides"
+- tapOn: "TAP TO PAY GUIDES"
 - runFlow: _pause.yaml
 - tapOn: ".*How to take a payment.*"
 - runFlow: _pause.yaml

@@ -5,9 +5,9 @@ appId: nz.co.atmosmedia.app
     direction: UP
     duration: 1400
 - runFlow: _pause.yaml
-- tapOn: "Gigs, tab, 2 of 4"
+- tapOn: "Gigs"
 - runFlow: _pause.yaml
-- tapOn: "Fri 9 Oct.*"
+- tapOn: ".*FRI 9 OCT.*"
 - runFlow: _pause.yaml
 - swipe:
     direction: UP

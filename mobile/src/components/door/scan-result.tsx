@@ -257,7 +257,7 @@ export function ScanResult({
                 const ticket = current.ticket;
                 if (!ticket) return;
                 onDismiss();
-                router.push({
+                router.replace({
                   pathname: "/(door)/[eventId]/id",
                   params: {
                     eventId,
@@ -283,7 +283,7 @@ export function ScanResult({
                 current.ticket?.ticketNumber ??
                 "";
               onDismiss();
-              router.push({
+              router.replace({
                 pathname: "/(door)/[eventId]/list",
                 params: { eventId, q },
               });

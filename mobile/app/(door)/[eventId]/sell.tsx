@@ -8,7 +8,7 @@ import { useDeviceLabel } from "@/lib/device-label";
 import { useTapToPay } from "@/lib/tap-to-pay";
 import { colors, radius, space, stroke } from "@/lib/theme";
 import { Body, Button, Caption, Loading, Notice } from "@/components/ui";
-import { DoorHeader } from "@/components/door/door-header";
+import { DoorHeaderSpace } from "@/components/door/door-header";
 import { TapToPaySheet } from "@/components/door/tap-to-pay";
 import { TapToPayMark } from "@/components/door/tap-to-pay-mark";
 import { CompForm } from "@/components/door/comp-form";
@@ -108,7 +108,7 @@ export default function SellScreen() {
   if (receipt) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
-        <DoorHeader eventId={eventId} summary={summary.data} active="sell" />
+        <DoorHeaderSpace />
         <ScrollView contentContainerStyle={{ padding: space.lg, gap: space.lg }}>
           <Notice
             title={receipt.kind === "comp" ? "Comped and in" : "Sold and in"}
@@ -132,7 +132,7 @@ export default function SellScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <DoorHeader eventId={eventId} summary={summary.data} active="sell" />
+      <DoorHeaderSpace />
 
       <ScrollView contentContainerStyle={{ padding: space.lg, gap: space.lg }}>
         {/* Comping is a separate mode rather than a third payment method,

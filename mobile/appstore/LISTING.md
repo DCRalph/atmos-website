@@ -432,6 +432,18 @@ the correct source images to build them from.
       needed": no back button, no Manual or List. Refuse the camera and the
       door was unusable. The header now stays, and once iOS has been refused
       the button opens Settings.
+- [x] **Door tabs slid in like new pages.** Scan, Manual, List and the rest
+      now sit under one floating header (`app/(door)/[eventId]/_layout.tsx`):
+      its pill slides to the tab picked, as the main tab bar's does, and the
+      screen under it cross-fades. Close pops back to the door picker instead
+      of pushing it.
+- [x] **Swiping back flashed near-white at the screen's corners.** React
+      Navigation's default theme is light, and the native stack paints its
+      container in it. The root layout now gives it the app's black.
+- [x] **The scanner did not match the redesign.** It now follows the
+      `DoorScan` mock: one scrolling row of tabs, the last three scans, and
+      Type number / Search / Torch under them. Naming the handset moved to the
+      door picker.
 - [x] The website routes the app depends on (associated domains, Sign in with
       Apple, password reset, account deletion) are live.
 

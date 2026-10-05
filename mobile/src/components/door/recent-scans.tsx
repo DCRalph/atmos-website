@@ -1,28 +1,34 @@
 import { useState } from "react";
 import * as Haptics from "expo-haptics";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LayoutAnimationConfig,
+  LinearTransition,
+} from "react-native-reanimated";
 
 import { api } from "@/lib/api";
 import { labelArg, useDeviceLabel } from "@/lib/device-label";
 import { colors, radius, space, stroke, type } from "@/lib/theme";
-import { formatTimeAgo } from "@/lib/dates";
+import { formatGigTime } from "@/lib/dates";
 import { denyReasonLabel } from "~/lib/ticketing/deny-reasons";
-import { scanResultShort } from "~/lib/ticketing/scan-results";
+import { scanResultShort, scanResultTone } from "~/lib/ticketing/scan-results";
 import { scanToneColor } from "@/lib/scan-tone";
-import { Body, Caption, Eyebrow } from "@/components/ui";
+import { Caption } from "@/components/ui";
 import { PersonSheet } from "@/components/door/person-sheet";
 
 /**
- * The last few scans, under the camera.
+ * The last three scans, under the camera.
  *
  * Two jobs. It answers "did that go through?" without leaving the scanner, and
  * it is where a mistake gets fixed — a wrong tap is noticed within seconds, and
  * before this the only route back was to leave the camera, find the person in
  * the list, and open them.
  *
- * Defaults to this staffer's own actions. At a door with three scanners the
+ * Only this staffer's own actions. At a door with three scanners the
  * event-wide feed is mostly other people's work, and the row you need to undo
- * is always one of yours.
+ * is always one of yours. Everybody's is the Log tab.
  */
 export function RecentScans({
   eventId,
@@ -31,13 +37,12 @@ export function RecentScans({
   eventId: string;
   isManager: boolean;
 }) {
-  const [mine, setMine] = useState(true);
   const [openTicketId, setOpenTicketId] = useState<string | null>(null);
   const { deviceLabel } = useDeviceLabel();
   const utils = api.useUtils();
 
   const scans = api.door.recentScans.useQuery(
-    { eventId, limit: 8, mine },
+    { eventId, limit: 3, mine: true },
     { enabled: !!eventId, refetchInterval: 10_000 },
   );
 
@@ -65,30 +70,37 @@ export function RecentScans({
   const busy = undoAdmission.isPending || undoDenial.isPending;
 
   return (
-    <View style={{ gap: space.sm }}>
-      <View style={styles.head}>
-        <Eyebrow>{mine ? "What you did" : "Just now"}</Eyebrow>
-        <Pressable onPress={() => setMine(!mine)} hitSlop={8}>
-          <Text style={styles.toggle}>
-            {mine ? "Every door" : "Only mine"}
-          </Text>
-        </Pressable>
-      </View>
-
-      {rows.length === 0 ? (
-        <Caption>
-          {mine ? "You have not scanned anything yet." : "Nothing yet tonight."}
-        </Caption>
-      ) : (
-        <View style={styles.list}>
-          {rows.map((scan) => {
+    // The rows already there when the scanner opens just appear; a scan taken
+    // after that fades in at the top and pushes the older ones down.
+    <LayoutAnimationConfig skipEntering>
+      <View>
+        {rows.length === 0 ? (
+          <Caption style={styles.empty}>Your scans show here.</Caption>
+        ) : (
+          rows.map((scan) => {
             // Grouped by what it meant for the person holding the ticket, from
             // the same table the web feed reads — so a result added to the
-            // enum gets a colour on both at once, rather than silently
-            // landing in whichever branch the local ternary ended on.
+            // enum gets a colour on both at once, rather than silently landing
+            // in whichever branch a local ternary ended on.
             const dotColor = scanToneColor(scan.result);
+            // An admission is the dot alone; anything else says what it was.
+            const detail =
+              scanResultTone(scan.result) === "in"
+                ? scan.ticket?.tier?.name
+                : [
+                    scanResultShort(scan.result),
+                    scan.denyReason ? denyReasonLabel(scan.denyReason) : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ");
             return (
-              <View key={scan.id} style={styles.row}>
+              <Animated.View
+                key={scan.id}
+                entering={FadeIn.duration(220)}
+                exiting={FadeOut.duration(120)}
+                layout={LinearTransition.duration(220)}
+                style={styles.row}
+              >
                 <Pressable
                   disabled={!scan.ticketId}
                   onPress={() =>
@@ -96,33 +108,22 @@ export function RecentScans({
                   }
                   style={styles.rowMain}
                 >
-                  <View
-                    style={[styles.dot, { backgroundColor: dotColor }]}
-                  />
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Body numberOfLines={1} style={{ fontSize: 14 }}>
-                      {scan.ticket?.attendeeName ??
-                        scan.ticket?.ticketNumber ??
-                        "Unknown code"}
-                    </Body>
-                    <Caption numberOfLines={1}>
-                      {[
-                        scanResultShort(scan.result),
-                        scan.denyReason
-                          ? denyReasonLabel(scan.denyReason)
-                          : null,
-                        mine ? null : scan.scannedByName,
-                        scan.deviceLabel,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </Caption>
-                  </View>
-                  <Caption>{formatTimeAgo(new Date(scan.createdAt))}</Caption>
+                  <View style={[styles.dot, { backgroundColor: dotColor }]} />
+                  <Text numberOfLines={1} style={styles.name}>
+                    {scan.ticket?.attendeeName ??
+                      scan.ticket?.ticketNumber ??
+                      "Unknown code"}
+                    {detail ? (
+                      <Text style={styles.detail}> · {detail}</Text>
+                    ) : null}
+                  </Text>
+                  <Text style={styles.time}>
+                    {formatGigTime(new Date(scan.createdAt))}
+                  </Text>
                 </Pressable>
 
                 {/* Offered only while it still stands — the server decides, so
-                    a row that has already been overtaken stops showing it. */}
+                  a row that has already been overtaken stops showing it. */}
                 {scan.undo && scan.ticketId ? (
                   <Pressable
                     disabled={busy}
@@ -150,22 +151,22 @@ export function RecentScans({
                     <Text style={styles.undoLabel}>Undo</Text>
                   </Pressable>
                 ) : null}
-              </View>
+              </Animated.View>
             );
-          })}
-        </View>
-      )}
+          })
+        )}
 
-      {openTicketId ? (
-        <PersonSheet
-          eventId={eventId}
-          ticketId={openTicketId}
-          isManager={isManager}
-          onClose={() => setOpenTicketId(null)}
-          onAdmit={() => setOpenTicketId(null)}
-        />
-      ) : null}
-    </View>
+        {openTicketId ? (
+          <PersonSheet
+            eventId={eventId}
+            ticketId={openTicketId}
+            isManager={isManager}
+            onClose={() => setOpenTicketId(null)}
+            onAdmit={() => setOpenTicketId(null)}
+          />
+        ) : null}
+      </View>
+    </LayoutAnimationConfig>
   );
 }
 
@@ -208,18 +209,12 @@ function confirmUndo(
 }
 
 const styles = StyleSheet.create({
-  head: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  toggle: { ...type.label, fontSize: 10, color: colors.textSoft },
-  list: { overflow: "hidden" },
+  empty: { paddingHorizontal: space.md, paddingVertical: space.md },
   row: {
+    height: 44,
     flexDirection: "row",
     alignItems: "center",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    paddingHorizontal: space.md,
   },
   rowMain: {
     flex: 1,
@@ -227,9 +222,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: space.md,
-    paddingVertical: space.sm + 2,
+    alignSelf: "stretch",
   },
   dot: { width: 8, height: 8, borderRadius: 4 },
+  name: { ...type.body, flex: 1, fontSize: 14, color: colors.text },
+  detail: { color: colors.textFaint },
+  time: {
+    ...type.caption,
+    fontSize: 12,
+    color: colors.textFaint,
+    fontVariant: ["tabular-nums"],
+  },
   undo: {
     marginLeft: space.sm,
     paddingHorizontal: space.md,
