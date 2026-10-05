@@ -4,7 +4,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { api } from "@/lib/api";
 import { labelArg, useDeviceLabel } from "@/lib/device-label";
-import { colors, radius, space, stroke } from "@/lib/theme";
+import { colors, radius, space, stroke, type } from "@/lib/theme";
 import { formatTimeAgo } from "@/lib/dates";
 import { denyReasonLabel } from "~/lib/ticketing/deny-reasons";
 import { scanResultShort } from "~/lib/ticketing/scan-results";
@@ -69,9 +69,9 @@ export function RecentScans({
       <View style={styles.head}>
         <Eyebrow>{mine ? "What you did" : "Just now"}</Eyebrow>
         <Pressable onPress={() => setMine(!mine)} hitSlop={8}>
-          <Caption style={styles.toggle}>
-            {mine ? "Show every door" : "Show only mine"}
-          </Caption>
+          <Text style={styles.toggle}>
+            {mine ? "Every door" : "Only mine"}
+          </Text>
         </Pressable>
       </View>
 
@@ -213,17 +213,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  toggle: { color: colors.textSoft, textDecorationLine: "underline" },
-  list: {
-    borderWidth: stroke.hair,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    overflow: "hidden",
-  },
+  toggle: { ...type.label, fontSize: 10, color: colors.textSoft },
+  list: { overflow: "hidden" },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    borderBottomWidth: stroke.hair,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
   rowMain: {
@@ -232,21 +227,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: space.md,
-    paddingVertical: space.sm,
-    paddingHorizontal: space.md,
+    paddingVertical: space.sm + 2,
   },
-  dot: { width: 8, height: 8 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
   undo: {
+    marginLeft: space.sm,
     paddingHorizontal: space.md,
-    paddingVertical: space.sm,
-    borderLeftWidth: stroke.hair,
-    borderLeftColor: colors.border,
+    paddingVertical: 7,
+    borderRadius: radius.pill,
+    borderWidth: stroke.hair,
+    borderColor: colors.borderHard,
   },
-  undoLabel: {
-    color: colors.text,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
+  undoLabel: { ...type.label, fontSize: 10, color: colors.text },
 });

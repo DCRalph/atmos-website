@@ -643,6 +643,9 @@ export const ticketsRouter = createTRPCRouter({
             venueName: true,
             isR18: true,
             status: true,
+            gigId: true,
+            posterFileUploadId: true,
+            gig: { select: { posterFileUploadId: true } },
           },
         },
         tickets: {
@@ -652,15 +655,23 @@ export const ticketsRouter = createTRPCRouter({
       },
     });
 
-    return orders.map((order) => ({
-      orderId: order.id,
-      orderNumber: order.orderNumber,
-      event: order.event,
-      ticketCount: order.tickets.length,
-      // The app needs this to open the order and to build wallet-pass URLs;
-      // it is the same credential already sitting in the buyer's inbox.
-      accessToken: orderAccessToken(order),
-    }));
+    return orders.map(
+      ({ event: { gig, posterFileUploadId, ...event }, ...order }) => ({
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        event: {
+          ...event,
+          // The app's ticket stack draws each order's poster; same fallback as
+          // `byAccessToken`.
+          posterFileUploadId:
+            posterFileUploadId ?? gig?.posterFileUploadId ?? null,
+        },
+        ticketCount: order.tickets.length,
+        // The app needs this to open the order and to build wallet-pass URLs;
+        // it is the same credential already sitting in the buyer's inbox.
+        accessToken: orderAccessToken(order),
+      }),
+    );
   }),
 
   /**

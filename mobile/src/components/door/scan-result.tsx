@@ -12,7 +12,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api, type RouterOutputs } from "@/lib/api";
-import { colors, space } from "@/lib/theme";
+import { radius, space, type } from "@/lib/theme";
 import { Caption } from "@/components/ui";
 import { formatTimeAgo } from "@/lib/dates";
 import { labelArg, useDeviceLabel } from "@/lib/device-label";
@@ -348,58 +348,52 @@ function toneFor(outcome: ScanOutcome): { bg: string; heading: string } {
   }
 }
 
+const panelShape = {
+  borderRadius: radius.lg,
+  // The site's notch: square where the panel hangs off what's above it.
+  borderTopLeftRadius: 0,
+} as const;
+
 const styles = StyleSheet.create({
-  idCheck: { borderColor: "rgba(255,255,255,0.55)" },
+  idCheck: { borderWidth: 1, borderColor: "rgba(255,255,255,0.55)" },
   lifetime: {
     marginTop: space.md,
     alignItems: "center",
     gap: space.xs,
   },
   lifetimeLabel: {
+    ...type.label,
+    fontSize: 13,
     color: "#fff",
-    fontSize: 15,
-    fontWeight: "900",
-    letterSpacing: 2,
     borderWidth: 2,
     borderColor: "#fff",
+    borderRadius: radius.pill,
     backgroundColor: "rgba(0,0,0,0.3)",
-    paddingHorizontal: space.md,
+    paddingHorizontal: space.lg,
     paddingVertical: space.sm,
+    overflow: "hidden",
   },
-  invited: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "700",
-    marginTop: space.sm,
-  },
+  invited: { ...type.body, fontSize: 17, color: "#fff", marginTop: space.sm },
   findOnList: {
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.35)",
+    minHeight: 52,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.45)",
     paddingVertical: space.md,
     alignItems: "center",
+    justifyContent: "center",
   },
-  findLabel: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "900",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
+  findLabel: { ...type.label, fontSize: 13, color: "#fff" },
   refuse: {
+    borderRadius: 28,
     borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.55)",
+    borderColor: "rgba(255,255,255,0.6)",
     paddingVertical: space.md,
     paddingHorizontal: space.lg,
     alignItems: "center",
-    gap: 2,
+    gap: 4,
   },
-  refuseLabel: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "900",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
+  refuseLabel: { ...type.label, fontSize: 15, color: "#fff" },
   screen: { flex: 1 },
   body: {
     flexGrow: 1,
@@ -410,23 +404,24 @@ const styles = StyleSheet.create({
     gap: space.sm,
   },
   verdict: {
+    ...type.heading,
     color: "#fff",
-    // 64 wrapped "ALREADY IN" onto two lines and pushed it under the notch.
-    // Shrunk here and capped to one line below, so a longer verdict scales
-    // itself down rather than reflowing the whole screen.
-    fontSize: 46,
-    fontWeight: "900",
-    letterSpacing: -1.5,
+    // Capped to one line below, so a longer verdict scales itself down
+    // rather than reflowing the whole screen.
+    fontSize: 52,
+    lineHeight: 56,
     textAlign: "center",
   },
   name: {
+    ...type.display,
+    fontSize: 28,
+    lineHeight: 31,
+    textTransform: "none",
     color: "#fff",
-    fontSize: 26,
-    fontWeight: "800",
     textAlign: "center",
     marginTop: space.md,
   },
-  meta: { color: "rgba(255,255,255,0.85)", fontSize: 17, textAlign: "center" },
+  meta: { ...type.body, color: "rgba(255,255,255,0.85)", fontSize: 17, textAlign: "center" },
   mono: {
     color: "rgba(255,255,255,0.6)",
     fontSize: 13,
@@ -434,36 +429,31 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   panel: {
+    ...panelShape,
     marginTop: space.lg,
     padding: space.lg,
-    borderWidth: 2,
-    borderColor: "rgba(0,0,0,0.25)",
-    backgroundColor: "rgba(0,0,0,0.2)",
+    backgroundColor: "rgba(0,0,0,0.22)",
     width: "100%",
     maxWidth: 380,
   },
-  r18: { borderColor: "rgba(255,255,255,0.5)" },
-  panelTitle: { color: "#fff", fontSize: 15, fontWeight: "800" },
-  panelBody: { color: "rgba(255,255,255,0.85)", fontSize: 14, marginTop: 2 },
-  actions: { padding: space.lg, gap: space.md },
+  r18: { borderWidth: 1, borderColor: "rgba(255,255,255,0.5)" },
+  panelTitle: { ...type.label, fontSize: 12, color: "#fff" },
+  panelBody: { ...type.body, color: "rgba(255,255,255,0.85)", fontSize: 15, marginTop: 6 },
+  actions: { padding: space.lg, gap: space.sm },
   exception: {
-    borderWidth: 2,
-    borderColor: "rgba(0,0,0,0.3)",
-    backgroundColor: "rgba(0,0,0,0.2)",
+    borderRadius: 28,
+    backgroundColor: "rgba(0,0,0,0.25)",
     paddingVertical: space.md,
     alignItems: "center",
+    gap: 4,
   },
-  exceptionLabel: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  exceptionLabel: { ...type.label, fontSize: 14, color: "#fff" },
   safe: {
     height: 64,
+    borderRadius: radius.pill,
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
   },
-  safeLabel: {
-    color: "#000",
-    fontSize: 17,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-  },
+  safeLabel: { ...type.label, fontSize: 15, color: "#000" },
 });

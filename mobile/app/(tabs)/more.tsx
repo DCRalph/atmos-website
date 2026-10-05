@@ -1,14 +1,14 @@
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import {
+  Animated,
   Pressable,
-  ScrollView,
   StyleSheet,
   Switch,
   Text,
   View,
 } from "react-native";
-import { ChevronRight, Lock } from "lucide-react-native";
+import { ArrowUpRight, ChevronRight, Lock } from "lucide-react-native";
 
 import { api } from "@/lib/api";
 import { API_URL } from "@/lib/env";
@@ -17,8 +17,14 @@ import { useBiometrics, useBiometricGate } from "@/lib/biometrics";
 import { clearRegisteredPushToken, getRegisteredPushToken } from "@/lib/push";
 import { useStaff } from "@/lib/staff";
 import { useLiveActivityTest } from "@/lib/live-activity";
-import { colors, radius, space, stroke } from "@/lib/theme";
-import { Body, Button, Caption, Eyebrow, Header } from "@/components/ui";
+import { colors, radius, space, type } from "@/lib/theme";
+import { Body, Button, Caption, Display, Eyebrow } from "@/components/ui";
+import {
+  LargeTitle,
+  PinnedHeader,
+  useScrollHeader,
+} from "@/components/screen-header";
+import { useTabBarSpace } from "@/components/tab-bar";
 
 /** Everything that does not earn a tab of its own. */
 export default function MoreScreen() {
@@ -28,6 +34,8 @@ export default function MoreScreen() {
   const gate = useBiometricGate();
   const unregister = api.push.unregister.useMutation();
   const lockScreen = useLiveActivityTest();
+  const tabSpace = useTabBarSpace();
+  const { scrollY, scrollProps } = useScrollHeader();
 
   // Nothing internal renders until the server has confirmed this account is
   // staff — see `useStaff`. `ready` matters as much as the answer: drawing the
@@ -53,74 +61,87 @@ export default function MoreScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <Header title="More" />
-      <ScrollView
+      <Animated.ScrollView
+        {...scrollProps}
         style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingTop: space.lg,
-          paddingBottom: space.xxl,
-          paddingHorizontal: space.lg,
-          gap: space.xl,
-        }}
+        contentContainerStyle={{ paddingBottom: tabSpace }}
       >
-        <View style={{ gap: space.sm }}>
-          <Eyebrow>Account</Eyebrow>
-          {user ? (
-            <View style={styles.account}>
-              <Body style={{ fontWeight: "700" }}>{user.name}</Body>
-              <Caption>{user.email}</Caption>
-              {!user.emailVerified && (
-                <Caption style={{ color: colors.warn, marginTop: space.xs }}>
-                  Email not verified — verify it to see tickets you bought
-                  before installing the app.
-                </Caption>
-              )}
-              <Button
-                variant="outline"
-                style={{ marginTop: space.md }}
-                onPress={() => {
-                  // Drop the device registration first. A shared handset should
-                  // stop receiving notifications about this person's tickets the
-                  // moment they log out, not whenever it next launches.
-                  const token = getRegisteredPushToken();
-                  if (token) unregister.mutate({ token });
-                  clearRegisteredPushToken();
-                  void signOut();
-                }}
-              >
-                Sign out
-              </Button>
-              {/*
+        <LargeTitle>More</LargeTitle>
+        <View style={styles.body}>
+          <View>
+            {user ? (
+              <View style={styles.account}>
+                <View style={styles.accountRow}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarLabel}>
+                      {(user.name || user.email).slice(0, 1).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Display size={20} keepCase numberOfLines={1}>
+                      {user.name || "Signed in"}
+                    </Display>
+                    <Caption
+                      numberOfLines={1}
+                      style={{ marginTop: 6, color: colors.textSoft }}
+                    >
+                      {user.email}
+                    </Caption>
+                  </View>
+                </View>
+                {!user.emailVerified && (
+                  <Caption style={{ color: colors.warn, marginTop: space.md }}>
+                    Email not verified — verify it to see tickets you bought
+                    before installing the app.
+                  </Caption>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  style={{ marginTop: space.lg }}
+                  onPress={() => {
+                    // Drop the device registration first. A shared handset should
+                    // stop receiving notifications about this person's tickets the
+                    // moment they log out, not whenever it next launches.
+                    const token = getRegisteredPushToken();
+                    if (token) unregister.mutate({ token });
+                    clearRegisteredPushToken();
+                    void signOut();
+                  }}
+                >
+                  Sign out
+                </Button>
+                {/*
               App Store Guideline 5.1.1(v). Last on the card and worded
               plainly, rather than hidden behind a support email — which is the
               arrangement the guideline exists to ban.
             */}
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push("/settings/delete-account")}
-                hitSlop={8}
-                style={({ pressed }) => [
-                  { marginTop: space.md },
-                  pressed && { opacity: 0.7 },
-                ]}
-              >
-                <Caption style={{ color: colors.deny }}>Delete account</Caption>
-              </Pressable>
-            </View>
-          ) : (
-            <View style={styles.account}>
-              <Body soft>Sign in to keep your tickets in the app.</Body>
-              <Button
-                style={{ marginTop: space.md }}
-                onPress={() => router.push("/(auth)/sign-in")}
-              >
-                Sign in
-              </Button>
-            </View>
-          )}
-        </View>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => router.push("/settings/delete-account")}
+                  hitSlop={8}
+                  style={({ pressed }) => [
+                    { marginTop: space.md },
+                    pressed && { opacity: 0.7 },
+                  ]}
+                >
+                  <Text style={styles.danger}>Delete account</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.account}>
+                <Body soft>Sign in to keep your tickets in the app.</Body>
+                <Button
+                  style={{ marginTop: space.lg, alignSelf: "flex-start" }}
+                  onPress={() => router.push("/(auth)/sign-in")}
+                >
+                  Sign in
+                </Button>
+              </View>
+            )}
+          </View>
 
-        {/*
+          {/*
         Staff tooling, gathered.
 
         Collapsed behind a single row until Face ID opens it, rather than
@@ -132,149 +153,162 @@ export default function MoreScreen() {
         `(admin)` and `(staff)` keep their own `BiometricGate` so a deep link or
         a notification tap lands on the same challenge.
       */}
-        {staffReady && isStaff ? (
-          <View style={{ gap: space.sm }}>
-            <Eyebrow>Internal</Eyebrow>
-            {gate.guarded ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={gate.prompt}
-                style={({ pressed }) => [
-                  styles.row,
-                  pressed && { opacity: 0.7 },
-                ]}
-              >
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Body>Locked</Body>
-                  <Caption>
-                    {gate.failed
-                      ? `${biometrics.label} didn't unlock. Tap to try again, or use your device passcode.`
-                      : `Tap to unlock with ${biometrics.label}.`}
-                  </Caption>
-                </View>
-                <Lock color={colors.textFaint} size={16} strokeWidth={2.5} />
-              </Pressable>
-            ) : (
-              <>
-                {/* For all staff, not just tonight's roster: the picker inside
+          {staffReady && isStaff ? (
+            <View>
+              <Eyebrow style={styles.sectionLabel}>Staff</Eyebrow>
+              {gate.guarded ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={gate.prompt}
+                  style={({ pressed }) => [
+                    styles.row,
+                    pressed && { opacity: 0.7 },
+                  ]}
+                >
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Body>Locked</Body>
+                    <Caption>
+                      {gate.failed
+                        ? `${biometrics.label} didn't unlock. Tap to try again, or use your device passcode.`
+                        : `Tap to unlock with ${biometrics.label}.`}
+                    </Caption>
+                  </View>
+                  <Lock color={colors.textFaint} size={16} strokeWidth={2.5} />
+                </Pressable>
+              ) : (
+                <>
+                  {/* For all staff, not just tonight's roster: the picker inside
                     says "you're not on the door" better than a missing row
                     does, and the server refuses scans regardless. */}
-                <Row label="Door mode" onPress={() => router.push("/(door)")} />
-                {/* Above event analytics on purpose: on a gig night this is the
+                  <Row
+                    label="Door mode"
+                    onPress={() => router.push("/(door)")}
+                  />
+                  {/* Above event analytics on purpose: on a gig night this is the
                   row anybody opening this section actually wants. */}
-                <Row
-                  label="Run sheet"
-                  onPress={() => router.push("/run-sheet")}
-                />
-                {isOrganiser && (
                   <Row
-                    label="Event analytics"
-                    onPress={() => router.push("/(admin)")}
+                    label="Run sheet"
+                    onPress={() => router.push("/run-sheet")}
                   />
-                )}
-                {isOrganiser && (
+                  {isOrganiser && (
+                    <Row
+                      label="Event analytics"
+                      onPress={() => router.push("/(admin)")}
+                    />
+                  )}
+                  {isOrganiser && (
+                    <Row
+                      label="Gig rooms"
+                      badge={unread.data ?? 0}
+                      onPress={() => router.push("/(admin)/chat")}
+                    />
+                  )}
+                  {isOrganiser && (
+                    <Row
+                      label="Notify team"
+                      onPress={() => router.push("/(admin)/notify")}
+                    />
+                  )}
                   <Row
-                    label="Gig rooms"
-                    badge={unread.data ?? 0}
-                    onPress={() => router.push("/(admin)/chat")}
+                    label="Tap to Pay guides"
+                    onPress={() => router.push("/(door)/tap-to-pay")}
                   />
-                )}
-                {isOrganiser && (
-                  <Row
-                    label="Notify team"
-                    onPress={() => router.push("/(admin)/notify")}
-                  />
-                )}
-                <Row
-                  label="Tap to Pay guides"
-                  onPress={() => router.push("/(door)/tap-to-pay")}
-                />
-                {/* A four minute fake night, for checking the widget renders at
+                  {/* A four minute fake night, for checking the widget renders at
                     all without waiting for a real one. Hidden where iOS cannot
                     show a Live Activity — a test that can only fail is not a
                     test — and from door staff, who have no use for a
                     diagnostic and should not meet a button called "Test". */}
-                {isOrganiser && lockScreen.supported && (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={
-                      lockScreen.running ? lockScreen.stop : lockScreen.start
-                    }
-                    style={({ pressed }) => [
-                      styles.row,
-                      pressed && { opacity: 0.7 },
-                    ]}
-                  >
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Body>
-                        {lockScreen.running
-                          ? "Stop lock screen test"
-                          : "Test lock screen"}
-                      </Body>
-                      <Caption>
-                        {lockScreen.running
-                          ? "A fake night, four minutes long. Lock the handset to watch it."
-                          : "Puts a fake run sheet on the lock screen for four minutes."}
-                      </Caption>
-                    </View>
-                  </Pressable>
-                )}
-                {/* Checklist 1.7. Hidden entirely when the handset has no
+                  {isOrganiser && lockScreen.supported && (
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={
+                        lockScreen.running ? lockScreen.stop : lockScreen.start
+                      }
+                      style={({ pressed }) => [
+                        styles.row,
+                        pressed && { opacity: 0.7 },
+                      ]}
+                    >
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Body>
+                          {lockScreen.running
+                            ? "Stop lock screen test"
+                            : "Test lock screen"}
+                        </Body>
+                        <Caption>
+                          {lockScreen.running
+                            ? "A fake night, four minutes long. Lock the handset to watch it."
+                            : "Puts a fake run sheet on the lock screen for four minutes."}
+                        </Caption>
+                      </View>
+                    </Pressable>
+                  )}
+                  {/* Checklist 1.7. Hidden entirely when the handset has no
                   biometric enrolled — a switch that cannot be turned on is
                   worse than no switch. */}
-                {biometrics.available && (
-                  <View style={styles.toggleRow}>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Body>Unlock with {biometrics.label}</Body>
-                      <Caption>
-                        Locks this section and everything in it. Your own
-                        tickets stay open.
-                      </Caption>
+                  {biometrics.available && (
+                    <View style={styles.toggleRow}>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Body>Unlock with {biometrics.label}</Body>
+                        <Caption>
+                          Locks this section and everything in it. Your own
+                          tickets stay open.
+                        </Caption>
+                      </View>
+                      <Switch
+                        value={biometrics.enabled}
+                        onValueChange={(next) => {
+                          void biometrics.setEnabled(next);
+                        }}
+                        trackColor={{
+                          true: colors.accent,
+                          false: colors.borderStrong,
+                        }}
+                        thumbColor="#fff"
+                      />
                     </View>
-                    <Switch
-                      value={biometrics.enabled}
-                      onValueChange={(next) => {
-                        void biometrics.setEnabled(next);
-                      }}
-                      trackColor={{ true: colors.text, false: colors.border }}
-                      thumbColor={colors.bg}
-                    />
-                  </View>
-                )}
-              </>
-            )}
-          </View>
-        ) : null}
+                  )}
+                </>
+              )}
+            </View>
+          ) : null}
 
-        {/*
+          {/*
         Notifications, above the Atmos links rather than buried under them: the
         listing tells people they can mute these at any time, so "at any time"
         has to be somewhere they will actually find it.
       */}
-        <View style={{ gap: space.sm }}>
-          <Eyebrow>Settings</Eyebrow>
-          <Row
-            label="Notifications"
-            onPress={() => router.push("/settings/notifications")}
-          />
-        </View>
+          <View>
+            <Eyebrow style={styles.sectionLabel}>Settings</Eyebrow>
+            <Row
+              label="Notifications"
+              onPress={() => router.push("/settings/notifications")}
+            />
+          </View>
 
-        <View style={{ gap: space.sm }}>
-          <Eyebrow>Atmos</Eyebrow>
-          <Row label="Content" onPress={() => openWeb("/content")} />
-          <Row label="About" onPress={() => openWeb("/about")} />
-          <Row label="Crew" onPress={() => openWeb("/crew")} />
-          <Row label="Gear rental" onPress={() => openWeb("/equipment")} />
-          <Row label="Merch" onPress={() => openWeb("/merch")} />
-          <Row label="Contact" onPress={() => openWeb("/contact")} />
-        </View>
+          <View>
+            <Eyebrow style={styles.sectionLabel}>Atmos</Eyebrow>
+            <Row label="Content" web onPress={() => openWeb("/content")} />
+            <Row label="About" web onPress={() => openWeb("/about")} />
+            <Row label="Crew" web onPress={() => openWeb("/crew")} />
+            <Row
+              label="Gear rental"
+              web
+              onPress={() => openWeb("/equipment")}
+            />
+            <Row label="Merch" web onPress={() => openWeb("/merch")} />
+            <Row label="Contact" web onPress={() => openWeb("/contact")} />
+          </View>
 
-        <View style={{ gap: space.sm }}>
-          <Eyebrow>Legal</Eyebrow>
-          <Row label="Terms" onPress={() => openWeb("/terms")} />
-          <Row label="Privacy" onPress={() => openWeb("/privacy")} />
+          <View>
+            <Eyebrow style={styles.sectionLabel}>Legal</Eyebrow>
+            <Row label="Terms" web onPress={() => openWeb("/terms")} />
+            <Row label="Privacy" web onPress={() => openWeb("/privacy")} />
+          </View>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
+
+      <PinnedHeader scrollY={scrollY} title="More" />
     </View>
   );
 }
@@ -282,71 +316,83 @@ export default function MoreScreen() {
 function Row({
   label,
   badge,
+  web,
   onPress,
 }: {
   label: string;
   /** Drawn only when there is something to say. Zero is not news. */
   badge?: number;
+  /** Opens the website rather than a screen of the app. */
+  web?: boolean;
   onPress: () => void;
 }) {
+  const Arrow = web ? ArrowUpRight : ChevronRight;
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole={web ? "link" : "button"}
       onPress={onPress}
-      style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
+      style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
     >
-      <Body>{label}</Body>
+      <Text style={styles.rowLabel}>{label}</Text>
       <View
-        style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}
+        style={{ flexDirection: "row", alignItems: "center", gap: space.md }}
       >
         {badge ? (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{badge}</Text>
           </View>
         ) : null}
-        <ChevronRight color={colors.textFaint} size={16} strokeWidth={2.5} />
+        <Arrow color={colors.textFaint} size={16} strokeWidth={2} />
       </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  badge: {
-    minWidth: 19,
-    alignItems: "center",
-    backgroundColor: colors.text,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-  },
-  badgeText: { color: "#000", fontSize: 10.5, fontWeight: "900" },
+  body: { paddingHorizontal: space.lg, paddingTop: space.xl, gap: space.xxl },
   account: {
-    backgroundColor: colors.surface,
-    borderWidth: stroke.hair,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: space.lg,
+    paddingBottom: space.xl,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.borderStrong,
   },
+  accountRow: { flexDirection: "row", alignItems: "center", gap: space.lg },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "rgba(255,255,255,0.10)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarLabel: { ...type.label, fontSize: 18, color: colors.text },
+  danger: { ...type.label, fontSize: 11, color: colors.danger },
+  sectionLabel: { marginBottom: space.xs },
+  badge: {
+    minWidth: 22,
+    alignItems: "center",
+    backgroundColor: colors.accent,
+    borderRadius: radius.pill,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+  },
+  badgeText: { ...type.label, fontSize: 10, color: colors.accentInk },
   row: {
+    minHeight: 56,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: space.md,
     paddingVertical: space.md,
-    paddingHorizontal: space.lg,
-    backgroundColor: colors.surface,
-    borderWidth: stroke.hair,
-    borderColor: colors.border,
-    borderRadius: radius.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
+  rowLabel: { ...type.label, fontSize: 12, color: colors.text, flexShrink: 1 },
   toggleRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: space.md,
     paddingVertical: space.md,
-    paddingHorizontal: space.lg,
-    backgroundColor: colors.surface,
-    borderWidth: stroke.hair,
-    borderColor: colors.border,
-    borderRadius: radius.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
 });

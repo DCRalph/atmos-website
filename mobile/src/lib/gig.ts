@@ -1,3 +1,5 @@
+import { format } from "date-fns";
+
 import { formatGigDate, formatGigDateLong, formatGigTime } from "@/lib/dates";
 
 /**
@@ -23,4 +25,21 @@ export function gigWhenLong(gig: {
   return gig.isTba
     ? "Date to be announced"
     : `${formatGigDateLong(gig.gigStartTime)} · ${formatGigTime(gig.gigStartTime)}`;
+}
+
+/**
+ * Consecutive gigs sharing a month, in list order, the way the site groups
+ * its listings. TBA gigs (which the server sorts last) share one group.
+ */
+export function groupByMonth<T extends { isTba: boolean; gigStartTime: Date }>(
+  gigs: readonly T[],
+) {
+  const groups: { key: string; month: Date | null; gigs: T[] }[] = [];
+  for (const gig of gigs) {
+    const key = gig.isTba ? "tba" : format(gig.gigStartTime, "yyyy-MM");
+    const last = groups.at(-1);
+    if (last?.key === key) last.gigs.push(gig);
+    else groups.push({ key, month: gig.isTba ? null : gig.gigStartTime, gigs: [gig] });
+  }
+  return groups;
 }

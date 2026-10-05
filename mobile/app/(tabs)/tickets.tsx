@@ -1,200 +1,193 @@
 import { useCallback, useState } from "react";
-import { Link, useRouter } from "expo-router";
-import {
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  View,
-} from "react-native";
+import { useRouter } from "expo-router";
+import { Animated, RefreshControl, View } from "react-native";
 
-import { api } from "@/lib/api";
+import { api, type RouterOutputs } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { colors, radius, space } from "@/lib/theme";
-import { formatGigDate, formatGigTime } from "@/lib/dates";
-import {
-  Body,
-  Button,
-  Caption,
-  Eyebrow,
-  Header,
-  Loading,
-  Notice,
-  Pill,
-} from "@/components/ui";
+import { mediaUrl } from "@/lib/media";
+import { colors, space } from "@/lib/theme";
+import { formatGigDate } from "@/lib/dates";
+import { Button, Loading, Notice } from "@/components/ui";
+import { Ambient } from "@/components/poster";
+import { Pass, PassStrip } from "@/components/pass";
 import { VerifyBanner } from "@/components/verify-banner";
+import {
+  LargeTitle,
+  PinnedHeader,
+  useScrollHeader,
+} from "@/components/screen-header";
+import { useTabBarSpace } from "@/components/tab-bar";
+
+type OrderSummary = RouterOutputs["tickets"]["mine"][number];
 
 /**
- * My tickets.
+ * My tickets, stacked like Wallet.
  *
- * The app is not the thing you hold up at the door — a wallet pass is faster,
- * works offline and needs no sign-in. This is where you find tickets, get them
- * into the wallet, and manage them afterwards.
+ * The soonest order is the pass at the front, QR and all, over its own
+ * poster blurred out behind the screen. Later orders tuck in behind it as
+ * strips; tapping one opens it. Past orders are a second shelf.
+ *
+ * The app is not the only thing you can hold up at the door: a wallet pass
+ * is faster, works offline and needs no sign-in, so every pass offers one.
  */
 export default function TicketsScreen() {
   const router = useRouter();
+  const tabSpace = useTabBarSpace();
+  const { scrollY, scrollProps } = useScrollHeader();
   const { user, isPending: sessionPending } = useAuth();
+  const [showPast, setShowPast] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const mine = api.tickets.mine.useQuery(undefined, { enabled: !!user });
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await mine.refetch();
-    setRefreshing(false);
-  }, [mine]);
-
   const now = Date.now();
   const orders = mine.data ?? [];
-  const upcoming = orders.filter(
-    (o) => new Date(o.event.startsAt).getTime() >= now,
-  );
+  // The server sorts newest first; the stack wants the soonest at the front.
+  const upcoming = orders
+    .filter((o) => new Date(o.event.startsAt).getTime() >= now)
+    .reverse();
   const past = orders.filter((o) => new Date(o.event.startsAt).getTime() < now);
+  const front = showPast ? undefined : upcoming[0];
+
+  const frontOrder = api.tickets.byAccessToken.useQuery(
+    { accessToken: front?.accessToken ?? "" },
+    { enabled: !!front },
+  );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([mine.refetch(), front ? frontOrder.refetch() : null]);
+    setRefreshing(false);
+  }, [mine, front, frontOrder]);
+
+  const open = (order: OrderSummary) =>
+    router.push({
+      pathname: "/tickets/[orderId]",
+      params: { orderId: order.orderId, token: order.accessToken },
+    });
+
+  const poster = front?.event.posterFileUploadId;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <Header title="Tickets" />
-      <ScrollView
+      <Ambient uri={poster ? mediaUrl(poster) : null} />
+      <Animated.ScrollView
+        {...scrollProps}
         style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingTop: space.lg,
-          paddingBottom: space.xxl,
-          paddingHorizontal: space.lg,
-          gap: space.xl,
-        }}
+        contentContainerStyle={{ paddingBottom: tabSpace }}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.textFaint}
-          />
+          user ? (
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.textFaint}
+            />
+          ) : undefined
         }
       >
-        {/* Sits above the list: an unverified account is the single most likely
-          reason somebody's tickets are missing from it. */}
-        <VerifyBanner />
-
-        {sessionPending ? (
-          <Loading />
-        ) : !user ? (
-          <Notice
-            title="Sign in to see your tickets"
-            detail="Tickets you already bought will appear here once your email is verified."
-            action={
-              <Button onPress={() => router.push("/(auth)/sign-in")}>
-                Sign in
-              </Button>
-            }
-          />
-        ) : mine.isPending ? (
-          <Loading />
-        ) : orders.length === 0 ? (
-          <Notice
-            title="No tickets yet"
-            detail={
-              user.emailVerified
-                ? "Anything you buy shows up here. Bought on another email? Add it with the link from your confirmation."
-                : "Verify your email to see tickets you bought before installing the app."
-            }
-            action={
+        <LargeTitle
+          right={
+            past.length > 0 ? (
               <Button
-                variant="outline"
-                onPress={() => router.push("/(tabs)/gigs")}
+                variant="glass"
+                size="sm"
+                onPress={() => setShowPast((v) => !v)}
               >
-                See what's on
+                {showPast ? "Upcoming" : `Past ${past.length}`}
               </Button>
-            }
-          />
-        ) : (
-          <>
-            {upcoming.length > 0 && (
-              <View style={{ gap: space.md }}>
-                <Eyebrow>Coming up</Eyebrow>
-                {upcoming.map((order) => (
-                  <OrderCard key={order.orderId} order={order} />
+            ) : null
+          }
+        >
+          {showPast ? "Past" : "Tickets"}
+        </LargeTitle>
+
+        <View
+          style={{
+            paddingHorizontal: space.lg,
+            paddingTop: space.xl,
+            gap: space.lg,
+          }}
+        >
+          {/* Above the list: an unverified account is the single most likely
+              reason somebody's tickets are missing from it. */}
+          <VerifyBanner />
+
+          {sessionPending ? (
+            <Loading />
+          ) : !user ? (
+            <Notice
+              title="Sign in to see your tickets"
+              detail="Tickets you already bought will appear here once your email is verified."
+              action={
+                <Button onPress={() => router.push("/(auth)/sign-in")}>
+                  Sign in
+                </Button>
+              }
+            />
+          ) : mine.isPending ? (
+            <Loading />
+          ) : showPast ? (
+            <View>
+              {past.map((order) => (
+                <PassStrip
+                  key={order.orderId}
+                  stacked={false}
+                  name={order.event.name}
+                  note={formatGigDate(order.event.startsAt)}
+                  posterFileUploadId={order.event.posterFileUploadId}
+                  onPress={() => open(order)}
+                />
+              ))}
+            </View>
+          ) : !front ? (
+            <Notice
+              title={orders.length ? "Nothing coming up" : "No tickets yet"}
+              detail={
+                user.emailVerified
+                  ? "Anything you buy shows up here. Bought on another email? Add it with the link from your confirmation."
+                  : "Verify your email to see tickets you bought before installing the app."
+              }
+              action={
+                <Button
+                  variant="outline"
+                  onPress={() => router.navigate("/(tabs)/gigs")}
+                >
+                  See what&apos;s on
+                </Button>
+              }
+            />
+          ) : (
+            <View>
+              {/* Furthest away at the back, so the stack reads top-down in
+                  the order the nights come. */}
+              {upcoming
+                .slice(1)
+                .reverse()
+                .map((order) => (
+                  <PassStrip
+                    key={order.orderId}
+                    name={order.event.name}
+                    note={formatGigDate(order.event.startsAt)}
+                    posterFileUploadId={order.event.posterFileUploadId}
+                    onPress={() => open(order)}
+                  />
                 ))}
-              </View>
-            )}
-            {past.length > 0 && (
-              <View style={{ gap: space.md }}>
-                <Eyebrow>Been there</Eyebrow>
-                {past.map((order) => (
-                  <OrderCard key={order.orderId} order={order} past />
-                ))}
-              </View>
-            )}
-          </>
-        )}
-      </ScrollView>
+              {frontOrder.data ? (
+                <Pass order={frontOrder.data} />
+              ) : frontOrder.isPending ? (
+                <Loading label="Loading tickets" />
+              ) : (
+                <Notice
+                  title="Couldn't open that order"
+                  detail="Pull down to try again."
+                />
+              )}
+            </View>
+          )}
+        </View>
+      </Animated.ScrollView>
+
+      <PinnedHeader scrollY={scrollY} title={showPast ? "Past" : "Tickets"} />
     </View>
   );
 }
-
-type OrderSummary = {
-  orderId: string;
-  orderNumber: string;
-  ticketCount: number;
-  accessToken: string;
-  event: {
-    name: string;
-    startsAt: Date;
-    venueName: string | null;
-    isR18: boolean;
-  };
-};
-
-function OrderCard({ order, past }: { order: OrderSummary; past?: boolean }) {
-  return (
-    <Link
-      href={{
-        pathname: "/tickets/[orderId]",
-        params: { orderId: order.orderId, token: order.accessToken },
-      }}
-      asChild
-    >
-      <Pressable>
-        {({ pressed }) => (
-          <View
-            style={[
-              styles.card,
-              past && { opacity: 0.55 },
-              pressed && { opacity: 0.8 },
-            ]}
-          >
-            <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-              <Caption>
-                {formatGigDate(order.event.startsAt)} ·{" "}
-                {formatGigTime(order.event.startsAt)}
-              </Caption>
-              <Body numberOfLines={1} style={{ fontWeight: "700" }}>
-                {order.event.name}
-              </Body>
-              <Caption numberOfLines={1}>
-                {[
-                  order.event.venueName,
-                  `${order.ticketCount} ${order.ticketCount === 1 ? "ticket" : "tickets"}`,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </Caption>
-            </View>
-            {order.event.isR18 && !past ? <Pill tone="warn">R18</Pill> : null}
-          </View>
-        )}
-      </Pressable>
-    </Link>
-  );
-}
-
-const styles = StyleSheet.create({
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.md,
-    padding: space.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-  },
-});

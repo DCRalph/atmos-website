@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
     alignItems: "baseline",
     justifyContent: "space-between",
   },
-  topicName: { ...type.heading, color: colors.text },
+  topicName: { ...type.display, fontSize: 17, lineHeight: 20, color: colors.text },
   input: {
     borderWidth: stroke.hair,
     borderColor: colors.borderStrong,

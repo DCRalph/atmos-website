@@ -172,6 +172,23 @@ const config: ExpoConfig = {
     ],
     "expo-secure-store",
     "expo-web-browser",
+    /**
+     * The site's type, embedded at build time so text never renders in the
+     * system font first. Static cuts of the site's variable fonts, made by
+     * `scripts/build-fonts.py`.
+     */
+    [
+      "expo-font",
+      {
+        fonts: [
+          "./assets/fonts/AtmosHeading-Black.ttf",
+          "./assets/fonts/AtmosDisplay-Bold.ttf",
+          "./assets/fonts/AtmosDisplay-Heavy.ttf",
+          "./assets/fonts/AtmosBody-Regular.ttf",
+          "./assets/fonts/AtmosBody-SemiBold.ttf",
+        ],
+      },
+    ],
     [
       "expo-camera",
       {
