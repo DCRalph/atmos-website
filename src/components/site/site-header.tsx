@@ -29,7 +29,7 @@ import { AtmosLogo, IconButton } from "./ui";
 const isActive = (pathname: string, href: string) =>
   pathname === href || pathname.startsWith(`${href}/`);
 
-function CartButton() {
+function CartButton({ className }: { className: string }) {
   const { totalQuantity } = useMerchCart();
   const { setCartOpen } = useSite();
   return (
@@ -37,7 +37,10 @@ function CartButton() {
       type="button"
       onClick={() => setCartOpen(true)}
       aria-label={`Cart, ${totalQuantity} ${totalQuantity === 1 ? "item" : "items"}`}
-      className="relative inline-flex size-11 items-center justify-center rounded-full text-white/80 hover:text-white"
+      className={cn(
+        "relative inline-flex size-11 items-center justify-center rounded-full",
+        className,
+      )}
     >
       <ShoppingBag className="size-5" />
       {totalQuantity ? (
@@ -56,7 +59,7 @@ const menuItem =
   "t-label flex h-11 cursor-default items-center gap-3 rounded-[10px] px-3 text-[11px] text-white/80 outline-none select-none data-[highlighted]:bg-white/10 data-[highlighted]:text-white";
 
 /** Signed-in account menu: the same destinations the old user indicator had. */
-function AccountMenu() {
+function AccountMenu({ className }: { className: string }) {
   const router = useRouter();
   const utils = api.useUtils();
   const { portalContainer } = useSite();
@@ -98,7 +101,10 @@ function AccountMenu() {
         <button
           type="button"
           aria-label="Account"
-          className="inline-flex size-11 items-center justify-center rounded-full text-white/80 outline-none hover:text-white"
+          className={cn(
+            "inline-flex size-11 items-center justify-center rounded-full outline-none",
+            className,
+          )}
         >
           <User className="size-5" />
         </button>
@@ -265,12 +271,27 @@ function MobileMenu({
   );
 }
 
+/** Header ink per tone: `light` is for pages on a light ground (some creator themes). */
+const headerInk = {
+  dark: {
+    link: "text-white/70 hover:text-white",
+    active: "text-white",
+    icon: "text-white/80 hover:text-white",
+  },
+  light: {
+    link: "text-black/65 hover:text-black",
+    active: "text-black",
+    icon: "text-black/75 hover:text-black",
+  },
+} as const;
+
 /**
  * Public site header. A progressive blur fades down behind it, so it reads
  * over any page without a flat background. Below `lg` the links move into a
  * full-screen menu.
  */
-export function SiteHeader() {
+export function SiteHeader({ tone = "dark" }: { tone?: "dark" | "light" }) {
+  const ink = headerInk[tone];
   const pathname = usePathname();
   const [menu, setMenu] = useState<"closed" | "open" | "closing">("closed");
 
@@ -293,7 +314,7 @@ export function SiteHeader() {
           className="absolute inset-0 -bottom-14 -z-10 rotate-180"
         />
         <Link href="/" aria-label="Atmos home">
-          <AtmosLogo className="w-24 md:w-28" />
+          <AtmosLogo className="w-24 md:w-28" tone={tone} />
         </Link>
         <nav aria-label="Main" className="hidden lg:block">
           <ul className="flex gap-7">
@@ -307,8 +328,8 @@ export function SiteHeader() {
                     className={cn(
                       "t-label relative text-[11px] transition-colors",
                       active
-                        ? "text-white after:absolute after:inset-x-0 after:-bottom-2 after:h-0.5 after:bg-[var(--site-accent)]"
-                        : "text-white/70 hover:text-white",
+                        ? `${ink.active} after:absolute after:inset-x-0 after:-bottom-2 after:h-0.5 after:bg-[var(--site-accent)]`
+                        : ink.link,
                     )}
                   >
                     {l.label}
@@ -319,12 +340,12 @@ export function SiteHeader() {
           </ul>
         </nav>
         <div className="ml-auto flex items-center gap-1">
-          <AccountMenu />
-          <CartButton />
+          <AccountMenu className={ink.icon} />
+          <CartButton className={ink.icon} />
           <IconButton
             label="Open menu"
             onClick={() => setMenu("open")}
-            className="ml-1 lg:hidden"
+            className={cn("ml-1 lg:hidden", tone === "light" && "text-black")}
           >
             <Menu className="size-5" />
           </IconButton>

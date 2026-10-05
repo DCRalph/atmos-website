@@ -7,7 +7,7 @@ import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { parseTokens } from "~/lib/creator-theme";
+import { ThemeSwatch } from "~/components/creator-themes/theme-swatch";
 
 export function DashboardThemesView() {
   const router = useRouter();
@@ -54,7 +54,7 @@ export function DashboardThemesView() {
           <CardContent>
             {mineQ.isLoading ? (
               <Loading />
-            ) : mineQ.data && mineQ.data.length ? (
+            ) : mineQ.data?.length ? (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {mineQ.data.map((t) => (
                   <ThemeSummaryCard
@@ -66,8 +66,8 @@ export function DashboardThemesView() {
               </div>
             ) : (
               <p className="text-muted-foreground text-sm">
-                You don't have any themes yet. Create one or duplicate a public
-                theme below.
+                You don&apos;t have any themes yet. Create one or duplicate a
+                public theme below.
               </p>
             )}
           </CardContent>
@@ -127,34 +127,12 @@ function ThemeSummaryCard({
   href: string;
   disableEdit?: boolean;
 }) {
-  const tokens = parseTokens(theme.tokens);
   return (
     <Link
       href={href}
       className="hover:border-foreground/30 block rounded-md border p-3 transition"
     >
-      <div
-        className="mb-2 h-14 w-full overflow-hidden rounded border"
-        style={{ background: tokens.pageBg, color: tokens.pageFg }}
-      >
-        <div className="flex h-full">
-          <div
-            className="w-1/4"
-            style={{ background: tokens.accent }}
-            aria-hidden="true"
-          />
-          <div className="flex-1 p-2">
-            <div
-              className="mb-1 h-2 w-12 rounded"
-              style={{ background: tokens.blockBg, opacity: 0.9 }}
-            />
-            <div
-              className="h-1.5 w-20 rounded"
-              style={{ background: tokens.blockBorder }}
-            />
-          </div>
-        </div>
-      </div>
+      <ThemeSwatch tokens={theme.tokens} className="mb-2" />
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <div className="truncate text-sm font-medium">{theme.name}</div>

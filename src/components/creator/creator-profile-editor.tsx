@@ -19,7 +19,6 @@ import { buildMediaUrl } from "~/lib/media-url";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { Badge } from "~/components/ui/badge";
 import { Textarea } from "~/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
@@ -37,17 +36,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import {
-  SOCIAL_PLATFORMS,
-  matchSocialPlatform,
-  type SocialPlatform,
-} from "~/lib/social-pills";
-import { AddBlockPopover, CreatorGridEditor } from "./creator-grid-editor";
-import { BlockInspector } from "./block-inspector";
+import { SOCIAL_PLATFORMS, matchSocialPlatform } from "~/lib/social-pills";
+import { SectionListEditor } from "./section-list-editor";
 import { type ClientBlock, type CreatorBlockTypeName } from "./block-types";
 import { useUnsavedChangesWarning } from "~/hooks/use-unsaved-changes-warning";
 import { ThemePicker } from "~/components/creator-themes/theme-picker";
-import { densityGapPx, resolveProfileTokens } from "~/lib/creator-theme";
+import { ThemeSwatch } from "~/components/creator-themes/theme-swatch";
+import { ProfilePreviewFrame } from "~/components/creator-themes/profile-preview-frame";
+import { orderBlocks } from "~/lib/creator-sections";
 
 type Props = {
   /** When provided (admin mode), edits this specific profile. */
@@ -74,8 +70,6 @@ type Profile = {
     tokens: unknown;
   } | null;
   isPublished: boolean;
-  gridCols: number;
-  rowHeightPx: number;
   claimStatus: string;
   userId: string | null;
   blocks: Array<{
@@ -96,6 +90,12 @@ type Profile = {
   }>;
 };
 
+/**
+ * The profile builder: identity, the ordered list of sections below the hero,
+ * the theme (which carries the layout) and socials, with the public page
+ * previewed beside them. Sections autosave; the preview reloads after every
+ * save.
+ */
 export function CreatorProfileEditor({ profileId, mode }: Props) {
   const utils = api.useUtils();
   const confirm = useConfirm();
@@ -134,6 +134,8 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  // Bumped after anything is saved, to reload the preview.
+  const [previewVersion, setPreviewVersion] = useState(0);
 
   useEffect(() => {
     if (!profile) return;
@@ -151,7 +153,7 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
     }
     if (blocks === null) {
       setBlocks(
-        profile.blocks.map((b) => ({
+        orderBlocks(profile.blocks).map((b) => ({
           id: b.id,
           type: b.type,
           x: b.x,
@@ -192,6 +194,7 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
     } else {
       await utils.creatorProfiles.getMine.invalidate();
     }
+    setPreviewVersion((v) => v + 1);
   }
 
   const targetProfileId = profile?.id;
@@ -240,7 +243,7 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
   useEffect(() => {
     if (!dirty || !targetProfileId || !blocks) return;
     if (debouncedSaveRef.current) clearTimeout(debouncedSaveRef.current);
-    debouncedSaveRef.current = setTimeout(async () => {
+    const save = async () => {
       setSaving(true);
       try {
         await saveLayout.mutateAsync({
@@ -261,7 +264,8 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
       } finally {
         setSaving(false);
       }
-    }, 800);
+    };
+    debouncedSaveRef.current = setTimeout(() => void save(), 800);
     return () => {
       if (debouncedSaveRef.current) clearTimeout(debouncedSaveRef.current);
     };
@@ -290,16 +294,6 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
       </div>
     );
   }
-
-  const selectedBlock = blocks.find((b) => b.id === selectedBlockId) ?? null;
-
-  // The editor grid must use the same gap the published page renders with,
-  // or the arrangement shifts on publish.
-  const themeTokens = resolveProfileTokens(
-    profile.themeRef?.tokens,
-    identity.accentColor,
-  );
-  const gridGapPx = densityGapPx(themeTokens.density);
 
   function onAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -338,6 +332,19 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
     if (!ok) return;
     await clearBanner.mutateAsync({ profileId: mutationProfileIdArg });
     setIdentity((prev) => (prev ? { ...prev, bannerFileId: null } : prev));
+    await refetch();
+  }
+
+  /** Theme and accent save as soon as they're picked, so the preview follows. */
+  async function saveLook(patch: {
+    themeId?: string | null;
+    accentColor?: string | null;
+  }) {
+    setIdentity((prev) => (prev ? { ...prev, ...patch } : prev));
+    await updateProfile.mutateAsync({
+      profileId: mutationProfileIdArg,
+      data: patch,
+    });
     await refetch();
   }
 
@@ -426,70 +433,38 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        {/* Left: grid editor */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Layout</h2>
-            <AddBlockPopover
-              blocks={blocks}
-              cols={profile.gridCols}
-              onAdd={(b) => {
-                setBlocks([...blocks, b]);
-                setSelectedBlockId(b.id);
-                setDirty(true);
-              }}
-            />
-          </div>
-          <div className="hidden md:block">
-            <CreatorGridEditor
-              blocks={blocks}
-              cols={profile.gridCols}
-              rowHeightPx={profile.rowHeightPx}
-              gapPx={gridGapPx}
-              accent={identity.accentColor}
-              socials={socials ?? []}
-              selectedBlockId={selectedBlockId}
-              onSelectBlock={setSelectedBlockId}
-              onChange={(next) => {
-                setBlocks(next);
-                setDirty(true);
-              }}
-            />
-          </div>
-          <div className="bg-muted/30 text-muted-foreground rounded-md border p-4 text-sm md:hidden">
-            Switch to a desktop browser to edit the layout. You can still
-            preview the profile on mobile.
-          </div>
-        </div>
-
-        {/* Right: inspector + socials */}
+      <div className="grid items-start gap-4 xl:grid-cols-[440px_minmax(0,1fr)]">
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>
-                {selectedBlock
-                  ? `Block: ${selectedBlock.type}`
-                  : "Block settings"}
-              </CardTitle>
+              <CardTitle>Sections</CardTitle>
+              <p className="text-muted-foreground text-sm">
+                Everything below your name and photo, top to bottom.
+              </p>
             </CardHeader>
             <CardContent>
-              {selectedBlock ? (
-                <BlockInspector
-                  block={selectedBlock}
-                  profileId={mutationProfileIdArg}
-                  onChange={(nb) => {
-                    setBlocks(blocks.map((b) => (b.id === nb.id ? nb : b)));
-                    setDirty(true);
-                  }}
-                />
-              ) : (
-                <p className="text-muted-foreground text-sm">
-                  Click a block on the layout to configure it.
-                </p>
-              )}
+              <SectionListEditor
+                blocks={blocks}
+                socialsCount={(socials ?? []).length}
+                selectedId={selectedBlockId}
+                onSelect={setSelectedBlockId}
+                onChange={(next) => {
+                  setBlocks(next);
+                  setDirty(true);
+                }}
+                profileId={mutationProfileIdArg}
+              />
             </CardContent>
           </Card>
+
+          <ThemeCard
+            mode={mode}
+            profile={profile}
+            themeId={identity.themeId}
+            accentColor={identity.accentColor}
+            saving={updateProfile.isPending}
+            onSave={saveLook}
+          />
 
           <SocialsCard
             socials={socials ?? []}
@@ -507,6 +482,18 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
               await refetch();
             }}
             saving={setSocialsMut.isPending}
+          />
+        </div>
+
+        <div className="xl:sticky xl:top-4">
+          <ProfilePreviewFrame
+            src={`/creator/${profile.handle}`}
+            reloadKey={previewVersion}
+            label={
+              profile.isPublished
+                ? `Your page at /@${profile.handle}`
+                : `Your page at /@${profile.handle} (draft: only you and admins can see it)`
+            }
           />
         </div>
       </div>
@@ -743,81 +730,6 @@ export function CreatorProfileEditor({ profileId, mode }: Props) {
                 }
               />
             </div>
-            <div className="space-y-2">
-              <Label>Theme</Label>
-              <div className="flex items-center gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm">
-                    {profile.themeRef?.name ?? "No theme selected"}
-                  </div>
-                  <div className="text-muted-foreground text-xs">
-                    {profile.themeRef?.isSystem
-                      ? "Starter theme"
-                      : profile.themeRef?.isPublic
-                        ? "Public theme"
-                        : profile.themeRef
-                          ? "Private theme"
-                          : "Defaults will be used"}
-                  </div>
-                </div>
-                {profile.themeRef &&
-                  profile.themeRef.ownerUserId === profile.userId && (
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/dashboard/themes/${profile.themeRef.id}`}>
-                        Edit this theme
-                      </Link>
-                    </Button>
-                  )}
-              </div>
-              <div className="rounded-md border p-2">
-                <ThemePicker
-                  selectedThemeId={identity.themeId}
-                  onSelect={(id) => setIdentity({ ...identity, themeId: id })}
-                  currentUserId={profile.userId ?? undefined}
-                />
-              </div>
-            </div>
-            <div className="space-y-1">
-              <Label>Accent color override (optional)</Label>
-              <p className="text-muted-foreground text-xs">
-                Overrides the accent color from the selected theme. Leave blank
-                to use the theme's accent.
-              </p>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={identity.accentColor ?? "#6366f1"}
-                  onChange={(e) =>
-                    setIdentity({
-                      ...identity,
-                      accentColor: e.target.value,
-                    })
-                  }
-                  className="h-9 w-12 rounded border"
-                />
-                <Input
-                  value={identity.accentColor ?? ""}
-                  onChange={(e) =>
-                    setIdentity({
-                      ...identity,
-                      accentColor: e.target.value || null,
-                    })
-                  }
-                  placeholder="#6366f1"
-                />
-                {identity.accentColor && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      setIdentity({ ...identity, accentColor: null })
-                    }
-                  >
-                    Clear
-                  </Button>
-                )}
-              </div>
-            </div>
             {updateProfile.error && (
               <p className="text-destructive text-xs">
                 {updateProfile.error.message}
@@ -862,6 +774,140 @@ export function normalizeSocialUrl(platform: string, url: string): string {
   if (!known) return trimmed;
   const normalized = known.normalizeInput(trimmed);
   return normalized ?? trimmed;
+}
+
+/**
+ * The profile's theme (layout, colours and type) and its optional accent
+ * override. Both save as soon as they're picked.
+ */
+function ThemeCard({
+  mode,
+  profile,
+  themeId,
+  accentColor,
+  saving,
+  onSave,
+}: {
+  mode: "self" | "admin";
+  profile: Profile;
+  themeId: string | null;
+  accentColor: string | null;
+  saving: boolean;
+  onSave: (patch: {
+    themeId?: string | null;
+    accentColor?: string | null;
+  }) => Promise<void>;
+}) {
+  const [picking, setPicking] = useState(false);
+  const [accent, setAccent] = useState(accentColor ?? "");
+  const theme = profile.themeRef;
+  const owned = theme !== null && theme.ownerUserId === profile.userId;
+  const editHref = theme
+    ? mode === "admin"
+      ? `/admin/creator-themes/${theme.id}`
+      : `/dashboard/themes/${theme.id}`
+    : null;
+  const accentValid = /^#[0-9a-fA-F]{6}$/.test(accent);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Theme</CardTitle>
+        <p className="text-muted-foreground text-sm">
+          Your layout, colours and type. Pick a starter, or make your own and
+          change everything.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {theme ? (
+          <div className="flex items-center gap-3">
+            <ThemeSwatch tokens={theme.tokens} className="w-32 shrink-0" />
+            <div className="min-w-0">
+              <div className="truncate text-sm font-medium">{theme.name}</div>
+              <div className="text-muted-foreground text-xs">
+                {theme.isSystem
+                  ? "Starter theme"
+                  : theme.isPublic
+                    ? "Public theme"
+                    : "Private theme"}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-sm">
+            No theme picked, so your page uses the Atmos look.
+          </p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPicking((p) => !p)}
+            aria-expanded={picking}
+          >
+            {picking ? "Done" : "Change theme"}
+          </Button>
+          {owned && editHref ? (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={editHref}>Customise this theme</Link>
+            </Button>
+          ) : mode === "self" ? (
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/dashboard/themes/new">Make your own</Link>
+            </Button>
+          ) : null}
+          {saving ? (
+            <Loader2 className="text-muted-foreground h-4 w-4 animate-spin self-center" />
+          ) : null}
+        </div>
+        {picking ? (
+          <div className="rounded-md border p-2">
+            <ThemePicker
+              selectedThemeId={themeId}
+              onSelect={(id) => void onSave({ themeId: id })}
+            />
+          </div>
+        ) : null}
+
+        <div className="space-y-1.5">
+          <Label htmlFor="accent-override">Accent override (optional)</Label>
+          <p className="text-muted-foreground text-xs">
+            Your own accent on top of the theme&apos;s. Leave it empty to use
+            the theme&apos;s.
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              aria-label="Accent override picker"
+              value={accentValid ? accent : "#c6ff33"}
+              onChange={(e) => setAccent(e.target.value)}
+              className="h-9 w-12 shrink-0 cursor-pointer rounded border"
+            />
+            <Input
+              id="accent-override"
+              value={accent}
+              onChange={(e) => setAccent(e.target.value)}
+              placeholder="#c6ff33"
+              aria-invalid={accent !== "" && !accentValid}
+              className="font-mono"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={
+                saving ||
+                (accent !== "" && !accentValid) ||
+                (accent || null) === accentColor
+              }
+              onClick={() => void onSave({ accentColor: accent || null })}
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 const CUSTOM_PLATFORM_VALUE = "__custom__";

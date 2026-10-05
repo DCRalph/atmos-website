@@ -56,7 +56,6 @@ yarn-error.log*
 .env*.local
 
 # creator UI audit output (screenshots + report)
-/.ui-audit/
 
 /mobile/build/
 # creator directory export (bun run creators:export)

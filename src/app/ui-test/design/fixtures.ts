@@ -1,7 +1,8 @@
 // Sample content for the design mocks. Titles, venues, dates and posters are
 // real Atmos gigs; prices and ticket tiers are illustrative.
 
-const S3 = "https://atmosmedia-temp.s3.ap-southeast-2.amazonaws.com/gigs";
+// Posters moved from the old S3 bucket to R2; the S3 copies are gone.
+const S3 = "https://r2.atmosmedia.co.nz/gigs";
 const SHOPIFY = "https://cdn.shopify.com/s/files/1/0735/5957/2619/files";
 
 export type MockGig = {

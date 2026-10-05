@@ -25,6 +25,7 @@ export const RESERVED_SLUGS = new Set([
   "contact",
   "content",
   "creator",
+  "creator-preview",
   "crew",
   "dashboard",
   "door",

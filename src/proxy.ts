@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { SITE_URL } from "~/lib/seo-constants";
+import { DEV_HOSTS } from "~/lib/dev-hosts";
 import { isMainSiteHost, normaliseHost } from "~/lib/short-links/domains";
 
 /**
@@ -17,7 +18,9 @@ import { isMainSiteHost, normaliseHost } from "~/lib/short-links/domains";
  */
 export function proxy(request: NextRequest) {
   const host = request.headers.get("host");
-  if (!host || isMainSiteHost(host, SITE_URL)) return NextResponse.next();
+  if (!host || isMainSiteHost(host, SITE_URL, DEV_HOSTS)) {
+    return NextResponse.next();
+  }
 
   const { pathname, search } = request.nextUrl;
   const segment = /^\/([^/]+)\/?$/.exec(pathname)?.[1];

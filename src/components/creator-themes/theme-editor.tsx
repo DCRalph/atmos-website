@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2, Trash2 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
@@ -11,34 +12,22 @@ import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Switch } from "~/components/ui/switch";
 import { useConfirm } from "~/components/confirm-provider";
-import {
-  DEFAULT_BLOCK_OVERRIDES,
-  DEFAULT_THEME_TOKENS,
-  parseBlockOverrides,
-  parseTokens,
-  type BlockOverride,
-  type BlockOverrides,
-  type ThemeTokens,
-} from "~/lib/creator-theme";
-import { ThemeCanvas } from "./theme-canvas";
-import { ImageUploadField } from "~/components/uploads/image-upload-field";
 import { useUnsavedChangesWarning } from "~/hooks/use-unsaved-changes-warning";
-import { type CreatorBlockTypeName } from "~/components/creator/block-types";
-import { useRouter } from "next/navigation";
+import {
+  DEFAULT_THEME,
+  parseTheme,
+  type CreatorTheme,
+} from "~/lib/creator-theme";
+import { ProfilePreviewFrame } from "./profile-preview-frame";
+import { ThemeControls } from "./theme-controls";
 
 type Mode = "self" | "admin";
 
-type ThemeLike = {
-  id: string;
-  name: string;
-  description: string | null;
-  ownerUserId: string | null;
-  isPublic: boolean;
-  isSystem: boolean;
-  tokens: unknown;
-  blockOverrides: unknown;
-};
-
+/**
+ * Edit a creator theme: its layout and five looks, with the profile previewed
+ * live beside the controls. Changes autosave. Creators preview their own
+ * profile; admins (and creators without a profile yet) preview the sample.
+ */
 export function ThemeEditor({
   themeId,
   mode,
@@ -50,14 +39,14 @@ export function ThemeEditor({
   const utils = api.useUtils();
   const confirm = useConfirm();
   const themeQ = api.creatorThemes.getById.useQuery({ id: themeId });
-  const theme = themeQ.data as ThemeLike | null | undefined;
+  const mineQ = api.creatorProfiles.getMine.useQuery(undefined, {
+    enabled: mode === "self",
+  });
+  const theme = themeQ.data;
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [tokens, setTokens] = useState<ThemeTokens>(DEFAULT_THEME_TOKENS);
-  const [overrides, setOverrides] = useState<BlockOverrides>(
-    DEFAULT_BLOCK_OVERRIDES,
-  );
+  const [tokens, setTokens] = useState<CreatorTheme>(DEFAULT_THEME);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -67,8 +56,7 @@ export function ThemeEditor({
     if (!theme || initializedRef.current) return;
     setName(theme.name);
     setDescription(theme.description ?? "");
-    setTokens(parseTokens(theme.tokens));
-    setOverrides(parseBlockOverrides(theme.blockOverrides));
+    setTokens(parseTheme(theme.tokens));
     initializedRef.current = true;
   }, [theme]);
 
@@ -85,17 +73,12 @@ export function ThemeEditor({
   useEffect(() => {
     if (!dirty || !initializedRef.current) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(async () => {
+    const save = async () => {
       setSaving(true);
       try {
         await updateMut.mutateAsync({
           id: themeId,
-          data: {
-            name,
-            description: description || null,
-            tokens,
-            blockOverrides: overrides,
-          },
+          data: { name, description: description || null, tokens },
         });
         setLastSavedAt(new Date());
         setDirty(false);
@@ -104,12 +87,13 @@ export function ThemeEditor({
       } finally {
         setSaving(false);
       }
-    }, 800);
+    };
+    saveTimerRef.current = setTimeout(() => void save(), 800);
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dirty, name, description, tokens, overrides, themeId]);
+  }, [dirty, name, description, tokens, themeId]);
 
   useUnsavedChangesWarning({ enabled: dirty });
 
@@ -154,72 +138,46 @@ export function ThemeEditor({
     );
   }
 
-  function patchTokens(patch: Partial<ThemeTokens>) {
-    setTokens((prev) => ({ ...prev, ...patch }));
+  function patch(next: Partial<CreatorTheme>) {
+    setTokens((prev) => ({ ...prev, ...next }));
     setDirty(true);
   }
 
-  function patchOverride(
-    type: CreatorBlockTypeName,
-    patch: Partial<BlockOverride>,
-  ) {
-    setOverrides((prev) => {
-      const current = prev[type] ?? {};
-      const merged: BlockOverride = { ...current, ...patch };
-      // Drop `undefined` keys to keep the JSON compact.
-      for (const k of Object.keys(merged) as (keyof BlockOverride)[]) {
-        if (merged[k] === undefined) delete merged[k];
-      }
-      const next: BlockOverrides = { ...prev, [type]: merged };
-      if (Object.keys(merged).length === 0) {
-        const { [type]: _omit, ...rest } = next;
-        return rest;
-      }
-      return next;
-    });
-    setDirty(true);
-  }
-
-  function resetOverride(type: CreatorBlockTypeName) {
-    setOverrides((prev) => {
-      if (!prev[type]) return prev;
-      const { [type]: _drop, ...rest } = prev;
-      return rest;
-    });
-    setDirty(true);
-  }
+  const ownHandle = mode === "self" ? mineQ.data?.handle : undefined;
+  const previewSrc = ownHandle ? `/creator/${ownHandle}` : "/creator-preview";
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-base">Theme details</CardTitle>
-            {theme.isSystem && <Badge variant="secondary">System</Badge>}
-            {theme.isPublic && <Badge variant="secondary">Public</Badge>}
-            {!theme.isPublic && !theme.isSystem && (
-              <Badge variant="outline">Private</Badge>
-            )}
-          </div>
-          <div className="text-muted-foreground text-xs">
-            {saving ? (
-              <span className="inline-flex items-center gap-1">
-                <Loader2 className="h-3 w-3 animate-spin" /> Saving...
-              </span>
-            ) : dirty ? (
-              <span>Unsaved changes</span>
-            ) : lastSavedAt ? (
-              <span>Saved {lastSavedAt.toLocaleTimeString()}</span>
-            ) : (
-              <span>All changes saved</span>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid items-start gap-4 xl:grid-cols-[420px_minmax(0,1fr)]">
+      <div className="space-y-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base">Theme details</CardTitle>
+              {theme.isSystem && <Badge variant="secondary">System</Badge>}
+              {theme.isPublic && <Badge variant="secondary">Public</Badge>}
+              {!theme.isPublic && !theme.isSystem && (
+                <Badge variant="outline">Private</Badge>
+              )}
+            </div>
+            <div className="text-muted-foreground text-xs">
+              {saving ? (
+                <span className="inline-flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Saving...
+                </span>
+              ) : dirty ? (
+                <span>Unsaved changes</span>
+              ) : lastSavedAt ? (
+                <span>Saved {lastSavedAt.toLocaleTimeString()}</span>
+              ) : (
+                <span>All changes saved</span>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
             <div className="space-y-1">
-              <Label>Name</Label>
+              <Label htmlFor="theme-name">Name</Label>
               <Input
+                id="theme-name"
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value);
@@ -228,9 +186,10 @@ export function ThemeEditor({
                 maxLength={80}
               />
             </div>
-            <div className="space-y-1 sm:col-span-2">
-              <Label>Description</Label>
+            <div className="space-y-1">
+              <Label htmlFor="theme-description">Description</Label>
               <Textarea
+                id="theme-description"
                 rows={2}
                 value={description}
                 onChange={(e) => {
@@ -240,74 +199,59 @@ export function ThemeEditor({
                 maxLength={500}
               />
             </div>
-            <div className="sm:col-span-2">
-              <ImageUploadField
-                label="Background image"
-                value={tokens.pageBgImageFileId}
-                onChange={(id) => patchTokens({ pageBgImageFileId: id })}
-                preset="creatorThemeBackground"
-                aspect="wide"
-                helperText="Shown behind the whole page. The banner photo is separate — set it in your profile editor under Edit identity."
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4 pt-1">
-            <label className="flex items-center gap-2 text-sm">
-              <Switch
-                checked={theme.isPublic}
-                onCheckedChange={(v) =>
-                  setVisibilityMut.mutate({ id: themeId, isPublic: v })
-                }
-                disabled={setVisibilityMut.isPending}
-              />
-              Public (anyone can use this theme)
-            </label>
-            {mode === "admin" && (
+            <div className="flex flex-wrap items-center gap-4 pt-1">
               <label className="flex items-center gap-2 text-sm">
                 <Switch
-                  checked={theme.isSystem}
+                  checked={theme.isPublic}
                   onCheckedChange={(v) =>
-                    setSystemMut.mutate({ id: themeId, isSystem: v })
+                    setVisibilityMut.mutate({ id: themeId, isPublic: v })
                   }
-                  disabled={setSystemMut.isPending}
+                  disabled={setVisibilityMut.isPending}
                 />
-                System theme (shown as starter)
+                Public (anyone can use it)
               </label>
-            )}
-            <div className="ml-auto">
+              {mode === "admin" && (
+                <label className="flex items-center gap-2 text-sm">
+                  <Switch
+                    checked={theme.isSystem}
+                    onCheckedChange={(v) =>
+                      setSystemMut.mutate({ id: themeId, isSystem: v })
+                    }
+                    disabled={setSystemMut.isPending}
+                  />
+                  Starter theme
+                </label>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-destructive hover:text-destructive"
+                className="text-destructive hover:text-destructive ml-auto"
                 onClick={() => void handleDelete()}
                 disabled={deleteMut.isPending}
               >
                 <Trash2 className="mr-1 h-4 w-4" /> Delete
               </Button>
             </div>
-          </div>
+            {updateMut.error && (
+              <p className="text-destructive text-xs">
+                {updateMut.error.message}
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
-          {updateMut.error && (
-            <p className="text-destructive text-xs">
-              {updateMut.error.message}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+        <ThemeControls value={tokens} onChange={patch} />
+      </div>
 
-      <div className="space-y-2">
-        <div className="text-muted-foreground text-xs">
-          Hover any part of the preview below to reveal edit controls.
-        </div>
-        <ThemeCanvas
-          tokens={tokens}
-          blockOverrides={overrides}
-          editable
-          onPatchTokens={patchTokens}
-          onPatchOverride={patchOverride}
-          onResetOverride={resetOverride}
-          name={name || "Your creator name"}
+      <div className="xl:sticky xl:top-4">
+        <ProfilePreviewFrame
+          src={previewSrc}
+          theme={tokens}
+          label={
+            ownHandle
+              ? `Previewing @${ownHandle} with this theme`
+              : "Previewing a sample profile with this theme"
+          }
         />
       </div>
     </div>

@@ -1,406 +1,364 @@
 import { z } from "zod";
-import type React from "react";
-import type { CreatorBlockTypeName } from "~/components/creator/block-types";
-import { buildMediaUrl } from "~/lib/media-url";
+import type { CSSProperties } from "react";
 
 /**
- * Creator profile theme tokens.
+ * Creator profile themes.
  *
- * This is the curated set of design tokens that a `CreatorProfileTheme` can
- * customize. Every token is rendered to a `--creator-*` CSS variable on the
- * public profile root (and, when overridden per-block, on each
- * `.creator-block` wrapper). Blocks read these variables so they automatically
- * inherit the active theme without needing to know about `CreatorProfileTheme`
- * itself.
+ * A theme is six choices: a layout and five looks. Everything else is
+ * derived, so no combination a creator can pick ends up unreadable.
+ *
+ *  - layout:  how the page is put together (see `LAYOUTS`)
+ *  - ground:  page colour
+ *  - accent:  fills (buy buttons, calendar tiles, on now) and accent text
+ *  - display: the face for their name and section headings
+ *  - corners: hard (square panels, like the site) or soft (rounded panels)
+ *  - photo:   how their own photos are treated. Gig posters are never touched.
+ *
+ * Stored as JSON in `CreatorProfileTheme.tokens`. Themes saved before this
+ * model are read through `parseTheme`, which maps their old tokens across.
  */
-export type BlockShadow = "none" | "sm" | "md" | "lg";
-export type ButtonStyle = "solid" | "outline" | "ghost";
-export type Density = "compact" | "comfortable" | "spacious";
-export type FontStack =
-  "inherit" | "sans" | "serif" | "mono" | "display" | "handwritten";
 
-export type ThemeTokens = {
-  // Page
-  pageBg: string;
-  pageFg: string;
-  /**
-   * `file_upload.id` of the background image (resolved via `buildMediaUrl`
-   * at render time). `null` means no background image.
-   */
-  pageBgImageFileId: string | null;
-  pageBgOverlay: string | null;
-  // Accent
-  accent: string;
-  accentFg: string;
-  // Typography
-  headingFont: FontStack;
-  bodyFont: FontStack;
-  headingWeight: number;
-  letterSpacing: number; // in px, 0 = normal
-  // Block surface
-  blockBg: string;
-  blockFg: string;
-  blockBorder: string;
-  blockBorderWidth: number; // px
-  blockRadius: number; // px
-  blockShadow: BlockShadow;
-  blockPaddingX: number; // px
-  blockPaddingY: number; // px
-  // Links / buttons
-  linkColor: string;
-  linkHoverColor: string;
-  buttonStyle: ButtonStyle;
-  buttonRadius: number;
-  // Layout
-  density: Density;
-  bannerOverlay: string | null;
-};
+export const LAYOUTS = {
+  headliner: {
+    label: "Headliner",
+    description:
+      "Photo and name up top with the next set counting down, the run beside it.",
+  },
+  wall: {
+    label: "Wall",
+    description:
+      "Name edge to edge, then every set as a wall of posters by year.",
+  },
+  stage: {
+    label: "Stage",
+    description:
+      "Portrait and big buttons on a phone, a press kit with tabs on desktop.",
+  },
+} as const;
+
+export type LayoutKey = keyof typeof LAYOUTS;
 
 /**
- * Block-specific overrides — these are extra fields (beyond `ThemeTokens`)
- * that only make sense for a given block type. Each override entry is a
- * `Partial<ThemeTokens> & BlockSpecificTokens[type]`.
+ * Display faces. `family` is the CSS variable next/font sets (site faces from
+ * `~/lib/site-fonts`, the rest from `~/lib/creator-fonts`). `em` is the
+ * face's average character width at display settings, so a name can be sized
+ * to fill a width whatever face it's set in.
  */
-export type BlockSpecificTokens = {
-  HEADING: {
-    headingColor?: string;
-  };
-  SOCIAL_LINKS: {
-    socialPillStyle?: "solid" | "outline" | "ghost";
-  };
-  PAST_GIGS: {
-    pastGigsCellRadius?: number;
-  };
-};
+export const FACES = {
+  orbitron: {
+    label: "Orbitron",
+    family: "var(--font-site-heading)",
+    stretch: "100%",
+    weight: 900,
+    upper: true,
+    em: 0.82,
+  },
+  anybody: {
+    label: "Anybody Wide",
+    family: "var(--font-site-display)",
+    stretch: "135%",
+    weight: 800,
+    upper: true,
+    em: 0.94,
+  },
+  unbounded: {
+    label: "Unbounded",
+    family: "var(--font-creator-unbounded)",
+    stretch: "100%",
+    weight: 800,
+    upper: true,
+    em: 0.87,
+  },
+  shoulders: {
+    label: "Big Shoulders",
+    family: "var(--font-creator-shoulders)",
+    stretch: "100%",
+    weight: 900,
+    upper: true,
+    em: 0.49,
+  },
+  bodoni: {
+    label: "Bodoni",
+    family: "var(--font-creator-bodoni)",
+    stretch: "100%",
+    weight: 800,
+    upper: false,
+    em: 0.62,
+  },
+} as const;
 
-/** Flattened union of every block-specific field (all optional). */
-export type BlockSpecificAll = {
-  headingColor?: string;
-  socialPillStyle?: "solid" | "outline" | "ghost";
-  pastGigsCellRadius?: number;
-};
+export type FaceKey = keyof typeof FACES;
 
-export type BlockOverride = Partial<ThemeTokens> & BlockSpecificAll;
+const zHex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Use a #rrggbb colour");
 
-export type BlockOverrides = Partial<
-  Record<CreatorBlockTypeName, BlockOverride>
+export const zCreatorTheme = z.object({
+  layout: z.enum(["headliner", "wall", "stage"]),
+  ground: zHex,
+  accent: zHex,
+  display: z.enum(["orbitron", "anybody", "unbounded", "shoulders", "bodoni"]),
+  corners: z.enum(["hard", "soft"]),
+  photo: z.enum(["color", "mono", "duotone"]),
+});
+
+export type CreatorTheme = z.infer<typeof zCreatorTheme>;
+export type Corners = CreatorTheme["corners"];
+export type PhotoTreatment = CreatorTheme["photo"];
+
+/** Starter themes. `bun run db:seed-themes` keeps a system theme for each. */
+export const THEME_PRESETS = {
+  atmos: {
+    name: "Atmos",
+    description: "True black, acid accent, Orbitron. The site's own look.",
+    theme: {
+      layout: "headliner",
+      ground: "#000000",
+      accent: "#c6ff33",
+      display: "orbitron",
+      corners: "hard",
+      photo: "color",
+    },
+  },
+  ultraviolet: {
+    name: "Ultraviolet",
+    description: "Violet black with magenta duotone photos.",
+    theme: {
+      layout: "wall",
+      ground: "#08020f",
+      accent: "#ff2fd4",
+      display: "unbounded",
+      corners: "soft",
+      photo: "duotone",
+    },
+  },
+  gold: {
+    name: "Gold",
+    description: "Near black and gold, wide caps, soft corners.",
+    theme: {
+      layout: "headliner",
+      ground: "#0a0a0a",
+      accent: "#ffc21a",
+      display: "anybody",
+      corners: "soft",
+      photo: "color",
+    },
+  },
+  ice: {
+    name: "Ice",
+    description: "Cold blue on black, tall condensed type, mono photos.",
+    theme: {
+      layout: "wall",
+      ground: "#020a10",
+      accent: "#5ee0ff",
+      display: "shoulders",
+      corners: "hard",
+      photo: "mono",
+    },
+  },
+  flyer: {
+    name: "Flyer",
+    description: "Light grey and electric blue, like a printed flyer.",
+    theme: {
+      layout: "stage",
+      ground: "#efefec",
+      accent: "#2335ff",
+      display: "anybody",
+      corners: "hard",
+      photo: "mono",
+    },
+  },
+  heritage: {
+    name: "Heritage",
+    description: "Atmos purple drenched, Bodoni name, acid duotone.",
+    theme: {
+      layout: "stage",
+      ground: "#3b0072",
+      accent: "#c6ff33",
+      display: "bodoni",
+      corners: "soft",
+      photo: "duotone",
+    },
+  },
+} as const satisfies Record<
+  string,
+  { name: string; description: string; theme: CreatorTheme }
 >;
 
-// ---------------------------------------------------------------------------
-// Defaults
-// ---------------------------------------------------------------------------
+export const DEFAULT_THEME: CreatorTheme = THEME_PRESETS.atmos.theme;
 
-export const DEFAULT_THEME_TOKENS: ThemeTokens = {
-  pageBg: "#0a0a0a",
-  pageFg: "#fafafa",
-  pageBgImageFileId: null,
-  pageBgOverlay: null,
-
-  accent: "#6366f1",
-  accentFg: "#ffffff",
-
-  headingFont: "sans",
-  bodyFont: "sans",
-  headingWeight: 700,
-  letterSpacing: 0,
-
-  blockBg: "rgba(255,255,255,0.03)",
-  blockFg: "#fafafa",
-  blockBorder: "rgba(255,255,255,0.08)",
-  blockBorderWidth: 1,
-  blockRadius: 8,
-  blockShadow: "none",
-  blockPaddingX: 12,
-  blockPaddingY: 12,
-
-  linkColor: "#6366f1",
-  linkHoverColor: "#818cf8",
-  buttonStyle: "solid",
-  buttonRadius: 6,
-
-  density: "comfortable",
-  bannerOverlay: null,
-};
-
-export const LIGHT_THEME_TOKENS: ThemeTokens = {
-  pageBg: "#ffffff",
-  pageFg: "#0a0a0a",
-  pageBgImageFileId: null,
-  pageBgOverlay: null,
-
-  accent: "#6366f1",
-  accentFg: "#ffffff",
-
-  headingFont: "sans",
-  bodyFont: "sans",
-  headingWeight: 700,
-  letterSpacing: 0,
-
-  blockBg: "#ffffff",
-  blockFg: "#0a0a0a",
-  blockBorder: "rgba(0,0,0,0.08)",
-  blockBorderWidth: 1,
-  blockRadius: 8,
-  blockShadow: "sm",
-  blockPaddingX: 12,
-  blockPaddingY: 12,
-
-  linkColor: "#6366f1",
-  linkHoverColor: "#4f46e5",
-  buttonStyle: "solid",
-  buttonRadius: 6,
-
-  density: "comfortable",
-  bannerOverlay: null,
-};
-
-export const DEFAULT_BLOCK_OVERRIDES: BlockOverrides = {};
-
-// ---------------------------------------------------------------------------
-// Zod schemas
-// ---------------------------------------------------------------------------
-
-const zFontStack = z.enum([
-  "inherit",
-  "sans",
-  "serif",
-  "mono",
-  "display",
-  "handwritten",
-]);
-const zBlockShadow = z.enum(["none", "sm", "md", "lg"]);
-const zButtonStyle = z.enum(["solid", "outline", "ghost"]);
-const zDensity = z.enum(["compact", "comfortable", "spacious"]);
-
-/** Color string — we don't validate format strictly (allow hex, rgb/rgba, css color). */
-const zColor = z.string().min(1).max(64);
-const zNullableColor = zColor.nullable();
-const zNullableString = z.string().max(512).nullable();
-
-export const zThemeTokens = z.object({
-  pageBg: zColor,
-  pageFg: zColor,
-  pageBgImageFileId: zNullableString,
-  pageBgOverlay: zNullableColor,
-
-  accent: zColor,
-  accentFg: zColor,
-
-  headingFont: zFontStack,
-  bodyFont: zFontStack,
-  headingWeight: z.number().int().min(100).max(900),
-  letterSpacing: z.number().min(-4).max(16),
-
-  blockBg: zColor,
-  blockFg: zColor,
-  blockBorder: zColor,
-  blockBorderWidth: z.number().int().min(0).max(16),
-  blockRadius: z.number().int().min(0).max(64),
-  blockShadow: zBlockShadow,
-  blockPaddingX: z.number().int().min(0).max(64),
-  blockPaddingY: z.number().int().min(0).max(64),
-
-  linkColor: zColor,
-  linkHoverColor: zColor,
-  buttonStyle: zButtonStyle,
-  buttonRadius: z.number().int().min(0).max(64),
-
-  density: zDensity,
-  bannerOverlay: zNullableColor,
-});
-
-const zBlockSpecific = z.object({
-  headingColor: zColor.optional(),
-  socialPillStyle: z.enum(["solid", "outline", "ghost"]).optional(),
-  pastGigsCellRadius: z.number().int().min(0).max(64).optional(),
-});
-
-export const zBlockOverride = zThemeTokens.partial().and(zBlockSpecific);
-
-const BLOCK_TYPE_NAMES = [
-  "HEADING",
-  "RICH_TEXT",
-  "IMAGE",
-  "GALLERY",
-  "SOUNDCLOUD_TRACK",
-  "SOUNDCLOUD_PLAYLIST",
-  "YOUTUBE_VIDEO",
-  "SPOTIFY_EMBED",
-  "SOCIAL_LINKS",
-  "LINK_LIST",
-  "GIG_LIST",
-  "PAST_GIGS",
-  "CONTENT_LIST",
-  "DIVIDER",
-  "SPACER",
-  "CUSTOM_EMBED",
+/** Swatches offered in the theme editor; any colour works too. */
+export const GROUND_SWATCHES = [
+  "#000000",
+  "#0a0a0a",
+  "#08020f",
+  "#020a10",
+  "#3b0072",
+  "#0d2b1d",
+  "#5a0a0a",
+  "#efefec",
 ] as const;
 
-export const zBlockOverrides: z.ZodType<BlockOverrides> = z.partialRecord(
-  z.enum(BLOCK_TYPE_NAMES),
-  zBlockOverride,
-);
+export const ACCENT_SWATCHES = [
+  "#c6ff33",
+  "#ff2fd4",
+  "#ffc21a",
+  "#5ee0ff",
+  "#2335ff",
+  "#ff4d1a",
+  "#ffffff",
+  "#8a3ffc",
+] as const;
 
 // ---------------------------------------------------------------------------
-// Merging / parsing
-// ---------------------------------------------------------------------------
+// Parsing
 
-/** Merge partial tokens on top of a base, preserving null handling. */
-export function mergeTokens(
-  base: ThemeTokens,
-  patch: Partial<ThemeTokens> | null | undefined,
-): ThemeTokens {
-  if (!patch) return base;
-  return { ...base, ...patch };
-}
+const isHex = (v: unknown): v is string =>
+  typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v);
 
-/** Parse an unknown value into `ThemeTokens`, filling any missing fields with defaults. */
-export function parseTokens(
-  raw: unknown,
-  base: ThemeTokens = DEFAULT_THEME_TOKENS,
-): ThemeTokens {
-  if (!raw || typeof raw !== "object") return base;
-  const patched = mergeTokens(base, raw as Partial<ThemeTokens>);
-  const result = zThemeTokens.safeParse(patched);
-  return result.success ? result.data : base;
-}
-
-/** Parse an unknown value into `BlockOverrides`. Invalid entries are dropped. */
-export function parseBlockOverrides(raw: unknown): BlockOverrides {
-  if (!raw || typeof raw !== "object") return {};
-  const result = zBlockOverrides.safeParse(raw);
-  return result.success ? result.data : {};
-}
-
-// ---------------------------------------------------------------------------
-// CSS variable serialization
-// ---------------------------------------------------------------------------
-
-const FONT_STACKS: Record<FontStack, string> = {
-  inherit: "inherit",
-  sans: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  serif: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif',
-  mono: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-  display: '"Bebas Neue", "Oswald", Impact, "Helvetica Neue", sans-serif',
-  handwritten: '"Caveat", "Dancing Script", cursive',
-};
-
-const SHADOWS: Record<BlockShadow, string> = {
-  none: "none",
-  sm: "0 1px 2px rgba(0,0,0,0.12)",
-  md: "0 4px 10px rgba(0,0,0,0.18)",
-  lg: "0 12px 30px rgba(0,0,0,0.28)",
-};
-
-const DENSITY_GAP: Record<Density, string> = {
-  compact: "6px",
-  comfortable: "12px",
-  spacious: "20px",
+/** Old `headingFont` values, mapped to the nearest face. */
+const LEGACY_FACES: Record<string, FaceKey> = {
+  serif: "bodoni",
+  display: "shoulders",
+  mono: "orbitron",
+  handwritten: "unbounded",
+  sans: "orbitron",
+  inherit: "orbitron",
 };
 
 /**
- * The grid gap for a density, as a number. The editor grid and the intrinsic
- * block height math both need the same value the public grid renders with.
+ * Read a stored theme. Current themes are validated field by field, so one
+ * bad value falls back alone rather than taking the theme with it. Themes
+ * saved under the old token model (`pageBg`, `headingFont`, `blockRadius`...)
+ * are mapped across.
  */
-export function densityGapPx(density: Density): number {
-  return parseInt(DENSITY_GAP[density], 10);
-}
+export function parseTheme(raw: unknown): CreatorTheme {
+  if (!raw || typeof raw !== "object") return DEFAULT_THEME;
+  const r = raw as Record<string, unknown>;
 
-function tokensToVarRecord(tokens: ThemeTokens): Record<string, string> {
+  if (!("layout" in r) && ("pageBg" in r || "blockBg" in r)) {
+    return {
+      layout: "headliner",
+      ground: isHex(r.pageBg) ? r.pageBg : DEFAULT_THEME.ground,
+      accent: isHex(r.accent) ? r.accent : DEFAULT_THEME.accent,
+      display:
+        typeof r.headingFont === "string"
+          ? (LEGACY_FACES[r.headingFont] ?? DEFAULT_THEME.display)
+          : DEFAULT_THEME.display,
+      corners:
+        typeof r.blockRadius === "number" && r.blockRadius >= 8
+          ? "soft"
+          : "hard",
+      photo: "color",
+    };
+  }
+
+  const shape = zCreatorTheme.shape;
+  const field = <K extends keyof CreatorTheme>(key: K): CreatorTheme[K] => {
+    const parsed = shape[key].safeParse(r[key]);
+    return parsed.success
+      ? (parsed.data as CreatorTheme[K])
+      : DEFAULT_THEME[key];
+  };
   return {
-    "--creator-page-bg": tokens.pageBg,
-    "--creator-page-fg": tokens.pageFg,
-    "--creator-page-bg-image": tokens.pageBgImageFileId
-      ? `url("${buildMediaUrl(tokens.pageBgImageFileId)}")`
-      : "none",
-    "--creator-page-bg-overlay": tokens.pageBgOverlay ?? "transparent",
-
-    "--creator-accent": tokens.accent,
-    "--creator-accent-fg": tokens.accentFg,
-
-    "--creator-heading-font": FONT_STACKS[tokens.headingFont],
-    "--creator-body-font": FONT_STACKS[tokens.bodyFont],
-    "--creator-heading-weight": String(tokens.headingWeight),
-    "--creator-letter-spacing": `${tokens.letterSpacing}px`,
-
-    "--creator-block-bg": tokens.blockBg,
-    "--creator-block-fg": tokens.blockFg,
-    "--creator-block-border": tokens.blockBorder,
-    "--creator-block-border-width": `${tokens.blockBorderWidth}px`,
-    "--creator-block-radius": `${tokens.blockRadius}px`,
-    "--creator-block-shadow": SHADOWS[tokens.blockShadow],
-    "--creator-block-padding-x": `${tokens.blockPaddingX}px`,
-    "--creator-block-padding-y": `${tokens.blockPaddingY}px`,
-
-    "--creator-link": tokens.linkColor,
-    "--creator-link-hover": tokens.linkHoverColor,
-    "--creator-button-style": tokens.buttonStyle,
-    "--creator-button-radius": `${tokens.buttonRadius}px`,
-
-    "--creator-density": tokens.density,
-    "--creator-density-gap": DENSITY_GAP[tokens.density],
-    "--creator-banner-overlay": tokens.bannerOverlay ?? "transparent",
+    layout: field("layout"),
+    ground: field("ground"),
+    accent: field("accent"),
+    display: field("display"),
+    corners: field("corners"),
+    photo: field("photo"),
   };
 }
 
+// ---------------------------------------------------------------------------
+// Contrast
+
+const channel = (hex: string, i: number) => {
+  const v = parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16) / 255;
+  return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+};
+
+/** WCAG relative luminance of a `#rrggbb` colour. */
+export const luminance = (hex: string) =>
+  0.2126 * channel(hex, 0) +
+  0.7152 * channel(hex, 1) +
+  0.0722 * channel(hex, 2);
+
+/** WCAG contrast ratio between two `#rrggbb` colours. */
+export function contrast(a: string, b: string) {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [
+    number,
+    number,
+  ];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+// ---------------------------------------------------------------------------
+// Resolving
+
+export type ResolvedTheme = CreatorTheme & {
+  tone: "dark" | "light";
+  ink: string;
+  accentInk: string;
+  /** The accent where it's used as text on the ground; ink when too faint. */
+  accentText: string;
+};
+
 /**
- * Produce a `React.CSSProperties` object containing every `--creator-*`
- * variable for these tokens. When `blockType` is provided, the matching
- * entry in `overrides` (if any) is merged on top of `tokens` before
- * serialization — use this on the per-block wrapper.
+ * Derive the colours a theme doesn't store. `accentOverride` is the
+ * profile's own accent (`CreatorProfile.accentColor`), which wins over the
+ * theme's.
  */
-export function themeToCssVars(
-  tokens: ThemeTokens,
-  overrides?: BlockOverrides | null,
-  blockType?: CreatorBlockTypeName,
-): React.CSSProperties {
-  let finalTokens = tokens;
-  const extras: Record<string, string> = {};
+export function resolveTheme(
+  theme: CreatorTheme,
+  accentOverride?: string | null,
+): ResolvedTheme {
+  const accent = isHex(accentOverride) ? accentOverride : theme.accent;
+  const tone = luminance(theme.ground) > 0.36 ? "light" : "dark";
+  const ink = tone === "light" ? "#0a0a0a" : "#ffffff";
+  const accentInk =
+    contrast(accent, "#000000") >= contrast(accent, "#ffffff")
+      ? "#000000"
+      : "#ffffff";
+  const accentText = contrast(accent, theme.ground) >= 3 ? accent : ink;
+  return { ...theme, accent, tone, ink, accentInk, accentText };
+}
 
-  if (blockType && overrides) {
-    const override = overrides[blockType];
-    if (override) {
-      finalTokens = mergeTokens(tokens, override);
-      if (
-        blockType === "HEADING" &&
-        "headingColor" in override &&
-        override.headingColor
-      ) {
-        extras["--creator-heading-color"] = override.headingColor;
-      }
-      if (
-        blockType === "SOCIAL_LINKS" &&
-        "socialPillStyle" in override &&
-        override.socialPillStyle
-      ) {
-        extras["--creator-social-pill-style"] = override.socialPillStyle;
-      }
-      if (
-        blockType === "PAST_GIGS" &&
-        "pastGigsCellRadius" in override &&
-        typeof override.pastGigsCellRadius === "number"
-      ) {
-        extras["--creator-past-gigs-cell-radius"] =
-          `${override.pastGigsCellRadius}px`;
-      }
-    }
-  }
-
+/**
+ * Every `--cp-*` variable for a theme, plus the site accent so shared site
+ * parts (buttons, the on-now panel, the cart) follow it. Set on the profile's
+ * root next to `data-tone`, `data-photo` and `data-corners`; see
+ * `src/styles/creator-profile.css`.
+ */
+export function themeVars(t: ResolvedTheme): CSSProperties {
+  const face = FACES[t.display];
+  const mix = (pct: number) =>
+    `color-mix(in oklab, ${t.ink} ${pct}%, transparent)`;
   return {
-    ...tokensToVarRecord(finalTokens),
-    ...extras,
-  } as React.CSSProperties;
+    "--cp-ground": t.ground,
+    "--cp-raised": `color-mix(in oklab, ${t.ground}, ${t.ink} 5%)`,
+    "--cp-ink": t.ink,
+    "--cp-muted": mix(66),
+    "--cp-faint": mix(46),
+    "--cp-line": mix(13),
+    "--cp-line-soft": mix(7),
+    "--cp-accent": t.accent,
+    "--cp-accent-ink": t.accentInk,
+    "--cp-accent-text": t.accentText,
+    "--cp-display-font": face.family,
+    "--cp-display-stretch": face.stretch,
+    "--cp-display-weight": face.weight,
+    "--cp-display-case": face.upper ? "uppercase" : "none",
+    "--cp-display-em": face.em,
+    "--cp-r-panel": t.corners === "soft" ? "16px" : "0px",
+    "--cp-r-media": t.corners === "soft" ? "10px" : "0px",
+    "--site-accent": t.accent,
+    "--site-accent-ink": t.accentInk,
+    "--site-accent-text": t.accentText,
+  } as CSSProperties;
 }
 
-/** Convenience: return a `ThemeTokens` ready for rendering, with the
- *  profile's `accentColor` override applied on top of the theme's accent. */
-export function resolveProfileTokens(
-  themeTokens: unknown,
-  accentColorOverride: string | null | undefined,
-): ThemeTokens {
-  const base = parseTokens(themeTokens);
-  if (accentColorOverride) {
-    return { ...base, accent: accentColorOverride };
-  }
-  return base;
-}
+/** The data attributes `creator-profile.css` keys off, for the same root. */
+export const themeAttributes = (t: ResolvedTheme) => ({
+  "data-tone": t.tone,
+  "data-photo": t.photo,
+  "data-corners": t.corners,
+});

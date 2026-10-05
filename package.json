@@ -28,7 +28,6 @@
     "start": "next start",
     "test": "bun test",
     "typecheck": "node node_modules/@typescript/native/bin/tsc --noEmit",
-    "ui:audit": "node scripts/ui-audit-creator.mjs",
     "refresh-baseline-browser-mapping": "bun i --save-dev baseline-browser-mapping@latest"
   },
   "dependencies": {

@@ -9,14 +9,7 @@ import {
 } from "~/server/api/trpc";
 import { userHasPermission } from "~/server/utils/permissions";
 import { logUserActivity } from "~/server/utils/activity-log";
-import {
-  DEFAULT_BLOCK_OVERRIDES,
-  DEFAULT_THEME_TOKENS,
-  parseBlockOverrides,
-  parseTokens,
-  zBlockOverrides,
-  zThemeTokens,
-} from "~/lib/creator-theme";
+import { DEFAULT_THEME, parseTheme, zCreatorTheme } from "~/lib/creator-theme";
 import { ActivityType, type PrismaClient } from "~Prisma/client";
 
 /**
@@ -191,8 +184,7 @@ export const creatorThemesRouter = createTRPCRouter({
       z.object({
         name: zThemeName,
         description: zThemeDesc,
-        tokens: zThemeTokens.optional(),
-        blockOverrides: zBlockOverrides.optional(),
+        tokens: zCreatorTheme.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -203,9 +195,7 @@ export const creatorThemesRouter = createTRPCRouter({
           ownerUserId: ctx.session.user.id,
           isPublic: false,
           isSystem: false,
-          tokens: (input.tokens ?? DEFAULT_THEME_TOKENS) as object,
-          blockOverrides: (input.blockOverrides ??
-            DEFAULT_BLOCK_OVERRIDES) as object,
+          tokens: input.tokens ?? DEFAULT_THEME,
         },
       });
       await logUserActivity(
@@ -226,8 +216,7 @@ export const creatorThemesRouter = createTRPCRouter({
         data: z.object({
           name: zThemeName.optional(),
           description: zThemeDesc,
-          tokens: zThemeTokens.optional(),
-          blockOverrides: zBlockOverrides.optional(),
+          tokens: zCreatorTheme.optional(),
         }),
       }),
     )
@@ -241,10 +230,7 @@ export const creatorThemesRouter = createTRPCRouter({
             ? { description: input.data.description ?? null }
             : {}),
           ...(input.data.tokens !== undefined
-            ? { tokens: input.data.tokens as object }
-            : {}),
-          ...(input.data.blockOverrides !== undefined
-            ? { blockOverrides: input.data.blockOverrides as object }
+            ? { tokens: input.data.tokens }
             : {}),
         },
       });
@@ -321,8 +307,6 @@ export const creatorThemesRouter = createTRPCRouter({
       if (!source) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
-      const tokens = parseTokens(source.tokens);
-      const blockOverrides = parseBlockOverrides(source.blockOverrides);
       const created = await ctx.db.creatorProfileTheme.create({
         data: {
           name: input.name ?? `${source.name} (copy)`,
@@ -330,8 +314,8 @@ export const creatorThemesRouter = createTRPCRouter({
           ownerUserId: ctx.session.user.id,
           isPublic: false,
           isSystem: false,
-          tokens: tokens as object,
-          blockOverrides: blockOverrides as object,
+          // Re-saved through the parser, so a fork of an old theme is current.
+          tokens: parseTheme(source.tokens),
         },
       });
       await logUserActivity(

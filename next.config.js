@@ -7,9 +7,14 @@ import "./src/env.js";
 /** @type {import("next").NextConfig} */
 const config = {
   // Extra hostnames allowed to load dev assets, for opening `next dev` via a
-  // machine name instead of localhost. Comma-separated, e.g. DEV_ORIGINS=my-box
+  // machine name instead of localhost. Comma-separated, e.g. DEV_ORIGINS=my-box.
+  // The app reads the same list through `~/lib/dev-hosts`.
   allowedDevOrigins: process.env.DEV_ORIGINS?.split(","),
   images: {
+    // In dev, media URLs point at this same server (`/api/media` on
+    // localhost), which Next 16 refuses to optimise by default. Production
+    // media is on the public domain, so this stays off there.
+    dangerouslyAllowLocalIP: process.env.NODE_ENV === "development",
     remotePatterns: [
       {
         protocol: "http",
