@@ -21,13 +21,15 @@ const FLAG_TONES: Record<keyof GigFlags, string> = {
  * or live, so it is answered in the same place rather than in a second column
  * nobody reads next to this one. The same goes for an affiliated gig that is
  * published but still further out than its lead time: it is not live yet, so
- * the badge says when it goes up instead.
+ * the badge says when it goes up instead. A TBA gig with an announce time
+ * says when it will be announced on its chip.
  */
 export function GigStatusBadge({
   status,
   startsAt,
   endsAt,
   flags,
+  announceAt,
   className,
 }: {
   status: GigStatus;
@@ -35,6 +37,8 @@ export function GigStatusBadge({
   startsAt: Date | null;
   endsAt?: Date | null;
   flags?: GigFlags;
+  /** Shown on the TBA chip. */
+  announceAt?: Date | null;
   className?: string;
 }) {
   const isPast =
@@ -83,7 +87,9 @@ export function GigStatusBadge({
               title={flag.summary}
               className={cn(pill, FLAG_TONES[flag.key])}
             >
-              {flag.short}
+              {flag.key === "isTba" && announceAt
+                ? `${flag.short} until ${formatDate(announceAt, "extra-short")}`
+                : flag.short}
             </span>
           ))
         : null}

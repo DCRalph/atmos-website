@@ -28,6 +28,9 @@ const isDefined = <T>(value: T | null | undefined): value is T =>
 const HOME_ELIGIBLE = {
   status: GigStatus.PUBLISHED,
   isAffiliated: false,
+  // A TBA gig's dates are placeholders, so it has not been and gone either,
+  // and nothing here redacts it. Same rule as `gigs.getPast`.
+  isTba: false,
 } as const;
 
 type PosterInfo = { id: string; url: string; name: string; mimeType: string };

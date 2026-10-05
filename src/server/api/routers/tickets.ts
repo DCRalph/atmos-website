@@ -167,7 +167,10 @@ export const ticketsRouter = createTRPCRouter({
           requireAttendeeNames: order.event.requireAttendeeNames,
           posterFileUploadId:
             order.event.posterFileUploadId ??
-            order.event.gig?.posterFileUploadId ??
+            // Not a TBA gig's: its poster id opens the unblurred poster.
+            (order.event.gig?.isTba
+              ? null
+              : order.event.gig?.posterFileUploadId) ??
             null,
         },
         tickets,
@@ -389,7 +392,10 @@ export const ticketsRouter = createTRPCRouter({
           status: ticket.event.status,
           posterFileUploadId:
             ticket.event.posterFileUploadId ??
-            ticket.event.gig?.posterFileUploadId ??
+            // Not a TBA gig's: its poster id opens the unblurred poster.
+            (ticket.event.gig?.isTba
+              ? null
+              : ticket.event.gig?.posterFileUploadId) ??
             null,
         },
         handouts: ticket.handouts.map((handout) => ({
@@ -610,7 +616,14 @@ export const ticketsRouter = createTRPCRouter({
         OR: [
           { userId: ctx.session.user.id },
           ...(claimableEmail
-            ? [{ buyerEmail: { equals: claimableEmail, mode: "insensitive" as const } }]
+            ? [
+                {
+                  buyerEmail: {
+                    equals: claimableEmail,
+                    mode: "insensitive" as const,
+                  },
+                },
+              ]
             : []),
         ],
       },

@@ -99,6 +99,7 @@ type LoadedGig = {
   shortDescription: string | null;
   descriptionLexical: unknown;
   isTba: boolean;
+  announceAt: Date | null;
   isAffiliated: boolean;
   ticketLink: string | null;
   gigStartTime: Date | null;
@@ -140,6 +141,7 @@ const emptyDraft = (): GigDraft => ({
   shortDescription: "",
   descriptionLexical: null,
   isTba: false,
+  announceAt: undefined,
   isAffiliated: false,
   ticketLink: "",
   startTime: undefined,
@@ -157,6 +159,7 @@ const draftFromGig = (gig: LoadedGig): GigDraft => ({
   descriptionLexical:
     (gig.descriptionLexical as SerializedEditorState | null) ?? null,
   isTba: gig.isTba,
+  announceAt: gig.announceAt ? new Date(gig.announceAt) : undefined,
   isAffiliated: gig.isAffiliated,
   ticketLink: gig.ticketLink ?? "",
   startTime: gig.gigStartTime ? new Date(gig.gigStartTime) : undefined,
@@ -201,6 +204,7 @@ const fingerprint = (draft: GigDraft): string =>
       ? JSON.stringify(draft.descriptionLexical)
       : null,
     isTba: draft.isTba,
+    announceAt: draft.isTba ? (draft.announceAt?.getTime() ?? null) : null,
     isAffiliated: draft.isAffiliated,
     ticketLink: draft.ticketLink.trim(),
     startTime: draft.startTime?.getTime() ?? null,
@@ -226,7 +230,15 @@ const fingerprint = (draft: GigDraft): string =>
   });
 
 type FieldErrors = Partial<
-  Record<"title" | "subtitle" | "startTime" | "endTime" | "ticketLink", string>
+  Record<
+    | "title"
+    | "subtitle"
+    | "startTime"
+    | "endTime"
+    | "announceAt"
+    | "ticketLink",
+    string
+  >
 >;
 
 const validate = (draft: GigDraft): FieldErrors => {
@@ -236,6 +248,14 @@ const validate = (draft: GigDraft): FieldErrors => {
   if (!draft.startTime) errors.startTime = "A start time is required";
   if (draft.startTime && draft.endTime && draft.endTime < draft.startTime) {
     errors.endTime = "The end time cannot be before the start time";
+  }
+  if (
+    draft.isTba &&
+    draft.announceAt &&
+    draft.startTime &&
+    draft.announceAt >= draft.startTime
+  ) {
+    errors.announceAt = "Announce the gig before it starts";
   }
   const link = draft.ticketLink.trim();
   if (link) {
@@ -425,6 +445,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
       shortDescription: draft.shortDescription.trim(),
       descriptionLexical: draft.descriptionLexical,
       isTba: draft.isTba,
+      announceAt: draft.isTba ? (draft.announceAt ?? null) : null,
       isAffiliated: draft.isAffiliated,
       ticketLink: draft.ticketLink.trim() || null,
       gigStartTime: draft.startTime,
@@ -582,6 +603,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
               startsAt={gig.gigStartTime}
               endsAt={gig.gigEndTime}
               flags={gig}
+              announceAt={gig.announceAt}
             />
           ) : null}
           {gig?.status === GigStatus.DRAFT ? (
@@ -761,6 +783,21 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
                   <p className="text-muted-foreground text-xs">
                     Both off is a normal gig.
                   </p>
+                  {draft.isTba ? (
+                    <Field
+                      id="gig-announce-at"
+                      label="Announce on"
+                      hint="The gig drops TBA by itself at this time. Leave empty to announce it by hand."
+                      error={errors.announceAt}
+                    >
+                      <DateTimePicker
+                        date={draft.announceAt}
+                        onDateChange={(value) => update("announceAt", value)}
+                        placeholder="Announce by hand"
+                        showTime
+                      />
+                    </Field>
+                  ) : null}
                 </div>
                 <Field
                   id="gig-ticket-link"

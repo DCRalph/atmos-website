@@ -10,6 +10,7 @@ import {
   SITE_URL,
   formatFullTitle,
 } from "~/lib/seo-constants";
+import { teaserPosterUrl } from "~/server/gig-teaser";
 import GigPageClient from "./gig-page-client";
 
 /**
@@ -27,8 +28,16 @@ const cleanText = (value?: string | null) =>
 const truncate = (value: string, length: number) =>
   value.length > length ? `${value.slice(0, length - 1)}…` : value;
 
-/** The poster's URL, unless the file has since been deleted. */
-async function posterUrl(fileUploadId: string | null): Promise<string | null> {
+/**
+ * The poster's URL, unless the file has since been deleted. A TBA gig gets
+ * the server-blurred teaser instead.
+ */
+async function posterUrl(gig: {
+  id: string;
+  isTba: boolean;
+  posterFileUploadId: string | null;
+}): Promise<string | null> {
+  const fileUploadId = gig.posterFileUploadId;
   if (!fileUploadId) return null;
   const file = await db.file_upload.findUnique({
     where: { id: fileUploadId },
@@ -39,7 +48,7 @@ async function posterUrl(fileUploadId: string | null): Promise<string | null> {
     FileUploadStatus.SOFT_DELETED,
   ];
   if (!file || gone.includes(file.status)) return null;
-  return file.url;
+  return gig.isTba ? teaserPosterUrl(gig.id, fileUploadId) : file.url;
 }
 
 export async function generateMetadata({
@@ -48,7 +57,11 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const gigId = await resolveGigId(db, id);
+  // Published only. A draft still renders for an admin previewing it, but
+  // metadata is cached and served to everyone who hits the URL, so a draft
+  // gets the same "not found" as a URL that leads nowhere — anything else
+  // would confirm a guess at a draft's title.
+  const gigId = await resolveGigId(db, id, { status: GigStatus.PUBLISHED });
   const gig = gigId
     ? await db.gig.findUnique({
         where: { id: gigId },
@@ -58,7 +71,6 @@ export async function generateMetadata({
           subtitle: true,
           shortDescription: true,
           isTba: true,
-          status: true,
           posterFileUploadId: true,
         },
       })
@@ -66,24 +78,14 @@ export async function generateMetadata({
 
   if (!gig) return { title: "Gig not found", robots: { index: false } };
 
-  // A draft still renders for an admin previewing it, so the page has to exist.
-  // Metadata is cached and served to everyone who hits the URL, so it carries
-  // nothing from the gig itself — not even the title — and is never indexed.
-  if (gig.status !== GigStatus.PUBLISHED) {
-    return {
-      title: "Draft gig",
-      robots: { index: false, follow: false },
-    };
-  }
-
-  // A TBA gig keeps its secret: redacted name, site description. The poster
-  // stays — the public page shows it as the teaser.
+  // A TBA gig keeps its secret: redacted name, site description, and the
+  // teaser in place of its poster.
   const isTba = gig.isTba;
   const name = isTba ? "TBA..." : gig.title;
   const description =
     (isTba ? "" : cleanText(gig.shortDescription) || cleanText(gig.subtitle)) ||
     truncate(`ATMOS — ${DESCRIPTION_SHORT}`, 160);
-  const image = (await posterUrl(gig.posterFileUploadId)) ?? DEFAULT_OG_IMAGE;
+  const image = (await posterUrl(gig)) ?? DEFAULT_OG_IMAGE;
   const canonical = `${SITE_URL}${gigPath(gig)}`;
 
   return {

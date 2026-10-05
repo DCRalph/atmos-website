@@ -76,6 +76,7 @@ export function GigsManager({
           startsAt={gig.gigStartTime}
           endsAt={gig.gigEndTime}
           flags={gig}
+          announceAt={gig.announceAt}
         />
       ),
     },
