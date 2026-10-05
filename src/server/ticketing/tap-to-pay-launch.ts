@@ -2,7 +2,7 @@ import "server-only";
 
 import { db } from "~/server/db";
 import { sendPush } from "~/server/push";
-import { sendTransactional } from "~/server/ticketing/email/provider";
+import { sendEmail } from "~/server/email/send";
 import { renderTapToPayLaunchEmail } from "~/server/ticketing/email/templates";
 import { getTicketingSettings } from "~/server/ticketing/settings";
 import { env } from "~/env";
@@ -148,7 +148,8 @@ export async function sendTapToPayLaunchCampaign({
         supportEmail: settings.supportEmail,
       });
 
-      const result = await sendTransactional({
+      const result = await sendEmail({
+        from: "tickets",
         to: user.email,
         subject,
         html,

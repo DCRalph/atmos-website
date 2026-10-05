@@ -23,13 +23,6 @@ export const env = createEnv({
     /// The bucket's public domain (custom domain or r2.dev), no trailing path.
     R2_PUBLIC_URL: z.string().url(),
 
-    // SMTP
-    SMTP_HOST: z.string().optional(),
-    SMTP_PORT: z.string().optional(),
-    SMTP_USER: z.string().optional(),
-    SMTP_PASS: z.string().optional(),
-    SMTP_FROM: z.string().optional(),
-
     // Shopify
     SHOPIFY_STORE_DOMAIN: z.string(),
     SHOPIFY_PRIVATE_ACCESS_TOKEN: z.string(),
@@ -44,9 +37,8 @@ export const env = createEnv({
 
     PATRON_ID_SECRET: z.string().optional(),
 
-    // Ticketing — email delivery
+    // Email delivery (from addresses live in src/server/email/senders.ts)
     RESEND_API_KEY: z.string().optional(),
-    RESEND_FROM: z.string().optional(),
 
     // Ticketing — Apple Wallet
     APPLE_PASS_TYPE_ID: z.string().optional(),
@@ -111,12 +103,6 @@ export const env = createEnv({
     R2_BUCKET: process.env.R2_BUCKET,
     R2_PUBLIC_URL: process.env.R2_PUBLIC_URL,
 
-    SMTP_HOST: process.env.SMTP_HOST,
-    SMTP_PORT: process.env.SMTP_PORT,
-    SMTP_USER: process.env.SMTP_USER,
-    SMTP_PASS: process.env.SMTP_PASS,
-    SMTP_FROM: process.env.SMTP_FROM,
-
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
 
@@ -136,7 +122,6 @@ export const env = createEnv({
     PATRON_ID_SECRET: process.env.PATRON_ID_SECRET,
 
     RESEND_API_KEY: process.env.RESEND_API_KEY,
-    RESEND_FROM: process.env.RESEND_FROM,
 
     APPLE_PASS_TYPE_ID: process.env.APPLE_PASS_TYPE_ID,
     APPLE_TEAM_ID: process.env.APPLE_TEAM_ID,
