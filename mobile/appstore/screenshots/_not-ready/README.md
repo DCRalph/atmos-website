@@ -1,14 +1,8 @@
 # Not in the upload set
 
-All real captures. Each is here for a reason.
+Real captures from the current build, held back because they sell nothing.
 
 | File | Why it is held back |
 | --- | --- |
-| `03-gig-next-no-tickets.png` | Same Daffodil poster as `01-home.png`, so the set reads as two pictures of one gig. It also says "Tickets aren't on sale for this one", which undercuts the pitch. `04` and `05` show the same screen doing its job. |
-| `06-sign-in.png` | Half the screen is empty black, and it advertises the Guideline 4.8 problem: Google is the only social provider and there is no Sign in with Apple. |
-| `04-tickets-signed-out.png` | Near-black screen with a Sign In button. This is the most important screenshot for a ticketing app, and it needs a signed-in account holding a real ticket so the QR code and Add to Apple Wallet render. |
-| `05-more-signed-out.png` | Correct behaviour — note that **Internal** is absent, which is the staff gating working — but a settings list is weak marketing. |
-
-To produce a usable Tickets screenshot: sign the simulator into
-`review-customer@atmosmedia.co.nz` (it holds two tickets once
-`bun run db:seed-app-review` has run), then `ATMOS_SHOTS=07 ./scripts/screenshots.sh`.
+| `06-sign-in.png` | Correct, with Sign in with Apple first, but it is a form on a black screen. |
+| `08-more.png` | A settings list. Staff gating works (no Staff section signed out), but it is weak marketing. |

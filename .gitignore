@@ -63,3 +63,6 @@ yarn-error.log*
 
 # Local UI mocks, published to Postplan rather than shipped.
 .mocks/
+
+# App Review demo account password, written by hand after db:seed-app-review
+app-review-password.txt

@@ -1,0 +1,34 @@
+appId: nz.co.atmosmedia.app
+---
+# The Tickets screenshot, signed in as the App Review customer, which holds
+# two comps to Atmos Demo Night once `bun run db:seed-app-review` has run.
+#
+#   cd appstore/screenshots
+#   maestro --device <udid> test -e PASSWORD=... tickets.yaml
+#   cp ~/.maestro/tests/<latest>/tickets/takeScreenshot/07-tickets.png iphone-6.9/
+#
+# Run it after `scripts/screenshots.sh`, which leaves a Release build on the
+# simulator with the status bar already overridden. `simctl` cannot tap, so
+# this is the one capture that needs Maestro. It leaves the simulator signed
+# in; `_prepare.yaml` signs out at the start of the next run.
+- runFlow: ../review-video/flows/_prepare.yaml
+- tapOn: "Tickets"
+- tapOn: "SIGN IN"
+- runFlow:
+    file: ../review-video/flows/_sign-in.yaml
+    env:
+      EMAIL: review-customer@atmosmedia.co.nz
+- extendedWaitUntil:
+    visible: "Atmos Demo Night"
+    timeout: 15000
+# Sign-in can land somewhere other than the tab; go back to it explicitly.
+- runFlow:
+    when:
+      visible: "Tickets"
+    commands:
+      - tapOn: "Tickets"
+- extendedWaitUntil:
+    visible: "zz-never-zz"
+    timeout: 5000
+    optional: true
+- takeScreenshot: 07-tickets

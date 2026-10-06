@@ -100,15 +100,21 @@ shoot() { # <output-name> <route>
 import sys
 path, route = sys.argv[1], sys.argv[2]
 src = open(path).read()
-src = src.replace(
-    'import { Stack } from "expo-router";',
-    'import { Stack, useRouter } from "expo-router";\nimport { useEffect } from "react";',
+# Aliased imports at the top, so this survives the layout's own imports
+# changing. A Release build that cannot resolve the hook dies on launch and the
+# capture is of the home screen, with nothing in the log to say why.
+hook = "export default function RootLayout() {\n  return ("
+if hook not in src:
+    sys.exit(f"screenshots.sh: no '{hook.splitlines()[0]}' in {path} to inject into")
+src = (
+    'import { useRouter as __useShotRouter } from "expo-router";\n'
+    'import { useEffect as __useShotEffect } from "react";\n' + src
 )
 src = src.replace(
-    "export default function RootLayout() {\n  return (",
+    hook,
     "export default function RootLayout() {\n"
-    "  const __shotRouter = useRouter();\n"
-    "  useEffect(() => {\n"
+    "  const __shotRouter = __useShotRouter();\n"
+    "  __useShotEffect(() => {\n"
     "    const t = setTimeout(() => __shotRouter.replace(\"%s\"), 600);\n"
     "    return () => clearTimeout(t);\n"
     "  }, []);\n"
@@ -165,6 +171,8 @@ shoot 03-gig-next    "/gigs/${ATMOS_SHOT_GIG_ID:-cmt7wg2f9000004jrkpjgumnn}"
 shoot 04-gig-bright  "/gigs/${ATMOS_SHOT_GIG_BRIGHT:-cmrvwb9tn000004l7890pct2h}"
 shoot 05-gig-dark    "/gigs/${ATMOS_SHOT_GIG_DARK:-cmpc99mni000004kw616dx45z}"
 shoot 06-sign-in     "/sign-in"
+# Signed out this is a Sign in prompt. The listing's 07 comes from
+# appstore/screenshots/tickets.yaml, which signs in first.
 shoot 07-tickets     "/tickets"
 shoot 08-more        "/more"
 
