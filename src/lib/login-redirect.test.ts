@@ -1,10 +1,11 @@
-import { describe, expect, test } from "bun:test";
+import { describe, test } from "bun:test";
+import assert from "node:assert/strict";
 
 import { loginHref, safeNextPath } from "./login-redirect";
 
 describe("safeNextPath", () => {
   test("keeps same-site paths", () => {
-    expect(safeNextPath("/admin/gigs?tab=past")).toBe("/admin/gigs?tab=past");
+    assert.equal(safeNextPath("/admin/gigs?tab=past"), "/admin/gigs?tab=past");
   });
 
   test("drops anything that could leave the site", () => {
@@ -14,20 +15,20 @@ describe("safeNextPath", () => {
       "/\\evil.com",
       "evil",
     ]) {
-      expect(safeNextPath(next)).toBeNull();
+      assert.equal(safeNextPath(next), null);
     }
-    expect(safeNextPath(["/a", "/b"])).toBeNull();
-    expect(safeNextPath(undefined)).toBeNull();
+    assert.equal(safeNextPath(["/a", "/b"]), null);
+    assert.equal(safeNextPath(undefined), null);
   });
 });
 
 describe("loginHref", () => {
   test("encodes the path into next", () => {
-    expect(loginHref("/door?event=1")).toBe("/login?next=%2Fdoor%3Fevent%3D1");
+    assert.equal(loginHref("/door?event=1"), "/login?next=%2Fdoor%3Fevent%3D1");
   });
 
   test("plain /login when there is nowhere useful to return to", () => {
-    expect(loginHref(null)).toBe("/login");
-    expect(loginHref("/")).toBe("/login");
+    assert.equal(loginHref(null), "/login");
+    assert.equal(loginHref("/"), "/login");
   });
 });
