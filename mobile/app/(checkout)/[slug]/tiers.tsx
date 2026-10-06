@@ -77,7 +77,11 @@ export default function TiersScreen() {
   });
 
   const tiers = event.data?.tiers ?? [];
-  const ticketCount = lines.reduce((sum, line) => sum + line.quantity, 0);
+  // A group tier's purchase is several tickets.
+  const ticketCount = tiers.reduce(
+    (sum, tier) => sum + (quantities[tier.id] ?? 0) * tier.groupSize,
+    0,
+  );
 
   if (config.isPending) return <Loading />;
 
@@ -117,6 +121,9 @@ export default function TiersScreen() {
                     ) : null}
                     <Caption>
                       {tier.isFree ? "Free" : money(tier.priceCents)}
+                      {tier.groupSize > 1
+                        ? ` · admits ${tier.groupSize}`
+                        : ""}
                     </Caption>
                     {!tier.available ? (
                       <Pill tone="deny">

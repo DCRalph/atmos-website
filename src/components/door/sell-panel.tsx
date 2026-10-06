@@ -136,7 +136,14 @@ function SellForm({
     [lines, tiers.data],
   );
 
-  const ticketCount = lines.reduce((sum, line) => sum + line.quantity, 0);
+  // A group tier's purchase is several tickets.
+  const ticketCount = lines.reduce(
+    (sum, line) =>
+      sum +
+      line.quantity *
+        (tiers.data?.find((entry) => entry.id === line.tierId)?.groupSize ?? 1),
+    0,
+  );
 
   const sell = api.door.sellAtDoor.useMutation({
     onSuccess: (result) => {
@@ -180,7 +187,8 @@ function SellForm({
                     {tier.priceCents === 0
                       ? "Free"
                       : formatNZD(tier.priceCents)}{" "}
-                    · {tier.remaining} left
+                    {tier.groupSize > 1 ? `· group of ${tier.groupSize} ` : ""}·{" "}
+                    {tier.remaining} left
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">

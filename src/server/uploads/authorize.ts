@@ -55,6 +55,7 @@ const resolveProfile: Resolver = async (ctx, context) => {
 const resolvers: Record<UploadPresetName, Resolver> = {
   gigMedia: resolveGig,
   gigPoster: resolveGig,
+  ticketEventPoster: async () => ({}),
   creatorAvatar: resolveProfile,
   creatorBanner: resolveProfile,
   creatorThemeBackground: resolveProfile,

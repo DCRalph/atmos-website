@@ -26,7 +26,9 @@ export const ZERO_BOOKING_FEE: BookingFeeConfig = {
 
 export type OrderLine = {
   unitPriceCents: number;
+  /** Purchases. A group tier's purchase is `groupSize` tickets at one price. */
   quantity: number;
+  groupSize: number;
 };
 
 export type OrderTotals = {
@@ -36,6 +38,7 @@ export type OrderTotals = {
   totalCents: number;
   /** Component of `totalCents`, not added on top. */
   gstCents: number;
+  /** Tickets, not purchases: what the booking fee is charged on. */
   quantity: number;
 };
 
@@ -99,7 +102,10 @@ export function computeOrderTotals({
     (sum, line) => sum + line.unitPriceCents * line.quantity,
     0,
   );
-  const quantity = lines.reduce((sum, line) => sum + line.quantity, 0);
+  const quantity = lines.reduce(
+    (sum, line) => sum + line.quantity * line.groupSize,
+    0,
+  );
 
   const appliedDiscount = Math.max(
     0,
@@ -139,6 +145,16 @@ export function calcDiscountCents(
       ? roundCents((eligibleSubtotalCents * value) / 10_000)
       : value;
   return Math.min(raw, eligibleSubtotalCents);
+}
+
+/**
+ * Split an amount into `parts` whole-cent shares that add back up exactly, the
+ * odd cents going to the first shares. How a group's price lands on its tickets.
+ */
+export function splitCents(totalCents: number, parts: number): number[] {
+  const base = Math.floor(totalCents / parts);
+  const extra = totalCents - base * parts;
+  return Array.from({ length: parts }, (_, i) => base + (i < extra ? 1 : 0));
 }
 
 const nzdFormatter = new Intl.NumberFormat("en-NZ", {

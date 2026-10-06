@@ -117,6 +117,31 @@ export const uploadPresets = {
     keyPrefix: (c) => `gigs/${c.gigId}/poster`,
   }),
 
+  /**
+   * A ticketed event's own poster, for when it shouldn't just borrow its gig's.
+   * Not keyed by event so it can be picked on the create form, before the
+   * event has an id.
+   */
+  ticketEventPoster: definePreset({
+    label: "Event poster",
+    description: "The poster on a ticketed event's page and its tickets.",
+    access: "admin",
+    accept: IMAGE_TYPES,
+    maxFileSize: mb(50),
+    maxFiles: 1,
+    maxTotalSize: mb(50),
+    for: "ticket_event_poster",
+    image: {
+      maxDimension: 2048,
+      format: "webp",
+      quality: 82,
+      maxOutputSize: mb(1),
+    },
+    context: z.object({}),
+    forId: () => "posters",
+    keyPrefix: () => "ticket-events/posters",
+  }),
+
   /** A creator's profile photo. */
   creatorAvatar: definePreset({
     label: "Creator avatar",

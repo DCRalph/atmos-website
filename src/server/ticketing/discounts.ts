@@ -3,6 +3,7 @@ import "server-only";
 import { TRPCError } from "@trpc/server";
 
 import { DiscountCodeType, type Prisma } from "~Prisma/client";
+import { ticketCount } from "~/lib/ticketing/capacity";
 import { calcDiscountCents } from "~/lib/ticketing/money";
 
 /**
@@ -32,7 +33,9 @@ export type AppliedDiscount = {
 
 export type PricedLine = {
   tierId: string;
+  /** Purchases; tickets are `quantity * groupSize`. */
   quantity: number;
+  groupSize: number;
   unitPriceCents: number;
 };
 
@@ -91,7 +94,7 @@ export async function applyDiscountCode(
     throw new DiscountError("That code has been fully redeemed.");
   }
 
-  const totalQuantity = lines.reduce((sum, line) => sum + line.quantity, 0);
+  const totalQuantity = ticketCount(lines);
   if (record.minTickets !== null && totalQuantity < record.minTickets) {
     throw new DiscountError(
       `That code needs at least ${record.minTickets} tickets.`,

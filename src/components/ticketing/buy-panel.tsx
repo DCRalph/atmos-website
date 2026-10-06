@@ -55,7 +55,12 @@ export function BuyPanel({
     [quantities],
   );
 
-  const totalTickets = lines.reduce((sum, line) => sum + line.quantity, 0);
+  // People, not purchases: a group tier's one purchase is several tickets, and
+  // the per-order cap counts people.
+  const totalTickets = event.tiers.reduce(
+    (sum, tier) => sum + (quantities[tier.id] ?? 0) * tier.groupSize,
+    0,
+  );
 
   const quote = api.ticketCheckout.quote.useQuery(
     {
@@ -149,13 +154,20 @@ export function BuyPanel({
 
   const setQuantity = useCallback(
     (tier: PublicTier, next: number) => {
-      const capped = Math.max(
-        0,
-        Math.min(next, tier.maxPerOrder, event.maxTicketsPerOrder),
-      );
-      setQuantities((current) => ({ ...current, [tier.id]: capped }));
+      setQuantities((current) => {
+        const others = event.tiers.reduce(
+          (sum, t) =>
+            t.id === tier.id ? sum : sum + (current[t.id] ?? 0) * t.groupSize,
+          0,
+        );
+        const fits = Math.floor(
+          (event.maxTicketsPerOrder - others) / tier.groupSize,
+        );
+        const capped = Math.max(0, Math.min(next, tier.maxPerOrder, fits));
+        return { ...current, [tier.id]: capped };
+      });
     },
-    [event.maxTicketsPerOrder],
+    [event.tiers, event.maxTicketsPerOrder],
   );
 
   if (event.status === "CANCELLED") {
@@ -231,6 +243,16 @@ export function BuyPanel({
                     {tier.isFree ? "Free" : formatNZDCompact(tier.priceCents)}
                   </span>
                 </p>
+                {tier.groupSize > 1 && (
+                  <p
+                    className={cn(
+                      "mt-1 text-[13px]",
+                      disabled ? "text-white/40" : "text-white/70",
+                    )}
+                  >
+                    Admits {tier.groupSize}, one ticket each
+                  </p>
+                )}
                 {tier.description && (
                   <p className="mt-1 text-[13px] text-white/55">
                     {tier.description}
@@ -270,7 +292,8 @@ export function BuyPanel({
                     type="button"
                     aria-label={`One more ${tier.name}`}
                     disabled={
-                      remainingAllowance === 0 || quantity >= tier.maxPerOrder
+                      remainingAllowance < tier.groupSize ||
+                      quantity >= tier.maxPerOrder
                     }
                     onClick={() => setQuantity(tier, quantity + 1)}
                     className="flex size-10 items-center justify-center text-white/70 hover:text-white disabled:opacity-30"

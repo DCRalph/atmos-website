@@ -148,6 +148,7 @@ function TierRow({
   const [allocation, setAllocation] = useState(
     tier?.allocation.toString() ?? "100",
   );
+  const [groupSize, setGroupSize] = useState((tier?.groupSize ?? 1).toString());
   const [maxPerOrder, setMaxPerOrder] = useState(
     (tier?.maxPerOrder ?? 10).toString(),
   );
@@ -205,6 +206,7 @@ function TierRow({
     description: description || null,
     priceCents: parsePriceToCents(price) ?? 0,
     allocation: Number.parseInt(allocation, 10) || 0,
+    groupSize: Math.max(1, Number.parseInt(groupSize, 10) || 1),
     maxPerOrder: Number.parseInt(maxPerOrder, 10) || 10,
     maxPerEmail: maxPerEmail ? Number.parseInt(maxPerEmail, 10) : null,
     salesStartAt: salesStartAt ?? null,
@@ -244,6 +246,9 @@ function TierRow({
                 ? "Free"
                 : formatNZD(parsePriceToCents(price) ?? 0)}
             </span>
+            {payload.groupSize > 1 && (
+              <Badge variant="outline">Group of {payload.groupSize}</Badge>
+            )}
             {tier && !tier.isActive && <Badge variant="outline">Paused</Badge>}
             {tier?.isHidden && (
               <Badge variant="outline">
@@ -295,7 +300,10 @@ function TierRow({
             <Input value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>Price (NZD, GST inclusive)</Label>
+            <Label>
+              Price (NZD, GST inclusive)
+              {payload.groupSize > 1 ? `, per group` : ""}
+            </Label>
             <Input
               inputMode="decimal"
               value={price}
@@ -351,7 +359,24 @@ function TierRow({
             )}
           </div>
           <div className="space-y-1.5">
-            <Label>Max per order</Label>
+            <Label>Tickets per purchase</Label>
+            <Input
+              type="number"
+              min={1}
+              max={20}
+              value={groupSize}
+              onChange={(e) => setGroupSize(e.target.value)}
+            />
+            <p className="text-muted-foreground text-xs">
+              {payload.groupSize > 1
+                ? `A group tier: one purchase at the price above issues ${payload.groupSize} tickets, each with its own QR. Allocation counts tickets, so ${payload.allocation} is ${Math.floor(payload.allocation / payload.groupSize)} groups.`
+                : "Set above 1 to sell a group, e.g. 4 for a group of four at one price."}
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label>
+              Max per order{payload.groupSize > 1 ? " (groups)" : ""}
+            </Label>
             <Input
               type="number"
               min={1}
