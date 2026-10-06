@@ -386,7 +386,7 @@ the correct source images to build them from.
       scrubbed rather than dropped, because they are sales records. See
       `src/server/account-deletion.ts`.
 - [x] **`/.well-known/apple-app-site-association`** is served by a route handler
-      of that name in the website, claiming `/gigs/*` and `/tickets/*`. The app
+      of that name in the website, claiming `/gigs/<id>` and `/tickets/<token>` (one segment only). The app
       reads the path segment of a ticket link as the order access token, so an
       emailed link now opens the order in the app.
 - [x] **Notification settings** — More > Settings > Notifications, per handset,
