@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { type Metadata } from "next";
 import { auth } from "~/server/auth";
+import { redirectToLogin } from "~/server/auth-session";
 import { db } from "~/server/db";
 import { LayoutWithSideBarHeader } from "~/components/layout-with-sideBar-header";
 import { DashboardSideBar } from "~/components/admin/admin-sidebar";
@@ -22,9 +23,7 @@ export default async function AdminLayout({
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
 
-  if (!session?.user) {
-    redirect("/login");
-  }
+  if (!session?.user) return redirectToLogin();
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },

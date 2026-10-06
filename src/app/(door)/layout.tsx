@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import type { Metadata, Viewport } from "next";
 
 import { auth } from "~/server/auth";
+import { redirectToLogin } from "~/server/auth-session";
 import { db } from "~/server/db";
 import { userHasPermission } from "~/server/utils/permissions";
 
@@ -34,9 +35,7 @@ export default async function DoorLayout({
 }) {
   const session = await auth.api.getSession({ headers: await headers() });
 
-  if (!session?.user) {
-    redirect("/login?next=/door");
-  }
+  if (!session?.user) return redirectToLogin();
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },
