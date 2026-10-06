@@ -191,14 +191,20 @@ export function BuyPanel({
       <PanelShell className={className}>
         <div className="space-y-2 p-5">
           <p className="t-display text-2xl">
-            {event.status === "SOLD_OUT" ? "Sold out" : "Not on sale"}
+            {event.status === "SOLD_OUT"
+              ? event.doorSales
+                ? "Sold out online"
+                : "Sold out"
+              : "Not on sale"}
           </p>
           <p className="text-[14px] text-white/65">
-            {event.status === "SOLD_OUT"
-              ? "Every ticket is gone."
-              : event.salesOpenAt
-                ? `Tickets go on sale ${event.salesOpenAt.toLocaleDateString("en-NZ", { day: "numeric", month: "long" })}.`
-                : "Tickets aren't available for this event."}
+            {event.status !== "SOLD_OUT" && event.salesOpenAt
+              ? `Tickets go on sale ${event.salesOpenAt.toLocaleDateString("en-NZ", { day: "numeric", month: "long" })}.`
+              : event.doorSales
+                ? "Tickets are held back for the door, so you can still buy one on the night."
+                : event.status === "SOLD_OUT"
+                  ? "Every ticket is gone."
+                  : "Tickets aren't available for this event."}
           </p>
         </div>
       </PanelShell>

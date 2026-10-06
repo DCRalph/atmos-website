@@ -16,6 +16,7 @@ function tier(id: string, sortOrder: number, fields: Partial<TierRow> = {}) {
     isActive: true,
     isHidden: false,
     releaseAfterPrevious: false,
+    salesChannel: "ALL",
     salesStartAt: null,
     salesEndAt: null,
     ...fields,
@@ -63,5 +64,24 @@ describe("releaseAfterPrevious", () => {
     const groups = tier("groups", 0, { groupSize: 4, soldCount: 48 });
     const ga = tier("ga", 1, { releaseAfterPrevious: true });
     assert.equal(tierUnavailableReason(ga, now, { tiers: [groups, ga] }), null);
+  });
+});
+
+describe("salesChannel", () => {
+  test("a door tier is never sold online, and an online tier never at the door", () => {
+    const door = tier("door", 0, { salesChannel: "DOOR" });
+    const online = tier("online", 1, { salesChannel: "ONLINE" });
+    assert.equal(tierUnavailableReason(door, now), "NOT_SOLD_HERE");
+    assert.equal(tierUnavailableReason(door, now, { channel: "DOOR" }), null);
+    assert.equal(
+      tierUnavailableReason(online, now, { channel: "DOOR" }),
+      "NOT_SOLD_HERE",
+    );
+  });
+
+  test("the door can sell a hidden tier", () => {
+    const guests = tier("guests", 0, { isHidden: true });
+    assert.equal(tierUnavailableReason(guests, now), "HIDDEN");
+    assert.equal(tierUnavailableReason(guests, now, { channel: "DOOR" }), null);
   });
 });

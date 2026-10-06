@@ -62,7 +62,8 @@ export function SearchableSelect({
   className,
 }: {
   value: string | null;
-  onChange: (value: string | null) => void;
+  /** The chosen option comes along, for callers that need its label too. */
+  onChange: (value: string | null, option: SearchableOption | null) => void;
   options: SearchableOption[];
   onSearchChange?: (query: string) => void;
   loading?: boolean;
@@ -149,7 +150,10 @@ export function SearchableSelect({
   const commit = useCallback(
     (row: SearchableOption | "CLEAR") => {
       setLastPicked(row === "CLEAR" ? null : row);
-      onChange(row === "CLEAR" ? null : row.value);
+      onChange(
+        row === "CLEAR" ? null : row.value,
+        row === "CLEAR" ? null : row,
+      );
       setOpen(false);
       setQuery("");
     },
@@ -221,7 +225,7 @@ export function SearchableSelect({
                 className="hover:text-foreground text-muted-foreground"
                 onClick={(event) => {
                   event.stopPropagation();
-                  onChange(null);
+                  onChange(null, null);
                 }}
               >
                 <X className="size-3.5" />

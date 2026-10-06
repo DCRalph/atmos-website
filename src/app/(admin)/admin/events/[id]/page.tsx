@@ -1,86 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import { Copy, ExternalLink, ScanLine } from "lucide-react";
+import { useParams } from "next/navigation";
 import { toast } from "sonner";
 
 import { api, type RouterOutputs } from "~/trpc/react";
-import { AdminSection } from "~/components/admin/admin-section";
 import { Button } from "~/components/ui/button";
-import { Badge } from "~/components/ui/badge";
 import { Skeleton } from "~/components/ui/skeleton";
 import { DataTable, type DataTableColumn } from "~/components/data-table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
-import { useConfirm } from "~/components/confirm-provider";
-import { useTabParam } from "~/hooks/use-tab-param";
-import { EventEditor } from "~/components/admin/ticketing/event-editor";
-import { TierManager } from "~/components/admin/ticketing/tier-manager";
-import { EventOverview } from "~/components/admin/ticketing/event-overview";
-import { OrdersPanel } from "~/components/admin/ticketing/orders-panel";
-import { TicketsPanel } from "~/components/admin/ticketing/tickets-panel";
-import { StaffPanel } from "~/components/admin/ticketing/staff-panel";
-import { CompsPanel } from "~/components/admin/ticketing/comps-panel";
-import { TicketLinksPanel } from "~/components/admin/ticketing/ticket-links-panel";
-import { ShareLinkCard } from "~/components/admin/ticketing/share-link-card";
-import { formatEventDateTime } from "~/lib/ticketing/dates";
-
-const STATUSES = [
-  { value: "DRAFT", label: "Draft" },
-  { value: "PUBLISHED", label: "Published" },
-  { value: "SALES_PAUSED", label: "Sales paused" },
-  { value: "SOLD_OUT", label: "Sold out" },
-  { value: "CANCELLED", label: "Cancelled" },
-  { value: "ARCHIVED", label: "Archived" },
-] as const;
+import { EventWorkspace } from "~/components/admin/ticketing/workspace/event-workspace";
 
 export default function AdminEventPage() {
   const params = useParams<{ id: string }>();
-  const router = useRouter();
-  const utils = api.useUtils();
-  const [settingsDirty, setSettingsDirty] = useState(false);
-  const confirm = useConfirm();
-  const tab = useTabParam([
-    "overview",
-    "tiers",
-    "orders",
-    "tickets",
-    "comps",
-    "links",
-    "staff",
-    "settings",
-  ]);
 
   const event = api.ticketEvents.byId.useQuery(
     { id: params.id },
     { enabled: !!params.id },
   );
-
-  const setStatus = api.ticketEvents.setStatus.useMutation({
-    onSuccess: () => {
-      toast.success("Status updated");
-      void utils.ticketEvents.invalidate();
-    },
-    onError: (error) => toast.error(error.message),
-  });
-
-  const duplicate = api.ticketEvents.duplicate.useMutation({
-    onSuccess: (copy) => {
-      toast.success(`Created "${copy.name}" as a draft`);
-      void utils.ticketEvents.list.invalidate();
-      router.push(`/admin/events/${copy.id}?tab=settings`);
-    },
-    onError: (error) => toast.error(error.message),
-  });
-
   const approvals = api.ticketAdmin.pendingApprovals.useQuery(
     { eventId: params.id },
     { enabled: !!params.id },
@@ -100,135 +35,15 @@ export default function AdminEventPage() {
     );
   }
 
-  const data = event.data;
-
   return (
-    <AdminSection
-      title={data.name}
-      subtitle={`${formatEventDateTime(data.startsAt, data.timezone)}${data.venueName ? ` · ${data.venueName}` : ""}`}
-      backLink={{ href: "/admin/events", label: "Events" }}
-      actions={
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline">{data.tiers.length} tiers</Badge>
-          <Select
-            value={data.status}
-            onValueChange={async (value) => {
-              if (value === "CANCELLED") {
-                const ok = await confirm({
-                  title: "Cancel this event?",
-                  description:
-                    "Sales stop, the public page says cancelled, and wallet passes are updated. Refunds are not automatic — refund the orders yourself.",
-                  confirmLabel: "Cancel event",
-                  variant: "destructive",
-                });
-                if (!ok) return;
-              }
-              setStatus.mutate({
-                id: data.id,
-                status: value as (typeof STATUSES)[number]["value"],
-              });
-            }}
-          >
-            <SelectTrigger className="w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUSES.map((status) => (
-                <SelectItem key={status.value} value={status.value}>
-                  {status.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Button variant="outline" asChild>
-            <Link
-              href={`/events/${data.slug}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <ExternalLink className="size-4" aria-hidden /> View
-            </Link>
-          </Button>
-          <Button
-            variant="outline"
-            disabled={duplicate.isPending}
-            onClick={() => duplicate.mutate({ id: data.id })}
-          >
-            <Copy className="size-4" aria-hidden /> Duplicate
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href={`/door/${data.id}`} target="_blank" rel="noreferrer">
-              <ScanLine className="size-4" aria-hidden /> Scanner
-            </Link>
-          </Button>
-          <Button asChild>
-            <Link href={`/admin/events/${data.id}/live`}>Live door</Link>
-          </Button>
-        </div>
-      }
-    >
+    <>
       {approvals.data && approvals.data.length > 0 && (
-        <ApprovalQueue eventId={data.id} count={approvals.data.length} />
+        <div className="mx-auto w-full max-w-7xl px-4 pt-5 sm:px-6 lg:px-8 lg:pt-8">
+          <ApprovalQueue eventId={params.id} count={approvals.data.length} />
+        </div>
       )}
-
-      <Tabs {...tab}>
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="tiers">Tiers</TabsTrigger>
-          <TabsTrigger value="orders">Orders</TabsTrigger>
-          <TabsTrigger value="tickets">Tickets</TabsTrigger>
-          <TabsTrigger value="comps">Comps</TabsTrigger>
-          <TabsTrigger value="links">Ticket links</TabsTrigger>
-          <TabsTrigger value="staff">Door staff</TabsTrigger>
-          <TabsTrigger value="settings">
-            Settings
-            {settingsDirty ? (
-              <span
-                className="ml-1.5 size-1.5 rounded-full bg-amber-500"
-                aria-label="Unsaved changes"
-              />
-            ) : null}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="mt-6 space-y-6">
-          <ShareLinkCard event={data} />
-          <EventOverview eventId={data.id} />
-        </TabsContent>
-        <TabsContent value="tiers" className="mt-6">
-          <TierManager event={data} />
-        </TabsContent>
-        <TabsContent value="orders" className="mt-6">
-          <OrdersPanel eventId={data.id} />
-        </TabsContent>
-        <TabsContent value="tickets" className="mt-6">
-          <TicketsPanel eventId={data.id} />
-        </TabsContent>
-        <TabsContent value="comps" className="mt-6">
-          <CompsPanel event={data} />
-        </TabsContent>
-        <TabsContent value="links" className="mt-6">
-          <TicketLinksPanel event={data} />
-        </TabsContent>
-        <TabsContent value="staff" className="mt-6">
-          <StaffPanel event={data} />
-        </TabsContent>
-        {/* Kept mounted while other tabs are open, so a half-finished edit
-            survives a look at the orders. The dot on the tab says it's there. */}
-        <TabsContent
-          value="settings"
-          forceMount
-          className="mt-6 data-[state=inactive]:hidden"
-        >
-          <EventEditor
-            event={data}
-            onOpenTab={tab.onValueChange}
-            onDirtyChange={setSettingsDirty}
-          />
-        </TabsContent>
-      </Tabs>
-    </AdminSection>
+      <EventWorkspace event={event.data} />
+    </>
   );
 }
 

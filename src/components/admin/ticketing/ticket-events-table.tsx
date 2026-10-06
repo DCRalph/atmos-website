@@ -33,6 +33,15 @@ const STATUS_LABELS: Record<string, string> = {
 
 const statusLabel = (status: string) => STATUS_LABELS[status] ?? status;
 
+/** An event's status, the same badge in the list and on the event page. */
+export function EventStatusBadge({ status }: { status: string }) {
+  return (
+    <Badge variant={STATUS_VARIANT[status] ?? "outline"}>
+      {statusLabel(status)}
+    </Badge>
+  );
+}
+
 const faceValueCents = (event: TicketEventRow) =>
   event.tiers.reduce((sum, tier) => sum + tier.soldCount * tier.priceCents, 0);
 
