@@ -171,6 +171,10 @@ const config: ExpoConfig = {
       "expo-splash-screen",
       {
         image: "./assets/splash-icon.png",
+        // In points. The default of 100 left the wordmark a sliver. Must match
+        // `SPLASH_IMAGE_WIDTH` in `src/components/launch-reveal.tsx`, which
+        // redraws this frame in JS and animates out of it.
+        imageWidth: 300,
         resizeMode: "contain",
         backgroundColor: "#000000",
       },
