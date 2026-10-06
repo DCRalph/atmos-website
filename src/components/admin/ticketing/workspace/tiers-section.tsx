@@ -22,7 +22,7 @@ import {
   DoorOpen,
   EyeOff,
   GripVertical,
-  MoreHorizontal,
+  ChevronDown,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -46,18 +46,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "~/components/ui/sheet";
 import { Switch } from "~/components/ui/switch";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { AccessLevelSelect } from "~/components/admin/ticketing/access-level-select";
 import { toAllocationBudget } from "~/lib/ticketing/capacity";
-import { formatNZD, parsePriceToCents } from "~/lib/ticketing/money";
+import { parsePriceToCents } from "~/lib/ticketing/money";
 import {
   accessLevel as accessLevelMeta,
   isElevated,
@@ -143,8 +136,6 @@ export function TiersSection({
   const doorAllocation = tierAllocation(door);
   const doorSold = door.reduce((sum, tier) => sum + tier.soldCount, 0);
   const shared = draft.tiers.filter((tier) => tier.salesChannel === "ALL");
-
-  const editing = draft.tiers.find((tier) => tier.key === open) ?? null;
 
   return (
     <div className="space-y-4">
@@ -244,7 +235,12 @@ export function TiersSection({
                       tier={tier}
                       previous={draft.tiers[index - 1] ?? null}
                       onPatch={(fields) => patch(tier.key, fields)}
-                      onOpen={() => setOpen(tier.key)}
+                      expanded={open === tier.key}
+                      onToggle={() =>
+                        setOpen((current) =>
+                          current === tier.key ? null : tier.key,
+                        )
+                      }
                       onRemove={() => remove(tier)}
                     />
                   ))}
@@ -277,17 +273,6 @@ export function TiersSection({
           </CardContent>
         </Card>
       ) : null}
-
-      <TierSheet
-        tier={editing}
-        previous={
-          editing
-            ? (draft.tiers[draft.tiers.indexOf(editing) - 1] ?? null)
-            : null
-        }
-        onPatch={(fields) => editing && patch(editing.key, fields)}
-        onClose={() => setOpen(null)}
-      />
     </div>
   );
 }
@@ -296,13 +281,16 @@ function TierRow({
   tier,
   previous,
   onPatch,
-  onOpen,
+  expanded,
+  onToggle,
   onRemove,
 }: {
   tier: TierDraft;
   previous: TierDraft | null;
   onPatch: (fields: Partial<TierDraft>) => void;
-  onOpen: () => void;
+  /** Whether the rarer settings are open under the row. */
+  expanded: boolean;
+  onToggle: () => void;
   onRemove: () => void;
 }) {
   const {
@@ -326,274 +314,263 @@ function TierRow({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        "grid grid-cols-2 gap-2 rounded-lg border p-2 lg:grid-cols-[24px_minmax(0,1.6fr)_0.8fr_0.8fr_0.7fr_0.6fr_1fr_72px] lg:items-center",
+        "rounded-lg border",
         isDragging && "opacity-70",
         !tier.isActive && "bg-muted/40",
       )}
     >
-      <button
-        type="button"
-        className="text-muted-foreground hover:text-foreground hidden cursor-grab justify-self-center active:cursor-grabbing lg:block"
-        aria-label={`Drag ${tier.name || "tier"} to reorder`}
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="size-4" />
-      </button>
-      <div className="col-span-2 min-w-0 lg:col-span-1">
+      <div className="grid grid-cols-2 gap-2 p-2 lg:grid-cols-[24px_minmax(0,1.6fr)_0.8fr_0.8fr_0.7fr_0.6fr_1fr_72px] lg:items-center">
+        <button
+          type="button"
+          className="text-muted-foreground hover:text-foreground hidden cursor-grab justify-self-center active:cursor-grabbing lg:block"
+          aria-label={`Drag ${tier.name || "tier"} to reorder`}
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="size-4" />
+        </button>
+        <div className="col-span-2 min-w-0 lg:col-span-1">
+          <Input
+            aria-label="Tier name"
+            placeholder="Tier name"
+            value={tier.name}
+            onChange={(e) => onPatch({ name: e.target.value })}
+            className="h-8"
+          />
+          <div className="mt-1 flex flex-wrap gap-1">
+            {!tier.isActive ? <Badge variant="outline">Paused</Badge> : null}
+            {tier.isHidden ? (
+              <Badge variant="outline">
+                <EyeOff className="size-3" /> Hidden
+              </Badge>
+            ) : null}
+            {tier.releaseAfterPrevious && previous ? (
+              <Badge variant="outline">
+                After {previous.name || "the tier above"}
+              </Badge>
+            ) : null}
+            {tier.requiresApproval ? (
+              <Badge variant="outline">Needs approval</Badge>
+            ) : null}
+            {isElevated(tier.accessLevel) ? (
+              <Badge variant="secondary">
+                {accessLevelMeta(tier.accessLevel).short}
+              </Badge>
+            ) : null}
+            {tier.id && soldOut && tier.isActive ? (
+              <Badge variant="outline">Sold out</Badge>
+            ) : null}
+          </div>
+        </div>
         <Input
-          aria-label="Tier name"
-          placeholder="Tier name"
-          value={tier.name}
-          onChange={(e) => onPatch({ name: e.target.value })}
+          aria-label={groupSize > 1 ? "Price per group" : "Price"}
+          inputMode="decimal"
+          value={tier.price}
+          onChange={(e) => onPatch({ price: e.target.value })}
           className="h-8"
         />
-        <div className="mt-1 flex flex-wrap gap-1">
-          {!tier.isActive ? <Badge variant="outline">Paused</Badge> : null}
-          {tier.isHidden ? (
-            <Badge variant="outline">
-              <EyeOff className="size-3" /> Hidden
-            </Badge>
-          ) : null}
-          {tier.releaseAfterPrevious && previous ? (
-            <Badge variant="outline">
-              After {previous.name || "the tier above"}
-            </Badge>
-          ) : null}
-          {tier.requiresApproval ? (
-            <Badge variant="outline">Needs approval</Badge>
-          ) : null}
-          {isElevated(tier.accessLevel) ? (
-            <Badge variant="secondary">
-              {accessLevelMeta(tier.accessLevel).short}
-            </Badge>
-          ) : null}
-          {tier.id && soldOut && tier.isActive ? (
-            <Badge variant="outline">Sold out</Badge>
-          ) : null}
+        <Input
+          aria-label="Allocation, in tickets"
+          type="number"
+          min={0}
+          value={tier.allocation}
+          onChange={(e) => onPatch({ allocation: e.target.value })}
+          className="h-8"
+        />
+        <p className="text-muted-foreground self-center text-xs tabular-nums">
+          {tier.id ? (
+            <>
+              {tier.soldCount}
+              {tier.heldCount > 0 ? ` · ${tier.heldCount} held` : ""}
+            </>
+          ) : (
+            "New"
+          )}
+        </p>
+        <Input
+          aria-label="Tickets per purchase"
+          type="number"
+          min={1}
+          max={20}
+          value={tier.groupSize}
+          onChange={(e) => onPatch({ groupSize: e.target.value })}
+          className="h-8"
+        />
+        <Select
+          value={tier.salesChannel}
+          onValueChange={(next) => {
+            const channel = SALES_CHANNELS.find((c) => c.value === next);
+            if (channel) onPatch({ salesChannel: channel.value });
+          }}
+        >
+          <SelectTrigger size="sm" aria-label="Sold where" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SALES_CHANNELS.map((channel) => (
+              <SelectItem key={channel.value} value={channel.value}>
+                {channel.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            aria-label={`${expanded ? "Hide" : "Show"} more settings for ${tier.name || "tier"}`}
+            aria-expanded={expanded}
+            onClick={onToggle}
+          >
+            <ChevronDown
+              className={cn(
+                "size-4 transition-transform",
+                expanded && "rotate-180",
+              )}
+            />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            aria-label={`Remove ${tier.name || "tier"}`}
+            onClick={onRemove}
+          >
+            <Trash2 className="size-4" />
+          </Button>
         </div>
       </div>
-      <Input
-        aria-label={groupSize > 1 ? "Price per group" : "Price"}
-        inputMode="decimal"
-        value={tier.price}
-        onChange={(e) => onPatch({ price: e.target.value })}
-        className="h-8"
-      />
-      <Input
-        aria-label="Allocation, in tickets"
-        type="number"
-        min={0}
-        value={tier.allocation}
-        onChange={(e) => onPatch({ allocation: e.target.value })}
-        className="h-8"
-      />
-      <p className="text-muted-foreground self-center text-xs tabular-nums">
-        {tier.id ? (
-          <>
-            {tier.soldCount}
-            {tier.heldCount > 0 ? ` · ${tier.heldCount} held` : ""}
-          </>
-        ) : (
-          "New"
-        )}
-      </p>
-      <Input
-        aria-label="Tickets per purchase"
-        type="number"
-        min={1}
-        max={20}
-        value={tier.groupSize}
-        onChange={(e) => onPatch({ groupSize: e.target.value })}
-        className="h-8"
-      />
-      <Select
-        value={tier.salesChannel}
-        onValueChange={(next) => {
-          const channel = SALES_CHANNELS.find((c) => c.value === next);
-          if (channel) onPatch({ salesChannel: channel.value });
-        }}
+      {expanded ? (
+        <TierDetails tier={tier} previous={previous} onPatch={onPatch} />
+      ) : null}
+    </div>
+  );
+}
+
+/** The rarer tier settings, opened under the row so the table stays a table. */
+function TierDetails({
+  tier,
+  previous,
+  onPatch,
+}: {
+  tier: TierDraft;
+  previous: TierDraft | null;
+  onPatch: (fields: Partial<TierDraft>) => void;
+}) {
+  return (
+    <div className="grid gap-5 border-t p-4 md:grid-cols-2">
+      <Field id={`tier-description-${tier.key}`} label="Description">
+        <Input
+          id={`tier-description-${tier.key}`}
+          value={tier.description}
+          onChange={(e) => onPatch({ description: e.target.value })}
+          placeholder="Shown under the tier name"
+        />
+      </Field>
+
+      <Field
+        id={`tier-level-${tier.key}`}
+        label="Access level"
+        hint="What the door sees when one of these is scanned. Copied onto each ticket as it's issued."
       >
-        <SelectTrigger size="sm" aria-label="Sold where" className="w-full">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {SALES_CHANNELS.map((channel) => (
-            <SelectItem key={channel.value} value={channel.value}>
-              {channel.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <div className="flex justify-end">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-8"
-          aria-label={`More settings for ${tier.name || "tier"}`}
-          onClick={onOpen}
+        <AccessLevelSelect
+          value={tier.accessLevel}
+          onValueChange={(accessLevel) => onPatch({ accessLevel })}
+          className="w-full"
+        />
+      </Field>
+
+      <div className="grid grid-cols-2 gap-4">
+        <Field id={`tier-start-${tier.key}`} label="Sale starts">
+          <DateTimePicker
+            date={tier.salesStartAt}
+            onDateChange={(salesStartAt) => onPatch({ salesStartAt })}
+            placeholder="With the event"
+            clearable
+          />
+        </Field>
+        <Field id={`tier-end-${tier.key}`} label="Sale ends">
+          <DateTimePicker
+            date={tier.salesEndAt}
+            onDateChange={(salesEndAt) => onPatch({ salesEndAt })}
+            placeholder="Until doors"
+            clearable
+          />
+        </Field>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <Field
+          id={`tier-max-order-${tier.key}`}
+          label={
+            Number(tier.groupSize) > 1
+              ? "Max per order (groups)"
+              : "Max per order"
+          }
         >
-          <MoreHorizontal className="size-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-8"
-          aria-label={`Remove ${tier.name || "tier"}`}
-          onClick={onRemove}
+          <Input
+            id={`tier-max-order-${tier.key}`}
+            type="number"
+            min={1}
+            max={50}
+            value={tier.maxPerOrder}
+            onChange={(e) => onPatch({ maxPerOrder: e.target.value })}
+          />
+        </Field>
+        <Field
+          id={`tier-max-email-${tier.key}`}
+          label="Max per email"
+          hint="Only enforceable on free tiers."
         >
-          <Trash2 className="size-4" />
-        </Button>
+          <Input
+            id={`tier-max-email-${tier.key}`}
+            type="number"
+            min={1}
+            placeholder="No limit"
+            value={tier.maxPerEmail}
+            onChange={(e) => onPatch({ maxPerEmail: e.target.value })}
+          />
+        </Field>
+      </div>
+
+      <div className="space-y-3 md:col-span-2">
+        <DetailToggle
+          label="On sale"
+          hint="Off pauses this tier without removing it."
+          checked={tier.isActive}
+          onChange={(isActive) => onPatch({ isActive })}
+        />
+        {previous ? (
+          <DetailToggle
+            label={`Release after ${previous.name || "the tier above"}`}
+            hint="Stays off the public page and the door until the tier above sells out, passes its sale end, or is switched off."
+            checked={tier.releaseAfterPrevious}
+            onChange={(releaseAfterPrevious) =>
+              onPatch({ releaseAfterPrevious })
+            }
+          />
+        ) : null}
+        <DetailToggle
+          label="Hidden until unlocked by a code"
+          hint="A discount code that unlocks hidden tiers reveals it. The door can always sell it."
+          checked={tier.isHidden}
+          onChange={(isHidden) => onPatch({ isHidden })}
+        />
+        <DetailToggle
+          label="Approve each request"
+          hint="Guest list style: the buyer asks, you approve, then the ticket is issued."
+          checked={tier.requiresApproval}
+          onChange={(requiresApproval) => onPatch({ requiresApproval })}
+        />
       </div>
     </div>
   );
 }
 
-/** The rarer tier settings, in a side sheet so the table stays a table. */
-function TierSheet({
-  tier,
-  previous,
-  onPatch,
-  onClose,
-}: {
-  tier: TierDraft | null;
-  previous: TierDraft | null;
-  onPatch: (fields: Partial<TierDraft>) => void;
-  onClose: () => void;
-}) {
-  return (
-    <Sheet open={tier !== null} onOpenChange={(next) => !next && onClose()}>
-      <SheetContent className="overflow-y-auto sm:max-w-md">
-        {tier ? (
-          <>
-            <SheetHeader>
-              <SheetTitle>{tier.name || "Tier"}</SheetTitle>
-              <SheetDescription>
-                {tier.price && parsePriceToCents(tier.price)
-                  ? formatNZD(parsePriceToCents(tier.price) ?? 0)
-                  : "Free"}
-                {Number(tier.groupSize) > 1
-                  ? ` per group of ${tier.groupSize}`
-                  : ""}
-                . Changes here are part of the draft.
-              </SheetDescription>
-            </SheetHeader>
-            <div className="space-y-5 px-4 pb-6">
-              <Field id="tier-description" label="Description">
-                <Input
-                  id="tier-description"
-                  value={tier.description}
-                  onChange={(e) => onPatch({ description: e.target.value })}
-                  placeholder="Shown under the tier name"
-                />
-              </Field>
-
-              <Field
-                id="tier-level"
-                label="Access level"
-                hint="What the door sees when one of these is scanned. Copied onto each ticket as it's issued."
-              >
-                <AccessLevelSelect
-                  value={tier.accessLevel}
-                  onValueChange={(accessLevel) => onPatch({ accessLevel })}
-                  className="w-full"
-                />
-              </Field>
-
-              <div className="grid grid-cols-2 gap-4">
-                <Field id="tier-start" label="Sale starts">
-                  <DateTimePicker
-                    date={tier.salesStartAt}
-                    onDateChange={(salesStartAt) => onPatch({ salesStartAt })}
-                    placeholder="With the event"
-                    clearable
-                  />
-                </Field>
-                <Field id="tier-end" label="Sale ends">
-                  <DateTimePicker
-                    date={tier.salesEndAt}
-                    onDateChange={(salesEndAt) => onPatch({ salesEndAt })}
-                    placeholder="Until doors"
-                    clearable
-                  />
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <Field
-                  id="tier-max-order"
-                  label={
-                    Number(tier.groupSize) > 1
-                      ? "Max per order (groups)"
-                      : "Max per order"
-                  }
-                >
-                  <Input
-                    id="tier-max-order"
-                    type="number"
-                    min={1}
-                    max={50}
-                    value={tier.maxPerOrder}
-                    onChange={(e) => onPatch({ maxPerOrder: e.target.value })}
-                  />
-                </Field>
-                <Field
-                  id="tier-max-email"
-                  label="Max per email"
-                  hint="Only enforceable on free tiers."
-                >
-                  <Input
-                    id="tier-max-email"
-                    type="number"
-                    min={1}
-                    placeholder="No limit"
-                    value={tier.maxPerEmail}
-                    onChange={(e) => onPatch({ maxPerEmail: e.target.value })}
-                  />
-                </Field>
-              </div>
-
-              <div className="space-y-3">
-                <SheetToggle
-                  label="On sale"
-                  hint="Off pauses this tier without removing it."
-                  checked={tier.isActive}
-                  onChange={(isActive) => onPatch({ isActive })}
-                />
-                {previous ? (
-                  <SheetToggle
-                    label={`Release after ${previous.name || "the tier above"}`}
-                    hint="Stays off the public page and the door until the tier above sells out, passes its sale end, or is switched off."
-                    checked={tier.releaseAfterPrevious}
-                    onChange={(releaseAfterPrevious) =>
-                      onPatch({ releaseAfterPrevious })
-                    }
-                  />
-                ) : null}
-                <SheetToggle
-                  label="Hidden until unlocked by a code"
-                  hint="A discount code that unlocks hidden tiers reveals it. The door can always sell it."
-                  checked={tier.isHidden}
-                  onChange={(isHidden) => onPatch({ isHidden })}
-                />
-                <SheetToggle
-                  label="Approve each request"
-                  hint="Guest list style: the buyer asks, you approve, then the ticket is issued."
-                  checked={tier.requiresApproval}
-                  onChange={(requiresApproval) => onPatch({ requiresApproval })}
-                />
-              </div>
-            </div>
-          </>
-        ) : null}
-      </SheetContent>
-    </Sheet>
-  );
-}
-
-function SheetToggle({
+function DetailToggle({
   label,
   hint,
   checked,
