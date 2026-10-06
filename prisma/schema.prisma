@@ -1540,6 +1540,10 @@ model TicketTier {
   salesEndAt   DateTime?
   isActive     Boolean   @default(true)
   isHidden     Boolean   @default(false)
+  /// Stays off the public list until the tier before it (by `sortOrder`) has
+  /// stopped selling: sold out, past its sale end, or switched off. How
+  /// "early bird, then general admission" runs itself.
+  releaseAfterPrevious Boolean @default(false)
 
   maxPerOrder      Int     @default(10)
   maxPerEmail      Int?

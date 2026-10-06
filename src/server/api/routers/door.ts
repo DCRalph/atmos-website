@@ -24,7 +24,10 @@ import {
   ticketState,
 } from "~/server/ticketing/scan";
 import { sellAtDoor } from "~/server/ticketing/box-office";
-import { remainingInTier } from "~/server/ticketing/inventory";
+import {
+  remainingInTier,
+  tierUnavailableReason,
+} from "~/server/ticketing/inventory";
 import {
   cancelPendingOrder,
   createPendingOrder,
@@ -1127,29 +1130,31 @@ export const doorRouter = createTRPCRouter({
         input.eventId,
       );
 
+      // Every tier, switched off or not, because a tier that waits for the
+      // one before it has to be able to find it.
       const tiers = await ctx.db.ticketTier.findMany({
-        where: { eventId: input.eventId, isActive: true },
+        where: { eventId: input.eventId },
         orderBy: { priceCents: "asc" },
-        select: {
-          id: true,
-          name: true,
-          priceCents: true,
-          allocation: true,
-          soldCount: true,
-          heldCount: true,
-          groupSize: true,
-        },
       });
+      const now = new Date();
 
       // `remaining` counts purchases, so a group tier's stepper stops at the
-      // last whole group.
-      return tiers.map((tier) => ({
-        id: tier.id,
-        name: tier.name,
-        priceCents: tier.priceCents,
-        groupSize: tier.groupSize,
-        remaining: Math.floor(remainingInTier(tier) / tier.groupSize),
-      }));
+      // last whole group. A tier still waiting its turn isn't sold at the
+      // door either: the door sells what's on sale online.
+      return tiers
+        .filter(
+          (tier) =>
+            tier.isActive &&
+            tierUnavailableReason(tier, now, { tiers }) !==
+              "WAITING_FOR_PREVIOUS",
+        )
+        .map((tier) => ({
+          id: tier.id,
+          name: tier.name,
+          priceCents: tier.priceCents,
+          groupSize: tier.groupSize,
+          remaining: Math.floor(remainingInTier(tier) / tier.groupSize),
+        }));
     }),
 
   /**
