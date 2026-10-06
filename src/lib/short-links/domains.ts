@@ -99,6 +99,30 @@ export function shortLinkUrl(
 }
 
 /**
+ * Where a link sends a visit that arrived on `host`. A path means a page on
+ * the main site, which another domain does not serve, so off the main site it
+ * is made absolute.
+ *
+ * A named QR code's `?c=` is carried onto our own pages, which is how the gig
+ * photo signup knows which code brought each email. Somebody else's site gets
+ * the destination exactly as saved.
+ */
+export function linkTarget(
+  destination: string,
+  host: string,
+  qrCode: string | null,
+  siteUrl: string,
+): string {
+  if (!destination.startsWith("/")) return destination;
+
+  const url = new URL(destination, siteUrl);
+  if (qrCode) url.searchParams.set("c", qrCode);
+  return host === SITE_LINK_DOMAIN
+    ? `${url.pathname}${url.search}${url.hash}`
+    : url.toString();
+}
+
+/**
  * The hosts a link answers on, main site first: one, or every domain for a
  * link saved under `ALL_DOMAINS`.
  */

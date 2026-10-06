@@ -48,6 +48,7 @@ import { useUnsavedChangesWarning } from "~/hooks/use-unsaved-changes-warning";
 import { useUpload } from "~/hooks/use-upload";
 import { GigStatus } from "~Prisma/browser";
 import { GigChatPanel } from "./gig-chat-panel";
+import { PhotoSignupPanel } from "./photo-signup-panel";
 import { RunSheetField } from "./run-sheet-field";
 import { PosterField } from "./poster-field";
 import { TagsField } from "./tags-field";
@@ -930,6 +931,12 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
             </Card>
           )}
         </div>
+
+        {gigId && gig ? (
+          <div className="xl:col-span-12">
+            <PhotoSignupPanel gigId={gigId} gigTitle={gig.title} />
+          </div>
+        ) : null}
 
         {/* A room is a gig, so there is nothing to create — but there is no gig
             to have a room about until this one is saved. */}

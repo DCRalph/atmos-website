@@ -417,6 +417,14 @@ model Gig {
   /// Where this gig came from, when it was not typed in by hand.
   imports GigImport[]
 
+  /// The short link behind the QR codes that lead to this gig's photo signup
+  /// page. Its named QR codes are the placements scans and signups are counted
+  /// by. See `~/server/api/routers/photo-signup.ts`.
+  photoSignupLinkId String?          @unique
+  photoSignupLink   ShortLink?       @relation(fields: [photoSignupLinkId], references: [id], onDelete: SetNull)
+  /// People waiting to hear the photos are up.
+  photoSignups      GigPhotoSignup[]
+
   @@index([status, gigStartTime])
   @@index([posterFileUploadId])
   @@map("gig")
@@ -819,6 +827,27 @@ model GigMedia {
   @@map("gig_media")
 }
 
+/// An email left on a gig's photo signup page, to hear when its photos are up.
+/// Signing up also joins the newsletter, which the page says.
+model GigPhotoSignup {
+  id    String @id @default(cuid())
+  gigId String
+  gig   Gig    @relation(fields: [gigId], references: [id], onDelete: Cascade)
+
+  /// Lowercased and trimmed.
+  email  String
+  /// The name of the QR code that brought them, copied the way a click's
+  /// source is, so a deleted code keeps its signups. Null without one.
+  source String?
+
+  createdAt  DateTime  @default(now())
+  /// When the photos email went to them. Null until it has.
+  notifiedAt DateTime?
+
+  @@unique([gigId, email])
+  @@map("gig_photo_signup")
+}
+
 /// Cached Shopify Storefront products; populated by admin sync.
 model ShopifyProductCache {
   id               String   @id @default(cuid())
@@ -1157,6 +1186,7 @@ enum ActivityType {
   GIG_IMPORTED
   GIG_PUBLISHED
   GIG_UNPUBLISHED
+  GIG_PHOTOS_EMAILED
   TICKET_EVENT_CREATED
   TICKET_EVENT_UPDATED
   TICKET_EVENT_DELETED
@@ -2222,6 +2252,9 @@ model ShortLink {
 
   qrCodes ShortLinkQrCode[]
   clicks  ShortLinkClick[]
+
+  /// The gig whose photo signup this link leads to, if it is one.
+  photoSignupGig Gig?
 
   @@unique([domain, slug])
   @@map("short_link")

@@ -96,3 +96,45 @@ export async function sendEmail({
     };
   }
 }
+
+/**
+ * Send up to 100 emails in one Resend call, for mail going to a list. Same
+ * contract as `sendEmail`: never throws, and the whole batch succeeds or fails
+ * together. `idempotencyKey` makes a retried or doubled batch a no-op on
+ * Resend's side for 24 hours.
+ */
+export async function sendEmailBatch(
+  emails: {
+    from: EmailSender;
+    to: string;
+    subject: string;
+    html: string;
+    text: string;
+  }[],
+  { idempotencyKey }: { idempotencyKey?: string } = {},
+): Promise<SendResult> {
+  const resend = getResend();
+  if (!resend) {
+    console.warn(
+      `[email] RESEND_API_KEY not set — batch of ${emails.length} not sent.`,
+    );
+    return { ok: false, error: "RESEND_API_KEY not set" };
+  }
+
+  try {
+    const { error } = await resend.batch.send(
+      emails.map(({ from, ...email }) => ({
+        ...email,
+        from: EMAIL_SENDERS[from],
+      })),
+      { idempotencyKey },
+    );
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (cause) {
+    return {
+      ok: false,
+      error: cause instanceof Error ? cause.message : String(cause),
+    };
+  }
+}

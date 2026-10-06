@@ -38,6 +38,7 @@ import { ticketAnalyticsRouter } from "~/server/api/routers/ticket-analytics";
 import { lifetimeTicketsRouter } from "~/server/api/routers/lifetime-tickets";
 import { pickersRouter } from "~/server/api/routers/pickers";
 import { shortLinksRouter } from "~/server/api/routers/short-links";
+import { photoSignupRouter } from "~/server/api/routers/photo-signup";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -73,6 +74,8 @@ export const appRouter = createTRPCRouter({
   featureFlags: featureFlagsRouter,
   /** Short links and their QR codes, on any of our domains. */
   shortLinks: shortLinksRouter,
+  /** Emails left on a gig's QR code page, and the "photos are up" send. */
+  photoSignup: photoSignupRouter,
 
   // Ticketing
   ticketEvents: ticketEventsRouter,

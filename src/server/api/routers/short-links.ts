@@ -48,8 +48,11 @@ async function extraHosts(): Promise<string[]> {
   return rows.map((row) => row.host);
 }
 
-/** The input, normalised and checked, or a BAD_REQUEST naming what's wrong. */
-async function readLinkInput(input: LinkInput) {
+/**
+ * The input, normalised and checked, or a BAD_REQUEST naming what's wrong.
+ * Also how a gig's photo signup makes its link.
+ */
+export async function readLinkInput(input: LinkInput) {
   const known =
     input.domain === ALL_DOMAINS ||
     input.domain === SITE_LINK_DOMAIN ||
@@ -80,7 +83,7 @@ async function readLinkInput(input: LinkInput) {
  * clashes with that slug on any domain, and the other way round, so a request
  * never has two links to choose between.
  */
-async function assertSlugFree(
+export async function assertSlugFree(
   domain: string,
   slug: string,
   excludingId?: string,
