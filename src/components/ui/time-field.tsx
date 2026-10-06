@@ -37,6 +37,7 @@ export function TimeField({
   placeholder = "--:--",
   ariaLabel,
   className,
+  inputClassName,
   suffix,
   stepMinutes = DEFAULT_STEP_MINUTES,
 }: {
@@ -47,6 +48,8 @@ export function TimeField({
   placeholder?: string;
   ariaLabel?: string;
   className?: string;
+  /** For sizing the input to sit beside other controls; the default is the run sheet's compact row. */
+  inputClassName?: string;
   /** Rendered inside the field on the right, for a marker like "+1". */
   suffix?: ReactNode;
   stepMinutes?: number;
@@ -157,7 +160,11 @@ export function TimeField({
                 e.currentTarget.blur();
               }
             }}
-            className={cn("h-7 text-sm tabular-nums", suffix && "pr-7")}
+            className={cn(
+              "h-7 text-sm tabular-nums",
+              suffix && "pr-7",
+              inputClassName,
+            )}
           />
           {suffix ? (
             <span className="text-muted-foreground pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 text-[10px]">
