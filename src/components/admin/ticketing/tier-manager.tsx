@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { EyeOff, Loader2, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  EyeOff,
+  Loader2,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -14,8 +21,9 @@ import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { useConfirm } from "~/components/confirm-provider";
 import { formatNZD, parsePriceToCents } from "~/lib/ticketing/money";
 import { allocationRefusal, roomForTier } from "~/lib/ticketing/capacity";
+import { isStillSelling, previousTier } from "~/lib/ticketing/tiers";
+import { AccessLevelSelect } from "~/components/admin/ticketing/access-level-select";
 import {
-  ACCESS_LEVELS,
   type AccessLevelValue,
   accessLevel as accessLevelMeta,
   isElevated,
@@ -39,6 +47,21 @@ type Budget = AdminEvent["budget"];
 export function TierManager({ event }: { event: AdminEvent }) {
   const [adding, setAdding] = useState(false);
   const { budget } = event;
+  const utils = api.useUtils();
+
+  const reorder = api.ticketEvents.reorderTiers.useMutation({
+    onSuccess: () => void utils.ticketEvents.byId.invalidate(),
+    onError: (error) => toast.error(error.message),
+  });
+
+  /** Swap a tier with its neighbour. Order is what "release after" follows. */
+  const move = (index: number, by: -1 | 1) => {
+    const ids = event.tiers.map((tier) => tier.id);
+    const [moved] = ids.splice(index, 1);
+    if (!moved) return;
+    ids.splice(index + by, 0, moved);
+    reorder.mutate({ eventId: event.id, tierIds: ids });
+  };
 
   return (
     <div className="space-y-4">
@@ -63,13 +86,29 @@ export function TierManager({ event }: { event: AdminEvent }) {
       )}
 
       <div className="space-y-3">
-        {event.tiers.map((tier) => (
-          <TierRow key={tier.id} tier={tier} budget={budget} />
+        {event.tiers.map((tier, index) => (
+          <TierRow
+            key={tier.id}
+            tier={tier}
+            previous={previousTier(event.tiers, tier)}
+            budget={budget}
+            onMoveUp={
+              index > 0 && !reorder.isPending
+                ? () => move(index, -1)
+                : undefined
+            }
+            onMoveDown={
+              index < event.tiers.length - 1 && !reorder.isPending
+                ? () => move(index, 1)
+                : undefined
+            }
+          />
         ))}
 
         {adding && (
           <TierRow
             eventId={event.id}
+            previous={event.tiers.at(-1) ?? null}
             budget={budget}
             onDone={() => setAdding(false)}
             sortOrder={event.tiers.length}
@@ -127,13 +166,21 @@ function BudgetBar({ budget }: { budget: Budget }) {
 
 function TierRow({
   tier,
+  previous,
   eventId,
   budget,
+  onMoveUp,
+  onMoveDown,
   onDone,
 }: {
   tier?: Tier;
+  /** The tier listed above this one, which it can be set to wait for. */
+  previous: Tier | null;
   eventId?: string;
   budget: Budget;
+  /** Absent when the tier is already at that end of the list. */
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
   onDone?: () => void;
   sortOrder?: number;
 }) {
@@ -163,6 +210,9 @@ function TierRow({
   );
   const [isActive, setIsActive] = useState(tier?.isActive ?? true);
   const [isHidden, setIsHidden] = useState(tier?.isHidden ?? false);
+  const [releaseAfterPrevious, setReleaseAfterPrevious] = useState(
+    tier?.releaseAfterPrevious ?? false,
+  );
   const [requiresApproval, setRequiresApproval] = useState(
     tier?.requiresApproval ?? false,
   );
@@ -214,8 +264,17 @@ function TierRow({
     isActive,
     isHidden,
     requiresApproval,
+    // Only meaningful with a tier above it to wait for.
+    releaseAfterPrevious: previous !== null && releaseAfterPrevious,
     accessLevel: level,
   };
+
+  const waitingFor =
+    tier && payload.releaseAfterPrevious && previous
+      ? isStillSelling(previous, new Date())
+        ? previous
+        : null
+      : null;
 
   const sold = tier?.soldCount ?? 0;
   const held = tier?.heldCount ?? 0;
@@ -255,6 +314,9 @@ function TierRow({
                 <EyeOff className="size-3" /> Hidden
               </Badge>
             )}
+            {payload.releaseAfterPrevious && previous && (
+              <Badge variant="outline">After {previous.name}</Badge>
+            )}
             {tier?.requiresApproval && (
               <Badge variant="outline">Needs approval</Badge>
             )}
@@ -267,10 +329,35 @@ function TierRow({
               {sold} sold
               {held > 0 ? ` · ${held} held in checkout` : ""} · {remaining} left
               of {tier.allocation}
+              {waitingFor
+                ? ` · Not on the public page until ${waitingFor.name} sells out`
+                : ""}
             </p>
           )}
         </button>
 
+        {tier && (
+          <div className="flex items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Move ${tier.name} up`}
+              disabled={!onMoveUp}
+              onClick={onMoveUp}
+            >
+              <ArrowUp className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Move ${tier.name} down`}
+              disabled={!onMoveDown}
+              onClick={onMoveDown}
+            >
+              <ArrowDown className="size-4" />
+            </Button>
+          </div>
+        )}
         {tier && (
           <Button
             variant="ghost"
@@ -315,17 +402,11 @@ function TierRow({
           </div>
           <div className="space-y-1.5">
             <Label>Access level</Label>
-            <select
+            <AccessLevelSelect
               value={level}
-              onChange={(e) => setLevel(e.target.value as AccessLevelValue)}
-              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
-            >
-              {ACCESS_LEVELS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              onValueChange={setLevel}
+              className="w-full"
+            />
             <p className="text-muted-foreground text-xs">
               What the door sees when one of these is scanned. Copied onto each
               ticket as it&apos;s issued, so changing it later won&apos;t
@@ -415,7 +496,26 @@ function TierRow({
             />
           </div>
 
-          <div className="flex items-center justify-between gap-4 md:col-span-2">
+          {previous ? (
+            <div className="flex items-start gap-3 rounded-lg border p-3 md:col-span-2">
+              <Switch
+                checked={releaseAfterPrevious}
+                onCheckedChange={setReleaseAfterPrevious}
+              />
+              <div>
+                <p className="text-sm font-medium">
+                  Release after {previous.name}
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  Stays off the public page and the door until {previous.name}{" "}
+                  sells out, passes its sale end, or is switched off. Reorder
+                  the tiers to change which one it follows.
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap items-center justify-between gap-4 md:col-span-2">
             <div className="flex items-center gap-2">
               <Switch checked={isActive} onCheckedChange={setIsActive} />
               <span className="text-sm">On sale</span>

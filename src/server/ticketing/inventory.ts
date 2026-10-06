@@ -3,6 +3,7 @@ import "server-only";
 import { type Prisma, TicketOrderStatus, TicketStatus } from "~Prisma/client";
 
 import { db } from "~/server/db";
+import { remainingInTier, tierUnavailableReason } from "~/lib/ticketing/tiers";
 import {
   ticketCount,
   toAllocationBudget,
@@ -30,74 +31,11 @@ import {
 
 type Tx = Prisma.TransactionClient;
 
-/** Why a tier cannot currently be bought. `null` means it can. */
-export type TierUnavailableReason =
-  "SOLD_OUT" | "NOT_ON_SALE_YET" | "SALES_CLOSED" | "DISABLED" | "HIDDEN";
-
-export type TierAvailability = {
-  tierId: string;
-  remaining: number;
-  allocation: number;
-  soldCount: number;
-  unavailableReason: TierUnavailableReason | null;
-  salesStartAt: Date | null;
-  salesEndAt: Date | null;
-};
-
-type TierRow = {
-  id: string;
-  allocation: number;
-  soldCount: number;
-  heldCount: number;
-  groupSize: number;
-  isActive: boolean;
-  isHidden: boolean;
-  salesStartAt: Date | null;
-  salesEndAt: Date | null;
-};
-
-/** Tickets still sellable in this tier, ignoring sale windows. */
-export function remainingInTier(tier: {
-  allocation: number;
-  soldCount: number;
-  heldCount: number;
-}): number {
-  return Math.max(0, tier.allocation - tier.soldCount - tier.heldCount);
-}
-
-/**
- * Whether a tier is buyable right now. `unlockedHiddenTiers` carries the tier
- * ids revealed by an applied discount code.
- */
-export function tierUnavailableReason(
-  tier: TierRow,
-  now: Date,
-  unlockedHiddenTiers: readonly string[] = [],
-): TierUnavailableReason | null {
-  if (tier.isHidden && !unlockedHiddenTiers.includes(tier.id)) return "HIDDEN";
-  if (!tier.isActive) return "DISABLED";
-  if (tier.salesStartAt && now < tier.salesStartAt) return "NOT_ON_SALE_YET";
-  if (tier.salesEndAt && now > tier.salesEndAt) return "SALES_CLOSED";
-  // A group of four can't be sold into the last three tickets.
-  if (remainingInTier(tier) < tier.groupSize) return "SOLD_OUT";
-  return null;
-}
-
-export function toAvailability(
-  tier: TierRow,
-  now: Date,
-  unlockedHiddenTiers: readonly string[] = [],
-): TierAvailability {
-  return {
-    tierId: tier.id,
-    remaining: remainingInTier(tier),
-    allocation: tier.allocation,
-    soldCount: tier.soldCount,
-    unavailableReason: tierUnavailableReason(tier, now, unlockedHiddenTiers),
-    salesStartAt: tier.salesStartAt,
-    salesEndAt: tier.salesEndAt,
-  };
-}
+export {
+  remainingInTier,
+  tierUnavailableReason,
+  type TierUnavailableReason,
+} from "~/lib/ticketing/tiers";
 
 /**
  * Tickets already committed against the event-wide capacity cap.
@@ -318,12 +256,14 @@ export async function holdInventory(
     select: {
       id: true,
       name: true,
+      sortOrder: true,
       allocation: true,
       soldCount: true,
       heldCount: true,
       groupSize: true,
       isActive: true,
       isHidden: true,
+      releaseAfterPrevious: true,
       salesStartAt: true,
       salesEndAt: true,
       maxPerOrder: true,
@@ -355,10 +295,13 @@ export async function holdInventory(
       );
     }
 
-    const reason = tierUnavailableReason(tier, now, unlockedHiddenTiers);
+    const reason = tierUnavailableReason(tier, now, {
+      tiers,
+      unlockedHiddenTiers,
+    });
     if (reason && reason !== "SOLD_OUT") {
       throw new InventoryError(
-        reason === "NOT_ON_SALE_YET"
+        reason === "NOT_ON_SALE_YET" || reason === "WAITING_FOR_PREVIOUS"
           ? `${tier.name} is not on sale yet.`
           : `${tier.name} is no longer on sale.`,
         "TIER_UNAVAILABLE",

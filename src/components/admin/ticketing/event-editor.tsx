@@ -34,6 +34,7 @@ import {
 } from "~/components/ui/card";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { PickerSelect } from "~/components/ui/picker-select";
+import { SearchableSelect } from "~/components/ui/searchable-select";
 import { ImageUploadField } from "~/components/uploads/image-upload-field";
 import { LexicalRichTextEditor } from "~/components/lexical";
 import { useConfirm } from "~/components/confirm-provider";
@@ -98,6 +99,8 @@ type StarterTier = {
   allocation: string;
   groupSize: string;
   requiresApproval: boolean;
+  /** Waits for the starter tier above it to stop selling. */
+  releaseAfterPrevious: boolean;
 };
 
 const starterTier = (fields: Partial<StarterTier> = {}): StarterTier => ({
@@ -107,6 +110,7 @@ const starterTier = (fields: Partial<StarterTier> = {}): StarterTier => ({
   allocation: "100",
   groupSize: "1",
   requiresApproval: false,
+  releaseAfterPrevious: false,
   ...fields,
 });
 
@@ -121,6 +125,7 @@ const TIER_PRESETS: { label: string; tiers: () => StarterTier[] }[] = [
         name: "General admission",
         price: "35.00",
         allocation: "150",
+        releaseAfterPrevious: true,
       }),
     ],
   },
@@ -380,7 +385,10 @@ const toPayload = (draft: EventDraft, startsAt: Date) => ({
 });
 
 /** Every IANA zone the browser knows, for the time zone picker. */
-const TIME_ZONES = Intl.supportedValuesOf("timeZone");
+const TIME_ZONES = Intl.supportedValuesOf("timeZone").map((zone) => ({
+  value: zone,
+  label: zone.replaceAll("_", " "),
+}));
 
 export function EventEditor({
   event,
@@ -551,6 +559,7 @@ export function EventEditor({
               allocation: Number(tier.allocation),
               groupSize: Number(tier.groupSize),
               requiresApproval: tier.requiresApproval,
+              releaseAfterPrevious: tier.releaseAfterPrevious,
             })
             .catch(() => failed.push(tier.name));
         }
@@ -853,10 +862,11 @@ export function EventEditor({
                     <span className="w-9" />
                   </div>
                 ) : null}
-                {draft.starterTiers.map((tier) => (
+                {draft.starterTiers.map((tier, index) => (
                   <StarterTierRow
                     key={tier.key}
                     tier={tier}
+                    previousName={draft.starterTiers[index - 1]?.name ?? null}
                     onChange={(next) =>
                       update(
                         "starterTiers",
@@ -1029,18 +1039,15 @@ export function EventEditor({
                 label="Event time zone"
                 hint="What the public page, tickets and door list show times in."
               >
-                <select
+                <SearchableSelect
                   id="event-tz"
                   value={draft.timezone}
-                  onChange={(e) => update("timezone", e.target.value)}
-                  className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
-                >
-                  {TIME_ZONES.map((zone) => (
-                    <option key={zone} value={zone}>
-                      {zone}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(zone) =>
+                    update("timezone", zone ?? "Pacific/Auckland")
+                  }
+                  options={TIME_ZONES}
+                  searchPlaceholder="Search zones, e.g. Auckland…"
+                />
               </Field>
             </CardContent>
           </Card>
@@ -1398,10 +1405,13 @@ function roomItem(over: number, unallocated: number): ChecklistItem {
 
 function StarterTierRow({
   tier,
+  previousName,
   onChange,
   onRemove,
 }: {
   tier: StarterTier;
+  /** The row above, which this one can wait for. Null on the first row. */
+  previousName: string | null;
   onChange: (next: StarterTier) => void;
   onRemove: () => void;
 }) {
@@ -1447,6 +1457,15 @@ function StarterTierRow({
       >
         <X className="h-4 w-4" />
       </Button>
+      {previousName !== null ? (
+        <label className="text-muted-foreground col-span-full flex items-center gap-2 px-1 text-xs">
+          <Switch
+            checked={tier.releaseAfterPrevious}
+            onCheckedChange={(value) => set("releaseAfterPrevious", value)}
+          />
+          Release after {previousName || "the tier above"} sells out
+        </label>
+      ) : null}
       {tier.requiresApproval ? (
         <p className="text-muted-foreground col-span-full px-1 text-xs">
           Each request is approved by hand before a ticket is issued.

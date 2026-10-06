@@ -149,6 +149,8 @@ const tierInputSchema = z.object({
   allocation: z.number().int().min(0),
   /** Tickets per purchase. Above 1 makes it a group tier. */
   groupSize: z.number().int().min(1).max(20).default(1),
+  /** Off the public list until the tier above stops selling. */
+  releaseAfterPrevious: z.boolean().default(false),
   salesStartAt: z.date().nullable().optional(),
   salesEndAt: z.date().nullable().optional(),
   isActive: z.boolean().default(true),
@@ -733,6 +735,7 @@ export const ticketEventsRouter = createTRPCRouter({
               priceCents: tier.priceCents,
               allocation: tier.allocation,
               groupSize: tier.groupSize,
+              releaseAfterPrevious: tier.releaseAfterPrevious,
               salesStartAt: tier.salesStartAt,
               salesEndAt: tier.salesEndAt,
               isActive: tier.isActive,
@@ -796,6 +799,7 @@ export const ticketEventsRouter = createTRPCRouter({
             priceCents: rest.priceCents,
             allocation: rest.allocation,
             groupSize: rest.groupSize,
+            releaseAfterPrevious: rest.releaseAfterPrevious,
             salesStartAt: rest.salesStartAt ?? null,
             salesEndAt: rest.salesEndAt ?? null,
             isActive: rest.isActive,
@@ -870,6 +874,9 @@ export const ticketEventsRouter = createTRPCRouter({
               // bought at, so holds still give back what they took.
               ...(rest.groupSize !== undefined
                 ? { groupSize: rest.groupSize }
+                : {}),
+              ...(rest.releaseAfterPrevious !== undefined
+                ? { releaseAfterPrevious: rest.releaseAfterPrevious }
                 : {}),
               ...(rest.salesStartAt !== undefined
                 ? { salesStartAt: rest.salesStartAt }
@@ -1189,13 +1196,20 @@ function toPublicEvent(
   const now = new Date();
   const fee = resolveBookingFee(event, settings);
 
+  // A tier waiting for the one before it isn't shown at all until it opens:
+  // the buyer sees early bird, then general admission, never both.
   const tiers = event.tiers
-    .filter((tier) => !tier.isHidden)
-    .map((tier) => {
+    .map((tier) => ({
+      tier,
+      reason: tierUnavailableReason(tier, now, { tiers: event.tiers }),
+    }))
+    .filter(
+      ({ tier, reason }) => !tier.isHidden && reason !== "WAITING_FOR_PREVIOUS",
+    )
+    .map(({ tier, reason }) => {
       // In purchases, which is what the buyer is counting: "2 left" of a group
       // tier is two groups.
       const remaining = Math.floor(remainingInTier(tier) / tier.groupSize);
-      const reason = tierUnavailableReason(tier, now);
       return {
         id: tier.id,
         name: tier.name,

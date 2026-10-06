@@ -34,6 +34,7 @@ import { useConfirm } from "~/components/confirm-provider";
 import { useDebouncedValue } from "~/hooks/use-debounced-value";
 import { FilterSelect, ListFilters } from "../list-filters";
 import { formatNZD } from "~/lib/ticketing/money";
+import { TicketAccessLevelSelect } from "~/components/admin/ticketing/access-level-select";
 import {
   ACCESS_LEVELS,
   type AccessLevelValue,
@@ -58,44 +59,6 @@ function canRefund(ticket: TicketRow) {
     ticket.status === "VALID" &&
     !ticket.isComp &&
     PAID_METHODS.has(ticket.order.paymentMethod)
-  );
-}
-
-function AccessLevelSelect({
-  ticketId,
-  value,
-}: {
-  ticketId: string;
-  value: string;
-}) {
-  const utils = api.useUtils();
-  const setLevel = api.ticketAdmin.setTicketAccessLevel.useMutation({
-    onSuccess: () => {
-      toast.success("Ticket updated");
-      void utils.ticketAdmin.invalidate();
-    },
-    onError: (error) => toast.error(error.message),
-  });
-
-  return (
-    <select
-      value={value}
-      disabled={setLevel.isPending}
-      onChange={(e) =>
-        setLevel.mutate({
-          ticketId,
-          accessLevel: e.target.value as AccessLevelValue,
-        })
-      }
-      aria-label="Access level"
-      className="border-input bg-background h-7 rounded-md border px-1.5 text-xs"
-    >
-      {ACCESS_LEVELS.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
   );
 }
 
@@ -672,7 +635,10 @@ function TicketDetail({
 
       <div className="flex items-center justify-between gap-3">
         <Label>Access level</Label>
-        <AccessLevelSelect ticketId={ticket.id} value={ticket.accessLevel} />
+        <TicketAccessLevelSelect
+          ticketId={ticket.id}
+          value={ticket.accessLevel}
+        />
       </div>
 
       {ticket.scans.length > 0 && (
