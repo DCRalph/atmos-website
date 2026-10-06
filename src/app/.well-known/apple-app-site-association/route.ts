@@ -32,12 +32,18 @@ const APP_ID = `${TEAM_ID}.${BUNDLE_ID}`;
  * - `/tickets/*` → `app/tickets/[orderId].tsx`, which reads the path segment as
  *   an order access token — the same token the emailed link carries.
  *
- * Excluded, deliberately: `/tickets/terms` and `/tickets/<token>/details` are
- * web-only pages, and `/t/*` is a single-ticket view the app does not have.
+ * Apple's `*` also matches `/`, so `/gigs/*` alone would claim every page
+ * beneath a gig too. The `NOT …/*/*` rules keep the claim to one segment, so
+ * nested web-only pages (`/gigs/<id>/photo-signup`, `/tickets/<token>/details`)
+ * stay in the browser, including ones added later.
+ *
+ * Also excluded: `/tickets/terms` is a web page, and `/t/*` is a single-ticket
+ * view the app does not have.
  */
 const PATHS = [
   "NOT /tickets/terms",
-  "NOT /tickets/*/details",
+  "NOT /gigs/*/*",
+  "NOT /tickets/*/*",
   "/gigs/*",
   "/tickets/*",
 ];
