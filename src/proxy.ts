@@ -3,9 +3,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { SITE_URL } from "~/lib/seo-constants";
 import { DEV_HOSTS } from "~/lib/dev-hosts";
 import { isMainSiteHost, normaliseHost } from "~/lib/short-links/domains";
+import { PATHNAME_HEADER } from "~/lib/login-redirect";
 
 /**
- * Extra short link domains. The main site passes straight through.
+ * Extra short link domains. The main site passes straight through, with the
+ * requested path attached as a header so auth gates can send signed-out users
+ * to /login and back again.
  *
  * Any other host pointed at this deployment is treated as a short link
  * domain, which is what lets domains be added from the admin without a deploy:
@@ -19,7 +22,11 @@ import { isMainSiteHost, normaliseHost } from "~/lib/short-links/domains";
 export function proxy(request: NextRequest) {
   const host = request.headers.get("host");
   if (!host || isMainSiteHost(host, SITE_URL, DEV_HOSTS)) {
-    return NextResponse.next();
+    const url = request.nextUrl.clone();
+    url.searchParams.delete("_rsc");
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set(PATHNAME_HEADER, url.pathname + url.search);
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
   const { pathname, search } = request.nextUrl;

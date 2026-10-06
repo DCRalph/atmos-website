@@ -15,8 +15,10 @@ import {
 } from "~/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
-export function LoginForm() {
+/** Sign in / sign up card. `next` is a vetted same-site path to land on afterwards. */
+export function LoginForm({ next }: { next: string | null }) {
   const router = useRouter();
+  const destination = next ?? "/";
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,7 +40,7 @@ export function LoginForm() {
         },
         {
           onSuccess: () => {
-            router.push("/");
+            router.push(destination);
             router.refresh();
           },
           onError: (ctx) => {
@@ -69,7 +71,7 @@ export function LoginForm() {
         {
           onSuccess: () => {
             // After successful signup, automatically log in (if autoSignIn is enabled)
-            router.push("/");
+            router.push(destination);
             router.refresh();
           },
           onError: (ctx) => {
@@ -92,7 +94,7 @@ export function LoginForm() {
     try {
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/",
+        callbackURL: destination,
       });
     } catch (err) {
       console.error(err);
@@ -108,6 +110,11 @@ export function LoginForm() {
         <CardDescription>
           {isLogin ? "Sign in to your account" : "Create a new account"}
         </CardDescription>
+        {next && (
+          <p className="text-muted-foreground truncate text-xs">
+            Redirecting to {next}
+          </p>
+        )}
       </CardHeader>
       <CardContent>
         <Tabs
