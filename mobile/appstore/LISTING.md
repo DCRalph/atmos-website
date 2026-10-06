@@ -129,11 +129,12 @@ reachable on a fresh install before you submit.
 Editable without a new build, so use it for whatever is on next.
 
 ```
-Daffodil Dancefloor, 28 August at San Fran. Line-up, set times and tickets in
-the app. New dates land here first.
+broderbeats INTUITION Vol.3, Friday 9 October at San Fran. Line-up, times and
+tickets in the app. New dates land here first.
 ```
 
-127 characters. ⚠️ Update per release, or it dates badly.
+123 characters. ⚠️ Dated: after 9 October swap in the next gig (no new build
+needed), or it reads as stale on the store page.
 
 ---
 
@@ -189,8 +190,10 @@ APP_REVIEW_PASSWORD=... bun run db:seed-app-review
 **Run it before every submission.** It resets whatever the last reviewer did
 (check-ins, door sales, ID checks), moves the demo night about six months
 ahead so it is never in the past, and resets both passwords to the value
-given. It sends no email. The password is not kept in the repo: use the same
-one each time and keep it with the App Store Connect login.
+given. It sends no email. The password is not kept in the repo: the current
+one is in `app-review-password.txt` at the root of the main checkout, which is
+gitignored. Reuse it, or if you change it, update that file and the review
+notes together.
 
 | Account | Email | What it shows |
 | --- | --- | --- |
@@ -344,24 +347,25 @@ gives the first three the most prominence.
 
 | Order | File | Shows |
 | --- | --- | --- |
-| 1 | `01-home.png` | Home — brand, and the next date's poster filling the screen |
-| 2 | `04-gig-bright.png` | A date doing its job: bright poster, line-up, genre, rich description with linked artists, photo gallery |
-| 3 | `05-gig-dark.png` | The same screen with a dark cinematic poster — deliberately unlike 2 |
-| 4 | `02-gigs.png` | Gigs — upcoming above, been-and-gone below |
+| 1 | `01-home.png` | Home: the next date's poster, countdown and Gig info |
+| 2 | `07-tickets.png` | Tickets: a pass with its QR code and Add to Apple Wallet |
+| 3 | `03-gig-next.png` | A gig on sale: poster, date, times, venue, line-up, Get Tickets |
+| 4 | `04-gig-bright.png` | A bright photographic poster, genre tag and line-up with set roles |
+| 5 | `05-gig-dark.png` | A dark cinematic poster, deliberately unlike 4 |
+| 6 | `02-gigs.png` | Gigs: search, Upcoming and Past, grouped by month |
 
-Four gig posters would read as four pictures of one gig, so the two detail
-screens are picked to disagree: a bright photographic poster against a dark one.
-Neither currently shows the **Tickets** CTA — both dates have since passed, and
-the only upcoming date sells through an external link and shares Home's poster.
-Recapture `04`/`05` (`ATMOS_SHOT_GIG_BRIGHT=<id>`) when the next Atmos-ticketed
-gig is announced so the from-price button is in shot.
+Captured 6 October 2026 from the redesigned build. `01`, `02` and `03` show
+broderbeats INTUITION Vol.3 (9 October); they stay valid as screenshots after
+the date passes, but recapture them with the next poster when convenient
+(`ATMOS_SHOT_GIG_ID=<id> ATMOS_SHOTS=01,02,03 ./scripts/screenshots.sh`).
+
+The Tickets shot is the App Review customer's demo pass, captured with
+`screenshots/tickets.yaml` (Maestro, see its header) after the seed.
+
+⚠️ `04` shows a line-up role typed as "OPNING" on the Fovos gig. Fix the set
+in the admin and recapture `04` if it bothers you.
 
 **Held back** — `screenshots/_not-ready/`, with a reason per file in its README.
-
-⚠️ The Tickets screenshot is still missing, and it is the one Apple will look at
-hardest for a ticketing app. It needs a signed-in account holding a real ticket
-so the QR code and the Add to Apple Wallet button render. Sign in on the
-simulator, give that account a comp, then `ATMOS_SHOTS=07 ./scripts/screenshots.sh`.
 
 ⚠️ These are raw device captures, not marketed screenshots with captions and
 device frames. Apple accepts raw captures. If you want captioned ones, these are
@@ -456,9 +460,12 @@ the correct source images to build them from.
 - [ ] Build with `scripts/build-ipa.sh` — it verifies version, build number,
       icon, that the Tap to Pay entitlement is absent, and that the Sign in with
       Apple and associated-domains entitlements are present.
-- [ ] Upload the `.ipa` with Transporter.
+- [ ] Upload the `.ipa` with Transporter, or export with `destination` set to
+      `upload` to send it straight to App Store Connect.
 - [ ] Age rating answers, demo account and notes as in sections 1 and 7, with
       the review video attached.
 - [ ] Email Apple the completed App Review Requirements Checklist v1.6 —
       `docs/ticketing/APP-REVIEW-ANSWERS.md`.
-- [ ] ⚠️ The Tickets screenshot is still missing — see section 9.
+- [ ] Upload the six screenshots in the order in section 9, replacing the old
+      set.
+- [ ] Refresh the promotional text (section 4) if its date has passed.
