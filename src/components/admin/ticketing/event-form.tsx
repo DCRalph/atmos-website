@@ -11,6 +11,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { Switch } from "~/components/ui/switch";
+import { ImageUploadField } from "~/components/uploads/image-upload-field";
 
 type Visibility = "PUBLIC" | "UNLISTED" | "PRIVATE";
 
@@ -63,6 +64,9 @@ export function EventForm({ event }: { event?: AdminEvent }) {
   const [name, setName] = useState(event?.name ?? "");
   const [slug, setSlug] = useState(event?.slug ?? "");
   const [gigId, setGigId] = useState<string | null>(event?.gigId ?? null);
+  const [posterId, setPosterId] = useState<string | null>(
+    event?.posterFileUploadId ?? null,
+  );
   const [shortDescription, setShortDescription] = useState(
     event?.shortDescription ?? "",
   );
@@ -152,6 +156,7 @@ export function EventForm({ event }: { event?: AdminEvent }) {
       name,
       slug: slug || undefined,
       gigId,
+      posterFileUploadId: posterId,
       shortDescription: shortDescription || null,
       venueName: venueName || null,
       venueAddress: venueAddress || null,
@@ -227,6 +232,18 @@ export function EventForm({ event }: { event?: AdminEvent }) {
             searchPlaceholder="Search gigs by title…"
             emptyText="No gigs match that."
             clearLabel="No gig"
+          />
+        </Field>
+
+        <Field
+          label="Poster"
+          hint="Shown on the event page and the buyer's tickets. Leave empty to use the linked gig's poster."
+        >
+          <ImageUploadField
+            preset="ticketEventPoster"
+            value={posterId}
+            onChange={(id) => setPosterId(id)}
+            aspect="portrait"
           />
         </Field>
 

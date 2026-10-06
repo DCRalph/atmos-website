@@ -12,6 +12,7 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
+import { eventPosterId } from "~/lib/ticketing/poster";
 import { buildTicketQrPayload } from "~/server/ticketing/qr";
 import { renderQrSvg } from "~/server/ticketing/qr-image";
 import {
@@ -165,13 +166,7 @@ export const ticketsRouter = createTRPCRouter({
           isR18: order.event.isR18,
           status: order.event.status,
           requireAttendeeNames: order.event.requireAttendeeNames,
-          posterFileUploadId:
-            order.event.posterFileUploadId ??
-            // Not a TBA gig's: its poster id opens the unblurred poster.
-            (order.event.gig?.isTba
-              ? null
-              : order.event.gig?.posterFileUploadId) ??
-            null,
+          posterFileUploadId: eventPosterId(order.event),
         },
         tickets,
       };
@@ -390,13 +385,7 @@ export const ticketsRouter = createTRPCRouter({
           venueAddress: ticket.event.venueAddress,
           isR18: ticket.event.isR18,
           status: ticket.event.status,
-          posterFileUploadId:
-            ticket.event.posterFileUploadId ??
-            // Not a TBA gig's: its poster id opens the unblurred poster.
-            (ticket.event.gig?.isTba
-              ? null
-              : ticket.event.gig?.posterFileUploadId) ??
-            null,
+          posterFileUploadId: eventPosterId(ticket.event),
         },
         handouts: ticket.handouts.map((handout) => ({
           id: handout.id,
@@ -645,7 +634,7 @@ export const ticketsRouter = createTRPCRouter({
             status: true,
             gigId: true,
             posterFileUploadId: true,
-            gig: { select: { posterFileUploadId: true } },
+            gig: { select: { posterFileUploadId: true, isTba: true } },
           },
         },
         tickets: {
@@ -663,8 +652,7 @@ export const ticketsRouter = createTRPCRouter({
           ...event,
           // The app's ticket stack draws each order's poster; same fallback as
           // `byAccessToken`.
-          posterFileUploadId:
-            posterFileUploadId ?? gig?.posterFileUploadId ?? null,
+          posterFileUploadId: eventPosterId({ posterFileUploadId, gig }),
         },
         ticketCount: order.tickets.length,
         // The app needs this to open the order and to build wallet-pass URLs;

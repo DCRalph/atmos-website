@@ -4,6 +4,7 @@ import { type Prisma, TicketOrderStatus, TicketStatus } from "~Prisma/client";
 
 import { db } from "~/server/db";
 import {
+  ticketCount,
   toAllocationBudget,
   type AllocationBudget,
 } from "~/lib/ticketing/capacity";
@@ -22,6 +23,9 @@ import {
  * Locking every tier of the event (rather than only the ones being bought)
  * also keeps the event-wide `capacity` check honest, and ordering the lock by
  * `id` removes any chance of two transactions deadlocking on each other.
+ *
+ * Every counter here is in tickets. An order line is in purchases, so a group
+ * tier's line moves the counters by `quantity * groupSize` — see `ticketCount`.
  */
 
 type Tx = Prisma.TransactionClient;
@@ -45,6 +49,7 @@ type TierRow = {
   allocation: number;
   soldCount: number;
   heldCount: number;
+  groupSize: number;
   isActive: boolean;
   isHidden: boolean;
   salesStartAt: Date | null;
@@ -73,7 +78,8 @@ export function tierUnavailableReason(
   if (!tier.isActive) return "DISABLED";
   if (tier.salesStartAt && now < tier.salesStartAt) return "NOT_ON_SALE_YET";
   if (tier.salesEndAt && now > tier.salesEndAt) return "SALES_CLOSED";
-  if (remainingInTier(tier) <= 0) return "SOLD_OUT";
+  // A group of four can't be sold into the last three tickets.
+  if (remainingInTier(tier) < tier.groupSize) return "SOLD_OUT";
   return null;
 }
 
@@ -228,7 +234,10 @@ export async function releaseExpiredHolds(
       status: TicketOrderStatus.PENDING,
       expiresAt: { lt: now },
     },
-    select: { id: true, items: { select: { tierId: true, quantity: true } } },
+    select: {
+      id: true,
+      items: { select: { tierId: true, quantity: true, groupSize: true } },
+    },
   });
 
   if (expired.length === 0) return 0;
@@ -238,7 +247,7 @@ export async function releaseExpiredHolds(
     for (const item of order.items) {
       releasedByTier.set(
         item.tierId,
-        (releasedByTier.get(item.tierId) ?? 0) + item.quantity,
+        (releasedByTier.get(item.tierId) ?? 0) + ticketCount([item]),
       );
     }
   }
@@ -276,6 +285,7 @@ export class InventoryError extends Error {
   }
 }
 
+/** `quantity` is purchases: a group tier's single purchase is several tickets. */
 export type RequestedLine = { tierId: string; quantity: number };
 
 /**
@@ -311,6 +321,7 @@ export async function holdInventory(
       allocation: true,
       soldCount: true,
       heldCount: true,
+      groupSize: true,
       isActive: true,
       isHidden: true,
       salesStartAt: true,
@@ -320,7 +331,13 @@ export async function holdInventory(
   });
   const byId = new Map(tiers.map((t) => [t.id, t]));
 
-  const totalRequested = lines.reduce((sum, l) => sum + l.quantity, 0);
+  // The per-order cap is people, so a group of four uses four of it.
+  const totalRequested = ticketCount(
+    lines.map((line) => ({
+      quantity: line.quantity,
+      groupSize: byId.get(line.tierId)?.groupSize ?? 1,
+    })),
+  );
   if (totalRequested > event.maxTicketsPerOrder) {
     throw new InventoryError(
       `You can buy at most ${event.maxTicketsPerOrder} tickets in one order.`,
@@ -357,7 +374,7 @@ export async function holdInventory(
       );
     }
 
-    const remaining = remainingInTier(tier);
+    const remaining = Math.floor(remainingInTier(tier) / tier.groupSize);
     if (remaining < line.quantity) {
       throw new InventoryError(
         remaining === 0
@@ -385,9 +402,12 @@ export async function holdInventory(
   }
 
   for (const line of lines) {
+    const groupSize = byId.get(line.tierId)?.groupSize ?? 1;
     await tx.ticketTier.update({
       where: { id: line.tierId },
-      data: { heldCount: { increment: line.quantity } },
+      data: {
+        heldCount: { increment: ticketCount([{ ...line, groupSize }]) },
+      },
     });
   }
 }
@@ -398,14 +418,15 @@ export async function holdInventory(
  */
 export async function commitHold(
   tx: Tx,
-  items: readonly { tierId: string; quantity: number }[],
+  items: readonly { tierId: string; quantity: number; groupSize: number }[],
 ): Promise<void> {
   for (const item of items) {
+    const tickets = ticketCount([item]);
     await tx.ticketTier.update({
       where: { id: item.tierId },
       data: {
-        heldCount: { decrement: item.quantity },
-        soldCount: { increment: item.quantity },
+        heldCount: { decrement: tickets },
+        soldCount: { increment: tickets },
       },
     });
   }
@@ -414,12 +435,12 @@ export async function commitHold(
 /** Give back an order's holds without selling — abandoned or failed payment. */
 export async function releaseHold(
   tx: Tx,
-  items: readonly { tierId: string; quantity: number }[],
+  items: readonly { tierId: string; quantity: number; groupSize: number }[],
 ): Promise<void> {
   for (const item of items) {
     await tx.ticketTier.update({
       where: { id: item.tierId },
-      data: { heldCount: { decrement: item.quantity } },
+      data: { heldCount: { decrement: ticketCount([item]) } },
     });
   }
 }

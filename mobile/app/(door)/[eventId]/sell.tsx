@@ -79,7 +79,14 @@ export default function SellScreen() {
     [lines, tiers.data],
   );
 
-  const ticketCount = lines.reduce((sum, line) => sum + line.quantity, 0);
+  // A group tier's purchase is several tickets.
+  const ticketCount = lines.reduce(
+    (sum, line) =>
+      sum +
+      line.quantity *
+        (tiers.data?.find((entry) => entry.id === line.tierId)?.groupSize ?? 1),
+    0,
+  );
 
   const sell = api.door.sellAtDoor.useMutation({
     onSuccess: (result) => {
@@ -190,6 +197,9 @@ export default function SellScreen() {
                       {tier.priceCents === 0
                         ? "Free"
                         : `$${(tier.priceCents / 100).toFixed(2)}`}{" "}
+                      {tier.groupSize > 1
+                        ? `· group of ${tier.groupSize} `
+                        : ""}
                       · {tier.remaining} left
                     </Caption>
                   </View>

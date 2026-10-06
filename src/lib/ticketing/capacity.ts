@@ -102,3 +102,13 @@ export function allocationRefusal({
     ` — the other tiers hold ${others}, so this one can be at most ${roomForTier(budget, currentAllocation)}.`
   );
 }
+
+/**
+ * Tickets a set of order lines puts in the room. `quantity` counts purchases,
+ * and a purchase of a group tier is `groupSize` people.
+ */
+export function ticketCount(
+  lines: readonly { quantity: number; groupSize: number }[],
+): number {
+  return lines.reduce((sum, line) => sum + line.quantity * line.groupSize, 0);
+}

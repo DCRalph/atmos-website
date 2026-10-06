@@ -24,6 +24,7 @@ import {
   ticketState,
 } from "~/server/ticketing/scan";
 import { sellAtDoor } from "~/server/ticketing/box-office";
+import { remainingInTier } from "~/server/ticketing/inventory";
 import {
   cancelPendingOrder,
   createPendingOrder,
@@ -1136,17 +1137,18 @@ export const doorRouter = createTRPCRouter({
           allocation: true,
           soldCount: true,
           heldCount: true,
+          groupSize: true,
         },
       });
 
+      // `remaining` counts purchases, so a group tier's stepper stops at the
+      // last whole group.
       return tiers.map((tier) => ({
         id: tier.id,
         name: tier.name,
         priceCents: tier.priceCents,
-        remaining: Math.max(
-          0,
-          tier.allocation - tier.soldCount - tier.heldCount,
-        ),
+        groupSize: tier.groupSize,
+        remaining: Math.floor(remainingInTier(tier) / tier.groupSize),
       }));
     }),
 

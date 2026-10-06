@@ -27,6 +27,7 @@ import {
 } from "~/server/api/trpc";
 import { logActivity } from "~/server/utils/activity-log";
 import { allocationRefusal } from "~/lib/ticketing/capacity";
+import { eventPosterId } from "~/lib/ticketing/poster";
 import {
   allocationBudget,
   eventHeadcount,
@@ -146,6 +147,8 @@ const tierInputSchema = z.object({
   description: z.string().trim().nullable().optional(),
   priceCents: z.number().int().min(0),
   allocation: z.number().int().min(0),
+  /** Tickets per purchase. Above 1 makes it a group tier. */
+  groupSize: z.number().int().min(1).max(20).default(1),
   salesStartAt: z.date().nullable().optional(),
   salesEndAt: z.date().nullable().optional(),
   isActive: z.boolean().default(true),
@@ -304,7 +307,14 @@ export const ticketEventsRouter = createTRPCRouter({
       const event = await ctx.db.ticketEvent.findUnique({
         where: { id: input.id },
         include: {
-          gig: { select: { id: true, title: true, gigStartTime: true } },
+          gig: {
+            select: {
+              id: true,
+              title: true,
+              gigStartTime: true,
+              posterFileUploadId: true,
+            },
+          },
           tiers: { orderBy: { sortOrder: "asc" } },
           staff: true,
         },
@@ -695,6 +705,7 @@ export const ticketEventsRouter = createTRPCRouter({
             description: rest.description ?? null,
             priceCents: rest.priceCents,
             allocation: rest.allocation,
+            groupSize: rest.groupSize,
             salesStartAt: rest.salesStartAt ?? null,
             salesEndAt: rest.salesEndAt ?? null,
             isActive: rest.isActive,
@@ -764,6 +775,11 @@ export const ticketEventsRouter = createTRPCRouter({
                 : {}),
               ...(rest.allocation !== undefined
                 ? { allocation: rest.allocation }
+                : {}),
+              // Safe mid-sale: each order line snapshots the size it was
+              // bought at, so holds still give back what they took.
+              ...(rest.groupSize !== undefined
+                ? { groupSize: rest.groupSize }
                 : {}),
               ...(rest.salesStartAt !== undefined
                 ? { salesStartAt: rest.salesStartAt }
@@ -962,7 +978,15 @@ export const ticketEventsRouter = createTRPCRouter({
         where: { slug: input.slug },
         include: {
           tiers: { orderBy: { sortOrder: "asc" } },
-          gig: { select: { id: true, title: true, status: true, isTba: true } },
+          gig: {
+            select: {
+              id: true,
+              title: true,
+              status: true,
+              isTba: true,
+              posterFileUploadId: true,
+            },
+          },
         },
       });
 
@@ -996,7 +1020,15 @@ export const ticketEventsRouter = createTRPCRouter({
         orderBy: { startsAt: "asc" },
         include: {
           tiers: { orderBy: { sortOrder: "asc" } },
-          gig: { select: { id: true, title: true, status: true, isTba: true } },
+          gig: {
+            select: {
+              id: true,
+              title: true,
+              status: true,
+              isTba: true,
+              posterFileUploadId: true,
+            },
+          },
         },
       });
 
@@ -1023,7 +1055,15 @@ export const ticketEventsRouter = createTRPCRouter({
         tiers: { orderBy: { sortOrder: "asc" } },
         // The gigs list matches events to gigs by this; `toPublicEvent` still
         // drops it unless the gig is published.
-        gig: { select: { id: true, title: true, status: true, isTba: true } },
+        gig: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            isTba: true,
+            posterFileUploadId: true,
+          },
+        },
       },
     });
 
@@ -1040,6 +1080,7 @@ type EventWithTiers = Prisma.TicketEventGetPayload<{
     title: string;
     status: GigStatus;
     isTba: boolean;
+    posterFileUploadId: string | null;
   } | null;
 };
 
@@ -1061,13 +1102,16 @@ function toPublicEvent(
   const tiers = event.tiers
     .filter((tier) => !tier.isHidden)
     .map((tier) => {
-      const remaining = remainingInTier(tier);
+      // In purchases, which is what the buyer is counting: "2 left" of a group
+      // tier is two groups.
+      const remaining = Math.floor(remainingInTier(tier) / tier.groupSize);
       const reason = tierUnavailableReason(tier, now);
       return {
         id: tier.id,
         name: tier.name,
         description: tier.description,
         priceCents: tier.priceCents,
+        groupSize: tier.groupSize,
         maxPerOrder: tier.maxPerOrder,
         isFree: tier.priceCents === 0,
         requiresApproval: tier.requiresApproval,
@@ -1098,7 +1142,7 @@ function toPublicEvent(
     visibility: event.visibility,
     shortDescription: event.shortDescription,
     descriptionLexical: event.descriptionLexical,
-    posterFileUploadId: event.posterFileUploadId,
+    posterFileUploadId: eventPosterId(event),
     venueName: event.venueName,
     venueAddress: event.venueAddress,
     timezone: event.timezone,

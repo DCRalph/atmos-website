@@ -5,6 +5,7 @@ import { PaymentMethodKind, TicketOrderStatus } from "~Prisma/client";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { env } from "~/env";
 import { getStripe, isStripeConfigured } from "~/server/stripe";
+import { ticketCount } from "~/lib/ticketing/capacity";
 import { computeOrderTotals } from "~/lib/ticketing/money";
 import { applyDiscountCode } from "~/server/ticketing/discounts";
 import { InventoryError } from "~/server/ticketing/inventory";
@@ -113,13 +114,14 @@ export const ticketCheckoutRouter = createTRPCRouter({
 
       const tiers = await ctx.db.ticketTier.findMany({
         where: { eventId: event.id, id: { in: lines.map((l) => l.tierId) } },
-        select: { id: true, priceCents: true, name: true },
+        select: { id: true, priceCents: true, groupSize: true },
       });
-      const priceByTier = new Map(tiers.map((t) => [t.id, t.priceCents]));
+      const tierById = new Map(tiers.map((t) => [t.id, t]));
 
       const pricedLines = lines.map((line) => ({
         ...line,
-        unitPriceCents: priceByTier.get(line.tierId) ?? 0,
+        unitPriceCents: tierById.get(line.tierId)?.priceCents ?? 0,
+        groupSize: tierById.get(line.tierId)?.groupSize ?? 1,
       }));
 
       let discount: Awaited<ReturnType<typeof applyDiscountCode>> | null = null;
@@ -328,7 +330,7 @@ export const ticketCheckoutRouter = createTRPCRouter({
               order: { buyerEmail: email },
             },
           });
-          if (already + item.quantity > item.tier.maxPerEmail) {
+          if (already + ticketCount([item]) > item.tier.maxPerEmail) {
             throw new TRPCError({
               code: "CONFLICT",
               message: `There's a limit of ${item.tier.maxPerEmail} × ${item.tier.name} per person.`,

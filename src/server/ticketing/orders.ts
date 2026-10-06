@@ -12,6 +12,7 @@ import {
 import { db } from "~/server/db";
 import {
   computeOrderTotals,
+  splitCents,
   type BookingFeeConfig,
 } from "~/lib/ticketing/money";
 import {
@@ -20,6 +21,7 @@ import {
   holdInventory,
   InventoryError,
   releaseHold,
+  remainingInTier,
   returnToStock,
   withEventInventoryLock,
 } from "~/server/ticketing/inventory";
@@ -182,22 +184,24 @@ export async function createPendingOrder({
 
     const tiers = await tx.ticketTier.findMany({
       where: { eventId, id: { in: cleanedLines.map((l) => l.tierId) } },
-      select: { id: true, priceCents: true, name: true },
+      select: { id: true, priceCents: true, groupSize: true },
     });
-    const priceByTier = new Map(tiers.map((t) => [t.id, t.priceCents]));
+    const tierById = new Map(tiers.map((t) => [t.id, t]));
     if (tiers.length !== cleanedLines.length) {
       throw new CheckoutError("One of those ticket types no longer exists.");
     }
+    const pricedLines = cleanedLines.map((line) => ({
+      ...line,
+      unitPriceCents: tierById.get(line.tierId)?.priceCents ?? 0,
+      groupSize: tierById.get(line.tierId)?.groupSize ?? 1,
+    }));
 
     let discount: AppliedDiscount | null = null;
     if (discountCodeInput) {
       discount = await applyDiscountCode(tx, {
         code: discountCodeInput,
         eventId,
-        lines: cleanedLines.map((line) => ({
-          ...line,
-          unitPriceCents: priceByTier.get(line.tierId) ?? 0,
-        })),
+        lines: pricedLines,
       });
     }
 
@@ -209,10 +213,7 @@ export async function createPendingOrder({
 
     const fee: BookingFeeConfig = resolveBookingFee(event, settings);
     const totals = computeOrderTotals({
-      lines: cleanedLines.map((line) => ({
-        unitPriceCents: priceByTier.get(line.tierId) ?? 0,
-        quantity: line.quantity,
-      })),
+      lines: pricedLines,
       discountCents: discount?.amountCents ?? 0,
       fee,
       gstRateBp: event.gstRateBp,
@@ -245,10 +246,11 @@ export async function createPendingOrder({
         utmCampaign: utm?.campaign ?? null,
         ipAddress: ipAddress ?? null,
         items: {
-          create: cleanedLines.map((line) => ({
+          create: pricedLines.map((line) => ({
             tierId: line.tierId,
             quantity: line.quantity,
-            unitPriceCents: priceByTier.get(line.tierId) ?? 0,
+            unitPriceCents: line.unitPriceCents,
+            groupSize: line.groupSize,
           })),
         },
       },
@@ -380,6 +382,7 @@ export async function issueTicketsForOrder({
             tierId: true,
             quantity: true,
             unitPriceCents: true,
+            groupSize: true,
             tier: { select: { accessLevel: true } },
           },
           orderBy: { tierId: "asc" },
@@ -392,7 +395,10 @@ export async function issueTicketsForOrder({
     const ticketIds: string[] = [];
     let seat = 0;
     for (const item of order.items) {
-      for (let i = 0; i < item.quantity; i++) {
+      // A group's price is spread over its tickets so they add back up to what
+      // was paid — revenue and refunds both read it per ticket.
+      const shares = splitCents(item.unitPriceCents, item.groupSize);
+      for (let i = 0; i < item.quantity * item.groupSize; i++) {
         const ticket = await tx.ticket.create({
           data: {
             ticketNumber: buildTicketNumber(order.orderNumber, seat),
@@ -400,7 +406,7 @@ export async function issueTicketsForOrder({
             eventId: order.eventId,
             tierId: item.tierId,
             qrSecret: generateQrSecret(),
-            pricePaidCents: item.unitPriceCents,
+            pricePaidCents: shares[i % item.groupSize] ?? 0,
             status: TicketStatus.VALID,
             // Snapshotted, not joined: editing a tier later must not re-band
             // tickets already sitting in people's wallets.
@@ -443,6 +449,7 @@ export async function maybeMarkSoldOut(tx: Tx, eventId: string): Promise<void> {
           allocation: true,
           soldCount: true,
           heldCount: true,
+          groupSize: true,
           isActive: true,
           isHidden: true,
         },
@@ -453,7 +460,7 @@ export async function maybeMarkSoldOut(tx: Tx, eventId: string): Promise<void> {
 
   const visibleTiers = event.tiers.filter((t) => t.isActive && !t.isHidden);
   const anythingLeft = visibleTiers.some(
-    (t) => t.allocation - t.soldCount - t.heldCount > 0,
+    (t) => remainingInTier(t) >= t.groupSize,
   );
 
   // Comps fill seats without touching a tier counter, so comping the last of
@@ -494,7 +501,7 @@ export async function cancelPendingOrder(
       id: true,
       eventId: true,
       status: true,
-      items: { select: { tierId: true, quantity: true } },
+      items: { select: { tierId: true, quantity: true, groupSize: true } },
     },
   });
   if (!order || !releasable.includes(order.status)) return;

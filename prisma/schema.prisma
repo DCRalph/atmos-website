@@ -1523,8 +1523,15 @@ model TicketTier {
 
   name        String
   description String?
+  /// The price of one purchase, which for a group tier is the whole group.
   priceCents  Int     @default(0)
+  /// Counted in tickets, as are `soldCount` and `heldCount`, so the event cap
+  /// and the door headcount never have to know about groups.
   allocation  Int
+
+  /// Tickets issued per purchase. 1 is an ordinary tier; 4 makes a group of
+  /// four, where one purchase at `priceCents` mints four tickets.
+  groupSize Int @default(1)
 
   soldCount Int @default(0)
   heldCount Int @default(0)
@@ -1630,9 +1637,13 @@ model TicketOrderItem {
   id             String @id @default(cuid())
   orderId        String
   tierId         String
+  /// Purchases, not tickets: tickets are `quantity * groupSize`.
   quantity       Int
   /// Snapshot: tier prices can change after the order is placed.
   unitPriceCents Int
+  /// Snapshot of the tier's `groupSize`, so a hold taken before the tier was
+  /// edited still gives back what it took.
+  groupSize      Int @default(1)
 
   order TicketOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
   tier  TicketTier  @relation(fields: [tierId], references: [id], onDelete: Restrict)

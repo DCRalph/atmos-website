@@ -22,7 +22,7 @@ type Props<K extends UploadPresetName> = {
   label?: string;
   helperText?: string;
   /** Thumbnail shape. */
-  aspect?: "square" | "wide";
+  aspect?: "square" | "wide" | "portrait";
   disabled?: boolean;
   className?: string;
 };
@@ -84,7 +84,11 @@ export function ImageUploadField<K extends UploadPresetName>({
           disabled={pending}
           className={cn(
             "group bg-muted relative w-32 shrink-0 overflow-hidden rounded-md border disabled:opacity-60",
-            aspect === "square" ? "aspect-square" : "aspect-video",
+            {
+              square: "aspect-square",
+              wide: "aspect-video",
+              portrait: "aspect-3/4",
+            }[aspect],
           )}
           aria-label={value ? "Replace image" : "Upload image"}
         >
