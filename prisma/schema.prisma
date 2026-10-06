@@ -1516,6 +1516,15 @@ model TicketEvent {
   @@map("ticket_event")
 }
 
+/// Where a tier can be bought. A door-only tier is space held back for the
+/// door: online buyers never see it, and the door can sell no more than its
+/// allocation.
+enum TierSalesChannel {
+  ALL
+  ONLINE
+  DOOR
+}
+
 model TicketTier {
   id      String      @id @default(cuid())
   eventId String
@@ -1544,6 +1553,8 @@ model TicketTier {
   /// stopped selling: sold out, past its sale end, or switched off. How
   /// "early bird, then general admission" runs itself.
   releaseAfterPrevious Boolean @default(false)
+
+  salesChannel TierSalesChannel @default(ALL)
 
   maxPerOrder      Int     @default(10)
   maxPerEmail      Int?

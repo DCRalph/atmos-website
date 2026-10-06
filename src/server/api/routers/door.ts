@@ -1138,22 +1138,31 @@ export const doorRouter = createTRPCRouter({
       });
       const now = new Date();
 
+      // Only what the door can sell this minute, by the same rule checkout
+      // enforces: the door's own allocation and anything sold both ways, but
+      // not online-only tiers, closed windows, or a tier still waiting its
+      // turn. Hidden tiers are fine; staff can see everything.
+      //
       // `remaining` counts purchases, so a group tier's stepper stops at the
-      // last whole group. A tier still waiting its turn isn't sold at the
-      // door either: the door sells what's on sale online.
+      // last whole group. `doorOnly` tiers are the door allocation, which the
+      // sell screen totals up so staff can see how much of it is left.
+      // Sold-out tiers stay in (with nothing remaining) so the screen can say
+      // the door allocation is gone, rather than that there is nothing to sell.
       return tiers
-        .filter(
-          (tier) =>
-            tier.isActive &&
-            tierUnavailableReason(tier, now, { tiers }) !==
-              "WAITING_FOR_PREVIOUS",
-        )
+        .filter((tier) => {
+          const reason = tierUnavailableReason(tier, now, {
+            tiers,
+            channel: "DOOR",
+          });
+          return reason === null || reason === "SOLD_OUT";
+        })
         .map((tier) => ({
           id: tier.id,
           name: tier.name,
           priceCents: tier.priceCents,
           groupSize: tier.groupSize,
           remaining: Math.floor(remainingInTier(tier) / tier.groupSize),
+          doorOnly: tier.salesChannel === "DOOR",
         }));
     }),
 

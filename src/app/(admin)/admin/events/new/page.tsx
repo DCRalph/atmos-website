@@ -1,15 +1,7 @@
 "use client";
 
-import { AdminSection } from "~/components/admin/admin-section";
-import { EventEditor } from "~/components/admin/ticketing/event-editor";
+import { EventWorkspace } from "~/components/admin/ticketing/workspace/event-workspace";
 
 export default function NewTicketEventPage() {
-  return (
-    <AdminSection
-      title="New ticketed event"
-      backLink={{ href: "/admin/events", label: "Events" }}
-    >
-      <EventEditor />
-    </AdminSection>
-  );
+  return <EventWorkspace />;
 }

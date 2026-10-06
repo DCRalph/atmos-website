@@ -209,6 +209,7 @@ export async function createPendingOrder({
       eventId,
       lines: cleanedLines,
       unlockedHiddenTiers: discount?.unlockedTierIds ?? [],
+      channel: boxOffice ? "DOOR" : "ONLINE",
     });
 
     const fee: BookingFeeConfig = resolveBookingFee(event, settings);
@@ -452,13 +453,18 @@ export async function maybeMarkSoldOut(tx: Tx, eventId: string): Promise<void> {
           groupSize: true,
           isActive: true,
           isHidden: true,
+          salesChannel: true,
         },
       },
     },
   });
   if (event?.status !== TicketEventStatus.PUBLISHED) return;
 
-  const visibleTiers = event.tiers.filter((t) => t.isActive && !t.isHidden);
+  // Online sold out is sold out, even with the door's allocation still to go:
+  // SOLD_OUT only stops online sales, and the door sells regardless.
+  const visibleTiers = event.tiers.filter(
+    (t) => t.isActive && !t.isHidden && t.salesChannel !== "DOOR",
+  );
   const anythingLeft = visibleTiers.some(
     (t) => remainingInTier(t) >= t.groupSize,
   );

@@ -81,7 +81,7 @@ export function PickerSelect<TFilter = Record<string, never>>({
 }: {
   endpoint: PickerEndpoint<TFilter>;
   value: string | null;
-  onChange: (value: string | null) => void;
+  onChange: (value: string | null, option: SearchableOption | null) => void;
   filter?: TFilter;
   limit?: number;
   placeholder?: string;

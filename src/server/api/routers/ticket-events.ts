@@ -4,7 +4,6 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { env } from "~/env";
-import { ACCESS_LEVEL_VALUES } from "~/lib/ticketing/access-levels";
 import {
   HEX_COLOUR_PATTERN,
   PASS_STRIP_STYLES,
@@ -12,12 +11,12 @@ import {
 
 import {
   ActivityType,
-  EventStaffRole,
   GigStatus,
   Prisma,
   TicketEventStatus,
   TicketEventVisibility,
   TicketOrderStatus,
+  TicketStatus,
 } from "~Prisma/client";
 import {
   adminProcedure,
@@ -26,8 +25,13 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import { logActivity } from "~/server/utils/activity-log";
-import { allocationRefusal } from "~/lib/ticketing/capacity";
 import { eventPosterId } from "~/lib/ticketing/poster";
+import {
+  applyStaffPlan,
+  applyTierPlan,
+  staffPlanSchema,
+  tierPlanSchema,
+} from "~/server/ticketing/event-plan";
 import {
   allocationBudget,
   eventHeadcount,
@@ -140,25 +144,14 @@ const eventInputSchema = z.object({
   passBackgroundHex: HEX_COLOUR.nullable().optional(),
   passForegroundHex: HEX_COLOUR.nullable().optional(),
   passLabelHex: HEX_COLOUR.nullable().optional(),
-});
 
-const tierInputSchema = z.object({
-  name: z.string().trim().min(1, "Give the tier a name"),
-  description: z.string().trim().nullable().optional(),
-  priceCents: z.number().int().min(0),
-  allocation: z.number().int().min(0),
-  /** Tickets per purchase. Above 1 makes it a group tier. */
-  groupSize: z.number().int().min(1).max(20).default(1),
-  /** Off the public list until the tier above stops selling. */
-  releaseAfterPrevious: z.boolean().default(false),
-  salesStartAt: z.date().nullable().optional(),
-  salesEndAt: z.date().nullable().optional(),
-  isActive: z.boolean().default(true),
-  isHidden: z.boolean().default(false),
-  maxPerOrder: z.number().int().min(1).max(50).default(10),
-  maxPerEmail: z.number().int().min(1).nullable().optional(),
-  requiresApproval: z.boolean().default(false),
-  accessLevel: z.enum(ACCESS_LEVEL_VALUES).default("GENERAL"),
+  /**
+   * The event's tiers and door staff as whole lists, in order. Present means
+   * "make it so": rows missing from the list are removed. Absent leaves them
+   * alone — see `~/server/ticketing/event-plan.ts`.
+   */
+  tiers: z.array(tierPlanSchema).optional(),
+  staff: z.array(staffPlanSchema).optional(),
 });
 
 /**
@@ -325,19 +318,55 @@ export const ticketEventsRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
       }
 
-      const [settings, staffUsers, revenue, budget] = await Promise.all([
-        getTicketingSettings(),
-        ctx.db.user.findMany({
-          where: { id: { in: event.staff.map((s) => s.userId) } },
-          select: { id: true, name: true, email: true, image: true },
-        }),
-        ctx.db.ticketOrder.aggregate({
-          where: { eventId: event.id, status: TicketOrderStatus.PAID },
-          _sum: { totalCents: true, refundedCents: true },
-          _count: true,
-        }),
-        allocationBudget(event.id, ctx.db),
-      ]);
+      const [settings, staffUsers, revenue, budget, counts] = await Promise.all(
+        [
+          getTicketingSettings(),
+          ctx.db.user.findMany({
+            where: { id: { in: event.staff.map((s) => s.userId) } },
+            select: { id: true, name: true, email: true, image: true },
+          }),
+          ctx.db.ticketOrder.aggregate({
+            where: { eventId: event.id, status: TicketOrderStatus.PAID },
+            _sum: { totalCents: true, refundedCents: true },
+            _count: true,
+          }),
+          allocationBudget(event.id, ctx.db),
+          // How much is behind each section of the admin page, so an empty list
+          // is obvious before anyone opens it.
+          Promise.all([
+            ctx.db.ticketOrder.count({
+              where: {
+                eventId: event.id,
+                status: {
+                  in: [
+                    TicketOrderStatus.PAID,
+                    TicketOrderStatus.AWAITING_APPROVAL,
+                    TicketOrderStatus.REFUNDED,
+                    TicketOrderStatus.PARTIALLY_REFUNDED,
+                  ],
+                },
+              },
+            }),
+            ctx.db.ticket.count({
+              where: { eventId: event.id, status: TicketStatus.VALID },
+            }),
+            ctx.db.ticket.count({
+              where: {
+                eventId: event.id,
+                isComp: true,
+                hostTicketId: null,
+                status: TicketStatus.VALID,
+              },
+            }),
+            ctx.db.ticketLinkBatch.count({ where: { eventId: event.id } }),
+          ]).then(([orders, tickets, comps, linkBatches]) => ({
+            orders,
+            tickets,
+            comps,
+            linkBatches,
+          })),
+        ],
+      );
 
       const userById = new Map(staffUsers.map((u) => [u.id, u]));
 
@@ -358,6 +387,7 @@ export const ticketEventsRouter = createTRPCRouter({
         // What the tiers are allowed to hold between them, so the tier editor
         // shows the same arithmetic it will be judged by on save.
         budget,
+        counts,
       };
     }),
 
@@ -369,50 +399,64 @@ export const ticketEventsRouter = createTRPCRouter({
       const settings = await getTicketingSettings();
       const slug = await uniqueSlug(ctx.db, input.slug ?? input.name);
 
-      const event = await ctx.db.ticketEvent.create({
-        data: {
-          slug,
-          name: input.name,
-          gigId: input.gigId ?? null,
-          shortDescription: input.shortDescription ?? null,
-          descriptionLexical: toLexicalJsonInput(input.descriptionLexical),
-          posterFileUploadId: input.posterFileUploadId ?? null,
-          venueName: input.venueName ?? null,
-          venueAddress: input.venueAddress ?? null,
-          timezone: input.timezone,
-          doorsAt: input.doorsAt ?? null,
-          startsAt: input.startsAt,
-          endsAt: input.endsAt ?? null,
-          salesOpenAt: input.salesOpenAt ?? null,
-          salesCloseAt: input.salesCloseAt ?? null,
-          capacity: input.capacity ?? null,
-          compAllowance: input.compAllowance ?? null,
-          maxTicketsPerOrder: input.maxTicketsPerOrder,
-          requireAttendeeNames: input.requireAttendeeNames,
-          reentryAllowed: input.reentryAllowed,
-          visibility: input.visibility,
-          // Minted up front so the share link exists the moment an event is
-          // made private, rather than on some later save.
-          accessKey:
-            input.visibility === TicketEventVisibility.PRIVATE
-              ? newAccessKey()
-              : null,
-          isR18: input.isR18,
-          bookingFeeFixedCents: input.bookingFeeFixedCents ?? null,
-          bookingFeePercentBp: input.bookingFeePercentBp ?? null,
-          // Snapshot the GST number so a receipt reprinted in two years still
-          // shows the number that was current at the time of sale.
-          gstNumber: input.gstNumber ?? settings.gstNumber,
-          // Left to the column default when unset, so a new event starts on
-          // house style rather than being pinned to whatever the form sent.
-          ...(input.passStripStyle !== undefined
-            ? { passStripStyle: input.passStripStyle }
-            : {}),
-          passAccentHex: input.passAccentHex ?? null,
-          passBackgroundHex: input.passBackgroundHex ?? null,
-          passForegroundHex: input.passForegroundHex ?? null,
-          passLabelHex: input.passLabelHex ?? null,
-        },
+      const event = await ctx.db.$transaction(async (tx) => {
+        const created = await tx.ticketEvent.create({
+          data: {
+            slug,
+            name: input.name,
+            gigId: input.gigId ?? null,
+            shortDescription: input.shortDescription ?? null,
+            descriptionLexical: toLexicalJsonInput(input.descriptionLexical),
+            posterFileUploadId: input.posterFileUploadId ?? null,
+            venueName: input.venueName ?? null,
+            venueAddress: input.venueAddress ?? null,
+            timezone: input.timezone,
+            doorsAt: input.doorsAt ?? null,
+            startsAt: input.startsAt,
+            endsAt: input.endsAt ?? null,
+            salesOpenAt: input.salesOpenAt ?? null,
+            salesCloseAt: input.salesCloseAt ?? null,
+            capacity: input.capacity ?? null,
+            compAllowance: input.compAllowance ?? null,
+            maxTicketsPerOrder: input.maxTicketsPerOrder,
+            requireAttendeeNames: input.requireAttendeeNames,
+            reentryAllowed: input.reentryAllowed,
+            visibility: input.visibility,
+            // Minted up front so the share link exists the moment an event is
+            // made private, rather than on some later save.
+            accessKey:
+              input.visibility === TicketEventVisibility.PRIVATE
+                ? newAccessKey()
+                : null,
+            isR18: input.isR18,
+            bookingFeeFixedCents: input.bookingFeeFixedCents ?? null,
+            bookingFeePercentBp: input.bookingFeePercentBp ?? null,
+            // Snapshot the GST number so a receipt reprinted in two years still
+            // shows the number that was current at the time of sale.
+            gstNumber: input.gstNumber ?? settings.gstNumber,
+            // Left to the column default when unset, so a new event starts on
+            // house style rather than being pinned to whatever the form sent.
+            ...(input.passStripStyle !== undefined
+              ? { passStripStyle: input.passStripStyle }
+              : {}),
+            passAccentHex: input.passAccentHex ?? null,
+            passBackgroundHex: input.passBackgroundHex ?? null,
+            passForegroundHex: input.passForegroundHex ?? null,
+            passLabelHex: input.passLabelHex ?? null,
+          },
+        });
+        // Nothing can be selling yet, so no inventory lock is needed: the
+        // plan is judged against an empty room.
+        if (input.tiers) await applyTierPlan(tx, created.id, input.tiers);
+        if (input.staff) {
+          await applyStaffPlan(
+            tx,
+            created.id,
+            input.staff,
+            ctx.session.user.id,
+          );
+        }
+        return created;
       });
 
       await logActivity({
@@ -428,138 +472,167 @@ export const ticketEventsRouter = createTRPCRouter({
   update: adminProcedure
     .input(eventInputSchema.partial().extend({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const { id, ...rest } = input;
+      const { id, tiers, staff, ...rest } = input;
 
       const existing = await ctx.db.ticketEvent.findUnique({ where: { id } });
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
       }
 
-      assertSaneDates({
-        startsAt: rest.startsAt ?? existing.startsAt,
-        endsAt: rest.endsAt === undefined ? existing.endsAt : rest.endsAt,
-        doorsAt: rest.doorsAt === undefined ? existing.doorsAt : rest.doorsAt,
-        salesOpenAt:
-          rest.salesOpenAt === undefined
-            ? existing.salesOpenAt
-            : rest.salesOpenAt,
-        salesCloseAt:
-          rest.salesCloseAt === undefined
-            ? existing.salesCloseAt
-            : rest.salesCloseAt,
-      });
+      // Under the event's inventory lock: the cap and the tier plan are read
+      // and written against the same rows a checkout would be holding.
+      const {
+        saved: event,
+        slug,
+        capacityWarning,
+      } = await withEventInventoryLock(id, async (tx) => {
+        assertSaneDates({
+          startsAt: rest.startsAt ?? existing.startsAt,
+          endsAt: rest.endsAt === undefined ? existing.endsAt : rest.endsAt,
+          doorsAt: rest.doorsAt === undefined ? existing.doorsAt : rest.doorsAt,
+          salesOpenAt:
+            rest.salesOpenAt === undefined
+              ? existing.salesOpenAt
+              : rest.salesOpenAt,
+          salesCloseAt:
+            rest.salesCloseAt === undefined
+              ? existing.salesCloseAt
+              : rest.salesCloseAt,
+        });
 
-      // The cap is a statement about the room, so it is measured against
-      // everyone already committed to it — sold, mid-checkout, and comped —
-      // rather than against sales alone.
-      if (rest.capacity != null) {
-        const { headcount } = await eventHeadcount(ctx.db, id);
-        if (rest.capacity < headcount) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: `${headcount} tickets are already sold, held or comped — the cap can't go below that.`,
-          });
+        // The cap is a statement about the room, so it is measured against
+        // everyone already committed to it — sold, mid-checkout, and comped —
+        // rather than against sales alone.
+        if (rest.capacity != null) {
+          const { headcount } = await eventHeadcount(tx, id);
+          if (rest.capacity < headcount) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `${headcount} tickets are already sold, held or comped — the cap can't go below that.`,
+            });
+          }
         }
-      }
 
-      const slug =
-        rest.slug && rest.slug !== existing.slug
-          ? await uniqueSlug(ctx.db, rest.slug, id)
-          : undefined;
+        const slug =
+          rest.slug && rest.slug !== existing.slug
+            ? await uniqueSlug(tx, rest.slug, id)
+            : undefined;
 
-      const event = await ctx.db.ticketEvent.update({
-        where: { id },
-        data: {
-          ...(slug ? { slug } : {}),
-          ...(rest.name !== undefined ? { name: rest.name } : {}),
-          ...(rest.gigId !== undefined ? { gigId: rest.gigId } : {}),
-          ...(rest.shortDescription !== undefined
-            ? { shortDescription: rest.shortDescription }
-            : {}),
-          ...(rest.descriptionLexical !== undefined
-            ? {
-                descriptionLexical: toLexicalJsonInput(rest.descriptionLexical),
-              }
-            : {}),
-          ...(rest.posterFileUploadId !== undefined
-            ? { posterFileUploadId: rest.posterFileUploadId }
-            : {}),
-          ...(rest.venueName !== undefined
-            ? { venueName: rest.venueName }
-            : {}),
-          ...(rest.venueAddress !== undefined
-            ? { venueAddress: rest.venueAddress }
-            : {}),
-          ...(rest.timezone !== undefined ? { timezone: rest.timezone } : {}),
-          ...(rest.doorsAt !== undefined ? { doorsAt: rest.doorsAt } : {}),
-          ...(rest.startsAt !== undefined ? { startsAt: rest.startsAt } : {}),
-          ...(rest.endsAt !== undefined ? { endsAt: rest.endsAt } : {}),
-          ...(rest.salesOpenAt !== undefined
-            ? { salesOpenAt: rest.salesOpenAt }
-            : {}),
-          ...(rest.salesCloseAt !== undefined
-            ? { salesCloseAt: rest.salesCloseAt }
-            : {}),
-          ...(rest.capacity !== undefined ? { capacity: rest.capacity } : {}),
-          ...(rest.compAllowance !== undefined
-            ? { compAllowance: rest.compAllowance }
-            : {}),
-          ...(rest.maxTicketsPerOrder !== undefined
-            ? { maxTicketsPerOrder: rest.maxTicketsPerOrder }
-            : {}),
-          ...(rest.requireAttendeeNames !== undefined
-            ? { requireAttendeeNames: rest.requireAttendeeNames }
-            : {}),
-          ...(rest.visibility !== undefined
-            ? {
-                visibility: rest.visibility,
-                // Turning privacy on needs a key; turning it off keeps the old
-                // one, so flipping back doesn't silently resurrect dead links.
-                ...(rest.visibility === TicketEventVisibility.PRIVATE &&
-                !existing.accessKey
-                  ? { accessKey: newAccessKey() }
-                  : {}),
-              }
-            : {}),
-          ...(rest.reentryAllowed !== undefined
-            ? { reentryAllowed: rest.reentryAllowed }
-            : {}),
-          ...(rest.isR18 !== undefined ? { isR18: rest.isR18 } : {}),
-          ...(rest.bookingFeeFixedCents !== undefined
-            ? { bookingFeeFixedCents: rest.bookingFeeFixedCents }
-            : {}),
-          ...(rest.bookingFeePercentBp !== undefined
-            ? { bookingFeePercentBp: rest.bookingFeePercentBp }
-            : {}),
-          ...(rest.gstNumber !== undefined
-            ? { gstNumber: rest.gstNumber }
-            : {}),
-          ...(rest.passStripStyle !== undefined
-            ? { passStripStyle: rest.passStripStyle }
-            : {}),
-          ...(rest.passAccentHex !== undefined
-            ? { passAccentHex: rest.passAccentHex }
-            : {}),
-          ...(rest.passBackgroundHex !== undefined
-            ? { passBackgroundHex: rest.passBackgroundHex }
-            : {}),
-          ...(rest.passForegroundHex !== undefined
-            ? { passForegroundHex: rest.passForegroundHex }
-            : {}),
-          ...(rest.passLabelHex !== undefined
-            ? { passLabelHex: rest.passLabelHex }
-            : {}),
-        },
+        const saved = await tx.ticketEvent.update({
+          where: { id },
+          data: {
+            ...(slug ? { slug } : {}),
+            ...(rest.name !== undefined ? { name: rest.name } : {}),
+            ...(rest.gigId !== undefined ? { gigId: rest.gigId } : {}),
+            ...(rest.shortDescription !== undefined
+              ? { shortDescription: rest.shortDescription }
+              : {}),
+            ...(rest.descriptionLexical !== undefined
+              ? {
+                  descriptionLexical: toLexicalJsonInput(
+                    rest.descriptionLexical,
+                  ),
+                }
+              : {}),
+            ...(rest.posterFileUploadId !== undefined
+              ? { posterFileUploadId: rest.posterFileUploadId }
+              : {}),
+            ...(rest.venueName !== undefined
+              ? { venueName: rest.venueName }
+              : {}),
+            ...(rest.venueAddress !== undefined
+              ? { venueAddress: rest.venueAddress }
+              : {}),
+            ...(rest.timezone !== undefined ? { timezone: rest.timezone } : {}),
+            ...(rest.doorsAt !== undefined ? { doorsAt: rest.doorsAt } : {}),
+            ...(rest.startsAt !== undefined ? { startsAt: rest.startsAt } : {}),
+            ...(rest.endsAt !== undefined ? { endsAt: rest.endsAt } : {}),
+            ...(rest.salesOpenAt !== undefined
+              ? { salesOpenAt: rest.salesOpenAt }
+              : {}),
+            ...(rest.salesCloseAt !== undefined
+              ? { salesCloseAt: rest.salesCloseAt }
+              : {}),
+            ...(rest.capacity !== undefined ? { capacity: rest.capacity } : {}),
+            ...(rest.compAllowance !== undefined
+              ? { compAllowance: rest.compAllowance }
+              : {}),
+            ...(rest.maxTicketsPerOrder !== undefined
+              ? { maxTicketsPerOrder: rest.maxTicketsPerOrder }
+              : {}),
+            ...(rest.requireAttendeeNames !== undefined
+              ? { requireAttendeeNames: rest.requireAttendeeNames }
+              : {}),
+            ...(rest.visibility !== undefined
+              ? {
+                  visibility: rest.visibility,
+                  // Turning privacy on needs a key; turning it off keeps the old
+                  // one, so flipping back doesn't silently resurrect dead links.
+                  ...(rest.visibility === TicketEventVisibility.PRIVATE &&
+                  !existing.accessKey
+                    ? { accessKey: newAccessKey() }
+                    : {}),
+                }
+              : {}),
+            ...(rest.reentryAllowed !== undefined
+              ? { reentryAllowed: rest.reentryAllowed }
+              : {}),
+            ...(rest.isR18 !== undefined ? { isR18: rest.isR18 } : {}),
+            ...(rest.bookingFeeFixedCents !== undefined
+              ? { bookingFeeFixedCents: rest.bookingFeeFixedCents }
+              : {}),
+            ...(rest.bookingFeePercentBp !== undefined
+              ? { bookingFeePercentBp: rest.bookingFeePercentBp }
+              : {}),
+            ...(rest.gstNumber !== undefined
+              ? { gstNumber: rest.gstNumber }
+              : {}),
+            ...(rest.passStripStyle !== undefined
+              ? { passStripStyle: rest.passStripStyle }
+              : {}),
+            ...(rest.passAccentHex !== undefined
+              ? { passAccentHex: rest.passAccentHex }
+              : {}),
+            ...(rest.passBackgroundHex !== undefined
+              ? { passBackgroundHex: rest.passBackgroundHex }
+              : {}),
+            ...(rest.passForegroundHex !== undefined
+              ? { passForegroundHex: rest.passForegroundHex }
+              : {}),
+            ...(rest.passLabelHex !== undefined
+              ? { passLabelHex: rest.passLabelHex }
+              : {}),
+          },
+        });
+
+        // The tier plan is judged against the cap just saved, and both go
+        // through together: a cap and the tiers that fit it can't half-land.
+        if (tiers) await applyTierPlan(tx, id, tiers);
+        if (staff) await applyStaffPlan(tx, id, staff, ctx.session.user.id);
+
+        // In plan order, so the editor can learn the ids of rows it just
+        // created without waiting for a refetch.
+        const savedTiers = await tx.ticketTier.findMany({
+          where: { eventId: id },
+          orderBy: { sortOrder: "asc" },
+          select: { id: true },
+        });
+
+        // Lowering the cap under what the tiers already hold is allowed — the
+        // alternative is an admin who can't get the number down without first
+        // unpicking every tier — but it is never silent. Checkout enforces the
+        // cap, so from here the tiers can't all sell out.
+        const capacityWarning =
+          rest.capacity === undefined && !tiers
+            ? null
+            : await describeOverAllocation(id, tx);
+
+        return {
+          saved: { ...saved, tiers: savedTiers },
+          slug,
+          capacityWarning,
+        };
       });
-
-      // Lowering the cap under what the tiers already hold is allowed — the
-      // alternative is an admin who can't get the number down without first
-      // unpicking every tier — but it is never silent. Checkout enforces the
-      // cap, so from here the tiers can't all sell out.
-      const capacityWarning =
-        rest.capacity === undefined
-          ? null
-          : await describeOverAllocation(id, ctx.db);
 
       await logActivity({
         type: ActivityType.TICKET_EVENT_UPDATED,
@@ -736,6 +809,7 @@ export const ticketEventsRouter = createTRPCRouter({
               allocation: tier.allocation,
               groupSize: tier.groupSize,
               releaseAfterPrevious: tier.releaseAfterPrevious,
+              salesChannel: tier.salesChannel,
               salesStartAt: tier.salesStartAt,
               salesEndAt: tier.salesEndAt,
               isActive: tier.isActive,
@@ -763,268 +837,6 @@ export const ticketEventsRouter = createTRPCRouter({
       });
 
       return event;
-    }),
-
-  // ----------------------------------------------------------------- tiers
-
-  createTier: adminProcedure
-    .input(tierInputSchema.extend({ eventId: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const { eventId, ...rest } = input;
-
-      // Under the lock so two tiers added at once can't each be told there is
-      // room for them, and so the budget is read from the same rows the sale
-      // path reads.
-      const tier = await withEventInventoryLock(eventId, async (tx) => {
-        const refusal = allocationRefusal({
-          budget: await allocationBudget(eventId, tx),
-          currentAllocation: 0,
-          nextAllocation: rest.allocation,
-        });
-        if (refusal) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: refusal });
-        }
-
-        const last = await tx.ticketTier.findFirst({
-          where: { eventId },
-          orderBy: { sortOrder: "desc" },
-          select: { sortOrder: true },
-        });
-
-        return tx.ticketTier.create({
-          data: {
-            eventId,
-            name: rest.name,
-            description: rest.description ?? null,
-            priceCents: rest.priceCents,
-            allocation: rest.allocation,
-            groupSize: rest.groupSize,
-            releaseAfterPrevious: rest.releaseAfterPrevious,
-            salesStartAt: rest.salesStartAt ?? null,
-            salesEndAt: rest.salesEndAt ?? null,
-            isActive: rest.isActive,
-            isHidden: rest.isHidden,
-            maxPerOrder: rest.maxPerOrder,
-            maxPerEmail: rest.maxPerEmail ?? null,
-            requiresApproval: rest.requiresApproval,
-            accessLevel: rest.accessLevel,
-            sortOrder: (last?.sortOrder ?? -1) + 1,
-          },
-        });
-      });
-
-      await logActivity({
-        type: ActivityType.TICKET_TIER_CREATED,
-        action: `Added tier "${tier.name}"`,
-        userId: ctx.session.user.id,
-        details: { eventId, tierId: tier.id },
-      });
-
-      return tier;
-    }),
-
-  updateTier: adminProcedure
-    .input(tierInputSchema.partial().extend({ id: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const { id, ...rest } = input;
-
-      const existing = await ctx.db.ticketTier.findUnique({ where: { id } });
-      if (!existing) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Tier not found" });
-      }
-
-      const tier = await withEventInventoryLock(
-        existing.eventId,
-        async (tx) => {
-          // Shrinking an allocation below what is already committed would make
-          // `remaining` negative and the buy panel nonsense.
-          if (rest.allocation !== undefined) {
-            const committed = existing.soldCount + existing.heldCount;
-            if (rest.allocation < committed) {
-              throw new TRPCError({
-                code: "BAD_REQUEST",
-                message: `${committed} already sold or held in this tier — allocation can't go below that.`,
-              });
-            }
-
-            const refusal = allocationRefusal({
-              budget: await allocationBudget(existing.eventId, tx),
-              currentAllocation: existing.allocation,
-              nextAllocation: rest.allocation,
-            });
-            if (refusal) {
-              throw new TRPCError({ code: "BAD_REQUEST", message: refusal });
-            }
-          }
-
-          return tx.ticketTier.update({
-            where: { id },
-            data: {
-              ...(rest.name !== undefined ? { name: rest.name } : {}),
-              ...(rest.description !== undefined
-                ? { description: rest.description }
-                : {}),
-              ...(rest.priceCents !== undefined
-                ? { priceCents: rest.priceCents }
-                : {}),
-              ...(rest.allocation !== undefined
-                ? { allocation: rest.allocation }
-                : {}),
-              // Safe mid-sale: each order line snapshots the size it was
-              // bought at, so holds still give back what they took.
-              ...(rest.groupSize !== undefined
-                ? { groupSize: rest.groupSize }
-                : {}),
-              ...(rest.releaseAfterPrevious !== undefined
-                ? { releaseAfterPrevious: rest.releaseAfterPrevious }
-                : {}),
-              ...(rest.salesStartAt !== undefined
-                ? { salesStartAt: rest.salesStartAt }
-                : {}),
-              ...(rest.salesEndAt !== undefined
-                ? { salesEndAt: rest.salesEndAt }
-                : {}),
-              ...(rest.isActive !== undefined
-                ? { isActive: rest.isActive }
-                : {}),
-              ...(rest.isHidden !== undefined
-                ? { isHidden: rest.isHidden }
-                : {}),
-              ...(rest.maxPerOrder !== undefined
-                ? { maxPerOrder: rest.maxPerOrder }
-                : {}),
-              ...(rest.maxPerEmail !== undefined
-                ? { maxPerEmail: rest.maxPerEmail }
-                : {}),
-              ...(rest.requiresApproval !== undefined
-                ? { requiresApproval: rest.requiresApproval }
-                : {}),
-              ...(rest.accessLevel !== undefined
-                ? { accessLevel: rest.accessLevel }
-                : {}),
-            },
-          });
-        },
-      );
-
-      await logActivity({
-        type: ActivityType.TICKET_TIER_UPDATED,
-        action: `Updated tier "${tier.name}"`,
-        userId: ctx.session.user.id,
-        details: { eventId: tier.eventId, tierId: tier.id },
-      });
-
-      return tier;
-    }),
-
-  deleteTier: adminProcedure
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const issued = await ctx.db.ticket.count({ where: { tierId: input.id } });
-      if (issued > 0) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message:
-            "Tickets have been issued in this tier — deactivate it instead of deleting.",
-        });
-      }
-
-      const tier = await ctx.db.ticketTier.delete({ where: { id: input.id } });
-
-      await logActivity({
-        type: ActivityType.TICKET_TIER_DELETED,
-        action: `Deleted tier "${tier.name}"`,
-        userId: ctx.session.user.id,
-        details: { eventId: tier.eventId, tierId: tier.id },
-      });
-
-      return { ok: true as const };
-    }),
-
-  reorderTiers: adminProcedure
-    .input(
-      z.object({
-        eventId: z.string(),
-        tierIds: z.array(z.string()).min(1),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      await ctx.db.$transaction(
-        input.tierIds.map((tierId, index) =>
-          ctx.db.ticketTier.update({
-            where: { id: tierId },
-            data: { sortOrder: index },
-          }),
-        ),
-      );
-      return { ok: true as const };
-    }),
-
-  // ----------------------------------------------------------------- staff
-
-  assignStaff: adminProcedure
-    .input(
-      z.object({
-        eventId: z.string(),
-        userId: z.string(),
-        role: z
-          .enum([EventStaffRole.SCANNER, EventStaffRole.MANAGER])
-          .default(EventStaffRole.SCANNER),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const user = await ctx.db.user.findUnique({
-        where: { id: input.userId },
-        select: { id: true, name: true, email: true },
-      });
-      if (!user) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
-      }
-
-      const assignment = await ctx.db.ticketEventStaff.upsert({
-        where: {
-          eventId_userId: { eventId: input.eventId, userId: input.userId },
-        },
-        update: { role: input.role },
-        create: {
-          eventId: input.eventId,
-          userId: input.userId,
-          role: input.role,
-          createdBy: ctx.session.user.id,
-        },
-      });
-
-      await logActivity({
-        type: ActivityType.DOOR_STAFF_ASSIGNED,
-        action: `Assigned ${user.name} to the door`,
-        userId: ctx.session.user.id,
-        targetUserId: user.id,
-        details: { eventId: input.eventId, role: input.role },
-      });
-
-      return assignment;
-    }),
-
-  removeStaff: adminProcedure
-    .input(z.object({ eventId: z.string(), userId: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      await ctx.db.ticketEventStaff
-        .delete({
-          where: {
-            eventId_userId: { eventId: input.eventId, userId: input.userId },
-          },
-        })
-        .catch(() => undefined);
-
-      await logActivity({
-        type: ActivityType.DOOR_STAFF_REMOVED,
-        action: `Removed door staff from event`,
-        userId: ctx.session.user.id,
-        targetUserId: input.userId,
-        details: { eventId: input.eventId },
-      });
-
-      return { ok: true as const };
     }),
 
   /**
@@ -1204,7 +1016,10 @@ function toPublicEvent(
       reason: tierUnavailableReason(tier, now, { tiers: event.tiers }),
     }))
     .filter(
-      ({ tier, reason }) => !tier.isHidden && reason !== "WAITING_FOR_PREVIOUS",
+      ({ tier, reason }) =>
+        !tier.isHidden &&
+        reason !== "WAITING_FOR_PREVIOUS" &&
+        reason !== "NOT_SOLD_HERE",
     )
     .map(({ tier, reason }) => {
       // In purchases, which is what the buyer is counting: "2 left" of a group
@@ -1230,6 +1045,14 @@ function toPublicEvent(
     });
 
   const onSale = tiers.some((tier) => tier.available);
+  // Door-only space still to sell, so a page with nothing left online can say
+  // there will be tickets on the night rather than that there are none.
+  const doorSales = event.tiers.some(
+    (tier) =>
+      tier.salesChannel === "DOOR" &&
+      tier.isActive &&
+      remainingInTier(tier) >= tier.groupSize,
+  );
   const cheapest = tiers
     .filter((tier) => tier.available)
     .reduce<number | null>(
@@ -1266,6 +1089,7 @@ function toPublicEvent(
         : null,
     tiers,
     onSale,
+    doorSales,
     fromPriceCents: cheapest,
     /** Disclosed up front — NZ drip-pricing rules mean fees can't be a surprise. */
     bookingFee: fee,

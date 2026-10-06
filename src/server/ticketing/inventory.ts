@@ -3,7 +3,11 @@ import "server-only";
 import { type Prisma, TicketOrderStatus, TicketStatus } from "~Prisma/client";
 
 import { db } from "~/server/db";
-import { remainingInTier, tierUnavailableReason } from "~/lib/ticketing/tiers";
+import {
+  remainingInTier,
+  tierUnavailableReason,
+  type SaleChannel,
+} from "~/lib/ticketing/tiers";
 import {
   ticketCount,
   toAllocationBudget,
@@ -238,11 +242,14 @@ export async function holdInventory(
     eventId,
     lines,
     unlockedHiddenTiers = [],
+    channel = "ONLINE",
     now = new Date(),
   }: {
     eventId: string;
     lines: RequestedLine[];
     unlockedHiddenTiers?: readonly string[];
+    /** The door sells its own allocation; online sells everything else. */
+    channel?: SaleChannel;
     now?: Date;
   },
 ): Promise<void> {
@@ -264,6 +271,7 @@ export async function holdInventory(
       isActive: true,
       isHidden: true,
       releaseAfterPrevious: true,
+      salesChannel: true,
       salesStartAt: true,
       salesEndAt: true,
       maxPerOrder: true,
@@ -298,12 +306,17 @@ export async function holdInventory(
     const reason = tierUnavailableReason(tier, now, {
       tiers,
       unlockedHiddenTiers,
+      channel,
     });
     if (reason && reason !== "SOLD_OUT") {
       throw new InventoryError(
-        reason === "NOT_ON_SALE_YET" || reason === "WAITING_FOR_PREVIOUS"
-          ? `${tier.name} is not on sale yet.`
-          : `${tier.name} is no longer on sale.`,
+        reason === "NOT_SOLD_HERE"
+          ? channel === "DOOR"
+            ? `${tier.name} is only sold online.`
+            : `${tier.name} is only sold at the door.`
+          : reason === "NOT_ON_SALE_YET" || reason === "WAITING_FOR_PREVIOUS"
+            ? `${tier.name} is not on sale yet.`
+            : `${tier.name} is no longer on sale.`,
         "TIER_UNAVAILABLE",
         tier.id,
       );

@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 import { useDeviceLabel } from "@/lib/device-label";
 import { useTapToPay } from "@/lib/tap-to-pay";
 import { colors, radius, space, stroke } from "@/lib/theme";
-import { Body, Button, Caption, Loading, Notice } from "@/components/ui";
+import { Body, Button, Caption, Loading, Notice, Pill } from "@/components/ui";
 import { DoorHeaderSpace } from "@/components/door/door-header";
 import { TapToPaySheet } from "@/components/door/tap-to-pay";
 import { TapToPayMark } from "@/components/door/tap-to-pay-mark";
@@ -134,6 +134,14 @@ export default function SellScreen() {
   }
 
   const available = (tiers.data ?? []).filter((tier) => tier.remaining > 0);
+  // The door allocation: tickets held back for the door in door-only tiers.
+  // `doorOnly` is missing from servers older than this build, which is the
+  // same as there being no allocation.
+  const doorTiers = (tiers.data ?? []).filter((tier) => tier.doorOnly);
+  const doorLeft = doorTiers.reduce(
+    (sum, tier) => sum + tier.remaining * tier.groupSize,
+    0,
+  );
   const tapReady = tapToPay.isReady;
   const showPayment = mode === "SELL" && ticketCount > 0;
 
@@ -184,9 +192,26 @@ export default function SellScreen() {
         ) : tiers.isPending ? (
           <Loading />
         ) : available.length === 0 ? (
-          <Notice title="Nothing left to sell" detail="Every tier is out." />
+          doorTiers.length > 0 ? (
+            <Notice
+              title="Door allocation sold out"
+              detail="Every ticket held back for the door has gone."
+            />
+          ) : (
+            <Notice title="Nothing left to sell" detail="Every tier is out." />
+          )
         ) : (
           <View style={{ gap: space.sm }}>
+            {doorTiers.length > 0 ? (
+              <View style={styles.allocation}>
+                <Pill tone={doorLeft > 0 ? "accent" : "warn"}>
+                  Door allocation
+                </Pill>
+                <Caption>
+                  {doorLeft === 1 ? "1 ticket left" : `${doorLeft} tickets left`}
+                </Caption>
+              </View>
+            ) : null}
             {available.map((tier) => {
               const quantity = quantities[tier.id] ?? 0;
               return (
@@ -399,6 +424,11 @@ function Stepper({
 }
 
 const styles = StyleSheet.create({
+  allocation: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.sm,
+  },
   tier: {
     flexDirection: "row",
     alignItems: "center",

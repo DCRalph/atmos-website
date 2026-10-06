@@ -168,12 +168,34 @@ function SellForm({
   if (tiers.isPending) return <Skeleton className="h-64 w-full" />;
 
   const available = (tiers.data ?? []).filter((tier) => tier.remaining > 0);
+  // The door allocation: tickets held back for the door in door-only tiers.
+  const doorTiers = (tiers.data ?? []).filter((tier) => tier.doorOnly);
+  const doorLeft = doorTiers.reduce(
+    (sum, tier) => sum + tier.remaining * tier.groupSize,
+    0,
+  );
 
   return (
     <div className="space-y-5">
+      {doorTiers.length > 0 ? (
+        <p className="flex items-center justify-between border-2 border-white/10 px-3.5 py-2.5 text-sm">
+          <span className="text-xs tracking-[0.14em] text-white/40 uppercase">
+            Door allocation
+          </span>
+          <span
+            className={
+              doorLeft > 0 ? "tabular-nums" : "text-amber-400 tabular-nums"
+            }
+          >
+            {doorLeft === 1 ? "1 ticket left" : `${doorLeft} tickets left`}
+          </span>
+        </p>
+      ) : null}
       {available.length === 0 ? (
         <p className="border-2 border-white/10 p-6 text-center text-sm text-white/40">
-          Nothing left to sell — every tier is out of stock.
+          {doorTiers.length > 0
+            ? "The door allocation is sold out."
+            : "Nothing left to sell — every tier is out of stock."}
         </p>
       ) : (
         <ul className="divide-y-2 divide-white/5 border-2 border-white/10">

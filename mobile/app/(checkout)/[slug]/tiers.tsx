@@ -99,7 +99,11 @@ export default function TiersScreen() {
         {tiers.length === 0 ? (
           <Notice
             title="Nothing on sale"
-            detail="Tickets for this event aren't available right now."
+            detail={
+              event.data?.doorSales
+                ? "Tickets are held back for the door, so you can still buy one on the night."
+                : "Tickets for this event aren't available right now."
+            }
             action={<Button onPress={() => router.back()}>Back</Button>}
           />
         ) : (
