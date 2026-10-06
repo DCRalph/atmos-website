@@ -1,8 +1,9 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ExternalLink, ScanLine } from "lucide-react";
+import { Copy, ExternalLink, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -21,7 +22,7 @@ import {
 } from "~/components/ui/select";
 import { useConfirm } from "~/components/confirm-provider";
 import { useTabParam } from "~/hooks/use-tab-param";
-import { EventForm } from "~/components/admin/ticketing/event-form";
+import { EventEditor } from "~/components/admin/ticketing/event-editor";
 import { TierManager } from "~/components/admin/ticketing/tier-manager";
 import { EventOverview } from "~/components/admin/ticketing/event-overview";
 import { OrdersPanel } from "~/components/admin/ticketing/orders-panel";
@@ -43,7 +44,9 @@ const STATUSES = [
 
 export default function AdminEventPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const utils = api.useUtils();
+  const [settingsDirty, setSettingsDirty] = useState(false);
   const confirm = useConfirm();
   const tab = useTabParam([
     "overview",
@@ -65,6 +68,15 @@ export default function AdminEventPage() {
     onSuccess: () => {
       toast.success("Status updated");
       void utils.ticketEvents.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const duplicate = api.ticketEvents.duplicate.useMutation({
+    onSuccess: (copy) => {
+      toast.success(`Created "${copy.name}" as a draft`);
+      void utils.ticketEvents.list.invalidate();
+      router.push(`/admin/events/${copy.id}?tab=settings`);
     },
     onError: (error) => toast.error(error.message),
   });
@@ -138,6 +150,13 @@ export default function AdminEventPage() {
               <ExternalLink className="size-4" aria-hidden /> View
             </Link>
           </Button>
+          <Button
+            variant="outline"
+            disabled={duplicate.isPending}
+            onClick={() => duplicate.mutate({ id: data.id })}
+          >
+            <Copy className="size-4" aria-hidden /> Duplicate
+          </Button>
           <Button variant="outline" asChild>
             <Link href={`/door/${data.id}`} target="_blank" rel="noreferrer">
               <ScanLine className="size-4" aria-hidden /> Scanner
@@ -162,7 +181,15 @@ export default function AdminEventPage() {
           <TabsTrigger value="comps">Comps</TabsTrigger>
           <TabsTrigger value="links">Ticket links</TabsTrigger>
           <TabsTrigger value="staff">Door staff</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="settings">
+            Settings
+            {settingsDirty ? (
+              <span
+                className="ml-1.5 size-1.5 rounded-full bg-amber-500"
+                aria-label="Unsaved changes"
+              />
+            ) : null}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6 space-y-6">
@@ -187,8 +214,18 @@ export default function AdminEventPage() {
         <TabsContent value="staff" className="mt-6">
           <StaffPanel event={data} />
         </TabsContent>
-        <TabsContent value="settings" className="mt-6">
-          <EventForm event={data} />
+        {/* Kept mounted while other tabs are open, so a half-finished edit
+            survives a look at the orders. The dot on the tab says it's there. */}
+        <TabsContent
+          value="settings"
+          forceMount
+          className="mt-6 data-[state=inactive]:hidden"
+        >
+          <EventEditor
+            event={data}
+            onOpenTab={tab.onValueChange}
+            onDirtyChange={setSettingsDirty}
+          />
         </TabsContent>
       </Tabs>
     </AdminSection>

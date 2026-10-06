@@ -795,6 +795,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
                         onDateChange={(value) => update("announceAt", value)}
                         placeholder="Announce by hand"
                         showTime
+                        clearable
                       />
                     </Field>
                   ) : null}
@@ -878,6 +879,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
                   onDateChange={(value) => update("endTime", value)}
                   placeholder="Select end time"
                   showTime
+                  clearable
                 />
               </Field>
             </CardContent>

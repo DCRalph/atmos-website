@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, X } from "lucide-react";
 import { Calendar } from "~/components/ui/calendar";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -21,6 +21,8 @@ interface DateTimePickerProps {
   disabled?: boolean;
   required?: boolean;
   showTime?: boolean;
+  /** Shows an × beside a set date that empties the field. For optional dates. */
+  clearable?: boolean;
 }
 
 export function DateTimePicker({
@@ -30,7 +32,9 @@ export function DateTimePicker({
   disabled = false,
   // required = false,
   showTime = true,
+  clearable = false,
 }: DateTimePickerProps) {
+  const timeInputId = React.useId();
   const timeValue = date ? format(date, "HH:mm") : "";
 
   const handleDateSelect = (selectedDate: Date | undefined) => {
@@ -73,45 +77,63 @@ export function DateTimePicker({
 
   return (
     <div className="space-y-2">
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            className={cn(
-              "w-full justify-start text-left font-normal",
-              !date && "text-muted-foreground",
-            )}
-            disabled={disabled}
-            type="button"
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {date ? (
-              showTime ? (
-                format(date, "PPP 'at' HH:mm")
+      <div className="flex gap-2">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "w-full justify-start text-left font-normal",
+                !date && "text-muted-foreground",
+              )}
+              disabled={disabled}
+              type="button"
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {date ? (
+                showTime ? (
+                  format(date, "PPP 'at' HH:mm")
+                ) : (
+                  format(date, "PPP")
+                )
               ) : (
-                format(date, "PPP")
-              )
-            ) : (
-              <span>{placeholder}</span>
-            )}
+                <span>{placeholder}</span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={date}
+              onSelect={handleDateSelect}
+              autoFocus
+            />
+          </PopoverContent>
+        </Popover>
+        {clearable && date ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="shrink-0"
+            aria-label="Clear date"
+            disabled={disabled}
+            onClick={() => onDateChange(undefined)}
+          >
+            <X className="h-4 w-4" />
           </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            mode="single"
-            selected={date}
-            onSelect={handleDateSelect}
-            autoFocus
-          />
-        </PopoverContent>
-      </Popover>
+        ) : null}
+      </div>
       {showTime && (
         <div className="flex items-center gap-2">
-          <Label htmlFor="time-input" className="text-muted-foreground text-sm">
+          <Label
+            htmlFor={timeInputId}
+            className="text-muted-foreground text-sm"
+          >
             Time:
           </Label>
           <Input
-            id="time-input"
+            id={timeInputId}
             type="time"
             value={timeValue}
             onChange={handleTimeChange}
