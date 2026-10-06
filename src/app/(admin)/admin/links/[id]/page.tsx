@@ -2,13 +2,17 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Download, ExternalLink, Plus, Trash2 } from "lucide-react";
+import { ExternalLink, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { api, type RouterOutputs } from "~/trpc/react";
 import { AdminSection } from "~/components/admin/admin-section";
 import { BucketBarChart, StatTile } from "~/components/admin/ticketing/charts";
 import { CopyButton } from "~/components/admin/short-links/copy-button";
+import {
+  QrDownloadButtons,
+  qrHref,
+} from "~/components/admin/short-links/qr-downloads";
 import { LinkForm } from "~/components/admin/short-links/link-form";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -32,24 +36,6 @@ import { domainLabel, shortLinkUrl } from "~/lib/short-links/domains";
 type ShortLink = RouterOutputs["shortLinks"]["byId"];
 type Click = ShortLink["recent"][number];
 type Slice = ShortLink["breakdown"]["source"][number];
-
-/**
- * Where a link's QR code downloads from, encoding the link on `host`. `code`
- * picks a named one.
- */
-function qrHref(
-  linkId: string,
-  host: string,
-  format: "svg" | "png",
-  code?: string,
-): string {
-  const query = new URLSearchParams({
-    format,
-    host,
-    ...(code ? { code } : {}),
-  });
-  return `/api/admin/short-links/${linkId}/qr?${query}`;
-}
 
 /** One short link: its numbers, its QR codes, its clicks and its settings. */
 export default function ShortLinkPage() {
@@ -217,31 +203,6 @@ function Breakdown({ title, slices }: { title: string; slices: Slice[] }) {
 /* QR codes                                                                   */
 /* -------------------------------------------------------------------------- */
 
-function DownloadButtons({
-  linkId,
-  host,
-  code,
-}: {
-  linkId: string;
-  host: string;
-  code?: string;
-}) {
-  return (
-    <>
-      <Button variant="outline" size="sm" asChild>
-        <a href={qrHref(linkId, host, "svg", code)} download>
-          <Download className="size-4" aria-hidden /> SVG
-        </a>
-      </Button>
-      <Button variant="outline" size="sm" asChild>
-        <a href={qrHref(linkId, host, "png", code)} download>
-          <Download className="size-4" aria-hidden /> PNG
-        </a>
-      </Button>
-    </>
-  );
-}
-
 /**
  * The plain QR code, plus named ones. Every named code lands on the same link;
  * the `?c=` on the end is what lets "Cuba St lamp post" be counted apart from
@@ -310,7 +271,7 @@ function QrCodes({ link }: { link: ShortLink }) {
             one poster run from another.
           </p>
           <div className="flex gap-2">
-            <DownloadButtons linkId={link.id} host={host} />
+            <QrDownloadButtons linkId={link.id} host={host} />
           </div>
         </div>
       </section>
@@ -355,7 +316,11 @@ function QrCodes({ link }: { link: ShortLink }) {
                 <span className="text-muted-foreground text-sm tabular-nums">
                   {scans.get(qr.name) ?? 0} scans
                 </span>
-                <DownloadButtons linkId={link.id} host={host} code={qr.code} />
+                <QrDownloadButtons
+                  linkId={link.id}
+                  host={host}
+                  code={qr.code}
+                />
                 <Button
                   variant="ghost"
                   size="icon"

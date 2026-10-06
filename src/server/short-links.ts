@@ -11,6 +11,7 @@ import { readClient, resolveSource } from "~/lib/short-links/clicks";
 import {
   ALL_DOMAINS,
   SITE_LINK_DOMAIN,
+  linkTarget,
   normaliseHost,
 } from "~/lib/short-links/domains";
 import { normaliseSlug } from "~/lib/short-links/rules";
@@ -143,16 +144,9 @@ async function follow(
   const click = await readClickContext(query);
   after(() => recordClick(link, host, click));
 
-  // A path means a page on the main site. Served from another domain that
-  // page does not exist there, so it is made absolute.
-  const destination =
-    link.destination.startsWith("/") && host !== SITE_LINK_DOMAIN
-      ? new URL(link.destination, SITE_URL).toString()
-      : link.destination;
-
   // Temporary, always: where a short link goes is meant to change, and a
   // browser that cached a permanent redirect would never ask again.
-  redirect(destination);
+  redirect(linkTarget(link.destination, host, click.qrCode, SITE_URL));
 }
 
 /**

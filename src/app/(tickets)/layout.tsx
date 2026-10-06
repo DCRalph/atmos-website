@@ -9,7 +9,10 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-/** Ticket, receipt and pass pages: the public site's type and tokens, no header or footer. */
+/**
+ * Ticket, receipt and pass pages, and gig photo signup: the public site's type
+ * and tokens, no header or footer.
+ */
 export default function TicketsLayout({
   children,
 }: {

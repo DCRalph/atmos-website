@@ -1,7 +1,13 @@
 import { describe, test } from "bun:test";
 import assert from "node:assert/strict";
 
-import { hostProblem, isMainSiteHost, normaliseHost } from "./domains";
+import {
+  SITE_LINK_DOMAIN,
+  hostProblem,
+  isMainSiteHost,
+  linkTarget,
+  normaliseHost,
+} from "./domains";
 
 describe("normaliseHost", () => {
   test("reduces a pasted URL or Host header to the bare host", () => {
@@ -46,5 +52,37 @@ describe("hostProblem", () => {
     assert.ok(hostProblem("atms"));
     assert.ok(hostProblem("atmosmedia.co.nz"));
     assert.ok(hostProblem("x.vercel.app"));
+  });
+});
+
+describe("linkTarget", () => {
+  const site = "https://atmosmedia.co.nz";
+
+  // The photo signup attributes each email to the code in `?c=`, so losing it
+  // here would put every signup under "no code".
+  test("carries a QR code onto our own pages", () => {
+    assert.equal(
+      linkTarget("/gigs/abc/photo-signup", SITE_LINK_DOMAIN, "k3x9p", site),
+      "/gigs/abc/photo-signup?c=k3x9p",
+    );
+    assert.equal(
+      linkTarget("/gigs?tab=past#top", "atms.nz", "k3x9p", site),
+      "https://atmosmedia.co.nz/gigs?tab=past&c=k3x9p#top",
+    );
+  });
+
+  test("leaves somebody else's site exactly as saved", () => {
+    assert.equal(
+      linkTarget("https://example.com/x?y=1", "atms.nz", "k3x9p", site),
+      "https://example.com/x?y=1",
+    );
+  });
+
+  test("adds nothing without a code", () => {
+    assert.equal(linkTarget("/merch", SITE_LINK_DOMAIN, null, site), "/merch");
+    assert.equal(
+      linkTarget("/merch", "atms.nz", null, site),
+      "https://atmosmedia.co.nz/merch",
+    );
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -367,6 +367,14 @@ export function GigPage({ params }: { params: Promise<{ id: string }> }) {
   const isAdmin = viewer?.effectivePermissions.includes("ADMIN") ?? false;
   const lb = useLightbox();
 
+  // The page draws after its query, too late for the browser's own jump to a
+  // link like `#photos` (the photos email), so it is done once the gig is in.
+  const loadedId = gig?.id;
+  useEffect(() => {
+    const target = window.location.hash.slice(1);
+    if (loadedId && target) document.getElementById(target)?.scrollIntoView();
+  }, [loadedId]);
+
   if (isPending) return <LoadingView />;
   if (!gig) return <NotFound />;
 
@@ -468,7 +476,7 @@ export function GigPage({ params }: { params: Promise<{ id: string }> }) {
       </section>
 
       {past ? (
-        <section className="px-5 pb-20 md:px-10">
+        <section id="photos" className="scroll-mt-24 px-5 pb-20 md:px-10">
           <Gallery gig={gig} />
         </section>
       ) : null}
