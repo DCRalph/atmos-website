@@ -3,6 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
+import { LaunchReveal } from "@/components/launch-reveal";
 import { Providers } from "@/components/providers";
 import { colors } from "@/lib/theme";
 
@@ -32,31 +33,33 @@ export default function RootLayout() {
         <Providers>
           <ThemeProvider value={navigationTheme}>
             <StatusBar style="light" />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: colors.bg },
-              }}
-            >
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen
-                name="(auth)"
-                options={{
-                  presentation: "modal",
-                  animation: "slide_from_bottom",
+            <LaunchReveal>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: colors.bg },
                 }}
-              />
-              <Stack.Screen
-                name="(checkout)"
-                options={{
-                  presentation: "modal",
-                  animation: "slide_from_bottom",
-                }}
-              />
-              {/* Full screen, outside the tabs: at a door you want the whole
-                display and no way to fat-finger into the gig list. */}
-              <Stack.Screen name="(door)" options={{ animation: "fade" }} />
-            </Stack>
+              >
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen
+                  name="(auth)"
+                  options={{
+                    presentation: "modal",
+                    animation: "slide_from_bottom",
+                  }}
+                />
+                <Stack.Screen
+                  name="(checkout)"
+                  options={{
+                    presentation: "modal",
+                    animation: "slide_from_bottom",
+                  }}
+                />
+                {/* Full screen, outside the tabs: at a door you want the whole
+                  display and no way to fat-finger into the gig list. */}
+                <Stack.Screen name="(door)" options={{ animation: "fade" }} />
+              </Stack>
+            </LaunchReveal>
           </ThemeProvider>
         </Providers>
       </SafeAreaProvider>
