@@ -403,11 +403,16 @@ function TierRow({
             <DateTimePicker
               date={salesStartAt}
               onDateChange={setSalesStartAt}
+              clearable
             />
           </div>
           <div className="space-y-1.5">
             <Label>Sale ends</Label>
-            <DateTimePicker date={salesEndAt} onDateChange={setSalesEndAt} />
+            <DateTimePicker
+              date={salesEndAt}
+              onDateChange={setSalesEndAt}
+              clearable
+            />
           </div>
 
           <div className="flex items-center justify-between gap-4 md:col-span-2">

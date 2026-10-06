@@ -672,6 +672,96 @@ export const ticketEventsRouter = createTRPCRouter({
       return { ok: true as const };
     }),
 
+  /**
+   * A fresh draft copied from an existing event, for the night that runs again.
+   *
+   * Settings and tiers come across; everything that belongs to the original
+   * night does not — its gig link, sales, orders, staff and share key. Dates
+   * are copied as they are, so the admin moves them before publishing.
+   */
+  duplicate: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const source = await ctx.db.ticketEvent.findUnique({
+        where: { id: input.id },
+        include: { tiers: { orderBy: { sortOrder: "asc" } } },
+      });
+      if (!source) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+      }
+
+      const name = `${source.name} (copy)`;
+      const event = await ctx.db.ticketEvent.create({
+        data: {
+          slug: await uniqueSlug(ctx.db, name),
+          name,
+          shortDescription: source.shortDescription,
+          descriptionLexical: source.descriptionLexical ?? Prisma.JsonNull,
+          posterFileUploadId: source.posterFileUploadId,
+          venueName: source.venueName,
+          venueAddress: source.venueAddress,
+          timezone: source.timezone,
+          doorsAt: source.doorsAt,
+          startsAt: source.startsAt,
+          endsAt: source.endsAt,
+          salesOpenAt: source.salesOpenAt,
+          salesCloseAt: source.salesCloseAt,
+          visibility: source.visibility,
+          accessKey:
+            source.visibility === TicketEventVisibility.PRIVATE
+              ? newAccessKey()
+              : null,
+          capacity: source.capacity,
+          compAllowance: source.compAllowance,
+          maxTicketsPerOrder: source.maxTicketsPerOrder,
+          requireAttendeeNames: source.requireAttendeeNames,
+          reentryAllowed: source.reentryAllowed,
+          isR18: source.isR18,
+          bookingFeeFixedCents: source.bookingFeeFixedCents,
+          bookingFeePercentBp: source.bookingFeePercentBp,
+          gstRateBp: source.gstRateBp,
+          gstNumber: source.gstNumber,
+          passStripStyle: source.passStripStyle,
+          passAccentHex: source.passAccentHex,
+          passBackgroundHex: source.passBackgroundHex,
+          passForegroundHex: source.passForegroundHex,
+          passLabelHex: source.passLabelHex,
+          tiers: {
+            create: source.tiers.map((tier) => ({
+              name: tier.name,
+              description: tier.description,
+              priceCents: tier.priceCents,
+              allocation: tier.allocation,
+              groupSize: tier.groupSize,
+              salesStartAt: tier.salesStartAt,
+              salesEndAt: tier.salesEndAt,
+              isActive: tier.isActive,
+              isHidden: tier.isHidden,
+              maxPerOrder: tier.maxPerOrder,
+              maxPerEmail: tier.maxPerEmail,
+              requiresApproval: tier.requiresApproval,
+              accessLevel: tier.accessLevel,
+              sortOrder: tier.sortOrder,
+            })),
+          },
+        },
+        select: { id: true, name: true, slug: true },
+      });
+
+      await logActivity({
+        type: ActivityType.TICKET_EVENT_CREATED,
+        action: `Duplicated "${source.name}" as "${event.name}"`,
+        userId: ctx.session.user.id,
+        details: {
+          eventId: event.id,
+          slug: event.slug,
+          fromEventId: source.id,
+        },
+      });
+
+      return event;
+    }),
+
   // ----------------------------------------------------------------- tiers
 
   createTier: adminProcedure
