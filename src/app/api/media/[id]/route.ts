@@ -24,6 +24,7 @@ export async function GET(
       },
       select: {
         key: true,
+        name: true,
       },
     });
     if (!record) throw new Error("File not found");
@@ -58,6 +59,13 @@ export async function GET(
     }
     if (eTag) {
       headers.set("ETag", eTag);
+    }
+    // `?download=1` saves the original file instead of displaying it.
+    if (request.nextUrl.searchParams.has("download")) {
+      headers.set(
+        "Content-Disposition",
+        `attachment; filename*=UTF-8''${encodeURIComponent(record.name)}`,
+      );
     }
 
     return new NextResponse(webStream, {

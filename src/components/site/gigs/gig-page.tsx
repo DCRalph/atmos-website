@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
-import { getMediaDisplayUrl } from "~/lib/media-url";
+import { getMediaDisplayUrl, getMediaDownloadUrl } from "~/lib/media-url";
 import { LexicalContent } from "~/components/lexical";
 import { Lineup } from "./lineup";
 import { BuyPanel } from "~/components/ticketing/buy-panel";
@@ -244,6 +244,7 @@ function Gallery({ gig }: { gig: DetailGig }) {
     .map((m, i) => ({
       id: m.id,
       src: getMediaDisplayUrl(m),
+      download: getMediaDownloadUrl(m),
       alt: `${gig.title}, photo ${i + 1}`,
     }));
   const videos = gig.media

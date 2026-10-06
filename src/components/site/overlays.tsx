@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
 import * as Dialog from "@radix-ui/react-dialog";
 import useEmblaCarousel from "embla-carousel-react";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, X } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { useSite } from "./site-provider";
 import { IconButton } from "./ui";
@@ -87,7 +87,8 @@ export function SiteDialog({
 
 export const DialogClose = Dialog.Close;
 
-type LightboxImage = { src: string; alt: string };
+/** `download` is a URL for the full-quality original; set it to show a download button. */
+type LightboxImage = { src: string; alt: string; download?: string };
 
 /**
  * Full-screen image viewer. Swipe or drag (mouse too), arrow keys or the
@@ -182,11 +183,23 @@ function LightboxContent({
         <Dialog.Description className="sr-only">
           Swipe or use the arrow keys to move between images.
         </Dialog.Description>
-        <Dialog.Close asChild>
-          <IconButton label="Close viewer">
-            <X className="size-5" />
-          </IconButton>
-        </Dialog.Close>
+        <div className="flex items-center gap-2">
+          {images[index]?.download ? (
+            <a
+              href={images[index].download}
+              download
+              aria-label="Download full quality"
+              className="glass inline-flex size-11 shrink-0 items-center justify-center rounded-full text-white transition-colors hover:bg-white/15"
+            >
+              <Download className="size-5" />
+            </a>
+          ) : null}
+          <Dialog.Close asChild>
+            <IconButton label="Close viewer">
+              <X className="size-5" />
+            </IconButton>
+          </Dialog.Close>
+        </div>
       </div>
       <div className="relative min-h-0 flex-1">
         <div

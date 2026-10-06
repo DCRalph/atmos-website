@@ -59,3 +59,14 @@ export const getMediaDisplayUrl = (media: {
   // Fall back to the direct URL (legacy or external media)
   return media.fileUpload?.url ?? media.url ?? "";
 };
+
+/**
+ * Get a URL that downloads the original, full-quality file.
+ * Legacy media without an upload record falls back to its direct URL.
+ */
+export const getMediaDownloadUrl = (
+  media: Parameters<typeof getMediaDisplayUrl>[0],
+): string => {
+  const id = media.fileUpload?.id ?? media.fileUploadId;
+  return id ? `${buildMediaUrl(id)}?download=1` : getMediaDisplayUrl(media);
+};
