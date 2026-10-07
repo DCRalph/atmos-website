@@ -7,6 +7,7 @@ import {
   isMainSiteHost,
   linkTarget,
   normaliseHost,
+  shortLinkUrl,
 } from "./domains";
 
 describe("normaliseHost", () => {
@@ -55,12 +56,26 @@ describe("hostProblem", () => {
   });
 });
 
+describe("shortLinkUrl", () => {
+  test("marks a QR code's address, after the sub link's code", () => {
+    assert.equal(shortLinkUrl("atms.nz", "tix"), "https://atms.nz/tix");
+    assert.equal(
+      shortLinkUrl("atms.nz", "tix", { code: "k3x9p", qr: true }),
+      "https://atms.nz/tix?c=k3x9p&qr=1",
+    );
+    assert.equal(
+      shortLinkUrl("atms.nz", "tix", { qr: true }),
+      "https://atms.nz/tix?qr=1",
+    );
+  });
+});
+
 describe("linkTarget", () => {
   const site = "https://atmosmedia.co.nz";
 
   // The photo signup attributes each email to the code in `?c=`, so losing it
   // here would put every signup under "no code".
-  test("carries a QR code onto our own pages", () => {
+  test("carries a sub link's code onto our own pages", () => {
     assert.equal(
       linkTarget("/gigs/abc/photo-signup", SITE_LINK_DOMAIN, "k3x9p", site),
       "/gigs/abc/photo-signup?c=k3x9p",

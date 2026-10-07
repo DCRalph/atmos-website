@@ -20,7 +20,7 @@ async function isAdmin() {
 
 /**
  * A short link's QR code as a download: `?format=svg` for print, `?format=png`
- * for everything else. `?code=` picks one of its named QR codes; without it the
+ * for everything else. `?code=` picks one of its sub links; without it the
  * code is the plain link. `?host=` picks which of the link's domains it
  * encodes, for a link on every domain; without it, the first.
  *
@@ -45,11 +45,11 @@ export async function GET(
     select: {
       domain: true,
       slug: true,
-      qrCodes: code ? { where: { code }, select: { name: true } } : false,
+      subLinks: code ? { where: { code }, select: { name: true } } : false,
     },
   });
-  const qr = link?.qrCodes?.[0];
-  if (!link || (code && !qr)) {
+  const subLink = link?.subLinks?.[0];
+  if (!link || (code && !subLink)) {
     return new Response("Not found", { status: 404 });
   }
 
@@ -66,9 +66,9 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
 
-  const url = shortLinkUrl(host, link.slug, code);
-  const suffix = qr
-    ? `-${qr.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`
+  const url = shortLinkUrl(host, link.slug, { code, qr: true });
+  const suffix = subLink
+    ? `-${subLink.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`
     : "";
   // The host goes in the name too, so two domains' codes for one link are
   // never mistaken for each other on a print proof.

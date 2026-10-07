@@ -19,15 +19,15 @@ import { logActivity } from "~/server/utils/activity-log";
  * Gig photo signup: people leave an email on `/gigs/[id]/photo-signup` and
  * get one email when the photos are up.
  *
- * The page is reached through a short link with a named QR code per spot in
- * the venue. The short link counts scans by code, and the redirect carries the
- * code onto the page, so each signup records the code that brought it. That
- * gives scans and emails per code side by side.
+ * The page is reached through a short link with a sub link per spot in the
+ * venue, each printed as its own QR code. The short link counts scans by sub
+ * link, and the redirect carries the code onto the page, so each signup records
+ * the code that brought it. That gives scans and emails per code side by side.
  */
 
-/** One row of the numbers: a QR code, or everything that came without one. */
+/** One row of the numbers: a sub link, or everything that came without one. */
 type SourceRow = {
-  qrCodeId: string | null;
+  subLinkId: string | null;
   name: string;
   code: string | null;
   scans: number;
@@ -59,8 +59,8 @@ export const photoSignupRouter = createTRPCRouter({
       }
 
       // Only a code on this gig's own link counts. Anything else is a visit.
-      const qr = input.code
-        ? await ctx.db.shortLinkQrCode.findFirst({
+      const subLink = input.code
+        ? await ctx.db.shortLinkSubLink.findFirst({
             where: {
               code: input.code,
               link: { photoSignupGig: { id: gig.id } },
@@ -68,7 +68,7 @@ export const photoSignupRouter = createTRPCRouter({
             select: { name: true },
           })
         : null;
-      const source = qr?.name ?? null;
+      const source = subLink?.name ?? null;
       await ctx.db.$transaction([
         ctx.db.gigPhotoSignup.upsert({
           where: { gigId_email: { gigId: gig.id, email: input.email } },
@@ -93,7 +93,7 @@ export const photoSignupRouter = createTRPCRouter({
         where: { id: input.gigId },
         select: {
           photoSignupLink: {
-            include: { qrCodes: { orderBy: { createdAt: "asc" } } },
+            include: { subLinks: { orderBy: { createdAt: "asc" } } },
           },
           _count: { select: { media: { where: { type: "photo" } } } },
         },
@@ -104,11 +104,11 @@ export const photoSignupRouter = createTRPCRouter({
 
       const link = gig.photoSignupLink;
       const linkId = link?.id ?? "";
-      const codes = link?.qrCodes ?? [];
-      const names = codes.map((qr) => qr.name);
+      const subLinks = link?.subLinks ?? [];
+      const names = subLinks.map((subLink) => subLink.name);
       const [clicks, [visitors], signups, extra] = await Promise.all([
-        // A row per current QR code. Everything else, including a deleted
-        // code's history, is one "no code" row (null), so the rows add up.
+        // A row per current sub link. Everything else, including a deleted
+        // one's history, is one "no code" row (null), so the rows add up.
         ctx.db.$queryRaw<
           { source: string | null; scans: number; people: number }[]
         >`
@@ -141,16 +141,16 @@ export const photoSignupRouter = createTRPCRouter({
         }),
       ]);
 
-      const rows: SourceRow[] = codes.map((qr) => ({
-        qrCodeId: qr.id,
-        name: qr.name,
-        code: qr.code,
+      const rows: SourceRow[] = subLinks.map((subLink) => ({
+        subLinkId: subLink.id,
+        name: subLink.name,
+        code: subLink.code,
         scans: 0,
         people: 0,
         emails: 0,
       }));
       const other: SourceRow = {
-        qrCodeId: null,
+        subLinkId: null,
         name: "No code",
         code: null,
         scans: 0,
@@ -190,7 +190,7 @@ export const photoSignupRouter = createTRPCRouter({
       };
     }),
 
-  /** Make the gig's short link, which its QR codes then hang off. */
+  /** Make the gig's short link, which its sub links then hang off. */
   createLink: adminProcedure
     .input(
       z.object({

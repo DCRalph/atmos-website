@@ -72,7 +72,7 @@ export const appRouter = createTRPCRouter({
   runSheet: runSheetRouter,
   gigChat: gigChatRouter,
   featureFlags: featureFlagsRouter,
-  /** Short links and their QR codes, on any of our domains. */
+  /** Short links and their sub links, on any of our domains. */
   shortLinks: shortLinksRouter,
   /** Emails left on a gig's QR code page, and the "photos are up" send. */
   photoSignup: photoSignupRouter,
