@@ -80,7 +80,7 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
       },
       {
         title: "Links",
-        description: "Short links and QR codes, and who clicks them",
+        description: "Short links, sub links and QR codes, and who clicks them",
         url: "/admin/links",
         icon: Link2,
         keywords: ["short", "qr", "redirect", "bio", "poster", "flyer"],

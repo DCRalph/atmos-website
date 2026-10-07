@@ -176,14 +176,14 @@ function SignupNumbers({
   const confirm = useConfirm();
   const refresh = () => void utils.photoSignup.forGig.invalidate({ gigId });
 
-  const addCode = api.shortLinks.createQrCode.useMutation({
+  const addCode = api.shortLinks.createSubLink.useMutation({
     onSuccess: () => {
       setName("");
       refresh();
     },
     onError: (error) => toast.error(error.message),
   });
-  const removeCode = api.shortLinks.deleteQrCode.useMutation({
+  const removeCode = api.shortLinks.deleteSubLink.useMutation({
     onSuccess: refresh,
     onError: (error) => toast.error(error.message),
   });
@@ -339,7 +339,7 @@ function SignupNumbers({
               <tbody className="tabular-nums">
                 {data.rows.map((row) => (
                   <tr
-                    key={row.qrCodeId ?? "none"}
+                    key={row.subLinkId ?? "none"}
                     className="border-b last:border-0"
                   >
                     <td className="p-3">
@@ -362,7 +362,7 @@ function SignupNumbers({
                       </p>
                       {row.code ? (
                         <p className="text-muted-foreground font-mono text-xs break-all">
-                          {shortLinkUrl(host, link.slug, row.code)}
+                          {shortLinkUrl(host, link.slug, { code: row.code })}
                         </p>
                       ) : null}
                     </td>
@@ -373,7 +373,7 @@ function SignupNumbers({
                       {rate(row.emails, row.people)}
                     </td>
                     <td className="p-3">
-                      {row.code && row.qrCodeId ? (
+                      {row.code && row.subLinkId ? (
                         <div className="flex justify-end gap-2">
                           <QrDownloadButtons
                             linkId={link.id}
@@ -393,8 +393,8 @@ function SignupNumbers({
                                 confirmLabel: "Delete",
                                 variant: "destructive",
                               });
-                              if (ok && row.qrCodeId)
-                                removeCode.mutate({ id: row.qrCodeId });
+                              if (ok && row.subLinkId)
+                                removeCode.mutate({ id: row.subLinkId });
                             }}
                           >
                             <Trash2 className="size-4" aria-hidden />

@@ -37,10 +37,10 @@ type ShortLink = RouterOutputs["shortLinks"]["byId"];
 type Click = ShortLink["recent"][number];
 type Slice = ShortLink["breakdown"]["source"][number];
 
-/** One short link: its numbers, its QR codes, its clicks and its settings. */
+/** One short link: its numbers, its sub links, its clicks and its settings. */
 export default function ShortLinkPage() {
   const params = useParams<{ id: string }>();
-  const tab = useTabParam(["overview", "qr", "clicks", "settings"]);
+  const tab = useTabParam(["overview", "sub-links", "clicks", "settings"]);
   const link = api.shortLinks.byId.useQuery({ id: params.id });
 
   if (link.isPending) {
@@ -81,7 +81,7 @@ export default function ShortLinkPage() {
       <Tabs {...tab}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="qr">QR codes</TabsTrigger>
+          <TabsTrigger value="sub-links">Sub links</TabsTrigger>
           <TabsTrigger value="clicks">Clicks</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
@@ -89,8 +89,8 @@ export default function ShortLinkPage() {
         <TabsContent value="overview" className="mt-6">
           <Overview link={data} />
         </TabsContent>
-        <TabsContent value="qr" className="mt-6">
-          <QrCodes link={data} />
+        <TabsContent value="sub-links" className="mt-6">
+          <SubLinks link={data} />
         </TabsContent>
         <TabsContent value="clicks" className="mt-6">
           <RecentClicks clicks={data.recent} />
@@ -150,6 +150,7 @@ function Overview({ link }: { link: ShortLink }) {
 
       <div className="grid gap-4 md:grid-cols-2">
         <Breakdown title="Where from" slices={breakdown.source} />
+        <Breakdown title="Scanned or clicked" slices={breakdown.via} />
         {link.hosts.length > 1 && (
           <Breakdown title="Domain" slices={breakdown.domain} />
         )}
@@ -200,16 +201,17 @@ function Breakdown({ title, slices }: { title: string; slices: Slice[] }) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* QR codes                                                                   */
+/* Sub links                                                                  */
 /* -------------------------------------------------------------------------- */
 
 /**
- * The plain QR code, plus named ones. Every named code lands on the same link;
- * the `?c=` on the end is what lets "Cuba St lamp post" be counted apart from
- * "Flyer, Vol. 3 run". A link on every domain gets a domain picker, which
- * decides which address every code on the tab encodes.
+ * The plain link, plus sub links. Every sub link lands on the same place; the
+ * `?c=` on the end is what lets "Cuba St lamp post" be counted apart from
+ * "Instagram bio". Each one copies as text or downloads as a QR code. A link on
+ * every domain gets a domain picker, which decides which address every row on
+ * the tab uses.
  */
-function QrCodes({ link }: { link: ShortLink }) {
+function SubLinks({ link }: { link: ShortLink }) {
   const [name, setName] = useState("");
   const [picked, setHost] = useState(link.hosts[0] ?? link.domain);
   // A removed domain drops out of `hosts`; fall back rather than 404.
@@ -217,11 +219,7 @@ function QrCodes({ link }: { link: ShortLink }) {
   const utils = api.useUtils();
   const confirm = useConfirm();
 
-  const scans = new Map(
-    link.breakdown.source.map((slice) => [slice.label, slice.n]),
-  );
-
-  const create = api.shortLinks.createQrCode.useMutation({
+  const create = api.shortLinks.createSubLink.useMutation({
     onSuccess: () => {
       setName("");
       void utils.shortLinks.byId.invalidate({ id: link.id });
@@ -229,7 +227,7 @@ function QrCodes({ link }: { link: ShortLink }) {
     onError: (error) => toast.error(error.message),
   });
 
-  const remove = api.shortLinks.deleteQrCode.useMutation({
+  const remove = api.shortLinks.deleteSubLink.useMutation({
     onSuccess: () => void utils.shortLinks.byId.invalidate({ id: link.id }),
     onError: (error) => toast.error(error.message),
   });
@@ -238,9 +236,9 @@ function QrCodes({ link }: { link: ShortLink }) {
     <div className="space-y-6">
       {link.hosts.length > 1 && (
         <div className="flex flex-wrap items-center gap-3">
-          <Label htmlFor="qr-host">QR codes for</Label>
+          <Label htmlFor="sub-link-host">Addresses on</Label>
           <Select value={host} onValueChange={setHost}>
-            <SelectTrigger id="qr-host" className="w-64 font-mono">
+            <SelectTrigger id="sub-link-host" className="w-64 font-mono">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -262,22 +260,23 @@ function QrCodes({ link }: { link: ShortLink }) {
           className="size-32 rounded-md bg-white"
         />
         <div className="min-w-0 flex-1 space-y-2">
-          <h2 className="text-lg font-semibold">Plain QR code</h2>
+          <h2 className="text-lg font-semibold">Plain link</h2>
           <p className="text-muted-foreground font-mono text-sm break-all">
             {shortLinkUrl(host, link.slug)}
           </p>
           <p className="text-muted-foreground text-sm">
-            Scans count as &ldquo;direct&rdquo;. Make a named code below to tell
-            one poster run from another.
+            Counted by referrer, or as &ldquo;direct&rdquo;. Make a sub link
+            below to count one place it&rsquo;s used on its own.
           </p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <CopyButton value={shortLinkUrl(host, link.slug)} size="sm" />
             <QrDownloadButtons linkId={link.id} host={host} />
           </div>
         </div>
       </section>
 
       <section className="space-y-4 rounded-lg border p-5">
-        <h2 className="text-lg font-semibold">Named QR codes</h2>
+        <h2 className="text-lg font-semibold">Sub links</h2>
 
         <form
           className="flex flex-wrap gap-2"
@@ -289,7 +288,7 @@ function QrCodes({ link }: { link: ShortLink }) {
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Where it's going up, like city centre flyers"
+            placeholder="Where it's used, like Instagram bio or city flyers"
             maxLength={48}
             className="max-w-sm"
           />
@@ -298,43 +297,47 @@ function QrCodes({ link }: { link: ShortLink }) {
           </Button>
         </form>
 
-        {link.qrCodes.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No named codes yet.</p>
+        {link.subLinks.length === 0 ? (
+          <p className="text-muted-foreground text-sm">No sub links yet.</p>
         ) : (
           <ul className="divide-y">
-            {link.qrCodes.map((qr) => (
+            {link.subLinks.map((subLink) => (
               <li
-                key={qr.id}
+                key={subLink.id}
                 className="flex flex-wrap items-center gap-3 py-3"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium">{qr.name}</p>
+                  <p className="font-medium">{subLink.name}</p>
                   <p className="text-muted-foreground font-mono text-xs break-all">
-                    {shortLinkUrl(host, link.slug, qr.code)}
+                    {shortLinkUrl(host, link.slug, { code: subLink.code })}
                   </p>
                 </div>
                 <span className="text-muted-foreground text-sm tabular-nums">
-                  {scans.get(qr.name) ?? 0} scans
+                  {subLink.clicks} clicks · {subLink.scans} from QR
                 </span>
+                <CopyButton
+                  value={shortLinkUrl(host, link.slug, { code: subLink.code })}
+                  size="sm"
+                />
                 <QrDownloadButtons
                   linkId={link.id}
                   host={host}
-                  code={qr.code}
+                  code={subLink.code}
                 />
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label={`Delete ${qr.name}`}
+                  aria-label={`Delete ${subLink.name}`}
                   disabled={remove.isPending}
                   onClick={async () => {
                     const ok = await confirm({
-                      title: `Delete "${qr.name}"?`,
+                      title: `Delete "${subLink.name}"?`,
                       description:
-                        "Printed copies keep working and their past scans keep the name. New scans just count as direct.",
+                        "Anywhere it's printed or pasted keeps working, and its past clicks keep the name. New clicks just count like any other visit.",
                       confirmLabel: "Delete",
                       variant: "destructive",
                     });
-                    if (ok) remove.mutate({ id: qr.id });
+                    if (ok) remove.mutate({ id: subLink.id });
                   }}
                 >
                   <Trash2 className="size-4" aria-hidden />
@@ -362,6 +365,13 @@ const clickColumns: DataTableColumn<Click>[] = [
     cell: (row) => formatDateTime(row.createdAt),
   },
   { id: "source", header: "Where from", accessor: (row) => row.source },
+  {
+    id: "via",
+    header: "How",
+    accessor: (row) => row.via,
+    cell: (row) =>
+      row.via === "qr" ? <Badge variant="outline">QR</Badge> : (row.via ?? "—"),
+  },
   {
     id: "url",
     header: "Link used",

@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { ActivityType } from "~Prisma/client";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
-import { newQrCode } from "~/lib/short-links/clicks";
+import { newSubLinkCode } from "~/lib/short-links/clicks";
 import {
   ALL_DOMAINS,
   SITE_LINK_DOMAIN,
@@ -21,7 +21,7 @@ import { db } from "~/server/db";
 
 /**
  * Short links from the admin side: the list with its counts, one link's
- * numbers, the writes, and each link's named QR codes. The redirect itself is
+ * numbers, the writes, and each link's sub links. The redirect itself is
  * `~/server/short-links`.
  *
  * Bots are recorded but excluded from every count here, so "clicks" means the
@@ -126,7 +126,7 @@ function recentNzDays(count: number): string[] {
 type Slice = { label: string; n: number };
 
 /** The columns a link's traffic is broken down by. */
-type Dimension = "source" | "domain" | "device" | "browser" | "os";
+type Dimension = "source" | "via" | "domain" | "device" | "browser" | "os";
 
 export const shortLinksRouter = createTRPCRouter({
   list: adminProcedure.query(async ({ ctx }) => {
@@ -169,15 +169,18 @@ export const shortLinksRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const link = await ctx.db.shortLink.findUnique({
         where: { id: input.id },
-        include: { qrCodes: { orderBy: { createdAt: "asc" } } },
+        include: { subLinks: { orderBy: { createdAt: "asc" } } },
       });
       if (!link) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
       }
 
       const days = recentNzDays(30);
-      const [[totals], daily, slices, recent, hosts] = await Promise.all([
-        ctx.db.$queryRaw<{ clicks: number; visitors: number; bots: number }[]>`
+      const [[totals], daily, slices, bySource, recent, hosts] =
+        await Promise.all([
+          ctx.db.$queryRaw<
+            { clicks: number; visitors: number; bots: number }[]
+          >`
           select
             (count(*) filter (where device <> 'bot'))::int as clicks,
             (count(distinct visitor) filter (where device <> 'bot'))::int as visitors,
@@ -185,9 +188,9 @@ export const shortLinksRouter = createTRPCRouter({
           from short_link_click
           where "linkId" = ${link.id}
         `,
-        // Prisma stores UTC in a plain timestamp, so it is marked as UTC before
-        // converting: a click at 11pm belongs to that night, not tomorrow.
-        ctx.db.$queryRaw<{ day: string; n: number }[]>`
+          // Prisma stores UTC in a plain timestamp, so it is marked as UTC before
+          // converting: a click at 11pm belongs to that night, not tomorrow.
+          ctx.db.$queryRaw<{ day: string; n: number }[]>`
           select
             to_char(("createdAt" at time zone 'UTC') at time zone 'Pacific/Auckland', 'YYYY-MM-DD') as day,
             count(*)::int as n
@@ -197,11 +200,17 @@ export const shortLinksRouter = createTRPCRouter({
             and "createdAt" >= now() - interval '32 days'
           group by day
         `,
-        ctx.db.$queryRaw<{ dimension: Dimension; label: string; n: number }[]>`
+          ctx.db.$queryRaw<
+            { dimension: Dimension; label: string; n: number }[]
+          >`
           select d.dimension, d.label, count(*)::int as n
           from short_link_click c,
             lateral (values
               ('source', c.source),
+              ('via', case c.via
+                when 'qr' then 'qr code'
+                when 'link' then 'link'
+                else 'not recorded' end),
               ('domain', coalesce(c.domain, 'unknown')),
               ('device', c.device),
               ('browser', c.browser),
@@ -211,18 +220,28 @@ export const shortLinksRouter = createTRPCRouter({
           group by d.dimension, d.label
           order by n desc
         `,
-        // Bots included: when a link looks wrong, the odd row explains it.
-        ctx.db.shortLinkClick.findMany({
-          where: { linkId: link.id },
-          orderBy: { createdAt: "desc" },
-          take: 100,
-        }),
-        extraHosts(),
-      ]);
+          // What each sub link's row shows. Its name is its source.
+          ctx.db.$queryRaw<{ source: string; clicks: number; scans: number }[]>`
+          select source,
+            count(*)::int as clicks,
+            (count(*) filter (where via = 'qr'))::int as scans
+          from short_link_click
+          where "linkId" = ${link.id} and device <> 'bot'
+          group by source
+        `,
+          // Bots included: when a link looks wrong, the odd row explains it.
+          ctx.db.shortLinkClick.findMany({
+            where: { linkId: link.id },
+            orderBy: { createdAt: "desc" },
+            take: 100,
+          }),
+          extraHosts(),
+        ]);
 
       const perDay = new Map(daily.map((row) => [row.day, row.n]));
       const breakdown: Record<Dimension, Slice[]> = {
         source: [],
+        via: [],
         domain: [],
         device: [],
         browser: [],
@@ -232,8 +251,15 @@ export const shortLinksRouter = createTRPCRouter({
         breakdown[dimension].push({ label, n });
       }
 
+      const counts = new Map(bySource.map((row) => [row.source, row]));
+
       return {
         ...link,
+        subLinks: link.subLinks.map((subLink) => ({
+          ...subLink,
+          clicks: counts.get(subLink.name)?.clicks ?? 0,
+          scans: counts.get(subLink.name)?.scans ?? 0,
+        })),
         /** Every host it answers on, main site first. Downloads pick one. */
         hosts: linkHosts(link.domain, hosts),
         totals: totals ?? { clicks: 0, visitors: 0, bots: 0 },
@@ -322,41 +348,45 @@ export const shortLinksRouter = createTRPCRouter({
       return { ok: true };
     }),
 
-  createQrCode: adminProcedure
+  /**
+   * A named copy of the link, `?c=` and all, to count one place it is used:
+   * a poster run's QR code, a bio, a newsletter.
+   */
+  createSubLink: adminProcedure
     .input(z.object({ linkId: z.string(), name: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const name = input.name.trim().slice(0, 48);
       if (!name) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Name where it's going up.",
+          message: "Name where it's going to be used.",
         });
       }
 
-      const taken = await ctx.db.shortLinkQrCode.findUnique({
+      const taken = await ctx.db.shortLinkSubLink.findUnique({
         where: { linkId_name: { linkId: input.linkId, name } },
         select: { id: true },
       });
       if (taken) {
         throw new TRPCError({
           code: "CONFLICT",
-          message: `There's already a QR code called "${name}".`,
+          message: `There's already a sub link called "${name}".`,
         });
       }
 
-      return ctx.db.shortLinkQrCode.create({
-        data: { linkId: input.linkId, name, code: newQrCode() },
+      return ctx.db.shortLinkSubLink.create({
+        data: { linkId: input.linkId, name, code: newSubLinkCode() },
       });
     }),
 
   /**
-   * The printed code keeps redirecting and its past scans keep its name; only
-   * new scans stop being told apart from any other visit.
+   * The address keeps redirecting and its past clicks keep its name; only new
+   * clicks stop being told apart from any other visit.
    */
-  deleteQrCode: adminProcedure
+  deleteSubLink: adminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      await ctx.db.shortLinkQrCode.delete({ where: { id: input.id } });
+      await ctx.db.shortLinkSubLink.delete({ where: { id: input.id } });
       return { ok: true };
     }),
 

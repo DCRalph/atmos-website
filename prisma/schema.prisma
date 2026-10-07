@@ -418,8 +418,8 @@ model Gig {
   imports GigImport[]
 
   /// The short link behind the QR codes that lead to this gig's photo signup
-  /// page. Its named QR codes are the placements scans and signups are counted
-  /// by. See `~/server/api/routers/photo-signup.ts`.
+  /// page. Its sub links, one per QR code, are the placements scans and signups
+  /// are counted by. See `~/server/api/routers/photo-signup.ts`.
   photoSignupLinkId String?          @unique
   photoSignupLink   ShortLink?       @relation(fields: [photoSignupLinkId], references: [id], onDelete: SetNull)
   /// People waiting to hear the photos are up.
@@ -836,8 +836,8 @@ model GigPhotoSignup {
 
   /// Lowercased and trimmed.
   email  String
-  /// The name of the QR code that brought them, copied the way a click's
-  /// source is, so a deleted code keeps its signups. Null without one.
+  /// The name of the sub link that brought them, copied the way a click's
+  /// source is, so a deleted one keeps its signups. Null without one.
   source String?
 
   createdAt  DateTime  @default(now())
@@ -2250,8 +2250,8 @@ model ShortLink {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  qrCodes ShortLinkQrCode[]
-  clicks  ShortLinkClick[]
+  subLinks ShortLinkSubLink[]
+  clicks   ShortLinkClick[]
 
   /// The gig whose photo signup this link leads to, if it is one.
   photoSignupGig Gig?
@@ -2260,18 +2260,22 @@ model ShortLink {
   @@map("short_link")
 }
 
-/// A named QR code for one short link: "Cuba St lamp post".
+/// A named copy of one short link, for counting one place it is used apart
+/// from the rest: "Cuba St lamp post", "Instagram bio", "Newsletter, Oct".
 ///
-/// Every QR code for a link lands on the same path; what tells them apart is an
-/// opaque `?c=` on the end. A click carrying a known code is counted with this
-/// row's `name` as its source. The name is copied onto the click rather than
-/// referenced, so deleting a QR code keeps its history in the numbers.
-model ShortLinkQrCode {
+/// Every sub link lands on the same path; what tells them apart is an opaque
+/// `?c=` on the end. It works wherever the address goes, printed as a QR code
+/// or pasted as text. A click carrying a known code is counted with this row's
+/// `name` as its source. The name is copied onto the click rather than
+/// referenced, so deleting a sub link keeps its history in the numbers.
+///
+/// The table keeps its name from when these were only QR codes.
+model ShortLinkSubLink {
   id     String    @id @default(cuid())
   linkId String
   link   ShortLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
 
-  /// Where it is going up, as the admin typed it. Never shown publicly.
+  /// Where it is used, as the admin typed it. Never shown publicly.
   name String
   /// Random lowercase letters and numbers, the value of `?c=`.
   code String
@@ -2299,7 +2303,7 @@ model ShortLinkClick {
   os       String
   /// Includes in-app browsers, which is most of what a story link sends.
   browser  String
-  /// A QR code's name, a utm_source or ref, a referring host, or "direct".
+  /// A sub link's name, a utm_source or ref, a referring host, or "direct".
   source   String
   /// The Referer header as sent, for when the resolved source is not enough.
   referrer String?
@@ -2307,6 +2311,10 @@ model ShortLinkClick {
   country  String?
   /// The host the click arrived on. Tells the domains of a "*" link apart.
   domain   String?
+  /// "qr" for a scan of one of our QR codes, which carry `?qr=1`, otherwise
+  /// "link". Null on clicks from before it was recorded, and a QR code printed
+  /// before then has no `?qr=1`, so its scans still read as "link".
+  via      String?
   /// The address as visited, host and path: "example.com/tix". Kept because a
   /// link's slug can be edited later, and the poster still says the old one.
   url      String?

@@ -119,7 +119,7 @@ const KNOWN_HOSTS: [RegExp, string][] = [
 /**
  * Where a click came from, in one word.
  *
- * A named QR code is resolved before this is reached. Otherwise a tag — a
+ * A sub link is resolved before this is reached. Otherwise a tag — a
  * `utm_source` or `ref` on the link itself — wins, because it is the only thing
  * that survives the places that send no referrer at all: Instagram stories,
  * every messaging app, and anything printed. Failing that it is the referring
@@ -142,7 +142,7 @@ export function resolveSource(tag: string | null, referrer: string | null) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Named QR codes                                                             */
+/* Sub links                                                                  */
 /* -------------------------------------------------------------------------- */
 
 /** No 0/o, 1/l/i: a code sometimes gets read aloud off a proof. */
@@ -152,7 +152,7 @@ const CODE_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
  * Five random characters: 28 million per link, so a clash is not worth a
  * retry loop. The unique index refuses one anyway.
  */
-export function newQrCode(): string {
+export function newSubLinkCode(): string {
   return Array.from(
     crypto.getRandomValues(new Uint8Array(5)),
     (byte) => CODE_ALPHABET[byte % CODE_ALPHABET.length],

@@ -10,6 +10,7 @@ import { SITE_URL } from "~/lib/seo-constants";
 import { readClient, resolveSource } from "~/lib/short-links/clicks";
 import {
   ALL_DOMAINS,
+  QR_PARAM,
   SITE_LINK_DOMAIN,
   linkTarget,
   normaliseHost,
@@ -42,8 +43,10 @@ type ClickContext = {
   address: string | null;
   /** A `utm_source` or `ref` off the link, if it carried one. */
   tag: string | null;
-  /** The `?c=` off a named QR code, if it carried one. */
-  qrCode: string | null;
+  /** The `?c=` off a sub link, if it carried one. */
+  subLinkCode: string | null;
+  /** Whether it came through one of our QR codes, which carry `?qr=1`. */
+  scanned: boolean;
 };
 
 async function readClickContext(query: SearchParams): Promise<ClickContext> {
@@ -57,7 +60,8 @@ async function readClickContext(query: SearchParams): Promise<ClickContext> {
       head.get("x-forwarded-for")?.split(",")[0]?.trim() ??
       head.get("x-real-ip"),
     tag: first(query.utm_source) ?? first(query.ref),
-    qrCode: first(query.c),
+    subLinkCode: first(query.c),
+    scanned: first(query[QR_PARAM]) !== null,
   };
 }
 
@@ -90,11 +94,11 @@ async function recordClick(
 ) {
   const linkId = link.id;
   try {
-    // A named QR code beats every other source. An unknown or deleted code
-    // is just a visit.
-    const qr = click.qrCode
-      ? await db.shortLinkQrCode.findUnique({
-          where: { linkId_code: { linkId, code: click.qrCode } },
+    // A sub link beats every other source. An unknown or deleted code is
+    // just a visit.
+    const subLink = click.subLinkCode
+      ? await db.shortLinkSubLink.findUnique({
+          where: { linkId_code: { linkId, code: click.subLinkCode } },
           select: { name: true },
         })
       : null;
@@ -103,9 +107,10 @@ async function recordClick(
       data: {
         linkId,
         ...readClient(click.userAgent, click.mobileHint),
-        source: qr?.name ?? resolveSource(click.tag, click.referrer),
+        source: subLink?.name ?? resolveSource(click.tag, click.referrer),
         referrer: click.referrer?.slice(0, 512) ?? null,
         country: click.country,
+        via: click.scanned ? "qr" : "link",
         domain: host,
         // The address as visited. The link's slug can be edited later; this
         // keeps what was actually on the poster at the time.
@@ -146,7 +151,7 @@ async function follow(
 
   // Temporary, always: where a short link goes is meant to change, and a
   // browser that cached a permanent redirect would never ask again.
-  redirect(linkTarget(link.destination, host, click.qrCode, SITE_URL));
+  redirect(linkTarget(link.destination, host, click.subLinkCode, SITE_URL));
 }
 
 /**

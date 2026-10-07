@@ -81,21 +81,29 @@ export function hostProblem(host: string): string | null {
   return null;
 }
 
+/** On every QR code's address, so a scan can be counted apart from a click. */
+export const QR_PARAM = "qr";
+
 /**
  * The public address of a link on one host: what gets printed, copied and
  * encoded into QR codes. Always a real domain, never the origin the admin
  * happens to be on, so a code downloaded from localhost still works on a
  * poster.
  *
- * `code` is a named QR code's opaque `?c=`; the redirect drops the query, so
- * none of it reaches the destination.
+ * `code` is a sub link's opaque `?c=`. `qr` marks the address as the one a QR
+ * code encodes. The redirect drops the query, so none of it reaches the
+ * destination.
  */
 export function shortLinkUrl(
   host: string,
   slug: string,
-  code?: string | null,
+  { code, qr = false }: { code?: string | null; qr?: boolean } = {},
 ): string {
-  return `https://${host}/${slug}${code ? `?c=${code}` : ""}`;
+  const query = new URLSearchParams();
+  if (code) query.set("c", code);
+  if (qr) query.set(QR_PARAM, "1");
+  const search = query.toString();
+  return `https://${host}/${slug}${search ? `?${search}` : ""}`;
 }
 
 /**
@@ -103,20 +111,20 @@ export function shortLinkUrl(
  * the main site, which another domain does not serve, so off the main site it
  * is made absolute.
  *
- * A named QR code's `?c=` is carried onto our own pages, which is how the gig
+ * A sub link's `?c=` is carried onto our own pages, which is how the gig
  * photo signup knows which code brought each email. Somebody else's site gets
  * the destination exactly as saved.
  */
 export function linkTarget(
   destination: string,
   host: string,
-  qrCode: string | null,
+  subLinkCode: string | null,
   siteUrl: string,
 ): string {
   if (!destination.startsWith("/")) return destination;
 
   const url = new URL(destination, siteUrl);
-  if (qrCode) url.searchParams.set("c", qrCode);
+  if (subLinkCode) url.searchParams.set("c", subLinkCode);
   return host === SITE_LINK_DOMAIN
     ? `${url.pathname}${url.search}${url.hash}`
     : url.toString();
