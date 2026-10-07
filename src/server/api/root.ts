@@ -39,6 +39,7 @@ import { lifetimeTicketsRouter } from "~/server/api/routers/lifetime-tickets";
 import { pickersRouter } from "~/server/api/routers/pickers";
 import { shortLinksRouter } from "~/server/api/routers/short-links";
 import { photoSignupRouter } from "~/server/api/routers/photo-signup";
+import { webRouter } from "~/server/api/routers/web";
 import { willGptRouter } from "~/server/api/routers/will-gpt";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
@@ -98,6 +99,9 @@ export const appRouter = createTRPCRouter({
 
   /** Combobox data sources — see `~/server/api/pickers/core`. */
   pickers: pickersRouter,
+
+  /** Reading web pages and Instagram profiles, for Will GPT. */
+  web: webRouter,
 
   /** The admin assistant, which works by calling the procedures above. */
   willGpt: willGptRouter,
