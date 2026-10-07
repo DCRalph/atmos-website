@@ -25,7 +25,7 @@ describe("riskOf", () => {
 
   test("overrides beat the verb both ways", () => {
     assert.equal(riskOf("invites.create", "mutation"), "destructive");
-    assert.equal(riskOf("users.addPermission", "mutation"), "destructive");
+    assert.equal(riskOf("lifetimeTickets.create", "mutation"), "destructive");
     assert.equal(riskOf("homeGigs.setPlacements", "mutation"), "write");
   });
 });
@@ -70,6 +70,13 @@ describe("isOffered", () => {
   test("never offers Will GPT to itself", () => {
     assert.equal(
       isOffered("willGpt.run", "mutation", { permission: "ADMIN" }),
+      false,
+    );
+  });
+
+  test("never offers changes to how somebody signs in", () => {
+    assert.equal(
+      isOffered("users.setPassword", "mutation", { permission: "ADMIN" }),
       false,
     );
   });

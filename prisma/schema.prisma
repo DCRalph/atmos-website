@@ -12,6 +12,9 @@ enum UserPermission {
   EVENT_ORGANISER
   ARTIST
   ADMIN
+  /// Everything ADMIN can do, plus managing other admins. Always held
+  /// alongside an ADMIN row, so queries for ADMIN still find superadmins.
+  SUPERADMIN
 }
 
 enum ClaimStatus {

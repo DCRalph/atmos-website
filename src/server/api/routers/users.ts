@@ -1,12 +1,26 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createTRPCRouter, adminProcedure } from "~/server/api/trpc";
+import { env } from "~/env";
+import { auth } from "~/server/auth";
+import { db } from "~/server/db";
 import { logUserActivity } from "~/server/utils/activity-log";
 import {
+  ADMIN_TIER,
   grantUserPermission,
+  isAdminTier,
   revokeUserPermission,
+  userHasPermission,
+  type UserWithPermissions,
 } from "~/server/utils/permissions";
-import { ActivityType } from "~Prisma/client";
+import {
+  listActiveSessions,
+  listSignInMethods,
+  overwritePassword,
+  passwordSchema,
+  removeSignInMethod,
+} from "~/server/sign-in-methods";
+import { ActivityType, type UserPermission } from "~Prisma/client";
 
 /**
  * When somebody last signed in, and how.
@@ -42,6 +56,57 @@ async function readLastLogin(
   } catch {
     return null;
   }
+}
+
+const permissionSchema = z.enum([
+  "EVENT_ORGANISER",
+  "ARTIST",
+  "ADMIN",
+  "SUPERADMIN",
+]) satisfies z.ZodType<UserPermission>;
+
+const userInput = z.object({ id: z.string() });
+
+/**
+ * Loads a user the caller is about to read or change in detail, refusing when
+ * they are an admin or superadmin and the caller is not a superadmin. Admins
+ * can see that other admins exist; only superadmins see or touch their
+ * sign-in methods, sessions, and passwords.
+ */
+async function loadManageableUser(actor: UserWithPermissions, id: string) {
+  const target = await db.user.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      permissions: { select: { permission: true } },
+    },
+  });
+  if (!target) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+  }
+  if (!canManage(actor, target)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Only superadmins can manage admin accounts",
+    });
+  }
+  return target;
+}
+
+function canManage(
+  actor: UserWithPermissions,
+  target: { permissions: { permission: UserPermission }[] },
+) {
+  return (
+    userHasPermission(actor, "SUPERADMIN") ||
+    !isAdminTier(target.permissions.map((row) => row.permission))
+  );
+}
+
+function describe(user: { name: string; email: string }) {
+  return user.name || user.email;
 }
 
 export const usersRouter = createTRPCRouter({
@@ -92,91 +157,90 @@ export const usersRouter = createTRPCRouter({
       );
     }),
 
-  addPermission: adminProcedure
-    .input(
-      z.object({
-        id: z.string(),
-        permission: z.enum(["EVENT_ORGANISER", "ARTIST", "ADMIN"]),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const targetUser = await ctx.db.user.findUnique({
-        where: { id: input.id },
-        select: { name: true, email: true },
-      });
+  /**
+   * One user. Admin accounts come back without sign-in methods or sessions
+   * unless the caller is a superadmin; `canManage` says which shape it is.
+   */
+  getById: adminProcedure.input(userInput).query(async ({ ctx, input }) => {
+    const user = await ctx.db.user.findUnique({
+      where: { id: input.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        permissions: { select: { permission: true } },
+        emailVerified: true,
+        image: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
 
-      await grantUserPermission(input.id, input.permission, {
-        createdBy: ctx.session.user.id,
-      });
+    if (!user) {
+      return null;
+    }
 
-      await logUserActivity(
-        ActivityType.USER_PERMISSION_ADDED,
-        `Added permission ${input.permission} to ${targetUser?.name ?? targetUser?.email ?? input.id}`,
-        ctx.session.user.id,
-        input.id,
-        { permission: input.permission },
-      );
+    const lastLogin = await readLastLogin(ctx.db, user.id);
+    const base = {
+      ...user,
+      isSelf: user.id === ctx.session.user.id,
+      viewerIsSuperadmin: userHasPermission(ctx.user, "SUPERADMIN"),
+      lastLoginMethod: lastLogin?.method ?? null,
+      lastLoginAt: lastLogin?.updatedAt ?? null,
+    };
 
-      return { ok: true as const };
-    }),
+    if (!canManage(ctx.user, user)) {
+      return { ...base, canManage: false as const };
+    }
 
-  removePermission: adminProcedure
-    .input(
-      z.object({
-        id: z.string(),
-        permission: z.enum(["EVENT_ORGANISER", "ARTIST", "ADMIN"]),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      if (input.id === ctx.session.user.id && input.permission === "ADMIN") {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "You cannot remove your own admin permission",
-        });
-      }
+    const [signIn, sessions] = await Promise.all([
+      listSignInMethods(user.id),
+      listActiveSessions(user.id),
+    ]);
+    return { ...base, canManage: true as const, ...signIn, sessions };
+  }),
 
-      const targetUser = await ctx.db.user.findUnique({
-        where: { id: input.id },
-        select: { name: true, email: true },
-      });
-
-      await revokeUserPermission(input.id, input.permission);
-
-      await logUserActivity(
-        ActivityType.USER_PERMISSION_REMOVED,
-        `Removed permission ${input.permission} from ${targetUser?.name ?? targetUser?.email ?? input.id}`,
-        ctx.session.user.id,
-        input.id,
-        { permission: input.permission },
-      );
-
-      return { ok: true as const };
-    }),
-
+  /**
+   * Replaces a user's permissions. Only superadmins may grant or revoke ADMIN
+   * or SUPERADMIN, SUPERADMIN always brings ADMIN with it, and nobody can take
+   * their own admin access away, which also keeps at least one superadmin.
+   */
   setPermissions: adminProcedure
     .input(
       z.object({
         id: z.string(),
-        permissions: z.array(z.enum(["EVENT_ORGANISER", "ARTIST", "ADMIN"])),
+        permissions: z.array(permissionSchema),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (
-        input.id === ctx.session.user.id &&
-        !input.permissions.includes("ADMIN")
-      ) {
+      const target = await loadManageableUser(ctx.user, input.id);
+
+      const currentSet = new Set(target.permissions.map((c) => c.permission));
+      const nextSet = new Set(input.permissions);
+      if (nextSet.has("SUPERADMIN")) nextSet.add("ADMIN");
+
+      const changesAdminTier = ADMIN_TIER.some(
+        (permission) => currentSet.has(permission) !== nextSet.has(permission),
+      );
+      if (changesAdminTier && !userHasPermission(ctx.user, "SUPERADMIN")) {
         throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "You cannot remove your own admin permission",
+          code: "FORBIDDEN",
+          message: "Only superadmins can grant or remove admin access",
         });
       }
 
-      const current = await ctx.db.userPermissionAssignment.findMany({
-        where: { userId: input.id },
-        select: { permission: true },
-      });
-      const currentSet = new Set(current.map((c) => c.permission));
-      const nextSet = new Set(input.permissions);
+      if (input.id === ctx.session.user.id) {
+        const lost = ADMIN_TIER.find(
+          (permission) =>
+            currentSet.has(permission) && !nextSet.has(permission),
+        );
+        if (lost) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `You cannot remove your own ${lost.toLowerCase()} permission`,
+          });
+        }
+      }
 
       for (const permission of nextSet) {
         if (!currentSet.has(permission)) {
@@ -193,85 +257,169 @@ export const usersRouter = createTRPCRouter({
 
       await logUserActivity(
         ActivityType.USER_PERMISSION_CHANGED,
-        `Updated permissions for ${input.id}`,
+        `Updated permissions for ${describe(target)}`,
         ctx.session.user.id,
         input.id,
-        { permissions: input.permissions },
+        { permissions: [...nextSet] },
       );
 
       return { ok: true as const };
     }),
 
-  getById: adminProcedure
-    .input(z.object({ id: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const user = await ctx.db.user.findUnique({
-        where: { id: input.id },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          permissions: { select: { permission: true } },
-          emailVerified: true,
-          image: true,
-          createdAt: true,
-          updatedAt: true,
-          accounts: {
-            select: {
-              id: true,
-              providerId: true,
-              accountId: true,
-              createdAt: true,
-            },
-            orderBy: { createdAt: "desc" },
-          },
-        },
-      });
-
-      if (!user) {
-        return null;
-      }
-
-      const lastLogin = await readLastLogin(ctx.db, user.id);
-
-      return {
-        ...user,
-        lastLoginMethod: lastLogin?.method ?? null,
-        lastLoginAt: lastLogin?.updatedAt ?? null,
-      };
-    }),
-
-  delete: adminProcedure
-    .input(z.object({ id: z.string() }))
+  /**
+   * Sets a new password without the old one, adding password sign-in if the
+   * user only had social accounts. Signs them out everywhere by default, since
+   * the usual reason is a compromised or forgotten password.
+   */
+  setPassword: adminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        password: passwordSchema,
+        revokeSessions: z.boolean().default(true),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
-      // Prevent admins from deleting themselves
-      if (input.id === ctx.session.user.id) {
-        throw new Error("You cannot delete your own account");
+      const target = await loadManageableUser(ctx.user, input.id);
+
+      await overwritePassword(target.id, input.password);
+      if (input.revokeSessions) {
+        await ctx.db.session.deleteMany({ where: { userId: target.id } });
       }
 
-      // Get user info for logging
-      const targetUser = await ctx.db.user.findUnique({
-        where: { id: input.id },
-        select: { name: true, email: true },
-      });
-
-      // Delete user directly from database
-      // Better Auth will handle cascading deletes for sessions and accounts
-      const result = await ctx.db.user.delete({
-        where: { id: input.id },
-      });
-
-      // Log the activity
       await logUserActivity(
-        ActivityType.USER_DELETED,
-        `Deleted user ${targetUser?.name ?? targetUser?.email ?? input.id}`,
+        ActivityType.USER_UPDATED,
+        `Set a new password for ${describe(target)}`,
         ctx.session.user.id,
-        input.id,
-        {
-          deletedUser: targetUser?.name ?? targetUser?.email ?? input.id,
-        },
+        target.id,
+        { revokedSessions: input.revokeSessions },
       );
 
-      return result;
+      return { ok: true as const };
     }),
+
+  /** Emails the user a password reset link, the same one "forgot password" sends. */
+  sendPasswordReset: adminProcedure
+    .input(userInput)
+    .mutation(async ({ ctx, input }) => {
+      const target = await loadManageableUser(ctx.user, input.id);
+
+      await auth.api.requestPasswordReset({
+        body: {
+          email: target.email,
+          redirectTo: `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/reset-password`,
+        },
+      });
+
+      await logUserActivity(
+        ActivityType.USER_UPDATED,
+        `Sent a password reset email to ${describe(target)}`,
+        ctx.session.user.id,
+        target.id,
+      );
+
+      return { ok: true as const, sentTo: target.email };
+    }),
+
+  setEmailVerified: adminProcedure
+    .input(z.object({ id: z.string(), verified: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const target = await loadManageableUser(ctx.user, input.id);
+
+      await ctx.db.user.update({
+        where: { id: target.id },
+        data: { emailVerified: input.verified },
+      });
+
+      await logUserActivity(
+        ActivityType.USER_UPDATED,
+        `Marked ${describe(target)}'s email as ${input.verified ? "verified" : "unverified"}`,
+        ctx.session.user.id,
+        target.id,
+        { emailVerified: input.verified },
+      );
+
+      return { ok: true as const };
+    }),
+
+  /** Removes a social account or the password. The last sign-in method stays. */
+  unlinkAccount: adminProcedure
+    .input(z.object({ id: z.string(), accountId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const target = await loadManageableUser(ctx.user, input.id);
+      const removed = await removeSignInMethod(target.id, input.accountId);
+
+      await logUserActivity(
+        ActivityType.USER_UPDATED,
+        `Removed ${removed.providerId} sign-in from ${describe(target)}`,
+        ctx.session.user.id,
+        target.id,
+        { providerId: removed.providerId },
+      );
+
+      return { ok: true as const };
+    }),
+
+  revokeSession: adminProcedure
+    .input(z.object({ id: z.string(), sessionId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const target = await loadManageableUser(ctx.user, input.id);
+
+      await ctx.db.session.deleteMany({
+        where: { id: input.sessionId, userId: target.id },
+      });
+
+      await logUserActivity(
+        ActivityType.USER_UPDATED,
+        `Signed ${describe(target)} out of one session`,
+        ctx.session.user.id,
+        target.id,
+      );
+
+      return { ok: true as const };
+    }),
+
+  revokeSessions: adminProcedure
+    .input(userInput)
+    .mutation(async ({ ctx, input }) => {
+      const target = await loadManageableUser(ctx.user, input.id);
+
+      const { count } = await ctx.db.session.deleteMany({
+        where: { userId: target.id },
+      });
+
+      await logUserActivity(
+        ActivityType.USER_UPDATED,
+        `Signed ${describe(target)} out everywhere`,
+        ctx.session.user.id,
+        target.id,
+        { sessions: count },
+      );
+
+      return { ok: true as const, count };
+    }),
+
+  delete: adminProcedure.input(userInput).mutation(async ({ ctx, input }) => {
+    if (input.id === ctx.session.user.id) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "You cannot delete your own account",
+      });
+    }
+
+    const target = await loadManageableUser(ctx.user, input.id);
+
+    // Better Auth's sessions and accounts cascade with the user row.
+    await ctx.db.user.delete({ where: { id: target.id } });
+
+    await logUserActivity(
+      ActivityType.USER_DELETED,
+      `Deleted user ${describe(target)}`,
+      ctx.session.user.id,
+      input.id,
+      { deletedUser: describe(target) },
+    );
+
+    return { ok: true as const };
+  }),
 });
