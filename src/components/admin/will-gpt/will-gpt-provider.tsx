@@ -7,62 +7,31 @@ import { z } from "zod";
 import { api } from "~/trpc/react";
 import {
   WILL_GPT_MODELS,
-  willGptMessageSchema,
   type WillGptMessage,
   type WillGptModelId,
 } from "~/lib/will-gpt";
 
 /**
- * Will GPT's side of the browser: the conversation, the run in flight, and
- * whether the rail is open. Mounted once in the admin layout, so a chat
- * carries on across admin pages, and saved to localStorage so it survives a
- * reload until the admin starts a new one.
+ * Will GPT's side of the browser: the conversation on screen, the run in
+ * flight, and whether the rail is open. Mounted once in the admin layout, so a
+ * chat carries on across admin pages.
+ *
+ * The conversation itself is the server's (see `~/lib/will-gpt`). The browser
+ * remembers only which one is open, and shows a run's events as they arrive;
+ * after a reload, a stop or an error it reads the conversation back rather than
+ * trusting what it had.
  */
 
 const STORAGE_KEY = "will-gpt";
 
 const DEFAULT_MODEL: WillGptModelId = WILL_GPT_MODELS[0].id;
 
-/** What is saved. Anything unreadable, from an older shape, falls back to empty. */
+/** What is saved. Anything unreadable, from an older shape, falls back. */
 const savedSchema = z.object({
   open: z.boolean().catch(false),
   model: z.enum(WILL_GPT_MODELS.map((model) => model.id)).catch(DEFAULT_MODEL),
-  messages: z.array(willGptMessageSchema).catch([]),
-  awaiting: z.array(z.string()).catch([]),
+  conversationId: z.uuid().nullable().catch(null),
 });
-
-const INTERRUPTED =
-  "Interrupted before a result came back. It may have run; check before trying again.";
-
-/**
- * Close off calls a run left without a result, other than the ones waiting
- * for approval. The server never runs a call twice that has a result, so this
- * is what stops an interrupted call being repeated by the next run.
- */
-function closeOff(
-  messages: WillGptMessage[],
-  awaiting: string[],
-): WillGptMessage[] {
-  const answered = new Set(
-    messages.flatMap((message) =>
-      message.role === "tool" ? [message.callId] : [],
-    ),
-  );
-  const loose = messages
-    .flatMap((message) =>
-      message.role === "assistant" ? message.toolCalls : [],
-    )
-    .filter((call) => !answered.has(call.id) && !awaiting.includes(call.id));
-  return [
-    ...messages,
-    ...loose.map((call): WillGptMessage => ({
-      role: "tool",
-      callId: call.id,
-      status: "error",
-      output: INTERRUPTED,
-    })),
-  ];
-}
 
 type WillGptContextValue = {
   open: boolean;
@@ -94,12 +63,24 @@ export function WillGptProvider({ children }: { children: React.ReactNode }) {
   const [loaded, setLoaded] = useState(false);
   const [open, setOpen] = useState(false);
   const [model, setModel] = useState<WillGptModelId>(DEFAULT_MODEL);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<WillGptMessage[]>([]);
   const [awaiting, setAwaiting] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
   const [running, setRunning] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
+  /** The open conversation, for async work that outlives a render. */
+  const conversationRef = useRef<string | null>(null);
+
+  /** Show the conversation as the server has it. */
+  const readBack = async (id: string) => {
+    const saved = await utils.client.willGpt.byId.query({ id });
+    // A newer chat was started while this was loading.
+    if (conversationRef.current !== id) return;
+    setMessages(saved?.messages ?? []);
+    setAwaiting(saved?.awaiting ?? []);
+  };
 
   // Read after mount rather than during render, so the server render and the
   // first client render agree.
@@ -111,27 +92,34 @@ export function WillGptProvider({ children }: { children: React.ReactNode }) {
       // Unreadable is the same as nothing saved.
     }
     const parsed = savedSchema.safeParse(saved ?? {});
+    const id =
+      (parsed.success ? parsed.data.conversationId : null) ??
+      crypto.randomUUID();
     if (parsed.success) {
       setOpen(parsed.data.open);
       setModel(parsed.data.model);
-      setMessages(closeOff(parsed.data.messages, parsed.data.awaiting));
-      setAwaiting(parsed.data.awaiting);
     }
+    conversationRef.current = id;
+    setConversationId(id);
     setLoaded(true);
+    void readBack(id);
+    // Once, on mount; `readBack` only reads refs and stable setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!loaded) return;
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ open, model, messages, awaiting }),
+      JSON.stringify({ open, model, conversationId }),
     );
-  }, [loaded, open, model, messages, awaiting]);
+  }, [loaded, open, model, conversationId]);
 
   const run = async (
-    start: WillGptMessage[],
-    decisions: Record<string, boolean> = {},
+    turn: { message: string } | { decisions: Record<string, boolean> },
   ) => {
+    const id = conversationRef.current;
+    if (!id) return;
     const controller = new AbortController();
     controllerRef.current = controller;
     setRunning(true);
@@ -139,13 +127,11 @@ export function WillGptProvider({ children }: { children: React.ReactNode }) {
     setAwaiting([]);
     setDraft("");
 
-    let transcript = start;
-    let text = "";
-    let waitingOn: string[] = [];
+    let failed = false;
     let changed = false;
     try {
       const events = await utils.client.willGpt.run.mutate(
-        { model, messages: start, decisions, page: pathname },
+        { conversationId: id, model, page: pathname, ...turn },
         { signal: controller.signal },
       );
       for await (const event of events) {
@@ -153,14 +139,11 @@ export function WillGptProvider({ children }: { children: React.ReactNode }) {
         if (controllerRef.current !== controller) break;
         switch (event.type) {
           case "delta":
-            text += event.text;
-            setDraft(text);
+            setDraft((draft) => draft + event.text);
             break;
           case "message":
-            text = "";
             setDraft("");
-            transcript = [...transcript, event.message];
-            setMessages(transcript);
+            setMessages((messages) => [...messages, event.message]);
             if (
               event.message.role === "tool" &&
               event.message.status === "ok" &&
@@ -170,7 +153,6 @@ export function WillGptProvider({ children }: { children: React.ReactNode }) {
             }
             break;
           case "awaiting":
-            waitingOn = event.callIds;
             setAwaiting(event.callIds);
             break;
           case "notice":
@@ -179,26 +161,22 @@ export function WillGptProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch (error) {
+      failed = true;
       if (!controller.signal.aborted) {
         setNotice(error instanceof Error ? error.message : "Will GPT stopped.");
       }
     } finally {
       // A reset has already cleared this run's state; leave it cleared.
       if (controllerRef.current === controller) {
-        // Keep what was said before a stop, and close off what was left open.
-        if (text) {
-          transcript = [
-            ...transcript,
-            { role: "assistant", text, toolCalls: [] },
-          ];
-        }
-        setMessages(closeOff(transcript, waitingOn));
         setDraft("");
         setRunning(false);
         controllerRef.current = null;
+        // What arrived before a stop or an error may not be all that ran.
+        if (failed) void readBack(id);
       }
-      // Whatever page is open may be showing what just changed.
-      if (changed) {
+      // Whatever page is open may be showing what just changed. A stopped
+      // run may have changed things too.
+      if (changed || failed) {
         void utils.invalidate();
         router.refresh();
       }
@@ -218,24 +196,22 @@ export function WillGptProvider({ children }: { children: React.ReactNode }) {
     send: (text) => {
       const trimmed = text.trim();
       if (!trimmed || running || awaiting.length > 0) return;
-      const next: WillGptMessage[] = [
-        ...messages,
-        { role: "user", text: trimmed },
-      ];
-      setMessages(next);
-      void run(next);
+      setMessages((messages) => [...messages, { role: "user", text: trimmed }]);
+      void run({ message: trimmed });
     },
     decide: (approved) => {
       if (running || awaiting.length === 0) return;
-      void run(
-        messages,
-        Object.fromEntries(awaiting.map((id) => [id, approved])),
-      );
+      void run({
+        decisions: Object.fromEntries(awaiting.map((id) => [id, approved])),
+      });
     },
     stop: () => controllerRef.current?.abort(),
     reset: () => {
       controllerRef.current?.abort();
       controllerRef.current = null;
+      const id = crypto.randomUUID();
+      conversationRef.current = id;
+      setConversationId(id);
       setRunning(false);
       setMessages([]);
       setAwaiting([]);
