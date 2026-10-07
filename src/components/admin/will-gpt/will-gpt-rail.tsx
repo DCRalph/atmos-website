@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowUp,
   History,
@@ -20,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import { useIsMobile } from "~/hooks/use-mobile";
 import { cabin } from "~/lib/fonts";
 import { cn } from "~/lib/utils";
 import { WILL_GPT_MODELS, type WillGptToolCall } from "~/lib/will-gpt";
@@ -45,7 +47,7 @@ export function WillGptToggle() {
       aria-pressed={open}
       aria-label="Will GPT"
       className={cn(
-        "border-violet-600/25 hover:border-violet-600/50 hover:bg-violet-600/5 hover:text-foreground dark:border-violet-400/25 dark:hover:border-violet-400/50 dark:hover:bg-violet-400/10",
+        "hover:text-foreground border-violet-600/25 hover:border-violet-600/50 hover:bg-violet-600/5 dark:border-violet-400/25 dark:hover:border-violet-400/50 dark:hover:bg-violet-400/10",
         open &&
           "border-violet-600/50 bg-violet-600/10 hover:bg-violet-600/10 dark:border-violet-400/50 dark:bg-violet-400/15 dark:hover:bg-violet-400/15",
       )}
@@ -56,69 +58,95 @@ export function WillGptToggle() {
   );
 }
 
+/** Desktop opens the column from the edge; a phone slides the sheet up. */
+const RAIL_MOTION = {
+  desktop: { closed: { width: 0 }, open: { width: "25rem" } },
+  mobile: { closed: { y: "100%" }, open: { y: 0 } },
+} as const;
+
 /**
  * Will GPT, docked beside the admin page. A column of its own on desktop, so
  * the page stays usable and visibly updates as changes land; the whole screen
  * on a phone.
  */
 export function WillGptRail() {
-  const { open, setOpen, model, setModel, reset } = useWillGpt();
-  if (!open) return null;
+  const { open } = useWillGpt();
+  const device = useIsMobile() ? "mobile" : "desktop";
+  const { closed, open: opened } = RAIL_MOTION[device];
 
   return (
-    <aside
-      aria-label="Will GPT"
-      className="bg-sidebar flex flex-col max-lg:fixed max-lg:inset-0 max-lg:z-50 lg:mt-2 lg:w-100 lg:shrink-0 lg:border-l"
-    >
-      <header className="flex h-14 shrink-0 items-center gap-1.5 border-b pr-2.5 pl-4">
-        <h2 className={cn(cabin.className, "flex-1 text-xl font-semibold")}>
-          Will GPT
-        </h2>
-        <Select
-          value={model}
-          onValueChange={(value) => {
-            const option = WILL_GPT_MODELS.find((model) => model.id === value);
-            if (option) setModel(option.id);
-          }}
+    <AnimatePresence initial={false}>
+      {open && (
+        <motion.aside
+          key={device}
+          aria-label="Will GPT"
+          initial={closed}
+          animate={opened}
+          exit={closed}
+          transition={{ type: "spring", stiffness: 400, damping: 40 }}
+          className="bg-sidebar flex flex-col overflow-hidden max-lg:fixed max-lg:inset-0 max-lg:z-50 lg:mt-2 lg:shrink-0 lg:border-l"
         >
-          <SelectTrigger
-            size="sm"
-            aria-label="Model"
-            className="border-transparent bg-transparent shadow-none dark:bg-transparent"
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent align="end">
-            {WILL_GPT_MODELS.map((option) => (
-              <SelectItem key={option.id} value={option.id}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button variant="ghost" size="icon-sm" asChild title="History">
-          <Link href="/admin/will-gpt">
-            <History />
-            <span className="sr-only">Will GPT history</span>
-          </Link>
-        </Button>
-        <Button variant="ghost" size="icon-sm" onClick={reset} title="New chat">
-          <Plus />
-          <span className="sr-only">New chat</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => setOpen(false)}
-          title="Close"
+          {/* Fixed width so the content doesn't reflow while the column grows. */}
+          <div className="flex min-h-0 flex-1 flex-col lg:w-100">
+            <RailHeader />
+            <Thread />
+            <Composer />
+          </div>
+        </motion.aside>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function RailHeader() {
+  const { setOpen, model, setModel, reset } = useWillGpt();
+  return (
+    <header className="flex h-14 shrink-0 items-center gap-1.5 border-b pr-2.5 pl-4">
+      <h2 className={cn(cabin.className, "flex-1 text-xl font-semibold")}>
+        Will GPT
+      </h2>
+      <Select
+        value={model}
+        onValueChange={(value) => {
+          const option = WILL_GPT_MODELS.find((model) => model.id === value);
+          if (option) setModel(option.id);
+        }}
+      >
+        <SelectTrigger
+          size="sm"
+          aria-label="Model"
+          className="border-transparent bg-transparent shadow-none dark:bg-transparent"
         >
-          <X />
-          <span className="sr-only">Close Will GPT</span>
-        </Button>
-      </header>
-      <Thread />
-      <Composer />
-    </aside>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent align="end">
+          {WILL_GPT_MODELS.map((option) => (
+            <SelectItem key={option.id} value={option.id}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button variant="ghost" size="icon-sm" asChild title="History">
+        <Link href="/admin/will-gpt">
+          <History />
+          <span className="sr-only">Will GPT history</span>
+        </Link>
+      </Button>
+      <Button variant="ghost" size="icon-sm" onClick={reset} title="New chat">
+        <Plus />
+        <span className="sr-only">New chat</span>
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        onClick={() => setOpen(false)}
+        title="Close"
+      >
+        <X />
+        <span className="sr-only">Close Will GPT</span>
+      </Button>
+    </header>
   );
 }
 
