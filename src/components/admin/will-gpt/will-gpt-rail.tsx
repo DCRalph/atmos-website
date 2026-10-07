@@ -2,12 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import ReactMarkdown, { type Components } from "react-markdown";
 import {
   ArrowUp,
-  Ban,
-  Check,
-  Clock,
+  History,
   PanelRight,
   Plus,
   Square,
@@ -25,17 +22,15 @@ import {
 } from "~/components/ui/select";
 import { cabin } from "~/lib/fonts";
 import { cn } from "~/lib/utils";
-import {
-  callArgsSchema,
-  describeArgsSchema,
-  parseToolArgs,
-  WILL_GPT_MODELS,
-  type WillGptMessage,
-  type WillGptToolCall,
-} from "~/lib/will-gpt";
+import { WILL_GPT_MODELS, type WillGptToolCall } from "~/lib/will-gpt";
 import { useWillGpt } from "./will-gpt-provider";
-
-type ToolResult = Extract<WillGptMessage, { role: "tool" }>;
+import {
+  asJson,
+  Code,
+  describeCall,
+  Markdown,
+  Transcript,
+} from "./will-gpt-transcript";
 
 /** The header button that opens and closes the rail. */
 export function WillGptToggle() {
@@ -93,6 +88,12 @@ export function WillGptRail() {
             ))}
           </SelectContent>
         </Select>
+        <Button variant="ghost" size="icon-sm" asChild title="History">
+          <Link href="/admin/will-gpt">
+            <History />
+            <span className="sr-only">Will GPT history</span>
+          </Link>
+        </Button>
         <Button variant="ghost" size="icon-sm" onClick={reset} title="New chat">
           <Plus />
           <span className="sr-only">New chat</span>
@@ -121,11 +122,6 @@ function Thread() {
     endRef.current?.scrollIntoView({ block: "end" });
   }, [messages, awaiting, draft, notice]);
 
-  const results = new Map(
-    messages.flatMap((message) =>
-      message.role === "tool" ? [[message.callId, message] as const] : [],
-    ),
-  );
   const awaitingCalls = messages
     .flatMap((message) =>
       message.role === "assistant" ? message.toolCalls : [],
@@ -141,38 +137,7 @@ function Thread() {
         </p>
       ) : null}
 
-      {messages.map((message, index) => {
-        if (message.role === "user") {
-          return (
-            <p
-              key={index}
-              className="bg-muted max-w-[88%] self-end rounded-lg px-3 py-2.5 leading-relaxed whitespace-pre-wrap"
-            >
-              {message.text}
-            </p>
-          );
-        }
-        if (message.role === "tool") return null;
-        const calls = message.toolCalls.filter(
-          (call) => !awaiting.includes(call.id),
-        );
-        return (
-          <div key={index} className="flex flex-col gap-3">
-            {message.text ? <Markdown text={message.text} /> : null}
-            {calls.length > 0 ? (
-              <div className="flex flex-col border-l pl-3">
-                {calls.map((call) => (
-                  <CallRow
-                    key={call.id}
-                    call={call}
-                    result={results.get(call.id)}
-                  />
-                ))}
-              </div>
-            ) : null}
-          </div>
-        );
-      })}
+      <Transcript messages={messages} awaiting={awaiting} hideAwaiting />
 
       {awaitingCalls.length > 0 ? <Approval calls={awaitingCalls} /> : null}
       {draft ? <Markdown text={draft} /> : null}
@@ -186,86 +151,6 @@ function Thread() {
       ) : null}
       <div ref={endRef} />
     </div>
-  );
-}
-
-/** A tool call as the admin reads it: the model's own summary, and the procedure. */
-function describeCall(call: WillGptToolCall): {
-  summary: string;
-  path: string;
-  input?: unknown;
-} {
-  if (call.name === "describe") {
-    const args = parseToolArgs(describeArgsSchema, call.arguments);
-    return {
-      summary: args.ok
-        ? `Look up ${args.data.paths.join(", ")}`
-        : "Look up procedures",
-      path: "describe",
-    };
-  }
-  const args = parseToolArgs(callArgsSchema, call.arguments);
-  // Unreadable arguments are shown raw; the server reports what was wrong.
-  return args.ok
-    ? args.data
-    : { summary: call.name, path: call.name, input: call.arguments };
-}
-
-const asJson = (value: unknown) => JSON.stringify(value, null, 2);
-
-/** Tool output is JSON when it worked and a sentence when it did not. */
-function formatOutput(output: string): string {
-  try {
-    return asJson(JSON.parse(output));
-  } catch {
-    return output;
-  }
-}
-
-function CallRow({
-  call,
-  result,
-}: {
-  call: WillGptToolCall;
-  result: ToolResult | undefined;
-}) {
-  const { summary, path, input } = describeCall(call);
-  const isRead = call.name === "describe" || result?.risk === "read";
-
-  return (
-    <details className="group">
-      <summary className="flex min-h-7 cursor-pointer list-none items-center gap-2 text-[13px] [&::-webkit-details-marker]:hidden">
-        {!result ? (
-          <Clock className="text-muted-foreground size-3.5 shrink-0" />
-        ) : result.status === "ok" ? (
-          <Check className="size-3.5 shrink-0 text-emerald-400" />
-        ) : result.status === "declined" ? (
-          <Ban className="text-muted-foreground size-3.5 shrink-0" />
-        ) : (
-          <X className="text-destructive size-3.5 shrink-0" />
-        )}
-        <span
-          className={cn(
-            "min-w-0 flex-1 truncate",
-            (isRead || result?.status === "declined") &&
-              "text-muted-foreground",
-          )}
-        >
-          {summary}
-        </span>
-        <span className="text-muted-foreground shrink-0 font-mono text-[11.5px]">
-          {path}
-        </span>
-      </summary>
-      <div className="mt-1 mb-2 flex flex-col gap-1.5">
-        {input !== undefined ? <Code>{asJson(input)}</Code> : null}
-        {result ? (
-          <Code className={cn(result.status === "error" && "text-destructive")}>
-            {formatOutput(result.output)}
-          </Code>
-        ) : null}
-      </div>
-    </details>
   );
 }
 
@@ -314,67 +199,6 @@ function Approval({ calls }: { calls: WillGptToolCall[] }) {
           {calls.length > 1 ? `Approve ${calls.length}` : "Approve"}
         </Button>
       </div>
-    </div>
-  );
-}
-
-function Code({
-  children,
-  className,
-}: {
-  children: string;
-  className?: string;
-}) {
-  return (
-    <pre
-      className={cn(
-        "max-h-60 overflow-auto rounded-md border bg-white/[0.04] px-2.5 py-2 font-mono text-xs leading-normal text-neutral-300",
-        className,
-      )}
-    >
-      {children}
-    </pre>
-  );
-}
-
-const MARKDOWN: Components = {
-  p: ({ children }) => <p className="leading-relaxed">{children}</p>,
-  ul: ({ children }) => (
-    <ul className="list-disc space-y-1 pl-5 leading-relaxed">{children}</ul>
-  ),
-  ol: ({ children }) => (
-    <ol className="list-decimal space-y-1 pl-5 leading-relaxed">{children}</ol>
-  ),
-  code: ({ children }) => (
-    <code className="rounded bg-white/[0.06] px-1 py-0.5 font-mono text-xs">
-      {children}
-    </code>
-  ),
-  pre: ({ children }) => (
-    <pre className="overflow-auto rounded-md border bg-white/[0.04] p-2.5">
-      {children}
-    </pre>
-  ),
-  // Admin links stay in the app, so the chat and the rail stay open.
-  a: ({ href = "", children }) => {
-    const className =
-      "underline decoration-white/35 underline-offset-3 hover:decoration-white";
-    return href.startsWith("/") ? (
-      <Link href={href} className={className}>
-        {children}
-      </Link>
-    ) : (
-      <a href={href} target="_blank" rel="noreferrer" className={className}>
-        {children}
-      </a>
-    );
-  },
-};
-
-function Markdown({ text }: { text: string }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <ReactMarkdown components={MARKDOWN}>{text}</ReactMarkdown>
     </div>
   );
 }

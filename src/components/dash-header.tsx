@@ -51,6 +51,7 @@ const STATIC_PATH_LABELS: Record<string, string> = {
   "/admin/users": "Users",
   "/admin/files": "Files",
   "/admin/wallet-debugger": "Wallet Debugger",
+  "/admin/will-gpt": "Will GPT",
   "/dashboard": "Dashboard",
 };
 
@@ -73,6 +74,12 @@ const SMART_CRUMB_RESOLVERS: SmartCrumbResolver[] = [
     key: "link",
     fallbackLabel: "Link",
     parentPath: "/admin/links",
+  },
+  {
+    pattern: /^\/admin\/will-gpt\/([^/]+)$/,
+    key: "conversation",
+    fallbackLabel: "Conversation",
+    parentPath: "/admin/will-gpt",
   },
 ];
 
@@ -230,6 +237,21 @@ function useLinkCrumb(linkId: string | null) {
 }
 
 /**
+ * Hook to resolve a Will GPT conversation's title from ID. Same query as the
+ * conversation's own page, so it is served from that page's cache.
+ */
+function useConversationCrumb(conversationId: string | null) {
+  const { data, isLoading } = api.willGpt.byId.useQuery(
+    { id: conversationId ?? "" },
+    { enabled: !!conversationId },
+  );
+  return {
+    label: data?.title ?? null,
+    isLoading: !!conversationId && isLoading,
+  };
+}
+
+/**
  * Combined hook that resolves the appropriate smart crumb based on path
  */
 function useSmartCrumb(pathname: string): {
@@ -243,11 +265,14 @@ function useSmartCrumb(pathname: string): {
   const userId = smartMatch?.resolver.key === "user" ? smartMatch.id : null;
   const gigId = smartMatch?.resolver.key === "gig" ? smartMatch.id : null;
   const linkId = smartMatch?.resolver.key === "link" ? smartMatch.id : null;
+  const conversationId =
+    smartMatch?.resolver.key === "conversation" ? smartMatch.id : null;
 
   // Call all resolver hooks (React hooks must be called unconditionally)
   const userCrumb = useUserCrumb(userId);
   const gigCrumb = useGigCrumb(gigId);
   const linkCrumb = useLinkCrumb(linkId);
+  const conversationCrumb = useConversationCrumb(conversationId);
 
   // Return the appropriate result based on which resolver matched
   if (!smartMatch) return null;
@@ -280,6 +305,12 @@ function useSmartCrumb(pathname: string): {
         path: pathname,
         label: linkCrumb.label ?? resolver.fallbackLabel,
         isLoading: linkCrumb.isLoading,
+      };
+    case "conversation":
+      return {
+        path: pathname,
+        label: conversationCrumb.label ?? resolver.fallbackLabel,
+        isLoading: conversationCrumb.isLoading,
       };
     default:
       return null;

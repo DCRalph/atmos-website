@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import {
+  changesIn,
   closeOff,
   willGptRunInputSchema,
   type WillGptEvent,
@@ -14,6 +15,7 @@ import {
   readMessages,
   saveConversation,
 } from "~/server/will-gpt/conversations";
+import { generateTitle } from "~/server/will-gpt/title";
 
 const userSelect = {
   select: { id: true, name: true, email: true, image: true },
@@ -63,32 +65,52 @@ export const willGptRouter = createTRPCRouter({
       });
     await save();
 
-    // Imported here because the root router imports this file: Will GPT
-    // calls the procedures of the router it is part of.
-    const { appRouter } = await import("~/server/api/root");
-    for await (const event of runWillGpt({
-      router: appRouter,
-      ctx,
-      signal,
-      model: input.model,
-      page: input.page,
-      messages,
-      // Only a call that was actually waiting can be approved.
-      decisions: Object.fromEntries(
-        Object.entries(input.decisions).filter(([id]) =>
-          saved.awaiting.includes(id),
+    // A new conversation gets its title alongside its first run rather than
+    // before it, so the admin never waits on it.
+    const titling =
+      input.message && saved.messages.length === 0
+        ? generateTitle(input.message).then(async (title) => {
+            if (!title) return;
+            await ctx.db.willGptConversation.update({
+              where: { id: input.conversationId },
+              data: { title },
+            });
+          })
+        : null;
+
+    try {
+      // Imported here because the root router imports this file: Will GPT
+      // calls the procedures of the router it is part of.
+      const { appRouter } = await import("~/server/api/root");
+      for await (const event of runWillGpt({
+        router: appRouter,
+        ctx,
+        signal,
+        model: input.model,
+        page: input.page,
+        messages,
+        // Only a call that was actually waiting can be approved.
+        decisions: Object.fromEntries(
+          Object.entries(input.decisions).filter(([id]) =>
+            saved.awaiting.includes(id),
+          ),
         ),
-      ),
-    })) {
-      if (event.type === "message") {
-        messages = [...messages, event.message];
-        await save();
+      })) {
+        if (event.type === "message") {
+          messages = [...messages, event.message];
+          await save();
+        }
+        if (event.type === "awaiting") {
+          awaiting = event.callIds;
+          await save();
+        }
+        yield event;
       }
-      if (event.type === "awaiting") {
-        awaiting = event.callIds;
-        await save();
-      }
-      yield event;
+    } finally {
+      // Held until the title is written, so the request does not end first.
+      await titling?.catch((error: unknown) =>
+        console.error("[Will GPT] saving the title failed", error),
+      );
     }
   }),
 
@@ -103,11 +125,23 @@ export const willGptRouter = createTRPCRouter({
         limit: z.number().int().min(1).max(100).default(50),
         cursor: z.string().optional(),
         userId: z.string().optional(),
+        /** Only conversations that changed something, or are waiting to. */
+        changedOnly: z.boolean().default(false),
       }),
     )
     .query(async ({ ctx, input }) => {
       const rows = await ctx.db.willGptConversation.findMany({
-        where: input.userId ? { userId: input.userId } : undefined,
+        where: {
+          ...(input.userId ? { userId: input.userId } : {}),
+          ...(input.changedOnly
+            ? {
+                OR: [
+                  { changeCount: { gt: 0 } },
+                  { awaiting: { isEmpty: false } },
+                ],
+              }
+            : {}),
+        },
         take: input.limit + 1,
         cursor: input.cursor ? { id: input.cursor } : undefined,
         orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
@@ -124,6 +158,29 @@ export const willGptRouter = createTRPCRouter({
       });
       const next = rows.length > input.limit ? rows.pop() : undefined;
       return { rows, nextCursor: next?.id ?? null };
+    }),
+
+  /** Everyone who has talked to Will GPT, for the history page's filter. */
+  people: adminProcedure.query(({ ctx }) =>
+    ctx.db.user.findMany({
+      where: { willGptConversations: { some: {} } },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+  ),
+
+  /**
+   * What one conversation changed, without the rest of it: a history row
+   * opens to this, and a conversation's tool output can run to megabytes.
+   */
+  changes: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const row = await ctx.db.willGptConversation.findUnique({
+        where: { id: input.id },
+        select: { messages: true },
+      });
+      return row ? changesIn(readMessages(row.messages)) : [];
     }),
 
   /**
