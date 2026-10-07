@@ -5,8 +5,8 @@ import Link from "next/link";
 import {
   ArrowUp,
   History,
-  PanelRight,
   Plus,
+  Sparkles,
   Square,
   TriangleAlert,
   X,
@@ -32,18 +32,35 @@ import {
   Transcript,
 } from "./will-gpt-transcript";
 
-/** The header button that opens and closes the rail. */
+/**
+ * The header button that opens and closes the rail. A violet gradient ring
+ * marks it as the AI entry point; it fills in while the rail is open.
+ */
 export function WillGptToggle() {
   const { open, setOpen } = useWillGpt();
   return (
     <Button
-      variant={open ? "secondary" : "outline"}
+      variant="ghost"
       onClick={() => setOpen(!open)}
       aria-pressed={open}
       aria-label="Will GPT"
+      className={cn(
+        "border border-transparent hover:shadow-[0_0_14px_-3px] hover:shadow-violet-500/70",
+        open
+          ? "bg-linear-to-r from-violet-600 via-fuchsia-500 to-sky-500 bg-origin-border text-white hover:text-white"
+          : "[background:linear-gradient(var(--background),var(--background))_padding-box,linear-gradient(to_right,var(--color-violet-500),var(--color-fuchsia-500),var(--color-sky-400))_border-box]",
+      )}
     >
-      <PanelRight />
-      <span className="max-sm:hidden">Will GPT</span>
+      <Sparkles className={cn(!open && "text-fuchsia-500")} />
+      <span
+        className={cn(
+          "max-sm:hidden",
+          !open &&
+            "bg-linear-to-r from-violet-600 to-fuchsia-500 bg-clip-text text-transparent dark:from-violet-400 dark:to-fuchsia-400",
+        )}
+      >
+        Will GPT
+      </span>
     </Button>
   );
 }
