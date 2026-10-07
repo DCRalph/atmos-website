@@ -6,12 +6,15 @@ interface LayoutWithSideBarHeaderProps {
   children: React.ReactNode;
   sidebar: React.ReactNode;
   header: React.ReactNode;
+  /** A panel docked to the right of the content column, such as Will GPT. */
+  aside?: React.ReactNode;
 }
 
 export function LayoutWithSideBarHeader({
   children,
   sidebar,
   header: header,
+  aside,
 }: LayoutWithSideBarHeaderProps) {
   return (
     <SidebarProvider>
@@ -30,6 +33,7 @@ export function LayoutWithSideBarHeader({
           {header}
           {children}
         </div>
+        {aside}
       </div>
     </SidebarProvider>
   );

@@ -8,6 +8,11 @@ import { LayoutWithSideBarHeader } from "~/components/layout-with-sideBar-header
 import { DashboardSideBar } from "~/components/admin/admin-sidebar";
 import { DashboardHeader } from "~/components/dash-header";
 import { UnsavedChangesProvider } from "~/components/admin/unsaved-changes-provider";
+import { WillGptProvider } from "~/components/admin/will-gpt/will-gpt-provider";
+import {
+  WillGptRail,
+  WillGptToggle,
+} from "~/components/admin/will-gpt/will-gpt-rail";
 import { userHasPermission } from "~/server/utils/permissions";
 
 export const metadata: Metadata = {
@@ -40,12 +45,15 @@ export default async function AdminLayout({
     <>
       {/* <UserIndicator /> */}
       <UnsavedChangesProvider>
-        <LayoutWithSideBarHeader
-          sidebar={<DashboardSideBar />}
-          header={<DashboardHeader />}
-        >
-          {children}
-        </LayoutWithSideBarHeader>
+        <WillGptProvider>
+          <LayoutWithSideBarHeader
+            sidebar={<DashboardSideBar />}
+            header={<DashboardHeader actions={<WillGptToggle />} />}
+            aside={<WillGptRail />}
+          >
+            {children}
+          </LayoutWithSideBarHeader>
+        </WillGptProvider>
       </UnsavedChangesProvider>
     </>
   );

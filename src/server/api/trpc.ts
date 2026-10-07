@@ -40,25 +40,37 @@ export const createTRPCContext = async (opts: {
 };
 
 /**
+ * Static facts about a procedure, readable without calling it.
+ *
+ * `permission` is stamped by `permissionProcedure`, so every procedure built on
+ * `adminProcedure` and friends carries the permission it checks. Will GPT reads
+ * it to decide which procedures it can be offered (see `~/server/will-gpt`).
+ */
+export type ProcedureMeta = { permission?: UserPermission };
+
+/**
  * 2. INITIALIZATION
  *
  * This is where the tRPC API is initialized, connecting the context and transformer. We also parse
  * ZodErrors so that you get typesafety on the frontend if your procedure fails due to validation
  * errors on the backend.
  */
-const t = initTRPC.context<typeof createTRPCContext>().create({
-  transformer: superjson,
-  errorFormatter({ shape, error }) {
-    return {
-      ...shape,
-      data: {
-        ...shape.data,
-        zodError:
-          error.cause instanceof ZodError ? error.cause.flatten() : null,
-      },
-    };
-  },
-});
+const t = initTRPC
+  .context<typeof createTRPCContext>()
+  .meta<ProcedureMeta>()
+  .create({
+    transformer: superjson,
+    errorFormatter({ shape, error }) {
+      return {
+        ...shape,
+        data: {
+          ...shape.data,
+          zodError:
+            error.cause instanceof ZodError ? error.cause.flatten() : null,
+        },
+      };
+    },
+  });
 
 /**
  * Create a server-side caller.
@@ -141,7 +153,7 @@ export const protectedProcedure = t.procedure
  * Only accessible to users with the CREATOR permission or full ADMIN access.
  */
 function permissionProcedure(permission: UserPermission) {
-  return protectedProcedure.use(async ({ ctx, next }) => {
+  return protectedProcedure.meta({ permission }).use(async ({ ctx, next }) => {
     const user = await ctx.db.user.findUnique({
       where: { id: ctx.session.user.id },
       include: { permissions: true },
