@@ -33,34 +33,25 @@ import {
 } from "./will-gpt-transcript";
 
 /**
- * The header button that opens and closes the rail. A violet gradient ring
- * marks it as the AI entry point; it fills in while the rail is open.
+ * The header button that opens and closes the rail. An outline button with a
+ * violet sparkle and a faint violet tint, a shade deeper while the rail is open.
  */
 export function WillGptToggle() {
   const { open, setOpen } = useWillGpt();
   return (
     <Button
-      variant="ghost"
+      variant="outline"
       onClick={() => setOpen(!open)}
       aria-pressed={open}
       aria-label="Will GPT"
       className={cn(
-        "border border-transparent hover:shadow-[0_0_14px_-3px] hover:shadow-violet-500/70",
-        open
-          ? "bg-linear-to-r from-violet-600 via-fuchsia-500 to-sky-500 bg-origin-border text-white hover:text-white"
-          : "[background:linear-gradient(var(--background),var(--background))_padding-box,linear-gradient(to_right,var(--color-violet-500),var(--color-fuchsia-500),var(--color-sky-400))_border-box]",
+        "border-violet-600/25 hover:border-violet-600/50 hover:bg-violet-600/5 hover:text-foreground dark:border-violet-400/25 dark:hover:border-violet-400/50 dark:hover:bg-violet-400/10",
+        open &&
+          "border-violet-600/50 bg-violet-600/10 hover:bg-violet-600/10 dark:border-violet-400/50 dark:bg-violet-400/15 dark:hover:bg-violet-400/15",
       )}
     >
-      <Sparkles className={cn(!open && "text-fuchsia-500")} />
-      <span
-        className={cn(
-          "max-sm:hidden",
-          !open &&
-            "bg-linear-to-r from-violet-600 to-fuchsia-500 bg-clip-text text-transparent dark:from-violet-400 dark:to-fuchsia-400",
-        )}
-      >
-        Will GPT
-      </span>
+      <Sparkles className="text-violet-600 dark:text-violet-400" />
+      <span className="max-sm:hidden">Will GPT</span>
     </Button>
   );
 }

@@ -27,7 +27,7 @@ const SHOW_OPTIONS = [
  */
 export function WillGptHistory() {
   const [person, setPerson] = useState<string | null>(null);
-  const [show, setShow] = useState<"changed" | null>("changed");
+  const [show, setShow] = useState<"changed" | null>(null);
 
   const people = api.willGpt.people.useQuery();
   const list = api.willGpt.list.useInfiniteQuery(
@@ -42,7 +42,13 @@ export function WillGptHistory() {
 
   return (
     <div className="space-y-6">
-      <ListFilters activeCount={person ? 1 : 0} onClear={() => setPerson(null)}>
+      <ListFilters
+        activeCount={(person ? 1 : 0) + (show ? 1 : 0)}
+        onClear={() => {
+          setPerson(null);
+          setShow(null);
+        }}
+      >
         <FilterSelect
           label="Person"
           value={person}
