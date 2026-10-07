@@ -11,10 +11,10 @@ import { z } from "zod";
 
 /** Models offered in the panel, all through OpenRouter. The first is the default. */
 export const WILL_GPT_MODELS = [
-  { id: "anthropic/claude-sonnet-5.5", label: "Claude Sonnet 5.5" },
-  { id: "anthropic/claude-opus-5.5", label: "Claude Opus 5.5" },
-  { id: "openai/gpt-5.5", label: "GPT-5.5" },
-  { id: "google/gemini-3.8-flash", label: "Gemini 3.8 Flash" },
+  { id: "z-ai/glm-5.3-flash", label: "GLM 5.3 Flash" },
+  { id: "openai/gpt-6.1-sol", label: "GPT-6.1 Sol" },
+  { id: "openai/gpt-6-luna", label: "GPT-6 Luna" },
+  { id: "openai/gpt-5.6-terra", label: "GPT-5.6 Terra" },
 ] as const;
 
 export type WillGptModelId = (typeof WILL_GPT_MODELS)[number]["id"];
