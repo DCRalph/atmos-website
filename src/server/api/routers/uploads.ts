@@ -14,7 +14,9 @@ import {
   finishUpload,
   abortUpload,
   sweepStaleUploads,
+  uploadFromBuffer,
 } from "~/server/uploads/service";
+import { downloadImage } from "~/server/web";
 import { FileUploadStatus } from "~Prisma/client";
 
 const presetNames = Object.keys(uploadPresets) as [
@@ -55,6 +57,30 @@ export const uploadsRouter = createTRPCRouter({
   finish: protectedProcedure
     .input(z.object({ uploadId: z.string().min(1) }))
     .mutation(({ ctx, input }) => finishUpload(input, ctx)),
+
+  /**
+   * Download an image from a link and store it through a preset, exactly as
+   * if it had been uploaded there. Attach the returned file id with the
+   * destination's own procedure, such as `gigs.setPosterFromUpload`.
+   */
+  importFromUrl: adminProcedure
+    .input(
+      z.object({
+        url: z.url(),
+        preset: z.enum(presetNames),
+        context: z.record(z.string(), z.unknown()).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const file = await downloadImage(
+        input.url,
+        uploadPresets[input.preset].maxFileSize,
+      );
+      return uploadFromBuffer(
+        { preset: input.preset, context: input.context, file },
+        ctx,
+      );
+    }),
 
   /** Give up on an upload and discard the staged bytes. */
   abort: protectedProcedure

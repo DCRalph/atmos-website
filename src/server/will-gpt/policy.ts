@@ -49,10 +49,43 @@ const OVERRIDES: Partial<Record<string, Risk>> = {
   "homeContent.setAllPlacements": "write",
   "creatorProfiles.saveLayout": "write",
   "creatorProfiles.setSocials": "write",
+  "creatorProfiles.setAvatar": "write", // the old image is soft deleted, not gone
+  "creatorProfiles.setBanner": "write",
+  "uploads.importFromUrl": "write", // stores a file; attaching it is separate
   "gigImport.read": "write", // reads a post into a draft; publishing is separate
   "gigImport.resolveHandle": "write",
   "shopify.syncProducts": "write", // refreshes the cached catalogue from Shopify
 } satisfies Partial<Record<MutationPath<AppRouter["_def"]["record"]>, Risk>>;
+
+/**
+ * Owner-or-admin procedures Will GPT is offered, since an admin may edit any
+ * creator profile. Each falls back to the caller's own profile when its id is
+ * left out, so a call must name one; the value is the input that must be set.
+ */
+const OWNER_SCOPED: Partial<Record<string, "profileId">> = {
+  "creatorProfiles.updateProfile": "profileId",
+  "creatorProfiles.setAvatar": "profileId",
+  "creatorProfiles.setBanner": "profileId",
+  "creatorProfiles.clearAvatar": "profileId",
+  "creatorProfiles.clearBanner": "profileId",
+  "creatorProfiles.setSocials": "profileId",
+  "creatorProfiles.publish": "profileId",
+  "creatorProfiles.unpublish": "profileId",
+} satisfies Partial<
+  Record<MutationPath<AppRouter["_def"]["record"]>, "profileId">
+>;
+
+/** Why a call to an owner-scoped procedure cannot run as written, or null. */
+export function unscopedReason(
+  path: string,
+  input: Record<string, unknown> | undefined,
+): string | null {
+  const key = OWNER_SCOPED[path];
+  if (!key || (typeof input?.[key] === "string" && input[key] !== "")) {
+    return null;
+  }
+  return `Pass ${key}. Without it, ${path} edits the admin's own profile.`;
+}
 
 export function riskOf(path: string, type: TRPCProcedureType): Risk {
   if (type === "query") return "read";
@@ -69,9 +102,10 @@ export function riskOf(path: string, type: TRPCProcedureType): Risk {
  * Whether Will GPT is offered a procedure at all. Every read, since a read
  * runs as the admin and changes nothing, and many lists the admin works from
  * (crew, content) are public queries. Of the writes, only the staff surface:
- * whatever sits behind the admin or event organiser check. Customer actions
- * like checkout or a ticket holder editing their own ticket are not admin
- * work, and Will GPT does not get to call itself.
+ * whatever sits behind the admin or event organiser check, plus the creator
+ * profile edits in `OWNER_SCOPED`. Customer actions like checkout or a ticket
+ * holder editing their own ticket are not admin work, and Will GPT does not
+ * get to call itself.
  */
 export function isOffered(
   path: string,
@@ -80,6 +114,7 @@ export function isOffered(
 ) {
   if (path.startsWith("willGpt.")) return false;
   if (type === "query") return true;
+  if (OWNER_SCOPED[path]) return true;
   return (
     type === "mutation" &&
     (meta?.permission === "ADMIN" || meta?.permission === "EVENT_ORGANISER")

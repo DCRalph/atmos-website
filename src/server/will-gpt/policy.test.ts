@@ -1,7 +1,7 @@
 import { describe, test } from "bun:test";
 import assert from "node:assert/strict";
 
-import { isOffered, riskOf } from "./policy";
+import { isOffered, riskOf, unscopedReason } from "./policy";
 
 describe("riskOf", () => {
   test("queries only read", () => {
@@ -56,10 +56,41 @@ describe("isOffered", () => {
     );
   });
 
+  test("offers the creator profile edits an admin may make on any profile", () => {
+    assert.equal(
+      isOffered("creatorProfiles.setAvatar", "mutation", undefined),
+      true,
+    );
+    assert.equal(
+      isOffered("creatorProfiles.saveLayout", "mutation", undefined),
+      false,
+    );
+  });
+
   test("never offers Will GPT to itself", () => {
     assert.equal(
       isOffered("willGpt.run", "mutation", { permission: "ADMIN" }),
       false,
     );
+  });
+});
+
+describe("unscopedReason", () => {
+  test("owner-scoped calls must name the profile", () => {
+    assert.match(
+      unscopedReason("creatorProfiles.setAvatar", { fileId: "f" }) ?? "",
+      /Pass profileId/,
+    );
+    assert.equal(
+      unscopedReason("creatorProfiles.setAvatar", {
+        profileId: "p",
+        fileId: "f",
+      }),
+      null,
+    );
+  });
+
+  test("leaves every other procedure alone", () => {
+    assert.equal(unscopedReason("gigs.update", undefined), null);
   });
 });
