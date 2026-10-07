@@ -101,6 +101,12 @@ export function UserIndicator({ variant = "light" }: UserIndicatorProps) {
               </Button>
             </Link>
 
+            <Link href="/dashboard/account">
+              <Button variant="ghost" className="w-full justify-between">
+                <span>Account</span>
+              </Button>
+            </Link>
+
             {user.effectivePermissions.includes("EVENT_ORGANISER") && (
               <>
                 <Link href="/organiser/events">

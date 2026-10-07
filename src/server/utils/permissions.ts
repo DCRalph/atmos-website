@@ -7,15 +7,30 @@ export type UserWithPermissions = {
 };
 
 /**
- * Explicit permission check. ADMIN is a full-rights permission and therefore
- * satisfies every permission check without duplicating assignment rows.
+ * Explicit permission check. SUPERADMIN satisfies everything; ADMIN satisfies
+ * everything except SUPERADMIN, so neither needs duplicate assignment rows.
  */
 export function userHasPermission(
   user: UserWithPermissions,
   permission: UserPermission,
 ): boolean {
   const assigned = user.permissions?.map((row) => row.permission) ?? [];
-  return assigned.includes("ADMIN") || assigned.includes(permission);
+  if (assigned.includes("SUPERADMIN") || assigned.includes(permission)) {
+    return true;
+  }
+  return permission !== "SUPERADMIN" && assigned.includes("ADMIN");
+}
+
+/** ADMIN and SUPERADMIN: the permissions only a superadmin may grant, revoke, or manage the holders of. */
+export const ADMIN_TIER = [
+  "ADMIN",
+  "SUPERADMIN",
+] as const satisfies UserPermission[];
+
+export function isAdminTier(permissions: readonly UserPermission[]): boolean {
+  return permissions.some((permission) =>
+    (ADMIN_TIER as readonly UserPermission[]).includes(permission),
+  );
 }
 
 export async function getUserPermissions(

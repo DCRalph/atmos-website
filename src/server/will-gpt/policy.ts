@@ -37,7 +37,6 @@ const OVERRIDES: Partial<Record<string, Risk>> = {
   // Named like a create or edit, but reaches people or changes access.
   "invites.create": "destructive",
   "lifetimeTickets.create": "destructive", // emails the holder by default
-  "users.addPermission": "destructive",
   "artistProfiles.linkUserToProfile": "destructive",
   "ticketAdmin.updateBuyer": "destructive", // moves the tickets to another email
 
@@ -56,6 +55,18 @@ const OVERRIDES: Partial<Record<string, Risk>> = {
   "gigImport.resolveHandle": "write",
   "shopify.syncProducts": "write", // refreshes the cached catalogue from Shopify
 } satisfies Partial<Record<MutationPath<AppRouter["_def"]["record"]>, Risk>>;
+
+/**
+ * Admin procedures Will GPT is never offered: they change how somebody signs
+ * in, which should only ever be a person's deliberate click.
+ */
+const NOT_OFFERED: ReadonlySet<string> = new Set([
+  "users.setPassword",
+  "users.sendPasswordReset",
+  "users.unlinkAccount",
+  "users.revokeSession",
+  "users.revokeSessions",
+] satisfies MutationPath<AppRouter["_def"]["record"]>[]);
 
 /**
  * Owner-or-admin procedures Will GPT is offered, since an admin may edit any
@@ -112,7 +123,7 @@ export function isOffered(
   type: TRPCProcedureType,
   meta: ProcedureMeta | undefined,
 ) {
-  if (path.startsWith("willGpt.")) return false;
+  if (path.startsWith("willGpt.") || NOT_OFFERED.has(path)) return false;
   if (type === "query") return true;
   if (OWNER_SCOPED[path]) return true;
   return (

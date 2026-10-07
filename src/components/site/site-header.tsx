@@ -78,6 +78,7 @@ function AccountMenu({ className }: { className: string }) {
 
   const links = [
     { label: "Dashboard", href: "/dashboard", show: true },
+    { label: "Account", href: "/dashboard/account", show: true },
     {
       label: "Event analytics",
       href: "/organiser/events",

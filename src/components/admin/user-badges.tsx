@@ -32,7 +32,8 @@ export function LoginMethodBadge({ method }: { method: string | null }) {
   );
 }
 
-export type PermissionName = "ADMIN" | "EVENT_ORGANISER" | "ARTIST";
+export type PermissionName =
+  "SUPERADMIN" | "ADMIN" | "EVENT_ORGANISER" | "ARTIST";
 
 /** Listed most powerful first, which is also the order badges are shown in. */
 export const PERMISSIONS: {
@@ -41,6 +42,13 @@ export const PERMISSIONS: {
   description: string;
   variant: "default" | "secondary" | "destructive";
 }[] = [
+  {
+    name: "SUPERADMIN",
+    label: "Superadmin",
+    description:
+      "Admin, plus managing other admins: their permissions, passwords, sign-in methods, and sessions.",
+    variant: "destructive",
+  },
   {
     name: "ADMIN",
     label: "Admin",
@@ -90,9 +98,10 @@ export function PermissionBadges({
 }: {
   permissions: { permission: string }[] | undefined;
 }) {
-  const sorted = [
-    ...new Set((permissions ?? []).map((row) => row.permission)),
-  ].sort(
+  const names = new Set((permissions ?? []).map((row) => row.permission));
+  // Superadmin always carries Admin; one badge says it.
+  if (names.has("SUPERADMIN")) names.delete("ADMIN");
+  const sorted = [...names].sort(
     (a, b) =>
       (PERMISSION_RANK.get(a) ?? PERMISSIONS.length) -
       (PERMISSION_RANK.get(b) ?? PERMISSIONS.length),

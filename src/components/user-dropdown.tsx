@@ -109,7 +109,9 @@ export function UserDropdown({ detailed = false }) {
                 {user.effectivePermissions.includes("ADMIN") && (
                   <span className="text-primary mt-1 flex items-center gap-1 text-xs font-medium">
                     <Shield className="size-3" />
-                    Admin
+                    {user.effectivePermissions.includes("SUPERADMIN")
+                      ? "Superadmin"
+                      : "Admin"}
                   </span>
                 )}
               </div>
@@ -167,10 +169,9 @@ export function UserDropdown({ detailed = false }) {
               </>
             )}
 
-            {/* TODO: Implement account settings page */}
             <DropdownMenuItem asChild>
               <Link
-                href="/account-settings"
+                href="/dashboard/account"
                 className="flex items-center gap-3 py-2"
               >
                 <Settings2 className="text-muted-foreground size-4" />
