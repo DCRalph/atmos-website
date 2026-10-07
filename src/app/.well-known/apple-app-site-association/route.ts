@@ -33,7 +33,7 @@ const APP_ID = `${TEAM_ID}.${BUNDLE_ID}`;
  *   an order access token — the same token the emailed link carries.
  *
  * Apple's `*` also matches `/`, so `/gigs/*` alone would claim every page
- * beneath a gig too. The `NOT …/*/*` rules keep the claim to one segment, so
+ * beneath a gig too. The two-segment `NOT` rules keep the claim to one, so
  * nested web-only pages (`/gigs/<id>/photo-signup`, `/tickets/<token>/details`)
  * stay in the browser, including ones added later.
  *
