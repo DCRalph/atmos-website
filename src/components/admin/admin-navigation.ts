@@ -3,6 +3,7 @@ import {
   BadgePercent,
   Bell,
   BookOpen,
+  Bot,
   Calendar,
   FileText,
   FolderOpen,
@@ -230,6 +231,13 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         url: "/admin/activity-logs",
         icon: FileText,
         keywords: ["audit", "history"],
+      },
+      {
+        title: "Will GPT",
+        description: "Every conversation with Will GPT, and what it changed",
+        url: "/admin/will-gpt",
+        icon: Bot,
+        keywords: ["ai", "assistant", "agent", "history", "chat"],
       },
       {
         title: "Settings",

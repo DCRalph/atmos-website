@@ -6,14 +6,13 @@ import {
   type AnyTRPCProcedure,
   type AnyTRPCRouter,
 } from "@trpc/server";
-import OpenAI from "openai";
+import type OpenAI from "openai";
 import type {
   ChatCompletionMessageParam,
   ChatCompletionTool,
 } from "openai/resources/chat/completions";
 import { z } from "zod";
 
-import { env } from "~/env";
 import { RUN_SHEET_TIMEZONE } from "~/lib/run-sheet/schedule";
 import {
   callArgsSchema,
@@ -27,6 +26,7 @@ import {
 } from "~/lib/will-gpt";
 import type { createTRPCContext, ProcedureMeta } from "~/server/api/trpc";
 import { inputSchemaOf, prepareInput, toolOutput } from "./io";
+import { openRouter } from "./openrouter";
 import { isOffered, riskOf } from "./policy";
 
 /**
@@ -344,23 +344,14 @@ export async function* runWillGpt(opts: {
   page: string;
   signal: AbortSignal | undefined;
 }): AsyncGenerator<WillGptEvent> {
-  if (!env.OPENROUTER_API_KEY) {
+  const client = openRouter();
+  if (!client) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
       message: "Will GPT is not set up: OPENROUTER_API_KEY is unset.",
     });
   }
 
-  const client = new OpenAI({
-    apiKey: env.OPENROUTER_API_KEY,
-    baseURL: "https://openrouter.ai/api/v1",
-    // OpenRouter attributes requests to an app by these, which is how its
-    // dashboard tells Will GPT's spend from the gig import's.
-    defaultHeaders: {
-      "HTTP-Referer": env.NEXT_PUBLIC_APP_URL,
-      "X-Title": "Atmos Admin / Will GPT",
-    },
-  });
   const catalog = catalogOf(opts.router);
   const system = systemPrompt(catalog, opts.page);
   const transcript = [...opts.messages];

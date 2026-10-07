@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   callArgsSchema,
+  changesIn,
   closeOff,
   parseToolArgs,
   type WillGptMessage,
@@ -50,5 +51,68 @@ describe("closeOff", () => {
       ["ran", "ok"],
       ["interrupted", "error"],
     ]);
+  });
+});
+
+describe("changesIn", () => {
+  const call = (id: string, path: string) => ({
+    id,
+    name: "call",
+    arguments: JSON.stringify({ path, summary: `Run ${path}` }),
+  });
+
+  test("counts writes and approved deletes, not reads, failures or declines", () => {
+    const changes = changesIn([
+      {
+        role: "assistant",
+        text: "",
+        toolCalls: [
+          call("read", "gigs.getAll"),
+          call("made", "gigs.create"),
+          call("failed", "gigs.create"),
+          call("deleted", "gigs.delete"),
+          call("declined", "gigs.delete"),
+        ],
+      },
+      {
+        role: "tool",
+        callId: "read",
+        status: "ok",
+        output: "[]",
+        risk: "read",
+      },
+      {
+        role: "tool",
+        callId: "made",
+        status: "ok",
+        output: "{}",
+        risk: "write",
+      },
+      {
+        role: "tool",
+        callId: "failed",
+        status: "error",
+        output: "",
+        risk: "write",
+      },
+      {
+        role: "tool",
+        callId: "deleted",
+        status: "ok",
+        output: "{}",
+        risk: "destructive",
+      },
+      {
+        role: "tool",
+        callId: "declined",
+        status: "declined",
+        output: "",
+        risk: "destructive",
+      },
+    ]);
+    assert.deepEqual(
+      changes.map((change) => change.summary),
+      ["Run gigs.create", "Run gigs.delete"],
+    );
   });
 });

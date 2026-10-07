@@ -153,6 +153,43 @@ export function closeOff(
   ];
 }
 
+/** A call that ran and changed something, as the admin reads it. */
+export type WillGptChange = {
+  callId: string;
+  summary: string;
+  path: string;
+  risk: Exclude<Risk, "read">;
+};
+
+/**
+ * What a conversation changed, in order: the writes and approved destructive
+ * calls that ran. Reads, failures and declined calls are not changes.
+ */
+export function changesIn(messages: WillGptMessage[]): WillGptChange[] {
+  const calls = new Map(
+    messages.flatMap((message) =>
+      message.role === "assistant"
+        ? message.toolCalls.map((call) => [call.id, call] as const)
+        : [],
+    ),
+  );
+  return messages.flatMap((message): WillGptChange[] => {
+    if (message.role !== "tool" || message.status !== "ok") return [];
+    if (message.risk !== "write" && message.risk !== "destructive") return [];
+    const call = calls.get(message.callId);
+    if (!call) return [];
+    const args = parseToolArgs(callArgsSchema, call.arguments);
+    return [
+      {
+        callId: call.id,
+        summary: args.ok ? args.data.summary : call.name,
+        path: args.ok ? args.data.path : call.name,
+        risk: message.risk,
+      },
+    ];
+  });
+}
+
 /**
  * One run of the assistant on a conversation: either the admin's next
  * message, or their answer to the calls waiting for approval.

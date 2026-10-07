@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import {
+  changesIn,
   closeOff,
   willGptMessageSchema,
   type WillGptMessage,
@@ -52,20 +53,30 @@ export async function loadOwnConversation(
   };
 }
 
-/** Calls that ran and changed something: what the history list counts. */
-export const changeCountOf = (messages: WillGptMessage[]) =>
-  messages.filter(
-    (message) =>
-      message.role === "tool" &&
-      message.status === "ok" &&
-      (message.risk === "write" || message.risk === "destructive"),
-  ).length;
-
-/** The first thing asked, on one line. */
-const titleOf = (messages: WillGptMessage[]) => {
+/**
+ * The title a conversation starts with: the first thing asked, on one line.
+ * A small model replaces it moments later (see `./title`); this is what shows
+ * if that fails.
+ */
+const fallbackTitle = (messages: WillGptMessage[]) => {
   const first = messages.find((message) => message.role === "user");
   return (first?.text ?? "Untitled").replace(/\s+/g, " ").trim().slice(0, 120);
 };
+
+/**
+ * What a model wrote, tidied into a title: its first line, without the
+ * quotes, "Title:" label or full stop small models like to add.
+ */
+export function cleanTitle(text: string): string | null {
+  const wrapping = /^[\s"'“‘*#]+|[\s"'”’*.]+$/g;
+  const line = text.split("\n").find((candidate) => candidate.trim()) ?? "";
+  // Unwrapped twice: the label can sit inside the quotes or outside them.
+  const title = line
+    .replace(wrapping, "")
+    .replace(/^title\s*:\s*/i, "")
+    .replace(wrapping, "");
+  return title ? title.slice(0, 80) : null;
+}
 
 export async function saveConversation(
   db: PrismaClient,
@@ -78,15 +89,20 @@ export async function saveConversation(
   },
 ) {
   const data = {
-    title: titleOf(conversation.messages),
     model: conversation.model,
     messages: conversation.messages,
     awaiting: conversation.awaiting,
-    changeCount: changeCountOf(conversation.messages),
+    changeCount: changesIn(conversation.messages).length,
   };
   await db.willGptConversation.upsert({
     where: { id: conversation.id },
-    create: { id: conversation.id, userId: conversation.userId, ...data },
+    create: {
+      id: conversation.id,
+      userId: conversation.userId,
+      title: fallbackTitle(conversation.messages),
+      ...data,
+    },
+    // The title is set once at creation and then by the title model only.
     update: data,
   });
 }
