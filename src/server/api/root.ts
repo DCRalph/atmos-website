@@ -39,6 +39,7 @@ import { lifetimeTicketsRouter } from "~/server/api/routers/lifetime-tickets";
 import { pickersRouter } from "~/server/api/routers/pickers";
 import { shortLinksRouter } from "~/server/api/routers/short-links";
 import { photoSignupRouter } from "~/server/api/routers/photo-signup";
+import { willGptRouter } from "~/server/api/routers/will-gpt";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -97,6 +98,9 @@ export const appRouter = createTRPCRouter({
 
   /** Combobox data sources — see `~/server/api/pickers/core`. */
   pickers: pickersRouter,
+
+  /** The admin assistant, which works by calling the procedures above. */
+  willGpt: willGptRouter,
 });
 
 // export type definition of API

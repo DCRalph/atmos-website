@@ -10,10 +10,11 @@ import { createTRPCContext } from "~/server/api/trpc";
  * handling a HTTP request (e.g. when you make requests from Client Components).
  */
 /**
- * Reading an Instagram post into a gig is the one procedure here that is slow
- * by nature: a model call with the poster attached, on top of downloading the
- * image. The platform default cuts it off well before it finishes, and every
- * other procedure is unaffected by a longer ceiling because they return in
+ * Two procedures here are slow by nature: reading an Instagram post into a gig
+ * (a model call with the poster attached, on top of downloading the image) and
+ * a Will GPT run (several model turns in a row, which budgets itself to fit).
+ * The platform default cuts both off well before they finish, and every other
+ * procedure is unaffected by a longer ceiling because they return in
  * milliseconds either way.
  */
 export const maxDuration = 300;

@@ -290,7 +290,12 @@ function useSmartCrumb(pathname: string): {
 // Component
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function DashboardHeader() {
+export function DashboardHeader({
+  actions,
+}: {
+  /** Controls placed before the user menu. */
+  actions?: React.ReactNode;
+}) {
   const rawPath = usePathname();
   const pathname = normalizePath(rawPath);
 
@@ -356,6 +361,7 @@ export function DashboardHeader() {
         </div>
 
         <div className="flex shrink-0 items-center gap-4">
+          {actions}
           <UserDropdown detailed />
         </div>
       </div>
