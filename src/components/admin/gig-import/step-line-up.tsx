@@ -22,8 +22,8 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import { CreatorPicker } from "~/components/admin/gig-edit/creator-picker";
-import { CreatorQuickCreateDialog } from "~/components/admin/gig-edit/creator-quick-create-dialog";
+import { ArtistPicker } from "~/components/admin/gig-edit/artist-picker";
+import { ArtistQuickCreateDialog } from "~/components/admin/gig-edit/artist-quick-create-dialog";
 import { useUpload } from "~/hooks/use-upload";
 import { buildMediaUrl } from "~/lib/media-url";
 import { presetConstraints } from "~/lib/uploads/presets";
@@ -33,7 +33,7 @@ type Slot = {
   id: string;
   role: string | null;
   artists: {
-    creatorProfile: { id: string; handle: string; displayName: string };
+    artistProfile: { id: string; handle: string; displayName: string };
   }[];
 };
 
@@ -123,12 +123,12 @@ export function StepLineUp({
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
                     {slot.artists
-                      .map((artist) => artist.creatorProfile.displayName)
+                      .map((artist) => artist.artistProfile.displayName)
                       .join(" b2b ")}
                   </p>
                   <p className="text-muted-foreground truncate text-xs">
                     {slot.artists
-                      .map((artist) => `@${artist.creatorProfile.handle}`)
+                      .map((artist) => `@${artist.artistProfile.handle}`)
                       .join(", ")}
                   </p>
                 </div>
@@ -172,15 +172,15 @@ export function StepLineUp({
                 </div>
                 {/* An artist the site already has under a different handle is
                     the common case: Instagram names change, profiles do not. */}
-                <CreatorPicker
+                <ArtistPicker
                   label="Use existing"
                   excludeIds={[]}
                   disabled={resolveHandle.isPending}
-                  onPick={(creator) =>
+                  onPick={(artist) =>
                     resolveHandle.mutate({
                       importId,
                       handle,
-                      creatorProfileId: creator.creatorProfileId,
+                      artistProfileId: artist.artistProfileId,
                     })
                   }
                 />
@@ -225,13 +225,13 @@ export function StepLineUp({
       </div>
 
       {creatingFor ? (
-        <CreatorQuickCreateDialog
+        <ArtistQuickCreateDialog
           open
           onOpenChange={(open) => {
             if (!open) setCreatingFor(null);
           }}
           initialName={creatingFor}
-          onCreated={(creator) => {
+          onCreated={(artist) => {
             const handle = creatingFor;
             setCreatingFor(null);
             // Same operation as picking an existing profile: what the draft
@@ -240,7 +240,7 @@ export function StepLineUp({
               resolveHandle.mutate({
                 importId,
                 handle,
-                creatorProfileId: creator.creatorProfileId,
+                artistProfileId: artist.artistProfileId,
               });
             }
           }}

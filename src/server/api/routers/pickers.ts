@@ -72,7 +72,7 @@ async function organiserScope(
               in: [
                 "EVENT_ORGANISER",
                 "ADMIN",
-                "CREATOR",
+                "ARTIST",
               ] satisfies UserPermission[],
             },
           },
@@ -176,7 +176,7 @@ export const pickersRouter = createTRPCRouter({
    *
    * - **Admins** search every account.
    * - **Organisers** see a working pool — anyone who has worked a door before,
-   *   plus staff-ish accounts (organisers, admins, creators), plus themselves.
+   *   plus staff-ish accounts (organisers, admins, artists), plus themselves.
    *   To add somebody outside that pool they must type a *complete* email
    *   address, which is matched exactly.
    *
@@ -292,8 +292,8 @@ export const pickersRouter = createTRPCRouter({
       });
     }),
 
-  /** Creator profiles, by handle or display name. */
-  creatorProfiles: eventOrganiserProcedure
+  /** Artist profiles, by handle or display name. */
+  artistProfiles: eventOrganiserProcedure
     .input(pickerInput(noFilter))
     .query(({ ctx, input }) => {
       const where = searchAcross(input.query, ["displayName", "handle"]);
@@ -302,15 +302,15 @@ export const pickersRouter = createTRPCRouter({
       return buildPicker({
         input,
         find: (take) =>
-          ctx.db.creatorProfile.findMany({
+          ctx.db.artistProfile.findMany({
             where,
             select,
             orderBy: { displayName: "asc" },
             take,
           }),
-        count: () => ctx.db.creatorProfile.count({ where }),
+        count: () => ctx.db.artistProfile.count({ where }),
         findByValues: (values) =>
-          ctx.db.creatorProfile.findMany({
+          ctx.db.artistProfile.findMany({
             where: { id: { in: values } },
             select,
           }),

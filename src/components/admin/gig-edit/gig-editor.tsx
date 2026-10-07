@@ -122,7 +122,7 @@ type LoadedGig = {
     recipients: { userId: string }[];
     fires: { offsetMinutes: number; skipped: boolean }[];
     artists: {
-      creatorProfile: {
+      artistProfile: {
         id: string;
         handle: string;
         displayName: string;
@@ -174,12 +174,12 @@ const draftFromGig = (gig: LoadedGig): GigDraft => ({
       id: row.id,
       kind: row.kind,
       artists: row.artists.map((artist) => ({
-        creatorProfileId: artist.creatorProfile.id,
-        handle: artist.creatorProfile.handle,
-        displayName: artist.creatorProfile.displayName,
-        avatarFileId: artist.creatorProfile.avatarFileId,
-        claimStatus: artist.creatorProfile.claimStatus,
-        isPublished: artist.creatorProfile.isPublished,
+        artistProfileId: artist.artistProfile.id,
+        handle: artist.artistProfile.handle,
+        displayName: artist.artistProfile.displayName,
+        avatarFileId: artist.artistProfile.avatarFileId,
+        claimStatus: artist.artistProfile.claimStatus,
+        isPublished: artist.artistProfile.isPublished,
       })),
       label: row.label ?? "",
       role: row.role ?? "",
@@ -214,7 +214,7 @@ const fingerprint = (draft: GigDraft): string =>
     schedule: draft.schedule.map((row) => [
       row.id ?? row.key,
       row.kind,
-      row.artists.map((artist) => artist.creatorProfileId),
+      row.artists.map((artist) => artist.artistProfileId),
       row.label.trim(),
       row.role.trim(),
       row.startsAt?.getTime() ?? null,
@@ -455,7 +455,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
       scheduleItems: draft.schedule.map((row) => ({
         id: row.id,
         kind: row.kind,
-        creatorProfileIds: row.artists.map((artist) => artist.creatorProfileId),
+        artistProfileIds: row.artists.map((artist) => artist.artistProfileId),
         label: row.label.trim() || null,
         role: row.role.trim() || null,
         startsAt: row.startsAt,

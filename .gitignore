@@ -55,11 +55,11 @@ yarn-error.log*
 .vercel
 .env*.local
 
-# creator UI audit output (screenshots + report)
+# artist UI audit output (screenshots + report)
 
 /mobile/build/
-# creator directory export (bun run creators:export)
-/creator-export/
+# artist directory export (bun run artists:export)
+/artist-export/
 
 # Local UI mocks, published to Postplan rather than shipped.
 .mocks/

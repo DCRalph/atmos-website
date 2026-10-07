@@ -68,7 +68,7 @@ const RUN_SHEET_INCLUDE = {
       artists: {
         orderBy: { sortOrder: "asc" },
         select: {
-          creatorProfile: {
+          artistProfile: {
             select: { id: true, handle: true, displayName: true },
           },
         },
@@ -137,7 +137,7 @@ export const runSheetRouter = createTRPCRouter({
           endsAt: item.endsAt,
           sortOrder: item.sortOrder,
           leadMinutes: item.leadMinutes,
-          artists: item.artists.map((artist) => artist.creatorProfile),
+          artists: item.artists.map((artist) => artist.artistProfile),
         });
         const row = {
           id: item.id,
@@ -152,7 +152,7 @@ export const runSheetRouter = createTRPCRouter({
           leadMinutes: item.leadMinutes,
           // Everybody in the slot, so a back to back reads as one line and the
           // app can still link each name.
-          artists: item.artists.map((artist) => artist.creatorProfile),
+          artists: item.artists.map((artist) => artist.artistProfile),
           recipientUserIds: item.recipients.map((r) => r.userId),
           fires: item.fires,
           previousSetName: item.kind === "SET" ? previousSetName : null,
@@ -253,7 +253,7 @@ export const runSheetRouter = createTRPCRouter({
             leadMinutes: true,
             artists: {
               orderBy: { sortOrder: "asc" },
-              select: { creatorProfile: { select: { displayName: true } } },
+              select: { artistProfile: { select: { displayName: true } } },
             },
           },
         },
@@ -267,7 +267,7 @@ export const runSheetRouter = createTRPCRouter({
         rows: activityRows(
           gig.scheduleItems.map((item) => ({
             ...item,
-            artists: item.artists.map((artist) => artist.creatorProfile),
+            artists: item.artists.map((artist) => artist.artistProfile),
           })),
         ),
       }))

@@ -8,7 +8,7 @@ import { db } from "~/server/db";
  * App Store Guideline 5.1.1(v) requires an app that creates accounts to let
  * somebody destroy one from inside the app. Most of that is already handled by
  * the schema: sessions, OAuth accounts, device tokens, chat and claim requests
- * all cascade off `User`, and creator profiles and activity logs go to null.
+ * all cascade off `User`, and artist profiles and activity logs go to null.
  *
  * What the schema cannot decide is what happens to a purchase. `TicketOrder`
  * carries no foreign key to `User` on purpose — an order is a financial record

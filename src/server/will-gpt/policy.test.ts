@@ -47,7 +47,7 @@ describe("isOffered", () => {
       true,
     );
     assert.equal(
-      isOffered("creatorThemes.create", "mutation", { permission: "CREATOR" }),
+      isOffered("artistThemes.create", "mutation", { permission: "ARTIST" }),
       false,
     );
     assert.equal(
@@ -56,13 +56,13 @@ describe("isOffered", () => {
     );
   });
 
-  test("offers the creator profile edits an admin may make on any profile", () => {
+  test("offers the artist profile edits an admin may make on any profile", () => {
     assert.equal(
-      isOffered("creatorProfiles.setAvatar", "mutation", undefined),
+      isOffered("artistProfiles.setAvatar", "mutation", undefined),
       true,
     );
     assert.equal(
-      isOffered("creatorProfiles.saveLayout", "mutation", undefined),
+      isOffered("artistProfiles.saveLayout", "mutation", undefined),
       false,
     );
   });
@@ -78,11 +78,11 @@ describe("isOffered", () => {
 describe("unscopedReason", () => {
   test("owner-scoped calls must name the profile", () => {
     assert.match(
-      unscopedReason("creatorProfiles.setAvatar", { fileId: "f" }) ?? "",
+      unscopedReason("artistProfiles.setAvatar", { fileId: "f" }) ?? "",
       /Pass profileId/,
     );
     assert.equal(
-      unscopedReason("creatorProfiles.setAvatar", {
+      unscopedReason("artistProfiles.setAvatar", {
         profileId: "p",
         fileId: "f",
       }),

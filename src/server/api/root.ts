@@ -16,8 +16,8 @@ import { rentalsRouter } from "~/server/api/routers/rentals";
 import { settingsRouter } from "~/server/api/routers/settings";
 import { accessLevelsRouter } from "~/server/api/routers/access-levels";
 import { shopifyRouter } from "~/server/api/routers/shopify";
-import { creatorProfilesRouter } from "~/server/api/routers/creator-profiles";
-import { creatorThemesRouter } from "~/server/api/routers/creator-themes";
+import { artistProfilesRouter } from "~/server/api/routers/artist-profiles";
+import { artistThemesRouter } from "~/server/api/routers/artist-themes";
 import { lineUpRouter } from "~/server/api/routers/line-up";
 import { runSheetRouter } from "~/server/api/routers/run-sheet";
 import { gigChatRouter } from "~/server/api/routers/gig-chat";
@@ -68,8 +68,8 @@ export const appRouter = createTRPCRouter({
   rentals: rentalsRouter,
   settings: settingsRouter,
   shopify: shopifyRouter,
-  creatorProfiles: creatorProfilesRouter,
-  creatorThemes: creatorThemesRouter,
+  artistProfiles: artistProfilesRouter,
+  artistThemes: artistThemesRouter,
   lineUp: lineUpRouter,
   runSheet: runSheetRouter,
   gigChat: gigChatRouter,

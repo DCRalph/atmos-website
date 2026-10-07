@@ -8,7 +8,7 @@ import { Media } from "../primitives";
 
 // Shared data and parts for the /crew drafts. Names, roles and photos are the
 // live crew; Instagram/SoundCloud links come from the seed where we have them.
-// Which members have a published creator profile is illustrative.
+// Which members have a published artist profile is illustrative.
 
 export type CrewEntry = {
   name: string;
@@ -16,7 +16,7 @@ export type CrewEntry = {
   image: string | null;
   instagram: string | null;
   soundcloud: string | null;
-  /** Published creator profile handle, linked as /@handle. */
+  /** Published artist profile handle, linked as /@handle. */
   profileHandle: string | null;
 };
 

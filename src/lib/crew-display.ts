@@ -1,7 +1,7 @@
 import { buildMediaUrl } from "~/lib/media-url";
 
 /**
- * A crew member merged with its optionally-linked creator profile, as returned
+ * A crew member merged with its optionally-linked artist profile, as returned
  * by the crew tRPC router. Kept intentionally structural so both server- and
  * client-side callers can pass whatever subset they have.
  */
@@ -12,7 +12,7 @@ export type CrewMemberForDisplay = {
   instagram: string | null;
   soundcloud: string | null;
   image: string | null;
-  creatorProfile?: {
+  artistProfile?: {
     id: string;
     handle: string;
     displayName: string;
@@ -57,14 +57,14 @@ function findSocialUrl(
 }
 
 /**
- * Merge a crew member with its optionally-linked creator profile. Profile
+ * Merge a crew member with its optionally-linked artist profile. Profile
  * values take precedence; crew row values act as fallback so we still render
  * something sensible when a profile is missing a field.
  */
 export function resolveCrewDisplay(
   member: CrewMemberForDisplay,
 ): ResolvedCrewDisplay {
-  const profile = member.creatorProfile;
+  const profile = member.artistProfile;
 
   const profileName = profile?.displayName?.trim() || null;
   const profileTagline = profile?.tagline?.trim() || null;

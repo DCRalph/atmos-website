@@ -7,15 +7,15 @@ import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { ThemeSwatch } from "~/components/creator-themes/theme-swatch";
+import { ThemeSwatch } from "~/components/artist-themes/theme-swatch";
 
 export function DashboardThemesView() {
   const router = useRouter();
-  const mineQ = api.creatorThemes.listMine.useQuery();
-  const publicQ = api.creatorThemes.listPublic.useQuery({
+  const mineQ = api.artistThemes.listMine.useQuery();
+  const publicQ = api.artistThemes.listPublic.useQuery({
     includeSystem: true,
   });
-  const createMut = api.creatorThemes.create.useMutation({
+  const createMut = api.artistThemes.create.useMutation({
     onSuccess: (created) => {
       router.push(`/dashboard/themes/${created.id}`);
     },

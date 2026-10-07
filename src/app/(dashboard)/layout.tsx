@@ -19,8 +19,8 @@ export default async function DashboardLayout({
     where: { id: session.user.id },
     include: { permissions: true },
   });
-  const isCreator = user ? userHasPermission(user, "CREATOR") : false;
-  if (!isCreator) redirect("/");
+  const isArtist = user ? userHasPermission(user, "ARTIST") : false;
+  if (!isArtist) redirect("/");
 
   return (
     <div className="bg-background text-foreground min-h-dvh">

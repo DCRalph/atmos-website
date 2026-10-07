@@ -10,7 +10,7 @@ import { api } from "~/trpc/react";
  */
 export function NewThemeView() {
   const router = useRouter();
-  const createMut = api.creatorThemes.create.useMutation({
+  const createMut = api.artistThemes.create.useMutation({
     onSuccess: (created) => {
       router.replace(`/dashboard/themes/${created.id}`);
     },

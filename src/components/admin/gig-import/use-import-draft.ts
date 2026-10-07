@@ -101,8 +101,8 @@ export function useImportDraft(gigId: string | null) {
         scheduleItems: gig.scheduleItems.map((item) => ({
           id: item.id,
           kind: item.kind,
-          creatorProfileIds: item.artists.map(
-            (artist) => artist.creatorProfile.id,
+          artistProfileIds: item.artists.map(
+            (artist) => artist.artistProfile.id,
           ),
           label: item.label,
           role: item.role,

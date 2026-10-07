@@ -12,7 +12,7 @@ import type { UserPermission } from "~Prisma/client";
 
 const ALL_PERMISSIONS: UserPermission[] = [
   "EVENT_ORGANISER",
-  "CREATOR",
+  "ARTIST",
   "ADMIN",
 ];
 

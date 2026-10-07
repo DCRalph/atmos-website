@@ -24,8 +24,8 @@ export const RESERVED_SLUGS = new Set([
   "auth-error",
   "contact",
   "content",
-  "creator",
-  "creator-preview",
+  "artist",
+  "artist-preview",
   "crew",
   "dashboard",
   "door",
@@ -49,7 +49,8 @@ export const RESERVED_SLUGS = new Set([
   "ui-test",
   "verify-email",
   "wallet-debugger-preview",
-  // Rewrites in next.config.js
+  // Redirects and rewrites in next.config.js
+  "creator",
   "ph",
   "fuckoffaddblocker",
   "fuckoffaddblockers",

@@ -8,8 +8,8 @@ import {
 import { logUserActivity } from "~/server/utils/activity-log";
 import { ActivityType } from "~Prisma/client";
 
-const creatorProfileInclude = {
-  creatorProfile: {
+const artistProfileInclude = {
+  artistProfile: {
     select: {
       id: true,
       handle: true,
@@ -50,7 +50,7 @@ export const crewRouter = createTRPCRouter({
       return ctx.db.crewMember.findMany({
         where,
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-        include: creatorProfileInclude,
+        include: artistProfileInclude,
       });
     }),
 
@@ -59,7 +59,7 @@ export const crewRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       return ctx.db.crewMember.findUnique({
         where: { id: input.id },
-        include: creatorProfileInclude,
+        include: artistProfileInclude,
       });
     }),
 
@@ -71,7 +71,7 @@ export const crewRouter = createTRPCRouter({
         instagram: z.string().nullish(),
         soundcloud: z.string().nullish(),
         image: z.string().nullish(),
-        creatorProfileId: z.string().nullish(),
+        artistProfileId: z.string().nullish(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -79,23 +79,23 @@ export const crewRouter = createTRPCRouter({
         _max: { sortOrder: true },
       });
 
-      const { creatorProfileId, ...rest } = input;
-      if (creatorProfileId) {
-        const profile = await ctx.db.creatorProfile.findUnique({
-          where: { id: creatorProfileId },
+      const { artistProfileId, ...rest } = input;
+      if (artistProfileId) {
+        const profile = await ctx.db.artistProfile.findUnique({
+          where: { id: artistProfileId },
           select: { id: true },
         });
         if (!profile) {
           throw new TRPCError({
             code: "NOT_FOUND",
-            message: "Creator profile not found.",
+            message: "Artist profile not found.",
           });
         }
       } else if (!rest.image) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message:
-            "An image path is required when a crew member isn't linked to a creator profile.",
+            "An image path is required when a crew member isn't linked to an artist profile.",
         });
       }
 
@@ -106,10 +106,10 @@ export const crewRouter = createTRPCRouter({
           instagram: rest.instagram?.trim() || null,
           soundcloud: rest.soundcloud?.trim() || null,
           image: rest.image?.trim() || null,
-          creatorProfileId: creatorProfileId ?? null,
+          artistProfileId: artistProfileId ?? null,
           sortOrder: (_max.sortOrder ?? -1) + 1,
         },
-        include: creatorProfileInclude,
+        include: artistProfileInclude,
       });
     }),
 
@@ -122,39 +122,39 @@ export const crewRouter = createTRPCRouter({
         instagram: z.string().nullish(),
         soundcloud: z.string().nullish(),
         image: z.string().nullish(),
-        creatorProfileId: z.string().nullish(),
+        artistProfileId: z.string().nullish(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { id, creatorProfileId, ...data } = input;
-      if (creatorProfileId) {
-        const profile = await ctx.db.creatorProfile.findUnique({
-          where: { id: creatorProfileId },
+      const { id, artistProfileId, ...data } = input;
+      if (artistProfileId) {
+        const profile = await ctx.db.artistProfile.findUnique({
+          where: { id: artistProfileId },
           select: { id: true },
         });
         if (!profile) {
           throw new TRPCError({
             code: "NOT_FOUND",
-            message: "Creator profile not found.",
+            message: "Artist profile not found.",
           });
         }
       }
       // If caller is clearing the link *and* not providing an image, make sure
       // we don't end up with a crew row that has neither a profile nor an image.
       if (
-        creatorProfileId === null &&
+        artistProfileId === null &&
         data.image !== undefined &&
         !data.image
       ) {
         const existing = await ctx.db.crewMember.findUnique({
           where: { id },
-          select: { image: true, creatorProfileId: true },
+          select: { image: true, artistProfileId: true },
         });
         if (existing && !existing.image) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message:
-              "An image path is required when a crew member isn't linked to a creator profile.",
+              "An image path is required when a crew member isn't linked to an artist profile.",
           });
         }
       }
@@ -174,29 +174,29 @@ export const crewRouter = createTRPCRouter({
           ...(data.image !== undefined
             ? { image: data.image?.trim() || null }
             : {}),
-          ...(creatorProfileId !== undefined
-            ? { creatorProfileId: creatorProfileId ?? null }
+          ...(artistProfileId !== undefined
+            ? { artistProfileId: artistProfileId ?? null }
             : {}),
         },
-        include: creatorProfileInclude,
+        include: artistProfileInclude,
       });
     }),
 
   /**
-   * Link a creator profile to a crew member. Pass `creatorProfileId: null`
+   * Link an artist profile to a crew member. Pass `artistProfileId: null`
    * to unlink.
    */
-  linkCreatorProfile: adminProcedure
+  linkArtistProfile: adminProcedure
     .input(
       z.object({
         id: z.string(),
-        creatorProfileId: z.string().nullable(),
+        artistProfileId: z.string().nullable(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const member = await ctx.db.crewMember.findUnique({
         where: { id: input.id },
-        select: { id: true, name: true, creatorProfileId: true },
+        select: { id: true, name: true, artistProfileId: true },
       });
       if (!member) {
         throw new TRPCError({
@@ -205,46 +205,46 @@ export const crewRouter = createTRPCRouter({
         });
       }
       let profileHandle: string | null = null;
-      if (input.creatorProfileId) {
-        const profile = await ctx.db.creatorProfile.findUnique({
-          where: { id: input.creatorProfileId },
+      if (input.artistProfileId) {
+        const profile = await ctx.db.artistProfile.findUnique({
+          where: { id: input.artistProfileId },
           select: { id: true, handle: true },
         });
         if (!profile) {
           throw new TRPCError({
             code: "NOT_FOUND",
-            message: "Creator profile not found.",
+            message: "Artist profile not found.",
           });
         }
         profileHandle = profile.handle;
       }
       const updated = await ctx.db.crewMember.update({
         where: { id: input.id },
-        data: { creatorProfileId: input.creatorProfileId },
-        include: creatorProfileInclude,
+        data: { artistProfileId: input.artistProfileId },
+        include: artistProfileInclude,
       });
-      if (input.creatorProfileId) {
+      if (input.artistProfileId) {
         await logUserActivity(
           ActivityType.CREW_MEMBER_PROFILE_LINKED,
-          `Linked crew member ${member.name} to creator profile @${
-            profileHandle ?? input.creatorProfileId
+          `Linked crew member ${member.name} to artist profile @${
+            profileHandle ?? input.artistProfileId
           }`,
           ctx.session.user.id,
           undefined,
           {
             crewMemberId: member.id,
-            creatorProfileId: input.creatorProfileId,
+            artistProfileId: input.artistProfileId,
           },
         );
-      } else if (member.creatorProfileId) {
+      } else if (member.artistProfileId) {
         await logUserActivity(
           ActivityType.CREW_MEMBER_PROFILE_UNLINKED,
-          `Unlinked creator profile from crew member ${member.name}`,
+          `Unlinked artist profile from crew member ${member.name}`,
           ctx.session.user.id,
           undefined,
           {
             crewMemberId: member.id,
-            previousCreatorProfileId: member.creatorProfileId,
+            previousArtistProfileId: member.artistProfileId,
           },
         );
       }

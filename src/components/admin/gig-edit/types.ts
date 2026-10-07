@@ -9,9 +9,9 @@ import { defaultLeadMinutes } from "~/lib/run-sheet/schedule";
 
 export type ClaimStatus = "ACTIVE" | "UNCLAIMED" | "PENDING_CLAIM";
 
-/** A creator profile as the picker hands it over, before it joins a slot. */
-export type PickedCreator = {
-  creatorProfileId: string;
+/** An artist profile as the picker hands it over, before it joins a slot. */
+export type PickedArtist = {
+  artistProfileId: string;
   handle: string;
   displayName: string;
   avatarFileId: string | null;
@@ -39,7 +39,7 @@ export type DraftScheduleItem = {
    * Who is playing this slot, in billing order. Two or more is a back to back,
    * which is one set rather than two. Empty on every kind that is not a `SET`.
    */
-  artists: PickedCreator[];
+  artists: PickedArtist[];
   /** Names a cue, or overrides the billing on a set. Empty means neither. */
   label: string;
   /** Free text, e.g. "Headliner". Empty means no role. */

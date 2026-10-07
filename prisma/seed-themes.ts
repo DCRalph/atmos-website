@@ -1,5 +1,5 @@
 /**
- * Idempotent seed for creator profile themes:
+ * Idempotent seed for artist profile themes:
  *   1. Ensures a system theme exists for each starter in `THEME_PRESETS`
  *      (matched by name), keeping its tokens in step with the preset.
  *   2. Rewrites any theme still stored under the old token model into the
@@ -10,23 +10,23 @@
  *   bun run db:seed-themes
  */
 import { db } from "~/server/db";
-import { THEME_PRESETS, parseTheme, zCreatorTheme } from "~/lib/creator-theme";
+import { THEME_PRESETS, parseTheme, zArtistTheme } from "~/lib/artist-theme";
 
 async function main() {
-  console.log("Seeding creator profile starter themes...");
+  console.log("Seeding artist profile starter themes...");
   const ids: Record<string, string> = {};
   for (const [key, preset] of Object.entries(THEME_PRESETS)) {
-    const existing = await db.creatorProfileTheme.findFirst({
+    const existing = await db.artistProfileTheme.findFirst({
       where: { name: preset.name, isSystem: true },
       select: { id: true },
     });
     const theme = existing
-      ? await db.creatorProfileTheme.update({
+      ? await db.artistProfileTheme.update({
           where: { id: existing.id },
           data: { tokens: preset.theme, description: preset.description },
           select: { id: true },
         })
-      : await db.creatorProfileTheme.create({
+      : await db.artistProfileTheme.create({
           data: {
             name: preset.name,
             description: preset.description,
@@ -42,13 +42,13 @@ async function main() {
   }
 
   console.log("Converting themes saved under the old token model...");
-  const themes = await db.creatorProfileTheme.findMany({
+  const themes = await db.artistProfileTheme.findMany({
     select: { id: true, name: true, tokens: true },
   });
   let converted = 0;
   for (const theme of themes) {
-    if (zCreatorTheme.safeParse(theme.tokens).success) continue;
-    await db.creatorProfileTheme.update({
+    if (zArtistTheme.safeParse(theme.tokens).success) continue;
+    await db.artistProfileTheme.update({
       where: { id: theme.id },
       data: { tokens: parseTheme(theme.tokens), blockOverrides: {} },
     });
@@ -57,7 +57,7 @@ async function main() {
   }
   console.log(`  ${converted} theme(s) converted`);
 
-  const backfilled = await db.creatorProfile.updateMany({
+  const backfilled = await db.artistProfile.updateMany({
     where: { themeId: null },
     data: { themeId: ids.atmos },
   });

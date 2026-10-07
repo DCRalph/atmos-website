@@ -53,7 +53,7 @@ export function LinkUserDialog({
     query ? { search: query } : undefined,
     { enabled: Boolean(target) },
   );
-  const link = api.creatorProfiles.linkUserToProfile.useMutation({
+  const link = api.artistProfiles.linkUserToProfile.useMutation({
     onSuccess: () => {
       toast.success("User linked");
       onLinked();
@@ -88,7 +88,7 @@ export function LinkUserDialog({
               </>
             ) : (
               <>
-                Once linked, the user can edit this profile from their creator
+                Once linked, the user can edit this profile from their artist
                 dashboard.
               </>
             )}

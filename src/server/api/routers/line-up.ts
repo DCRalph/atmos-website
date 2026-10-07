@@ -4,7 +4,7 @@ import { createTRPCRouter, adminProcedure } from "~/server/api/trpc";
 /**
  * Picking who is on a bill.
  *
- * All that is left of the old `gigCreators` router. Adding, removing, reordering
+ * All that is left of the old `gigArtists` router. Adding, removing, reordering
  * and editing a role each used to be their own mutation here; the run sheet is
  * now saved whole by `gigs.saveAll`, so they were deleted rather than left as a
  * second way to change a line-up that nothing calls. `listForGig` went with
@@ -13,7 +13,7 @@ import { createTRPCRouter, adminProcedure } from "~/server/api/trpc";
  */
 export const lineUpRouter = createTRPCRouter({
   /**
-   * Search creator profiles for the admin line-up picker.
+   * Search artist profiles for the admin line-up picker.
    *
    * Prefix matches are fetched separately and listed first: typing "no" should
    * surface "Nova" ahead of "DJ Anonymous", which a single `contains` ordered by
@@ -47,13 +47,13 @@ export const lineUpRouter = createTRPCRouter({
       // recently, not the first few alphabetically.
       if (!q) {
         const [profiles, total] = await Promise.all([
-          ctx.db.creatorProfile.findMany({
+          ctx.db.artistProfile.findMany({
             where: excluded,
             orderBy: { updatedAt: "desc" },
             take: input.limit,
             select,
           }),
-          ctx.db.creatorProfile.count({ where: excluded }),
+          ctx.db.artistProfile.count({ where: excluded }),
         ]);
         return { profiles, total, isRecent: true as const };
       }
@@ -67,7 +67,7 @@ export const lineUpRouter = createTRPCRouter({
       };
 
       const [prefixed, contained, total] = await Promise.all([
-        ctx.db.creatorProfile.findMany({
+        ctx.db.artistProfile.findMany({
           where: {
             ...excluded,
             OR: [
@@ -79,13 +79,13 @@ export const lineUpRouter = createTRPCRouter({
           take: input.limit,
           select,
         }),
-        ctx.db.creatorProfile.findMany({
+        ctx.db.artistProfile.findMany({
           where: matches,
           orderBy: { displayName: "asc" },
           take: input.limit,
           select,
         }),
-        ctx.db.creatorProfile.count({ where: matches }),
+        ctx.db.artistProfile.count({ where: matches }),
       ]);
 
       const seen = new Set<string>();

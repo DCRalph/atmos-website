@@ -14,12 +14,12 @@ export default function DashboardPage() {
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                Creator Dashboard
+                Artist Dashboard
               </h1>
               <Badge variant="secondary">Beta</Badge>
             </div>
             <p className="text-muted-foreground">
-              Manage your creator profile, content, and social links.
+              Manage your artist profile, content, and social links.
             </p>
             <Button variant="outline" asChild>
               <Link href="/" className="flex items-center gap-2">

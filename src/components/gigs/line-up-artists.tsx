@@ -25,7 +25,7 @@ import { getPlatform } from "~/lib/social-pills";
 import { cn } from "~/lib/utils";
 
 type ArtistSummary = NonNullable<
-  RouterOutputs["creatorProfiles"]["publicSummary"]
+  RouterOutputs["artistProfiles"]["publicSummary"]
 >;
 type SummaryGig = ArtistSummary["gigs"][number];
 
@@ -60,8 +60,8 @@ export function LineUpAvatars({
   // has nothing left to wait for, including when switching between artists.
   const summaries = api.useQueries((t) =>
     lineUp.map((entry) =>
-      t.creatorProfiles.publicSummary(
-        { handle: entry.creatorProfile.handle },
+      t.artistProfiles.publicSummary(
+        { handle: entry.artistProfile.handle },
         { staleTime: 5 * 60 * 1000 },
       ),
     ),
@@ -74,7 +74,7 @@ export function LineUpAvatars({
           <button
             key={entry.id}
             type="button"
-            aria-label={entry.creatorProfile.displayName}
+            aria-label={entry.artistProfile.displayName}
             onClick={() => {
               setIndex(i);
               setOpen(true);
@@ -82,11 +82,11 @@ export function LineUpAvatars({
             className="group/avatar relative block h-8 w-8 cursor-pointer hover:z-20"
           >
             <ArtistAvatar
-              profile={entry.creatorProfile}
+              profile={entry.artistProfile}
               className="h-8 w-8 text-[11px] ring-2 ring-black transition-all duration-200 ease-out group-hover/avatar:scale-125 group-hover/avatar:ring-white/70"
             />
             <span className="pointer-events-none absolute top-full left-1/2 z-30 mt-2 -translate-x-1/2 translate-y-1 border border-white/15 bg-black/90 px-2 py-1 text-[10px] font-bold tracking-wider whitespace-nowrap text-white uppercase opacity-0 shadow-lg backdrop-blur-md transition-all duration-200 group-hover/avatar:translate-y-0 group-hover/avatar:opacity-100">
-              {entry.creatorProfile.displayName}
+              {entry.artistProfile.displayName}
             </span>
           </button>
         ))}
@@ -146,14 +146,14 @@ function ArtistDialog({
                 <button
                   key={entry.id}
                   type="button"
-                  title={entry.creatorProfile.displayName}
-                  aria-label={entry.creatorProfile.displayName}
+                  title={entry.artistProfile.displayName}
+                  aria-label={entry.artistProfile.displayName}
                   aria-current={isActive}
                   onClick={() => onSelect(i)}
                   className="shrink-0 cursor-pointer"
                 >
                   <ArtistAvatar
-                    profile={entry.creatorProfile}
+                    profile={entry.artistProfile}
                     className={cn(
                       "h-10 w-10 text-sm shadow-lg transition-all",
                       isActive
@@ -180,7 +180,7 @@ function ArtistDialog({
             />
           ) : (
             <LoadingBody
-              profile={selected.creatorProfile}
+              profile={selected.artistProfile}
               role={selected.role}
             />
           )}
@@ -311,7 +311,7 @@ function LoadingBody({
   profile,
   role,
 }: {
-  profile: PublicLineUpEntry["creatorProfile"];
+  profile: PublicLineUpEntry["artistProfile"];
   role: string | null;
 }) {
   return (

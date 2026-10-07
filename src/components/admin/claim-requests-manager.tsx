@@ -77,25 +77,25 @@ export function ClaimRequestsManager() {
   const [rejectTarget, setRejectTarget] = useState<ClaimRequest | null>(null);
 
   const utils = api.useUtils();
-  const list = api.creatorProfiles.listClaimRequests.useQuery({
+  const list = api.artistProfiles.listClaimRequests.useQuery({
     status: status ?? undefined,
   });
 
-  const approve = api.creatorProfiles.approveClaim.useMutation({
+  const approve = api.artistProfiles.approveClaim.useMutation({
     onSuccess: async () => {
       toast.success("Claim approved");
       setApproveTarget(null);
-      await utils.creatorProfiles.listClaimRequests.invalidate();
-      await utils.creatorProfiles.listAll.invalidate();
+      await utils.artistProfiles.listClaimRequests.invalidate();
+      await utils.artistProfiles.listAll.invalidate();
     },
     onError: (error) => toast.error(error.message),
   });
-  const reject = api.creatorProfiles.rejectClaim.useMutation({
+  const reject = api.artistProfiles.rejectClaim.useMutation({
     onSuccess: async () => {
       toast.success("Claim rejected");
       setRejectTarget(null);
-      await utils.creatorProfiles.listClaimRequests.invalidate();
-      await utils.creatorProfiles.listAll.invalidate();
+      await utils.artistProfiles.listClaimRequests.invalidate();
+      await utils.artistProfiles.listAll.invalidate();
     },
     onError: (error) => toast.error(error.message),
   });
@@ -134,7 +134,7 @@ export function ClaimRequestsManager() {
         request.profile ? (
           <div className="flex flex-col">
             <Link
-              href={`/admin/creator-profiles/${request.profile.id}`}
+              href={`/admin/artist-profiles/${request.profile.id}`}
               className="text-primary font-mono hover:underline"
             >
               @{request.profile.handle}

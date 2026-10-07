@@ -65,11 +65,11 @@ model TicketEventSet {
   /// only; `role` is what analytics group by.
   subtitle String?
 
-  /// Optional link to the artist's own profile, so the line-up and the creator
+  /// Optional link to the artist's own profile, so the line-up and the artist
   /// pages are one dataset. Null is normal: a guest DJ with no profile still
   /// gets a set.
-  creatorProfileId String?
-  creatorProfile   CreatorProfile? @relation(fields: [creatorProfileId], references: [id], onDelete: SetNull)
+  artistProfileId String?
+  artistProfile   ArtistProfile? @relation(fields: [artistProfileId], references: [id], onDelete: SetNull)
 
   /// Planned times. Full timestamps, not times-of-day — a 1am headliner is on
   /// the following calendar date and storing a clock time would break every
@@ -103,14 +103,14 @@ model TicketEventSet {
   updatedAt DateTime @updatedAt
 
   @@index([eventId, startsAt])
-  @@index([creatorProfileId])
+  @@index([artistProfileId])
   @@map("ticket_event_set")
 }
 ```
 
 Back-relations: `sets TicketEventSet[]` on `TicketEvent` (beside `tiers`,
 `prisma/schema.prisma:1128`) and `eventSets TicketEventSet[]` on
-`CreatorProfile` (`schema.prisma:318`).
+`ArtistProfile` (`schema.prisma:318`).
 
 `ActivityType` gains `TICKET_SET_CREATED`, `TICKET_SET_UPDATED`,
 `TICKET_SET_DELETED`. Migration goes in
@@ -408,10 +408,10 @@ one that says less:
 
 - `src/components/admin/ticketing/set-list-manager.tsx` *(new)* — the tier
   manager's row-with-inline-edit pattern (`tier-manager.tsx:33`), `DateTimePicker`
-  for both times, a role `Select`, and a creator-profile combobox fed by the
-  existing `pickers.creatorProfiles` (`src/server/api/routers/pickers.ts:296`).
+  for both times, a role `Select`, and an artist-profile combobox fed by the
+  existing `pickers.artistProfiles` (`src/server/api/routers/pickers.ts:296`).
   One "add from line-up" action that seeds sets from the linked gig's
-  `GigCreator` rows, so a gig that already lists its artists does not get typed
+  `GigArtist` rows, so a gig that already lists its artists does not get typed
   in twice.
 - `src/app/(admin)/admin/events/[id]/page.tsx:139` — a **Set list** tab between
   Tiers and Orders.
@@ -429,10 +429,10 @@ one that says less:
 **Public**
 
 - `toPublicEvent` (`src/server/api/routers/ticket-events.ts:966`) exposes only
-  `isPublic` sets, only `name`/`subtitle`/`role`/`startsAt`/`stage`/creator
+  `isPublic` sets, only `name`/`subtitle`/`role`/`startsAt`/`stage`/artist
   handle. `notes` and actual times never cross that boundary.
 - `src/app/(main)/events/[slug]/page.tsx:96` — a **Line-up** block under the
-  detail rows: time, name, role chip, linking to `/creators/<handle>` where one
+  detail rows: time, name, role chip, linking to `/artists/<handle>` where one
   is attached. Renders nothing when no set is public, so existing events are
   untouched.
 

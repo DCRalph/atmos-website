@@ -9,7 +9,7 @@ import type { PrismaClient } from "~Prisma/client";
  * The step between "what the model said" and "what the database can hold".
  *
  * Everything here is a lookup or a conversion, never a judgement: wall times
- * become instants, tag names become tag ids, handles become creator profiles.
+ * become instants, tag names become tag ids, handles become artist profiles.
  * Anything that does not resolve is returned as itself rather than dropped, so
  * the wizard can show the admin what it could not place instead of quietly
  * losing a name off the bill.
@@ -24,7 +24,7 @@ export type ResolvedSlot = {
    */
   handles: string[];
   /** Matched profiles, in billing order. Empty when nothing matched. */
-  creatorProfileIds: string[];
+  artistProfileIds: string[];
   /** How the caption billed them, for a slot that has no matched profile. */
   label: string | null;
   role: string | null;
@@ -108,7 +108,7 @@ export async function resolveExtraction(
 
   const profiles =
     allHandles.length > 0
-      ? await db.creatorProfile.findMany({
+      ? await db.artistProfile.findMany({
           where: { handle: { in: allHandles, mode: "insensitive" } },
           select: { id: true, handle: true },
         })
@@ -121,7 +121,7 @@ export async function resolveExtraction(
     const handles = entry.handles.map(normalizeHandle).filter(Boolean);
     return {
       handles,
-      creatorProfileIds: handles.flatMap(
+      artistProfileIds: handles.flatMap(
         (handle) => profileByHandle.get(handle) ?? [],
       ),
       label: clean(entry.name) || null,

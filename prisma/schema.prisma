@@ -10,7 +10,7 @@ datasource db {
 
 enum UserPermission {
   EVENT_ORGANISER
-  CREATOR
+  ARTIST
   ADMIN
 }
 
@@ -20,7 +20,7 @@ enum ClaimStatus {
   PENDING_CLAIM
 }
 
-enum CreatorBlockType {
+enum ArtistBlockType {
   HEADING
   RICH_TEXT
   IMAGE
@@ -78,9 +78,9 @@ model User {
   activities           ActivityLog[]              @relation("UserActivities")
   willGptConversations WillGptConversation[]
   targetActivities     ActivityLog[]              @relation("TargetUserActivities")
-  creatorProfile       CreatorProfile?
-  creatorClaimRequests CreatorClaimRequest[]      @relation("ClaimRequestingUser")
-  ownedCreatorThemes   CreatorProfileTheme[]      @relation("OwnedCreatorThemes")
+  artistProfile       ArtistProfile?
+  artistClaimRequests ArtistClaimRequest[]      @relation("ClaimRequestingUser")
+  ownedArtistThemes   ArtistProfileTheme[]      @relation("OwnedArtistThemes")
   deviceTokens         DeviceToken[]
   notifyMessages       NotifyMessage[]
   gigNotifyRecipients  GigNotifyRecipient[]
@@ -273,12 +273,12 @@ model CrewMember {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  // Optional link to a creator profile. When set, the crew card on the public
+  // Optional link to an artist profile. When set, the crew card on the public
   // page becomes clickable and links to the profile.
-  creatorProfileId String?
-  creatorProfile   CreatorProfile? @relation(fields: [creatorProfileId], references: [id], onDelete: SetNull)
+  artistProfileId String?
+  artistProfile   ArtistProfile? @relation(fields: [artistProfileId], references: [id], onDelete: SetNull)
 
-  @@index([creatorProfileId])
+  @@index([artistProfileId])
   @@map("crew_member")
 }
 
@@ -465,7 +465,7 @@ model GigImport {
   @@map("gig_import")
 }
 
-model CreatorProfile {
+model ArtistProfile {
   id               String      @id @default(cuid())
   userId           String?     @unique
   createdByAdminId String?
@@ -485,25 +485,25 @@ model CreatorProfile {
   updatedAt        DateTime    @updatedAt
 
   user          User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
-  themeRef      CreatorProfileTheme?  @relation(fields: [themeId], references: [id], onDelete: SetNull)
-  blocks        CreatorBlock[]
-  socials       CreatorSocial[]
+  themeRef      ArtistProfileTheme?  @relation(fields: [themeId], references: [id], onDelete: SetNull)
+  blocks        ArtistBlock[]
+  socials       ArtistSocial[]
   /// Every slot this artist is in, across every gig. See `GigSetArtist`.
   setAppearances GigSetArtist[]
   crewMembers   CrewMember[]
-  claimRequests CreatorClaimRequest[]
+  claimRequests ArtistClaimRequest[]
 
   @@index([claimStatus])
   @@index([themeId])
-  @@map("creator_profile")
+  @@map("artist_profile")
 }
 
-model CreatorProfileTheme {
+model ArtistProfileTheme {
   id               String   @id @default(cuid())
   name             String
   description      String?
   ownerUserId      String?
-  owner            User?    @relation("OwnedCreatorThemes", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  owner            User?    @relation("OwnedArtistThemes", fields: [ownerUserId], references: [id], onDelete: SetNull)
   isPublic         Boolean  @default(false)
   isSystem         Boolean  @default(false)
   tokens           Json
@@ -512,17 +512,17 @@ model CreatorProfileTheme {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  profiles CreatorProfile[]
+  profiles ArtistProfile[]
 
   @@index([ownerUserId])
   @@index([isPublic, isSystem])
-  @@map("creator_profile_theme")
+  @@map("artist_profile_theme")
 }
 
-model CreatorBlock {
+model ArtistBlock {
   id        String           @id @default(cuid())
   profileId String
-  type      CreatorBlockType
+  type      ArtistBlockType
   x         Int
   y         Int
   w         Int
@@ -531,13 +531,13 @@ model CreatorBlock {
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 
-  profile CreatorProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile ArtistProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@index([profileId, y, x])
-  @@map("creator_block")
+  @@map("artist_block")
 }
 
-model CreatorSocial {
+model ArtistSocial {
   id        String  @id @default(cuid())
   profileId String
   platform  String
@@ -545,13 +545,13 @@ model CreatorSocial {
   label     String?
   sortOrder Int     @default(0)
 
-  profile CreatorProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile ArtistProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@index([profileId, sortOrder])
-  @@map("creator_social")
+  @@map("artist_social")
 }
 
-model CreatorClaimRequest {
+model ArtistClaimRequest {
   id               String    @id @default(cuid())
   profileId        String
   requestingUserId String
@@ -562,13 +562,13 @@ model CreatorClaimRequest {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  profile        CreatorProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile        ArtistProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   requestingUser User           @relation("ClaimRequestingUser", fields: [requestingUserId], references: [id], onDelete: Cascade)
 
   @@index([profileId])
   @@index([requestingUserId])
   @@index([status])
-  @@map("creator_claim_request")
+  @@map("artist_claim_request")
 }
 
 enum GigScheduleKind {
@@ -582,8 +582,8 @@ enum GigScheduleKind {
 
 /// One entry on a gig's run sheet, which is also the line-up.
 ///
-/// Replaces `gig_creator` — the migration is a table rename, so these are the
-/// same rows the line-up always had. A `SET` carries a creator profile and is
+/// Replaces `gig_artist` — the migration is a table rename, so these are the
+/// same rows the line-up always had. A `SET` carries an artist profile and is
 /// what the public line-up is built from; every other kind is internal and is
 /// never selected by a public procedure. Times are optional throughout, so a
 /// gig with names typed into it and no run sheet yet behaves exactly as before.
@@ -641,14 +641,14 @@ model GigScheduleItem {
 model GigSetArtist {
   id               String @id @default(cuid())
   itemId           String
-  creatorProfileId String
+  artistProfileId String
   sortOrder        Int    @default(0)
 
   item           GigScheduleItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  creatorProfile CreatorProfile  @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  artistProfile ArtistProfile  @relation(fields: [artistProfileId], references: [id], onDelete: Cascade)
 
-  @@unique([itemId, creatorProfileId])
-  @@index([creatorProfileId])
+  @@unique([itemId, artistProfileId])
+  @@index([artistProfileId])
   @@index([itemId, sortOrder])
   @@map("gig_set_artist")
 }
@@ -1163,27 +1163,27 @@ enum ActivityType {
   USER_PERMISSION_CHANGED
   USER_PERMISSION_ADDED
   USER_PERMISSION_REMOVED
-  CREATOR_PROFILE_CREATED
-  CREATOR_PROFILE_UPDATED
-  CREATOR_PROFILE_PUBLISHED
-  CREATOR_PROFILE_UNPUBLISHED
-  CREATOR_PROFILE_DELETED
-  CREATOR_PROFILE_LINKED
-  CREATOR_PROFILE_UNLINKED
-  CREATOR_BLOCK_CREATED
-  CREATOR_BLOCK_UPDATED
-  CREATOR_BLOCK_DELETED
-  CREATOR_CLAIM_REQUESTED
-  CREATOR_CLAIM_APPROVED
-  CREATOR_CLAIM_REJECTED
-  CREATOR_THEME_CREATED
-  CREATOR_THEME_UPDATED
-  CREATOR_THEME_DELETED
-  CREATOR_THEME_PUBLISHED
-  CREATOR_THEME_UNPUBLISHED
-  CREATOR_THEME_DUPLICATED
-  GIG_CREATOR_ADDED
-  GIG_CREATOR_REMOVED
+  ARTIST_PROFILE_CREATED
+  ARTIST_PROFILE_UPDATED
+  ARTIST_PROFILE_PUBLISHED
+  ARTIST_PROFILE_UNPUBLISHED
+  ARTIST_PROFILE_DELETED
+  ARTIST_PROFILE_LINKED
+  ARTIST_PROFILE_UNLINKED
+  ARTIST_BLOCK_CREATED
+  ARTIST_BLOCK_UPDATED
+  ARTIST_BLOCK_DELETED
+  ARTIST_CLAIM_REQUESTED
+  ARTIST_CLAIM_APPROVED
+  ARTIST_CLAIM_REJECTED
+  ARTIST_THEME_CREATED
+  ARTIST_THEME_UPDATED
+  ARTIST_THEME_DELETED
+  ARTIST_THEME_PUBLISHED
+  ARTIST_THEME_UNPUBLISHED
+  ARTIST_THEME_DUPLICATED
+  GIG_ARTIST_ADDED
+  GIG_ARTIST_REMOVED
   GIG_IMPORTED
   GIG_PUBLISHED
   GIG_UNPUBLISHED

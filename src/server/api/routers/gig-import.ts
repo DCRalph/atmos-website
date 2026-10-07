@@ -90,7 +90,7 @@ async function createLineUpFromExtraction(
   const resolved = await resolveExtraction(db, extraction, new Date());
 
   for (const [index, slot] of resolved.slots.entries()) {
-    if (slot.creatorProfileIds.length === 0) continue;
+    if (slot.artistProfileIds.length === 0) continue;
 
     const item = await db.gigScheduleItem.create({
       data: {
@@ -105,9 +105,9 @@ async function createLineUpFromExtraction(
       select: { id: true },
     });
     await db.gigSetArtist.createMany({
-      data: slot.creatorProfileIds.map((creatorProfileId, billing) => ({
+      data: slot.artistProfileIds.map((artistProfileId, billing) => ({
         itemId: item.id,
-        creatorProfileId,
+        artistProfileId,
         sortOrder: billing,
       })),
       skipDuplicates: true,
@@ -426,7 +426,7 @@ export const gigImportRouter = createTRPCRouter({
       z.object({
         importId: z.string().min(1),
         handle: z.string().min(1),
-        creatorProfileId: z.string().min(1),
+        artistProfileId: z.string().min(1),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -452,14 +452,14 @@ export const gigImportRouter = createTRPCRouter({
         });
       }
 
-      const profile = await ctx.db.creatorProfile.findUnique({
-        where: { id: input.creatorProfileId },
+      const profile = await ctx.db.artistProfile.findUnique({
+        where: { id: input.artistProfileId },
         select: { id: true },
       });
       if (!profile) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "That creator profile no longer exists",
+          message: "That artist profile no longer exists",
         });
       }
 
@@ -509,7 +509,7 @@ export const gigImportRouter = createTRPCRouter({
         data: [
           {
             itemId,
-            creatorProfileId: profile.id,
+            artistProfileId: profile.id,
             sortOrder: Math.max(0, slot.handles.indexOf(wanted)),
           },
         ],

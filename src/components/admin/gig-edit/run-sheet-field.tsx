@@ -50,10 +50,10 @@ import { TimeField } from "~/components/ui/time-field";
 import { cn } from "~/lib/utils";
 import type { GigScheduleKind } from "~Prisma/browser";
 import {
-  CreatorAvatar,
-  CreatorPicker,
-  CreatorStatusBadges,
-} from "./creator-picker";
+  ArtistAvatar,
+  ArtistPicker,
+  ArtistStatusBadges,
+} from "./artist-picker";
 import {
   CueRecipientsField,
   GigRecipientsField,
@@ -259,13 +259,13 @@ export function RunSheetField({
                   {entry.group === "SHOW" ? (
                     // Nothing is excluded: an artist opening and closing the
                     // same night is two slots, and that is allowed.
-                    <CreatorPicker
+                    <ArtistPicker
                       excludeIds={[]}
                       disabled={disabled}
-                      onPick={(creator) =>
+                      onPick={(artist) =>
                         addToGroup(
                           "SHOW",
-                          newScheduleItem({ kind: "SET", artists: [creator] }),
+                          newScheduleItem({ kind: "SET", artists: [artist] }),
                         )
                       }
                     />
@@ -322,11 +322,11 @@ export function RunSheetField({
           Two sets in a row make a changeover on their own. Profiles are managed
           on the{" "}
           <Link
-            href="/admin/creator-profiles"
+            href="/admin/artist-profiles"
             target="_blank"
             className="hover:text-foreground underline"
           >
-            creator profiles
+            artist profiles
           </Link>{" "}
           page.
         </p>
@@ -430,7 +430,7 @@ function ScheduleRowEditor({
               <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                 {row.artists.map((artist, index) => (
                   <span
-                    key={artist.creatorProfileId}
+                    key={artist.artistProfileId}
                     className="flex min-w-0 items-center gap-1.5"
                   >
                     {index > 0 ? (
@@ -439,7 +439,7 @@ function ScheduleRowEditor({
                       </span>
                     ) : null}
                     <span className="flex min-w-0 items-center gap-1.5 rounded border py-0.5 pr-1 pl-0.5">
-                      <CreatorAvatar
+                      <ArtistAvatar
                         fileId={artist.avatarFileId}
                         name={artist.displayName}
                         size={22}
@@ -451,7 +451,7 @@ function ScheduleRowEditor({
                       >
                         {artist.displayName}
                       </Link>
-                      <CreatorStatusBadges
+                      <ArtistStatusBadges
                         claimStatus={artist.claimStatus}
                         isPublished={artist.isPublished}
                       />
@@ -467,8 +467,8 @@ function ScheduleRowEditor({
                             onPatch({
                               artists: row.artists.filter(
                                 (candidate) =>
-                                  candidate.creatorProfileId !==
-                                  artist.creatorProfileId,
+                                  candidate.artistProfileId !==
+                                  artist.artistProfileId,
                               ),
                             })
                           }
@@ -480,15 +480,15 @@ function ScheduleRowEditor({
                   </span>
                 ))}
 
-                <CreatorPicker
+                <ArtistPicker
                   label="b2b"
                   compact
                   disabled={disabled}
                   excludeIds={row.artists.map(
-                    (artist) => artist.creatorProfileId,
+                    (artist) => artist.artistProfileId,
                   )}
-                  onPick={(creator) =>
-                    onPatch({ artists: [...row.artists, creator] })
+                  onPick={(artist) =>
+                    onPatch({ artists: [...row.artists, artist] })
                   }
                 />
               </div>
