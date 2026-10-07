@@ -3,10 +3,10 @@ import { z } from "zod";
 /**
  * Will GPT, the admin's assistant: the shapes the panel and the server share.
  *
- * The conversation lives in the browser and is sent whole on every run, so the
- * server keeps no chat state. That is safe because every action runs as the
- * signed-in admin through the same procedures the admin UI calls: a forged
- * transcript can only do what its sender could already do by hand.
+ * Conversations are kept on the server (`WillGptConversation`), which is what
+ * makes the history page a record rather than a recollection: the panel only
+ * ever sends the next message or its answer to an approval, never the
+ * transcript itself.
  */
 
 /** Models offered in the panel, all through OpenRouter. The first is the default. */
@@ -120,9 +120,48 @@ export const willGptMessageSchema = z.discriminatedUnion("role", [
 
 export type WillGptMessage = z.infer<typeof willGptMessageSchema>;
 
+const INTERRUPTED =
+  "Interrupted before a result came back. It may have run; check before trying again.";
+
+/**
+ * Close off calls a run left without a result, other than the ones waiting
+ * for approval. A call is only ever run once its turn is resumed, so this is
+ * what stops an interrupted call, which may already have run, being repeated.
+ */
+export function closeOff(
+  messages: WillGptMessage[],
+  awaiting: string[],
+): WillGptMessage[] {
+  const answered = new Set(
+    messages.flatMap((message) =>
+      message.role === "tool" ? [message.callId] : [],
+    ),
+  );
+  const loose = messages
+    .flatMap((message) =>
+      message.role === "assistant" ? message.toolCalls : [],
+    )
+    .filter((call) => !answered.has(call.id) && !awaiting.includes(call.id));
+  return [
+    ...messages,
+    ...loose.map((call): WillGptMessage => ({
+      role: "tool",
+      callId: call.id,
+      status: "error",
+      output: INTERRUPTED,
+    })),
+  ];
+}
+
+/**
+ * One run of the assistant on a conversation: either the admin's next
+ * message, or their answer to the calls waiting for approval.
+ */
 export const willGptRunInputSchema = z.object({
+  /** Chosen by the panel when the chat starts. */
+  conversationId: z.uuid(),
   model: z.enum(WILL_GPT_MODELS.map((model) => model.id)),
-  messages: z.array(willGptMessageSchema).min(1),
+  message: z.string().trim().min(1).max(20_000).optional(),
   /**
    * The admin's answers to the last `awaiting` event, by tool call id. A
    * destructive call runs only on an explicit `true`.

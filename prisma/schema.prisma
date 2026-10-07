@@ -76,6 +76,7 @@ model User {
   sessions             Session[]
   accounts             Account[]
   activities           ActivityLog[]              @relation("UserActivities")
+  willGptConversations WillGptConversation[]
   targetActivities     ActivityLog[]              @relation("TargetUserActivities")
   creatorProfile       CreatorProfile?
   creatorClaimRequests CreatorClaimRequest[]      @relation("ClaimRequestingUser")
@@ -1255,6 +1256,34 @@ model ActivityLog {
   @@index([type])
   @@index([createdAt])
   @@map("activity_log")
+}
+
+/// A Will GPT conversation. Kept on the server so it is the record of what
+/// was asked and what was done, and by whom: the panel reads and continues it,
+/// the history page lists it, and neither can rewrite what already happened.
+model WillGptConversation {
+  /// Chosen by the panel when a chat starts.
+  id          String   @id
+  /// Who had it. Null once their account is deleted; the record stays.
+  userId      String?
+  /// The first thing asked, for the history list.
+  title       String
+  /// The OpenRouter model the latest run used.
+  model       String
+  /// `WillGptMessage[]` from `~/lib/will-gpt`, in order.
+  messages    Json     @default("[]")
+  /// Tool call ids waiting for the admin's approval when the last run stopped.
+  awaiting    String[] @default([])
+  /// Calls that ran and changed something, for the history list.
+  changeCount Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([updatedAt])
+  @@map("will_gpt_conversation")
 }
 
 model KeyValueStore {
