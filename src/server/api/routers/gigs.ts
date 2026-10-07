@@ -1134,13 +1134,29 @@ export const gigsRouter = createTRPCRouter({
         subtitle: z.string().min(1),
         shortDescription: z.string().optional(),
         descriptionLexical: LEXICAL_STATE_SCHEMA.optional().nullable(),
-        isTba: z.boolean().optional(),
+        isTba: z
+          .boolean()
+          .optional()
+          .describe(
+            "Public, but shown as to be announced with its details held back. Not a draft.",
+          ),
         /** Only kept on a TBA gig. */
         announceAt: z.date().nullish(),
         isAffiliated: z.boolean().optional(),
         gigStartTime: z.date(),
         gigEndTime: z.date().optional(),
         ticketLink: z.string().optional(),
+        /**
+         * The editor always creates live gigs. A draft is kept out of every
+         * public list until `gigImport.publish`, which Will GPT uses when asked
+         * for drafts.
+         */
+        status: z
+          .enum(GigStatus)
+          .default(GigStatus.PUBLISHED)
+          .describe(
+            "DRAFT keeps the gig off the site until it is published. Defaults to PUBLISHED, live straight away.",
+          ),
         /** Tags picked before the gig existed. */
         tagIds: z.array(z.string()).default([]),
         /** Run sheet built before the gig existed, in running order. */

@@ -28,6 +28,7 @@ import { cn } from "~/lib/utils";
 import {
   callArgsSchema,
   describeArgsSchema,
+  parseToolArgs,
   WILL_GPT_MODELS,
   type WillGptMessage,
   type WillGptToolCall,
@@ -194,25 +195,20 @@ function describeCall(call: WillGptToolCall): {
   path: string;
   input?: unknown;
 } {
-  let args: unknown = null;
-  try {
-    args = JSON.parse(call.arguments || "{}");
-  } catch {
-    // Shown by name alone; the server reports the bad arguments.
-  }
   if (call.name === "describe") {
-    const parsed = describeArgsSchema.safeParse(args);
+    const args = parseToolArgs(describeArgsSchema, call.arguments);
     return {
-      summary: parsed.success
-        ? `Look up ${parsed.data.paths.join(", ")}`
+      summary: args.ok
+        ? `Look up ${args.data.paths.join(", ")}`
         : "Look up procedures",
       path: "describe",
     };
   }
-  const parsed = callArgsSchema.safeParse(args);
-  return parsed.success
-    ? parsed.data
-    : { summary: call.name, path: call.name, input: args };
+  const args = parseToolArgs(callArgsSchema, call.arguments);
+  // Unreadable arguments are shown raw; the server reports what was wrong.
+  return args.ok
+    ? args.data
+    : { summary: call.name, path: call.name, input: call.arguments };
 }
 
 const asJson = (value: unknown) => JSON.stringify(value, null, 2);
