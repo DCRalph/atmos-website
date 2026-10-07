@@ -8,7 +8,7 @@ import { publicFetch, WebFetchError } from "~/server/web";
 
 /**
  * Someone else's public Instagram profile: their name, bio and profile photo,
- * for setting up a creator profile from a pasted link.
+ * for setting up an artist profile from a pasted link.
  *
  * The Graph API only reaches other accounts through Facebook Login, which the
  * site does not use (see `~/server/gig-import/instagram`), so this reads what

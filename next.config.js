@@ -60,14 +60,28 @@ const config = {
       },
     ],
   },
+  // Old creator URLs from before profiles were renamed to artist profiles.
+  redirects: async () => [
+    { source: "/creator/:handle", destination: "/@:handle", permanent: true },
+    {
+      source: "/admin/creator-profiles/:path*",
+      destination: "/admin/artist-profiles/:path*",
+      permanent: true,
+    },
+    {
+      source: "/admin/creator-themes/:path*",
+      destination: "/admin/artist-themes/:path*",
+      permanent: true,
+    },
+  ],
   rewrites: async () => {
     return [
-      // Creator public profiles: /@[handle] -> /creator/[handle]
+      // Artist public profiles: /@[handle] -> /artist/[handle]
       // We can't use "@" directly in App Router folder names because that
       // syntax is reserved for parallel routes.
       {
         source: "/@:handle",
-        destination: "/creator/:handle",
+        destination: "/artist/:handle",
       },
       {
         source: "/fuckoffaddblockers/:match*",

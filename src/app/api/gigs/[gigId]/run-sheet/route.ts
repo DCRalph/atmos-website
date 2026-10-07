@@ -35,7 +35,7 @@ const EXPORT_INCLUDE = {
       artists: {
         orderBy: { sortOrder: "asc" },
         select: {
-          creatorProfile: { select: { handle: true, displayName: true } },
+          artistProfile: { select: { handle: true, displayName: true } },
         },
       },
     },
@@ -73,7 +73,7 @@ export async function GET(
     gig,
     gig.scheduleItems.map((item) => ({
       ...item,
-      artists: item.artists.map((artist) => artist.creatorProfile),
+      artists: item.artists.map((artist) => artist.artistProfile),
     })),
   );
 

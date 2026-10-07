@@ -21,7 +21,7 @@ const profile = (id: string, displayName: string) => ({
 const billed = (...names: [id: string, displayName: string][]) =>
   names.map(([id, displayName]) => ({
     id: `slot-${id}`,
-    creatorProfile: profile(id, displayName),
+    artistProfile: profile(id, displayName),
   }));
 
 /** A run sheet row carrying every internal field it can. */
@@ -37,7 +37,7 @@ function row(over: Partial<LineUpSource> = {}): LineUpSource {
 }
 
 const names = (lineUp: ReturnType<typeof toPublicLineUp>) =>
-  lineUp.map((entry) => entry.creatorProfile.displayName);
+  lineUp.map((entry) => entry.artistProfile.displayName);
 
 describe("the public line-up", () => {
   test("has exactly the keys it is allowed to have", () => {

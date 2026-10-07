@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "~/components/ui/button";
-import { ThemeEditor } from "~/components/creator-themes/theme-editor";
+import { ThemeEditor } from "~/components/artist-themes/theme-editor";
 
 export function ThemeEditPageView({ id }: { id: string }) {
   return (

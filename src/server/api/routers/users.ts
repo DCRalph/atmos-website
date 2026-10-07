@@ -96,7 +96,7 @@ export const usersRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.string(),
-        permission: z.enum(["EVENT_ORGANISER", "CREATOR", "ADMIN"]),
+        permission: z.enum(["EVENT_ORGANISER", "ARTIST", "ADMIN"]),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -124,7 +124,7 @@ export const usersRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.string(),
-        permission: z.enum(["EVENT_ORGANISER", "CREATOR", "ADMIN"]),
+        permission: z.enum(["EVENT_ORGANISER", "ARTIST", "ADMIN"]),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -157,7 +157,7 @@ export const usersRouter = createTRPCRouter({
     .input(
       z.object({
         id: z.string(),
-        permissions: z.array(z.enum(["EVENT_ORGANISER", "CREATOR", "ADMIN"])),
+        permissions: z.array(z.enum(["EVENT_ORGANISER", "ARTIST", "ADMIN"])),
       }),
     )
     .mutation(async ({ ctx, input }) => {

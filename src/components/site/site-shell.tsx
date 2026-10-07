@@ -16,7 +16,7 @@ import { SiteProvider } from "./site-provider";
  * and cart. Pages scroll inside `#main-layout-container` (components that
  * track scroll read it from ScrollContainerProvider). `padTop` clears the
  * header for pages that don't open on a full-bleed hero. Extra props land on
- * the scroll container, which is how creator profiles set their theme.
+ * the scroll container, which is how artist profiles set their theme.
  */
 export function SiteShell({
   children,

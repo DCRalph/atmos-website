@@ -48,8 +48,8 @@ export function CrewManager() {
   const [instagram, setInstagram] = useState("");
   const [soundcloud, setSoundcloud] = useState("");
   const [image, setImage] = useState("");
-  const [creatorProfileId, setCreatorProfileId] = useState<string | null>(null);
-  const [creatorProfileHandle, setCreatorProfileHandle] = useState<
+  const [artistProfileId, setArtistProfileId] = useState<string | null>(null);
+  const [artistProfileHandle, setArtistProfileHandle] = useState<
     string | null
   >(null);
   const [profileQuery, setProfileQuery] = useState("");
@@ -93,15 +93,15 @@ export function CrewManager() {
     },
     onError: (error) => toast.error(error.message),
   });
-  const linkCreatorProfile = api.crew.linkCreatorProfile.useMutation({
+  const linkArtistProfile = api.crew.linkArtistProfile.useMutation({
     onSuccess: async () => {
-      toast.success("Creator profile unlinked");
+      toast.success("Artist profile unlinked");
       await refetch();
     },
     onError: (error) => toast.error(error.message),
   });
 
-  const profileSearch = api.creatorProfiles.listAll.useQuery(
+  const profileSearch = api.artistProfiles.listAll.useQuery(
     profileQuery ? { search: profileQuery } : undefined,
     { enabled: isOpen && profileQuery.length > 0 },
   );
@@ -113,8 +113,8 @@ export function CrewManager() {
     setInstagram("");
     setSoundcloud("");
     setImage("");
-    setCreatorProfileId(null);
-    setCreatorProfileHandle(null);
+    setArtistProfileId(null);
+    setArtistProfileHandle(null);
     setProfileQuery("");
   };
 
@@ -125,8 +125,8 @@ export function CrewManager() {
     setInstagram(member.instagram ?? "");
     setSoundcloud(member.soundcloud ?? "");
     setImage(member.image ?? "");
-    setCreatorProfileId(member.creatorProfile?.id ?? null);
-    setCreatorProfileHandle(member.creatorProfile?.handle ?? null);
+    setArtistProfileId(member.artistProfile?.id ?? null);
+    setArtistProfileHandle(member.artistProfile?.handle ?? null);
     setProfileQuery("");
     setIsOpen(true);
   };
@@ -141,7 +141,7 @@ export function CrewManager() {
         instagram: instagram || null,
         soundcloud: soundcloud || null,
         image: image || null,
-        creatorProfileId: creatorProfileId ?? null,
+        artistProfileId: artistProfileId ?? null,
       });
     } else {
       createMember.mutate({
@@ -150,15 +150,15 @@ export function CrewManager() {
         instagram: instagram || null,
         soundcloud: soundcloud || null,
         image: image || null,
-        creatorProfileId: creatorProfileId ?? null,
+        artistProfileId: artistProfileId ?? null,
       });
     }
   };
 
   const profileOptions = useMemo(() => {
     const results = profileSearch.data ?? [];
-    return results.filter((p) => p.id !== creatorProfileId);
-  }, [profileSearch.data, creatorProfileId]);
+    return results.filter((p) => p.id !== artistProfileId);
+  }, [profileSearch.data, artistProfileId]);
   const rows = crewMembers ?? [];
   type CrewRow = (typeof rows)[number];
   const linkedBadge = (source: "profile" | "member" | "none") =>
@@ -227,28 +227,28 @@ export function CrewManager() {
     },
     {
       id: "profile",
-      header: "Creator profile",
+      header: "Artist profile",
       cell: (member) =>
-        member.creatorProfile ? (
+        member.artistProfile ? (
           <div className="flex items-center gap-1">
             <Link
-              href={`/admin/creator-profiles/${member.creatorProfile.id}`}
+              href={`/admin/artist-profiles/${member.artistProfile.id}`}
               className="text-primary font-mono text-sm hover:underline"
             >
-              @{member.creatorProfile.handle}
+              @{member.artistProfile.handle}
             </Link>
             <Button
               variant="ghost"
               size="icon-sm"
               onClick={() =>
-                linkCreatorProfile.mutate({
+                linkArtistProfile.mutate({
                   id: member.id,
-                  creatorProfileId: null,
+                  artistProfileId: null,
                 })
               }
-              disabled={linkCreatorProfile.isPending}
-              aria-label={`Unlink creator profile from ${member.name}`}
-              title="Unlink creator profile"
+              disabled={linkArtistProfile.isPending}
+              aria-label={`Unlink artist profile from ${member.name}`}
+              title="Unlink artist profile"
             >
               <Unlink className="h-3.5 w-3.5" />
             </Button>
@@ -310,7 +310,7 @@ export function CrewManager() {
                 const ok = await confirm({
                   title: `Delete ${member.name}?`,
                   description:
-                    "They come off the public crew page. Any linked creator profile is left alone. This cannot be undone.",
+                    "They come off the public crew page. Any linked artist profile is left alone. This cannot be undone.",
                   confirmLabel: "Delete",
                   variant: "destructive",
                 });
@@ -372,17 +372,17 @@ export function CrewManager() {
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                {creatorProfileId && (
+                {artistProfileId && (
                   <div className="rounded-md border border-blue-500/40 bg-blue-500/5 p-3 text-xs">
                     <div className="mb-1 flex items-center gap-1.5 font-medium">
                       <Info className="h-3.5 w-3.5" />
                       Linked to{" "}
                       <Link
-                        href={`/admin/creator-profiles/${creatorProfileId}`}
+                        href={`/admin/artist-profiles/${artistProfileId}`}
                         target="_blank"
                         className="font-mono hover:underline"
                       >
-                        @{creatorProfileHandle ?? creatorProfileId}
+                        @{artistProfileHandle ?? artistProfileId}
                       </Link>
                     </div>
                     <p className="text-muted-foreground">
@@ -396,7 +396,7 @@ export function CrewManager() {
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="name">Name</Label>
-                    {creatorProfileId && (
+                    {artistProfileId && (
                       <span className="text-muted-foreground text-xs">
                         Fallback — profile&apos;s display name is used if set
                       </span>
@@ -413,7 +413,7 @@ export function CrewManager() {
                   <div className="flex items-center justify-between">
                     <Label htmlFor="role">Role / tagline</Label>
                     <span className="text-muted-foreground text-xs">
-                      {creatorProfileId
+                      {artistProfileId
                         ? "Fallback — profile's tagline is used if set"
                         : "Optional"}
                     </span>
@@ -427,7 +427,7 @@ export function CrewManager() {
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="instagram">Instagram URL</Label>
-                    {creatorProfileId && (
+                    {artistProfileId && (
                       <span className="text-muted-foreground text-xs">
                         Fallback — profile&apos;s Instagram social is used if
                         set
@@ -444,7 +444,7 @@ export function CrewManager() {
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="soundcloud">SoundCloud URL</Label>
-                    {creatorProfileId && (
+                    {artistProfileId && (
                       <span className="text-muted-foreground text-xs">
                         Fallback — profile&apos;s SoundCloud social is used if
                         set
@@ -462,7 +462,7 @@ export function CrewManager() {
                   <div className="flex items-center justify-between">
                     <Label htmlFor="image">Image path</Label>
                     <span className="text-muted-foreground text-xs">
-                      {creatorProfileId
+                      {artistProfileId
                         ? "Fallback — profile's avatar is used if set"
                         : "Required when no profile is linked"}
                     </span>
@@ -475,17 +475,17 @@ export function CrewManager() {
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label>Creator profile (optional)</Label>
-                  {creatorProfileId ? (
+                  <Label>Artist profile (optional)</Label>
+                  {artistProfileId ? (
                     <div className="flex items-center justify-between rounded-md border p-2">
                       <div className="flex items-center gap-2">
                         <Link2 className="text-muted-foreground h-4 w-4" />
                         <Link
-                          href={`/admin/creator-profiles/${creatorProfileId}`}
+                          href={`/admin/artist-profiles/${artistProfileId}`}
                           className="text-sm font-medium hover:underline"
                           target="_blank"
                         >
-                          @{creatorProfileHandle ?? creatorProfileId}
+                          @{artistProfileHandle ?? artistProfileId}
                         </Link>
                       </div>
                       <Button
@@ -493,8 +493,8 @@ export function CrewManager() {
                         size="sm"
                         variant="ghost"
                         onClick={() => {
-                          setCreatorProfileId(null);
-                          setCreatorProfileHandle(null);
+                          setArtistProfileId(null);
+                          setArtistProfileHandle(null);
                         }}
                       >
                         <Unlink className="mr-1.5 h-3.5 w-3.5" /> Remove
@@ -523,8 +523,8 @@ export function CrewManager() {
                                 key={p.id}
                                 type="button"
                                 onClick={() => {
-                                  setCreatorProfileId(p.id);
-                                  setCreatorProfileHandle(p.handle);
+                                  setArtistProfileId(p.id);
+                                  setArtistProfileHandle(p.handle);
                                   setProfileQuery("");
                                 }}
                                 className="hover:bg-accent/30 flex w-full items-center justify-between px-3 py-2 text-left"
@@ -548,7 +548,7 @@ export function CrewManager() {
                         </div>
                       )}
                       <p className="text-muted-foreground text-xs">
-                        Links this crew card to a creator profile page.
+                        Links this crew card to an artist profile page.
                       </p>
                     </>
                   )}

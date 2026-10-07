@@ -28,7 +28,7 @@ the same rows.
 ## The data
 
 `gig_schedule_item` is one row per thing that happens, and it replaced
-`gig_creator` by being renamed into it — every line-up ever typed in survived
+`gig_artist` by being renamed into it — every line-up ever typed in survived
 the migration as a `SET` with no times.
 
 - `kind` is `LOAD_IN`, `SOUND_CHECK`, `DOORS`, `SET`, `CURFEW` or `CUSTOM`.

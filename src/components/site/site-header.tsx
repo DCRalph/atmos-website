@@ -271,7 +271,7 @@ function MobileMenu({
   );
 }
 
-/** Header ink per tone: `light` is for pages on a light ground (some creator themes). */
+/** Header ink per tone: `light` is for pages on a light ground (some artist themes). */
 const headerInk = {
   dark: {
     link: "text-white/70 hover:text-white",

@@ -48,7 +48,7 @@ export function Portrait({
 const iconLink =
   "flex size-10 shrink-0 items-center justify-center rounded-full border border-white/20 text-white/80 transition-colors hover:border-white hover:text-white";
 
-/** Instagram, SoundCloud and, when their creator profile is published, a link to it. */
+/** Instagram, SoundCloud and, when their artist profile is published, a link to it. */
 export function MemberLinks({
   member,
   className,

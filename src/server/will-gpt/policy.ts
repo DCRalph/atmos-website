@@ -38,7 +38,7 @@ const OVERRIDES: Partial<Record<string, Risk>> = {
   "invites.create": "destructive",
   "lifetimeTickets.create": "destructive", // emails the holder by default
   "users.addPermission": "destructive",
-  "creatorProfiles.linkUserToProfile": "destructive",
+  "artistProfiles.linkUserToProfile": "destructive",
   "ticketAdmin.updateBuyer": "destructive", // moves the tickets to another email
 
   // Not named like an edit, but no more final than one.
@@ -47,10 +47,10 @@ const OVERRIDES: Partial<Record<string, Risk>> = {
   "homeGigs.setAllPlacements": "write",
   "homeContent.setPlacements": "write",
   "homeContent.setAllPlacements": "write",
-  "creatorProfiles.saveLayout": "write",
-  "creatorProfiles.setSocials": "write",
-  "creatorProfiles.setAvatar": "write", // the old image is soft deleted, not gone
-  "creatorProfiles.setBanner": "write",
+  "artistProfiles.saveLayout": "write",
+  "artistProfiles.setSocials": "write",
+  "artistProfiles.setAvatar": "write", // the old image is soft deleted, not gone
+  "artistProfiles.setBanner": "write",
   "uploads.importFromUrl": "write", // stores a file; attaching it is separate
   "gigImport.read": "write", // reads a post into a draft; publishing is separate
   "gigImport.resolveHandle": "write",
@@ -59,18 +59,18 @@ const OVERRIDES: Partial<Record<string, Risk>> = {
 
 /**
  * Owner-or-admin procedures Will GPT is offered, since an admin may edit any
- * creator profile. Each falls back to the caller's own profile when its id is
+ * artist profile. Each falls back to the caller's own profile when its id is
  * left out, so a call must name one; the value is the input that must be set.
  */
 const OWNER_SCOPED: Partial<Record<string, "profileId">> = {
-  "creatorProfiles.updateProfile": "profileId",
-  "creatorProfiles.setAvatar": "profileId",
-  "creatorProfiles.setBanner": "profileId",
-  "creatorProfiles.clearAvatar": "profileId",
-  "creatorProfiles.clearBanner": "profileId",
-  "creatorProfiles.setSocials": "profileId",
-  "creatorProfiles.publish": "profileId",
-  "creatorProfiles.unpublish": "profileId",
+  "artistProfiles.updateProfile": "profileId",
+  "artistProfiles.setAvatar": "profileId",
+  "artistProfiles.setBanner": "profileId",
+  "artistProfiles.clearAvatar": "profileId",
+  "artistProfiles.clearBanner": "profileId",
+  "artistProfiles.setSocials": "profileId",
+  "artistProfiles.publish": "profileId",
+  "artistProfiles.unpublish": "profileId",
 } satisfies Partial<
   Record<MutationPath<AppRouter["_def"]["record"]>, "profileId">
 >;
@@ -102,7 +102,7 @@ export function riskOf(path: string, type: TRPCProcedureType): Risk {
  * Whether Will GPT is offered a procedure at all. Every read, since a read
  * runs as the admin and changes nothing, and many lists the admin works from
  * (crew, content) are public queries. Of the writes, only the staff surface:
- * whatever sits behind the admin or event organiser check, plus the creator
+ * whatever sits behind the admin or event organiser check, plus the artist
  * profile edits in `OWNER_SCOPED`. Customer actions like checkout or a ticket
  * holder editing their own ticket are not admin work, and Will GPT does not
  * get to call itself.

@@ -22,7 +22,7 @@ export type LineUpSource = {
   artists: readonly {
     /** The slot-artist row's own id, which is what a name on the bill is. */
     id: string;
-    creatorProfile: {
+    artistProfile: {
       id: string;
       handle: string;
       displayName: string;
@@ -37,11 +37,11 @@ export type LineUpSource = {
 export type PublicLineUpEntry = {
   id: string;
   role: string | null;
-  creatorProfile: LineUpSource["artists"][number]["creatorProfile"];
+  artistProfile: LineUpSource["artists"][number]["artistProfile"];
 };
 
 /** The keys a public line-up entry has. Asserted by the test. */
-export const PUBLIC_LINE_UP_KEYS = ["id", "role", "creatorProfile"] as const;
+export const PUBLIC_LINE_UP_KEYS = ["id", "role", "artistProfile"] as const;
 
 export function toPublicLineUp<T extends LineUpSource>(
   items: readonly T[],
@@ -52,7 +52,7 @@ export function toPublicLineUp<T extends LineUpSource>(
     if (item.kind !== "SET") return [];
 
     return item.artists.flatMap((artist) => {
-      const profile = artist.creatorProfile;
+      const profile = artist.artistProfile;
       if (seen.has(profile.id)) return [];
       seen.add(profile.id);
 
@@ -60,7 +60,7 @@ export function toPublicLineUp<T extends LineUpSource>(
         {
           id: artist.id,
           role: item.role,
-          creatorProfile: {
+          artistProfile: {
             id: profile.id,
             handle: profile.handle,
             displayName: profile.displayName,

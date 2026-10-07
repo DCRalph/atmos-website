@@ -142,16 +142,16 @@ export const uploadPresets = {
     keyPrefix: () => "ticket-events/posters",
   }),
 
-  /** A creator's profile photo. */
-  creatorAvatar: definePreset({
-    label: "Creator avatar",
-    description: "Profile photo on a creator's public page.",
-    access: "creator",
+  /** An artist's profile photo. */
+  artistAvatar: definePreset({
+    label: "Artist avatar",
+    description: "Profile photo on an artist's public page.",
+    access: "artist",
     accept: IMAGE_TYPES,
     maxFileSize: mb(25),
     maxFiles: 1,
     maxTotalSize: mb(25),
-    for: "creator_profile_avatar",
+    for: "artist_profile_avatar",
     image: {
       maxDimension: 896,
       format: "webp",
@@ -161,19 +161,19 @@ export const uploadPresets = {
     context: profileContext,
     resolved: resolvedProfileContext,
     forId: (c) => c.profileId,
-    keyPrefix: (c) => `creator-profiles/${c.profileId}/avatar`,
+    keyPrefix: (c) => `artist-profiles/${c.profileId}/avatar`,
   }),
 
-  /** The wide header image on a creator's page. */
-  creatorBanner: definePreset({
-    label: "Creator banner",
-    description: "Full-width header image on a creator's public page.",
-    access: "creator",
+  /** The wide header image on an artist's page. */
+  artistBanner: definePreset({
+    label: "Artist banner",
+    description: "Full-width header image on an artist's public page.",
+    access: "artist",
     accept: IMAGE_TYPES,
     maxFileSize: mb(25),
     maxFiles: 1,
     maxTotalSize: mb(25),
-    for: "creator_profile_banner",
+    for: "artist_profile_banner",
     image: {
       maxDimension: 2048,
       format: "webp",
@@ -183,19 +183,19 @@ export const uploadPresets = {
     context: profileContext,
     resolved: resolvedProfileContext,
     forId: (c) => c.profileId,
-    keyPrefix: (c) => `creator-profiles/${c.profileId}/banner`,
+    keyPrefix: (c) => `artist-profiles/${c.profileId}/banner`,
   }),
 
   /** Background image referenced from a profile's theme tokens. */
-  creatorThemeBackground: definePreset({
-    label: "Creator theme background",
-    description: "Background image stored in a creator profile's theme tokens.",
-    access: "creator",
+  artistThemeBackground: definePreset({
+    label: "Artist theme background",
+    description: "Background image stored in an artist profile's theme tokens.",
+    access: "artist",
     accept: IMAGE_TYPES,
     maxFileSize: mb(25),
     maxFiles: 1,
     maxTotalSize: mb(25),
-    for: "creator_profile_theme_bg",
+    for: "artist_profile_theme_bg",
     image: {
       maxDimension: 2048,
       format: "webp",
@@ -205,19 +205,19 @@ export const uploadPresets = {
     context: profileContext,
     resolved: resolvedProfileContext,
     forId: (c) => c.profileId,
-    keyPrefix: (c) => `creator-profiles/${c.profileId}/theme-bg`,
+    keyPrefix: (c) => `artist-profiles/${c.profileId}/theme-bg`,
   }),
 
   /** Images placed inside a profile's content blocks. */
-  creatorBlockImage: definePreset({
-    label: "Creator block image",
-    description: "Images used inside a creator profile's content blocks.",
-    access: "creator",
+  artistBlockImage: definePreset({
+    label: "Artist block image",
+    description: "Images used inside an artist profile's content blocks.",
+    access: "artist",
     accept: IMAGE_TYPES,
     maxFileSize: mb(25),
     maxFiles: 12,
     maxTotalSize: mb(150),
-    for: "creator_profile_block_image",
+    for: "artist_profile_block_image",
     image: {
       maxDimension: 1600,
       format: "webp",
@@ -227,7 +227,7 @@ export const uploadPresets = {
     context: profileContext,
     resolved: resolvedProfileContext,
     forId: (c) => c.profileId,
-    keyPrefix: (c) => `creator-profiles/${c.profileId}/block-image`,
+    keyPrefix: (c) => `artist-profiles/${c.profileId}/block-image`,
   }),
 
   /**

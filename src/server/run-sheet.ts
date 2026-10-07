@@ -254,7 +254,7 @@ const RUN_SHEET_INCLUDE = {
     include: {
       artists: {
         orderBy: { sortOrder: "asc" },
-        select: { creatorProfile: { select: { displayName: true } } },
+        select: { artistProfile: { select: { displayName: true } } },
       },
       recipients: { select: { userId: true } },
     },
@@ -281,6 +281,6 @@ export function toScheduleRow(
     endsAt: item.endsAt,
     sortOrder: item.sortOrder,
     leadMinutes: item.leadMinutes,
-    artists: item.artists.map((artist) => artist.creatorProfile),
+    artists: item.artists.map((artist) => artist.artistProfile),
   };
 }

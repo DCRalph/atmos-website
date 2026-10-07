@@ -21,7 +21,7 @@ import {
 } from "./gig-parts";
 
 type Entry = DetailGig["lineUp"][number];
-type Summary = NonNullable<RouterOutputs["creatorProfiles"]["publicSummary"]>;
+type Summary = NonNullable<RouterOutputs["artistProfiles"]["publicSummary"]>;
 type SummaryGig = Summary["gigs"][number];
 
 /** How many posters the "previously" strip shows. */
@@ -101,8 +101,8 @@ export function Lineup({ gig }: { gig: DetailGig }) {
   // so opening and switching artists never waits.
   const summaries = api.useQueries((t) =>
     gig.lineUp.map((entry) =>
-      t.creatorProfiles.publicSummary(
-        { handle: entry.creatorProfile.handle },
+      t.artistProfiles.publicSummary(
+        { handle: entry.artistProfile.handle },
         { staleTime: 5 * 60_000 },
       ),
     ),
@@ -114,7 +114,7 @@ export function Lineup({ gig }: { gig: DetailGig }) {
     <div>
       <h2 className="t-label mb-4 text-[12px] text-white/60">Line-up</h2>
       <ul className="flex flex-wrap gap-x-2 gap-y-2">
-        {gig.lineUp.map(({ id, role, creatorProfile: p }, i) => (
+        {gig.lineUp.map(({ id, role, artistProfile: p }, i) => (
           <li key={id}>
             <button
               type="button"
@@ -179,7 +179,7 @@ function ArtistDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const p = entry.creatorProfile;
+  const p = entry.artistProfile;
   // This gig is the one they're looking at; the dialog is about the others.
   const others = summary?.gigs.filter((g) => g.id !== gig.id) ?? [];
   const upcoming = others
@@ -218,14 +218,14 @@ function ArtistDialog({
               <button
                 key={e.id}
                 type="button"
-                title={e.creatorProfile.displayName}
-                aria-label={e.creatorProfile.displayName}
+                title={e.artistProfile.displayName}
+                aria-label={e.artistProfile.displayName}
                 aria-current={i === index}
                 onClick={() => onSelect(i)}
                 className="shrink-0"
               >
                 <Avatar
-                  profile={e.creatorProfile}
+                  profile={e.artistProfile}
                   className={cn(
                     "size-10 text-[12px] transition-[opacity,box-shadow]",
                     i === index

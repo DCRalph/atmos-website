@@ -69,7 +69,7 @@ const SCHEDULE_ITEM_INPUT = z
       id: z.string().min(1).optional(),
       kind: z.enum(GigScheduleKind),
       /** Who is playing this slot, in billing order. A back to back is two or more. */
-      creatorProfileIds: z.array(z.string().min(1)).max(6).default([]),
+      artistProfileIds: z.array(z.string().min(1)).max(6).default([]),
       label: z.string().max(120).nullish(),
       role: z.string().max(80).nullish(),
       startsAt: z.coerce.date().nullish(),
@@ -83,19 +83,19 @@ const SCHEDULE_ITEM_INPUT = z
   )
   .superRefine((rows, ctx) => {
     rows.forEach((row, index) => {
-      const artists = uniqueStrings(row.creatorProfileIds);
+      const artists = uniqueStrings(row.artistProfileIds);
       if (row.kind === GigScheduleKind.SET && artists.length === 0) {
         ctx.addIssue({
           code: "custom",
           message: "A set needs somebody playing it",
-          path: [index, "creatorProfileIds"],
+          path: [index, "artistProfileIds"],
         });
       }
       if (row.kind !== GigScheduleKind.SET && artists.length > 0) {
         ctx.addIssue({
           code: "custom",
           message: "Only a set carries artists",
-          path: [index, "creatorProfileIds"],
+          path: [index, "artistProfileIds"],
         });
       }
       if (row.startsAt && row.endsAt && row.endsAt < row.startsAt) {
@@ -141,8 +141,8 @@ const scheduleItemData = (row: ScheduleItemInput[number], index: number) => ({
 });
 
 /** Every distinct artist named by a run sheet, for reference checks. */
-const creatorIdsIn = (rows: ScheduleItemInput): string[] =>
-  uniqueStrings(rows.flatMap((row) => row.creatorProfileIds));
+const artistIdsIn = (rows: ScheduleItemInput): string[] =>
+  uniqueStrings(rows.flatMap((row) => row.artistProfileIds));
 
 /**
  * The columns a public line-up is allowed to be built from. Times are absent by
@@ -159,7 +159,7 @@ const LINE_UP_SELECT = {
     orderBy: { sortOrder: "asc" },
     select: {
       id: true,
-      creatorProfile: {
+      artistProfile: {
         select: {
           id: true,
           handle: true,
@@ -182,9 +182,9 @@ const assertReferencesExist = async (
   db: GigsContext["db"],
   {
     tagIds,
-    creatorProfileIds,
+    artistProfileIds,
     userIds = [],
-  }: { tagIds: string[]; creatorProfileIds: string[]; userIds?: string[] },
+  }: { tagIds: string[]; artistProfileIds: string[]; userIds?: string[] },
 ) => {
   if (userIds.length > 0) {
     const found = await db.user.count({ where: { id: { in: userIds } } });
@@ -204,14 +204,14 @@ const assertReferencesExist = async (
       });
     }
   }
-  if (creatorProfileIds.length > 0) {
-    const found = await db.creatorProfile.count({
-      where: { id: { in: creatorProfileIds } },
+  if (artistProfileIds.length > 0) {
+    const found = await db.artistProfile.count({
+      where: { id: { in: artistProfileIds } },
     });
-    if (found !== creatorProfileIds.length) {
+    if (found !== artistProfileIds.length) {
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: "One or more of those creator profiles no longer exists",
+        message: "One or more of those artist profiles no longer exists",
       });
     }
   }
@@ -1090,7 +1090,7 @@ export const gigsRouter = createTRPCRouter({
               artists: {
                 orderBy: { sortOrder: "asc" },
                 select: {
-                  creatorProfile: {
+                  artistProfile: {
                     select: {
                       id: true,
                       handle: true,
@@ -1178,7 +1178,7 @@ export const gigsRouter = createTRPCRouter({
 
       await assertReferencesExist(ctx.db, {
         tagIds: wantedTagIds,
-        creatorProfileIds: creatorIdsIn(scheduleItems),
+        artistProfileIds: artistIdsIn(scheduleItems),
         userIds: uniqueStrings([
           ...wantedRecipients,
           ...scheduleItems.flatMap((row) => row.recipientUserIds),
@@ -1205,9 +1205,9 @@ export const gigsRouter = createTRPCRouter({
                   create: scheduleItems.map((row, index) => ({
                     ...scheduleItemData(row, index),
                     artists: {
-                      create: uniqueStrings(row.creatorProfileIds).map(
-                        (creatorProfileId, billing) => ({
-                          creatorProfileId,
+                      create: uniqueStrings(row.artistProfileIds).map(
+                        (artistProfileId, billing) => ({
+                          artistProfileId,
                           sortOrder: billing,
                         }),
                       ),
@@ -1239,7 +1239,7 @@ export const gigsRouter = createTRPCRouter({
         {
           gigId: created.id,
           tagCount: wantedTagIds.length,
-          creatorCount: creatorIdsIn(scheduleItems).length,
+          artistCount: artistIdsIn(scheduleItems).length,
         },
       );
 
@@ -1312,7 +1312,7 @@ export const gigsRouter = createTRPCRouter({
       } = input;
       const wantedTagIds = uniqueStrings(tagIds);
       const wantedRecipients = uniqueStrings(notifyUserIds);
-      const wantedCreatorIds = creatorIdsIn(scheduleItems);
+      const wantedArtistIds = artistIdsIn(scheduleItems);
 
       const existing = await ctx.db.gig.findUnique({
         where: { id },
@@ -1325,8 +1325,8 @@ export const gigsRouter = createTRPCRouter({
               id: true,
               artists: {
                 select: {
-                  creatorProfileId: true,
-                  creatorProfile: { select: { handle: true } },
+                  artistProfileId: true,
+                  artistProfile: { select: { handle: true } },
                 },
               },
             },
@@ -1339,7 +1339,7 @@ export const gigsRouter = createTRPCRouter({
 
       await assertReferencesExist(ctx.db, {
         tagIds: wantedTagIds,
-        creatorProfileIds: wantedCreatorIds,
+        artistProfileIds: wantedArtistIds,
         userIds: uniqueStrings([
           ...wantedRecipients,
           ...scheduleItems.flatMap((row) => row.recipientUserIds),
@@ -1361,27 +1361,27 @@ export const gigsRouter = createTRPCRouter({
         (row) => !keptItemIds.has(row.id),
       );
 
-      const hadCreatorIds = new Set(
+      const hadArtistIds = new Set(
         existing.scheduleItems.flatMap((row) =>
-          row.artists.map((artist) => artist.creatorProfileId),
+          row.artists.map((artist) => artist.artistProfileId),
         ),
       );
-      const addedCreatorIds = wantedCreatorIds.filter(
-        (creatorProfileId) => !hadCreatorIds.has(creatorProfileId),
+      const addedArtistIds = wantedArtistIds.filter(
+        (artistProfileId) => !hadArtistIds.has(artistProfileId),
       );
       // Somebody is off the bill when no slot names them any more, not merely
       // when the slot they were in went away — a back to back that loses one
       // name keeps the other.
-      const removedCreators = [...hadCreatorIds]
+      const removedArtists = [...hadArtistIds]
         .filter(
-          (creatorProfileId) => !wantedCreatorIds.includes(creatorProfileId),
+          (artistProfileId) => !wantedArtistIds.includes(artistProfileId),
         )
-        .map((creatorProfileId) => ({
-          creatorProfileId,
+        .map((artistProfileId) => ({
+          artistProfileId,
           handle: existing.scheduleItems
             .flatMap((row) => row.artists)
-            .find((artist) => artist.creatorProfileId === creatorProfileId)
-            ?.creatorProfile.handle,
+            .find((artist) => artist.artistProfileId === artistProfileId)
+            ?.artistProfile.handle,
         }));
 
       // Legacy rows: `gig_tag_relationship` has no unique constraint, so the
@@ -1455,13 +1455,13 @@ export const gigsRouter = createTRPCRouter({
 
           // Billing order changes as often as the line-up does, and the rows
           // carry nothing else, so they are replaced rather than reconciled.
-          const artists = uniqueStrings(row.creatorProfileIds);
+          const artists = uniqueStrings(row.artistProfileIds);
           await tx.gigSetArtist.deleteMany({ where: { itemId } });
           if (artists.length > 0) {
             await tx.gigSetArtist.createMany({
-              data: artists.map((creatorProfileId, billing) => ({
+              data: artists.map((artistProfileId, billing) => ({
                 itemId,
-                creatorProfileId,
+                artistProfileId,
                 sortOrder: billing,
               })),
             });
@@ -1502,22 +1502,22 @@ export const gigsRouter = createTRPCRouter({
         undefined,
         { gigId: id },
       );
-      for (const creatorProfileId of addedCreatorIds) {
+      for (const artistProfileId of addedArtistIds) {
         await logUserActivity(
-          ActivityType.GIG_CREATOR_ADDED,
-          `Added a creator to gig "${rest.title}"`,
+          ActivityType.GIG_ARTIST_ADDED,
+          `Added an artist to gig "${rest.title}"`,
           ctx.session.user.id,
           undefined,
-          { gigId: id, creatorProfileId },
+          { gigId: id, artistProfileId },
         );
       }
-      for (const row of removedCreators) {
+      for (const row of removedArtists) {
         await logUserActivity(
-          ActivityType.GIG_CREATOR_REMOVED,
+          ActivityType.GIG_ARTIST_REMOVED,
           `Removed @${row.handle ?? "someone"} from gig "${rest.title}"`,
           ctx.session.user.id,
           undefined,
-          { gigId: id, creatorProfileId: row.creatorProfileId },
+          { gigId: id, artistProfileId: row.artistProfileId },
         );
       }
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "~/components/ui/button";
-import { CreatorProfileEditor } from "~/components/creator/creator-profile-editor";
+import { ArtistProfileEditor } from "~/components/artist/artist-profile-editor";
 
 export function DashboardProfileView() {
   return (
@@ -18,7 +18,7 @@ export function DashboardProfileView() {
           </Button>
           <h1 className="text-2xl font-bold">Profile builder</h1>
         </div>
-        <CreatorProfileEditor mode="self" />
+        <ArtistProfileEditor mode="self" />
       </div>
     </div>
   );

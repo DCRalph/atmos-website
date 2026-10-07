@@ -38,7 +38,7 @@ type LineUpEntry = NonNullable<
   RouterOutputs["gigs"]["getById"]
 >["lineUp"][number];
 type ArtistSummary = NonNullable<
-  RouterOutputs["creatorProfiles"]["publicSummary"]
+  RouterOutputs["artistProfiles"]["publicSummary"]
 >;
 type SummaryGig = ArtistSummary["gigs"][number];
 
@@ -62,8 +62,8 @@ export function LineUpAvatars({
   // staleness is nothing for a gig history.
   const summaries = api.useQueries((t) =>
     lineUp.map((entry) =>
-      t.creatorProfiles.publicSummary(
-        { handle: entry.creatorProfile.handle },
+      t.artistProfiles.publicSummary(
+        { handle: entry.artistProfile.handle },
         { staleTime: 5 * 60 * 1000 },
       ),
     ),
@@ -87,9 +87,9 @@ export function LineUpAvatars({
               onPress={() => show(i)}
               style={({ pressed }) => [styles.listRow, pressed && { opacity: 0.7 }]}
             >
-              <ArtistAvatar profile={entry.creatorProfile} size={44} />
+              <ArtistAvatar profile={entry.artistProfile} size={44} />
               <Text numberOfLines={1} style={styles.listName}>
-                {entry.creatorProfile.displayName}
+                {entry.artistProfile.displayName}
               </Text>
               {entry.role ? <Text style={styles.listRole}>{entry.role}</Text> : null}
             </Pressable>
@@ -101,13 +101,13 @@ export function LineUpAvatars({
           <Pressable
             key={entry.id}
             accessibilityRole="button"
-            accessibilityLabel={entry.creatorProfile.displayName}
+            accessibilityLabel={entry.artistProfile.displayName}
             hitSlop={6}
             onPress={() => show(i)}
             style={{ marginLeft: i === 0 ? 0 : -Math.round(size * 0.3) }}
           >
             <ArtistAvatar
-              profile={entry.creatorProfile}
+              profile={entry.artistProfile}
               size={size}
               ringColor="#000"
             />
@@ -221,27 +221,27 @@ function ArtistSheet({
               <Pressable
                 key={entry.id}
                 accessibilityRole="button"
-                accessibilityLabel={entry.creatorProfile.displayName}
+                accessibilityLabel={entry.artistProfile.displayName}
                 onPress={() => onSelect(i)}
                 style={i === index ? styles.switchOn : { opacity: 0.45 }}
               >
-                <ArtistAvatar profile={entry.creatorProfile} size={36} />
+                <ArtistAvatar profile={entry.artistProfile} size={36} />
               </Pressable>
             ))}
           </ScrollView>
         ) : null}
 
         <View style={styles.head}>
-          <ArtistAvatar profile={selected.creatorProfile} size={48} />
+          <ArtistAvatar profile={selected.artistProfile} size={48} />
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text numberOfLines={1} style={styles.name}>
-              {selected.creatorProfile.displayName}
+              {selected.artistProfile.displayName}
             </Text>
             <Text numberOfLines={1} style={styles.handle}>
               {summary
                 ? (metaLine(summary) ?? countLabel(summary.gigs.length))
                 : (selected.role ??
-                  selected.creatorProfile.tagline ??
+                  selected.artistProfile.tagline ??
                   "Loading")}
             </Text>
           </View>

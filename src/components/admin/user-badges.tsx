@@ -32,7 +32,7 @@ export function LoginMethodBadge({ method }: { method: string | null }) {
   );
 }
 
-export type PermissionName = "ADMIN" | "EVENT_ORGANISER" | "CREATOR";
+export type PermissionName = "ADMIN" | "EVENT_ORGANISER" | "ARTIST";
 
 /** Listed most powerful first, which is also the order badges are shown in. */
 export const PERMISSIONS: {
@@ -55,9 +55,9 @@ export const PERMISSIONS: {
     variant: "default",
   },
   {
-    name: "CREATOR",
-    label: "Creator",
-    description: "Can own, edit, and publish their creator profile and themes.",
+    name: "ARTIST",
+    label: "Artist",
+    description: "Can own, edit, and publish their artist profile and themes.",
     variant: "secondary",
   },
 ];

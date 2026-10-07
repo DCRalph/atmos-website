@@ -27,7 +27,7 @@ import { activityTypeLabel, activityTypeTone } from "~/lib/activity-types";
  *
  * Both derived from the enum member name rather than looked up per value. The
  * lookup tables this replaced covered 22 of the schema's 89 activity types, so
- * everything the ticketing, rentals and creator features logged showed up as a
+ * everything the ticketing, rentals and artist features logged showed up as a
  * raw `TICKET_SCAN_OVERRIDE`-style badge with a generic icon.
  */
 
@@ -40,8 +40,8 @@ const ICONS: [RegExp, LucideIcon][] = [
   [/^GIG_/, Calendar],
   [/^CONTENT_/, FileText],
   [/^FILE_/, FolderOpen],
-  [/^CREATOR_THEME_/, Palette],
-  [/^CREATOR_/, Sparkles],
+  [/^ARTIST_THEME_/, Palette],
+  [/^ARTIST_/, Sparkles],
   [/^(GEAR|PACKAGE|RENTAL)_/, FolderOpen],
   [/^(DISCOUNT_RULE|DISCOUNT_CODE)_/, BadgePercent],
   [/^PATRON_/, IdCard],

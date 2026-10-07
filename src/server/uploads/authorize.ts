@@ -3,7 +3,7 @@ import "server-only";
 import { TRPCError } from "@trpc/server";
 import { uploadPresets, type UploadPresetName } from "~/lib/uploads/presets";
 import { userHasPermission } from "~/server/utils/permissions";
-import { resolveTargetProfileId } from "~/server/utils/creator-profile-access";
+import { resolveTargetProfileId } from "~/server/utils/artist-profile-access";
 import type { PrismaClient } from "~Prisma/client";
 
 /**
@@ -56,10 +56,10 @@ const resolvers: Record<UploadPresetName, Resolver> = {
   gigMedia: resolveGig,
   gigPoster: resolveGig,
   ticketEventPoster: async () => ({}),
-  creatorAvatar: resolveProfile,
-  creatorBanner: resolveProfile,
-  creatorThemeBackground: resolveProfile,
-  creatorBlockImage: resolveProfile,
+  artistAvatar: resolveProfile,
+  artistBanner: resolveProfile,
+  artistThemeBackground: resolveProfile,
+  artistBlockImage: resolveProfile,
   mediaLibrary: async (_ctx, context) => ({
     category: str(context, "category", "library"),
   }),
@@ -89,7 +89,7 @@ export const authorizeUpload = async (
   }
 
   const isAdmin = userHasPermission(user, "ADMIN");
-  const isCreator = userHasPermission(user, "CREATOR");
+  const isArtist = userHasPermission(user, "ARTIST");
 
   if (preset.access === "admin" && !isAdmin) {
     throw new TRPCError({
@@ -97,10 +97,10 @@ export const authorizeUpload = async (
       message: "Admin access required to upload here",
     });
   }
-  if (preset.access === "creator" && !isCreator) {
+  if (preset.access === "artist" && !isArtist) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Creator or Admin access required to upload here",
+      message: "Artist or Admin access required to upload here",
     });
   }
 

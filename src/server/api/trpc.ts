@@ -148,9 +148,9 @@ export const protectedProcedure = t.procedure
   });
 
 /**
- * Creator procedure
+ * Artist procedure
  *
- * Only accessible to users with the CREATOR permission or full ADMIN access.
+ * Only accessible to users with the ARTIST permission or full ADMIN access.
  */
 function permissionProcedure(permission: UserPermission) {
   return protectedProcedure.meta({ permission }).use(async ({ ctx, next }) => {
@@ -180,7 +180,7 @@ function permissionProcedure(permission: UserPermission) {
   });
 }
 
-export const creatorProcedure = permissionProcedure("CREATOR");
+export const artistProcedure = permissionProcedure("ARTIST");
 
 export const eventOrganiserProcedure = permissionProcedure("EVENT_ORGANISER");
 

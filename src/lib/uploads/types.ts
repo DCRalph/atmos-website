@@ -14,8 +14,8 @@ export const mb = (n: number) => n * 1024 * 1024;
 export type UploadAccess =
   /** Any signed-in user. */
   | "user"
-  /** Users with the CREATOR permission or full ADMIN access. */
-  | "creator"
+  /** Users with the ARTIST permission or full ADMIN access. */
+  | "artist"
   /** Users with the ADMIN permission. */
   | "admin";
 
