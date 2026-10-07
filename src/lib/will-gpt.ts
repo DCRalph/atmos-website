@@ -46,12 +46,50 @@ export const callArgsSchema = z.object({
       'One short line for the admin naming what this does and to which record, e.g. "Delete gig Atmos 004 (Fri 12 Dec)"',
     ),
   input: z
-    .unknown()
+    .record(z.string(), z.unknown())
     .optional()
-    .describe("The procedure's input, matching the schema from describe"),
+    .describe(
+      "The procedure's input as a JSON object (not a string), matching the schema from describe. Leave out when it takes none.",
+    ),
 });
 
-export type CallArgs = z.infer<typeof callArgsSchema>;
+/**
+ * A tool call's arguments, read from the JSON text the model wrote, with the
+ * reason in words when they do not fit. Some models send `input` as a string
+ * holding the JSON object instead of the object itself; that is unwrapped here
+ * rather than failed, because a model told "expected object, received string"
+ * tends to send the same string again.
+ */
+export function parseToolArgs<T>(
+  schema: z.ZodType<T>,
+  text: string,
+): { ok: true; data: T } | { ok: false; error: string } {
+  let args: unknown;
+  try {
+    args = JSON.parse(text || "{}");
+  } catch {
+    return {
+      ok: false,
+      error: `The arguments are not valid JSON: ${text.slice(0, 200)}`,
+    };
+  }
+  if (
+    typeof args === "object" &&
+    args !== null &&
+    "input" in args &&
+    typeof args.input === "string"
+  ) {
+    try {
+      args = { ...args, input: JSON.parse(args.input) as unknown };
+    } catch {
+      // Not JSON either; the schema says what was wrong with it.
+    }
+  }
+  const parsed = schema.safeParse(args);
+  return parsed.success
+    ? { ok: true, data: parsed.data }
+    : { ok: false, error: z.prettifyError(parsed.error) };
+}
 
 const toolCallSchema = z.object({
   id: z.string(),

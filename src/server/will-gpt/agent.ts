@@ -18,6 +18,7 @@ import { RUN_SHEET_TIMEZONE } from "~/lib/run-sheet/schedule";
 import {
   callArgsSchema,
   describeArgsSchema,
+  parseToolArgs,
   type Risk,
   type WillGptEvent,
   type WillGptMessage,
@@ -25,7 +26,7 @@ import {
   type WillGptToolCall,
 } from "~/lib/will-gpt";
 import type { createTRPCContext, ProcedureMeta } from "~/server/api/trpc";
-import { inputSchemaOf, prepareInput } from "./input";
+import { inputSchemaOf, prepareInput, toolOutput } from "./io";
 import { isOffered, riskOf } from "./policy";
 
 /**
@@ -51,8 +52,17 @@ type Entry = { procedure: AnyTRPCProcedure; risk: Risk };
 /** A run stops starting new model turns after this, to finish inside the route's 300s limit. */
 const RUN_BUDGET_MS = 240_000;
 
-/** Roughly 5k tokens. A list that comes back longer is cut, and the model is told so. */
-const MAX_OUTPUT_CHARS = 20_000;
+/**
+ * Model turns per run. Every turn resends the whole conversation, so this is
+ * the ceiling on what one message can cost; "continue" starts a fresh run.
+ */
+const MAX_TURNS = 25;
+
+/**
+ * Turns in a row where every call failed before the run gives up. A model
+ * that has misread an error tends to repeat the same call indefinitely.
+ */
+const MAX_FAILED_TURNS = 3;
 
 /** A tool's arguments as JSON Schema, minus the `$schema` tag some providers refuse. */
 function toolParameters(schema: z.ZodType) {
@@ -143,12 +153,14 @@ You work through the site's admin API, as the signed-in admin and with their per
 
 How to work:
 - Look before you change. Read records, or search with pickers.*, to get ids. Never guess an id.
-- Call describe for a procedure before calling it the first time. Inputs are validated and a wrong shape is rejected with the reason.
+- Call describe for a procedure before calling it the first time. Pass input as a JSON object. Inputs are validated and a wrong shape is rejected with the reason.
+- When a call fails, read the error and change what it points at. Never repeat a failed call unchanged; if you cannot see the fix, stop and tell the admin.
 - For many records ("add these 12 gigs"), make one call per record. You may make several calls in one turn.
 - Every call needs a summary naming the record it touches. The admin reads it, and approves destructive calls from it.
 - Procedures under confirm (deletes, sends, access changes, replace-everything saves) wait for the admin's approval. Before making one, say in a sentence what will happen and what cannot be undone. If the admin declines, do not retry unless they ask.
 - Use the narrowest procedure: gigs.update to change a field, not gigs.saveAll, which replaces a gig's tags and run sheet wholesale.
-- Never invent details such as dates, venues, prices or line-ups. Ask when something you need is missing.
+- Never invent details such as dates, venues, prices or line-ups, and only set flags (TBA, affiliated, featured) the admin asked for. Ask when something you need is missing. The exception is drafts: when the admin asks for drafts, fill a required field you do not know with an obvious placeholder, and list every placeholder in your reply.
+- New gigs go live unless created with status "DRAFT". Drafts stay off the site until gigImport.publish. TBA is not a draft: a TBA gig is public, with its details held back.
 - Dates are ISO 8601 instants. Atmos runs on ${RUN_SHEET_TIMEZONE} time: +13:00 from the last Sunday of September to the first Sunday of April, +12:00 otherwise. Give the admin's local times the offset in force on that date.
 - Fields whose name ends in "Lexical" take plain text. Separate paragraphs with a blank line.
 - Keep replies short. After changing things, list what changed with links to admin pages: /admin/gigs/<id>, /admin/events/<id>, /admin/content/<id>, /admin/users/<id>, /admin/links/<id>, /admin/creator-profiles/<id>.
@@ -158,23 +170,6 @@ The admin has the panel open over ${page}.
 
 Procedures. read runs freely, write runs straight away, confirm waits for approval:
 ${catalogText(catalog)}`;
-}
-
-function asToolOutput(value: unknown): string {
-  const json =
-    JSON.stringify(value ?? null, (_key, item: unknown) =>
-      typeof item === "bigint" ? item.toString() : item,
-    ) ?? "null";
-  if (json.length <= MAX_OUTPUT_CHARS) return json;
-  return `${json.slice(0, MAX_OUTPUT_CHARS)}… [cut at ${MAX_OUTPUT_CHARS} of ${json.length} characters; ask for less, such as one record or a filtered list]`;
-}
-
-function parseArgs<T>(schema: z.ZodType<T>, text: string) {
-  try {
-    return schema.safeParse(JSON.parse(text || "{}"));
-  } catch {
-    return schema.safeParse(undefined);
-  }
 }
 
 /**
@@ -197,8 +192,8 @@ async function runTool(
   ): ToolResult => ({ role: "tool", callId: call.id, status, output, risk });
 
   if (call.name === "describe") {
-    const args = parseArgs(describeArgsSchema, call.arguments);
-    if (!args.success) return result("error", z.prettifyError(args.error));
+    const args = parseToolArgs(describeArgsSchema, call.arguments);
+    if (!args.ok) return result("error", args.error);
     const described = args.data.paths.map((path) => {
       const entry = opts.catalog.get(path);
       if (!entry) return { path, error: "No such procedure in the list." };
@@ -209,15 +204,15 @@ async function runTool(
         input: inputSchemaOf(entry.procedure._def.inputs[0]),
       };
     });
-    return result("ok", asToolOutput(described), "read");
+    return result("ok", toolOutput(described), "read");
   }
 
   if (call.name !== "call") {
     return result("error", `There is no tool called "${call.name}".`);
   }
 
-  const args = parseArgs(callArgsSchema, call.arguments);
-  if (!args.success) return result("error", z.prettifyError(args.error));
+  const args = parseToolArgs(callArgsSchema, call.arguments);
+  if (!args.ok) return result("error", args.error);
   const entry = opts.catalog.get(args.data.path);
   if (!entry) {
     return result(
@@ -243,7 +238,7 @@ async function runTool(
       signal: opts.signal,
       batchIndex: 0,
     });
-    return result("ok", asToolOutput(output), entry.risk);
+    return result("ok", toolOutput(output), entry.risk);
   } catch (cause) {
     const error = getTRPCErrorFromUnknown(cause);
     return result("error", `${error.code}: ${error.message}`, entry.risk);
@@ -372,7 +367,10 @@ export async function* runWillGpt(opts: {
   const startedAt = Date.now();
 
   // Run the calls, in order, and add their results to the transcript.
-  async function* settle(calls: WillGptToolCall[]) {
+  async function* settle(
+    calls: WillGptToolCall[],
+  ): AsyncGenerator<WillGptEvent, ToolResult[]> {
+    const results: ToolResult[] = [];
     for (const call of calls) {
       const result = await runTool(call, {
         catalog,
@@ -381,8 +379,10 @@ export async function* runWillGpt(opts: {
         signal: opts.signal,
       });
       transcript.push(result);
-      yield { type: "message", message: result } satisfies WillGptEvent;
+      results.push(result);
+      yield { type: "message", message: result };
     }
+    return results;
   }
 
   // Resuming after an `awaiting` event: finish the turn the admin answered.
@@ -398,7 +398,9 @@ export async function* runWillGpt(opts: {
     yield* settle(last.toolCalls.filter((call) => !answered.has(call.id)));
   }
 
-  while (Date.now() - startedAt < RUN_BUDGET_MS) {
+  let failedTurns = 0;
+  for (let turn = 0; turn < MAX_TURNS; turn++) {
+    if (Date.now() - startedAt > RUN_BUDGET_MS) break;
     const message = yield* modelTurn(client, {
       model: opts.model,
       system,
@@ -412,10 +414,10 @@ export async function* runWillGpt(opts: {
     // Approval is asked for the whole turn before any of it runs, so the
     // calls still happen in the order the model wrote them.
     const needsApproval = message.toolCalls.filter((call) => {
-      const args = parseArgs(callArgsSchema, call.arguments);
+      const args = parseToolArgs(callArgsSchema, call.arguments);
       return (
         call.name === "call" &&
-        args.success &&
+        args.ok &&
         catalog.get(args.data.path)?.risk === "destructive"
       );
     });
@@ -423,11 +425,22 @@ export async function* runWillGpt(opts: {
       yield { type: "awaiting", callIds: needsApproval.map((call) => call.id) };
       return;
     }
-    yield* settle(message.toolCalls);
+
+    const results = yield* settle(message.toolCalls);
+    failedTurns = results.every((result) => result.status === "error")
+      ? failedTurns + 1
+      : 0;
+    if (failedTurns >= MAX_FAILED_TURNS) {
+      yield {
+        type: "notice",
+        text: "Stopped after three rounds in a row where every call failed. The errors are on the calls above.",
+      };
+      return;
+    }
   }
 
   yield {
     type: "notice",
-    text: "Paused to stay inside the time limit. Say “continue” to carry on.",
+    text: "Paused after a long run. Say “continue” to carry on.",
   };
 }

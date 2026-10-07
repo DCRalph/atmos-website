@@ -50,3 +50,34 @@ export function plainTextToLexical(text: string): SerializedEditorState | null {
     },
   } as unknown as SerializedEditorState;
 }
+
+type LexicalNode = { type?: unknown; text?: unknown; children?: unknown };
+
+const isNode = (value: unknown): value is LexicalNode =>
+  typeof value === "object" && value !== null;
+
+const childrenOf = (node: LexicalNode): LexicalNode[] =>
+  Array.isArray(node.children) ? node.children.filter(isNode) : [];
+
+function textOf(node: LexicalNode): string {
+  if (node.type === "text" && typeof node.text === "string") return node.text;
+  if (node.type === "linebreak") return "\n";
+  // List items each get a line; everything else inside a block runs together.
+  return childrenOf(node)
+    .map(textOf)
+    .join(node.type === "list" ? "\n" : "");
+}
+
+/**
+ * A serialized Lexical state as plain text, one blank line between blocks.
+ * The inverse of `plainTextToLexical`, for reading a description rather than
+ * writing one: formatting and links are dropped and only the words are kept.
+ * Null for anything that is not an editor state.
+ */
+export function lexicalToPlainText(value: unknown): string | null {
+  if (!isNode(value) || !("root" in value) || !isNode(value.root)) return null;
+  return childrenOf(value.root)
+    .map(textOf)
+    .filter((block) => block.trim())
+    .join("\n\n");
+}
