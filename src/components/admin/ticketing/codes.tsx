@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Trash2 } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -25,7 +25,8 @@ import { formatNZD, parsePriceToCents } from "~/lib/ticketing/money";
 /**
  * The form and table shared by both kinds of code: global ones on the Discount
  * codes page, and an event's own on its Codes page. Given `hiddenTiers`, the
- * form is for an event code and offers to unlock them.
+ * form is for an event code and offers to unlock them. Given `initial`, it
+ * edits that code instead of creating one.
  */
 
 export type CodeFormValues = {
@@ -41,29 +42,46 @@ export type CodeFormValues = {
 };
 
 const toInt = (value: string) => (value ? Number.parseInt(value, 10) : null);
+const toField = (value: number | null) => (value === null ? "" : String(value));
 
 export function CodeForm({
   hiddenTiers,
+  initial,
   pending,
   onSubmit,
   onCancel,
 }: {
   /** An event's hidden tiers. Absent for a global code, which can't unlock. */
   hiddenTiers?: { id: string; name: string }[];
+  /** The code being edited. Remount (via `key`) to load a different one. */
+  initial?: CodeFormValues;
   pending: boolean;
   onSubmit: (values: CodeFormValues) => void;
   onCancel: () => void;
 }) {
-  const [code, setCode] = useState("");
-  const [type, setType] = useState<"PERCENT" | "FIXED">("PERCENT");
-  const [value, setValue] = useState("10");
-  const [maxRedemptions, setMaxRedemptions] = useState("");
-  const [maxPerEmail, setMaxPerEmail] = useState("1");
-  const [minTickets, setMinTickets] = useState("");
-  const [endsAt, setEndsAt] = useState<Date | undefined>();
-  const [unlocks, setUnlocks] = useState(false);
+  const [code, setCode] = useState(initial?.code ?? "");
+  const [type, setType] = useState<"PERCENT" | "FIXED">(
+    initial?.type ?? "PERCENT",
+  );
+  // Both kinds are stored in hundredths: basis points, or cents.
+  const [value, setValue] = useState(
+    initial ? String(initial.value / 100) : "10",
+  );
+  const [maxRedemptions, setMaxRedemptions] = useState(
+    toField(initial?.maxRedemptions ?? null),
+  );
+  const [maxPerEmail, setMaxPerEmail] = useState(
+    initial ? toField(initial.maxPerEmail) : "1",
+  );
+  const [minTickets, setMinTickets] = useState(
+    toField(initial?.minTickets ?? null),
+  );
+  const [endsAt, setEndsAt] = useState<Date | undefined>(
+    initial?.endsAt ?? undefined,
+  );
+  const [unlocks, setUnlocks] = useState(initial?.unlocksHiddenTiers ?? false);
   // Empty means every hidden tier on the event.
-  const [tierIds, setTierIds] = useState<string[]>([]);
+  const [tierIds, setTierIds] = useState<string[]>(initial?.tierIds ?? []);
 
   const valueCents =
     type === "PERCENT"
@@ -232,8 +250,10 @@ export function CodeForm({
         >
           {pending ? (
             <>
-              <Loader2 className="size-4 animate-spin" aria-hidden /> Creating…
+              <Loader2 className="size-4 animate-spin" aria-hidden /> Saving…
             </>
+          ) : initial ? (
+            "Save changes"
           ) : (
             "Create code"
           )}
@@ -265,6 +285,7 @@ export function CodesTable<TRow extends CodeRow>({
   storageKey,
   extraColumns = [],
   onSetActive,
+  onEdit,
   onDelete,
   deleting,
 }: {
@@ -275,6 +296,7 @@ export function CodesTable<TRow extends CodeRow>({
   /** Inserted after the discount column. */
   extraColumns?: DataTableColumn<TRow>[];
   onSetActive: (id: string, isActive: boolean) => void;
+  onEdit: (row: TRow) => void;
   onDelete: (id: string) => void;
   deleting: boolean;
 }) {
@@ -346,24 +368,34 @@ export function CodesTable<TRow extends CodeRow>({
       hideable: false,
       align: "right",
       cell: (row) => (
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={`Delete ${row.code}`}
-          disabled={deleting}
-          onClick={async () => {
-            const ok = await confirm({
-              title: `Delete ${row.code}?`,
-              description:
-                "Only possible before it has been used. Otherwise deactivate it so the sales history stays intact.",
-              confirmLabel: "Delete",
-              variant: "destructive",
-            });
-            if (ok) onDelete(row.id);
-          }}
-        >
-          <Trash2 className="size-4" aria-hidden />
-        </Button>
+        <div className="flex justify-end">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Edit ${row.code}`}
+            onClick={() => onEdit(row)}
+          >
+            <Pencil className="size-4" aria-hidden />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Delete ${row.code}`}
+            disabled={deleting}
+            onClick={async () => {
+              const ok = await confirm({
+                title: `Delete ${row.code}?`,
+                description:
+                  "Only possible before it has been used. Otherwise deactivate it so the sales history stays intact.",
+                confirmLabel: "Delete",
+                variant: "destructive",
+              });
+              if (ok) onDelete(row.id);
+            }}
+          >
+            <Trash2 className="size-4" aria-hidden />
+          </Button>
+        </div>
       ),
     },
   ];
