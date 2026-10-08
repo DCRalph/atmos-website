@@ -1,6 +1,6 @@
 import "server-only";
 
-import { Resend } from "resend";
+import { type Attachment, Resend } from "resend";
 
 import { env } from "~/env";
 import { EMAIL_SENDERS, type EmailSender } from "./senders";
@@ -78,12 +78,15 @@ export async function sendEmail({
       html,
       text,
       replyTo,
-      attachments: attachments.map((attachment) => ({
+      // Typed so a misspelt key is an error: an object literal returned from
+      // `map` skips excess-property checks, which is how `content_id` (ignored
+      // by the SDK) once sent every QR as a plain attachment.
+      attachments: attachments.map((attachment): Attachment => ({
         filename: attachment.filename,
         content: attachment.content,
         contentType: attachment.contentType,
-        // Inline images are referenced as `cid:<content_id>` in the HTML.
-        content_id: attachment.cid,
+        // Inline images are referenced as `cid:<contentId>` in the HTML.
+        contentId: attachment.cid,
       })),
     });
 

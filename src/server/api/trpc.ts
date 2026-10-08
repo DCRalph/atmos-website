@@ -240,3 +240,10 @@ export const doorStaffProcedure = doorProcedure.use(async ({ ctx, next }) => {
  * Only accessible to users with the ADMIN permission.
  */
 export const adminProcedure = permissionProcedure("ADMIN");
+
+/**
+ * Superadmin procedure
+ *
+ * For what can't be undone, like deleting orders and tickets outright.
+ */
+export const superadminProcedure = permissionProcedure("SUPERADMIN");

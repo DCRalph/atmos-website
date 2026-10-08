@@ -16,8 +16,8 @@ const codeInputSchema = z.object({
     .max(32)
     .regex(/^[A-Za-z0-9_-]+$/, "Letters, numbers, dashes and underscores only"),
   type: z.enum([DiscountCodeType.PERCENT, DiscountCodeType.FIXED]),
-  /** Basis points for PERCENT, cents for FIXED. */
-  value: z.number().int().min(1),
+  /** Basis points for PERCENT, cents for FIXED. Zero only on an unlock code. */
+  value: z.number().int().min(0),
   eventId: z.string().nullable().optional(),
   tierIds: z.array(z.string()).default([]),
   maxRedemptions: z.number().int().min(1).nullable().optional(),
@@ -28,6 +28,31 @@ const codeInputSchema = z.object({
   isActive: z.boolean().default(true),
   unlocksHiddenTiers: z.boolean().default(false),
 });
+
+/**
+ * The rules that span fields. A code for any event is a plain discount: only an
+ * event's own code can name its tiers or open hidden ones, and only an unlock
+ * code may be worth nothing.
+ */
+function assertCodeShape(code: {
+  value: number;
+  eventId: string | null;
+  tierIds: string[];
+  unlocksHiddenTiers: boolean;
+}) {
+  if (!code.eventId && (code.unlocksHiddenTiers || code.tierIds.length > 0)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Only a code for one event can unlock or target tiers.",
+    });
+  }
+  if (code.value === 0 && !code.unlocksHiddenTiers) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "A code that unlocks nothing needs a discount above zero.",
+    });
+  }
+}
 
 export const discountCodesRouter = createTRPCRouter({
   list: adminProcedure
@@ -80,6 +105,7 @@ export const discountCodesRouter = createTRPCRouter({
     .input(codeInputSchema)
     .mutation(async ({ ctx, input }) => {
       const code = normaliseCode(input.code);
+      assertCodeShape({ ...input, eventId: input.eventId ?? null });
 
       if (input.type === DiscountCodeType.PERCENT && input.value > 10_000) {
         throw new TRPCError({
@@ -137,6 +163,26 @@ export const discountCodesRouter = createTRPCRouter({
     .input(codeInputSchema.partial().extend({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const { id, ...rest } = input;
+
+      const current = await ctx.db.discountCode.findUnique({
+        where: { id },
+        select: {
+          value: true,
+          eventId: true,
+          tierIds: true,
+          unlocksHiddenTiers: true,
+        },
+      });
+      if (!current) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Code not found" });
+      }
+      assertCodeShape({
+        value: rest.value ?? current.value,
+        eventId: rest.eventId !== undefined ? rest.eventId : current.eventId,
+        tierIds: rest.tierIds ?? current.tierIds,
+        unlocksHiddenTiers:
+          rest.unlocksHiddenTiers ?? current.unlocksHiddenTiers,
+      });
 
       const updated = await ctx.db.discountCode.update({
         where: { id },
@@ -221,6 +267,7 @@ export const discountCodesRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const { prefix, count, ...shared } = input;
+      assertCodeShape({ ...shared, eventId: shared.eventId ?? null });
       const alphabet = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
       const created: string[] = [];
 

@@ -13,6 +13,7 @@ import {
   adminProcedure,
   createTRPCRouter,
   eventOrganiserProcedure,
+  superadminProcedure,
 } from "~/server/api/trpc";
 import { getStripe, isStripeConfigured } from "~/server/stripe";
 import {
@@ -22,6 +23,7 @@ import {
 } from "~/server/ticketing/email/send";
 import {
   cancelPendingOrder,
+  deleteOrder,
   deleteTickets,
   issueTicketsForOrder,
   orderAccessToken,
@@ -107,6 +109,27 @@ function refundableCentsForTicket(
       ? Math.round(order.bookingFeeCents / order.tickets.length)
       : 0;
   return ticket.pricePaidCents + perTicketFee;
+}
+
+/**
+ * Stop an unpaid order's PaymentIntent before the order goes, so the buyer
+ * can't pay for something that no longer holds anything. Refuses if Stripe
+ * already has the money: that order is about to be issued, not abandoned.
+ */
+async function cancelUnpaidPayment(paymentIntentId: string | null) {
+  if (!paymentIntentId || !isStripeConfigured()) return;
+  const stripe = getStripe();
+  const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+  if (intent.status === "succeeded" || intent.status === "processing") {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message:
+        "The buyer has already paid. Their tickets will be issued shortly.",
+    });
+  }
+  if (intent.status !== "canceled") {
+    await stripe.paymentIntents.cancel(intent.id);
+  }
 }
 
 export const ticketAdminRouter = createTRPCRouter({
@@ -526,8 +549,10 @@ export const ticketAdminRouter = createTRPCRouter({
    *
    * A comp grant goes as a grant: deleting the recipient's ticket takes the
    * plus-ones they were given to hand out with it.
+   *
+   * Superadmins only. Admins void and refund, which leave a trail.
    */
-  deleteTickets: adminProcedure
+  deleteTickets: superadminProcedure
     .input(
       z.object({
         ticketIds: z.array(z.string()).min(1).max(200),
@@ -573,6 +598,70 @@ export const ticketAdminRouter = createTRPCRouter({
         /** Hand-outs that came along with a comp grant, so the UI can say so. */
         withGrant: deleted.filter((ticket) => ticket.viaHost).length,
       };
+    }),
+
+  /**
+   * Delete an order and everything on it. Superadmins only, for orders that
+   * should never have existed; see `deleteOrder`. An unpaid checkout has its
+   * payment cancelled first so it can't be paid for afterwards.
+   */
+  deleteOrder: superadminProcedure
+    .input(
+      z.object({
+        orderId: z.string(),
+        reason: z.string().trim().min(1).max(200),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const order = await ctx.db.ticketOrder.findUnique({
+        where: { id: input.orderId },
+        select: { status: true, stripePaymentIntentId: true },
+      });
+      if (!order) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "That order has already gone.",
+        });
+      }
+      if (
+        order.status === TicketOrderStatus.PENDING ||
+        order.status === TicketOrderStatus.AWAITING_APPROVAL
+      ) {
+        await cancelUnpaidPayment(order.stripePaymentIntentId);
+      }
+
+      const deleted = await deleteOrder(input.orderId);
+      if (!deleted) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "That order has already gone.",
+        });
+      }
+
+      // The only record the order leaves behind, so it says what was there.
+      await logActivity({
+        type: ActivityType.TICKET_DELETED,
+        action: `Deleted order ${deleted.orderNumber} — ${input.reason}`,
+        userId: ctx.session.user.id,
+        details: {
+          reason: input.reason,
+          orderId: deleted.id,
+          orderNumber: deleted.orderNumber,
+          eventId: deleted.eventId,
+          status: deleted.status,
+          buyerEmail: deleted.buyerEmail,
+          totalCents: deleted.totalCents,
+          refundedCents: deleted.refundedCents,
+          tickets: deleted.tickets.map((ticket) => ({
+            ticketNumber: ticket.ticketNumber,
+            orderId: ticket.orderId,
+            attendeeName: ticket.attendeeName,
+            withGrant: ticket.viaHost,
+          })),
+        },
+      });
+
+      return { ok: true as const, tickets: deleted.tickets.length };
     }),
 
   resendTickets: adminProcedure
@@ -676,23 +765,7 @@ export const ticketAdminRouter = createTRPCRouter({
         });
       }
 
-      if (order.stripePaymentIntentId && isStripeConfigured()) {
-        const stripe = getStripe();
-        const intent = await stripe.paymentIntents.retrieve(
-          order.stripePaymentIntentId,
-        );
-        if (intent.status === "succeeded" || intent.status === "processing") {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message:
-              "The buyer has already paid. Their tickets will be issued shortly.",
-          });
-        }
-        if (intent.status !== "canceled") {
-          await stripe.paymentIntents.cancel(intent.id);
-        }
-      }
-
+      await cancelUnpaidPayment(order.stripePaymentIntentId);
       await cancelPendingOrder(order.id, TicketOrderStatus.EXPIRED);
 
       await logActivity({

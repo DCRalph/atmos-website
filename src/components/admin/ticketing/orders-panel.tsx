@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Link2, Mail, Search, TimerOff, Undo2 } from "lucide-react";
+import {
+  Copy,
+  Link2,
+  Mail,
+  Search,
+  TimerOff,
+  Trash2,
+  Undo2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import type { PaymentMethodKind } from "~Prisma/client";
@@ -9,6 +17,8 @@ import { api, type RouterOutputs } from "~/trpc/react";
 import { formatDateTime } from "~/lib/date-utils";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Textarea } from "~/components/ui/textarea";
 import { Badge } from "~/components/ui/badge";
 import { Skeleton } from "~/components/ui/skeleton";
 import { DataTable, type DataTableColumn } from "~/components/data-table";
@@ -245,7 +255,11 @@ export function OrdersPanel({
             </DialogDescription>
           </DialogHeader>
           {openOrderId && (
-            <OrderDetail orderId={openOrderId} readOnly={readOnly} />
+            <OrderDetail
+              orderId={openOrderId}
+              readOnly={readOnly}
+              onDeleted={() => setOpenOrderId(null)}
+            />
           )}
         </DialogContent>
       </Dialog>
@@ -256,14 +270,35 @@ export function OrdersPanel({
 function OrderDetail({
   orderId,
   readOnly,
+  onDeleted,
 }: {
   orderId: string;
   readOnly: boolean;
+  onDeleted: () => void;
 }) {
   const utils = api.useUtils();
   const confirm = useConfirm();
   const order = api.ticketAdmin.order.useQuery({ id: orderId });
   const [selected, setSelected] = useState<string[]>([]);
+  // Deleting is superadmin-only; admins refund, void, or expire instead.
+  const me = api.user.me.useQuery();
+  const canDelete =
+    !readOnly &&
+    (me.data?.effectivePermissions.includes("SUPERADMIN") ?? false);
+  const [deleteReason, setDeleteReason] = useState<string | null>(null);
+
+  const removeOrder = api.ticketAdmin.deleteOrder.useMutation({
+    onSuccess: (result) => {
+      toast.success(
+        `Order deleted${result.tickets > 0 ? ` with ${result.tickets} ticket${result.tickets === 1 ? "" : "s"}` : ""}.`,
+      );
+      void utils.ticketAdmin.invalidate();
+      void utils.ticketEvents.byId.invalidate();
+      void utils.ticketAnalytics.invalidate();
+      onDeleted();
+    },
+    onError: (error) => toast.error(error.message),
+  });
 
   const refund = api.ticketAdmin.refundTickets.useMutation({
     onSuccess: () => {
@@ -470,6 +505,58 @@ function OrderDetail({
           <Undo2 className="size-4" /> Refund selected
         </Button>
       )}
+
+      {canDelete &&
+        (deleteReason === null ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+            <p className="text-muted-foreground text-xs">
+              Deleting removes the order and its tickets for good. Nothing is
+              refunded, so refund a paid order first.
+            </p>
+            <Button
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setDeleteReason("")}
+            >
+              <Trash2 className="size-4" /> Delete order
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2 border-t pt-4">
+            <Label htmlFor="delete-order-reason">
+              Why delete {data.orderNumber}?
+            </Label>
+            <Textarea
+              id="delete-order-reason"
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+              maxLength={200}
+              placeholder="Kept in the activity log — it's all that's left afterwards"
+              className="min-h-16"
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                disabled={removeOrder.isPending}
+                onClick={() => setDeleteReason(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={
+                  removeOrder.isPending || deleteReason.trim().length === 0
+                }
+                onClick={() =>
+                  removeOrder.mutate({ orderId, reason: deleteReason.trim() })
+                }
+              >
+                <Trash2 className="size-4" />
+                {removeOrder.isPending ? "Deleting…" : "Delete for good"}
+              </Button>
+            </div>
+          </div>
+        ))}
 
       {data.emails.length > 0 && (
         <details className="text-sm">

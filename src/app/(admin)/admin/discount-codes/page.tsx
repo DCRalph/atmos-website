@@ -11,6 +11,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Badge } from "~/components/ui/badge";
 import { Switch } from "~/components/ui/switch";
+import { Checkbox } from "~/components/ui/checkbox";
 import { DataTable, type DataTableColumn } from "~/components/data-table";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { PickerSelect } from "~/components/ui/picker-select";
@@ -35,7 +36,8 @@ const isExhausted = (code: CodeListItem) =>
  *
  * A code can be a straight percentage off, a fixed amount, or the key that
  * unlocks a hidden tier — which is how a presale or a guest list works without
- * a separate mechanism.
+ * a separate mechanism. Unlocking is for one event's codes only: a code for any
+ * event is a plain discount.
  */
 export default function DiscountCodesPage() {
   const [creating, setCreating] = useState(false);
@@ -159,7 +161,7 @@ export default function DiscountCodesPage() {
   return (
     <AdminSection
       title="Discount codes"
-      description="Percentage or fixed-amount codes, optionally scoped to one event."
+      description="Percentage or fixed-amount codes. Scope one to an event to let it unlock hidden tiers."
       actions={
         <Button onClick={() => setCreating(true)} disabled={creating}>
           <Plus className="size-4" aria-hidden /> New code
@@ -195,6 +197,15 @@ function CodeForm({ onDone }: { onDone: () => void }) {
   const [minTickets, setMinTickets] = useState("");
   const [endsAt, setEndsAt] = useState<Date | undefined>();
   const [unlocksHidden, setUnlocksHidden] = useState(false);
+  // Empty means every hidden tier on the event.
+  const [tierIds, setTierIds] = useState<string[]>([]);
+
+  const event = api.ticketEvents.byId.useQuery(
+    { id: eventId ?? "" },
+    { enabled: !!eventId },
+  );
+  const hiddenTiers = event.data?.tiers.filter((tier) => tier.isHidden) ?? [];
+  const unlocks = !!eventId && unlocksHidden;
 
   const create = api.discountCodes.create.useMutation({
     onSuccess: () => {
@@ -211,7 +222,9 @@ function CodeForm({ onDone }: { onDone: () => void }) {
         ? Math.round(Number.parseFloat(value) * 100)
         : null
       : parsePriceToCents(value);
-  const valueValid = valueCents !== null && valueCents > 0;
+  // An unlock code may be worth nothing: the tiers it opens are the point.
+  const valueValid =
+    valueCents !== null && (valueCents > 0 || (unlocks && valueCents === 0));
 
   return (
     <div className="grid gap-4 rounded-lg border p-5 md:grid-cols-2">
@@ -255,9 +268,11 @@ function CodeForm({ onDone }: { onDone: () => void }) {
         />
         {value !== "" && !valueValid && (
           <p className="text-destructive text-xs">
-            {type === "PERCENT"
-              ? "A percentage above zero, like 10 or 12.5."
-              : "An amount above zero, like 5 or 7.50."}
+            {unlocks
+              ? "Zero or more. Use 0 for a code that only unlocks tiers."
+              : type === "PERCENT"
+                ? "A percentage above zero, like 10 or 12.5."
+                : "An amount above zero, like 5 or 7.50."}
           </p>
         )}
       </div>
@@ -268,7 +283,10 @@ function CodeForm({ onDone }: { onDone: () => void }) {
           id="code-event"
           endpoint={api.pickers.ticketEvents}
           value={eventId}
-          onChange={setEventId}
+          onChange={(next) => {
+            setEventId(next);
+            setTierIds([]);
+          }}
           placeholder="Any event"
           searchPlaceholder="Search events…"
           emptyText="No events match that."
@@ -319,12 +337,59 @@ function CodeForm({ onDone }: { onDone: () => void }) {
         <DateTimePicker date={endsAt} onDateChange={setEndsAt} />
       </div>
 
-      <div className="flex items-center gap-2 md:col-span-2">
-        <Switch checked={unlocksHidden} onCheckedChange={setUnlocksHidden} />
-        <span className="text-sm">
-          Unlocks hidden tiers — turns this into a presale or guest list key
-        </span>
-      </div>
+      {eventId ? (
+        <div className="space-y-3 md:col-span-2">
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={unlocksHidden}
+              onCheckedChange={setUnlocksHidden}
+            />
+            <span className="text-sm">
+              Unlocks hidden tiers — turns this into a presale or guest list key
+            </span>
+          </div>
+          {unlocksHidden &&
+            (event.isPending ? (
+              <Loader2 className="text-muted-foreground size-4 animate-spin" />
+            ) : hiddenTiers.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                This event has no hidden tiers yet. Mark one &quot;Hidden until
+                unlocked by a code&quot; in the event&apos;s tiers.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-muted-foreground text-xs">
+                  Tick the tiers this code opens. Leave all unticked to open
+                  every hidden tier. The discount applies to the ticked tiers
+                  only.
+                </p>
+                {hiddenTiers.map((tier) => (
+                  <label
+                    key={tier.id}
+                    className="flex items-center gap-2 text-sm"
+                  >
+                    <Checkbox
+                      checked={tierIds.includes(tier.id)}
+                      onCheckedChange={(checked) =>
+                        setTierIds((current) =>
+                          checked === true
+                            ? [...current, tier.id]
+                            : current.filter((id) => id !== tier.id),
+                        )
+                      }
+                    />
+                    {tier.name}
+                  </label>
+                ))}
+              </div>
+            ))}
+        </div>
+      ) : (
+        <p className="text-muted-foreground text-sm md:col-span-2">
+          A code for any event is a discount only. Choose an event to make it
+          unlock hidden tiers.
+        </p>
+      )}
 
       <div className="flex gap-2 md:col-span-2">
         <Button
@@ -335,7 +400,7 @@ function CodeForm({ onDone }: { onDone: () => void }) {
               type,
               value: valueCents ?? 0,
               eventId,
-              tierIds: [],
+              tierIds: unlocks ? tierIds : [],
               maxRedemptions: maxRedemptions
                 ? Number.parseInt(maxRedemptions, 10)
                 : null,
@@ -345,7 +410,7 @@ function CodeForm({ onDone }: { onDone: () => void }) {
               minTickets: minTickets ? Number.parseInt(minTickets, 10) : null,
               endsAt: endsAt ?? null,
               isActive: true,
-              unlocksHiddenTiers: unlocksHidden,
+              unlocksHiddenTiers: unlocks,
             })
           }
         >
