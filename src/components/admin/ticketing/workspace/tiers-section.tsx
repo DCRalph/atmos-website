@@ -350,9 +350,11 @@ function TierRow({
     isDragging,
   } = useSortable({ id: tier.key });
 
-  const remaining = Math.max(0, (Number(tier.allocation) || 0) - sold - held);
+  const allocation = Number(tier.allocation) || 0;
+  const remaining = Math.max(0, allocation - sold - held);
   const groupSize = Number(tier.groupSize) || 1;
   const soldOut = remaining < groupSize;
+  const heldNote = held > 0 ? ` +${held} held` : "";
 
   return (
     <div
@@ -423,11 +425,22 @@ function TierRow({
           className="h-8"
         />
         <p className="text-muted-foreground self-center text-xs tabular-nums">
-          {tier.id ? (
+          {/* Group tiers sell whole groups, so lead with those; tickets
+              that can't fill a group don't count as left. */}
+          {tier.id && groupSize > 1 ? (
             <>
-              <span className="text-foreground">{sold}</span>
-              {held > 0 ? ` +${held} held` : ""}
-              <span className="block">{remaining} left</span>
+              <span className="text-foreground block">
+                {Math.floor(remaining / groupSize)} of{" "}
+                {Math.floor(allocation / groupSize)} groups left
+              </span>
+              {sold} / {allocation} tickets{heldNote}
+            </>
+          ) : tier.id ? (
+            <>
+              <span className="text-foreground block">
+                {remaining} of {allocation} left
+              </span>
+              {sold} sold{heldNote}
             </>
           ) : (
             "New"
