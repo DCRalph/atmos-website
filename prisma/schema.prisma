@@ -1392,15 +1392,12 @@ enum TicketScanResult {
   ORDER_UNPAID
 }
 
-/// What a ticket gets you past.
+/// What a ticket gets you past, editable by an organiser.
 ///
-/// Read off the scan by whoever is handing out wristbands, so it is a short
-/// fixed list everyone on a door already recognises rather than free text. A
-/// tier carries the level it sells, and each issued ticket snapshots it — an
+/// A tier carries the level it sells, and each issued ticket snapshots it — an
 /// artist's guest can be bumped to AAA without rewriting the tier they came
 /// from, and changing a tier later never silently re-bands tickets already in
 /// people's pockets.
-/// A door access level, editable by an organiser.
 ///
 /// Replaces what used to be the `TicketAccessLevel` enum. `code` is what sits
 /// on every ticket and is seeded with the old enum's exact values, so the
@@ -1441,15 +1438,6 @@ model AccessLevel {
 
   @@index([archived, rank])
   @@map("access_level")
-}
-
-enum TicketAccessLevel {
-  GENERAL
-  GUEST
-  VIP
-  ARTIST
-  CREW
-  AAA
 }
 
 /// Why the door turned someone away. A fixed list rather than free text: the

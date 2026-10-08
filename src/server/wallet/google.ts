@@ -4,7 +4,7 @@ import { SignJWT, importPKCS8 } from "jose";
 
 import { env } from "~/env";
 import { buildTicketQrPayload } from "~/server/ticketing/qr";
-import { accessLevel } from "~/lib/ticketing/access-levels";
+import { resolveLevel } from "~/server/ticketing/access-level-store";
 import { getGoogleWalletConfig } from "./google-config";
 import type { PassEvent, PassTicket } from "./apple";
 
@@ -41,6 +41,7 @@ export async function buildGoogleWalletSaveUrl({
   if (!config) return null;
 
   const appUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  const level = await resolveLevel(ticket.accessLevel);
 
   const eventTicketClass = {
     id: classId(config.issuerId, event.id),
@@ -86,7 +87,7 @@ export async function buildGoogleWalletSaveUrl({
     ticketType: {
       defaultValue: {
         language: "en-NZ",
-        value: accessLevel(ticket.accessLevel).label,
+        value: level.label,
       },
     },
     ...(ticket.tier?.name

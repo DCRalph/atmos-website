@@ -496,6 +496,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           orderBy: { ticketNumber: "asc" },
           include: {
             tier: { select: { name: true } },
+            level: { select: { label: true } },
             order: {
               select: {
                 orderNumber: true,

@@ -47,6 +47,7 @@ function registration(
     passTypeIdentifier: PASS_TYPE,
     ticketUpdatedAt: at("2026-08-01T00:00:00.000Z"),
     eventUpdatedAt: at("2026-08-01T00:00:00.000Z"),
+    levelUpdatedAt: at("2026-08-01T00:00:00.000Z"),
     ...overrides,
   };
 }
@@ -162,6 +163,20 @@ describe("listUpdatedPasses", () => {
       listed.lastUpdated,
       formatPassUpdateTag(eventOnly.eventUpdatedAt),
     );
+  });
+
+  test("includes a pass when only its access level changed", () => {
+    const levelOnly = registration({
+      serialNumber: "ticket-level-only",
+      levelUpdatedAt: at("2026-08-14T08:00:00.000Z"),
+    });
+    const listed = listUpdatedPasses({
+      registrations: [levelOnly, stale],
+      passTypeIdentifier: PASS_TYPE,
+      passesUpdatedSince: formatPassUpdateTag(at("2026-08-10T00:00:00.000Z")),
+    });
+    assert.ok(listed);
+    assert.deepEqual(listed.serialNumbers, ["ticket-level-only"]);
   });
 
   test("returns 204 when ticket and event are both older than the tag", () => {

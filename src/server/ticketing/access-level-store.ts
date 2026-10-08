@@ -1,14 +1,17 @@
 import "server-only";
 
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
+
+import type { Prisma } from "~Prisma/client";
 import { db } from "~/server/db";
-import { ACCESS_LEVELS } from "~/lib/ticketing/access-levels";
 
 /**
  * Access levels, read from the table that replaced the enum.
  *
- * Cached for a short window rather than per request: a pass build and a door
- * screen both want this, it changes about as often as someone edits it in
- * admin, and a stale label for a minute is cheaper than a query on every scan.
+ * Read fresh every time. Only pass builds and emails come here, and a wallet
+ * pass refetched right after a level edit has to print the new label, not one
+ * a warm server instance remembered.
  */
 
 export type ResolvedLevel = {
@@ -27,53 +30,22 @@ export type ResolvedLevel = {
   intensity: number;
 };
 
-const TTL_MS = 60_000;
-
-let cache: { at: number; levels: ResolvedLevel[] } | null = null;
-
-/** The built-in six, for a database that has not been migrated yet. */
-function fallback(): ResolvedLevel[] {
-  const max = Math.max(1, ACCESS_LEVELS.length - 1);
-  return ACCESS_LEVELS.map((level, index) => ({
-    code: level.value,
-    label: level.label,
-    short: level.short,
-    badgeBg: level.badgeBg,
-    badgeFg: level.badgeFg,
-    passAccent: level.passAccent,
-    rank: index,
-    intensity: index / max,
-  }));
-}
-
 export async function getLevels(): Promise<ResolvedLevel[]> {
-  if (cache && Date.now() - cache.at < TTL_MS) return cache.levels;
+  const rows = await db.accessLevel.findMany({
+    orderBy: [{ rank: "asc" }, { code: "asc" }],
+  });
 
-  try {
-    const rows = await db.accessLevel.findMany({
-      orderBy: [{ rank: "asc" }, { code: "asc" }],
-    });
-    if (rows.length === 0) return fallback();
-
-    const maxRank = Math.max(1, ...rows.map((r) => r.rank));
-    const levels: ResolvedLevel[] = rows.map((row) => ({
-      code: row.code,
-      label: row.label,
-      short: row.short,
-      badgeBg: row.badgeBg,
-      badgeFg: row.badgeFg,
-      passAccent: row.passAccent,
-      rank: row.rank,
-      intensity: Math.min(1, Math.max(0, row.rank / maxRank)),
-    }));
-
-    cache = { at: Date.now(), levels };
-    return levels;
-  } catch {
-    // A pass is worth more than a perfect label — if the table is missing or
-    // unreachable, fall back to the built-ins rather than failing the download.
-    return fallback();
-  }
+  const maxRank = Math.max(1, ...rows.map((r) => r.rank));
+  return rows.map((row) => ({
+    code: row.code,
+    label: row.label,
+    short: row.short,
+    badgeBg: row.badgeBg,
+    badgeFg: row.badgeFg,
+    passAccent: row.passAccent,
+    rank: row.rank,
+    intensity: Math.min(1, Math.max(0, row.rank / maxRank)),
+  }));
 }
 
 /**
@@ -85,8 +57,7 @@ export async function getLevels(): Promise<ResolvedLevel[]> {
 export async function resolveLevel(code: string): Promise<ResolvedLevel> {
   const levels = await getLevels();
   return (
-    levels.find((level) => level.code === code) ??
-    levels[0] ?? {
+    levels.find((level) => level.code === code) ?? {
       code,
       label: code,
       short: code.slice(0, 6),
@@ -99,7 +70,32 @@ export async function resolveLevel(code: string): Promise<ResolvedLevel> {
   );
 }
 
-/** Called after an admin edit so the next read is not a minute stale. */
-export function invalidateLevels(): void {
-  cache = null;
+/** A level code in router input. Whether it exists is `assertIssuableLevels`. */
+export const accessLevelCode = z.string().trim().toUpperCase().min(2).max(24);
+
+/**
+ * Refuse to put anything new on a level that doesn't exist or was archived.
+ *
+ * Only for codes being newly assigned: a tier or ticket already sitting on an
+ * archived level keeps it, so callers pass just the codes that changed.
+ */
+export async function assertIssuableLevels(
+  client: Pick<Prisma.TransactionClient, "accessLevel">,
+  codes: Iterable<string>,
+): Promise<void> {
+  const wanted = [...new Set(codes)];
+  if (wanted.length === 0) return;
+
+  const found = await client.accessLevel.findMany({
+    where: { code: { in: wanted }, archived: false },
+    select: { code: true },
+  });
+  const issuable = new Set(found.map((level) => level.code));
+  const missing = wanted.find((code) => !issuable.has(code));
+  if (missing) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `The ${missing} access level isn't available.`,
+    });
+  }
 }

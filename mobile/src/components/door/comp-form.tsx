@@ -2,10 +2,7 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { api } from "@/lib/api";
-import {
-  ACCESS_LEVELS,
-  type AccessLevelValue,
-} from "~/lib/ticketing/access-levels";
+import { useAccessLevels } from "@/lib/access-levels";
 import { colors, radius, space } from "@/lib/theme";
 import { Body, Button, Caption, Notice } from "@/components/ui";
 
@@ -30,7 +27,8 @@ export function CompForm({
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [level, setLevel] = useState<AccessLevelValue>("GUEST");
+  const { active: levels } = useAccessLevels();
+  const [level, setLevel] = useState("GUEST");
   const [overage, setOverage] = useState<string | null>(null);
 
   const comp = api.door.compAtDoor.useMutation({
@@ -105,12 +103,12 @@ export function CompForm({
       <View style={{ gap: space.sm }}>
         <Caption>What does it get them past?</Caption>
         <View style={styles.levels}>
-          {ACCESS_LEVELS.map((option) => {
-            const active = level === option.value;
+          {levels.map((option) => {
+            const active = level === option.code;
             return (
               <Pressable
-                key={option.value}
-                onPress={() => setLevel(option.value)}
+                key={option.code}
+                onPress={() => setLevel(option.code)}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: active }}
                 style={[styles.level, active && styles.levelActive]}

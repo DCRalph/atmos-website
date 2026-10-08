@@ -4,9 +4,9 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 
 import { WalletButtons } from "~/components/tickets/wallet-buttons";
+import { LevelChip } from "~/components/tickets/level-chip";
 import {
   DangerNotice,
-  LevelChip,
   PassCard,
   PassCode,
   PassField,

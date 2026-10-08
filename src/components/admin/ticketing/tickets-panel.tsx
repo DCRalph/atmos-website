@@ -35,11 +35,7 @@ import { useDebouncedValue } from "~/hooks/use-debounced-value";
 import { FilterSelect, ListFilters } from "../list-filters";
 import { formatNZD } from "~/lib/ticketing/money";
 import { TicketAccessLevelSelect } from "~/components/admin/ticketing/access-level-select";
-import {
-  ACCESS_LEVELS,
-  type AccessLevelValue,
-  accessLevel as accessLevelMeta,
-} from "~/lib/ticketing/access-levels";
+import { useAccessLevels } from "~/hooks/use-access-levels";
 import {
   DEFAULT_EVENT_TIMEZONE,
   formatEventDateTime,
@@ -102,7 +98,7 @@ type TicketFilters = {
   kind: "SOLD" | "COMP" | "LINK" | "LIFETIME" | null;
   named: "NAMED" | "UNNAMED" | null;
   door: "ARRIVED" | "NOT_ARRIVED" | null;
-  accessLevel: AccessLevelValue | null;
+  accessLevel: string | null;
 };
 
 const NO_TICKET_FILTERS: TicketFilters = {
@@ -122,6 +118,7 @@ export function TicketsPanel({ eventId }: { eventId: string }) {
   const canDelete =
     me.data?.effectivePermissions.includes("SUPERADMIN") ?? false;
   const [filters, setFilters] = useState<TicketFilters>(NO_TICKET_FILTERS);
+  const { all: levels, level } = useAccessLevels();
   const debouncedSearch = useDebouncedValue(search);
 
   const activeFilters = Object.values(filters).filter(Boolean).length;
@@ -226,7 +223,7 @@ export function TicketsPanel({ eventId }: { eventId: string }) {
       accessor: (row) => row.accessLevel,
       cell: (row) => (
         <Badge variant="outline">
-          {accessLevelMeta(row.accessLevel).short}
+          {level(row.accessLevel).short}
         </Badge>
       ),
     },
@@ -313,9 +310,9 @@ export function TicketsPanel({ eventId }: { eventId: string }) {
           label="Access"
           value={filters.accessLevel}
           onChange={(value) => set("accessLevel", value)}
-          options={ACCESS_LEVELS.map((level) => ({
-            value: level.value,
-            label: level.label,
+          options={levels.map((option) => ({
+            value: option.code,
+            label: option.label,
           }))}
         />
       </ListFilters>

@@ -49,7 +49,7 @@ import { looksLikeLifetimeNumber } from "~/server/ticketing/numbering";
 import { banPatron, checkIdentity, liftBan } from "~/server/ticketing/id-check";
 import { DENY_REASON_VALUES } from "~/lib/ticketing/deny-reasons";
 import { idReadingSchema } from "~/lib/ticketing/id-reading";
-import { ACCESS_LEVEL_VALUES } from "~/lib/ticketing/access-levels";
+import { accessLevelCode } from "~/server/ticketing/access-level-store";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
 import { logActivity } from "~/server/utils/activity-log";
 import { db } from "~/server/db";
@@ -809,6 +809,7 @@ export const doorRouter = createTRPCRouter({
             invitedByName: true,
             lifetimeTicketId: true,
             tier: { select: { name: true } },
+            level: { select: { label: true } },
             order: {
               select: {
                 orderNumber: true,
@@ -926,6 +927,7 @@ export const doorRouter = createTRPCRouter({
           hostTicketId: true,
           lifetimeTicketId: true,
           tier: { select: { name: true } },
+          level: { select: { label: true } },
           event: {
             select: { isR18: true, reentryAllowed: true, timezone: true },
           },
@@ -1094,6 +1096,7 @@ export const doorRouter = createTRPCRouter({
           invitedByName: true,
           lifetimeTicketId: true,
           tier: { select: { name: true } },
+          level: { select: { label: true } },
         },
       });
 
@@ -1614,7 +1617,7 @@ export const doorRouter = createTRPCRouter({
         eventId: z.string(),
         recipientName: z.string().trim().min(1).max(120),
         recipientEmail: z.email().optional(),
-        accessLevel: z.enum(ACCESS_LEVEL_VALUES),
+        accessLevel: accessLevelCode,
         notes: z.string().trim().max(500).optional(),
         deviceLabel: z.string().trim().max(60).optional(),
         acknowledge: z.boolean().default(false),

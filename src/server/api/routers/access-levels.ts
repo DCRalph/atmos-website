@@ -7,7 +7,8 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import { HEX_COLOUR_PATTERN } from "~/lib/ticketing/pass-theme";
-import { invalidateLevels } from "~/server/ticketing/access-level-store";
+import { DEFAULT_ACCESS_LEVEL } from "~/lib/ticketing/access-levels";
+import { scheduleLevelPassUpdates } from "~/server/wallet/apple-push";
 
 /**
  * Access levels, as data.
@@ -41,6 +42,19 @@ const levelInput = z.object({
   rank: z.number().int().min(0).max(999),
 });
 
+/**
+ * General admission is what every tier and ticket defaults to, in the schema
+ * and in the editors, so it can be renamed and recoloured but never retired.
+ */
+function assertNotDefault(code: string): void {
+  if (code === DEFAULT_ACCESS_LEVEL) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `${code} is the default level for new tiers and tickets, so it has to stay.`,
+    });
+  }
+}
+
 export const accessLevelsRouter = createTRPCRouter({
   /**
    * Every level, lowest access first.
@@ -73,11 +87,13 @@ export const accessLevelsRouter = createTRPCRouter({
       const created = await ctx.db.accessLevel.create({
         data: { ...input, passAccent: input.passAccent ?? null },
       });
-      invalidateLevels();
       return created;
     }),
 
-  /** Everything but the code, which tickets point at. */
+  /**
+   * Everything but the code, which tickets point at. Wallet passes on the
+   * level are pushed so the new label and colours reach them.
+   */
   update: eventOrganiserProcedure
     .input(levelInput.partial().extend({ code: CODE }))
     .mutation(async ({ ctx, input }) => {
@@ -86,7 +102,7 @@ export const accessLevelsRouter = createTRPCRouter({
         where: { code },
         data: rest,
       });
-      invalidateLevels();
+      scheduleLevelPassUpdates([code]);
       return updated;
     }),
 
@@ -100,33 +116,36 @@ export const accessLevelsRouter = createTRPCRouter({
   setArchived: eventOrganiserProcedure
     .input(z.object({ code: CODE, archived: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      const updated = await ctx.db.accessLevel.update({
+      assertNotDefault(input.code);
+      return ctx.db.accessLevel.update({
         where: { code: input.code },
         data: { archived: input.archived },
       });
-      invalidateLevels();
-      return updated;
     }),
 
   remove: eventOrganiserProcedure
     .input(z.object({ code: CODE }))
     .mutation(async ({ ctx, input }) => {
-      const [tickets, tiers] = await Promise.all([
+      assertNotDefault(input.code);
+      const [tickets, tiers, lifetimes] = await Promise.all([
         ctx.db.ticket.count({ where: { accessLevel: input.code } }),
         ctx.db.ticketTier.count({ where: { accessLevel: input.code } }),
+        ctx.db.lifetimeTicket.count({ where: { accessLevel: input.code } }),
       ]);
-      if (tickets > 0 || tiers > 0) {
+      if (tickets > 0 || tiers > 0 || lifetimes > 0) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: `${tickets} tickets and ${tiers} tiers use ${input.code}. Archive it instead — deleting would leave them pointing at nothing.`,
+          message: `${tickets} tickets, ${tiers} tiers and ${lifetimes} lifetime passes use ${input.code}. Archive it instead — deleting would leave them pointing at nothing.`,
         });
       }
       await ctx.db.accessLevel.delete({ where: { code: input.code } });
-      invalidateLevels();
       return { code: input.code };
     }),
 
-  /** Drag-to-reorder writes the whole list back in one go. */
+  /**
+   * Drag-to-reorder writes the whole list back in one go. Rank decides how far
+   * a pass's accent floods, so every level's passes are pushed.
+   */
   reorder: eventOrganiserProcedure
     .input(z.object({ codes: z.array(CODE).min(1) }))
     .mutation(async ({ ctx, input }) => {
@@ -135,7 +154,7 @@ export const accessLevelsRouter = createTRPCRouter({
           ctx.db.accessLevel.update({ where: { code }, data: { rank: index } }),
         ),
       );
-      invalidateLevels();
+      scheduleLevelPassUpdates(input.codes);
       return { count: input.codes.length };
     }),
 });

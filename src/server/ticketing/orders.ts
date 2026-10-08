@@ -778,7 +778,7 @@ export async function findOrderByAccessToken(token: string) {
       items: { include: { tier: true } },
       tickets: {
         where: { status: { not: TicketStatus.VOID } },
-        include: { tier: true },
+        include: { tier: true, level: { select: { label: true } } },
         orderBy: { ticketNumber: "asc" },
       },
     },
@@ -805,6 +805,7 @@ export async function findTicketByAccessToken(token: string) {
     where: { id: parsed.ticketId },
     include: {
       tier: true,
+      level: { select: { label: true } },
       event: {
         include: { gig: { select: { posterFileUploadId: true, isTba: true } } },
       },
@@ -816,6 +817,7 @@ export async function findTicketByAccessToken(token: string) {
         orderBy: { ticketNumber: "asc" },
         include: {
           tier: { select: { name: true } },
+          level: { select: { label: true } },
           scans: {
             where: { result: { in: [...ADMITTING_RESULTS] } },
             take: 1,

@@ -4,7 +4,11 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { EventStaffRole, TierSalesChannel, type Prisma } from "~Prisma/client";
-import { ACCESS_LEVEL_VALUES } from "~/lib/ticketing/access-levels";
+import { DEFAULT_ACCESS_LEVEL } from "~/lib/ticketing/access-levels";
+import {
+  accessLevelCode,
+  assertIssuableLevels,
+} from "~/server/ticketing/access-level-store";
 import { toAllocationBudget } from "~/lib/ticketing/capacity";
 import { compCountForEvent } from "~/server/ticketing/inventory";
 
@@ -41,7 +45,7 @@ export const tierPlanSchema = z.object({
   maxPerOrder: z.number().int().min(1).max(50).default(10),
   maxPerEmail: z.number().int().min(1).nullable().optional(),
   requiresApproval: z.boolean().default(false),
-  accessLevel: z.enum(ACCESS_LEVEL_VALUES).default("GENERAL"),
+  accessLevel: accessLevelCode.default(DEFAULT_ACCESS_LEVEL),
 });
 
 export type TierPlanInput = z.infer<typeof tierPlanSchema>;
@@ -80,12 +84,25 @@ export async function applyTierPlan(
         allocation: true,
         soldCount: true,
         heldCount: true,
+        accessLevel: true,
         _count: { select: { tickets: true } },
       },
     }),
     compCountForEvent(tx, eventId),
   ]);
   const existingById = new Map(existing.map((tier) => [tier.id, tier]));
+
+  // A tier left on a level since archived still saves; only a level being
+  // newly put on sale has to be live.
+  await assertIssuableLevels(
+    tx,
+    plan
+      .filter(
+        (row) =>
+          !row.id || existingById.get(row.id)?.accessLevel !== row.accessLevel,
+      )
+      .map((row) => row.accessLevel),
+  );
 
   for (const row of plan) {
     if (!row.id) continue;

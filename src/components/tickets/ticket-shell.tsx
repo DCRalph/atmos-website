@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 
 import { AtmosLogo, Media } from "~/components/site/ui";
-import { accessLevel, isElevated } from "~/lib/ticketing/access-levels";
 import { cn } from "~/lib/utils";
 
 /**
@@ -189,30 +188,6 @@ export function PassCode({
       <p className="mt-3 font-mono text-[13px] text-white/55">{number}</p>
       {children}
     </div>
-  );
-}
-
-/**
- * The access level, next to the tier name. Only above general admission
- * unless `always`: on a GA ticket the tier already says everything. Without
- * it an AAA on a tier called "General Admission" reads as general admission.
- */
-export function LevelChip({
-  accessLevel: code,
-  always,
-}: {
-  accessLevel: string;
-  always?: boolean;
-}) {
-  if (!always && !isElevated(code)) return null;
-  const level = accessLevel(code);
-  return (
-    <span
-      className="t-label ml-2 inline-block rounded-[var(--site-r-chip)] px-1.5 py-1 align-middle text-[9px]"
-      style={{ backgroundColor: level.badgeBg, color: level.badgeFg }}
-    >
-      {level.short}
-    </span>
   );
 }
 

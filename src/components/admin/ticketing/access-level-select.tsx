@@ -10,35 +10,38 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import {
-  ACCESS_LEVELS,
-  type AccessLevelValue,
-} from "~/lib/ticketing/access-levels";
+import { useAccessLevels } from "~/hooks/use-access-levels";
 
-/** Pick one of the access levels, listed least to most access. */
+/**
+ * Pick one of the access levels, listed least to most access.
+ *
+ * Offers the active levels from the table. A value on an archived level stays
+ * selectable so a tier or ticket already on it still shows what it is.
+ */
 export function AccessLevelSelect({
+  id,
   value,
   onValueChange,
   disabled,
   size = "default",
   className,
 }: {
+  id?: string;
   value: string;
-  onValueChange: (value: AccessLevelValue) => void;
+  onValueChange: (value: string) => void;
   disabled?: boolean;
   size?: "sm" | "default";
   className?: string;
 }) {
+  const { active, level } = useAccessLevels();
+  const options = active.some((option) => option.code === value)
+    ? active
+    : [level(value), ...active];
+
   return (
-    <Select
-      value={value}
-      disabled={disabled}
-      onValueChange={(next) => {
-        const level = ACCESS_LEVELS.find((option) => option.value === next);
-        if (level) onValueChange(level.value);
-      }}
-    >
+    <Select value={value} disabled={disabled} onValueChange={onValueChange}>
       <SelectTrigger
+        id={id}
         size={size}
         aria-label="Access level"
         className={className}
@@ -46,8 +49,8 @@ export function AccessLevelSelect({
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {ACCESS_LEVELS.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
+        {options.map((option) => (
+          <SelectItem key={option.code} value={option.code}>
             {option.label}
           </SelectItem>
         ))}
