@@ -9,6 +9,7 @@ import {
   type SaleChannel,
 } from "~/lib/ticketing/tiers";
 import {
+  compReservation,
   ticketCount,
   toAllocationBudget,
   type AllocationBudget,
@@ -74,12 +75,26 @@ export async function compCountForEvent(
  * The one definition of "how full is this", shared by the capacity check, the
  * sold-out sweep and the comp accounting, so a number shown in the admin panel
  * is the same number the checkout enforces.
+ *
+ * `headcount` is people actually holding a seat. `committed` is what the public
+ * can no longer buy: it counts the comp allowance in full even before the comps
+ * are issued, so sales stop short of the seats set aside for the guest list.
  */
 export async function eventHeadcount(
   tx: Tx,
   eventId: string,
-): Promise<{ headcount: number; fromTiers: number; comps: number }> {
-  const [tiers, comps] = await Promise.all([
+): Promise<{
+  headcount: number;
+  fromTiers: number;
+  comps: number;
+  compsReserved: number;
+  committed: number;
+}> {
+  const [event, tiers, comps] = await Promise.all([
+    tx.ticketEvent.findUniqueOrThrow({
+      where: { id: eventId },
+      select: { compAllowance: true },
+    }),
     tx.ticketTier.findMany({
       where: { eventId },
       select: { soldCount: true, heldCount: true },
@@ -88,7 +103,14 @@ export async function eventHeadcount(
   ]);
 
   const fromTiers = committedAgainstCapacity(tiers);
-  return { headcount: fromTiers + comps, fromTiers, comps };
+  const compsReserved = compReservation(event.compAllowance, comps);
+  return {
+    headcount: fromTiers + comps,
+    fromTiers,
+    comps,
+    compsReserved,
+    committed: fromTiers + compsReserved,
+  };
 }
 
 // ------------------------------------------------------------ planning a room
@@ -98,7 +120,7 @@ export async function eventHeadcount(
  *
  * The arithmetic itself lives in `~/lib/ticketing/capacity` so the admin form
  * can run it against what somebody is typing; this is only the read that gets
- * the three numbers out of the database.
+ * the numbers out of the database.
  *
  * Tier allocations are counted whether or not the tier is currently on sale: a
  * paused tier is a switch away from selling, and a plan that only adds up while
@@ -111,7 +133,7 @@ export async function allocationBudget(
   const [event, tiers, comps] = await Promise.all([
     client.ticketEvent.findUniqueOrThrow({
       where: { id: eventId },
-      select: { capacity: true },
+      select: { capacity: true, compAllowance: true },
     }),
     client.ticketTier.findMany({
       where: { eventId },
@@ -124,6 +146,7 @@ export async function allocationBudget(
     capacity: event.capacity,
     allocated: tiers.reduce((sum, tier) => sum + tier.allocation, 0),
     comps,
+    compAllowance: event.compAllowance,
   });
 }
 
@@ -343,9 +366,9 @@ export async function holdInventory(
   }
 
   if (event.capacity !== null) {
-    // Comps are in the room too, so they come off what is left to sell.
-    const committed =
-      committedAgainstCapacity(tiers) + (await compCountForEvent(tx, eventId));
+    // Comps are in the room too, and so is the allowance kept for them, so
+    // both come off what is left to sell.
+    const { committed } = await eventHeadcount(tx, eventId);
     if (committed + totalRequested > event.capacity) {
       const left = Math.max(0, event.capacity - committed);
       throw new InventoryError(

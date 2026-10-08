@@ -7,6 +7,10 @@
  * the room, not by a form — but they are still people, so they come off what
  * the tiers may put on sale rather than being waved through twice.
  *
+ * The comp allowance is held back the same way before a single comp is issued:
+ * a 300 room with 20 comps planned has 280 to sell, not 300 until the guest
+ * list lands and then 280 with the last 20 already gone.
+ *
  * Deliberately not `server-only`: the tier editor shows the same arithmetic its
  * save will be judged by, and two implementations of that would disagree by the
  * end of the week.
@@ -19,7 +23,11 @@ export type AllocationBudget = {
   allocated: number;
   /** Valid comps, which have already taken their seats out of the cap. */
   comps: number;
-  /** What the tiers may hold between them: `capacity − comps`. */
+  /** The planned comp budget, or null if nobody set one. */
+  compAllowance: number | null;
+  /** Seats kept off sale for comps: see `compReservation`. */
+  compsReserved: number;
+  /** What the tiers may hold between them: `capacity − compsReserved`. */
   allocatable: number | null;
   /** Still to be handed to a tier. Null when uncapped. */
   unallocated: number | null;
@@ -27,22 +35,40 @@ export type AllocationBudget = {
   overAllocatedBy: number;
 };
 
-/** The budget as it falls out of the three numbers behind it. */
+/**
+ * Seats kept off sale for comps: the whole allowance until more than that have
+ * been issued, then however many were. Issuing a comp inside the allowance
+ * takes a seat that was already set aside, so it never shrinks what is for sale.
+ */
+export function compReservation(
+  compAllowance: number | null,
+  comps: number,
+): number {
+  return Math.max(compAllowance ?? 0, comps);
+}
+
+/** The budget as it falls out of the numbers behind it. */
 export function toAllocationBudget({
   capacity,
   allocated,
   comps,
+  compAllowance,
 }: {
   capacity: number | null;
   allocated: number;
   comps: number;
+  compAllowance: number | null;
 }): AllocationBudget {
-  const allocatable = capacity === null ? null : Math.max(0, capacity - comps);
+  const compsReserved = compReservation(compAllowance, comps);
+  const allocatable =
+    capacity === null ? null : Math.max(0, capacity - compsReserved);
 
   return {
     capacity,
     allocated,
     comps,
+    compAllowance,
+    compsReserved,
     allocatable,
     unallocated:
       allocatable === null ? null : Math.max(0, allocatable - allocated),
@@ -93,8 +119,8 @@ export function allocationRefusal({
 
   const others = budget.allocated - currentAllocation;
   const comped =
-    budget.comps > 0
-      ? `, ${budget.comps} of which ${budget.comps === 1 ? "has" : "have"} been comped away`
+    budget.compsReserved > 0
+      ? `, ${budget.compsReserved} of which ${budget.compsReserved === 1 ? "is" : "are"} kept for comps`
       : "";
 
   return (

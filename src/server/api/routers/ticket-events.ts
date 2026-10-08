@@ -34,6 +34,7 @@ import {
 } from "~/server/ticketing/event-plan";
 import {
   allocationBudget,
+  compCountForEvent,
   eventHeadcount,
   remainingInTier,
   tierUnavailableReason,
@@ -249,7 +250,9 @@ async function describeOverAllocation(
   if (budget.overAllocatedBy === 0) return null;
 
   const comped =
-    budget.comps > 0 ? `, plus ${budget.comps} already comped,` : "";
+    budget.compsReserved > 0
+      ? `, plus ${budget.compsReserved} kept for comps,`
+      : "";
   return (
     `Tiers allocate ${budget.allocated}${comped} against a cap of ${budget.capacity}.` +
     ` Sales stop at the cap, so the last ${budget.overAllocatedBy} can't be sold —` +
@@ -394,6 +397,24 @@ export const ticketEventsRouter = createTRPCRouter({
         budget,
         counts,
       };
+    }),
+
+  /**
+   * What each tier has sold and is holding right now, plus comps issued. Small
+   * enough for the tier editor to poll while somebody is judging the cap, and
+   * separate from `byId` so polling it never disturbs the draft.
+   */
+  liveCounts: eventOrganiserProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const [tiers, comps] = await Promise.all([
+        ctx.db.ticketTier.findMany({
+          where: { eventId: input.id },
+          select: { id: true, soldCount: true, heldCount: true },
+        }),
+        compCountForEvent(ctx.db, input.id),
+      ]);
+      return { tiers, comps };
     }),
 
   create: adminProcedure
@@ -628,7 +649,9 @@ export const ticketEventsRouter = createTRPCRouter({
         // unpicking every tier — but it is never silent. Checkout enforces the
         // cap, so from here the tiers can't all sell out.
         const capacityWarning =
-          rest.capacity === undefined && !tiers
+          rest.capacity === undefined &&
+          rest.compAllowance === undefined &&
+          !tiers
             ? null
             : await describeOverAllocation(id, tx);
 

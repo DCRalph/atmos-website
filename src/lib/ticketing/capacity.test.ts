@@ -4,8 +4,13 @@ import assert from "node:assert/strict";
 import { allocationRefusal, roomForTier, toAllocationBudget } from "./capacity";
 
 /** A 300-cap room with `allocated` on sale and `comps` given away. */
-function room(allocated: number, comps = 0, capacity: number | null = 300) {
-  return toAllocationBudget({ capacity, allocated, comps });
+function room(
+  allocated: number,
+  comps = 0,
+  capacity: number | null = 300,
+  compAllowance: number | null = null,
+) {
+  return toAllocationBudget({ capacity, allocated, comps, compAllowance });
 }
 
 describe("toAllocationBudget", () => {
@@ -14,6 +19,23 @@ describe("toAllocationBudget", () => {
     assert.equal(budget.allocatable, 280);
     assert.equal(budget.unallocated, 80);
     assert.equal(budget.overAllocatedBy, 0);
+  });
+
+  test("the comp allowance is held back before any comp is issued", () => {
+    const budget = room(200, 0, 300, 30);
+    assert.equal(budget.compsReserved, 30);
+    assert.equal(budget.allocatable, 270);
+    assert.equal(budget.unallocated, 70);
+  });
+
+  test("comps inside the allowance don't take a second seat", () => {
+    assert.equal(room(200, 10, 300, 30).allocatable, 270);
+  });
+
+  test("comps past the allowance take what they actually used", () => {
+    const budget = room(200, 40, 300, 30);
+    assert.equal(budget.compsReserved, 40);
+    assert.equal(budget.allocatable, 260);
   });
 
   test("an uncapped event binds nothing", () => {
@@ -86,7 +108,7 @@ describe("allocationRefusal", () => {
       currentAllocation: 200,
       nextAllocation: 300,
     });
-    assert.match(refusal ?? "", /20 of which have been comped away/);
+    assert.match(refusal ?? "", /20 of which are kept for comps/);
     assert.match(refusal ?? "", /at most 280\./);
   });
 

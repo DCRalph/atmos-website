@@ -475,8 +475,9 @@ export async function maybeMarkSoldOut(tx: Tx, eventId: string): Promise<void> {
   );
 
   // Comps fill seats without touching a tier counter, so comping the last of
-  // the room has to be able to close sales just as selling it would.
-  const { headcount: committed } = await eventHeadcount(tx, eventId);
+  // the room has to be able to close sales just as selling it would. Seats
+  // kept for the comp allowance count too: the public can't buy them.
+  const { committed } = await eventHeadcount(tx, eventId);
   const atCapacity = event.capacity !== null && committed >= event.capacity;
 
   if (!anythingLeft || atCapacity) {

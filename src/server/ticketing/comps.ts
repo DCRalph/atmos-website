@@ -64,7 +64,10 @@ export type CompAccounting = {
   capacity: number | null;
   /** Sold + held + comped. Everyone the event is committed to. */
   headcount: number;
-  /** Still sellable to the public. Null when the event has no cap. */
+  /**
+   * Still sellable to the public: the cap less sales, holds and the seats kept
+   * for comps. Null when the event has no cap.
+   */
   remainingForSale: number | null;
   /** 0 when within the cap, else how far past it. */
   overCapacityBy: number;
@@ -86,7 +89,7 @@ export async function compAccounting(
     select: { capacity: true, compAllowance: true },
   });
 
-  const [{ headcount }, comps, admitted] = await Promise.all([
+  const [{ headcount, committed }, comps, admitted] = await Promise.all([
     eventHeadcount(client, eventId),
     client.ticket.findMany({
       where: { eventId, isComp: true, status: TicketStatus.VALID },
@@ -140,7 +143,7 @@ export async function compAccounting(
     capacity,
     headcount,
     remainingForSale:
-      capacity === null ? null : Math.max(0, capacity - headcount),
+      capacity === null ? null : Math.max(0, capacity - committed),
     overCapacityBy: capacity === null ? 0 : Math.max(0, headcount - capacity),
   };
 }
