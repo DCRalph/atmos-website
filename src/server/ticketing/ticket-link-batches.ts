@@ -10,8 +10,7 @@ import {
 import { db } from "~/server/db";
 import {
   InventoryError,
-  compCountForEvent,
-  committedAgainstCapacity,
+  eventHeadcount,
   recordDirectSale,
   remainingInTier,
   withEventInventoryLock,
@@ -172,13 +171,7 @@ export async function issueTicketLinkBatch({
       }
 
       if (event.capacity !== null) {
-        const tiers = await tx.ticketTier.findMany({
-          where: { eventId },
-          select: { soldCount: true, heldCount: true },
-        });
-        const committed =
-          committedAgainstCapacity(tiers) +
-          (await compCountForEvent(tx, eventId));
+        const { committed } = await eventHeadcount(tx, eventId);
         if (committed + ticketCount > event.capacity) {
           const left = Math.max(0, event.capacity - committed);
           throw new InventoryError(

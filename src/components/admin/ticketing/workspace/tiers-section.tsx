@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { api } from "~/trpc/react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -49,7 +50,10 @@ import {
 import { Switch } from "~/components/ui/switch";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { AccessLevelSelect } from "~/components/admin/ticketing/access-level-select";
-import { toAllocationBudget } from "~/lib/ticketing/capacity";
+import {
+  toAllocationBudget,
+  type AllocationBudget,
+} from "~/lib/ticketing/capacity";
 import { parsePriceToCents } from "~/lib/ticketing/money";
 import {
   accessLevel as accessLevelMeta,
@@ -72,7 +76,12 @@ import { Field } from "./fields";
  * channel are inline; the rarer settings sit behind a side sheet. Rows drag to
  * reorder, and the order is the order "release after" follows. All of it is
  * the draft, saved with the rest of the event.
+ *
+ * Sold and held counts are polled rather than read from the draft, so the cap
+ * can be judged against what is selling right now while the plan is edited.
  */
+
+const LIVE_POLL_MS = 5000;
 
 const SALES_CHANNELS = [
   { value: "ALL", label: "Online + door" },
@@ -90,6 +99,20 @@ export function TiersSection({
   const { draft, update, errors } = state;
   const [open, setOpen] = useState<string | null>(null);
 
+  const live = api.ticketEvents.liveCounts.useQuery(
+    { id: event?.id ?? "" },
+    { enabled: Boolean(event), refetchInterval: LIVE_POLL_MS },
+  );
+  const liveById = new Map(live.data?.tiers.map((tier) => [tier.id, tier]));
+  // Live where the tier exists, else what the draft was loaded with.
+  const countsOf = (tier: TierDraft) => {
+    const counts = tier.id ? liveById.get(tier.id) : undefined;
+    return {
+      sold: counts?.soldCount ?? tier.soldCount,
+      held: counts?.heldCount ?? tier.heldCount,
+    };
+  };
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, {
@@ -105,7 +128,8 @@ export function TiersSection({
       ),
     );
   const remove = (tier: TierDraft) => {
-    if (tier.soldCount + tier.heldCount > 0) {
+    const { sold, held } = countsOf(tier);
+    if (sold + held > 0) {
       toast.error(
         `${tier.name || "That tier"} has tickets in it. Switch it off instead.`,
       );
@@ -128,13 +152,17 @@ export function TiersSection({
   const budget = toAllocationBudget({
     capacity,
     allocated: tierAllocation(draft.tiers),
-    comps: event?.budget.comps ?? 0,
+    comps: live.data?.comps ?? event?.budget.comps ?? 0,
+    compAllowance: parseCount(draft.compAllowance),
   });
   const over = budget.overAllocatedBy > 0;
+  const kept = budget.compsReserved
+    ? ` · ${budget.compsReserved} kept for comps`
+    : "";
 
   const door = draft.tiers.filter((tier) => tier.salesChannel === "DOOR");
   const doorAllocation = tierAllocation(door);
-  const doorSold = door.reduce((sum, tier) => sum + tier.soldCount, 0);
+  const doorSold = door.reduce((sum, tier) => sum + countsOf(tier).sold, 0);
   const shared = draft.tiers.filter((tier) => tier.salesChannel === "ALL");
 
   return (
@@ -148,8 +176,8 @@ export function TiersSection({
                 {capacity === null
                   ? "No cap set, so the allocations decide how many tickets exist."
                   : over
-                    ? `Cap ${capacity} · ${budget.allocated} allocated${budget.comps ? ` · ${budget.comps} comped` : ""} · ${budget.overAllocatedBy} over. Checkout stops at the cap, so trim a tier.`
-                    : `Cap ${capacity} · ${budget.allocated} allocated${budget.comps ? ` · ${budget.comps} comped` : ""} · ${budget.unallocated} still free.`}{" "}
+                    ? `Cap ${capacity} · ${budget.allocated} allocated${kept} · ${budget.overAllocatedBy} over. Checkout stops at the cap, so trim a tier.`
+                    : `Cap ${capacity} · ${budget.allocated} allocated${kept} · ${budget.unallocated} still free.`}{" "}
                 Drag rows to set the order &ldquo;release after&rdquo; follows.
               </CardDescription>
             </div>
@@ -203,6 +231,15 @@ export function TiersSection({
           </div>
         </CardHeader>
         <CardContent>
+          {event && draft.tiers.length > 0 ? (
+            <CapMeter
+              budget={budget}
+              tiers={draft.tiers.map((tier) => ({
+                allocation: Number(tier.allocation) || 0,
+                ...countsOf(tier),
+              }))}
+            />
+          ) : null}
           {draft.tiers.length === 0 ? (
             <p className="text-muted-foreground rounded-lg border border-dashed p-8 text-center text-sm">
               No tiers yet. An event needs at least one before it can be
@@ -219,7 +256,7 @@ export function TiersSection({
                 <span>Name</span>
                 <span>Price</span>
                 <span>Allocation</span>
-                <span>Sold</span>
+                <span>Sold · left</span>
                 <span>Per buy</span>
                 <span>Sold where</span>
                 <span />
@@ -233,6 +270,7 @@ export function TiersSection({
                     <TierRow
                       key={tier.key}
                       tier={tier}
+                      {...countsOf(tier)}
                       previous={draft.tiers[index - 1] ?? null}
                       onPatch={(fields) => patch(tier.key, fields)}
                       expanded={open === tier.key}
@@ -279,6 +317,8 @@ export function TiersSection({
 
 function TierRow({
   tier,
+  sold,
+  held,
   previous,
   onPatch,
   expanded,
@@ -286,6 +326,9 @@ function TierRow({
   onRemove,
 }: {
   tier: TierDraft;
+  /** Live counts, which the draft's own copies fall behind. */
+  sold: number;
+  held: number;
   previous: TierDraft | null;
   onPatch: (fields: Partial<TierDraft>) => void;
   /** Whether the rarer settings are open under the row. */
@@ -302,10 +345,7 @@ function TierRow({
     isDragging,
   } = useSortable({ id: tier.key });
 
-  const remaining = Math.max(
-    0,
-    (Number(tier.allocation) || 0) - tier.soldCount - tier.heldCount,
-  );
+  const remaining = Math.max(0, (Number(tier.allocation) || 0) - sold - held);
   const groupSize = Number(tier.groupSize) || 1;
   const soldOut = remaining < groupSize;
 
@@ -380,8 +420,9 @@ function TierRow({
         <p className="text-muted-foreground self-center text-xs tabular-nums">
           {tier.id ? (
             <>
-              {tier.soldCount}
-              {tier.heldCount > 0 ? ` · ${tier.heldCount} held` : ""}
+              <span className="text-foreground">{sold}</span>
+              {held > 0 ? ` +${held} held` : ""}
+              <span className="block">{remaining} left</span>
             </>
           ) : (
             "New"
@@ -446,6 +487,102 @@ function TierRow({
       {expanded ? (
         <TierDetails tier={tier} previous={previous} onPatch={onPatch} />
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * The cap as one bar: sold, mid-checkout, comps issued and the rest of the
+ * allowance kept for them, against the room. What is left to sell is the
+ * smaller of what the tiers still have and what the cap still allows.
+ */
+function CapMeter({
+  budget,
+  tiers,
+}: {
+  budget: AllocationBudget;
+  tiers: readonly { allocation: number; sold: number; held: number }[];
+}) {
+  const sold = tiers.reduce((sum, tier) => sum + tier.sold, 0);
+  const held = tiers.reduce((sum, tier) => sum + tier.held, 0);
+  const compsKept = budget.compsReserved - budget.comps;
+  const committed = sold + held + budget.compsReserved;
+
+  const leftInTiers = tiers.reduce(
+    (sum, tier) => sum + Math.max(0, tier.allocation - tier.sold - tier.held),
+    0,
+  );
+  const leftToSell =
+    budget.capacity === null
+      ? leftInTiers
+      : Math.min(leftInTiers, Math.max(0, budget.capacity - committed));
+
+  const scale = Math.max(
+    1,
+    committed,
+    budget.capacity ?? budget.allocated + budget.compsReserved,
+  );
+  const segments = [
+    { label: "Sold", value: sold, color: "var(--ticket-series-revenue)" },
+    {
+      label: "Held",
+      value: held,
+      color:
+        "color-mix(in oklab, var(--ticket-series-revenue) 45%, transparent)",
+    },
+    {
+      label: "Comps",
+      value: budget.comps,
+      color: "var(--ticket-series-arrivals)",
+    },
+    {
+      label: "Kept for comps",
+      value: compsKept,
+      color:
+        "color-mix(in oklab, var(--ticket-series-arrivals) 40%, transparent)",
+    },
+  ];
+
+  return (
+    <div className="mb-4 space-y-2">
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm tabular-nums">
+        {segments
+          .filter((segment) => segment.value > 0 || segment.label === "Sold")
+          .map((segment) => (
+            <span key={segment.label} className="flex items-center gap-1.5">
+              <span
+                className="size-2 rounded-full"
+                style={{ background: segment.color }}
+              />
+              <span className="text-muted-foreground">{segment.label}</span>
+              <span className="font-medium">{segment.value}</span>
+            </span>
+          ))}
+        <span className="flex items-center gap-1.5">
+          <span className="text-muted-foreground">Left to sell</span>
+          <span className="font-medium">{leftToSell}</span>
+        </span>
+        {budget.capacity !== null ? (
+          <span className="ml-auto flex items-center gap-1.5">
+            <span className="text-muted-foreground">Cap</span>
+            <span className="font-medium">{budget.capacity}</span>
+          </span>
+        ) : null}
+      </div>
+      <div className="bg-muted flex h-2 w-full overflow-hidden rounded-full">
+        {segments.map((segment) =>
+          segment.value > 0 ? (
+            <div
+              key={segment.label}
+              className="h-full"
+              style={{
+                width: `${(segment.value / scale) * 100}%`,
+                background: segment.color,
+              }}
+            />
+          ) : null,
+        )}
+      </div>
     </div>
   );
 }

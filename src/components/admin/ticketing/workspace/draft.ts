@@ -505,6 +505,7 @@ export function buildChecklist({
       capacity,
       allocated: tierAllocation(draft.tiers),
       comps: event?.budget.comps ?? 0,
+      compAllowance: parseCount(draft.compAllowance),
     });
     items.push(
       budget.overAllocatedBy > 0

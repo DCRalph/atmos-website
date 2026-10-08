@@ -56,10 +56,10 @@ export type StaffPlanInput = z.infer<typeof staffPlanSchema>;
 /**
  * Replace the event's tiers with `plan`, in that order.
  *
- * Refuses a plan that puts more on sale than the room allows, unless the
- * event is already over and the plan makes it no worse — the cap may have
- * been lowered, or comps issued past it, and every tier still has to be
- * editable in that state. Also refuses shrinking a tier under what it has
+ * Refuses a plan that puts more on sale than the room allows once the comp
+ * allowance is set aside, unless the event is already over and the plan makes
+ * it no worse — the cap may have been lowered, the allowance raised, or comps
+ * issued past it, and every tier still has to be editable in that state. Also refuses shrinking a tier under what it has
  * already sold or held, and deleting a tier with tickets in it.
  */
 export async function applyTierPlan(
@@ -70,7 +70,7 @@ export async function applyTierPlan(
   const [event, existing, comps] = await Promise.all([
     tx.ticketEvent.findUniqueOrThrow({
       where: { id: eventId },
-      select: { capacity: true },
+      select: { capacity: true, compAllowance: true },
     }),
     tx.ticketTier.findMany({
       where: { eventId },
@@ -119,6 +119,7 @@ export async function applyTierPlan(
     capacity: event.capacity,
     allocated: existing.reduce((sum, tier) => sum + tier.allocation, 0),
     comps,
+    compAllowance: event.compAllowance,
   });
   const planned = plan.reduce((sum, row) => sum + row.allocation, 0);
   if (
@@ -127,8 +128,8 @@ export async function applyTierPlan(
     planned > budget.allocated
   ) {
     const comped =
-      budget.comps > 0
-        ? `, ${budget.comps} of which have been comped away`
+      budget.compsReserved > 0
+        ? `, ${budget.compsReserved} of which ${budget.compsReserved === 1 ? "is" : "are"} kept for comps`
         : "";
     throw new TRPCError({
       code: "BAD_REQUEST",

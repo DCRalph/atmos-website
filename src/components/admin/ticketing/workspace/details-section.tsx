@@ -530,14 +530,14 @@ export function DetailsSection({
               </Field>
             </div>
             <p className="text-muted-foreground -mt-2 text-xs">
-              Capacity is the room: the tiers can&apos;t allocate more, and
-              comps come off it too. Max per order counts people, so a group of
-              four uses four.
+              Capacity is the room: the tiers can&apos;t allocate more, and the
+              comp allowance comes off it too. Max per order counts people, so a
+              group of four uses four.
             </p>
             <Field
               id="event-comps"
               label="Comp allowance"
-              hint="How many you plan to give away. Going over only warns."
+              hint="How many you plan to give away. Kept off sale from the start; going over only warns."
               error={errors.compAllowance}
             >
               <Input
