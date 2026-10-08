@@ -81,8 +81,20 @@ export default function EventPage() {
   const poster = data.posterFileUploadId
     ? buildMediaUrl(data.posterFileUploadId)
     : null;
-  const hasFee =
-    data.bookingFee.fixedCents > 0 || data.bookingFee.percentBp > 0;
+  // Every unavoidable fee, disclosed on the page and not just at checkout.
+  const { fixedCents, percentBp } = data.bookingFee;
+  const fees: string[] = [];
+  if (data.venueFeePerTicketCents > 0) {
+    fees.push(
+      `a ${formatNZD(data.venueFeePerTicketCents)} venue booking fee per ticket`,
+    );
+  }
+  if (fixedCents > 0 || percentBp > 0) {
+    const parts: string[] = [];
+    if (fixedCents > 0) parts.push(`${formatNZD(fixedCents)} per ticket`);
+    if (percentBp > 0) parts.push(`${percentBp / 100}%`);
+    fees.push(`a booking fee of ${parts.join(" plus ")}`);
+  }
   const startTime = formatEventTime(data.startsAt, data.timezone);
   const doorsTime = data.doorsAt
     ? formatEventTime(data.doorsAt, data.timezone)
@@ -214,18 +226,9 @@ export default function EventPage() {
               More about this gig <ArrowRight className="size-4" />
             </Link>
           ) : null}
-          {/* Fees disclosed on the page itself, not just at the payment step. */}
-          {hasFee ? (
+          {fees.length > 0 ? (
             <p className="text-[13px] text-white/50">
-              Prices include GST. A booking fee of{" "}
-              {data.bookingFee.fixedCents > 0 &&
-                `${formatNZD(data.bookingFee.fixedCents)} per ticket`}
-              {data.bookingFee.fixedCents > 0 && data.bookingFee.percentBp > 0
-                ? " plus "
-                : ""}
-              {data.bookingFee.percentBp > 0 &&
-                `${data.bookingFee.percentBp / 100}%`}{" "}
-              is added at checkout.
+              Prices include GST. At checkout we add {fees.join(" and ")}.
             </p>
           ) : null}
         </div>

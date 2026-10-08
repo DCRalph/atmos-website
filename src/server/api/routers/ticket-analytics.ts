@@ -12,6 +12,15 @@ import { admittedCount, departedCount } from "~/server/ticketing/scan";
 import { compAccounting } from "~/server/ticketing/comps";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
 import { soldFaceValueCents } from "~/lib/ticketing/tiers";
+import { venueFeePerTicketCents } from "~/lib/ticketing/money";
+import {
+  breakEvenTickets,
+  planRevenuePerTicketCents,
+} from "~/lib/ticketing/break-even";
+import {
+  getTicketingSettings,
+  resolveBookingFee,
+} from "~/server/ticketing/settings";
 
 /**
  * Event analytics: the sales dashboard, and the live view you watch on your
@@ -38,6 +47,11 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           timezone: true,
           startsAt: true,
           gstRateBp: true,
+          bookingFeeFixedCents: true,
+          bookingFeePercentBp: true,
+          venueHireCents: true,
+          passVenueHire: true,
+          costs: { select: { amountCents: true } },
           tiers: {
             orderBy: { sortOrder: "asc" },
             select: {
@@ -48,6 +62,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
               allocation: true,
               soldCount: true,
               heldCount: true,
+              isActive: true,
             },
           },
         },
@@ -76,6 +91,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
             subtotalCents: true,
             discountCents: true,
             bookingFeeCents: true,
+            venueFeeCents: true,
             totalCents: true,
             gstCents: true,
             refundedCents: true,
@@ -141,6 +157,31 @@ export const ticketAnalyticsRouter = createTRPCRouter({
       // add up to `ticketsIssued`. This is the row that reconciles them.
       const comps = await compAccounting(event.id, ctx.db);
 
+      // Profit and break even. A ticket is worth what sold ones have averaged,
+      // net of refunds; before the first sale, what the tier plan would bring.
+      const netCents = grossCents - refundedCents;
+      const sold = ticketsIssued - comps.issued;
+      const venueHireCents = event.venueHireCents ?? 0;
+      const otherCostsCents = event.costs.reduce(
+        (sum, cost) => sum + cost.amountCents,
+        0,
+      );
+      const costsCents = venueHireCents + otherCostsCents;
+      const venueFee = venueFeePerTicketCents(event);
+      const revenuePerTicketCents =
+        sold > 0
+          ? Math.round(netCents / sold)
+          : planRevenuePerTicketCents({
+              tiers: event.tiers.filter((tier) => tier.isActive),
+              fee: resolveBookingFee(event, await getTicketingSettings()),
+              venueFeePerTicket: venueFee,
+            });
+      // The room less the seats kept for comps, or given as comps if more.
+      const sellable = Math.max(
+        0,
+        capacity - Math.max(comps.allowance ?? 0, comps.issued),
+      );
+
       return {
         event: {
           id: event.id,
@@ -152,11 +193,28 @@ export const ticketAnalyticsRouter = createTRPCRouter({
         money: {
           grossCents,
           refundedCents,
-          netCents: grossCents - refundedCents,
+          netCents,
           faceValueCents: money._sum.subtotalCents ?? 0,
           discountCents: money._sum.discountCents ?? 0,
           bookingFeeCents: money._sum.bookingFeeCents ?? 0,
+          venueFeeCents: money._sum.venueFeeCents ?? 0,
           gstCents: money._sum.gstCents ?? 0,
+        },
+        costs: {
+          venueHireCents,
+          otherCents: otherCostsCents,
+          totalCents: costsCents,
+          revenuePerTicketCents,
+          breakEvenTickets: breakEvenTickets(costsCents, revenuePerTicketCents),
+          sellable,
+          profitCents: netCents - costsCents,
+          /** The rest of the sellable room at the same average. */
+          profitIfSoldOutCents:
+            revenuePerTicketCents === null
+              ? null
+              : netCents +
+                Math.max(0, sellable - sold) * revenuePerTicketCents -
+                costsCents,
         },
         counts: {
           orders: orderCount,

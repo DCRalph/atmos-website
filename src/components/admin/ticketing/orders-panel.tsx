@@ -347,6 +347,12 @@ function OrderDetail({
           {data.discountCents > 0 && (
             <Row label="Discount" value={`−${formatNZD(data.discountCents)}`} />
           )}
+          {data.venueFeeCents > 0 && (
+            <Row
+              label="Venue booking fee"
+              value={formatNZD(data.venueFeeCents)}
+            />
+          )}
           {data.bookingFeeCents > 0 && (
             <Row label="Booking fee" value={formatNZD(data.bookingFeeCents)} />
           )}

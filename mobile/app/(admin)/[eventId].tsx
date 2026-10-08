@@ -300,6 +300,12 @@ function SalesTab({ eventId }: { eventId: string }) {
               valueTone={colors.warn}
             />
           ) : null}
+          {money.venueFeeCents > 0 ? (
+            <LineItem
+              label="Venue booking fees"
+              value={formatNZD(money.venueFeeCents)}
+            />
+          ) : null}
           <LineItem
             label="Booking fees"
             value={formatNZD(money.bookingFeeCents)}

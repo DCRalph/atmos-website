@@ -494,6 +494,12 @@ function Receipt({ data }: { data: TicketOrderView }) {
             value={`−${formatNZD(data.totals.discountCents)}`}
           />
         )}
+        {data.totals.venueFeeCents > 0 && (
+          <ReceiptRow
+            label="Venue booking fee"
+            value={formatNZD(data.totals.venueFeeCents)}
+          />
+        )}
         {data.totals.bookingFeeCents > 0 && (
           <ReceiptRow
             label="Booking fee"

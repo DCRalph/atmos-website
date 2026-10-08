@@ -2,6 +2,8 @@
 
 import { useId, useMemo, useState } from "react";
 
+import { cn } from "~/lib/utils";
+
 /**
  * Charts for the ticketing dashboards.
  *
@@ -30,11 +32,14 @@ export function StatTile({
   value,
   sub,
   accent,
+  tone,
 }: {
   label: string;
   value: string;
   sub?: string;
   accent?: "revenue" | "arrivals";
+  /** Money made or lost, like profit. */
+  tone?: "gain" | "loss";
 }) {
   return (
     <div className="rounded-lg border p-4">
@@ -42,7 +47,11 @@ export function StatTile({
         {label}
       </p>
       <p
-        className="mt-1.5 text-3xl font-semibold tabular-nums"
+        className={cn(
+          "mt-1.5 text-3xl font-semibold tabular-nums",
+          tone === "gain" && "text-emerald-600 dark:text-emerald-400",
+          tone === "loss" && "text-destructive",
+        )}
         style={accent ? { color: `var(--ticket-series-${accent})` } : undefined}
       >
         {value}
@@ -57,18 +66,22 @@ export type SeriesPoint = { x: Date; y: number };
 /**
  * Cumulative line + area. Used for the sales curve, where the shape — a spike
  * on announcement, a flat middle, a rush in the last week — is the whole point.
+ * `target` draws a dashed line to climb to, like break even, and the scale
+ * always reaches it.
  */
 export function TimeSeriesChart({
   points,
   title,
   formatValue,
   formatX,
+  target,
   height = 220,
 }: {
   points: SeriesPoint[];
   title: string;
   formatValue: (value: number) => string;
   formatX: (date: Date) => string;
+  target?: { value: number; label: string };
   height?: number;
 }) {
   const gradientId = useId();
@@ -78,7 +91,9 @@ export function TimeSeriesChart({
   const geometry = useMemo(() => {
     if (points.length === 0) return null;
 
-    const maxY = niceCeil(Math.max(...points.map((p) => p.y), 1));
+    const maxY = niceCeil(
+      Math.max(...points.map((p) => p.y), target?.value ?? 0, 1),
+    );
     const innerW = width - PAD.left - PAD.right;
     const innerH = height - PAD.top - PAD.bottom;
 
@@ -95,7 +110,7 @@ export function TimeSeriesChart({
     const area = `${line} L${xAt(points.length - 1)},${PAD.top + innerH} L${xAt(0)},${PAD.top + innerH} Z`;
 
     return { maxY, innerH, xAt, yAt, line, area };
-  }, [points, height]);
+  }, [points, height, target?.value]);
 
   if (!geometry) {
     return <EmptyPlot title={title} height={height} />;
@@ -154,6 +169,29 @@ export function TimeSeriesChart({
               </text>
             </g>
           ))}
+
+          {target && (
+            <g>
+              <line
+                x1={PAD.left}
+                x2={width - PAD.right}
+                y1={geometry.yAt(target.value)}
+                y2={geometry.yAt(target.value)}
+                className="stroke-foreground"
+                strokeOpacity={0.6}
+                strokeWidth={1}
+                strokeDasharray="4 4"
+              />
+              <text
+                x={width - PAD.right}
+                y={geometry.yAt(target.value) - 6}
+                textAnchor="end"
+                className="fill-foreground text-[10px]"
+              >
+                {target.label}
+              </text>
+            </g>
+          )}
 
           <path d={geometry.area} fill={`url(#${gradientId})`} />
           <path

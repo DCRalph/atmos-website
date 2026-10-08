@@ -3,7 +3,7 @@
 import { Download, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
-import { api } from "~/trpc/react";
+import { api, type RouterOutputs } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { formatNZD } from "~/lib/ticketing/money";
@@ -54,7 +54,7 @@ export function EventOverview({
   }
   if (!overview.data) return null;
 
-  const { money, counts, tiers, byPaymentMethod, event } = overview.data;
+  const { money, counts, costs, tiers, byPaymentMethod, event } = overview.data;
 
   return (
     <div className="space-y-6">
@@ -101,6 +101,14 @@ export function EventOverview({
         />
       </div>
 
+      {costs.totalCents > 0 ? (
+        <BreakEven
+          costs={costs}
+          sold={counts.sold}
+          capacity={counts.capacity}
+        />
+      ) : null}
+
       <TimeSeriesChart
         title="Cumulative tickets sold"
         points={(sales.data ?? []).map((row) => ({
@@ -109,6 +117,14 @@ export function EventOverview({
         }))}
         formatValue={(value) => String(Math.round(value))}
         formatX={(date) => formatEventDate(date, event.timezone)}
+        target={
+          costs.breakEvenTickets
+            ? {
+                value: costs.breakEvenTickets,
+                label: `Break even · ${costs.breakEvenTickets}`,
+              }
+            : undefined
+        }
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -128,6 +144,12 @@ export function EventOverview({
                 <Row
                   label="Discounts"
                   value={`−${formatNZD(money.discountCents)}`}
+                />
+              )}
+              {money.venueFeeCents > 0 && (
+                <Row
+                  label="Venue booking fees"
+                  value={formatNZD(money.venueFeeCents)}
                 />
               )}
               <Row
@@ -252,6 +274,123 @@ export function EventOverview({
             <ExternalLink className="size-4" /> Live door view
           </a>
         </Button>
+      </div>
+    </div>
+  );
+}
+
+type Costs = RouterOutputs["ticketAnalytics"]["overview"]["costs"];
+
+/**
+ * Where sales stand against the costs: a bar from nothing to the room with
+ * break even marked on it, then the numbers behind it.
+ */
+function BreakEven({
+  costs,
+  sold,
+  capacity,
+}: {
+  costs: Costs;
+  sold: number;
+  capacity: number;
+}) {
+  const target = costs.breakEvenTickets;
+  const scale = Math.max(capacity, target ?? 0, sold, 1);
+  const at = (tickets: number) => `${(tickets / scale) * 100}%`;
+  const toGo = target === null ? null : Math.max(0, target - sold);
+  const perTicket = costs.revenuePerTicketCents;
+
+  return (
+    <div className="rounded-lg border p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <p className="text-muted-foreground text-sm font-medium">Break even</p>
+        <p className="text-sm tabular-nums">
+          {toGo === null ? (
+            <span className="text-muted-foreground">
+              Needs a priced tier to work out
+            </span>
+          ) : toGo > 0 ? (
+            <>
+              <span className="text-xl font-semibold">{toGo}</span>{" "}
+              <span className="text-muted-foreground">
+                more {toGo === 1 ? "ticket" : "tickets"} to break even
+              </span>
+            </>
+          ) : (
+            <span className="font-semibold">Broken even</span>
+          )}
+        </p>
+      </div>
+
+      <div className="relative mt-8">
+        {target !== null ? (
+          <span
+            className="text-muted-foreground absolute bottom-full mb-1.5 -translate-x-1/2 text-xs whitespace-nowrap tabular-nums"
+            style={{ left: `clamp(3rem, ${at(target)}, calc(100% - 3rem))` }}
+          >
+            Break even · {target}
+          </span>
+        ) : null}
+        <div className="bg-muted relative h-2.5 rounded-full">
+          <div
+            className="absolute inset-y-0 left-0 rounded-full"
+            style={{
+              width: at(sold),
+              background: "var(--ticket-series-revenue)",
+            }}
+          />
+          {target !== null ? (
+            <div
+              className="bg-foreground absolute -inset-y-1 w-0.5"
+              style={{ left: at(target) }}
+            />
+          ) : null}
+        </div>
+      </div>
+      <div className="text-muted-foreground mt-1.5 flex justify-between text-xs tabular-nums">
+        <span>{sold} sold</span>
+        <span>
+          {costs.sellable} on sale · {capacity} cap
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile
+          label="Costs"
+          value={formatNZD(costs.totalCents)}
+          sub={`${formatNZD(costs.venueHireCents)} venue · ${formatNZD(costs.otherCents)} other`}
+        />
+        <StatTile
+          label="Profit so far"
+          value={formatNZD(costs.profitCents)}
+          tone={costs.profitCents < 0 ? "loss" : "gain"}
+          sub="Net revenue less costs"
+        />
+        <StatTile
+          label="If it sells out"
+          value={
+            costs.profitIfSoldOutCents === null
+              ? "—"
+              : formatNZD(costs.profitIfSoldOutCents)
+          }
+          tone={
+            costs.profitIfSoldOutCents === null
+              ? undefined
+              : costs.profitIfSoldOutCents < 0
+                ? "loss"
+                : "gain"
+          }
+          sub={`${costs.sellable} sold at the same average`}
+        />
+        <StatTile
+          label="Per ticket"
+          value={perTicket === null ? "—" : formatNZD(perTicket)}
+          sub={
+            sold > 0
+              ? "Average so far, fees included"
+              : "From the tier plan, fees included"
+          }
+        />
       </div>
     </div>
   );

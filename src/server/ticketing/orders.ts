@@ -13,6 +13,7 @@ import { db } from "~/server/db";
 import {
   computeOrderTotals,
   splitCents,
+  venueFeePerTicketCents,
   type BookingFeeConfig,
 } from "~/lib/ticketing/money";
 import {
@@ -79,6 +80,7 @@ export type PricedOrder = {
   subtotalCents: number;
   discountCents: number;
   bookingFeeCents: number;
+  venueFeeCents: number;
   totalCents: number;
   gstCents: number;
   quantity: number;
@@ -179,6 +181,9 @@ export async function createPendingOrder({
         gstRateBp: true,
         bookingFeeFixedCents: true,
         bookingFeePercentBp: true,
+        venueHireCents: true,
+        passVenueHire: true,
+        capacity: true,
         termsVersion: true,
       },
     });
@@ -220,6 +225,9 @@ export async function createPendingOrder({
       lines: pricedLines,
       discountCents: discount?.amountCents ?? 0,
       fee,
+      // Not at the door: the sell screen asks for the tier price, so a fee
+      // added here would be recorded but never collected.
+      venueFeePerTicket: boxOffice ? 0 : venueFeePerTicketCents(event),
       gstRateBp: event.gstRateBp,
     });
 
@@ -235,6 +243,7 @@ export async function createPendingOrder({
         subtotalCents: totals.subtotalCents,
         discountCents: totals.discountCents,
         bookingFeeCents: totals.bookingFeeCents,
+        venueFeeCents: totals.venueFeeCents,
         totalCents: totals.totalCents,
         gstCents: totals.gstCents,
         gstRateBp: event.gstRateBp,

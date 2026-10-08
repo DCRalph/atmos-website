@@ -13,7 +13,7 @@ import { toAllocationBudget } from "~/lib/ticketing/capacity";
 import { compCountForEvent } from "~/server/ticketing/inventory";
 
 /**
- * The tiers and door staff of an event, saved as whole lists.
+ * The tiers, door staff and costs of an event, saved as whole lists.
  *
  * The admin editor holds the event as one draft and saves it with one button,
  * so this takes the plan as the admin sees it: every tier in order, every
@@ -56,6 +56,13 @@ export const staffPlanSchema = z.object({
 });
 
 export type StaffPlanInput = z.infer<typeof staffPlanSchema>;
+
+export const costPlanSchema = z.object({
+  label: z.string().trim().min(1, "Give every cost a name"),
+  amountCents: z.number().int().min(0),
+});
+
+export type CostPlanInput = z.infer<typeof costPlanSchema>;
 
 /**
  * Replace the event's tiers with `plan`, in that order.
@@ -211,4 +218,19 @@ export async function applyStaffPlan(
       create: { eventId, userId, role, createdBy },
     });
   }
+}
+
+/**
+ * Replace the event's costs with `plan`. Nothing points at a cost row, so
+ * the list is rewritten rather than diffed.
+ */
+export async function applyCostPlan(
+  tx: Tx,
+  eventId: string,
+  plan: CostPlanInput[],
+): Promise<void> {
+  await tx.ticketEventCost.deleteMany({ where: { eventId } });
+  await tx.ticketEventCost.createMany({
+    data: plan.map((cost, sortOrder) => ({ eventId, ...cost, sortOrder })),
+  });
 }
