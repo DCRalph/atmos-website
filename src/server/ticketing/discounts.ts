@@ -50,29 +50,16 @@ export function normaliseCode(input: string): string {
 }
 
 /**
- * Validate a code against a basket and work out what it is worth.
- * Does not record anything — redemption is written at issuance time, so
- * abandoned checkouts never burn a code.
+ * Find a code and check the rules that don't depend on a basket: active, this
+ * event, inside its window, uses left. Shared by checkout and by the buy
+ * panel's code box, which runs before anything has been picked.
  */
-export async function applyDiscountCode(
+async function findUsableCode(
   tx: Tx,
-  {
-    code,
-    eventId,
-    lines,
-    email,
-    now = new Date(),
-  }: {
-    code: string;
-    eventId: string;
-    lines: PricedLine[];
-    email?: string | null;
-    now?: Date;
-  },
-): Promise<AppliedDiscount> {
-  const normalised = normaliseCode(code);
+  { code, eventId, now }: { code: string; eventId: string; now: Date },
+) {
   const record = await tx.discountCode.findUnique({
-    where: { code: normalised },
+    where: { code: normaliseCode(code) },
   });
 
   if (!record?.isActive) {
@@ -93,6 +80,76 @@ export async function applyDiscountCode(
   ) {
     throw new DiscountError("That code has been fully redeemed.");
   }
+  return record;
+}
+
+/**
+ * The hidden tiers a code opens on this event: its chosen tiers, or every
+ * hidden tier when none were chosen. Only an event's own code unlocks
+ * anything; a code for any event is a discount and nothing more.
+ */
+async function unlockedTierIdsFor(
+  tx: Tx,
+  record: {
+    eventId: string | null;
+    unlocksHiddenTiers: boolean;
+    tierIds: string[];
+  },
+  eventId: string,
+): Promise<string[]> {
+  if (!record.unlocksHiddenTiers || record.eventId !== eventId) return [];
+  const hidden = await tx.ticketTier.findMany({
+    where: {
+      eventId,
+      isHidden: true,
+      ...(record.tierIds.length > 0 ? { id: { in: record.tierIds } } : {}),
+    },
+    select: { id: true },
+  });
+  return hidden.map((t) => t.id);
+}
+
+/**
+ * Check a code before a basket exists and say which hidden tiers it opens.
+ * Throws `DiscountError` with a buyer-facing message when it can't be used.
+ */
+export async function previewDiscountCode(
+  tx: Tx,
+  {
+    code,
+    eventId,
+    now = new Date(),
+  }: { code: string; eventId: string; now?: Date },
+): Promise<{ code: string; unlockedTierIds: string[] }> {
+  const record = await findUsableCode(tx, { code, eventId, now });
+  return {
+    code: record.code,
+    unlockedTierIds: await unlockedTierIdsFor(tx, record, eventId),
+  };
+}
+
+/**
+ * Validate a code against a basket and work out what it is worth.
+ * Does not record anything — redemption is written at issuance time, so
+ * abandoned checkouts never burn a code.
+ */
+export async function applyDiscountCode(
+  tx: Tx,
+  {
+    code,
+    eventId,
+    lines,
+    email,
+    now = new Date(),
+  }: {
+    code: string;
+    eventId: string;
+    lines: PricedLine[];
+    email?: string | null;
+    now?: Date;
+  },
+): Promise<AppliedDiscount> {
+  const record = await findUsableCode(tx, { code, eventId, now });
 
   const totalQuantity = ticketCount(lines);
   if (record.minTickets !== null && totalQuantity < record.minTickets) {
@@ -121,7 +178,14 @@ export async function applyDiscountCode(
     0,
   );
 
-  if (eligibleSubtotal <= 0) {
+  const unlockedTierIds = await unlockedTierIdsFor(tx, record, eventId);
+  const unlocksBasket = lines.some((line) =>
+    unlockedTierIds.includes(line.tierId),
+  );
+
+  // An unlock code has done its job once the basket holds what it opened, even
+  // with nothing to take off: a free guest list tier, or a code worth 0%.
+  if (eligibleSubtotal <= 0 && !unlocksBasket) {
     throw new DiscountError(
       "That code doesn't apply to the tickets you've chosen.",
     );
@@ -132,19 +196,6 @@ export async function applyDiscountCode(
     record.type === DiscountCodeType.PERCENT ? "PERCENT" : "FIXED",
     record.value,
   );
-
-  let unlockedTierIds: string[] = [];
-  if (record.unlocksHiddenTiers) {
-    if (scopedTierIds.length > 0) {
-      unlockedTierIds = scopedTierIds;
-    } else {
-      const hidden = await tx.ticketTier.findMany({
-        where: { eventId, isHidden: true },
-        select: { id: true },
-      });
-      unlockedTierIds = hidden.map((t) => t.id);
-    }
-  }
 
   return { codeId: record.id, code: record.code, amountCents, unlockedTierIds };
 }

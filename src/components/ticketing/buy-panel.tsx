@@ -29,6 +29,9 @@ type PublicTier = PublicEvent["tiers"][number];
  * The booking fee is shown in the summary before any of that — NZ
  * fair-trading rules mean unavoidable fees can't appear for the first time at
  * the payment step.
+ *
+ * The code box is open before anything is picked, because an event's code can
+ * unlock hidden tiers (a presale, a guest list) that then join the list.
  */
 export function BuyPanel({
   event,
@@ -48,17 +51,33 @@ export function BuyPanel({
   // Apple Pay sheet is still on screen showing the old total.
   const [sessionKey, setSessionKey] = useState<string | null>(null);
 
+  const checkedCode = api.ticketEvents.checkCode.useQuery(
+    { eventId: event.id, code: appliedCode ?? "" },
+    { enabled: !!appliedCode, staleTime: Infinity },
+  );
+  const codeCheck = appliedCode ? checkedCode.data : undefined;
+
+  // The event's tiers, plus any hidden ones the applied code has opened.
+  const tiers = useMemo(
+    () => [...event.tiers, ...(codeCheck?.ok ? codeCheck.tiers : [])],
+    [event.tiers, codeCheck],
+  );
+
+  // Only tiers still on screen: swapping the code away drops what it unlocked.
   const lines = useMemo(
     () =>
-      Object.entries(quantities)
-        .filter(([, quantity]) => quantity > 0)
-        .map(([tierId, quantity]) => ({ tierId, quantity })),
-    [quantities],
+      tiers
+        .map((tier) => ({
+          tierId: tier.id,
+          quantity: quantities[tier.id] ?? 0,
+        }))
+        .filter((line) => line.quantity > 0),
+    [tiers, quantities],
   );
 
   // People, not purchases: a group tier's one purchase is several tickets, and
   // the per-order cap counts people.
-  const totalTickets = event.tiers.reduce(
+  const totalTickets = tiers.reduce(
     (sum, tier) => sum + (quantities[tier.id] ?? 0) * tier.groupSize,
     0,
   );
@@ -156,7 +175,7 @@ export function BuyPanel({
   const setQuantity = useCallback(
     (tier: PublicTier, next: number) => {
       setQuantities((current) => {
-        const others = event.tiers.reduce(
+        const others = tiers.reduce(
           (sum, t) =>
             t.id === tier.id ? sum : sum + (current[t.id] ?? 0) * t.groupSize,
           0,
@@ -168,7 +187,28 @@ export function BuyPanel({
         return { ...current, [tier.id]: capped };
       });
     },
-    [event.tiers, event.maxTicketsPerOrder],
+    [tiers, event.maxTicketsPerOrder],
+  );
+
+  const codeBox = (
+    <CodeBox
+      value={codeInput}
+      onChange={setCodeInput}
+      onApply={() => setAppliedCode(codeInput.trim() || null)}
+      busy={checkedCode.isFetching || quote.isFetching}
+      error={
+        codeCheck?.ok === false
+          ? codeCheck.message
+          : (quote.data?.discountError ?? null)
+      }
+      note={
+        codeCheck?.ok && lines.length === 0
+          ? codeCheck.tiers.length > 0
+            ? `${codeCheck.code} unlocked ${codeCheck.tiers.length === 1 ? "a ticket" : `${codeCheck.tiers.length} tickets`}.`
+            : `${codeCheck.code} applies once you pick tickets.`
+          : null
+      }
+    />
   );
 
   if (event.status === "CANCELLED") {
@@ -187,7 +227,11 @@ export function BuyPanel({
     );
   }
 
-  if (event.status === "SOLD_OUT" || !event.onSale) {
+  const unlockedOnSale = codeCheck?.ok
+    ? codeCheck.tiers.some((tier) => tier.available)
+    : false;
+
+  if ((event.status === "SOLD_OUT" || !event.onSale) && !unlockedOnSale) {
     return (
       <PanelShell className={className}>
         <div className="space-y-2 p-5">
@@ -208,6 +252,11 @@ export function BuyPanel({
                   : "Tickets aren't available for this event."}
           </p>
         </div>
+        {/* Checkout refuses a sold out event outright, so a code can only
+            open a presale on one that isn't on sale yet. */}
+        {event.status !== "SOLD_OUT" && (
+          <div className="border-t border-white/10 p-5">{codeBox}</div>
+        )}
       </PanelShell>
     );
   }
@@ -225,7 +274,7 @@ export function BuyPanel({
   return (
     <PanelShell r18={event.isR18} className={className}>
       <ul className="divide-y divide-white/10">
-        {event.tiers.map((tier) => {
+        {tiers.map((tier) => {
           const quantity = quantities[tier.id] ?? 0;
           const disabled = !tier.available;
 
@@ -315,42 +364,15 @@ export function BuyPanel({
       </ul>
 
       {totalTickets === 0 ? (
-        <p className="border-t border-white/10 px-5 py-4 text-[13px] text-white/55">
-          Up to {event.maxTicketsPerOrder} tickets per order.
-        </p>
+        <div className="space-y-3 border-t border-white/10 p-5">
+          {codeBox}
+          <p className="pl-4 text-[13px] text-white/55">
+            Up to {event.maxTicketsPerOrder} tickets per order.
+          </p>
+        </div>
       ) : (
         <div className="space-y-4 border-t border-white/10 p-5">
-          <div>
-            <form
-              className="flex h-11 items-center rounded-full border border-white/15 bg-white/[0.03] p-1 pl-4 focus-within:border-white/50"
-              onSubmit={(e) => {
-                e.preventDefault();
-                setAppliedCode(codeInput.trim() || null);
-              }}
-            >
-              <input
-                value={codeInput}
-                onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
-                placeholder="Discount code"
-                aria-label="Discount code"
-                className="t-label min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-white/40"
-              />
-              <Button
-                type="submit"
-                variant="outline"
-                size="sm"
-                className="h-full"
-                disabled={!codeInput.trim() || quote.isFetching}
-              >
-                Apply
-              </Button>
-            </form>
-            {quote.data?.discountError && (
-              <p className="mt-2 pl-4 text-[13px] text-[var(--site-danger-text)]">
-                {quote.data.discountError}
-              </p>
-            )}
-          </div>
+          {codeBox}
 
           <dl className="space-y-1.5 text-[14px]">
             <Row
@@ -497,6 +519,59 @@ function HoldCountdown({
 }
 
 /** Notched panel with the "Tickets" header every state shares. */
+/** A code: a discount, or the key to an event's hidden tiers. */
+function CodeBox({
+  value,
+  onChange,
+  onApply,
+  busy,
+  error,
+  note,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onApply: () => void;
+  busy: boolean;
+  error: string | null;
+  note: string | null;
+}) {
+  return (
+    <div>
+      <form
+        className="flex h-11 items-center rounded-full border border-white/15 bg-white/[0.03] p-1 pl-4 focus-within:border-white/50"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onApply();
+        }}
+      >
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value.toUpperCase())}
+          placeholder="Code"
+          aria-label="Discount or access code"
+          className="t-label min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-white/40"
+        />
+        <Button
+          type="submit"
+          variant="outline"
+          size="sm"
+          className="h-full"
+          disabled={!value.trim() || busy}
+        >
+          Apply
+        </Button>
+      </form>
+      {error ? (
+        <p className="mt-2 pl-4 text-[13px] text-[var(--site-danger-text)]">
+          {error}
+        </p>
+      ) : note ? (
+        <p className="mt-2 pl-4 text-[13px] text-white/65">{note}</p>
+      ) : null}
+    </div>
+  );
+}
+
 function PanelShell({
   children,
   r18,

@@ -39,6 +39,7 @@ import { ADMITTING_RESULTS } from "~/server/ticketing/scan";
 import { generateQrSecret } from "~/server/ticketing/qr";
 import {
   applyDiscountCode,
+  releaseRedemption,
   recordRedemption,
   type AppliedDiscount,
 } from "~/server/ticketing/discounts";
@@ -704,6 +705,45 @@ export async function deleteTickets(
     isComp: ticket.isComp,
     viaHost: !chosen.has(ticket.id),
   }));
+}
+
+/**
+ * Delete an order outright, for one that should never have existed: a test
+ * purchase, a duplicate. A hold still on it is released, its tickets go the
+ * way `deleteTickets` takes them (seats back on sale), and a code it used gets
+ * that use back. Nothing is refunded — a paid order is refunded first.
+ *
+ * Returns what the order was, for the activity log, or null if it had gone.
+ */
+export async function deleteOrder(orderId: string) {
+  const order = await db.ticketOrder.findUnique({
+    where: { id: orderId },
+    select: {
+      id: true,
+      orderNumber: true,
+      eventId: true,
+      status: true,
+      buyerEmail: true,
+      totalCents: true,
+      refundedCents: true,
+      tickets: { select: { id: true } },
+      redemptions: { select: { codeId: true } },
+    },
+  });
+  if (!order) return null;
+
+  // No-op unless it is still holding stock.
+  await cancelPendingOrder(order.id);
+  const tickets = await deleteTickets(order.tickets.map((ticket) => ticket.id));
+
+  await db.$transaction(async (tx) => {
+    for (const { codeId } of order.redemptions) {
+      await releaseRedemption(tx, { codeId, orderId: order.id });
+    }
+    await tx.ticketOrder.delete({ where: { id: order.id } });
+  });
+
+  return { ...order, tickets };
 }
 
 /**

@@ -43,13 +43,18 @@ import {
   getTicketingSettings,
   resolveBookingFee,
 } from "~/server/ticketing/settings";
+import {
+  DiscountError,
+  previewDiscountCode,
+} from "~/server/ticketing/discounts";
+import { enforceRateLimit } from "~/server/ticketing/rate-limit";
 import { scheduleEventPassUpdates } from "~/server/wallet/apple-push";
 import { eventHasPassVisibleChange } from "~/server/wallet/pass-updates";
 import type { SerializedEditorState } from "lexical";
 
 /**
  * Admin CRUD for ticketed events, their tiers, and door staff assignments,
- * plus the two public reads the buy panel needs.
+ * plus the public reads the buy panel needs.
  */
 
 const LEXICAL_STATE_SCHEMA = z.custom<SerializedEditorState>(
@@ -904,6 +909,61 @@ export const ticketEventsRouter = createTRPCRouter({
       return toPublicEvent(event, await getTicketingSettings());
     }),
 
+  /**
+   * The buy panel's code box. Checks a code before anything is in the basket
+   * and returns the hidden tiers it opens, in the same shape as the event's
+   * own tiers so the panel can list them alongside. What it is worth is still
+   * priced by `quote`, against the basket.
+   */
+  checkCode: publicProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        code: z.string().trim().min(1).max(64),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      // Shares its budget with `quote`, so the two together can't be used to
+      // guess codes faster than either alone.
+      const ip =
+        ctx.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+      await enforceRateLimit({
+        key: `discount:${ip}`,
+        limit: 20,
+        windowSeconds: 300,
+        message: "Too many code attempts. Wait a few minutes and try again.",
+      });
+
+      const event = await ctx.db.ticketEvent.findUnique({
+        where: { id: input.eventId },
+        include: { tiers: { orderBy: { sortOrder: "asc" } } },
+      });
+      if (!event) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+      }
+
+      try {
+        const preview = await previewDiscountCode(ctx.db, {
+          code: input.code,
+          eventId: event.id,
+        });
+        const unlocked = new Set(preview.unlockedTierIds);
+        const settings = await getTicketingSettings();
+        return {
+          ok: true as const,
+          code: preview.code,
+          tiers: toPublicEvent(event, settings, unlocked).tiers.filter((tier) =>
+            unlocked.has(tier.id),
+          ),
+        };
+      } catch (cause) {
+        if (cause instanceof DiscountError) {
+          return { ok: false as const, message: cause.message };
+        }
+        throw cause;
+      }
+    }),
+
   /** Buy panel data for a gig page. Null when the gig has no live event. */
   forGig: publicProcedure
     .input(z.object({ gigId: z.string() }))
@@ -1004,6 +1064,8 @@ type EventWithTiers = Prisma.TicketEventGetPayload<{
 function toPublicEvent(
   event: EventWithTiers,
   settings: Awaited<ReturnType<typeof getTicketingSettings>>,
+  /** Hidden tiers a buyer's code has opened, listed like any other. */
+  unlockedTierIds: ReadonlySet<string> = new Set(),
 ) {
   const now = new Date();
   const fee = resolveBookingFee(event, settings);
@@ -1013,11 +1075,14 @@ function toPublicEvent(
   const tiers = event.tiers
     .map((tier) => ({
       tier,
-      reason: tierUnavailableReason(tier, now, { tiers: event.tiers }),
+      reason: tierUnavailableReason(tier, now, {
+        tiers: event.tiers,
+        unlockedHiddenTiers: [...unlockedTierIds],
+      }),
     }))
     .filter(
       ({ tier, reason }) =>
-        !tier.isHidden &&
+        (!tier.isHidden || unlockedTierIds.has(tier.id)) &&
         reason !== "WAITING_FOR_PREVIOUS" &&
         reason !== "NOT_SOLD_HERE",
     )

@@ -1,7 +1,14 @@
 import { useMemo, useState } from "react";
 import * as WebBrowser from "expo-web-browser";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Check, Minus, Plus, X } from "lucide-react-native";
 
@@ -9,7 +16,7 @@ import { tierUnavailableLabel } from "~/lib/ticketing/tiers";
 
 import { api } from "@/lib/api";
 import { API_URL } from "@/lib/env";
-import { colors, radius, space } from "@/lib/theme";
+import { colors, radius, space, stroke } from "@/lib/theme";
 import {
   Body,
   Button,
@@ -22,7 +29,12 @@ import {
 
 const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
-/** Pick tickets. Pricing comes from `quote`, so it can never drift from web. */
+/**
+ * Pick tickets. Pricing comes from `quote`, so it can never drift from web.
+ *
+ * The code box works before anything is picked, because an event's code can
+ * unlock hidden tiers (a presale, a guest list) that then join the list.
+ */
 export default function TiersScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
@@ -30,6 +42,8 @@ export default function TiersScreen() {
 
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [accepted, setAccepted] = useState(false);
+  const [codeInput, setCodeInput] = useState("");
+  const [appliedCode, setAppliedCode] = useState<string | null>(null);
 
   // `bySlug` is the public accessor — it applies the visibility rules and
   // strips stock levels, which is why the app never sees raw counts.
@@ -40,18 +54,35 @@ export default function TiersScreen() {
   const config = api.ticketCheckout.config.useQuery();
   const eventId = event.data?.id ?? "";
 
+  const checkedCode = api.ticketEvents.checkCode.useQuery(
+    { eventId, code: appliedCode ?? "" },
+    { enabled: !!appliedCode && !!eventId, staleTime: Infinity },
+  );
+  const codeCheck = appliedCode ? checkedCode.data : undefined;
+
+  // The event's tiers, plus any hidden ones the applied code has opened.
+  const tiers = useMemo(
+    () => [
+      ...(event.data?.tiers ?? []),
+      ...(codeCheck?.ok ? codeCheck.tiers : []),
+    ],
+    [event.data?.tiers, codeCheck],
+  );
+
+  // Only tiers still on screen: swapping the code away drops what it unlocked.
   const lines = useMemo(
     () =>
-      Object.entries(quantities)
-        .filter(([, quantity]) => quantity > 0)
-        .map(([tierId, quantity]) => ({ tierId, quantity })),
-    [quantities],
+      tiers
+        .map((tier) => ({ tierId: tier.id, quantity: quantities[tier.id] ?? 0 }))
+        .filter((line) => line.quantity > 0),
+    [tiers, quantities],
   );
+  const discountCode = appliedCode ?? undefined;
 
   // Priced server-side on every change: discounts, booking fee and GST are
   // rules the app has no business reimplementing.
   const quote = api.ticketCheckout.quote.useQuery(
-    { eventId, lines },
+    { eventId, lines, discountCode },
     { enabled: lines.length > 0 && !!eventId },
   );
 
@@ -78,7 +109,16 @@ export default function TiersScreen() {
     },
   });
 
-  const tiers = event.data?.tiers ?? [];
+  const codeError =
+    codeCheck?.ok === false
+      ? codeCheck.message
+      : (quote.data?.discountError ?? null);
+  const codeNote =
+    codeCheck?.ok && lines.length === 0
+      ? codeCheck.tiers.length > 0
+        ? `${codeCheck.code} unlocked ${codeCheck.tiers.length === 1 ? "a ticket" : `${codeCheck.tiers.length} tickets`}.`
+        : `${codeCheck.code} applies once you pick tickets.`
+      : null;
   // A group tier's purchase is several tickets.
   const ticketCount = tiers.reduce(
     (sum, tier) => sum + (quantities[tier.id] ?? 0) * tier.groupSize,
@@ -157,6 +197,37 @@ export default function TiersScreen() {
           </View>
         )}
 
+        {event.data ? (
+          <View style={{ gap: space.xs }}>
+            <View style={styles.codeRow}>
+              <TextInput
+                value={codeInput}
+                onChangeText={(text) => setCodeInput(text.toUpperCase())}
+                onSubmitEditing={() => setAppliedCode(codeInput.trim() || null)}
+                placeholder="Discount or access code"
+                placeholderTextColor={colors.textFaint}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                returnKeyType="done"
+                style={styles.codeInput}
+              />
+              <Button
+                variant="outline"
+                disabled={!codeInput.trim()}
+                loading={checkedCode.isFetching}
+                onPress={() => setAppliedCode(codeInput.trim() || null)}
+              >
+                Apply
+              </Button>
+            </View>
+            {codeError ? (
+              <Caption style={{ color: colors.deny }}>{codeError}</Caption>
+            ) : codeNote ? (
+              <Caption>{codeNote}</Caption>
+            ) : null}
+          </View>
+        ) : null}
+
         {quote.data ? (
           <View style={styles.totals}>
             <Line label="Subtotal" value={money(quote.data.subtotalCents)} />
@@ -224,7 +295,7 @@ export default function TiersScreen() {
             disabled={!accepted || quote.isPending}
             loading={start.isPending}
             onPress={() =>
-              start.mutate({ eventId, lines, acceptTerms: true })
+              start.mutate({ eventId, lines, discountCode, acceptTerms: true })
             }
           >
             {quote.data
@@ -311,6 +382,18 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   stepper: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  codeRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  codeInput: {
+    flex: 1,
+    height: 46,
+    borderRadius: radius.md,
+    borderWidth: stroke.hair,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: space.lg,
+    color: colors.text,
+    fontSize: 16,
+  },
   stepBtn: {
     width: 40,
     height: 40,

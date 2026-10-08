@@ -117,6 +117,10 @@ export function TicketsPanel({ eventId }: { eventId: string }) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<TicketRow | null>(null);
   const [deleting, setDeleting] = useState<TicketRow[] | null>(null);
+  // Deleting is superadmin-only; everyone else voids or refunds.
+  const me = api.user.me.useQuery();
+  const canDelete =
+    me.data?.effectivePermissions.includes("SUPERADMIN") ?? false;
   const [filters, setFilters] = useState<TicketFilters>(NO_TICKET_FILTERS);
   const debouncedSearch = useDebouncedValue(search);
 
@@ -326,13 +330,17 @@ export function TicketsPanel({ eventId }: { eventId: string }) {
         onRowClick={(row) => setSelected(row)}
         storageKey="admin-event-tickets"
         emptyMessage="No tickets yet."
-        bulkActions={[
-          {
-            label: "Delete",
-            variant: "destructive",
-            onClick: (selectedRows) => setDeleting(selectedRows),
-          },
-        ]}
+        bulkActions={
+          canDelete
+            ? [
+                {
+                  label: "Delete",
+                  variant: "destructive",
+                  onClick: (selectedRows) => setDeleting(selectedRows),
+                },
+              ]
+            : undefined
+        }
         toolbarActions={
           <div className="relative w-full max-w-xs">
             <Search
@@ -376,10 +384,14 @@ export function TicketsPanel({ eventId }: { eventId: string }) {
             <TicketDetail
               key={openTicket.id}
               ticket={openTicket}
-              onDelete={() => {
-                setDeleting([openTicket]);
-                setSelected(null);
-              }}
+              onDelete={
+                canDelete
+                  ? () => {
+                      setDeleting([openTicket]);
+                      setSelected(null);
+                    }
+                  : undefined
+              }
             />
           )}
         </DialogContent>
@@ -519,7 +531,8 @@ function TicketDetail({
   onDelete,
 }: {
   ticket: TicketRow;
-  onDelete: () => void;
+  /** Absent for anyone who isn't a superadmin. */
+  onDelete?: () => void;
 }) {
   const utils = api.useUtils();
   const confirm = useConfirm();
@@ -721,20 +734,22 @@ function TicketDetail({
         </div>
       )}
 
-      {/* Always available, including on a ticket that is already void: this is
-          how a row that shouldn't exist leaves the door list for good. */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-        <p className="text-muted-foreground text-xs">
-          Voiding keeps the ticket and its history. Deleting takes both.
-        </p>
-        <Button
-          variant="outline"
-          className="text-destructive hover:text-destructive"
-          onClick={onDelete}
-        >
-          <Trash2 className="size-4" /> Delete
-        </Button>
-      </div>
+      {/* Available to superadmins on any ticket, including one already void:
+          this is how a row that shouldn't exist leaves the door list for good. */}
+      {onDelete && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+          <p className="text-muted-foreground text-xs">
+            Voiding keeps the ticket and its history. Deleting takes both.
+          </p>
+          <Button
+            variant="outline"
+            className="text-destructive hover:text-destructive"
+            onClick={onDelete}
+          >
+            <Trash2 className="size-4" /> Delete
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
