@@ -380,7 +380,11 @@ function BreakEven({
                 ? "loss"
                 : "gain"
           }
-          sub={`${costs.sellable} sold at the same average`}
+          sub={
+            costs.revenueIfSoldOutCents === null
+              ? `${costs.sellable} sold`
+              : `${formatNZD(costs.revenueIfSoldOutCents)} revenue · ${costs.sellable} sold`
+          }
         />
         <StatTile
           label="Per ticket"
