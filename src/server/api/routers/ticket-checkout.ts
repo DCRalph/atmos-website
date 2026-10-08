@@ -4,7 +4,11 @@ import { z } from "zod";
 import { PaymentMethodKind, TicketOrderStatus } from "~Prisma/client";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { env } from "~/env";
-import { getStripe, isStripeConfigured } from "~/server/stripe";
+import {
+  buyerFromCharge,
+  getStripe,
+  isStripeConfigured,
+} from "~/server/stripe";
 import { ticketCount } from "~/lib/ticketing/capacity";
 import { computeOrderTotals } from "~/lib/ticketing/money";
 import { applyDiscountCode } from "~/server/ticketing/discounts";
@@ -413,9 +417,7 @@ export const ticketCheckoutRouter = createTRPCRouter({
 
       const result = await issueTicketsForOrder({
         orderId: order.id,
-        buyerEmail:
-          intent.receipt_email ?? charge?.billing_details?.email ?? null,
-        buyerName: charge?.billing_details?.name ?? null,
+        ...buyerFromCharge(intent, charge),
         paymentIntentId: intent.id,
         chargeId: charge?.id ?? null,
         paymentMethod: PaymentMethodKind.STRIPE,

@@ -296,6 +296,7 @@ export async function issueTicketsForOrder({
   buyerEmail,
   buyerName,
   buyerPhone,
+  buyerAddress,
   paymentIntentId,
   chargeId,
   paymentMethod,
@@ -307,6 +308,7 @@ export async function issueTicketsForOrder({
   buyerEmail?: string | null;
   buyerName?: string | null;
   buyerPhone?: string | null;
+  buyerAddress?: string | null;
   paymentIntentId?: string | null;
   chargeId?: string | null;
   paymentMethod?: PaymentMethodKind;
@@ -351,6 +353,7 @@ export async function issueTicketsForOrder({
         ...(buyerEmail ? { buyerEmail: buyerEmail.toLowerCase().trim() } : {}),
         ...(buyerName ? { buyerName } : {}),
         ...(buyerPhone ? { buyerPhone } : {}),
+        ...(buyerAddress ? { buyerAddress } : {}),
         ...(paymentIntentId ? { stripePaymentIntentId: paymentIntentId } : {}),
         ...(chargeId ? { stripeChargeId: chargeId } : {}),
         ...(paymentMethod ? { paymentMethod } : {}),

@@ -7,7 +7,11 @@ import {
 } from "~Prisma/client";
 import { env } from "~/env";
 import { db } from "~/server/db";
-import { getStripe, isStripeConfigured } from "~/server/stripe";
+import {
+  buyerFromCharge,
+  getStripe,
+  isStripeConfigured,
+} from "~/server/stripe";
 import {
   issueTicketsForOrder,
   syncMarketingConsent,
@@ -93,9 +97,7 @@ async function reconcileUnissuedOrders(): Promise<number> {
 
       const result = await issueTicketsForOrder({
         orderId: order.id,
-        buyerEmail:
-          intent.receipt_email ?? charge?.billing_details?.email ?? null,
-        buyerName: charge?.billing_details?.name ?? null,
+        ...buyerFromCharge(intent, charge),
         paymentIntentId: intent.id,
         chargeId: charge?.id ?? null,
         paymentMethod: PaymentMethodKind.STRIPE,

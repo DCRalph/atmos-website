@@ -38,3 +38,42 @@ export function isStripeConfigured(): boolean {
 export function isStripeTestMode(): boolean {
   return env.STRIPE_SECRET_KEY?.startsWith("sk_test_") ?? false;
 }
+
+/**
+ * Who paid, as Stripe saw it. Shared by every path that issues a paid order
+ * (webhook, instant confirm, cron rescue) so they all save the same fields.
+ *
+ * Phone and address only exist when a wallet supplied them: Express Checkout
+ * asks Apple Pay / Google Pay / Link for both, the card form asks for neither.
+ */
+export function buyerFromCharge(
+  intent: Stripe.PaymentIntent,
+  charge: Stripe.Charge | null,
+) {
+  const billing = charge?.billing_details;
+  return {
+    buyerEmail: intent.receipt_email ?? billing?.email ?? null,
+    buyerName: billing?.name ?? null,
+    buyerPhone: billing?.phone ?? null,
+    buyerAddress: formatAddress(billing?.address),
+  };
+}
+
+/**
+ * One line, in the order you'd write it on an envelope. Null when there's no
+ * street line: Apple Pay without a contact request still sends a postcode and
+ * country, which isn't an address worth keeping.
+ */
+function formatAddress(address: Stripe.Address | null | undefined) {
+  if (!address?.line1) return null;
+  return [
+    address.line1,
+    address.line2,
+    address.city,
+    address.state,
+    address.postal_code,
+    address.country,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}

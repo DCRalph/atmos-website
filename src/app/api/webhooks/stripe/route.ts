@@ -9,7 +9,7 @@ import {
 } from "~Prisma/client";
 import { env } from "~/env";
 import { db } from "~/server/db";
-import { getStripe } from "~/server/stripe";
+import { buyerFromCharge, getStripe } from "~/server/stripe";
 import { sendTicketEmail } from "~/server/ticketing/email/send";
 import {
   cancelPendingOrder,
@@ -99,13 +99,9 @@ async function handlePaymentSucceeded(
 
   // Apple Pay / Google Pay / Link all populate billing details, which is how
   // the buyer's email reaches us without them ever typing it.
-  const email = intent.receipt_email ?? charge?.billing_details?.email ?? null;
-
   const result = await issueTicketsForOrder({
     orderId,
-    buyerEmail: email,
-    buyerName: charge?.billing_details?.name ?? null,
-    buyerPhone: charge?.billing_details?.phone ?? null,
+    ...buyerFromCharge(intent, charge),
     paymentIntentId: intent.id,
     chargeId: charge?.id ?? null,
     paymentMethod: PaymentMethodKind.STRIPE,
