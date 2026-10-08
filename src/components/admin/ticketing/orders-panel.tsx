@@ -356,6 +356,10 @@ function OrderDetail({
           {data.refundedCents > 0 && (
             <Row label="Refunded" value={formatNZD(data.refundedCents)} />
           )}
+          {data.buyerPhone && <Row label="Phone" value={data.buyerPhone} />}
+          {data.buyerAddress && (
+            <Row label="Address" value={data.buyerAddress} />
+          )}
           {data.status === "PENDING" && data.expiresAt && (
             <Row label="Held until" value={formatDateTime(data.expiresAt)} />
           )}

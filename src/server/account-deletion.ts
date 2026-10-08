@@ -61,6 +61,7 @@ export async function anonymiseAndDeleteUser(userId: string): Promise<void> {
         buyerEmail: null,
         buyerName: null,
         buyerPhone: null,
+        buyerAddress: null,
         ipAddress: null,
         marketingOptIn: false,
       },

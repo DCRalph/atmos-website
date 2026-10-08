@@ -1650,6 +1650,9 @@ model TicketOrder {
   buyerEmail String?
   buyerName  String?
   buyerPhone String?
+  /// Billing address, one line. Only ever filled from a wallet (Apple Pay,
+  /// Google Pay, Link) that hands it over; checkout never asks for it.
+  buyerAddress String?
   userId     String?
 
   subtotalCents   Int    @default(0)

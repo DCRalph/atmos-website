@@ -44,7 +44,9 @@ export type CheckoutSession = {
  * fallback, not the headline.
  *
  * Neither path asks who the buyer is. Everyone lands on
- * `/tickets/[token]/details` afterwards, ticket already in hand.
+ * `/tickets/[token]/details` afterwards, ticket already in hand. Wallets are
+ * also asked for a phone number and billing address, which they fill from
+ * what's saved; card buyers are never asked for either.
  */
 
 let stripePromise: Promise<Stripe | null> | null = null;
@@ -151,7 +153,14 @@ function PaidCheckout({ session }: { session: CheckoutSession }) {
   return (
     <div className="space-y-4">
       <ExpressCheckoutElement
-        options={{ buttonHeight: 48 }}
+        // The wallet already knows these, so asking costs the buyer nothing.
+        // The card form below deliberately doesn't: nobody types an address
+        // to buy a ticket.
+        options={{
+          buttonHeight: 48,
+          phoneNumberRequired: true,
+          billingAddressRequired: true,
+        }}
         onClick={({ resolve }) => resolve({})}
         onConfirm={() => void pay()}
       />
