@@ -121,3 +121,25 @@ export function tierUnavailableReason(
   if (remainingInTier(tier) < tier.groupSize) return "SOLD_OUT";
   return null;
 }
+
+/** The buyer-facing label for an unavailable tier, shared by web and app checkout. */
+export function tierUnavailableLabel(tier: {
+  unavailableReason: TierUnavailableReason | null;
+  salesStartAt: Date | null;
+}): string {
+  switch (tier.unavailableReason) {
+    case "SOLD_OUT":
+      return "Sold out";
+    case "NOT_ON_SALE_YET":
+      return tier.salesStartAt
+        ? `On sale ${tier.salesStartAt.toLocaleDateString("en-NZ", {
+            day: "numeric",
+            month: "short",
+          })}`
+        : "Not on sale yet";
+    case "SALES_CLOSED":
+      return "Sales closed";
+    default:
+      return "Unavailable";
+  }
+}

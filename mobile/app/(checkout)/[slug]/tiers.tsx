@@ -5,6 +5,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Check, Minus, Plus, X } from "lucide-react-native";
 
+import { tierUnavailableLabel } from "~/lib/ticketing/tiers";
+
 import { api } from "@/lib/api";
 import { API_URL } from "@/lib/env";
 import { colors, radius, space } from "@/lib/theme";
@@ -131,7 +133,7 @@ export default function TiersScreen() {
                     </Caption>
                     {!tier.available ? (
                       <Pill tone="deny">
-                        {tier.unavailableReason ?? "Unavailable"}
+                        {tierUnavailableLabel(tier)}
                       </Pill>
                     ) : tier.lowStock ? (
                       <Pill tone="warn">{tier.remainingIfLow} left</Pill>

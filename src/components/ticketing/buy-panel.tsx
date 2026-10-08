@@ -10,6 +10,7 @@ import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { formatCountdown } from "~/lib/ticketing/dates";
 import { formatNZD, formatNZDCompact } from "~/lib/ticketing/money";
+import { tierUnavailableLabel } from "~/lib/ticketing/tiers";
 import { CheckoutSection, type CheckoutSession } from "./checkout-panel";
 
 type PublicEvent = NonNullable<RouterOutputs["ticketEvents"]["bySlug"]>;
@@ -271,7 +272,7 @@ export function BuyPanel({
                 )}
                 {disabled && (
                   <p className="mt-1.5 text-[12px] text-white/50">
-                    {unavailableLabel(tier)}
+                    {tierUnavailableLabel(tier)}
                   </p>
                 )}
               </div>
@@ -548,24 +549,6 @@ function Row({
       <dd className="tabular-nums">{value}</dd>
     </div>
   );
-}
-
-function unavailableLabel(tier: PublicTier): string {
-  switch (tier.unavailableReason) {
-    case "SOLD_OUT":
-      return "Sold out";
-    case "NOT_ON_SALE_YET":
-      return tier.salesStartAt
-        ? `On sale ${tier.salesStartAt.toLocaleDateString("en-NZ", {
-            day: "numeric",
-            month: "short",
-          })}`
-        : "Not on sale yet";
-    case "SALES_CLOSED":
-      return "Sales closed";
-    default:
-      return "Unavailable";
-  }
 }
 
 /**

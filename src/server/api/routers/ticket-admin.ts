@@ -651,6 +651,60 @@ export const ticketAdminRouter = createTRPCRouter({
       return { ticketsUrl: ticketsUrl(orderAccessToken(order)) };
     }),
 
+  /**
+   * End a held checkout now instead of waiting out its hold, putting the seats
+   * back on sale. The PaymentIntent is cancelled first so the buyer can't pay
+   * for an order that no longer holds anything; if Stripe already took the
+   * money, the order is left for the webhook to issue.
+   */
+  expireOrder: adminProcedure
+    .input(z.object({ orderId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const order = await ctx.db.ticketOrder.findUnique({
+        where: { id: input.orderId },
+        select: {
+          id: true,
+          status: true,
+          orderNumber: true,
+          stripePaymentIntentId: true,
+        },
+      });
+      if (order?.status !== TicketOrderStatus.PENDING) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "That order is no longer held.",
+        });
+      }
+
+      if (order.stripePaymentIntentId && isStripeConfigured()) {
+        const stripe = getStripe();
+        const intent = await stripe.paymentIntents.retrieve(
+          order.stripePaymentIntentId,
+        );
+        if (intent.status === "succeeded" || intent.status === "processing") {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "The buyer has already paid. Their tickets will be issued shortly.",
+          });
+        }
+        if (intent.status !== "canceled") {
+          await stripe.paymentIntents.cancel(intent.id);
+        }
+      }
+
+      await cancelPendingOrder(order.id, TicketOrderStatus.EXPIRED);
+
+      await logActivity({
+        type: ActivityType.TICKET_EVENT_UPDATED,
+        action: `Expired held order ${order.orderNumber}`,
+        userId: ctx.session.user.id,
+        details: { orderId: order.id },
+      });
+
+      return { ok: true as const };
+    }),
+
   // ------------------------------------------------------------------ comps
 
   /**

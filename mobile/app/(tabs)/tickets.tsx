@@ -1,8 +1,9 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "expo-router";
 import { Animated, RefreshControl, View } from "react-native";
+import Reanimated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
-import { api, type RouterOutputs } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { mediaUrl } from "@/lib/media";
 import { colors, space } from "@/lib/theme";
@@ -18,14 +19,14 @@ import {
 } from "@/components/screen-header";
 import { useTabBarSpace } from "@/components/tab-bar";
 
-type OrderSummary = RouterOutputs["tickets"]["mine"][number];
-
 /**
  * My tickets, stacked like Wallet.
  *
- * The soonest order is the pass at the front, QR and all, over its own
- * poster blurred out behind the screen. Later orders tuck in behind it as
- * strips; tapping one opens it. Past orders are a second shelf.
+ * One order at a time is open as a full pass, QR and all, over its own
+ * poster blurred out behind the screen; the rest are strips. Tapping a strip
+ * opens it in place, and its tickets swipe sideways inside the pass. Upcoming
+ * opens on the soonest night; past orders are a second shelf that opens on
+ * nothing.
  *
  * The app is not the only thing you can hold up at the door: a wallet pass
  * is faster, works offline and needs no sign-in, so every pass offers one.
@@ -36,6 +37,7 @@ export default function TicketsScreen() {
   const { scrollY, scrollProps } = useScrollHeader();
   const { user, isPending: sessionPending } = useAuth();
   const [showPast, setShowPast] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const mine = api.tickets.mine.useQuery(undefined, { enabled: !!user });
@@ -47,26 +49,25 @@ export default function TicketsScreen() {
     .filter((o) => new Date(o.event.startsAt).getTime() >= now)
     .reverse();
   const past = orders.filter((o) => new Date(o.event.startsAt).getTime() < now);
-  const front = showPast ? undefined : upcoming[0];
+  // Furthest night at the back, so the stack reads top-down in the order the
+  // nights come and the soonest sits at the front.
+  const shelf = showPast ? past : [...upcoming].reverse();
+  const open =
+    shelf.find((o) => o.orderId === openId) ??
+    (showPast ? undefined : upcoming[0]);
 
-  const frontOrder = api.tickets.byAccessToken.useQuery(
-    { accessToken: front?.accessToken ?? "" },
-    { enabled: !!front },
+  const openOrder = api.tickets.byAccessToken.useQuery(
+    { accessToken: open?.accessToken ?? "" },
+    { enabled: !!open },
   );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([mine.refetch(), front ? frontOrder.refetch() : null]);
+    await Promise.all([mine.refetch(), open ? openOrder.refetch() : null]);
     setRefreshing(false);
-  }, [mine, front, frontOrder]);
+  }, [mine, open, openOrder]);
 
-  const open = (order: OrderSummary) =>
-    router.push({
-      pathname: "/tickets/[orderId]",
-      params: { orderId: order.orderId, token: order.accessToken },
-    });
-
-  const poster = front?.event.posterFileUploadId;
+  const poster = open?.event.posterFileUploadId;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -91,7 +92,10 @@ export default function TicketsScreen() {
               <Button
                 variant="glass"
                 size="sm"
-                onPress={() => setShowPast((v) => !v)}
+                onPress={() => {
+                  setShowPast((v) => !v);
+                  setOpenId(null);
+                }}
               >
                 {showPast ? "Upcoming" : `Past ${past.length}`}
               </Button>
@@ -126,20 +130,7 @@ export default function TicketsScreen() {
             />
           ) : mine.isPending ? (
             <Loading />
-          ) : showPast ? (
-            <View>
-              {past.map((order) => (
-                <PassStrip
-                  key={order.orderId}
-                  stacked={false}
-                  name={order.event.name}
-                  note={formatGigDate(order.event.startsAt)}
-                  posterFileUploadId={order.event.posterFileUploadId}
-                  onPress={() => open(order)}
-                />
-              ))}
-            </View>
-          ) : !front ? (
+          ) : shelf.length === 0 ? (
             <Notice
               title={orders.length ? "Nothing coming up" : "No tickets yet"}
               detail={
@@ -158,30 +149,42 @@ export default function TicketsScreen() {
             />
           ) : (
             <View>
-              {/* Furthest away at the back, so the stack reads top-down in
-                  the order the nights come. */}
-              {upcoming
-                .slice(1)
-                .reverse()
-                .map((order) => (
-                  <PassStrip
+              {shelf.map((order, i) => {
+                const isOpen = order.orderId === open?.orderId;
+                const next = shelf[i + 1];
+                return (
+                  <Reanimated.View
                     key={order.orderId}
-                    name={order.event.name}
-                    note={formatGigDate(order.event.startsAt)}
-                    posterFileUploadId={order.event.posterFileUploadId}
-                    onPress={() => open(order)}
-                  />
-                ))}
-              {frontOrder.data ? (
-                <Pass order={frontOrder.data} />
-              ) : frontOrder.isPending ? (
-                <Loading label="Loading tickets" />
-              ) : (
-                <Notice
-                  title="Couldn't open that order"
-                  detail="Pull down to try again."
-                />
-              )}
+                    layout={LinearTransition.duration(220)}
+                    style={
+                      isOpen && next ? { marginBottom: space.lg } : undefined
+                    }
+                  >
+                    {!isOpen ? (
+                      <PassStrip
+                        // Upcoming tucks under whatever follows, Wallet style;
+                        // past is a plain list.
+                        stacked={!showPast && !!next}
+                        name={order.event.name}
+                        note={formatGigDate(order.event.startsAt)}
+                        posterFileUploadId={order.event.posterFileUploadId}
+                        onPress={() => setOpenId(order.orderId)}
+                      />
+                    ) : openOrder.data?.orderId === order.orderId ? (
+                      <Reanimated.View entering={FadeIn.duration(220)}>
+                        <Pass order={openOrder.data} />
+                      </Reanimated.View>
+                    ) : openOrder.isError ? (
+                      <Notice
+                        title="Couldn't open that order"
+                        detail="Pull down to try again."
+                      />
+                    ) : (
+                      <Loading label="Loading tickets" />
+                    )}
+                  </Reanimated.View>
+                );
+              })}
             </View>
           )}
         </View>
