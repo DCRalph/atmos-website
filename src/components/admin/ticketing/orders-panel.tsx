@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Link2, Mail, Search, Undo2 } from "lucide-react";
+import { Copy, Link2, Mail, Search, TimerOff, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 
 import type { PaymentMethodKind } from "~Prisma/client";
@@ -288,6 +288,15 @@ function OrderDetail({
     },
   });
 
+  const expire = api.ticketAdmin.expireOrder.useMutation({
+    onSuccess: () => {
+      toast.success("Hold released. The seats are back on sale.");
+      void utils.ticketAdmin.invalidate();
+      void utils.ticketAnalytics.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
   if (order.isPending) {
     return <Skeleton className="h-40" />;
   }
@@ -312,9 +321,31 @@ function OrderDetail({
           {data.refundedCents > 0 && (
             <Row label="Refunded" value={formatNZD(data.refundedCents)} />
           )}
+          {data.status === "PENDING" && data.expiresAt && (
+            <Row label="Held until" value={formatDateTime(data.expiresAt)} />
+          )}
         </dl>
 
         <div className="space-y-2">
+          {!readOnly && data.status === "PENDING" && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={expire.isPending}
+              onClick={async () => {
+                const ok = await confirm({
+                  title: "Expire this held order?",
+                  description:
+                    "Cancels the checkout and puts its seats back on sale. The buyer can no longer pay for it.",
+                  confirmLabel: "Expire order",
+                  variant: "destructive",
+                });
+                if (ok) expire.mutate({ orderId });
+              }}
+            >
+              <TimerOff className="size-3.5" /> Expire hold
+            </Button>
+          )}
           {!readOnly && supportUrl && (
             <div className="flex flex-wrap gap-2">
               <Button
