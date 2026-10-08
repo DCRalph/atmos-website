@@ -21,6 +21,7 @@ import {
   venueFeePerTicketCents,
   ZERO_BOOKING_FEE,
 } from "~/lib/ticketing/money";
+import { cn } from "~/lib/utils";
 import { newCost, parseCount, type AdminEvent, type CostDraft } from "./draft";
 import type { EventDraftState } from "./use-event-draft";
 import { Field, Toggle } from "./fields";
@@ -62,18 +63,30 @@ export function CostsSection({
           percentBp: Math.round((Number(draft.feePercent) || 0) * 100),
         }
       : (event?.siteDefaults.bookingFee ?? ZERO_BOOKING_FEE);
+  const tiers = draft.tiers
+    .filter((tier) => tier.isActive)
+    .map((tier) => ({
+      priceCents: parsePriceToCents(tier.price) ?? 0,
+      allocation: Number(tier.allocation) || 0,
+      groupSize: Number(tier.groupSize) || 1,
+    }));
   const perTicket = planRevenuePerTicketCents({
-    tiers: draft.tiers
-      .filter((tier) => tier.isActive)
-      .map((tier) => ({
-        priceCents: parsePriceToCents(tier.price) ?? 0,
-        allocation: Number(tier.allocation) || 0,
-        groupSize: Number(tier.groupSize) || 1,
-      })),
+    tiers,
     fee,
     venueFeePerTicket: venueFee,
   });
   const breakEven = breakEvenTickets(totalCents, perTicket);
+
+  // A sell-out is every tier gone, but never past the room less its comps.
+  const planned = tiers.reduce((sum, tier) => sum + tier.allocation, 0);
+  const sellable =
+    capacity === null
+      ? planned
+      : Math.min(
+          planned,
+          Math.max(0, capacity - (parseCount(draft.compAllowance) ?? 0)),
+        );
+  const sellOutRevenue = perTicket === null ? null : sellable * perTicket;
 
   const setCosts = (costs: CostDraft[]) => update("costs", costs);
   const patchCost = (key: string, patch: Partial<CostDraft>) =>
@@ -223,6 +236,27 @@ export function CostsSection({
                   : `${breakEven} ${breakEven === 1 ? "ticket" : "tickets"}`
               }
             />
+            {sellOutRevenue !== null ? (
+              <>
+                <Row
+                  label={`Revenue if all ${sellable} sell`}
+                  value={formatNZD(sellOutRevenue)}
+                />
+                <div className="flex justify-between gap-3 font-semibold">
+                  <dt>Profit if it sells out</dt>
+                  <dd
+                    className={cn(
+                      "tabular-nums",
+                      sellOutRevenue - totalCents < 0
+                        ? "text-destructive"
+                        : "text-emerald-600 dark:text-emerald-400",
+                    )}
+                  >
+                    {formatNZD(sellOutRevenue - totalCents)}
+                  </dd>
+                </div>
+              </>
+            ) : null}
           </dl>
           {perTicket !== null && totalCents > 0 ? (
             <p className="text-muted-foreground mt-3 text-xs">

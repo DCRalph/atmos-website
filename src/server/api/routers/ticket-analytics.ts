@@ -181,6 +181,11 @@ export const ticketAnalyticsRouter = createTRPCRouter({
         0,
         capacity - Math.max(comps.allowance ?? 0, comps.issued),
       );
+      // What's in, plus the rest of the sellable room at the same average.
+      const revenueIfSoldOutCents =
+        revenuePerTicketCents === null
+          ? null
+          : netCents + Math.max(0, sellable - sold) * revenuePerTicketCents;
 
       return {
         event: {
@@ -208,13 +213,11 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           breakEvenTickets: breakEvenTickets(costsCents, revenuePerTicketCents),
           sellable,
           profitCents: netCents - costsCents,
-          /** The rest of the sellable room at the same average. */
+          revenueIfSoldOutCents,
           profitIfSoldOutCents:
-            revenuePerTicketCents === null
+            revenueIfSoldOutCents === null
               ? null
-              : netCents +
-                Math.max(0, sellable - sold) * revenuePerTicketCents -
-                costsCents,
+              : revenueIfSoldOutCents - costsCents,
         },
         counts: {
           orders: orderCount,
