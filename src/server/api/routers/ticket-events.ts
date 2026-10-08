@@ -286,6 +286,7 @@ export const ticketEventsRouter = createTRPCRouter({
               soldCount: true,
               heldCount: true,
               priceCents: true,
+              groupSize: true,
             },
           },
           _count: { select: { tickets: true } },

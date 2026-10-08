@@ -11,6 +11,7 @@ import { createTRPCRouter, eventOrganiserProcedure } from "~/server/api/trpc";
 import { admittedCount, departedCount } from "~/server/ticketing/scan";
 import { compAccounting } from "~/server/ticketing/comps";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
+import { soldFaceValueCents } from "~/lib/ticketing/tiers";
 
 /**
  * Event analytics: the sales dashboard, and the live view you watch on your
@@ -43,6 +44,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
               id: true,
               name: true,
               priceCents: true,
+              groupSize: true,
               allocation: true,
               soldCount: true,
               heldCount: true,
@@ -194,7 +196,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
             0,
             tier.allocation - tier.soldCount - tier.heldCount,
           ),
-          revenueCents: tier.soldCount * tier.priceCents,
+          revenueCents: soldFaceValueCents(tier),
         })),
         byPaymentMethod: byMethod.map((row) => ({
           method: row.paymentMethod,
