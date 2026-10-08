@@ -405,13 +405,18 @@ export const ticketAnalyticsRouter = createTRPCRouter({
   discountPerformance: eventOrganiserProcedure
     .input(z.object({ eventId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const redemptions = await ctx.db.discountRedemption.findMany({
+      // Both kinds of code, global and the event's own, in one table.
+      const query = {
         where: { order: { eventId: input.eventId } },
         include: {
-          code: { select: { id: true, code: true, type: true, value: true } },
-          order: { select: { totalCents: true, id: true } },
+          code: { select: { id: true, code: true } },
+          order: { select: { totalCents: true } },
         },
-      });
+      } as const;
+      const redemptions = [
+        ...(await ctx.db.discountRedemption.findMany(query)),
+        ...(await ctx.db.eventCodeRedemption.findMany(query)),
+      ];
 
       const byCode = new Map<
         string,

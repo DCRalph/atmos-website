@@ -253,7 +253,6 @@ export const ticketAdminRouter = createTRPCRouter({
             orderBy: { ticketNumber: "asc" },
           },
           emails: { orderBy: { createdAt: "desc" }, take: 20 },
-          redemptions: { include: { code: { select: { code: true } } } },
         },
       });
 

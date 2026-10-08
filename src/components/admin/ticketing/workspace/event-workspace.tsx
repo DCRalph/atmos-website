@@ -12,6 +12,7 @@ import { OrdersPanel } from "~/components/admin/ticketing/orders-panel";
 import { TicketsPanel } from "~/components/admin/ticketing/tickets-panel";
 import { CompsPanel } from "~/components/admin/ticketing/comps-panel";
 import { TicketLinksPanel } from "~/components/admin/ticketing/ticket-links-panel";
+import { EventCodesPanel } from "~/components/admin/ticketing/event-codes-panel";
 import { Button } from "~/components/ui/button";
 import { useTabParam } from "~/hooks/use-tab-param";
 import { formatEventDateTime } from "~/lib/ticketing/dates";
@@ -43,6 +44,7 @@ const PAGES = [
   "wallet",
   "orders",
   "tickets",
+  "codes",
   "comps",
   "links",
 ] as const;
@@ -125,6 +127,7 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
                 label: "Tickets",
                 count: event.counts.tickets,
               },
+              { page: "codes" as const, label: "Codes" },
             ],
           },
           {
@@ -272,6 +275,7 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
           {page === "tickets" && event ? (
             <TicketsPanel eventId={event.id} />
           ) : null}
+          {page === "codes" && event ? <EventCodesPanel event={event} /> : null}
           {page === "comps" && event ? <CompsPanel event={event} /> : null}
           {page === "links" && event ? (
             <TicketLinksPanel event={event} />

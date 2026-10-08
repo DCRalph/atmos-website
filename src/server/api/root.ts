@@ -33,6 +33,7 @@ import { tapToPayRouter } from "~/server/api/routers/tap-to-pay";
 import { pushRouter } from "~/server/api/routers/push";
 import { notifyRouter } from "~/server/api/routers/notify";
 import { discountCodesRouter } from "~/server/api/routers/discount-codes";
+import { eventCodesRouter } from "~/server/api/routers/event-codes";
 import { ticketAdminRouter } from "~/server/api/routers/ticket-admin";
 import { ticketAnalyticsRouter } from "~/server/api/routers/ticket-analytics";
 import { lifetimeTicketsRouter } from "~/server/api/routers/lifetime-tickets";
@@ -86,6 +87,7 @@ export const appRouter = createTRPCRouter({
   ticketAdmin: ticketAdminRouter,
   ticketAnalytics: ticketAnalyticsRouter,
   discountCodes: discountCodesRouter,
+  eventCodes: eventCodesRouter,
   accessLevels: accessLevelsRouter,
   /** Passes that admit one named person to every event. */
   lifetimeTickets: lifetimeTicketsRouter,
