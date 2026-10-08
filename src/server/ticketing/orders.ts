@@ -39,6 +39,8 @@ import { ADMITTING_RESULTS } from "~/server/ticketing/scan";
 import { generateQrSecret } from "~/server/ticketing/qr";
 import {
   applyDiscountCode,
+  orderCodeColumns,
+  orderCodeRef,
   releaseRedemption,
   recordRedemption,
   type AppliedDiscount,
@@ -236,7 +238,7 @@ export async function createPendingOrder({
         totalCents: totals.totalCents,
         gstCents: totals.gstCents,
         gstRateBp: event.gstRateBp,
-        discountCodeId: discount?.codeId ?? null,
+        ...orderCodeColumns(discount?.ref ?? null),
         paymentMethod: isFree
           ? PaymentMethodKind.FREE
           : PaymentMethodKind.STRIPE,
@@ -378,6 +380,7 @@ export async function issueTicketsForOrder({
         eventId: true,
         buyerEmail: true,
         discountCodeId: true,
+        eventCodeId: true,
         discountCents: true,
         items: {
           select: {
@@ -421,9 +424,10 @@ export async function issueTicketsForOrder({
       }
     }
 
-    if (order.discountCodeId && order.discountCents > 0) {
+    const codeRef = orderCodeRef(order);
+    if (codeRef) {
       await recordRedemption(tx, {
-        codeId: order.discountCodeId,
+        ref: codeRef,
         orderId: order.id,
         email: order.buyerEmail,
         amountCents: order.discountCents,
@@ -727,7 +731,8 @@ export async function deleteOrder(orderId: string) {
       totalCents: true,
       refundedCents: true,
       tickets: { select: { id: true } },
-      redemptions: { select: { codeId: true } },
+      discountCodeId: true,
+      eventCodeId: true,
     },
   });
   if (!order) return null;
@@ -737,8 +742,9 @@ export async function deleteOrder(orderId: string) {
   const tickets = await deleteTickets(order.tickets.map((ticket) => ticket.id));
 
   await db.$transaction(async (tx) => {
-    for (const { codeId } of order.redemptions) {
-      await releaseRedemption(tx, { codeId, orderId: order.id });
+    const codeRef = orderCodeRef(order);
+    if (codeRef) {
+      await releaseRedemption(tx, { ref: codeRef, orderId: order.id });
     }
     await tx.ticketOrder.delete({ where: { id: order.id } });
   });

@@ -1,431 +1,79 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
-import { api, type RouterOutputs } from "~/trpc/react";
+import { api } from "~/trpc/react";
 import { AdminSection } from "~/components/admin/admin-section";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import { Badge } from "~/components/ui/badge";
-import { Switch } from "~/components/ui/switch";
-import { Checkbox } from "~/components/ui/checkbox";
-import { DataTable, type DataTableColumn } from "~/components/data-table";
-import { DateTimePicker } from "~/components/ui/datetime-picker";
-import { PickerSelect } from "~/components/ui/picker-select";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
-import { useConfirm } from "~/components/confirm-provider";
-import { formatDate } from "~/lib/date-utils";
-import { formatNZD, parsePriceToCents } from "~/lib/ticketing/money";
-
-type CodeListItem = RouterOutputs["discountCodes"]["list"][number];
-
-const isExhausted = (code: CodeListItem) =>
-  code.maxRedemptions !== null && code.redemptionCount >= code.maxRedemptions;
+import { CodeForm, CodesTable } from "~/components/admin/ticketing/codes";
 
 /**
- * Discount codes.
+ * Global discount codes: a percentage or fixed amount off, on any event.
  *
- * A code can be a straight percentage off, a fixed amount, or the key that
- * unlocks a hidden tier — which is how a presale or a guest list works without
- * a separate mechanism. Unlocking is for one event's codes only: a code for any
- * event is a plain discount.
+ * Codes for one event, including the keys that unlock its hidden tiers for a
+ * presale or a guest list, live on that event's Codes page instead.
  */
 export default function DiscountCodesPage() {
   const [creating, setCreating] = useState(false);
   const utils = api.useUtils();
-  const confirm = useConfirm();
-  const codes = api.discountCodes.list.useQuery({});
+  const codes = api.discountCodes.list.useQuery();
+  const refresh = () => void utils.discountCodes.list.invalidate();
 
-  const update = api.discountCodes.update.useMutation({
-    onSuccess: () => void utils.discountCodes.list.invalidate(),
+  const create = api.discountCodes.create.useMutation({
+    onSuccess: () => {
+      toast.success("Code created");
+      refresh();
+      setCreating(false);
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const setActive = api.discountCodes.setActive.useMutation({
+    onSuccess: refresh,
     onError: (error) => toast.error(error.message),
   });
 
   const remove = api.discountCodes.delete.useMutation({
     onSuccess: () => {
       toast.success("Deleted");
-      void utils.discountCodes.list.invalidate();
+      refresh();
     },
     onError: (error) => toast.error(error.message),
   });
 
-  const columns: DataTableColumn<CodeListItem>[] = [
-    {
-      id: "code",
-      header: "Code",
-      sortable: true,
-      accessor: (row) => row.code,
-      cell: (row) => <span className="font-mono font-medium">{row.code}</span>,
-    },
-    {
-      id: "discount",
-      header: "Discount",
-      cell: (row) =>
-        row.type === "PERCENT"
-          ? `${row.value / 100}% off`
-          : `${formatNZD(row.value)} off`,
-    },
-    {
-      id: "event",
-      header: "Event",
-      cell: (row) =>
-        row.event ? (
-          <Badge variant="outline">{row.event.name}</Badge>
-        ) : (
-          <span className="text-muted-foreground">Any event</span>
-        ),
-    },
-    {
-      id: "unlocksHiddenTiers",
-      header: "Unlocks hidden",
-      type: "boolean",
-      accessor: (row) => row.unlocksHiddenTiers,
-    },
-    {
-      id: "used",
-      header: "Used",
-      type: "number",
-      align: "right",
-      sortable: true,
-      accessor: (row) => row.redemptionCount,
-      cell: (row) => (
-        <div className="flex items-center justify-end gap-2">
-          <span className="tabular-nums">
-            {row.redemptionCount}
-            {row.maxRedemptions !== null ? ` of ${row.maxRedemptions}` : ""}
-          </span>
-          {isExhausted(row) && <Badge variant="destructive">used up</Badge>}
-        </div>
-      ),
-    },
-    {
-      id: "endsAt",
-      header: "Expires",
-      type: "date",
-      sortable: true,
-      accessor: (row) => row.endsAt,
-      cell: (row) => (row.endsAt ? formatDate(row.endsAt, "short") : "—"),
-    },
-    {
-      id: "isActive",
-      header: "Active",
-      sortable: true,
-      accessor: (row) => row.isActive,
-      cell: (row) => (
-        <Switch
-          checked={row.isActive}
-          aria-label={`${row.isActive ? "Deactivate" : "Activate"} ${row.code}`}
-          onCheckedChange={(value) =>
-            update.mutate({ id: row.id, isActive: value })
-          }
-        />
-      ),
-    },
-    {
-      id: "actions",
-      header: "",
-      hideable: false,
-      align: "right",
-      cell: (row) => (
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={`Delete ${row.code}`}
-          disabled={remove.isPending}
-          onClick={async () => {
-            const ok = await confirm({
-              title: `Delete ${row.code}?`,
-              description:
-                "Only possible before it has been used. Otherwise deactivate it so the sales history stays intact.",
-              confirmLabel: "Delete",
-              variant: "destructive",
-            });
-            if (ok) remove.mutate({ id: row.id });
-          }}
-        >
-          <Trash2 className="size-4" aria-hidden />
-        </Button>
-      ),
-    },
-  ];
-
   return (
     <AdminSection
       title="Discount codes"
-      description="Percentage or fixed-amount codes. Scope one to an event to let it unlock hidden tiers."
+      description="Codes that work on any event. Codes for one event, and the ones that unlock hidden tiers, are on that event's Codes page."
       actions={
         <Button onClick={() => setCreating(true)} disabled={creating}>
           <Plus className="size-4" aria-hidden /> New code
         </Button>
       }
     >
-      {creating && <CodeForm onDone={() => setCreating(false)} />}
+      {creating && (
+        <CodeForm
+          pending={create.isPending}
+          onCancel={() => setCreating(false)}
+          // Without `hiddenTiers` the form never sets the unlock fields, and
+          // the global endpoint drops them.
+          onSubmit={(values) => create.mutate(values)}
+        />
+      )}
 
       <div className="mt-4">
-        <DataTable
-          columns={columns}
-          data={codes.data ?? []}
-          getRowId={(row) => row.id}
+        <CodesTable
+          rows={codes.data ?? []}
           isLoading={codes.isPending}
           isFetching={codes.isFetching}
           storageKey="admin-discount-codes"
-          emptyMessage="No codes yet."
+          onSetActive={(id, isActive) => setActive.mutate({ id, isActive })}
+          onDelete={(id) => remove.mutate({ id })}
+          deleting={remove.isPending}
         />
       </div>
     </AdminSection>
-  );
-}
-
-function CodeForm({ onDone }: { onDone: () => void }) {
-  const utils = api.useUtils();
-
-  const [code, setCode] = useState("");
-  const [type, setType] = useState<"PERCENT" | "FIXED">("PERCENT");
-  const [value, setValue] = useState("10");
-  const [eventId, setEventId] = useState<string | null>(null);
-  const [maxRedemptions, setMaxRedemptions] = useState("");
-  const [maxPerEmail, setMaxPerEmail] = useState("1");
-  const [minTickets, setMinTickets] = useState("");
-  const [endsAt, setEndsAt] = useState<Date | undefined>();
-  const [unlocksHidden, setUnlocksHidden] = useState(false);
-  // Empty means every hidden tier on the event.
-  const [tierIds, setTierIds] = useState<string[]>([]);
-
-  const event = api.ticketEvents.byId.useQuery(
-    { id: eventId ?? "" },
-    { enabled: !!eventId },
-  );
-  const hiddenTiers = event.data?.tiers.filter((tier) => tier.isHidden) ?? [];
-  const unlocks = !!eventId && unlocksHidden;
-
-  const create = api.discountCodes.create.useMutation({
-    onSuccess: () => {
-      toast.success("Code created");
-      void utils.discountCodes.list.invalidate();
-      onDone();
-    },
-    onError: (error) => toast.error(error.message),
-  });
-
-  const valueCents =
-    type === "PERCENT"
-      ? /^\d+(\.\d+)?$/.test(value.trim())
-        ? Math.round(Number.parseFloat(value) * 100)
-        : null
-      : parsePriceToCents(value);
-  // An unlock code may be worth nothing: the tiers it opens are the point.
-  const valueValid =
-    valueCents !== null && (valueCents > 0 || (unlocks && valueCents === 0));
-
-  return (
-    <div className="grid gap-4 rounded-lg border p-5 md:grid-cols-2">
-      <div className="space-y-1.5">
-        <Label htmlFor="code">Code</Label>
-        <Input
-          id="code"
-          value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase())}
-          placeholder="EARLYBIRD"
-          className="font-mono"
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label>Type</Label>
-        <Select
-          value={type}
-          onValueChange={(next) => setType(next as "PERCENT" | "FIXED")}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="PERCENT">Percentage off</SelectItem>
-            <SelectItem value="FIXED">Fixed amount off</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="value">
-          {type === "PERCENT" ? "Percent off" : "Amount off (NZD)"}
-        </Label>
-        <Input
-          id="value"
-          inputMode="decimal"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          className={valueValid || value === "" ? "" : "border-destructive"}
-        />
-        {value !== "" && !valueValid && (
-          <p className="text-destructive text-xs">
-            {unlocks
-              ? "Zero or more. Use 0 for a code that only unlocks tiers."
-              : type === "PERCENT"
-                ? "A percentage above zero, like 10 or 12.5."
-                : "An amount above zero, like 5 or 7.50."}
-          </p>
-        )}
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="code-event">Event</Label>
-        <PickerSelect
-          id="code-event"
-          endpoint={api.pickers.ticketEvents}
-          value={eventId}
-          onChange={(next) => {
-            setEventId(next);
-            setTierIds([]);
-          }}
-          placeholder="Any event"
-          searchPlaceholder="Search events…"
-          emptyText="No events match that."
-          clearLabel="Any event"
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="maxred">Total uses</Label>
-        <Input
-          id="maxred"
-          type="number"
-          min={1}
-          value={maxRedemptions}
-          onChange={(e) => setMaxRedemptions(e.target.value)}
-          placeholder="Unlimited"
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="maxemail">Uses per email</Label>
-        <Input
-          id="maxemail"
-          type="number"
-          min={1}
-          value={maxPerEmail}
-          onChange={(e) => setMaxPerEmail(e.target.value)}
-        />
-        <p className="text-muted-foreground text-xs">
-          Best-effort on card checkouts — we only learn the email after payment.
-        </p>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="mintickets">Minimum tickets</Label>
-        <Input
-          id="mintickets"
-          type="number"
-          min={1}
-          value={minTickets}
-          onChange={(e) => setMinTickets(e.target.value)}
-          placeholder="No minimum"
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label>Expires</Label>
-        <DateTimePicker date={endsAt} onDateChange={setEndsAt} />
-      </div>
-
-      {eventId ? (
-        <div className="space-y-3 md:col-span-2">
-          <div className="flex items-center gap-2">
-            <Switch
-              checked={unlocksHidden}
-              onCheckedChange={setUnlocksHidden}
-            />
-            <span className="text-sm">
-              Unlocks hidden tiers — turns this into a presale or guest list key
-            </span>
-          </div>
-          {unlocksHidden &&
-            (event.isPending ? (
-              <Loader2 className="text-muted-foreground size-4 animate-spin" />
-            ) : hiddenTiers.length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                This event has no hidden tiers yet. Mark one &quot;Hidden until
-                unlocked by a code&quot; in the event&apos;s tiers.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-muted-foreground text-xs">
-                  Tick the tiers this code opens. Leave all unticked to open
-                  every hidden tier. The discount applies to the ticked tiers
-                  only.
-                </p>
-                {hiddenTiers.map((tier) => (
-                  <label
-                    key={tier.id}
-                    className="flex items-center gap-2 text-sm"
-                  >
-                    <Checkbox
-                      checked={tierIds.includes(tier.id)}
-                      onCheckedChange={(checked) =>
-                        setTierIds((current) =>
-                          checked === true
-                            ? [...current, tier.id]
-                            : current.filter((id) => id !== tier.id),
-                        )
-                      }
-                    />
-                    {tier.name}
-                  </label>
-                ))}
-              </div>
-            ))}
-        </div>
-      ) : (
-        <p className="text-muted-foreground text-sm md:col-span-2">
-          A code for any event is a discount only. Choose an event to make it
-          unlock hidden tiers.
-        </p>
-      )}
-
-      <div className="flex gap-2 md:col-span-2">
-        <Button
-          disabled={create.isPending || !code || !valueValid}
-          onClick={() =>
-            create.mutate({
-              code,
-              type,
-              value: valueCents ?? 0,
-              eventId,
-              tierIds: unlocks ? tierIds : [],
-              maxRedemptions: maxRedemptions
-                ? Number.parseInt(maxRedemptions, 10)
-                : null,
-              maxPerEmail: maxPerEmail
-                ? Number.parseInt(maxPerEmail, 10)
-                : null,
-              minTickets: minTickets ? Number.parseInt(minTickets, 10) : null,
-              endsAt: endsAt ?? null,
-              isActive: true,
-              unlocksHiddenTiers: unlocks,
-            })
-          }
-        >
-          {create.isPending ? (
-            <>
-              <Loader2 className="size-4 animate-spin" aria-hidden /> Creating…
-            </>
-          ) : (
-            "Create code"
-          )}
-        </Button>
-        <Button variant="ghost" onClick={onDone}>
-          Cancel
-        </Button>
-      </div>
-    </div>
   );
 }

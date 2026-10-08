@@ -1567,7 +1567,7 @@ model TicketEvent {
   tickets       Ticket[]
   scans         TicketScan[]
   staff         TicketEventStaff[]
-  discountCodes DiscountCode[]
+  eventCodes    EventCode[]
   linkBatches   TicketLinkBatch[]
   doorReceipts  DoorPaymentReceipt[]
   idChecks      IdCheck[]
@@ -1660,7 +1660,9 @@ model TicketOrder {
   gstRateBp       Int    @default(1500)
   currency        String @default("NZD")
 
+  /// One or the other, never both: a global `DiscountCode` or this event's own `EventCode`.
   discountCodeId String?
+  eventCodeId    String?
   paymentMethod  PaymentMethodKind @default(STRIPE)
 
   stripePaymentIntentId String? @unique
@@ -1699,6 +1701,7 @@ model TicketOrder {
   tickets      Ticket[]
   emails       TicketEmailLog[]
   redemptions  DiscountRedemption[]
+  eventCodeRedemptions EventCodeRedemption[]
   linkBatch    TicketLinkBatch?     @relation(fields: [linkBatchId], references: [id], onDelete: SetNull)
   doorReceipts DoorPaymentReceipt[]
 
@@ -1927,6 +1930,8 @@ model TicketEventStaff {
   @@map("ticket_event_staff")
 }
 
+/// A code that works on any event: a discount and nothing more. Codes that
+/// belong to one event, and can unlock its hidden tiers, are `EventCode`.
 model DiscountCode {
   id   String @id @default(cuid())
   code String @unique
@@ -1934,19 +1939,14 @@ model DiscountCode {
   type  DiscountCodeType
   value Int
 
-  eventId String?
-  event   TicketEvent? @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  tierIds String[]
-
   maxRedemptions  Int?
   maxPerEmail     Int? @default(1)
   minTickets      Int?
   redemptionCount Int  @default(0)
 
-  startsAt           DateTime?
-  endsAt             DateTime?
-  isActive           Boolean   @default(true)
-  unlocksHiddenTiers Boolean   @default(false)
+  startsAt DateTime?
+  endsAt   DateTime?
+  isActive Boolean   @default(true)
 
   createdBy String?
   createdAt DateTime @default(now())
@@ -1954,7 +1954,7 @@ model DiscountCode {
 
   redemptions DiscountRedemption[]
 
-  @@index([eventId, isActive])
+  @@index([isActive])
   @@map("discount_code")
 }
 
@@ -1973,6 +1973,59 @@ model DiscountRedemption {
   @@unique([codeId, orderId])
   @@index([codeId, email])
   @@map("discount_redemption")
+}
+
+/// One event's own code, managed on that event's page. Besides a discount it
+/// can unlock the event's hidden tiers (a presale, a guest list): the ones in
+/// `tierIds`, or all of them when empty. `tierIds` also scopes the discount.
+/// Checked before global codes, so it wins if the same string is in both.
+model EventCode {
+  id      String      @id @default(cuid())
+  eventId String
+  event   TicketEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  code    String
+
+  type  DiscountCodeType
+  /// Zero is allowed on a code that only unlocks tiers.
+  value Int
+
+  tierIds            String[]
+  unlocksHiddenTiers Boolean  @default(false)
+
+  maxRedemptions  Int?
+  maxPerEmail     Int? @default(1)
+  minTickets      Int?
+  redemptionCount Int  @default(0)
+
+  startsAt DateTime?
+  endsAt   DateTime?
+  isActive Boolean   @default(true)
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  redemptions EventCodeRedemption[]
+
+  @@unique([eventId, code])
+  @@map("event_code")
+}
+
+model EventCodeRedemption {
+  id          String  @id @default(cuid())
+  codeId      String
+  orderId     String
+  email       String?
+  amountCents Int
+
+  createdAt DateTime @default(now())
+
+  code  EventCode   @relation(fields: [codeId], references: [id], onDelete: Cascade)
+  order TicketOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([codeId, orderId])
+  @@index([codeId, email])
+  @@map("event_code_redemption")
 }
 
 model TicketEmailLog {
