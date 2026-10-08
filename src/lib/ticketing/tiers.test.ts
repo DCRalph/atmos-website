@@ -1,7 +1,11 @@
 import { describe, test } from "bun:test";
 import assert from "node:assert/strict";
 
-import { tierUnavailableReason, type TierRow } from "./tiers";
+import {
+  soldFaceValueCents,
+  tierUnavailableReason,
+  type TierRow,
+} from "./tiers";
 
 const now = new Date("2026-10-18T09:00:00Z");
 
@@ -83,5 +87,14 @@ describe("salesChannel", () => {
     const guests = tier("guests", 0, { isHidden: true });
     assert.equal(tierUnavailableReason(guests, now), "HIDDEN");
     assert.equal(tierUnavailableReason(guests, now, { channel: "DOOR" }), null);
+  });
+});
+
+describe("soldFaceValueCents", () => {
+  test("prices a group tier per group, not per ticket", () => {
+    assert.equal(
+      soldFaceValueCents({ soldCount: 12, priceCents: 3000, groupSize: 4 }),
+      9000,
+    );
   });
 });

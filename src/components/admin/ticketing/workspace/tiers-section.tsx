@@ -231,14 +231,19 @@ export function TiersSection({
           </div>
         </CardHeader>
         <CardContent>
-          {event && draft.tiers.length > 0 ? (
-            <CapMeter
-              budget={budget}
-              tiers={draft.tiers.map((tier) => ({
-                allocation: Number(tier.allocation) || 0,
-                ...countsOf(tier),
-              }))}
-            />
+          {draft.tiers.length > 0 ? (
+            <div className="mb-4 space-y-4">
+              <AllocationMeter budget={budget} tiers={draft.tiers} />
+              {event ? (
+                <CapMeter
+                  budget={budget}
+                  tiers={draft.tiers.map((tier) => ({
+                    allocation: Number(tier.allocation) || 0,
+                    ...countsOf(tier),
+                  }))}
+                />
+              ) : null}
+            </div>
           ) : null}
           {draft.tiers.length === 0 ? (
             <p className="text-muted-foreground rounded-lg border border-dashed p-8 text-center text-sm">
@@ -491,10 +496,82 @@ function TierRow({
   );
 }
 
+/** One coloured run of a meter bar. */
+type Segment = { label: string; value: number; color: string };
+
+// Grey in both meters, so the door's green in the allocation bar stays the door's.
+const COMPS_COLOR = "var(--muted-foreground)";
+const COMPS_KEPT_COLOR =
+  "color-mix(in oklab, var(--muted-foreground) 40%, transparent)";
+
 /**
- * The cap as one bar: sold, mid-checkout, comps issued and the rest of the
- * allowance kept for them, against the room. What is left to sell is the
- * smaller of what the tiers still have and what the cap still allows.
+ * How the room is split, as it is being typed: online-only, shared and
+ * door-only allocations plus the seats kept for comps, against the cap. Past
+ * the cap the bar rescales and a tick marks where the cap falls.
+ */
+function AllocationMeter({
+  budget,
+  tiers,
+}: {
+  budget: AllocationBudget;
+  tiers: readonly TierDraft[];
+}) {
+  const allocatedTo = (channel: SalesChannel) =>
+    tierAllocation(tiers.filter((tier) => tier.salesChannel === channel));
+
+  const segments: Segment[] = [
+    {
+      label: "Online",
+      value: allocatedTo("ONLINE"),
+      color: "var(--ticket-series-revenue)",
+    },
+    {
+      label: "Online + door",
+      value: allocatedTo("ALL"),
+      color:
+        "color-mix(in oklab, var(--ticket-series-revenue) 50%, var(--ticket-series-arrivals))",
+    },
+    {
+      label: "Door",
+      value: allocatedTo("DOOR"),
+      color: "var(--ticket-series-arrivals)",
+    },
+    { label: "Comps", value: budget.compsReserved, color: COMPS_COLOR },
+  ];
+  const planned = budget.allocated + budget.compsReserved;
+  const scale = Math.max(1, budget.capacity ?? 0, planned);
+
+  return (
+    <div className="space-y-2">
+      <MeterLegend title="Allocation" segments={segments}>
+        {budget.capacity === null ? (
+          <Stat label="Total" value={planned} />
+        ) : budget.overAllocatedBy > 0 ? (
+          <Stat label="Over" value={budget.overAllocatedBy} warn />
+        ) : (
+          <Stat label="Free" value={budget.unallocated ?? 0} />
+        )}
+        {budget.capacity !== null ? (
+          <Stat label="Cap" value={budget.capacity} />
+        ) : null}
+      </MeterLegend>
+      <MeterBar
+        segments={segments}
+        scale={scale}
+        marker={
+          budget.capacity !== null && planned > budget.capacity
+            ? budget.capacity
+            : undefined
+        }
+      />
+    </div>
+  );
+}
+
+/**
+ * Live sales against the room: sold, mid-checkout, comps issued and the rest
+ * of the allowance kept for them. What is left to sell is the smaller of what
+ * the tiers still have and what the cap still allows.
  */
 function CapMeter({
   budget,
@@ -505,7 +582,6 @@ function CapMeter({
 }) {
   const sold = tiers.reduce((sum, tier) => sum + tier.sold, 0);
   const held = tiers.reduce((sum, tier) => sum + tier.held, 0);
-  const compsKept = budget.compsReserved - budget.comps;
   const committed = sold + held + budget.compsReserved;
 
   const leftInTiers = tiers.reduce(
@@ -517,12 +593,7 @@ function CapMeter({
       ? leftInTiers
       : Math.min(leftInTiers, Math.max(0, budget.capacity - committed));
 
-  const scale = Math.max(
-    1,
-    committed,
-    budget.capacity ?? budget.allocated + budget.compsReserved,
-  );
-  const segments = [
+  const segments: Segment[] = [
     { label: "Sold", value: sold, color: "var(--ticket-series-revenue)" },
     {
       label: "Held",
@@ -530,45 +601,95 @@ function CapMeter({
       color:
         "color-mix(in oklab, var(--ticket-series-revenue) 45%, transparent)",
     },
-    {
-      label: "Comps",
-      value: budget.comps,
-      color: "var(--ticket-series-arrivals)",
-    },
+    { label: "Comps", value: budget.comps, color: COMPS_COLOR },
     {
       label: "Kept for comps",
-      value: compsKept,
-      color:
-        "color-mix(in oklab, var(--ticket-series-arrivals) 40%, transparent)",
+      value: budget.compsReserved - budget.comps,
+      color: COMPS_KEPT_COLOR,
     },
   ];
 
   return (
-    <div className="mb-4 space-y-2">
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm tabular-nums">
-        {segments
-          .filter((segment) => segment.value > 0 || segment.label === "Sold")
-          .map((segment) => (
-            <span key={segment.label} className="flex items-center gap-1.5">
-              <span
-                className="size-2 rounded-full"
-                style={{ background: segment.color }}
-              />
-              <span className="text-muted-foreground">{segment.label}</span>
-              <span className="font-medium">{segment.value}</span>
-            </span>
-          ))}
-        <span className="flex items-center gap-1.5">
-          <span className="text-muted-foreground">Left to sell</span>
-          <span className="font-medium">{leftToSell}</span>
-        </span>
-        {budget.capacity !== null ? (
-          <span className="ml-auto flex items-center gap-1.5">
-            <span className="text-muted-foreground">Cap</span>
-            <span className="font-medium">{budget.capacity}</span>
+    <div className="space-y-2">
+      <MeterLegend title="Sales" segments={segments}>
+        <Stat label="Left to sell" value={leftToSell} />
+      </MeterLegend>
+      <MeterBar
+        segments={segments}
+        scale={Math.max(
+          1,
+          committed,
+          budget.capacity ?? budget.allocated + budget.compsReserved,
+        )}
+      />
+    </div>
+  );
+}
+
+/** A meter's title, its non-empty segments as a key, then `children` last. */
+function MeterLegend({
+  title,
+  segments,
+  children,
+}: {
+  title: string;
+  segments: readonly Segment[];
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm tabular-nums">
+      <span className="font-medium">{title}</span>
+      {segments
+        .filter((segment) => segment.value > 0)
+        .map((segment) => (
+          <span key={segment.label} className="flex items-center gap-1.5">
+            <span
+              className="size-2 rounded-full"
+              style={{ background: segment.color }}
+            />
+            <span className="text-muted-foreground">{segment.label}</span>
+            <span className="font-medium">{segment.value}</span>
           </span>
-        ) : null}
-      </div>
+        ))}
+      <span className="ml-auto flex gap-x-4">{children}</span>
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  warn = false,
+}: {
+  label: string;
+  value: number;
+  warn?: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        "flex items-center gap-1.5",
+        warn && "text-amber-600 dark:text-amber-500",
+      )}
+    >
+      <span className={cn(!warn && "text-muted-foreground")}>{label}</span>
+      <span className="font-medium">{value}</span>
+    </span>
+  );
+}
+
+/** Segments laid end to end against `scale`, with an optional tick at `marker`. */
+function MeterBar({
+  segments,
+  scale,
+  marker,
+}: {
+  segments: readonly Segment[];
+  scale: number;
+  marker?: number;
+}) {
+  return (
+    <div className="relative">
       <div className="bg-muted flex h-2 w-full overflow-hidden rounded-full">
         {segments.map((segment) =>
           segment.value > 0 ? (
@@ -583,6 +704,13 @@ function CapMeter({
           ) : null,
         )}
       </div>
+      {marker !== undefined ? (
+        <div
+          className="bg-foreground absolute -top-1 -bottom-1 w-0.5"
+          style={{ left: `${(marker / scale) * 100}%` }}
+          aria-hidden
+        />
+      ) : null}
     </div>
   );
 }

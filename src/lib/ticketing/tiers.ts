@@ -54,6 +54,19 @@ export function remainingInTier(tier: {
   return Math.max(0, tier.allocation - tier.soldCount - tier.heldCount);
 }
 
+/**
+ * Face value of what a tier has sold. `soldCount` is in tickets but
+ * `priceCents` is per purchase, so a group tier's sales are divided back into
+ * groups before they are priced: twelve tickets of a $30 group of four is $90.
+ */
+export function soldFaceValueCents(tier: {
+  soldCount: number;
+  priceCents: number;
+  groupSize: number;
+}): number {
+  return Math.floor(tier.soldCount / tier.groupSize) * tier.priceCents;
+}
+
 /** The tier listed directly above this one, or null for the first. */
 export function previousTier<T extends { id: string; sortOrder: number }>(
   tiers: readonly T[],

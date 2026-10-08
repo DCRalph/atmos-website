@@ -7,6 +7,7 @@ import { DataTable, type DataTableColumn } from "~/components/data-table";
 import type { RouterOutputs } from "~/trpc/react";
 import { formatEventDateTime } from "~/lib/ticketing/dates";
 import { formatNZD } from "~/lib/ticketing/money";
+import { soldFaceValueCents } from "~/lib/ticketing/tiers";
 
 export type TicketEventRow = RouterOutputs["ticketEvents"]["list"][number];
 
@@ -43,7 +44,7 @@ export function EventStatusBadge({ status }: { status: string }) {
 }
 
 const faceValueCents = (event: TicketEventRow) =>
-  event.tiers.reduce((sum, tier) => sum + tier.soldCount * tier.priceCents, 0);
+  event.tiers.reduce((sum, tier) => sum + soldFaceValueCents(tier), 0);
 
 /**
  * The ticketed events list. Admin and organiser show the same rows and differ
