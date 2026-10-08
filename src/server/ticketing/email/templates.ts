@@ -52,6 +52,7 @@ export type TicketEmailInput = {
     subtotalCents: number;
     discountCents: number;
     bookingFeeCents: number;
+    venueFeeCents: number;
     totalCents: number;
     gstCents: number;
   };
@@ -203,6 +204,7 @@ export function renderTicketEmail(input: TicketEmailInput): {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
     ${summaryRow("Tickets", formatNZD(input.totals.subtotalCents))}
     ${input.totals.discountCents > 0 ? summaryRow("Discount", `−${formatNZD(input.totals.discountCents)}`) : ""}
+    ${input.totals.venueFeeCents > 0 ? summaryRow("Venue booking fee", formatNZD(input.totals.venueFeeCents)) : ""}
     ${input.totals.bookingFeeCents > 0 ? summaryRow("Booking fee", formatNZD(input.totals.bookingFeeCents)) : ""}
     <tr><td colspan="2" style="border-top:1px solid ${BORDER};padding-top:8px;"></td></tr>
     ${summaryRow("Total paid", formatNZD(input.totals.totalCents), false)}

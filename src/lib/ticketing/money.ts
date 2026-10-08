@@ -35,6 +35,8 @@ export type OrderTotals = {
   subtotalCents: number;
   discountCents: number;
   bookingFeeCents: number;
+  /** Venue hire passed on to the buyer, per ticket. */
+  venueFeeCents: number;
   totalCents: number;
   /** Component of `totalCents`, not added on top. */
   gstCents: number;
@@ -81,6 +83,21 @@ export function calcBookingFeeCents(
 }
 
 /**
+ * An event's venue hire split evenly across the room, per ticket. Rounded up,
+ * so a sold-out night covers the hire rather than falling a few cents short.
+ * Zero unless it's switched on and there is a capacity to split it by.
+ */
+export function venueFeePerTicketCents(event: {
+  venueHireCents: number | null;
+  passVenueHire: boolean;
+  capacity: number | null;
+}): number {
+  const { venueHireCents, passVenueHire, capacity } = event;
+  if (!passVenueHire || !venueHireCents || !capacity) return 0;
+  return Math.ceil(venueHireCents / capacity);
+}
+
+/**
  * Full order arithmetic in one place, so the buy panel, the checkout session
  * and the receipt can never disagree about a total.
  *
@@ -91,11 +108,14 @@ export function computeOrderTotals({
   lines,
   discountCents = 0,
   fee = ZERO_BOOKING_FEE,
+  venueFeePerTicket = 0,
   gstRateBp = DEFAULT_GST_RATE_BP,
 }: {
   lines: OrderLine[];
   discountCents?: number;
   fee?: BookingFeeConfig;
+  /** From `venueFeePerTicketCents`. */
+  venueFeePerTicket?: number;
   gstRateBp?: number;
 }): OrderTotals {
   const subtotalCents = lines.reduce(
@@ -117,12 +137,17 @@ export function computeOrderTotals({
     quantity,
     fee,
   );
-  const totalCents = discountedSubtotal + bookingFeeCents;
+  // Same rule as the booking fee: a free order pays nothing. Kept out of the
+  // booking fee's percentage, so there is never a fee on the fee.
+  const venueFeeCents =
+    discountedSubtotal > 0 ? venueFeePerTicket * quantity : 0;
+  const totalCents = discountedSubtotal + bookingFeeCents + venueFeeCents;
 
   return {
     subtotalCents,
     discountCents: appliedDiscount,
     bookingFeeCents,
+    venueFeeCents,
     totalCents,
     gstCents: gstComponentCents(totalCents, gstRateBp),
     quantity,

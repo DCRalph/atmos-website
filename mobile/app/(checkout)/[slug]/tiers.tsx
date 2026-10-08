@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Check, Minus, Plus, X } from "lucide-react-native";
+import { Check, Info, Minus, Plus, X } from "lucide-react-native";
 
 import { tierUnavailableLabel } from "~/lib/ticketing/tiers";
 
@@ -237,6 +237,9 @@ export default function TiersScreen() {
                 value={`−${money(quote.data.discountCents)}`}
               />
             ) : null}
+            {quote.data.venueFeeCents > 0 ? (
+              <VenueFeeLine value={money(quote.data.venueFeeCents)} />
+            ) : null}
             {quote.data.bookingFeeCents > 0 ? (
               <Line
                 label="Booking fee"
@@ -331,6 +334,38 @@ function Line({
   );
 }
 
+/**
+ * The venue booking fee, with an "i" that says what it's for. A phone has no
+ * hover to hang a tooltip off, so a tap opens the note under the line.
+ */
+function VenueFeeLine({ value }: { value: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <View>
+      <View style={styles.line}>
+        <Pressable
+          onPress={() => setOpen(!open)}
+          accessibilityRole="button"
+          accessibilityLabel="What is the venue booking fee?"
+          accessibilityState={{ expanded: open }}
+          hitSlop={8}
+          style={styles.feeLabel}
+        >
+          <Body soft>Venue booking fee</Body>
+          <Info color={open ? colors.accent : colors.textSoft} size={15} />
+        </Pressable>
+        <Body>{value}</Body>
+      </View>
+      {open ? (
+        <Caption style={styles.feeNote}>
+          This covers the cost of booking the venue, split evenly across every
+          ticket. It goes straight to the venue. We never see this money.
+        </Caption>
+      ) : null}
+    </View>
+  );
+}
+
 function Stepper({
   value,
   max,
@@ -413,6 +448,13 @@ const styles = StyleSheet.create({
   },
   totals: { gap: space.sm },
   line: { flexDirection: "row", justifyContent: "space-between" },
+  feeLabel: { flexDirection: "row", alignItems: "center", gap: space.xs },
+  feeNote: {
+    marginTop: space.xs,
+    paddingLeft: space.sm,
+    borderLeftWidth: 2,
+    borderLeftColor: colors.accent,
+  },
   rule: { height: 1, backgroundColor: colors.border, marginVertical: space.xs },
   terms: { flexDirection: "row", gap: space.md, alignItems: "flex-start" },
   link: { color: colors.text, textDecorationLine: "underline" },

@@ -177,6 +177,7 @@ export async function sendTicketEmail({
       subtotalCents: order.subtotalCents,
       discountCents: order.discountCents,
       bookingFeeCents: order.bookingFeeCents,
+      venueFeeCents: order.venueFeeCents,
       totalCents: order.totalCents,
       gstCents: order.gstCents,
     },

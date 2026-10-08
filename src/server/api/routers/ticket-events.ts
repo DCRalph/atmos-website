@@ -27,11 +27,14 @@ import {
 import { logActivity } from "~/server/utils/activity-log";
 import { eventPosterId } from "~/lib/ticketing/poster";
 import {
+  applyCostPlan,
   applyStaffPlan,
   applyTierPlan,
+  costPlanSchema,
   staffPlanSchema,
   tierPlanSchema,
 } from "~/server/ticketing/event-plan";
+import { venueFeePerTicketCents } from "~/lib/ticketing/money";
 import {
   allocationBudget,
   compCountForEvent,
@@ -142,6 +145,8 @@ const eventInputSchema = z.object({
   bookingFeeFixedCents: z.number().int().min(0).nullable().optional(),
   bookingFeePercentBp: z.number().int().min(0).max(5000).nullable().optional(),
   gstNumber: z.string().trim().nullable().optional(),
+  venueHireCents: z.number().int().min(0).nullable().optional(),
+  passVenueHire: z.boolean().optional(),
 
   // Wallet pass look. Colours are validated here rather than trusted from the
   // form, because they are interpolated straight into the pass SVG.
@@ -158,6 +163,7 @@ const eventInputSchema = z.object({
    */
   tiers: z.array(tierPlanSchema).optional(),
   staff: z.array(staffPlanSchema).optional(),
+  costs: z.array(costPlanSchema).optional(),
 });
 
 /**
@@ -321,6 +327,7 @@ export const ticketEventsRouter = createTRPCRouter({
           },
           tiers: { orderBy: { sortOrder: "asc" } },
           staff: true,
+          costs: { orderBy: { sortOrder: "asc" } },
         },
       });
       if (!event) {
@@ -458,6 +465,8 @@ export const ticketEventsRouter = createTRPCRouter({
             isR18: input.isR18,
             bookingFeeFixedCents: input.bookingFeeFixedCents ?? null,
             bookingFeePercentBp: input.bookingFeePercentBp ?? null,
+            venueHireCents: input.venueHireCents ?? null,
+            passVenueHire: input.passVenueHire ?? false,
             // Snapshot the GST number so a receipt reprinted in two years still
             // shows the number that was current at the time of sale.
             gstNumber: input.gstNumber ?? settings.gstNumber,
@@ -483,6 +492,7 @@ export const ticketEventsRouter = createTRPCRouter({
             ctx.session.user.id,
           );
         }
+        if (input.costs) await applyCostPlan(tx, created.id, input.costs);
         return created;
       });
 
@@ -499,7 +509,7 @@ export const ticketEventsRouter = createTRPCRouter({
   update: adminProcedure
     .input(eventInputSchema.partial().extend({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const { id, tiers, staff, ...rest } = input;
+      const { id, tiers, staff, costs, ...rest } = input;
 
       const existing = await ctx.db.ticketEvent.findUnique({ where: { id } });
       if (!existing) {
@@ -614,6 +624,12 @@ export const ticketEventsRouter = createTRPCRouter({
             ...(rest.gstNumber !== undefined
               ? { gstNumber: rest.gstNumber }
               : {}),
+            ...(rest.venueHireCents !== undefined
+              ? { venueHireCents: rest.venueHireCents }
+              : {}),
+            ...(rest.passVenueHire !== undefined
+              ? { passVenueHire: rest.passVenueHire }
+              : {}),
             ...(rest.passStripStyle !== undefined
               ? { passStripStyle: rest.passStripStyle }
               : {}),
@@ -636,6 +652,7 @@ export const ticketEventsRouter = createTRPCRouter({
         // through together: a cap and the tiers that fit it can't half-land.
         if (tiers) await applyTierPlan(tx, id, tiers);
         if (staff) await applyStaffPlan(tx, id, staff, ctx.session.user.id);
+        if (costs) await applyCostPlan(tx, id, costs);
 
         // In plan order, so the editor can learn the ids of rows it just
         // created without waiting for a refetch.
@@ -779,16 +796,20 @@ export const ticketEventsRouter = createTRPCRouter({
   /**
    * A fresh draft copied from an existing event, for the night that runs again.
    *
-   * Settings and tiers come across; everything that belongs to the original
-   * night does not — its gig link, sales, orders, staff and share key. Dates
-   * are copied as they are, so the admin moves them before publishing.
+   * Settings, tiers and costs come across; everything that belongs to the
+   * original night does not — its gig link, sales, orders, staff and share
+   * key. Dates are copied as they are, so the admin moves them before
+   * publishing.
    */
   duplicate: adminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const source = await ctx.db.ticketEvent.findUnique({
         where: { id: input.id },
-        include: { tiers: { orderBy: { sortOrder: "asc" } } },
+        include: {
+          tiers: { orderBy: { sortOrder: "asc" } },
+          costs: { orderBy: { sortOrder: "asc" } },
+        },
       });
       if (!source) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
@@ -825,6 +846,15 @@ export const ticketEventsRouter = createTRPCRouter({
           bookingFeePercentBp: source.bookingFeePercentBp,
           gstRateBp: source.gstRateBp,
           gstNumber: source.gstNumber,
+          venueHireCents: source.venueHireCents,
+          passVenueHire: source.passVenueHire,
+          costs: {
+            create: source.costs.map(({ label, amountCents, sortOrder }) => ({
+              label,
+              amountCents,
+              sortOrder,
+            })),
+          },
           passStripStyle: source.passStripStyle,
           passAccentHex: source.passAccentHex,
           passBackgroundHex: source.passBackgroundHex,
@@ -1182,6 +1212,8 @@ function toPublicEvent(
     fromPriceCents: cheapest,
     /** Disclosed up front — NZ drip-pricing rules mean fees can't be a surprise. */
     bookingFee: fee,
+    /** Venue hire passed on, per ticket. Zero when the event keeps it. */
+    venueFeePerTicketCents: venueFeePerTicketCents(event),
     salesOpenAt: event.salesOpenAt,
     salesCloseAt: event.salesCloseAt,
   };

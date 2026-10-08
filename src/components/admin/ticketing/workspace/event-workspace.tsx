@@ -21,6 +21,7 @@ import { buildChecklist, type AdminEvent, type Section } from "./draft";
 import { useEventDraft } from "./use-event-draft";
 import { DetailsSection } from "./details-section";
 import { TiersSection } from "./tiers-section";
+import { CostsSection } from "./costs-section";
 import { StaffSection } from "./staff-section";
 import { WalletSection } from "./wallet-section";
 import { OverviewSection } from "./overview-section";
@@ -28,9 +29,10 @@ import { EventMenu } from "./event-menu";
 
 /**
  * The event page: one draft, one Save, a sidebar grouped by what you're
- * doing. Set up is the draft (details, tiers, door staff, wallet pass). Sell
- * and Give away are live lists, because refunding or issuing a ticket is a
- * real-world action with an email or a Stripe call behind it, not a draft.
+ * doing. Set up is the draft (details, tiers, costs, door staff, wallet
+ * pass). Sell and Give away are live lists, because refunding or issuing a
+ * ticket is a real-world action with an email or a Stripe call behind it, not
+ * a draft.
  *
  * A new event uses the same page with only the Set up group; creating it
  * lands on its Overview.
@@ -40,6 +42,7 @@ const PAGES = [
   "overview",
   "details",
   "tiers",
+  "costs",
   "staff",
   "wallet",
   "orders",
@@ -50,7 +53,7 @@ const PAGES = [
 ] as const;
 type Page = (typeof PAGES)[number];
 
-const NEW_PAGES = ["details", "tiers", "staff", "wallet"] as const;
+const NEW_PAGES = ["details", "tiers", "costs", "staff", "wallet"] as const;
 
 export function EventWorkspace({ event }: { event?: AdminEvent }) {
   const state = useEventDraft(event);
@@ -80,6 +83,7 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
   const SECTION_LABEL: Record<Section, string> = {
     details: "Details",
     tiers: "Tiers",
+    costs: "Costs",
     staff: "Door staff",
     wallet: "Wallet pass",
   };
@@ -97,6 +101,12 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
           label: "Tiers",
           count: draft.tiers.length,
           dirty: dirty.includes("tiers"),
+        },
+        {
+          page: "costs",
+          label: "Costs",
+          count: draft.costs.length + (draft.venueHire.trim() ? 1 : 0),
+          dirty: dirty.includes("costs"),
         },
         {
           page: "staff",
@@ -264,6 +274,9 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
           ) : null}
           {page === "tiers" ? (
             <TiersSection state={state} event={event} />
+          ) : null}
+          {page === "costs" ? (
+            <CostsSection state={state} event={event} />
           ) : null}
           {page === "staff" ? (
             <StaffSection state={state} eventId={event?.id} />

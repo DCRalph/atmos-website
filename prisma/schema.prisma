@@ -1536,6 +1536,12 @@ model TicketEvent {
   gstRateBp            Int     @default(1500)
   gstNumber            String?
 
+  /// What the room costs for the night. Counted as a cost on the dashboard,
+  /// and when `passVenueHire` is on, split across the capacity and charged to
+  /// buyers as a "Venue booking fee" line. See `venueFeePerTicketCents`.
+  venueHireCents Int?
+  passVenueHire  Boolean @default(false)
+
   termsVersion String @default("v1")
 
   /// Apple Wallet pass styling. Null anywhere falls back to the Atmos default
@@ -1559,11 +1565,29 @@ model TicketEvent {
   linkBatches   TicketLinkBatch[]
   doorReceipts  DoorPaymentReceipt[]
   idChecks      IdCheck[]
+  costs         TicketEventCost[]
 
   @@index([status, startsAt])
   @@index([gigId])
   @@index([posterFileUploadId])
   @@map("ticket_event")
+}
+
+/// Anything else the night costs to put on, besides venue hire. Internal only:
+/// it feeds profit and break even on the dashboard, and buyers never see it.
+model TicketEventCost {
+  id      String      @id @default(cuid())
+  eventId String
+  event   TicketEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  label       String
+  amountCents Int
+  sortOrder   Int    @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([eventId])
+  @@map("ticket_event_cost")
 }
 
 /// Where a tier can be bought. A door-only tier is space held back for the
@@ -1646,6 +1670,8 @@ model TicketOrder {
   subtotalCents   Int    @default(0)
   discountCents   Int    @default(0)
   bookingFeeCents Int    @default(0)
+  /// Venue hire passed on (see `TicketEvent.passVenueHire`), as charged here.
+  venueFeeCents   Int    @default(0)
   totalCents      Int    @default(0)
   gstCents        Int    @default(0)
   gstRateBp       Int    @default(1500)

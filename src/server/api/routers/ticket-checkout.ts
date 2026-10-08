@@ -10,7 +10,10 @@ import {
   isStripeConfigured,
 } from "~/server/stripe";
 import { ticketCount } from "~/lib/ticketing/capacity";
-import { computeOrderTotals } from "~/lib/ticketing/money";
+import {
+  computeOrderTotals,
+  venueFeePerTicketCents,
+} from "~/lib/ticketing/money";
 import { applyDiscountCode } from "~/server/ticketing/discounts";
 import { InventoryError } from "~/server/ticketing/inventory";
 import {
@@ -110,6 +113,9 @@ export const ticketCheckoutRouter = createTRPCRouter({
           gstRateBp: true,
           bookingFeeFixedCents: true,
           bookingFeePercentBp: true,
+          venueHireCents: true,
+          passVenueHire: true,
+          capacity: true,
         },
       });
       if (!event) {
@@ -152,6 +158,7 @@ export const ticketCheckoutRouter = createTRPCRouter({
         lines: pricedLines,
         discountCents: discount?.amountCents ?? 0,
         fee: resolveBookingFee(event, settings),
+        venueFeePerTicket: venueFeePerTicketCents(event),
         gstRateBp: event.gstRateBp,
       });
 

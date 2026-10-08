@@ -8,9 +8,9 @@ import { DEFAULT_PASS_THEME } from "~/lib/ticketing/pass-theme";
 import type { PassThemeDraft } from "~/components/admin/ticketing/pass-theme-field";
 
 /**
- * The event as the admin is editing it: details, tiers and door staff in one
- * draft, saved by one button. Pure data and functions, so the sections that
- * edit it and the hook that saves it agree on what "changed" means.
+ * The event as the admin is editing it: details, tiers, costs and door staff
+ * in one draft, saved by one button. Pure data and functions, so the sections
+ * that edit it and the hook that saves it agree on what "changed" means.
  */
 
 export type AdminEvent = RouterOutputs["ticketEvents"]["byId"];
@@ -41,6 +41,13 @@ export type TierDraft = {
   /** What the tier has done, read-only beside the inputs. */
   soldCount: number;
   heldCount: number;
+};
+
+export type CostDraft = {
+  /** Stable across edits, for React. Costs are saved as a whole list. */
+  key: string;
+  label: string;
+  amount: string;
 };
 
 export type StaffDraft = {
@@ -74,13 +81,25 @@ export type EventDraft = {
   requireNames: boolean;
   feeFixed: string;
   feePercent: string;
+  venueHire: string;
+  passVenueHire: boolean;
+  costs: CostDraft[];
   passTheme: PassThemeDraft;
   tiers: TierDraft[];
   staff: StaffDraft[];
 };
 
 /** The parts of the page a draft can be dirty in, as the Save bar names them. */
-export type Section = "details" | "tiers" | "staff" | "wallet";
+export type Section = "details" | "tiers" | "costs" | "staff" | "wallet";
+
+export const newCost = (): CostDraft => ({
+  key: crypto.randomUUID(),
+  label: "",
+  amount: "",
+});
+
+const centsToField = (cents: number | null) =>
+  cents === null ? "" : (cents / 100).toFixed(2);
 
 export const newTier = (fields: Partial<TierDraft> = {}): TierDraft => ({
   key: crypto.randomUUID(),
@@ -150,6 +169,9 @@ export const emptyDraft = (): EventDraft => ({
   requireNames: true,
   feeFixed: "",
   feePercent: "",
+  venueHire: "",
+  passVenueHire: false,
+  costs: [],
   passTheme: { ...DEFAULT_PASS_THEME },
   tiers: [],
   staff: [],
@@ -186,6 +208,13 @@ export const draftFromEvent = (event: AdminEvent): EventDraft => ({
     event.bookingFeePercentBp != null
       ? (event.bookingFeePercentBp / 100).toString()
       : "",
+  venueHire: centsToField(event.venueHireCents),
+  passVenueHire: event.passVenueHire,
+  costs: event.costs.map((cost) => ({
+    key: cost.id,
+    label: cost.label,
+    amount: centsToField(cost.amountCents),
+  })),
   passTheme: {
     stripStyle: event.passStripStyle,
     accentHex: event.passAccentHex ?? DEFAULT_PASS_THEME.accentHex,
@@ -254,6 +283,11 @@ export function sectionFingerprints(
         heldCount: undefined,
       })),
     ),
+    costs: JSON.stringify({
+      venueHire: draft.venueHire.trim(),
+      passVenueHire: draft.passVenueHire,
+      costs: draft.costs.map((cost) => [cost.label.trim(), cost.amount.trim()]),
+    }),
     staff: JSON.stringify(
       [...draft.staff]
         .sort((a, b) => a.userId.localeCompare(b.userId))
@@ -285,6 +319,8 @@ export type FieldErrors = Partial<
     | "maxPerOrder"
     | "feeFixed"
     | "feePercent"
+    | "venueHire"
+    | "costs"
     | "tiers",
     string
   >
@@ -292,7 +328,11 @@ export type FieldErrors = Partial<
 
 /** Which section an error belongs to, so the Save bar can point at it. */
 export const errorSection = (field: keyof FieldErrors): Section =>
-  field === "tiers" ? "tiers" : "details";
+  field === "tiers"
+    ? "tiers"
+    : field === "venueHire" || field === "costs"
+      ? "costs"
+      : "details";
 
 const isWhole = (value: string, min: number) => {
   const n = parseCount(value);
@@ -344,6 +384,18 @@ export function validate(draft: EventDraft): FieldErrors {
     (Number.isNaN(percent) || percent < 0 || percent > 50)
   ) {
     errors.feePercent = "Between 0 and 50";
+  }
+
+  if (draft.venueHire.trim() && parsePriceToCents(draft.venueHire) === null) {
+    errors.venueHire = "A price, like 2400";
+  }
+  for (const cost of draft.costs) {
+    if (!cost.label.trim()) {
+      errors.costs = "Give every cost a name";
+    } else if (parsePriceToCents(cost.amount) === null) {
+      errors.costs = `${cost.label.trim()} needs an amount, like 450`;
+    }
+    if (errors.costs) break;
   }
 
   for (const tier of draft.tiers) {
@@ -405,6 +457,14 @@ export function toPayload(draft: EventDraft, startsAt: Date): SavePayload {
     bookingFeePercentBp: draft.feePercent.trim()
       ? Math.round(Number(draft.feePercent) * 100)
       : null,
+    venueHireCents: draft.venueHire.trim()
+      ? parsePriceToCents(draft.venueHire)
+      : null,
+    passVenueHire: draft.passVenueHire,
+    costs: draft.costs.map((cost) => ({
+      label: cost.label.trim(),
+      amountCents: parsePriceToCents(cost.amount) ?? 0,
+    })),
     passStripStyle: draft.passTheme.stripStyle,
     passAccentHex: draft.passTheme.accentHex,
     passBackgroundHex: draft.passTheme.backgroundHex,

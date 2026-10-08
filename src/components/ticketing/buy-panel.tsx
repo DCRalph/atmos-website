@@ -1,12 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
+import * as Popover from "@radix-ui/react-popover";
 import { Minus, Plus, Ticket } from "lucide-react";
 import { toast } from "sonner";
 
 import { SiteCheckbox } from "~/components/site/inputs";
 import { Button } from "~/components/site/ui";
 import { cn } from "~/lib/utils";
+import { siteFontVariables } from "~/lib/site-fonts";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { formatCountdown } from "~/lib/ticketing/dates";
 import { formatNZD, formatNZDCompact } from "~/lib/ticketing/money";
@@ -26,7 +36,7 @@ type PublicTier = PublicEvent["tiers"][number];
  * and opens the payment, so a free ticket is one click and a paid one is a tap
  * on Apple Pay. The next thing anybody sees is their ticket.
  *
- * The booking fee is shown in the summary before any of that — NZ
+ * The booking and venue fees are shown in the summary before any of that — NZ
  * fair-trading rules mean unavoidable fees can't appear for the first time at
  * the payment step.
  *
@@ -386,6 +396,16 @@ export function BuyPanel({
                 accent
               />
             )}
+            {(quote.data?.venueFeeCents ?? 0) > 0 && (
+              <Row
+                label={
+                  <span className="inline-flex items-center gap-1.5">
+                    Venue booking fee <VenueFeeInfo />
+                  </span>
+                }
+                value={formatNZD(quote.data?.venueFeeCents ?? 0)}
+              />
+            )}
             {(quote.data?.bookingFeeCents ?? 0) > 0 && (
               <Row
                 label="Booking fee"
@@ -609,7 +629,7 @@ function Row({
   value,
   accent = false,
 }: {
-  label: string;
+  label: ReactNode;
   value: string;
   accent?: boolean;
 }) {
@@ -623,6 +643,67 @@ function Row({
       <dt>{label}</dt>
       <dd className="tabular-nums">{value}</dd>
     </div>
+  );
+}
+
+/**
+ * The "i" beside the venue booking fee. Hover opens it for a mouse, a tap for
+ * a finger. A popover rather than a tooltip, because Radix tooltips never open
+ * on touch. It portals to the body, so it carries the site's type itself.
+ */
+function VenueFeeInfo() {
+  const [open, setOpen] = useState(false);
+  const pointer = useRef("");
+  const onHover = (next: boolean) => (e: PointerEvent) => {
+    pointer.current = e.pointerType;
+    if (e.pointerType === "mouse") setOpen(next);
+  };
+
+  return (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger
+        aria-label="What is the venue booking fee?"
+        onPointerEnter={onHover(true)}
+        onPointerLeave={onHover(false)}
+        // Hover already opened it, so a click shouldn't toggle it shut.
+        onClick={(e) => {
+          if (pointer.current === "mouse" && open) e.preventDefault();
+        }}
+        className={cn(
+          "inline-flex size-4 items-center justify-center rounded-full border font-serif text-[10px] leading-none font-bold italic transition-colors",
+          open
+            ? "border-[var(--site-accent-text)] text-[var(--site-accent-text)]"
+            : "border-white/40 text-white/80 hover:border-white/70",
+        )}
+      >
+        i
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          side="top"
+          align="start"
+          alignOffset={-10}
+          sideOffset={8}
+          collisionPadding={12}
+          // Opened by hover, it mustn't take focus from wherever it was.
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          className={cn(
+            "site",
+            siteFontVariables,
+            "data-[state=open]:animate-in data-[state=open]:fade-in-0 z-[80] w-[17rem] max-w-[calc(100vw-1.5rem)] border border-white/15 bg-[#141414] px-3.5 py-3 text-[13px] leading-snug text-white/85 shadow-[0_12px_32px_rgb(0_0_0/0.6)]",
+          )}
+        >
+          <p className="t-label mb-1.5 text-[11px] text-[var(--site-accent-text)]">
+            Straight to the venue
+          </p>
+          <p>
+            This covers the cost of booking the venue, split evenly across every
+            ticket. It goes straight to the venue. We never see this money.
+          </p>
+          <Popover.Arrow className="fill-[#141414]" width={12} height={6} />
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }
 
