@@ -55,10 +55,8 @@ import {
   type AllocationBudget,
 } from "~/lib/ticketing/capacity";
 import { parsePriceToCents } from "~/lib/ticketing/money";
-import {
-  accessLevel as accessLevelMeta,
-  isElevated,
-} from "~/lib/ticketing/access-levels";
+import { isElevated } from "~/lib/ticketing/access-levels";
+import { useAccessLevels } from "~/hooks/use-access-levels";
 import { cn } from "~/lib/utils";
 import {
   newTier,
@@ -341,6 +339,7 @@ function TierRow({
   onToggle: () => void;
   onRemove: () => void;
 }) {
+  const { level } = useAccessLevels();
   const {
     attributes,
     listeners,
@@ -401,7 +400,7 @@ function TierRow({
             ) : null}
             {isElevated(tier.accessLevel) ? (
               <Badge variant="secondary">
-                {accessLevelMeta(tier.accessLevel).short}
+                {level(tier.accessLevel).short}
               </Badge>
             ) : null}
             {tier.id && soldOut && tier.isActive ? (

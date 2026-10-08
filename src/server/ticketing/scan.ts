@@ -140,6 +140,7 @@ function outcome(
  */
 const SCAN_TICKET_INCLUDE = {
   tier: { select: { name: true } },
+  level: { select: { label: true } },
   lifetimeTicket: { select: { id: true, number: true, holderName: true } },
   event: { select: { id: true, isR18: true, reentryAllowed: true } },
   order: {

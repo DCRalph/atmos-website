@@ -19,7 +19,9 @@ import { toast } from "sonner";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { formatDate, formatDateTime } from "~/lib/date-utils";
 import { formatEventDate } from "~/lib/ticketing/dates";
-import { accessLevel as accessLevelMeta } from "~/lib/ticketing/access-levels";
+import { AccessLevelSelect } from "~/components/admin/ticketing/access-level-select";
+import { DEFAULT_ACCESS_LEVEL } from "~/lib/ticketing/access-levels";
+import { useAccessLevels } from "~/hooks/use-access-levels";
 import {
   scanResultLabel,
   scanResultTone,
@@ -41,13 +43,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
 import { useConfirm } from "~/components/confirm-provider";
 
 type Pass = RouterOutputs["lifetimeTickets"]["list"][number];
@@ -186,11 +181,9 @@ export function LifetimeTicketsPanel() {
   );
 }
 
-/** The level's chip, coloured from the levels table when it is loaded. */
+/** The level's chip, coloured from the levels table. */
 function LevelChip({ code }: { code: string }) {
-  const levels = api.accessLevels.list.useQuery({ includeArchived: true });
-  const fromTable = levels.data?.find((level) => level.code === code);
-  const meta = fromTable ?? accessLevelMeta(code);
+  const meta = useAccessLevels().level(code);
   return (
     <span
       className="inline-block px-2 py-0.5 text-xs font-black tracking-[0.12em]"
@@ -199,33 +192,6 @@ function LevelChip({ code }: { code: string }) {
     >
       {meta.short}
     </span>
-  );
-}
-
-/** Levels from the table, so one added in admin is offered here at once. */
-function LevelSelect({
-  id,
-  value,
-  onChange,
-}: {
-  id?: string;
-  value: string;
-  onChange: (code: string) => void;
-}) {
-  const levels = api.accessLevels.list.useQuery();
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger id={id}>
-        <SelectValue placeholder="Access level" />
-      </SelectTrigger>
-      <SelectContent>
-        {(levels.data ?? []).map((level) => (
-          <SelectItem key={level.code} value={level.code}>
-            {level.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
   );
 }
 
@@ -239,7 +205,7 @@ function CreateForm({
   const utils = api.useUtils();
   const [holderName, setHolderName] = useState("");
   const [holderEmail, setHolderEmail] = useState("");
-  const [accessLevel, setAccessLevel] = useState("GENERAL");
+  const [accessLevel, setAccessLevel] = useState<string>(DEFAULT_ACCESS_LEVEL);
   const [notes, setNotes] = useState("");
   const [sendEmail, setSendEmail] = useState(true);
 
@@ -305,10 +271,10 @@ function CreateForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="lt-level">Access</Label>
-        <LevelSelect
+        <AccessLevelSelect
           id="lt-level"
           value={accessLevel}
-          onChange={setAccessLevel}
+          onValueChange={setAccessLevel}
         />
       </div>
 
@@ -522,10 +488,10 @@ function PassDetailBody({
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="lt-edit-level">Access</Label>
-          <LevelSelect
+          <AccessLevelSelect
             id="lt-edit-level"
             value={accessLevel}
-            onChange={setAccessLevel}
+            onValueChange={setAccessLevel}
           />
           <p className="text-muted-foreground text-xs">
             Applies from their next event. Nights already on record keep the

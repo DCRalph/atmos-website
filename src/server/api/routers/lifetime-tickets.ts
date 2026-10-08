@@ -23,7 +23,10 @@ import { isAppleWalletConfigured } from "~/server/wallet/apple-config";
 import { lifetimeSerial } from "~/server/wallet/apple-lifetime";
 import { schedulePassUpdate } from "~/server/wallet/apple-push";
 import { logActivity } from "~/server/utils/activity-log";
-import type { db as Database } from "~/server/db";
+import {
+  accessLevelCode,
+  assertIssuableLevels,
+} from "~/server/ticketing/access-level-store";
 
 /**
  * Lifetime passes, from the office.
@@ -32,25 +35,6 @@ import type { db as Database } from "~/server/db";
  * scans of the per-event tickets a pass minted, which is the same history the
  * door sees on the night. See `~/server/ticketing/lifetime` for the model.
  */
-
-const LEVEL_CODE = z.string().trim().toUpperCase().min(2).max(24);
-
-/** Levels come from the table, not the retired enum, so a custom one works. */
-async function assertLevel(
-  db: Pick<typeof Database, "accessLevel">,
-  code: string,
-): Promise<void> {
-  const level = await db.accessLevel.findUnique({
-    where: { code },
-    select: { archived: true },
-  });
-  if (!level || level.archived) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "That access level isn't available.",
-    });
-  }
-}
 
 /** What both the list and the detail carry about a pass. */
 const SUMMARY_SELECT = {
@@ -235,14 +219,14 @@ export const lifetimeTicketsRouter = createTRPCRouter({
       z.object({
         holderName: z.string().trim().min(1, "Whose pass is it?").max(120),
         holderEmail: z.email().optional(),
-        accessLevel: LEVEL_CODE,
+        accessLevel: accessLevelCode,
         notes: z.string().trim().max(500).optional(),
         /** Email it straight away, when there is an address to send to. */
         sendEmail: z.boolean().default(true),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await assertLevel(ctx.db, input.accessLevel);
+      await assertIssuableLevels(ctx.db, [input.accessLevel]);
 
       const lifetime = await createLifetimeTicket({
         holderName: input.holderName,
@@ -286,12 +270,14 @@ export const lifetimeTicketsRouter = createTRPCRouter({
         id: z.string(),
         holderName: z.string().trim().min(1).max(120).optional(),
         holderEmail: z.email().nullable().optional(),
-        accessLevel: LEVEL_CODE.optional(),
+        accessLevel: accessLevelCode.optional(),
         notes: z.string().trim().max(500).nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (input.accessLevel) await assertLevel(ctx.db, input.accessLevel);
+      if (input.accessLevel) {
+        await assertIssuableLevels(ctx.db, [input.accessLevel]);
+      }
 
       const { id, ...patch } = input;
       const lifetime = await ctx.db.lifetimeTicket.update({

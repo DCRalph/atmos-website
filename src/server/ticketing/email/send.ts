@@ -18,11 +18,8 @@ import { renderQrPng } from "~/server/ticketing/qr-image";
 import { orderAccessToken, ticketAccessToken } from "~/server/ticketing/orders";
 import { lifetimeAccessToken } from "~/server/ticketing/lifetime";
 import { getTicketingSettings } from "~/server/ticketing/settings";
-import {
-  accessLevel,
-  isElevated,
-  ticketTypeName,
-} from "~/lib/ticketing/access-levels";
+import { isElevated, ticketTypeName } from "~/lib/ticketing/access-levels";
+import { resolveLevel } from "~/server/ticketing/access-level-store";
 import {
   applePassUrl,
   googleWalletSaveUrl,
@@ -119,7 +116,7 @@ export async function sendTicketEmail({
   for (const [index, ticket] of order.tickets.entries()) {
     const cid = `ticket-${index + 1}`;
     const elevated = isElevated(ticket.accessLevel);
-    const level = accessLevel(ticket.accessLevel);
+    const level = await resolveLevel(ticket.accessLevel);
     const png = await renderQrPng(
       buildTicketQrPayload(ticket, order.event.slug),
     );
@@ -133,7 +130,7 @@ export async function sendTicketEmail({
 
     emailTickets.push({
       ticketNumber: ticket.ticketNumber,
-      tierName: ticketTypeName(ticket),
+      tierName: ticketTypeName({ ...ticket, level }),
       accessLabel: elevated ? level.label : null,
       accessBadgeBg: elevated ? level.badgeBg : null,
       accessBadgeFg: elevated ? level.badgeFg : null,
@@ -264,7 +261,7 @@ export async function sendCompTicketEmail({
     attachments.push(await appleWalletBadgeAttachment());
   }
   const elevated = isElevated(ticket.accessLevel);
-  const level = accessLevel(ticket.accessLevel);
+  const level = await resolveLevel(ticket.accessLevel);
 
   const { subject, html, text } = renderCompEmail({
     eventName: ticket.event.name,
@@ -276,7 +273,7 @@ export async function sendCompTicketEmail({
     isR18: ticket.event.isR18,
     ticket: {
       ticketNumber: ticket.ticketNumber,
-      tierName: ticketTypeName(ticket),
+      tierName: ticketTypeName({ ...ticket, level }),
       accessLabel: elevated ? level.label : null,
       accessBadgeBg: elevated ? level.badgeBg : null,
       accessBadgeFg: elevated ? level.badgeFg : null,
@@ -353,7 +350,7 @@ export async function sendLifetimeEmail({
   if (appleWalletConfigured) {
     attachments.push(await appleWalletBadgeAttachment());
   }
-  const level = accessLevel(lifetime.accessLevel);
+  const level = await resolveLevel(lifetime.accessLevel);
 
   const { subject, html, text } = renderLifetimeEmail({
     holderName: lifetime.holderName,

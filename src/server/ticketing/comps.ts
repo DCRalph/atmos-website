@@ -9,6 +9,7 @@ import {
   TicketStatus,
 } from "~Prisma/client";
 import { db } from "~/server/db";
+import { assertIssuableLevels } from "~/server/ticketing/access-level-store";
 import {
   eventHeadcount,
   withEventInventoryLock,
@@ -263,6 +264,11 @@ export async function issueComp({
     0,
   );
   const requested = 1 + handoutCount;
+
+  await assertIssuableLevels(db, [
+    accessLevel,
+    ...handoutLines.map((line) => line.accessLevel),
+  ]);
 
   const orderNumber = await generateOrderNumber();
 

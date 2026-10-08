@@ -37,10 +37,8 @@ import {
 } from "~/lib/ticketing/payment-methods";
 import { FilterSelect, ListFilters } from "../list-filters";
 import { TicketAccessLevelSelect } from "~/components/admin/ticketing/access-level-select";
-import {
-  accessLevel as accessLevelMeta,
-  ticketTypeName,
-} from "~/lib/ticketing/access-levels";
+import { ticketTypeName } from "~/lib/ticketing/access-levels";
+import { useAccessLevels } from "~/hooks/use-access-levels";
 import {
   DEFAULT_EVENT_TIMEZONE,
   formatEventDateTime,
@@ -279,6 +277,7 @@ function OrderDetail({
   const utils = api.useUtils();
   const confirm = useConfirm();
   const order = api.ticketAdmin.order.useQuery({ id: orderId });
+  const { level } = useAccessLevels();
   const [selected, setSelected] = useState<string[]>([]);
   // Deleting is superadmin-only; admins refund, void, or expire instead.
   const me = api.user.me.useQuery();
@@ -473,7 +472,7 @@ function OrderDetail({
                 {admitted && <Badge variant="secondary">admitted</Badge>}
                 {readOnly ? (
                   <Badge variant="outline">
-                    {accessLevelMeta(ticket.accessLevel).short}
+                    {level(ticket.accessLevel).short}
                   </Badge>
                 ) : (
                   <TicketAccessLevelSelect

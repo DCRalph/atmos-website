@@ -47,10 +47,11 @@ import {
 } from "~/server/ticketing/ticket-link-batches";
 import { ADMITTING_RESULTS, admissionStates } from "~/server/ticketing/scan";
 import { logActivity } from "~/server/utils/activity-log";
+import { ticketTypeName } from "~/lib/ticketing/access-levels";
 import {
-  ACCESS_LEVEL_VALUES,
-  ticketTypeName,
-} from "~/lib/ticketing/access-levels";
+  accessLevelCode,
+  assertIssuableLevels,
+} from "~/server/ticketing/access-level-store";
 import { ticketUrl, ticketsUrl } from "~/server/ticketing/urls";
 import { schedulePassUpdate } from "~/server/wallet/apple-push";
 
@@ -239,6 +240,7 @@ export const ticketAdminRouter = createTRPCRouter({
               voidReason: true,
               createdAt: true,
               tier: { select: { name: true } },
+              level: { select: { label: true } },
               scans: {
                 orderBy: { createdAt: "desc" },
                 take: 5,
@@ -281,7 +283,7 @@ export const ticketAdminRouter = createTRPCRouter({
         named: z.enum(NAMED_STATES).optional(),
         /** Whether it has been used to get in. */
         door: z.enum(DOOR_STATES).optional(),
-        accessLevel: z.enum(ACCESS_LEVEL_VALUES).optional(),
+        accessLevel: accessLevelCode.optional(),
         limit: z.number().int().min(1).max(200).default(50),
         cursor: z.string().optional(),
       }),
@@ -348,6 +350,7 @@ export const ticketAdminRouter = createTRPCRouter({
           // to be able to say how many that is before anyone confirms.
           _count: { select: { handouts: true } },
           tier: { select: { name: true } },
+          level: { select: { label: true } },
           order: {
             select: {
               id: true,
@@ -797,11 +800,11 @@ export const ticketAdminRouter = createTRPCRouter({
         eventId: z.string(),
         recipientName: z.string().trim().min(1).max(120),
         recipientEmail: z.email().optional(),
-        accessLevel: z.enum(ACCESS_LEVEL_VALUES),
+        accessLevel: accessLevelCode,
         handouts: z
           .array(
             z.object({
-              accessLevel: z.enum(ACCESS_LEVEL_VALUES),
+              accessLevel: accessLevelCode,
               quantity: z.number().int().min(1).max(20),
             }),
           )
@@ -879,6 +882,7 @@ export const ticketAdminRouter = createTRPCRouter({
           accessTokenVersion: true,
           createdAt: true,
           tier: { select: { name: true } },
+          level: { select: { label: true } },
           // Whether the person it was given to actually turned up, so the list
           // can be filtered down to the ones still outside.
           scans: {
@@ -903,6 +907,7 @@ export const ticketAdminRouter = createTRPCRouter({
               nameLockedAt: true,
               accessTokenVersion: true,
               tier: { select: { name: true } },
+              level: { select: { label: true } },
               scans: {
                 where: { result: { in: [...ADMITTING_RESULTS] } },
                 take: 1,
@@ -1069,21 +1074,25 @@ export const ticketAdminRouter = createTRPCRouter({
   /**
    * Change what one ticket gets past, without touching the tier it came from
    * or reissuing anything. The QR is unchanged — the door reads the level at
-   * scan time, so an upgrade takes effect on the next scan.
+   * scan time, so an upgrade takes effect on the next scan, and the wallet
+   * pass is pushed so the level printed on it follows.
    */
   setTicketAccessLevel: adminProcedure
     .input(
       z.object({
         ticketId: z.string(),
-        accessLevel: z.enum(ACCESS_LEVEL_VALUES),
+        accessLevel: accessLevelCode,
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await assertIssuableLevels(ctx.db, [input.accessLevel]);
       const ticket = await ctx.db.ticket.update({
         where: { id: input.ticketId },
         data: { accessLevel: input.accessLevel },
         select: { id: true, ticketNumber: true, eventId: true },
       });
+      // The level is printed on the wallet pass, so tell it to refetch.
+      schedulePassUpdate(ticket.id);
 
       await logActivity({
         type: ActivityType.TICKET_ACCESS_CHANGED,

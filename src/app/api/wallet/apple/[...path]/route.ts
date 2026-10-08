@@ -200,12 +200,17 @@ export async function GET(
           id: true,
           updatedAt: true,
           event: { select: { updatedAt: true } },
+          level: { select: { updatedAt: true } },
         },
       }),
       lifetimeIds.length > 0
         ? db.lifetimeTicket.findMany({
             where: { id: { in: lifetimeIds } },
-            select: { id: true, updatedAt: true },
+            select: {
+              id: true,
+              updatedAt: true,
+              level: { select: { updatedAt: true } },
+            },
           })
         : Promise.resolve([]),
     ]);
@@ -214,18 +219,20 @@ export async function GET(
     // has no event to be as fresh as, so its own timestamp stands in twice.
     const freshnessBySerial = new Map<
       string,
-      { ticketUpdatedAt: Date; eventUpdatedAt: Date }
+      { ticketUpdatedAt: Date; eventUpdatedAt: Date; levelUpdatedAt: Date }
     >();
     for (const ticket of tickets) {
       freshnessBySerial.set(ticket.id, {
         ticketUpdatedAt: ticket.updatedAt,
         eventUpdatedAt: ticket.event.updatedAt,
+        levelUpdatedAt: ticket.level.updatedAt,
       });
     }
     for (const lifetime of lifetimes) {
       freshnessBySerial.set(`lifetime.${lifetime.id}`, {
         ticketUpdatedAt: lifetime.updatedAt,
         eventUpdatedAt: lifetime.updatedAt,
+        levelUpdatedAt: lifetime.level.updatedAt,
       });
     }
 
@@ -267,6 +274,7 @@ export async function GET(
     if (lifetimeId) {
       const lifetime = await db.lifetimeTicket.findUnique({
         where: { id: lifetimeId },
+        include: { level: { select: { updatedAt: true } } },
       });
       if (!lifetime) return new Response(null, { status: 404 });
 
@@ -274,7 +282,10 @@ export async function GET(
       return new Response(new Uint8Array(buffer), {
         headers: {
           "Content-Type": "application/vnd.apple.pkpass",
-          "Last-Modified": lifetime.updatedAt.toUTCString(),
+          "Last-Modified": passUpdatedAt(
+            lifetime.updatedAt,
+            lifetime.level.updatedAt,
+          ).toUTCString(),
           "Cache-Control": "no-store",
         },
       });
@@ -282,7 +293,12 @@ export async function GET(
 
     const ticket = await db.ticket.findUnique({
       where: { id: serialNumber },
-      include: { tier: { select: { name: true } }, event: true, order: true },
+      include: {
+        tier: { select: { name: true } },
+        level: { select: { updatedAt: true } },
+        event: true,
+        order: true,
+      },
     });
     if (ticket?.status !== TicketStatus.VALID) {
       return new Response(null, { status: 404 });
@@ -297,6 +313,7 @@ export async function GET(
     const lastModified = passUpdatedAt(
       ticket.updatedAt,
       ticket.event.updatedAt,
+      ticket.level.updatedAt,
     );
 
     return new Response(new Uint8Array(buffer), {

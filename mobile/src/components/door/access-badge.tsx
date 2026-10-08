@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { accessLevel, isElevated } from "~/lib/ticketing/access-levels";
+import { isElevated } from "~/lib/ticketing/access-levels";
+import { useAccessLevels } from "@/lib/access-levels";
 import { space } from "@/lib/theme";
 
 /**
@@ -25,9 +26,9 @@ export function AccessBadge({
   size?: "large" | "small";
   onlyElevated?: boolean;
 }) {
+  const meta = useAccessLevels().level(level);
   if (onlyElevated && !isElevated(level)) return null;
 
-  const meta = accessLevel(level);
   const large = size === "large";
 
   return (

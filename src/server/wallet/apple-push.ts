@@ -7,6 +7,7 @@ import { after } from "next/server";
 import { db } from "~/server/db";
 import { env } from "~/env";
 import { getAppleWalletConfig, isAppleWalletConfigured } from "./apple-config";
+import { lifetimeSerial } from "./apple-lifetime";
 
 /**
  * APNs push for Wallet passes.
@@ -140,8 +141,51 @@ export async function pushEventPassUpdates(
   return totals;
 }
 
+/**
+ * Push an update to every registered pass printed with one of these levels,
+ * event tickets and lifetime passes alike. Their freshness already follows the
+ * level's `updatedAt`; this is what makes the phones come and ask.
+ */
+export async function pushLevelPassUpdates(
+  codes: string[],
+): Promise<PushResult> {
+  const totals: PushResult = { sent: 0, failed: 0, pruned: 0 };
+  if (!isAppleWalletConfigured() || codes.length === 0) return totals;
+
+  const [tickets, lifetimes] = await Promise.all([
+    db.ticket.findMany({
+      where: { accessLevel: { in: codes } },
+      select: { id: true },
+    }),
+    db.lifetimeTicket.findMany({
+      where: { accessLevel: { in: codes } },
+      select: { id: true },
+    }),
+  ]);
+  const serials = [
+    ...tickets.map((ticket) => ticket.id),
+    ...lifetimes.map((lifetime) => lifetimeSerial(lifetime.id)),
+  ];
+  if (serials.length === 0) return totals;
+
+  const registrations = await db.walletPassRegistration.findMany({
+    where: { serialNumber: { in: serials } },
+    distinct: ["serialNumber"],
+    select: { serialNumber: true },
+  });
+
+  for (const { serialNumber } of registrations) {
+    const result = await pushPassUpdate(serialNumber);
+    totals.sent += result.sent;
+    totals.failed += result.failed;
+    totals.pruned += result.pruned;
+  }
+
+  return totals;
+}
+
 function logPushResult(
-  kind: "ticket" | "event",
+  kind: "ticket" | "event" | "level",
   id: string,
   result: PushResult,
 ): void {
@@ -173,6 +217,18 @@ export function schedulePassUpdate(serialNumber: string): void {
         { serialNumber },
         cause,
       );
+    }
+  });
+}
+
+/** Wake Wallet after an access level edit without blocking the admin save. */
+export function scheduleLevelPassUpdates(codes: string[]): void {
+  runAfterResponse(async () => {
+    try {
+      const result = await pushLevelPassUpdates(codes);
+      logPushResult("level", codes.join(","), result);
+    } catch (cause) {
+      console.error("[wallet] pass update push failed", { codes }, cause);
     }
   });
 }

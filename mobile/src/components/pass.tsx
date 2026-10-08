@@ -19,7 +19,8 @@ import { API_URL } from "@/lib/env";
 import { mediaUrl } from "@/lib/media";
 import { colors, radius, space, type } from "@/lib/theme";
 import { formatGigDate, formatGigTime } from "@/lib/dates";
-import { accessLevel, isElevated } from "~/lib/ticketing/access-levels";
+import { isElevated } from "~/lib/ticketing/access-levels";
+import { useAccessLevels } from "@/lib/access-levels";
 import { Eyebrow, Display } from "@/components/ui";
 import { Glass } from "@/components/glass";
 import { Scrim } from "@/components/poster";
@@ -51,6 +52,7 @@ export function Pass({
   const { width } = useWindowDimensions();
   const pageWidth = width - gutter * 2;
   const [page, setPage] = useState(0);
+  const { level } = useAccessLevels();
   const count = order.tickets.length;
   const ticket = order.tickets[page] ?? order.tickets[0];
   const poster = order.event.posterFileUploadId
@@ -140,7 +142,7 @@ export function Pass({
               {/* The level leads where it's above GA: it's what the door acts
                   on. The tier is what was bought. */}
               {isElevated(ticket.accessLevel)
-                ? `${accessLevel(ticket.accessLevel).short} · ${ticket.tierName}`
+                ? `${level(ticket.accessLevel).short} · ${ticket.tierName}`
                 : ticket.tierName}
             </Field>
           </View>

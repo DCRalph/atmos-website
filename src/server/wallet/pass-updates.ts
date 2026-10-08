@@ -23,14 +23,15 @@ export function formatPassUpdateTag(date: Date): string {
   return String(date.getTime());
 }
 
-/** The pass is as fresh as whichever of the ticket or its event changed last. */
-export function passUpdatedAt(
-  ticketUpdatedAt: Date,
-  eventUpdatedAt: Date,
-): Date {
-  return ticketUpdatedAt.getTime() >= eventUpdatedAt.getTime()
-    ? ticketUpdatedAt
-    : eventUpdatedAt;
+/**
+ * The pass is as fresh as whichever of the things it prints changed last: the
+ * ticket, its event, and its access level.
+ */
+export function passUpdatedAt(first: Date, ...rest: Date[]): Date {
+  return rest.reduce(
+    (latest, date) => (date.getTime() > latest.getTime() ? date : latest),
+    first,
+  );
 }
 
 export function isPassNewerThan(updatedAt: Date, since: Date | null): boolean {
@@ -43,6 +44,7 @@ export type RegisteredPassFreshness = {
   passTypeIdentifier: string;
   ticketUpdatedAt: Date;
   eventUpdatedAt: Date;
+  levelUpdatedAt: Date;
 };
 
 /**
@@ -69,6 +71,7 @@ export function listUpdatedPasses({
       updatedAt: passUpdatedAt(
         registration.ticketUpdatedAt,
         registration.eventUpdatedAt,
+        registration.levelUpdatedAt,
       ),
     }))
     .filter((pass) => isPassNewerThan(pass.updatedAt, since))

@@ -18,10 +18,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Skeleton } from "~/components/ui/skeleton";
 import { formatNZD } from "~/lib/ticketing/money";
-import {
-  ACCESS_LEVELS,
-  type AccessLevelValue,
-} from "~/lib/ticketing/access-levels";
+import { useAccessLevels } from "~/hooks/use-access-levels";
 
 type PaymentMethod = "CASH" | "TERMINAL";
 
@@ -375,7 +372,8 @@ function CompForm({
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [level, setLevel] = useState<AccessLevelValue>("GUEST");
+  const levels = useAccessLevels();
+  const [level, setLevel] = useState("GUEST");
   const [admitNow, setAdmitNow] = useState(true);
   const [overage, setOverage] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<{
@@ -389,7 +387,7 @@ function CompForm({
     onSuccess: (result) => {
       setReceipt({
         heading: result.admittedNow ? "Comped and in" : "Comped",
-        detail: `${name} · ${ACCESS_LEVELS.find((l) => l.value === level)?.label ?? level}`,
+        detail: `${name} · ${levels.level(level).label}`,
         reference: result.hostTicketNumber,
         admitted: result.admittedNow,
       });
@@ -480,13 +478,13 @@ function CompForm({
           What does it get them past?
         </p>
         <div className="mt-2 grid grid-cols-3 gap-2">
-          {ACCESS_LEVELS.map((option) => {
-            const active = level === option.value;
+          {levels.active.map((option) => {
+            const active = level === option.code;
             return (
               <button
-                key={option.value}
+                key={option.code}
                 type="button"
-                onClick={() => setLevel(option.value)}
+                onClick={() => setLevel(option.code)}
                 aria-pressed={active}
                 className={`flex h-14 items-center justify-center border-2 text-sm font-semibold transition-colors ${
                   active

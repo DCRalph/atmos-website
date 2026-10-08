@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
 
 import { Input } from "~/components/ui/input";
-import { accessLevel } from "~/lib/ticketing/access-levels";
+import { useAccessLevels } from "~/hooks/use-access-levels";
 import { formatTimeAgo } from "~/lib/ticketing/dates";
 import {
   DENY_REASONS,
@@ -115,7 +115,7 @@ export function AccessBadge({
   level: string;
   size?: "large" | "small";
 }) {
-  const meta = accessLevel(level);
+  const meta = useAccessLevels().level(level);
   return (
     <span
       className={`inline-block font-black tracking-[0.14em] ${

@@ -1,7 +1,7 @@
 import type { SerializedEditorState } from "lexical";
 
 import type { RouterInputs, RouterOutputs } from "~/trpc/react";
-import type { AccessLevelValue } from "~/lib/ticketing/access-levels";
+import { DEFAULT_ACCESS_LEVEL } from "~/lib/ticketing/access-levels";
 import { toAllocationBudget } from "~/lib/ticketing/capacity";
 import { parsePriceToCents } from "~/lib/ticketing/money";
 import { DEFAULT_PASS_THEME } from "~/lib/ticketing/pass-theme";
@@ -34,7 +34,8 @@ export type TierDraft = {
   isActive: boolean;
   isHidden: boolean;
   requiresApproval: boolean;
-  accessLevel: AccessLevelValue;
+  /** A code from the access levels table. */
+  accessLevel: string;
   maxPerOrder: string;
   maxPerEmail: string;
   /** What the tier has done, read-only beside the inputs. */
@@ -95,7 +96,7 @@ export const newTier = (fields: Partial<TierDraft> = {}): TierDraft => ({
   isActive: true,
   isHidden: false,
   requiresApproval: false,
-  accessLevel: "GENERAL",
+  accessLevel: DEFAULT_ACCESS_LEVEL,
   maxPerOrder: "10",
   maxPerEmail: "",
   soldCount: 0,
@@ -118,7 +119,7 @@ const tierFromEvent = (tier: AdminEvent["tiers"][number]): TierDraft => ({
   isActive: tier.isActive,
   isHidden: tier.isHidden,
   requiresApproval: tier.requiresApproval,
-  accessLevel: tier.accessLevel as AccessLevelValue,
+  accessLevel: tier.accessLevel,
   maxPerOrder: tier.maxPerOrder.toString(),
   maxPerEmail: tier.maxPerEmail?.toString() ?? "",
   soldCount: tier.soldCount,

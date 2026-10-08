@@ -31,18 +31,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
-import {
-  ACCESS_LEVELS,
-  type AccessLevelValue,
-  accessLevel as accessLevelMeta,
-} from "~/lib/ticketing/access-levels";
+import { AccessLevelSelect } from "~/components/admin/ticketing/access-level-select";
+import { DEFAULT_ACCESS_LEVEL } from "~/lib/ticketing/access-levels";
+import { useAccessLevels } from "~/hooks/use-access-levels";
 import { FilterSelect, ListFilters } from "../list-filters";
 
 type AdminEvent = RouterOutputs["ticketEvents"]["byId"];
@@ -50,7 +41,7 @@ type Comp = RouterOutputs["ticketAdmin"]["comps"][number];
 type Handout = Comp["handouts"][number];
 
 type CompFilters = {
-  accessLevel: AccessLevelValue | null;
+  accessLevel: string | null;
   handouts: "UNSENT" | "ALL_SENT" | "NONE" | null;
   door: "ARRIVED" | "NOT_ARRIVED" | null;
 };
@@ -104,8 +95,9 @@ export function CompsPanel({ event }: { event: AdminEvent }) {
 
   const [recipientName, setRecipientName] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
-  const [level, setLevel] = useState<AccessLevelValue>("GUEST");
-  const [handoutLevel, setHandoutLevel] = useState<AccessLevelValue>("GENERAL");
+  const { all: levels, level: levelMeta } = useAccessLevels();
+  const [level, setLevel] = useState("GUEST");
+  const [handoutLevel, setHandoutLevel] = useState<string>(DEFAULT_ACCESS_LEVEL);
   const [handoutCount, setHandoutCount] = useState(0);
   const [notes, setNotes] = useState("");
   const [sendEmail, setSendEmail] = useState(true);
@@ -205,7 +197,7 @@ export function CompsPanel({ event }: { event: AdminEvent }) {
         accessor: (row) => row.accessLevel,
         cell: (row) => (
           <Badge variant="secondary">
-            {accessLevelMeta(row.accessLevel).short}
+            {levelMeta(row.accessLevel).short}
           </Badge>
         ),
       },
@@ -252,7 +244,7 @@ export function CompsPanel({ event }: { event: AdminEvent }) {
         cell: (row) => row.notes ?? "—",
       },
     ],
-    [],
+    [levelMeta],
   );
 
   return (
@@ -300,7 +292,7 @@ export function CompsPanel({ event }: { event: AdminEvent }) {
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
             <Label>Their level</Label>
-            <LevelSelect value={level} onChange={setLevel} />
+            <AccessLevelSelect value={level} onValueChange={setLevel} />
           </div>
 
           <div className="space-y-1.5">
@@ -331,9 +323,9 @@ export function CompsPanel({ event }: { event: AdminEvent }) {
               </Button>
               {handoutCount > 0 && (
                 <div className="flex-1">
-                  <LevelSelect
+                  <AccessLevelSelect
                     value={handoutLevel}
-                    onChange={setHandoutLevel}
+                    onValueChange={setHandoutLevel}
                   />
                 </div>
               )}
@@ -401,9 +393,9 @@ export function CompsPanel({ event }: { event: AdminEvent }) {
             label="Level"
             value={filters.accessLevel}
             onChange={(value) => setFilter("accessLevel", value)}
-            options={ACCESS_LEVELS.map((level) => ({
-              value: level.value,
-              label: level.label,
+            options={levels.map((option) => ({
+              value: option.code,
+              label: option.label,
             }))}
           />
           <FilterSelect
@@ -494,32 +486,6 @@ export function CompsPanel({ event }: { event: AdminEvent }) {
   );
 }
 
-function LevelSelect({
-  value,
-  onChange,
-}: {
-  value: AccessLevelValue;
-  onChange: (value: AccessLevelValue) => void;
-}) {
-  return (
-    <Select
-      value={value}
-      onValueChange={(next) => onChange(next as AccessLevelValue)}
-    >
-      <SelectTrigger>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {ACCESS_LEVELS.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
 /**
  * The one place the comp numbers are read from, so the meter, the warning and
  * the analytics tile can never tell three different stories.
@@ -529,6 +495,7 @@ function CompMeter({
 }: {
   accounting: RouterOutputs["ticketAdmin"]["compAccounting"] | undefined;
 }) {
+  const { all } = useAccessLevels();
   if (!accounting) return null;
 
   const {
@@ -542,7 +509,7 @@ function CompMeter({
     remainingForSale,
   } = accounting;
 
-  const levels = ACCESS_LEVELS.filter((level) => byLevel[level.value]);
+  const levels = all.filter((level) => byLevel[level.code]);
 
   return (
     <section className="grid gap-4 rounded-lg border p-5 sm:grid-cols-3">
@@ -597,8 +564,8 @@ function CompMeter({
       {levels.length > 0 && (
         <div className="flex flex-wrap gap-2 sm:col-span-3">
           {levels.map((level) => (
-            <Badge key={level.value} variant="outline">
-              {byLevel[level.value]} × {level.short}
+            <Badge key={level.code} variant="outline">
+              {byLevel[level.code]} × {level.short}
             </Badge>
           ))}
         </div>
@@ -614,11 +581,12 @@ function CompDetail({
   comp: Comp;
   onChanged: () => Promise<void>;
 }) {
+  const { level } = useAccessLevels();
   return (
     <div className="space-y-4">
       <div className="space-y-1 rounded-lg border p-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge>{accessLevelMeta(comp.accessLevel).short}</Badge>
+          <Badge>{level(comp.accessLevel).short}</Badge>
           <span className="font-medium break-words">{comp.recipientName}</span>
         </div>
         <p className="text-muted-foreground text-xs">
@@ -669,6 +637,7 @@ function HandoutRow({
   handout: Handout;
   onChanged: () => Promise<void>;
 }) {
+  const { level } = useAccessLevels();
   const [copied, setCopied] = useState(false);
 
   const reassign = api.ticketAdmin.reassignHandout.useMutation({
@@ -694,7 +663,7 @@ function HandoutRow({
     <li className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm">
       <span className="min-w-0 break-words">
         <Badge variant="secondary" className="mr-2">
-          {accessLevelMeta(handout.accessLevel).short}
+          {level(handout.accessLevel).short}
         </Badge>
         {handout.guestName ? (
           <span className="font-medium">{handout.guestName}</span>
