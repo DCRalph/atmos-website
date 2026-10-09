@@ -7,7 +7,8 @@ or they say why it can't be.
 
 Status: implemented on `feat/tasks-system`, with the calendar-first option selected.
 See [TASKS.md](TASKS.md) for current behavior, validation, and deployment setup.
-The production migration and external service configuration remain unapplied.
+The task migration is applied to production. External service configuration
+and server/native deployment remain separate.
 The optional Instagram DM route remains deferred.
 
 ## Goals
@@ -326,7 +327,7 @@ model TaskPlaybook {
 Also: `ActivityType` gains `TASK_CREATED`, `TASK_UPDATED`, `TASK_DELETED`,
 `TASK_STATUS_CHANGED`, `TASK_DELAY_REPORTED`, `TASK_TAKEN`.
 
-Reminder: `.env` points at prod Neon. The migration is applied by hand.
+Reminder: `.env` points at production Postgres. The migration is applied by hand.
 
 ## How a task moves: dependencies and push-back
 

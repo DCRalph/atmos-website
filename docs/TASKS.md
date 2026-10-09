@@ -7,8 +7,9 @@ editor has a Tasks tab. The app opens on a daily Mine agenda, with Everyone,
 quick add, paste/share intake, details, and standings.
 
 All seven phases are included. The optional Instagram DM integration is deferred
-as specified in the plan. Production has not been migrated or deployed, and no
-live task notifications were sent during implementation.
+as specified in the plan. The task migration was applied to production on
+9 October 2026 after merging into local `main`. Server and native deployment
+remain separate. No live task notifications were sent during implementation.
 
 ## Rules and storage
 
@@ -176,11 +177,18 @@ ledger is enabled.
 ## Migration and validation
 
 The additive migration is
-`src/prisma/migrations/20261009000000_event_tasks/migration.sql`. Apply it through
-the normal deployment migration process before deploying the new server. The
-repository `.env` points at production: it was not used for migration or writes.
-The SQL was applied successfully to a disposable local Postgres database built
-from the prior schema.
+`src/prisma/migrations/20261009000000_event_tasks/migration.sql`. It was first
+validated against a disposable local Postgres database built from the prior
+schema. On 9 October 2026, it was applied to the production database configured
+in `.env`, in one transaction, following explicit authorization. It was then
+recorded with `prisma migrate resolve --applied 20261009000000_event_tasks`.
+
+Production verification confirmed the migration checksum, all nine tables and
+their columns, 11 indexes, 14 foreign keys, four enums, and six activity types.
+The task tables were empty after the migration. Several older migrations remain
+unrecorded in Prisma's history following manual schema changes; this operation
+applied only the task migration. Do not replay those older migrations without
+reconciling their history against the existing schema.
 
 Validation completed:
 

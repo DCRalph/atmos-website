@@ -5,7 +5,8 @@ Branch: `feat/tasks-system`, created from local `main`.
 The full scope is [TASKS-PLAN.md](TASKS-PLAN.md). William selected **B: Calendar
 first**. All seven phases are implemented, including the five optional wacky
 features. [TASKS.md](TASKS.md) covers the finished system, checks, and setup.
-Production has not been migrated or deployed.
+The task migration was applied to production on 9 October 2026 after merging
+into local `main`. Server and native deployment remain separate.
 
 ## Design checkpoint
 
@@ -33,7 +34,7 @@ controls. Mobile inherits the app's embedded fonts, black surfaces and
 
 ## Implementation sequence (completed)
 
-1. **Tasks exist:** Prisma schema and an unapplied migration; shared status
+1. **Tasks exist:** Prisma schema and an additive migration; shared status
    transitions; admin-only router and activity logging; web list and drawer;
    mobile admin gate, agenda, detail and quick add; batched creation notices;
    Will GPT policy and prompt changes.
@@ -97,8 +98,9 @@ dependencies resolve only at DONE.
   boundaries. Reuse the project's Bun test setup.
 - Run the web checks and mobile typecheck after implementation. Verify the
   chosen screens against existing styles at desktop and phone widths.
-- Do not run migrations against the repository's `.env`: the plan identifies
-  that database as production. Generate SQL for manual application.
+- Implementation tests used a disposable local database. The task migration
+  was later applied manually to the production database in `.env`, with
+  explicit authorization, and its schema and Prisma history were verified.
 - Inbound email needs the Resend receiving domain, MX record, webhook secret
   and an approved forwarding configuration before it can receive live mail.
 - Native countdown and share extension require a rebuilt iOS app and device
