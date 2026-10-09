@@ -155,11 +155,18 @@ Add → Import shared chat / screenshots to review and extract them. Handoffs
 expire after 24 hours and are cleared after import. The app performs all uploads
 and API calls after authentication.
 
-The native task features require the rebuilt app. iOS **1.1.0 (930369)** was
-built from `033357d` and uploaded to App Store Connect on 9 October 2026.
+The native task features require the rebuilt app. iOS **1.1.0 (930392)** was
+built from `9731652` and uploaded to App Store Connect on 9 October 2026.
+It replaces build 930369, which Apple rejected during processing because the
+image-picker plugin removed `NSCameraUsageDescription`. The plugin now preserves
+the door scanner's camera purpose string, and the release script checks required
+permission descriptions in both the generated Info.plist and the exported IPA.
+
 The signed IPA includes both extensions; their distribution profiles, shared
-App Group, versions, fonts, and signatures were verified. Apple accepted the
-upload, with nonblocking missing-dSYM warnings for some third-party frameworks.
+App Group, versions, fonts, and signatures were verified. Camera, photo-library,
+and Face ID purpose strings were also verified in the exported app. The upload
+completed with nonblocking missing-dSYM warnings for some third-party frameworks;
+Apple's subsequent processing result was unconfirmed at upload completion.
 
 The config plugins add/update both targets
 idempotently on `expo prebuild`; existing binaries tolerate missing new module
