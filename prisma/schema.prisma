@@ -222,6 +222,9 @@ model Session {
   userAgent String?
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Set while an admin is viewing the site as this user. See
+  /// `~/server/impersonation`.
+  impersonatedBy String?
 
   @@unique([token])
   @@index([userId])
@@ -1175,6 +1178,7 @@ enum ActivityType {
   USER_PERMISSION_CHANGED
   USER_PERMISSION_ADDED
   USER_PERMISSION_REMOVED
+  USER_IMPERSONATED
   ARTIST_PROFILE_CREATED
   ARTIST_PROFILE_UPDATED
   ARTIST_PROFILE_PUBLISHED

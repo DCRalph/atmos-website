@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { ImpersonationBar } from "~/components/impersonation-bar";
 import { UserIndicator } from "~/components/user-indicator";
 import { UnsavedChangesProvider } from "~/components/admin/unsaved-changes-provider";
 import { auth } from "~/server/auth";
@@ -14,6 +15,9 @@ export default async function DashboardLayout({
 
   return (
     <div className="bg-background text-foreground min-h-dvh">
+      {session.session.impersonatedBy && (
+        <ImpersonationBar user={session.user} />
+      )}
       <UserIndicator />
       <UnsavedChangesProvider>{children}</UnsavedChangesProvider>
     </div>

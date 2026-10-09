@@ -7,12 +7,14 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
+  Eye,
   Loader2,
   Lock,
   XCircle,
 } from "lucide-react";
 
 import { api, type RouterOutputs } from "~/trpc/react";
+import { authClient } from "~/lib/auth-client";
 import { AdminSection } from "~/components/admin/admin-section";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -98,6 +100,10 @@ export default function UserManagementPage({ params }: PageProps) {
             </Badge>
           )}
         </div>
+        {!user.isSelf &&
+          !user.permissions.some((row) =>
+            ADMIN_TIER.includes(row.permission),
+          ) && <ViewAsButton user={user} />}
       </div>
 
       {user.canManage ? (
@@ -106,6 +112,42 @@ export default function UserManagementPage({ params }: PageProps) {
         <RestrictedView user={user} />
       )}
     </Shell>
+  );
+}
+
+/**
+ * Signs the admin in as this user for up to an hour, logged in the activity
+ * log. Admins can't be viewed as, so admin access can't be borrowed.
+ */
+function ViewAsButton({ user }: { user: User }) {
+  const [pending, setPending] = useState(false);
+
+  async function start() {
+    setPending(true);
+    const { error } = await authClient.impersonation.start({
+      userId: user.id,
+    });
+    if (error) {
+      toast.error(error.message ?? "Couldn't view as this user");
+      setPending(false);
+      return;
+    }
+    // A full load, not router.push, so no query cache from the other user survives.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.href = "/dashboard";
+  }
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="ml-auto"
+      disabled={pending}
+      onClick={start}
+    >
+      <Eye aria-hidden />
+      View as
+    </Button>
   );
 }
 

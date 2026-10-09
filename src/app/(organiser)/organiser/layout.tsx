@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ScanLine } from "lucide-react";
 
+import { ImpersonationBar } from "~/components/impersonation-bar";
 import { UserDropdown } from "~/components/user-dropdown";
 import { auth } from "~/server/auth";
 import { redirectToLogin } from "~/server/auth-session";
@@ -34,6 +35,9 @@ export default async function OrganiserLayout({
 
   return (
     <div className="bg-background text-foreground min-h-dvh">
+      {session.session.impersonatedBy && (
+        <ImpersonationBar user={session.user} />
+      )}
       <header className="bg-background/90 sticky top-0 z-50 border-b backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <Link href="/organiser/events" className="text-lg font-semibold">

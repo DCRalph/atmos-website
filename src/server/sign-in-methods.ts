@@ -45,6 +45,7 @@ export async function listActiveSessions(userId: string) {
       expiresAt: true,
       ipAddress: true,
       userAgent: true,
+      impersonatedBy: true,
     },
   });
 }
