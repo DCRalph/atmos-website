@@ -1,6 +1,13 @@
 "use client";
 import type { ComponentProps, ReactNode } from "react";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 import { dayKey, nzDate, nzParts } from "~/lib/tasks/time";
 import { statusLabels } from "~/lib/tasks/status";
 import type { RouterOutputs } from "~/trpc/react";
@@ -37,12 +44,40 @@ export function TaskDatePicker({
     />
   );
 }
-export function TaskSelect(props: ComponentProps<"select">) {
+// Radix items need nonempty values; form state keeps "" for clearing and validation.
+const EMPTY_OPTION = "__empty__";
+
+export function TaskSelect({
+  value,
+  onValueChange,
+  options,
+  "aria-label": ariaLabel,
+  ...props
+}: Pick<ComponentProps<typeof Select>, "disabled" | "required"> & {
+  value: string;
+  onValueChange: (value: string) => void;
+  options: readonly { value: string; label: string }[];
+  "aria-label"?: string;
+}) {
   return (
-    <select
+    <Select
       {...props}
-      className="bg-background focus-visible:ring-ring h-9 w-full rounded-md border px-3 text-sm outline-none focus-visible:ring-2"
-    />
+      value={value}
+      onValueChange={(next) => onValueChange(next === EMPTY_OPTION ? "" : next)}
+    >
+      <SelectTrigger aria-label={ariaLabel} className="w-full min-w-0">
+        <SelectValue
+          placeholder={options.find((option) => !option.value)?.label}
+        />
+      </SelectTrigger>
+      <SelectContent align="start">
+        {options.map((option) => (
+          <SelectItem key={option.value} value={option.value || EMPTY_OPTION}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 export function TaskField({

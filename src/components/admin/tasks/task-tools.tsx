@@ -223,22 +223,20 @@ export function PlaybookEditor() {
       <TaskSelect
         aria-label="Edit playbook"
         value={id}
-        onChange={(e) => {
-          setId(e.target.value);
-          const book = options.data?.playbooks.find(
-            (b) => b.id === e.target.value,
-          );
+        onValueChange={(value) => {
+          setId(value);
+          const book = options.data?.playbooks.find((b) => b.id === value);
           setName(book?.name ?? "");
           setItems(book?.items ?? [blankPlaybookItem()]);
         }}
-      >
-        <option value="">New playbook</option>
-        {options.data?.playbooks.map((book) => (
-          <option key={book.id} value={book.id}>
-            {book.name}
-          </option>
-        ))}
-      </TaskSelect>
+        options={[
+          { value: "", label: "New playbook" },
+          ...(options.data?.playbooks.map((book) => ({
+            value: book.id,
+            label: book.name,
+          })) ?? []),
+        ]}
+      />
       <TaskField label="Name">
         <Input
           required
@@ -435,48 +433,48 @@ export function ApplyPlaybook({
           <TaskSelect
             required
             value={gig}
-            onChange={(e) => setGig(e.target.value)}
-          >
-            <option value="">Choose gig</option>
-            {options.data?.gigs.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.title}
-              </option>
-            ))}
-          </TaskSelect>
+            onValueChange={setGig}
+            options={[
+              { value: "", label: "Choose gig" },
+              ...(options.data?.gigs.map((g) => ({
+                value: g.id,
+                label: g.title,
+              })) ?? []),
+            ]}
+          />
         </TaskField>
       ) : null}
       <TaskField label="Playbook">
         <TaskSelect
           required
           value={book}
-          onChange={(e) => {
-            setBook(e.target.value);
+          onValueChange={(value) => {
+            setBook(value);
             setRoles({});
           }}
-        >
-          <option value="">Choose playbook</option>
-          {options.data?.playbooks.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.name} · {b.items.length} tasks
-            </option>
-          ))}
-        </TaskSelect>
+          options={[
+            { value: "", label: "Choose playbook" },
+            ...(options.data?.playbooks.map((b) => ({
+              value: b.id,
+              label: `${b.name} · ${b.items.length} tasks`,
+            })) ?? []),
+          ]}
+        />
       </TaskField>
       {names.map((role) => (
         <TaskField key={role} label={role}>
           <TaskSelect
             required
             value={roles[role] ?? ""}
-            onChange={(e) => setRoles({ ...roles, [role]: e.target.value })}
-          >
-            <option value="">Assign role</option>
-            {options.data?.people.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} · {p.load.count} due this week
-              </option>
-            ))}
-          </TaskSelect>
+            onValueChange={(value) => setRoles({ ...roles, [role]: value })}
+            options={[
+              { value: "", label: "Assign role" },
+              ...(options.data?.people.map((p) => ({
+                value: p.id,
+                label: `${p.name} · ${p.load.count} due this week`,
+              })) ?? []),
+            ]}
+          />
         </TaskField>
       ))}
       <Button

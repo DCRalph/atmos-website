@@ -282,29 +282,29 @@ export function TasksWorkspace() {
               <TaskSelect
                 aria-label="Person filter"
                 value={person}
-                onChange={(e) => setPerson(e.target.value)}
-              >
-                <option value="">Everyone</option>
-                {options.data?.people.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </TaskSelect>
+                onValueChange={setPerson}
+                options={[
+                  { value: "", label: "Everyone" },
+                  ...(options.data?.people.map((p) => ({
+                    value: p.id,
+                    label: p.name,
+                  })) ?? []),
+                ]}
+              />
             </div>
             <div className="w-44">
               <TaskSelect
                 aria-label="Gig filter"
                 value={gig}
-                onChange={(e) => setGig(e.target.value)}
-              >
-                <option value="">All gigs</option>
-                {options.data?.gigs.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.title}
-                  </option>
-                ))}
-              </TaskSelect>
+                onValueChange={setGig}
+                options={[
+                  { value: "", label: "All gigs" },
+                  ...(options.data?.gigs.map((g) => ({
+                    value: g.id,
+                    label: g.title,
+                  })) ?? []),
+                ]}
+              />
             </div>
           </div>
         </div>
@@ -386,11 +386,12 @@ export function TasksWorkspace() {
                 <TaskSelect
                   aria-label="Group list"
                   value={groupBy}
-                  onChange={(e) => setGroupBy(e.target.value)}
-                >
-                  <option value="status">Group by status</option>
-                  <option value="person">Group by person</option>
-                </TaskSelect>
+                  onValueChange={setGroupBy}
+                  options={[
+                    { value: "status", label: "Group by status" },
+                    { value: "person", label: "Group by person" },
+                  ]}
+                />
               </div>
               {cellTasks ? (
                 <Button variant="ghost" onClick={() => setCellTasks(null)}>
