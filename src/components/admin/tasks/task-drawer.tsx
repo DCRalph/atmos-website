@@ -224,15 +224,15 @@ function TaskDetail({
               <TaskField label="Accept for">
                 <TaskSelect
                   value={acceptOwner || (t.assigneeId ?? "")}
-                  onChange={(e) => setAcceptOwner(e.target.value)}
-                >
-                  <option value="">Choose owner</option>
-                  {options.data?.people.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} · {p.load.count} due this week
-                    </option>
-                  ))}
-                </TaskSelect>
+                  onValueChange={setAcceptOwner}
+                  options={[
+                    { value: "", label: "Choose owner" },
+                    ...(options.data?.people.map((p) => ({
+                      value: p.id,
+                      label: `${p.name} · ${p.load.count} due this week`,
+                    })) ?? []),
+                  ]}
+                />
               </TaskField>
               <TaskDatePicker
                 date={acceptDate ?? t.dueAt}
@@ -489,21 +489,18 @@ function TaskDetail({
         <TaskSelect
           aria-label="Dependency"
           value={dependency}
-          onChange={(e) => setDependency(e.target.value)}
-        >
-          <option value="">Add a dependency</option>
-          {all.data
-            ?.filter(
-              (row) =>
-                row.id !== id &&
-                !t.dependencies.some((dep) => dep.dependsOnId === row.id),
-            )
-            .map((row) => (
-              <option key={row.id} value={row.id}>
-                {row.title}
-              </option>
-            ))}
-        </TaskSelect>
+          onValueChange={setDependency}
+          options={[
+            { value: "", label: "Add a dependency" },
+            ...(all.data
+              ?.filter(
+                (row) =>
+                  row.id !== id &&
+                  !t.dependencies.some((dep) => dep.dependsOnId === row.id),
+              )
+              .map((row) => ({ value: row.id, label: row.title })) ?? []),
+          ]}
+        />
         {dependency ? (
           <div className="flex flex-wrap gap-2">
             <Input

@@ -49,6 +49,26 @@ export const adminHomeItem: AdminNavigationItem = {
 
 export const adminNavigationGroups: AdminNavigationGroup[] = [
   {
+    title: "General",
+    items: [
+      adminHomeItem,
+      {
+        title: "Tasks",
+        description: "Team calendar, deadlines and accountability",
+        url: "/admin/tasks",
+        icon: ListChecks,
+        keywords: ["todo", "calendar", "overdue", "playbooks"],
+      },
+      {
+        title: "Will GPT",
+        description: "Every conversation with Will GPT, and what it changed",
+        url: "/admin/will-gpt",
+        icon: Bot,
+        keywords: ["ai", "assistant", "agent", "history", "chat"],
+      },
+    ],
+  },
+  {
     title: "Content & site",
     items: [
       {
@@ -92,13 +112,6 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
   {
     title: "Events & sales",
     items: [
-      {
-        title: "Tasks",
-        description: "Team calendar, deadlines and accountability",
-        url: "/admin/tasks",
-        icon: ListChecks,
-        keywords: ["todo", "calendar", "overdue", "playbooks"],
-      },
       {
         title: "Ticketed events",
         description: "Manage events, ticket tiers, orders, and door staff",
@@ -239,13 +252,6 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         url: "/admin/activity-logs",
         icon: FileText,
         keywords: ["audit", "history"],
-      },
-      {
-        title: "Will GPT",
-        description: "Every conversation with Will GPT, and what it changed",
-        url: "/admin/will-gpt",
-        icon: Bot,
-        keywords: ["ai", "assistant", "agent", "history", "chat"],
       },
       {
         title: "Settings",

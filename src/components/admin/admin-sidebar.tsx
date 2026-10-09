@@ -18,7 +18,6 @@ import {
   useSidebar,
 } from "~/components/ui/sidebar";
 import {
-  adminHomeItem,
   adminNavigationGroups,
   adminNavigationItems,
 } from "./admin-navigation";
@@ -29,7 +28,7 @@ export function DashboardSideBar() {
   // On mobile the sidebar is a sheet over the page, so it has to be dismissed
   // when a link is tapped or it covers the page it just navigated to.
   const closeOnMobile = () => setOpenMobile(false);
-  const activeItem = [adminHomeItem, ...adminNavigationItems]
+  const activeItem = adminNavigationItems
     .filter((item) =>
       item.url === "/admin"
         ? pathname === item.url
@@ -65,27 +64,6 @@ export function DashboardSideBar() {
       </SidebarHeader>
 
       <SidebarContent className="no-scrollbar gap-0 overflow-x-hidden py-2">
-        <SidebarGroup className="pb-1">
-          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive(adminHomeItem.url)}
-                  tooltip={adminHomeItem.title}
-                  className="h-9"
-                >
-                  <Link href={adminHomeItem.url} onClick={closeOnMobile}>
-                    <adminHomeItem.icon />
-                    <span>{adminHomeItem.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
         {adminNavigationGroups.map((group) => (
           <SidebarGroup key={group.title} className="py-1">
             <SidebarGroupLabel>{group.title}</SidebarGroupLabel>

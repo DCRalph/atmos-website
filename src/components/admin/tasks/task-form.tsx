@@ -129,48 +129,48 @@ export function TaskForm({
       </TaskField>
       <div className="grid gap-4 sm:grid-cols-2">
         <TaskField label="Owner">
-          <TaskSelect value={owner} onChange={(e) => setOwner(e.target.value)}>
-            <option value="">Unassigned</option>
-            {options.data?.people.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} · {p.load.count} due this week ·{" "}
-                {p._count.deviceTokens} devices
-              </option>
-            ))}
-          </TaskSelect>
+          <TaskSelect
+            value={owner}
+            onValueChange={setOwner}
+            options={[
+              { value: "", label: "Unassigned" },
+              ...(options.data?.people.map((p) => ({
+                value: p.id,
+                label: `${p.name} · ${p.load.count} due this week · ${p._count.deviceTokens} devices`,
+              })) ?? []),
+            ]}
+          />
         </TaskField>
         <TaskField label="Reviewer">
           <TaskSelect
             value={reviewer}
-            onChange={(e) => setReviewer(e.target.value)}
-          >
-            <option value="">No sign-off</option>
-            {options.data?.people.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </TaskSelect>
+            onValueChange={setReviewer}
+            options={[
+              { value: "", label: "No sign-off" },
+              ...(options.data?.people.map((p) => ({
+                value: p.id,
+                label: p.name,
+              })) ?? []),
+            ]}
+          />
         </TaskField>
       </div>
       <TaskField label="Gig">
         <TaskSelect
           value={gig}
-          onChange={(e) => {
-            setGig(e.target.value);
-            const selected = options.data?.gigs.find(
-              (g) => g.id === e.target.value,
-            );
+          onValueChange={(value) => {
+            setGig(value);
+            const selected = options.data?.gigs.find((g) => g.id === value);
             if (selected) setHard(selected.gigStartTime);
           }}
-        >
-          <option value="">No gig</option>
-          {options.data?.gigs.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.title}
-            </option>
-          ))}
-        </TaskSelect>
+          options={[
+            { value: "", label: "No gig" },
+            ...(options.data?.gigs.map((g) => ({
+              value: g.id,
+              label: g.title,
+            })) ?? []),
+          ]}
+        />
       </TaskField>
       <TaskField label="Due · Auckland time">
         <TaskDatePicker
@@ -206,13 +206,14 @@ export function TaskForm({
         <TaskSelect
           value={automation}
           disabled={!gig || proof}
-          onChange={(e) => setAutomation(e.target.value)}
-        >
-          <option value="">Manual completion</option>
-          <option value="POSTER">Gig poster uploaded</option>
-          <option value="TICKETS_PUBLISHED">Tickets published</option>
-          <option value="TICKETS_SOLD">Ticket sales target</option>
-        </TaskSelect>
+          onValueChange={setAutomation}
+          options={[
+            { value: "", label: "Manual completion" },
+            { value: "POSTER", label: "Gig poster uploaded" },
+            { value: "TICKETS_PUBLISHED", label: "Tickets published" },
+            { value: "TICKETS_SOLD", label: "Ticket sales target" },
+          ]}
+        />
       </TaskField>
       {automation === "TICKETS_SOLD" ? (
         <TaskField label="Tickets sold">
