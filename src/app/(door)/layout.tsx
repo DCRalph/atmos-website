@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import type { Metadata, Viewport } from "next";
 
+import { ImpersonationBar } from "~/components/impersonation-bar";
 import { auth } from "~/server/auth";
 import { redirectToLogin } from "~/server/auth-session";
 import { db } from "~/server/db";
@@ -59,6 +60,11 @@ export default async function DoorLayout({
   }
 
   return (
-    <div className="min-h-dvh bg-black text-white select-none">{children}</div>
+    <div className="min-h-dvh bg-black text-white select-none">
+      {session.session.impersonatedBy && (
+        <ImpersonationBar user={session.user} />
+      )}
+      {children}
+    </div>
   );
 }

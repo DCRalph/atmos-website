@@ -12,6 +12,8 @@ export type SessionRow = {
   expiresAt: Date;
   ipAddress: string | null;
   userAgent: string | null;
+  /** Set while an admin is viewing the site as this user. */
+  impersonatedBy?: string | null;
   /** The session making the request, which has no revoke button. */
   isCurrent?: boolean;
 };
@@ -46,6 +48,11 @@ export function SessionsTable({
           {row.isCurrent && (
             <Badge variant="secondary" className="text-xs">
               This device
+            </Badge>
+          )}
+          {row.impersonatedBy && (
+            <Badge variant="outline" className="text-xs">
+              Admin view
             </Badge>
           )}
         </span>

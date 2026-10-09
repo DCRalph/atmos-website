@@ -13,6 +13,7 @@ import {
   sendVerificationEmail,
 } from "~/server/auth-emails";
 import { anonymiseAndDeleteUser } from "~/server/account-deletion";
+import { impersonation } from "~/server/impersonation";
 
 /**
  * The iOS bundle identifier, which is also the `aud` of every Sign in with
@@ -142,7 +143,7 @@ export const auth = betterAuth({
     "atmos://*",
     ...DEV_HOSTS.map((host) => `http://${host}:*`),
   ],
-  plugins: [lastLoginMethod(), expo()],
+  plugins: [lastLoginMethod(), expo(), impersonation()],
   // hooks: {
   //   before: createAuthMiddleware(async (ctx) => {
   //     // Check for invites before allowing signup
