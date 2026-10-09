@@ -69,6 +69,25 @@ const IMAGE_TYPES = [
 ];
 
 export const uploadPresets = {
+  taskProof: definePreset({
+    label: "Task proof",
+    description: "Completion photos attached to a task timeline.",
+    access: "admin",
+    accept: IMAGE_TYPES,
+    maxFileSize: mb(15),
+    maxFiles: 20,
+    maxTotalSize: mb(100),
+    for: "task",
+    image: {
+      maxDimension: 2048,
+      format: "webp",
+      quality: 85,
+      maxOutputSize: mb(2),
+    },
+    context: z.object({ taskId: z.string().min(1) }),
+    forId: (c) => c.taskId,
+    keyPrefix: (c) => `tasks/${c.taskId}`,
+  }),
   /** Photos and videos attached to a gig's galleries. */
   gigMedia: definePreset({
     label: "Gig media",

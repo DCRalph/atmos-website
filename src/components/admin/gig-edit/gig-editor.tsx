@@ -49,6 +49,7 @@ import { useUpload } from "~/hooks/use-upload";
 import { GigStatus } from "~Prisma/browser";
 import { GigChatPanel } from "./gig-chat-panel";
 import { PhotoSignupPanel } from "./photo-signup-panel";
+import { GigTasks } from "~/components/admin/tasks/gig-tasks";
 import { RunSheetField } from "./run-sheet-field";
 import { PosterField } from "./poster-field";
 import { TagsField } from "./tags-field";
@@ -277,6 +278,7 @@ type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 
 export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
   const router = useRouter();
+  const [editorTab, setEditorTab] = useState<"details" | "tasks">("details");
   const utils = api.useUtils();
 
   const [gigId, setGigId] = useState(initialGigId);
@@ -666,287 +668,313 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
         </Button>
       </div>
 
-      {/* The page's one and only Save, kept in reach of every field. */}
-      <div className="bg-background/95 sticky top-20 z-20 -mx-2 mb-6 flex flex-wrap items-center gap-3 rounded-lg border px-4 py-3 backdrop-blur">
-        <SaveStatusPill status={status} errorMessage={errorMessage} />
-        {status === "idle" ? (
-          <span className="text-muted-foreground text-sm">
-            {isNew
-              ? "Fill in the details, then create the gig."
-              : "Everything on this page is up to date."}
-          </span>
-        ) : null}
-        <div className="ml-auto flex items-center gap-2">
-          {isDirty && !isNew ? (
-            <Button
-              variant="ghost"
-              disabled={isSaving}
-              onClick={() => {
-                setDraft(baseline);
-                setErrors({});
-                setErrorMessage(null);
-                setSaveState("idle");
-              }}
-            >
-              <Undo2 className="h-4 w-4" />
-              Discard changes
-            </Button>
-          ) : null}
-          <Button onClick={() => void save()} disabled={isSaving}>
-            {isSaving ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4" />
-                {isNew ? "Create gig" : "Save"}
-              </>
-            )}
+      {gigId ? (
+        <div
+          className="mb-5 flex gap-2 border-b pb-3"
+          role="tablist"
+          aria-label="Gig sections"
+        >
+          <Button
+            role="tab"
+            aria-selected={editorTab === "details"}
+            variant={editorTab === "details" ? "secondary" : "ghost"}
+            onClick={() => setEditorTab("details")}
+          >
+            Details
+          </Button>
+          <Button
+            role="tab"
+            aria-selected={editorTab === "tasks"}
+            variant={editorTab === "tasks" ? "secondary" : "ghost"}
+            onClick={() => setEditorTab("tasks")}
+          >
+            Tasks
           </Button>
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-        <div className="flex flex-col gap-6 xl:col-span-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Core details</CardTitle>
-              <CardDescription>
-                Title, description, mode and ticket link
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <Field
-                  id="gig-title"
-                  label="Title"
-                  error={errors.title}
-                  required
-                >
-                  <Input
-                    id="gig-title"
-                    value={draft.title}
-                    onChange={(e) => update("title", e.target.value)}
-                    aria-invalid={Boolean(errors.title)}
-                  />
-                </Field>
-                <Field
-                  id="gig-subtitle"
-                  label="Subtitle (venue)"
-                  error={errors.subtitle}
-                  required
-                >
-                  <Input
-                    id="gig-subtitle"
-                    value={draft.subtitle}
-                    onChange={(e) => update("subtitle", e.target.value)}
-                    aria-invalid={Boolean(errors.subtitle)}
-                  />
-                </Field>
-              </div>
-
-              <Field
-                id="gig-short-description"
-                label="Short description"
-                hint="Used on cards and listings."
+      ) : null}
+      {gigId && editorTab === "tasks" ? <GigTasks gigId={gigId} /> : null}
+      <div hidden={editorTab === "tasks"}>
+        {/* The page's one and only Save, kept in reach of every field. */}
+        <div className="bg-background/95 sticky top-20 z-20 -mx-2 mb-6 flex flex-wrap items-center gap-3 rounded-lg border px-4 py-3 backdrop-blur">
+          <SaveStatusPill status={status} errorMessage={errorMessage} />
+          {status === "idle" ? (
+            <span className="text-muted-foreground text-sm">
+              {isNew
+                ? "Fill in the details, then create the gig."
+                : "Everything on this page is up to date."}
+            </span>
+          ) : null}
+          <div className="ml-auto flex items-center gap-2">
+            {isDirty && !isNew ? (
+              <Button
+                variant="ghost"
+                disabled={isSaving}
+                onClick={() => {
+                  setDraft(baseline);
+                  setErrors({});
+                  setErrorMessage(null);
+                  setSaveState("idle");
+                }}
               >
-                <Textarea
-                  id="gig-short-description"
-                  rows={3}
-                  placeholder="Short summary for cards..."
-                  value={draft.shortDescription}
-                  onChange={(e) => update("shortDescription", e.target.value)}
-                />
-              </Field>
-
-              <div className="flex flex-col gap-2">
-                <Label>Description</Label>
-                <LexicalRichTextEditor
-                  value={draft.descriptionLexical}
-                  onChange={(value) => update("descriptionLexical", value)}
-                  namespace={`gig-description-${gigId ?? "new"}`}
-                  placeholder="Describe the gig, line-up, venue info..."
-                  ariaLabel="Description"
-                  minHeight="14rem"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="gig-mode">Mode</Label>
-                  <GigFlagsField
-                    id="gig-mode"
-                    value={draft}
-                    onChange={update}
-                  />
-                  <p className="text-muted-foreground text-xs">
-                    Both off is a normal gig.
-                  </p>
-                  {draft.isTba ? (
-                    <Field
-                      id="gig-announce-at"
-                      label="Announce on"
-                      hint="The gig drops TBA by itself at this time. Leave empty to announce it by hand."
-                      error={errors.announceAt}
-                    >
-                      <DateTimePicker
-                        date={draft.announceAt}
-                        onDateChange={(value) => update("announceAt", value)}
-                        placeholder="Announce by hand"
-                        showTime
-                        clearable
-                      />
-                    </Field>
-                  ) : null}
-                </div>
-                <Field
-                  id="gig-ticket-link"
-                  label="Ticket link"
-                  hint="Leave empty if tickets are sold on this site."
-                  error={errors.ticketLink}
-                >
-                  <Input
-                    id="gig-ticket-link"
-                    type="url"
-                    placeholder="https://example.com/tickets"
-                    value={draft.ticketLink}
-                    onChange={(e) => update("ticketLink", e.target.value)}
-                    aria-invalid={Boolean(errors.ticketLink)}
-                  />
-                </Field>
-              </div>
-            </CardContent>
-          </Card>
-
-          <RunSheetField
-            schedule={draft.schedule}
-            onChange={(schedule) => update("schedule", schedule)}
-            notifyUserIds={draft.notifyUserIds}
-            onNotifyChange={(notifyUserIds) =>
-              update("notifyUserIds", notifyUserIds)
-            }
-            gigStart={draft.startTime}
-            firedItemIds={firedItemIds}
-            ticketEventDoorsAt={ticketEventDoorsAt}
-            gigId={gigId}
-            hasUnsavedChanges={isDirty}
-            disabled={isSaving}
-          />
-
-          <PosterField
-            gigTitle={draft.title}
-            current={
-              gig?.posterFileUpload
-                ? {
-                    fileUploadId: gig.posterFileUpload.id,
-                    name: gig.posterFileUpload.name,
-                  }
-                : null
-            }
-            draft={draft.poster}
-            onChange={(poster) => update("poster", poster)}
-            uploadProgress={
-              posterProgress === null ? null : Math.max(1, transferProgress)
-            }
-            disabled={isSaving}
-          />
+                <Undo2 className="h-4 w-4" />
+                Discard changes
+              </Button>
+            ) : null}
+            <Button onClick={() => void save()} disabled={isSaving}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  {isNew ? "Create gig" : "Save"}
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-6 xl:col-span-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Date & time</CardTitle>
-              <CardDescription>When the gig starts and ends</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Field
-                id="gig-start"
-                label="Start"
-                error={errors.startTime}
-                required
-              >
-                <DateTimePicker
-                  date={draft.startTime}
-                  onDateChange={moveGigTo}
-                  placeholder="Select start time"
-                  showTime
-                />
-              </Field>
-              <Field id="gig-end" label="End" error={errors.endTime}>
-                <DateTimePicker
-                  date={draft.endTime}
-                  onDateChange={(value) => update("endTime", value)}
-                  placeholder="Select end time"
-                  showTime
-                  clearable
-                />
-              </Field>
-            </CardContent>
-          </Card>
-
-          <TagsField
-            tagIds={draft.tagIds}
-            onChange={(tagIds) => update("tagIds", tagIds)}
-            disabled={isSaving}
-          />
-        </div>
-
-        <div className="xl:col-span-12">
-          {gigId && gig ? (
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+          <div className="flex flex-col gap-6 xl:col-span-8">
             <Card>
               <CardHeader>
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <CardTitle>Media gallery</CardTitle>
-                    <CardDescription>
-                      Photos and video for the featured and gallery sections.
-                      Drag to reorder.
-                    </CardDescription>
-                  </div>
-                  <span className="text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium">
-                    <Info className="h-3.5 w-3.5" />
-                    Applies immediately — not part of Save
-                  </span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <GigMediaManager
-                  gigId={gigId}
-                  media={gig.media ?? []}
-                  onRefetch={() => void query.refetch()}
-                />
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="border-dashed">
-              <CardHeader>
-                <CardTitle>Media gallery</CardTitle>
+                <CardTitle>Core details</CardTitle>
                 <CardDescription>
-                  Available as soon as the gig is created — you stay on this
-                  page, so you can add photos and video straight afterwards.
+                  Title, description, mode and ticket link
                 </CardDescription>
               </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <Field
+                    id="gig-title"
+                    label="Title"
+                    error={errors.title}
+                    required
+                  >
+                    <Input
+                      id="gig-title"
+                      value={draft.title}
+                      onChange={(e) => update("title", e.target.value)}
+                      aria-invalid={Boolean(errors.title)}
+                    />
+                  </Field>
+                  <Field
+                    id="gig-subtitle"
+                    label="Subtitle (venue)"
+                    error={errors.subtitle}
+                    required
+                  >
+                    <Input
+                      id="gig-subtitle"
+                      value={draft.subtitle}
+                      onChange={(e) => update("subtitle", e.target.value)}
+                      aria-invalid={Boolean(errors.subtitle)}
+                    />
+                  </Field>
+                </div>
+
+                <Field
+                  id="gig-short-description"
+                  label="Short description"
+                  hint="Used on cards and listings."
+                >
+                  <Textarea
+                    id="gig-short-description"
+                    rows={3}
+                    placeholder="Short summary for cards..."
+                    value={draft.shortDescription}
+                    onChange={(e) => update("shortDescription", e.target.value)}
+                  />
+                </Field>
+
+                <div className="flex flex-col gap-2">
+                  <Label>Description</Label>
+                  <LexicalRichTextEditor
+                    value={draft.descriptionLexical}
+                    onChange={(value) => update("descriptionLexical", value)}
+                    namespace={`gig-description-${gigId ?? "new"}`}
+                    placeholder="Describe the gig, line-up, venue info..."
+                    ariaLabel="Description"
+                    minHeight="14rem"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="gig-mode">Mode</Label>
+                    <GigFlagsField
+                      id="gig-mode"
+                      value={draft}
+                      onChange={update}
+                    />
+                    <p className="text-muted-foreground text-xs">
+                      Both off is a normal gig.
+                    </p>
+                    {draft.isTba ? (
+                      <Field
+                        id="gig-announce-at"
+                        label="Announce on"
+                        hint="The gig drops TBA by itself at this time. Leave empty to announce it by hand."
+                        error={errors.announceAt}
+                      >
+                        <DateTimePicker
+                          date={draft.announceAt}
+                          onDateChange={(value) => update("announceAt", value)}
+                          placeholder="Announce by hand"
+                          showTime
+                          clearable
+                        />
+                      </Field>
+                    ) : null}
+                  </div>
+                  <Field
+                    id="gig-ticket-link"
+                    label="Ticket link"
+                    hint="Leave empty if tickets are sold on this site."
+                    error={errors.ticketLink}
+                  >
+                    <Input
+                      id="gig-ticket-link"
+                      type="url"
+                      placeholder="https://example.com/tickets"
+                      value={draft.ticketLink}
+                      onChange={(e) => update("ticketLink", e.target.value)}
+                      aria-invalid={Boolean(errors.ticketLink)}
+                    />
+                  </Field>
+                </div>
+              </CardContent>
             </Card>
-          )}
-        </div>
 
-        {gigId && gig ? (
-          <div className="xl:col-span-12">
-            <PhotoSignupPanel gigId={gigId} gigTitle={gig.title} />
+            <RunSheetField
+              schedule={draft.schedule}
+              onChange={(schedule) => update("schedule", schedule)}
+              notifyUserIds={draft.notifyUserIds}
+              onNotifyChange={(notifyUserIds) =>
+                update("notifyUserIds", notifyUserIds)
+              }
+              gigStart={draft.startTime}
+              firedItemIds={firedItemIds}
+              ticketEventDoorsAt={ticketEventDoorsAt}
+              gigId={gigId}
+              hasUnsavedChanges={isDirty}
+              disabled={isSaving}
+            />
+
+            <PosterField
+              gigTitle={draft.title}
+              current={
+                gig?.posterFileUpload
+                  ? {
+                      fileUploadId: gig.posterFileUpload.id,
+                      name: gig.posterFileUpload.name,
+                    }
+                  : null
+              }
+              draft={draft.poster}
+              onChange={(poster) => update("poster", poster)}
+              uploadProgress={
+                posterProgress === null ? null : Math.max(1, transferProgress)
+              }
+              disabled={isSaving}
+            />
           </div>
-        ) : null}
 
-        {/* A room is a gig, so there is nothing to create — but there is no gig
+          <div className="flex flex-col gap-6 xl:col-span-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Date & time</CardTitle>
+                <CardDescription>When the gig starts and ends</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Field
+                  id="gig-start"
+                  label="Start"
+                  error={errors.startTime}
+                  required
+                >
+                  <DateTimePicker
+                    date={draft.startTime}
+                    onDateChange={moveGigTo}
+                    placeholder="Select start time"
+                    showTime
+                  />
+                </Field>
+                <Field id="gig-end" label="End" error={errors.endTime}>
+                  <DateTimePicker
+                    date={draft.endTime}
+                    onDateChange={(value) => update("endTime", value)}
+                    placeholder="Select end time"
+                    showTime
+                    clearable
+                  />
+                </Field>
+              </CardContent>
+            </Card>
+
+            <TagsField
+              tagIds={draft.tagIds}
+              onChange={(tagIds) => update("tagIds", tagIds)}
+              disabled={isSaving}
+            />
+          </div>
+
+          <div className="xl:col-span-12">
+            {gigId && gig ? (
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <CardTitle>Media gallery</CardTitle>
+                      <CardDescription>
+                        Photos and video for the featured and gallery sections.
+                        Drag to reorder.
+                      </CardDescription>
+                    </div>
+                    <span className="text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium">
+                      <Info className="h-3.5 w-3.5" />
+                      Applies immediately — not part of Save
+                    </span>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <GigMediaManager
+                    gigId={gigId}
+                    media={gig.media ?? []}
+                    onRefetch={() => void query.refetch()}
+                  />
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="border-dashed">
+                <CardHeader>
+                  <CardTitle>Media gallery</CardTitle>
+                  <CardDescription>
+                    Available as soon as the gig is created — you stay on this
+                    page, so you can add photos and video straight afterwards.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            )}
+          </div>
+
+          {gigId && gig ? (
+            <div className="xl:col-span-12">
+              <PhotoSignupPanel gigId={gigId} gigTitle={gig.title} />
+            </div>
+          ) : null}
+
+          {/* A room is a gig, so there is nothing to create — but there is no gig
             to have a room about until this one is saved. */}
-        {gigId ? (
-          <div className="xl:col-span-12">
-            <GigChatPanel gigId={gigId} />
-          </div>
-        ) : null}
+          {gigId ? (
+            <div className="xl:col-span-12">
+              <GigChatPanel gigId={gigId} />
+            </div>
+          ) : null}
+        </div>
       </div>
-
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

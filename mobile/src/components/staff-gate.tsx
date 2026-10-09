@@ -24,13 +24,14 @@ export function StaffGate({
   children,
 }: {
   /** `staff` covers door and organiser; `organiser` is the narrower one. */
-  role: "staff" | "organiser";
+  role: "staff" | "organiser" | "admin";
   children: ReactNode;
 }) {
   const router = useRouter();
-  const { isStaff, isOrganiser, ready } = useStaff();
+  const { isStaff, isOrganiser, isAdmin, ready } = useStaff();
 
-  const allowed = role === "organiser" ? isOrganiser : isStaff;
+  const allowed =
+    role === "admin" ? isAdmin : role === "organiser" ? isOrganiser : isStaff;
 
   return (
     <>

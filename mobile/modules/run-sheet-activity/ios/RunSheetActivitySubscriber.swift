@@ -23,14 +23,16 @@ public class RunSheetActivitySubscriber: ExpoAppDelegateSubscriber {
     // Expo's push service puts the message's `data` at the top level under
     // `body`. Anything else is somebody else's notification.
     guard
-      let body = userInfo["body"] as? [String: Any],
-      let payload = body["runSheetActivity"] as? String
+      let body = userInfo["body"] as? [String: Any]
     else {
       completionHandler(.noData)
       return
     }
 
-    let applied = RunSheetActivityController.apply(json: payload)
+    let applied: Bool
+    if let payload = body["runSheetActivity"] as? String { applied = RunSheetActivityController.apply(json: payload) }
+    else if let payload = body["taskDayActivity"] as? String { applied = TaskDayActivityController.apply(json: payload) }
+    else { completionHandler(.noData); return }
     completionHandler(applied ? .newData : .noData)
   }
 }

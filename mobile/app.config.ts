@@ -83,6 +83,7 @@ const config: ExpoConfig = {
       ...(process.env.TAP_TO_PAY === "0"
         ? {}
         : { "com.apple.developer.proximity-reader.payment.acceptance": true }),
+      "com.apple.security.application-groups": ["group.nz.co.atmosmedia.app"],
       "aps-environment": process.env.APS_ENVIRONMENT ?? "development",
     },
     /**
@@ -150,6 +151,16 @@ const config: ExpoConfig = {
      * project from the sources in `widget/`.
      */
     "./plugins/with-run-sheet-widget",
+    "./plugins/with-share-extension",
+    [
+      "expo-image-picker",
+      {
+        photosPermission:
+          "Attach task proof or share a chat screenshot with the team.",
+        cameraPermission: false,
+        microphonePermission: false,
+      },
+    ],
     /**
      * Sign in with Apple. Adds the `com.apple.developer.applesignin`
      * entitlement, which App Store Guideline 4.8 requires because the sign-in

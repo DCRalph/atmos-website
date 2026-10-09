@@ -4,9 +4,9 @@ import { useAuth } from "@/lib/auth";
 /**
  * Whether this account is Atmos staff, in one place.
  *
- * Both facts are read from the queries the staff screens themselves use, and
- * both are refused server-side for everybody else — `doorProcedure` and
- * `eventOrganiserProcedure`. So this is not a second permission system that can
+ * Access is read from the queries the staff screens themselves use, including
+ * the admin-only task access check. Each is refused server-side for everybody
+ * else. So this is not a second permission system that can
  * drift from the real one; it is a read of the same answer, used to decide what
  * to draw.
  *
@@ -19,8 +19,9 @@ export function useStaff(): {
   /** Rostered on a door tonight, or an admin or organiser, who get every event. */
   isDoorStaff: boolean;
   isOrganiser: boolean;
+  isAdmin: boolean;
   isStaff: boolean;
-  /** False until both answers are in, so nothing staff-shaped flashes first. */
+  /** False until the access checks finish, so nothing staff-shaped flashes first. */
   ready: boolean;
 } {
   const { user } = useAuth();
@@ -37,16 +38,27 @@ export function useStaff(): {
     { enabled: !!user, retry: false, staleTime: 5 * 60 * 1000 },
   );
 
+  const adminAccess = api.tasks.access.useQuery(undefined, {
+    enabled: !!user,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+  const isAdmin = !!user && adminAccess.isSuccess;
   const isDoorStaff = !!user && (myEvents.data?.length ?? 0) > 0;
   const isOrganiser = !!user && organiserEvents.isSuccess;
 
   // A disabled query stays `pending` forever, so signed out has to be its own
   // answer rather than something to wait on.
-  const ready = !user || (!myEvents.isPending && !organiserEvents.isPending);
+  const ready =
+    !user ||
+    (!myEvents.isPending &&
+      !organiserEvents.isPending &&
+      !adminAccess.isPending);
 
   return {
     isDoorStaff,
     isOrganiser,
+    isAdmin,
     isStaff: isDoorStaff || isOrganiser,
     ready,
   };

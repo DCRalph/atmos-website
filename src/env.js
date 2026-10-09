@@ -39,6 +39,11 @@ export const env = createEnv({
 
     // Email delivery (from addresses live in src/server/email/senders.ts)
     RESEND_API_KEY: z.string().optional(),
+    RESEND_INBOUND_SECRET: z.string().optional(),
+    TASKS_INBOUND_ADDRESS: z.string().default("tasks@in.atmosmedia.co.nz"),
+    /// JSON mapping trusted forwarding addresses to an admin's email.
+    TASKS_FORWARDERS: z.string().optional(),
+    TASKS_AI_MODEL: z.string().default("openai/gpt-4.1-mini"),
 
     // Ticketing — Apple Wallet
     APPLE_PASS_TYPE_ID: z.string().optional(),
@@ -122,6 +127,10 @@ export const env = createEnv({
     PATRON_ID_SECRET: process.env.PATRON_ID_SECRET,
 
     RESEND_API_KEY: process.env.RESEND_API_KEY,
+    RESEND_INBOUND_SECRET: process.env.RESEND_INBOUND_SECRET,
+    TASKS_INBOUND_ADDRESS: process.env.TASKS_INBOUND_ADDRESS,
+    TASKS_FORWARDERS: process.env.TASKS_FORWARDERS,
+    TASKS_AI_MODEL: process.env.TASKS_AI_MODEL,
 
     APPLE_PASS_TYPE_ID: process.env.APPLE_PASS_TYPE_ID,
     APPLE_TEAM_ID: process.env.APPLE_TEAM_ID,

@@ -40,11 +40,16 @@ export default function MoreScreen() {
   // Nothing internal renders until the server has confirmed this account is
   // staff — see `useStaff`. `ready` matters as much as the answer: drawing the
   // section optimistically would flash "Internal" at a punter on every launch.
-  const { isOrganiser, isStaff, ready: staffReady } = useStaff();
+  const { isOrganiser, isStaff, isAdmin, ready: staffReady } = useStaff();
 
   // One number, so the way into the rooms can say whether it is worth opening.
   // Gated on `isStaff` rather than fired for everybody: a punter's More tab
   // should not be asking the server about gig rooms at all.
+  const taskCount = api.tasks.alertCount.useQuery(undefined, {
+    enabled: staffReady && isAdmin,
+    retry: false,
+    refetchInterval: 60_000,
+  });
   const unread = api.gigChat.unreadTotal.useQuery(undefined, {
     enabled: staffReady && isStaff,
     retry: false,
@@ -190,6 +195,13 @@ export default function MoreScreen() {
                     label="Run sheet"
                     onPress={() => router.push("/run-sheet")}
                   />
+                  {isAdmin && (
+                    <Row
+                      label="Tasks"
+                      badge={taskCount.data?.overdue}
+                      onPress={() => router.push("/tasks")}
+                    />
+                  )}
                   {isOrganiser && (
                     <Row
                       label="Event analytics"

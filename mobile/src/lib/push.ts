@@ -114,20 +114,51 @@ export function usePushRegistration(): void {
   // published through `/api/notify` can carry an ntfy `Click` instead, which is
   // an absolute URL — usually a page of the web admin — so that opens outside.
   useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        const url = response.notification.request.content.data?.url;
-        if (typeof url !== "string") return;
-
-        if (url.startsWith("/")) {
-          router.push(url as never);
-        } else if (url.startsWith("https://") || url.startsWith("http://")) {
-          void Linking.openURL(url).catch(() => {
-            // A bad Click should not take the app down on a tap.
-          });
-        }
+    void Notifications.setNotificationCategoryAsync("TASK_ACTIONS", [
+      {
+        identifier: "TASK_DONE",
+        buttonTitle: "Done",
+        options: { opensAppToForeground: true },
       },
-    );
+      {
+        identifier: "TASK_DELAY",
+        buttonTitle: "Need more time",
+        options: { opensAppToForeground: true },
+      },
+    ]);
+    let handled: string | null = null;
+    const handle = (response: Notifications.NotificationResponse) => {
+      const key = `${response.notification.request.identifier}:${response.actionIdentifier}`;
+      if (handled === key) return;
+      handled = key;
+      const url = response.notification.request.content.data?.url;
+      if (typeof url !== "string") return;
+      const task = /^\/tasks\/([^/?]+)$/.exec(url);
+      if (
+        task &&
+        ["TASK_DONE", "TASK_DELAY"].includes(response.actionIdentifier)
+      ) {
+        // Foreground actions pass through the same admin and biometric gates.
+        router.push({
+          pathname: "/tasks/[taskId]",
+          params: {
+            taskId: task[1]!,
+            action:
+              response.actionIdentifier === "TASK_DELAY" ? "delay" : "done",
+          },
+        });
+      } else if (url.startsWith("/")) router.push(url as never);
+      else if (url.startsWith("https://") || url.startsWith("http://"))
+        void Linking.openURL(url).catch(() => undefined);
+    };
+    const subscription =
+      Notifications.addNotificationResponseReceivedListener(handle);
+    void Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) {
+        handle(response);
+        void Notifications.clearLastNotificationResponseAsync();
+      }
+    });
     return () => subscription.remove();
   }, [router]);
 }

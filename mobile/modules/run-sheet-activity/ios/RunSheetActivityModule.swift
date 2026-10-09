@@ -37,6 +37,15 @@ public class RunSheetActivityModule: Module {
     }
       .runOnQueue(.main)
 
+    AsyncFunction("applyTasks") { (payload: String) -> Bool in
+      TaskDayActivityController.apply(json: payload)
+    }.runOnQueue(.main)
+    AsyncFunction("setTaskUser") { (userId: String?) in
+      TaskDayActivityController.setUser(userId)
+    }.runOnQueue(.main)
+    AsyncFunction("endTasks") { TaskDayActivityController.endAll() }.runOnQueue(.main)
+    AsyncFunction("pendingTaskShare") { () -> String? in TaskShareStore.read() }
+    AsyncFunction("clearTaskShare") { TaskShareStore.clear() }
     /** Forget the night. Called on sign-out, when the run sheet stops being ours. */
     AsyncFunction("endAll") {
       RunSheetActivityController.endAll()

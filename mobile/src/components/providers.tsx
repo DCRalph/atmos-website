@@ -11,6 +11,7 @@ import { api } from "@/lib/api";
 import { authCookieHeader, useAuth } from "@/lib/auth";
 import { TRPC_URL } from "@/lib/env";
 import { usePushRegistration } from "@/lib/push";
+import { useTaskLiveActivity } from "@/lib/task-live-activity";
 import { useRunSheetLiveActivity } from "@/lib/live-activity";
 import { BiometricLockProvider } from "@/lib/biometrics";
 import { TapToPayProvider } from "@/lib/tap-to-pay";
@@ -71,6 +72,7 @@ export function Providers({ children }: { children: ReactNode }) {
             up whenever they open it during a night, not only if they happen to
             visit that tab. Inert for anybody with no run sheet. */}
         <RunSheetLiveActivity />
+        <TaskLiveActivity />
         {/* Also inside it, and at the root rather than around the door stack:
             Apple's checklist 1.5 wants Tap to Pay warmed up at app launch, and
             a provider that mounts when somebody enters door mode is already too
@@ -127,5 +129,10 @@ function PushRegistration() {
 /** Likewise: it queries the run sheet, so it lives under tRPC. */
 function RunSheetLiveActivity() {
   useRunSheetLiveActivity();
+  return null;
+}
+
+function TaskLiveActivity() {
+  useTaskLiveActivity();
   return null;
 }

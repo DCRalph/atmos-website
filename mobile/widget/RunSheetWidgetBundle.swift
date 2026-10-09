@@ -12,5 +12,6 @@ import WidgetKit
 struct RunSheetWidgetBundle: WidgetBundle {
   var body: some Widget {
     RunSheetLiveActivity()
+    TaskDayLiveActivity()
   }
 }

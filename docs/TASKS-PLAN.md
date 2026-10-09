@@ -5,7 +5,10 @@ given a task with a due time, every admin can see where everything is on the
 web admin and in the app, and the system keeps after anyone who falls behind until it is done
 or they say why it can't be.
 
-Status: plan only. Nothing here is built yet.
+Status: implemented on `feat/tasks-system`, with the calendar-first option selected.
+See [TASKS.md](TASKS.md) for current behavior, validation, and deployment setup.
+The production migration and external service configuration remain unapplied.
+The optional Instagram DM route remains deferred.
 
 ## Goals
 
@@ -115,6 +118,7 @@ Notes:
 | `TODO`                           | `IN_PROGRESS` | assignee                             |
 | `TODO`, `IN_PROGRESS`            | `BLOCKED`     | assignee, with reason + check-back   |
 | `BLOCKED`                        | `IN_PROGRESS` | assignee                             |
+| `BLOCKED`                        | `BLOCKED`     | assignee, updating reason + check-back |
 | `TODO`, `IN_PROGRESS`, `BLOCKED` | `IN_REVIEW`   | assignee, when there is a reviewer   |
 | `TODO`, `IN_PROGRESS`, `BLOCKED` | `DONE`        | assignee, when there is no reviewer  |
 | `IN_REVIEW`                      | `DONE`        | reviewer                             |
@@ -722,7 +726,7 @@ strict JSON schema. None are needed for the system to work.
    artist travel slipped the most. Both are on Josh this time, and he has 3
    other things that week."
 
-## Wacky ideas (not yet in the build order)
+## Wacky ideas (included in this implementation)
 
 1. **Self-completing tasks.** Bind a task to something the site already knows
    about. "Upload poster" completes itself when the gig gets a poster. "Put
