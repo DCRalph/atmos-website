@@ -75,6 +75,24 @@ export const presignPut = async (opts: {
   });
 };
 
+/**
+ * Presigned `GET`, for responses the public domain cannot give, like forcing a
+ * download under the original file name.
+ */
+export const presignGet = async (opts: {
+  key: string;
+  contentDisposition?: string;
+}): Promise<string> => {
+  const command = new GetObjectCommand({
+    Bucket: Bucket(),
+    Key: opts.key,
+    ResponseContentDisposition: opts.contentDisposition,
+  });
+  return getSignedUrl(client(), command, {
+    expiresIn: PRESIGN_EXPIRY_SECONDS,
+  });
+};
+
 export type ObjectHead = {
   size: number;
   contentType: string;
@@ -158,7 +176,7 @@ export type ObjectStream = {
   eTag?: string;
 };
 
-/** Streams an object, for serving through `/api/media/[id]`. */
+/** Streams an object, for private files served through access-checked routes. */
 export const getObjectStream = async (key: string): Promise<ObjectStream> => {
   const res = await client().send(
     new GetObjectCommand({ Bucket: Bucket(), Key: key }),

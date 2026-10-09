@@ -9,9 +9,9 @@ import { deleteObject, putBuffer } from "~/server/uploads/r2";
  *
  * Deliberately **not** the `uploadPresets` / `file_upload` path every other
  * image in this codebase uses. That path ends at `/api/media/[id]`, which
- * serves any completed file to anyone who asks and tells them to cache it for a
- * year. Correct for a gig poster; indefensible for a photograph of a member of
- * the public who has no account here and did not choose to be in our database.
+ * hands any completed file to anyone who asks, via R2's public domain.
+ * Correct for a gig poster; indefensible for a photograph of a member of the
+ * public who has no account here and did not choose to be in our database.
  * These objects are private, unindexed, reachable only through a route that
  * re-checks door access on every request, and deleted outright when the patron
  * record expires.

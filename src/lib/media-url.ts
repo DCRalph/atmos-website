@@ -16,7 +16,8 @@ const getAppUrl = (): string => {
 
 /**
  * Build a media URL using the app's media API endpoint.
- * This route serves files from R2 with 1-year cache headers.
+ * The route redirects to the file on R2's public domain, so it is a stable
+ * address that costs Vercel almost nothing to serve.
  *
  * @param fileUploadId - The file_upload record ID
  * @returns Full URL to the media endpoint (e.g., https://example.com/api/media/abc123)
@@ -38,7 +39,7 @@ export const buildGigImageUrl = (fileUploadId: string): string => {
 
 /**
  * Get the display URL for a media item.
- * Prefers the internal media API URL for caching, falls back to direct R2 URL.
+ * Prefers the stable media API URL, falls back to the stored direct URL.
  *
  * @param media - Object with optional fileUploadId and url fields
  * @returns URL to display the media
@@ -48,11 +49,11 @@ export const getMediaDisplayUrl = (media: {
   url?: string | null;
   fileUpload?: { id: string; url: string } | null;
 }): string => {
-  // If we have a fileUpload with id, use the cached media endpoint
+  // If we have a fileUpload with id, use the media endpoint
   if (media.fileUpload?.id) {
     return buildMediaUrl(media.fileUpload.id);
   }
-  // If we have a fileUploadId directly, use the cached media endpoint
+  // If we have a fileUploadId directly, use the media endpoint
   if (media.fileUploadId) {
     return buildMediaUrl(media.fileUploadId);
   }
