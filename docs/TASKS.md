@@ -155,7 +155,13 @@ Add → Import shared chat / screenshots to review and extract them. Handoffs
 expire after 24 hours and are cleared after import. The app performs all uploads
 and API calls after authentication.
 
-A native rebuild is required. The config plugins add/update both targets
+The native task features require the rebuilt app. iOS **1.1.0 (930369)** was
+built from `033357d` and uploaded to App Store Connect on 9 October 2026.
+The signed IPA includes both extensions; their distribution profiles, shared
+App Group, versions, fonts, and signatures were verified. Apple accepted the
+upload, with nonblocking missing-dSYM warnings for some third-party frameworks.
+
+The config plugins add/update both targets
 idempotently on `expo prebuild`; existing binaries tolerate missing new module
 methods. Register/sign `nz.co.atmosmedia.app.AtmosShare`, retain the existing
 RunSheetWidget target, and enable `group.nz.co.atmosmedia.app` on the app and
