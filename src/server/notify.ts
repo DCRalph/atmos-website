@@ -40,7 +40,7 @@ export type PublishedMessage = {
   delivery: { devices: number; delivered: number };
 };
 
-export type PublishSource = "api" | "admin" | "run-sheet";
+export type PublishSource = "api" | "admin" | "run-sheet" | "tasks";
 
 export async function publish(
   input: PublishInput,
@@ -49,6 +49,7 @@ export async function publish(
     senderId?: string;
     /** Defaults to everyone subscribed to `input.topic`. */
     audience?: Audience;
+    categoryId?: string;
   },
 ): Promise<PublishedMessage> {
   const audience: Audience = origin.audience ?? {
@@ -67,6 +68,7 @@ export async function publish(
     // 1 and 2 are ntfy's "do not interrupt me" tiers.
     sound: input.priority <= 2 ? null : "default",
     priority: input.priority >= 4 ? "high" : "normal",
+    categoryId: origin.categoryId,
   });
 
   const row = await db.notifyMessage.create({

@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { env } from "~/env";
 import { announceDueGigs } from "~/server/gig-announce";
 import { sweepRunSheets } from "~/server/run-sheet";
+import { sweepTasks } from "~/server/tasks";
 
 /**
  * The minute ticker: run sheet cues, and TBA gigs whose announce time has come.
@@ -26,6 +27,7 @@ import { sweepRunSheets } from "~/server/run-sheet";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 export async function GET(request: NextRequest): Promise<Response> {
   return run(request);
@@ -41,15 +43,16 @@ async function run(request: NextRequest): Promise<Response> {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const [result, announced] = await Promise.all([
+  const [result, announced, tasks] = await Promise.all([
     sweepRunSheets(),
     announceDueGigs(),
+    sweepTasks(),
   ]);
-  return Response.json({ ...result, announced });
+  return Response.json({ ...result, announced, tasks });
 }
 
 function authorized(request: NextRequest): boolean {
-  if (!env.CRON_SECRET) return true;
+  if (!env.CRON_SECRET) return false;
   if (request.headers.get("authorization") === `Bearer ${env.CRON_SECRET}`) {
     return true;
   }

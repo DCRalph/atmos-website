@@ -4,11 +4,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CalendarPlus, Plus, Search, X } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { api } from "~/trpc/react";
 import { Input } from "~/components/ui/input";
 import { AdminSection } from "./admin-section";
 import { adminNavigationGroups } from "./admin-navigation";
 
 export function AdminDashboard() {
+  const taskAlerts = api.tasks.alertCount.useQuery();
   const [query, setQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
   const normalisedQuery = query.trim().toLowerCase();
@@ -57,6 +59,16 @@ export function AdminDashboard() {
       description="Find a section, start something new, or manage the day-to-day running of Atmos."
     >
       <div className="space-y-10">
+        {taskAlerts.data?.count ? (
+          <Link
+            href="/admin/tasks"
+            className="border-destructive/30 block rounded-lg border p-4 text-sm"
+          >
+            <strong>{taskAlerts.data.count} task alerts</strong> ·{" "}
+            {taskAlerts.data.overdue} overdue. Open tasks to see who needs a
+            hand.
+          </Link>
+        ) : null}
         <section className="from-primary/10 via-card to-card overflow-hidden rounded-2xl border bg-linear-to-br p-5 shadow-sm sm:p-6">
           <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
             <div className="max-w-xl">

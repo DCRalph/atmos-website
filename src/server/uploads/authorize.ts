@@ -53,6 +53,17 @@ const resolveProfile: Resolver = async (ctx, context) => {
 };
 
 const resolvers: Record<UploadPresetName, Resolver> = {
+  taskProof: async (ctx, context) => {
+    const taskId = str(context, "taskId");
+    if (
+      !(await ctx.db.task.findUnique({
+        where: { id: taskId },
+        select: { id: true },
+      }))
+    )
+      throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
+    return { taskId };
+  },
   gigMedia: resolveGig,
   gigPoster: resolveGig,
   ticketEventPoster: async () => ({}),

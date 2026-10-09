@@ -34,6 +34,19 @@ type MutationPath<TRecord, TPrefix extends string = ""> = {
 
 /** Where the verb gets it wrong, in both directions. */
 const OVERRIDES: Partial<Record<string, Risk>> = {
+  "tasks.accept": "write",
+  "tasks.acceptMany": "write",
+  "tasks.dismiss": "write",
+  "tasks.applyPlaybook": "write",
+  "tasks.extract": "write",
+  "tasks.planGig": "write",
+  "tasks.triage": "write",
+  "tasks.preMortem": "write",
+  "tasks.assessProof": "write",
+  "tasks.update": "destructive", // date/owner changes send immediate notifications
+  "tasks.assign": "destructive",
+  "tasks.addDependency": "destructive", // can commit downstream shifts
+  "tasks.calendarFeed": "destructive", // rotation revokes existing calendar access
   // Named like a create or edit, but reaches people or changes access.
   "invites.create": "destructive",
   "lifetimeTickets.create": "destructive", // emails the holder by default

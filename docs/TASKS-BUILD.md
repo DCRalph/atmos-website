@@ -2,9 +2,10 @@
 
 Branch: `feat/tasks-system`, created from local `main`.
 
-The full scope remains [TASKS-PLAN.md](TASKS-PLAN.md). Implementation is waiting
-for the required mock selection. No application code or database schema has
-changed yet.
+The full scope is [TASKS-PLAN.md](TASKS-PLAN.md). William selected **B: Calendar
+first**. All seven phases are implemented, including the five optional wacky
+features. [TASKS.md](TASKS.md) covers the finished system, checks, and setup.
+Production has not been migrated or deployed.
 
 ## Design checkpoint
 
@@ -30,7 +31,7 @@ inherits Montserrat, the existing admin shell, dense tables and neutral
 controls. Mobile inherits the app's embedded fonts, black surfaces and
 `#C6FF33` controls.
 
-## Implementation sequence after selection
+## Implementation sequence (completed)
 
 1. **Tasks exist:** Prisma schema and an unapplied migration; shared status
    transitions; admin-only router and activity logging; web list and drawer;

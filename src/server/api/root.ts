@@ -1,4 +1,5 @@
 import { crewRouter } from "~/server/api/routers/crew";
+import { tasksRouter } from "~/server/api/routers/tasks";
 import { contentRouter } from "~/server/api/routers/content";
 import { gigsRouter } from "~/server/api/routers/gigs";
 import { gigTagsRouter } from "~/server/api/routers/gig-tags";
@@ -51,6 +52,7 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
  */
 export const appRouter = createTRPCRouter({
   crew: crewRouter,
+  tasks: tasksRouter,
   content: contentRouter,
   gigs: gigsRouter,
   gigTags: gigTagsRouter,

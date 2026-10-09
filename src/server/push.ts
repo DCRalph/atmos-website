@@ -30,6 +30,7 @@ type PushMessage = {
   data?: Record<string, string>;
   sound?: "default" | null;
   badge?: number;
+  categoryId?: string;
   /** Expo's own scale, not ntfy's — a low-priority push may be held back. */
   priority?: "normal" | "high";
   /**
@@ -78,6 +79,7 @@ export async function sendPush({
   data,
   sound = "default",
   priority,
+  categoryId,
 }: {
   audience: Audience;
   title: string;
@@ -85,6 +87,7 @@ export async function sendPush({
   data?: Record<string, string>;
   sound?: "default" | null;
   priority?: "normal" | "high";
+  categoryId?: string;
 }): Promise<{ sent: number; removed: number }> {
   return deliver(audience, (token) => ({
     to: token,
@@ -93,6 +96,7 @@ export async function sendPush({
     data,
     sound,
     priority,
+    categoryId,
   }));
 }
 

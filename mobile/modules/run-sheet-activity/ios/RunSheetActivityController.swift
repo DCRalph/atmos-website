@@ -108,6 +108,7 @@ enum RunSheetActivityController {
         return true
       }
 
+      TaskDayActivityController.endAll()
       let content = ActivityContent(
         state: payload.contentState,
         staleDate: payload.staleDate

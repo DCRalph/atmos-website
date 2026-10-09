@@ -72,7 +72,7 @@ private struct LockScreen: View {
 
 /// Which night this is. Present so a phone in a pocket at two gigs is not a
 /// guess, faint because it is the one thing here you already know.
-private struct Eyebrow: View {
+struct Eyebrow: View {
   let text: String
 
   var body: some View {
@@ -85,7 +85,7 @@ private struct Eyebrow: View {
 }
 
 /// What is on, or what is about to be. The one thing worth reading at a glance.
-private struct Headline: View {
+struct Headline: View {
   let text: String
 
   var body: some View {
@@ -126,7 +126,7 @@ private struct Bar: View {
 }
 
 /// One bar, filling across a span. Drawn and advanced by the system.
-private struct Track: View {
+struct Track: View {
   let span: ClosedRange<Date>
   let tint: Color
 
