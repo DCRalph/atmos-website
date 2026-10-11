@@ -98,6 +98,9 @@ export type GigDraft = {
   announceAt: Date | undefined;
   isAffiliated: boolean;
   ticketLink: string;
+  donationsEnabled: boolean;
+  /** The three suggested amounts as typed, in dollars. Parsed on save. */
+  donationAmounts: string[];
   startTime: Date | undefined;
   endTime: Date | undefined;
   tagIds: string[];

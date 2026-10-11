@@ -21,6 +21,7 @@ import {
 } from "~Prisma/client";
 import { toPublicLineUp } from "~/lib/run-sheet/line-up";
 import { AFFILIATED_LEAD_MS } from "~/lib/gig-visibility";
+import { donationAmountsSchema } from "~/lib/donations";
 import { resolveGigId } from "~/server/gig-lookup";
 import { teaserPosterUrl } from "~/server/gig-teaser";
 import { userHasPermission } from "~/server/utils/permissions";
@@ -1146,6 +1147,9 @@ export const gigsRouter = createTRPCRouter({
         gigStartTime: z.date(),
         gigEndTime: z.date().optional(),
         ticketLink: z.string().optional(),
+        /** Off unless asked for. See `~/lib/donations.ts`. */
+        donationsEnabled: z.boolean().optional(),
+        donationAmountsCents: donationAmountsSchema.optional(),
         /**
          * The editor always creates live gigs. A draft is kept out of every
          * public list until `gigImport.publish`, which Will GPT uses when asked
@@ -1296,6 +1300,9 @@ export const gigsRouter = createTRPCRouter({
         ticketLink: z.string().nullish(),
         gigStartTime: z.date(),
         gigEndTime: z.date().nullish(),
+        /** Left as stored when absent: the import wizard does not edit them. */
+        donationsEnabled: z.boolean().optional(),
+        donationAmountsCents: donationAmountsSchema.optional(),
         tagIds: z.array(z.string()),
         scheduleItems: SCHEDULE_ITEM_INPUT,
         notifyUserIds: z.array(z.string().min(1)),
@@ -1373,9 +1380,7 @@ export const gigsRouter = createTRPCRouter({
       // when the slot they were in went away — a back to back that loses one
       // name keeps the other.
       const removedArtists = [...hadArtistIds]
-        .filter(
-          (artistProfileId) => !wantedArtistIds.includes(artistProfileId),
-        )
+        .filter((artistProfileId) => !wantedArtistIds.includes(artistProfileId))
         .map((artistProfileId) => ({
           artistProfileId,
           handle: existing.scheduleItems

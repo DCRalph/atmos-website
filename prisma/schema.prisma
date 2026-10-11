@@ -441,6 +441,13 @@ model Gig {
   /// People waiting to hear the photos are up.
   photoSignups      GigPhotoSignup[]
 
+  /// A donate button on the gig page, opening `/gigs/[id]/donate`. Off on every
+  /// gig until it is switched on in the editor.
+  donationsEnabled     Boolean @default(false)
+  /// The three amounts the donate page suggests, in cents, in the order shown.
+  /// The page takes a custom amount too. See `~/lib/donations.ts`.
+  donationAmountsCents Int[]   @default([1000, 2000, 5000])
+
   @@index([status, gigStartTime])
   @@index([posterFileUploadId])
   @@map("gig")

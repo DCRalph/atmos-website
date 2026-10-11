@@ -11,6 +11,7 @@ import {
   Check,
   Clock,
   Expand,
+  Heart,
   MapPin,
   Pencil,
   Play,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
+import { gigPath } from "~/lib/gig-url";
 import { getMediaDisplayUrl, getMediaDownloadUrl } from "~/lib/media-url";
 import { LexicalContent } from "~/components/lexical";
 import { Lineup } from "./lineup";
@@ -187,6 +189,17 @@ function Actions({
         >
           <CalendarPlus className="size-4" /> Calendar
         </Button>
+      ) : null}
+      {gig.donationsEnabled && !isTba(gig) ? (
+        <Link
+          href={`${gigPath(gig)}/donate`}
+          className={cn(
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "h-10 border-[var(--site-accent)]/60 text-[var(--site-accent-text)] hover:border-[var(--site-accent)]",
+          )}
+        >
+          <Heart className="size-4" /> Donate
+        </Link>
       ) : null}
       {isAdmin ? (
         <Link

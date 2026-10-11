@@ -53,6 +53,12 @@ import { GigTasks } from "~/components/admin/tasks/gig-tasks";
 import { RunSheetField } from "./run-sheet-field";
 import { PosterField } from "./poster-field";
 import { TagsField } from "./tags-field";
+import { DonationsField, dollarText } from "./donations-field";
+import {
+  DEFAULT_DONATION_AMOUNTS_CENTS,
+  donationCentsSchema,
+} from "~/lib/donations";
+import { parsePriceToCents } from "~/lib/ticketing/money";
 import { rebaseSchedule } from "~/lib/run-sheet/night";
 import {
   newScheduleItem,
@@ -104,6 +110,8 @@ type LoadedGig = {
   announceAt: Date | null;
   isAffiliated: boolean;
   ticketLink: string | null;
+  donationsEnabled: boolean;
+  donationAmountsCents: number[];
   gigStartTime: Date | null;
   gigEndTime: Date | null;
   updatedAt: Date | string;
@@ -146,6 +154,8 @@ const emptyDraft = (): GigDraft => ({
   announceAt: undefined,
   isAffiliated: false,
   ticketLink: "",
+  donationsEnabled: false,
+  donationAmounts: DEFAULT_DONATION_AMOUNTS_CENTS.map(dollarText),
   startTime: undefined,
   endTime: undefined,
   tagIds: [],
@@ -164,6 +174,8 @@ const draftFromGig = (gig: LoadedGig): GigDraft => ({
   announceAt: gig.announceAt ? new Date(gig.announceAt) : undefined,
   isAffiliated: gig.isAffiliated,
   ticketLink: gig.ticketLink ?? "",
+  donationsEnabled: gig.donationsEnabled,
+  donationAmounts: gig.donationAmountsCents.map(dollarText),
   startTime: gig.gigStartTime ? new Date(gig.gigStartTime) : undefined,
   endTime: gig.gigEndTime ? new Date(gig.gigEndTime) : undefined,
   tagIds: gig.gigTags.map((row) => row.gigTag.id),
@@ -209,6 +221,8 @@ const fingerprint = (draft: GigDraft): string =>
     announceAt: draft.isTba ? (draft.announceAt?.getTime() ?? null) : null,
     isAffiliated: draft.isAffiliated,
     ticketLink: draft.ticketLink.trim(),
+    donationsEnabled: draft.donationsEnabled,
+    donationAmounts: draft.donationAmounts.map((amount) => amount.trim()),
     startTime: draft.startTime?.getTime() ?? null,
     endTime: draft.endTime?.getTime() ?? null,
     tagIds: [...draft.tagIds].sort(),
@@ -238,7 +252,8 @@ type FieldErrors = Partial<
     | "startTime"
     | "endTime"
     | "announceAt"
-    | "ticketLink",
+    | "ticketLink"
+    | "donationAmounts",
     string
   >
 >;
@@ -270,6 +285,15 @@ const validate = (draft: GigDraft): FieldErrors => {
     } catch {
       errors.ticketLink = "That does not look like a valid URL";
     }
+  }
+  const badAmount = draft.donationAmounts
+    .map((amount) => donationCentsSchema.safeParse(parsePriceToCents(amount)))
+    .find((parsed) => !parsed.success);
+  if (badAmount) {
+    errors.donationAmounts =
+      badAmount.error.issues[0]?.code === "invalid_type"
+        ? "Each amount needs to be a number of dollars, like 15"
+        : (badAmount.error.issues[0]?.message ?? "Check the amounts");
   }
   return errors;
 };
@@ -451,6 +475,11 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
       announceAt: draft.isTba ? (draft.announceAt ?? null) : null,
       isAffiliated: draft.isAffiliated,
       ticketLink: draft.ticketLink.trim() || null,
+      donationsEnabled: draft.donationsEnabled,
+      // `validate` has already checked every amount parses.
+      donationAmountsCents: draft.donationAmounts.map(
+        (amount) => parsePriceToCents(amount) ?? 0,
+      ),
       gigStartTime: draft.startTime,
       gigEndTime: draft.endTime ?? null,
       tagIds: draft.tagIds,
@@ -917,6 +946,15 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
             <TagsField
               tagIds={draft.tagIds}
               onChange={(tagIds) => update("tagIds", tagIds)}
+              disabled={isSaving}
+            />
+
+            <DonationsField
+              enabled={draft.donationsEnabled}
+              amounts={draft.donationAmounts}
+              onEnabledChange={(on) => update("donationsEnabled", on)}
+              onAmountsChange={(amounts) => update("donationAmounts", amounts)}
+              error={errors.donationAmounts}
               disabled={isSaving}
             />
           </div>
