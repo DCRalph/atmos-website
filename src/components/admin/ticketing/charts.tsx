@@ -67,7 +67,7 @@ export type SeriesPoint = { x: Date; y: number };
  * Cumulative line + area. Used for the sales curve, where the shape — a spike
  * on announcement, a flat middle, a rush in the last week — is the whole point.
  * `target` draws a dashed line to climb to, like break even, and the scale
- * always reaches it.
+ * always reaches it. `series` picks the colour: revenue unless told otherwise.
  */
 export function TimeSeriesChart({
   points,
@@ -76,6 +76,7 @@ export function TimeSeriesChart({
   formatX,
   target,
   height = 220,
+  series = "revenue",
 }: {
   points: SeriesPoint[];
   title: string;
@@ -83,6 +84,8 @@ export function TimeSeriesChart({
   formatX: (date: Date) => string;
   target?: { value: number; label: string };
   height?: number;
+  /** Which `--ticket-series-*` colour to draw in. */
+  series?: "revenue" | "arrivals";
 }) {
   const gradientId = useId();
   const [hover, setHover] = useState<number | null>(null);
@@ -137,12 +140,12 @@ export function TimeSeriesChart({
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
               <stop
                 offset="0%"
-                stopColor="var(--ticket-series-revenue)"
+                stopColor={`var(--ticket-series-${series})`}
                 stopOpacity="0.22"
               />
               <stop
                 offset="100%"
-                stopColor="var(--ticket-series-revenue)"
+                stopColor={`var(--ticket-series-${series})`}
                 stopOpacity="0"
               />
             </linearGradient>
@@ -197,7 +200,7 @@ export function TimeSeriesChart({
           <path
             d={geometry.line}
             fill="none"
-            stroke="var(--ticket-series-revenue)"
+            stroke={`var(--ticket-series-${series})`}
             strokeWidth={2}
             strokeLinejoin="round"
             strokeLinecap="round"
@@ -218,7 +221,7 @@ export function TimeSeriesChart({
                 cx={geometry.xAt(hover)}
                 cy={geometry.yAt(active.y)}
                 r={5}
-                fill="var(--ticket-series-revenue)"
+                fill={`var(--ticket-series-${series})`}
                 className="stroke-background"
                 strokeWidth={2}
               />

@@ -42,6 +42,7 @@ import { pickersRouter } from "~/server/api/routers/pickers";
 import { shortLinksRouter } from "~/server/api/routers/short-links";
 import { photoSignupRouter } from "~/server/api/routers/photo-signup";
 import { donationsRouter } from "~/server/api/routers/donations";
+import { paymentsRouter } from "~/server/api/routers/payments";
 import { webRouter } from "~/server/api/routers/web";
 import { willGptRouter } from "~/server/api/routers/will-gpt";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
@@ -83,6 +84,7 @@ export const appRouter = createTRPCRouter({
   /** Emails left on a gig's QR code page, and the "photos are up" send. */
   photoSignup: photoSignupRouter,
   donations: donationsRouter,
+  payments: paymentsRouter,
 
   // Ticketing
   ticketEvents: ticketEventsRouter,

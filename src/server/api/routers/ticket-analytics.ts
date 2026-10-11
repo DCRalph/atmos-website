@@ -13,6 +13,7 @@ import { compAccounting } from "~/server/ticketing/comps";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
 import { soldFaceValueCents } from "~/lib/ticketing/tiers";
 import { venueFeePerTicketCents } from "~/lib/ticketing/money";
+import { toCsv } from "~/lib/csv";
 import {
   breakEvenTickets,
   planRevenuePerTicketCents,
@@ -712,19 +713,3 @@ export const ticketAnalyticsRouter = createTRPCRouter({
       };
     }),
 });
-
-/** RFC 4180 quoting: a venue called `O'Brien's, Level 2` must survive Excel. */
-function toCsv(rows: string[][]): string {
-  return rows
-    .map((row) =>
-      row
-        .map((cell) => {
-          const value = cell ?? "";
-          return /[",\n\r]/.test(value)
-            ? `"${value.replace(/"/g, '""')}"`
-            : value;
-        })
-        .join(","),
-    )
-    .join("\r\n");
-}

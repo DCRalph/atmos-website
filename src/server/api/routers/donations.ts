@@ -2,11 +2,15 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { GigStatus } from "~Prisma/client";
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import { donationCentsSchema } from "~/lib/donations";
+import {
+  adminProcedure,
+  createTRPCRouter,
+  publicProcedure,
+} from "~/server/api/trpc";
+import { donationCentsSchema, summariseDonations } from "~/lib/donations";
 import { gigPath } from "~/lib/gig-url";
 import { SITE_URL } from "~/lib/seo-constants";
-import { getStripe } from "~/server/stripe";
+import { getStripe, stripePaymentUrl } from "~/server/stripe";
 import { enforceRateLimit } from "~/server/ticketing/rate-limit";
 
 /**
@@ -90,5 +94,46 @@ export const donationsRouter = createTRPCRouter({
         });
       }
       return { url };
+    }),
+
+  /** One gig's donations and what they add up to, for its editor tab. */
+  forGig: adminProcedure
+    .input(z.object({ gigId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const gig = await ctx.db.gig.findUnique({
+        where: { id: input.gigId },
+        select: {
+          donationsEnabled: true,
+          donationAmountsCents: true,
+          donationRecommendedIndex: true,
+          donations: {
+            orderBy: { paidAt: "desc" },
+            select: {
+              id: true,
+              amountCents: true,
+              refundedCents: true,
+              donorName: true,
+              donorEmail: true,
+              paidAt: true,
+              stripePaymentIntentId: true,
+            },
+          },
+        },
+      });
+      if (!gig) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Gig not found" });
+      }
+
+      return {
+        enabled: gig.donationsEnabled,
+        recommendedIndex: gig.donationRecommendedIndex,
+        summary: summariseDonations(gig.donations, gig.donationAmountsCents),
+        donations: gig.donations.map(
+          ({ stripePaymentIntentId, ...donation }) => ({
+            ...donation,
+            stripeUrl: stripePaymentUrl(stripePaymentIntentId),
+          }),
+        ),
+      };
     }),
 });

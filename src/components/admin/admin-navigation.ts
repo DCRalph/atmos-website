@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   BadgePercent,
+  Banknote,
   Bell,
   BookOpen,
   Bot,
@@ -118,6 +119,13 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         url: "/admin/events",
         icon: Ticket,
         keywords: ["orders", "tickets", "door"],
+      },
+      {
+        title: "Payments",
+        description: "Every ticket sale and donation that took money",
+        url: "/admin/payments",
+        icon: Banknote,
+        keywords: ["revenue", "donations", "stripe", "refunds", "money"],
       },
       {
         title: "Door scanner",

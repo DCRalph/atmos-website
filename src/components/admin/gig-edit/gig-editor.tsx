@@ -54,6 +54,7 @@ import { RunSheetField } from "./run-sheet-field";
 import { PosterField } from "./poster-field";
 import { TagsField } from "./tags-field";
 import { DonationsField, dollarText } from "./donations-field";
+import { GigDonations } from "./gig-donations";
 import {
   DEFAULT_DONATION_AMOUNTS_CENTS,
   donationCentsSchema,
@@ -306,7 +307,9 @@ type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 
 export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
   const router = useRouter();
-  const [editorTab, setEditorTab] = useState<"details" | "tasks">("details");
+  const [editorTab, setEditorTab] = useState<"details" | "tasks" | "donations">(
+    "details",
+  );
   const utils = api.useUtils();
 
   const [gigId, setGigId] = useState(initialGigId);
@@ -724,10 +727,21 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
           >
             Tasks
           </Button>
+          <Button
+            role="tab"
+            aria-selected={editorTab === "donations"}
+            variant={editorTab === "donations" ? "secondary" : "ghost"}
+            onClick={() => setEditorTab("donations")}
+          >
+            Donations
+          </Button>
         </div>
       ) : null}
       {gigId && editorTab === "tasks" ? <GigTasks gigId={gigId} /> : null}
-      <div hidden={editorTab === "tasks"}>
+      {gigId && editorTab === "donations" ? (
+        <GigDonations gigId={gigId} />
+      ) : null}
+      <div hidden={editorTab !== "details"}>
         {/* The page's one and only Save, kept in reach of every field. */}
         <div className="bg-background/95 sticky top-20 z-20 -mx-2 mb-6 flex flex-wrap items-center gap-3 rounded-lg border px-4 py-3 backdrop-blur">
           <SaveStatusPill status={status} errorMessage={errorMessage} />

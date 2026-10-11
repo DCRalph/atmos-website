@@ -77,3 +77,9 @@ function formatAddress(address: Stripe.Address | null | undefined) {
     .filter(Boolean)
     .join(", ");
 }
+
+/** A payment in the Stripe dashboard, in test or live mode to match the key. */
+export function stripePaymentUrl(paymentIntentId: string): string {
+  const mode = isStripeTestMode() ? "test/" : "";
+  return `https://dashboard.stripe.com/${mode}payments/${paymentIntentId}`;
+}
