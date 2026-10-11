@@ -21,7 +21,10 @@ import {
 } from "~Prisma/client";
 import { toPublicLineUp } from "~/lib/run-sheet/line-up";
 import { AFFILIATED_LEAD_MS } from "~/lib/gig-visibility";
-import { donationAmountsSchema } from "~/lib/donations";
+import {
+  donationAmountsSchema,
+  donationRecommendedSchema,
+} from "~/lib/donations";
 import { resolveGigId } from "~/server/gig-lookup";
 import { teaserPosterUrl } from "~/server/gig-teaser";
 import { userHasPermission } from "~/server/utils/permissions";
@@ -1150,6 +1153,7 @@ export const gigsRouter = createTRPCRouter({
         /** Off unless asked for. See `~/lib/donations.ts`. */
         donationsEnabled: z.boolean().optional(),
         donationAmountsCents: donationAmountsSchema.optional(),
+        donationRecommendedIndex: donationRecommendedSchema.optional(),
         /**
          * The editor always creates live gigs. A draft is kept out of every
          * public list until `gigImport.publish`, which Will GPT uses when asked
@@ -1303,6 +1307,7 @@ export const gigsRouter = createTRPCRouter({
         /** Left as stored when absent: the import wizard does not edit them. */
         donationsEnabled: z.boolean().optional(),
         donationAmountsCents: donationAmountsSchema.optional(),
+        donationRecommendedIndex: donationRecommendedSchema.optional(),
         tagIds: z.array(z.string()),
         scheduleItems: SCHEDULE_ITEM_INPUT,
         notifyUserIds: z.array(z.string().min(1)),

@@ -18,7 +18,8 @@ export const donationsRouter = createTRPCRouter({
    * visitor. Stripe's page takes the card or wallet and the email, then
    * returns them to the donate page with the session id to say thanks.
    *
-   * The webhook ignores these payments: they carry no `orderId`.
+   * The payment intent is tagged `kind: "donation"`, which is how the webhook
+   * and the return page know to record it as a `Donation`.
    */
   checkout: publicProcedure
     .input(z.object({ gigId: z.string(), amountCents: donationCentsSchema }))

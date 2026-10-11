@@ -21,3 +21,11 @@ export const donationCentsSchema = z
 
 /** Exactly three suggestions, in the order the page shows them. */
 export const donationAmountsSchema = z.array(donationCentsSchema).length(3);
+
+/** Which suggestion is recommended, or null for none. */
+export const donationRecommendedSchema = z
+  .number()
+  .int()
+  .min(0)
+  .max(2)
+  .nullable();

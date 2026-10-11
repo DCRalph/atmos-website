@@ -101,6 +101,8 @@ export type GigDraft = {
   donationsEnabled: boolean;
   /** The three suggested amounts as typed, in dollars. Parsed on save. */
   donationAmounts: string[];
+  /** Which suggestion is recommended, or null for none. */
+  donationRecommendedIndex: number | null;
   startTime: Date | undefined;
   endTime: Date | undefined;
   tagIds: string[];

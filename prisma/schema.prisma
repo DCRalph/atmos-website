@@ -447,6 +447,11 @@ model Gig {
   /// The three amounts the donate page suggests, in cents, in the order shown.
   /// The page takes a custom amount too. See `~/lib/donations.ts`.
   donationAmountsCents Int[]   @default([1000, 2000, 5000])
+  /// Which of `donationAmountsCents` starts picked and wears the "Most give"
+  /// tag. Null for no recommendation: nothing starts picked.
+  donationRecommendedIndex Int? @default(1)
+  /// Paid donations, recorded from Stripe. See `~/server/donations.ts`.
+  donations Donation[]
 
   @@index([status, gigStartTime])
   @@index([posterFileUploadId])
@@ -869,6 +874,38 @@ model GigPhotoSignup {
 
   @@unique([gigId, email])
   @@map("gig_photo_signup")
+}
+
+/// One paid donation, given on a gig's donate page through Stripe Checkout.
+///
+/// Only paid ones exist: a row is written when Stripe says the money moved,
+/// by whichever of the webhook or the visitor's return lands first, keyed on
+/// the payment intent so the second is a no-op.
+model Donation {
+  id    String  @id @default(cuid())
+  /// Null once the gig is deleted. The money was still given.
+  gigId String?
+  gig   Gig?    @relation(fields: [gigId], references: [id], onDelete: SetNull)
+
+  amountCents Int
+  currency    String @default("NZD")
+
+  stripePaymentIntentId String  @unique
+  stripeChargeId        String?
+
+  donorEmail String?
+  donorName  String?
+
+  /// Refunds taken in the Stripe dashboard, kept current by the webhook.
+  refundedCents Int       @default(0)
+  refundedAt    DateTime?
+
+  paidAt    DateTime
+  createdAt DateTime @default(now())
+
+  @@index([gigId, paidAt])
+  @@index([paidAt])
+  @@map("donation")
 }
 
 /// Cached Shopify Storefront products; populated by admin sync.

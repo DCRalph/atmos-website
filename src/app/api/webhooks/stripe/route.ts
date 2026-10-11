@@ -9,6 +9,7 @@ import {
 } from "~Prisma/client";
 import { env } from "~/env";
 import { db } from "~/server/db";
+import { isDonationIntent, recordDonation } from "~/server/donations";
 import { buyerFromCharge, getStripe } from "~/server/stripe";
 import { sendTicketEmail } from "~/server/ticketing/email/send";
 import {
@@ -21,6 +22,9 @@ import { logActivity } from "~/server/utils/activity-log";
 
 /**
  * Stripe webhook — the authority on whether an order was paid.
+ *
+ * Donations ride the same events: a donation intent is recorded rather than
+ * issued, and its refunds are tracked. See `~/server/donations.ts`.
  *
  * The browser also calls `ticketCheckout.confirm` the instant Stripe reports
  * success, which is what makes tickets appear immediately. Both paths run the
@@ -89,6 +93,11 @@ export async function POST(request: NextRequest): Promise<Response> {
 async function handlePaymentSucceeded(
   intent: Stripe.PaymentIntent,
 ): Promise<void> {
+  if (isDonationIntent(intent)) {
+    await recordDonation(intent);
+    return;
+  }
+
   const orderId = intent.metadata?.orderId;
   if (!orderId) return;
 
@@ -137,6 +146,13 @@ async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
       ? charge.payment_intent
       : charge.payment_intent?.id;
   if (!paymentIntentId) return;
+
+  // A donation has no tickets to void; just keep its refund current.
+  const donation = await db.donation.updateMany({
+    where: { stripePaymentIntentId: paymentIntentId },
+    data: { refundedCents: charge.amount_refunded, refundedAt: new Date() },
+  });
+  if (donation.count > 0) return;
 
   const order = await db.ticketOrder.findUnique({
     where: { stripePaymentIntentId: paymentIntentId },

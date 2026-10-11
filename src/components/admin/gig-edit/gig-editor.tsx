@@ -112,6 +112,7 @@ type LoadedGig = {
   ticketLink: string | null;
   donationsEnabled: boolean;
   donationAmountsCents: number[];
+  donationRecommendedIndex: number | null;
   gigStartTime: Date | null;
   gigEndTime: Date | null;
   updatedAt: Date | string;
@@ -156,6 +157,7 @@ const emptyDraft = (): GigDraft => ({
   ticketLink: "",
   donationsEnabled: false,
   donationAmounts: DEFAULT_DONATION_AMOUNTS_CENTS.map(dollarText),
+  donationRecommendedIndex: 1,
   startTime: undefined,
   endTime: undefined,
   tagIds: [],
@@ -176,6 +178,7 @@ const draftFromGig = (gig: LoadedGig): GigDraft => ({
   ticketLink: gig.ticketLink ?? "",
   donationsEnabled: gig.donationsEnabled,
   donationAmounts: gig.donationAmountsCents.map(dollarText),
+  donationRecommendedIndex: gig.donationRecommendedIndex,
   startTime: gig.gigStartTime ? new Date(gig.gigStartTime) : undefined,
   endTime: gig.gigEndTime ? new Date(gig.gigEndTime) : undefined,
   tagIds: gig.gigTags.map((row) => row.gigTag.id),
@@ -223,6 +226,7 @@ const fingerprint = (draft: GigDraft): string =>
     ticketLink: draft.ticketLink.trim(),
     donationsEnabled: draft.donationsEnabled,
     donationAmounts: draft.donationAmounts.map((amount) => amount.trim()),
+    donationRecommendedIndex: draft.donationRecommendedIndex,
     startTime: draft.startTime?.getTime() ?? null,
     endTime: draft.endTime?.getTime() ?? null,
     tagIds: [...draft.tagIds].sort(),
@@ -480,6 +484,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
       donationAmountsCents: draft.donationAmounts.map(
         (amount) => parsePriceToCents(amount) ?? 0,
       ),
+      donationRecommendedIndex: draft.donationRecommendedIndex,
       gigStartTime: draft.startTime,
       gigEndTime: draft.endTime ?? null,
       tagIds: draft.tagIds,
@@ -952,6 +957,10 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
             <DonationsField
               enabled={draft.donationsEnabled}
               amounts={draft.donationAmounts}
+              recommended={draft.donationRecommendedIndex}
+              onRecommendedChange={(index) =>
+                update("donationRecommendedIndex", index)
+              }
               onEnabledChange={(on) => update("donationsEnabled", on)}
               onAmountsChange={(amounts) => update("donationAmounts", amounts)}
               error={errors.donationAmounts}

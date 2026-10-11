@@ -15,9 +15,6 @@ import { AtmosLogo, Button, Media, buttonVariants } from "../ui";
 /** What `/gigs/[id]/donate` loads. */
 type DonateGig = NonNullable<Awaited<ReturnType<typeof donateGig>>>;
 
-/** The suggestion that starts picked and wears the nudge: the middle one. */
-const NUDGED = 1;
-
 /**
  * The donate page: the poster filling the screen and one glass panel with
  * three suggested amounts, a custom one, and the button out to Stripe. Laid
@@ -102,7 +99,10 @@ export function DonatePage({
 /** Three suggestions or a custom amount, then off to Stripe. */
 function DonateForm({ gig }: { gig: DonateGig }) {
   const id = useId();
-  const [picked, setPicked] = useState<number | "custom">(NUDGED);
+  // The recommended suggestion starts picked. Without one, nothing does.
+  const [picked, setPicked] = useState<number | "custom" | null>(
+    gig.recommendedIndex,
+  );
   const [custom, setCustom] = useState("");
   const [invalid, setInvalid] = useState<string | null>(null);
   const checkout = api.donations.checkout.useMutation({
@@ -112,7 +112,9 @@ function DonateForm({ gig }: { gig: DonateGig }) {
   const cents =
     picked === "custom"
       ? parsePriceToCents(custom)
-      : (gig.amountsCents[picked] ?? null);
+      : picked === null
+        ? null
+        : (gig.amountsCents[picked] ?? null);
   // Still pending while the browser leaves for Stripe.
   const busy = checkout.isPending || checkout.isSuccess;
 
@@ -121,9 +123,11 @@ function DonateForm({ gig }: { gig: DonateGig }) {
     const parsed = donationCentsSchema.safeParse(cents);
     if (!parsed.success) {
       return setInvalid(
-        cents === null
-          ? "Enter an amount, like 15."
-          : (parsed.error.issues[0]?.message ?? "That amount won't work."),
+        picked === null
+          ? "Pick an amount."
+          : cents === null
+            ? "Enter an amount, like 15."
+            : (parsed.error.issues[0]?.message ?? "That amount won't work."),
       );
     }
     checkout.mutate({ gigId: gig.id, amountCents: parsed.data });
@@ -157,7 +161,7 @@ function DonateForm({ gig }: { gig: DonateGig }) {
                   : "border-white/25 bg-black/30 hover:border-white/60",
               )}
             >
-              {index === NUDGED ? (
+              {index === gig.recommendedIndex ? (
                 <span className="t-label absolute -top-2 left-1/2 -translate-x-1/2 rounded-[var(--site-r-chip)] bg-white px-1.5 py-[3px] text-[8px] whitespace-nowrap text-black">
                   Most give
                 </span>

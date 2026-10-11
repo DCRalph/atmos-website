@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
@@ -16,22 +17,27 @@ export const dollarText = (cents: number) =>
   cents % 100 === 0 ? String(cents / 100) : (cents / 100).toFixed(2);
 
 /**
- * The gig's donate page: whether there is one, and the three amounts it
- * suggests. The amounts stay editable while it is off, so they can be set up
- * before the switch goes on. `amounts` is dollar text, parsed on save.
+ * The gig's donate page: whether there is one, the three amounts it suggests,
+ * and which of them (if any) is recommended. The amounts stay editable while
+ * it is off, so they can be set up before the switch goes on. `amounts` is
+ * dollar text, parsed on save.
  */
 export function DonationsField({
   enabled,
   amounts,
+  recommended,
   onEnabledChange,
   onAmountsChange,
+  onRecommendedChange,
   error,
   disabled,
 }: {
   enabled: boolean;
   amounts: string[];
+  recommended: number | null;
   onEnabledChange: (enabled: boolean) => void;
   onAmountsChange: (amounts: string[]) => void;
+  onRecommendedChange: (index: number | null) => void;
   error?: string;
   disabled?: boolean;
 }) {
@@ -62,26 +68,28 @@ export function DonationsField({
           <Label htmlFor="gig-donation-0">Suggested amounts</Label>
           <div className="grid grid-cols-3 gap-2">
             {amounts.map((amount, index) => (
-              <div key={index} className="relative">
-                <span className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm">
-                  $
-                </span>
-                <Input
-                  id={`gig-donation-${index}`}
-                  aria-label={`Suggested amount ${index + 1}`}
-                  inputMode="decimal"
-                  className="pl-6 tabular-nums"
-                  value={amount}
-                  onChange={(e) =>
-                    onAmountsChange(
-                      amounts.map((current, i) =>
-                        i === index ? e.target.value : current,
-                      ),
-                    )
-                  }
-                  aria-invalid={Boolean(error)}
-                  disabled={disabled}
-                />
+              <div key={index}>
+                <div className="relative">
+                  <span className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm">
+                    $
+                  </span>
+                  <Input
+                    id={`gig-donation-${index}`}
+                    aria-label={`Suggested amount ${index + 1}`}
+                    inputMode="decimal"
+                    className="pl-6 tabular-nums"
+                    value={amount}
+                    onChange={(e) =>
+                      onAmountsChange(
+                        amounts.map((current, i) =>
+                          i === index ? e.target.value : current,
+                        ),
+                      )
+                    }
+                    aria-invalid={Boolean(error)}
+                    disabled={disabled}
+                  />
+                </div>
               </div>
             ))}
           </div>
@@ -89,9 +97,33 @@ export function DonationsField({
             <p className="text-destructive text-xs">{error}</p>
           ) : (
             <p className="text-muted-foreground text-xs">
-              The middle one starts picked. People can also enter their own.
+              People can always enter their own amount too.
             </p>
           )}
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Label>Recommended</Label>
+          <div role="radiogroup" className="flex flex-wrap gap-1">
+            {[null, ...amounts.map((_, index) => index)].map((index) => (
+              <Button
+                key={index ?? "none"}
+                type="button"
+                size="sm"
+                role="radio"
+                aria-checked={recommended === index}
+                variant={recommended === index ? "secondary" : "ghost"}
+                onClick={() => onRecommendedChange(index)}
+                disabled={disabled}
+                className="tabular-nums"
+              >
+                {index === null ? "None" : `$${amounts[index]?.trim() ?? ""}`}
+              </Button>
+            ))}
+          </div>
+          <p className="text-muted-foreground text-xs">
+            Starts picked on the donate page, tagged &quot;Most give&quot;.
+          </p>
         </div>
       </CardContent>
     </Card>
