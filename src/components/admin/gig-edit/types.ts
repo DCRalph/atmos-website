@@ -103,6 +103,8 @@ export type GigDraft = {
   donationAmounts: string[];
   /** Which suggestion is recommended, or null for none. */
   donationRecommendedIndex: number | null;
+  /** The donate page's words above the amounts. */
+  donationDescription: SerializedEditorState | null;
   startTime: Date | undefined;
   endTime: Date | undefined;
   tagIds: string[];

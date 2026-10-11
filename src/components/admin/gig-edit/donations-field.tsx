@@ -1,5 +1,7 @@
 "use client";
 
+import type { SerializedEditorState } from "lexical";
+
 import {
   Card,
   CardContent,
@@ -7,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import { LexicalRichTextEditor } from "~/components/lexical";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -17,8 +20,8 @@ export const dollarText = (cents: number) =>
   cents % 100 === 0 ? String(cents / 100) : (cents / 100).toFixed(2);
 
 /**
- * The gig's donate page: whether there is one, the three amounts it suggests,
- * and which of them (if any) is recommended. The amounts stay editable while
+ * The gig's donate page: whether there is one, what it says, the three
+ * amounts it suggests, and which of them (if any) is recommended. The amounts stay editable while
  * it is off, so they can be set up before the switch goes on. `amounts` is
  * dollar text, parsed on save.
  */
@@ -26,6 +29,9 @@ export function DonationsField({
   enabled,
   amounts,
   recommended,
+  description,
+  editorNamespace,
+  onDescriptionChange,
   onEnabledChange,
   onAmountsChange,
   onRecommendedChange,
@@ -35,6 +41,10 @@ export function DonationsField({
   enabled: boolean;
   amounts: string[];
   recommended: number | null;
+  description: SerializedEditorState | null;
+  /** Unique Lexical namespace for the description editor. */
+  editorNamespace: string;
+  onDescriptionChange: (value: SerializedEditorState) => void;
   onEnabledChange: (enabled: boolean) => void;
   onAmountsChange: (amounts: string[]) => void;
   onRecommendedChange: (index: number | null) => void;
@@ -63,6 +73,21 @@ export function DonationsField({
             </span>
           </span>
         </label>
+
+        <div className="flex flex-col gap-2">
+          <Label>Description</Label>
+          <LexicalRichTextEditor
+            value={description}
+            onChange={onDescriptionChange}
+            namespace={editorNamespace}
+            placeholder="Why people should chip in..."
+            ariaLabel="Donate page description"
+            minHeight="8rem"
+          />
+          <p className="text-muted-foreground text-xs">
+            Shown above the amounts. Leave empty for no text.
+          </p>
+        </div>
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="gig-donation-0">Suggested amounts</Label>

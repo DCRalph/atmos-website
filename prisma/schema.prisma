@@ -450,6 +450,9 @@ model Gig {
   /// Which of `donationAmountsCents` starts picked and wears the "Most give"
   /// tag. Null for no recommendation: nothing starts picked.
   donationRecommendedIndex Int? @default(1)
+  /// What the donate page says above the amounts, as a serialized Lexical
+  /// state like `descriptionLexical`. Null or empty shows no text at all.
+  donationDescriptionLexical Json?
   /// Paid donations, recorded from Stripe. See `~/server/donations.ts`.
   donations Donation[]
 

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Heart } from "lucide-react";
 
 import { api } from "~/trpc/react";
+import { LexicalContent } from "~/components/lexical";
 import type { donateGig } from "~/server/donations";
 import { donationCentsSchema } from "~/lib/donations";
 import { formatNZDCompact, parsePriceToCents } from "~/lib/ticketing/money";
@@ -76,10 +77,14 @@ export function DonatePage({
                 <h1 className="t-display text-[30px] [overflow-wrap:anywhere]">
                   {gig.title}
                 </h1>
-                <p className="text-[15px] leading-relaxed text-white/75">
-                  Donations pay the artists and keep the door cheap, so anyone
-                  can come. Chip in and help keep nights like this going.
-                </p>
+                {gig.description ? (
+                  <LexicalContent
+                    value={gig.description}
+                    namespace={`gig-donation-${gig.id}`}
+                    ariaLabel="About donating"
+                    contentClassName="text-[15px] leading-relaxed text-white/75 [&_a]:text-white [&_a]:underline [&_a]:underline-offset-4 [&_li]:mb-1 [&_p:not(:last-child)]:mb-3 [&_strong]:text-white [&_ul]:list-disc [&_ul]:pl-5"
+                  />
+                ) : null}
                 <DonateForm gig={gig} />
               </>
             )}

@@ -5,6 +5,7 @@ import type Stripe from "stripe";
 
 import { FileUploadStatus, GigStatus } from "~Prisma/client";
 import { gigPath } from "~/lib/gig-url";
+import { lexicalToPlainText } from "~/lib/gig-import/lexical";
 import { resolveGigId } from "~/server/gig-lookup";
 import { db } from "~/server/db";
 import { buyerFromCharge, getStripe } from "~/server/stripe";
@@ -40,6 +41,7 @@ export const donateGig = cache(async (idOrSlug: string) => {
           posterFileUploadId: true,
           donationAmountsCents: true,
           donationRecommendedIndex: true,
+          donationDescriptionLexical: true,
         },
       })
     : null;
@@ -61,6 +63,10 @@ export const donateGig = cache(async (idOrSlug: string) => {
     amountsCents: gig.donationAmountsCents,
     /** Index into `amountsCents`, or null for no recommendation. */
     recommendedIndex: gig.donationRecommendedIndex,
+    /** The admin's words above the amounts. Null when there are none. */
+    description: lexicalToPlainText(gig.donationDescriptionLexical)
+      ? gig.donationDescriptionLexical
+      : null,
     gigHref: gigPath(gig),
   };
 });

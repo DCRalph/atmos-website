@@ -1154,6 +1154,7 @@ export const gigsRouter = createTRPCRouter({
         donationsEnabled: z.boolean().optional(),
         donationAmountsCents: donationAmountsSchema.optional(),
         donationRecommendedIndex: donationRecommendedSchema.optional(),
+        donationDescriptionLexical: LEXICAL_STATE_SCHEMA.nullish(),
         /**
          * The editor always creates live gigs. A draft is kept out of every
          * public list until `gigImport.publish`, which Will GPT uses when asked
@@ -1176,6 +1177,7 @@ export const gigsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const {
         descriptionLexical,
+        donationDescriptionLexical,
         tagIds,
         scheduleItems,
         notifyUserIds,
@@ -1200,6 +1202,9 @@ export const gigsRouter = createTRPCRouter({
           ...rest,
           announceAt: rest.isTba ? (rest.announceAt ?? null) : null,
           descriptionLexical: toLexicalJsonInput(descriptionLexical),
+          donationDescriptionLexical: toLexicalJsonInput(
+            donationDescriptionLexical,
+          ),
           ...(wantedTagIds.length > 0
             ? {
                 gigTags: {
@@ -1308,6 +1313,7 @@ export const gigsRouter = createTRPCRouter({
         donationsEnabled: z.boolean().optional(),
         donationAmountsCents: donationAmountsSchema.optional(),
         donationRecommendedIndex: donationRecommendedSchema.optional(),
+        donationDescriptionLexical: LEXICAL_STATE_SCHEMA.nullish(),
         tagIds: z.array(z.string()),
         scheduleItems: SCHEDULE_ITEM_INPUT,
         notifyUserIds: z.array(z.string().min(1)),
@@ -1317,6 +1323,7 @@ export const gigsRouter = createTRPCRouter({
       const {
         id,
         descriptionLexical,
+        donationDescriptionLexical,
         tagIds,
         scheduleItems,
         notifyUserIds,
@@ -1413,6 +1420,9 @@ export const gigsRouter = createTRPCRouter({
             ...rest,
             announceAt: rest.isTba ? (rest.announceAt ?? null) : null,
             descriptionLexical: toLexicalJsonInput(descriptionLexical),
+            donationDescriptionLexical: toLexicalJsonInput(
+              donationDescriptionLexical,
+            ),
           },
         });
 
