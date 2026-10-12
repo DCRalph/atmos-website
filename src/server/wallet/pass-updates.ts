@@ -1,7 +1,7 @@
 import {
-  resolvePassTheme,
-  type PassThemeFields,
-} from "~/lib/ticketing/pass-theme";
+  normaliseEventPassDesign,
+  parseEventPassDesign,
+} from "~/lib/ticketing/pass-design";
 
 /**
  * Apple's `passesUpdatedSince` / `lastUpdated` tags are opaque strings. We
@@ -95,7 +95,9 @@ export type PassVisibleEventSnapshot = {
   venueName: string | null;
   venueAddress: string | null;
   isR18: boolean;
-} & PassThemeFields;
+  /** Stored JSON on the event; the patch side is the parsed form input. */
+  passDesign: unknown;
+};
 
 const PASS_VISIBLE_SCALAR_KEYS = [
   "name",
@@ -106,14 +108,6 @@ const PASS_VISIBLE_SCALAR_KEYS = [
   "isR18",
 ] as const;
 
-const PASS_THEME_KEYS = [
-  "passStripStyle",
-  "passAccentHex",
-  "passBackgroundHex",
-  "passForegroundHex",
-  "passLabelHex",
-] as const satisfies readonly (keyof PassThemeFields)[];
-
 function sameInstant(
   left: Date | null | undefined,
   right: Date | null | undefined,
@@ -121,18 +115,6 @@ function sameInstant(
   if (left == null && right == null) return true;
   if (left == null || right == null) return false;
   return left.getTime() === right.getTime();
-}
-
-function definedThemePatch(patch: PassThemeFields): PassThemeFields | null {
-  const next: PassThemeFields = {};
-  let any = false;
-  for (const key of PASS_THEME_KEYS) {
-    if (patch[key] !== undefined) {
-      next[key] = patch[key];
-      any = true;
-    }
-  }
-  return any ? next : null;
 }
 
 /** True when a ticketed-event edit would change what a Wallet pass prints. */
@@ -158,19 +140,12 @@ export function eventHasPassVisibleChange(
     return true;
   }
 
-  const themePatch = definedThemePatch(patch);
-  if (themePatch) {
-    const before = resolvePassTheme(existing);
-    const after = resolvePassTheme({ ...existing, ...themePatch });
-    if (
-      before.stripStyle !== after.stripStyle ||
-      before.accentHex !== after.accentHex ||
-      before.backgroundHex !== after.backgroundHex ||
-      before.foregroundHex !== after.foregroundHex ||
-      before.labelHex !== after.labelHex
-    ) {
-      return true;
-    }
+  // The form sends the whole design on every save, so compare what it means
+  // rather than whether it was sent.
+  if (patch.passDesign !== undefined) {
+    const design = (value: unknown) =>
+      JSON.stringify(normaliseEventPassDesign(parseEventPassDesign(value)));
+    if (design(patch.passDesign) !== design(existing.passDesign)) return true;
   }
 
   return false;

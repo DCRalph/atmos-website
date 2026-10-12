@@ -161,6 +161,31 @@ export const uploadPresets = {
     keyPrefix: () => "ticket-events/posters",
   }),
 
+  /**
+   * Band photos and logos for wallet passes, on an event or an access level.
+   * One shared bucket, because the same artwork is often reused across both.
+   * WebP keeps a logo's transparency; the pass builder re-encodes to PNG.
+   */
+  ticketPassImage: definePreset({
+    label: "Wallet pass image",
+    description: "A band photo or logo on a wallet pass.",
+    access: "admin",
+    accept: IMAGE_TYPES,
+    maxFileSize: mb(25),
+    maxFiles: 1,
+    maxTotalSize: mb(25),
+    for: "ticket_pass_image",
+    image: {
+      maxDimension: 2048,
+      format: "webp",
+      quality: 90,
+      maxOutputSize: mb(1.5),
+    },
+    context: z.object({}),
+    forId: () => "passes",
+    keyPrefix: () => "ticket-events/passes",
+  }),
+
   /** An artist's profile photo. */
   artistAvatar: definePreset({
     label: "Artist avatar",

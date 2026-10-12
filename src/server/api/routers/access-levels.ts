@@ -7,6 +7,7 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import { HEX_COLOUR_PATTERN } from "~/lib/ticketing/pass-theme";
+import { passDesignSchema } from "~/lib/ticketing/pass-design";
 import { DEFAULT_ACCESS_LEVEL } from "~/lib/ticketing/access-levels";
 import { scheduleLevelPassUpdates } from "~/server/wallet/apple-push";
 
@@ -26,7 +27,10 @@ const CODE = z
   .toUpperCase()
   .min(2)
   .max(24)
-  .regex(/^[A-Z][A-Z0-9_]*$/, "Letters, numbers and underscores; start with a letter");
+  .regex(
+    /^[A-Z][A-Z0-9_]*$/,
+    "Letters, numbers and underscores; start with a letter",
+  );
 
 const HEX = z
   .string()
@@ -38,7 +42,8 @@ const levelInput = z.object({
   short: z.string().trim().min(1).max(10),
   badgeBg: HEX,
   badgeFg: HEX,
-  passAccent: HEX.nullable().optional(),
+  /** This level's layer of a wallet pass's look. Empty leaves it to events. */
+  passDesign: passDesignSchema.optional(),
   rank: z.number().int().min(0).max(999),
 });
 
@@ -85,7 +90,7 @@ export const accessLevelsRouter = createTRPCRouter({
         });
       }
       const created = await ctx.db.accessLevel.create({
-        data: { ...input, passAccent: input.passAccent ?? null },
+        data: input,
       });
       return created;
     }),

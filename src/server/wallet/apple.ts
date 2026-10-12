@@ -7,11 +7,11 @@ import { env } from "~/env";
 import { buildTicketQrPayload } from "~/server/ticketing/qr";
 import { formatEventDateLong, formatEventTime } from "~/lib/ticketing/dates";
 import { resolveLevel } from "~/server/ticketing/access-level-store";
+import { toPassRgb } from "~/lib/ticketing/pass-theme";
 import {
-  resolvePassTheme,
-  toPassRgb,
-  type PassThemeFields,
-} from "~/lib/ticketing/pass-theme";
+  parseEventPassDesign,
+  resolveTicketPassDesign,
+} from "~/lib/ticketing/pass-design";
 import { getAppleWalletConfig } from "./apple-config";
 import { getPassImages } from "./pass-images";
 
@@ -47,7 +47,9 @@ export type PassEvent = {
   venueAddress: string | null;
   isR18: boolean;
   status: string;
-} & PassThemeFields;
+  /** The stored JSON, parsed here. See `~/lib/ticketing/pass-design.ts`. */
+  passDesign: unknown;
+};
 
 /**
  * Per-pass secret for the Apple web service. Derived, so nothing extra is
@@ -85,33 +87,18 @@ export async function buildApplePass({
   /**
    * A better ticket gets a louder pass.
    *
-   * Anything above general admission takes the level's own colour and floods
-   * the band further, so an AAA or artist pass is recognisable at a glance in a
-   * dark room. General admission is left entirely alone — the event's design is
-   * the point, and most tickets are GA.
+   * The look is layered: this level at this event, then the level, then the
+   * event, each field falling through on its own. Above general admission the
+   * accent also floods the band further and the level's chip is drawn on it,
+   * so an AAA or artist pass is recognisable at a glance in a dark room.
    */
   // Read from the table rather than the retired enum, so a level renamed or
   // recoloured in admin shows on the next pass without a deploy.
   const level = await resolveLevel(ticket.accessLevel);
-  const elevated = level.rank > 0;
-  const baseTheme = resolvePassTheme(event);
-  const theme = level.passAccent
-    ? { ...baseTheme, accentHex: level.passAccent }
-    : baseTheme;
-
-  // The chip is drawn into the band rather than added as a field, which is both
-  // how it gets a background and how the level stays in exactly one place.
-  // Inverted on purpose: the chip sits on the accent-flooded end of the band,
-  // so filling it with that same accent leaves it readable only by its edge. A
-  // dark chip with accent type is the pairing that actually reads.
-  const badge =
-    elevated && level.passAccent
-      ? {
-          text: level.short,
-          background: baseTheme.backgroundHex,
-          foreground: level.passAccent,
-        }
-      : null;
+  const { design, chip } = resolveTicketPassDesign(
+    parseEventPassDesign(event.passDesign),
+    level,
+  );
 
   /**
    * On a pass with a chip, the band carries the event name too.
@@ -123,13 +110,19 @@ export async function buildApplePass({
    * typeset into the artwork beside it and the primary field is left empty.
    * Everything else (most tickets, which are general admission) keeps Wallet's
    * own type, which scales with the reader's text size.
+   *
+   * A design can also leave the name off the front entirely, for a band photo
+   * that already says it. Either way the back carries it in full.
    */
-  const artwork = await getPassImages(
-    theme,
-    level.intensity,
-    badge,
-    badge ? event.name : null,
-  );
+  const artwork = await getPassImages({
+    theme: design,
+    intensity: level.intensity,
+    badge: chip,
+    title: chip && design.showTitle ? event.name : null,
+    stripImageId: design.stripImageId,
+    logoImageId: design.logoImageId,
+  });
+  const nameOnFront = design.showTitle && !artwork.titleDrawn;
 
   const doorsText = event.doorsAt
     ? formatEventTime(event.doorsAt, event.timezone)
@@ -143,9 +136,9 @@ export async function buildApplePass({
     organizationName: "Atmos Media",
     description: `Ticket — ${event.name}`,
 
-    foregroundColor: toPassRgb(theme.foregroundHex),
-    backgroundColor: toPassRgb(theme.backgroundHex),
-    labelColor: toPassRgb(theme.labelHex),
+    foregroundColor: toPassRgb(design.foregroundHex),
+    backgroundColor: toPassRgb(design.backgroundHex),
+    labelColor: toPassRgb(design.labelHex),
 
     // Lets the pass surface itself on the lock screen near the venue and time.
     relevantDate: (event.doorsAt ?? event.startsAt).toISOString(),
@@ -166,16 +159,16 @@ export async function buildApplePass({
         },
       ],
       // Empty when the band already says it: this is the field Wallet would
-      // draw over the chip.
-      primaryFields: artwork.titleDrawn
-        ? []
-        : [
+      // draw over the chip, or over a photo that carries the name itself.
+      primaryFields: nameOnFront
+        ? [
             {
               key: "event",
               label: "EVENT",
               value: event.name,
             },
-          ],
+          ]
+        : [],
       secondaryFields: [
         {
           key: "date",
@@ -198,11 +191,12 @@ export async function buildApplePass({
           : []),
       ],
       backFields: [
-        // The name is artwork on the front of these, so the back carries it as
-        // text — in full, and reachable by a screen reader.
-        ...(artwork.titleDrawn
-          ? [{ key: "eventName", label: "Event", value: event.name }]
-          : []),
+        // The name is artwork on the front of these, or not there at all, so
+        // the back carries it as text — in full, and reachable by a screen
+        // reader.
+        ...(nameOnFront
+          ? []
+          : [{ key: "eventName", label: "Event", value: event.name }]),
         {
           key: "ticketNumber",
           label: "Ticket number",

@@ -4,8 +4,11 @@ import type { RouterInputs, RouterOutputs } from "~/trpc/react";
 import { DEFAULT_ACCESS_LEVEL } from "~/lib/ticketing/access-levels";
 import { toAllocationBudget } from "~/lib/ticketing/capacity";
 import { parsePriceToCents } from "~/lib/ticketing/money";
-import { DEFAULT_PASS_THEME } from "~/lib/ticketing/pass-theme";
-import type { PassThemeDraft } from "~/components/admin/ticketing/pass-theme-field";
+import {
+  normaliseEventPassDesign,
+  parseEventPassDesign,
+  type EventPassDesign,
+} from "~/lib/ticketing/pass-design";
 
 /**
  * The event as the admin is editing it: details, tiers, costs and door staff
@@ -84,7 +87,8 @@ export type EventDraft = {
   venueHire: string;
   passVenueHire: boolean;
   costs: CostDraft[];
-  passTheme: PassThemeDraft;
+  /** The event's own pass layer and its per-level overrides. */
+  passDesign: EventPassDesign;
   tiers: TierDraft[];
   staff: StaffDraft[];
 };
@@ -172,7 +176,7 @@ export const emptyDraft = (): EventDraft => ({
   venueHire: "",
   passVenueHire: false,
   costs: [],
-  passTheme: { ...DEFAULT_PASS_THEME },
+  passDesign: {},
   tiers: [],
   staff: [],
 });
@@ -215,13 +219,7 @@ export const draftFromEvent = (event: AdminEvent): EventDraft => ({
     label: cost.label,
     amount: centsToField(cost.amountCents),
   })),
-  passTheme: {
-    stripStyle: event.passStripStyle,
-    accentHex: event.passAccentHex ?? DEFAULT_PASS_THEME.accentHex,
-    backgroundHex: event.passBackgroundHex ?? DEFAULT_PASS_THEME.backgroundHex,
-    foregroundHex: event.passForegroundHex ?? DEFAULT_PASS_THEME.foregroundHex,
-    labelHex: event.passLabelHex ?? DEFAULT_PASS_THEME.labelHex,
-  },
+  passDesign: normaliseEventPassDesign(parseEventPassDesign(event.passDesign)),
   tiers: event.tiers.map(tierFromEvent),
   staff: event.staff.map((row) => ({
     userId: row.userId,
@@ -293,7 +291,7 @@ export function sectionFingerprints(
         .sort((a, b) => a.userId.localeCompare(b.userId))
         .map((row) => [row.userId, row.role]),
     ),
-    wallet: JSON.stringify(draft.passTheme),
+    wallet: JSON.stringify(normaliseEventPassDesign(draft.passDesign)),
   };
 }
 
@@ -465,11 +463,7 @@ export function toPayload(draft: EventDraft, startsAt: Date): SavePayload {
       label: cost.label.trim(),
       amountCents: parsePriceToCents(cost.amount) ?? 0,
     })),
-    passStripStyle: draft.passTheme.stripStyle,
-    passAccentHex: draft.passTheme.accentHex,
-    passBackgroundHex: draft.passTheme.backgroundHex,
-    passForegroundHex: draft.passTheme.foregroundHex,
-    passLabelHex: draft.passTheme.labelHex,
+    passDesign: normaliseEventPassDesign(draft.passDesign),
     tiers: draft.tiers.map((tier) => ({
       id: tier.id,
       name: tier.name.trim(),

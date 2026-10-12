@@ -6,7 +6,12 @@ import { join } from "node:path";
 
 import sharp, { type OverlayOptions } from "sharp";
 
+import { FileUploadStatus } from "~Prisma/client";
+import { db } from "~/server/db";
+import { getObjectBuffer } from "~/server/uploads/r2";
+
 import {
+  DEFAULT_PASS_THEME,
   badgeBox,
   stripSvg,
   stripTitleBox,
@@ -28,6 +33,10 @@ import { ATMOS_ICON_PNG, ATMOS_WORDMARK_PNG } from "./pass-logo";
  * Apple rejects a pass without `icon.png`. `logo.png` is what sits in the pass
  * header, and `strip.png` is the band the primary field is drawn over on an
  * event ticket — together they are the whole look of the thing.
+ *
+ * A design can swap two of them for uploads: a photo for the band and a logo
+ * for the wordmark. Those come out of R2, and a missing one degrades to the
+ * house artwork rather than failing the pass.
  */
 
 type ImageSet = Record<string, Buffer>;
@@ -65,24 +74,61 @@ function remember(key: string, artwork: PassArtwork): PassArtwork {
   return artwork;
 }
 
-function themeKey(
-  theme: PassTheme,
-  intensity: number,
-  badge: StripBadge | null,
-  title: string | null,
-  titleLabel: string,
-): string {
+function themeKey({
+  theme,
+  intensity = 0,
+  badge = null,
+  title = null,
+  titleLabel = "EVENT",
+  stripImageId = null,
+  logoImageId = null,
+}: PassImageOptions): string {
   return [
     theme.stripStyle,
     theme.accentHex,
     theme.backgroundHex,
     theme.foregroundHex,
     theme.labelHex,
+    (theme.stripDim ?? 0).toFixed(2),
     intensity.toFixed(2),
     badge ? `${badge.text}:${badge.background}:${badge.foreground}` : "-",
     title ?? "-",
     titleLabel,
+    stripImageId ?? "-",
+    logoImageId ?? "-",
   ].join("|");
+}
+
+/**
+ * Uploaded artwork, by `file_upload.id`.
+ *
+ * Uploads are immutable under their id, so a hit never goes stale. Only
+ * successes are kept: a file that failed to load is asked for again next time
+ * rather than remembered as missing.
+ */
+const uploadCache = new Map<string, Buffer>();
+const MAX_CACHED_UPLOADS = 16;
+
+async function loadUpload(id: string): Promise<Buffer | null> {
+  const hit = uploadCache.get(id);
+  if (hit) return hit;
+  try {
+    const file = await db.file_upload.findFirst({
+      where: { id, status: FileUploadStatus.OK },
+      select: { key: true },
+    });
+    if (!file) return null;
+    const buffer = await getObjectBuffer(file.key);
+    if (uploadCache.size >= MAX_CACHED_UPLOADS) {
+      const oldest = uploadCache.keys().next().value;
+      if (oldest !== undefined) uploadCache.delete(oldest);
+    }
+    uploadCache.set(id, buffer);
+    return buffer;
+  } catch (cause) {
+    console.error("[wallet] could not load pass artwork", { id }, cause);
+    return null;
+  }
 }
 
 /** The brand artwork, which no event theme changes. Built once per process. */
@@ -405,6 +451,39 @@ async function renderTitleBlock(
   ];
 }
 
+/**
+ * An uploaded logo in the header slot, left-aligned, transparent behind.
+ *
+ * Given more room than the wordmark: someone uploading a logo has sized it to
+ * be seen, and a square mark squeezed into 25pt of height reads as a speck.
+ */
+const CUSTOM_LOGO_SLOT = { width: 120, height: 40 } as const;
+
+async function renderUploadedLogo(
+  source: Buffer,
+  width: number,
+  height: number,
+): Promise<Buffer> {
+  return sharp(source)
+    .resize(width, height, {
+      fit: "contain",
+      position: "left",
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    })
+    .png()
+    .toBuffer();
+}
+
+async function getUploadedLogoImages(source: Buffer): Promise<ImageSet> {
+  const { width, height } = CUSTOM_LOGO_SLOT;
+  const [logo, logo2x, logo3x] = await Promise.all([
+    renderUploadedLogo(source, width, height),
+    renderUploadedLogo(source, width * 2, height * 2),
+    renderUploadedLogo(source, width * 3, height * 3),
+  ]);
+  return { "logo.png": logo, "logo@2x.png": logo2x, "logo@3x.png": logo3x };
+}
+
 /** The square mark, for the icon slot Apple shows in notifications. */
 async function renderIcon(size: number): Promise<Buffer> {
   return sharp(ATMOS_ICON_PNG).resize(size, size).png().toBuffer();
@@ -443,21 +522,28 @@ async function getBrandImages(): Promise<ImageSet> {
   return brandCache;
 }
 
-/** One strip: the band from SVG, then the chip's letters and the title on top. */
+/**
+ * One strip: the band, then the chip's letters and the title on top.
+ *
+ * A photo band is the photo cropped to fill, with the band SVG — which for a
+ * photo is only the shade, the edge rules and the chip — laid over it.
+ */
 async function renderStrip(
   theme: PassTheme,
   intensity: number,
   badge: StripBadge | null,
   title: string | null,
   titleLabel: string,
+  photo: Buffer | null,
   width: number,
   height: number,
 ): Promise<{ image: Buffer; titleDrawn: boolean }> {
-  const band = sharp(
-    Buffer.from(stripSvg(theme, width, height, intensity, badge, false)),
-  ).resize(width, height, { fit: "cover" });
+  const svg = Buffer.from(
+    stripSvg(theme, width, height, intensity, badge, false),
+  );
+  const band = sharp(photo ?? svg).resize(width, height, { fit: "cover" });
 
-  const overlays: OverlayOptions[] = [];
+  const overlays: OverlayOptions[] = photo ? [{ input: svg }] : [];
 
   if (badge) {
     const text = await renderBadgeText(badge, width, height);
@@ -488,38 +574,74 @@ async function renderStrip(
   return { image, titleDrawn };
 }
 
-/**
- * The image files a pass ships with, for one event's theme.
- *
- * `intensity` comes from the ticket's access level, so two tickets to the same
- * event can differ. `title` is set only when the band has to carry the event
- * name itself — see {@link stripTitleBox} — and the caller is told whether it
- * got there, because a name drawn twice is exactly the problem being avoided.
- */
-export async function getPassImages(
-  theme: PassTheme,
-  intensity = 0,
-  badge: StripBadge | null = null,
-  title: string | null = null,
+export type PassImageOptions = {
+  theme: PassTheme;
+  /** From the ticket's access level, so two tickets to one event can differ. */
+  intensity?: number;
+  badge?: StripBadge | null;
+  /**
+   * Set only when the band has to carry the title itself — see
+   * {@link stripTitleBox} — and the caller is told whether it got there,
+   * because a name drawn twice is exactly the problem being avoided.
+   */
+  title?: string | null;
   /**
    * What the band calls the title. "EVENT" for a ticket; a lifetime pass sets
    * the holder's name there instead, under a label that says what it is.
    */
-  titleLabel = "EVENT",
+  titleLabel?: string;
+  /** The band photo, drawn when the theme's style is `PHOTO`. */
+  stripImageId?: string | null;
+  /** A logo to use in place of the Atmos wordmark. */
+  logoImageId?: string | null;
+};
+
+/** The image files a pass ships with, for one design. */
+export async function getPassImages(
+  options: PassImageOptions,
 ): Promise<PassArtwork> {
-  const key = themeKey(theme, intensity, badge, title, titleLabel);
+  const key = themeKey(options);
   const hit = themedCache.get(key);
   if (hit) return hit;
 
-  const brand = await getBrandImages();
+  const {
+    intensity = 0,
+    badge = null,
+    title = null,
+    titleLabel = "EVENT",
+  } = options;
+
+  const [brand, photo, logo] = await Promise.all([
+    getBrandImages(),
+    options.theme.stripStyle === "PHOTO" && options.stripImageId
+      ? loadUpload(options.stripImageId)
+      : null,
+    options.logoImageId ? loadUpload(options.logoImageId) : null,
+  ]);
+
+  // A photo band whose photo would not load is drawn as the house band, not as
+  // a shade over nothing.
+  const theme =
+    options.theme.stripStyle === "PHOTO" && !photo
+      ? { ...options.theme, stripStyle: DEFAULT_PASS_THEME.stripStyle }
+      : options.theme;
 
   // Strip on an event ticket is 375x98pt. Rendered at each scale rather than
   // upscaled, so the hatch and bar edges stay hard on a 3x screen.
   const render = (wanted: string | null) =>
     Promise.all([
-      renderStrip(theme, intensity, badge, wanted, titleLabel, 375, 98),
-      renderStrip(theme, intensity, badge, wanted, titleLabel, 750, 196),
-      renderStrip(theme, intensity, badge, wanted, titleLabel, 1125, 294),
+      renderStrip(theme, intensity, badge, wanted, titleLabel, photo, 375, 98),
+      renderStrip(theme, intensity, badge, wanted, titleLabel, photo, 750, 196),
+      renderStrip(
+        theme,
+        intensity,
+        badge,
+        wanted,
+        titleLabel,
+        photo,
+        1125,
+        294,
+      ),
     ]);
 
   // A themeless band would be a black bar over the title rather than no band at
@@ -536,9 +658,10 @@ export async function getPassImages(
 
   const [strip, strip2x, strip3x] = strips;
 
-  return remember(key, {
+  const artwork: PassArtwork = {
     files: {
       ...brand,
+      ...(logo ? await getUploadedLogoImages(logo) : {}),
       ...(banded
         ? {
             "strip.png": strip.image,
@@ -548,5 +671,12 @@ export async function getPassImages(
         : {}),
     },
     titleDrawn: banded && strips.every((item) => item.titleDrawn),
-  });
+  };
+
+  // Stand-in artwork for an upload that failed is not remembered, so the next
+  // build tries the upload again instead of serving the stand-in for good.
+  const degraded =
+    (options.theme.stripStyle === "PHOTO" && !photo) ||
+    (Boolean(options.logoImageId) && !logo);
+  return degraded ? artwork : remember(key, artwork);
 }

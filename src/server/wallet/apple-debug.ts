@@ -43,7 +43,7 @@ export async function buildStandaloneApplePass(
     throw new Error("pass.json is larger than 256 KB.");
   }
 
-  const artwork = await getPassImages(draft.theme);
+  const artwork = await getPassImages({ theme: draft.theme });
   const files: Record<string, Buffer> = { ...artwork.files };
   let assetBytes = 0;
 
