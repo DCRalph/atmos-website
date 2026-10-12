@@ -430,6 +430,8 @@ export const ticketCheckoutRouter = createTRPCRouter({
         paymentMethod: PaymentMethodKind.STRIPE,
       });
 
+      if (result.refunded) return { status: TicketOrderStatus.REFUNDED };
+
       if (!result.alreadyIssued) {
         await syncMarketingConsent(order.id);
         await sendTicketEmail({ orderId: order.id });

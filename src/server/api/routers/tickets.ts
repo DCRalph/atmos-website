@@ -42,6 +42,20 @@ import { isGoogleWalletConfigured } from "~/server/wallet/google-config";
 
 type NameEntry = { ticketId: string; attendeeName: string };
 
+/** Orders whose tickets exist, including ones with only some refunded. */
+const ISSUED_STATUSES: TicketOrderStatus[] = [
+  TicketOrderStatus.PAID,
+  TicketOrderStatus.PARTIALLY_REFUNDED,
+];
+
+/** Orders that finished without live tickets: nothing more is coming. */
+const ENDED_STATUSES: TicketOrderStatus[] = [
+  TicketOrderStatus.EXPIRED,
+  TicketOrderStatus.CANCELLED,
+  TicketOrderStatus.FAILED,
+  TicketOrderStatus.REFUNDED,
+];
+
 /**
  * Keep a rename to tickets on this order that are still open to being renamed.
  *
@@ -103,7 +117,7 @@ export const ticketsRouter = createTRPCRouter({
       if (!order) return null;
 
       const settings = await getTicketingSettings();
-      const issued = order.status === TicketOrderStatus.PAID;
+      const issued = ISSUED_STATUSES.includes(order.status);
 
       const tickets = await Promise.all(
         order.tickets
@@ -137,6 +151,8 @@ export const ticketsRouter = createTRPCRouter({
         orderNumber: order.orderNumber,
         status: order.status,
         issued,
+        /** Settled without tickets, so the pages stop waiting for them. */
+        ended: ENDED_STATUSES.includes(order.status),
         buyerEmail: order.buyerEmail,
         buyerName: order.buyerName,
         marketingOptIn: order.marketingOptIn,
@@ -214,7 +230,7 @@ export const ticketsRouter = createTRPCRouter({
       if (!order) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
       }
-      if (order.status !== TicketOrderStatus.PAID) {
+      if (!ISSUED_STATUSES.includes(order.status)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "There are no tickets on this order yet.",
@@ -558,7 +574,7 @@ export const ticketsRouter = createTRPCRouter({
       if (!order) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
       }
-      if (order.status !== TicketOrderStatus.PAID) {
+      if (!ISSUED_STATUSES.includes(order.status)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "There are no tickets on this order yet.",
@@ -602,7 +618,7 @@ export const ticketsRouter = createTRPCRouter({
 
     const orders = await ctx.db.ticketOrder.findMany({
       where: {
-        status: TicketOrderStatus.PAID,
+        status: { in: ISSUED_STATUSES },
         OR: [
           { userId: ctx.session.user.id },
           ...(claimableEmail

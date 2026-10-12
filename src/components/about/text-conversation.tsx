@@ -135,22 +135,15 @@ function TypingBubble({ side }: { side: "left" | "right" }) {
         }`}
       >
         <div className="flex h-4 items-center gap-1">
-          {[0, 1, 2].map((i) => (
-            <motion.div
-              key={i}
+          {/* Still dots, stepped in brightness: a looping bounce repaints
+              for as long as the page is open. */}
+          {[0.35, 0.6, 0.9].map((opacity) => (
+            <div
+              key={opacity}
+              style={{ opacity }}
               className={`h-[6px] w-[6px] rounded-full ${
-                side === "right" ? "bg-white/60" : "bg-muted-foreground/50"
+                side === "right" ? "bg-white" : "bg-muted-foreground"
               }`}
-              animate={{
-                y: [0, -4, 0],
-                opacity: [0.3, 1, 0.3],
-              }}
-              transition={{
-                duration: 1,
-                repeat: Infinity,
-                delay: i * 0.15,
-                ease: "easeInOut",
-              }}
             />
           ))}
         </div>

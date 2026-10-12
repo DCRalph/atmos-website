@@ -61,12 +61,18 @@ const t = initTRPC
   .create({
     transformer: superjson,
     errorFormatter({ shape, error }) {
+      const zod = error.cause instanceof ZodError ? error.cause : null;
       return {
         ...shape,
+        // A validation failure's own message is the issues as JSON, which
+        // toasts and form errors would show verbatim. Forms that want the
+        // detail read `zodError`; everyone else gets a sentence.
+        message: zod
+          ? "Some of those details don't look right. Check them and try again."
+          : shape.message,
         data: {
           ...shape.data,
-          zodError:
-            error.cause instanceof ZodError ? error.cause.flatten() : null,
+          zodError: zod ? zod.flatten() : null,
         },
       };
     },

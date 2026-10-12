@@ -26,6 +26,7 @@ import { LexicalContent } from "~/components/lexical";
 import {
   getStripePromise,
   stripeAppearance,
+  stripeFonts,
 } from "~/components/ticketing/checkout-panel";
 import type { donateGig } from "~/server/donations";
 import {
@@ -200,6 +201,7 @@ function DonateForm({
         // Must match `donations.intent`. Apple Pay and Google Pay are cards.
         paymentMethodTypes: [...DONATION_PAYMENT_METHODS],
         appearance: stripeAppearance,
+        fonts: stripeFonts,
       }}
     >
       <Slides

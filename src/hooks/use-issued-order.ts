@@ -21,8 +21,11 @@ export function useIssuedOrder(token: string, isNew: boolean) {
     { accessToken: token },
     {
       enabled: !!token,
+      // An order that ended without tickets has nothing left to wait for.
       refetchInterval: (query) =>
-        query.state.data && !query.state.data.issued ? 2000 : false,
+        query.state.data && !query.state.data.issued && !query.state.data.ended
+          ? 2000
+          : false,
     },
   );
 

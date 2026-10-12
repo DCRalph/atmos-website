@@ -531,12 +531,17 @@ export function renderRefundEmail({
     ${ticketNumbers.length > 0 ? `Cancelled: ${list}.<br>` : ""}
     The refund lands back on the card you paid with, usually within 5–10 business days.
   </div>
-</td></tr>
+</td></tr>${
+    // A payment refunded before anything was issued has no tickets to warn about.
+    ticketNumbers.length > 0
+      ? `
 <tr><td style="padding:0 0 14px;">
   <div style="background:${CARD};border:2px solid ${BORDER};padding:18px 20px;font-size:14px;color:${MUTED};">
     Those tickets no longer work at the door. Any wallet passes will stop scanning too.
   </div>
-</td></tr>`;
+</td></tr>`
+      : ""
+  }`;
 
   const footer = supportEmail
     ? `Questions? <a href="mailto:${supportEmail}" style="color:${MUTED};">${escapeHtml(supportEmail)}</a>`
@@ -548,7 +553,7 @@ export function renderRefundEmail({
     `We've refunded ${formatNZD(amountCents)} for order ${orderNumber} — ${eventName}.`,
     ticketNumbers.length > 0 ? `Cancelled: ${ticketNumbers.join(", ")}.` : "",
     "The refund lands back on the card you paid with, usually within 5-10 business days.",
-    "Those tickets no longer work at the door.",
+    ticketNumbers.length > 0 ? "Those tickets no longer work at the door." : "",
   ]
     .filter(Boolean)
     .join("\n");

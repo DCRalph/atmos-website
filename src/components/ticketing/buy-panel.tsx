@@ -10,10 +10,9 @@ import {
   type ReactNode,
 } from "react";
 import * as Popover from "@radix-ui/react-popover";
-import { Minus, Plus, Ticket } from "lucide-react";
+import { Check, Info, Minus, Plus, Ticket } from "lucide-react";
 import { toast } from "sonner";
 
-import { SiteCheckbox } from "~/components/site/inputs";
 import { Button } from "~/components/site/ui";
 import { cn } from "~/lib/utils";
 import { siteFontVariables } from "~/lib/site-fonts";
@@ -32,9 +31,9 @@ type PublicTier = PublicEvent["tiers"][number];
  * Quantities, the fee breakdown, the terms, and the payment all live here.
  * There used to be a separate payment screen in between, but it only existed
  * because Stripe needs an order before it can render a payment element. That
- * happens behind the tick-box now: accepting the terms is what takes the hold
- * and opens the payment, so a free ticket is one click and a paid one is a tap
- * on Apple Pay. The next thing anybody sees is their ticket.
+ * happens behind one button now: "Hold & pay" accepts the terms, takes the
+ * hold and opens the payment, so a paid ticket is that tap and then Apple Pay.
+ * The next thing anybody sees is their ticket.
  *
  * The booking and venue fees are shown in the summary before any of that — NZ
  * fair-trading rules mean unavoidable fees can't appear for the first time at
@@ -98,7 +97,13 @@ export function BuyPanel({
       lines,
       discountCode: appliedCode ?? undefined,
     },
-    { enabled: lines.length > 0, staleTime: 0 },
+    {
+      enabled: lines.length > 0,
+      staleTime: 0,
+      // Keep the last total on screen while the next one loads, rather than
+      // flashing $0.00 on every tap.
+      placeholderData: (previous) => previous,
+    },
   );
 
   // What a hold would be *for*. Any change to it invalidates the one we hold.
@@ -136,13 +141,13 @@ export function BuyPanel({
 
   const release = api.ticketCheckout.release.useMutation();
 
-  // Un-ticking is the single path that gives a hold back, so everything that
-  // wants to abandon one goes through here.
+  // Dropping the acceptance is the single path that gives a hold back, so
+  // everything that wants to abandon one goes through here.
   const reset = useCallback(() => setAccepted(false), []);
 
-  // Accepting the terms is what commits: it takes the hold and opens the
-  // payment. Debounced, because a buyer nudging the quantity up and down would
-  // otherwise mint an order per tap.
+  // "Hold & pay" is what commits: it takes the hold and opens the payment.
+  // Debounced, because a buyer nudging the quantity up and down after that
+  // would otherwise mint an order per tap.
   useEffect(() => {
     if (!accepted) return;
     if (lines.length === 0) {
@@ -168,8 +173,8 @@ export function BuyPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accepted, basketKey, event.id, reset]);
 
-  // Un-ticking hands the seats straight back rather than making the next buyer
-  // wait out a hold nobody is using.
+  // Backing out hands the seats straight back rather than making the next
+  // buyer wait out a hold nobody is using.
   useEffect(() => {
     if (accepted) return;
     heldKey.current = null;
@@ -427,36 +432,53 @@ export function BuyPanel({
             )}
           </dl>
 
-          <SiteCheckbox
-            id={`terms-${event.id}`}
-            checked={accepted}
-            onCheckedChange={setAccepted}
-          >
-            I accept the{" "}
-            <a
-              href="/tickets/terms"
-              target="_blank"
-              rel="noreferrer"
-              className="underline underline-offset-2"
-            >
-              ticket terms
-            </a>{" "}
-            and{" "}
-            <a
-              href="/privacy"
-              target="_blank"
-              rel="noreferrer"
-              className="underline underline-offset-2"
-            >
-              privacy policy
-            </a>
-            {event.isR18 ? ", and I'm 18 or over" : ""}.
-          </SiteCheckbox>
-
           {!accepted && (
-            <p className="text-[13px] text-white/50">
-              Tick to hold your tickets and pay.
-            </p>
+            <>
+              <Button
+                variant="accent"
+                size="lg"
+                className="w-full"
+                onClick={() => setAccepted(true)}
+              >
+                {quote.data && quote.data.totalCents > 0
+                  ? `Hold & pay ${formatNZD(quote.data.totalCents)}`
+                  : quote.data
+                    ? "Continue"
+                    : "Hold & pay"}
+              </Button>
+              <p className="text-center text-[12px] leading-relaxed text-white/55">
+                Continuing means you accept the{" "}
+                <a
+                  href="/tickets/terms"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-2"
+                >
+                  ticket terms
+                </a>{" "}
+                and{" "}
+                <a
+                  href="/privacy"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-2"
+                >
+                  privacy policy
+                </a>
+                {event.isR18 ? ", and that you're 18 or over" : ""}.
+              </p>
+              <ul className="space-y-2 border-t border-white/10 pt-4 text-[13px] text-white/70">
+                {REASSURANCE.map((line) => (
+                  <li key={line} className="flex gap-2.5">
+                    <Check
+                      className="mt-0.5 size-3.5 shrink-0 text-[var(--site-accent-text)]"
+                      aria-hidden
+                    />
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
 
           {preparing && (
@@ -471,16 +493,11 @@ export function BuyPanel({
                 <HoldCountdown
                   expiresAt={session.expiresAt}
                   onExpired={reset}
+                  onCancel={reset}
                 />
               )}
               <CheckoutSection session={session} />
             </>
-          )}
-
-          {event.isR18 && (
-            <p className="text-center text-[12px] text-white/50">
-              R18. Photo ID required at the door.
-            </p>
           )}
         </div>
       )}
@@ -488,16 +505,26 @@ export function BuyPanel({
   );
 }
 
+/** What a buyer wants to know before paying, in the ticket terms' own words. */
+const REASSURANCE = [
+  "Sold by Atmos Media. Card details go straight to Stripe.",
+  "Your tickets show on the next screen and by email.",
+  "Full refund if we cancel.",
+];
+
 /**
  * The seats are held, not sold. Showing the clock is fairer than silently
- * dropping the reservation, and it nudges people through checkout.
+ * dropping the reservation, and it nudges people through checkout. "Change"
+ * gives the hold back and returns to picking.
  */
 function HoldCountdown({
   expiresAt,
   onExpired,
+  onCancel,
 }: {
   expiresAt: Date;
   onExpired: () => void;
+  onCancel: () => void;
 }) {
   const [remaining, setRemaining] = useState(
     () => expiresAt.getTime() - Date.now(),
@@ -510,7 +537,7 @@ function HoldCountdown({
       if (next <= 0) {
         clearInterval(timer);
         toast.error(
-          "Your reservation expired. Please choose your tickets again.",
+          "Your hold ran out and the tickets went back on sale. Your picks are still here.",
         );
         onExpired();
       }
@@ -533,12 +560,22 @@ function HoldCountdown({
       <span>
         {urgent ? "Your hold is about to lapse" : "Tickets held for you"}
       </span>
-      <span className="t-label text-[13px]">{formatCountdown(remaining)}</span>
+      <span className="flex items-center gap-3">
+        <span className="t-label text-[13px]">
+          {formatCountdown(remaining)}
+        </span>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="t-label text-[11px] text-white/70 underline underline-offset-4 hover:text-white"
+        >
+          Change
+        </button>
+      </span>
     </p>
   );
 }
 
-/** Notched panel with the "Tickets" header every state shares. */
 /** A code: a discount, or the key to an event's hidden tiers. */
 function CodeBox({
   value,
@@ -592,6 +629,7 @@ function CodeBox({
   );
 }
 
+/** Notched panel with the "Tickets" header every state shares. */
 function PanelShell({
   children,
   r18,
@@ -671,13 +709,13 @@ function VenueFeeInfo() {
         }}
         className={cn(
           // The pseudo-element pads the tap target without growing the dot.
-          "relative inline-flex size-4 items-center justify-center rounded-full border font-serif text-[10px] leading-none font-bold italic transition-colors after:absolute after:-inset-3 after:content-['']",
+          "relative inline-flex size-4 items-center justify-center transition-colors after:absolute after:-inset-3 after:content-['']",
           open
-            ? "border-[var(--site-accent-text)] text-[var(--site-accent-text)]"
-            : "border-white/40 text-white/80 hover:border-white/70",
+            ? "text-[var(--site-accent-text)]"
+            : "text-white/70 hover:text-white",
         )}
       >
-        i
+        <Info className="size-4" aria-hidden />
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
@@ -691,7 +729,7 @@ function VenueFeeInfo() {
           className={cn(
             "site",
             siteFontVariables,
-            "data-[state=open]:animate-in data-[state=open]:fade-in-0 z-[80] w-[17rem] max-w-[calc(100vw-1.5rem)] border border-white/15 bg-[#141414] px-3.5 py-3 text-[13px] leading-snug text-white/85 shadow-[0_12px_32px_rgb(0_0_0/0.6)]",
+            "data-[state=open]:animate-in data-[state=open]:fade-in-0 z-[80] w-[17rem] max-w-[calc(100vw-1.5rem)] rounded-[var(--site-r-chip)] border border-white/15 bg-[#141414] px-3.5 py-3 text-[13px] leading-snug text-white/85 shadow-[0_12px_32px_rgb(0_0_0/0.6)]",
           )}
         >
           <p className="t-label mb-1.5 text-[11px] text-[var(--site-accent-text)]">

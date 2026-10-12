@@ -78,7 +78,11 @@ export default function RootLayout({
               <MerchCartProvider>
                 <MobileMenuProvider>
                   <ConfirmProvider>
-                    <NextTopLoader height={4} showSpinner={false} />
+                    <NextTopLoader
+                      height={3}
+                      color="#c6ff33"
+                      showSpinner={false}
+                    />
 
                     <div
                       id="mobile-menu-portal"
@@ -98,7 +102,20 @@ export default function RootLayout({
                       {children}
                     </div>
 
-                    <Toaster richColors position="bottom-right" />
+                    {/* Dark and quiet, in the public site's colours: these land on top of
+                        buying and paying, so they shouldn't look borrowed. */}
+                    <Toaster
+                      theme="dark"
+                      position="bottom-right"
+                      toastOptions={{
+                        style: {
+                          background: "#0b0b0b",
+                          border: "1px solid rgb(255 255 255 / 0.14)",
+                          borderRadius: "16px",
+                          color: "#fff",
+                        },
+                      }}
+                    />
 
                     <Analytics
                       endpoint="/fuckoffaddblockers"

@@ -6,7 +6,7 @@ import { ArrowUpRight } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { gigOffSiteNotice } from "~/lib/gig-visibility";
 import { gigPath } from "~/lib/gig-url";
-import { DEFAULT_EVENT_TIMEZONE } from "~/lib/ticketing/dates";
+import { DEFAULT_EVENT_TIMEZONE, formatEventTime } from "~/lib/ticketing/dates";
 import { formatNZDCompact } from "~/lib/ticketing/money";
 import type { RouterOutputs } from "~/trpc/react";
 import { Media } from "../ui";
@@ -45,7 +45,6 @@ const longF = fmt({
   month: "long",
   year: "numeric",
 });
-const timeF = fmt({ hour: "numeric", minute: "2-digit", hour12: true });
 const monthF = fmt({ month: "long", year: "numeric" });
 const dayNumF = fmt({ day: "2-digit" });
 const weekdayF = fmt({ weekday: "short" });
@@ -56,9 +55,8 @@ const yearF = fmt({ year: "numeric" });
 export const fmtDay = (d: Date) => dayF.format(d).replace(",", "");
 /** `Friday 9 October 2026` */
 export const fmtLong = (d: Date) => longF.format(d).replace(",", "");
-/** `9:00pm` */
-export const fmtTime = (d: Date) =>
-  timeF.format(d).replace(/\s/g, "").toLowerCase();
+/** `9:00 pm`, the same as everywhere else on the site. */
+export const fmtTime = (d: Date) => formatEventTime(d);
 /** `October 2026`, used as a grouping key. */
 export const fmtMonth = (d: Date) => monthF.format(d);
 export const fmtDayNum = (d: Date) => dayNumF.format(d);

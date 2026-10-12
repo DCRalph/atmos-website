@@ -310,9 +310,11 @@ export function SiteHeader({ tone = "dark" }: { tone?: "dark" | "light" }) {
     <>
       <header className="fixed inset-x-0 top-0 isolate z-40 flex h-16 items-center gap-8 px-5 md:h-20 md:px-10">
         {/* Blur strongest at the top edge, gone a little below the bar. */}
+        {/* Not rotated to flip it: a transform flips the blurred backdrop
+            too, which put the page upside down behind the bar. */}
         <GradientBlur
-          direction="to-bottom"
-          className="absolute inset-0 -bottom-14 -z-10 rotate-180"
+          direction="to-top"
+          className="absolute inset-0 -bottom-14 -z-10"
         />
         <Link href="/" aria-label="Atmos home">
           <AtmosLogo className="w-24 md:w-28" tone={tone} />

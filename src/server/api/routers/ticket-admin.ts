@@ -37,6 +37,7 @@ import {
   reassignHandout,
 } from "~/server/ticketing/comps";
 import { InventoryError } from "~/server/ticketing/inventory";
+import { stopUnpaidPayment } from "~/server/ticketing/payments";
 import {
   MAX_PLUS_PER_LINK,
   MAX_PRIMARY_LINKS,
@@ -118,18 +119,12 @@ function refundableCentsForTicket(
  * already has the money: that order is about to be issued, not abandoned.
  */
 async function cancelUnpaidPayment(paymentIntentId: string | null) {
-  if (!paymentIntentId || !isStripeConfigured()) return;
-  const stripe = getStripe();
-  const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
-  if (intent.status === "succeeded" || intent.status === "processing") {
+  if (!(await stopUnpaidPayment(paymentIntentId))) {
     throw new TRPCError({
       code: "CONFLICT",
       message:
         "The buyer has already paid. Their tickets will be issued shortly.",
     });
-  }
-  if (intent.status !== "canceled") {
-    await stripe.paymentIntents.cancel(intent.id);
   }
 }
 

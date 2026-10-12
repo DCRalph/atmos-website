@@ -164,30 +164,24 @@ export function QtyStepper({
   );
 }
 
-/** Cart count and total with an open button, for the merch title row. */
+/**
+ * Cart count and total with an open button, for the merch title row. Nothing
+ * while the cart is empty: the header's bag already covers that.
+ */
 export function CartSummary({ className }: { className?: string }) {
   const { totalQuantity, subtotalAmount, currencyCode } = useMerchCart();
   const { setCartOpen } = useSite();
+  if (!totalQuantity) return null;
   return (
     <div className={cn("flex items-center gap-4", className)}>
       <p className="text-[14px] text-white/65" aria-live="polite">
-        {totalQuantity ? (
-          <>
-            <span className="text-white tabular-nums">{totalQuantity}</span>{" "}
-            {totalQuantity === 1 ? "item" : "items"} ·{" "}
-            <span className="text-white tabular-nums">
-              {formatMoney(subtotalAmount, currencyCode)}
-            </span>
-          </>
-        ) : (
-          "Cart is empty"
-        )}
+        <span className="text-white tabular-nums">{totalQuantity}</span>{" "}
+        {totalQuantity === 1 ? "item" : "items"} ·{" "}
+        <span className="text-white tabular-nums">
+          {formatMoney(subtotalAmount, currencyCode)}
+        </span>
       </p>
-      <Button
-        size="sm"
-        variant={totalQuantity ? "accent" : "outline"}
-        onClick={() => setCartOpen(true)}
-      >
+      <Button size="sm" variant="accent" onClick={() => setCartOpen(true)}>
         <ShoppingBag className="size-3.5" /> Cart
       </Button>
     </div>

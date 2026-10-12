@@ -43,10 +43,10 @@ export type CheckoutSession = {
  * arrives from the wallet rather than a form. The card form underneath is the
  * fallback, not the headline.
  *
- * Neither path asks who the buyer is. Everyone lands on
- * `/tickets/[token]/details` afterwards, ticket already in hand. Wallets are
- * also asked for a phone number and billing address, which they fill from
- * what's saved; card buyers are never asked for either.
+ * Wallets hand over the buyer's email, phone and billing address from what's
+ * saved. The card form asks for one thing on top of the card: an email, so the
+ * tickets don't only exist at one URL. Everyone lands on
+ * `/tickets/[token]/details` afterwards, ticket already in hand.
  */
 
 let stripePromise: Promise<Stripe | null> | null = null;
@@ -58,7 +58,7 @@ export function getStripePromise() {
   return stripePromise;
 }
 
-/** Stripe Elements styled like the site: true black, acid accent, soft 12px fields. */
+/** Stripe Elements styled like the site: true black, acid accent, Archivo, chip-radius fields. */
 export const stripeAppearance: Appearance = {
   theme: "night",
   variables: {
@@ -67,10 +67,18 @@ export const stripeAppearance: Appearance = {
     colorText: "#ffffff",
     colorTextSecondary: "rgba(255,255,255,0.6)",
     colorDanger: "#ff8a8a",
-    borderRadius: "12px",
-    fontFamily: "system-ui, sans-serif",
+    borderRadius: "6px",
+    fontFamily: "Archivo, system-ui, sans-serif",
   },
 };
+
+/** Stripe's fields render in its own iframe, so the site's body face is loaded in there too. */
+export const stripeFonts = [
+  {
+    cssSrc:
+      "https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&display=swap",
+  },
+];
 
 export function CheckoutSection({ session }: { session: CheckoutSession }) {
   if (session.isFree) {
@@ -97,6 +105,7 @@ export function CheckoutSection({ session }: { session: CheckoutSession }) {
       options={{
         clientSecret: session.clientSecret,
         appearance: stripeAppearance,
+        fonts: stripeFonts,
       }}
     >
       <PaidCheckout session={session} />
@@ -111,6 +120,7 @@ function PaidCheckout({ session }: { session: CheckoutSession }) {
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
 
   const confirm = api.ticketCheckout.confirm.useMutation();
 
@@ -119,7 +129,8 @@ function PaidCheckout({ session }: { session: CheckoutSession }) {
     return `${window.location.origin}/tickets/${session.accessToken}/details?new=1`;
   }, [session.accessToken]);
 
-  async function pay() {
+  /** `card` carries the typed email; a wallet supplies its own. */
+  async function pay(source: "wallet" | "card") {
     if (!stripe || !elements) return;
 
     setBusy(true);
@@ -128,21 +139,40 @@ function PaidCheckout({ session }: { session: CheckoutSession }) {
     try {
       const result = await stripe.confirmPayment({
         elements,
-        confirmParams: { return_url: returnUrl },
+        confirmParams: {
+          return_url: returnUrl,
+          // Lands on the charge, which is where issuing reads the buyer from.
+          ...(source === "card"
+            ? {
+                payment_method_data: {
+                  billing_details: { email: email.trim() },
+                },
+              }
+            : {}),
+        },
         // Most card payments finish inline; only methods that genuinely need a
         // redirect (some wallets, bank redirects) will navigate away.
         redirect: "if_required",
       });
 
       if (result.error) {
-        setError(result.error.message ?? "That payment didn't go through.");
+        // The hold ran out and its payment was cancelled under the buyer.
+        setError(
+          result.error.code === "payment_intent_unexpected_state"
+            ? "Your hold ran out before the payment went through, so you weren't charged. Pick your tickets again."
+            : (result.error.message ?? "That payment didn't go through."),
+        );
         setBusy(false);
         return;
       }
 
       // Issue immediately rather than waiting for the webhook, so the tickets
-      // are on screen by the time the buyer looks up.
-      await confirm.mutateAsync({ accessToken: session.accessToken });
+      // are on screen by the time the buyer looks up. The money has moved by
+      // now, so a failure here must not put the Pay button back in front of
+      // them: the details page confirms again and waits for the webhook.
+      await confirm
+        .mutateAsync({ accessToken: session.accessToken })
+        .catch(() => undefined);
       router.push(`/tickets/${session.accessToken}/details?new=1`);
     } catch (cause) {
       setBusy(false);
@@ -164,8 +194,8 @@ function PaidCheckout({ session }: { session: CheckoutSession }) {
           phoneNumberRequired: true,
           billingAddressRequired: true,
         }}
-        onClick={({ resolve }) => resolve({})}
-        onConfirm={() => void pay()}
+        onClick={({ resolve }) => resolve({ emailRequired: true })}
+        onConfirm={() => void pay("wallet")}
       />
 
       <p className="flex items-center gap-3 text-[12px] text-white/45">
@@ -174,27 +204,50 @@ function PaidCheckout({ session }: { session: CheckoutSession }) {
         <span className="h-px flex-1 bg-white/10" />
       </p>
 
-      <PaymentElement options={{ layout: "tabs" }} />
-
-      {error && (
-        <p
-          role="alert"
-          className="rounded-[var(--site-r-chip)] border border-[var(--site-danger)]/50 bg-[var(--site-danger)]/10 px-4 py-3 text-[14px] text-[var(--site-danger-text)]"
-        >
-          {error}
-        </p>
-      )}
-
-      <Button
-        variant="accent"
-        size="lg"
-        className="w-full"
-        disabled={!stripe || busy}
-        aria-busy={busy}
-        onClick={() => void pay()}
+      <form
+        className="space-y-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void pay("card");
+        }}
       >
-        {busy ? "Paying…" : `Pay ${formatNZD(session.totalCents)}`}
-      </Button>
+        <label className="block">
+          <span className="t-label mb-2 block text-[10px] text-white/70">
+            Where should we send your tickets?
+          </span>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+            placeholder="you@example.com"
+            className={inputClass}
+          />
+        </label>
+
+        <PaymentElement options={{ layout: "tabs" }} />
+
+        {error && (
+          <p
+            role="alert"
+            className="rounded-[var(--site-r-chip)] border border-[var(--site-danger)]/50 bg-[var(--site-danger)]/10 px-4 py-3 text-[14px] text-[var(--site-danger-text)]"
+          >
+            {error}
+          </p>
+        )}
+
+        <Button
+          type="submit"
+          variant="accent"
+          size="lg"
+          className="w-full"
+          disabled={!stripe || busy}
+          aria-busy={busy}
+        >
+          {busy ? "Paying…" : `Pay ${formatNZD(session.totalCents)}`}
+        </Button>
+      </form>
 
       <p className="flex items-center justify-center gap-1.5 text-[12px] text-white/45">
         <ShieldCheck className="size-3.5" aria-hidden />
