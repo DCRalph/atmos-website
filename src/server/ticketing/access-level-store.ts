@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import type { Prisma } from "~Prisma/client";
 import { db } from "~/server/db";
+import { parsePassDesign, type PassDesign } from "~/lib/ticketing/pass-design";
 
 /**
  * Access levels, read from the table that replaced the enum.
@@ -20,7 +21,8 @@ export type ResolvedLevel = {
   short: string;
   badgeBg: string;
   badgeFg: string;
-  passAccent: string | null;
+  /** This level's layer of a pass's look. Empty when it leaves it to events. */
+  passDesign: PassDesign;
   rank: number;
   /**
    * `rank` normalised to 0–1 across the levels that exist, which is what
@@ -42,7 +44,7 @@ export async function getLevels(): Promise<ResolvedLevel[]> {
     short: row.short,
     badgeBg: row.badgeBg,
     badgeFg: row.badgeFg,
-    passAccent: row.passAccent,
+    passDesign: parsePassDesign(row.passDesign),
     rank: row.rank,
     intensity: Math.min(1, Math.max(0, row.rank / maxRank)),
   }));
@@ -63,7 +65,7 @@ export async function resolveLevel(code: string): Promise<ResolvedLevel> {
       short: code.slice(0, 6),
       badgeBg: "#FFFFFF",
       badgeFg: "#000000",
-      passAccent: null,
+      passDesign: {},
       rank: 0,
       intensity: 0,
     }

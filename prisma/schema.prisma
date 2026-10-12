@@ -956,15 +956,6 @@ model NewsletterSubscription {
   @@map("newsletter_subscription")
 }
 
-/// The band drawn behind the event name on a wallet pass.
-enum PassStripStyle {
-  HATCH
-  GRADIENT
-  SOLID
-  BARS
-  NONE
-}
-
 enum FileUploadStatus {
   NO_FILE
   UPLOADING
@@ -1483,9 +1474,11 @@ model AccessLevel {
   badgeBg String @default("#FFFFFF")
   badgeFg String @default("#000000")
 
-  /// Hex the wallet pass tints itself with. Null leaves the event's own theme
-  /// alone, which is what general admission wants.
-  passAccent String?
+  /// Wallet pass look for tickets at this level, under any one event's own
+  /// override for it. Validated by `passDesignSchema` in
+  /// `~/lib/ticketing/pass-design.ts`. Null leaves the event's design alone,
+  /// which is what general admission wants.
+  passDesign Json?
 
   /// Least to most access. Drives ordering everywhere and how far the accent
   /// floods a pass's band.
@@ -1610,14 +1603,11 @@ model TicketEvent {
 
   termsVersion String @default("v1")
 
-  /// Apple Wallet pass styling. Null anywhere falls back to the Atmos default
-  /// in `~/lib/ticketing/pass-theme.ts` — an event that sets nothing still gets
-  /// a house-style pass.
-  passStripStyle    PassStripStyle @default(HATCH)
-  passAccentHex     String?
-  passBackgroundHex String?
-  passForegroundHex String?
-  passLabelHex      String?
+  /// Wallet pass look: this event's own layer, plus per-level overrides under
+  /// `levels`. Validated by `eventPassDesignSchema` in
+  /// `~/lib/ticketing/pass-design.ts`; anything unset falls through to the
+  /// access level, then the Atmos default.
+  passDesign Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

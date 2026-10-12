@@ -7,6 +7,7 @@
  * week.
  */
 
+/** Bands drawn from the theme's colours alone. */
 export const PASS_STRIP_STYLES = [
   "HATCH",
   "GRADIENT",
@@ -15,7 +16,21 @@ export const PASS_STRIP_STYLES = [
   "NONE",
 ] as const;
 
-export type PassStripStyle = (typeof PASS_STRIP_STYLES)[number];
+/**
+ * Every band, including one cut from an uploaded photo. Kept apart from
+ * {@link PASS_STRIP_STYLES} because a photo needs an image to go with it, which
+ * only a pass design (see `./pass-design.ts`) carries.
+ */
+export const PASS_BAND_STYLES = [
+  "HATCH",
+  "GRADIENT",
+  "SOLID",
+  "BARS",
+  "PHOTO",
+  "NONE",
+] as const;
+
+export type PassStripStyle = (typeof PASS_BAND_STYLES)[number];
 
 export const PASS_STRIP_STYLE_LABELS: Record<
   PassStripStyle,
@@ -37,6 +52,10 @@ export const PASS_STRIP_STYLE_LABELS: Record<
     label: "Bars",
     description: "Hard vertical bars stepping into the accent.",
   },
+  PHOTO: {
+    label: "Photo",
+    description: "An uploaded photo, cropped to fill the band.",
+  },
   NONE: {
     label: "None",
     description: "No band at all — the title sits on the background.",
@@ -53,6 +72,11 @@ export type PassTheme = {
   foregroundHex: string;
   /** Field labels — the small uppercase text above each value. */
   labelHex: string;
+  /**
+   * How far a `PHOTO` band is darkened, 0–1, so the name and chip on it stay
+   * readable. Ignored by every other style.
+   */
+  stripDim?: number;
 };
 
 /** Atmos house style, used wherever an event has not overridden something. */
@@ -85,51 +109,6 @@ export const HEX_COLOUR_PATTERN = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
 export function isHexColour(value: string): boolean {
   return HEX_COLOUR_PATTERN.test(value);
-}
-
-export type PassThemeFields = {
-  passStripStyle?: string | null;
-  passAccentHex?: string | null;
-  passBackgroundHex?: string | null;
-  passForegroundHex?: string | null;
-  passLabelHex?: string | null;
-};
-
-function colour(value: string | null | undefined, fallback: string): string {
-  if (!value) return fallback;
-  return isHexColour(value) ? value : fallback;
-}
-
-/**
- * An event's stored columns, resolved into a complete theme.
- *
- * Every field falls back independently, so an event that only sets an accent
- * still gets the house background and type colours — and a value that somehow
- * got into the database malformed degrades to the default rather than emitting
- * broken SVG.
- */
-export function resolvePassTheme(event: PassThemeFields | null): PassTheme {
-  if (!event) return DEFAULT_PASS_THEME;
-
-  const style = PASS_STRIP_STYLES.includes(
-    event.passStripStyle as PassStripStyle,
-  )
-    ? (event.passStripStyle as PassStripStyle)
-    : DEFAULT_PASS_THEME.stripStyle;
-
-  return {
-    stripStyle: style,
-    accentHex: colour(event.passAccentHex, DEFAULT_PASS_THEME.accentHex),
-    backgroundHex: colour(
-      event.passBackgroundHex,
-      DEFAULT_PASS_THEME.backgroundHex,
-    ),
-    foregroundHex: colour(
-      event.passForegroundHex,
-      DEFAULT_PASS_THEME.foregroundHex,
-    ),
-    labelHex: colour(event.passLabelHex, DEFAULT_PASS_THEME.labelHex),
-  };
 }
 
 /** `rgb(r, g, b)` — the only colour form Apple accepts in `pass.json`. */
@@ -227,6 +206,14 @@ export function stripSvg(
 
       case "NONE":
         return `<rect width="${width}" height="${height}" fill="${ground}"/>`;
+
+      // The photo itself is laid underneath by whoever draws this — an <img>
+      // in the browser, a sharp composite on the server — so the band is only
+      // the shade over it.
+      case "PHOTO": {
+        const dim = Math.min(1, Math.max(0, theme.stripDim ?? 0));
+        return `<rect width="${width}" height="${height}" fill="#000000" fill-opacity="${dim.toFixed(3)}"/>`;
+      }
 
       case "HATCH":
       default: {

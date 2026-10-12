@@ -26,7 +26,14 @@ import {
   DialogTrigger,
 } from "~/components/ui/dialog";
 import { useConfirm } from "~/components/confirm-provider";
-import { isHexColour } from "~/lib/ticketing/pass-theme";
+import { isHexColour, stripSvg } from "~/lib/ticketing/pass-theme";
+import {
+  parsePassDesign,
+  resolvePassDesign,
+  resolveTicketPassDesign,
+  type PassDesign,
+} from "~/lib/ticketing/pass-design";
+import { PassDesignField } from "~/components/admin/ticketing/pass-design-field";
 
 type Level = RouterOutputs["accessLevels"]["list"][number];
 
@@ -36,7 +43,7 @@ const BLANK = {
   short: "",
   badgeBg: "#FFFFFF",
   badgeFg: "#000000",
-  passAccent: "",
+  passDesign: {} as PassDesign,
 };
 
 /**
@@ -99,6 +106,7 @@ export function AccessLevelsPanel() {
   });
 
   const rows = data ?? [];
+  const maxRank = Math.max(1, ...rows.map((row) => row.rank));
 
   const openEdit = (level: Level) => {
     setEditingCode(level.code);
@@ -108,7 +116,7 @@ export function AccessLevelsPanel() {
       short: level.short,
       badgeBg: level.badgeBg,
       badgeFg: level.badgeFg,
-      passAccent: level.passAccent ?? "",
+      passDesign: parsePassDesign(level.passDesign),
     });
     setIsOpen(true);
   };
@@ -123,11 +131,9 @@ export function AccessLevelsPanel() {
     reorder.mutate({ codes: next.map((r) => r.code) });
   };
 
+  const editingLevel = rows.find((row) => row.code === editingCode);
   const codeValid = /^[A-Z][A-Z0-9_]{1,23}$/.test(form.code.toUpperCase());
-  const coloursValid =
-    isHexColour(form.badgeBg) &&
-    isHexColour(form.badgeFg) &&
-    (form.passAccent === "" || isHexColour(form.passAccent));
+  const coloursValid = isHexColour(form.badgeBg) && isHexColour(form.badgeFg);
   const canSubmit =
     Boolean(form.label) &&
     Boolean(form.short) &&
@@ -141,7 +147,7 @@ export function AccessLevelsPanel() {
       short: form.short,
       badgeBg: form.badgeBg,
       badgeFg: form.badgeFg,
-      passAccent: form.passAccent || null,
+      passDesign: form.passDesign,
     };
     if (editingCode) {
       update.mutate({ code: editingCode, ...payload });
@@ -214,21 +220,39 @@ export function AccessLevelsPanel() {
     },
     {
       id: "pass",
-      header: "Pass colour",
-      cell: (level) =>
-        level.passAccent ? (
-          <div className="flex items-center gap-2">
-            <div
-              className="border-border size-6 rounded border"
-              style={{ backgroundColor: level.passAccent }}
-            />
-            <span className="text-muted-foreground text-sm">
-              {level.passAccent}
-            </span>
-          </div>
-        ) : (
-          <span className="text-muted-foreground text-sm">Event theme</span>
-        ),
+      header: "Wallet pass",
+      cell: (level) => {
+        const design = parsePassDesign(level.passDesign);
+        if (Object.keys(design).length === 0) {
+          return (
+            <span className="text-muted-foreground text-sm">Event design</span>
+          );
+        }
+        // The band alone, over the event's own design wherever this level
+        // leaves a field unset — so house style stands in for "the event".
+        return (
+          <span
+            aria-label="Custom design"
+            role="img"
+            className="block h-6 w-24 [&>svg]:block [&>svg]:h-full [&>svg]:w-full"
+            dangerouslySetInnerHTML={{
+              __html: stripSvg(
+                {
+                  ...resolvePassDesign([design]),
+                  // A photo is not drawn into a thumbnail; its shade over the
+                  // ground stands in for it.
+                  ...(design.stripStyle === "PHOTO"
+                    ? { stripStyle: "SOLID" as const }
+                    : {}),
+                },
+                192,
+                48,
+                level.rank / maxRank,
+              ),
+            }}
+          />
+        );
+      },
     },
     {
       id: "offered",
@@ -301,7 +325,7 @@ export function AccessLevelsPanel() {
                 Add level
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-3xl">
               <DialogHeader>
                 <DialogTitle>
                   {editingCode ? "Edit" : "Add"} access level
@@ -399,14 +423,38 @@ export function AccessLevelsPanel() {
                   </div>
                 </div>
 
-                <ColourField
-                  id="passAccent"
-                  label="Wallet pass colour"
-                  value={form.passAccent}
-                  onChange={(v) => setForm({ ...form, passAccent: v })}
-                  optional
-                  hint="Leave empty to use the event's own theme — what general admission wants."
-                />
+                <div className="flex flex-col gap-4 border-t pt-4">
+                  <div className="flex flex-col gap-1">
+                    <Label>Wallet pass</Label>
+                    <p className="text-muted-foreground text-xs">
+                      Applies to tickets at this level at every event. Anything
+                      left unset uses the event&apos;s own design, which is what
+                      general admission wants. An event can still override this
+                      level on its Wallet tab.
+                    </p>
+                  </div>
+                  <PassDesignField
+                    key={editingCode ?? "new"}
+                    value={form.passDesign}
+                    onChange={(passDesign) => setForm({ ...form, passDesign })}
+                    inherits={[]}
+                    fallbackSource="from each event"
+                    eventName="Sample event"
+                    chip={
+                      resolveTicketPassDesign(
+                        {},
+                        {
+                          code: form.code,
+                          short: form.short || "SHORT",
+                          rank: editingLevel?.rank ?? rows.length,
+                          passDesign: form.passDesign,
+                        },
+                      ).chip
+                    }
+                    intensity={(editingLevel?.rank ?? rows.length) / maxRank}
+                    showChipControl
+                  />
+                </div>
 
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={close}>
@@ -445,19 +493,13 @@ function ColourField({
   label,
   value,
   onChange,
-  optional = false,
-  hint,
 }: {
   id: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
-  optional?: boolean;
-  hint?: string;
 }) {
-  const valid = optional
-    ? value === "" || isHexColour(value)
-    : isHexColour(value);
+  const valid = isHexColour(value);
   return (
     <div className="flex flex-col gap-2">
       <Label htmlFor={id}>{label}</Label>
@@ -473,11 +515,10 @@ function ColourField({
           id={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={optional ? "Event theme" : "#FFFFFF"}
+          placeholder="#FFFFFF"
           className={`font-mono ${valid ? "" : "border-destructive"}`}
         />
       </div>
-      {hint && <p className="text-muted-foreground text-xs">{hint}</p>}
     </div>
   );
 }

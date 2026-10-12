@@ -110,10 +110,12 @@ export type WalletPassDebugDefaultsResponse = z.infer<
   typeof walletPassDebugDefaultsResponseSchema
 >;
 
-export const DEFAULT_DEBUG_PASS_THEME: PassTheme = {
+// `as const` keeps the style one the debugger's schema accepts: it draws
+// themed bands only, never a photo.
+export const DEFAULT_DEBUG_PASS_THEME = {
   ...DEFAULT_PASS_THEME,
   stripStyle: "HATCH",
-};
+} as const satisfies PassTheme;
 
 /** A fresh, unlinked Event Ticket manifest with safe Atmos defaults. */
 export function createStandalonePassDraft({

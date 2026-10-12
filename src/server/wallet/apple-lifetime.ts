@@ -72,19 +72,19 @@ export async function buildLifetimePass({
   const badge = {
     text: level.short,
     background: theme.backgroundHex,
-    foreground: level.passAccent ?? theme.accentHex,
+    foreground: level.passDesign.accentHex ?? theme.accentHex,
   };
 
   // The holder's name is the title on the band, under a label that says what
   // this is. Falls back to a Wallet primary field if the artwork cannot carry
   // it, exactly as an event name does.
-  const artwork = await getPassImages(
+  const artwork = await getPassImages({
     theme,
-    1,
+    intensity: 1,
     badge,
-    lifetime.holderName,
-    "LIFETIME PASS",
-  );
+    title: lifetime.holderName,
+    titleLabel: "LIFETIME PASS",
+  });
 
   const since = lifetime.createdAt.toLocaleDateString("en-NZ", {
     month: "short",

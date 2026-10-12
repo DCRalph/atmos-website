@@ -5,9 +5,9 @@ import { z } from "zod";
 
 import { env } from "~/env";
 import {
-  HEX_COLOUR_PATTERN,
-  PASS_STRIP_STYLES,
-} from "~/lib/ticketing/pass-theme";
+  eventPassDesignSchema,
+  normaliseEventPassDesign,
+} from "~/lib/ticketing/pass-design";
 
 import {
   ActivityType,
@@ -108,12 +108,6 @@ async function uniqueSlug(
   return `${base}-${Date.now().toString(36)}`;
 }
 
-/** Same rule the admin form and the pass renderer use. */
-const HEX_COLOUR = z
-  .string()
-  .trim()
-  .regex(HEX_COLOUR_PATTERN, "Use a hex colour like #470082");
-
 const eventInputSchema = z.object({
   name: z.string().trim().min(1, "Give the event a name"),
   slug: z.string().trim().optional(),
@@ -149,13 +143,12 @@ const eventInputSchema = z.object({
   venueHireCents: z.number().int().min(0).nullable().optional(),
   passVenueHire: z.boolean().optional(),
 
-  // Wallet pass look. Colours are validated here rather than trusted from the
-  // form, because they are interpolated straight into the pass SVG.
-  passStripStyle: z.enum(PASS_STRIP_STYLES).optional(),
-  passAccentHex: HEX_COLOUR.nullable().optional(),
-  passBackgroundHex: HEX_COLOUR.nullable().optional(),
-  passForegroundHex: HEX_COLOUR.nullable().optional(),
-  passLabelHex: HEX_COLOUR.nullable().optional(),
+  // Wallet pass look, the event's own layer and its per-level overrides.
+  // Validated here rather than trusted from the form, because the colours are
+  // interpolated straight into the pass SVG.
+  passDesign: eventPassDesignSchema
+    .transform(normaliseEventPassDesign)
+    .optional(),
 
   /**
    * The event's tiers and door staff as whole lists, in order. Present means
@@ -471,15 +464,11 @@ export const ticketEventsRouter = createTRPCRouter({
             // Snapshot the GST number so a receipt reprinted in two years still
             // shows the number that was current at the time of sale.
             gstNumber: input.gstNumber ?? settings.gstNumber,
-            // Left to the column default when unset, so a new event starts on
-            // house style rather than being pinned to whatever the form sent.
-            ...(input.passStripStyle !== undefined
-              ? { passStripStyle: input.passStripStyle }
+            // Unset fields stay unset rather than pinned to house style, so a
+            // level's own design can still show through.
+            ...(input.passDesign !== undefined
+              ? { passDesign: input.passDesign }
               : {}),
-            passAccentHex: input.passAccentHex ?? null,
-            passBackgroundHex: input.passBackgroundHex ?? null,
-            passForegroundHex: input.passForegroundHex ?? null,
-            passLabelHex: input.passLabelHex ?? null,
           },
         });
         // Nothing can be selling yet, so no inventory lock is needed: the
@@ -631,20 +620,8 @@ export const ticketEventsRouter = createTRPCRouter({
             ...(rest.passVenueHire !== undefined
               ? { passVenueHire: rest.passVenueHire }
               : {}),
-            ...(rest.passStripStyle !== undefined
-              ? { passStripStyle: rest.passStripStyle }
-              : {}),
-            ...(rest.passAccentHex !== undefined
-              ? { passAccentHex: rest.passAccentHex }
-              : {}),
-            ...(rest.passBackgroundHex !== undefined
-              ? { passBackgroundHex: rest.passBackgroundHex }
-              : {}),
-            ...(rest.passForegroundHex !== undefined
-              ? { passForegroundHex: rest.passForegroundHex }
-              : {}),
-            ...(rest.passLabelHex !== undefined
-              ? { passLabelHex: rest.passLabelHex }
+            ...(rest.passDesign !== undefined
+              ? { passDesign: rest.passDesign }
               : {}),
           },
         });
@@ -895,11 +872,7 @@ export const ticketEventsRouter = createTRPCRouter({
               sortOrder,
             })),
           },
-          passStripStyle: source.passStripStyle,
-          passAccentHex: source.passAccentHex,
-          passBackgroundHex: source.passBackgroundHex,
-          passForegroundHex: source.passForegroundHex,
-          passLabelHex: source.passLabelHex,
+          passDesign: source.passDesign ?? Prisma.DbNull,
           tiers: {
             create: source.tiers.map((tier) => ({
               name: tier.name,

@@ -1,7 +1,6 @@
 import { describe, test } from "bun:test";
 import assert from "node:assert/strict";
 
-import { DEFAULT_PASS_THEME } from "~/lib/ticketing/pass-theme";
 import {
   eventHasPassVisibleChange,
   formatPassUpdateTag,
@@ -31,11 +30,7 @@ function snapshot(
     venueName: "Neck of the Woods",
     venueAddress: "8 Nile Rd",
     isR18: true,
-    passStripStyle: "HATCH",
-    passAccentHex: null,
-    passBackgroundHex: null,
-    passForegroundHex: null,
-    passLabelHex: null,
+    passDesign: { accentHex: "#C9A227", levels: { AAA: { showChip: true } } },
     ...overrides,
   };
 }
@@ -231,22 +226,35 @@ describe("eventHasPassVisibleChange", () => {
     );
   });
 
-  test("does not treat the form's default theme as a change", () => {
+  test("does not treat the form re-sending the same design as a change", () => {
     assert.equal(
       eventHasPassVisibleChange(existing, {
-        passStripStyle: DEFAULT_PASS_THEME.stripStyle,
-        passAccentHex: DEFAULT_PASS_THEME.accentHex,
-        passBackgroundHex: DEFAULT_PASS_THEME.backgroundHex,
-        passForegroundHex: DEFAULT_PASS_THEME.foregroundHex,
-        passLabelHex: DEFAULT_PASS_THEME.labelHex,
+        passDesign: {
+          levels: { VIP: {}, AAA: { showChip: true } },
+          accentHex: "#C9A227",
+        },
       }),
       false,
     );
   });
 
-  test("detects a real theme change", () => {
+  test("detects a design change on the event or one of its levels", () => {
     assert.equal(
-      eventHasPassVisibleChange(existing, { passAccentHex: "#ff00aa" }),
+      eventHasPassVisibleChange(existing, {
+        passDesign: {
+          accentHex: "#ff00aa",
+          levels: { AAA: { showChip: true } },
+        },
+      }),
+      true,
+    );
+    assert.equal(
+      eventHasPassVisibleChange(existing, {
+        passDesign: {
+          accentHex: "#C9A227",
+          levels: { AAA: { showChip: false } },
+        },
+      }),
       true,
     );
   });
