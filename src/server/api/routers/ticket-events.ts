@@ -23,6 +23,7 @@ import {
   createTRPCRouter,
   eventOrganiserProcedure,
   publicProcedure,
+  superadminProcedure,
 } from "~/server/api/trpc";
 import { logActivity } from "~/server/utils/activity-log";
 import { eventPosterId } from "~/lib/ticketing/poster";
@@ -791,6 +792,45 @@ export const ticketEventsRouter = createTRPCRouter({
       });
 
       return { ok: true as const };
+    }),
+
+  /**
+   * Wipe the door back to before anyone arrived: every scan and ID check for
+   * the event is deleted, so nobody is admitted, departed or denied and every
+   * ticket scans fresh. Tickets themselves are untouched — void and refunded
+   * stay that way. For clearing out a test run of the door.
+   *
+   * Superadmins only, because it deletes the scan log the rest of the system
+   * treats as append-only.
+   */
+  resetEntry: superadminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const event = await ctx.db.ticketEvent.findUnique({
+        where: { id: input.id },
+        select: { id: true, name: true },
+      });
+      if (!event) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+      }
+
+      const [scans, idChecks] = await ctx.db.$transaction([
+        ctx.db.ticketScan.deleteMany({ where: { eventId: event.id } }),
+        ctx.db.idCheck.deleteMany({ where: { eventId: event.id } }),
+      ]);
+
+      await logActivity({
+        type: ActivityType.TICKET_EVENT_UPDATED,
+        action: `Reset entry for "${event.name}"`,
+        userId: ctx.session.user.id,
+        details: {
+          eventId: event.id,
+          scansDeleted: scans.count,
+          idChecksDeleted: idChecks.count,
+        },
+      });
+
+      return { ok: true as const, scans: scans.count };
     }),
 
   /**
