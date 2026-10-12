@@ -63,6 +63,18 @@ APP="$ARCHIVE/Products/Applications/Atmos.app"
 
 fail() { echo "error: $*" >&2; exit 1; }
 
+# Permission plugins can remove another plugin's purpose strings. Check the
+# generated plist and the exported app, rather than trusting app.config.ts.
+check_usage_descriptions() {
+  local plist="$1" key value
+  for key in NSCameraUsageDescription NSPhotoLibraryUsageDescription NSFaceIDUsageDescription; do
+    value="$(plutil -extract "$key" raw "$plist" 2>/dev/null)" ||
+      fail "$key missing from $plist"
+    [[ "$value" =~ [^[:space:]] ]] || fail "$key is empty in $plist"
+    printf '    ok   %-26s %s\n' "$key" "$value"
+  done
+}
+
 # ---------------------------------------------------------------- 0. identity
 
 VERSION="${APP_VERSION:-$(node -p "require('./package.json').version")}"
@@ -143,6 +155,7 @@ GENERATED_BUILD="$(plutil -extract CFBundleVersion raw ios/Atmos/Info.plist)"
   fail "prebuild wrote version $GENERATED_VERSION, expected $VERSION"
 [ "$GENERATED_BUILD" = "$BUILD" ] ||
   fail "prebuild wrote build $GENERATED_BUILD, expected $BUILD"
+check_usage_descriptions ios/Atmos/Info.plist
 
 # ----------------------------------------------------------------- 3. archive
 
@@ -236,6 +249,7 @@ check "CFBundleIdentifier"        "$BUNDLE_ID" "$(plutil -extract CFBundleIdenti
 check "CFBundleShortVersionString" "$VERSION"  "$(plutil -extract CFBundleShortVersionString raw "$PAYLOAD/Info.plist")"
 check "CFBundleVersion"           "$BUILD"     "$(plutil -extract CFBundleVersion raw "$PAYLOAD/Info.plist")"
 check "ATMOSGitCommit"            "$GIT_COMMIT" "$(plutil -extract ATMOSGitCommit raw "$PAYLOAD/Info.plist")"
+check_usage_descriptions "$PAYLOAD/Info.plist"
 
 # The icon is the one thing a human notices immediately and a script never
 # checks. An app that ships without it shows a white tile on the home screen.

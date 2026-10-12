@@ -157,7 +157,7 @@ const config: ExpoConfig = {
       {
         photosPermission:
           "Attach task proof or share a chat screenshot with the team.",
-        cameraPermission: false,
+        cameraPermission: "Atmos uses the camera to scan tickets at the door.",
         microphonePermission: false,
       },
     ],
