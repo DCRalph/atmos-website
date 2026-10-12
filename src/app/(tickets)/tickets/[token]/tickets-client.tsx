@@ -80,6 +80,23 @@ export default function TicketsPage() {
         (ticket) => !ticket.attendeeName && !ticket.nameLocked,
       ));
 
+  if (data.ended) {
+    return (
+      <TicketShell poster={poster}>
+        <TicketMessage
+          title={
+            data.status === "REFUNDED" ? "Refunded" : "Order didn't go through"
+          }
+          showEventsLink
+        >
+          {data.status === "REFUNDED"
+            ? "This order was refunded in full."
+            : "No tickets were issued. If you were charged, it's been refunded in full."}
+        </TicketMessage>
+      </TicketShell>
+    );
+  }
+
   if (!data.issued) {
     // No spinner: the page polls and swaps itself in when the tickets exist.
     return (

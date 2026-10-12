@@ -100,11 +100,8 @@ export function HeroSection() {
         <span className="text-[10px] tracking-[0.4em] text-white/30 uppercase">
           Scroll
         </span>
-        <motion.div
-          className="h-8 w-px origin-top bg-white/20"
-          animate={{ scaleY: [0, 1, 0] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-        />
+        {/* Still on purpose: a looping cue repaints for as long as the page is open. */}
+        <div className="h-8 w-px bg-white/20" />
       </motion.div>
     </section>
   );

@@ -7,7 +7,7 @@ import Image from "next/image";
 import { cn } from "~/lib/utils";
 import { FaFacebook, FaSoundcloud } from "react-icons/fa6";
 import { FaSpotify } from "react-icons/fa6";
-import { FaYoutube } from "react-icons/fa6";
+import { FaTiktok, FaYoutube } from "react-icons/fa6";
 import { FaInstagram } from "react-icons/fa6";
 
 import { orbitron } from "~/lib/fonts";
@@ -57,8 +57,8 @@ const smallLinks: SocialLink[] = [
   {
     platform: "TikTok",
     handle: "@atmos_tv",
-    url: links.youtube,
-    icon: FaYoutube,
+    url: links.tiktok,
+    icon: FaTiktok,
     color: "#E4405F",
   },
   {

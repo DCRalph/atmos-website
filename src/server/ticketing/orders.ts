@@ -3,6 +3,7 @@ import "server-only";
 import { TRPCError } from "@trpc/server";
 
 import {
+  ActivityType,
   PaymentMethodKind,
   type Prisma,
   TicketEventStatus,
@@ -10,6 +11,8 @@ import {
   TicketStatus,
 } from "~Prisma/client";
 import { db } from "~/server/db";
+import { getStripe } from "~/server/stripe";
+import { logActivity } from "~/server/utils/activity-log";
 import {
   computeOrderTotals,
   splitCents,
@@ -21,6 +24,7 @@ import {
   eventHeadcount,
   holdInventory,
   InventoryError,
+  reclaimHold,
   releaseHold,
   remainingInTier,
   returnToStock,
@@ -50,6 +54,7 @@ import {
   getTicketingSettings,
   resolveBookingFee,
 } from "~/server/ticketing/settings";
+import { stopUnpaidPayment } from "~/server/ticketing/payments";
 
 /**
  * The order lifecycle.
@@ -59,6 +64,10 @@ import {
  * on the success page can both call it and exactly one of them wins. Everything
  * downstream (ticket rows, stock commit, email) happens inside that same
  * transaction, so a half-issued order is not representable.
+ *
+ * A payment can still land after its order was let go (a slow 3-D Secure, a
+ * declined card retried after the hold was released). Issuance takes the seats
+ * back if they are still there, and refunds the payment in full if not.
  */
 
 type Tx = Prisma.TransactionClient;
@@ -286,10 +295,20 @@ export async function createPendingOrder({
   });
 }
 
+/** Orders that were let go without ever issuing anything. */
+const LAPSED_STATUSES: TicketOrderStatus[] = [
+  TicketOrderStatus.EXPIRED,
+  TicketOrderStatus.CANCELLED,
+  TicketOrderStatus.FAILED,
+];
+
 export type IssueResult = {
   orderId: string;
+  /** Nothing new was issued by this call, so there is nothing to announce. */
   alreadyIssued: boolean;
   ticketIds: string[];
+  /** The payment landed too late to be honoured and was refunded instead. */
+  refunded?: boolean;
 };
 
 /**
@@ -297,8 +316,12 @@ export type IssueResult = {
  * the `PENDING -> PAID` update is conditional, so the second caller sees
  * `alreadyIssued` and does nothing.
  *
- * The caller is responsible for sending email — deliberately outside the
- * transaction, so a slow mail API can never roll back a paid order.
+ * With a `paymentIntentId`, money has been taken, so an order that already
+ * lapsed is claimed too if its seats can be taken back, and otherwise refunded
+ * (and the buyer told) rather than left charged with nothing.
+ *
+ * The caller is responsible for sending the ticket email — deliberately
+ * outside the transaction, so a slow mail API can never roll back a paid order.
  */
 export async function issueTicketsForOrder({
   orderId,
@@ -345,16 +368,36 @@ export async function issueTicketsForOrder({
     };
   }
 
-  return withEventInventoryLock(existing.eventId, async (tx) => {
+  const result = await withEventInventoryLock<
+    IssueResult | { refundIntentId: string }
+  >(existing.eventId, async (tx) => {
+    const claimable: TicketOrderStatus[] = [
+      TicketOrderStatus.PENDING,
+      TicketOrderStatus.AWAITING_APPROVAL,
+    ];
+
+    // Paid for after the order was let go: claimable again only if the seats
+    // it gave back are still there.
+    if (paymentIntentId) {
+      const lapsed = await tx.ticketOrder.findFirst({
+        where: { id: orderId, status: { in: LAPSED_STATUSES } },
+        select: {
+          status: true,
+          items: { select: { tierId: true, quantity: true, groupSize: true } },
+        },
+      });
+      if (lapsed) {
+        if (!(await reclaimHold(tx, existing.eventId, lapsed.items))) {
+          return { refundIntentId: paymentIntentId };
+        }
+        claimable.push(lapsed.status);
+      }
+    }
+
     // Claim the transition. `updateMany` with a status filter is atomic, so a
     // racing webhook and success-page call cannot both proceed.
     const claimed = await tx.ticketOrder.updateMany({
-      where: {
-        id: orderId,
-        status: {
-          in: [TicketOrderStatus.PENDING, TicketOrderStatus.AWAITING_APPROVAL],
-        },
-      },
+      where: { id: orderId, status: { in: claimable } },
       data: {
         status: TicketOrderStatus.PAID,
         paidAt: new Date(),
@@ -450,6 +493,83 @@ export async function issueTicketsForOrder({
 
     return { orderId, alreadyIssued: false, ticketIds };
   });
+
+  if (!("refundIntentId" in result)) return result;
+
+  // Outside the lock: Stripe never runs inside a transaction.
+  await refundLatePayment({
+    orderId,
+    paymentIntentId: result.refundIntentId,
+    chargeId: chargeId ?? null,
+    buyerEmail: buyerEmail ?? null,
+    buyerName: buyerName ?? null,
+  });
+  return { orderId, alreadyIssued: true, ticketIds: [], refunded: true };
+}
+
+/**
+ * Hand back a payment that landed on a lapsed order with no room left for it.
+ *
+ * Recorded as a full refund, the same as the `charge.refunded` webhook will
+ * make of it when it arrives. Only the call that records it logs and emails,
+ * so a racing webhook and success page refund once and tell the buyer once.
+ */
+async function refundLatePayment({
+  orderId,
+  paymentIntentId,
+  chargeId,
+  buyerEmail,
+  buyerName,
+}: {
+  orderId: string;
+  paymentIntentId: string;
+  chargeId: string | null;
+  buyerEmail: string | null;
+  buyerName: string | null;
+}): Promise<void> {
+  const refund = await getStripe().refunds.create(
+    {
+      payment_intent: paymentIntentId,
+      metadata: { orderId, reason: "Paid after the hold ran out" },
+    },
+    { idempotencyKey: `late-payment-refund-${paymentIntentId}` },
+  );
+
+  const recorded = await db.ticketOrder.updateMany({
+    where: { id: orderId, status: { in: LAPSED_STATUSES } },
+    data: {
+      status: TicketOrderStatus.REFUNDED,
+      refundedCents: refund.amount,
+      refundedAt: new Date(),
+      expiresAt: null,
+      stripePaymentIntentId: paymentIntentId,
+      // Who paid, for the admin and for the refund email.
+      ...(chargeId ? { stripeChargeId: chargeId } : {}),
+      ...(buyerEmail ? { buyerEmail: buyerEmail.toLowerCase().trim() } : {}),
+      ...(buyerName ? { buyerName } : {}),
+    },
+  });
+  if (recorded.count === 0) return;
+
+  await logActivity({
+    type: ActivityType.TICKET_ORDER_REFUNDED,
+    action: `Refunded ${(refund.amount / 100).toFixed(2)}, paid after the hold ran out`,
+    details: {
+      orderId,
+      paymentIntentId,
+      refundedCents: refund.amount,
+      fullyRefunded: true,
+      source: "late-payment",
+    },
+  });
+
+  // Loaded here because the email module reads order links from this one.
+  const { sendRefundEmail } = await import("~/server/ticketing/email/send");
+  await sendRefundEmail({
+    orderId,
+    amountCents: refund.amount,
+    ticketNumbers: [],
+  });
 }
 
 /**
@@ -506,6 +626,12 @@ export async function maybeMarkSoldOut(tx: Tx, eventId: string): Promise<void> {
  * Covers both a held checkout and a guest-list request sitting in the approval
  * queue — both are holding inventory that has to go back if they don't become
  * tickets.
+ *
+ * Its PaymentIntent is cancelled first, so nobody can pay for seats that are
+ * back on sale. If Stripe already has the money the order is left alone for the
+ * webhook to issue. `keepPaymentOpen` is for a declined card, which the buyer
+ * can retry on the same intent: if that goes through, issuance takes the seats
+ * back or refunds.
  */
 export async function cancelPendingOrder(
   orderId: string,
@@ -513,6 +639,7 @@ export async function cancelPendingOrder(
     TicketOrderStatus,
     "CANCELLED" | "FAILED" | "EXPIRED"
   > = TicketOrderStatus.CANCELLED,
+  { keepPaymentOpen = false }: { keepPaymentOpen?: boolean } = {},
 ): Promise<void> {
   const releasable: TicketOrderStatus[] = [
     TicketOrderStatus.PENDING,
@@ -525,10 +652,17 @@ export async function cancelPendingOrder(
       id: true,
       eventId: true,
       status: true,
+      stripePaymentIntentId: true,
       items: { select: { tierId: true, quantity: true, groupSize: true } },
     },
   });
   if (!order || !releasable.includes(order.status)) return;
+  if (
+    !keepPaymentOpen &&
+    !(await stopUnpaidPayment(order.stripePaymentIntentId))
+  ) {
+    return;
+  }
 
   await withEventInventoryLock(order.eventId, async (tx) => {
     const claimed = await tx.ticketOrder.updateMany({

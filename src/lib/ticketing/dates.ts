@@ -58,7 +58,10 @@ export function formatEventDateLong(
   });
 }
 
-/** `9:00 pm` */
+/**
+ * `9:00 pm`, the one time format on the site. The space is non-breaking so a
+ * wrapping line never leaves "pm" on its own.
+ */
 export function formatEventTime(
   date: Date,
   timeZone = DEFAULT_EVENT_TIMEZONE,
@@ -68,7 +71,7 @@ export function formatEventTime(
     minute: "2-digit",
     hour12: true,
   })
-    .replace(/ /g, " ")
+    .replace(/\s/g, "\u00a0")
     .toLowerCase();
 }
 

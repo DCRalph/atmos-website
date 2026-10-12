@@ -1,8 +1,14 @@
 import "server-only";
 
-import { type Prisma, TicketOrderStatus, TicketStatus } from "~Prisma/client";
+import {
+  type Prisma,
+  TicketEventStatus,
+  TicketOrderStatus,
+  TicketStatus,
+} from "~Prisma/client";
 
 import { db } from "~/server/db";
+import { stopUnpaidPayment } from "~/server/ticketing/payments";
 import {
   remainingInTier,
   tierUnavailableReason,
@@ -160,6 +166,8 @@ export async function withEventInventoryLock<T>(
   fn: (tx: Tx) => Promise<T>,
   options?: { timeout?: number },
 ): Promise<T> {
+  const stopped = await stopLapsedPayments(eventId);
+
   return db.$transaction(
     async (tx) => {
       // Ordering by id makes the lock acquisition order deterministic, so two
@@ -171,7 +179,7 @@ export async function withEventInventoryLock<T>(
         FOR UPDATE
       `;
 
-      await releaseExpiredHolds(tx, eventId);
+      await releaseExpiredHolds(tx, eventId, stopped);
 
       return fn(tx);
     },
@@ -182,14 +190,57 @@ export async function withEventInventoryLock<T>(
 }
 
 /**
+ * Cancel the PaymentIntents on this event's lapsed holds, and return the orders
+ * whose payment is now dead and so can be expired.
+ *
+ * Runs before the lock, so the Stripe round trip never sits inside a
+ * transaction. An order Stripe has charged, is still charging, or couldn't be
+ * asked about is left out: it stays PENDING with its seats held, for the
+ * webhook (or the cron rescue) to issue, or for the next sweep to try again.
+ */
+async function stopLapsedPayments(eventId: string): Promise<string[]> {
+  const lapsed = await db.ticketOrder.findMany({
+    where: {
+      eventId,
+      status: TicketOrderStatus.PENDING,
+      expiresAt: { lt: new Date() },
+      stripePaymentIntentId: { not: null },
+    },
+    select: { id: true, stripePaymentIntentId: true },
+    take: 25,
+  });
+
+  const stopped = await Promise.all(
+    lapsed.map(async (order) => {
+      try {
+        return (await stopUnpaidPayment(order.stripePaymentIntentId))
+          ? order.id
+          : null;
+      } catch (cause) {
+        console.error(
+          `[ticketing] couldn't stop payment on ${order.id}`,
+          cause,
+        );
+        return null;
+      }
+    }),
+  );
+  return stopped.filter((id) => id !== null);
+}
+
+/**
  * Expire `PENDING` orders past their hold and give the inventory back.
  *
  * Called at the top of every locked section, so stock frees itself under load
- * without waiting for the cron sweep. Returns the number of orders expired.
+ * without waiting for the cron sweep. An order with a PaymentIntent is only
+ * expired once `stopLapsedPayments` has cancelled it (`stoppedPayments`), so a
+ * buyer can never pay for seats that went back on sale. Returns the number of
+ * orders expired.
  */
 export async function releaseExpiredHolds(
   tx: Tx,
   eventId: string,
+  stoppedPayments: readonly string[] = [],
 ): Promise<number> {
   const now = new Date();
 
@@ -198,6 +249,10 @@ export async function releaseExpiredHolds(
       eventId,
       status: TicketOrderStatus.PENDING,
       expiresAt: { lt: now },
+      OR: [
+        { stripePaymentIntentId: null },
+        { id: { in: [...stoppedPayments] } },
+      ],
     },
     select: {
       id: true,
@@ -389,6 +444,53 @@ export async function holdInventory(
       },
     });
   }
+}
+
+/**
+ * Take an order's seats back after its hold lapsed, for a payment that landed
+ * late. Must be called inside `withEventInventoryLock`.
+ *
+ * Only stock and the event cap are checked, not whether the tier is still on
+ * sale: the buyer was sold these at checkout, and a tier that has closed since
+ * is no reason to refund them. Returns false, holding nothing, if the room has
+ * gone or the event has been cancelled.
+ */
+export async function reclaimHold(
+  tx: Tx,
+  eventId: string,
+  items: readonly { tierId: string; quantity: number; groupSize: number }[],
+): Promise<boolean> {
+  const [event, tiers] = await Promise.all([
+    tx.ticketEvent.findUniqueOrThrow({
+      where: { id: eventId },
+      select: { status: true, capacity: true },
+    }),
+    tx.ticketTier.findMany({
+      where: { eventId },
+      select: { id: true, allocation: true, soldCount: true, heldCount: true },
+    }),
+  ]);
+  if (event.status === TicketEventStatus.CANCELLED) return false;
+
+  const byId = new Map(tiers.map((t) => [t.id, t]));
+  const fits = items.every((item) => {
+    const tier = byId.get(item.tierId);
+    return tier !== undefined && remainingInTier(tier) >= ticketCount([item]);
+  });
+  if (!fits) return false;
+
+  if (event.capacity !== null) {
+    const { committed } = await eventHeadcount(tx, eventId);
+    if (committed + ticketCount(items) > event.capacity) return false;
+  }
+
+  for (const item of items) {
+    await tx.ticketTier.update({
+      where: { id: item.tierId },
+      data: { heldCount: { increment: ticketCount([item]) } },
+    });
+  }
+  return true;
 }
 
 /**

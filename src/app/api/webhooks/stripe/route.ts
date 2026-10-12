@@ -107,7 +107,9 @@ async function handlePaymentSucceeded(
       : (intent.latest_charge ?? null);
 
   // Apple Pay / Google Pay / Link all populate billing details, which is how
-  // the buyer's email reaches us without them ever typing it.
+  // the buyer's email reaches us without them ever typing it. A payment that
+  // lands after its hold ran out is issued if the seats are still there, and
+  // refunded (with its own email) if not.
   const result = await issueTicketsForOrder({
     orderId,
     ...buyerFromCharge(intent, charge),
@@ -136,8 +138,11 @@ async function handlePaymentFailed(
   if (!orderId) return;
 
   // Release the held seats straight away rather than making the next buyer
-  // wait out the full hold window.
-  await cancelPendingOrder(orderId, TicketOrderStatus.FAILED);
+  // wait out the full hold window. The intent stays open: a declined card can
+  // be retried on it, and a retry that goes through is still honoured.
+  await cancelPendingOrder(orderId, TicketOrderStatus.FAILED, {
+    keepPaymentOpen: true,
+  });
 }
 
 async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {

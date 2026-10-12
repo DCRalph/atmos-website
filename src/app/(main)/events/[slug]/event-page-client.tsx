@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, EyeOff } from "lucide-react";
+import { ArrowLeft, ArrowRight, EyeOff, X } from "lucide-react";
 import { api } from "~/trpc/react";
 import { buildMediaUrl } from "~/lib/media-url";
 import {
@@ -10,10 +12,10 @@ import {
   formatEventDateLong,
   formatEventTime,
 } from "~/lib/ticketing/dates";
-import { formatNZD } from "~/lib/ticketing/money";
+import { formatNZD, formatNZDCompact } from "~/lib/ticketing/money";
 import { BuyPanel } from "~/components/ticketing/buy-panel";
 import { LexicalContent } from "~/components/lexical";
-import { Media, Skeleton, buttonVariants } from "~/components/site/ui";
+import { IconButton, Skeleton, buttonVariants } from "~/components/site/ui";
 import { gigPath } from "~/lib/gig-url";
 import {
   OnNowPanel,
@@ -22,10 +24,31 @@ import {
 } from "~/components/site/on-now";
 import { cn } from "~/lib/utils";
 
+const DESKTOP = "(min-width: 1024px)";
+const subscribeToDesktop = (onChange: () => void) => {
+  const query = matchMedia(DESKTOP);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+};
+
+/** True from `lg` up, where the buy panel sits in the page instead of a sheet. */
+const useDesktop = () =>
+  useSyncExternalStore(
+    subscribeToDesktop,
+    () => matchMedia(DESKTOP).matches,
+    () => false,
+  );
+
 /**
- * Public event page. Opens on the poster full bleed; on desktop the buy panel
- * is glass lifting up over the bottom of it, then sticks as you scroll. The
- * meta tags are `page.tsx`'s.
+ * Public event page. The poster sits whole on a blur of itself, so a small or
+ * oddly shaped upload never gets stretched across the screen. Under it: what,
+ * when, where, who's playing.
+ *
+ * Buying: on desktop the panel sticks beside the details. On a phone it's a
+ * bottom sheet behind a buy bar that's always in thumb reach. It's one
+ * `BuyPanel` either way, kept mounted while the sheet is shut, so closing it
+ * to check the lineup doesn't drop a basket or a hold. The meta tags are
+ * `page.tsx`'s.
  */
 export function EventPageClient() {
   const params = useParams<{ slug: string }>();
@@ -39,14 +62,22 @@ export function EventPageClient() {
     { slug, key },
     { enabled: !!slug },
   );
+  const gigId = event.data?.gig?.id;
+  const gig = api.gigs.getById.useQuery(
+    { id: gigId ?? "" },
+    { enabled: !!gigId },
+  );
+
+  const desktop = useDesktop();
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   if (event.isPending) {
     return (
       <div aria-busy>
-        <Skeleton className="h-[520px] md:h-[620px]" />
+        <Skeleton className="h-[460px] md:h-[560px]" />
         <div className="grid grid-cols-1 gap-10 px-5 pt-8 md:px-10 lg:grid-cols-[minmax(0,1fr)_400px]">
           <Skeleton className="h-40" />
-          <Skeleton className="h-80 rounded-[var(--site-r-panel)] rounded-tl-none" />
+          <Skeleton className="hidden h-80 rounded-[var(--site-r-panel)] rounded-tl-none lg:block" />
         </div>
       </div>
     );
@@ -86,15 +117,30 @@ export function EventPageClient() {
     if (percentBp > 0) parts.push(`${percentBp / 100}%`);
     fees.push(`a booking fee of ${parts.join(" plus ")}`);
   }
+  const feeNote =
+    fees.length > 0
+      ? `Prices include GST. At checkout we add ${fees.join(" and ")}.`
+      : null;
+
   const startTime = formatEventTime(data.startsAt, data.timezone);
-  const doorsTime = data.doorsAt
-    ? formatEventTime(data.doorsAt, data.timezone)
+  // Doors and start are often the same moment; saying it twice reads as a typo.
+  const doorsTime =
+    data.doorsAt && data.doorsAt.getTime() !== data.startsAt.getTime()
+      ? formatEventTime(data.doorsAt, data.timezone)
+      : null;
+  const endTime = data.endsAt
+    ? formatEventTime(data.endsAt, data.timezone)
     : null;
   const facts = [
     { label: "When", value: formatEventDateLong(data.startsAt, data.timezone) },
     {
       label: "Time",
-      value: doorsTime ? `Doors ${doorsTime} · Starts ${startTime}` : startTime,
+      value: [
+        doorsTime ? `Doors ${doorsTime}` : null,
+        endTime ? `${startTime} till ${endTime}` : `Starts ${startTime}`,
+      ]
+        .filter(Boolean)
+        .join(" · "),
     },
     ...(data.venueName
       ? [{ label: "Where", value: data.venueName, sub: data.venueAddress }]
@@ -104,99 +150,120 @@ export function EventPageClient() {
       : []),
   ];
 
+  const lineUp = gig.data?.lineUp ?? [];
+  // The bar only sells: an event that can't be bought from has nothing to put there.
+  const buyable =
+    data.status !== "CANCELLED" && data.status !== "SOLD_OUT" && data.onSale;
+
   return (
     <>
-      <section
-        className={cn(
-          "relative flex flex-col justify-end overflow-hidden",
-          poster ? "min-h-[520px] md:min-h-[620px]" : "pt-32 md:pt-40",
-        )}
-      >
+      <section className="relative overflow-hidden pt-24 pb-10 md:pt-28 md:pb-14">
         {poster ? (
           <>
-            <Media
+            <Image
               src={poster}
-              alt={`${data.name} poster`}
-              sizes="100vw"
-              className="absolute inset-0"
-              priority
+              alt=""
+              fill
+              sizes="50vw"
+              aria-hidden
+              className="scale-125 object-cover opacity-55 blur-3xl saturate-150"
             />
-            <div className="scrim-bottom absolute inset-0" />
-            <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/70 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black" />
+            {/* Its own shape, portrait or landscape, capped so the title
+                still shows on a phone. */}
+            <div className="relative flex justify-center px-5">
+              <Image
+                src={poster}
+                alt={`${data.name} poster`}
+                width={1200}
+                height={1500}
+                priority
+                sizes="(min-width: 768px) 560px, 90vw"
+                className="h-auto max-h-[min(52dvh,520px)] w-auto max-w-full shadow-[0_24px_48px_-12px_rgb(0_0_0/0.9)]"
+              />
+            </div>
           </>
         ) : null}
-        {/* Clear of the panel that lifts into the bottom right on desktop. */}
-        <div
-          className={cn(
-            "relative space-y-5 px-5 pt-28 pb-10 md:px-10 md:pb-14",
-            poster && "lg:pr-[496px]",
-          )}
-        >
-          <Link
-            href="/events"
-            className="t-label -my-3 inline-flex items-center gap-2 py-3 text-[11px] text-white/75 hover:text-white"
-          >
-            <ArrowLeft className="size-4" /> All tickets
-          </Link>
-          {data.visibility !== "PUBLIC" ? (
-            <p className="glass-dark flex w-fit items-start gap-3 rounded-[var(--site-r-chip)] px-4 py-3 text-[14px] text-white/75">
-              <EyeOff className="mt-0.5 size-4 shrink-0" aria-hidden /> This
-              event isn&apos;t listed. You can see it because you have the link,
-              so share it with care.
-            </p>
-          ) : null}
-          <EventOnNow start={data.startsAt} end={data.endsAt} />
-          <h1 className="t-display max-w-[16ch] text-[clamp(2rem,6.4vw,5.5rem)] [overflow-wrap:anywhere] normal-case">
-            {data.name}
-          </h1>
-          <p className="t-label text-[12px] text-white/85 md:text-[13px]">
-            {[
-              formatEventDate(data.startsAt, data.timezone),
-              data.venueName,
-              doorsTime ? `Doors ${doorsTime}` : startTime,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
-        </div>
       </section>
 
-      {/* DOM order is the phone order: facts, then tickets, then the rest. */}
-      <div className="grid grid-cols-1 gap-10 px-5 pt-8 pb-20 md:px-10 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-14">
-        <dl className="grid grid-cols-1 border-t border-white/10 sm:grid-cols-2 sm:gap-x-8 lg:col-start-1 lg:row-start-1">
-          {facts.map(({ label, value, ...rest }) => (
-            <div key={label} className="border-b border-white/10 py-4">
-              <dt className="t-label text-[10px] text-white/55">{label}</dt>
-              <dd className="mt-2 text-[15px] text-white/90">
-                {value}
-                {"sub" in rest && rest.sub ? (
-                  <span className="mt-1 block text-[13px] text-white/55">
-                    {rest.sub}
-                  </span>
-                ) : null}
-              </dd>
-            </div>
-          ))}
-        </dl>
+      {/* DOM order is the phone order: details, then lineup, then the rest. */}
+      <div className="grid grid-cols-1 gap-10 px-5 pb-36 md:px-10 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-14 lg:pb-20">
+        <div className="min-w-0 space-y-8">
+          <header className="space-y-5">
+            <Link
+              href="/events"
+              className="t-label -my-3 inline-flex items-center gap-2 py-3 text-[11px] text-white/75 hover:text-white"
+            >
+              <ArrowLeft className="size-4" /> All tickets
+            </Link>
+            {data.visibility !== "PUBLIC" ? (
+              <p className="glass-dark flex w-fit items-start gap-3 rounded-[var(--site-r-chip)] px-4 py-3 text-[14px] text-white/75">
+                <EyeOff className="mt-0.5 size-4 shrink-0" aria-hidden /> This
+                event isn&apos;t listed. You can see it because you have the
+                link, so share it with care.
+              </p>
+            ) : null}
+            <EventOnNow start={data.startsAt} end={data.endsAt} />
+            <h1 className="t-display max-w-[16ch] text-[clamp(2rem,6.4vw,5.5rem)] [overflow-wrap:anywhere] normal-case">
+              {data.name}
+            </h1>
+            <p className="t-label text-[12px] text-white/85 md:text-[13px]">
+              {[
+                formatEventDate(data.startsAt, data.timezone),
+                data.venueName,
+                doorsTime ? `Doors ${doorsTime}` : startTime,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          </header>
 
-        <div
-          id="tickets"
-          className={cn(
-            "relative z-10 scroll-mt-28 lg:col-start-2 lg:row-span-2 lg:row-start-1",
-            poster && "lg:-mt-64",
-          )}
-        >
-          <div className="lg:sticky lg:top-28">
-            <BuyPanel
-              event={data}
-              className={
-                poster ? "glass-dark glass-float bg-black/60" : undefined
-              }
-            />
-          </div>
-        </div>
+          <dl className="grid grid-cols-1 border-t border-white/10 sm:grid-cols-2 sm:gap-x-8">
+            {facts.map(({ label, value, ...rest }) => (
+              <div key={label} className="border-b border-white/10 py-4">
+                <dt className="t-label text-[10px] text-white/55">{label}</dt>
+                <dd className="mt-2 text-[15px] text-white/90">
+                  {value}
+                  {"sub" in rest && rest.sub ? (
+                    <span className="mt-1 block text-[13px] text-white/55">
+                      {rest.sub}
+                    </span>
+                  ) : null}
+                </dd>
+              </div>
+            ))}
+          </dl>
 
-        <div className="min-w-0 space-y-8 lg:col-start-1 lg:row-start-2">
+          {lineUp.length > 0 ? (
+            <section aria-labelledby="lineup-heading">
+              <h2
+                id="lineup-heading"
+                className="t-label text-[10px] text-white/55"
+              >
+                Lineup
+              </h2>
+              <ul className="mt-4 space-y-2.5">
+                {lineUp.map(({ id, artistProfile }) => (
+                  <li
+                    key={id}
+                    className="t-display text-[clamp(1.375rem,3vw,2rem)] normal-case"
+                  >
+                    {artistProfile.isPublished ? (
+                      <Link
+                        href={`/artist/${artistProfile.handle}`}
+                        className="hover:text-[var(--site-accent-text)]"
+                      >
+                        {artistProfile.displayName}
+                      </Link>
+                    ) : (
+                      artistProfile.displayName
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
           {data.shortDescription ? (
             <p className="max-w-[60ch] text-[17px] text-white/75">
               {data.shortDescription}
@@ -217,12 +284,126 @@ export function EventPageClient() {
               More about this gig <ArrowRight className="size-4" />
             </Link>
           ) : null}
-          {fees.length > 0 ? (
-            <p className="text-[13px] text-white/50">
-              Prices include GST. At checkout we add {fees.join(" and ")}.
-            </p>
+          {feeNote ? (
+            <p className="text-[13px] text-white/50">{feeNote}</p>
           ) : null}
         </div>
+
+        <TicketsDock
+          inline={desktop || !buyable}
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          title={`${data.name} · ${formatEventDate(data.startsAt, data.timezone)}`}
+        >
+          <BuyPanel
+            event={data}
+            className={
+              desktop || !buyable ? undefined : "border-0 bg-transparent"
+            }
+          />
+        </TicketsDock>
+      </div>
+
+      {buyable && !desktop ? (
+        <div
+          className={cn(
+            "glass-dark fixed inset-x-0 bottom-0 z-40 flex items-center gap-4 border-x-0 border-b-0 px-5 pt-3.5 pb-[max(1rem,env(safe-area-inset-bottom))] transition-opacity duration-200",
+            sheetOpen && "pointer-events-none opacity-0",
+          )}
+        >
+          <div className="min-w-0">
+            <p className="t-display text-[22px] whitespace-nowrap tabular-nums">
+              {data.fromPriceCents === 0
+                ? "Free"
+                : `From ${formatNZDCompact(data.fromPriceCents ?? 0)}`}
+            </p>
+            <p className="mt-1.5 truncate text-[12px] text-white/60">
+              {feeNote ? "Includes GST, plus fees" : "Includes GST"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSheetOpen(true)}
+            aria-expanded={sheetOpen}
+            aria-controls="tickets"
+            className={cn(buttonVariants({ variant: "accent" }), "ml-auto")}
+          >
+            Get tickets <ArrowRight className="size-4" />
+          </button>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * Where the buy panel lives. From `lg` up it's a sticky column, and so is a
+ * panel with nothing to sell (sold out, cancelled), which has to be seen
+ * rather than opened. Otherwise it's a bottom sheet that stays mounted while
+ * shut (inert and off screen), so the panel's basket and hold survive closing
+ * it.
+ */
+function TicketsDock({
+  inline,
+  open,
+  onClose,
+  title,
+  children,
+}: {
+  inline: boolean;
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
+  const sheet = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (open && !inline) sheet.current?.focus();
+  }, [open, inline]);
+
+  if (inline) {
+    return (
+      <div id="tickets" className="relative z-10 scroll-mt-28">
+        <div className="lg:sticky lg:top-28">{children}</div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div
+        aria-hidden
+        onClick={onClose}
+        className={cn(
+          "fixed inset-0 z-[70] bg-black/55 backdrop-blur-sm transition-opacity duration-300",
+          open ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+      />
+      <div
+        id="tickets"
+        ref={sheet}
+        role="dialog"
+        aria-modal={open}
+        aria-label={title}
+        tabIndex={-1}
+        inert={!open}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") onClose();
+        }}
+        className={cn(
+          "glass-dark glass-float fixed inset-x-0 bottom-0 z-[71] max-h-[88dvh] overflow-y-auto overscroll-contain rounded-t-[var(--site-r-panel)] border-x-0 border-b-0 bg-black/80 pb-[env(safe-area-inset-bottom)] outline-none",
+          "transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]",
+          open ? "translate-y-0" : "translate-y-full",
+        )}
+      >
+        <div className="flex items-center justify-between gap-4 px-5 pt-4">
+          <p className="truncate text-[13px] text-white/60">{title}</p>
+          <IconButton label="Close" className="size-10" onClick={onClose}>
+            <X className="size-4" />
+          </IconButton>
+        </div>
+        {children}
       </div>
     </>
   );
