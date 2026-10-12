@@ -25,6 +25,7 @@ import {
   isTba,
   ticketCta,
   type ListGig,
+  type UpcomingGig,
   type PublicTicketEvent,
 } from "./gig-parts";
 import { GigCountdown, OnNowChip, nightOf, useIsOnNow } from "../on-now";
@@ -56,7 +57,7 @@ function UpcomingRow({
       <AdminStrip gig={gig} className="text-left" />
       <GigLink
         gig={gig}
-        className="group grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 border-b border-white/10 py-4 transition-colors hover:bg-white/[0.03] md:grid-cols-[72px_84px_minmax(0,1fr)_auto] md:gap-6 md:px-3"
+        className="group grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 border-b border-white/10 py-4 transition-colors hover:bg-white/[0.03] max-sm:grid-cols-[64px_minmax(0,1fr)] md:grid-cols-[72px_84px_minmax(0,1fr)_auto] md:gap-6 md:px-3"
       >
         <GigPoster
           gig={gig}
@@ -204,13 +205,17 @@ function NothingUpcoming({ onPast }: { onPast: () => void }) {
   );
 }
 
-/** Full-bleed hero on the next announced gig, with a glass rail of what's after. */
+/**
+ * Full-bleed hero on the next announced gig, with a glass rail of what's after.
+ * The backdrop is that gig's wide poster when it has one, otherwise a photo
+ * from past nights.
+ */
 function NextShowHero({
   gigs,
   events,
   loading,
 }: {
-  gigs: ListGig[];
+  gigs: UpcomingGig[];
   events: Map<string, PublicTicketEvent>;
   loading: boolean;
 }) {
@@ -222,13 +227,16 @@ function NextShowHero({
 
   return (
     <section className="relative flex min-h-[640px] flex-col justify-end overflow-hidden md:min-h-[740px]">
-      <Media
-        src="/home/atmos-46.jpg"
-        alt=""
-        sizes="100vw"
-        className="absolute inset-0"
-        priority
-      />
+      {/* Held back while loading, so the fallback photo doesn't flash first. */}
+      {loading ? null : (
+        <Media
+          src={next?.widePosterUrl ?? "/home/atmos-46.jpg"}
+          alt=""
+          sizes="100vw"
+          className="absolute inset-0"
+          priority
+        />
+      )}
       <div className="scrim-bottom absolute inset-0" />
       <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/70 to-transparent" />
       <div className="relative grid grid-cols-1 items-end gap-8 px-5 pt-32 pb-10 md:px-10 md:pb-14 lg:grid-cols-[minmax(0,1fr)_380px]">

@@ -575,15 +575,18 @@ function PassDetailBody({
           <div className="flex flex-wrap items-center gap-2">
             <Button
               size="sm"
+              className="max-w-full min-w-0"
               disabled={send.isPending || !pass.holderEmail}
               onClick={() => send.mutate({ id: pass.id })}
             >
               <Mail className="size-3.5" aria-hidden />
-              {send.isPending
-                ? "Sending…"
-                : pass.holderEmail
-                  ? `Email ${pass.holderEmail}`
-                  : "No email on the pass"}
+              <span className="truncate">
+                {send.isPending
+                  ? "Sending…"
+                  : pass.holderEmail
+                    ? `Email ${pass.holderEmail}`
+                    : "No email on the pass"}
+              </span>
             </Button>
             <Input
               type="email"

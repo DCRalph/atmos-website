@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { ActivityType, type PrismaClient } from "~Prisma/client";
+import { applyPatch, patchOf } from "~/server/api/patch-input";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { normaliseCode } from "~/server/ticketing/discounts";
 import {
@@ -122,44 +123,60 @@ export const eventCodesRouter = createTRPCRouter({
 
   /**
    * Change a code, including what it unlocks. Uses already made keep what they
-   * were worth; the new terms apply from the next checkout.
+   * were worth; the new terms apply from the next checkout. Fields left out
+   * keep their saved value.
    */
   update: adminProcedure
     .input(
-      codeFieldsSchema
-        .omit({ isActive: true, startsAt: true })
-        .extend({ id: z.string() })
-        .extend(tierFieldsSchema.shape),
+      patchOf(
+        codeFieldsSchema
+          .omit({ isActive: true, startsAt: true })
+          .extend(tierFieldsSchema.shape),
+      ).extend({ id: z.string() }),
     )
     .mutation(async ({ ctx, input }) => {
+      const { id, ...patch } = input;
       const current = await ctx.db.eventCode.findUnique({
-        where: { id: input.id },
-        select: { eventId: true, startsAt: true },
+        where: { id },
+        select: {
+          eventId: true,
+          code: true,
+          type: true,
+          value: true,
+          tierIds: true,
+          unlocksHiddenTiers: true,
+          maxRedemptions: true,
+          maxPerEmail: true,
+          minTickets: true,
+          startsAt: true,
+          endsAt: true,
+        },
       });
       if (!current) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Code not found" });
       }
-      const code = normaliseCode(input.code);
-      assertCodeRules({ ...input, startsAt: current.startsAt });
+      const next = applyPatch(current, patch);
+      const code = normaliseCode(next.code);
+      assertCodeRules(next);
       await assertCodeFree(ctx.db, {
         eventId: current.eventId,
         code,
-        tierIds: input.tierIds,
-        exceptId: input.id,
+        tierIds: next.tierIds,
+        exceptId: id,
       });
 
       const updated = await ctx.db.eventCode.update({
-        where: { id: input.id },
+        where: { id },
         data: {
           code,
-          type: input.type,
-          value: input.value,
-          tierIds: input.tierIds,
-          unlocksHiddenTiers: input.unlocksHiddenTiers,
-          maxRedemptions: input.maxRedemptions ?? null,
-          maxPerEmail: input.maxPerEmail ?? null,
-          minTickets: input.minTickets ?? null,
-          endsAt: input.endsAt ?? null,
+          type: next.type,
+          value: next.value,
+          tierIds: next.tierIds,
+          unlocksHiddenTiers: next.unlocksHiddenTiers,
+          maxRedemptions: next.maxRedemptions,
+          maxPerEmail: next.maxPerEmail,
+          minTickets: next.minTickets,
+          endsAt: next.endsAt,
         },
       });
 

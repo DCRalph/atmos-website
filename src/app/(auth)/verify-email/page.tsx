@@ -9,6 +9,9 @@ import {
   CardTitle,
 } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
+import { unlistedPageMetadata } from "~/lib/seo-constants";
+
+export const metadata = unlistedPageMetadata("Confirm email");
 
 /**
  * Where the confirm link lands.

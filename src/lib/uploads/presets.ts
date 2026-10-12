@@ -135,6 +135,29 @@ export const uploadPresets = {
     forId: (c) => c.gigId,
     keyPrefix: (c) => `gigs/${c.gigId}/poster`,
   }),
+  gigWidePoster: definePreset({
+    label: "Gig wide poster",
+    description:
+      "The landscape poster for the gigs page hero and link previews.",
+    access: "admin",
+    accept: IMAGE_TYPES,
+    maxFileSize: mb(50),
+    maxFiles: 1,
+    maxTotalSize: mb(50),
+    // Its own bucket for the same reason as `gigPoster`: one image used as both
+    // would otherwise share a file record, and replacing one retires the other.
+    for: "gig_wide_poster",
+    image: {
+      // Wider than the poster's cap, since it fills a full-width hero.
+      maxDimension: 2560,
+      format: "webp",
+      quality: 82,
+      maxOutputSize: mb(1.5),
+    },
+    context: gigContext,
+    forId: (c) => c.gigId,
+    keyPrefix: (c) => `gigs/${c.gigId}/wide-poster`,
+  }),
 
   /**
    * A ticketed event's own poster, for when it shouldn't just borrow its gig's.

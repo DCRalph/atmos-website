@@ -123,7 +123,10 @@ function CreateLink({ gigId, gigTitle }: { gigId: string; gigTitle: string }) {
       <div className="space-y-2">
         <Label htmlFor="photo-signup-domain">Domain</Label>
         <Select value={domain} onValueChange={setDomain}>
-          <SelectTrigger id="photo-signup-domain" className="w-56 font-mono">
+          <SelectTrigger
+            id="photo-signup-domain"
+            className="w-full font-mono sm:w-56"
+          >
             <SelectValue placeholder="Loading..." />
           </SelectTrigger>
           <SelectContent>
@@ -141,7 +144,7 @@ function CreateLink({ gigId, gigTitle }: { gigId: string; gigTitle: string }) {
           id="photo-signup-slug"
           value={slug}
           onChange={(e) => setSlug(e.target.value)}
-          className="w-72 font-mono"
+          className="w-full font-mono sm:w-72"
         />
       </div>
       <Button
@@ -309,7 +312,7 @@ function SignupNumbers({
               onChange={(e) => setName(e.target.value)}
               placeholder="Where it's going, like bar mirror"
               maxLength={48}
-              className="w-64"
+              className="w-full sm:w-64"
             />
             <Button type="submit" disabled={!name.trim() || addCode.isPending}>
               <Plus className="size-4" aria-hidden /> Add code

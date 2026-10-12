@@ -1,23 +1,27 @@
-"use client";
-
 import GigsPage from "./Gigs";
 import { BreadcrumbJsonLd } from "~/components/seo/json-ld";
-import { usePageMetadata } from "~/hooks/use-page-metadata";
-import { SITE_URL } from "~/lib/seo-constants";
+import { pageMetadata } from "~/lib/seo-constants";
 
-export default function GigsRoute() {
-  usePageMetadata({
-    title: "Events",
-    description: "Immersive curated electronic music events",
-    canonical: `${SITE_URL}/gigs`,
-  });
+export const metadata = pageMetadata({
+  title: "Gigs",
+  description: "Upcoming events and past nights from Atmos.",
+  path: "/gigs",
+  keywords: [
+    "dj events",
+    "club nights",
+    "techno nights",
+    "house music nights",
+    "electronic gig guide",
+  ],
+});
 
+export default function Page() {
   return (
     <>
       <BreadcrumbJsonLd
         items={[
           { name: "Home", url: "/" },
-          { name: "Events", url: "/gigs" },
+          { name: "Gigs", url: "/gigs" },
         ]}
       />
       <GigsPage />

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { TRPCError } from "@trpc/server";
 import { format } from "date-fns";
@@ -6,6 +5,7 @@ import { format } from "date-fns";
 import { RentalStatus } from "~Prisma/client";
 import { decideRental } from "~/server/api/routers/rentals";
 import { db } from "~/server/db";
+import { unlistedPageMetadata } from "~/lib/seo-constants";
 import {
   TicketShell,
   outlinePillClass,
@@ -22,10 +22,10 @@ import { cn } from "~/lib/utils";
  * token is the only credential and is cleared once a decision is made.
  */
 
-export const metadata: Metadata = {
-  title: "Rental request · Atmos",
-  robots: { index: false, follow: false },
-};
+export const metadata = unlistedPageMetadata(
+  "Rental request",
+  "An equipment rental request for Atmos.",
+);
 
 type Action = "approve" | "deny";
 

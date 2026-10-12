@@ -123,7 +123,7 @@ function SortableGigRow({
         <TooltipTrigger asChild>
           <button
             type="button"
-            className="text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing"
+            className="text-muted-foreground hover:text-foreground -m-2 cursor-grab touch-none p-2 active:cursor-grabbing"
             aria-label="Drag to reorder"
             {...attributes}
             {...listeners}

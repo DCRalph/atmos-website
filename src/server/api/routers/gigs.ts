@@ -5,6 +5,7 @@ import {
   publicProcedure,
   adminProcedure,
 } from "~/server/api/trpc";
+import { patchOf, patchRows } from "~/server/api/patch-input";
 import {
   getTodayRangeStart,
   getTodayRangeEnd,
@@ -66,56 +67,107 @@ function toLexicalJsonInput(
  * The line-up is not a separate thing. A `SET` row is a line-up entry; the
  * public bill is built from these and nothing else.
  */
-const SCHEDULE_ITEM_INPUT = z
-  .array(
-    z.object({
-      /** Absent on a row that has never been saved. */
-      id: z.string().min(1).optional(),
-      kind: z.enum(GigScheduleKind),
-      /** Who is playing this slot, in billing order. A back to back is two or more. */
-      artistProfileIds: z.array(z.string().min(1)).max(6).default([]),
-      label: z.string().max(120).nullish(),
-      role: z.string().max(80).nullish(),
-      startsAt: z.coerce.date().nullish(),
-      endsAt: z.coerce.date().nullish(),
-      notes: z.string().max(4000).nullish(),
-      /** Minutes before the cue to warn. Capped so a typo cannot warn a week out. */
-      leadMinutes: z.array(z.number().int().min(1).max(720)).max(4).default([]),
-      /** Narrows the gig's recipients for this cue. Empty means "the gig's list". */
-      recipientUserIds: z.array(z.string().min(1)).default([]),
-    }),
-  )
-  .superRefine((rows, ctx) => {
-    rows.forEach((row, index) => {
-      const artists = uniqueStrings(row.artistProfileIds);
-      if (row.kind === GigScheduleKind.SET && artists.length === 0) {
-        ctx.addIssue({
-          code: "custom",
-          message: "A set needs somebody playing it",
-          path: [index, "artistProfileIds"],
-        });
-      }
-      if (row.kind !== GigScheduleKind.SET && artists.length > 0) {
-        ctx.addIssue({
-          code: "custom",
-          message: "Only a set carries artists",
-          path: [index, "artistProfileIds"],
-        });
-      }
-      if (row.startsAt && row.endsAt && row.endsAt < row.startsAt) {
-        ctx.addIssue({
-          code: "custom",
-          message: "A row cannot end before it starts",
-          path: [index, "endsAt"],
-        });
-      }
-    });
+const SCHEDULE_ROW = z.object({
+  /** Absent on a row that has never been saved. */
+  id: z.string().min(1).optional(),
+  kind: z.enum(GigScheduleKind),
+  /** Who is playing this slot, in billing order. A back to back is two or more. */
+  artistProfileIds: z.array(z.string().min(1)).max(6).default([]),
+  label: z.string().max(120).nullish(),
+  role: z.string().max(80).nullish(),
+  startsAt: z.coerce.date().nullish(),
+  endsAt: z.coerce.date().nullish(),
+  notes: z.string().max(4000).nullish(),
+  /** Minutes before the cue to warn. Capped so a typo cannot warn a week out. */
+  leadMinutes: z.array(z.number().int().min(1).max(720)).max(4).default([]),
+  /** Narrows the gig's recipients for this cue. Empty means "the gig's list". */
+  recipientUserIds: z.array(z.string().min(1)).default([]),
+});
+
+const SCHEDULE_ITEM_INPUT = z.array(SCHEDULE_ROW).superRefine((rows, ctx) => {
+  rows.forEach((row, index) => {
+    const artists = uniqueStrings(row.artistProfileIds);
+    if (row.kind === GigScheduleKind.SET && artists.length === 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "A set needs somebody playing it",
+        path: [index, "artistProfileIds"],
+      });
+    }
+    if (row.kind !== GigScheduleKind.SET && artists.length > 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Only a set carries artists",
+        path: [index, "artistProfileIds"],
+      });
+    }
+    if (row.startsAt && row.endsAt && row.endsAt < row.startsAt) {
+      ctx.addIssue({
+        code: "custom",
+        message: "A row cannot end before it starts",
+        path: [index, "endsAt"],
+      });
+    }
   });
+});
 
 type ScheduleItemInput = z.infer<typeof SCHEDULE_ITEM_INPUT>;
 
+/** Everything the gig editor owns. `saveAll` takes all of it, `update` any of it. */
+const GIG_EDITOR_FIELDS = z.object({
+  title: z.string().min(1),
+  subtitle: z.string().min(1),
+  shortDescription: z.string().nullish(),
+  descriptionLexical: LEXICAL_STATE_SCHEMA.optional().nullable(),
+  isTba: z.boolean(),
+  /** Only kept on a TBA gig. */
+  announceAt: z.date().nullish(),
+  isAffiliated: z.boolean(),
+  ticketLink: z.string().nullish(),
+  gigStartTime: z.date(),
+  gigEndTime: z.date().nullish(),
+  /** Left as stored when absent: the import wizard does not edit them. */
+  donationsEnabled: z.boolean().optional(),
+  donationAmountsCents: donationAmountsSchema.optional(),
+  donationRecommendedIndex: donationRecommendedSchema.optional(),
+  donationDescriptionLexical: LEXICAL_STATE_SCHEMA.nullish(),
+  tagIds: z.array(z.string()),
+  scheduleItems: SCHEDULE_ITEM_INPUT,
+  /** Who hears this gig's cues. */
+  notifyUserIds: z
+    .array(z.string().min(1))
+    .describe("The complete list. Anyone left out stops hearing the cues."),
+});
+
+type GigEdit = { id: string } & Partial<z.output<typeof GIG_EDITOR_FIELDS>>;
+
 /** Which shelf of finished gigs `getPast` reads. */
 const PAST_GIG_KIND = z.enum(["OURS", "AFFILIATED"]);
+
+/** Which of a gig's two posters: the portrait one, or the wide one. */
+const POSTER_SLOT = z.enum(["poster", "wide"]);
+type PosterSlot = z.infer<typeof POSTER_SLOT>;
+
+const POSTER_COLUMNS = {
+  posterFileUploadId: true,
+  widePosterFileUploadId: true,
+} satisfies Prisma.GigSelect;
+
+type PosterColumns = {
+  posterFileUploadId: string | null;
+  widePosterFileUploadId: string | null;
+};
+
+const posterInSlot = (gig: PosterColumns, slot: PosterSlot) =>
+  slot === "wide" ? gig.widePosterFileUploadId : gig.posterFileUploadId;
+
+const posterSlotData = (
+  slot: PosterSlot,
+  fileUploadId: string | null,
+): Prisma.GigUpdateInput =>
+  slot === "wide"
+    ? { widePosterFileUploadId: fileUploadId }
+    : { posterFileUploadId: fileUploadId };
 
 const uniqueStrings = (values: string[]): string[] => [...new Set(values)];
 
@@ -303,6 +355,9 @@ const forPublic = <T extends PublicGigInput>(gig: T) => {
     gigTags: [] as T["gigTags"],
     media: [] as typeof media,
     posterFileUploadId: null,
+    // The wide poster is the real thing too, and has no teaser.
+    widePosterFileUploadId: null,
+    widePosterUrl: null,
     posterFileUpload:
       poster && gig.posterFileUploadId
         ? { url: teaserPosterUrl(gig.id, gig.posterFileUploadId) }
@@ -512,6 +567,31 @@ async function enrichGigsWithPosterFileUploads<
 }
 
 /**
+ * Adds each gig's wide poster URL, or null without one. Only `getUpcoming`
+ * needs it, for the /gigs hero. `forPublic` still drops it from a TBA gig.
+ */
+async function withWidePosterUrls<
+  T extends { widePosterFileUploadId: string | null },
+>(db: typeof import("~/server/db").db, gigs: T[]) {
+  const ids = gigs.flatMap((g) =>
+    g.widePosterFileUploadId ? [g.widePosterFileUploadId] : [],
+  );
+  const files = ids.length
+    ? await db.file_upload.findMany({
+        where: { id: { in: ids }, status: FileUploadStatus.OK },
+        select: { id: true, url: true },
+      })
+    : [];
+  const urls = new Map(files.map((f) => [f.id, f.url]));
+  return gigs.map((g) => ({
+    ...g,
+    widePosterUrl: g.widePosterFileUploadId
+      ? (urls.get(g.widePosterFileUploadId) ?? null)
+      : null,
+  }));
+}
+
+/**
  * Helper to enrich gig media with file upload data
  * Uses for="gig_media" and forId=mediaId to find associated files
  */
@@ -655,6 +735,280 @@ async function enrichGigsWithFileUploads<T extends { media: GigMedia[] }>(
         : null,
     })),
   }));
+}
+
+/**
+ * Write a gig edit in one transaction, so a half-applied save (tags written,
+ * run sheet not) is never reachable. Fields left out are left alone, and so
+ * are tags, the run sheet and its recipients: each is only touched when
+ * given, and then it is the complete desired state, so anything absent from
+ * it is removed.
+ */
+async function saveGig(db: GigsContext["db"], userId: string, input: GigEdit) {
+  const {
+    id,
+    descriptionLexical,
+    donationDescriptionLexical,
+    tagIds,
+    scheduleItems,
+    notifyUserIds,
+    ...rest
+  } = input;
+  const wantedTagIds = tagIds && uniqueStrings(tagIds);
+  const wantedRecipients = notifyUserIds && uniqueStrings(notifyUserIds);
+  const wantedArtistIds = scheduleItems && artistIdsIn(scheduleItems);
+
+  const existing = await db.gig.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      title: true,
+      isTba: true,
+      gigTags: { select: { id: true, gigTagId: true } },
+      scheduleItems: {
+        select: {
+          id: true,
+          artists: {
+            select: {
+              artistProfileId: true,
+              artistProfile: { select: { handle: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!existing) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Gig not found" });
+  }
+
+  await assertReferencesExist(db, {
+    tagIds: wantedTagIds ?? [],
+    artistProfileIds: wantedArtistIds ?? [],
+    userIds: uniqueStrings([
+      ...(wantedRecipients ?? []),
+      ...(scheduleItems ?? []).flatMap((row) => row.recipientUserIds),
+    ]),
+  });
+
+  // A row keeps its id across a save, and with it the record of what has
+  // already been announced. Only ids we actually hold are honoured, so a
+  // stale draft cannot adopt another gig's row.
+  const existingItemIds = new Set(existing.scheduleItems.map((row) => row.id));
+  const keptItemIds = new Set(
+    (scheduleItems ?? []).flatMap((row) =>
+      row.id && existingItemIds.has(row.id) ? [row.id] : [],
+    ),
+  );
+  const removedItems = scheduleItems
+    ? existing.scheduleItems.filter((row) => !keptItemIds.has(row.id))
+    : [];
+
+  const hadArtistIds = new Set(
+    existing.scheduleItems.flatMap((row) =>
+      row.artists.map((artist) => artist.artistProfileId),
+    ),
+  );
+  const addedArtistIds = (wantedArtistIds ?? []).filter(
+    (artistProfileId) => !hadArtistIds.has(artistProfileId),
+  );
+  // Somebody is off the bill when no slot names them any more, not merely
+  // when the slot they were in went away — a back to back that loses one
+  // name keeps the other.
+  const removedArtists = wantedArtistIds
+    ? [...hadArtistIds]
+        .filter((artistProfileId) => !wantedArtistIds.includes(artistProfileId))
+        .map((artistProfileId) => ({
+          artistProfileId,
+          handle: existing.scheduleItems
+            .flatMap((row) => row.artists)
+            .find((artist) => artist.artistProfileId === artistProfileId)
+            ?.artistProfile.handle,
+        }))
+    : [];
+
+  // Legacy rows: `gig_tag_relationship` has no unique constraint, so the
+  // same tag can appear twice. Keep the first row per tag and drop the rest.
+  const firstTagRowIds = new Map<string, string>();
+  const duplicateTagRowIds: string[] = [];
+  for (const row of existing.gigTags) {
+    if (firstTagRowIds.has(row.gigTagId)) duplicateTagRowIds.push(row.id);
+    else firstTagRowIds.set(row.gigTagId, row.id);
+  }
+
+  await db.$transaction(async (tx) => {
+    await tx.gig.update({
+      where: { id },
+      data: {
+        ...rest,
+        // An announce time means nothing on a gig that is not TBA.
+        announceAt: (rest.isTba ?? existing.isTba) ? rest.announceAt : null,
+        descriptionLexical: toLexicalJsonInput(descriptionLexical),
+        donationDescriptionLexical: toLexicalJsonInput(
+          donationDescriptionLexical,
+        ),
+      },
+    });
+
+    if (wantedTagIds) {
+      // Spelled out rather than leaning on `notIn: []` semantics: clearing
+      // every tag has to actually clear every tag.
+      await tx.gigTagRelationship.deleteMany({
+        where:
+          wantedTagIds.length > 0
+            ? {
+                gigId: id,
+                OR: [
+                  { gigTagId: { notIn: wantedTagIds } },
+                  { id: { in: duplicateTagRowIds } },
+                ],
+              }
+            : { gigId: id },
+      });
+      const newTagIds = wantedTagIds.filter(
+        (tagId) => !firstTagRowIds.has(tagId),
+      );
+      if (newTagIds.length > 0) {
+        await tx.gigTagRelationship.createMany({
+          data: newTagIds.map((gigTagId) => ({ gigId: id, gigTagId })),
+        });
+      }
+    }
+
+    if (removedItems.length > 0) {
+      await tx.gigScheduleItem.deleteMany({
+        where: { id: { in: removedItems.map((row) => row.id) } },
+      });
+    }
+
+    // Sequential on purpose: `sortOrder` comes from the submitted order and
+    // (gigId, sortOrder) is a plain index, so transient overlap is fine.
+    for (const [index, row] of (scheduleItems ?? []).entries()) {
+      const data = scheduleItemData(row, index);
+      const recipients = uniqueStrings(row.recipientUserIds);
+      const itemId =
+        row.id && existingItemIds.has(row.id)
+          ? (
+              await tx.gigScheduleItem.update({
+                where: { id: row.id },
+                data,
+                select: { id: true },
+              })
+            ).id
+          : (
+              await tx.gigScheduleItem.create({
+                data: { ...data, gigId: id },
+                select: { id: true },
+              })
+            ).id;
+
+      // Billing order changes as often as the line-up does, and the rows
+      // carry nothing else, so they are replaced rather than reconciled.
+      const artists = uniqueStrings(row.artistProfileIds);
+      await tx.gigSetArtist.deleteMany({ where: { itemId } });
+      if (artists.length > 0) {
+        await tx.gigSetArtist.createMany({
+          data: artists.map((artistProfileId, billing) => ({
+            itemId,
+            artistProfileId,
+            sortOrder: billing,
+          })),
+        });
+      }
+
+      await tx.gigScheduleRecipient.deleteMany({
+        where:
+          recipients.length > 0
+            ? { itemId, userId: { notIn: recipients } }
+            : { itemId },
+      });
+      if (recipients.length > 0) {
+        await tx.gigScheduleRecipient.createMany({
+          data: recipients.map((userId) => ({ itemId, userId })),
+          skipDuplicates: true,
+        });
+      }
+    }
+
+    if (wantedRecipients) {
+      await tx.gigNotifyRecipient.deleteMany({
+        where:
+          wantedRecipients.length > 0
+            ? { gigId: id, userId: { notIn: wantedRecipients } }
+            : { gigId: id },
+      });
+      if (wantedRecipients.length > 0) {
+        await tx.gigNotifyRecipient.createMany({
+          data: wantedRecipients.map((userId) => ({ gigId: id, userId })),
+          skipDuplicates: true,
+        });
+      }
+    }
+  });
+
+  const title = rest.title ?? existing.title;
+  await logUserActivity(
+    ActivityType.GIG_UPDATED,
+    `Updated gig "${title}"`,
+    userId,
+    undefined,
+    { gigId: id },
+  );
+  for (const artistProfileId of addedArtistIds) {
+    await logUserActivity(
+      ActivityType.GIG_ARTIST_ADDED,
+      `Added an artist to gig "${title}"`,
+      userId,
+      undefined,
+      { gigId: id, artistProfileId },
+    );
+  }
+  for (const row of removedArtists) {
+    await logUserActivity(
+      ActivityType.GIG_ARTIST_REMOVED,
+      `Removed @${row.handle ?? "someone"} from gig "${title}"`,
+      userId,
+      undefined,
+      { gigId: id, artistProfileId: row.artistProfileId },
+    );
+  }
+
+  return { ok: true as const };
+}
+
+/**
+ * A gig's run sheet in the shape `SCHEDULE_ROW` takes, by row id, for
+ * `update` to fill in what a row edit leaves out.
+ */
+async function storedRunSheet(db: GigsContext["db"], gigId: string) {
+  const rows = await db.gigScheduleItem.findMany({
+    where: { gigId },
+    select: {
+      id: true,
+      kind: true,
+      label: true,
+      role: true,
+      startsAt: true,
+      endsAt: true,
+      notes: true,
+      leadMinutes: true,
+      artists: {
+        orderBy: { sortOrder: "asc" },
+        select: { artistProfileId: true },
+      },
+      recipients: { select: { userId: true } },
+    },
+  });
+  return new Map(
+    rows.map(({ artists, recipients, ...row }) => [
+      row.id,
+      {
+        ...row,
+        artistProfileIds: artists.map((artist) => artist.artistProfileId),
+        recipientUserIds: recipients.map((recipient) => recipient.userId),
+      },
+    ]),
+  );
 }
 
 export const gigsRouter = createTRPCRouter({
@@ -822,7 +1176,10 @@ export const gigsRouter = createTRPCRouter({
 
     const enriched = await enrichGigsWithFileUploads(ctx.db, gigs);
     const withPosters = announcedFirst(
-      await enrichGigsWithPosterFileUploads(ctx.db, enriched),
+      await withWidePosterUrls(
+        ctx.db,
+        await enrichGigsWithPosterFileUploads(ctx.db, enriched),
+      ),
     );
     return isAdmin ? withPosters : withPosters.map(forPublic);
   }),
@@ -1123,12 +1480,17 @@ export const gigsRouter = createTRPCRouter({
       if (!gig) return null;
 
       const enrichedMedia = await enrichMediaWithFileUploads(ctx.db, gig.media);
-      const posterFileUpload = await getFileUploadInfoById(
-        ctx.db,
-        gig.posterFileUploadId ?? null,
-      );
+      const [posterFileUpload, widePosterFileUpload] = await Promise.all([
+        getFileUploadInfoById(ctx.db, gig.posterFileUploadId),
+        getFileUploadInfoById(ctx.db, gig.widePosterFileUploadId),
+      ]);
 
-      return { ...gig, media: enrichedMedia, posterFileUpload };
+      return {
+        ...gig,
+        media: enrichedMedia,
+        posterFileUpload,
+        widePosterFileUpload,
+      };
     }),
 
   create: adminProcedure
@@ -1259,290 +1621,71 @@ export const gigsRouter = createTRPCRouter({
       return created;
     }),
 
+  /**
+   * Change some of a gig and leave the rest as it is: any field of `saveAll`,
+   * and only the fields given are written. For Will GPT, which would otherwise
+   * have to resend the whole gig to change its title.
+   *
+   * `scheduleItems`, when given, is the run sheet in running order, but a row
+   * naming a saved row's id only carries what changes about it. It has to name
+   * every saved row, with `remove: true` on the ones to delete, so a row left
+   * out by mistake is refused rather than deleted. Tags have their own
+   * procedures, `assignTag` and `removeTag`.
+   */
   update: adminProcedure
     .input(
-      z.object({
+      patchOf(
+        GIG_EDITOR_FIELDS.omit({ tagIds: true, scheduleItems: true }),
+      ).extend({
         id: z.string(),
-        title: z.string().min(1).optional(),
-        subtitle: z.string().min(1).optional(),
-        shortDescription: z.string().optional().nullable(),
-        descriptionLexical: LEXICAL_STATE_SCHEMA.optional().nullable(),
-        isTba: z.boolean().optional(),
-        isAffiliated: z.boolean().optional(),
-        gigStartTime: z.date().optional(),
-        gigEndTime: z.date().optional().nullable(),
-        ticketLink: z.string().optional().nullable(),
+        scheduleItems: z
+          .array(
+            patchOf(SCHEDULE_ROW).extend({
+              remove: z.boolean().optional().describe("Delete this row."),
+            }),
+          )
+          .optional()
+          .describe(
+            "The whole run sheet in running order. Name every saved row by id, giving only the fields that change, or remove: true to delete it. A row without an id is new and needs kind and, for a SET, artistProfileIds.",
+          ),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { id, descriptionLexical, ...rest } = input;
-      return ctx.db.gig.update({
-        where: { id },
-        data: {
-          ...rest,
-          // An announce time means nothing on a gig that is not TBA.
-          ...(rest.isTba === false ? { announceAt: null } : {}),
-          descriptionLexical: toLexicalJsonInput(descriptionLexical),
-        },
+      const { scheduleItems, ...fields } = input;
+      if (!scheduleItems) {
+        return saveGig(ctx.db, ctx.session.user.id, fields);
+      }
+
+      const stored = await storedRunSheet(ctx.db, input.id);
+      const named = new Set(scheduleItems.map((row) => row.id));
+      const missing = [...stored.keys()].filter((rowId) => !named.has(rowId));
+      if (missing.length > 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `scheduleItems leaves out saved rows ${missing.join(", ")}. List every row, with remove: true on the ones to delete.`,
+        });
+      }
+      return saveGig(ctx.db, ctx.session.user.id, {
+        ...fields,
+        scheduleItems: patchRows(SCHEDULE_ITEM_INPUT, stored, scheduleItems),
       });
     }),
 
   /**
    * Everything the gig editor owns, written in one transaction: core fields,
    * date/time, tags, the run sheet and who hears it. The editor commits all of
-   * it behind a single Save, so a half-applied save — tags written, run sheet
-   * not — must not be reachable. `tagIds`, `scheduleItems` and `notifyUserIds`
-   * are the complete desired state; anything absent from them is removed.
+   * it behind a single Save. `tagIds`, `scheduleItems` and `notifyUserIds` are
+   * the complete desired state; anything absent from them is removed.
    */
   saveAll: adminProcedure
-    .input(
-      z.object({
-        id: z.string(),
-        title: z.string().min(1),
-        subtitle: z.string().min(1),
-        shortDescription: z.string().nullish(),
-        descriptionLexical: LEXICAL_STATE_SCHEMA.optional().nullable(),
-        isTba: z.boolean(),
-        /** Only kept on a TBA gig. */
-        announceAt: z.date().nullish(),
-        isAffiliated: z.boolean(),
-        ticketLink: z.string().nullish(),
-        gigStartTime: z.date(),
-        gigEndTime: z.date().nullish(),
-        /** Left as stored when absent: the import wizard does not edit them. */
-        donationsEnabled: z.boolean().optional(),
-        donationAmountsCents: donationAmountsSchema.optional(),
-        donationRecommendedIndex: donationRecommendedSchema.optional(),
-        donationDescriptionLexical: LEXICAL_STATE_SCHEMA.nullish(),
-        tagIds: z.array(z.string()),
-        scheduleItems: SCHEDULE_ITEM_INPUT,
-        notifyUserIds: z.array(z.string().min(1)),
+    .input(GIG_EDITOR_FIELDS.extend({ id: z.string() }))
+    .mutation(({ ctx, input }) =>
+      saveGig(ctx.db, ctx.session.user.id, {
+        ...input,
+        // The editor clears the announce time by leaving it out.
+        announceAt: input.announceAt ?? null,
       }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const {
-        id,
-        descriptionLexical,
-        donationDescriptionLexical,
-        tagIds,
-        scheduleItems,
-        notifyUserIds,
-        ...rest
-      } = input;
-      const wantedTagIds = uniqueStrings(tagIds);
-      const wantedRecipients = uniqueStrings(notifyUserIds);
-      const wantedArtistIds = artistIdsIn(scheduleItems);
-
-      const existing = await ctx.db.gig.findUnique({
-        where: { id },
-        select: {
-          id: true,
-          title: true,
-          gigTags: { select: { id: true, gigTagId: true } },
-          scheduleItems: {
-            select: {
-              id: true,
-              artists: {
-                select: {
-                  artistProfileId: true,
-                  artistProfile: { select: { handle: true } },
-                },
-              },
-            },
-          },
-        },
-      });
-      if (!existing) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Gig not found" });
-      }
-
-      await assertReferencesExist(ctx.db, {
-        tagIds: wantedTagIds,
-        artistProfileIds: wantedArtistIds,
-        userIds: uniqueStrings([
-          ...wantedRecipients,
-          ...scheduleItems.flatMap((row) => row.recipientUserIds),
-        ]),
-      });
-
-      // A row keeps its id across a save, and with it the record of what has
-      // already been announced. Only ids we actually hold are honoured, so a
-      // stale draft cannot adopt another gig's row.
-      const existingItemIds = new Set(
-        existing.scheduleItems.map((row) => row.id),
-      );
-      const keptItemIds = new Set(
-        scheduleItems.flatMap((row) =>
-          row.id && existingItemIds.has(row.id) ? [row.id] : [],
-        ),
-      );
-      const removedItems = existing.scheduleItems.filter(
-        (row) => !keptItemIds.has(row.id),
-      );
-
-      const hadArtistIds = new Set(
-        existing.scheduleItems.flatMap((row) =>
-          row.artists.map((artist) => artist.artistProfileId),
-        ),
-      );
-      const addedArtistIds = wantedArtistIds.filter(
-        (artistProfileId) => !hadArtistIds.has(artistProfileId),
-      );
-      // Somebody is off the bill when no slot names them any more, not merely
-      // when the slot they were in went away — a back to back that loses one
-      // name keeps the other.
-      const removedArtists = [...hadArtistIds]
-        .filter((artistProfileId) => !wantedArtistIds.includes(artistProfileId))
-        .map((artistProfileId) => ({
-          artistProfileId,
-          handle: existing.scheduleItems
-            .flatMap((row) => row.artists)
-            .find((artist) => artist.artistProfileId === artistProfileId)
-            ?.artistProfile.handle,
-        }));
-
-      // Legacy rows: `gig_tag_relationship` has no unique constraint, so the
-      // same tag can appear twice. Keep the first row per tag and drop the rest.
-      const firstTagRowIds = new Map<string, string>();
-      const duplicateTagRowIds: string[] = [];
-      for (const row of existing.gigTags) {
-        if (firstTagRowIds.has(row.gigTagId)) duplicateTagRowIds.push(row.id);
-        else firstTagRowIds.set(row.gigTagId, row.id);
-      }
-      const newTagIds = wantedTagIds.filter(
-        (tagId) => !firstTagRowIds.has(tagId),
-      );
-
-      await ctx.db.$transaction(async (tx) => {
-        await tx.gig.update({
-          where: { id },
-          data: {
-            ...rest,
-            announceAt: rest.isTba ? (rest.announceAt ?? null) : null,
-            descriptionLexical: toLexicalJsonInput(descriptionLexical),
-            donationDescriptionLexical: toLexicalJsonInput(
-              donationDescriptionLexical,
-            ),
-          },
-        });
-
-        // Spelled out rather than leaning on `notIn: []` semantics: clearing
-        // every tag has to actually clear every tag.
-        await tx.gigTagRelationship.deleteMany({
-          where:
-            wantedTagIds.length > 0
-              ? {
-                  gigId: id,
-                  OR: [
-                    { gigTagId: { notIn: wantedTagIds } },
-                    { id: { in: duplicateTagRowIds } },
-                  ],
-                }
-              : { gigId: id },
-        });
-        if (newTagIds.length > 0) {
-          await tx.gigTagRelationship.createMany({
-            data: newTagIds.map((gigTagId) => ({ gigId: id, gigTagId })),
-          });
-        }
-
-        if (removedItems.length > 0) {
-          await tx.gigScheduleItem.deleteMany({
-            where: { id: { in: removedItems.map((row) => row.id) } },
-          });
-        }
-
-        // Sequential on purpose: `sortOrder` comes from the submitted order and
-        // (gigId, sortOrder) is a plain index, so transient overlap is fine.
-        for (const [index, row] of scheduleItems.entries()) {
-          const data = scheduleItemData(row, index);
-          const recipients = uniqueStrings(row.recipientUserIds);
-          const itemId =
-            row.id && existingItemIds.has(row.id)
-              ? (
-                  await tx.gigScheduleItem.update({
-                    where: { id: row.id },
-                    data,
-                    select: { id: true },
-                  })
-                ).id
-              : (
-                  await tx.gigScheduleItem.create({
-                    data: { ...data, gigId: id },
-                    select: { id: true },
-                  })
-                ).id;
-
-          // Billing order changes as often as the line-up does, and the rows
-          // carry nothing else, so they are replaced rather than reconciled.
-          const artists = uniqueStrings(row.artistProfileIds);
-          await tx.gigSetArtist.deleteMany({ where: { itemId } });
-          if (artists.length > 0) {
-            await tx.gigSetArtist.createMany({
-              data: artists.map((artistProfileId, billing) => ({
-                itemId,
-                artistProfileId,
-                sortOrder: billing,
-              })),
-            });
-          }
-
-          await tx.gigScheduleRecipient.deleteMany({
-            where:
-              recipients.length > 0
-                ? { itemId, userId: { notIn: recipients } }
-                : { itemId },
-          });
-          if (recipients.length > 0) {
-            await tx.gigScheduleRecipient.createMany({
-              data: recipients.map((userId) => ({ itemId, userId })),
-              skipDuplicates: true,
-            });
-          }
-        }
-
-        await tx.gigNotifyRecipient.deleteMany({
-          where:
-            wantedRecipients.length > 0
-              ? { gigId: id, userId: { notIn: wantedRecipients } }
-              : { gigId: id },
-        });
-        if (wantedRecipients.length > 0) {
-          await tx.gigNotifyRecipient.createMany({
-            data: wantedRecipients.map((userId) => ({ gigId: id, userId })),
-            skipDuplicates: true,
-          });
-        }
-      });
-
-      await logUserActivity(
-        ActivityType.GIG_UPDATED,
-        `Updated gig "${rest.title}"`,
-        ctx.session.user.id,
-        undefined,
-        { gigId: id },
-      );
-      for (const artistProfileId of addedArtistIds) {
-        await logUserActivity(
-          ActivityType.GIG_ARTIST_ADDED,
-          `Added an artist to gig "${rest.title}"`,
-          ctx.session.user.id,
-          undefined,
-          { gigId: id, artistProfileId },
-        );
-      }
-      for (const row of removedArtists) {
-        await logUserActivity(
-          ActivityType.GIG_ARTIST_REMOVED,
-          `Removed @${row.handle ?? "someone"} from gig "${rest.title}"`,
-          ctx.session.user.id,
-          undefined,
-          { gigId: id, artistProfileId: row.artistProfileId },
-        );
-      }
-
-      return { ok: true as const };
-    }),
+    ),
 
   delete: adminProcedure
     .input(z.object({ id: z.string() }))
@@ -1893,14 +2036,21 @@ export const gigsRouter = createTRPCRouter({
       return enriched[0];
     }),
 
-  // Poster management endpoints
+  // Poster management endpoints. `slot` picks the portrait poster or the
+  // wide one; each keeps its own column and file bucket.
 
   setPosterFromUpload: adminProcedure
-    .input(z.object({ gigId: z.string(), fileUploadId: z.string() }))
+    .input(
+      z.object({
+        gigId: z.string(),
+        fileUploadId: z.string(),
+        slot: POSTER_SLOT.default("poster"),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const gig = await ctx.db.gig.findUnique({
         where: { id: input.gigId },
-        select: { id: true, posterFileUploadId: true },
+        select: POSTER_COLUMNS,
       });
       if (!gig) throw new Error("Gig not found");
 
@@ -1916,14 +2066,12 @@ export const gigsRouter = createTRPCRouter({
 
       await ctx.db.gig.update({
         where: { id: input.gigId },
-        data: { posterFileUploadId: input.fileUploadId },
+        data: posterSlotData(input.slot, input.fileUploadId),
       });
 
-      if (
-        gig.posterFileUploadId &&
-        gig.posterFileUploadId !== input.fileUploadId
-      ) {
-        await softDeleteFile({ id: gig.posterFileUploadId });
+      const previous = posterInSlot(gig, input.slot);
+      if (previous && previous !== input.fileUploadId) {
+        await softDeleteFile({ id: previous });
       }
 
       const posterFileUpload = await getFileUploadInfoById(
@@ -1935,22 +2083,27 @@ export const gigsRouter = createTRPCRouter({
 
   clearPoster: adminProcedure
     .input(
-      z.object({ gigId: z.string(), deleteFile: z.boolean().default(true) }),
+      z.object({
+        gigId: z.string(),
+        deleteFile: z.boolean().default(true),
+        slot: POSTER_SLOT.default("poster"),
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       const gig = await ctx.db.gig.findUnique({
         where: { id: input.gigId },
-        select: { id: true, posterFileUploadId: true },
+        select: POSTER_COLUMNS,
       });
       if (!gig) throw new Error("Gig not found");
 
       await ctx.db.gig.update({
         where: { id: input.gigId },
-        data: { posterFileUploadId: null },
+        data: posterSlotData(input.slot, null),
       });
 
-      if (input.deleteFile && gig.posterFileUploadId) {
-        await softDeleteFile({ id: gig.posterFileUploadId });
+      const previous = posterInSlot(gig, input.slot);
+      if (input.deleteFile && previous) {
+        await softDeleteFile({ id: previous });
       }
 
       return { ok: true };

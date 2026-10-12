@@ -124,7 +124,7 @@ function CatalogueCard({ product }: { product: Product }) {
           />
         ) : null}
         <Button
-          className="mt-4 w-full px-3"
+          className="mt-4 h-auto min-h-11 w-full px-3 py-2 text-center leading-tight whitespace-normal"
           variant={variant && !out ? "solid" : "outline"}
           disabled={out || !variant?.availableForSale}
           onClick={() => {

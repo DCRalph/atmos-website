@@ -670,7 +670,8 @@ function VenueFeeInfo() {
           if (pointer.current === "mouse" && open) e.preventDefault();
         }}
         className={cn(
-          "inline-flex size-4 items-center justify-center rounded-full border font-serif text-[10px] leading-none font-bold italic transition-colors",
+          // The pseudo-element pads the tap target without growing the dot.
+          "relative inline-flex size-4 items-center justify-center rounded-full border font-serif text-[10px] leading-none font-bold italic transition-colors after:absolute after:-inset-3 after:content-['']",
           open
             ? "border-[var(--site-accent-text)] text-[var(--site-accent-text)]"
             : "border-white/40 text-white/80 hover:border-white/70",

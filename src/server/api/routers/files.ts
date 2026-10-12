@@ -17,6 +17,9 @@ type EnrichedFile = file_upload & {
   fileTags: FileTag[];
 };
 
+/** File buckets whose `forId` is a gig id. */
+const GIG_BUCKETS = new Set(["gig", "gig_poster", "gig_wide_poster"]);
+
 /**
  * Helper to enrich files with linked entity info using for/forId
  */
@@ -26,12 +29,10 @@ async function enrichFilesWithLinkedEntities<
   db: any,
   files: T[],
 ): Promise<(T & { linkedEntity: LinkedEntity; fileTags: FileTag[] })[]> {
-  // Group files by their "for" type. `gig` and `gig_poster` both key on the gig
-  // itself; `gig_media` keys on the media row (legacy uploader).
+  // Group files by their "for" type. `gig` and both poster buckets key on the
+  // gig itself; `gig_media` keys on the media row (legacy uploader).
   const gigMediaFiles = files.filter((f) => f.for === "gig_media");
-  const gigFiles = files.filter(
-    (f) => f.for === "gig" || f.for === "gig_poster",
-  );
+  const gigFiles = files.filter((f) => GIG_BUCKETS.has(f.for));
 
   // Fetch linked gig media items
   const gigMediaIds = gigMediaFiles.map((f) => f.forId);
@@ -75,7 +76,7 @@ async function enrichFilesWithLinkedEntities<
           title: mediaItem.gig.title,
         };
       }
-    } else if (f.for === "gig" || f.for === "gig_poster") {
+    } else if (GIG_BUCKETS.has(f.for)) {
       const gig = gigMap.get(f.forId);
       if (gig) {
         linkedEntity = { type: "gig", id: gig.id, title: gig.title };
@@ -199,7 +200,7 @@ export const filesRouter = createTRPCRouter({
 
   /**
    * Get files for a specific entity (gig, etc.). Admin only: asking for a TBA
-   * gig's `gig_poster` files would hand over the poster it is withholding.
+   * gig's poster files would hand over the posters it is withholding.
    */
   getForEntity: adminProcedure
     .input(

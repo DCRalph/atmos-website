@@ -191,7 +191,7 @@ function PatronDetail({
           />
         )}
 
-        <dl className="grid flex-1 grid-cols-2 gap-x-6 gap-y-2 text-sm">
+        <dl className="grid min-w-60 flex-1 grid-cols-2 gap-x-6 gap-y-2 text-sm">
           <Field label="Name">{person.fullName}</Field>
           <Field label="Date of birth">{person.dateOfBirth}</Field>
           <Field label="Document">{person.documentLabel}</Field>

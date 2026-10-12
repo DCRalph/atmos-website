@@ -1,28 +1,14 @@
 import { type MetadataRoute } from "next";
-import { env } from "~/env";
+import { SITE_URL } from "~/lib/seo-constants";
 
 export default function robots(): MetadataRoute.Robots {
-  const siteUrl = env.NEXT_PUBLIC_APP_URL ?? "https://atmosmedia.co.nz";
-
   return {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
-        disallow: [
-          "/admin",
-          "/admin/*",
-          "/dashboard",
-          "/dashboard/*",
-          "/api/*",
-          "/auth-error",
-          "/login",
-          "/l",
-        ],
-      },
-      {
-        userAgent: "Googlebot",
-        allow: "/",
+        // Link preview images live under /api. Scrapers that honour robots.txt
+        // (X, LinkedIn) skip a blocked og:image and show a card without one.
+        allow: ["/", "/api/og/", "/api/gigs/*/teaser"],
         disallow: [
           "/admin",
           "/admin/*",
@@ -35,6 +21,6 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    sitemap: `${siteUrl}/sitemap.xml`,
+    sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }

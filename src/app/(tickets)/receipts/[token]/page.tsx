@@ -1,9 +1,9 @@
-import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { db } from "~/server/db";
 import { getTicketingSettings } from "~/server/ticketing/settings";
 import { formatNZD } from "~/lib/ticketing/money";
+import { unlistedPageMetadata } from "~/lib/seo-constants";
 import {
   TicketShell,
   ticketPanelClass,
@@ -28,10 +28,10 @@ import {
  * it on the server keeps the token out of any client-side query cache.
  */
 
-export const metadata: Metadata = {
-  title: "Receipt · Atmos",
-  robots: { index: false, follow: false },
-};
+export const metadata = unlistedPageMetadata(
+  "Your receipt",
+  "A receipt from an Atmos event.",
+);
 
 const OUTCOME_COPY = {
   APPROVED: {

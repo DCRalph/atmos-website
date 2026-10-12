@@ -2,21 +2,16 @@ import { type Metadata } from "next";
 import { db } from "~/server/db";
 import { resolveGigId } from "~/server/gig-lookup";
 import { gigPath } from "~/lib/gig-url";
-import { FileUploadStatus, GigStatus } from "~Prisma/client";
-import {
-  DEFAULT_OG_IMAGE,
-  DESCRIPTION_SHORT,
-  SITE_NAME,
-  SITE_URL,
-  formatFullTitle,
-} from "~/lib/seo-constants";
-import { teaserPosterUrl } from "~/server/gig-teaser";
+import { formatEventDateLong } from "~/lib/ticketing/dates";
+import { GigStatus } from "~Prisma/client";
+import { DESCRIPTION_SHORT, pageMetadata } from "~/lib/seo-constants";
+import { gigOgImage } from "~/server/og-image";
 import GigPageClient from "./gig-page-client";
 
 /**
  * The server half of the gig page: real meta tags in the initial HTML, so
- * link scrapers (which do not run JavaScript) see the gig's name, poster and
- * short description. Everything visible is client-rendered — see
+ * link scrapers (which do not run JavaScript) see the gig's name, preview
+ * image and short description. Everything visible is client-rendered — see
  * gig-page-client.tsx.
  */
 
@@ -27,29 +22,6 @@ const cleanText = (value?: string | null) =>
 
 const truncate = (value: string, length: number) =>
   value.length > length ? `${value.slice(0, length - 1)}…` : value;
-
-/**
- * The poster's URL, unless the file has since been deleted. A TBA gig gets
- * the server-blurred teaser instead.
- */
-async function posterUrl(gig: {
-  id: string;
-  isTba: boolean;
-  posterFileUploadId: string | null;
-}): Promise<string | null> {
-  const fileUploadId = gig.posterFileUploadId;
-  if (!fileUploadId) return null;
-  const file = await db.file_upload.findUnique({
-    where: { id: fileUploadId },
-    select: { url: true, status: true },
-  });
-  const gone: FileUploadStatus[] = [
-    FileUploadStatus.DELETED,
-    FileUploadStatus.SOFT_DELETED,
-  ];
-  if (!file || gone.includes(file.status)) return null;
-  return gig.isTba ? teaserPosterUrl(gig.id, fileUploadId) : file.url;
-}
 
 export async function generateMetadata({
   params,
@@ -70,8 +42,10 @@ export async function generateMetadata({
           title: true,
           subtitle: true,
           shortDescription: true,
+          gigStartTime: true,
           isTba: true,
           posterFileUploadId: true,
+          widePosterFileUploadId: true,
         },
       })
     : null;
@@ -82,32 +56,20 @@ export async function generateMetadata({
   // teaser in place of its poster.
   const isTba = gig.isTba;
   const name = isTba ? "TBA..." : gig.title;
-  const description =
-    (isTba ? "" : cleanText(gig.shortDescription) || cleanText(gig.subtitle)) ||
-    truncate(`ATMOS — ${DESCRIPTION_SHORT}`, 160);
-  const image = (await posterUrl(gig)) ?? DEFAULT_OG_IMAGE;
-  const canonical = `${SITE_URL}${gigPath(gig)}`;
+  // Otherwise its own words, or failing those, when and where.
+  const description = isTba
+    ? truncate(`ATMOS: ${DESCRIPTION_SHORT}`, 160)
+    : cleanText(gig.shortDescription) ||
+      [formatEventDateLong(gig.gigStartTime), cleanText(gig.subtitle)]
+        .filter(Boolean)
+        .join(" · ");
 
-  return {
-    // The root layout's template appends "| ATMOS".
+  return pageMetadata({
     title: `${name} | Gig`,
     description,
-    alternates: { canonical },
-    openGraph: {
-      title: formatFullTitle(name),
-      description,
-      url: canonical,
-      siteName: SITE_NAME,
-      images: [image],
-      type: "website",
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: formatFullTitle(name),
-      description,
-      images: [image],
-    },
-  };
+    path: gigPath(gig),
+    image: gigOgImage(gig) ?? undefined,
+  });
 }
 
 export default function Page({ params }: { params: Promise<{ id: string }> }) {

@@ -25,6 +25,7 @@ import {
   publicProcedure,
   superadminProcedure,
 } from "~/server/api/trpc";
+import { patchOf, patchRows } from "~/server/api/patch-input";
 import { logActivity } from "~/server/utils/activity-log";
 import { eventPosterId } from "~/lib/ticketing/poster";
 import {
@@ -108,6 +109,32 @@ async function uniqueSlug(
   return `${base}-${Date.now().toString(36)}`;
 }
 
+/** An event's tiers in the shape `tierPlanSchema` takes, by id, for an edit to fill in. */
+async function storedTiers(tx: Prisma.TransactionClient, eventId: string) {
+  const tiers = await tx.ticketTier.findMany({
+    where: { eventId },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      priceCents: true,
+      allocation: true,
+      groupSize: true,
+      releaseAfterPrevious: true,
+      salesChannel: true,
+      salesStartAt: true,
+      salesEndAt: true,
+      isActive: true,
+      isHidden: true,
+      maxPerOrder: true,
+      maxPerEmail: true,
+      requiresApproval: true,
+      accessLevel: true,
+    },
+  });
+  return new Map(tiers.map((tier) => [tier.id, tier]));
+}
+
 const eventInputSchema = z.object({
   name: z.string().trim().min(1, "Give the event a name"),
   slug: z.string().trim().optional(),
@@ -168,7 +195,7 @@ const eventInputSchema = z.object({
  * bearer credential, and there is no reason to leak how much of a guess was
  * right.
  */
-function isViewable(
+export function isViewable(
   event: {
     status: TicketEventStatus;
     visibility: TicketEventVisibility;
@@ -496,8 +523,24 @@ export const ticketEventsRouter = createTRPCRouter({
       return event;
     }),
 
+  /**
+   * Change some of an event; fields left out stay as they are. `tiers`,
+   * `staff` and `costs` are whole lists when given, so rows missing from them
+   * are removed, but a tier naming a saved tier's id only has to carry what
+   * changes about it.
+   */
   update: adminProcedure
-    .input(eventInputSchema.partial().extend({ id: z.string() }))
+    .input(
+      patchOf(eventInputSchema).extend({
+        id: z.string(),
+        tiers: z
+          .array(patchOf(tierPlanSchema))
+          .optional()
+          .describe(
+            "Every tier the event should have, in order. Tiers left out are deleted. A tier with a saved id needs only the fields that change; a new tier needs name, priceCents and allocation.",
+          ),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const { id, tiers, staff, costs, ...rest } = input;
 
@@ -628,7 +671,17 @@ export const ticketEventsRouter = createTRPCRouter({
 
         // The tier plan is judged against the cap just saved, and both go
         // through together: a cap and the tiers that fit it can't half-land.
-        if (tiers) await applyTierPlan(tx, id, tiers);
+        if (tiers) {
+          await applyTierPlan(
+            tx,
+            id,
+            patchRows(
+              z.array(tierPlanSchema),
+              await storedTiers(tx, id),
+              tiers,
+            ),
+          );
+        }
         if (staff) await applyStaffPlan(tx, id, staff, ctx.session.user.id);
         if (costs) await applyCostPlan(tx, id, costs);
 

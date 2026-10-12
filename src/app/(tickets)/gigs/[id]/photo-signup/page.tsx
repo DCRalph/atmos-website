@@ -1,6 +1,8 @@
 import { type Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
+import { gigPath } from "~/lib/gig-url";
+import { pageMetadata } from "~/lib/seo-constants";
 import { PhotoSignupPage } from "~/components/site/gigs/photo-signup-page";
 import { photoSignupGig } from "~/server/photo-signup";
 
@@ -19,7 +21,14 @@ export async function generateMetadata(
   props: PageProps<"/gigs/[id]/photo-signup">,
 ): Promise<Metadata> {
   const gig = await photoSignupGig((await props.params).id);
-  return { title: gig ? `Photos | ${gig.title}` : "Gig not found" };
+  if (!gig) return { title: "Gig not found" };
+  return pageMetadata({
+    title: `Photos | ${gig.title}`,
+    description: `Leave your email and hear when the photos from ${gig.title} are up.`,
+    path: `${gigPath(gig)}/photo-signup`,
+    image: gig.ogImage ?? undefined,
+    noindex: true,
+  });
 }
 
 export default async function Page(

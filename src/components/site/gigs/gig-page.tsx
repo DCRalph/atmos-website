@@ -402,7 +402,7 @@ export function GigPage({ params }: { params: Promise<{ id: string }> }) {
       <div className="px-5 pt-8 md:px-10">
         <Link
           href="/gigs"
-          className="t-label inline-flex items-center gap-2 text-[11px] text-white/70 hover:text-white"
+          className="t-label -my-3 inline-flex items-center gap-2 py-3 text-[11px] text-white/70 hover:text-white"
         >
           <ArrowLeft className="size-4" /> All gigs
         </Link>

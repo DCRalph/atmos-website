@@ -16,10 +16,29 @@ import { describeConstraints, validateFile } from "~/lib/uploads/validate";
 import { cn } from "~/lib/utils";
 import type { PosterDraft } from "./types";
 
-const CONSTRAINTS = presetConstraints("gigPoster");
-const ACCEPT = CONSTRAINTS.accept.join(",");
+/** The two posters a gig can have, and what differs between their pickers. */
+const SHAPES = {
+  portrait: {
+    constraints: presetConstraints("gigPoster"),
+    title: "Poster",
+    description:
+      "The single portrait image (ideally 3:4) shown on the public gig page.",
+    noun: "poster",
+    frame: "aspect-3/4 max-w-xs",
+  },
+  wide: {
+    constraints: presetConstraints("gigWidePoster"),
+    title: "Wide poster",
+    description:
+      "Optional landscape version (ideally 16:9). Fills the top of the gigs page while this is the next gig, and is the image when the gig's link is shared.",
+    noun: "wide poster",
+    frame: "aspect-video max-w-md",
+  },
+} as const;
 
 type PosterFieldProps = {
+  /** Which poster this picks. Portrait unless told otherwise. */
+  shape?: keyof typeof SHAPES;
   gigTitle: string;
   /** The poster stored on the gig right now, if any. */
   current: { fileUploadId: string; name: string } | null;
@@ -36,6 +55,7 @@ type PosterFieldProps = {
  * a poster can be chosen before the gig it belongs to exists.
  */
 export function PosterField({
+  shape = "portrait",
   gigTitle,
   current,
   draft,
@@ -43,6 +63,7 @@ export function PosterField({
   uploadProgress,
   disabled = false,
 }: PosterFieldProps) {
+  const { constraints, title, description, noun, frame } = SHAPES[shape];
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [rejection, setRejection] = useState<string | null>(null);
@@ -57,7 +78,7 @@ export function PosterField({
   }, [previewUrl, draft.kind, current]);
 
   const accept = (file: File) => {
-    const reason = validateFile(file, CONSTRAINTS);
+    const reason = validateFile(file, constraints);
     if (reason) {
       setRejection(reason);
       return;
@@ -74,17 +95,14 @@ export function PosterField({
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <CardTitle>Poster</CardTitle>
-            <CardDescription>
-              The single portrait image (ideally 3:4) shown on the public gig
-              page.
-            </CardDescription>
+            <CardTitle>{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
             <input
               ref={fileInputRef}
               type="file"
-              accept={ACCEPT}
+              accept={constraints.accept.join(",")}
               className="sr-only"
               disabled={isDisabled}
               onChange={(e) => {
@@ -147,7 +165,8 @@ export function PosterField({
               if (file) accept(file);
             }}
             className={cn(
-              "bg-muted relative aspect-3/4 w-full max-w-xs shrink-0 overflow-hidden rounded-lg border transition-colors",
+              "bg-muted relative w-full shrink-0 overflow-hidden rounded-lg border transition-colors",
+              frame,
               !shown && "border-dashed",
               isDragging && "border-primary bg-primary/5",
             )}
@@ -160,7 +179,7 @@ export function PosterField({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={shown.url}
-                alt={`${gigTitle || "Gig"} poster`}
+                alt={`${gigTitle || "Gig"} ${noun}`}
                 className="h-full w-full object-cover"
               />
             ) : (
@@ -168,7 +187,9 @@ export function PosterField({
                 {draft.kind === "remove" ? (
                   <>
                     <ImageOff className="h-5 w-5" />
-                    <span>Poster will be removed when you save</span>
+                    <span className="first-letter:uppercase">
+                      {noun} will be removed when you save
+                    </span>
                   </>
                 ) : (
                   <>
@@ -197,7 +218,7 @@ export function PosterField({
             ) : null}
           </div>
 
-          <div className="text-muted-foreground space-y-2 text-sm">
+          <div className="text-muted-foreground min-w-0 space-y-2 text-sm [overflow-wrap:anywhere]">
             {draft.kind === "replace" ? (
               <p>
                 <span className="text-foreground font-medium">
@@ -207,20 +228,20 @@ export function PosterField({
               </p>
             ) : draft.kind === "remove" ? (
               <p>
-                The current poster will be detached and its file retired when
+                The current {noun} will be detached and its file retired when
                 you save.
               </p>
             ) : current ? (
               <p>
-                Current poster:{" "}
+                Current {noun}:{" "}
                 <span className="text-foreground font-medium">
                   {current.name}
                 </span>
               </p>
             ) : (
-              <p>No poster yet.</p>
+              <p className="first-letter:uppercase">No {noun} yet.</p>
             )}
-            <p className="text-xs">{describeConstraints(CONSTRAINTS)}</p>
+            <p className="text-xs">{describeConstraints(constraints)}</p>
             {rejection ? (
               <p className="text-destructive text-sm">{rejection}</p>
             ) : null}

@@ -128,7 +128,7 @@ function Purchase({ product }: { product: Product }) {
       <div className="flex gap-3">
         <QtyStepper value={qty} onChange={setQty} />
         <Button
-          className="flex-1"
+          className="h-auto min-h-11 min-w-0 flex-1 py-2 text-center leading-tight whitespace-normal"
           disabled={!canBuy}
           onClick={() => {
             if (!variant || !canBuy) return;
@@ -225,7 +225,7 @@ function ProductBody({ product }: { product: Product }) {
           </button>
         ) : null}
         {gallery.length > 1 ? (
-          <div className="mt-3 flex gap-3">
+          <div className="no-scrollbar -mx-1 mt-2 -mb-1 flex gap-3 overflow-x-auto p-1">
             {gallery.map((g, i) => (
               <button
                 key={g.src}
@@ -233,7 +233,7 @@ function ProductBody({ product }: { product: Product }) {
                 onClick={() => setShown(i)}
                 aria-label={`Show image ${i + 1}`}
                 className={cn(
-                  "relative w-20 ring-offset-2 ring-offset-black transition-shadow",
+                  "relative w-20 shrink-0 ring-offset-2 ring-offset-black transition-shadow",
                   i === shown
                     ? "ring-2 ring-white"
                     : "opacity-60 hover:opacity-100",

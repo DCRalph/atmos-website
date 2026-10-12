@@ -11,7 +11,10 @@ import { formatNZDCompact } from "~/lib/ticketing/money";
 import type { RouterOutputs } from "~/trpc/react";
 import { Media } from "../ui";
 
-export type ListGig = RouterOutputs["gigs"]["getUpcoming"][number];
+/** A gig from `getUpcoming`, the one list that carries the wide poster. */
+export type UpcomingGig = RouterOutputs["gigs"]["getUpcoming"][number];
+/** A gig on any of the lists. */
+export type ListGig = Omit<UpcomingGig, "widePosterUrl">;
 export type DetailGig = NonNullable<RouterOutputs["gigs"]["getById"]>;
 export type PublicTicketEvent =
   RouterOutputs["ticketEvents"]["upcoming"][number];

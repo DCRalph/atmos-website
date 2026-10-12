@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { loadStripe, type Stripe } from "@stripe/stripe-js";
+import { loadStripe, type Appearance, type Stripe } from "@stripe/stripe-js";
 import {
   Elements,
   ExpressCheckoutElement,
@@ -50,12 +50,27 @@ export type CheckoutSession = {
  */
 
 let stripePromise: Promise<Stripe | null> | null = null;
-function getStripePromise() {
+/** Stripe.js, loaded once per page. Null when payments aren't configured. */
+export function getStripePromise() {
   const key = env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
   if (!key) return null;
   stripePromise ??= loadStripe(key);
   return stripePromise;
 }
+
+/** Stripe Elements styled like the site: true black, acid accent, soft 12px fields. */
+export const stripeAppearance: Appearance = {
+  theme: "night",
+  variables: {
+    colorPrimary: "#c6ff33",
+    colorBackground: "#0b0b0b",
+    colorText: "#ffffff",
+    colorTextSecondary: "rgba(255,255,255,0.6)",
+    colorDanger: "#ff8a8a",
+    borderRadius: "12px",
+    fontFamily: "system-ui, sans-serif",
+  },
+};
 
 export function CheckoutSection({ session }: { session: CheckoutSession }) {
   if (session.isFree) {
@@ -81,19 +96,7 @@ export function CheckoutSection({ session }: { session: CheckoutSession }) {
       stripe={stripe}
       options={{
         clientSecret: session.clientSecret,
-        // Matches the site: true black, acid accent, soft 12px fields.
-        appearance: {
-          theme: "night",
-          variables: {
-            colorPrimary: "#c6ff33",
-            colorBackground: "#0b0b0b",
-            colorText: "#ffffff",
-            colorTextSecondary: "rgba(255,255,255,0.6)",
-            colorDanger: "#ff8a8a",
-            borderRadius: "12px",
-            fontFamily: "system-ui, sans-serif",
-          },
-        },
+        appearance: stripeAppearance,
       }}
     >
       <PaidCheckout session={session} />

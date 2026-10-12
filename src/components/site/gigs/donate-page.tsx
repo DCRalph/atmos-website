@@ -1,35 +1,67 @@
 "use client";
 
-import { useId, useState, type FormEvent } from "react";
+import {
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart } from "lucide-react";
+import {
+  Elements,
+  ExpressCheckoutElement,
+  PaymentElement,
+  useElements,
+  useStripe,
+} from "@stripe/react-stripe-js";
+import { ArrowLeft, CreditCard, Heart, ShieldCheck } from "lucide-react";
+import { z } from "zod";
 
 import { api } from "~/trpc/react";
 import { LexicalContent } from "~/components/lexical";
+import {
+  getStripePromise,
+  stripeAppearance,
+} from "~/components/ticketing/checkout-panel";
 import type { donateGig } from "~/server/donations";
-import { donationCentsSchema } from "~/lib/donations";
+import {
+  DONATION_PAYMENT_METHODS,
+  donationCentsSchema,
+  MIN_DONATION_CENTS,
+} from "~/lib/donations";
 import { formatNZDCompact, parsePriceToCents } from "~/lib/ticketing/money";
 import { cn } from "~/lib/utils";
-import { AtmosLogo, Button, Media, buttonVariants } from "../ui";
+import {
+  AtmosLogo,
+  Button,
+  IconButton,
+  buttonVariants,
+  inputClass,
+} from "../ui";
 
 /** What `/gigs/[id]/donate` loads. */
 type DonateGig = NonNullable<Awaited<ReturnType<typeof donateGig>>>;
 
 /**
- * The donate page: the poster filling the screen and one glass panel with
- * three suggested amounts, a custom one, and the button out to Stripe. Laid
- * out like the photo signup page, so it fits a phone without scrolling and
- * holds the poster sharp beside the panel on a wide screen.
+ * The donate page: the poster, big and whole, over a blur of itself, and one
+ * glass panel that takes the money in place. Wallet buttons sit right under
+ * the amounts so most people give in two taps; paying by card slides the
+ * panel over to Stripe's card form. Poster beside the panel on a wide screen,
+ * above it on a phone.
  */
 export function DonatePage({
   gig,
   thankedCents,
 }: {
   gig: DonateGig;
-  /** Set when Stripe has just sent them back paid. */
+  /** Set when a redirecting payment method has just sent them back paid. */
   thankedCents: number | null;
 }) {
+  const [thanked, setThanked] = useState(thankedCents);
   const poster = gig.posterUrl;
 
   return (
@@ -41,34 +73,35 @@ export function DonatePage({
           fill
           priority
           sizes="100vw"
-          className="-z-10 object-cover md:scale-110 md:blur-2xl md:brightness-50"
+          className="-z-10 scale-110 object-cover blur-2xl brightness-50"
         />
       ) : null}
-      <div
-        aria-hidden
-        className="scrim-bottom absolute inset-0 -z-10 md:bg-black/30 md:bg-none"
-      />
+      <div aria-hidden className="absolute inset-0 -z-10 bg-black/30" />
 
       <div
         className={cn(
-          "mx-auto flex min-h-dvh max-w-[900px] flex-col justify-end px-4 pt-24 pb-7 md:items-center md:justify-center md:py-16",
+          "mx-auto flex min-h-dvh max-w-[1000px] flex-col items-center justify-end gap-6 px-4 pt-10 pb-7 md:justify-center md:py-16",
           poster &&
-            "md:grid md:grid-cols-[minmax(0,340px)_minmax(0,380px)] md:gap-11",
+            "md:grid md:grid-cols-[minmax(0,460px)_minmax(0,380px)] md:gap-12",
         )}
       >
         {poster ? (
-          <Media
+          // Whole, at its own shape: a poster is worth seeing uncropped.
+          <Image
             src={poster}
             alt={`${gig.title} poster`}
-            sizes="340px"
-            className="hidden aspect-[4/5] md:block"
+            width={920}
+            height={1150}
+            priority
+            sizes="(min-width: 768px) 460px, 100vw"
+            className="h-auto w-full max-w-[420px] rounded-[var(--site-r-panel)] shadow-2xl shadow-black/60 md:max-w-none"
           />
         ) : null}
 
-        <div className="w-full md:max-w-[380px]">
+        <div className="w-full max-w-[420px] md:max-w-[380px]">
           <section className="glass-dark space-y-4 rounded-[var(--site-r-panel)] rounded-tl-none p-[22px]">
-            {thankedCents !== null ? (
-              <Thanks gig={gig} cents={thankedCents} />
+            {thanked !== null ? (
+              <Thanks gig={gig} cents={thanked} />
             ) : (
               <>
                 <p className="t-label text-[10px] text-[var(--site-accent-text)]">
@@ -85,7 +118,7 @@ export function DonatePage({
                     contentClassName="text-[15px] leading-relaxed text-white/75 [&_a]:text-white [&_a]:underline [&_a]:underline-offset-4 [&_li]:mb-1 [&_p:not(:last-child)]:mb-3 [&_strong]:text-white [&_ul]:list-disc [&_ul]:pl-5"
                   />
                 ) : null}
-                <DonateForm gig={gig} />
+                <DonateForm gig={gig} onPaid={setThanked} />
               </>
             )}
           </section>
@@ -101,8 +134,20 @@ export function DonatePage({
   );
 }
 
-/** Three suggestions or a custom amount, then off to Stripe. */
-function DonateForm({ gig }: { gig: DonateGig }) {
+type Stage = "amount" | "card";
+
+/**
+ * Pick an amount, then pay with a wallet button right there, or tap through
+ * to the card form. One Elements group holds both, in Stripe's deferred mode:
+ * the intent is only made once they pay, for whatever amount is picked then.
+ */
+function DonateForm({
+  gig,
+  onPaid,
+}: {
+  gig: DonateGig;
+  onPaid: (cents: number) => void;
+}) {
   const id = useId();
   // The recommended suggestion starts picked. Without one, nothing does.
   const [picked, setPicked] = useState<number | "custom" | null>(
@@ -110,9 +155,7 @@ function DonateForm({ gig }: { gig: DonateGig }) {
   );
   const [custom, setCustom] = useState("");
   const [invalid, setInvalid] = useState<string | null>(null);
-  const checkout = api.donations.checkout.useMutation({
-    onSuccess: ({ url }) => window.location.assign(url),
-  });
+  const [stage, setStage] = useState<Stage>("amount");
 
   const cents =
     picked === "custom"
@@ -120,28 +163,166 @@ function DonateForm({ gig }: { gig: DonateGig }) {
       : picked === null
         ? null
         : (gig.amountsCents[picked] ?? null);
-  // Still pending while the browser leaves for Stripe.
-  const busy = checkout.isPending || checkout.isSuccess;
+  const parsed = donationCentsSchema.safeParse(cents);
+  const amount = parsed.success ? parsed.data : null;
 
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    const parsed = donationCentsSchema.safeParse(cents);
-    if (!parsed.success) {
-      return setInvalid(
-        picked === null
-          ? "Pick an amount."
-          : cents === null
-            ? "Enter an amount, like 15."
-            : (parsed.error.issues[0]?.message ?? "That amount won't work."),
-      );
-    }
-    checkout.mutate({ gigId: gig.id, amountCents: parsed.data });
+  /** True when the amount can be paid; otherwise says why and stays put. */
+  const ready = () => {
+    if (parsed.success) return true;
+    setInvalid(
+      picked === null
+        ? "Pick an amount."
+        : cents === null
+          ? "Enter an amount, like 15."
+          : (parsed.error.issues[0]?.message ?? "That amount won't work."),
+    );
+    return false;
   };
 
-  const error = invalid ?? checkout.error?.message;
+  const stripe = getStripePromise();
+  if (!stripe) {
+    return (
+      <p className="text-[14px] text-[var(--site-danger-text)]">
+        Payments aren&apos;t available right now. Try again shortly.
+      </p>
+    );
+  }
 
   return (
-    <form noValidate onSubmit={submit} className="space-y-3 pt-1">
+    <Elements
+      stripe={stripe}
+      options={{
+        mode: "payment",
+        currency: "nzd",
+        // Stripe needs some amount from the start. Until one is valid the
+        // wallet buttons are covered, so this placeholder is never charged.
+        amount: amount ?? MIN_DONATION_CENTS,
+        // Must match `donations.intent`. Apple Pay and Google Pay are cards.
+        paymentMethodTypes: [...DONATION_PAYMENT_METHODS],
+        appearance: stripeAppearance,
+      }}
+    >
+      <Slides
+        stage={stage}
+        amount={
+          <div className="space-y-3 pt-3">
+            <AmountPicker
+              id={id}
+              gig={gig}
+              picked={picked}
+              custom={custom}
+              invalid={invalid}
+              onPick={(next) => {
+                setPicked(next);
+                setInvalid(null);
+              }}
+              onCustom={(value) => {
+                setCustom(value);
+                setPicked("custom");
+                setInvalid(null);
+              }}
+            />
+            <PayButtons
+              gigId={gig.id}
+              amount={amount}
+              ready={ready}
+              onCard={() => ready() && setStage("card")}
+              onPaid={onPaid}
+            />
+          </div>
+        }
+        card={
+          amount === null ? null : (
+            <CardForm
+              gigId={gig.id}
+              amount={amount}
+              onBack={() => setStage("amount")}
+              onPaid={onPaid}
+            />
+          )
+        }
+      />
+    </Elements>
+  );
+}
+
+/**
+ * Two panes side by side, sliding to the active one. The frame takes the
+ * active pane's height, so the panel grows and shrinks with it.
+ */
+function Slides({
+  stage,
+  amount,
+  card,
+}: {
+  stage: Stage;
+  amount: ReactNode;
+  card: ReactNode;
+}) {
+  const amountRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const amountHeight = useHeight(amountRef);
+  const cardHeight = useHeight(cardRef);
+  const onCard = stage === "card";
+
+  return (
+    // The side padding keeps focus outlines clear of the clip.
+    <div
+      className="-mx-1 overflow-hidden px-1 transition-[height] duration-300 ease-out motion-reduce:transition-none"
+      style={{ height: onCard ? cardHeight : amountHeight }}
+    >
+      <div
+        className="flex items-start gap-3 transition-transform duration-300 ease-out motion-reduce:transition-none"
+        style={{
+          transform: onCard ? "translateX(calc(-100% - 0.75rem))" : "none",
+        }}
+      >
+        <div ref={amountRef} inert={onCard} className="w-full shrink-0">
+          {amount}
+        </div>
+        <div ref={cardRef} inert={!onCard} className="w-full shrink-0">
+          {card}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** An element's border-box height, kept current. Undefined until measured. */
+function useHeight(ref: RefObject<HTMLElement | null>) {
+  const [height, setHeight] = useState<number>();
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) =>
+      setHeight(entry?.borderBoxSize[0]?.blockSize),
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref]);
+  return height;
+}
+
+/** Three suggestions and a custom amount. */
+function AmountPicker({
+  id,
+  gig,
+  picked,
+  custom,
+  invalid,
+  onPick,
+  onCustom,
+}: {
+  id: string;
+  gig: DonateGig;
+  picked: number | "custom" | null;
+  custom: string;
+  invalid: string | null;
+  onPick: (picked: number | "custom") => void;
+  onCustom: (value: string) => void;
+}) {
+  return (
+    <>
       <div
         role="radiogroup"
         aria-label="Suggested amounts"
@@ -155,10 +336,7 @@ function DonateForm({ gig }: { gig: DonateGig }) {
               type="button"
               role="radio"
               aria-checked={on}
-              onClick={() => {
-                setPicked(index);
-                setInvalid(null);
-              }}
+              onClick={() => onPick(index)}
               className={cn(
                 "t-display relative h-16 rounded-full border text-[22px] tabular-nums transition-colors",
                 on
@@ -180,7 +358,7 @@ function DonateForm({ gig }: { gig: DonateGig }) {
       <div
         className={cn(
           "flex h-14 items-center gap-2 rounded-full border bg-black/30 px-5 focus-within:border-white/70",
-          picked === "custom" && error
+          picked === "custom" && invalid
             ? "border-[var(--site-danger)]"
             : picked === "custom"
               ? "border-white/70"
@@ -198,28 +376,184 @@ function DonateForm({ gig }: { gig: DonateGig }) {
           inputMode="decimal"
           autoComplete="off"
           value={custom}
-          onFocus={() => setPicked("custom")}
-          onChange={(e) => {
-            setCustom(e.target.value);
-            setPicked("custom");
-            setInvalid(null);
-          }}
-          aria-invalid={picked === "custom" && !!error}
-          aria-describedby={error ? `${id}-err` : undefined}
+          onFocus={() => onPick("custom")}
+          onChange={(e) => onCustom(e.target.value)}
+          aria-invalid={picked === "custom" && !!invalid}
+          aria-describedby={invalid ? `${id}-err` : undefined}
           placeholder="Other amount"
           className="min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-white/45"
         />
       </div>
 
-      {error ? (
+      {invalid ? (
         <p
           id={`${id}-err`}
           role="alert"
           className="pl-5 text-[13px] text-[var(--site-danger-text)]"
         >
-          {error}
+          {invalid}
         </p>
       ) : null}
+    </>
+  );
+}
+
+/**
+ * Apple Pay, Google Pay and Link as Stripe offers them on this device, then
+ * the way through to the card form. Without a valid amount the wallet buttons
+ * are covered by one that just says so, since a wallet sheet can't be opened
+ * for nothing.
+ */
+function PayButtons({
+  gigId,
+  amount,
+  ready,
+  onCard,
+  onPaid,
+}: {
+  gigId: string;
+  amount: number | null;
+  ready: () => boolean;
+  onCard: () => void;
+  onPaid: (cents: number) => void;
+}) {
+  const donate = useDonate(gigId);
+  // Null until Stripe says which wallets this device has, if any.
+  const [wallets, setWallets] = useState<boolean | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <>
+      <div className={cn("relative", amount === null && "opacity-50")}>
+        <ExpressCheckoutElement
+          options={{
+            buttonHeight: 52,
+            buttonType: { applePay: "donate", googlePay: "donate" },
+            buttonTheme: { applePay: "white", googlePay: "white" },
+            layout: { maxColumns: 1, overflow: "never" },
+          }}
+          onReady={({ availablePaymentMethods }) =>
+            setWallets(!!availablePaymentMethods)
+          }
+          // The wallet already knows it, so a receipt costs them nothing.
+          onClick={({ resolve }) => resolve({ emailRequired: true })}
+          onConfirm={async (event) => {
+            if (amount === null) return event.paymentFailed();
+            setError(null);
+            const failed = await donate(amount, event.billingDetails?.email);
+            if (failed === null) return onPaid(amount);
+            event.paymentFailed({ reason: "fail" });
+            setError(failed);
+          }}
+        />
+        {amount === null && wallets ? (
+          <button
+            type="button"
+            aria-label="Pick an amount first"
+            onClick={ready}
+            className="absolute inset-0 z-10 cursor-pointer"
+          />
+        ) : null}
+      </div>
+
+      {wallets ? (
+        <p className="flex items-center gap-3 text-[12px] text-white/45">
+          <span className="h-px flex-1 bg-white/10" />
+          or
+          <span className="h-px flex-1 bg-white/10" />
+        </p>
+      ) : null}
+
+      {error ? <PayError message={error} /> : null}
+
+      <Button
+        variant={wallets ? "outline" : "accent"}
+        size="lg"
+        className="w-full"
+        onClick={onCard}
+      >
+        <CreditCard className="size-4" aria-hidden />
+        {wallets
+          ? "Pay by card"
+          : amount !== null
+            ? `Donate ${formatNZDCompact(amount)}`
+            : "Donate"}
+      </Button>
+    </>
+  );
+}
+
+const emailSchema = z.email();
+
+/** The card form, slid in once they tap through. */
+function CardForm({
+  gigId,
+  amount,
+  onBack,
+  onPaid,
+}: {
+  gigId: string;
+  amount: number;
+  onBack: () => void;
+  onPaid: (cents: number) => void;
+}) {
+  const id = useId();
+  const donate = useDonate(gigId);
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    const trimmed = email.trim();
+    if (trimmed && !emailSchema.safeParse(trimmed).success) {
+      return setError("That email doesn't look right. Leave it empty to skip.");
+    }
+    setBusy(true);
+    setError(null);
+    const failed = await donate(amount, trimmed || undefined);
+    if (failed === null) return onPaid(amount);
+    setError(failed);
+    setBusy(false);
+  };
+
+  return (
+    <form
+      noValidate
+      onSubmit={(e) => void submit(e)}
+      className="space-y-3 pt-3"
+    >
+      <div className="flex items-center gap-3">
+        <IconButton label="Change the amount" onClick={onBack}>
+          <ArrowLeft className="size-4" aria-hidden />
+        </IconButton>
+        <p className="t-display text-[22px]">
+          Donate {formatNZDCompact(amount)}
+        </p>
+      </div>
+
+      <label className="sr-only" htmlFor={id}>
+        Email for a receipt, optional
+      </label>
+      <input
+        id={id}
+        type="email"
+        autoComplete="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="Email for a receipt (optional)"
+        className={cn(inputClass, "text-[16px]")}
+      />
+
+      <PaymentElement
+        options={{
+          layout: "tabs",
+          // The wallets have their own buttons a slide back.
+          wallets: { applePay: "never", googlePay: "never" },
+        }}
+      />
+
+      {error ? <PayError message={error} /> : null}
 
       <Button
         type="submit"
@@ -230,20 +564,79 @@ function DonateForm({ gig }: { gig: DonateGig }) {
         aria-busy={busy}
       >
         <Heart className="size-4 fill-current" aria-hidden />
-        {busy
-          ? "Opening checkout…"
-          : cents !== null && cents > 0
-            ? `Donate ${formatNZDCompact(cents)}`
-            : "Donate"}
+        {busy ? "Donating…" : `Donate ${formatNZDCompact(amount)}`}
       </Button>
-      <p className="text-center text-[12px] leading-snug text-white/50">
-        Secure checkout with Stripe. Apple Pay, Google Pay or card.
+      <p className="flex items-center justify-center gap-1.5 text-[12px] text-white/45">
+        <ShieldCheck className="size-3.5" aria-hidden />
+        Card details go straight to Stripe. We never see them.
       </p>
     </form>
   );
 }
 
-/** After Stripe sends them back paid. */
+function PayError({ message }: { message: string }) {
+  return (
+    <p
+      role="alert"
+      className="rounded-[var(--site-r-chip)] border border-[var(--site-danger)]/50 bg-[var(--site-danger)]/10 px-4 py-3 text-[14px] text-[var(--site-danger-text)]"
+    >
+      {message}
+    </p>
+  );
+}
+
+/**
+ * Pay a donation with whatever the Elements group holds: the wallet that was
+ * just tapped, or the card form. Makes the intent, confirms it in place, then
+ * records it. Resolves to an error to show, or null once paid. A method that
+ * has to leave for its own page comes back to this page, which thanks them.
+ */
+function useDonate(gigId: string) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const intent = api.donations.intent.useMutation();
+  const confirm = api.donations.confirm.useMutation();
+
+  return async (
+    amountCents: number,
+    email: string | undefined,
+  ): Promise<string | null> => {
+    if (!stripe || !elements) return "Payments are still loading.";
+
+    const submitted = await elements.submit();
+    if (submitted.error) {
+      return submitted.error.message ?? "Check the details and try again.";
+    }
+
+    try {
+      const { clientSecret } = await intent.mutateAsync({
+        gigId,
+        amountCents,
+        email,
+      });
+      const result = await stripe.confirmPayment({
+        elements,
+        clientSecret,
+        confirmParams: {
+          return_url: `${window.location.origin}${window.location.pathname}`,
+        },
+        redirect: "if_required",
+      });
+      if (result.error) {
+        return result.error.message ?? "That payment didn't go through.";
+      }
+      // Recording here is a head start on the webhook, which does it anyway.
+      await confirm
+        .mutateAsync({ gigId, paymentIntentId: result.paymentIntent.id })
+        .catch(() => null);
+      return null;
+    } catch (cause) {
+      return cause instanceof Error ? cause.message : "Something went wrong.";
+    }
+  };
+}
+
+/** Once they've given. */
 function Thanks({ gig, cents }: { gig: DonateGig; cents: number }) {
   return (
     <div role="status" className="space-y-4">

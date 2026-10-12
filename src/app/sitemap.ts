@@ -1,76 +1,97 @@
 import { type MetadataRoute } from "next";
 import { db } from "~/server/db";
-import { env } from "~/env";
+import { SITE_URL } from "~/lib/seo-constants";
 import { gigPath } from "~/lib/gig-url";
-import { GigStatus } from "~Prisma/client";
+import {
+  GigStatus,
+  TicketEventStatus,
+  TicketEventVisibility,
+} from "~Prisma/client";
 
+/** Rebuilt hourly, so new gigs and events show up without a deploy. */
+export const revalidate = 3600;
+
+/**
+ * Public pages only. Ticket, pass, receipt, donate and photo signup pages are
+ * reached by a link somebody was sent, and are noindex.
+ */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const siteUrl = env.NEXT_PUBLIC_APP_URL ?? "https://atmosmedia.co.nz";
-
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [
     {
-      url: siteUrl,
+      url: SITE_URL,
       lastModified: new Date(),
       changeFrequency: "daily",
       priority: 1,
     },
     {
-      url: `${siteUrl}/gigs`,
+      url: `${SITE_URL}/gigs`,
       lastModified: new Date(),
       changeFrequency: "daily",
       priority: 0.9,
     },
     {
-      url: `${siteUrl}/crew`,
+      url: `${SITE_URL}/events`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.9,
+    },
+    {
+      url: `${SITE_URL}/crew`,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.8,
     },
     {
-      url: `${siteUrl}/about`,
+      url: `${SITE_URL}/about`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.7,
     },
     {
-      url: `${siteUrl}/contact`,
+      url: `${SITE_URL}/contact`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.6,
     },
     {
-      url: `${siteUrl}/content`,
+      url: `${SITE_URL}/content`,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.7,
     },
     {
-      url: `${siteUrl}/merch`,
+      url: `${SITE_URL}/merch`,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.6,
     },
     {
-      url: `${siteUrl}/socials`,
+      url: `${SITE_URL}/socials`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.5,
     },
     {
-      url: `${siteUrl}/equipment`,
+      url: `${SITE_URL}/equipment`,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.7,
     },
     {
-      url: `${siteUrl}/privacy`,
+      url: `${SITE_URL}/privacy`,
       lastModified: new Date(),
       changeFrequency: "yearly",
       priority: 0.3,
     },
     {
-      url: `${siteUrl}/terms`,
+      url: `${SITE_URL}/terms`,
+      lastModified: new Date(),
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
+    {
+      url: `${SITE_URL}/tickets/terms`,
       lastModified: new Date(),
       changeFrequency: "yearly",
       priority: 0.3,
@@ -101,7 +122,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
 
     gigPages = gigs.map((gig) => ({
-      url: `${siteUrl}${gigPath(gig)}`,
+      url: `${SITE_URL}${gigPath(gig)}`,
       lastModified: gig.updatedAt,
       changeFrequency: "weekly" as const,
       // Upcoming events get higher priority. A TBA gig is always upcoming, and
@@ -113,5 +134,35 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error("Failed to fetch gigs for sitemap:", error);
   }
 
-  return [...staticPages, ...gigPages];
+  // Ticket pages for events still to come, as listed on /events. Unlisted and
+  // private events are noindex, so they stay out.
+  let eventPages: MetadataRoute.Sitemap = [];
+  try {
+    const events = await db.ticketEvent.findMany({
+      where: {
+        status: {
+          in: [
+            TicketEventStatus.PUBLISHED,
+            TicketEventStatus.SALES_PAUSED,
+            TicketEventStatus.SOLD_OUT,
+          ],
+        },
+        visibility: TicketEventVisibility.PUBLIC,
+        startsAt: { gte: new Date() },
+      },
+      select: { slug: true, updatedAt: true },
+      orderBy: { startsAt: "asc" },
+    });
+
+    eventPages = events.map((event) => ({
+      url: `${SITE_URL}/events/${event.slug}`,
+      lastModified: event.updatedAt,
+      changeFrequency: "daily" as const,
+      priority: 0.9,
+    }));
+  } catch (error) {
+    console.error("Failed to fetch ticket events for sitemap:", error);
+  }
+
+  return [...staticPages, ...eventPages, ...gigPages];
 }

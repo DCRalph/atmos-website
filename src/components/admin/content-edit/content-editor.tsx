@@ -8,17 +8,12 @@ import {
   ArrowLeft,
   ExternalLink,
   Loader2,
-  Save,
   Trash2,
   TriangleAlert,
-  Undo2,
 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { AdminSection } from "~/components/admin/admin-section";
-import {
-  SaveStatusPill,
-  type SaveStatus,
-} from "~/components/admin/save-status";
+import { SaveBar, type SaveStatus } from "~/components/admin/save-status";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -446,296 +441,284 @@ export function ContentEditor({
       </div>
 
       {/* The page's one and only Save. */}
-      <div className="bg-background/95 sticky top-20 z-20 -mx-2 mb-6 flex flex-wrap items-center gap-3 rounded-lg border px-4 py-3 backdrop-blur">
-        <SaveStatusPill status={status} errorMessage={errorMessage} />
-        {status === "idle" ? (
-          <span className="text-muted-foreground text-sm">
-            {isNew
+      <SaveBar
+        status={status}
+        errorMessage={errorMessage}
+        message={
+          status === "idle"
+            ? isNew
               ? "Fill in the details, then add the item."
-              : "Everything on this page is up to date."}
-          </span>
-        ) : null}
-        <div className="ml-auto flex items-center gap-2">
-          {isDirty && !isNew ? (
-            <Button
-              variant="ghost"
-              disabled={isSaving}
-              onClick={() => {
+              : "Everything on this page is up to date."
+            : null
+        }
+        saveLabel={isNew ? "Add content" : "Save"}
+        isSaving={isSaving}
+        onSave={() => void save()}
+        onDiscard={
+          isDirty && !isNew
+            ? () => {
                 setDraft(baseline);
                 setErrors({});
                 setErrorMessage(null);
                 setSaveState("idle");
-              }}
-            >
-              <Undo2 className="h-4 w-4" />
-              Discard changes
-            </Button>
-          ) : null}
-          <Button onClick={() => void save()} disabled={isSaving}>
-            {isSaving ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4" />
-                {isNew ? "Add content" : "Save"}
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Details</CardTitle>
-            <CardDescription>
-              What this item is, and who it is by
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <Field
-                id="content-title"
-                label="Title"
-                error={errors.title}
-                required
-              >
-                <Input
+              }
+            : undefined
+        }
+      >
+        <div className="flex flex-col gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Details</CardTitle>
+              <CardDescription>
+                What this item is, and who it is by
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <Field
                   id="content-title"
-                  value={draft.title}
-                  onChange={(e) => update("title", e.target.value)}
-                  aria-invalid={Boolean(errors.title)}
-                />
-              </Field>
-              <Field
-                id="content-type"
-                label="Type"
-                error={errors.type}
-                required
-                hint="Free text — reuse an existing value to keep the list tidy."
-              >
-                <Input
+                  label="Title"
+                  error={errors.title}
+                  required
+                >
+                  <Input
+                    id="content-title"
+                    value={draft.title}
+                    onChange={(e) => update("title", e.target.value)}
+                    aria-invalid={Boolean(errors.title)}
+                  />
+                </Field>
+                <Field
                   id="content-type"
-                  value={draft.type}
-                  onChange={(e) => update("type", e.target.value)}
-                  placeholder="MIX, PLAYLIST, VIDEO"
-                  aria-invalid={Boolean(errors.type)}
-                />
-                <Suggestions
-                  label="In use"
-                  values={typeSuggestions.map((row) => row.value)}
-                  onPick={(value) => update("type", value)}
-                  disabled={isSaving}
+                  label="Type"
+                  error={errors.type}
+                  required
+                  hint="Free text — reuse an existing value to keep the list tidy."
+                >
+                  <Input
+                    id="content-type"
+                    value={draft.type}
+                    onChange={(e) => update("type", e.target.value)}
+                    placeholder="MIX, PLAYLIST, VIDEO"
+                    aria-invalid={Boolean(errors.type)}
+                  />
+                  <Suggestions
+                    label="In use"
+                    values={typeSuggestions.map((row) => row.value)}
+                    onPick={(value) => update("type", value)}
+                    disabled={isSaving}
+                  />
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <Field
+                  id="content-platform"
+                  label="Platform"
+                  hint="Optional. Decides the badge colour and icon on the public card."
+                >
+                  <Input
+                    id="content-platform"
+                    value={draft.platform}
+                    onChange={(e) => update("platform", e.target.value)}
+                    placeholder="Soundcloud, Spotify, YouTube"
+                  />
+                  <Suggestions
+                    label="Known"
+                    values={platformSuggestions}
+                    onPick={(value) => update("platform", value)}
+                    disabled={isSaving}
+                  />
+                  {platformUnknown ? (
+                    <p className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-xs">
+                      <TriangleAlert className="h-3.5 w-3.5 text-amber-500" />
+                      <span>
+                        &quot;{platformValue}&quot; has no icon or colour on the
+                        public card.
+                      </span>
+                      {platformCasingFix ? (
+                        <button
+                          type="button"
+                          className="text-foreground underline"
+                          onClick={() =>
+                            update("platform", platformCasingFix.value)
+                          }
+                        >
+                          Use &quot;{platformCasingFix.value}&quot; instead
+                        </button>
+                      ) : null}
+                    </p>
+                  ) : null}
+                </Field>
+                <Field id="content-dj" label="DJ" hint="Optional.">
+                  <Input
+                    id="content-dj"
+                    value={draft.dj}
+                    onChange={(e) => update("dj", e.target.value)}
+                    placeholder="DJ name"
+                  />
+                </Field>
+              </div>
+
+              <Field
+                id="content-description"
+                label="Description"
+                error={errors.description}
+                required
+              >
+                <Textarea
+                  id="content-description"
+                  rows={4}
+                  value={draft.description}
+                  onChange={(e) => update("description", e.target.value)}
+                  aria-invalid={Boolean(errors.description)}
                 />
               </Field>
-            </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Field
-                id="content-platform"
-                label="Platform"
-                hint="Optional. Decides the badge colour and icon on the public card."
+                id="content-date"
+                label="Date"
+                error={errors.date}
+                required
+                hint="Orders the content list, newest first."
               >
-                <Input
-                  id="content-platform"
-                  value={draft.platform}
-                  onChange={(e) => update("platform", e.target.value)}
-                  placeholder="Soundcloud, Spotify, YouTube"
+                <DatePicker
+                  date={draft.date}
+                  onDateChange={(value) => update("date", value)}
+                  placeholder="Select a date"
                 />
-                <Suggestions
-                  label="Known"
-                  values={platformSuggestions}
-                  onPick={(value) => update("platform", value)}
-                  disabled={isSaving}
-                />
-                {platformUnknown ? (
-                  <p className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-xs">
-                    <TriangleAlert className="h-3.5 w-3.5 text-amber-500" />
-                    <span>
-                      &quot;{platformValue}&quot; has no icon or colour on the
-                      public card.
-                    </span>
-                    {platformCasingFix ? (
+              </Field>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Link & embed</CardTitle>
+              <CardDescription>
+                Where the item points, and what plays inline when it is featured
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="content-link-type">Link type</Label>
+                  <Select
+                    value={draft.linkType}
+                    onValueChange={(value) =>
+                      update("linkType", value as ContentLinkType)
+                    }
+                  >
+                    <SelectTrigger id="content-link-type" className="w-full">
+                      <SelectValue placeholder="Select link type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ContentLinkType.OTHER}>
+                        Other
+                      </SelectItem>
+                      <SelectItem value={ContentLinkType.SOUNDCLOUD_TRACK}>
+                        SoundCloud track
+                      </SelectItem>
+                      <SelectItem value={ContentLinkType.SOUNDCLOUD_PLAYLIST}>
+                        SoundCloud playlist
+                      </SelectItem>
+                      <SelectItem value={ContentLinkType.YOUTUBE_VIDEO}>
+                        YouTube video
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-muted-foreground text-xs">
+                    Decides whether a player can be embedded.
+                  </p>
+                </div>
+                <Field
+                  id="content-link"
+                  label="Link"
+                  error={errors.link}
+                  required
+                >
+                  <Input
+                    id="content-link"
+                    type="url"
+                    value={draft.link}
+                    onChange={(e) => update("link", e.target.value)}
+                    placeholder={
+                      isSoundCloud(draft.linkType)
+                        ? "SoundCloud track/playlist URL"
+                        : draft.linkType === ContentLinkType.YOUTUBE_VIDEO
+                          ? "YouTube video URL"
+                          : "Content URL"
+                    }
+                    aria-invalid={Boolean(errors.link)}
+                  />
+                </Field>
+              </div>
+
+              {draft.linkType === ContentLinkType.OTHER ? (
+                <p className="text-muted-foreground text-sm">
+                  Link type <span className="font-medium">Other</span> has no
+                  inline player — the card links straight out. Pick a SoundCloud
+                  or YouTube type to embed one.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Label htmlFor="content-embed">
+                      {draft.linkType === ContentLinkType.YOUTUBE_VIDEO
+                        ? "YouTube video ID"
+                        : "Embed URL"}
+                    </Label>
+                    {isSoundCloud(draft.linkType) ? (
+                      <SoundCloudEmbedParserDialog
+                        onApply={(value) => update("embedUrl", value)}
+                        disabled={isSaving}
+                      />
+                    ) : null}
+                  </div>
+                  <Input
+                    id="content-embed"
+                    value={draft.embedUrl}
+                    onChange={(e) => update("embedUrl", e.target.value)}
+                    placeholder={
+                      draft.linkType === ContentLinkType.YOUTUBE_VIDEO
+                        ? "e.g. dQw4w9WgXcQ"
+                        : "SoundCloud embed URL for the player"
+                    }
+                    aria-invalid={Boolean(errors.embedUrl)}
+                  />
+                  {errors.embedUrl ? (
+                    <p className="text-destructive text-xs">
+                      {errors.embedUrl}
+                    </p>
+                  ) : youtubeIdFromUrl ? (
+                    <p className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-xs">
+                      <TriangleAlert className="h-3.5 w-3.5 text-amber-500" />
+                      <span>
+                        This field wants the bare video ID, not a URL — the
+                        embed will not render.
+                      </span>
                       <button
                         type="button"
                         className="text-foreground underline"
-                        onClick={() =>
-                          update("platform", platformCasingFix.value)
-                        }
+                        onClick={() => update("embedUrl", youtubeIdFromUrl)}
                       >
-                        Use &quot;{platformCasingFix.value}&quot; instead
+                        Use &quot;{youtubeIdFromUrl}&quot;
                       </button>
-                    ) : null}
-                  </p>
-                ) : null}
-              </Field>
-              <Field id="content-dj" label="DJ" hint="Optional.">
-                <Input
-                  id="content-dj"
-                  value={draft.dj}
-                  onChange={(e) => update("dj", e.target.value)}
-                  placeholder="DJ name"
-                />
-              </Field>
-            </div>
-
-            <Field
-              id="content-description"
-              label="Description"
-              error={errors.description}
-              required
-            >
-              <Textarea
-                id="content-description"
-                rows={4}
-                value={draft.description}
-                onChange={(e) => update("description", e.target.value)}
-                aria-invalid={Boolean(errors.description)}
-              />
-            </Field>
-
-            <Field
-              id="content-date"
-              label="Date"
-              error={errors.date}
-              required
-              hint="Orders the content list, newest first."
-            >
-              <DatePicker
-                date={draft.date}
-                onDateChange={(value) => update("date", value)}
-                placeholder="Select a date"
-              />
-            </Field>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Link & embed</CardTitle>
-            <CardDescription>
-              Where the item points, and what plays inline when it is featured
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="content-link-type">Link type</Label>
-                <Select
-                  value={draft.linkType}
-                  onValueChange={(value) =>
-                    update("linkType", value as ContentLinkType)
-                  }
-                >
-                  <SelectTrigger id="content-link-type" className="w-full">
-                    <SelectValue placeholder="Select link type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ContentLinkType.OTHER}>Other</SelectItem>
-                    <SelectItem value={ContentLinkType.SOUNDCLOUD_TRACK}>
-                      SoundCloud track
-                    </SelectItem>
-                    <SelectItem value={ContentLinkType.SOUNDCLOUD_PLAYLIST}>
-                      SoundCloud playlist
-                    </SelectItem>
-                    <SelectItem value={ContentLinkType.YOUTUBE_VIDEO}>
-                      YouTube video
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-muted-foreground text-xs">
-                  Decides whether a player can be embedded.
-                </p>
-              </div>
-              <Field
-                id="content-link"
-                label="Link"
-                error={errors.link}
-                required
-              >
-                <Input
-                  id="content-link"
-                  type="url"
-                  value={draft.link}
-                  onChange={(e) => update("link", e.target.value)}
-                  placeholder={
-                    isSoundCloud(draft.linkType)
-                      ? "SoundCloud track/playlist URL"
-                      : draft.linkType === ContentLinkType.YOUTUBE_VIDEO
-                        ? "YouTube video URL"
-                        : "Content URL"
-                  }
-                  aria-invalid={Boolean(errors.link)}
-                />
-              </Field>
-            </div>
-
-            {draft.linkType === ContentLinkType.OTHER ? (
-              <p className="text-muted-foreground text-sm">
-                Link type <span className="font-medium">Other</span> has no
-                inline player — the card links straight out. Pick a SoundCloud
-                or YouTube type to embed one.
-              </p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Label htmlFor="content-embed">
-                    {draft.linkType === ContentLinkType.YOUTUBE_VIDEO
-                      ? "YouTube video ID"
-                      : "Embed URL"}
-                  </Label>
-                  {isSoundCloud(draft.linkType) ? (
-                    <SoundCloudEmbedParserDialog
-                      onApply={(value) => update("embedUrl", value)}
-                      disabled={isSaving}
-                    />
-                  ) : null}
+                    </p>
+                  ) : (
+                    <p className="text-muted-foreground text-xs">
+                      Optional.{" "}
+                      {draft.linkType === ContentLinkType.YOUTUBE_VIDEO
+                        ? "Without it, no YouTube player is embedded."
+                        : "Without it, the link above is used for the player."}{" "}
+                      The player only appears on the featured item.
+                    </p>
+                  )}
                 </div>
-                <Input
-                  id="content-embed"
-                  value={draft.embedUrl}
-                  onChange={(e) => update("embedUrl", e.target.value)}
-                  placeholder={
-                    draft.linkType === ContentLinkType.YOUTUBE_VIDEO
-                      ? "e.g. dQw4w9WgXcQ"
-                      : "SoundCloud embed URL for the player"
-                  }
-                  aria-invalid={Boolean(errors.embedUrl)}
-                />
-                {errors.embedUrl ? (
-                  <p className="text-destructive text-xs">{errors.embedUrl}</p>
-                ) : youtubeIdFromUrl ? (
-                  <p className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-xs">
-                    <TriangleAlert className="h-3.5 w-3.5 text-amber-500" />
-                    <span>
-                      This field wants the bare video ID, not a URL — the embed
-                      will not render.
-                    </span>
-                    <button
-                      type="button"
-                      className="text-foreground underline"
-                      onClick={() => update("embedUrl", youtubeIdFromUrl)}
-                    >
-                      Use &quot;{youtubeIdFromUrl}&quot;
-                    </button>
-                  </p>
-                ) : (
-                  <p className="text-muted-foreground text-xs">
-                    Optional.{" "}
-                    {draft.linkType === ContentLinkType.YOUTUBE_VIDEO
-                      ? "Without it, no YouTube player is embedded."
-                      : "Without it, the link above is used for the player."}{" "}
-                    The player only appears on the featured item.
-                  </p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </SaveBar>
 
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <AlertDialogContent>

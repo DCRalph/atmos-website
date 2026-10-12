@@ -8,6 +8,9 @@ import {
 import { Button } from "~/components/ui/button";
 import Link from "next/link";
 import { use } from "react";
+import { unlistedPageMetadata } from "~/lib/seo-constants";
+
+export const metadata = unlistedPageMetadata("Sign-in problem");
 
 export default function AuthErrorPage({
   searchParams,

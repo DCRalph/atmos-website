@@ -7,9 +7,12 @@ import {
   createTRPCRouter,
   publicProcedure,
 } from "~/server/api/trpc";
-import { donationCentsSchema, summariseDonations } from "~/lib/donations";
-import { gigPath } from "~/lib/gig-url";
-import { SITE_URL } from "~/lib/seo-constants";
+import {
+  DONATION_PAYMENT_METHODS,
+  donationCentsSchema,
+  summariseDonations,
+} from "~/lib/donations";
+import { paidDonationCents } from "~/server/donations";
 import { getStripe, stripePaymentUrl } from "~/server/stripe";
 import { enforceRateLimit } from "~/server/ticketing/rate-limit";
 
@@ -18,15 +21,23 @@ import { enforceRateLimit } from "~/server/ticketing/rate-limit";
  */
 export const donationsRouter = createTRPCRouter({
   /**
-   * Start a Stripe Checkout for a donation and hand back where to send the
-   * visitor. Stripe's page takes the card or wallet and the email, then
-   * returns them to the donate page with the session id to say thanks.
+   * Open a payment intent for a donation and hand back its client secret.
+   * The donate page collects the card or wallet itself with Stripe Elements
+   * and asks for this only once the visitor taps pay, so the amount is final
+   * and nothing is left half open while they decide.
    *
-   * The payment intent is tagged `kind: "donation"`, which is how the webhook
-   * and the return page know to record it as a `Donation`.
+   * The intent is tagged `kind: "donation"`, which is how the webhook and
+   * `confirm` know to record it as a `Donation`.
    */
-  checkout: publicProcedure
-    .input(z.object({ gigId: z.string(), amountCents: donationCentsSchema }))
+  intent: publicProcedure
+    .input(
+      z.object({
+        gigId: z.string(),
+        amountCents: donationCentsSchema,
+        /** Where Stripe sends the receipt, from the wallet or the card form. */
+        email: z.email().optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const ip =
         ctx.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
@@ -52,49 +63,42 @@ export const donationsRouter = createTRPCRouter({
         });
       }
 
-      const page = `${SITE_URL}${gigPath(gig)}/donate`;
-      const metadata = { kind: "donation", gigId: gig.id };
-      let url: string | null;
+      let clientSecret: string | null;
       try {
-        const session = await getStripe().checkout.sessions.create({
-          mode: "payment",
-          submit_type: "donate",
-          line_items: [
-            {
-              quantity: 1,
-              price_data: {
-                currency: "nzd",
-                unit_amount: input.amountCents,
-                product_data: {
-                  name: "Donation to Atmos",
-                  description: gig.title,
-                },
-              },
-            },
-          ],
-          metadata,
-          payment_intent_data: {
-            metadata,
-            description: `Donation: ${gig.title}`,
-          },
-          success_url: `${page}?session_id={CHECKOUT_SESSION_ID}`,
-          cancel_url: page,
+        const intent = await getStripe().paymentIntents.create({
+          amount: input.amountCents,
+          currency: "nzd",
+          payment_method_types: [...DONATION_PAYMENT_METHODS],
+          metadata: { kind: "donation", gigId: gig.id },
+          description: `Donation: ${gig.title}`,
+          receipt_email: input.email,
         });
-        url = session.url;
+        clientSecret = intent.client_secret;
       } catch (cause) {
         // Stripe's own errors are for us, not for somebody giving money.
-        console.error("[donations] checkout session failed", cause);
-        url = null;
+        console.error("[donations] payment intent failed", cause);
+        clientSecret = null;
       }
 
-      if (!url) {
+      if (!clientSecret) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Couldn't start the payment. Try again in a moment.",
         });
       }
-      return { url };
+      return { clientSecret };
     }),
+
+  /**
+   * Record a donation the page just paid and say how much it was, so the
+   * thank you shows without waiting on the webhook. Null when Stripe doesn't
+   * agree it's a paid donation for this gig.
+   */
+  confirm: publicProcedure
+    .input(z.object({ gigId: z.string(), paymentIntentId: z.string() }))
+    .mutation(({ input }) =>
+      paidDonationCents(input.paymentIntentId, input.gigId),
+    ),
 
   /** One gig's donations and what they add up to, for its editor tab. */
   forGig: adminProcedure

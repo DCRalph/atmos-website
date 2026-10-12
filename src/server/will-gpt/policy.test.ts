@@ -74,6 +74,13 @@ describe("isOffered", () => {
     );
   });
 
+  test("never offers the whole-gig save, which gigs.update replaces", () => {
+    assert.equal(
+      isOffered("gigs.saveAll", "mutation", { permission: "ADMIN" }),
+      false,
+    );
+  });
+
   test("never offers changes to how somebody signs in", () => {
     assert.equal(
       isOffered("users.setPassword", "mutation", { permission: "ADMIN" }),

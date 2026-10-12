@@ -70,10 +70,13 @@ const OVERRIDES: Partial<Record<string, Risk>> = {
 } satisfies Partial<Record<MutationPath<AppRouter["_def"]["record"]>, Risk>>;
 
 /**
- * Admin procedures Will GPT is never offered: they change how somebody signs
- * in, which should only ever be a person's deliberate click.
+ * Admin procedures Will GPT is never offered. Most change how somebody signs
+ * in, which should only ever be a person's deliberate click. `gigs.saveAll`
+ * takes the whole gig, so one slip in a resent run sheet or tag list loses
+ * data; `gigs.update` does everything it does without the resend.
  */
 const NOT_OFFERED: ReadonlySet<string> = new Set([
+  "gigs.saveAll",
   "users.setPassword",
   "users.sendPasswordReset",
   "users.unlinkAccount",
