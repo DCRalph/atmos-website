@@ -5,22 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { SerializedEditorState } from "lexical";
-import {
-  ArrowLeft,
-  ExternalLink,
-  Info,
-  Loader2,
-  Save,
-  Trash2,
-  Undo2,
-} from "lucide-react";
+import { ArrowLeft, ExternalLink, Info, Loader2, Trash2 } from "lucide-react";
 import { api } from "~/trpc/react";
 import { gigPath } from "~/lib/gig-url";
 import { AdminSection } from "~/components/admin/admin-section";
 import { GigFlagsField } from "~/components/admin/gig-flags-field";
 import { GigStatusBadge } from "~/components/admin/gig-status-badge";
 import { GigMediaManager } from "~/components/admin/gig-media-manager";
-import { SaveStatusPill } from "~/components/admin/save-status";
+import { SaveBar } from "~/components/admin/save-status";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -65,6 +57,7 @@ import {
   newScheduleItem,
   type DraftScheduleItem,
   type GigDraft,
+  type PosterDraft,
 } from "./types";
 
 /**
@@ -119,6 +112,7 @@ type LoadedGig = {
   gigEndTime: Date | null;
   updatedAt: Date | string;
   posterFileUpload: { id: string; name: string } | null;
+  widePosterFileUpload: { id: string; name: string } | null;
   media: MediaRow[];
   gigTags: { gigTag: { id: string } }[];
   scheduleItems: {
@@ -167,6 +161,7 @@ const emptyDraft = (): GigDraft => ({
   schedule: [],
   notifyUserIds: [],
   poster: { kind: "keep" },
+  widePoster: { kind: "keep" },
 });
 
 const draftFromGig = (gig: LoadedGig): GigDraft => ({
@@ -214,6 +209,7 @@ const draftFromGig = (gig: LoadedGig): GigDraft => ({
   ),
   notifyUserIds: gig.notifyRecipients.map((row) => row.userId),
   poster: { kind: "keep" },
+  widePoster: { kind: "keep" },
 });
 
 /** Everything that decides whether the draft differs from what is stored. */
@@ -251,11 +247,14 @@ const fingerprint = (draft: GigDraft): string =>
       [...row.recipientUserIds].sort(),
     ]),
     notifyUserIds: [...draft.notifyUserIds].sort(),
-    poster:
-      draft.poster.kind === "replace"
-        ? `replace:${draft.poster.file.name}:${draft.poster.file.size}:${draft.poster.file.lastModified}`
-        : draft.poster.kind,
+    poster: posterFingerprint(draft.poster),
+    widePoster: posterFingerprint(draft.widePoster),
   });
+
+const posterFingerprint = (poster: PosterDraft) =>
+  poster.kind === "replace"
+    ? `replace:${poster.file.name}:${poster.file.size}:${poster.file.lastModified}`
+    : poster.kind;
 
 type FieldErrors = Partial<
   Record<
@@ -328,6 +327,9 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [posterProgress, setPosterProgress] = useState<number | null>(null);
+  const [widePosterProgress, setWidePosterProgress] = useState<number | null>(
+    null,
+  );
 
   const isNew = gigId === null;
   const isSaving = saveState === "saving";
@@ -462,6 +464,14 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
     onError: (message) => toast.error(message),
   });
   const transferProgress = posterItems.at(-1)?.progress ?? 0;
+  const {
+    upload: uploadWidePoster,
+    items: widePosterItems,
+    reset: resetWidePosterUpload,
+  } = useUpload("gigWidePoster", {
+    onError: (message) => toast.error(message),
+  });
+  const wideTransferProgress = widePosterItems.at(-1)?.progress ?? 0;
 
   const save = useCallback(async () => {
     if (isSaving) return;
@@ -533,37 +543,84 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
         await saveGig.mutateAsync({ id, ...core });
       }
 
-      // The poster goes last: its bytes are keyed under the gig, so it needs the
-      // gig to exist, and it is the one step that cannot join the transaction.
-      if (draft.poster.kind === "replace") {
-        // Clear any previous attempt so the progress bar starts from this one.
-        resetPosterUpload();
-        setPosterProgress(0);
-        const [uploaded] = await uploadPoster([draft.poster.file], {
-          context: { gigId: id },
-        });
-        if (!uploaded) {
-          throw new Error(
-            "The gig was saved, but the poster did not upload. Try saving again.",
-          );
+      // The posters go last: their bytes are keyed under the gig, so they need
+      // the gig to exist, and they are the one step that cannot join the
+      // transaction.
+      const gigIdForPosters = id;
+      const commitPoster = async (
+        slot: "poster" | "wide",
+        poster: PosterDraft,
+        upload: (file: File) => Promise<{ id: string } | undefined>,
+        noun: string,
+      ) => {
+        if (poster.kind === "replace") {
+          const uploaded = await upload(poster.file);
+          if (!uploaded) {
+            throw new Error(
+              `The gig was saved, but the ${noun} did not upload. Try saving again.`,
+            );
+          }
+          await setPoster.mutateAsync({
+            gigId: gigIdForPosters,
+            fileUploadId: uploaded.id,
+            slot,
+          });
+        } else if (poster.kind === "remove") {
+          await clearPoster.mutateAsync({
+            gigId: gigIdForPosters,
+            deleteFile: true,
+            slot,
+          });
         }
-        await setPoster.mutateAsync({ gigId: id, fileUploadId: uploaded.id });
-      } else if (draft.poster.kind === "remove") {
-        await clearPoster.mutateAsync({ gigId: id, deleteFile: true });
-      }
+      };
+      await commitPoster(
+        "poster",
+        draft.poster,
+        async (file) => {
+          // Clear any previous attempt so the progress bar starts from this one.
+          resetPosterUpload();
+          setPosterProgress(0);
+          const [uploaded] = await uploadPoster([file], {
+            context: { gigId: gigIdForPosters },
+          });
+          return uploaded;
+        },
+        "poster",
+      );
+      await commitPoster(
+        "wide",
+        draft.widePoster,
+        async (file) => {
+          resetWidePosterUpload();
+          setWidePosterProgress(0);
+          const [uploaded] = await uploadWidePoster([file], {
+            context: { gigId: gigIdForPosters },
+          });
+          return uploaded;
+        },
+        "wide poster",
+      );
 
       await utils.gigs.getById.invalidate({ id });
       await utils.gigs.getForEditor.invalidate({ id });
       // The baseline is what actually went to the server. The draft keeps
-      // anything typed while the save was in flight, minus the poster file just
-      // consumed — unless a different one was picked in the meantime.
-      const saved: GigDraft = { ...draft, poster: { kind: "keep" } };
+      // anything typed while the save was in flight, minus the poster files
+      // just consumed — unless a different one was picked in the meantime.
+      const saved: GigDraft = {
+        ...draft,
+        poster: { kind: "keep" },
+        widePoster: { kind: "keep" },
+      };
       setBaseline(saved);
-      setDraft((current) =>
-        current.poster === draft.poster
-          ? { ...current, poster: { kind: "keep" } }
-          : current,
-      );
+      setDraft((current) => ({
+        ...current,
+        poster:
+          current.poster === draft.poster ? { kind: "keep" } : current.poster,
+        widePoster:
+          current.widePoster === draft.widePoster
+            ? { kind: "keep" }
+            : current.widePoster,
+      }));
       setSaveState("saved");
       toast.success(creating ? "Gig created" : "Changes saved");
     } catch (err) {
@@ -574,6 +631,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
       toast.error(message);
     } finally {
       setPosterProgress(null);
+      setWidePosterProgress(null);
     }
   }, [
     clearPoster,
@@ -582,9 +640,11 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
     gigId,
     isSaving,
     resetPosterUpload,
+    resetWidePosterUpload,
     saveGig,
     setPoster,
     uploadPoster,
+    uploadWidePoster,
     utils,
   ]);
 
@@ -751,303 +811,321 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
       ) : null}
       <div hidden={editorTab !== "details"}>
         {/* The page's one and only Save, kept in reach of every field. */}
-        <div className="bg-background/95 sticky top-20 z-20 -mx-2 mb-6 flex flex-wrap items-center gap-3 rounded-lg border px-4 py-3 backdrop-blur">
-          <SaveStatusPill status={status} errorMessage={errorMessage} />
-          {status === "idle" ? (
-            <span className="text-muted-foreground text-sm">
-              {isNew
+        <SaveBar
+          status={status}
+          errorMessage={errorMessage}
+          message={
+            status === "idle"
+              ? isNew
                 ? "Fill in the details, then create the gig."
-                : "Everything on this page is up to date."}
-            </span>
-          ) : null}
-          <div className="ml-auto flex items-center gap-2">
-            {isDirty && !isNew ? (
-              <Button
-                variant="ghost"
-                disabled={isSaving}
-                onClick={() => {
+                : "Everything on this page is up to date."
+              : null
+          }
+          saveLabel={isNew ? "Create gig" : "Save"}
+          isSaving={isSaving}
+          onSave={() => void save()}
+          onDiscard={
+            isDirty && !isNew
+              ? () => {
                   setDraft(baseline);
                   setErrors({});
                   setErrorMessage(null);
                   setSaveState("idle");
-                }}
-              >
-                <Undo2 className="h-4 w-4" />
-                Discard changes
-              </Button>
-            ) : null}
-            <Button onClick={() => void save()} disabled={isSaving}>
-              {isSaving ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4" />
-                  {isNew ? "Create gig" : "Save"}
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-          <div className="flex flex-col gap-6 xl:col-span-8">
-            <Card>
-              <CardHeader>
-                <CardTitle>Core details</CardTitle>
-                <CardDescription>
-                  Title, description, mode and ticket link
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <Field
-                    id="gig-title"
-                    label="Title"
-                    error={errors.title}
-                    required
-                  >
-                    <Input
-                      id="gig-title"
-                      value={draft.title}
-                      onChange={(e) => update("title", e.target.value)}
-                      aria-invalid={Boolean(errors.title)}
-                    />
-                  </Field>
-                  <Field
-                    id="gig-subtitle"
-                    label="Subtitle (venue)"
-                    error={errors.subtitle}
-                    required
-                  >
-                    <Input
-                      id="gig-subtitle"
-                      value={draft.subtitle}
-                      onChange={(e) => update("subtitle", e.target.value)}
-                      aria-invalid={Boolean(errors.subtitle)}
-                    />
-                  </Field>
-                </div>
-
-                <Field
-                  id="gig-short-description"
-                  label="Short description"
-                  hint="Used on cards and listings."
-                >
-                  <Textarea
-                    id="gig-short-description"
-                    rows={3}
-                    placeholder="Short summary for cards..."
-                    value={draft.shortDescription}
-                    onChange={(e) => update("shortDescription", e.target.value)}
-                  />
-                </Field>
-
-                <div className="flex flex-col gap-2">
-                  <Label>Description</Label>
-                  <LexicalRichTextEditor
-                    value={draft.descriptionLexical}
-                    onChange={(value) => update("descriptionLexical", value)}
-                    namespace={`gig-description-${gigId ?? "new"}`}
-                    placeholder="Describe the gig, line-up, venue info..."
-                    ariaLabel="Description"
-                    minHeight="14rem"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="gig-mode">Mode</Label>
-                    <GigFlagsField
-                      id="gig-mode"
-                      value={draft}
-                      onChange={update}
-                    />
-                    <p className="text-muted-foreground text-xs">
-                      Both off is a normal gig.
-                    </p>
-                    {draft.isTba ? (
-                      <Field
-                        id="gig-announce-at"
-                        label="Announce on"
-                        hint="The gig drops TBA by itself at this time. Leave empty to announce it by hand."
-                        error={errors.announceAt}
-                      >
-                        <DateTimePicker
-                          date={draft.announceAt}
-                          onDateChange={(value) => update("announceAt", value)}
-                          placeholder="Announce by hand"
-                          showTime
-                          clearable
-                        />
-                      </Field>
-                    ) : null}
-                  </div>
-                  <Field
-                    id="gig-ticket-link"
-                    label="Ticket link"
-                    hint="Leave empty if tickets are sold on this site."
-                    error={errors.ticketLink}
-                  >
-                    <Input
-                      id="gig-ticket-link"
-                      type="url"
-                      placeholder="https://example.com/tickets"
-                      value={draft.ticketLink}
-                      onChange={(e) => update("ticketLink", e.target.value)}
-                      aria-invalid={Boolean(errors.ticketLink)}
-                    />
-                  </Field>
-                </div>
-              </CardContent>
-            </Card>
-
-            <RunSheetField
-              schedule={draft.schedule}
-              onChange={(schedule) => update("schedule", schedule)}
-              notifyUserIds={draft.notifyUserIds}
-              onNotifyChange={(notifyUserIds) =>
-                update("notifyUserIds", notifyUserIds)
-              }
-              gigStart={draft.startTime}
-              firedItemIds={firedItemIds}
-              ticketEventDoorsAt={ticketEventDoorsAt}
-              gigId={gigId}
-              hasUnsavedChanges={isDirty}
-              disabled={isSaving}
-            />
-
-            <PosterField
-              gigTitle={draft.title}
-              current={
-                gig?.posterFileUpload
-                  ? {
-                      fileUploadId: gig.posterFileUpload.id,
-                      name: gig.posterFileUpload.name,
-                    }
-                  : null
-              }
-              draft={draft.poster}
-              onChange={(poster) => update("poster", poster)}
-              uploadProgress={
-                posterProgress === null ? null : Math.max(1, transferProgress)
-              }
-              disabled={isSaving}
-            />
-          </div>
-
-          <div className="flex flex-col gap-6 xl:col-span-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Date & time</CardTitle>
-                <CardDescription>When the gig starts and ends</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Field
-                  id="gig-start"
-                  label="Start"
-                  error={errors.startTime}
-                  required
-                >
-                  <DateTimePicker
-                    date={draft.startTime}
-                    onDateChange={moveGigTo}
-                    placeholder="Select start time"
-                    showTime
-                  />
-                </Field>
-                <Field id="gig-end" label="End" error={errors.endTime}>
-                  <DateTimePicker
-                    date={draft.endTime}
-                    onDateChange={(value) => update("endTime", value)}
-                    placeholder="Select end time"
-                    showTime
-                    clearable
-                  />
-                </Field>
-              </CardContent>
-            </Card>
-
-            <TagsField
-              tagIds={draft.tagIds}
-              onChange={(tagIds) => update("tagIds", tagIds)}
-              disabled={isSaving}
-            />
-
-            <DonationsField
-              enabled={draft.donationsEnabled}
-              amounts={draft.donationAmounts}
-              recommended={draft.donationRecommendedIndex}
-              description={draft.donationDescription}
-              onDescriptionChange={(value) =>
-                update("donationDescription", value)
-              }
-              editorNamespace={`gig-donation-${gigId ?? "new"}`}
-              onRecommendedChange={(index) =>
-                update("donationRecommendedIndex", index)
-              }
-              onEnabledChange={(on) => update("donationsEnabled", on)}
-              onAmountsChange={(amounts) => update("donationAmounts", amounts)}
-              error={errors.donationAmounts}
-              disabled={isSaving}
-            />
-          </div>
-
-          <div className="xl:col-span-12">
-            {gigId && gig ? (
+                }
+              : undefined
+          }
+        >
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+            <div className="flex flex-col gap-6 xl:col-span-8">
               <Card>
                 <CardHeader>
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <CardTitle>Media gallery</CardTitle>
-                      <CardDescription>
-                        Photos and video for the featured and gallery sections.
-                        Drag to reorder.
-                      </CardDescription>
-                    </div>
-                    <span className="text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium">
-                      <Info className="h-3.5 w-3.5" />
-                      Applies immediately — not part of Save
-                    </span>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <GigMediaManager
-                    gigId={gigId}
-                    media={gig.media ?? []}
-                    onRefetch={() => void query.refetch()}
-                  />
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="border-dashed">
-                <CardHeader>
-                  <CardTitle>Media gallery</CardTitle>
+                  <CardTitle>Core details</CardTitle>
                   <CardDescription>
-                    Available as soon as the gig is created — you stay on this
-                    page, so you can add photos and video straight afterwards.
+                    Title, description, mode and ticket link
                   </CardDescription>
                 </CardHeader>
+                <CardContent className="space-y-5">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <Field
+                      id="gig-title"
+                      label="Title"
+                      error={errors.title}
+                      required
+                    >
+                      <Input
+                        id="gig-title"
+                        value={draft.title}
+                        onChange={(e) => update("title", e.target.value)}
+                        aria-invalid={Boolean(errors.title)}
+                      />
+                    </Field>
+                    <Field
+                      id="gig-subtitle"
+                      label="Subtitle (venue)"
+                      error={errors.subtitle}
+                      required
+                    >
+                      <Input
+                        id="gig-subtitle"
+                        value={draft.subtitle}
+                        onChange={(e) => update("subtitle", e.target.value)}
+                        aria-invalid={Boolean(errors.subtitle)}
+                      />
+                    </Field>
+                  </div>
+
+                  <Field
+                    id="gig-short-description"
+                    label="Short description"
+                    hint="Used on cards and listings."
+                  >
+                    <Textarea
+                      id="gig-short-description"
+                      rows={3}
+                      placeholder="Short summary for cards..."
+                      value={draft.shortDescription}
+                      onChange={(e) =>
+                        update("shortDescription", e.target.value)
+                      }
+                    />
+                  </Field>
+
+                  <div className="flex flex-col gap-2">
+                    <Label>Description</Label>
+                    <LexicalRichTextEditor
+                      value={draft.descriptionLexical}
+                      onChange={(value) => update("descriptionLexical", value)}
+                      namespace={`gig-description-${gigId ?? "new"}`}
+                      placeholder="Describe the gig, line-up, venue info..."
+                      ariaLabel="Description"
+                      minHeight="14rem"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="gig-mode">Mode</Label>
+                      <GigFlagsField
+                        id="gig-mode"
+                        value={draft}
+                        onChange={update}
+                      />
+                      <p className="text-muted-foreground text-xs">
+                        Both off is a normal gig.
+                      </p>
+                      {draft.isTba ? (
+                        <Field
+                          id="gig-announce-at"
+                          label="Announce on"
+                          hint="The gig drops TBA by itself at this time. Leave empty to announce it by hand."
+                          error={errors.announceAt}
+                        >
+                          <DateTimePicker
+                            date={draft.announceAt}
+                            onDateChange={(value) =>
+                              update("announceAt", value)
+                            }
+                            placeholder="Announce by hand"
+                            showTime
+                            clearable
+                          />
+                        </Field>
+                      ) : null}
+                    </div>
+                    <Field
+                      id="gig-ticket-link"
+                      label="Ticket link"
+                      hint="Leave empty if tickets are sold on this site."
+                      error={errors.ticketLink}
+                    >
+                      <Input
+                        id="gig-ticket-link"
+                        type="url"
+                        placeholder="https://example.com/tickets"
+                        value={draft.ticketLink}
+                        onChange={(e) => update("ticketLink", e.target.value)}
+                        aria-invalid={Boolean(errors.ticketLink)}
+                      />
+                    </Field>
+                  </div>
+                </CardContent>
               </Card>
-            )}
-          </div>
 
-          {gigId && gig ? (
-            <div className="xl:col-span-12">
-              <PhotoSignupPanel gigId={gigId} gigTitle={gig.title} />
+              <RunSheetField
+                schedule={draft.schedule}
+                onChange={(schedule) => update("schedule", schedule)}
+                notifyUserIds={draft.notifyUserIds}
+                onNotifyChange={(notifyUserIds) =>
+                  update("notifyUserIds", notifyUserIds)
+                }
+                gigStart={draft.startTime}
+                firedItemIds={firedItemIds}
+                ticketEventDoorsAt={ticketEventDoorsAt}
+                gigId={gigId}
+                hasUnsavedChanges={isDirty}
+                disabled={isSaving}
+              />
+
+              <PosterField
+                gigTitle={draft.title}
+                current={
+                  gig?.posterFileUpload
+                    ? {
+                        fileUploadId: gig.posterFileUpload.id,
+                        name: gig.posterFileUpload.name,
+                      }
+                    : null
+                }
+                draft={draft.poster}
+                onChange={(poster) => update("poster", poster)}
+                uploadProgress={
+                  posterProgress === null ? null : Math.max(1, transferProgress)
+                }
+                disabled={isSaving}
+              />
+
+              <PosterField
+                shape="wide"
+                gigTitle={draft.title}
+                current={
+                  gig?.widePosterFileUpload
+                    ? {
+                        fileUploadId: gig.widePosterFileUpload.id,
+                        name: gig.widePosterFileUpload.name,
+                      }
+                    : null
+                }
+                draft={draft.widePoster}
+                onChange={(widePoster) => update("widePoster", widePoster)}
+                uploadProgress={
+                  widePosterProgress === null
+                    ? null
+                    : Math.max(1, wideTransferProgress)
+                }
+                disabled={isSaving}
+              />
             </div>
-          ) : null}
 
-          {/* A room is a gig, so there is nothing to create — but there is no gig
+            <div className="flex flex-col gap-6 xl:col-span-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Date & time</CardTitle>
+                  <CardDescription>
+                    When the gig starts and ends
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Field
+                    id="gig-start"
+                    label="Start"
+                    error={errors.startTime}
+                    required
+                  >
+                    <DateTimePicker
+                      date={draft.startTime}
+                      onDateChange={moveGigTo}
+                      placeholder="Select start time"
+                      showTime
+                    />
+                  </Field>
+                  <Field id="gig-end" label="End" error={errors.endTime}>
+                    <DateTimePicker
+                      date={draft.endTime}
+                      onDateChange={(value) => update("endTime", value)}
+                      placeholder="Select end time"
+                      showTime
+                      clearable
+                    />
+                  </Field>
+                </CardContent>
+              </Card>
+
+              <TagsField
+                tagIds={draft.tagIds}
+                onChange={(tagIds) => update("tagIds", tagIds)}
+                disabled={isSaving}
+              />
+
+              <DonationsField
+                enabled={draft.donationsEnabled}
+                amounts={draft.donationAmounts}
+                recommended={draft.donationRecommendedIndex}
+                description={draft.donationDescription}
+                onDescriptionChange={(value) =>
+                  update("donationDescription", value)
+                }
+                editorNamespace={`gig-donation-${gigId ?? "new"}`}
+                onRecommendedChange={(index) =>
+                  update("donationRecommendedIndex", index)
+                }
+                onEnabledChange={(on) => update("donationsEnabled", on)}
+                onAmountsChange={(amounts) =>
+                  update("donationAmounts", amounts)
+                }
+                error={errors.donationAmounts}
+                disabled={isSaving}
+              />
+            </div>
+
+            {/* The gallery's own order bar sticks to the bottom too; on a
+                phone it is lifted clear of the page's bar rather than sitting
+                on it. */}
+            <div className="xl:col-span-12 max-sm:[&_.sticky]:bottom-[calc(4rem+env(safe-area-inset-bottom))]">
+              {gigId && gig ? (
+                // Its sections are cards already, so on a phone this one
+                // drops its own chrome and gives them the width.
+                <Card className="max-sm:gap-4 max-sm:border-0 max-sm:bg-transparent max-sm:py-0 max-sm:shadow-none">
+                  <CardHeader className="max-sm:px-0">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <CardTitle>Media gallery</CardTitle>
+                        <CardDescription>
+                          Photos and video for the featured and gallery
+                          sections. Drag or use ⋯ to reorder.
+                        </CardDescription>
+                      </div>
+                      <span className="text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium">
+                        <Info className="h-3.5 w-3.5" />
+                        Separate from the page&apos;s Save
+                      </span>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="max-sm:px-0">
+                    <GigMediaManager
+                      gigId={gigId}
+                      media={gig.media ?? []}
+                      onRefetch={() => void query.refetch()}
+                    />
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="border-dashed">
+                  <CardHeader>
+                    <CardTitle>Media gallery</CardTitle>
+                    <CardDescription>
+                      Available as soon as the gig is created — you stay on this
+                      page, so you can add photos and video straight afterwards.
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              )}
+            </div>
+
+            {gigId && gig ? (
+              <div className="xl:col-span-12">
+                <PhotoSignupPanel gigId={gigId} gigTitle={gig.title} />
+              </div>
+            ) : null}
+
+            {/* A room is a gig, so there is nothing to create — but there is no gig
             to have a room about until this one is saved. */}
-          {gigId ? (
-            <div className="xl:col-span-12">
-              <GigChatPanel gigId={gigId} />
-            </div>
-          ) : null}
-        </div>
+            {gigId ? (
+              <div className="xl:col-span-12">
+                <GigChatPanel gigId={gigId} />
+              </div>
+            ) : null}
+          </div>
+        </SaveBar>
       </div>
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <AlertDialogContent>

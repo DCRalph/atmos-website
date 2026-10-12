@@ -105,7 +105,7 @@ export function SizeChips({
             className={cn(
               "t-label rounded-full border transition-colors disabled:cursor-not-allowed",
               small
-                ? "h-8 min-w-10 px-2.5 text-[10px]"
+                ? "h-10 min-w-10 px-2.5 text-[10px] sm:h-8"
                 : "h-11 min-w-14 px-3 text-[12px]",
               out && "line-through decoration-1",
               on

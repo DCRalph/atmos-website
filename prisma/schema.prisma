@@ -392,6 +392,9 @@ model Gig {
 
   // Optional "poster" image for this gig (stored as a file_upload record)
   posterFileUploadId String?
+  /// A landscape version of the poster. Fills the /gigs hero while this is the
+  /// next gig, and is the link preview image. Withheld while the gig is TBA.
+  widePosterFileUploadId String?
 
   /// Draft gigs exist only in the admin. They are absent from every public
   /// list, the gig page, the sitemap and the app. Defaults to `PUBLISHED` so

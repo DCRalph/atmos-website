@@ -83,7 +83,7 @@ export function GigRecipientsField({
               disabled={disabled}
               onClick={() => toggle(id)}
               aria-label={`Remove ${person?.name ?? "this person"}`}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground -m-1.5 p-1.5"
             >
               <X className="h-3 w-3" />
             </button>
@@ -98,7 +98,7 @@ export function GigRecipientsField({
             size="sm"
             variant="ghost"
             disabled={disabled}
-            className="h-6 px-2 text-xs"
+            className="h-6 px-2 text-xs pointer-coarse:h-8"
           >
             <Plus className="h-3 w-3" />
             {userIds.length === 0 ? "Pick who hears this gig" : "Add"}

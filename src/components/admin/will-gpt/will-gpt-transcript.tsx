@@ -144,7 +144,7 @@ function CallRow({
             <span className="text-destructive"> · waiting for approval</span>
           ) : null}
         </span>
-        <span className="text-muted-foreground shrink-0 font-mono text-[11.5px]">
+        <span className="text-muted-foreground max-w-[45%] truncate font-mono text-[11.5px]">
           {path}
         </span>
       </summary>

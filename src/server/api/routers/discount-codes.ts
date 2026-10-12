@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { ActivityType, type PrismaClient } from "~Prisma/client";
+import { applyPatch, patchOf } from "~/server/api/patch-input";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { normaliseCode } from "~/server/ticketing/discounts";
 import {
@@ -94,32 +95,44 @@ export const discountCodesRouter = createTRPCRouter({
 
   /**
    * Change a code. Uses already made keep what they were worth; the new terms
-   * apply from the next checkout.
+   * apply from the next checkout. Fields left out keep their saved value, and
+   * `null` clears a limit.
    */
   update: adminProcedure
-    .input(editableFieldsSchema.extend({ id: z.string() }))
+    .input(patchOf(editableFieldsSchema).extend({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const { id, ...patch } = input;
       const current = await ctx.db.discountCode.findUnique({
-        where: { id: input.id },
-        select: { startsAt: true },
+        where: { id },
+        select: {
+          code: true,
+          type: true,
+          value: true,
+          maxRedemptions: true,
+          maxPerEmail: true,
+          minTickets: true,
+          startsAt: true,
+          endsAt: true,
+        },
       });
       if (!current) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Code not found" });
       }
-      const code = normaliseCode(input.code);
-      assertCodeRules({ ...input, startsAt: current.startsAt });
-      await assertCodeFree(ctx.db, code, input.id);
+      const next = applyPatch(current, patch);
+      const code = normaliseCode(next.code);
+      assertCodeRules(next);
+      await assertCodeFree(ctx.db, code, id);
 
       const updated = await ctx.db.discountCode.update({
-        where: { id: input.id },
+        where: { id },
         data: {
           code,
-          type: input.type,
-          value: input.value,
-          maxRedemptions: input.maxRedemptions ?? null,
-          maxPerEmail: input.maxPerEmail ?? null,
-          minTickets: input.minTickets ?? null,
-          endsAt: input.endsAt ?? null,
+          type: next.type,
+          value: next.value,
+          maxRedemptions: next.maxRedemptions,
+          maxPerEmail: next.maxPerEmail,
+          minTickets: next.minTickets,
+          endsAt: next.endsAt,
         },
       });
 

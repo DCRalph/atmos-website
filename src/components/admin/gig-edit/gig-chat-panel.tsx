@@ -229,9 +229,10 @@ export function GigChatPanel({ gigId }: { gigId: string }) {
                       ))}
 
                       {/* Revealed on hover rather than always drawn: five keys
-                          under every message is more chrome than transcript. */}
+                          under every message is more chrome than transcript.
+                          A touch screen has no hover, so there they stay. */}
                       {!message.deleted ? (
-                        <span className="hidden items-center gap-1 group-hover:inline-flex">
+                        <span className="inline-flex items-center gap-1 [@media(hover:hover)]:hidden [@media(hover:hover)]:group-hover:inline-flex">
                           {REACTIONS.filter(
                             (emoji) =>
                               !groups.some((group) => group.emoji === emoji),
@@ -242,7 +243,7 @@ export function GigChatPanel({ gigId }: { gigId: string }) {
                               onClick={() =>
                                 react.mutate({ messageId: message.id, emoji })
                               }
-                              className="text-muted-foreground hover:text-foreground border border-transparent px-1 text-xs"
+                              className="text-muted-foreground hover:text-foreground border border-transparent px-1 text-xs pointer-coarse:min-h-8 pointer-coarse:min-w-8"
                             >
                               {emoji}
                             </button>
@@ -256,7 +257,7 @@ export function GigChatPanel({ gigId }: { gigId: string }) {
                               onClick={() =>
                                 remove.mutate({ messageId: message.id })
                               }
-                              className="text-muted-foreground hover:text-destructive px-1"
+                              className="text-muted-foreground hover:text-destructive inline-flex items-center justify-center px-1 pointer-coarse:min-h-8 pointer-coarse:min-w-8"
                             >
                               <Trash2 className="h-3 w-3" />
                             </button>

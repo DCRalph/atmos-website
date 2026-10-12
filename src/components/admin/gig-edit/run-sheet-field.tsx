@@ -391,6 +391,45 @@ function ScheduleRowEditor({
   const name =
     typed !== "" ? typed : (billing(row.artists) ?? kindLabel(row.kind));
 
+  // Drawn once per layout: at the end of the controls from `sm` up, on the
+  // top line beside the time on a phone.
+  const rowActions = (
+    <>
+      {hasFired ? (
+        <span className="text-[10px] tracking-wide text-emerald-500 uppercase">
+          sent
+        </span>
+      ) : null}
+
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={disabled}
+        onClick={onToggleNotes}
+        aria-label={`Notes for ${name}`}
+        className={cn(
+          "h-7 w-7 p-0 max-sm:h-8 max-sm:w-8",
+          row.notes.trim() && "text-foreground",
+        )}
+      >
+        <StickyNote className="h-3.5 w-3.5" />
+      </Button>
+
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={disabled}
+        onClick={onRemove}
+        aria-label={`Remove ${name}`}
+        className="h-7 w-7 p-0 max-sm:h-8 max-sm:w-8"
+      >
+        <X className="h-3.5 w-3.5" />
+      </Button>
+    </>
+  );
+
   return (
     <div
       ref={setNodeRef}
@@ -405,12 +444,16 @@ function ScheduleRowEditor({
           lines, and centering it against the single-line controls is what made
           the pills overlap them. The controls live in one shrink-proof cluster
           that wraps below the artists as a whole when the row runs out of
-          room. */}
-      <div className="flex items-start gap-3">
+          room.
+
+          On a phone the handle and time would leave the act a sliver, so the
+          row stacks instead: handle, time and the row's own actions on top,
+          the act full width underneath. */}
+      <div className="flex items-start gap-3 max-sm:flex-wrap max-sm:gap-y-2">
         <button
           type="button"
           aria-label={`Reorder ${name}`}
-          className="text-muted-foreground hover:text-foreground mt-1.5 shrink-0 cursor-grab touch-none active:cursor-grabbing"
+          className="text-muted-foreground hover:text-foreground mt-1.5 shrink-0 cursor-grab touch-none active:cursor-grabbing max-sm:-mx-1.5 max-sm:mt-0 max-sm:flex max-sm:h-7 max-sm:w-7 max-sm:items-center max-sm:justify-center"
           {...attributes}
           {...listeners}
         >
@@ -424,7 +467,11 @@ function ScheduleRowEditor({
           onPatch={onPatch}
         />
 
-        <div className="flex min-w-0 flex-1 flex-wrap items-start gap-x-2 gap-y-1">
+        <div className="-my-0.5 ml-auto flex items-center gap-1 sm:hidden">
+          {rowActions}
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-wrap items-start gap-x-2 gap-y-1 max-sm:basis-full">
           {row.kind === "SET" ? (
             <div className="flex min-w-0 flex-1 basis-56 flex-col gap-0.5">
               <div className="flex min-w-0 flex-wrap items-center gap-1.5">
@@ -517,7 +564,7 @@ function ScheduleRowEditor({
             </div>
           )}
 
-          <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="ml-auto flex flex-wrap items-center gap-2 max-sm:ml-0 max-sm:w-full">
             {row.kind === "SET" ? (
               <Input
                 aria-label={`Role for ${name}`}
@@ -525,7 +572,7 @@ function ScheduleRowEditor({
                 value={row.role}
                 disabled={disabled}
                 onChange={(e) => onPatch({ role: e.target.value })}
-                className="h-7 w-[110px] text-xs"
+                className="h-7 w-[110px] text-xs max-sm:w-auto max-sm:min-w-0 max-sm:flex-1"
               />
             ) : null}
 
@@ -538,38 +585,7 @@ function ScheduleRowEditor({
               disabled={disabled}
             />
 
-            {hasFired ? (
-              <span className="text-[10px] tracking-wide text-emerald-500 uppercase">
-                sent
-              </span>
-            ) : null}
-
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={disabled}
-              onClick={onToggleNotes}
-              aria-label={`Notes for ${name}`}
-              className={cn(
-                "h-7 w-7 p-0",
-                row.notes.trim() && "text-foreground",
-              )}
-            >
-              <StickyNote className="h-3.5 w-3.5" />
-            </Button>
-
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={disabled}
-              onClick={onRemove}
-              aria-label={`Remove ${name}`}
-              className="h-7 w-7 p-0"
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
+            <div className="contents max-sm:hidden">{rowActions}</div>
           </div>
         </div>
       </div>
@@ -581,10 +597,12 @@ function ScheduleRowEditor({
           value={row.notes}
           disabled={disabled}
           onChange={(e) => onPatch({ notes: e.target.value })}
-          className="mt-2 ml-7 min-h-16 text-sm"
+          className="mt-2 ml-7 min-h-16 text-sm max-sm:ml-0"
         />
       ) : row.notes.trim() ? (
-        <p className="text-muted-foreground mt-1 ml-7 text-xs">{row.notes}</p>
+        <p className="text-muted-foreground mt-1 ml-7 text-xs max-sm:ml-0">
+          {row.notes}
+        </p>
       ) : null}
     </div>
   );

@@ -1,14 +1,12 @@
-"use client";
-
 import MerchPage from "./Merch";
-import { usePageMetadata } from "~/hooks/use-page-metadata";
-import { SITE_URL } from "~/lib/seo-constants";
+import { pageMetadata } from "~/lib/seo-constants";
 
-export default function MerchRoute() {
-  usePageMetadata({
-    title: "Merch",
-    canonical: `${SITE_URL}/merch`,
-  });
+export const metadata = pageMetadata({
+  title: "Merch",
+  description: "Limited drops and Atmos staples.",
+  path: "/merch",
+});
 
+export default function Page() {
   return <MerchPage />;
 }

@@ -1,14 +1,13 @@
-"use client";
-
 import ContactPage from "./Contact";
-import { usePageMetadata } from "~/hooks/use-page-metadata";
-import { SITE_URL } from "~/lib/seo-constants";
+import { pageMetadata } from "~/lib/seo-constants";
+
+export const metadata = pageMetadata({
+  title: "Contact",
+  description:
+    "Bookings, collabs, questions. Get in touch with Atmos by message, phone or email.",
+  path: "/contact",
+});
 
 export default function Page() {
-  usePageMetadata({
-    title: "Contact",
-    canonical: `${SITE_URL}/contact`,
-  });
-
   return <ContactPage />;
 }

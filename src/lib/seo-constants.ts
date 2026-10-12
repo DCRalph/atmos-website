@@ -54,17 +54,25 @@ export const DEFAULT_ROBOTS: Metadata["robots"] = {
   },
 };
 
-export const DEFAULT_OPENGRAPH: Metadata["openGraph"] = {
+/** Robots for pages reached only by a link somebody was sent. */
+export const NOINDEX: Metadata["robots"] = { index: false, follow: false };
+
+/**
+ * Open Graph defaults with no title, description or URL. The root layout uses
+ * these as is: Next merges `openGraph` shallowly, so anything page-specific set
+ * here would turn up on every page that sets only its own `title`.
+ */
+export const DEFAULT_OPENGRAPH = {
   siteName: SITE_NAME,
   locale: "en_NZ",
   type: "website",
   images: [OG_IMAGE],
-};
+} satisfies Metadata["openGraph"];
 
-export const DEFAULT_TWITTER: Metadata["twitter"] = {
+export const DEFAULT_TWITTER = {
   card: "summary_large_image",
-  images: [DEFAULT_OG_IMAGE],
-};
+  images: [OG_IMAGE],
+} satisfies Metadata["twitter"];
 
 /* -------------------------------------------------------------------------- */
 /*                               Misc metadata                                */
@@ -88,135 +96,75 @@ export const ICONS: Metadata["icons"] = {
 /*                               Helper builders                               */
 /* -------------------------------------------------------------------------- */
 
-/**
- * Creates metadata for a page.
- * - `title` is the SHORT title (Next.js template adds "| ATMOS")
- * - OpenGraph/Twitter get the FULL title (they don't use the template)
- */
-function basePage(options: {
-  title: string;
-  ogTitle?: string; // Override for OG/Twitter if different from page title
-  description?: string;
+type PageMetadataOptions = {
+  /** Short title; the root template adds "| ATMOS". `absolute` skips it. */
+  title: string | { absolute: string };
+  description: string;
+  /** Path from the site root, e.g. "/about". Becomes canonical and og:url. */
+  path: string;
   keywords?: readonly string[];
-}): Metadata {
-  const description = options.description ?? DESCRIPTION_LONG;
-  const fullTitle = options.ogTitle ?? formatFullTitle(options.title);
-
-  return {
-    title: options.title,
-    description,
-    keywords: options.keywords ? (options.keywords as string[]) : undefined,
-    openGraph: {
-      ...DEFAULT_OPENGRAPH,
-      title: fullTitle,
-      description,
-    },
-    twitter: {
-      ...DEFAULT_TWITTER,
-      title: fullTitle,
-      description,
-    },
+  /** Replaces the default OG image, e.g. a gig's poster. */
+  image?: {
+    url: string;
+    width: number;
+    height: number;
+    alt: string;
+    type?: string;
   };
-}
+  /** Keep the page out of search, e.g. an unlisted event. */
+  noindex?: boolean;
+};
 
-/* -------------------------------------------------------------------------- */
-/*                              Page definitions                               */
-/* -------------------------------------------------------------------------- */
+/**
+ * Complete metadata for a public page, exported from its server `page.tsx`.
+ * Sets every tag a link preview reads, so none of them fall back to the root
+ * layout's. OG/Twitter get the full title, since they skip the template.
+ */
+export function pageMetadata({
+  title,
+  description,
+  path,
+  keywords,
+  image,
+  noindex,
+}: PageMetadataOptions): Metadata {
+  const fullTitle =
+    typeof title === "string" ? formatFullTitle(title) : title.absolute;
+  const images = image ? [image] : DEFAULT_OPENGRAPH.images;
 
-export const PAGE_METADATA = {
-  // Homepage uses absolute title (no template suffix)
-  home: {
-    title: { absolute: SITE_NAME_FULL },
-    description: DESCRIPTION_SHORT,
-    keywords: COMMON_KEYWORDS as unknown as string[],
+  return {
+    title,
+    description,
+    keywords: keywords && [...keywords],
+    alternates: { canonical: path },
+    ...(noindex && { robots: NOINDEX }),
     openGraph: {
       ...DEFAULT_OPENGRAPH,
-      title: SITE_NAME_FULL,
-      description: DESCRIPTION_SHORT,
+      title: fullTitle,
+      description,
+      url: path,
+      images,
     },
-    twitter: {
-      ...DEFAULT_TWITTER,
-      title: SITE_NAME_FULL,
-      description: DESCRIPTION_SHORT,
-    },
-  },
-
-  gigs: basePage({
-    title: "Events",
-    description: DESCRIPTION_LONG,
-    keywords: [
-      "dj events",
-      "club nights",
-      "techno nights",
-      "house music nights",
-      "electronic gig guide",
-    ],
-  }),
-
-  about: basePage({
-    title: "About",
-    description: DESCRIPTION_LONG,
-  }),
-
-  crew: basePage({
-    title: "Crew",
-    ogTitle: "DJs & Artists | ATMOS",
-    // description:
-  }),
-
-  contact: basePage({ title: "Contact" }),
-  terms: basePage({ title: "Terms" }),
-  privacy: basePage({ title: "Privacy" }),
-  socials: basePage({ title: "Socials" }),
-  merch: basePage({ title: "Merch" }),
-  content: basePage({ title: "Content" }),
-} satisfies Record<string, Metadata>;
-
-/* -------------------------------------------------------------------------- */
-/*                           Metadata factory functions                         */
-/* -------------------------------------------------------------------------- */
-
-export function createPageMetadata(
-  page: keyof typeof PAGE_METADATA,
-  overrides?: Partial<Metadata>,
-): Metadata {
-  return {
-    ...PAGE_METADATA[page],
-    robots: DEFAULT_ROBOTS,
-    ...overrides,
+    twitter: { ...DEFAULT_TWITTER, title: fullTitle, description, images },
   };
 }
 
 /**
- * Creates metadata for individual gig/event pages.
- * Format: "<gig name> | Gig | ATMOS"
+ * Metadata for a page reached by a private link: a ticket, a pass, a sign-in
+ * step. A plain title and description so a shared link previews as what it is
+ * without showing anything personal, and kept out of search.
  */
-export function createGigMetadata(
+export function unlistedPageMetadata(
   title: string,
-  description: string,
-  image?: string | null,
-  canonical?: string,
+  description = DESCRIPTION_SHORT,
 ): Metadata {
-  const fullTitle = `${title} | Gig | ${SITE_NAME}`;
+  const fullTitle = formatFullTitle(title);
 
   return {
-    title: { absolute: fullTitle }, // Full title, bypasses template
+    title,
     description,
-    alternates: canonical ? { canonical } : undefined,
-    openGraph: {
-      ...DEFAULT_OPENGRAPH,
-      title: fullTitle,
-      description,
-      url: canonical,
-      images: image ? [image] : undefined,
-      type: "article",
-    },
-    twitter: {
-      ...DEFAULT_TWITTER,
-      title: fullTitle,
-      description,
-      images: image ? [image] : undefined,
-    },
-    robots: DEFAULT_ROBOTS,
+    robots: NOINDEX,
+    openGraph: { ...DEFAULT_OPENGRAPH, title: fullTitle, description },
+    twitter: { ...DEFAULT_TWITTER, title: fullTitle, description },
   };
 }

@@ -8,13 +8,14 @@ import { gigPath } from "~/lib/gig-url";
 import { lexicalToPlainText } from "~/lib/gig-import/lexical";
 import { resolveGigId } from "~/server/gig-lookup";
 import { db } from "~/server/db";
+import { gigOgImage } from "~/server/og-image";
 import { buyerFromCharge, getStripe } from "~/server/stripe";
 
 /**
  * Gig donations, outside the router: what `/gigs/[id]/donate` draws, and
- * recording the paid ones. Taking the money is `donations.checkout`.
+ * recording the paid ones. Taking the money is `donations.intent`.
  *
- * A donation is a Stripe Checkout payment whose payment intent carries
+ * A donation is a payment intent paid on the donate page itself, carrying
  * `kind: "donation"` and the gig. It becomes a `Donation` row when paid.
  */
 
@@ -38,7 +39,9 @@ export const donateGig = cache(async (idOrSlug: string) => {
           title: true,
           subtitle: true,
           gigStartTime: true,
+          isTba: true,
           posterFileUploadId: true,
+          widePosterFileUploadId: true,
           donationAmountsCents: true,
           donationRecommendedIndex: true,
           donationDescriptionLexical: true,
@@ -60,6 +63,8 @@ export const donateGig = cache(async (idOrSlug: string) => {
     venue: gig.subtitle,
     startsAt: gig.gigStartTime,
     posterUrl: poster?.url ?? null,
+    /** The link preview image, for the page's metadata. */
+    ogImage: gigOgImage(gig),
     amountsCents: gig.donationAmountsCents,
     /** Index into `amountsCents`, or null for no recommendation. */
     recommendedIndex: gig.donationRecommendedIndex,
@@ -71,7 +76,7 @@ export const donateGig = cache(async (idOrSlug: string) => {
   };
 });
 
-/** True for a payment intent `donations.checkout` started. */
+/** True for a payment intent `donations.intent` started. */
 export const isDonationIntent = (intent: Stripe.PaymentIntent) =>
   intent.metadata?.kind === "donation";
 
@@ -108,32 +113,30 @@ export async function recordDonation(intent: Stripe.PaymentIntent) {
 }
 
 /**
- * How much the visitor gave, when Stripe sends them back with a paid session
- * for this gig. Records it on the way, in case the webhook is slow. Null for
- * anything else: an unpaid or foreign session, a stale id, or Stripe being
- * unreachable, all of which just show the ask again.
+ * How much a donation intent for this gig was paid, recording it on the way
+ * in case the webhook is slow. Called when the page confirms a payment inline,
+ * and when a redirecting payment method sends the visitor back with
+ * `?payment_intent=`. Null for anything else: unpaid, another gig's or not a
+ * donation, a stale id, or Stripe being unreachable, all of which just show
+ * the ask again.
  */
 export async function paidDonationCents(
-  sessionId: string,
+  paymentIntentId: string,
   gigId: string,
 ): Promise<number | null> {
   try {
-    const session = await getStripe().checkout.sessions.retrieve(sessionId, {
-      expand: ["payment_intent"],
-    });
-    const intent = session.payment_intent;
+    const intent = await getStripe().paymentIntents.retrieve(paymentIntentId);
     if (
-      session.payment_status !== "paid" ||
-      session.metadata?.gigId !== gigId ||
-      !intent ||
-      typeof intent === "string"
+      intent.status !== "succeeded" ||
+      !isDonationIntent(intent) ||
+      intent.metadata.gigId !== gigId
     ) {
       return null;
     }
     const donation = await recordDonation(intent);
     return donation.amountCents;
   } catch (cause) {
-    console.error("[donations] couldn't confirm a return", cause);
+    console.error("[donations] couldn't confirm a payment", cause);
     return null;
   }
 }

@@ -1,18 +1,15 @@
-"use client";
-
 import AboutPage from "./About";
 import { BreadcrumbJsonLd } from "~/components/seo/json-ld";
-import { usePageMetadata } from "~/hooks/use-page-metadata";
-import { SITE_URL } from "~/lib/seo-constants";
+import { pageMetadata } from "~/lib/seo-constants";
 
-export default function page() {
-  usePageMetadata({
-    title: "About",
-    description:
-      "ATMOS is an electronic music promoter and collective. We curate underground club nights and immersive DJ events.",
-    canonical: `${SITE_URL}/about`,
-  });
+export const metadata = pageMetadata({
+  title: "About",
+  description:
+    "ATMOS is an electronic music promoter and collective. We curate underground club nights and immersive DJ events.",
+  path: "/about",
+});
 
+export default function Page() {
   return (
     <>
       <BreadcrumbJsonLd

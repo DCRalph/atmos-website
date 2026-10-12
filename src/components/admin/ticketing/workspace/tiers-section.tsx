@@ -399,9 +399,7 @@ function TierRow({
               <Badge variant="outline">Needs approval</Badge>
             ) : null}
             {isElevated(tier.accessLevel) ? (
-              <Badge variant="secondary">
-                {level(tier.accessLevel).short}
-              </Badge>
+              <Badge variant="secondary">{level(tier.accessLevel).short}</Badge>
             ) : null}
             {tier.id && soldOut && tier.isActive ? (
               <Badge variant="outline">Sold out</Badge>
@@ -760,7 +758,7 @@ function TierDetails({
         />
       </Field>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field id={`tier-start-${tier.key}`} label="Sale starts">
           <DateTimePicker
             date={tier.salesStartAt}

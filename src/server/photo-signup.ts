@@ -11,6 +11,7 @@ import { formatEventDateLong } from "~/lib/ticketing/dates";
 import { escapeHtml, sendEmailBatch } from "~/server/email/send";
 import { resolveGigId } from "~/server/gig-lookup";
 import { db } from "~/server/db";
+import { gigOgImage } from "~/server/og-image";
 
 /**
  * Gig photo signup, outside the router: what the public page draws, and the
@@ -57,7 +58,9 @@ export const photoSignupGig = cache(async (idOrSlug: string) => {
           title: true,
           subtitle: true,
           gigStartTime: true,
+          isTba: true,
           posterFileUploadId: true,
+          widePosterFileUploadId: true,
           _count: { select: { media: { where: { type: "photo" } } } },
         },
       })
@@ -77,6 +80,8 @@ export const photoSignupGig = cache(async (idOrSlug: string) => {
     venue: gig.subtitle,
     startsAt: gig.gigStartTime,
     posterUrl: poster?.url ?? null,
+    /** The link preview image, for the page's metadata. */
+    ogImage: gigOgImage(gig),
     /** Once there are any, the page sends people to them instead. */
     hasPhotos: gig._count.media > 0,
     galleryHref: `${gigPath(gig)}#photos`,

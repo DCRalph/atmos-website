@@ -291,8 +291,8 @@ function DetailsCard({ user }: { user: User }) {
       <CardContent className="space-y-5">
         <div className="space-y-2">
           <Label>Email</Label>
-          <div className="flex items-center gap-2">
-            <span className="text-sm">{user.email}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="min-w-0 text-sm break-all">{user.email}</span>
             <VerifiedBadge verified={user.emailVerified} />
           </div>
         </div>

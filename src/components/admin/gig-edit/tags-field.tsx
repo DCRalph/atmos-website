@@ -89,7 +89,7 @@ export function TagsField({ tagIds, onChange, disabled }: TagsFieldProps) {
                     type="button"
                     onClick={() => remove(id)}
                     disabled={disabled}
-                    className="hover:opacity-70 disabled:opacity-50"
+                    className="-m-1.5 p-1.5 hover:opacity-70 disabled:opacity-50"
                     aria-label={`Remove ${tag?.name ?? "tag"}`}
                   >
                     <X className="h-3 w-3" />

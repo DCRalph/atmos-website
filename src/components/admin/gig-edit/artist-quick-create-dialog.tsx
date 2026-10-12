@@ -352,10 +352,12 @@ function QuickCreateForm({
             <div className="space-y-1">
               <Label>Link a user</Label>
               {pickedUser ? (
-                <div className="flex items-center justify-between rounded-md border p-2">
-                  <div>
-                    <div className="text-sm font-medium">{pickedUser.name}</div>
-                    <div className="text-muted-foreground text-xs">
+                <div className="flex items-center justify-between gap-2 rounded-md border p-2">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">
+                      {pickedUser.name}
+                    </div>
+                    <div className="text-muted-foreground truncate text-xs">
                       {pickedUser.email}
                     </div>
                   </div>

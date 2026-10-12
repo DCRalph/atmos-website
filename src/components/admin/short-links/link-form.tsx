@@ -94,7 +94,7 @@ export function LinkForm({
           <Select value={domain} onValueChange={setDomain}>
             <SelectTrigger
               aria-label="Domain"
-              className="bg-muted dark:bg-muted hover:text-foreground dark:hover:bg-muted/70 text-muted-foreground shrink-0 rounded-r-none border-r-0 font-mono"
+              className="bg-muted dark:bg-muted hover:text-foreground dark:hover:bg-muted/70 text-muted-foreground max-w-[55%] min-w-0 rounded-r-none border-r-0 font-mono"
             >
               <SelectValue>
                 {domain === ALL_DOMAINS ? "any domain" : domain}/

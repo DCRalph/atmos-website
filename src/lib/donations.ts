@@ -10,6 +10,12 @@ export const MIN_DONATION_CENTS = 100;
 /** A typo guard, not a policy. */
 export const MAX_DONATION_CENTS = 1_000_000;
 
+/**
+ * How a donation can be paid: a card, typed or from a wallet, or Link. No
+ * buy-now-pay-later for a gift. The page's Elements and the intent must agree.
+ */
+export const DONATION_PAYMENT_METHODS = ["card", "link"] as const;
+
 /** What a gig's three suggestions start as. Matches the column default. */
 export const DEFAULT_DONATION_AMOUNTS_CENTS = [1000, 2000, 5000];
 

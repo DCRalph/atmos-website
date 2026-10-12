@@ -1,6 +1,9 @@
 import { Suspense } from "react";
 
 import { ResetPasswordForm } from "./ResetPasswordForm";
+import { unlistedPageMetadata } from "~/lib/seo-constants";
+
+export const metadata = unlistedPageMetadata("Reset password");
 
 /**
  * Where the "reset your password" link lands.

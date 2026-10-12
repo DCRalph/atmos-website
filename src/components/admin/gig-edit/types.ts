@@ -113,4 +113,6 @@ export type GigDraft = {
   /** Who hears this gig's cues, unless a row narrows it. */
   notifyUserIds: string[];
   poster: PosterDraft;
+  /** The landscape poster, saved the same way as `poster`. */
+  widePoster: PosterDraft;
 };

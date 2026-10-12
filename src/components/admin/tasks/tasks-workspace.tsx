@@ -277,8 +277,8 @@ export function TasksWorkspace() {
               </Button>
             ))}
           </div>
-          <div className="flex gap-2">
-            <div className="w-40">
+          <div className="flex w-full gap-2 sm:w-auto">
+            <div className="min-w-0 flex-1 sm:w-40 sm:flex-none">
               <TaskSelect
                 aria-label="Person filter"
                 value={person}
@@ -292,7 +292,7 @@ export function TasksWorkspace() {
                 ]}
               />
             </div>
-            <div className="w-44">
+            <div className="min-w-0 flex-1 sm:w-44 sm:flex-none">
               <TaskSelect
                 aria-label="Gig filter"
                 value={gig}
@@ -381,7 +381,7 @@ export function TasksWorkspace() {
         ) : null}
         {view === "list" ? (
           <>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="w-44">
                 <TaskSelect
                   aria-label="Group list"

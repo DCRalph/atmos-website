@@ -1,14 +1,12 @@
-"use client";
-
 import ContentPage from "./Content";
-import { usePageMetadata } from "~/hooks/use-page-metadata";
-import { SITE_URL } from "~/lib/seo-constants";
+import { pageMetadata } from "~/lib/seo-constants";
+
+export const metadata = pageMetadata({
+  title: "Content",
+  description: "Releases, mixes and highlights from the Atmos community.",
+  path: "/content",
+});
 
 export default function Page() {
-  usePageMetadata({
-    title: "Content",
-    canonical: `${SITE_URL}/content`,
-  });
-
   return <ContentPage />;
 }

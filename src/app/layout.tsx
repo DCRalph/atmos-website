@@ -16,10 +16,8 @@ import NextTopLoader from "nextjs-toploader";
 import { Toaster } from "sonner";
 import {
   SITE_NAME,
-  SITE_TAGLINE,
   SITE_NAME_FULL,
   SITE_URL,
-  DESCRIPTION_SHORT,
   DESCRIPTION_LONG,
   COMMON_KEYWORDS,
   DEFAULT_ROBOTS,
@@ -32,6 +30,12 @@ import { RightMenuRail } from "~/components/right-menu-rail";
 import { StripTicketHash } from "~/components/ticketing/strip-ticket-hash";
 import { PostHogInit } from "~/components/posthog-init";
 
+/**
+ * Site-wide fallbacks only. Next merges each key shallowly, so a canonical, an
+ * og:url or an og:title set here would be inherited by every page that doesn't
+ * set its own, pointing previews and search engines at the home page. Pages
+ * set those through `pageMetadata` / `unlistedPageMetadata`.
+ */
 export const metadata: Metadata = {
   title: {
     default: SITE_NAME_FULL,
@@ -40,22 +44,10 @@ export const metadata: Metadata = {
   description: DESCRIPTION_LONG,
   applicationName: SITE_NAME,
   keywords: [...COMMON_KEYWORDS],
-  metadataBase: SITE_URL ? new URL(SITE_URL) : undefined,
-  alternates: {
-    canonical: "/",
-  },
+  metadataBase: new URL(SITE_URL),
   icons: ICONS,
-  openGraph: {
-    ...DEFAULT_OPENGRAPH,
-    title: SITE_NAME_FULL,
-    description: DESCRIPTION_SHORT,
-    url: "/",
-  },
-  twitter: {
-    ...DEFAULT_TWITTER,
-    title: SITE_NAME_FULL,
-    description: DESCRIPTION_SHORT,
-  },
+  openGraph: DEFAULT_OPENGRAPH,
+  twitter: DEFAULT_TWITTER,
   robots: DEFAULT_ROBOTS,
   verification: VERIFICATION,
   category: "entertainment",

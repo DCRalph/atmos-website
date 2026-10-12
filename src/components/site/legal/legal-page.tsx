@@ -75,7 +75,9 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
       </header>
 
       <div className="border-t border-white/10 pb-24">
-        <div className="sticky top-16 z-30 -mx-5 border-b border-white/10 bg-black md:top-20 md:-mx-10 lg:hidden">
+        {/* Above the header's z-40 so its fade-out blur, which hangs below
+            the bar it sits under, does not smear this one. */}
+        <div className="sticky top-16 z-[41] -mx-5 border-b border-white/10 bg-black md:top-20 md:-mx-10 lg:hidden">
           <button
             type="button"
             aria-expanded={open}

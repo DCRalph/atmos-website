@@ -177,7 +177,7 @@ export function CountdownTiles({
           key={label}
           className={cn(
             "glass flex flex-col items-center justify-center rounded-xl",
-            compact ? "h-16 min-w-14" : "h-24 min-w-20 md:min-w-24",
+            compact ? "h-16 min-w-14" : "h-24 min-w-0 sm:min-w-20 md:min-w-24",
           )}
         >
           <span

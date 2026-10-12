@@ -2,11 +2,10 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { Loader2, Save, Undo2 } from "lucide-react";
 
 import { api } from "~/trpc/react";
 import { AdminSection } from "~/components/admin/admin-section";
-import { SaveStatusPill } from "~/components/admin/save-status";
+import { SaveBar } from "~/components/admin/save-status";
 import { EventStatusBadge } from "~/components/admin/ticketing/ticket-events-table";
 import { OrdersPanel } from "~/components/admin/ticketing/orders-panel";
 import { TicketsPanel } from "~/components/admin/ticketing/tickets-panel";
@@ -185,116 +184,105 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
       }
     >
       {/* The page's one and only Save, above every section. */}
-      <div className="bg-background/95 sticky top-20 z-20 -mx-2 mb-6 flex flex-wrap items-center gap-3 rounded-lg border px-4 py-3 backdrop-blur">
-        <SaveStatusPill status={status} errorMessage={errorMessage} />
-        <span className="text-muted-foreground text-sm">
-          {status === "dirty"
+      <SaveBar
+        status={status}
+        errorMessage={errorMessage}
+        message={
+          status === "dirty"
             ? `Unsaved: ${dirty.map((s) => SECTION_LABEL[s]).join(", ")}. Cmd+S saves every section at once.`
             : status === "idle"
               ? event
                 ? "Everything here is up to date."
                 : "Fill in the details, then create the event."
-              : null}
-        </span>
-        <div className="ml-auto flex items-center gap-2">
-          {isDirty && event ? (
-            <Button variant="ghost" disabled={isSaving} onClick={state.discard}>
-              <Undo2 className="size-4" /> Discard
-            </Button>
-          ) : null}
-          <Button onClick={() => void save()} disabled={isSaving}>
-            {isSaving ? (
-              <>
-                <Loader2 className="size-4 animate-spin" /> Saving…
-              </>
-            ) : (
-              <>
-                <Save className="size-4" /> {event ? "Save" : "Create event"}
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[200px_minmax(0,1fr)]">
-        <nav
-          aria-label="Event sections"
-          className="flex flex-row flex-wrap gap-1 lg:sticky lg:top-40 lg:flex-col lg:self-start"
-        >
-          {groups.map((group) => (
-            <div key={group.label} className="contents lg:block">
-              <p className="text-muted-foreground hidden px-2.5 pt-3 pb-1 text-[10.5px] font-medium tracking-[0.08em] uppercase first:pt-0 lg:block">
-                {group.label}
-              </p>
-              {group.items.map((item) => (
-                <button
-                  key={item.page}
-                  type="button"
-                  onClick={() => open(item.page)}
-                  aria-current={page === item.page ? "page" : undefined}
-                  className={cn(
-                    "text-muted-foreground hover:text-foreground flex w-auto items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-left text-sm lg:w-full",
-                    page === item.page && "bg-muted text-foreground",
-                  )}
-                >
-                  <span className="flex items-center gap-2">
-                    {item.label}
-                    {item.dirty ? (
-                      <span
-                        className="size-1.5 rounded-full bg-amber-500"
-                        aria-label="Unsaved changes"
-                      />
-                    ) : null}
-                  </span>
-                  {item.count !== undefined ? (
-                    <span className="text-muted-foreground text-xs tabular-nums">
-                      {item.count}
+              : null
+        }
+        saveLabel={event ? "Save" : "Create event"}
+        isSaving={isSaving}
+        onSave={() => void save()}
+        onDiscard={isDirty && event ? state.discard : undefined}
+      >
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[200px_minmax(0,1fr)]">
+          <nav
+            aria-label="Event sections"
+            className="flex flex-row flex-wrap gap-1 lg:sticky lg:top-40 lg:flex-col lg:self-start"
+          >
+            {groups.map((group) => (
+              <div key={group.label} className="contents lg:block">
+                <p className="text-muted-foreground hidden px-2.5 pt-3 pb-1 text-[10.5px] font-medium tracking-[0.08em] uppercase first:pt-0 lg:block">
+                  {group.label}
+                </p>
+                {group.items.map((item) => (
+                  <button
+                    key={item.page}
+                    type="button"
+                    onClick={() => open(item.page)}
+                    aria-current={page === item.page ? "page" : undefined}
+                    className={cn(
+                      "text-muted-foreground hover:text-foreground flex w-auto items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-left text-sm lg:w-full",
+                      page === item.page && "bg-muted text-foreground",
+                    )}
+                  >
+                    <span className="flex items-center gap-2">
+                      {item.label}
+                      {item.dirty ? (
+                        <span
+                          className="size-1.5 rounded-full bg-amber-500"
+                          aria-label="Unsaved changes"
+                        />
+                      ) : null}
                     </span>
-                  ) : null}
-                </button>
-              ))}
-            </div>
-          ))}
-        </nav>
+                    {item.count !== undefined ? (
+                      <span className="text-muted-foreground text-xs tabular-nums">
+                        {item.count}
+                      </span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </nav>
 
-        <div className="min-w-0">
-          {page === "overview" && event ? (
-            <OverviewSection
-              event={event}
-              checklist={checklist}
-              onOpenSection={open}
-            />
-          ) : null}
-          {page === "details" ? (
-            <DetailsSection
-              state={state}
-              event={event}
-              gigPosterId={gigPosterId}
-            />
-          ) : null}
-          {page === "tiers" ? (
-            <TiersSection state={state} event={event} />
-          ) : null}
-          {page === "costs" ? (
-            <CostsSection state={state} event={event} />
-          ) : null}
-          {page === "staff" ? (
-            <StaffSection state={state} eventId={event?.id} />
-          ) : null}
-          {page === "wallet" ? <WalletSection state={state} /> : null}
-          {page === "orders" && event ? (
-            <OrdersPanel eventId={event.id} />
-          ) : null}
-          {page === "tickets" && event ? (
-            <TicketsPanel eventId={event.id} />
-          ) : null}
-          {page === "codes" && event ? <EventCodesPanel event={event} /> : null}
-          {page === "comps" && event ? <CompsPanel event={event} /> : null}
-          {page === "links" && event ? (
-            <TicketLinksPanel event={event} />
-          ) : null}
+          <div className="min-w-0">
+            {page === "overview" && event ? (
+              <OverviewSection
+                event={event}
+                checklist={checklist}
+                onOpenSection={open}
+              />
+            ) : null}
+            {page === "details" ? (
+              <DetailsSection
+                state={state}
+                event={event}
+                gigPosterId={gigPosterId}
+              />
+            ) : null}
+            {page === "tiers" ? (
+              <TiersSection state={state} event={event} />
+            ) : null}
+            {page === "costs" ? (
+              <CostsSection state={state} event={event} />
+            ) : null}
+            {page === "staff" ? (
+              <StaffSection state={state} eventId={event?.id} />
+            ) : null}
+            {page === "wallet" ? <WalletSection state={state} /> : null}
+            {page === "orders" && event ? (
+              <OrdersPanel eventId={event.id} />
+            ) : null}
+            {page === "tickets" && event ? (
+              <TicketsPanel eventId={event.id} />
+            ) : null}
+            {page === "codes" && event ? (
+              <EventCodesPanel event={event} />
+            ) : null}
+            {page === "comps" && event ? <CompsPanel event={event} /> : null}
+            {page === "links" && event ? (
+              <TicketLinksPanel event={event} />
+            ) : null}
+          </div>
         </div>
-      </div>
+      </SaveBar>
     </AdminSection>
   );
 }

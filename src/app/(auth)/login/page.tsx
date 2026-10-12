@@ -5,6 +5,9 @@ import { db } from "~/server/db";
 import { userHasPermission } from "~/server/utils/permissions";
 import { safeNextPath } from "~/lib/login-redirect";
 import { LoginForm } from "../../../components/auth/login-form";
+import { unlistedPageMetadata } from "~/lib/seo-constants";
+
+export const metadata = unlistedPageMetadata("Sign in");
 
 export default async function LoginPage({
   searchParams,

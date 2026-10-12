@@ -1182,7 +1182,7 @@ export function FilesManager() {
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2 pr-8">
               <div>
                 <DialogTitle>
                   {isEditing ? "Edit File" : "File Information"}
@@ -1255,6 +1255,9 @@ export function FilesManager() {
                           <SelectItem value="gig">Gig</SelectItem>
                           <SelectItem value="gig_media">Gig Media</SelectItem>
                           <SelectItem value="gig_poster">Gig Poster</SelectItem>
+                          <SelectItem value="gig_wide_poster">
+                            Gig Wide Poster
+                          </SelectItem>
                           <SelectItem value="crew">Crew</SelectItem>
                           <SelectItem value="merch">Merch</SelectItem>
                           <SelectItem value="content">Content</SelectItem>

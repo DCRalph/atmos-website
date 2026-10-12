@@ -56,6 +56,13 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import {
   Loader2,
   Upload,
   Trash2,
@@ -74,6 +81,9 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  MoreHorizontal,
   Star,
 } from "lucide-react";
 import { getMediaDisplayUrl } from "~/lib/media-url";
@@ -109,7 +119,103 @@ type SectionItems = {
   gallery: string[];
 };
 
-// Sortable media item component
+type Section = "featured" | "gallery";
+type MoveDirection = "start" | "back" | "forward" | "end";
+
+// Every per-item action in one menu, so touch screens (no hover) can reach
+// them all. Desktop also gets the hover quick buttons beside it.
+function MediaItemMenu({
+  item,
+  currentSection,
+  canMoveBack,
+  canMoveForward,
+  onDelete,
+  onInfo,
+  onMove,
+  onMoveToSection,
+}: {
+  item: MediaItem;
+  currentSection: Section;
+  canMoveBack: boolean;
+  canMoveForward: boolean;
+  onDelete: (id: string) => void;
+  onInfo: (item: MediaItem) => void;
+  onMove: (id: string, direction: MoveDirection) => void;
+  onMoveToSection: (id: string, target: Section) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="h-7 w-7 p-0 pointer-coarse:h-10 pointer-coarse:w-10"
+          aria-label="Media actions"
+          title="More actions"
+        >
+          <MoreHorizontal className="h-3 w-3 pointer-coarse:h-5 pointer-coarse:w-5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        className="w-52 pointer-coarse:[&_[data-slot=dropdown-menu-item]]:py-2.5"
+      >
+        <DropdownMenuItem onSelect={() => onInfo(item)}>
+          <Info /> Details
+        </DropdownMenuItem>
+        {currentSection === "gallery" ? (
+          <DropdownMenuItem
+            onSelect={() => onMoveToSection(item.id, "featured")}
+          >
+            <Star /> Move to featured
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem
+            onSelect={() => onMoveToSection(item.id, "gallery")}
+          >
+            <ImageIcon /> Move to gallery
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          disabled={!canMoveBack}
+          onSelect={() => onMove(item.id, "start")}
+        >
+          <ChevronsLeft /> Move to start
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!canMoveBack}
+          onSelect={() => onMove(item.id, "back")}
+        >
+          <ChevronLeft /> Move back
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!canMoveForward}
+          onSelect={() => onMove(item.id, "forward")}
+        >
+          <ChevronRight /> Move forward
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!canMoveForward}
+          onSelect={() => onMove(item.id, "end")}
+        >
+          <ChevronsRight /> Move to end
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          variant="destructive"
+          onSelect={() => onDelete(item.id)}
+        >
+          <Trash2 /> Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+// Sortable media tile. Drag from the grip handle (touch-action: none, so the
+// rest of the tile still scrolls the page on touch); everything else lives in
+// MediaItemMenu, which is always visible on touch screens.
 function SortableMediaItem({
   item,
   onDelete,
@@ -125,9 +231,9 @@ function SortableMediaItem({
   item: MediaItem;
   onDelete: (id: string) => void;
   onInfo: (item: MediaItem) => void;
-  onMove: (id: string, direction: "back" | "forward") => void;
-  onMoveToSection: (id: string, target: "featured" | "gallery") => void;
-  currentSection: "featured" | "gallery";
+  onMove: (id: string, direction: MoveDirection) => void;
+  onMoveToSection: (id: string, target: Section) => void;
+  currentSection: Section;
   canMoveBack: boolean;
   canMoveForward: boolean;
   isDeleting: boolean;
@@ -165,7 +271,7 @@ function SortableMediaItem({
   // For drag overlay, use simpler styling
   if (isDragOverlay) {
     return (
-      <div className="border-primary bg-muted relative aspect-video w-64 overflow-hidden rounded-lg border-2 shadow-2xl">
+      <div className="border-primary bg-muted relative aspect-video w-40 overflow-hidden rounded-lg border-2 shadow-2xl sm:w-64">
         {isVideo ? (
           <div className="relative h-full w-full">
             <video
@@ -202,7 +308,7 @@ function SortableMediaItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group bg-muted relative aspect-video overflow-hidden rounded-lg border transition-all ${
+      className={`group bg-muted relative aspect-square overflow-hidden rounded-lg border transition-all sm:aspect-video ${
         isDragging
           ? "ring-primary scale-95 opacity-50 ring-2"
           : "hover:ring-primary/50 hover:ring-1"
@@ -212,9 +318,10 @@ function SortableMediaItem({
       <div
         {...attributes}
         {...listeners}
-        className="absolute top-2 left-2 z-10 cursor-grab rounded bg-black/60 p-2 transition-opacity active:cursor-grabbing sm:p-1"
+        aria-label="Drag to reorder"
+        className="absolute top-1.5 left-1.5 z-10 flex h-7 w-7 cursor-grab touch-none items-center justify-center rounded bg-black/60 select-none active:cursor-grabbing pointer-coarse:h-10 pointer-coarse:w-10"
       >
-        <GripVertical className="h-6 w-6 text-white sm:h-4 sm:w-4" />
+        <GripVertical className="h-4 w-4 text-white pointer-coarse:h-5 pointer-coarse:w-5" />
       </div>
 
       {/* Placeholder - shown while loading or on error */}
@@ -258,7 +365,7 @@ function SortableMediaItem({
             src={url}
             alt="Media preview"
             fill
-            sizes="30vw"
+            sizes="(max-width: 640px) 50vw, 30vw"
             className={`object-cover transition-opacity ${
               isLoading || hasError ? "opacity-0" : "opacity-100"
             }`}
@@ -271,13 +378,13 @@ function SortableMediaItem({
         )}
       </button>
 
-      {/* Actions */}
-      <div className="absolute top-2 right-2 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+      {/* Actions: hover quick buttons on desktop, menu only (always shown) on touch */}
+      <div className="absolute top-1.5 right-1.5 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 has-data-[state=open]:opacity-100 pointer-coarse:opacity-100">
         {currentSection === "gallery" ? (
           <Button
             variant="secondary"
             size="sm"
-            className="h-7 w-7 p-0"
+            className="h-7 w-7 p-0 pointer-coarse:hidden"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -292,7 +399,7 @@ function SortableMediaItem({
           <Button
             variant="secondary"
             size="sm"
-            className="h-7 w-7 p-0"
+            className="h-7 w-7 p-0 pointer-coarse:hidden"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -307,7 +414,7 @@ function SortableMediaItem({
         <Button
           variant="secondary"
           size="sm"
-          className="h-7 w-7 p-0"
+          className="h-7 w-7 p-0 pointer-coarse:hidden"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -322,7 +429,7 @@ function SortableMediaItem({
         <Button
           variant="secondary"
           size="sm"
-          className="h-7 w-7 p-0"
+          className="h-7 w-7 p-0 pointer-coarse:hidden"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -337,26 +444,29 @@ function SortableMediaItem({
         <Button
           variant="secondary"
           size="sm"
-          className="h-7 w-7 p-0"
+          className="h-7 w-7 p-0 pointer-coarse:hidden"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             onInfo(item);
           }}
           title="View info"
+          aria-label="View info"
         >
           <Info className="h-3 w-3" />
         </Button>
         <Button
           variant="destructive"
           size="sm"
-          className="h-7 w-7 p-0"
+          className="h-7 w-7 p-0 pointer-coarse:hidden"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             onDelete(item.id);
           }}
           disabled={isDeleting}
+          title="Delete"
+          aria-label="Delete"
         >
           {isDeleting ? (
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -364,6 +474,16 @@ function SortableMediaItem({
             <Trash2 className="h-3 w-3" />
           )}
         </Button>
+        <MediaItemMenu
+          item={item}
+          currentSection={currentSection}
+          canMoveBack={canMoveBack}
+          canMoveForward={canMoveForward}
+          onDelete={onDelete}
+          onInfo={onInfo}
+          onMove={onMove}
+          onMoveToSection={onMoveToSection}
+        />
       </div>
 
       {/* File name tooltip */}
@@ -391,7 +511,7 @@ function MediaSection({
   deleteMediaId,
   isDeleting,
 }: {
-  section: "featured" | "gallery";
+  section: Section;
   title: string;
   description: string;
   items: string[];
@@ -399,8 +519,8 @@ function MediaSection({
   hasChanges: boolean;
   onDelete: (id: string) => void;
   onInfo: (item: MediaItem) => void;
-  onMove: (id: string, direction: "back" | "forward") => void;
-  onMoveToSection: (id: string, target: "featured" | "gallery") => void;
+  onMove: (id: string, direction: MoveDirection) => void;
+  onMoveToSection: (id: string, target: Section) => void;
   deleteMediaId: string | null;
   isDeleting: boolean;
 }) {
@@ -420,8 +540,8 @@ function MediaSection({
         isOver ? "ring-primary ring-2 ring-offset-2" : ""
       } ${hasChanges ? "ring-2 ring-orange-500" : ""}`}
     >
-      <CardHeader className="pb-3">
-        <div className="flex items-center gap-2">
+      <CardHeader className="px-4 pb-3 sm:px-6">
+        <div className="flex flex-wrap items-center gap-2">
           {section === "featured" ? (
             <span className="rounded bg-yellow-500/20 px-2 py-0.5 text-xs font-medium text-yellow-600">
               ★ Featured
@@ -440,7 +560,7 @@ function MediaSection({
         </div>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 sm:px-6">
         <SortableContext items={items} strategy={rectSortingStrategy}>
           {items.length === 0 ? (
             <div
@@ -449,11 +569,13 @@ function MediaSection({
               }`}
             >
               <p className="text-muted-foreground text-sm">
-                {isOver ? "Drop here" : "Drag items here"}
+                {isOver
+                  ? "Drop here"
+                  : "Drag items here, or use an item's menu"}
               </p>
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
               {items.map((id, idx) => {
                 const item = mediaMap.get(id);
                 if (!item) return null;
@@ -722,10 +844,7 @@ export function GigMediaManager({
     setActiveItem(null);
   };
 
-  const handleMoveInSection = (
-    mediaId: string,
-    direction: "back" | "forward",
-  ) => {
+  const handleMoveInSection = (mediaId: string, direction: MoveDirection) => {
     const section = findSection(mediaId);
     if (!section) return;
 
@@ -734,8 +853,13 @@ export function GigMediaManager({
       const from = list.indexOf(mediaId);
       if (from === -1) return prev;
 
-      const to = direction === "back" ? from - 1 : from + 1;
-      if (to < 0 || to >= list.length) return prev;
+      const to = {
+        start: 0,
+        back: from - 1,
+        forward: from + 1,
+        end: list.length - 1,
+      }[direction];
+      if (to < 0 || to >= list.length || to === from) return prev;
 
       return {
         ...prev,
@@ -744,10 +868,7 @@ export function GigMediaManager({
     });
   };
 
-  const handleMoveToSection = (
-    mediaId: string,
-    target: "featured" | "gallery",
-  ) => {
+  const handleMoveToSection = (mediaId: string, target: Section) => {
     const from = findSection(mediaId);
     if (!from) return;
     if (from === target) return;
@@ -966,62 +1087,28 @@ export function GigMediaManager({
           className="hidden"
           onChange={handleFileSelect}
         />
-        <Button onClick={() => fileInputRef.current?.click()}>
+        <Button
+          className="pointer-coarse:h-10"
+          onClick={() => fileInputRef.current?.click()}
+        >
           <Upload className="mr-2 h-4 w-4" />
           Upload Media
         </Button>
-        <Button variant="outline" onClick={handleOpenSelectDialog}>
+        <Button
+          variant="outline"
+          className="pointer-coarse:h-10"
+          onClick={handleOpenSelectDialog}
+        >
           <FolderOpen className="mr-2 h-4 w-4" />
           Select from Uploaded
         </Button>
 
-        {hasChanges && (
-          <>
-            <div className="bg-border h-6 w-px" />
-            <Button
-              onClick={handleSaveChanges}
-              disabled={isSaving}
-              className="bg-orange-600 hover:bg-orange-700"
-            >
-              {isSaving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="mr-2 h-4 w-4" />
-              )}
-              Save Changes
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleDiscardChanges}
-              disabled={isSaving}
-            >
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Discard
-            </Button>
-          </>
-        )}
-
         <p className="text-muted-foreground text-sm">
-          {hasChanges
-            ? "You have unsaved changes. Drag items to reorder, then save."
-            : "Drag and drop to reorder. Move items between Featured and Gallery sections."}
+          Drag the grip to reorder or move between Featured and Gallery, or use
+          the <MoreHorizontal className="inline h-4 w-4 align-text-bottom" />{" "}
+          menu on each item.
         </p>
       </div>
-
-      {/* Unsaved Changes Banner */}
-      {hasChanges && (
-        <div className="flex items-center gap-3 rounded-lg border-2 border-orange-500 bg-orange-500/10 p-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-500/20">
-            <Save className="h-4 w-4 text-orange-500" />
-          </div>
-          <div className="flex-1">
-            <p className="font-medium text-orange-500">Unsaved changes</p>
-            <p className="text-muted-foreground text-sm">
-              You have rearranged media items. Save to keep the new order.
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* DnD Sections */}
       <DndContext
@@ -1092,6 +1179,40 @@ export function GigMediaManager({
         </DragOverlay>
       </DndContext>
 
+      {/* Unsaved order: sticks to the bottom of the screen while the sections
+          are in view, so Save is reachable after reordering far down a list. */}
+      {hasChanges && (
+        <div className="bg-background sticky bottom-3 z-20 flex flex-wrap items-center gap-3 rounded-lg border-2 border-orange-500 p-3 shadow-lg">
+          <div className="min-w-0 flex-1">
+            <p className="font-medium text-orange-500">Unsaved changes</p>
+            <p className="text-muted-foreground hidden text-sm sm:block">
+              You have rearranged media items. Save to keep the new order.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            className="pointer-coarse:h-10"
+            onClick={handleDiscardChanges}
+            disabled={isSaving}
+          >
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Discard
+          </Button>
+          <Button
+            onClick={handleSaveChanges}
+            disabled={isSaving}
+            className="bg-orange-600 hover:bg-orange-700 pointer-coarse:h-10"
+          >
+            {isSaving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            Save Changes
+          </Button>
+        </div>
+      )}
+
       {/* Upload Dialog */}
       <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
         <DialogContent className="sm:max-w-lg">
@@ -1125,7 +1246,8 @@ export function GigMediaManager({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 w-6 p-0"
+                    className="h-6 w-6 p-0 pointer-coarse:h-10 pointer-coarse:w-10"
+                    aria-label={`Remove ${file.name}`}
                     onClick={() =>
                       setPendingFiles((files) =>
                         files.filter((_, idx) => idx !== i),
@@ -1360,7 +1482,7 @@ export function GigMediaManager({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-7 w-7 shrink-0 p-0"
+                      className="h-7 w-7 shrink-0 p-0 pointer-coarse:h-10 pointer-coarse:w-10"
                       onClick={() =>
                         handleCopyUrl(getMediaDisplayUrl(infoMedia))
                       }
@@ -1374,7 +1496,7 @@ export function GigMediaManager({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-7 w-7 shrink-0 p-0"
+                      className="h-7 w-7 shrink-0 p-0 pointer-coarse:h-10 pointer-coarse:w-10"
                       asChild
                     >
                       <a
@@ -1462,7 +1584,7 @@ export function GigMediaManager({
                   </p>
                 </div>
               ) : (
-                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
                   {availableUploads.map((upload) => {
                     const isSelected = selectedUploads.has(upload.id);
                     const isVideo = upload.mimeType.startsWith("video/");
@@ -1482,7 +1604,7 @@ export function GigMediaManager({
                           className={`absolute top-2 right-2 z-10 flex h-6 w-6 items-center justify-center rounded-full transition-all ${
                             isSelected
                               ? "bg-primary text-primary-foreground"
-                              : "bg-black/50 text-white opacity-0 group-hover:opacity-100"
+                              : "bg-black/50 text-white opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100"
                           }`}
                         >
                           {isSelected ? (
