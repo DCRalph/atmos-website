@@ -6,6 +6,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import {
   ArrowLeft,
+  ArrowRight,
   ArrowUpRight,
   CalendarPlus,
   Check,
@@ -223,7 +224,21 @@ function TicketsBlock({ gig }: { gig: DetailGig }) {
     return (
       <Skeleton className="h-72 rounded-[var(--site-r-panel)] rounded-tl-none" />
     );
-  if (event.data) return <BuyPanel event={event.data} />;
+  if (event.data) {
+    return (
+      <div>
+        <BuyPanel event={event.data} />
+        <div className="mt-2 flex justify-end">
+          <Link
+            href={`/events/${event.data.slug}`}
+            className="t-label inline-flex items-center gap-1.5 py-2 text-[11px] text-white/55 hover:text-white"
+          >
+            Event page <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
   if (gig.ticketLink) {
     return (
       <section
