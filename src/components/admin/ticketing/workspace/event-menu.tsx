@@ -10,6 +10,7 @@ import {
   MoreHorizontal,
   PauseCircle,
   PlayCircle,
+  RotateCcw,
   ScanLine,
   Trash2,
 } from "lucide-react";
@@ -52,6 +53,19 @@ export function EventMenu({ event }: { event: AdminEvent }) {
     },
     onError: (error) => toast.error(error.message),
   });
+  const resetEntry = api.ticketEvents.resetEntry.useMutation({
+    onSuccess: () => {
+      toast.success("Entry reset");
+      void utils.ticketEvents.invalidate();
+      void utils.ticketAdmin.invalidate();
+      void utils.door.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  // Resetting entry deletes the scan log, so it is superadmin-only.
+  const me = api.user.me.useQuery();
+  const canResetEntry =
+    me.data?.effectivePermissions.includes("SUPERADMIN") ?? false;
   const remove = api.ticketEvents.delete.useMutation({
     onSuccess: () => {
       toast.success("Event deleted");
@@ -61,7 +75,11 @@ export function EventMenu({ event }: { event: AdminEvent }) {
     onError: (error) => toast.error(error.message),
   });
 
-  const busy = setStatus.isPending || duplicate.isPending || remove.isPending;
+  const busy =
+    setStatus.isPending ||
+    duplicate.isPending ||
+    resetEntry.isPending ||
+    remove.isPending;
   const { status } = event;
 
   return (
@@ -151,6 +169,23 @@ export function EventMenu({ event }: { event: AdminEvent }) {
 
         <DropdownMenuSeparator />
 
+        {canResetEntry ? (
+          <DropdownMenuItem
+            variant="destructive"
+            onClick={async () => {
+              const ok = await confirm({
+                title: "Reset entry?",
+                description:
+                  "Everyone is unadmitted and every ticket scans fresh. All scans, denials, notes and ID checks for this event are deleted. Tickets, orders and refunds are untouched. This cannot be undone.",
+                confirmLabel: "Reset entry",
+                variant: "destructive",
+              });
+              if (ok) resetEntry.mutate({ id: event.id });
+            }}
+          >
+            <RotateCcw className="size-4" /> Reset entry…
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem
           variant="destructive"
           onClick={async () => {
