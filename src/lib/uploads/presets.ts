@@ -209,6 +209,30 @@ export const uploadPresets = {
     keyPrefix: () => "ticket-events/passes",
   }),
 
+  /**
+   * A crew member's photo, for crew rows that aren't linked to an artist
+   * profile. One shared bucket so a photo can be picked before the row exists.
+   */
+  crewPhoto: definePreset({
+    label: "Crew photo",
+    description: "Portrait on the public crew page for unlinked crew rows.",
+    access: "admin",
+    accept: IMAGE_TYPES,
+    maxFileSize: mb(25),
+    maxFiles: 1,
+    maxTotalSize: mb(25),
+    for: "crew_photo",
+    image: {
+      maxDimension: 896,
+      format: "webp",
+      quality: 82,
+      maxOutputSize: mb(0.4),
+    },
+    context: z.object({}),
+    forId: () => "crew",
+    keyPrefix: () => "crew",
+  }),
+
   /** An artist's profile photo. */
   artistAvatar: definePreset({
     label: "Artist avatar",

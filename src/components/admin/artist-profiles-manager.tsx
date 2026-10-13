@@ -7,18 +7,17 @@ import {
   Plus,
   Search,
   ExternalLink,
+  LayoutGrid,
   Loader2,
-  Link2,
-  Unlink,
   Trash2,
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "~/trpc/react";
-import {
-  LinkUserDialog,
-  type LinkUserTarget,
-} from "~/components/admin/link-user-dialog";
+import { ArtistCoreSheet } from "~/components/admin/artist-core-sheet";
+import { ProfileAvatar } from "~/components/admin/profile-avatar";
+import { findProfileSocial } from "~/lib/crew-display";
+import { buildMediaUrl } from "~/lib/media-url";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Badge } from "~/components/ui/badge";
@@ -64,16 +63,33 @@ function ClaimBadge({ status }: { status: string }) {
   return <Badge variant="outline">Pending claim</Badge>;
 }
 
+/** A filled dot when the profile has a link for the platform, hollow when not. */
+function SocialDot({ url, label }: { url: string | null; label: string }) {
+  return url ? (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      onClick={(event) => event.stopPropagation()}
+      className="text-green-600 hover:opacity-70"
+      title={url}
+      aria-label={`${label}: ${url}`}
+    >
+      ●
+    </a>
+  ) : (
+    <span className="text-muted-foreground" aria-label={`No ${label}`}>
+      ○
+    </span>
+  );
+}
+
 export function ArtistProfilesManager() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<ClaimStatus | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
-  const [linkTarget, setLinkTarget] = useState<LinkUserTarget | null>(null);
-  const [unlinkTarget, setUnlinkTarget] = useState<{
-    profileId: string;
-    handle: string;
-  } | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     handle: string;
@@ -97,37 +113,73 @@ export function ArtistProfilesManager() {
     },
     onError: (error) => toast.error(error.message),
   });
-  const unlinkUser = api.artistProfiles.unlinkUser.useMutation({
-    onSuccess: () => {
-      toast.success("User unlinked");
-      setUnlinkTarget(null);
-      void list.refetch();
-    },
-    onError: (error) => toast.error(error.message),
-  });
 
   const profiles = list.data ?? [];
   type ProfileRow = (typeof profiles)[number];
+
+  // Steps through the list in its fetched order. The table's own sort is local
+  // to it, so this can disagree with a re-sorted table; good enough for a
+  // quick pass over every profile.
+  const navigate = (direction: -1 | 1) => {
+    const index = profiles.findIndex((profile) => profile.id === openId);
+    const next = profiles[index + direction];
+    if (next) setOpenId(next.id);
+  };
+
   const columns: DataTableColumn<ProfileRow>[] = [
+    {
+      id: "avatar",
+      header: "",
+      hideable: false,
+      cell: (profile) => (
+        <ProfileAvatar
+          src={profile.avatarFileId ? buildMediaUrl(profile.avatarFileId) : null}
+          name={profile.displayName}
+        />
+      ),
+    },
+    {
+      id: "displayName",
+      header: "Name",
+      sortable: true,
+      accessor: (row) => row.displayName,
+    },
     {
       id: "handle",
       header: "Handle",
       sortable: true,
       accessor: (profile) => profile.handle,
       cell: (profile) => (
-        <Link
-          href={`/admin/artist-profiles/${profile.id}`}
-          className="text-primary font-mono hover:underline"
-        >
+        <span className="text-muted-foreground font-mono">
           @{profile.handle}
-        </Link>
+        </span>
       ),
     },
     {
-      id: "displayName",
-      header: "Display name",
+      id: "instagram",
+      header: "IG",
+      align: "center",
       sortable: true,
-      accessor: (row) => row.displayName,
+      accessor: (row) => Boolean(findProfileSocial(row.socials, "instagram")),
+      cell: (row) => (
+        <SocialDot
+          url={findProfileSocial(row.socials, "instagram")}
+          label="Instagram"
+        />
+      ),
+    },
+    {
+      id: "soundcloud",
+      header: "SC",
+      align: "center",
+      sortable: true,
+      accessor: (row) => Boolean(findProfileSocial(row.socials, "soundcloud")),
+      cell: (row) => (
+        <SocialDot
+          url={findProfileSocial(row.socials, "soundcloud")}
+          label="SoundCloud"
+        />
+      ),
     },
     {
       id: "user",
@@ -136,14 +188,23 @@ export function ArtistProfilesManager() {
       accessor: (profile) => profile.user?.name,
       cell: (profile) =>
         profile.user ? (
-          <Link
-            href={`/admin/users/${profile.user.id}`}
-            className="text-sm hover:underline"
-          >
-            {profile.user.name}
-          </Link>
+          <span className="text-sm">{profile.user.name}</span>
         ) : (
-          <span className="text-muted-foreground text-sm">—</span>
+          <span className="text-muted-foreground text-sm">None</span>
+        ),
+    },
+    {
+      id: "crew",
+      header: "Crew",
+      sortable: true,
+      accessor: (row) => row.crewMembers.length > 0,
+      cell: (row) =>
+        row.crewMembers.length ? (
+          <span className="text-sm">
+            {row.crewMembers.map((m) => m.role ?? "Crew").join(", ")}
+          </span>
+        ) : (
+          <span className="text-muted-foreground text-sm">None</span>
         ),
     },
     {
@@ -189,7 +250,19 @@ export function ArtistProfilesManager() {
       align: "right",
       hideable: false,
       cell: (profile) => (
-        <div className="flex justify-end gap-1">
+        <div
+          className="flex justify-end gap-1"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <Button size="icon" variant="ghost" asChild>
+            <Link
+              href={`/admin/artist-profiles/${profile.id}`}
+              aria-label={`Open the block editor for @${profile.handle}`}
+              title="Block editor"
+            >
+              <LayoutGrid className="h-4 w-4" aria-hidden />
+            </Link>
+          </Button>
           <Button size="icon" variant="ghost" asChild>
             <Link
               href={`/@${profile.handle}`}
@@ -201,44 +274,6 @@ export function ArtistProfilesManager() {
               <ExternalLink className="h-4 w-4" aria-hidden />
             </Link>
           </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() =>
-              setLinkTarget({
-                profileId: profile.id,
-                handle: profile.handle,
-                currentUserId: profile.user?.id ?? null,
-                currentUserName: profile.user?.name ?? null,
-              })
-            }
-            aria-label={
-              profile.user
-                ? `Relink @${profile.handle} to a different user`
-                : `Link @${profile.handle} to a user`
-            }
-            title={
-              profile.user ? "Relink to a different user" : "Link to a user"
-            }
-          >
-            <Link2 className="h-4 w-4" aria-hidden />
-          </Button>
-          {profile.user && (
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() =>
-                setUnlinkTarget({
-                  profileId: profile.id,
-                  handle: profile.handle,
-                })
-              }
-              aria-label={`Unlink the user from @${profile.handle}`}
-              title="Unlink user"
-            >
-              <Unlink className="h-4 w-4" aria-hidden />
-            </Button>
-          )}
           <Button
             size="icon"
             variant="ghost"
@@ -314,11 +349,19 @@ export function ArtistProfilesManager() {
             data={profiles}
             getRowId={(row) => row.id}
             isLoading={list.isLoading}
+            onRowClick={(row) => setOpenId(row.id)}
+            rowClassName={(row) => (row.id === openId ? "bg-muted/50" : undefined)}
             storageKey="admin-artist-profiles"
             emptyMessage="No profiles yet."
           />
         </CardContent>
       </Card>
+
+      <ArtistCoreSheet
+        profileId={openId}
+        onClose={() => setOpenId(null)}
+        onNavigate={navigate}
+      />
 
       <CreateProfileDialog
         open={createOpen}
@@ -328,47 +371,6 @@ export function ArtistProfilesManager() {
           router.push(`/admin/artist-profiles/${id}`);
         }}
       />
-
-      <LinkUserDialog
-        target={linkTarget}
-        onClose={() => setLinkTarget(null)}
-        onLinked={() => {
-          setLinkTarget(null);
-          void list.refetch();
-        }}
-      />
-
-      <AlertDialog
-        open={Boolean(unlinkTarget)}
-        onOpenChange={(v) => !v && setUnlinkTarget(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Unlink user from @{unlinkTarget?.handle}?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              The profile will become unclaimed again. Blocks and gig
-              attributions are kept. The user will lose edit access until the
-              profile is relinked.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={unlinkUser.isPending}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={unlinkUser.isPending}
-              onClick={() =>
-                unlinkTarget &&
-                unlinkUser.mutate({ profileId: unlinkTarget.profileId })
-              }
-            >
-              {unlinkUser.isPending ? "Unlinking…" : "Unlink"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <AlertDialog
         open={Boolean(deleteTarget)}
