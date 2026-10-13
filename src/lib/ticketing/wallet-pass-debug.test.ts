@@ -2,30 +2,53 @@ import { describe, test } from "bun:test";
 import assert from "node:assert/strict";
 
 import {
-  createStandalonePassDraft,
+  applyPatch,
+  blankDraft,
   walletPassDebugDraftSchema,
   walletPassDebugRequestSchema,
 } from "./wallet-pass-debug";
 
-function draft() {
-  return createStandalonePassDraft({
-    passTypeIdentifier: "pass.nz.co.atmos.debug",
-    teamIdentifier: "ATMOS123",
-    serialNumber: "atmos.debug.test",
-    now: new Date("2026-09-07T00:00:00.000Z"),
-  });
-}
+describe("applyPatch", () => {
+  const base = {
+    serialNumber: "t1",
+    logoText: "ATMOS",
+    semantics: { eventName: "Night", venueName: "Shed" },
+    eventTicket: {
+      headerFields: [{ key: "doors", value: "10 pm" }],
+      backFields: [{ key: "terms", value: "..." }],
+    },
+  };
 
-describe("standalone Wallet pass draft", () => {
-  test("is valid and contains no ticketing or update linkage", () => {
-    const value = walletPassDebugDraftSchema.parse(draft());
-
-    assert.equal(value.manifest.serialNumber, "atmos.debug.test");
-    assert.equal(value.manifest.webServiceURL, undefined);
-    assert.equal(value.manifest.authenticationToken, undefined);
-    assert.equal(value.manifest.relevantDate, "2026-09-14T00:00:00.000Z");
-    assert.ok(Array.isArray(value.manifest.barcodes));
+  test("top-level keys replace, null removes", () => {
+    const out = applyPatch(base, { logoText: null, description: "Test" });
+    assert.equal(out.logoText, undefined);
+    assert.equal(out.description, "Test");
+    assert.equal(out.serialNumber, "t1");
   });
+
+  test("a slot edit leaves the other slots alone", () => {
+    const out = applyPatch(base, {
+      eventTicket: { headerFields: [{ key: "gate", value: "B" }] },
+    });
+    assert.deepEqual(out.eventTicket, {
+      headerFields: [{ key: "gate", value: "B" }],
+      backFields: [{ key: "terms", value: "..." }],
+    });
+  });
+
+  test("semantics merge key by key and a null drops one", () => {
+    const out = applyPatch(base, {
+      semantics: { venueName: null, performerNames: ["A"] },
+    });
+    assert.deepEqual(out.semantics, {
+      eventName: "Night",
+      performerNames: ["A"],
+    });
+  });
+});
+
+describe("debug draft", () => {
+  const draft = () => blankDraft({ kind: "standalone" });
 
   test("requires a recipient only for email delivery", () => {
     assert.equal(
@@ -46,10 +69,7 @@ describe("standalone Wallet pass draft", () => {
 
   test("rejects asset paths outside the pass bundle", () => {
     const value = draft();
-    value.assets.push({
-      fileName: "../icon.png",
-      dataBase64: "aGVsbG8=",
-    });
+    value.assets.push({ fileName: "../icon.png", dataBase64: "aGVsbG8=" });
     assert.equal(walletPassDebugDraftSchema.safeParse(value).success, false);
   });
 

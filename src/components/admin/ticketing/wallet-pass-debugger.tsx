@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -21,7 +13,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { WalletPassPreview } from "~/components/admin/ticketing/wallet-pass-preview";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -33,121 +24,90 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Switch } from "~/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Textarea } from "~/components/ui/textarea";
 import {
+  PassDesignField,
+  type InheritedLayer,
+  type PassDesignExtraTab,
+} from "~/components/admin/ticketing/pass-design-field";
+import type { PassPreviewContent } from "~/components/admin/ticketing/pass-preview";
+import {
+  resolveTicketPassDesign,
+  type EventPassDesign,
+  type PassDesign,
+} from "~/lib/ticketing/pass-design";
+import {
+  PASS_FIELD_SLOTS,
   PASS_FIELD_SLOT_LABELS,
-  cloneJsonObject,
+  barcodesOf,
+  blankDraft,
+  fieldsOf,
   isJsonObject,
   parseJsonObject,
   prettyJson,
+  semanticsOf,
+  textOf,
+  walletPassDebugComposeResponseSchema,
   walletPassDebugDefaultsResponseSchema,
   walletPassDebugDraftSchema,
   type JsonObject,
   type JsonValue,
   type PassFieldSlot,
   type WalletPassAsset,
+  type WalletPassDebugComposeResponse,
   type WalletPassDebugDefaultsResponse,
   type WalletPassDebugDraft,
-  type WalletPassLocalization,
+  type WalletPassSource,
 } from "~/lib/ticketing/wallet-pass-debug";
-import {
-  DEFAULT_PASS_THEME,
-  PASS_STRIP_STYLES,
-  PASS_STRIP_STYLE_LABELS,
-  isHexColour,
-  stripSvg,
-  toPassRgb,
-} from "~/lib/ticketing/pass-theme";
+
+/**
+ * The wallet debugger.
+ *
+ * Pick a source, and the server composes the pass a holder would get. The
+ * Look, Links, Back and Phone tabs are the event editor's own, laid over the
+ * source's design; Fields, Semantics, Advanced and JSON edit the composed
+ * pass.json directly, as a patch that survives the source recomposing under
+ * it. Every change recomposes, so the preview, the validation and the bundle
+ * listing are always of the pass that would be signed.
+ */
 
 const API_URL = "/api/admin/wallet-pass-debug";
 
-const EDITOR_TABS = [
-  ["identity", "Identity"],
-  ["appearance", "Appearance"],
-  ["front", "Front"],
-  ["back", "Back"],
-  ["barcode", "Barcode"],
-  ["relevance", "Relevance"],
-  ["updates", "Updates"],
-  ["locales", "Locales"],
-  ["json", "JSON"],
-] as const;
+type Patch = JsonObject;
+type Pending = "download" | "send" | null;
 
-type EditorTab = (typeof EDITOR_TABS)[number][0];
-type PendingAction = "download" | "send" | null;
-
-const EVENT_GUIDE_URLS = [
-  ["bagPolicyURL", "Bag policy"],
-  ["orderFoodURL", "Order food"],
-  ["parkingInformationURL", "Parking information"],
-  ["directionsInformationURL", "Directions"],
-  ["purchaseParkingURL", "Purchase parking"],
-  ["merchandiseURL", "Merchandise"],
-  ["transitInformationURL", "Transit information"],
-  ["accessibilityURL", "Accessibility"],
-  ["addOnURL", "Add-ons"],
-  ["contactVenueWebsite", "Venue website"],
-  ["transferURL", "Transfer"],
-  ["sellURL", "Sell"],
-] as const;
-
-function stringValue(value: JsonValue | undefined): string {
-  return typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-    ? String(value)
-    : "";
+async function post<T>(
+  body: unknown,
+  parse: (value: unknown) => T,
+): Promise<T> {
+  const response = await fetch(API_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const error: unknown = await response.json().catch(() => null);
+    throw new Error(
+      isJsonObject(error) && typeof error.error === "string"
+        ? error.error
+        : "The request failed.",
+    );
+  }
+  return parse(await response.json());
 }
 
-function booleanValue(value: JsonValue | undefined): boolean {
-  return value === true;
+/** ISO in the pass, local time in the box. */
+function toLocalInput(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-function setProperty(
-  object: JsonObject,
-  key: string,
-  value: JsonValue | undefined,
-): JsonObject {
-  const next = { ...object };
-  if (value === undefined || value === "") delete next[key];
-  else next[key] = value;
-  return next;
-}
-
-function passObject(manifest: JsonObject): JsonObject {
-  return isJsonObject(manifest.eventTicket)
-    ? manifest.eventTicket
-    : {
-        headerFields: [],
-        primaryFields: [],
-        secondaryFields: [],
-        auxiliaryFields: [],
-        additionalInfoFields: [],
-        backFields: [],
-      };
-}
-
-function fieldList(manifest: JsonObject, slot: PassFieldSlot): JsonObject[] {
-  const value = passObject(manifest)[slot];
-  return Array.isArray(value) ? value.filter(isJsonObject) : [];
-}
-
-function withFields(
-  manifest: JsonObject,
-  slot: PassFieldSlot,
-  fields: JsonObject[],
-): JsonObject {
-  return {
-    ...manifest,
-    eventTicket: { ...passObject(manifest), [slot]: fields },
-  };
-}
-
-function barcodeList(manifest: JsonObject): JsonObject[] {
-  return Array.isArray(manifest.barcodes)
-    ? manifest.barcodes.filter(isJsonObject)
-    : [];
+function fromLocalInput(local: string): string | undefined {
+  if (!local) return undefined;
+  const date = new Date(local);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
 }
 
 function fileAsAsset(file: File): Promise<WalletPassAsset> {
@@ -169,1300 +129,177 @@ function fileAsAsset(file: File): Promise<WalletPassAsset> {
   });
 }
 
-function FieldLabel({
-  children,
-  hint,
-  htmlFor,
-}: {
-  children: ReactNode;
-  hint?: string;
-  htmlFor?: string;
-}) {
-  return (
-    <div className="mb-1.5 flex items-baseline justify-between gap-3">
-      {htmlFor ? (
-        <Label htmlFor={htmlFor}>{children}</Label>
-      ) : (
-        <p className="text-sm leading-none font-medium">{children}</p>
-      )}
-      {hint ? (
-        <span className="text-muted-foreground text-xs">{hint}</span>
-      ) : null}
-    </div>
-  );
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function ManifestInput({
-  draft,
-  property,
-  label,
-  placeholder,
-  mono = false,
-  type = "text",
-  onChange,
-}: {
-  draft: WalletPassDebugDraft;
-  property: string;
-  label: string;
-  placeholder?: string;
-  mono?: boolean;
-  type?: "number" | "text" | "url";
-  onChange: (next: WalletPassDebugDraft) => void;
-}) {
-  const inputId = `wallet-pass-${property}`;
-
-  return (
-    <div className="min-w-0">
-      <FieldLabel htmlFor={inputId}>{label}</FieldLabel>
-      <Input
-        id={inputId}
-        type={type}
-        value={stringValue(draft.manifest[property])}
-        placeholder={placeholder}
-        spellCheck={!mono}
-        className={mono ? "font-mono text-xs" : ""}
-        onChange={(event) =>
-          onChange({
-            ...draft,
-            manifest: setProperty(
-              draft.manifest,
-              property,
-              type === "number" && event.target.value
-                ? Number(event.target.value)
-                : event.target.value,
-            ),
-          })
-        }
-      />
-    </div>
-  );
-}
-
-function ManifestSwitch({
-  draft,
-  property,
-  label,
-  hint,
-  onChange,
-}: {
-  draft: WalletPassDebugDraft;
-  property: string;
-  label: string;
-  hint: string;
-  onChange: (next: WalletPassDebugDraft) => void;
-}) {
-  const inputId = useId();
-
-  return (
-    <div className="border-border flex items-center justify-between gap-5 border-b py-3 last:border-0">
-      <div>
-        <Label htmlFor={inputId}>{label}</Label>
-        <p className="text-muted-foreground mt-0.5 text-xs">{hint}</p>
-      </div>
-      <Switch
-        id={inputId}
-        checked={booleanValue(draft.manifest[property])}
-        onCheckedChange={(checked) =>
-          onChange({
-            ...draft,
-            manifest: { ...draft.manifest, [property]: checked },
-          })
-        }
-      />
-    </div>
-  );
-}
-
-function EditorSection({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="border-border border-t py-6 first:border-t-0 first:pt-0">
-      <div className="mb-4">
-        <h2 className="text-sm font-semibold">{title}</h2>
-        {description ? (
-          <p className="text-muted-foreground mt-0.5 text-xs">{description}</p>
-        ) : null}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function JsonPropertyEditor({
-  label,
-  hint,
-  value,
-  emptyValue,
-  onChange,
-}: {
-  label: string;
-  hint?: string;
-  value: JsonValue | undefined;
-  emptyValue: "[]" | "{}";
-  onChange: (value: JsonValue | undefined) => void;
-}) {
-  const source = value === undefined ? emptyValue : prettyJson(value);
-  const apply = (text: string, textarea: HTMLTextAreaElement) => {
-    try {
-      const parsed: unknown = JSON.parse(text);
-      const wrapper = parseJsonObject(`{"value":${JSON.stringify(parsed)}}`);
-      const next = wrapper.value;
-      onChange(
-        (Array.isArray(next) && next.length === 0) ||
-          (isJsonObject(next) && Object.keys(next).length === 0)
-          ? undefined
-          : next,
-      );
-    } catch {
-      toast.error(`${label} must be valid JSON.`);
-      textarea.value = source;
-    }
+/** What the preview says, read off the composed pass.json. */
+function previewContent(
+  manifest: JsonObject,
+  context: WalletPassDebugComposeResponse["context"],
+): PassPreviewContent {
+  const field = (item: JsonObject) => ({
+    label: textOf(item.label) || textOf(item.key),
+    value: textOf(item.value),
+  });
+  const header = fieldsOf(manifest, "headerFields")[0];
+  const primary = fieldsOf(manifest, "primaryFields")[0];
+  return {
+    eventName:
+      [
+        primary ? textOf(primary.value) : "",
+        textOf(semanticsOf(manifest).eventName),
+        context.eventName,
+      ].find((name) => name.length > 0) ?? "",
+    header: header ? field(header) : null,
+    fields: [
+      ...fieldsOf(manifest, "secondaryFields"),
+      ...fieldsOf(manifest, "auxiliaryFields"),
+    ].map(field),
+    back: fieldsOf(manifest, "backFields").map((item) => {
+      const row = field(item);
+      return { ...row, link: /https?:\/\/|@/.test(row.value) };
+    }),
+    barcodeAlt: textOf(barcodesOf(manifest)[0]?.altText),
+    venueAddress: context.venueAddress,
   };
-
-  return (
-    <div>
-      <FieldLabel hint={hint}>{label}</FieldLabel>
-      <Textarea
-        aria-label={label}
-        key={source}
-        defaultValue={source}
-        onBlur={(event) =>
-          apply(event.currentTarget.value, event.currentTarget)
-        }
-        spellCheck={false}
-        className="min-h-28 resize-y font-mono text-xs leading-relaxed"
-      />
-    </div>
-  );
 }
 
-function IdentityEditor({
-  draft,
-  onChange,
-}: {
-  draft: WalletPassDebugDraft;
-  onChange: (next: WalletPassDebugDraft) => void;
-}) {
-  return (
-    <>
-      <EditorSection
-        title="Pass identity"
-        description="Required keys default to the current Atmos signing configuration."
-      >
-        <div className="grid gap-4 md:grid-cols-2">
-          <ManifestInput
-            draft={draft}
-            property="organizationName"
-            label="Organization name"
-            onChange={onChange}
-          />
-          <ManifestInput
-            draft={draft}
-            property="description"
-            label="Description"
-            onChange={onChange}
-          />
-          <ManifestInput
-            draft={draft}
-            property="passTypeIdentifier"
-            label="Pass type identifier"
-            mono
-            onChange={onChange}
-          />
-          <ManifestInput
-            draft={draft}
-            property="teamIdentifier"
-            label="Team identifier"
-            mono
-            onChange={onChange}
-          />
-          <ManifestInput
-            draft={draft}
-            property="serialNumber"
-            label="Serial number"
-            mono
-            onChange={onChange}
-          />
-          <ManifestInput
-            draft={draft}
-            property="formatVersion"
-            label="Format version"
-            type="number"
-            mono
-            onChange={onChange}
-          />
-        </div>
-      </EditorSection>
-      <EditorSection title="Optional identity">
-        <div className="grid gap-4 md:grid-cols-2">
-          <ManifestInput
-            draft={draft}
-            property="logoText"
-            label="Logo text"
-            onChange={onChange}
-          />
-          <ManifestInput
-            draft={draft}
-            property="eventLogoText"
-            label="Event logo text"
-            onChange={onChange}
-          />
-          <ManifestInput
-            draft={draft}
-            property="groupingIdentifier"
-            label="Grouping identifier"
-            mono
-            onChange={onChange}
-          />
-          <ManifestInput
-            draft={draft}
-            property="appLaunchURL"
-            label="App launch URL"
-            type="url"
-            onChange={onChange}
-          />
-        </div>
-      </EditorSection>
-      <EditorSection title="Pass behavior">
-        <ManifestSwitch
-          draft={draft}
-          property="voided"
-          label="Voided"
-          hint="Marks the pass as invalid without linking it to a ticket."
-          onChange={onChange}
-        />
-        <ManifestSwitch
-          draft={draft}
-          property="sharingProhibited"
-          label="Sharing prohibited"
-          hint="Asks Wallet not to expose pass sharing."
-          onChange={onChange}
-        />
-      </EditorSection>
-    </>
-  );
+/** The event's own layer, without its per-level overrides. */
+function eventLayer(design: EventPassDesign): PassDesign {
+  const { levels, ...rest } = design;
+  void levels;
+  return rest;
 }
 
-function AppearanceEditor({
-  draft,
-  onChange,
-}: {
-  draft: WalletPassDebugDraft;
-  onChange: (next: WalletPassDebugDraft) => void;
-}) {
-  const previewTheme = {
-    ...draft.theme,
-    accentHex: isHexColour(draft.theme.accentHex)
-      ? draft.theme.accentHex
-      : DEFAULT_PASS_THEME.accentHex,
-    backgroundHex: isHexColour(draft.theme.backgroundHex)
-      ? draft.theme.backgroundHex
-      : DEFAULT_PASS_THEME.backgroundHex,
-    foregroundHex: isHexColour(draft.theme.foregroundHex)
-      ? draft.theme.foregroundHex
-      : DEFAULT_PASS_THEME.foregroundHex,
-    labelHex: isHexColour(draft.theme.labelHex)
-      ? draft.theme.labelHex
-      : DEFAULT_PASS_THEME.labelHex,
-  };
-  const updateColour = (
-    themeKey: "accentHex" | "backgroundHex" | "foregroundHex" | "labelHex",
-    manifestKey: "backgroundColor" | "foregroundColor" | "labelColor" | null,
-    value: string,
-  ) => {
-    onChange({
-      ...draft,
-      theme: { ...draft.theme, [themeKey]: value },
-      manifest:
-        manifestKey && isHexColour(value)
-          ? { ...draft.manifest, [manifestKey]: toPassRgb(value) }
-          : draft.manifest,
-    });
-  };
-
-  const addAssets = async (event: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files ?? []);
-    event.target.value = "";
-    try {
-      const assets = await Promise.all(files.map(fileAsAsset));
-      const byName = new Map(
-        [...draft.assets, ...assets].map((asset) => [asset.fileName, asset]),
-      );
-      const next = { ...draft, assets: [...byName.values()] };
-      const result = walletPassDebugDraftSchema.safeParse(next);
-      if (!result.success) throw new Error(result.error.issues[0]?.message);
-      onChange(result.data);
-    } catch (cause) {
-      toast.error(
-        cause instanceof Error ? cause.message : "Could not add asset.",
-      );
-    }
-  };
-
-  const swatches = [
-    ["accentHex", "Accent", "Band artwork", null],
-    ["backgroundHex", "Background", "Pass ground", "backgroundColor"],
-    ["foregroundHex", "Foreground", "Field values", "foregroundColor"],
-    ["labelHex", "Labels", "Small field labels", "labelColor"],
-  ] as const;
-
-  return (
-    <>
-      <EditorSection
-        title="Band style"
-        description="The same artwork generator used by live Atmos passes."
-      >
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-          {PASS_STRIP_STYLES.map((style) => {
-            const active = draft.theme.stripStyle === style;
-            return (
-              <button
-                key={style}
-                type="button"
-                aria-pressed={active}
-                onClick={() =>
-                  onChange({
-                    ...draft,
-                    theme: { ...draft.theme, stripStyle: style },
-                  })
-                }
-                className={`border-border hover:border-foreground/40 rounded-md border p-2 text-left transition-colors ${active ? "border-foreground bg-foreground/5" : ""}`}
-              >
-                <span
-                  aria-hidden
-                  className="block h-9 overflow-hidden [&>svg]:h-full [&>svg]:w-full"
-                  dangerouslySetInnerHTML={{
-                    __html: stripSvg(
-                      { ...previewTheme, stripStyle: style },
-                      240,
-                      40,
-                    ),
-                  }}
-                />
-                <span className="mt-2 block text-xs font-semibold">
-                  {PASS_STRIP_STYLE_LABELS[style].label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </EditorSection>
-
-      <EditorSection title="Colors">
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {swatches.map(([key, label, hint, manifestKey]) => {
-            const value = draft.theme[key];
-            const valid = isHexColour(value);
-            return (
-              <div key={key}>
-                <FieldLabel hint={hint}>{label}</FieldLabel>
-                <div className="flex gap-2">
-                  <input
-                    type="color"
-                    aria-label={`${label} color`}
-                    value={valid ? value : "#000000"}
-                    onChange={(event) =>
-                      updateColour(key, manifestKey, event.target.value)
-                    }
-                    className="border-input h-9 w-10 shrink-0 cursor-pointer rounded-md border bg-transparent p-1"
-                  />
-                  <Input
-                    aria-label={`${label} hex value`}
-                    value={value}
-                    onChange={(event) =>
-                      updateColour(key, manifestKey, event.target.value)
-                    }
-                    aria-invalid={!valid}
-                    spellCheck={false}
-                    className="font-mono text-xs uppercase"
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <ManifestInput
-            draft={draft}
-            property="stripColor"
-            label="Strip text color"
-            placeholder="rgb(255, 255, 255)"
-            mono
-            onChange={onChange}
-          />
-          <ManifestInput
-            draft={draft}
-            property="footerBackgroundColor"
-            label="Footer background color"
-            placeholder="rgb(11, 11, 12)"
-            mono
-            onChange={onChange}
-          />
-        </div>
-      </EditorSection>
-
-      <EditorSection
-        title="Artwork"
-        description="PNG files replace generated assets by exact filename. Maximum 2 MB each."
-      >
-        <div className="border-border divide-border divide-y rounded-md border">
-          {[
-            ["icon.png", "Required Wallet icon, with @2x and @3x variants"],
-            ["logo.png", "Header logo, with @2x and @3x variants"],
-            ["strip.png", "Event ticket band, with @2x and @3x variants"],
-            ["background.png", "Optional background artwork"],
-            ["thumbnail.png", "Optional thumbnail artwork"],
-            ["footer.png", "Optional footer artwork"],
-          ].map(([name, hint]) => {
-            const custom = draft.assets.some(
-              (asset) => asset.fileName === name,
-            );
-            return (
-              <div
-                key={name}
-                className="flex items-center justify-between gap-4 px-3 py-2.5"
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-mono text-xs">{name}</p>
-                  <p className="text-muted-foreground truncate text-xs">
-                    {custom ? "Custom file selected" : hint}
-                  </p>
-                </div>
-                <span
-                  className={`text-xs ${custom ? "text-emerald-400" : "text-muted-foreground"}`}
-                >
-                  {custom ? "Custom" : "Default"}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <label className="cursor-pointer">
-              <Upload className="size-4" />
-              Add PNG assets
-              <input
-                type="file"
-                accept="image/png"
-                multiple
-                className="sr-only"
-                onChange={addAssets}
-              />
-            </label>
-          </Button>
-          <span className="text-muted-foreground text-xs">
-            Keep Apple filenames such as logo@2x.png or en.lproj/thumbnail.png.
-          </span>
-        </div>
-        {draft.assets.length ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {draft.assets.map((asset) => (
-              <Button
-                key={asset.fileName}
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() =>
-                  onChange({
-                    ...draft,
-                    assets: draft.assets.filter(
-                      (item) => item.fileName !== asset.fileName,
-                    ),
-                  })
-                }
-              >
-                {asset.fileName}
-                <Trash2 className="size-3.5" />
-              </Button>
-            ))}
-          </div>
-        ) : null}
-      </EditorSection>
-
-      <EditorSection title="Rendering options">
-        <ManifestSwitch
-          draft={draft}
-          property="suppressStripShine"
-          label="Suppress strip shine"
-          hint="Disables the legacy gloss treatment."
-          onChange={onChange}
-        />
-        <ManifestSwitch
-          draft={draft}
-          property="suppressHeaderDarkening"
-          label="Suppress header darkening"
-          hint="Keeps iOS from adding its automatic header shadow."
-          onChange={onChange}
-        />
-        <ManifestSwitch
-          draft={draft}
-          property="useAutomaticColors"
-          label="Automatic colors"
-          hint="Lets newer event-ticket layouts derive colors from artwork."
-          onChange={onChange}
-        />
-      </EditorSection>
-    </>
-  );
-}
-
-function AdvancedFieldProperties({
-  field,
-  onChange,
-}: {
-  field: JsonObject;
-  onChange: (field: JsonObject) => void;
-}) {
-  const basic = new Set(["key", "label", "value"]);
-  const advanced = Object.fromEntries(
-    Object.entries(field).filter(([key]) => !basic.has(key)),
-  );
-
-  return (
-    <JsonPropertyEditor
-      label="Advanced field properties"
-      hint="changeMessage, dateStyle, semantics, alignment, detectors, row, and number formatting"
-      value={advanced}
-      emptyValue="{}"
-      onChange={(value) => {
-        const next = isJsonObject(value) ? value : {};
-        onChange({
-          ...next,
-          key: field.key ?? "field",
-          label: field.label ?? "",
-          value: field.value ?? "",
-        });
-      }}
-    />
-  );
-}
-
-function FieldSlotEditor({
-  draft,
-  slot,
-  onChange,
-}: {
-  draft: WalletPassDebugDraft;
-  slot: PassFieldSlot;
-  onChange: (next: WalletPassDebugDraft) => void;
-}) {
-  const fields = fieldList(draft.manifest, slot);
-  const replace = (nextFields: JsonObject[]) =>
-    onChange({
-      ...draft,
-      manifest: withFields(draft.manifest, slot, nextFields),
-    });
-
-  return (
-    <EditorSection
-      title={`${PASS_FIELD_SLOT_LABELS[slot]} fields`}
-      description={`${fields.length} field${fields.length === 1 ? "" : "s"}. Wallet controls final wrapping and capacity.`}
-    >
-      <div className="space-y-3">
-        {fields.map((field, index) => {
-          const update = (nextField: JsonObject) =>
-            replace(
-              fields.map((item, itemIndex) =>
-                itemIndex === index ? nextField : item,
-              ),
-            );
-          return (
-            <div
-              key={`${stringValue(field.key)}-${index}`}
-              className="border-border rounded-lg border p-4"
-            >
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <span className="text-muted-foreground font-mono text-xs">
-                  {stringValue(field.key) || `field-${index + 1}`}
-                </span>
-                <div className="flex gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Move field up"
-                    disabled={index === 0}
-                    onClick={() => {
-                      const next = [...fields];
-                      [next[index - 1], next[index]] = [
-                        next[index]!,
-                        next[index - 1]!,
-                      ];
-                      replace(next);
-                    }}
-                  >
-                    <ArrowUp />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Move field down"
-                    disabled={index === fields.length - 1}
-                    onClick={() => {
-                      const next = [...fields];
-                      [next[index], next[index + 1]] = [
-                        next[index + 1]!,
-                        next[index]!,
-                      ];
-                      replace(next);
-                    }}
-                  >
-                    <ArrowDown />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Delete field"
-                    onClick={() =>
-                      replace(
-                        fields.filter((_, itemIndex) => itemIndex !== index),
-                      )
-                    }
-                  >
-                    <Trash2 />
-                  </Button>
-                </div>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <FieldLabel>Key</FieldLabel>
-                  <Input
-                    value={stringValue(field.key)}
-                    onChange={(event) =>
-                      update({ ...field, key: event.target.value })
-                    }
-                    className="font-mono text-xs"
-                  />
-                </div>
-                <div>
-                  <FieldLabel>Label</FieldLabel>
-                  <Input
-                    value={stringValue(field.label)}
-                    onChange={(event) =>
-                      update(setProperty(field, "label", event.target.value))
-                    }
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <FieldLabel>Value</FieldLabel>
-                  <Textarea
-                    value={stringValue(field.value)}
-                    onChange={(event) =>
-                      update({ ...field, value: event.target.value })
-                    }
-                    className="min-h-20"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <AdvancedFieldProperties field={field} onChange={update} />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="mt-3"
-        onClick={() =>
-          replace([
-            ...fields,
-            {
-              key: `field-${crypto.randomUUID().slice(0, 8)}`,
-              label: "LABEL",
-              value: "Value",
-            },
-          ])
-        }
-      >
-        <Plus />
-        Add {PASS_FIELD_SLOT_LABELS[slot].toLowerCase()} field
-      </Button>
-    </EditorSection>
-  );
-}
-
-function FieldsEditor({
-  draft,
-  slots,
-  onChange,
-}: {
-  draft: WalletPassDebugDraft;
-  slots: PassFieldSlot[];
-  onChange: (next: WalletPassDebugDraft) => void;
-}) {
-  return (
-    <>
-      {slots.map((slot) => (
-        <FieldSlotEditor
-          key={slot}
-          draft={draft}
-          slot={slot}
-          onChange={onChange}
-        />
-      ))}
-    </>
-  );
-}
-
-function BarcodeEditor({
-  draft,
-  onChange,
-}: {
-  draft: WalletPassDebugDraft;
-  onChange: (next: WalletPassDebugDraft) => void;
-}) {
-  const barcodes = barcodeList(draft.manifest);
-  const replace = (next: JsonObject[]) =>
-    onChange({
-      ...draft,
-      manifest: setProperty(draft.manifest, "barcodes", next),
-    });
-
-  return (
-    <EditorSection
-      title="Barcodes"
-      description="Add formats in the order Wallet should prefer them."
-    >
-      <div className="space-y-3">
-        {barcodes.map((barcode, index) => {
-          const update = (property: string, value: string) =>
-            replace(
-              barcodes.map((item, itemIndex) =>
-                itemIndex === index ? setProperty(item, property, value) : item,
-              ),
-            );
-          return (
-            <div key={index} className="border-border rounded-lg border p-4">
-              <div className="mb-4 flex items-center justify-between">
-                <span className="text-muted-foreground text-xs">
-                  Barcode {index + 1}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Delete barcode"
-                  onClick={() =>
-                    replace(
-                      barcodes.filter((_, itemIndex) => itemIndex !== index),
-                    )
-                  }
-                >
-                  <Trash2 />
-                </Button>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <FieldLabel>Format</FieldLabel>
-                  <Select
-                    value={stringValue(barcode.format)}
-                    onValueChange={(value) => update("format", value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[
-                        "PKBarcodeFormatQR",
-                        "PKBarcodeFormatPDF417",
-                        "PKBarcodeFormatAztec",
-                        "PKBarcodeFormatCode128",
-                      ].map((format) => (
-                        <SelectItem key={format} value={format}>
-                          {format.replace("PKBarcodeFormat", "")}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <FieldLabel>Message encoding</FieldLabel>
-                  <Input
-                    value={stringValue(barcode.messageEncoding)}
-                    onChange={(event) =>
-                      update("messageEncoding", event.target.value)
-                    }
-                    className="font-mono text-xs"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <FieldLabel>Message</FieldLabel>
-                  <Textarea
-                    value={stringValue(barcode.message)}
-                    onChange={(event) => update("message", event.target.value)}
-                    className="min-h-24 font-mono text-xs"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <FieldLabel>Alternative text</FieldLabel>
-                  <Input
-                    value={stringValue(barcode.altText)}
-                    onChange={(event) => update("altText", event.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <Button
-        variant="outline"
-        size="sm"
-        className="mt-3"
-        onClick={() =>
-          replace([
-            ...barcodes,
-            {
-              format: "PKBarcodeFormatQR",
-              message: "",
-              messageEncoding: "iso-8859-1",
-              altText: "",
-            },
-          ])
-        }
-      >
-        <Plus />
-        Add barcode
-      </Button>
-    </EditorSection>
-  );
-}
-
-function RelevanceEditor({
-  draft,
-  onChange,
-}: {
-  draft: WalletPassDebugDraft;
-  onChange: (next: WalletPassDebugDraft) => void;
-}) {
-  const json = (property: string, value: JsonValue | undefined) =>
-    onChange({
-      ...draft,
-      manifest: setProperty(draft.manifest, property, value),
-    });
-  return (
-    <>
-      <EditorSection title="Dates and distance">
-        <div className="grid gap-4 md:grid-cols-2">
-          <ManifestInput
-            draft={draft}
-            property="relevantDate"
-            label="Relevant date"
-            placeholder="ISO 8601"
-            mono
-            onChange={onChange}
-          />
-          <ManifestInput
-            draft={draft}
-            property="expirationDate"
-            label="Expiration date"
-            placeholder="ISO 8601"
-            mono
-            onChange={onChange}
-          />
-          <ManifestInput
-            draft={draft}
-            property="maxDistance"
-            label="Maximum distance"
-            type="number"
-            mono
-            onChange={onChange}
-          />
-        </div>
-      </EditorSection>
-      <EditorSection
-        title="Relevance data"
-        description="These properties can surface the pass by time, place, beacon, or NFC reader."
-      >
-        <div className="grid gap-5">
-          <JsonPropertyEditor
-            label="Relevant dates"
-            hint="iOS 18 intervals or individual dates"
-            value={draft.manifest.relevantDates}
-            emptyValue="[]"
-            onChange={(value) => json("relevantDates", value)}
-          />
-          <JsonPropertyEditor
-            label="Locations"
-            hint="latitude, longitude, altitude, relevantText"
-            value={draft.manifest.locations}
-            emptyValue="[]"
-            onChange={(value) => json("locations", value)}
-          />
-          <JsonPropertyEditor
-            label="Beacons"
-            hint="proximityUUID, major, minor, relevantText"
-            value={draft.manifest.beacons}
-            emptyValue="[]"
-            onChange={(value) => json("beacons", value)}
-          />
-          <JsonPropertyEditor
-            label="NFC"
-            hint="message, encryptionPublicKey, requiresAuthentication"
-            value={draft.manifest.nfc}
-            emptyValue="{}"
-            onChange={(value) => json("nfc", value)}
-          />
-        </div>
-      </EditorSection>
-    </>
-  );
-}
-
-function UpdatesEditor({
-  draft,
-  onChange,
-}: {
-  draft: WalletPassDebugDraft;
-  onChange: (next: WalletPassDebugDraft) => void;
-}) {
-  const json = (property: string, value: JsonValue | undefined) =>
-    onChange({
-      ...draft,
-      manifest: setProperty(draft.manifest, property, value),
-    });
-  return (
-    <>
-      <EditorSection
-        title="Wallet web service"
-        description="Blank by default because standalone passes are not registered for Atmos updates."
-      >
-        <div className="grid gap-4 md:grid-cols-2">
-          <ManifestInput
-            draft={draft}
-            property="webServiceURL"
-            label="Web service URL"
-            type="url"
-            onChange={onChange}
-          />
-          <ManifestInput
-            draft={draft}
-            property="authenticationToken"
-            label="Authentication token"
-            mono
-            onChange={onChange}
-          />
-        </div>
-      </EditorSection>
-      <EditorSection title="Store and app associations">
-        <div className="grid gap-5 md:grid-cols-2">
-          <JsonPropertyEditor
-            label="Associated Store identifiers"
-            value={draft.manifest.associatedStoreIdentifiers}
-            emptyValue="[]"
-            onChange={(value) => json("associatedStoreIdentifiers", value)}
-          />
-          <JsonPropertyEditor
-            label="Auxiliary Store identifiers"
-            value={draft.manifest.auxiliaryStoreIdentifiers}
-            emptyValue="[]"
-            onChange={(value) => json("auxiliaryStoreIdentifiers", value)}
-          />
-          <JsonPropertyEditor
-            label="User info"
-            value={draft.manifest.userInfo}
-            emptyValue="{}"
-            onChange={(value) => json("userInfo", value)}
-          />
-          <JsonPropertyEditor
-            label="Semantics"
-            value={draft.manifest.semantics}
-            emptyValue="{}"
-            onChange={(value) => json("semantics", value)}
-          />
-          <JsonPropertyEditor
-            label="Preferred style schemes"
-            hint="eventTicket or posterEventTicket"
-            value={draft.manifest.preferredStyleSchemes}
-            emptyValue="[]"
-            onChange={(value) => json("preferredStyleSchemes", value)}
-          />
-          <JsonPropertyEditor
-            label="Upcoming pass information"
-            hint="iOS 26"
-            value={draft.manifest.upcomingPassInformation}
-            emptyValue="[]"
-            onChange={(value) => json("upcomingPassInformation", value)}
-          />
-          <JsonPropertyEditor
-            label="Personalization"
-            hint="Requires NFC and personalizationLogo assets"
-            value={draft.personalization ?? undefined}
-            emptyValue="{}"
-            onChange={(value) =>
-              onChange({
-                ...draft,
-                personalization: isJsonObject(value) ? value : null,
-              })
-            }
-          />
-        </div>
-      </EditorSection>
-      <EditorSection
-        title="Event guide links"
-        description="Newer Wallet layouts surface these when enough related actions are present."
-      >
-        <div className="grid gap-4 md:grid-cols-2">
-          {EVENT_GUIDE_URLS.map(([property, label]) => (
-            <ManifestInput
-              key={property}
-              draft={draft}
-              property={property}
-              label={`${label} URL`}
-              type="url"
-              onChange={onChange}
-            />
-          ))}
-          <ManifestInput
-            draft={draft}
-            property="contactVenueEmail"
-            label="Venue email"
-            onChange={onChange}
-          />
-          <ManifestInput
-            draft={draft}
-            property="contactVenuePhoneNumber"
-            label="Venue phone"
-            onChange={onChange}
-          />
-        </div>
-      </EditorSection>
-    </>
-  );
-}
-
-function LocalesEditor({
-  draft,
-  onChange,
-}: {
-  draft: WalletPassDebugDraft;
-  onChange: (next: WalletPassDebugDraft) => void;
-}) {
-  const replace = (localizations: WalletPassLocalization[]) =>
-    onChange({ ...draft, localizations });
-  return (
-    <EditorSection
-      title="Localized pass strings"
-      description="Each locale becomes a .lproj/pass.strings file in the signed bundle."
-    >
-      <div className="space-y-3">
-        {draft.localizations.map((locale, index) => (
-          <div
-            key={`${locale.language}-${index}`}
-            className="border-border rounded-lg border p-4"
-          >
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div className="w-40">
-                <FieldLabel>Language</FieldLabel>
-                <Input
-                  value={locale.language}
-                  onChange={(event) =>
-                    replace(
-                      draft.localizations.map((item, itemIndex) =>
-                        itemIndex === index
-                          ? { ...item, language: event.target.value }
-                          : item,
-                      ),
-                    )
-                  }
-                  className="font-mono text-xs"
-                />
-              </div>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Delete locale"
-                onClick={() =>
-                  replace(
-                    draft.localizations.filter(
-                      (_, itemIndex) => itemIndex !== index,
-                    ),
-                  )
-                }
-              >
-                <Trash2 />
-              </Button>
-            </div>
-            <JsonPropertyEditor
-              label="Translations"
-              hint="Keys must match strings used in pass.json"
-              value={locale.translations}
-              emptyValue="{}"
-              onChange={(value) =>
-                replace(
-                  draft.localizations.map((item, itemIndex) =>
-                    itemIndex === index
-                      ? {
-                          ...item,
-                          translations: isJsonObject(value)
-                            ? Object.fromEntries(
-                                Object.entries(value).filter(
-                                  (entry): entry is [string, string] =>
-                                    typeof entry[1] === "string",
-                                ),
-                              )
-                            : {},
-                        }
-                      : item,
-                  ),
-                )
-              }
-            />
-          </div>
-        ))}
-      </div>
-      <Button
-        variant="outline"
-        size="sm"
-        className="mt-3"
-        onClick={() =>
-          replace([
-            ...draft.localizations,
-            { language: "en", translations: {} },
-          ])
-        }
-      >
-        <Plus />
-        Add locale
-      </Button>
-    </EditorSection>
-  );
-}
-
-function RawManifestEditor({
-  draft,
-  onChange,
-}: {
-  draft: WalletPassDebugDraft;
-  onChange: (next: WalletPassDebugDraft) => void;
-}) {
-  const source = prettyJson(draft.manifest);
-  const rawRef = useRef<HTMLTextAreaElement>(null);
-  const apply = () => {
-    try {
-      onChange({
-        ...draft,
-        manifest: parseJsonObject(rawRef.current?.value ?? source),
-      });
-      toast.success("Manifest applied");
-    } catch (cause) {
-      toast.error(
-        cause instanceof Error ? cause.message : "Manifest must be valid JSON.",
-      );
-    }
-  };
-  return (
-    <EditorSection
-      title="Complete pass.json"
-      description="This is the source that is validated, bundled, and signed. Friendly controls update it too."
-    >
-      <Textarea
-        aria-label="Complete pass.json"
-        key={source}
-        ref={rawRef}
-        defaultValue={source}
-        spellCheck={false}
-        className="min-h-[520px] resize-y font-mono text-xs leading-relaxed"
-      />
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <p className="text-muted-foreground text-xs">
-          Unknown or unsupported keys are rejected by passkit-generator.
-        </p>
-        <Button type="button" onClick={apply}>
-          Apply JSON
-        </Button>
-      </div>
-    </EditorSection>
-  );
-}
-
-export function WalletPassDebugger({
-  initialData,
-}: {
-  initialData?: WalletPassDebugDefaultsResponse;
-}) {
-  const [draft, setDraft] = useState<WalletPassDebugDraft | null>(
-    initialData?.draft ?? null,
-  );
-  const [original, setOriginal] = useState<WalletPassDebugDraft | null>(
-    initialData ? structuredClone(initialData.draft) : null,
-  );
-  const [configured, setConfigured] = useState(
-    initialData?.configured ?? false,
-  );
-  const [certificateDays, setCertificateDays] = useState<number | null>(
-    initialData?.certificateDaysRemaining ?? null,
-  );
+export function WalletPassDebugger() {
+  const [defaults, setDefaults] =
+    useState<WalletPassDebugDefaultsResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [draft, setDraft] = useState<WalletPassDebugDraft>(() =>
+    blankDraft({ kind: "standalone" }),
+  );
+  const [composed, setComposed] =
+    useState<WalletPassDebugComposeResponse | null>(null);
+  const [composeError, setComposeError] = useState<string | null>(null);
+  const [composing, setComposing] = useState(true);
   const [recipient, setRecipient] = useState("");
-  const [tab, setTab] = useState<EditorTab>("appearance");
-  const [pending, setPending] = useState<PendingAction>(null);
+  const [pending, setPending] = useState<Pending>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    if (initialData) return;
     const controller = new AbortController();
     fetch(API_URL, { signal: controller.signal, cache: "no-store" })
       .then(async (response) => {
-        const body: unknown = await response.json();
-        if (!response.ok) throw new Error("Could not load Wallet defaults.");
-        return walletPassDebugDefaultsResponseSchema.parse(body);
+        if (!response.ok) throw new Error("Could not load the debugger.");
+        return walletPassDebugDefaultsResponseSchema.parse(
+          await response.json(),
+        );
       })
-      .then((result) => {
-        setDraft(result.draft);
-        setOriginal(structuredClone(result.draft));
-        setConfigured(result.configured);
-        setCertificateDays(result.certificateDaysRemaining);
-      })
+      .then(setDefaults)
       .catch((cause) => {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted) {
           setLoadError(
             cause instanceof Error
               ? cause.message
-              : "Could not load Wallet defaults.",
+              : "Could not load the debugger.",
           );
+        }
       });
     return () => controller.abort();
-  }, [initialData, reloadKey]);
+  }, [reloadKey]);
 
-  const changed = useMemo(
-    () =>
-      draft && original
-        ? JSON.stringify(draft) !== JSON.stringify(original)
-        : false,
-    [draft, original],
-  );
+  // Every change recomposes, a beat after the last keystroke. Responses that
+  // arrive out of order are dropped: only the latest draft's pass is shown.
+  const request = useRef(0);
+  useEffect(() => {
+    const id = ++request.current;
+    setComposing(true);
+    const timer = setTimeout(() => {
+      post({ action: "compose", draft }, (value) =>
+        walletPassDebugComposeResponseSchema.parse(value),
+      )
+        .then((response) => {
+          if (id !== request.current) return;
+          setComposed(response);
+          setComposeError(null);
+        })
+        .catch((cause) => {
+          if (id !== request.current) return;
+          setComposeError(
+            cause instanceof Error ? cause.message : "Could not compose.",
+          );
+        })
+        .finally(() => {
+          if (id === request.current) setComposing(false);
+        });
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [draft]);
+
+  const setPatch = (update: (patch: Patch) => Patch) =>
+    setDraft((current) => ({ ...current, patch: update(current.patch) }));
+  const changed =
+    Object.keys(draft.design).length > 0 ||
+    Object.keys(draft.patch).length > 0 ||
+    draft.assets.length > 0 ||
+    draft.localizations.length > 0 ||
+    draft.personalization !== null;
+
+  const configured = defaults?.configured ?? false;
+  const certificateDays = defaults?.certificateDaysRemaining ?? null;
   const signingReady =
     configured && (certificateDays === null || certificateDays >= 0);
-  const certificateStatus = !configured
-    ? "Not configured"
-    : certificateDays === null
-      ? "Certificate ready"
-      : certificateDays < 0
-        ? `Certificate expired ${Math.abs(certificateDays)} days ago`
-        : certificateDays === 0
-          ? "Certificate expires today"
-          : `Certificate ready · ${certificateDays} days left`;
+  const certificateStatus = !defaults
+    ? "Loading"
+    : !configured
+      ? "Not configured"
+      : certificateDays === null
+        ? "Certificate ready"
+        : certificateDays < 0
+          ? `Certificate expired ${Math.abs(certificateDays)} days ago`
+          : certificateDays === 0
+            ? "Certificate expires today"
+            : `Certificate ready · ${certificateDays} days left`;
   const certificateDot = !signingReady
     ? "bg-destructive"
     : certificateDays !== null && certificateDays <= 30
       ? "bg-amber-400"
       : "bg-emerald-400";
 
-  const submit = async (action: Exclude<PendingAction, null>) => {
-    if (!draft) return;
+  const level = composed?.level;
+  const layers: InheritedLayer[] = composed
+    ? [
+        {
+          source: `from ${composed.level.label} at the event`,
+          design: composed.eventDesign.levels?.[composed.level.code] ?? {},
+        },
+        {
+          source: `from ${composed.level.label} level`,
+          design: composed.level.passDesign,
+        },
+        { source: "from the event", design: eventLayer(composed.eventDesign) },
+        { source: "from the gig", design: composed.gig },
+      ].filter((layer) => Object.keys(layer.design).length > 0)
+    : [];
+  const chip =
+    composed && level
+      ? resolveTicketPassDesign(
+          composed.eventDesign,
+          {
+            code: level.code,
+            short: level.short,
+            rank: level.rank,
+            passDesign: level.passDesign,
+          },
+          composed.gig,
+          draft.design,
+        ).chip
+      : null;
+
+  const submit = async (action: Exclude<Pending, null>) => {
     const validated = walletPassDebugDraftSchema.safeParse(draft);
     if (!validated.success) {
       toast.error(
@@ -1484,17 +321,17 @@ export function WalletPassDebugger({
       });
       if (!response.ok) {
         const body: unknown = await response.json().catch(() => null);
-        const message =
+        throw new Error(
           isJsonObject(body) && typeof body.error === "string"
             ? body.error
-            : "Could not build the pass.";
-        throw new Error(message);
+            : "Could not build the pass.",
+        );
       }
       if (action === "download") {
         const blob = await response.blob();
         const disposition = response.headers.get("content-disposition") ?? "";
         const filename =
-          /filename="([^"]+)"/.exec(disposition)?.[1] ?? "standalone.pkpass";
+          /filename="([^"]+)"/.exec(disposition)?.[1] ?? "pass.pkpass";
         const href = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = href;
@@ -1517,7 +354,7 @@ export function WalletPassDebugger({
   if (loadError) {
     return (
       <div className="border-destructive/50 bg-destructive/5 rounded-lg border p-5">
-        <p className="font-medium">Wallet defaults could not be loaded</p>
+        <p className="font-medium">The debugger could not load</p>
         <p className="text-muted-foreground mt-1 text-sm">{loadError}</p>
         <Button
           className="mt-4"
@@ -1533,142 +370,139 @@ export function WalletPassDebugger({
     );
   }
 
-  if (!draft) {
-    return (
-      <div className="border-border min-h-96 rounded-lg border p-6 text-sm">
-        Loading Wallet defaults…
-      </div>
-    );
-  }
+  const manifest = composed?.manifest ?? {};
+  const extraTabs: PassDesignExtraTab[] = [
+    {
+      id: "fields",
+      label: "Fields",
+      set: isJsonObject(draft.patch.eventTicket),
+      content: (
+        <FieldsTab manifest={manifest} patch={draft.patch} onPatch={setPatch} />
+      ),
+    },
+    {
+      id: "semantics",
+      label: "Semantics",
+      set: isJsonObject(draft.patch.semantics),
+      content: (
+        <SemanticsTab
+          manifest={manifest}
+          patch={draft.patch}
+          onPatch={setPatch}
+        />
+      ),
+    },
+    {
+      id: "advanced",
+      label: "Advanced",
+      set:
+        Object.keys(draft.patch).some(
+          (key) => key !== "eventTicket" && key !== "semantics",
+        ) ||
+        draft.assets.length > 0 ||
+        draft.localizations.length > 0 ||
+        draft.personalization !== null,
+      content: (
+        <AdvancedTab
+          draft={draft}
+          manifest={manifest}
+          onDraft={setDraft}
+          onPatch={setPatch}
+        />
+      ),
+    },
+    {
+      id: "json",
+      label: "JSON",
+      content: (
+        <JsonTab
+          manifest={manifest}
+          composed={composed}
+          composing={composing}
+          onApply={(next) =>
+            setDraft((current) => ({ ...current, patch: fullPatch(next) }))
+          }
+        />
+      ),
+    },
+  ];
 
   return (
-    <div className="dark text-foreground min-w-0 bg-black">
-      <div className="border-border grid gap-4 border-y py-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
-        <div>
-          <FieldLabel>Template</FieldLabel>
-          <div className="border-input bg-input/20 flex h-9 items-center rounded-md border px-3 text-sm">
-            Standalone Atmos ticket
-          </div>
-        </div>
-        <div>
-          <FieldLabel>Signing</FieldLabel>
-          <div className="border-input bg-input/20 flex h-9 items-center gap-2 rounded-md border px-3 text-sm">
+    <div className="dark text-foreground min-w-0">
+      <SourceBar
+        draft={draft}
+        defaults={defaults}
+        real={composed?.context.real ?? false}
+        onSource={(source) => setDraft(blankDraft(source))}
+        onLevel={(code) =>
+          setDraft((current) =>
+            current.source.kind === "ticket"
+              ? current
+              : { ...current, source: { ...current.source, level: code } },
+          )
+        }
+        status={
+          <span className="border-input bg-input/20 flex h-9 items-center gap-2 rounded-md border px-3 text-sm">
             <span className={`size-2 rounded-full ${certificateDot}`} />
             {certificateStatus}
-          </div>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            if (original)
-              setDraft({
-                ...structuredClone(original),
-                manifest: cloneJsonObject(original.manifest),
-              });
-            toast.success("Overrides reset");
-          }}
-          disabled={!changed}
-        >
-          <RotateCcw />
-          Reset overrides
-        </Button>
-      </div>
+          </span>
+        }
+        reset={
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!changed}
+            onClick={() => setDraft(blankDraft(draft.source))}
+          >
+            <RotateCcw />
+            Reset changes
+          </Button>
+        }
+      />
 
-      {!signingReady ? (
+      {defaults && !signingReady ? (
         <div className="mt-4 rounded-md border border-amber-500/35 bg-amber-500/5 px-4 py-3 text-sm text-amber-200">
           {configured
             ? "The Apple Wallet certificate has expired. You can design the pass, but download and email stay disabled until it is replaced."
-            : "Apple Wallet signing variables are missing. You can design the pass, but download and email stay disabled until the certificate is configured."}
+            : "Apple Wallet signing variables are missing. You can design the pass, but nothing can be validated, downloaded or emailed until the certificate is configured."}
         </div>
       ) : null}
 
-      <Tabs
-        value={tab}
-        onValueChange={(value) => setTab(value as EditorTab)}
-        className="mt-5 gap-0"
-      >
-        <TabsList className="bg-transparent p-0">
-          {EDITOR_TABS.map(([value, label]) => (
-            <TabsTrigger
-              key={value}
-              value={value}
-              className="rounded-none border-0 border-b-2 border-transparent bg-transparent px-3 data-[state=active]:border-white data-[state=active]:bg-transparent"
-            >
-              {label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-        <div className="grid min-w-0 gap-6 pt-6 xl:grid-cols-[minmax(0,1fr)_310px]">
-          <div className="min-w-0">
-            <TabsContent value="identity">
-              <IdentityEditor draft={draft} onChange={setDraft} />
-            </TabsContent>
-            <TabsContent value="appearance">
-              <AppearanceEditor draft={draft} onChange={setDraft} />
-            </TabsContent>
-            <TabsContent value="front">
-              <FieldsEditor
-                draft={draft}
-                slots={[
-                  "headerFields",
-                  "primaryFields",
-                  "secondaryFields",
-                  "auxiliaryFields",
-                  "additionalInfoFields",
-                ]}
-                onChange={setDraft}
-              />
-            </TabsContent>
-            <TabsContent value="back">
-              <FieldsEditor
-                draft={draft}
-                slots={["backFields"]}
-                onChange={setDraft}
-              />
-            </TabsContent>
-            <TabsContent value="barcode">
-              <BarcodeEditor draft={draft} onChange={setDraft} />
-            </TabsContent>
-            <TabsContent value="relevance">
-              <RelevanceEditor draft={draft} onChange={setDraft} />
-            </TabsContent>
-            <TabsContent value="updates">
-              <UpdatesEditor draft={draft} onChange={setDraft} />
-            </TabsContent>
-            <TabsContent value="locales">
-              <LocalesEditor draft={draft} onChange={setDraft} />
-            </TabsContent>
-            <TabsContent value="json">
-              <RawManifestEditor draft={draft} onChange={setDraft} />
-            </TabsContent>
-          </div>
-          <WalletPassPreview draft={draft} />
-        </div>
-      </Tabs>
+      <div className="mt-6">
+        <PassDesignField
+          value={draft.design}
+          onChange={(design) => setDraft((current) => ({ ...current, design }))}
+          inherits={layers}
+          eventName={composed?.context.eventName ?? ""}
+          venueAddress={composed?.context.venueAddress ?? null}
+          chip={chip}
+          intensity={level?.intensity ?? 0}
+          showChipControl
+          content={
+            composed ? previewContent(manifest, composed.context) : undefined
+          }
+          extraTabs={extraTabs}
+        />
+      </div>
 
       <div className="border-border sticky bottom-0 z-20 -mx-4 mt-6 border-t bg-black px-4 py-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-end">
           <div className="min-w-0 flex-1">
-            <FieldLabel
-              htmlFor="wallet-pass-recipient"
-              hint="Fixed Atmos email template"
-            >
-              Email recipient
-            </FieldLabel>
+            <Label htmlFor="wallet-pass-recipient">Email recipient</Label>
             <Input
               id="wallet-pass-recipient"
               type="email"
               value={recipient}
               onChange={(event) => setRecipient(event.target.value)}
               placeholder="name@example.com"
+              className="mt-1.5"
             />
           </div>
           <div className="flex shrink-0 gap-2">
             <Button
               type="button"
               variant="outline"
-              disabled={!signingReady || pending !== null}
+              disabled={!signingReady || pending !== null || composing}
               onClick={() => void submit("download")}
             >
               <Download />
@@ -1676,7 +510,12 @@ export function WalletPassDebugger({
             </Button>
             <Button
               type="button"
-              disabled={!signingReady || pending !== null || !recipient.trim()}
+              disabled={
+                !signingReady ||
+                pending !== null ||
+                composing ||
+                !recipient.trim()
+              }
               onClick={() => void submit("send")}
             >
               <Mail />
@@ -1684,11 +523,1305 @@ export function WalletPassDebugger({
             </Button>
           </div>
         </div>
-        <p className="text-muted-foreground mx-auto mt-2 max-w-7xl text-xs">
-          Nothing on this page is saved. The pass is signed only when you
-          download or send it.
+        <p className="mx-auto mt-2 max-w-7xl text-xs">
+          <BundleStatus
+            composed={composed}
+            composing={composing}
+            error={composeError}
+          />
         </p>
       </div>
     </div>
+  );
+}
+
+/** One line on what would be signed: valid or not, how many keys, how big. */
+function BundleStatus({
+  composed,
+  composing,
+  error,
+}: {
+  composed: WalletPassDebugComposeResponse | null;
+  composing: boolean;
+  error: string | null;
+}) {
+  if (error) return <span className="text-destructive">{error}</span>;
+  if (!composed) {
+    return <span className="text-muted-foreground">Composing…</span>;
+  }
+  const bytes = composed.files.reduce((sum, file) => sum + file.bytes, 0);
+  const size = `${composed.files.length} files · ${formatBytes(bytes)}`;
+  if (composed.validation === null) {
+    return (
+      <span className="text-muted-foreground">
+        {composing ? "Composing… " : ""}Not validated, signing is not configured
+        · {size}
+      </span>
+    );
+  }
+  if (!composed.validation.ok) {
+    return (
+      <span className="text-destructive">{composed.validation.error}</span>
+    );
+  }
+  return (
+    <span className="text-muted-foreground">
+      {composing ? (
+        "Composing…"
+      ) : (
+        <>
+          <span className="text-emerald-400">Valid</span> pass.json
+        </>
+      )}{" "}
+      · {composed.validation.keys} keys · {size}. Nothing on this page is saved;
+      the pass is signed only when you download or send it.
+    </span>
+  );
+}
+
+function SourceBar({
+  draft,
+  defaults,
+  real,
+  onSource,
+  onLevel,
+  status,
+  reset,
+}: {
+  draft: WalletPassDebugDraft;
+  defaults: WalletPassDebugDefaultsResponse | null;
+  real: boolean;
+  onSource: (source: WalletPassSource) => void;
+  onLevel: (code: string) => void;
+  status: ReactNode;
+  reset: ReactNode;
+}) {
+  const { source } = draft;
+  const [ticketNumber, setTicketNumber] = useState(
+    source.kind === "ticket" ? source.ticketNumber : "",
+  );
+  const levelCode =
+    source.kind === "ticket" ? null : (source.level ?? "GENERAL");
+
+  return (
+    <div className="border-border grid gap-4 border-y py-4 md:grid-cols-[200px_1fr_1fr_auto_auto] md:items-end">
+      <div>
+        <Label>Start from</Label>
+        <Select
+          value={source.kind}
+          onValueChange={(kind) => {
+            if (kind === "standalone") onSource({ kind: "standalone" });
+            else if (kind === "event") {
+              const first = defaults?.events[0];
+              if (!first) {
+                toast.error("There are no ticketed events to start from.");
+                return;
+              }
+              onSource({ kind: "event", eventId: first.id });
+            } else if (ticketNumber.trim()) {
+              onSource({ kind: "ticket", ticketNumber: ticketNumber.trim() });
+            } else {
+              toast.error("Type a ticket number first.");
+            }
+          }}
+        >
+          <SelectTrigger className="mt-1.5 w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="standalone">A sample night</SelectItem>
+            <SelectItem value="event">An event</SelectItem>
+            <SelectItem value="ticket">A real ticket</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {source.kind === "event" ? (
+        <div className="min-w-0">
+          <Label>Event</Label>
+          <Select
+            value={source.eventId}
+            onValueChange={(eventId) =>
+              onSource({ kind: "event", eventId, level: source.level })
+            }
+          >
+            <SelectTrigger className="mt-1.5 w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {defaults?.events.map((event) => (
+                <SelectItem key={event.id} value={event.id}>
+                  {event.name}
+                  <span className="text-muted-foreground ml-2 text-xs">
+                    {new Date(event.startsAt).toLocaleDateString("en-NZ", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : source.kind === "ticket" ? (
+        <div className="min-w-0">
+          <Label htmlFor="debug-ticket-number">Ticket number</Label>
+          <div className="mt-1.5 flex gap-2">
+            <Input
+              id="debug-ticket-number"
+              value={ticketNumber}
+              onChange={(event) =>
+                setTicketNumber(event.target.value.toUpperCase())
+              }
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && ticketNumber.trim()) {
+                  event.preventDefault();
+                  onSource({
+                    kind: "ticket",
+                    ticketNumber: ticketNumber.trim(),
+                  });
+                }
+              }}
+              placeholder="ATN-00000"
+              className="font-mono"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!ticketNumber.trim()}
+              onClick={() =>
+                onSource({ kind: "ticket", ticketNumber: ticketNumber.trim() })
+              }
+            >
+              Load
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="text-muted-foreground self-center text-sm md:pb-2">
+          A sample ticket to a sample night, in house style.
+        </div>
+      )}
+
+      {levelCode !== null ? (
+        <div>
+          <Label>Level</Label>
+          <Select value={levelCode} onValueChange={onLevel}>
+            <SelectTrigger className="mt-1.5 w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(defaults?.levels ?? []).map((item) => (
+                <SelectItem key={item.code} value={item.code}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : (
+        <div className="self-center text-sm text-amber-200 md:pb-2">
+          {real
+            ? "This is the holder's real pass and QR. Send it only to yourself."
+            : "Load a ticket by its number."}
+        </div>
+      )}
+
+      <div>
+        <Label>Signing</Label>
+        <div className="mt-1.5">{status}</div>
+      </div>
+      {reset}
+    </div>
+  );
+}
+
+/** Pretty label with an optional hint on the right, the debugger's own. */
+function FieldHead({
+  children,
+  hint,
+  htmlFor,
+}: {
+  children: ReactNode;
+  hint?: ReactNode;
+  htmlFor?: string;
+}) {
+  return (
+    <div className="mb-1.5 flex items-baseline justify-between gap-3">
+      {htmlFor ? (
+        <Label htmlFor={htmlFor}>{children}</Label>
+      ) : (
+        <p className="text-sm leading-none font-medium">{children}</p>
+      )}
+      {hint ? (
+        <span className="text-muted-foreground text-xs">{hint}</span>
+      ) : null}
+    </div>
+  );
+}
+
+function Section({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title: string;
+  description?: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="border-border border-t py-6 first:border-t-0 first:pt-0">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold">{title}</h2>
+          {description ? (
+            <p className="text-muted-foreground mt-0.5 text-xs">
+              {description}
+            </p>
+          ) : null}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** A JSON box that commits on blur, for the keys with no better editor. */
+function JsonBox({
+  label,
+  hint,
+  value,
+  empty,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  value: JsonValue | undefined;
+  empty: "[]" | "{}";
+  onChange: (value: JsonValue | undefined) => void;
+}) {
+  const source = value === undefined ? empty : prettyJson(value);
+  return (
+    <div>
+      <FieldHead hint={hint}>{label}</FieldHead>
+      <Textarea
+        aria-label={label}
+        key={source}
+        defaultValue={source}
+        spellCheck={false}
+        className="min-h-24 resize-y font-mono text-xs leading-relaxed"
+        onBlur={(event) => {
+          const text = event.currentTarget.value;
+          try {
+            const parsed: unknown = JSON.parse(text);
+            const wrapper = parseJsonObject(
+              `{"value":${JSON.stringify(parsed)}}`,
+            );
+            const next = wrapper.value;
+            onChange(
+              (Array.isArray(next) && next.length === 0) ||
+                (isJsonObject(next) && Object.keys(next).length === 0)
+                ? undefined
+                : next,
+            );
+          } catch {
+            toast.error(`${label} must be valid JSON.`);
+            event.currentTarget.value = source;
+          }
+        }}
+      />
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------------------- */
+/* Fields                                                                  */
+/* ----------------------------------------------------------------------- */
+
+const SLOT_HINTS: Record<PassFieldSlot, string> = {
+  headerFields: "Beside the logo. One or two at most.",
+  primaryFields: "The big one. Empty when the band carries the name.",
+  secondaryFields: "The first row under the band.",
+  auxiliaryFields: "The second row; row 1 is a third, on event tickets.",
+  additionalInfoFields: "A poster pass's details section. iOS 18.",
+  backFields: "The back. Links, numbers and addresses become tappable.",
+};
+
+function FieldsTab({
+  manifest,
+  patch,
+  onPatch,
+}: {
+  manifest: JsonObject;
+  patch: Patch;
+  onPatch: (update: (patch: Patch) => Patch) => void;
+}) {
+  const patched = (slot: PassFieldSlot) =>
+    isJsonObject(patch.eventTicket) && Array.isArray(patch.eventTicket[slot]);
+  const replace = (slot: PassFieldSlot, fields: JsonObject[]) =>
+    onPatch((current) => ({
+      ...current,
+      eventTicket: {
+        ...(isJsonObject(current.eventTicket) ? current.eventTicket : {}),
+        [slot]: fields,
+      },
+    }));
+  const follow = (slot: PassFieldSlot) =>
+    onPatch((current) => {
+      const ticket = isJsonObject(current.eventTicket)
+        ? { ...current.eventTicket }
+        : {};
+      delete ticket[slot];
+      const next = { ...current };
+      if (Object.keys(ticket).length > 0) next.eventTicket = ticket;
+      else delete next.eventTicket;
+      return next;
+    });
+
+  return (
+    <>
+      {PASS_FIELD_SLOTS.map((slot) => {
+        const fields = fieldsOf(manifest, slot);
+        const own = patched(slot);
+        const update = (index: number, field: JsonObject) =>
+          replace(
+            slot,
+            fields.map((item, i) => (i === index ? field : item)),
+          );
+        return (
+          <Section
+            key={slot}
+            title={`${PASS_FIELD_SLOT_LABELS[slot]} fields`}
+            description={SLOT_HINTS[slot]}
+            action={
+              own ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => follow(slot)}
+                >
+                  Follow the source
+                </Button>
+              ) : (
+                <span className="text-muted-foreground text-xs">
+                  From the source
+                </span>
+              )
+            }
+          >
+            <div className="space-y-3">
+              {fields.map((field, index) => (
+                <div
+                  key={`${textOf(field.key)}-${index}`}
+                  className="border-border rounded-lg border p-3"
+                >
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <Input
+                      aria-label="Key"
+                      value={textOf(field.key)}
+                      onChange={(event) =>
+                        update(index, { ...field, key: event.target.value })
+                      }
+                      className="h-8 w-40 font-mono text-xs"
+                    />
+                    <div className="flex gap-1">
+                      {slot === "auxiliaryFields" && (
+                        <Select
+                          value={field.row === 1 ? "1" : "0"}
+                          onValueChange={(row) =>
+                            update(
+                              index,
+                              row === "1"
+                                ? { ...field, row: 1 }
+                                : Object.fromEntries(
+                                    Object.entries(field).filter(
+                                      ([key]) => key !== "row",
+                                    ),
+                                  ),
+                            )
+                          }
+                        >
+                          <SelectTrigger className="h-8 w-24 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="0">Row 0</SelectItem>
+                            <SelectItem value="1">Row 1</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Move field up"
+                        disabled={index === 0}
+                        onClick={() => {
+                          const next = [...fields];
+                          [next[index - 1], next[index]] = [
+                            next[index]!,
+                            next[index - 1]!,
+                          ];
+                          replace(slot, next);
+                        }}
+                      >
+                        <ArrowUp />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Move field down"
+                        disabled={index === fields.length - 1}
+                        onClick={() => {
+                          const next = [...fields];
+                          [next[index], next[index + 1]] = [
+                            next[index + 1]!,
+                            next[index]!,
+                          ];
+                          replace(slot, next);
+                        }}
+                      >
+                        <ArrowDown />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Delete field"
+                        onClick={() =>
+                          replace(
+                            slot,
+                            fields.filter((_, i) => i !== index),
+                          )
+                        }
+                      >
+                        <Trash2 />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-[160px_1fr]">
+                    <Input
+                      aria-label="Label"
+                      value={textOf(field.label)}
+                      placeholder="LABEL"
+                      onChange={(event) =>
+                        update(index, { ...field, label: event.target.value })
+                      }
+                    />
+                    <Textarea
+                      aria-label="Value"
+                      value={textOf(field.value)}
+                      rows={1}
+                      onChange={(event) =>
+                        update(index, { ...field, value: event.target.value })
+                      }
+                      className="min-h-9"
+                    />
+                    {slot !== "backFields" && (
+                      <>
+                        <span className="text-muted-foreground self-center text-xs">
+                          Change message
+                        </span>
+                        <Input
+                          aria-label="Change message"
+                          value={textOf(field.changeMessage)}
+                          placeholder="Doors now %@"
+                          onChange={(event) => {
+                            const next = { ...field };
+                            if (event.target.value) {
+                              next.changeMessage = event.target.value;
+                            } else {
+                              delete next.changeMessage;
+                            }
+                            update(index, next);
+                          }}
+                        />
+                      </>
+                    )}
+                  </div>
+                  <details className="mt-2">
+                    <summary className="text-muted-foreground cursor-pointer text-xs">
+                      Everything else on this field
+                    </summary>
+                    <div className="mt-2">
+                      <JsonBox
+                        label="Other properties"
+                        hint="attributedValue, dateStyle, textAlignment, dataDetectorTypes, semantics"
+                        value={Object.fromEntries(
+                          Object.entries(field).filter(
+                            ([key]) =>
+                              ![
+                                "key",
+                                "label",
+                                "value",
+                                "changeMessage",
+                                "row",
+                              ].includes(key),
+                          ),
+                        )}
+                        empty="{}"
+                        onChange={(value) => {
+                          const kept = Object.fromEntries(
+                            Object.entries(field).filter(([key]) =>
+                              [
+                                "key",
+                                "label",
+                                "value",
+                                "changeMessage",
+                                "row",
+                              ].includes(key),
+                            ),
+                          );
+                          update(index, {
+                            ...(isJsonObject(value) ? value : {}),
+                            ...kept,
+                          });
+                        }}
+                      />
+                    </div>
+                  </details>
+                </div>
+              ))}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() =>
+                replace(slot, [
+                  ...fields,
+                  {
+                    key: `field-${crypto.randomUUID().slice(0, 8)}`,
+                    label: "LABEL",
+                    value: "Value",
+                  },
+                ])
+              }
+            >
+              <Plus />
+              Add {PASS_FIELD_SLOT_LABELS[slot].toLowerCase()} field
+            </Button>
+          </Section>
+        );
+      })}
+    </>
+  );
+}
+
+/* ----------------------------------------------------------------------- */
+/* Semantics                                                               */
+/* ----------------------------------------------------------------------- */
+
+const EVENT_TYPES = [
+  ["PKEventTypeLivePerformance", "Live performance"],
+  ["PKEventTypeGeneric", "Generic"],
+  ["PKEventTypeMovie", "Movie"],
+  ["PKEventTypeConference", "Conference"],
+  ["PKEventTypeConvention", "Convention"],
+  ["PKEventTypeWorkshop", "Workshop"],
+  ["PKEventTypeSocialGathering", "Social gathering"],
+  ["PKEventTypeSports", "Sports"],
+] as const;
+
+const SEMANTIC_TEXT = [
+  ["eventName", "Event name"],
+  ["venueName", "Venue"],
+  ["venueRegionName", "Region"],
+  ["venueEntrance", "Entrance"],
+  ["admissionLevel", "Admission level"],
+  ["admissionLevelAbbreviation", "Admission, short"],
+  ["attendeeName", "Attendee"],
+  ["entranceDescription", "Entrance description"],
+] as const;
+
+const SEMANTIC_DATES = [
+  ["eventStartDate", "Starts"],
+  ["eventEndDate", "Ends"],
+  ["venueDoorsOpenDate", "Doors"],
+  ["venueGatesOpenDate", "Gates"],
+  ["venueCloseDate", "Venue closes"],
+] as const;
+
+const SEMANTIC_KNOWN = new Set<string>([
+  "eventType",
+  "performerNames",
+  ...SEMANTIC_TEXT.map(([key]) => key),
+  ...SEMANTIC_DATES.map(([key]) => key),
+]);
+
+function SemanticsTab({
+  manifest,
+  patch,
+  onPatch,
+}: {
+  manifest: JsonObject;
+  patch: Patch;
+  onPatch: (update: (patch: Patch) => Patch) => void;
+}) {
+  const semantics = semanticsOf(manifest);
+  const set = (key: string, value: JsonValue | undefined) =>
+    onPatch((current) => ({
+      ...current,
+      semantics: {
+        ...(isJsonObject(current.semantics) ? current.semantics : {}),
+        // Null removes the key from the composed pass; see `applyPatch`.
+        [key]: value === undefined || value === "" ? null : value,
+      },
+    }));
+  const own = isJsonObject(patch.semantics);
+  const rest = Object.fromEntries(
+    Object.entries(semantics).filter(([key]) => !SEMANTIC_KNOWN.has(key)),
+  );
+  const performers = Array.isArray(semantics.performerNames)
+    ? semantics.performerNames.map(textOf).join(", ")
+    : "";
+
+  return (
+    <>
+      <Section
+        title="What the pass means"
+        description="Siri, Focus and the poster layout read these. The source fills them in; anything you change here is yours."
+        action={
+          own ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                onPatch((current) => {
+                  const next = { ...current };
+                  delete next.semantics;
+                  return next;
+                })
+              }
+            >
+              Follow the source
+            </Button>
+          ) : null
+        }
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <FieldHead>Event type</FieldHead>
+            <Select
+              value={
+                textOf(semantics.eventType) || "PKEventTypeLivePerformance"
+              }
+              onValueChange={(value) => set("eventType", value)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {EVENT_TYPES.map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <FieldHead htmlFor="semantic-performers" hint="Comma separated">
+              Performers
+            </FieldHead>
+            <Input
+              id="semantic-performers"
+              key={performers}
+              defaultValue={performers}
+              onBlur={(event) => {
+                const names = event.target.value
+                  .split(",")
+                  .map((name) => name.trim())
+                  .filter(Boolean);
+                set("performerNames", names.length > 0 ? names : undefined);
+              }}
+            />
+          </div>
+          {SEMANTIC_TEXT.map(([key, label]) => (
+            <div key={key}>
+              <FieldHead htmlFor={`semantic-${key}`}>{label}</FieldHead>
+              <Input
+                id={`semantic-${key}`}
+                key={textOf(semantics[key])}
+                defaultValue={textOf(semantics[key])}
+                onBlur={(event) => {
+                  if (event.target.value !== textOf(semantics[key])) {
+                    set(key, event.target.value);
+                  }
+                }}
+              />
+            </div>
+          ))}
+          {SEMANTIC_DATES.map(([key, label]) => (
+            <div key={key}>
+              <FieldHead htmlFor={`semantic-${key}`} hint="Local time">
+                {label}
+              </FieldHead>
+              <Input
+                id={`semantic-${key}`}
+                type="datetime-local"
+                value={toLocalInput(textOf(semantics[key]))}
+                onChange={(event) =>
+                  set(key, fromLocalInput(event.target.value))
+                }
+              />
+            </div>
+          ))}
+        </div>
+      </Section>
+      <Section
+        title="Everything else"
+        description="Seats, location, teams, sports and the rest, as JSON. Merged with the above."
+      >
+        <JsonBox
+          label="Other semantic tags"
+          value={Object.keys(rest).length > 0 ? rest : undefined}
+          empty="{}"
+          onChange={(value) =>
+            onPatch((current) => {
+              const removed = Object.fromEntries(
+                Object.keys(rest).map((key) => [key, null]),
+              );
+              return {
+                ...current,
+                semantics: {
+                  ...(isJsonObject(current.semantics) ? current.semantics : {}),
+                  ...removed,
+                  ...(isJsonObject(value) ? value : {}),
+                },
+              };
+            })
+          }
+        />
+      </Section>
+    </>
+  );
+}
+
+/* ----------------------------------------------------------------------- */
+/* Advanced                                                                */
+/* ----------------------------------------------------------------------- */
+
+function AdvancedTab({
+  draft,
+  manifest,
+  onDraft,
+  onPatch,
+}: {
+  draft: WalletPassDebugDraft;
+  manifest: JsonObject;
+  onDraft: (
+    update: (draft: WalletPassDebugDraft) => WalletPassDebugDraft,
+  ) => void;
+  onPatch: (update: (patch: Patch) => Patch) => void;
+}) {
+  const setKey = (key: string, value: JsonValue | undefined) =>
+    onPatch((current) => {
+      const next = { ...current };
+      if (value === undefined || value === "") delete next[key];
+      else next[key] = value;
+      return next;
+    });
+  const text = (
+    key: string,
+    label: string,
+    options: { mono?: boolean; hint?: string } = {},
+  ) => (
+    <div key={key} className="min-w-0">
+      <FieldHead htmlFor={`manifest-${key}`} hint={options.hint}>
+        {label}
+      </FieldHead>
+      <Input
+        id={`manifest-${key}`}
+        key={textOf(manifest[key])}
+        defaultValue={textOf(manifest[key])}
+        spellCheck={!options.mono}
+        className={options.mono ? "font-mono text-xs" : ""}
+        onBlur={(event) => {
+          if (event.target.value !== textOf(manifest[key])) {
+            setKey(key, event.target.value);
+          }
+        }}
+      />
+    </div>
+  );
+  const date = (key: string, label: string, hint?: string) => (
+    <div key={key}>
+      <FieldHead htmlFor={`manifest-${key}`} hint={hint}>
+        {label}
+      </FieldHead>
+      <Input
+        id={`manifest-${key}`}
+        type="datetime-local"
+        value={toLocalInput(textOf(manifest[key]))}
+        onChange={(event) =>
+          setKey(key, fromLocalInput(event.target.value) ?? null)
+        }
+      />
+    </div>
+  );
+  const flag = (key: string, label: string, hint: string) => (
+    <div
+      key={key}
+      className="border-border flex items-center justify-between gap-5 border-b py-3 last:border-0"
+    >
+      <div>
+        <Label htmlFor={`manifest-${key}`}>{label}</Label>
+        <p className="text-muted-foreground mt-0.5 text-xs">{hint}</p>
+      </div>
+      <Switch
+        id={`manifest-${key}`}
+        checked={manifest[key] === true}
+        onCheckedChange={(checked) => setKey(key, checked ? true : null)}
+      />
+    </div>
+  );
+
+  const interval = Array.isArray(manifest.relevantDates)
+    ? manifest.relevantDates.find(isJsonObject)
+    : undefined;
+  const setInterval = (start: string | undefined, end: string | undefined) =>
+    setKey(
+      "relevantDates",
+      start && end
+        ? [{ startDate: start, endDate: end }]
+        : start
+          ? [{ date: start, relevantDate: start }]
+          : null,
+    );
+
+  const addAssets = async (files: File[]) => {
+    try {
+      const assets = await Promise.all(files.map(fileAsAsset));
+      onDraft((current) => {
+        const byName = new Map(
+          [...current.assets, ...assets].map((asset) => [
+            asset.fileName,
+            asset,
+          ]),
+        );
+        const next = { ...current, assets: [...byName.values()] };
+        const result = walletPassDebugDraftSchema.safeParse(next);
+        if (!result.success) {
+          toast.error(result.error.issues[0]?.message ?? "Bad asset.");
+          return current;
+        }
+        return result.data;
+      });
+    } catch (cause) {
+      toast.error(
+        cause instanceof Error ? cause.message : "Could not add asset.",
+      );
+    }
+  };
+
+  return (
+    <>
+      <Section
+        title="Identity"
+        description="Who the pass says it is from. Defaults to the signing configuration."
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          {text("organizationName", "Organisation")}
+          {text("description", "Description", {
+            hint: "Read out by VoiceOver",
+          })}
+          {text("passTypeIdentifier", "Pass type identifier", { mono: true })}
+          {text("teamIdentifier", "Team identifier", { mono: true })}
+          {text("serialNumber", "Serial number", { mono: true })}
+          {text("groupingIdentifier", "Grouping identifier", {
+            mono: true,
+            hint: "Passes that share it stack",
+          })}
+        </div>
+      </Section>
+
+      <Section
+        title="Dates"
+        description="When the pass offers itself and when it expires. An interval is a live activity on a poster pass."
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          {date("relevantDate", "Relevant date", "Phones before iOS 18")}
+          {date("expirationDate", "Expires")}
+          <div>
+            <FieldHead htmlFor="manifest-relevantFrom">Relevant from</FieldHead>
+            <Input
+              id="manifest-relevantFrom"
+              type="datetime-local"
+              value={toLocalInput(
+                textOf(interval?.startDate) ||
+                  textOf(interval?.date) ||
+                  textOf(interval?.relevantDate),
+              )}
+              onChange={(event) =>
+                setInterval(
+                  fromLocalInput(event.target.value),
+                  textOf(interval?.endDate) || undefined,
+                )
+              }
+            />
+          </div>
+          <div>
+            <FieldHead htmlFor="manifest-relevantUntil" hint="At most 24 hours">
+              Until
+            </FieldHead>
+            <Input
+              id="manifest-relevantUntil"
+              type="datetime-local"
+              value={toLocalInput(textOf(interval?.endDate))}
+              onChange={(event) =>
+                setInterval(
+                  textOf(interval?.startDate) ||
+                    textOf(interval?.date) ||
+                    undefined,
+                  fromLocalInput(event.target.value),
+                )
+              }
+            />
+          </div>
+        </div>
+      </Section>
+
+      <Section
+        title="Behaviour"
+        description="Switches Wallet reads straight off the pass."
+      >
+        {flag("voided", "Voided", "Greyed out and off the lock screen.")}
+        {flag(
+          "sharingProhibited",
+          "Sharing prohibited",
+          "Removes the Share button on the back.",
+        )}
+        {flag(
+          "suppressStripShine",
+          "Suppress strip shine",
+          "Turns off the gloss older iOS draws over a band.",
+        )}
+      </Section>
+
+      <Section
+        title="Web service and app"
+        description="A sample pass is not registered for updates, so these stay empty unless the source is a real ticket."
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          {text("webServiceURL", "Web service URL", { mono: true })}
+          {text("authenticationToken", "Authentication token", { mono: true })}
+          {text("appLaunchURL", "App launch URL", { mono: true })}
+          <div>
+            <FieldHead
+              htmlFor="manifest-stores"
+              hint="Comma separated App Store ids"
+            >
+              Associated apps
+            </FieldHead>
+            <Input
+              id="manifest-stores"
+              key={
+                Array.isArray(manifest.associatedStoreIdentifiers)
+                  ? manifest.associatedStoreIdentifiers.map(textOf).join(", ")
+                  : ""
+              }
+              defaultValue={
+                Array.isArray(manifest.associatedStoreIdentifiers)
+                  ? manifest.associatedStoreIdentifiers.map(textOf).join(", ")
+                  : ""
+              }
+              className="font-mono text-xs"
+              onBlur={(event) => {
+                const ids = event.target.value
+                  .split(",")
+                  .map((value) => Number(value.trim()))
+                  .filter((value) => Number.isInteger(value) && value > 0);
+                setKey("associatedStoreIdentifiers", ids.length ? ids : null);
+              }}
+            />
+          </div>
+        </div>
+      </Section>
+
+      <Section
+        title="Raw keys"
+        description="Beacons, NFC and the rest, as JSON. Empty follows the source."
+      >
+        <div className="grid gap-5 md:grid-cols-2">
+          {[
+            [
+              "beacons",
+              "Beacons",
+              "proximityUUID, major, minor, relevantText",
+              "[]",
+            ],
+            ["nfc", "NFC", "message, encryptionPublicKey", "{}"],
+            ["userInfo", "User info", "For the app, never shown", "{}"],
+            ["upcomingPassInformation", "Upcoming passes", "iOS 26", "[]"],
+          ].map(([key, label, hint, empty]) => (
+            <JsonBox
+              key={key}
+              label={label!}
+              hint={hint}
+              value={manifest[key!]}
+              empty={empty as "[]" | "{}"}
+              onChange={(value) => setKey(key!, value ?? null)}
+            />
+          ))}
+          <JsonBox
+            label="Personalization"
+            hint="Needs NFC and a personalizationLogo"
+            value={draft.personalization ?? undefined}
+            empty="{}"
+            onChange={(value) =>
+              onDraft((current) => ({
+                ...current,
+                personalization: isJsonObject(value) ? value : null,
+              }))
+            }
+          />
+        </div>
+      </Section>
+
+      <Section
+        title="Files by name"
+        description="A PNG here replaces the generated one with the same name. For the odd case the Look tab cannot reach."
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <label className="cursor-pointer">
+              <Upload className="size-4" />
+              Add PNG files
+              <input
+                type="file"
+                accept="image/png"
+                multiple
+                className="sr-only"
+                onChange={(event) => {
+                  const files = Array.from(event.target.files ?? []);
+                  event.target.value = "";
+                  void addAssets(files);
+                }}
+              />
+            </label>
+          </Button>
+          <span className="text-muted-foreground text-xs">
+            Keep Apple&apos;s names: logo@2x.png, background@3x.png,
+            en.lproj/thumbnail.png.
+          </span>
+        </div>
+        {draft.assets.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {draft.assets.map((asset) => (
+              <Button
+                key={asset.fileName}
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() =>
+                  onDraft((current) => ({
+                    ...current,
+                    assets: current.assets.filter(
+                      (item) => item.fileName !== asset.fileName,
+                    ),
+                  }))
+                }
+              >
+                {asset.fileName}
+                <Trash2 className="size-3.5" />
+              </Button>
+            ))}
+          </div>
+        )}
+      </Section>
+
+      <Section
+        title="Locales"
+        description="Each becomes a .lproj/pass.strings file. Keys must match strings used in pass.json."
+      >
+        <div className="space-y-3">
+          {draft.localizations.map((locale, index) => (
+            <div key={index} className="border-border rounded-lg border p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <Input
+                  aria-label="Language"
+                  value={locale.language}
+                  onChange={(event) =>
+                    onDraft((current) => ({
+                      ...current,
+                      localizations: current.localizations.map((item, i) =>
+                        i === index
+                          ? { ...item, language: event.target.value }
+                          : item,
+                      ),
+                    }))
+                  }
+                  className="h-8 w-32 font-mono text-xs"
+                />
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Delete locale"
+                  onClick={() =>
+                    onDraft((current) => ({
+                      ...current,
+                      localizations: current.localizations.filter(
+                        (_, i) => i !== index,
+                      ),
+                    }))
+                  }
+                >
+                  <Trash2 />
+                </Button>
+              </div>
+              <JsonBox
+                label="Translations"
+                value={locale.translations}
+                empty="{}"
+                onChange={(value) =>
+                  onDraft((current) => ({
+                    ...current,
+                    localizations: current.localizations.map((item, i) =>
+                      i === index
+                        ? {
+                            ...item,
+                            translations: isJsonObject(value)
+                              ? Object.fromEntries(
+                                  Object.entries(value).filter(
+                                    (entry): entry is [string, string] =>
+                                      typeof entry[1] === "string",
+                                  ),
+                                )
+                              : {},
+                          }
+                        : item,
+                    ),
+                  }))
+                }
+              />
+            </div>
+          ))}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3"
+          onClick={() =>
+            onDraft((current) => ({
+              ...current,
+              localizations: [
+                ...current.localizations,
+                { language: "en", translations: {} },
+              ],
+            }))
+          }
+        >
+          <Plus />
+          Add locale
+        </Button>
+      </Section>
+    </>
+  );
+}
+
+/* ----------------------------------------------------------------------- */
+/* JSON                                                                    */
+/* ----------------------------------------------------------------------- */
+
+/**
+ * A whole pass.json as a patch: every key becomes the organiser's, slots the
+ * JSON left out are emptied and semantics it left out are dropped, so what
+ * was applied is exactly what shows.
+ */
+function fullPatch(manifest: JsonObject): Patch {
+  const ticket = isJsonObject(manifest.eventTicket) ? manifest.eventTicket : {};
+  return {
+    ...manifest,
+    eventTicket: {
+      ...Object.fromEntries(PASS_FIELD_SLOTS.map((slot) => [slot, []])),
+      ...ticket,
+    },
+    semantics: isJsonObject(manifest.semantics) ? manifest.semantics : null,
+  };
+}
+
+function JsonTab({
+  manifest,
+  composed,
+  composing,
+  onApply,
+}: {
+  manifest: JsonObject;
+  composed: WalletPassDebugComposeResponse | null;
+  composing: boolean;
+  onApply: (manifest: JsonObject) => void;
+}) {
+  const source = prettyJson(manifest);
+  const area = useRef<HTMLTextAreaElement>(null);
+  return (
+    <>
+      <Section
+        title="Complete pass.json"
+        description="What is validated, bundled and signed. Apply to take the whole thing over; Reset changes to follow the source again."
+      >
+        <Textarea
+          aria-label="Complete pass.json"
+          key={source}
+          ref={area}
+          defaultValue={source}
+          spellCheck={false}
+          className="min-h-[480px] resize-y font-mono text-xs leading-relaxed"
+        />
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <p className="text-muted-foreground text-xs">
+            Keys the pass library does not know are rejected when it validates.
+          </p>
+          <Button
+            type="button"
+            disabled={composing}
+            onClick={() => {
+              try {
+                onApply(parseJsonObject(area.current?.value ?? source));
+                toast.success("pass.json applied");
+              } catch (cause) {
+                toast.error(
+                  cause instanceof Error
+                    ? cause.message
+                    : "pass.json must be valid JSON.",
+                );
+              }
+            }}
+          >
+            Apply JSON
+          </Button>
+        </div>
+      </Section>
+      <Section
+        title="Bundle"
+        description="The files that would be zipped and signed, with their sizes."
+      >
+        {composed ? (
+          <div className="border-border divide-border divide-y rounded-md border">
+            {composed.files.map((file) => (
+              <div
+                key={file.name}
+                className="flex items-center justify-between gap-4 px-3 py-2 text-xs"
+              >
+                <span className="truncate font-mono">{file.name}</span>
+                <span className="text-muted-foreground shrink-0">
+                  {formatBytes(file.bytes)}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-xs">Composing…</p>
+        )}
+      </Section>
+    </>
   );
 }

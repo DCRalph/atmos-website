@@ -14,6 +14,7 @@ import {
   guideLinksOf,
   parseEventPassDesign,
   resolveTicketPassDesign,
+  type PassDesign,
 } from "~/lib/ticketing/pass-design";
 import {
   lineupFromRunSheet,
@@ -107,17 +108,65 @@ export function directionsUrl(event: {
 /** A live activity can span at most a day, so a festival ends at doors + 24h. */
 const MAX_RELEVANT_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
-export async function buildApplePass({
-  ticket,
-  event,
-  orderNumber,
-}: {
+/** Everything that goes into the bundle, before it is signed. */
+export type ComposedPass = {
+  passJson: Record<string, unknown>;
+  files: Record<string, Buffer>;
+  barcode: {
+    format: "PKBarcodeFormatQR";
+    message: string;
+    messageEncoding: "iso-8859-1";
+    altText: string;
+  };
+};
+
+export type ComposePassInput = {
   ticket: PassTicket;
   event: PassEvent;
   orderNumber: string;
-}): Promise<Buffer> {
-  const config = getAppleWalletConfig();
+  /**
+   * A design layer over everything the event and level set. The debugger's
+   * Look tab, so an organiser can try a poster on a real event without saving
+   * it. Never set on a real ticket.
+   */
+  override?: PassDesign;
+};
 
+/** A ticket's pass, signed. */
+export async function buildApplePass(input: ComposePassInput): Promise<Buffer> {
+  return signApplePass(await composeApplePass(input));
+}
+
+export async function signApplePass(composed: ComposedPass): Promise<Buffer> {
+  const config = getAppleWalletConfig();
+  const pass = new PKPass(
+    {
+      ...composed.files,
+      "pass.json": Buffer.from(JSON.stringify(composed.passJson), "utf8"),
+    },
+    {
+      wwdr: config.wwdr,
+      signerCert: config.signerCert,
+      signerKey: config.signerKey,
+      signerKeyPassphrase: config.signerKeyPassphrase,
+    },
+  );
+  pass.setBarcodes(composed.barcode);
+  return pass.getAsBuffer();
+}
+
+/**
+ * The pass.json and artwork for one ticket, unsigned.
+ *
+ * Kept apart from signing so the debugger can show exactly what a ticket's
+ * pass would carry, and so a pass can be inspected without a certificate.
+ */
+export async function composeApplePass({
+  ticket,
+  event,
+  orderNumber,
+  override,
+}: ComposePassInput): Promise<ComposedPass> {
   /**
    * A better ticket gets a louder pass.
    *
@@ -136,6 +185,7 @@ export async function buildApplePass({
     event.gig?.posterFileUploadId
       ? { posterImageId: event.gig.posterFileUploadId }
       : {},
+    override,
   );
   const lineup = lineupFromRunSheet(event.gig?.scheduleItems ?? []);
 
@@ -203,6 +253,7 @@ export async function buildApplePass({
         )
       : null;
 
+  const config = getAppleWalletConfig();
   const passJson = {
     formatVersion: 1,
     passTypeIdentifier: config.passTypeIdentifier,
@@ -248,8 +299,11 @@ export async function buildApplePass({
           maxDistance: design.venueLocation.radiusM,
         }
       : {}),
-    expirationDate: new Date(
-      event.startsAt.getTime() + 24 * 60 * 60 * 1000,
+    // A cancelled event should say so on the pass itself, not just in an
+    // email: it expires now rather than the morning after.
+    expirationDate: (event.status === "CANCELLED"
+      ? new Date()
+      : new Date(event.startsAt.getTime() + 24 * 60 * 60 * 1000)
     ).toISOString(),
 
     // Apple appends `/v1/devices/...` itself, so this is the base only.
@@ -456,31 +510,15 @@ export async function buildApplePass({
     },
   };
 
-  const pass = new PKPass(
-    {
-      ...artwork.files,
-      "pass.json": Buffer.from(JSON.stringify(passJson), "utf8"),
+  return {
+    passJson,
+    files: artwork.files,
+    barcode: {
+      format: "PKBarcodeFormatQR",
+      message: buildTicketQrPayload(ticket, event.slug),
+      // Apple's own recommendation for QR payloads.
+      messageEncoding: "iso-8859-1",
+      altText: ticket.ticketNumber,
     },
-    {
-      wwdr: config.wwdr,
-      signerCert: config.signerCert,
-      signerKey: config.signerKey,
-      signerKeyPassphrase: config.signerKeyPassphrase,
-    },
-  );
-
-  pass.setBarcodes({
-    format: "PKBarcodeFormatQR",
-    message: buildTicketQrPayload(ticket, event.slug),
-    // Apple's own recommendation for QR payloads.
-    messageEncoding: "iso-8859-1",
-    altText: ticket.ticketNumber,
-  });
-
-  // A cancelled event should say so on the pass itself, not just in an email.
-  if (event.status === "CANCELLED") {
-    pass.setExpirationDate(new Date());
-  }
-
-  return pass.getAsBuffer();
+  };
 }

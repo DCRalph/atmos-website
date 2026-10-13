@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { ImageIcon, Plus, X } from "lucide-react";
 
 import {
@@ -11,7 +11,6 @@ import {
   PASS_STRIP_STYLE_LABELS,
   isHexColour,
   stripSvg,
-  stripTitleBox,
   type PassLayout,
   type StripBadge,
 } from "~/lib/ticketing/pass-theme";
@@ -19,7 +18,6 @@ import {
   DEFAULT_NEAR_VENUE_M,
   DEFAULT_STRIP_DIM,
   MAX_STRIP_DIM,
-  guideLinksOf,
   mergePassDesigns,
   resolvePassDesign,
   type PassBackRow,
@@ -34,6 +32,11 @@ import { Textarea } from "~/components/ui/textarea";
 import { Switch } from "~/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { ImageUploadField } from "~/components/uploads/image-upload-field";
+import {
+  PassPreview,
+  samplePreviewContent,
+  type PassPreviewContent,
+} from "./pass-preview";
 
 /**
  * One layer of a wallet pass's look, with a preview.
@@ -119,6 +122,18 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
+const isTabId = (id: string): id is TabId =>
+  TABS.some((item) => item.id === id);
+
+/** A tab a caller adds after the four built in: the debugger's raw keys. */
+export type PassDesignExtraTab = {
+  id: string;
+  label: string;
+  /** Marks the tab as setting something, the way the built-in ones do. */
+  set?: boolean;
+  content: ReactNode;
+};
+
 const isUrl = (value: string) => {
   try {
     return /^https?:$/.test(new URL(value).protocol);
@@ -139,6 +154,9 @@ export function PassDesignField({
   intensity = 0,
   showChipControl = false,
   disabled,
+  content,
+  extraTabs,
+  after,
 }: {
   value: PassDesign;
   onChange: (next: PassDesign) => void;
@@ -155,8 +173,14 @@ export function PassDesignField({
   /** Levels get a chip switch; the event's own layer has no chip to switch. */
   showChipControl?: boolean;
   disabled?: boolean;
+  /** What the preview's fields say. A sample ticket when not given. */
+  content?: PassPreviewContent;
+  /** Tabs after the built-in four. */
+  extraTabs?: readonly PassDesignExtraTab[];
+  /** Anything to show under a built-in tab's own controls. */
+  after?: Partial<Record<TabId, ReactNode>>;
 }) {
-  const [tab, setTab] = useState<TabId>("look");
+  const [tab, setTab] = useState<string>("look");
   const layers = [value, ...inherits.map((layer) => layer.design)];
   const merged = mergePassDesigns(layers);
   const design = resolvePassDesign(layers);
@@ -220,12 +244,18 @@ export function PassDesignField({
   return (
     <div className="grid gap-6 md:grid-cols-[1fr_280px]">
       <div className="space-y-6">
-        <Tabs value={tab} onValueChange={(next) => setTab(next as TabId)}>
+        <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
             {TABS.map((item) => (
               <TabsTrigger key={item.id} value={item.id}>
                 {item.label}
                 {setsSomething(item.keys) && <SetDot />}
+              </TabsTrigger>
+            ))}
+            {extraTabs?.map((item) => (
+              <TabsTrigger key={item.id} value={item.id}>
+                {item.label}
+                {item.set && <SetDot />}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -693,15 +723,19 @@ export function PassDesignField({
             />
           </>
         )}
+
+        {isTabId(tab) ? after?.[tab] : null}
+        {extraTabs?.find((item) => item.id === tab)?.content}
       </div>
 
       <PassPreview
         design={design}
-        eventName={eventName}
-        venueAddress={venueAddress}
         chip={chip}
         intensity={intensity}
         side={side}
+        content={
+          content ?? samplePreviewContent(design, eventName, venueAddress)
+        }
       />
     </div>
   );
@@ -1298,463 +1332,5 @@ function LayoutSwatch({
         className={`absolute left-1.5 h-0.5 w-8 bg-white/60 ${layout === "BAND" ? "bottom-2" : "bottom-1.5"}`}
       />
     </span>
-  );
-}
-
-const SAMPLE_FIELDS = [
-  ["DATE", "Fri 14 Aug 2026"],
-  ["VENUE", "Boat shed"],
-] as const;
-
-/**
- * The pass as Wallet lays it out, one side at a time: the front in whichever
- * layout is chosen, the back, or the event guide. A poster pass can also be
- * previewed as the band it becomes on a phone before iOS 18.
- */
-function PassPreview({
-  design,
-  eventName,
-  venueAddress,
-  chip,
-  intensity,
-  side,
-}: {
-  design: ResolvedPassDesign;
-  eventName: string;
-  venueAddress: string | null;
-  chip: StripBadge | null;
-  intensity: number;
-  side: "front" | "back" | "guide";
-}) {
-  const [legacy, setLegacy] = useState(false);
-  const layout: PassLayout =
-    legacy && design.layout === "POSTER" ? "BAND" : design.layout;
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <Label>Preview</Label>
-        {design.layout === "POSTER" && side === "front" && (
-          <div className="flex rounded-md border border-white/15 p-0.5 text-[11px]">
-            {[false, true].map((old) => (
-              <button
-                key={String(old)}
-                type="button"
-                onClick={() => setLegacy(old)}
-                aria-pressed={legacy === old}
-                className={`rounded px-2 py-0.5 ${legacy === old ? "bg-white/15 text-white" : "text-white/50"}`}
-              >
-                {old ? "iOS 17" : "iOS 18"}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-      <div
-        className="relative overflow-hidden rounded-xl border border-white/10"
-        style={{ backgroundColor: design.backgroundHex }}
-      >
-        {side === "front" ? (
-          <PassFront
-            design={design}
-            layout={layout}
-            eventName={eventName}
-            chip={chip}
-            intensity={intensity}
-          />
-        ) : side === "back" ? (
-          <PassBack
-            design={design}
-            eventName={eventName}
-            venueAddress={venueAddress}
-          />
-        ) : (
-          <PassGuide design={design} venueAddress={venueAddress} />
-        )}
-      </div>
-      <p className="text-xs text-white/40">
-        {side === "front"
-          ? "The band is drawn by the same code that builds the real pass. Type scales with the holder's text size."
-          : side === "back"
-            ? "Line-up and set times come from the linked gig's run sheet."
-            : "Wallet draws the guide itself, so the buttons may differ a little."}
-      </p>
-    </div>
-  );
-}
-
-function PassLogo({ design }: { design: ResolvedPassDesign }) {
-  return (
-    <div className="flex min-w-0 items-center gap-1.5">
-      {design.logoImageId ? (
-        // Matches the 120x40pt slot an uploaded logo gets on the pass.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={buildMediaUrl(design.logoImageId)}
-          alt=""
-          className="h-6 max-w-[45%] object-contain object-left"
-        />
-      ) : (
-        // Half-width wordmark, matching the pass's 80x25pt logo slot.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src="/logo/atmos-white.png"
-          alt=""
-          className="h-3.5 w-auto opacity-90"
-        />
-      )}
-      {design.logoText && (
-        <span
-          className="truncate text-[8px] font-bold tracking-widest"
-          style={{ color: design.foregroundHex }}
-        >
-          {design.logoText}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function PassFields({
-  design,
-  className = "",
-}: {
-  design: ResolvedPassDesign;
-  className?: string;
-}) {
-  return (
-    <div className={`grid grid-cols-2 gap-2 px-3 py-3 ${className}`}>
-      {SAMPLE_FIELDS.map(([label, val]) => (
-        <div key={label}>
-          <div
-            className="text-[8px] tracking-widest"
-            style={{ color: design.labelHex }}
-          >
-            {label}
-          </div>
-          <div className="text-[11px]" style={{ color: design.foregroundHex }}>
-            {val}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/** The top of the pass, as Wallet lays it out: header, artwork, first fields. */
-function PassFront({
-  design,
-  layout,
-  eventName,
-  chip,
-  intensity,
-}: {
-  design: ResolvedPassDesign;
-  layout: PassLayout;
-  eventName: string;
-  chip: StripBadge | null;
-  intensity: number;
-}) {
-  const name = eventName || "Event name";
-  const poster = design.posterImageId
-    ? buildMediaUrl(design.posterImageId)
-    : null;
-
-  if (layout === "POSTER" && poster) {
-    return (
-      <>
-        <div className="relative aspect-358/448 w-full">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={poster}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-          {design.headerShade && (
-            <div className="absolute inset-x-0 top-0 h-1/3 bg-linear-to-b from-black/60 to-transparent" />
-          )}
-          <div className="absolute inset-x-0 bottom-0 h-3/5 bg-linear-to-t from-black/85 via-black/50 to-transparent" />
-          <div className="absolute inset-x-3 top-3">
-            <PassLogo design={design} />
-          </div>
-          <div className="absolute inset-x-3 bottom-3">
-            <div className="text-[8px] font-semibold tracking-widest text-white/75">
-              {SAMPLE_FIELDS[0][1].toUpperCase()} · DOORS 10:00 PM
-            </div>
-            <div className="line-clamp-2 text-lg leading-tight font-extrabold text-white">
-              {name}
-            </div>
-          </div>
-        </div>
-        <div
-          style={{ backgroundColor: design.chinHex ?? design.backgroundHex }}
-        >
-          <PassFields design={design} />
-        </div>
-      </>
-    );
-  }
-
-  if (layout === "BLUR" && poster) {
-    return (
-      <div className="relative">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={poster}
-          alt=""
-          className="absolute inset-0 h-full w-full scale-125 object-cover opacity-60 blur-md"
-        />
-        <div className="relative">
-          <div className="flex items-end justify-between px-3 pt-3 pb-2">
-            <PassLogo design={design} />
-            <PassDoors design={design} />
-          </div>
-          <div className="flex items-center justify-between gap-3 px-3 py-2">
-            <div className="min-w-0">
-              <div
-                className="text-[8px] tracking-widest"
-                style={{ color: design.labelHex }}
-              >
-                EVENT
-              </div>
-              <div
-                className="line-clamp-2 text-base leading-tight font-bold"
-                style={{ color: design.foregroundHex }}
-              >
-                {name}
-              </div>
-            </div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={poster}
-              alt=""
-              className="size-14 shrink-0 rounded-md object-cover shadow-lg"
-            />
-          </div>
-          <PassFields design={design} />
-        </div>
-      </div>
-    );
-  }
-
-  const banded = design.stripStyle !== "NONE";
-  // With a chip the name is set in the lane beside it, as the server does.
-  const lane = stripTitleBox(750, 196, chip);
-
-  return (
-    <>
-      <div className="flex items-end justify-between px-3 pt-3 pb-2">
-        <PassLogo design={design} />
-        <PassDoors design={design} />
-      </div>
-
-      <div className="relative">
-        {banded && (
-          <div className="relative aspect-375/98 w-full">
-            {design.stripImageId && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={buildMediaUrl(design.stripImageId)}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            )}
-            <span
-              aria-hidden
-              className="absolute inset-0 [&>svg]:block [&>svg]:h-full [&>svg]:w-full"
-              dangerouslySetInnerHTML={{
-                __html: stripSvg(design, 750, 196, intensity, chip),
-              }}
-            />
-          </div>
-        )}
-        {design.showTitle && (
-          <div
-            className={
-              banded
-                ? "absolute inset-y-0 left-0 flex flex-col justify-center px-3"
-                : "px-3 py-4"
-            }
-            style={
-              banded && chip
-                ? { width: `${((lane.x + lane.width) / 750) * 100}%` }
-                : banded
-                  ? { right: 0 }
-                  : undefined
-            }
-          >
-            <div
-              className="text-[8px] tracking-widest"
-              style={{ color: design.labelHex }}
-            >
-              EVENT
-            </div>
-            {/* Beside a chip the server wraps the name rather than cut it. */}
-            <div
-              className={
-                banded && chip
-                  ? "line-clamp-2 text-sm leading-tight font-bold"
-                  : "truncate text-base font-bold"
-              }
-              style={{ color: design.foregroundHex }}
-            >
-              {name}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <PassFields design={design} />
-    </>
-  );
-}
-
-function PassDoors({ design }: { design: ResolvedPassDesign }) {
-  return (
-    <div className="text-right leading-none">
-      <div
-        className="text-[8px] tracking-widest"
-        style={{ color: design.labelHex }}
-      >
-        DOORS
-      </div>
-      <div
-        className="text-[11px] font-semibold"
-        style={{ color: design.foregroundHex }}
-      >
-        10:00 pm
-      </div>
-    </div>
-  );
-}
-
-/** The back, with sample values where the pass fills in the ticket's own. */
-function PassBack({
-  design,
-  eventName,
-  venueAddress,
-}: {
-  design: ResolvedPassDesign;
-  eventName: string;
-  venueAddress: string | null;
-}) {
-  const guide = guideLinksOf(design);
-  const contact = [design.venuePhone, design.venueEmail, design.venueWebsite]
-    .filter(Boolean)
-    .join(" · ");
-  const rows: {
-    label: string;
-    value: string;
-    link?: boolean;
-    muted?: boolean;
-  }[] = [
-    { label: "Event", value: eventName || "Event name" },
-    { label: "Line-up", value: "From the gig's run sheet", muted: true },
-    {
-      label: "Address",
-      value: venueAddress ?? "The venue address",
-      link: true,
-      muted: !venueAddress,
-    },
-    ...design.backRows.map((row) => ({ label: row.label, value: row.value })),
-    ...(design.layout === "POSTER"
-      ? []
-      : guide.map((link) => ({
-          label: link.label,
-          value: link.url,
-          link: true,
-        }))),
-    ...(design.layout !== "POSTER" && contact
-      ? [{ label: "Venue", value: contact, link: true }]
-      : []),
-    { label: "Ticket number", value: "ATN-20471" },
-    { label: "Order", value: "ATM-8812" },
-    { label: "Manage", value: "Manage this ticket", link: true },
-    {
-      label: "Terms",
-      value: "One entry per ticket. The first scan is the one that gets in.",
-    },
-  ];
-
-  return (
-    <div className="divide-y divide-white/10">
-      <div className="flex items-center justify-between px-3 py-2 text-[9px] text-white/50">
-        <span>
-          Automatic Updates <b className="text-white">On</b>
-        </span>
-        {design.allowSharing ? <span>Share</span> : null}
-      </div>
-      {rows.map((row, index) => (
-        <div key={`${row.label}-${index}`} className="px-3 py-2">
-          <div
-            className="text-[8px] tracking-widest uppercase"
-            style={{ color: design.labelHex }}
-          >
-            {row.label}
-          </div>
-          <div
-            className={`text-[10px] leading-snug break-words ${row.link ? "underline underline-offset-2" : ""} ${row.muted ? "italic opacity-60" : ""}`}
-            style={{ color: row.link ? "#9d84ff" : design.foregroundHex }}
-          >
-            {row.value}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/** The event guide Wallet draws on a poster pass from the links. */
-function PassGuide({
-  design,
-  venueAddress,
-}: {
-  design: ResolvedPassDesign;
-  venueAddress: string | null;
-}) {
-  const buttons = [
-    ...(venueAddress ? ["Directions"] : []),
-    ...guideLinksOf(design).map((link) => link.label),
-    ...(design.venuePhone || design.venueEmail || design.venueWebsite
-      ? ["Contact venue"]
-      : []),
-  ];
-
-  return (
-    <div className="space-y-3 px-3 py-3">
-      <div
-        className="text-[11px] font-bold"
-        style={{ color: design.foregroundHex }}
-      >
-        Event Guide
-      </div>
-      {design.layout !== "POSTER" ? (
-        <p className="text-[10px] text-white/50">
-          Only a poster pass has a guide. On the{" "}
-          {PASS_LAYOUT_INFO[design.layout].label.toLowerCase()} layout these
-          links go on the back.
-        </p>
-      ) : buttons.length < 2 ? (
-        <p className="text-[10px] text-white/50">
-          Wallet shows the guide once two links are set.
-        </p>
-      ) : null}
-      <div className="flex flex-wrap gap-1.5">
-        {buttons.map((label) => (
-          <span
-            key={label}
-            className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-semibold"
-            style={{ color: design.foregroundHex }}
-          >
-            {label}
-          </span>
-        ))}
-        {design.transfer && design.layout === "POSTER" && (
-          <span className="rounded-full border border-dashed border-white/20 px-2.5 py-1 text-[10px] text-white/50">
-            Transfer, in the menu
-          </span>
-        )}
-      </div>
-    </div>
   );
 }

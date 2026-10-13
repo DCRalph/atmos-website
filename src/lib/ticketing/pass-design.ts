@@ -298,7 +298,8 @@ export type PassLevel = {
 
 /**
  * One ticket's look: its level at its event, its level, then its event, then
- * whatever the linked gig lends it (its poster).
+ * whatever the linked gig lends it (its poster). The debugger can put one more
+ * layer over all of that to try a change without saving it.
  *
  * The chip shows on any level above general admission that brings its own
  * accent, unless a layer says otherwise, and only on the band layout: it is
@@ -310,11 +311,20 @@ export function resolveTicketPassDesign(
   event: EventPassDesign,
   level: PassLevel,
   gig: PassDesign = {},
+  /** Above everything: the debugger trying something on a real event. */
+  override: PassDesign = {},
 ) {
   const { levels, ...eventLayer } = event;
   const here = levels?.[level.code];
-  const design = resolvePassDesign([here, level.passDesign, eventLayer, gig]);
-  const levelAccent = here?.accentHex ?? level.passDesign.accentHex;
+  const design = resolvePassDesign([
+    override,
+    here,
+    level.passDesign,
+    eventLayer,
+    gig,
+  ]);
+  const levelAccent =
+    override.accentHex ?? here?.accentHex ?? level.passDesign.accentHex;
   const showChip =
     design.showChip ?? (level.rank > 0 && levelAccent !== undefined);
 

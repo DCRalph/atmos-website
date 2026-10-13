@@ -1,13 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
 import { ArrowDown, ArrowUp, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { api, type RouterOutputs } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
 import { DataTable, type DataTableColumn } from "~/components/data-table";
 import {
@@ -17,48 +15,27 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "~/components/ui/dialog";
 import { useConfirm } from "~/components/confirm-provider";
-import { isHexColour, stripSvg } from "~/lib/ticketing/pass-theme";
+import { stripSvg } from "~/lib/ticketing/pass-theme";
 import {
   parsePassDesign,
   resolvePassDesign,
-  resolveTicketPassDesign,
-  type PassDesign,
 } from "~/lib/ticketing/pass-design";
-import { PassDesignField } from "~/components/admin/ticketing/pass-design-field";
 
 type Level = RouterOutputs["accessLevels"]["list"][number];
-
-const BLANK = {
-  code: "",
-  label: "",
-  short: "",
-  badgeBg: "#FFFFFF",
-  badgeFg: "#000000",
-  passDesign: {} as PassDesign,
-};
 
 /**
  * Manage access levels.
  *
  * These used to be a Prisma enum, so the two rules that survive from that are
  * enforced rather than assumed: a code is permanent once tickets carry it, and
- * a level in use is archived rather than deleted.
+ * a level in use is archived rather than deleted. Adding and editing happen on
+ * their own page (`AccessLevelEditor`), because the wallet pass editor
+ * outgrew a dialog.
  */
 export function AccessLevelsPanel() {
   const confirm = useConfirm();
   const utils = api.useUtils();
-  const [isOpen, setIsOpen] = useState(false);
-  const [editingCode, setEditingCode] = useState<string | null>(null);
-  const [form, setForm] = useState({ ...BLANK });
 
   const { data, isLoading } = api.accessLevels.list.useQuery({
     includeArchived: true,
@@ -67,28 +44,7 @@ export function AccessLevelsPanel() {
   const refresh = async () => {
     await utils.accessLevels.list.invalidate();
   };
-  const close = () => {
-    setIsOpen(false);
-    setEditingCode(null);
-    setForm({ ...BLANK });
-  };
 
-  const create = api.accessLevels.create.useMutation({
-    onSuccess: async () => {
-      toast.success("Level added");
-      await refresh();
-      close();
-    },
-    onError: (e) => toast.error(e.message),
-  });
-  const update = api.accessLevels.update.useMutation({
-    onSuccess: async () => {
-      toast.success("Saved");
-      await refresh();
-      close();
-    },
-    onError: (e) => toast.error(e.message),
-  });
   const setArchived = api.accessLevels.setArchived.useMutation({
     onSuccess: refresh,
     onError: (e) => toast.error(e.message),
@@ -108,19 +64,6 @@ export function AccessLevelsPanel() {
   const rows = data ?? [];
   const maxRank = Math.max(1, ...rows.map((row) => row.rank));
 
-  const openEdit = (level: Level) => {
-    setEditingCode(level.code);
-    setForm({
-      code: level.code,
-      label: level.label,
-      short: level.short,
-      badgeBg: level.badgeBg,
-      badgeFg: level.badgeFg,
-      passDesign: parsePassDesign(level.passDesign),
-    });
-    setIsOpen(true);
-  };
-
   const move = (index: number, delta: number) => {
     const next = [...rows];
     const target = index + delta;
@@ -129,35 +72,6 @@ export function AccessLevelsPanel() {
     if (!moved) return;
     next.splice(target, 0, moved);
     reorder.mutate({ codes: next.map((r) => r.code) });
-  };
-
-  const editingLevel = rows.find((row) => row.code === editingCode);
-  const codeValid = /^[A-Z][A-Z0-9_]{1,23}$/.test(form.code.toUpperCase());
-  const coloursValid = isHexColour(form.badgeBg) && isHexColour(form.badgeFg);
-  const canSubmit =
-    Boolean(form.label) &&
-    Boolean(form.short) &&
-    coloursValid &&
-    (editingCode !== null || codeValid);
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const payload = {
-      label: form.label,
-      short: form.short,
-      badgeBg: form.badgeBg,
-      badgeFg: form.badgeFg,
-      passDesign: form.passDesign,
-    };
-    if (editingCode) {
-      update.mutate({ code: editingCode, ...payload });
-    } else {
-      create.mutate({
-        code: form.code.toUpperCase(),
-        ...payload,
-        rank: rows.length,
-      });
-    }
   };
 
   const columns: DataTableColumn<Level>[] = [
@@ -274,8 +188,12 @@ export function AccessLevelsPanel() {
       hideable: false,
       cell: (level) => (
         <div className="flex justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={() => openEdit(level)}>
-            Edit
+          <Button variant="outline" size="sm" asChild>
+            <Link
+              href={`/admin/access-levels/${encodeURIComponent(level.code)}`}
+            >
+              Edit
+            </Link>
           </Button>
           <Button
             variant="destructive"
@@ -310,168 +228,12 @@ export function AccessLevelsPanel() {
               at the bottom.
             </CardDescription>
           </div>
-          <Dialog
-            open={isOpen}
-            onOpenChange={(open) => (open ? setIsOpen(true) : close())}
-          >
-            <DialogTrigger asChild>
-              <Button
-                onClick={() => {
-                  setEditingCode(null);
-                  setForm({ ...BLANK });
-                }}
-              >
-                <Plus className="size-4" aria-hidden />
-                Add level
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-3xl">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingCode ? "Edit" : "Add"} access level
-                </DialogTitle>
-                <DialogDescription>
-                  {editingCode
-                    ? "The code is written onto every ticket issued at this level, so it cannot change. Everything else can."
-                    : "Pick a code carefully — it is written onto every ticket issued at this level and can never be changed."}
-                </DialogDescription>
-              </DialogHeader>
-
-              <form onSubmit={submit} className="space-y-4">
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="code">Code</Label>
-                  <Input
-                    id="code"
-                    value={form.code}
-                    disabled={editingCode !== null}
-                    onChange={(e) =>
-                      setForm({ ...form, code: e.target.value.toUpperCase() })
-                    }
-                    placeholder="BACKSTAGE"
-                    className="font-mono"
-                  />
-                  {!editingCode && form.code && !codeValid && (
-                    <p className="text-destructive text-xs">
-                      Letters, numbers and underscores; start with a letter.
-                    </p>
-                  )}
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="label">Name</Label>
-                    <Input
-                      id="label"
-                      value={form.label}
-                      onChange={(e) =>
-                        setForm({ ...form, label: e.target.value })
-                      }
-                      placeholder="Backstage"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="short">Short</Label>
-                    <Input
-                      id="short"
-                      value={form.short}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          short: e.target.value.toUpperCase(),
-                        })
-                      }
-                      placeholder="BACK"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <ColourField
-                    id="badgeBg"
-                    label="Badge background"
-                    value={form.badgeBg}
-                    onChange={(v) => setForm({ ...form, badgeBg: v })}
-                  />
-                  <ColourField
-                    id="badgeFg"
-                    label="Badge text"
-                    value={form.badgeFg}
-                    onChange={(v) => setForm({ ...form, badgeFg: v })}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <Label>Preview</Label>
-                  <div className="bg-muted flex items-center gap-3 p-3">
-                    <span
-                      className="inline-block px-3 py-1 text-sm font-black tracking-[0.14em]"
-                      style={{
-                        backgroundColor: isHexColour(form.badgeBg)
-                          ? form.badgeBg
-                          : "#FFFFFF",
-                        color: isHexColour(form.badgeFg)
-                          ? form.badgeFg
-                          : "#000000",
-                      }}
-                    >
-                      {form.short || "SHORT"}
-                    </span>
-                    <span className="text-muted-foreground text-xs">
-                      A door badge sits on green, amber or red — check it reads
-                      on all three.
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-4 border-t pt-4">
-                  <div className="flex flex-col gap-1">
-                    <Label>Wallet pass</Label>
-                    <p className="text-muted-foreground text-xs">
-                      Applies to tickets at this level at every event. Anything
-                      left unset uses the event&apos;s own design, which is what
-                      general admission wants. An event can still override this
-                      level on its Wallet tab.
-                    </p>
-                  </div>
-                  <PassDesignField
-                    key={editingCode ?? "new"}
-                    value={form.passDesign}
-                    onChange={(passDesign) => setForm({ ...form, passDesign })}
-                    inherits={[]}
-                    fallbackSource="from each event"
-                    eventName="Sample event"
-                    chip={
-                      resolveTicketPassDesign(
-                        {},
-                        {
-                          code: form.code,
-                          short: form.short || "SHORT",
-                          rank: editingLevel?.rank ?? rows.length,
-                          passDesign: form.passDesign,
-                        },
-                      ).chip
-                    }
-                    intensity={(editingLevel?.rank ?? rows.length) / maxRank}
-                    showChipControl
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={close}>
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={
-                      !canSubmit || create.isPending || update.isPending
-                    }
-                  >
-                    {editingCode ? "Save" : "Add level"}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <Button asChild>
+            <Link href="/admin/access-levels/new">
+              <Plus className="size-4" aria-hidden />
+              Add level
+            </Link>
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
@@ -485,40 +247,5 @@ export function AccessLevelsPanel() {
         />
       </CardContent>
     </Card>
-  );
-}
-
-function ColourField({
-  id,
-  label,
-  value,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const valid = isHexColour(value);
-  return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={id}>{label}</Label>
-      <div className="flex items-center gap-2">
-        <input
-          type="color"
-          aria-label={`${label} picker`}
-          value={isHexColour(value) ? value : "#FFFFFF"}
-          onChange={(e) => onChange(e.target.value.toUpperCase())}
-          className="border-border size-9 shrink-0 cursor-pointer rounded border bg-transparent p-1"
-        />
-        <Input
-          id={id}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="#FFFFFF"
-          className={`font-mono ${valid ? "" : "border-destructive"}`}
-        />
-      </div>
-    </div>
   );
 }

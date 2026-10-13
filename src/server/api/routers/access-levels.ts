@@ -77,6 +77,19 @@ export const accessLevelsRouter = createTRPCRouter({
       });
     }),
 
+  /** One level, archived or not, for its edit page. */
+  byCode: eventOrganiserProcedure
+    .input(z.object({ code: CODE }))
+    .query(async ({ ctx, input }) => {
+      const level = await ctx.db.accessLevel.findUnique({
+        where: { code: input.code },
+      });
+      if (!level) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No such level." });
+      }
+      return level;
+    }),
+
   create: eventOrganiserProcedure
     .input(levelInput.extend({ code: CODE }))
     .mutation(async ({ ctx, input }) => {

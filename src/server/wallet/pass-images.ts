@@ -150,20 +150,6 @@ async function loadUpload(id: string): Promise<Buffer | null> {
 /** The brand artwork, which no event theme changes. Built once per process. */
 let brandCache: ImageSet | null = null;
 
-async function renderSvg(
-  svg: string,
-  width: number,
-  height: number,
-): Promise<Buffer> {
-  return sharp(Buffer.from(svg))
-    .resize(width, height, {
-      fit: "cover",
-      background: { r: 0, g: 0, b: 0, alpha: 0 },
-    })
-    .png()
-    .toBuffer();
-}
-
 /**
  * Optical centring for the wordmark.
  *

@@ -72,6 +72,20 @@ only claims a poster it actually carries.
 Google Wallet gets the same inputs: guide links in the links module, custom
 rows and the line-up as text modules, the poster as the hero image.
 
+## The debugger
+
+`/admin/wallet-debugger` builds a pass through the very same `composeApplePass`
+a ticket goes through, from a sample night, a real event and level (with a
+sample ticket), or a real ticket by number. The Look, Links, Back and Phone
+tabs are the event editor's own, laid over the source's design as one more
+layer; Fields, Semantics, Advanced and JSON edit the composed pass.json as a
+patch (`applyPatch` in `~/lib/ticketing/wallet-pass-debug.ts`) that survives
+the source recomposing under it. Every change recomposes on the server, which
+also runs the pass library's validation and lists the bundle, so the status
+line under the buttons is of the pass that would be signed. A sample pass has
+no web service URL, so it never registers for updates; a real ticket's does,
+and its QR admits.
+
 ## Not yet confirmed on a device
 
 Apple's current guidelines name the poster artwork `artwork.png`; the pass
