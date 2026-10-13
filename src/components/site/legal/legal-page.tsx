@@ -67,10 +67,7 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
           {doc.title}
         </h1>
         <p className="mt-5 text-[14px] text-white/60 tabular-nums">
-          {doc.version
-            ? `Version ${doc.version}`
-            : `Last updated ${doc.updated}`}{" "}
-          · {readingMinutes(doc)} min read
+          Last updated {doc.updated} · {readingMinutes(doc)} min read
         </p>
       </header>
 
@@ -166,12 +163,17 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
   );
 }
 
-/** Privacy / Terms / Ticket terms / Kaupapa pills, one per route. */
+/** One pill per legal document, each its own route. */
 function DocSwitch({ current }: { current: LegalDoc["id"] }) {
   const docs = [
     { id: "privacy", label: "Privacy", href: "/legal/privacy" },
     { id: "terms", label: "Terms", href: "/legal/terms" },
     { id: "ticket-terms", label: "Ticket terms", href: "/legal/ticket-terms" },
+    {
+      id: "donation-terms",
+      label: "Donation terms",
+      href: "/legal/donation-terms",
+    },
     { id: "kaupapa", label: "Kaupapa", href: "/legal/kaupapa" },
   ] as const;
   return (

@@ -1,5 +1,6 @@
 // The legal documents served under /legal. Each one is a page:
-// /legal/privacy, /legal/terms, /legal/ticket-terms and /legal/kaupapa.
+// /legal/privacy, /legal/terms, /legal/ticket-terms, /legal/donation-terms
+// and /legal/kaupapa.
 
 import { CONTACT } from "~/lib/site-constants";
 
@@ -20,11 +21,9 @@ export type LegalSection = {
 };
 
 export type LegalDoc = {
-  id: "privacy" | "terms" | "ticket-terms" | "kaupapa";
+  id: "privacy" | "terms" | "ticket-terms" | "donation-terms" | "kaupapa";
   title: string;
   updated: string;
-  /** Shown instead of "Last updated" for versioned documents. */
-  version?: string;
   sections: readonly LegalSection[];
 };
 
@@ -432,14 +431,8 @@ export const termsDoc: LegalDoc = {
       title: "Donations",
       blocks: [
         {
-          p: "Some gigs take donations to help cover what it costs to put them on. A donation is a voluntary gift. It is not a ticket, does not get you into an event, and does not buy you anything in return.",
-        },
-        {
-          list: [
-            "All amounts are in New Zealand Dollars (NZD)",
-            "Payments are processed by Stripe. We never see your full card number",
-            "Donations are not refundable. If you were charged by mistake, contact us and we'll put it right",
-          ],
+          p: "Some gigs take donations to help cover what it costs to put them on. Donations are governed by our donation terms.",
+          link: { text: "donation terms", href: "/legal/donation-terms" },
         },
       ],
     },
@@ -592,19 +585,17 @@ const blockText = (b: LegalBlock): string =>
           : "";
 
 /**
- * Terms of ticket sale, version v1, from the previous /legal/ticket-terms page.
+ * Terms of ticket sale, version v1.
  *
- * `TicketOrder.termsVersion` records which version a buyer agreed to. If these
- * change materially, bump `version` (and the version on new orders) rather
- * than editing in place, so historical orders still point at what was agreed.
- * Em dashes were rewritten as commas, colons or full stops; wording is
- * otherwise unchanged.
+ * `TicketOrder.termsVersion` records which version a buyer agreed to (the
+ * event's `termsVersion`, "v1" by default). If these change materially, bump
+ * the version on new orders rather than editing in place, so historical
+ * orders still point at what was agreed.
  */
 export const ticketTermsDoc: LegalDoc = {
   id: "ticket-terms",
   title: "Ticket terms",
   updated: LEGAL_UPDATED,
-  version: "v1",
   sections: [
     {
       id: "buying",
@@ -768,6 +759,86 @@ export const ticketTermsDoc: LegalDoc = {
             { label: "Website", value: "Contact page", href: "/contact" },
           ],
         },
+      ],
+    },
+  ],
+};
+
+/** Terms for donating to a gig, agreed to on its donate page. */
+export const donationTermsDoc: LegalDoc = {
+  id: "donation-terms",
+  title: "Donation terms",
+  updated: LEGAL_UPDATED,
+  sections: [
+    {
+      id: "what-a-donation-is",
+      n: "1",
+      title: "What a donation is",
+      blocks: [
+        {
+          p: "Some gigs take donations to help cover what it costs to put them on. A donation is a voluntary gift to Atmos Media for that gig.",
+        },
+        {
+          p: "It is not a ticket. It does not get you into an event, and does not buy you anything in return.",
+        },
+      ],
+    },
+    {
+      id: "paying",
+      n: "2",
+      title: "Paying",
+      blocks: [
+        {
+          list: [
+            "All amounts are in New Zealand Dollars (NZD)",
+            "You can pay with Apple Pay, Google Pay, Link or card",
+            "Payments are processed by Stripe. We never see or store your full card number",
+            "Your donation is complete once the payment succeeds",
+          ],
+        },
+      ],
+    },
+    {
+      id: "receipts",
+      n: "3",
+      title: "Receipts",
+      blocks: [
+        {
+          p: "If you give us an email address, or your wallet supplies one, Stripe emails you a receipt for your donation.",
+        },
+      ],
+    },
+    {
+      id: "refunds",
+      n: "4",
+      title: "Refunds",
+      blocks: [
+        {
+          p: "Donations are not refundable. If you were charged by mistake, or charged the wrong amount, contact us and we'll put it right.",
+        },
+        {
+          p: "Nothing here limits your rights under the Consumer Guarantees Act 1993 or the Fair Trading Act 1986.",
+        },
+      ],
+    },
+    {
+      id: "your-information",
+      n: "5",
+      title: "Your information",
+      blocks: [
+        {
+          p: "We keep a record of your donation, and your name and email if they were given. How we handle that is set out in our privacy policy.",
+          link: { text: "privacy policy", href: "/legal/privacy#donating" },
+        },
+      ],
+    },
+    {
+      id: "contact",
+      n: "6",
+      title: "Contact",
+      blocks: [
+        { p: "Questions about a donation? Get in touch:" },
+        contactBlock,
       ],
     },
   ],

@@ -631,12 +631,12 @@ function Consent() {
     <p className="text-center text-[12px] leading-relaxed text-white/45">
       Donating means you accept the{" "}
       <a
-        href="/legal/terms#donations"
+        href="/legal/donation-terms"
         target="_blank"
         rel="noreferrer"
         className={link}
       >
-        terms
+        donation terms
       </a>{" "}
       and{" "}
       <a
