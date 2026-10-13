@@ -71,3 +71,11 @@ export const getMediaDownloadUrl = (
   const id = media.fileUpload?.id ?? media.fileUploadId;
   return id ? `${buildMediaUrl(id)}?download=1` : getMediaDisplayUrl(media);
 };
+
+/**
+ * The `file_upload` id behind a URL from `buildMediaUrl`, or null for anything
+ * else (a legacy `/public` path, an external link). Lets a field that stores a
+ * URL still preview and replace an uploaded file by id.
+ */
+export const mediaFileIdFromUrl = (url: string | null | undefined) =>
+  url?.match(/\/api\/media\/([^/?#]+)/)?.[1] ?? null;

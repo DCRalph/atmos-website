@@ -17,7 +17,15 @@ import {
 import { logUserActivity } from "~/server/utils/activity-log";
 import { softDeleteFile } from "~/server/uploads/files";
 import { resolveTargetProfileId } from "~/server/utils/artist-profile-access";
+import {
+  HANDLE_REGEX,
+  uniqueHandleFrom,
+} from "~/server/utils/artist-handles";
 import { resolveSocialPlatform } from "~/lib/social-pills";
+import {
+  setProfileSocial,
+  socialUrlFromInput,
+} from "~/server/utils/artist-socials";
 import { grantUserPermission } from "~/server/utils/permissions";
 import {
   ActivityType,
@@ -26,8 +34,6 @@ import {
   type ArtistBlockType,
   type PrismaClient,
 } from "~Prisma/client";
-
-const HANDLE_REGEX = /^[a-z0-9_-]{3,30}$/;
 
 const handleSchema = z
   .string()
@@ -333,7 +339,12 @@ export const artistProfilesRouter = createTRPCRouter({
         orderBy: { updatedAt: "desc" },
         include: {
           user: { select: { id: true, name: true, email: true, image: true } },
-          _count: { select: { blocks: true, crewMembers: true } },
+          socials: {
+            orderBy: { sortOrder: "asc" },
+            select: { platform: true, url: true },
+          },
+          crewMembers: { select: { id: true, role: true } },
+          _count: { select: { blocks: true } },
         },
       });
 
@@ -420,6 +431,54 @@ export const artistProfilesRouter = createTRPCRouter({
         ctx.session.user.id,
         undefined,
         { profileId },
+      );
+      return updated;
+    }),
+
+  /**
+   * The admin "core details" save: name, handle and the two socials the crew
+   * page and line-ups read. Instagram and SoundCloud take a handle or a URL,
+   * and an empty value removes the link. Other socials are left alone.
+   */
+  updateCore: adminProcedure
+    .input(
+      z.object({
+        profileId: z.string(),
+        displayName: z.string().trim().min(1).max(120),
+        handle: handleSchema,
+        instagram: z.string().trim().max(500),
+        soundcloud: z.string().trim().max(500),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const clash = await ctx.db.artistProfile.findFirst({
+        where: { handle: input.handle, NOT: { id: input.profileId } },
+        select: { id: true },
+      });
+      if (clash) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Handle is already taken",
+        });
+      }
+
+      const instagram = socialUrlFromInput("instagram", input.instagram);
+      const soundcloud = socialUrlFromInput("soundcloud", input.soundcloud);
+
+      const updated = await ctx.db.$transaction(async (tx) => {
+        await setProfileSocial(tx, input.profileId, "instagram", instagram);
+        await setProfileSocial(tx, input.profileId, "soundcloud", soundcloud);
+        return tx.artistProfile.update({
+          where: { id: input.profileId },
+          data: { displayName: input.displayName, handle: input.handle },
+        });
+      });
+      await logUserActivity(
+        ActivityType.ARTIST_PROFILE_UPDATED,
+        `Updated core details for @${updated.handle}`,
+        ctx.session.user.id,
+        undefined,
+        { profileId: input.profileId },
       );
       return updated;
     }),
@@ -1061,33 +1120,6 @@ export const artistProfilesRouter = createTRPCRouter({
       return { ok: true as const };
     }),
 });
-
-/** Turn free text ("DJ Nova!") into a handle-shaped base ("dj-nova"). */
-function handleBaseFrom(raw: string): string {
-  const base = raw
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 24);
-  return HANDLE_REGEX.test(base) ? base : "artist";
-}
-
-/** First free handle at or after `base`. */
-async function uniqueHandleFrom(
-  db: PrismaClient,
-  base: string,
-): Promise<string> {
-  const safeBase = handleBaseFrom(base);
-  for (let i = 0; i < 20; i++) {
-    const candidate = i === 0 ? safeBase : `${safeBase}-${i}`;
-    const exists = await db.artistProfile.findUnique({
-      where: { handle: candidate },
-      select: { id: true },
-    });
-    if (!exists) return candidate;
-  }
-  return `${safeBase}-${Date.now().toString(36).slice(-4)}`;
-}
 
 /** Suggest a unique handle for a user. */
 async function generateUniqueHandle(

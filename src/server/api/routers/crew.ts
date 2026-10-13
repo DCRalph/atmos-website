@@ -6,7 +6,15 @@ import {
   adminProcedure,
 } from "~/server/api/trpc";
 import { logUserActivity } from "~/server/utils/activity-log";
-import { ActivityType } from "~Prisma/client";
+import { uniqueHandleFrom } from "~/server/utils/artist-handles";
+import { socialUrlFromInput } from "~/server/utils/artist-socials";
+import { mediaFileIdFromUrl } from "~/lib/media-url";
+import {
+  ActivityType,
+  ClaimStatus,
+  FileUploadStatus,
+  type PrismaClient,
+} from "~Prisma/client";
 
 const artistProfileInclude = {
   artistProfile: {
@@ -26,33 +34,72 @@ const artistProfileInclude = {
   },
 } as const;
 
+const roleSchema = z.string().trim().max(120).nullish();
+
+/**
+ * A crew row either points at an artist profile, which supplies its name,
+ * photo and socials, or carries all of them itself. Role is the crew row's own
+ * in both cases.
+ */
+const crewDetailsSchema = z.discriminatedUnion("source", [
+  z.object({
+    source: z.literal("profile"),
+    artistProfileId: z.string().min(1),
+    role: roleSchema,
+  }),
+  z.object({
+    source: z.literal("manual"),
+    name: z.string().trim().min(1).max(120),
+    role: roleSchema,
+    instagram: z.string().max(500).nullish(),
+    soundcloud: z.string().max(500).nullish(),
+    image: z
+      .string()
+      .trim()
+      .min(1, "Add a photo for crew members without an artist profile"),
+  }),
+]);
+
+/**
+ * The columns to write for a set of crew details. A linked row keeps its
+ * manual fields untouched, so switching back to manual restores them; its
+ * `name` tracks the profile so search and confirmations read naturally.
+ */
+async function crewRowData(
+  db: PrismaClient,
+  details: z.infer<typeof crewDetailsSchema>,
+) {
+  const role = details.role || null;
+  if (details.source === "manual") {
+    return {
+      artistProfileId: null,
+      name: details.name,
+      role,
+      instagram: socialUrlFromInput("instagram", details.instagram),
+      soundcloud: socialUrlFromInput("soundcloud", details.soundcloud),
+      image: details.image,
+    };
+  }
+  const profile = await db.artistProfile.findUnique({
+    where: { id: details.artistProfileId },
+    select: { id: true, displayName: true },
+  });
+  if (!profile) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Artist profile not found.",
+    });
+  }
+  return { artistProfileId: profile.id, name: profile.displayName, role };
+}
+
 export const crewRouter = createTRPCRouter({
-  getAll: publicProcedure
-    .input(
-      z
-        .object({
-          search: z.string().optional(),
-        })
-        .optional(),
-    )
-    .query(async ({ ctx, input }) => {
-      const search = input?.search?.toLowerCase().trim();
-
-      const where = search
-        ? {
-            OR: [
-              { name: { contains: search, mode: "insensitive" as const } },
-              { role: { contains: search, mode: "insensitive" as const } },
-            ],
-          }
-        : undefined;
-
-      return ctx.db.crewMember.findMany({
-        where,
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-        include: artistProfileInclude,
-      });
-    }),
+  getAll: publicProcedure.query(async ({ ctx }) => {
+    return ctx.db.crewMember.findMany({
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      include: artistProfileInclude,
+    });
+  }),
 
   getById: publicProcedure
     .input(z.object({ id: z.string() }))
@@ -63,140 +110,85 @@ export const crewRouter = createTRPCRouter({
       });
     }),
 
+  /** Adds a crew member to the end of the crew page. */
   create: adminProcedure
-    .input(
-      z.object({
-        name: z.string().min(1),
-        role: z.string().nullish(),
-        instagram: z.string().nullish(),
-        soundcloud: z.string().nullish(),
-        image: z.string().nullish(),
-        artistProfileId: z.string().nullish(),
-      }),
-    )
+    .input(crewDetailsSchema)
     .mutation(async ({ ctx, input }) => {
+      const data = await crewRowData(ctx.db, input);
       const { _max } = await ctx.db.crewMember.aggregate({
         _max: { sortOrder: true },
       });
-
-      const { artistProfileId, ...rest } = input;
-      if (artistProfileId) {
-        const profile = await ctx.db.artistProfile.findUnique({
-          where: { id: artistProfileId },
-          select: { id: true },
-        });
-        if (!profile) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Artist profile not found.",
-          });
-        }
-      } else if (!rest.image) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message:
-            "An image path is required when a crew member isn't linked to an artist profile.",
-        });
-      }
-
-      return ctx.db.crewMember.create({
-        data: {
-          name: rest.name,
-          role: rest.role?.trim() || null,
-          instagram: rest.instagram?.trim() || null,
-          soundcloud: rest.soundcloud?.trim() || null,
-          image: rest.image?.trim() || null,
-          artistProfileId: artistProfileId ?? null,
-          sortOrder: (_max.sortOrder ?? -1) + 1,
-        },
+      const created = await ctx.db.crewMember.create({
+        data: { ...data, sortOrder: (_max.sortOrder ?? -1) + 1 },
         include: artistProfileInclude,
       });
+      if (created.artistProfile) {
+        await logUserActivity(
+          ActivityType.CREW_MEMBER_PROFILE_LINKED,
+          `Added @${created.artistProfile.handle} to the crew`,
+          ctx.session.user.id,
+          undefined,
+          { crewMemberId: created.id, artistProfileId: created.artistProfile.id },
+        );
+      }
+      return created;
     }),
 
   update: adminProcedure
-    .input(
-      z.object({
-        id: z.string(),
-        name: z.string().min(1).optional(),
-        role: z.string().nullish(),
-        instagram: z.string().nullish(),
-        soundcloud: z.string().nullish(),
-        image: z.string().nullish(),
-        artistProfileId: z.string().nullish(),
-      }),
-    )
+    .input(z.object({ id: z.string(), details: crewDetailsSchema }))
     .mutation(async ({ ctx, input }) => {
-      const { id, artistProfileId, ...data } = input;
-      if (artistProfileId) {
-        const profile = await ctx.db.artistProfile.findUnique({
-          where: { id: artistProfileId },
-          select: { id: true },
+      const existing = await ctx.db.crewMember.findUnique({
+        where: { id: input.id },
+        select: { name: true, artistProfileId: true },
+      });
+      if (!existing) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Crew member not found.",
         });
-        if (!profile) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Artist profile not found.",
-          });
-        }
       }
-      // If caller is clearing the link *and* not providing an image, make sure
-      // we don't end up with a crew row that has neither a profile nor an image.
-      if (
-        artistProfileId === null &&
-        data.image !== undefined &&
-        !data.image
-      ) {
-        const existing = await ctx.db.crewMember.findUnique({
-          where: { id },
-          select: { image: true, artistProfileId: true },
-        });
-        if (existing && !existing.image) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message:
-              "An image path is required when a crew member isn't linked to an artist profile.",
-          });
-        }
-      }
-      return ctx.db.crewMember.update({
-        where: { id },
-        data: {
-          ...(data.name !== undefined ? { name: data.name } : {}),
-          ...(data.role !== undefined
-            ? { role: data.role?.trim() || null }
-            : {}),
-          ...(data.instagram !== undefined
-            ? { instagram: data.instagram?.trim() || null }
-            : {}),
-          ...(data.soundcloud !== undefined
-            ? { soundcloud: data.soundcloud?.trim() || null }
-            : {}),
-          ...(data.image !== undefined
-            ? { image: data.image?.trim() || null }
-            : {}),
-          ...(artistProfileId !== undefined
-            ? { artistProfileId: artistProfileId ?? null }
-            : {}),
-        },
+      const data = await crewRowData(ctx.db, input.details);
+      const updated = await ctx.db.crewMember.update({
+        where: { id: input.id },
+        data,
         include: artistProfileInclude,
       });
+
+      if (data.artistProfileId !== existing.artistProfileId) {
+        if (updated.artistProfile) {
+          await logUserActivity(
+            ActivityType.CREW_MEMBER_PROFILE_LINKED,
+            `Linked crew member ${existing.name} to artist profile @${updated.artistProfile.handle}`,
+            ctx.session.user.id,
+            undefined,
+            { crewMemberId: input.id, artistProfileId: updated.artistProfile.id },
+          );
+        } else {
+          await logUserActivity(
+            ActivityType.CREW_MEMBER_PROFILE_UNLINKED,
+            `Unlinked artist profile from crew member ${existing.name}`,
+            ctx.session.user.id,
+            undefined,
+            {
+              crewMemberId: input.id,
+              previousArtistProfileId: existing.artistProfileId,
+            },
+          );
+        }
+      }
+      return updated;
     }),
 
   /**
-   * Link an artist profile to a crew member. Pass `artistProfileId: null`
-   * to unlink.
+   * Turns a manual crew row into an unclaimed artist profile and links it, so
+   * the person gets a profile page and line-up attributions. The row's photo
+   * carries over when it was uploaded rather than a legacy `/public` path.
    */
-  linkArtistProfile: adminProcedure
-    .input(
-      z.object({
-        id: z.string(),
-        artistProfileId: z.string().nullable(),
-      }),
-    )
+  makeProfile: adminProcedure
+    .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const member = await ctx.db.crewMember.findUnique({
         where: { id: input.id },
-        select: { id: true, name: true, artistProfileId: true },
       });
       if (!member) {
         throw new TRPCError({
@@ -204,101 +196,76 @@ export const crewRouter = createTRPCRouter({
           message: "Crew member not found.",
         });
       }
-      let profileHandle: string | null = null;
-      if (input.artistProfileId) {
-        const profile = await ctx.db.artistProfile.findUnique({
-          where: { id: input.artistProfileId },
-          select: { id: true, handle: true },
+      if (member.artistProfileId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This crew member already has an artist profile.",
         });
-        if (!profile) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Artist profile not found.",
-          });
-        }
-        profileHandle = profile.handle;
       }
-      const updated = await ctx.db.crewMember.update({
-        where: { id: input.id },
-        data: { artistProfileId: input.artistProfileId },
-        include: artistProfileInclude,
+
+      const photoId = mediaFileIdFromUrl(member.image);
+      const photo = photoId
+        ? await ctx.db.file_upload.findFirst({
+            where: { id: photoId, status: FileUploadStatus.OK },
+            select: { id: true },
+          })
+        : null;
+      const handle = await uniqueHandleFrom(ctx.db, member.name);
+      const socials = [
+        { platform: "instagram", url: member.instagram },
+        { platform: "soundcloud", url: member.soundcloud },
+      ].flatMap(({ platform, url }, sortOrder) =>
+        url ? [{ platform, url, sortOrder }] : [],
+      );
+
+      const profile = await ctx.db.$transaction(async (tx) => {
+        const created = await tx.artistProfile.create({
+          data: {
+            handle,
+            displayName: member.name,
+            createdByAdminId: ctx.session.user.id,
+            claimStatus: ClaimStatus.UNCLAIMED,
+            avatarFileId: photo?.id ?? null,
+            socials: { create: socials },
+          },
+        });
+        await tx.crewMember.update({
+          where: { id: member.id },
+          data: { artistProfileId: created.id },
+        });
+        return created;
       });
-      if (input.artistProfileId) {
-        await logUserActivity(
-          ActivityType.CREW_MEMBER_PROFILE_LINKED,
-          `Linked crew member ${member.name} to artist profile @${
-            profileHandle ?? input.artistProfileId
-          }`,
-          ctx.session.user.id,
-          undefined,
-          {
-            crewMemberId: member.id,
-            artistProfileId: input.artistProfileId,
-          },
-        );
-      } else if (member.artistProfileId) {
-        await logUserActivity(
-          ActivityType.CREW_MEMBER_PROFILE_UNLINKED,
-          `Unlinked artist profile from crew member ${member.name}`,
-          ctx.session.user.id,
-          undefined,
-          {
-            crewMemberId: member.id,
-            previousArtistProfileId: member.artistProfileId,
-          },
-        );
-      }
-      return updated;
+
+      await logUserActivity(
+        ActivityType.ARTIST_PROFILE_CREATED,
+        `Created unclaimed artist profile @${profile.handle} from crew member ${member.name}`,
+        ctx.session.user.id,
+        undefined,
+        { profileId: profile.id, crewMemberId: member.id },
+      );
+      return { profileId: profile.id, handle: profile.handle };
     }),
 
-  move: adminProcedure
-    .input(
-      z.object({
-        id: z.string(),
-        direction: z.enum(["up", "down"]),
-      }),
-    )
+  /** Saves the crew page order after a drag. `ids` is every row, top first. */
+  reorder: adminProcedure
+    .input(z.object({ ids: z.array(z.string()).min(1) }))
     .mutation(async ({ ctx, input }) => {
-      const crewMembers = await ctx.db.crewMember.findMany({
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-        select: { id: true },
+      const count = await ctx.db.crewMember.count({
+        where: { id: { in: input.ids } },
       });
-
-      const currentIndex = crewMembers.findIndex(
-        (member) => member.id === input.id,
-      );
-      if (currentIndex === -1) {
+      const total = await ctx.db.crewMember.count();
+      if (count !== input.ids.length || count !== total) {
         throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Crew member not found.",
+          code: "CONFLICT",
+          message: "The crew list changed. Refresh and try again.",
         });
       }
-
-      const targetIndex =
-        input.direction === "up" ? currentIndex - 1 : currentIndex + 1;
-
-      if (targetIndex < 0 || targetIndex >= crewMembers.length) {
-        return { ok: true };
-      }
-
-      const reorderedMembers = [...crewMembers];
-      const [movedMember] = reorderedMembers.splice(currentIndex, 1);
-      if (!movedMember) {
-        return { ok: true };
-      }
-
-      reorderedMembers.splice(targetIndex, 0, movedMember);
-
       await ctx.db.$transaction(
-        reorderedMembers.map((member, index) =>
-          ctx.db.crewMember.update({
-            where: { id: member.id },
-            data: { sortOrder: index },
-          }),
+        input.ids.map((id, sortOrder) =>
+          ctx.db.crewMember.update({ where: { id }, data: { sortOrder } }),
         ),
       );
-
-      return { ok: true };
+      return { ok: true as const };
     }),
 
   delete: adminProcedure

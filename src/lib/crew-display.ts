@@ -1,4 +1,8 @@
 import { buildMediaUrl } from "~/lib/media-url";
+import {
+  resolveSocialPlatform,
+  type SocialPlatformId,
+} from "~/lib/social-pills";
 
 /**
  * A crew member merged with its optionally-linked artist profile, as returned
@@ -23,7 +27,7 @@ export type CrewMemberForDisplay = {
   } | null;
 };
 
-/** Final values shown on crew cards & pulled from the linked profile when available. */
+/** Final values shown on crew cards. */
 export type ResolvedCrewDisplay = {
   id: string;
   name: string;
@@ -34,78 +38,60 @@ export type ResolvedCrewDisplay = {
   image: string | null;
   /** Handle to link to (only set when the linked profile is published). */
   profileHandle: string | null;
-  /** Provenance for each field: "profile" when inherited, "member" when the crew row's own value is used, "none" when unavailable. */
-  source: {
-    name: "profile" | "member";
-    role: "profile" | "member" | "none";
-    instagram: "profile" | "member" | "none";
-    soundcloud: "profile" | "member" | "none";
-    image: "profile" | "member" | "none";
-  };
-  /** True if any field is being sourced from the linked profile. */
-  isLinked: boolean;
+  /** Where name, photo and socials come from. Never a mix of the two. */
+  source: "profile" | "manual";
+  /** True when the crew row has no role and the profile tagline stands in. */
+  roleFromTagline: boolean;
 };
 
-function findSocialUrl(
-  socials: Array<{ platform: string; url: string }> | undefined,
-  platformId: string,
+/** A profile's link for one platform, matched the way the profile page reads it. */
+export function findProfileSocial(
+  socials: Array<{ platform: string; url: string }>,
+  platformId: SocialPlatformId,
 ): string | null {
-  if (!socials?.length) return null;
-  const needle = platformId.toLowerCase();
-  const match = socials.find((s) => s.platform.toLowerCase() === needle);
-  return match?.url ?? null;
+  return (
+    socials.find(
+      (social) =>
+        resolveSocialPlatform(social.platform, social.url)?.id === platformId,
+    )?.url ?? null
+  );
 }
 
 /**
- * Merge a crew member with its optionally-linked artist profile. Profile
- * values take precedence; crew row values act as fallback so we still render
- * something sensible when a profile is missing a field.
+ * A linked crew row shows its profile's name, photo and socials, so they are
+ * edited in one place. A manual row shows its own. Role belongs to the crew
+ * row either way, with the profile tagline as a stand-in until one is set.
  */
 export function resolveCrewDisplay(
   member: CrewMemberForDisplay,
 ): ResolvedCrewDisplay {
   const profile = member.artistProfile;
+  const role = member.role?.trim() || null;
 
-  const profileName = profile?.displayName?.trim() || null;
-  const profileTagline = profile?.tagline?.trim() || null;
-  const profileInstagram = findSocialUrl(profile?.socials, "instagram");
-  const profileSoundcloud = findSocialUrl(profile?.socials, "soundcloud");
-  const profileAvatar = profile?.avatarFileId
-    ? buildMediaUrl(profile.avatarFileId)
-    : null;
+  if (!profile) {
+    return {
+      id: member.id,
+      name: member.name,
+      role,
+      instagram: member.instagram,
+      soundcloud: member.soundcloud,
+      image: member.image?.trim() || null,
+      profileHandle: null,
+      source: "manual",
+      roleFromTagline: false,
+    };
+  }
 
-  const memberRole = member.role?.trim() || null;
-  const memberImage = member.image?.trim() || null;
-
-  const name = profileName ?? member.name;
-  const role = profileTagline ?? memberRole;
-  const instagram = profileInstagram ?? member.instagram ?? null;
-  const soundcloud = profileSoundcloud ?? member.soundcloud ?? null;
-  const image = profileAvatar ?? memberImage;
-
+  const tagline = profile.tagline?.trim() || null;
   return {
     id: member.id,
-    name,
-    role,
-    instagram,
-    soundcloud,
-    image,
-    profileHandle: profile && profile.isPublished ? profile.handle : null,
-    source: {
-      name: profileName ? "profile" : "member",
-      role: profileTagline ? "profile" : memberRole ? "member" : "none",
-      instagram: profileInstagram
-        ? "profile"
-        : member.instagram
-          ? "member"
-          : "none",
-      soundcloud: profileSoundcloud
-        ? "profile"
-        : member.soundcloud
-          ? "member"
-          : "none",
-      image: profileAvatar ? "profile" : memberImage ? "member" : "none",
-    },
-    isLinked: Boolean(profile),
+    name: profile.displayName,
+    role: role ?? tagline,
+    instagram: findProfileSocial(profile.socials, "instagram"),
+    soundcloud: findProfileSocial(profile.socials, "soundcloud"),
+    image: profile.avatarFileId ? buildMediaUrl(profile.avatarFileId) : null,
+    profileHandle: profile.isPublished ? profile.handle : null,
+    source: "profile",
+    roleFromTagline: !role && Boolean(tagline),
   };
 }
