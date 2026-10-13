@@ -8,20 +8,23 @@ import { api } from "~/trpc/react";
 import { AdminSection } from "~/components/admin/admin-section";
 import { EventOverview } from "~/components/admin/ticketing/event-overview";
 import { OrdersPanel } from "~/components/admin/ticketing/orders-panel";
+import { TicketsPanel } from "~/components/admin/ticketing/tickets-panel";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { useTabParam } from "~/hooks/use-tab-param";
 import { formatEventDateTime } from "~/lib/ticketing/dates";
 
 export default function OrganiserEventPage() {
   const { id } = useParams<{ id: string }>();
   const event = api.ticketEvents.byId.useQuery({ id }, { enabled: !!id });
+  const tab = useTabParam(["overview", "orders", "tickets"]);
 
   if (event.isPending) {
-    return <Skeleton className="m-8 h-96 w-auto" />;
+    return <Skeleton className="m-6 h-96 w-auto" />;
   }
-  if (!event.data) return <div className="p-8">Event not found.</div>;
+  if (!event.data) return <div className="p-6">Event not found.</div>;
 
   const data = event.data;
   return (
@@ -50,19 +53,33 @@ export default function OrganiserEventPage() {
         </div>
       }
     >
-      <Tabs defaultValue="overview">
+      <Tabs value={tab.value} onValueChange={tab.onValueChange}>
         <TabsList>
           <TabsTrigger value="overview">Analytics</TabsTrigger>
-          <TabsTrigger value="orders">Orders</TabsTrigger>
+          <TabsTrigger value="orders">
+            Orders
+            <span className="text-muted-foreground tabular-nums">
+              {data.counts.orders}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="tickets">
+            Tickets
+            <span className="text-muted-foreground tabular-nums">
+              {data.counts.tickets}
+            </span>
+          </TabsTrigger>
         </TabsList>
-        <TabsContent value="overview" className="mt-6">
+        <TabsContent value="overview" className="mt-2">
           <EventOverview
             eventId={id}
             liveHref={`/organiser/events/${id}/live`}
           />
         </TabsContent>
-        <TabsContent value="orders" className="mt-6">
+        <TabsContent value="orders" className="mt-2">
           <OrdersPanel eventId={id} readOnly />
+        </TabsContent>
+        <TabsContent value="tickets" className="mt-2">
+          <TicketsPanel eventId={id} readOnly />
         </TabsContent>
       </Tabs>
     </AdminSection>

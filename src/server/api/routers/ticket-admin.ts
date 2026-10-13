@@ -265,7 +265,8 @@ export const ticketAdminRouter = createTRPCRouter({
     }),
 
   /** Individual tickets for an event — search, inspect, then void or refund. */
-  tickets: adminProcedure
+  /** Organisers read this too, on their read-only Tickets tab. */
+  tickets: eventOrganiserProcedure
     .input(
       z.object({
         eventId: z.string(),
@@ -382,8 +383,11 @@ export const ticketAdminRouter = createTRPCRouter({
             ...ticket,
             typeName: ticketTypeName(ticket),
             // What you send somebody who has lost their email — one ticket,
-            // their own QR, and no way through to the rest of the order.
-            ticketUrl: ticketUrl(ticketAccessToken(ticket)),
+            // their own QR, and no way through to the rest of the order. A
+            // bearer credential, so admins only, the same as the order link.
+            ticketUrl: ctx.isAdmin
+              ? ticketUrl(ticketAccessToken(ticket))
+              : null,
             admittedAt: admission?.admittedAt ?? null,
             departedAt: admission?.departedAt ?? null,
             deniedAt: admission?.deniedAt ?? null,

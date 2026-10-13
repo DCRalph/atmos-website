@@ -7,7 +7,9 @@ import { toast } from "sonner";
 
 import { api, type RouterOutputs } from "~/trpc/react";
 import { AdminSection } from "~/components/admin/admin-section";
+import { Segmented } from "~/components/admin/segmented";
 import { StatTile } from "~/components/admin/ticketing/charts";
+import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import {
@@ -63,24 +65,15 @@ export function PaymentsOverview() {
       description="Every ticket sale and donation that took money."
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <div
-            role="tablist"
-            aria-label="Range"
-            className="flex gap-1 rounded-lg border p-1"
-          >
-            {PAYMENT_RANGES.map((key) => (
-              <Button
-                key={key}
-                role="tab"
-                size="sm"
-                aria-selected={range === key}
-                variant={range === key ? "secondary" : "ghost"}
-                onClick={() => setRange(key)}
-              >
-                {PAYMENT_RANGE_LABELS[key]}
-              </Button>
-            ))}
-          </div>
+          <Segmented
+            label="Range"
+            options={PAYMENT_RANGES.map((key) => ({
+              value: key,
+              label: PAYMENT_RANGE_LABELS[key],
+            }))}
+            value={range}
+            onChange={setRange}
+          />
           <Button variant="outline" onClick={() => void download()}>
             <Download className="size-4" /> Export CSV
           </Button>
@@ -277,6 +270,9 @@ function Breakdown({ data }: { data: Overview }) {
                         {row.reference ? `${row.reference} · ` : ""}
                         {row.method}
                       </span>
+                      {row.paidWith ? (
+                        <Badge variant="outline">{row.paidWith}</Badge>
+                      ) : null}
                     </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground">

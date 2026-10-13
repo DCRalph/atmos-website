@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 
 import { Badge } from "~/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { useTabParam } from "~/hooks/use-tab-param";
 import { DataTable, type DataTableColumn } from "~/components/data-table";
 import type { RouterOutputs } from "~/trpc/react";
 import { formatEventDateTime } from "~/lib/ticketing/dates";
@@ -47,6 +49,53 @@ const faceValueCents = (event: TicketEventRow) =>
   event.tiers.reduce((sum, tier) => sum + soldFaceValueCents(tier), 0);
 
 /**
+ * The ticketed events list split into live and archived tabs, so an archived
+ * event is out of the way but still one click from being found. Takes every
+ * event, archived included.
+ */
+export function TicketEventsTabs({
+  rows,
+  ...table
+}: Omit<Parameters<typeof TicketEventsTable>[0], "emptyMessage">) {
+  const tab = useTabParam(["events", "archived"]);
+  const archived = rows.filter((row) => row.status === "ARCHIVED");
+  const live = rows.filter((row) => row.status !== "ARCHIVED");
+
+  return (
+    <Tabs
+      value={tab.value}
+      onValueChange={tab.onValueChange}
+      className="space-y-4"
+    >
+      <TabsList>
+        <TabsTrigger value="events">
+          Events
+          <span className="text-muted-foreground tabular-nums">
+            {live.length}
+          </span>
+        </TabsTrigger>
+        <TabsTrigger value="archived">
+          Archived
+          <span className="text-muted-foreground tabular-nums">
+            {archived.length}
+          </span>
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="events">
+        <TicketEventsTable {...table} rows={live} />
+      </TabsContent>
+      <TabsContent value="archived">
+        <TicketEventsTable
+          {...table}
+          rows={archived}
+          emptyMessage="Nothing archived. Archive an event from its menu to move it here."
+        />
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+/**
  * The ticketed events list. Admin and organiser show the same rows and differ
  * only in where a row goes, so they share this rather than each keeping their
  * own copy of the columns.
@@ -57,6 +106,7 @@ export function TicketEventsTable({
   isLoading,
   isFetching,
   storageKey,
+  emptyMessage = "No ticketed events yet.",
 }: {
   rows: TicketEventRow[];
   /** Row click destination, e.g. `/admin/events`. */
@@ -64,6 +114,7 @@ export function TicketEventsTable({
   isLoading?: boolean;
   isFetching?: boolean;
   storageKey: string;
+  emptyMessage?: string;
 }) {
   const router = useRouter();
 
@@ -143,7 +194,7 @@ export function TicketEventsTable({
       isFetching={isFetching}
       onRowClick={(row) => router.push(`${basePath}/${row.id}`)}
       storageKey={storageKey}
-      emptyMessage="No ticketed events yet."
+      emptyMessage={emptyMessage}
     />
   );
 }

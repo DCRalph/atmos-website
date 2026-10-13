@@ -18,7 +18,7 @@ export default function WillGptConversationPage() {
 
   if (conversation.isPending) {
     return (
-      <div className="px-4 py-5 sm:px-6 sm:py-6 lg:p-8">
+      <div className="px-4 py-4 sm:px-6 sm:py-5">
         <Skeleton className="h-12 w-1/2" />
         <Skeleton className="mt-6 h-96 w-full max-w-3xl" />
       </div>
@@ -26,9 +26,7 @@ export default function WillGptConversationPage() {
   }
   if (!conversation.data) {
     return (
-      <div className="px-4 py-5 sm:px-6 sm:py-6 lg:p-8">
-        Conversation not found.
-      </div>
+      <div className="px-4 py-4 sm:px-6 sm:py-5">Conversation not found.</div>
     );
   }
 

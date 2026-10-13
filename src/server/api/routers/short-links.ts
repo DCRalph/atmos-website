@@ -4,6 +4,7 @@ import { z } from "zod";
 import { ActivityType } from "~Prisma/client";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { newSubLinkCode } from "~/lib/short-links/clicks";
+import { ANALYTICS_RANGES, rangeStart } from "~/lib/analytics-range";
 import {
   ALL_DOMAINS,
   SITE_LINK_DOMAIN,
@@ -109,17 +110,6 @@ export async function assertSlugFree(
   }
 }
 
-const HOUR_MS = 60 * 60 * 1000;
-
-/** The start of each of the last `count` hours, oldest first, ending with this one. */
-function recentHours(count: number): Date[] {
-  const current = Math.floor(Date.now() / HOUR_MS) * HOUR_MS;
-  return Array.from(
-    { length: count },
-    (_, i) => new Date(current - (count - 1 - i) * HOUR_MS),
-  );
-}
-
 /** How many clicks carried one value of one column: "Android, 41". */
 type Slice = { label: string; n: number };
 
@@ -173,12 +163,8 @@ export const shortLinksRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
       }
 
-      const hours = recentHours(7 * 24);
-      const [[totals], hourly, slices, bySource, recent, hosts] =
-        await Promise.all([
-          ctx.db.$queryRaw<
-            { clicks: number; visitors: number; bots: number }[]
-          >`
+      const [[totals], slices, bySource, recent, hosts] = await Promise.all([
+        ctx.db.$queryRaw<{ clicks: number; visitors: number; bots: number }[]>`
           select
             (count(*) filter (where device <> 'bot'))::int as clicks,
             (count(distinct visitor) filter (where device <> 'bot'))::int as visitors,
@@ -186,19 +172,7 @@ export const shortLinksRouter = createTRPCRouter({
           from short_link_click
           where "linkId" = ${link.id}
         `,
-          // Prisma stores UTC in a plain timestamp, and hours line up in every
-          // zone NZ uses, so truncating in UTC needs no conversion.
-          ctx.db.$queryRaw<{ hour: Date; n: number }[]>`
-          select date_trunc('hour', "createdAt") as hour, count(*)::int as n
-          from short_link_click
-          where "linkId" = ${link.id}
-            and device <> 'bot'
-            and "createdAt" >= ${hours[0]}
-          group by hour
-        `,
-          ctx.db.$queryRaw<
-            { dimension: Dimension; label: string; n: number }[]
-          >`
+        ctx.db.$queryRaw<{ dimension: Dimension; label: string; n: number }[]>`
           select d.dimension, d.label, count(*)::int as n
           from short_link_click c,
             lateral (values
@@ -216,8 +190,8 @@ export const shortLinksRouter = createTRPCRouter({
           group by d.dimension, d.label
           order by n desc
         `,
-          // What each sub link's row shows. Its name is its source.
-          ctx.db.$queryRaw<{ source: string; clicks: number; scans: number }[]>`
+        // What each sub link's row shows. Its name is its source.
+        ctx.db.$queryRaw<{ source: string; clicks: number; scans: number }[]>`
           select source,
             count(*)::int as clicks,
             (count(*) filter (where via = 'qr'))::int as scans
@@ -225,18 +199,15 @@ export const shortLinksRouter = createTRPCRouter({
           where "linkId" = ${link.id} and device <> 'bot'
           group by source
         `,
-          // Bots included: when a link looks wrong, the odd row explains it.
-          ctx.db.shortLinkClick.findMany({
-            where: { linkId: link.id },
-            orderBy: { createdAt: "desc" },
-            take: 100,
-          }),
-          extraHosts(),
-        ]);
+        // Bots included: when a link looks wrong, the odd row explains it.
+        ctx.db.shortLinkClick.findMany({
+          where: { linkId: link.id },
+          orderBy: { createdAt: "desc" },
+          take: 100,
+        }),
+        extraHosts(),
+      ]);
 
-      const perHour = new Map(
-        hourly.map((row) => [row.hour.getTime(), row.n]),
-      );
       const breakdown: Record<Dimension, Slice[]> = {
         source: [],
         via: [],
@@ -261,13 +232,45 @@ export const shortLinksRouter = createTRPCRouter({
         /** Every host it answers on, main site first. Downloads pick one. */
         hosts: linkHosts(link.domain, hosts),
         totals: totals ?? { clicks: 0, visitors: 0, bots: 0 },
-        hourly: hours.map((hour) => ({
-          hour,
-          n: perHour.get(hour.getTime()) ?? 0,
-        })),
         breakdown,
         recent,
       };
+    }),
+
+  /**
+   * Clicks per hour over a range, sparse; the chart lays them onto its axis.
+   * All time runs from when the link was made.
+   */
+  clicks: adminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        range: z.enum(ANALYTICS_RANGES).default("7d"),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const link = await ctx.db.shortLink.findUnique({
+        where: { id: input.id },
+        select: { createdAt: true },
+      });
+      if (!link) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
+      }
+
+      const to = new Date();
+      const from = rangeStart(input.range, to) ?? link.createdAt;
+      // Prisma stores UTC in a plain timestamp, and hours line up in every
+      // zone NZ uses, so truncating in UTC needs no conversion.
+      const rows = await ctx.db.$queryRaw<{ at: Date; n: number }[]>`
+        select date_trunc('hour', "createdAt") as at, count(*)::int as n
+        from short_link_click
+        where "linkId" = ${input.id}
+          and device <> 'bot'
+          and "createdAt" >= ${from}
+        group by at
+        order by at
+      `;
+      return { from, to, rows };
     }),
 
   create: adminProcedure

@@ -104,6 +104,7 @@ export async function recordDonation(intent: Stripe.PaymentIntent) {
       currency: intent.currency.toUpperCase(),
       stripePaymentIntentId: intent.id,
       stripeChargeId: charge?.id ?? null,
+      paidWith: buyer.paidWith,
       donorEmail: buyer.buyerEmail,
       donorName: buyer.buyerName,
       paidAt: new Date((charge?.created ?? intent.created) * 1000),

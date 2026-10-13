@@ -39,7 +39,7 @@ export default async function OrganiserLayout({
         <ImpersonationBar user={session.user} />
       )}
       <header className="bg-background/90 sticky top-0 z-50 border-b backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+        <div className="mx-auto flex h-12 max-w-7xl items-center justify-between px-6">
           <Link href="/organiser/events" className="text-lg font-semibold">
             Atmos Events
           </Link>

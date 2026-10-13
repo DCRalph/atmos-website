@@ -2,7 +2,7 @@
 
 import { api } from "~/trpc/react";
 import { AdminSection } from "~/components/admin/admin-section";
-import { TicketEventsTable } from "~/components/admin/ticketing/ticket-events-table";
+import { TicketEventsTabs } from "~/components/admin/ticketing/ticket-events-table";
 
 export default function OrganiserEventsPage() {
   const events = api.ticketEvents.list.useQuery({ includeArchived: true });
@@ -12,7 +12,7 @@ export default function OrganiserEventsPage() {
       title="Ticketed events"
       description="Read-only event details, sales, attendance, orders, and exports."
     >
-      <TicketEventsTable
+      <TicketEventsTabs
         rows={events.data ?? []}
         basePath="/organiser/events"
         isLoading={events.isPending}

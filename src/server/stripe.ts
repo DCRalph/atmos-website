@@ -40,8 +40,8 @@ export function isStripeTestMode(): boolean {
 }
 
 /**
- * Who paid, as Stripe saw it. Shared by every path that issues a paid order
- * (webhook, instant confirm, cron rescue) so they all save the same fields.
+ * Who paid and how, as Stripe saw it. Shared by every path that issues a paid
+ * order (webhook, instant confirm, cron rescue) so they all save the same fields.
  *
  * Phone and address only exist when a wallet supplied them: Express Checkout
  * asks Apple Pay / Google Pay / Link for both, the card form asks for neither.
@@ -56,7 +56,21 @@ export function buyerFromCharge(
     buyerName: billing?.name ?? null,
     buyerPhone: billing?.phone ?? null,
     buyerAddress: formatAddress(billing?.address),
+    paidWith: paidWithFromCharge(charge),
   };
+}
+
+/**
+ * How a charge was paid: the wallet when there was one (`apple_pay`,
+ * `google_pay`, `link`), otherwise Stripe's method type (`card`, `link`,
+ * `card_present` for a card tapped at the door). Labelled by `paidWithLabel`.
+ */
+export function paidWithFromCharge(charge: Stripe.Charge | null) {
+  const details = charge?.payment_method_details;
+  if (!details) return null;
+  const wallet =
+    details.card?.wallet?.type ?? details.card_present?.wallet?.type;
+  return wallet && wallet !== "unknown" ? wallet : details.type;
 }
 
 /**

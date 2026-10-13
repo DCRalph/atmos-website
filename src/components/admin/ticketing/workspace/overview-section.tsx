@@ -47,8 +47,8 @@ export function OverviewSection({
   const blocked = checklist.some((item) => item.state === "needed");
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 rounded-lg border p-4 lg:flex-row lg:items-center lg:justify-between">
+    <div className="space-y-3">
+      <div className="flex flex-col gap-3 rounded-lg border p-3 lg:flex-row lg:items-center lg:justify-between">
         <ul className="flex flex-wrap gap-x-4 gap-y-2">
           {checklist.map((item) => (
             <li key={item.label}>

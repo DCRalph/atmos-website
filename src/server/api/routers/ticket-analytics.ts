@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import {
   PaymentMethodKind,
+  Prisma,
   TicketOrderStatus,
   TicketScanResult,
   TicketStatus,
@@ -14,6 +15,13 @@ import { ticketTypeName } from "~/lib/ticketing/access-levels";
 import { soldFaceValueCents } from "~/lib/ticketing/tiers";
 import { venueFeePerTicketCents } from "~/lib/ticketing/money";
 import { toCsv } from "~/lib/csv";
+import {
+  ANALYTICS_RANGES,
+  HOUR_MS,
+  floorHour,
+  rangeStart,
+  type AnalyticsRange,
+} from "~/lib/analytics-range";
 import {
   breakEvenTickets,
   planRevenuePerTicketCents,
@@ -33,6 +41,53 @@ import {
  */
 
 const ADMIT_RESULTS = "('ADMITTED', 'OVERRIDE_ADMITTED', 'REENTRY')";
+
+/**
+ * Orders somebody went through a checkout for: paid, and not a comp, an admin
+ * link or a lifetime pass, which are minted as paid orders nobody bought.
+ */
+const BOUGHT_ORDER = Prisma.sql`
+  o.status IN ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDED')
+  AND o."paymentMethod" NOT IN ('COMP', 'ADMIN', 'LIFETIME')
+  AND o."paidAt" IS NOT NULL
+`;
+
+/**
+ * The stretch a chart range covers, or null for all time. Ranges end now, or
+ * a day after the doors for an event that's been and gone, so "last 7 days"
+ * on last month's event shows its final week rather than an empty chart.
+ */
+function salesWindow(startsAt: Date, range: AnalyticsRange) {
+  const until = new Date(
+    Math.min(Date.now(), startsAt.getTime() + 24 * HOUR_MS),
+  );
+  const since = rangeStart(range, until);
+  return since ? { since: floorHour(since), until } : null;
+}
+
+const paidWithin = (window: ReturnType<typeof salesWindow>) =>
+  window
+    ? Prisma.sql`AND o."paidAt" >= ${window.since} AND o."paidAt" <= ${window.until}`
+    : Prisma.empty;
+
+const rangeInput = z.object({
+  eventId: z.string(),
+  range: z.enum(ANALYTICS_RANGES).default("all"),
+});
+
+async function eventClock(
+  db: Prisma.TransactionClient,
+  eventId: string,
+): Promise<{ timezone: string; startsAt: Date }> {
+  const event = await db.ticketEvent.findUnique({
+    where: { id: eventId },
+    select: { timezone: true, startsAt: true },
+  });
+  if (!event) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+  }
+  return event;
+}
 
 export const ticketAnalyticsRouter = createTRPCRouter({
   /** Headline numbers for the event dashboard. */
@@ -148,6 +203,44 @@ export const ticketAnalyticsRouter = createTRPCRouter({
         },
       });
 
+      const [byPaidWith, [gotIn], arrivals] = await Promise.all([
+        ctx.db.ticketOrder.groupBy({
+          by: ["paidWith"],
+          where: {
+            eventId: event.id,
+            status: { in: paidStatuses },
+            paidWith: { not: null },
+          },
+          _count: true,
+        }),
+        // Bought orders with at least one ticket through the door.
+        ctx.db.$queryRaw<{ orders: number }[]>`
+          SELECT COUNT(DISTINCT o.id)::int AS orders
+          FROM "ticket_scan" s
+          JOIN "ticket" t ON t.id = s."ticketId"
+          JOIN "ticket_order" o ON o.id = t."orderId"
+          WHERE s."eventId" = ${event.id}
+            AND s."result" IN ('ADMITTED', 'OVERRIDE_ADMITTED', 'REENTRY')
+            AND ${BOUGHT_ORDER}
+        `,
+        // First admission per ticket in 15-minute buckets: the shape of the
+        // night, without re-entries counting twice.
+        ctx.db.$queryRaw<{ bucket: Date; count: number }[]>`
+          SELECT
+            to_timestamp(floor(extract(epoch FROM first_at) / 900) * 900) AS bucket,
+            COUNT(*)::int AS count
+          FROM (
+            SELECT MIN(s."createdAt") AS first_at
+            FROM "ticket_scan" s
+            WHERE s."eventId" = ${event.id}
+              AND s."result" IN ('ADMITTED', 'OVERRIDE_ADMITTED', 'REENTRY')
+            GROUP BY s."ticketId"
+          ) firsts
+          GROUP BY 1
+          ORDER BY 1 ASC
+        `,
+      ]);
+
       const grossCents = money._sum.totalCents ?? 0;
       const refundedCents = money._sum.refundedCents ?? 0;
 
@@ -234,6 +327,8 @@ export const ticketAnalyticsRouter = createTRPCRouter({
             ticketsIssued > 0
               ? Math.round((admitted / ticketsIssued) * 100)
               : 0,
+          /** Bought orders with anybody through the door. */
+          ordersArrived: gotIn?.orders ?? 0,
           /** Paid ÷ (paid + abandoned). The checkout funnel's bottom step. */
           checkoutConversion:
             orderCount + abandoned > 0
@@ -265,47 +360,145 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           orders: row._count,
           totalCents: row._sum.totalCents ?? 0,
         })),
+        /** Apple Pay, card, and so on: Stripe orders only, most first. */
+        byPaidWith: byPaidWith
+          .flatMap((row) =>
+            row.paidWith
+              ? [{ paidWith: row.paidWith, orders: row._count }]
+              : [],
+          )
+          .sort((a, b) => b.orders - a.orders),
+        arrivals,
       };
     }),
 
   /**
-   * Cumulative sales curve, in hourly buckets — when tickets actually moved.
+   * The sales curve for a range, as sparse hourly rows; the chart lays them
+   * onto its own axis. `baseline` is what sold before the range opened, so the
+   * running total starts where it really was rather than at zero.
+   *
    * `paidAt` is a UTC timestamp, and truncating to the hour in UTC lands on
    * the same hours as in the event's zone, so no conversion is needed here.
    */
   salesOverTime: eventOrganiserProcedure
-    .input(z.object({ eventId: z.string() }))
+    .input(rangeInput)
     .query(async ({ ctx, input }) => {
-      const rows = await ctx.db.$queryRaw<
-        { bucket: Date; tickets: bigint; revenue_cents: bigint }[]
+      const event = await eventClock(ctx.db, input.eventId);
+      const window = salesWindow(event.startsAt, input.range);
+
+      const hours = await ctx.db.$queryRaw<
+        { at: Date; tickets: number; revenue_cents: number }[]
       >`
         SELECT
-          date_trunc('hour', o."paidAt") AS bucket,
-          COUNT(t.id)::bigint AS tickets,
-          COALESCE(SUM(t."pricePaidCents"), 0)::bigint AS revenue_cents
+          date_trunc('hour', o."paidAt") AS at,
+          COUNT(t.id)::int AS tickets,
+          COALESCE(SUM(t."pricePaidCents"), 0)::int AS revenue_cents
         FROM "ticket_order" o
         JOIN "ticket" t ON t."orderId" = o.id
         WHERE o."eventId" = ${input.eventId}
           AND o."paidAt" IS NOT NULL
+          ${window ? Prisma.sql`AND o."paidAt" <= ${window.until}` : Prisma.empty}
           -- Giveaways are a count, never a point on a revenue line.
           AND t."isComp" = false
         GROUP BY 1
         ORDER BY 1 ASC
       `;
 
-      let runningTickets = 0;
-      let runningRevenue = 0;
-      return rows.map((row) => {
-        runningTickets += Number(row.tickets);
-        runningRevenue += Number(row.revenue_cents);
-        return {
-          bucket: row.bucket,
-          tickets: Number(row.tickets),
-          revenueCents: Number(row.revenue_cents),
-          cumulativeTickets: runningTickets,
-          cumulativeRevenueCents: runningRevenue,
-        };
-      });
+      const baseline = { tickets: 0, revenueCents: 0 };
+      const rows: { at: Date; tickets: number; revenueCents: number }[] = [];
+      for (const hour of hours) {
+        if (window && hour.at < window.since) {
+          baseline.tickets += hour.tickets;
+          baseline.revenueCents += hour.revenue_cents;
+        } else {
+          rows.push({
+            at: hour.at,
+            tickets: hour.tickets,
+            revenueCents: hour.revenue_cents,
+          });
+        }
+      }
+
+      // All time runs from the first sale to the last, or to now.
+      const end = new Date(
+        Math.min(Date.now(), event.startsAt.getTime() + 24 * HOUR_MS),
+      );
+      const last = rows.at(-1)?.at;
+      return {
+        timezone: event.timezone,
+        from: window?.since ?? rows[0]?.at ?? end,
+        to: window?.until ?? (last && last > end ? last : end),
+        baseline,
+        rows,
+      };
+    }),
+
+  /**
+   * Who bought in a range, and how: when in the week, how many at once, and
+   * which link brought them.
+   */
+  buyers: eventOrganiserProcedure
+    .input(rangeInput)
+    .query(async ({ ctx, input }) => {
+      const event = await eventClock(ctx.db, input.eventId);
+      const window = salesWindow(event.startsAt, input.range);
+      const bought = Prisma.sql`o."eventId" = ${input.eventId} AND ${BOUGHT_ORDER} ${paidWithin(window)}`;
+
+      const [weekHours, sizes, sources] = await Promise.all([
+        // 1 is Monday. The stored time is UTC, marked as such, then moved
+        // into the event's zone: a 9pm sale belongs to that evening.
+        ctx.db.$queryRaw<{ day: number; hour: number; orders: number }[]>`
+          SELECT
+            extract(isodow FROM local)::int AS day,
+            extract(hour FROM local)::int AS hour,
+            COUNT(*)::int AS orders
+          FROM (
+            SELECT (o."paidAt" AT TIME ZONE 'UTC') AT TIME ZONE ${event.timezone} AS local
+            FROM "ticket_order" o
+            WHERE ${bought}
+          ) sales
+          GROUP BY 1, 2
+        `,
+        // Four and up share a bar: nobody needs eleven bars for one group booking.
+        ctx.db.$queryRaw<{ size: number; orders: number }[]>`
+          SELECT LEAST(tickets, 4)::int AS size, COUNT(*)::int AS orders
+          FROM (
+            SELECT COUNT(t.id) AS tickets
+            FROM "ticket_order" o
+            JOIN "ticket" t ON t."orderId" = o.id
+            WHERE ${bought}
+            GROUP BY o.id
+          ) per_order
+          GROUP BY 1
+          ORDER BY 1 ASC
+        `,
+        ctx.db.ticketOrder.groupBy({
+          by: ["utmSource", "utmMedium", "utmCampaign"],
+          where: {
+            eventId: input.eventId,
+            status: TicketOrderStatus.PAID,
+            ...(window
+              ? { paidAt: { gte: window.since, lte: window.until } }
+              : {}),
+          },
+          _count: true,
+          _sum: { totalCents: true },
+        }),
+      ]);
+
+      return {
+        weekHours,
+        sizes,
+        sources: sources
+          .map((row) => ({
+            source: row.utmSource ?? "direct",
+            medium: row.utmMedium,
+            campaign: row.utmCampaign,
+            orders: row._count,
+            revenueCents: row._sum.totalCents ?? 0,
+          }))
+          .sort((a, b) => b.orders - a.orders),
+      };
     }),
 
   /**
@@ -500,27 +693,6 @@ export const ticketAnalyticsRouter = createTRPCRouter({
     }),
 
   /** Where the buyers came from, captured at checkout. */
-  sources: eventOrganiserProcedure
-    .input(z.object({ eventId: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const rows = await ctx.db.ticketOrder.groupBy({
-        by: ["utmSource", "utmMedium", "utmCampaign"],
-        where: { eventId: input.eventId, status: TicketOrderStatus.PAID },
-        _count: true,
-        _sum: { totalCents: true },
-      });
-
-      return rows
-        .map((row) => ({
-          source: row.utmSource ?? "direct",
-          medium: row.utmMedium,
-          campaign: row.utmCampaign,
-          orders: row._count,
-          revenueCents: row._sum.totalCents ?? 0,
-        }))
-        .sort((a, b) => b.orders - a.orders);
-    }),
-
   /**
    * CSV exports. Returned as a string for the client to download, so the
    * browser never has to hold a second copy of the dataset in memory as JSON.

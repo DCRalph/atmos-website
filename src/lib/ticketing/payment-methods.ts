@@ -67,3 +67,23 @@ export function paymentMethodLabel(method: string): string {
 export function paymentMethodShort(method: string): string {
   return SHORT[method as PaymentMethodKind] ?? "Online";
 }
+
+const PAID_WITH: Record<string, string> = {
+  apple_pay: "Apple Pay",
+  google_pay: "Google Pay",
+  samsung_pay: "Samsung Pay",
+  link: "Link",
+  card: "Card",
+  card_present: "Card",
+  afterpay_clearpay: "Afterpay",
+};
+
+/**
+ * How a Stripe payment was made, from the `paidWith` Stripe recorded:
+ * `apple_pay` reads "Apple Pay". Anything new reads as Stripe's own name for
+ * it, so `klarna` is "Klarna" rather than nothing.
+ */
+export function paidWithLabel(paidWith: string): string {
+  const label = PAID_WITH[paidWith] ?? paidWith.replaceAll("_", " ");
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}

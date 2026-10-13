@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 
 export function AdminSection({
@@ -29,39 +28,34 @@ export function AdminSection({
   return (
     <div
       className={cn(
-        "mx-auto w-full min-w-0 px-4 py-5 sm:px-6 sm:py-6 lg:p-8",
+        "mx-auto w-full min-w-0 px-4 py-4 sm:px-6 sm:py-5",
         maxWidth,
       )}
     >
-      {backLink && (
-        <div className="mb-3 sm:mb-4">
-          <Button variant="outline" size="sm" asChild className="sm:h-9">
-            <Link href={backLink.href}>
-              <ArrowLeft className="size-4" aria-hidden />
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          {backLink && (
+            <Link
+              href={backLink.href}
+              className="text-muted-foreground hover:text-foreground inline-flex w-fit items-center gap-1 text-sm"
+            >
+              <ArrowLeft className="size-3.5" aria-hidden />
               {backLink.label}
             </Link>
-          </Button>
-        </div>
-      )}
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3 sm:mb-8">
-        <div className="flex min-w-0 flex-col gap-1">
-          <h1 className="text-foreground text-2xl font-bold break-words sm:text-3xl lg:text-4xl">
+          )}
+          <h1 className="text-foreground text-2xl font-bold break-words">
             {title}
           </h1>
           {subtitle ? (
-            <p className="text-muted-foreground text-sm break-words sm:text-base">
+            <p className="text-muted-foreground text-sm break-words">
               {subtitle}
             </p>
           ) : null}
           {description ? (
-            <p className="text-muted-foreground text-sm sm:text-base">
-              {description}
-            </p>
+            <p className="text-muted-foreground text-sm">{description}</p>
           ) : null}
         </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-          {actions}
-        </div>
+        <div className="flex flex-wrap items-center gap-2">{actions}</div>
       </div>
 
       {children}

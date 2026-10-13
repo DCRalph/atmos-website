@@ -201,7 +201,7 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
         onSave={() => void save()}
         onDiscard={isDirty && event ? state.discard : undefined}
       >
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[200px_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[180px_minmax(0,1fr)]">
           <nav
             aria-label="Event sections"
             className="flex flex-row flex-wrap gap-1 lg:sticky lg:top-40 lg:flex-col lg:self-start"

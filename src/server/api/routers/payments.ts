@@ -9,7 +9,10 @@ import {
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { toCsv } from "~/lib/csv";
 import { PAYMENT_RANGES, paymentRangeStart } from "~/lib/payments";
-import { paymentMethodLabel } from "~/lib/ticketing/payment-methods";
+import {
+  paidWithLabel,
+  paymentMethodLabel,
+} from "~/lib/ticketing/payment-methods";
 import { stripePaymentUrl } from "~/server/stripe";
 
 /**
@@ -57,6 +60,7 @@ const ORDER_ROW = {
   totalCents: true,
   refundedCents: true,
   paidAt: true,
+  paidWith: true,
   stripePaymentIntentId: true,
   event: { select: { id: true, name: true } },
 } satisfies Prisma.TicketOrderSelect;
@@ -68,6 +72,7 @@ const DONATION_ROW = {
   amountCents: true,
   refundedCents: true,
   paidAt: true,
+  paidWith: true,
   stripePaymentIntentId: true,
   gig: { select: { id: true, title: true } },
 } satisfies Prisma.DonationSelect;
@@ -84,6 +89,8 @@ type PaymentRow = {
   name: string | null;
   email: string | null;
   method: string;
+  /** Apple Pay, Google Pay, Card. Null where Stripe wasn't involved. */
+  paidWith: string | null;
   amountCents: number;
   refundedCents: number;
   /** Where it lives in the admin. Null on a donation to a deleted gig. */
@@ -104,6 +111,7 @@ function orderRow(
     name: order.buyerName,
     email: order.buyerEmail,
     method: paymentMethodLabel(order.paymentMethod),
+    paidWith: order.paidWith && paidWithLabel(order.paidWith),
     amountCents: order.totalCents,
     refundedCents: order.refundedCents,
     href: `/admin/events/${order.event.id}`,
@@ -125,6 +133,7 @@ function donationRow(
     name: donation.donorName,
     email: donation.donorEmail,
     method: "Donation",
+    paidWith: donation.paidWith && paidWithLabel(donation.paidWith),
     amountCents: donation.amountCents,
     refundedCents: donation.refundedCents,
     href: donation.gig ? `/admin/gigs/${donation.gig.id}` : null,
@@ -270,6 +279,7 @@ export const paymentsRouter = createTRPCRouter({
           "Name",
           "Email",
           "Method",
+          "Paid with",
           "Amount",
           "Refunded",
           "Stripe",
@@ -282,6 +292,7 @@ export const paymentsRouter = createTRPCRouter({
           row.name ?? "",
           row.email ?? "",
           row.method,
+          row.paidWith ?? "",
           money(row.amountCents),
           money(row.refundedCents),
           row.stripeUrl ?? "",

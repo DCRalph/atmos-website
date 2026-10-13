@@ -33,7 +33,11 @@ import {
   createPendingOrder,
   issueTicketsForOrder,
 } from "~/server/ticketing/orders";
-import { getStripe, isStripeConfigured } from "~/server/stripe";
+import {
+  getStripe,
+  isStripeConfigured,
+  paidWithFromCharge,
+} from "~/server/stripe";
 import { compAccounting, issueComp } from "~/server/ticketing/comps";
 import {
   sendCompTicketEmail,
@@ -1422,6 +1426,7 @@ export const doorRouter = createTRPCRouter({
         buyerName: charge?.billing_details?.name ?? null,
         paymentIntentId: intent.id,
         chargeId: charge?.id ?? null,
+        paidWith: paidWithFromCharge(charge),
         paymentMethod: PaymentMethodKind.TAP_TO_PAY,
         soldByUserId: ctx.user.id,
       });

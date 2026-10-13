@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Copy,
   Link2,
@@ -33,6 +33,7 @@ import { useConfirm } from "~/components/confirm-provider";
 import { formatNZD } from "~/lib/ticketing/money";
 import {
   PAYMENT_METHODS,
+  paidWithLabel,
   paymentMethodLabel,
 } from "~/lib/ticketing/payment-methods";
 import { FilterSelect, ListFilters } from "../list-filters";
@@ -127,6 +128,15 @@ export function OrdersPanel({
       type: "badge",
       accessor: (row) => row.paymentMethod.toLowerCase(),
       badge: (value) => ({ label: String(value), variant: "outline" }),
+    },
+    {
+      id: "paidWith",
+      header: "Paid with",
+      accessor: (row) => (row.paidWith ? paidWithLabel(row.paidWith) : ""),
+      cell: (row) =>
+        row.paidWith ? (
+          <Badge variant="outline">{paidWithLabel(row.paidWith)}</Badge>
+        ) : null,
     },
     {
       id: "buyer",
@@ -358,6 +368,14 @@ function OrderDetail({
           )}
           <Row label="Total" value={formatNZD(data.totalCents)} />
           <Row label="GST included" value={formatNZD(data.gstCents)} />
+          {data.paidWith && (
+            <Row
+              label="Paid with"
+              value={
+                <Badge variant="outline">{paidWithLabel(data.paidWith)}</Badge>
+              }
+            />
+          )}
           {data.refundedCents > 0 && (
             <Row label="Refunded" value={formatNZD(data.refundedCents)} />
           )}
@@ -599,7 +617,7 @@ function OrderDetail({
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex justify-between gap-3">
       <dt className="text-muted-foreground">{label}</dt>

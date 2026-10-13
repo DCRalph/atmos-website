@@ -331,6 +331,7 @@ export async function issueTicketsForOrder({
   buyerAddress,
   paymentIntentId,
   chargeId,
+  paidWith,
   paymentMethod,
   soldByUserId,
   termsAccepted,
@@ -343,6 +344,8 @@ export async function issueTicketsForOrder({
   buyerAddress?: string | null;
   paymentIntentId?: string | null;
   chargeId?: string | null;
+  /** See `paidWithFromCharge`. */
+  paidWith?: string | null;
   paymentMethod?: PaymentMethodKind;
   soldByUserId?: string | null;
   termsAccepted?: boolean;
@@ -408,6 +411,7 @@ export async function issueTicketsForOrder({
         ...(buyerAddress ? { buyerAddress } : {}),
         ...(paymentIntentId ? { stripePaymentIntentId: paymentIntentId } : {}),
         ...(chargeId ? { stripeChargeId: chargeId } : {}),
+        ...(paidWith ? { paidWith } : {}),
         ...(paymentMethod ? { paymentMethod } : {}),
         ...(soldByUserId ? { soldByUserId } : {}),
         ...(termsAccepted ? { termsAcceptedAt: new Date() } : {}),
@@ -501,6 +505,7 @@ export async function issueTicketsForOrder({
     orderId,
     paymentIntentId: result.refundIntentId,
     chargeId: chargeId ?? null,
+    paidWith: paidWith ?? null,
     buyerEmail: buyerEmail ?? null,
     buyerName: buyerName ?? null,
   });
@@ -518,12 +523,14 @@ async function refundLatePayment({
   orderId,
   paymentIntentId,
   chargeId,
+  paidWith,
   buyerEmail,
   buyerName,
 }: {
   orderId: string;
   paymentIntentId: string;
   chargeId: string | null;
+  paidWith: string | null;
   buyerEmail: string | null;
   buyerName: string | null;
 }): Promise<void> {
@@ -545,6 +552,7 @@ async function refundLatePayment({
       stripePaymentIntentId: paymentIntentId,
       // Who paid, for the admin and for the refund email.
       ...(chargeId ? { stripeChargeId: chargeId } : {}),
+      ...(paidWith ? { paidWith } : {}),
       ...(buyerEmail ? { buyerEmail: buyerEmail.toLowerCase().trim() } : {}),
       ...(buyerName ? { buyerName } : {}),
     },

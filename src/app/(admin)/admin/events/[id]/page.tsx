@@ -23,22 +23,20 @@ export default function AdminEventPage() {
 
   if (event.isPending) {
     return (
-      <div className="px-4 py-5 sm:px-6 sm:py-6 lg:p-8">
+      <div className="px-4 py-4 sm:px-6 sm:py-5">
         <Skeleton className="h-12 w-1/2" />
         <Skeleton className="mt-6 h-96 w-full" />
       </div>
     );
   }
   if (!event.data) {
-    return (
-      <div className="px-4 py-5 sm:px-6 sm:py-6 lg:p-8">Event not found.</div>
-    );
+    return <div className="px-4 py-4 sm:px-6 sm:py-5">Event not found.</div>;
   }
 
   return (
     <>
       {approvals.data && approvals.data.length > 0 && (
-        <div className="mx-auto w-full max-w-7xl px-4 pt-5 sm:px-6 lg:px-8 lg:pt-8">
+        <div className="mx-auto w-full max-w-7xl px-4 pt-4 sm:px-6 sm:pt-5">
           <ApprovalQueue eventId={params.id} count={approvals.data.length} />
         </div>
       )}
@@ -113,7 +111,7 @@ function ApprovalQueue({ eventId, count }: { eventId: string; count: number }) {
   ];
 
   return (
-    <div className="mb-6 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4">
+    <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
       <DataTable
         title={`${count} guest list request${count === 1 ? "" : "s"} waiting`}
         columns={columns}

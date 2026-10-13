@@ -898,6 +898,8 @@ model Donation {
 
   stripePaymentIntentId String  @unique
   stripeChargeId        String?
+  /// How they paid, as Stripe recorded it: `apple_pay`, `google_pay`, `card`. See `paidWithFromCharge`.
+  paidWith              String?
 
   donorEmail String?
   donorName  String?
@@ -1743,6 +1745,9 @@ model TicketOrder {
 
   stripePaymentIntentId String? @unique
   stripeChargeId        String?
+  /// How the buyer checked out, as Stripe recorded it: `apple_pay`,
+  /// `google_pay`, `link`, `card`. Null on orders Stripe never touched.
+  paidWith              String?
   soldByUserId          String?
 
   termsAcceptedAt DateTime?

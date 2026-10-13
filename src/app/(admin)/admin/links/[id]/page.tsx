@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { keepPreviousData } from "@tanstack/react-query";
 import { ExternalLink, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -14,7 +15,17 @@ import {
   qrHref,
 } from "~/components/admin/short-links/qr-downloads";
 import { LinkForm } from "~/components/admin/short-links/link-form";
-import { formatEventDateTime } from "~/lib/ticketing/dates";
+import {
+  DEFAULT_EVENT_TIMEZONE,
+  formatEventDate,
+  formatEventDateTime,
+} from "~/lib/ticketing/dates";
+import {
+  bucketSeries,
+  bucketUnit,
+  type AnalyticsRange,
+} from "~/lib/analytics-range";
+import { RangeSwitch } from "~/components/admin/range-switch";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -32,6 +43,7 @@ import { DataTable, type DataTableColumn } from "~/components/data-table";
 import { useConfirm } from "~/components/confirm-provider";
 import { useTabParam } from "~/hooks/use-tab-param";
 import { formatDateTime } from "~/lib/date-utils";
+import { cn } from "~/lib/utils";
 import { domainLabel, shortLinkUrl } from "~/lib/short-links/domains";
 
 type ShortLink = RouterOutputs["shortLinks"]["byId"];
@@ -46,16 +58,14 @@ export default function ShortLinkPage() {
 
   if (link.isPending) {
     return (
-      <div className="px-4 py-5 sm:px-6 sm:py-6 lg:p-8">
+      <div className="px-4 py-4 sm:px-6 sm:py-5">
         <Skeleton className="h-12 w-1/2" />
         <Skeleton className="mt-6 h-96 w-full" />
       </div>
     );
   }
   if (!link.data) {
-    return (
-      <div className="px-4 py-5 sm:px-6 sm:py-6 lg:p-8">Link not found.</div>
-    );
+    return <div className="px-4 py-4 sm:px-6 sm:py-5">Link not found.</div>;
   }
 
   const data = link.data;
@@ -112,13 +122,13 @@ function Overview({ link }: { link: ShortLink }) {
   const { totals, breakdown } = link;
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-lg border p-5">
+    <div className="space-y-3">
+      <section className="rounded-lg border p-3">
         <p className="text-muted-foreground text-sm">Goes to</p>
         <p className="mt-1 font-mono text-sm break-all">{link.destination}</p>
       </section>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-3">
         <StatTile label="Clicks" value={totals.clicks.toLocaleString()} />
         <StatTile
           label="People"
@@ -132,14 +142,9 @@ function Overview({ link }: { link: ShortLink }) {
         />
       </div>
 
-      <BucketBarChart
-        title="Clicks an hour, last 7 days"
-        buckets={link.hourly.map((hour) => ({ x: hour.hour, y: hour.n }))}
-        formatX={(date) => formatEventDateTime(date)}
-        unit={["click", "clicks"]}
-      />
+      <Clicks linkId={link.id} />
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         <Breakdown title="Where from" slices={breakdown.source} />
         <Breakdown title="Scanned or clicked" slices={breakdown.via} />
         {link.hosts.length > 1 && (
@@ -153,12 +158,46 @@ function Overview({ link }: { link: ShortLink }) {
   );
 }
 
+/** Clicks per hour, or per day past a week, over the chosen range. */
+function Clicks({ linkId }: { linkId: string }) {
+  const [range, setRange] = useState<AnalyticsRange>("7d");
+  const clicks = api.shortLinks.clicks.useQuery(
+    { id: linkId, range },
+    { placeholderData: keepPreviousData },
+  );
+  const data = clicks.data;
+  const daily = data ? bucketUnit(data.from, data.to) === "day" : false;
+
+  return (
+    <div className={cn(clicks.isPlaceholderData && "opacity-60")}>
+      <BucketBarChart
+        title={daily ? "Clicks per day" : "Clicks per hour"}
+        action={<RangeSwitch value={range} onChange={setRange} />}
+        buckets={
+          data
+            ? bucketSeries(
+                data.rows.map((row) => ({ at: row.at, n: row.n })),
+                data.from,
+                data.to,
+                DEFAULT_EVENT_TIMEZONE,
+              )
+            : []
+        }
+        formatX={(date) =>
+          daily ? formatEventDate(date) : formatEventDateTime(date)
+        }
+        unit={["click", "clicks"]}
+      />
+    </div>
+  );
+}
+
 /** Direct-labelled bars, top eight, as a share of all clicks. */
 function Breakdown({ title, slices }: { title: string; slices: Slice[] }) {
   const total = slices.reduce((sum, slice) => sum + slice.n, 0);
 
   return (
-    <div className="space-y-3 rounded-lg border p-4">
+    <div className="space-y-3 rounded-lg border p-3">
       <p className="text-muted-foreground text-sm font-medium">{title}</p>
 
       {slices.length === 0 && (

@@ -6,10 +6,10 @@ import { Plus } from "lucide-react";
 import { api } from "~/trpc/react";
 import { AdminSection } from "~/components/admin/admin-section";
 import { Button } from "~/components/ui/button";
-import { TicketEventsTable } from "~/components/admin/ticketing/ticket-events-table";
+import { TicketEventsTabs } from "~/components/admin/ticketing/ticket-events-table";
 
 export default function AdminEventsPage() {
-  const events = api.ticketEvents.list.useQuery({ includeArchived: false });
+  const events = api.ticketEvents.list.useQuery({ includeArchived: true });
 
   return (
     <AdminSection
@@ -23,7 +23,7 @@ export default function AdminEventsPage() {
         </Button>
       }
     >
-      <TicketEventsTable
+      <TicketEventsTabs
         rows={events.data ?? []}
         basePath="/admin/events"
         isLoading={events.isPending}

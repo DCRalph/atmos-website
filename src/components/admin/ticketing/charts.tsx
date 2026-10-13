@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useCallback, useId, useMemo, useState, type ReactNode } from "react";
 
 import { cn } from "~/lib/utils";
 
@@ -17,7 +17,9 @@ import { cn } from "~/lib/utils";
  * is recessive, and every plot carries a hover layer.
  */
 
-const PAD = { top: 12, right: 12, bottom: 24, left: 44 };
+type Series = "revenue" | "arrivals";
+
+const PAD = { top: 12, right: 12, bottom: 22, left: 44 };
 
 function niceCeil(value: number): number {
   if (value <= 5) return 5;
@@ -25,6 +27,23 @@ function niceCeil(value: number): number {
   const scaled = value / magnitude;
   const step = scaled <= 1 ? 1 : scaled <= 2 ? 2 : scaled <= 5 ? 5 : 10;
   return step * magnitude;
+}
+
+/**
+ * The width the plot is actually drawn at, so a chart in a wide card keeps
+ * 10px labels instead of scaling its text up with the card.
+ */
+function useWidth() {
+  const [width, setWidth] = useState(720);
+  const ref = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setWidth(Math.max(240, Math.round(entry.contentRect.width)));
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  return [ref, width] as const;
 }
 
 export function StatTile({
@@ -37,18 +56,18 @@ export function StatTile({
   label: string;
   value: string;
   sub?: string;
-  accent?: "revenue" | "arrivals";
+  accent?: Series;
   /** Money made or lost, like profit. */
   tone?: "gain" | "loss";
 }) {
   return (
-    <div className="rounded-lg border p-4">
+    <div className="rounded-lg border p-3">
       <p className="text-muted-foreground text-xs tracking-wide uppercase">
         {label}
       </p>
       <p
         className={cn(
-          "mt-1.5 text-3xl font-semibold tabular-nums",
+          "mt-1 text-2xl font-semibold tabular-nums",
           tone === "gain" && "text-emerald-600 dark:text-emerald-400",
           tone === "loss" && "text-destructive",
         )}
@@ -56,7 +75,115 @@ export function StatTile({
       >
         {value}
       </p>
-      {sub && <p className="text-muted-foreground mt-1 text-sm">{sub}</p>}
+      {sub && <p className="text-muted-foreground mt-0.5 text-sm">{sub}</p>}
+    </div>
+  );
+}
+
+/**
+ * Headline numbers without the boxes: label over value, four across, the same
+ * information as a row of `StatTile`s in a fraction of the height.
+ */
+export function StatStrip({
+  items,
+}: {
+  items: { label: string; value: string; sub?: string; accent?: Series }[];
+}) {
+  return (
+    <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-4">
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className="flex min-w-0 flex-wrap items-baseline gap-x-2"
+        >
+          <dt className="text-muted-foreground w-full text-xs tracking-wide uppercase">
+            {item.label}
+          </dt>
+          <dd
+            className="text-xl font-semibold tabular-nums"
+            style={
+              item.accent
+                ? { color: `var(--ticket-series-${item.accent})` }
+                : undefined
+            }
+          >
+            {item.value}
+          </dd>
+          {item.sub ? (
+            <dd className="text-muted-foreground text-sm">{item.sub}</dd>
+          ) : null}
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/** A bordered card around one chart or list: title left, a control right. */
+export function ChartCard({
+  title,
+  action,
+  className,
+  children,
+}: {
+  title: string;
+  action?: ReactNode;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <figure className={cn("min-w-0 rounded-lg border p-3", className)}>
+      <figcaption className="mb-2 flex min-h-6 items-center justify-between gap-2">
+        <span className="text-muted-foreground text-sm font-medium">
+          {title}
+        </span>
+        {action}
+      </figcaption>
+      {children}
+    </figure>
+  );
+}
+
+/** What every chart shares: the card unless `bare`, and the empty state. */
+type PlotFrame = {
+  title: string;
+  /** A control for the card's top right, like a range switch. */
+  action?: ReactNode;
+  /** Just the plot, for stacking inside a card that's already there. */
+  bare?: boolean;
+  height?: number;
+};
+
+function Framed({
+  title,
+  action,
+  bare,
+  children,
+}: Omit<PlotFrame, "height"> & { children: ReactNode }) {
+  return bare ? (
+    children
+  ) : (
+    <ChartCard title={title} action={action}>
+      {children}
+    </ChartCard>
+  );
+}
+
+function Empty({ height }: { height: number }) {
+  return (
+    <div
+      className="text-muted-foreground grid place-items-center text-sm"
+      style={{ height }}
+    >
+      Nothing to show yet.
+    </div>
+  );
+}
+
+function Tooltip({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="bg-popover text-popover-foreground pointer-events-none absolute top-0 right-0 rounded-md border px-2.5 py-1.5 text-xs shadow-sm">
+      <p className="font-medium tabular-nums">{value}</p>
+      <p className="text-muted-foreground">{label}</p>
     </div>
   );
 }
@@ -73,25 +200,23 @@ export type SeriesPoint = { x: Date; y: number };
  */
 export function TimeSeriesChart({
   points,
-  title,
   formatValue,
   formatX,
   target,
-  height = 220,
   series = "revenue",
-}: {
+  height = 200,
+  ...frame
+}: PlotFrame & {
   points: SeriesPoint[];
-  title: string;
   formatValue: (value: number) => string;
   formatX: (date: Date) => string;
   target?: { value: number; label: string };
-  height?: number;
   /** Which `--ticket-series-*` colour to draw in. */
-  series?: "revenue" | "arrivals";
+  series?: Series;
 }) {
   const gradientId = useId();
   const [hover, setHover] = useState<number | null>(null);
-  const width = 720;
+  const [ref, width] = useWidth();
 
   const geometry = useMemo(() => {
     if (points.length === 0) return null;
@@ -113,301 +238,440 @@ export function TimeSeriesChart({
 
     const line = points
       .map((point, i) =>
-        i === 0
-          ? `M${xAt(i)},${yAt(point.y)}`
-          : `H${xAt(i)} V${yAt(point.y)}`,
+        i === 0 ? `M${xAt(i)},${yAt(point.y)}` : `H${xAt(i)} V${yAt(point.y)}`,
       )
       .join(" ");
     const area = `${line} L${xAt(points.length - 1)},${PAD.top + innerH} L${xAt(0)},${PAD.top + innerH} Z`;
 
     return { maxY, innerH, xAt, yAt, line, area };
-  }, [points, height, target?.value]);
+  }, [points, width, height, target?.value]);
 
-  if (!geometry) {
-    return <EmptyPlot title={title} height={height} />;
-  }
-
-  const ticks = [0, 0.5, 1].map((fraction) => geometry.maxY * fraction);
   const active = hover !== null ? points[hover] : null;
 
   return (
-    <figure className="rounded-lg border p-4">
-      <figcaption className="text-muted-foreground mb-3 text-sm font-medium">
-        {title}
-      </figcaption>
-
-      <div className="relative">
-        <svg
-          viewBox={`0 0 ${width} ${height}`}
-          className="w-full"
-          role="img"
-          aria-label={title}
-          onPointerMove={(event) => {
-            // The nearest point to the pointer, in viewBox units.
-            const box = event.currentTarget.getBoundingClientRect();
-            const x = ((event.clientX - box.left) / box.width) * width;
-            let nearest = 0;
-            for (let i = 1; i < points.length; i++) {
-              if (
-                Math.abs(geometry.xAt(i) - x) <
-                Math.abs(geometry.xAt(nearest) - x)
-              ) {
-                nearest = i;
+    <Framed {...frame}>
+      <div ref={ref} className="relative">
+        {!geometry ? (
+          <Empty height={height} />
+        ) : (
+          <svg
+            height={height}
+            viewBox={`0 0 ${width} ${height}`}
+            className="block w-full"
+            role="img"
+            aria-label={frame.title}
+            onPointerMove={(event) => {
+              // The nearest point to the pointer, in viewBox units.
+              const box = event.currentTarget.getBoundingClientRect();
+              const x = ((event.clientX - box.left) / box.width) * width;
+              let nearest = 0;
+              for (let i = 1; i < points.length; i++) {
+                if (
+                  Math.abs(geometry.xAt(i) - x) <
+                  Math.abs(geometry.xAt(nearest) - x)
+                ) {
+                  nearest = i;
+                }
               }
-            }
-            setHover(nearest);
-          }}
-          onPointerLeave={() => setHover(null)}
-        >
-          <defs>
-            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop
-                offset="0%"
-                stopColor={`var(--ticket-series-${series})`}
-                stopOpacity="0.22"
-              />
-              <stop
-                offset="100%"
-                stopColor={`var(--ticket-series-${series})`}
-                stopOpacity="0"
-              />
-            </linearGradient>
-          </defs>
-
-          {ticks.map((tick) => (
-            <g key={tick}>
-              <line
-                x1={PAD.left}
-                x2={width - PAD.right}
-                y1={geometry.yAt(tick)}
-                y2={geometry.yAt(tick)}
-                className="stroke-border"
-                strokeWidth={1}
-              />
-              <text
-                x={PAD.left - 8}
-                y={geometry.yAt(tick)}
-                textAnchor="end"
-                dominantBaseline="middle"
-                className="fill-muted-foreground text-[10px]"
-              >
-                {formatValue(tick)}
-              </text>
-            </g>
-          ))}
-
-          {target && (
-            <g>
-              <line
-                x1={PAD.left}
-                x2={width - PAD.right}
-                y1={geometry.yAt(target.value)}
-                y2={geometry.yAt(target.value)}
-                className="stroke-foreground"
-                strokeOpacity={0.6}
-                strokeWidth={1}
-                strokeDasharray="4 4"
-              />
-              <text
-                x={width - PAD.right}
-                y={geometry.yAt(target.value) - 6}
-                textAnchor="end"
-                className="fill-foreground text-[10px]"
-              >
-                {target.label}
-              </text>
-            </g>
-          )}
-
-          <path d={geometry.area} fill={`url(#${gradientId})`} />
-          <path
-            d={geometry.line}
-            fill="none"
-            stroke={`var(--ticket-series-${series})`}
-            strokeWidth={2}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-
-          {active && hover !== null && (
-            <>
-              <line
-                x1={geometry.xAt(hover)}
-                x2={geometry.xAt(hover)}
-                y1={PAD.top}
-                y2={PAD.top + geometry.innerH}
-                className="stroke-muted-foreground"
-                strokeWidth={1}
-                strokeDasharray="3 3"
-              />
-              <circle
-                cx={geometry.xAt(hover)}
-                cy={geometry.yAt(active.y)}
-                r={5}
-                fill={`var(--ticket-series-${series})`}
-                className="stroke-background"
-                strokeWidth={2}
-              />
-            </>
-          )}
-
-          <text
-            x={PAD.left}
-            y={height - 6}
-            className="fill-muted-foreground text-[10px]"
+              setHover(nearest);
+            }}
+            onPointerLeave={() => setHover(null)}
           >
-            {formatX(points[0]!.x)}
-          </text>
-          {points.length > 1 && (
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop
+                  offset="0%"
+                  stopColor={`var(--ticket-series-${series})`}
+                  stopOpacity="0.22"
+                />
+                <stop
+                  offset="100%"
+                  stopColor={`var(--ticket-series-${series})`}
+                  stopOpacity="0"
+                />
+              </linearGradient>
+            </defs>
+
+            {[0, 0.5, 1].map((fraction) => {
+              const tick = geometry.maxY * fraction;
+              return (
+                <g key={fraction}>
+                  <line
+                    x1={PAD.left}
+                    x2={width - PAD.right}
+                    y1={geometry.yAt(tick)}
+                    y2={geometry.yAt(tick)}
+                    className="stroke-border"
+                    strokeWidth={1}
+                  />
+                  <text
+                    x={PAD.left - 8}
+                    y={geometry.yAt(tick)}
+                    textAnchor="end"
+                    dominantBaseline="middle"
+                    className="fill-muted-foreground text-[10px]"
+                  >
+                    {formatValue(tick)}
+                  </text>
+                </g>
+              );
+            })}
+
+            {target && (
+              <g>
+                <line
+                  x1={PAD.left}
+                  x2={width - PAD.right}
+                  y1={geometry.yAt(target.value)}
+                  y2={geometry.yAt(target.value)}
+                  className="stroke-foreground"
+                  strokeOpacity={0.6}
+                  strokeWidth={1}
+                  strokeDasharray="4 4"
+                />
+                <text
+                  x={PAD.left + 6}
+                  y={geometry.yAt(target.value) - 6}
+                  className="fill-foreground text-[10px]"
+                >
+                  {target.label}
+                </text>
+              </g>
+            )}
+
+            <path d={geometry.area} fill={`url(#${gradientId})`} />
+            <path
+              d={geometry.line}
+              fill="none"
+              stroke={`var(--ticket-series-${series})`}
+              strokeWidth={2}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+
+            {active && hover !== null && (
+              <>
+                <line
+                  x1={geometry.xAt(hover)}
+                  x2={geometry.xAt(hover)}
+                  y1={PAD.top}
+                  y2={PAD.top + geometry.innerH}
+                  className="stroke-muted-foreground"
+                  strokeWidth={1}
+                  strokeDasharray="3 3"
+                />
+                <circle
+                  cx={geometry.xAt(hover)}
+                  cy={geometry.yAt(active.y)}
+                  r={5}
+                  fill={`var(--ticket-series-${series})`}
+                  className="stroke-background"
+                  strokeWidth={2}
+                />
+              </>
+            )}
+
             <text
-              x={width - PAD.right}
+              x={PAD.left}
               y={height - 6}
-              textAnchor="end"
               className="fill-muted-foreground text-[10px]"
             >
-              {formatX(points.at(-1)!.x)}
+              {formatX(points[0]!.x)}
             </text>
-          )}
-        </svg>
+            {points.length > 1 && (
+              <text
+                x={width - PAD.right}
+                y={height - 6}
+                textAnchor="end"
+                className="fill-muted-foreground text-[10px]"
+              >
+                {formatX(points.at(-1)!.x)}
+              </text>
+            )}
+          </svg>
+        )}
 
         {active && (
-          <div className="bg-popover text-popover-foreground pointer-events-none absolute top-2 right-2 rounded-md border px-2.5 py-1.5 text-xs shadow-sm">
-            <p className="font-medium tabular-nums">{formatValue(active.y)}</p>
-            <p className="text-muted-foreground">{formatX(active.x)}</p>
-          </div>
+          <Tooltip value={formatValue(active.y)} label={formatX(active.x)} />
         )}
       </div>
-    </figure>
+    </Framed>
   );
 }
 
 /**
- * Arrival buckets. Bars because each bucket is a discrete count, and the
- * question at the door is "how hard is it coming right now".
+ * Counts per bucket: arrivals, clicks, sales per hour. Bars because each
+ * bucket is a discrete count, and the question is "how hard is it coming".
  */
 export function BucketBarChart({
   buckets,
-  title,
   formatX,
+  formatValue,
+  formatAxis = String,
   unit = ["person", "people"],
-  height = 180,
-}: {
-  buckets: { x: Date; y: number }[];
-  title: string;
+  series = "arrivals",
+  height = 160,
+  ...frame
+}: PlotFrame & {
+  buckets: SeriesPoint[];
   formatX: (date: Date) => string;
+  /** How a bar's value reads in the hover label. Defaults to a count of `unit`. */
+  formatValue?: (value: number) => string;
+  /** The scale's top label, which has room for a number and no more. */
+  formatAxis?: (value: number) => string;
   /** What one bar counts, singular and plural, for the hover label. */
   unit?: [string, string];
-  height?: number;
+  series?: Series;
 }) {
   const [hover, setHover] = useState<number | null>(null);
-  const width = 720;
-
-  if (buckets.length === 0) {
-    return <EmptyPlot title={title} height={height} />;
-  }
+  const [ref, width] = useWidth();
 
   const maxY = niceCeil(Math.max(...buckets.map((b) => b.y), 1));
   const innerW = width - PAD.left - PAD.right;
   const innerH = height - PAD.top - PAD.bottom;
-  const slot = innerW / buckets.length;
-  // 2px of surface between bars, so adjacent fills never merge into one block.
-  const barW = Math.max(2, slot - 2);
+  const slot = innerW / Math.max(buckets.length, 1);
+  // A surface gap between bars where there's room for one, so adjacent fills
+  // never merge into one block; dense ranges get hairline bars instead.
+  const barW = slot >= 4 ? slot - 2 : Math.max(1, slot - 0.5);
 
   const active = hover !== null ? buckets[hover] : null;
+  const valueLabel = (value: number) =>
+    formatValue
+      ? formatValue(value)
+      : `${value} ${value === 1 ? unit[0] : unit[1]}`;
 
   return (
-    <figure className="rounded-lg border p-4">
-      <figcaption className="text-muted-foreground mb-3 text-sm font-medium">
-        {title}
-      </figcaption>
-
-      <div className="relative">
-        <svg
-          viewBox={`0 0 ${width} ${height}`}
-          className="w-full"
-          role="img"
-          aria-label={title}
-          onPointerLeave={() => setHover(null)}
-        >
-          <line
-            x1={PAD.left}
-            x2={width - PAD.right}
-            y1={PAD.top + innerH}
-            y2={PAD.top + innerH}
-            className="stroke-border"
-            strokeWidth={1}
-          />
-          <text
-            x={PAD.left - 8}
-            y={PAD.top}
-            textAnchor="end"
-            dominantBaseline="middle"
-            className="fill-muted-foreground text-[10px]"
+    <Framed {...frame}>
+      <div ref={ref} className="relative">
+        {buckets.length === 0 ? (
+          <Empty height={height} />
+        ) : (
+          <svg
+            height={height}
+            viewBox={`0 0 ${width} ${height}`}
+            className="block w-full"
+            role="img"
+            aria-label={frame.title}
+            onPointerMove={(event) => {
+              const box = event.currentTarget.getBoundingClientRect();
+              const x = ((event.clientX - box.left) / box.width) * width;
+              const index = Math.floor((x - PAD.left) / slot);
+              setHover(index >= 0 && index < buckets.length ? index : null);
+            }}
+            onPointerLeave={() => setHover(null)}
           >
-            {maxY}
-          </text>
+            <line
+              x1={PAD.left}
+              x2={width - PAD.right}
+              y1={PAD.top + innerH}
+              y2={PAD.top + innerH}
+              className="stroke-border"
+              strokeWidth={1}
+            />
+            <text
+              x={PAD.left - 8}
+              y={PAD.top}
+              textAnchor="end"
+              dominantBaseline="middle"
+              className="fill-muted-foreground text-[10px]"
+            >
+              {formatAxis(maxY)}
+            </text>
 
-          {buckets.map((bucket, i) => {
-            const barH = (bucket.y / maxY) * innerH;
-            return (
-              <g key={bucket.x.toISOString()}>
+            {buckets.map((bucket, i) => {
+              if (bucket.y <= 0) return null;
+              const barH = Math.max((bucket.y / maxY) * innerH, 2);
+              return (
                 <rect
+                  key={bucket.x.getTime()}
                   x={PAD.left + i * slot + (slot - barW) / 2}
                   y={PAD.top + innerH - barH}
                   width={barW}
-                  height={Math.max(barH, bucket.y > 0 ? 2 : 0)}
-                  rx={2}
-                  fill="var(--ticket-series-arrivals)"
+                  height={barH}
+                  rx={barW >= 4 ? 2 : 0}
+                  fill={`var(--ticket-series-${series})`}
                   opacity={hover === null || hover === i ? 1 : 0.55}
                 />
-                <rect
-                  x={PAD.left + i * slot}
-                  y={PAD.top}
-                  width={slot}
-                  height={innerH}
-                  fill="transparent"
-                  onPointerEnter={() => setHover(i)}
-                />
-              </g>
-            );
-          })}
+              );
+            })}
 
-          <text
-            x={PAD.left}
-            y={height - 6}
-            className="fill-muted-foreground text-[10px]"
-          >
-            {formatX(buckets[0]!.x)}
-          </text>
-          {buckets.length > 1 && (
+            {hover !== null && (
+              <rect
+                x={PAD.left + hover * slot}
+                y={PAD.top}
+                width={slot}
+                height={innerH}
+                className="fill-foreground"
+                opacity={0.06}
+              />
+            )}
+
             <text
-              x={width - PAD.right}
+              x={PAD.left}
               y={height - 6}
-              textAnchor="end"
               className="fill-muted-foreground text-[10px]"
             >
-              {formatX(buckets.at(-1)!.x)}
+              {formatX(buckets[0]!.x)}
             </text>
-          )}
-        </svg>
+            {buckets.length > 1 && (
+              <text
+                x={width - PAD.right}
+                y={height - 6}
+                textAnchor="end"
+                className="fill-muted-foreground text-[10px]"
+              >
+                {formatX(buckets.at(-1)!.x)}
+              </text>
+            )}
+          </svg>
+        )}
 
         {active && (
-          <div className="bg-popover text-popover-foreground pointer-events-none absolute top-2 right-2 rounded-md border px-2.5 py-1.5 text-xs shadow-sm">
-            <p className="font-medium tabular-nums">
-              {active.y} {active.y === 1 ? unit[0] : unit[1]}
-            </p>
-            <p className="text-muted-foreground">{formatX(active.x)}</p>
-          </div>
+          <Tooltip value={valueLabel(active.y)} label={formatX(active.x)} />
         )}
       </div>
-    </figure>
+    </Framed>
+  );
+}
+
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const HOUR_LABELS: Record<number, string> = {
+  0: "12a",
+  6: "6a",
+  12: "12p",
+  18: "6p",
+};
+
+const hourName = (hour: number) =>
+  `${hour % 12 === 0 ? 12 : hour % 12}${hour < 12 ? " am" : " pm"}`;
+
+/**
+ * When in the week something happens: a day by hour grid, one hue getting
+ * stronger with the count. `cells` are sparse, `day` 1 being Monday.
+ */
+export function WeekHeatmap({
+  cells,
+  unit,
+  series = "revenue",
+}: {
+  cells: { day: number; hour: number; n: number }[];
+  unit: [string, string];
+  series?: Series;
+}) {
+  const [hover, setHover] = useState<{ day: number; hour: number } | null>(
+    null,
+  );
+  const counts = new Map(
+    cells.map((cell) => [`${cell.day}:${cell.hour}`, cell.n]),
+  );
+  const max = Math.max(1, ...cells.map((cell) => cell.n));
+  const active = hover ? (counts.get(`${hover.day}:${hover.hour}`) ?? 0) : null;
+
+  return (
+    <div className="relative" onPointerLeave={() => setHover(null)}>
+      <div className="grid grid-cols-[2rem_repeat(24,minmax(0,1fr))] gap-0.5">
+        {WEEKDAYS.map((name, row) => (
+          <div key={name} className="contents">
+            <span className="text-muted-foreground self-center text-[10px]">
+              {name}
+            </span>
+            {Array.from({ length: 24 }, (_, hour) => {
+              const n = counts.get(`${row + 1}:${hour}`) ?? 0;
+              return (
+                <span
+                  key={hour}
+                  onPointerEnter={() => setHover({ day: row + 1, hour })}
+                  className={cn(
+                    "aspect-square rounded-[3px]",
+                    n === 0 && "bg-muted",
+                    hover?.day === row + 1 &&
+                      hover.hour === hour &&
+                      "ring-foreground ring-1",
+                  )}
+                  style={
+                    n > 0
+                      ? {
+                          background: `var(--ticket-series-${series})`,
+                          // A square root keeps one busy hour from washing
+                          // every other cell out to near nothing.
+                          opacity: 0.25 + 0.75 * Math.sqrt(n / max),
+                        }
+                      : undefined
+                  }
+                />
+              );
+            })}
+          </div>
+        ))}
+        <span />
+        {Array.from({ length: 24 }, (_, hour) => (
+          <span
+            key={hour}
+            className="text-muted-foreground text-[10px] leading-4 whitespace-nowrap"
+          >
+            {HOUR_LABELS[hour] ?? ""}
+          </span>
+        ))}
+      </div>
+
+      {hover && active !== null && (
+        <Tooltip
+          value={`${active} ${active === 1 ? unit[0] : unit[1]}`}
+          label={`${WEEKDAYS[hover.day - 1]} ${hourName(hover.hour)}`}
+        />
+      )}
+    </div>
   );
 }
 
 /**
- * Tier progress. Direct-labelled rather than legended, so the label carries
- * identity and the colour is only doing magnitude.
+ * Direct-labelled bars: a label, a number on the right, and a bar for its
+ * share of `max` (the largest row unless given). The label carries identity,
+ * so the colour is only doing magnitude.
  */
+export function BarList({
+  rows,
+  max,
+  series = "revenue",
+  empty = "Nothing yet.",
+}: {
+  rows: { key: string; label: string; value: number; detail: string }[];
+  max?: number;
+  series?: Series;
+  empty?: string;
+}) {
+  const scale = max ?? Math.max(1, ...rows.map((row) => row.value));
+
+  if (rows.length === 0) {
+    return <p className="text-muted-foreground text-sm">{empty}</p>;
+  }
+
+  return (
+    <ul className="space-y-2">
+      {rows.map((row) => (
+        <li key={row.key}>
+          <div className="flex items-baseline justify-between gap-3 text-sm">
+            <span className="truncate">{row.label}</span>
+            <span className="text-muted-foreground shrink-0 tabular-nums">
+              {row.detail}
+            </span>
+          </div>
+          <div className="bg-muted mt-1 h-1.5 w-full overflow-hidden rounded-full">
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${Math.min(100, (row.value / scale) * 100)}%`,
+                background: `var(--ticket-series-${series})`,
+              }}
+            />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Tier progress: each tier's sales against its own allocation. */
 export function TierBars({
   tiers,
   formatMoney,
@@ -422,54 +686,17 @@ export function TierBars({
   formatMoney: (cents: number) => string;
 }) {
   return (
-    <div className="space-y-3 rounded-lg border p-4">
-      <p className="text-muted-foreground text-sm font-medium">Sales by tier</p>
-
-      {tiers.length === 0 && (
-        <p className="text-muted-foreground text-sm">No tiers yet.</p>
-      )}
-
-      {tiers.map((tier) => {
-        const percent =
-          tier.allocation > 0
-            ? Math.min(100, Math.round((tier.sold / tier.allocation) * 100))
-            : 0;
-        return (
-          <div key={tier.id}>
-            <div className="flex items-baseline justify-between gap-3 text-sm">
-              <span className="truncate font-medium">{tier.name}</span>
-              <span className="text-muted-foreground shrink-0 tabular-nums">
-                {tier.sold}/{tier.allocation} · {formatMoney(tier.revenueCents)}
-              </span>
-            </div>
-            <div className="bg-muted mt-1.5 h-2 w-full overflow-hidden rounded-full">
-              <div
-                className="h-full rounded-full"
-                style={{
-                  width: `${percent}%`,
-                  background: "var(--ticket-series-revenue)",
-                }}
-              />
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function EmptyPlot({ title, height }: { title: string; height: number }) {
-  return (
-    <figure className="rounded-lg border p-4">
-      <figcaption className="text-muted-foreground mb-3 text-sm font-medium">
-        {title}
-      </figcaption>
-      <div
-        className="text-muted-foreground grid place-items-center text-sm"
-        style={{ height }}
-      >
-        Nothing to show yet.
-      </div>
-    </figure>
+    <ChartCard title="Sales by tier">
+      <BarList
+        empty="No tiers yet."
+        max={100}
+        rows={tiers.map((tier) => ({
+          key: tier.id,
+          label: tier.name,
+          value: tier.allocation > 0 ? (tier.sold / tier.allocation) * 100 : 0,
+          detail: `${tier.sold}/${tier.allocation} · ${formatMoney(tier.revenueCents)}`,
+        }))}
+      />
+    </ChartCard>
   );
 }

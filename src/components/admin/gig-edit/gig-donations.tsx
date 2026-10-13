@@ -1,6 +1,10 @@
 "use client";
 
+import { useState } from "react";
+
 import { api } from "~/trpc/react";
+import { RangeSwitch } from "~/components/admin/range-switch";
+import { rangeStart, type AnalyticsRange } from "~/lib/analytics-range";
 import { StatTile, TimeSeriesChart } from "~/components/admin/ticketing/charts";
 import { Skeleton } from "~/components/ui/skeleton";
 import {
@@ -80,16 +84,7 @@ export function GigDonations({ gigId }: { gigId: string }) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <TimeSeriesChart
-          title="Raised over time"
-          series="arrivals"
-          points={summary.cumulative.map((point) => ({
-            x: point.at,
-            y: point.cents,
-          }))}
-          formatValue={(cents) => formatNZDCompact(Math.round(cents))}
-          formatX={(date) => formatEventDateTime(date)}
-        />
+        <RaisedOverTime cumulative={summary.cumulative} />
 
         <section className="space-y-3 rounded-lg border p-4">
           <h2 className="text-muted-foreground text-sm font-medium">
@@ -176,5 +171,46 @@ export function GigDonations({ gigId }: { gigId: string }) {
         </Table>
       </section>
     </div>
+  );
+}
+
+/**
+ * The running total, one step per donation. A range starts the line at
+ * whatever had been raised by then, rather than back at zero.
+ */
+function RaisedOverTime({
+  cumulative,
+}: {
+  cumulative: { at: Date; cents: number }[];
+}) {
+  const [range, setRange] = useState<AnalyticsRange>("all");
+  const now = new Date();
+  const since = rangeStart(range, now);
+  const inRange = cumulative
+    .filter((point) => !since || point.at >= since)
+    .map((point) => ({ x: point.at, y: point.cents }));
+  const before = since
+    ? (cumulative.filter((point) => point.at < since).at(-1)?.cents ?? 0)
+    : 0;
+  // A range runs edge to edge: from what had been raised when it opened,
+  // held flat to now.
+  const points =
+    since && (inRange.length > 0 || before > 0)
+      ? [
+          { x: since, y: before },
+          ...inRange,
+          { x: now, y: inRange.at(-1)?.y ?? before },
+        ]
+      : inRange;
+
+  return (
+    <TimeSeriesChart
+      title="Raised over time"
+      action={<RangeSwitch value={range} onChange={setRange} />}
+      series="arrivals"
+      points={points}
+      formatValue={(cents) => formatNZDCompact(Math.round(cents))}
+      formatX={(date) => formatEventDateTime(date)}
+    />
   );
 }

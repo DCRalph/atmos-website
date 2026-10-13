@@ -109,14 +109,25 @@ const NO_TICKET_FILTERS: TicketFilters = {
   accessLevel: null,
 };
 
-export function TicketsPanel({ eventId }: { eventId: string }) {
+/**
+ * Every ticket on an event. `readOnly` is the organiser's view: the list and
+ * each ticket's details and scans, with no renaming, voiding or refunding.
+ */
+export function TicketsPanel({
+  eventId,
+  readOnly = false,
+}: {
+  eventId: string;
+  readOnly?: boolean;
+}) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<TicketRow | null>(null);
   const [deleting, setDeleting] = useState<TicketRow[] | null>(null);
   // Deleting is superadmin-only; everyone else voids or refunds.
   const me = api.user.me.useQuery();
   const canDelete =
-    me.data?.effectivePermissions.includes("SUPERADMIN") ?? false;
+    !readOnly &&
+    (me.data?.effectivePermissions.includes("SUPERADMIN") ?? false);
   const [filters, setFilters] = useState<TicketFilters>(NO_TICKET_FILTERS);
   const { all: levels, level } = useAccessLevels();
   const debouncedSearch = useDebouncedValue(search);
@@ -222,9 +233,7 @@ export function TicketsPanel({ eventId }: { eventId: string }) {
       header: "Access",
       accessor: (row) => row.accessLevel,
       cell: (row) => (
-        <Badge variant="outline">
-          {level(row.accessLevel).short}
-        </Badge>
+        <Badge variant="outline">{level(row.accessLevel).short}</Badge>
       ),
     },
     {
@@ -381,6 +390,7 @@ export function TicketsPanel({ eventId }: { eventId: string }) {
             <TicketDetail
               key={openTicket.id}
               ticket={openTicket}
+              readOnly={readOnly}
               onDelete={
                 canDelete
                   ? () => {
@@ -525,9 +535,11 @@ function DeleteTicketsDialog({
 
 function TicketDetail({
   ticket,
+  readOnly,
   onDelete,
 }: {
   ticket: TicketRow;
+  readOnly: boolean;
   /** Absent for anyone who isn't a superadmin. */
   onDelete?: () => void;
 }) {
@@ -609,47 +621,53 @@ function TicketDetail({
         </p>
       )}
 
-      <TicketLink ticket={ticket} />
+      {ticket.ticketUrl ? (
+        <TicketLink ticket={ticket} url={ticket.ticketUrl} />
+      ) : null}
 
-      <div className="space-y-2">
-        <Label htmlFor={`ticket-name-${ticket.id}`}>Attendee name</Label>
-        <div className="flex gap-2">
-          <Input
-            id={`ticket-name-${ticket.id}`}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={120}
-            placeholder="Name on the ticket"
-          />
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={!nameDirty || setTicketName.isPending}
-            onClick={() =>
-              setTicketName.mutate({
-                ticketId: ticket.id,
-                attendeeName: name.trim(),
-              })
-            }
-          >
-            Save
-          </Button>
-        </div>
-        {ticket.nameLockedAt && (
-          <p className="text-muted-foreground text-xs">
-            The buyer can no longer change this name. Saving here overrides
-            that.
-          </p>
-        )}
-      </div>
+      {readOnly ? null : (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor={`ticket-name-${ticket.id}`}>Attendee name</Label>
+            <div className="flex gap-2">
+              <Input
+                id={`ticket-name-${ticket.id}`}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={120}
+                placeholder="Name on the ticket"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!nameDirty || setTicketName.isPending}
+                onClick={() =>
+                  setTicketName.mutate({
+                    ticketId: ticket.id,
+                    attendeeName: name.trim(),
+                  })
+                }
+              >
+                Save
+              </Button>
+            </div>
+            {ticket.nameLockedAt && (
+              <p className="text-muted-foreground text-xs">
+                The buyer can no longer change this name. Saving here overrides
+                that.
+              </p>
+            )}
+          </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <Label>Access level</Label>
-        <TicketAccessLevelSelect
-          ticketId={ticket.id}
-          value={ticket.accessLevel}
-        />
-      </div>
+          <div className="flex items-center justify-between gap-3">
+            <Label>Access level</Label>
+            <TicketAccessLevelSelect
+              ticketId={ticket.id}
+              value={ticket.accessLevel}
+            />
+          </div>
+        </>
+      )}
 
       {ticket.scans.length > 0 && (
         <div>
@@ -669,7 +687,7 @@ function TicketDetail({
         </div>
       )}
 
-      {isValid && (
+      {isValid && !readOnly && (
         <div className="space-y-3 border-t pt-4">
           <div className="space-y-2">
             <Label htmlFor={`void-reason-${ticket.id}`}>Void reason</Label>
@@ -759,12 +777,12 @@ function TicketDetail({
  * key on the end is a bearer credential — whoever holds the link holds the
  * ticket — which is why the warning sits under it rather than in a tooltip.
  */
-function TicketLink({ ticket }: { ticket: TicketRow }) {
+function TicketLink({ ticket, url }: { ticket: TicketRow; url: string }) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(ticket.ticketUrl);
+      await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -777,7 +795,7 @@ function TicketLink({ ticket }: { ticket: TicketRow }) {
       <Label>Ticket link</Label>
       <div className="flex flex-wrap items-center gap-2">
         <code className="bg-muted min-w-0 flex-1 truncate rounded-md px-2.5 py-1.5 font-mono text-xs">
-          {ticket.ticketUrl}
+          {url}
         </code>
         <Button size="sm" variant="outline" onClick={() => void copy()}>
           {copied ? (
@@ -791,7 +809,7 @@ function TicketLink({ ticket }: { ticket: TicketRow }) {
           )}
         </Button>
         <Button size="icon-sm" variant="ghost" asChild>
-          <a href={ticket.ticketUrl} target="_blank" rel="noreferrer">
+          <a href={url} target="_blank" rel="noreferrer">
             <ExternalLink className="size-3.5" />
             <span className="sr-only">Open ticket</span>
           </a>
