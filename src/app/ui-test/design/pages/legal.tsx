@@ -503,10 +503,10 @@ function ReaderDoc({ initial }: { initial: DocId }) {
 export const legalPage: PageSpec = {
   id: "legal",
   title: "Privacy & terms",
-  route: "/privacy",
+  route: "/legal/privacy",
   states: [
-    { id: "privacy", label: "Privacy", hint: "/privacy" },
-    { id: "terms", label: "Terms", hint: "/terms" },
+    { id: "privacy", label: "Privacy", hint: "/legal/privacy" },
+    { id: "terms", label: "Terms", hint: "/legal/terms" },
   ],
   drafts: [
     {

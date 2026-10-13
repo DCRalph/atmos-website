@@ -37,7 +37,8 @@ const APP_ID = `${TEAM_ID}.${BUNDLE_ID}`;
  * nested web-only pages (`/gigs/<id>/photo-signup`, `/tickets/<token>/details`)
  * stay in the browser, including ones added later.
  *
- * Also excluded: `/tickets/terms` is a web page, and `/t/*` is a single-ticket
+ * Also excluded: `/tickets/terms`, still on passes already issued and now a
+ * redirect to the web page `/legal/ticket-terms`, and `/t/*`, a single-ticket
  * view the app does not have.
  */
 const PATHS = [

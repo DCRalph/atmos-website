@@ -79,19 +79,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     },
     {
-      url: `${SITE_URL}/privacy`,
+      url: `${SITE_URL}/legal/privacy`,
       lastModified: new Date(),
       changeFrequency: "yearly",
       priority: 0.3,
     },
     {
-      url: `${SITE_URL}/terms`,
+      url: `${SITE_URL}/legal/terms`,
       lastModified: new Date(),
       changeFrequency: "yearly",
       priority: 0.3,
     },
     {
-      url: `${SITE_URL}/tickets/terms`,
+      url: `${SITE_URL}/legal/ticket-terms`,
       lastModified: new Date(),
       changeFrequency: "yearly",
       priority: 0.3,

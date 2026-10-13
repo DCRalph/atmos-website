@@ -21,8 +21,8 @@ const footerLinks = [
   { label: "Crew", href: "/crew" },
   { label: "Contact", href: "/contact" },
   { label: "Equipment", href: "/equipment" },
-  { label: "Privacy", href: "/privacy" },
-  { label: "Terms", href: "/terms" },
+  { label: "Privacy", href: "/legal/privacy" },
+  { label: "Terms", href: "/legal/terms" },
 ] as const;
 
 const footerSocials = [

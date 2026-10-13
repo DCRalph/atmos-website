@@ -126,7 +126,7 @@ export async function buildGoogleWalletSaveUrl({
     linksModuleData: {
       uris: [
         {
-          uri: `${appUrl}/tickets/terms`,
+          uri: `${appUrl}/legal/ticket-terms`,
           description: "Ticket terms",
           id: "terms",
         },

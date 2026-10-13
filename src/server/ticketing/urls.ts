@@ -68,9 +68,9 @@ export function eventsUrl(): string {
 }
 
 export function termsUrl(): string {
-  return `${base()}/tickets/terms`;
+  return `${base()}/legal/ticket-terms`;
 }
 
 export function privacyUrl(): string {
-  return `${base()}/privacy`;
+  return `${base()}/legal/privacy`;
 }

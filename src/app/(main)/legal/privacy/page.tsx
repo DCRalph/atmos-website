@@ -6,7 +6,7 @@ export const metadata = pageMetadata({
   title: "Privacy",
   description:
     "How Atmos collects, uses and protects your information, including when you buy a ticket.",
-  path: "/privacy",
+  path: "/legal/privacy",
 });
 
 export default function PrivacyPage() {

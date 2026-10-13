@@ -297,11 +297,11 @@ export default function SignInScreen() {
           // it first.
           <Caption style={{ textAlign: "center" }}>
             Creating an account means you accept the{" "}
-            <Caption style={styles.link} onPress={() => openWeb("/terms")}>
+            <Caption style={styles.link} onPress={() => openWeb("/legal/terms")}>
               terms
             </Caption>{" "}
             and{" "}
-            <Caption style={styles.link} onPress={() => openWeb("/privacy")}>
+            <Caption style={styles.link} onPress={() => openWeb("/legal/privacy")}>
               privacy policy
             </Caption>
             .

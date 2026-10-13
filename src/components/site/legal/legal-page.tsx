@@ -169,9 +169,9 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
 /** Privacy / Terms / Ticket terms pills, one per route. */
 function DocSwitch({ current }: { current: LegalDoc["id"] }) {
   const docs = [
-    { id: "privacy", label: "Privacy", href: "/privacy" },
-    { id: "terms", label: "Terms", href: "/terms" },
-    { id: "ticket-terms", label: "Ticket terms", href: "/tickets/terms" },
+    { id: "privacy", label: "Privacy", href: "/legal/privacy" },
+    { id: "terms", label: "Terms", href: "/legal/terms" },
+    { id: "ticket-terms", label: "Ticket terms", href: "/legal/ticket-terms" },
   ] as const;
   return (
     <nav className="flex flex-wrap gap-2" aria-label="Legal documents">

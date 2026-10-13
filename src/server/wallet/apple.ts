@@ -221,7 +221,7 @@ export async function buildApplePass({
           label: "Terms",
           value:
             "One entry per ticket. The first scan is the one that gets in. Full terms: " +
-            `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/tickets/terms`,
+            `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/legal/ticket-terms`,
         },
       ],
     },

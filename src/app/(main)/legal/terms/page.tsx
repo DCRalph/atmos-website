@@ -6,7 +6,7 @@ export const metadata = pageMetadata({
   title: "Terms",
   description:
     "The terms for using the Atmos website, buying tickets and coming to our events.",
-  path: "/terms",
+  path: "/legal/terms",
 });
 
 export default function TermsPage() {

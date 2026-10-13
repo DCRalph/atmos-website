@@ -314,8 +314,8 @@ export default function MoreScreen() {
 
           <View>
             <Eyebrow style={styles.sectionLabel}>Legal</Eyebrow>
-            <Row label="Terms" web onPress={() => openWeb("/terms")} />
-            <Row label="Privacy" web onPress={() => openWeb("/privacy")} />
+            <Row label="Terms" web onPress={() => openWeb("/legal/terms")} />
+            <Row label="Privacy" web onPress={() => openWeb("/legal/privacy")} />
           </View>
         </View>
       </Animated.ScrollView>

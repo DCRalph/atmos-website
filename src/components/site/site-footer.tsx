@@ -75,8 +75,8 @@ export function SiteFooter() {
           </ul>
           <ul className="flex flex-wrap gap-x-6 gap-y-2 text-[12px] text-white/55">
             {[
-              { label: "Terms", href: "/terms" },
-              { label: "Privacy", href: "/privacy" },
+              { label: "Terms", href: "/legal/terms" },
+              { label: "Privacy", href: "/legal/privacy" },
               { label: "Login", href: "/login" },
             ].map((l) => (
               <li key={l.href}>

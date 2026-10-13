@@ -449,7 +449,7 @@ export function BuyPanel({
               <p className="text-center text-[12px] leading-relaxed text-white/55">
                 Continuing means you accept the{" "}
                 <a
-                  href="/tickets/terms"
+                  href="/legal/ticket-terms"
                   target="_blank"
                   rel="noreferrer"
                   className="underline underline-offset-2"
@@ -458,7 +458,7 @@ export function BuyPanel({
                 </a>{" "}
                 and{" "}
                 <a
-                  href="/privacy"
+                  href="/legal/privacy"
                   target="_blank"
                   rel="noreferrer"
                   className="underline underline-offset-2"

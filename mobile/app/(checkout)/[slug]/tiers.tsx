@@ -270,7 +270,7 @@ export default function TiersScreen() {
               <Caption
                 style={styles.link}
                 onPress={() =>
-                  void WebBrowser.openBrowserAsync(`${API_URL}/tickets/terms`, {
+                  void WebBrowser.openBrowserAsync(`${API_URL}/legal/ticket-terms`, {
                     presentationStyle:
                       WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
                     controlsColor: colors.text,

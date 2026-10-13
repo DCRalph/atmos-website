@@ -38,7 +38,7 @@ const contactBlock: LegalBlock = {
 export const privacyDoc: LegalDoc = {
   id: "privacy",
   title: "Privacy policy",
-  route: "/privacy",
+  route: "/legal/privacy",
   updated: "29 September 2026",
   sections: [
     {
@@ -288,7 +288,7 @@ export const privacyDoc: LegalDoc = {
 export const termsDoc: LegalDoc = {
   id: "terms",
   title: "Terms and conditions",
-  route: "/terms",
+  route: "/legal/terms",
   updated: "29 September 2026",
   sections: [
     {

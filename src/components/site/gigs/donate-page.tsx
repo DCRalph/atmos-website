@@ -248,6 +248,7 @@ function DonateForm({
                 onCard={() => ready() && setStage("card")}
                 onPaid={onPaid}
               />
+              <Consent />
             </div>
           </div>
         }
@@ -615,7 +616,39 @@ function CardForm({
         <ShieldCheck className="size-3.5" aria-hidden />
         Card details go straight to Stripe. We never see them.
       </p>
+      <Consent />
     </form>
+  );
+}
+
+/**
+ * What paying agrees to, under each way to pay. New tabs, so reading them
+ * doesn't lose a half-filled card form.
+ */
+function Consent() {
+  const link = "underline underline-offset-2 hover:text-white";
+  return (
+    <p className="text-center text-[12px] leading-relaxed text-white/45">
+      Donating means you accept the{" "}
+      <a
+        href="/legal/terms#donations"
+        target="_blank"
+        rel="noreferrer"
+        className={link}
+      >
+        terms
+      </a>{" "}
+      and{" "}
+      <a
+        href="/legal/privacy#donating"
+        target="_blank"
+        rel="noreferrer"
+        className={link}
+      >
+        privacy policy
+      </a>
+      .
+    </p>
   );
 }
 

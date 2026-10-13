@@ -1,5 +1,5 @@
-// Privacy policy and terms, from the previous /privacy and /terms pages. Em
-// dashes were rewritten as commas or colons; wording is otherwise unchanged.
+// The legal documents served under /legal. Each one is a page:
+// /legal/privacy, /legal/terms and /legal/ticket-terms.
 
 import { CONTACT } from "~/lib/site-constants";
 
@@ -12,7 +12,7 @@ export type LegalBlock =
   | { contact: readonly { label: string; value: string; href: string }[] };
 
 export type LegalSection = {
-  /** Anchor id, e.g. `/privacy#cookies`. */
+  /** Anchor id, e.g. `/legal/privacy#cookies`. */
   id: string;
   n: string;
   title: string;
@@ -29,10 +29,10 @@ export type LegalDoc = {
 };
 
 /**
- * Shown as "Last updated" on both documents. Bump it whenever the text of
- * either one changes.
+ * Shown as "Last updated" on every document. Bump it whenever the text of
+ * any of them changes.
  */
-const LEGAL_UPDATED = "29 September 2026";
+const LEGAL_UPDATED = "13 October 2026";
 
 const contactBlock: LegalBlock = {
   contact: [
@@ -121,6 +121,19 @@ export const privacyDoc: LegalDoc = {
         },
         {
           p: "We keep order and scan records for seven years, which is what New Zealand tax law requires of business records, and then delete them.",
+        },
+      ],
+    },
+    {
+      id: "donating",
+      n: "2b",
+      title: "Donating",
+      blocks: [
+        {
+          p: "When you donate to a gig we record the amount, the gig, and the payment reference from Stripe. If you give us an email address for a receipt, or your wallet supplies your name and email when you use Apple Pay or Google Pay, we keep those with the donation too.",
+        },
+        {
+          p: "We use that to send your receipt, handle any problem with the payment, and keep the financial records the law requires. Donating does not sign you up to anything.",
         },
       ],
     },
@@ -352,16 +365,81 @@ export const termsDoc: LegalDoc = {
         },
         {
           p: "Tickets bought through this Website are also governed by our ticket terms, which set out refunds, entry, safety and photography in full.",
-          link: { text: "ticket terms", href: "/tickets/terms" },
+          link: { text: "ticket terms", href: "/legal/ticket-terms" },
         },
-        { sub: "3.3 Event conduct" },
+      ],
+    },
+    {
+      id: "attending",
+      n: "4",
+      title: "Coming to a gig",
+      blocks: [
         {
-          p: "By attending our events, you agree to follow all venue rules and regulations, respect other attendees, and comply with all applicable laws. We have a zero-tolerance policy for harmful or antisocial behaviour. If you feel unsafe or uncomfortable, tell venue security, bar staff or an Atmos crew member immediately.",
+          p: "Our gigs only work when everyone on the floor feels welcome and safe. By coming to one, you agree to these terms, the venue's rules and the law, and to look after the people around you.",
+        },
+        { sub: "4.1 Our kaupapa" },
+        {
+          terms: [
+            {
+              term: "Don't be a dick",
+              text: "Antisocial, threatening or discriminatory behaviour towards anyone is not welcome. That includes racism, sexism, homophobia, transphobia and ableism.",
+            },
+            {
+              term: "Don't guess the yes",
+              text: "If it's not a hell yeah, it's a hell nah. Ask before you touch anyone, and take no for an answer.",
+            },
+            {
+              term: "Pace yourself",
+              text: "Stay hydrated. Free drinking water is available at every event.",
+            },
+            {
+              term: "Look out for each other",
+              text: "Keep an eye on your friends and the people around you, and check in on anyone who seems off.",
+            },
+            {
+              term: "Live in the moment",
+              text: "Avoid phone use. The night is better lived than filmed.",
+            },
+            {
+              term: "Give people space to dance",
+              text: "Practise good dance floor etiquette. No pushing, and leave room for everyone to move.",
+            },
+            {
+              term: "Respect everyone",
+              text: "Respect the venue, the staff, the artists and each other.",
+            },
+            {
+              term: "Have fun",
+              text: "Most importantly. It's why we're all here.",
+            },
+          ],
+        },
+        { sub: "4.2 Getting help" },
+        {
+          p: "If you or someone else feels uncomfortable or unsafe, or needs medical assistance, tell venue security, bar staff or an Atmos crew member straight away. We are here to help, not to judge.",
+        },
+        { sub: "4.3 Entry" },
+        {
+          list: [
+            "Our ticketed events are strictly 18+. Bring valid photo ID: a New Zealand driver licence, a passport or a Kiwi Access Card. No ID, no entry, no refund",
+            "Door staff may scan your ID to check your age and that the ticket is yours",
+            "Each ticket admits one person once, and leaving the venue ends your admission unless the event says otherwise",
+            "Entry is subject to the venue's conditions, including any bag searches, and to the Sale and Supply of Alcohol Act 2012",
+          ],
         },
         {
-          p: "We do not condone drug use or excessive drinking. Free drinking water is available at all of our events, and if you or someone else needs medical assistance, alert staff immediately. We are here to help, not to judge. Anyone visibly overly intoxicated, or endangering themselves or others, will be removed without a refund.",
+          p: "How we handle ID scans is set out in our Privacy Policy.",
+          link: { text: "Privacy Policy", href: "/legal/privacy#id-checks" },
         },
-        { sub: "3.4 Health and safety" },
+        { sub: "4.4 Alcohol and drugs" },
+        {
+          p: "We do not condone drug use or excessive drinking. Illegal drugs, weapons and alcohol brought from outside are not allowed in. Anyone visibly overly intoxicated, or endangering themselves or others, will be removed without a refund.",
+        },
+        { sub: "4.5 Refusal of entry and removal" },
+        {
+          p: "We and the venue may refuse entry to, or remove, anyone who breaks these terms or the venue's rules, or who is behaving unsafely. No refund is given in those circumstances. Serious or repeated behaviour may lead to a ban from future Atmos events.",
+        },
+        { sub: "4.6 Health and safety" },
         { p: "Our events are loud and use production effects. Please note:" },
         {
           list: [
@@ -370,22 +448,43 @@ export const termsDoc: LegalDoc = {
             "We take reasonable precautions to prevent risks, but if you notice a hazard please report it to venue staff or an Atmos crew member",
           ],
         },
-        { sub: "3.5 Photography and recording" },
+        { sub: "4.7 Your belongings" },
         {
-          p: "All of our events are photographed and filmed for promotional purposes. By purchasing a ticket you consent to being featured in recap content and future marketing material. If you would rather not be filmed or photographed, let one of our photographers or crew members know and we'll do our best to accommodate you.",
+          p: "You are responsible for your own belongings. Neither we nor the venue are responsible for anything lost, stolen or damaged at an event.",
+        },
+        { sub: "4.8 Photography and recording" },
+        {
+          p: "All of our events are photographed and filmed for promotional purposes. By coming to an event you consent to being featured in recap content and future marketing material. If you would rather not be filmed or photographed, let one of our photographers or crew members know and we'll do our best to accommodate you.",
+        },
+      ],
+    },
+    {
+      id: "donations",
+      n: "5",
+      title: "Donations",
+      blocks: [
+        {
+          p: "Some gigs take donations to help cover what it costs to put them on. A donation is a voluntary gift. It is not a ticket, does not get you into an event, and does not buy you anything in return.",
+        },
+        {
+          list: [
+            "All amounts are in New Zealand Dollars (NZD)",
+            "Payments are processed by Stripe. We never see your full card number",
+            "Donations are not refundable. If you were charged by mistake, contact us and we'll put it right",
+          ],
         },
       ],
     },
     {
       id: "merch",
-      n: "4",
+      n: "6",
       title: "Merchandise",
       blocks: [
-        { sub: "4.1 Product information" },
+        { sub: "6.1 Product information" },
         {
           p: "We make every effort to display accurate product descriptions, images, and prices. However, we do not warrant that product descriptions or other content on the Website is accurate, complete, reliable, current, or error-free.",
         },
-        { sub: "4.2 Orders and payment" },
+        { sub: "6.2 Orders and payment" },
         { p: "When placing an order:" },
         {
           list: [
@@ -395,7 +494,7 @@ export const termsDoc: LegalDoc = {
             "Shipping costs and delivery times are estimates only",
           ],
         },
-        { sub: "4.3 Returns and refunds" },
+        { sub: "6.3 Returns and refunds" },
         {
           p: "Returns and refunds are subject to our return policy and applicable consumer protection laws. Please contact us if you have any issues with your order.",
         },
@@ -403,7 +502,7 @@ export const termsDoc: LegalDoc = {
     },
     {
       id: "ip",
-      n: "5",
+      n: "7",
       title: "Intellectual property",
       blocks: [
         {
@@ -420,7 +519,7 @@ export const termsDoc: LegalDoc = {
     },
     {
       id: "user-content",
-      n: "6",
+      n: "8",
       title: "User content",
       blocks: [
         {
@@ -430,7 +529,7 @@ export const termsDoc: LegalDoc = {
     },
     {
       id: "disclaimers",
-      n: "7",
+      n: "9",
       title: "Disclaimers",
       blocks: [
         {
@@ -440,7 +539,7 @@ export const termsDoc: LegalDoc = {
     },
     {
       id: "liability",
-      n: "8",
+      n: "10",
       title: "Limitation of liability",
       blocks: [
         {
@@ -450,7 +549,7 @@ export const termsDoc: LegalDoc = {
     },
     {
       id: "indemnification",
-      n: "9",
+      n: "11",
       title: "Indemnification",
       blocks: [
         {
@@ -460,18 +559,18 @@ export const termsDoc: LegalDoc = {
     },
     {
       id: "privacy",
-      n: "10",
+      n: "12",
       title: "Privacy",
       blocks: [
         {
           p: "Your use of the Website and Services is also governed by our Privacy Policy. Please review our Privacy Policy, which also governs your use of the Website, to understand our practices.",
-          link: { text: "Privacy Policy", href: "/privacy" },
+          link: { text: "Privacy Policy", href: "/legal/privacy" },
         },
       ],
     },
     {
       id: "modifications",
-      n: "11",
+      n: "13",
       title: "Modifications to terms",
       blocks: [
         {
@@ -481,7 +580,7 @@ export const termsDoc: LegalDoc = {
     },
     {
       id: "law",
-      n: "12",
+      n: "14",
       title: "Governing law",
       blocks: [
         {
@@ -491,7 +590,7 @@ export const termsDoc: LegalDoc = {
     },
     {
       id: "severability",
-      n: "13",
+      n: "15",
       title: "Severability",
       blocks: [
         {
@@ -501,7 +600,7 @@ export const termsDoc: LegalDoc = {
     },
     {
       id: "contact",
-      n: "14",
+      n: "16",
       title: "Contact information",
       blocks: [
         {
@@ -525,7 +624,7 @@ const blockText = (b: LegalBlock): string =>
           : "";
 
 /**
- * Terms of ticket sale, version v1, from the previous /tickets/terms page.
+ * Terms of ticket sale, version v1, from the previous /legal/ticket-terms page.
  *
  * `TicketOrder.termsVersion` records which version a buyer agreed to. If these
  * change materially, bump `version` (and the version on new orders) rather
@@ -683,7 +782,7 @@ export const ticketTermsDoc: LegalDoc = {
         },
         {
           p: "Payments are processed by Stripe, email is delivered by Resend, and files are stored with Amazon Web Services, which means some of your information is held overseas under comparable privacy safeguards. We handle it in line with the Privacy Act 2020 and our privacy policy.",
-          link: { text: "privacy policy", href: "/privacy" },
+          link: { text: "privacy policy", href: "/legal/privacy" },
         },
         {
           p: "We only email you about future events if you asked us to. You can unsubscribe at any time, and that never affects tickets you've already bought.",

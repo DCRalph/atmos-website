@@ -62,6 +62,16 @@ const config = {
   },
   // Old creator URLs from before profiles were renamed to artist profiles.
   redirects: async () => [
+    // Legal pages moved under /legal. Wallet passes, emails and older app
+    // builds still link to the old paths.
+    { source: "/privacy", destination: "/legal/privacy", permanent: true },
+    { source: "/terms", destination: "/legal/terms", permanent: true },
+    {
+      source: "/tickets/terms",
+      destination: "/legal/ticket-terms",
+      permanent: true,
+    },
+    { source: "/legal", destination: "/legal/terms", permanent: false },
     { source: "/creator/:handle", destination: "/@:handle", permanent: true },
     {
       source: "/admin/creator-profiles/:path*",
@@ -92,12 +102,12 @@ const config = {
         destination: "https://atmosmedia.co.nz/_vercel/insights/script.js",
       },
       {
-        source: '/ph/static/:path*',
-        destination: 'https://us-assets.i.posthog.com/static/:path*',
+        source: "/ph/static/:path*",
+        destination: "https://us-assets.i.posthog.com/static/:path*",
       },
       {
-        source: '/ph/:path*',
-        destination: 'https://us.i.posthog.com/:path*',
+        source: "/ph/:path*",
+        destination: "https://us.i.posthog.com/:path*",
       },
     ];
   },
