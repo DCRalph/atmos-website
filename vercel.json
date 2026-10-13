@@ -4,7 +4,8 @@
   "crons": [
     {
       "path": "/api/cron/ticketing-sweep",
-      "schedule": "0 14 * * *"
+      "schedule": "*/5 * * * *"
+ 
     }
   ],
   "headers": [
