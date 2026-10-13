@@ -1,12 +1,12 @@
 /**
  * Pretty gig URLs.
  *
- * A gig is linked by its stored slug (`/gigs/night-moves`, or
- * `/gigs/night-moves-2` for the second gig of that name) and the page
+ * A gig is linked by its stored slug (`/gigs/night-moves`) and the page
  * resolves either that or the cuid — see `resolveGigId` — so cuid links never
- * break. The slug follows the title, so renaming a gig moves its pretty URL;
- * the cuid form is the durable fallback. Slugs are kept by `syncGigSlug` in
- * `~/server/gig-slug.ts`, which uses `gigSlug` below.
+ * break. The slug is picked in the editor or made from the title when the gig
+ * is first saved, and stays put after that; changing it moves the pretty URL.
+ * Slugs are set by `claimGigSlug` in `~/server/gig-slug.ts`, which uses
+ * `gigSlug` below.
  */
 
 /** "Night Moves! Vol. 2" -> "night-moves-vol-2" */
@@ -20,8 +20,8 @@ export function gigSlug(title: string): string {
 }
 
 /**
- * What goes after `/gigs/` for this gig: its slug, or the cuid when it has
- * none (a TBA gig, whose title is a secret, or one not yet backfilled). Also
+ * What goes after `/gigs/` for this gig: its slug, or the cuid when it is TBA
+ * (the slug would give its title away) or has none. Also
  * the `id` to pass to `gigs.getById`, so a card's prefetch shares a cache key
  * with the page it links to.
  */

@@ -1,65 +1,43 @@
 import "server-only";
 
+import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~Prisma/client";
 import { gigSlug } from "~/lib/gig-url";
 
 /**
- * A gig's pretty URL is its stored `slug`: the admin's `slugOverride` if set,
- * else the title slugged, with `-2`, `-3` and so on when another gig already
- * has it, so a night that runs again under the same name gets its own page.
+ * The slug a gig saves with: the one picked in the editor, or the title
+ * slugged when none was. Two gigs never share one; a save that would is
+ * refused so the admin can pick another, rather than quietly getting `-2`.
  *
- * Call `syncGigSlug` after any write that can change a gig's title, slug
- * override or TBA flag; it returns the slug the gig ends up with.
- *
- * A TBA gig has no slug at all: its title is the secret, and a slug of it in a
- * public payload would give it away. It gets one when it is announced.
+ * A TBA gig keeps its slug, but nothing public sees it while it is TBA:
+ * `gigParam` links it by cuid, `resolveGigId` won't match it, and `forPublic`
+ * drops it from the payload.
  */
-export async function syncGigSlug(
+export async function claimGigSlug(
   db: Prisma.TransactionClient,
-  gigId: string,
-): Promise<string | null> {
-  const gig = await db.gig.findUnique({
-    where: { id: gigId },
-    select: { title: true, isTba: true, slug: true, slugOverride: true },
+  {
+    gigId,
+    slug,
+    title,
+  }: { gigId?: string; slug?: string | null; title: string },
+): Promise<string> {
+  const wanted = gigSlug(slug?.trim() || title);
+  if (!wanted) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "The URL needs at least one letter or number.",
+    });
+  }
+
+  const clash = await db.gig.findFirst({
+    where: { slug: wanted, ...(gigId ? { id: { not: gigId } } : {}) },
+    select: { title: true },
   });
-  if (!gig) return null;
-
-  const slug = gig.isTba
-    ? null
-    : await slugFor(db, gigId, gig.slugOverride ?? gig.title, gig.slug);
-  if (slug !== gig.slug) {
-    await db.gig.update({ where: { id: gigId }, data: { slug } });
+  if (clash) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: `/gigs/${wanted} is already used by "${clash.title}". Pick another URL.`,
+    });
   }
-  return slug;
-}
-
-/** The slug this name calls for, keeping the current one if it still fits. */
-async function slugFor(
-  db: Prisma.TransactionClient,
-  gigId: string,
-  name: string,
-  current: string | null,
-): Promise<string | null> {
-  const base = gigSlug(name);
-  // Nothing usable, or the redacted title every unannounced gig shares.
-  if (!base || base === "tba") return null;
-  if (current && isSlugOf(current, base)) return current;
-
-  const taken = new Set(
-    (
-      await db.gig.findMany({
-        where: { slug: { startsWith: base }, id: { not: gigId } },
-        select: { slug: true },
-      })
-    ).flatMap((row) => (row.slug ? [row.slug] : [])),
-  );
-  for (let n = 1; ; n++) {
-    const candidate = n === 1 ? base : `${base}-${n}`;
-    if (!taken.has(candidate)) return candidate;
-  }
-}
-
-/** `club-vitamin` and `club-vitamin-2` are both slugs of "Club Vitamin". */
-export function isSlugOf(slug: string, base: string): boolean {
-  return slug === base || new RegExp(`^${base}-\\d+$`).test(slug);
+  return wanted;
 }
