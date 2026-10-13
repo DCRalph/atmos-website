@@ -399,7 +399,7 @@ const capitalise = (word: string) =>
 /**
  * What people bought on, then how each kind of device paid. Two cards in the
  * same row, both over the chosen range. Orders from before devices were
- * recorded are counted, not guessed at, and the cards say how many.
+ * recorded are left out rather than guessed at.
  */
 function Devices({
   rows,
@@ -409,9 +409,6 @@ function Devices({
   const recorded = rows.flatMap((row) =>
     row.device ? [{ ...row, device: row.device }] : [],
   );
-  const unrecorded = rows
-    .filter((row) => !row.device)
-    .reduce((sum, row) => sum + row.orders, 0);
 
   const byDevice = new Map<string, number>();
   for (const row of recorded) {
@@ -423,13 +420,6 @@ function Devices({
   }
   const total = recorded.reduce((sum, row) => sum + row.orders, 0);
 
-  const footnote =
-    unrecorded > 0 ? (
-      <p className="text-muted-foreground mt-2 text-xs">
-        {unrecorded} {unrecorded === 1 ? "order" : "orders"} in this range{" "}
-        {unrecorded === 1 ? "was" : "were"} placed before devices were recorded.
-      </p>
-    ) : null;
   const empty = "No orders in this range recorded a device.";
 
   return (
@@ -446,7 +436,6 @@ function Devices({
               detail: `${orders} · ${Math.round((orders / total) * 100)}%`,
             }))}
         />
-        {footnote}
       </ChartCard>
       <ChartCard title="Device and payment">
         {recorded.length === 0 ? (
@@ -463,7 +452,6 @@ function Devices({
             }))}
           />
         )}
-        {footnote}
       </ChartCard>
     </>
   );

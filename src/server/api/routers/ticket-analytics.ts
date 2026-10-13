@@ -484,9 +484,8 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           _count: true,
           _sum: { totalCents: true },
         }),
-        // What each order was bought on, against how it was paid. Device is
-        // null on orders from before it was recorded, kept as a count so the
-        // page can say how much of the range it covers.
+        // What each order was bought on, against how it was paid. Orders
+        // from before devices were recorded have none and are left out.
         ctx.db.$queryRaw<
           {
             device: string | null;
@@ -498,7 +497,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
         >`
           SELECT o.device, o.os, o."paidWith", o."paymentMethod", COUNT(*)::int AS orders
           FROM "ticket_order" o
-          WHERE ${bought}
+          WHERE ${bought} AND o.device IS NOT NULL
           GROUP BY 1, 2, 3, 4
         `,
       ]);
