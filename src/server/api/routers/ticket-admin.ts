@@ -49,6 +49,7 @@ import {
 import { ADMITTING_RESULTS, admissionStates } from "~/server/ticketing/scan";
 import { logActivity } from "~/server/utils/activity-log";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
+import { ticketCount } from "~/lib/ticketing/capacity";
 import {
   accessLevelCode,
   assertIssuableLevels,
@@ -773,6 +774,66 @@ export const ticketAdminRouter = createTRPCRouter({
       });
 
       return { ok: true as const };
+    }),
+
+  /**
+   * Checkouts currently holding stock for an event, soonest to lapse first.
+   * A hold past `expiresAt` still counts until the next sweep gives it back.
+   */
+  holds: adminProcedure
+    .input(z.object({ eventId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const orders = await ctx.db.ticketOrder.findMany({
+        where: { eventId: input.eventId, status: TicketOrderStatus.PENDING },
+        orderBy: { expiresAt: "asc" },
+        select: {
+          id: true,
+          orderNumber: true,
+          buyerName: true,
+          buyerEmail: true,
+          expiresAt: true,
+          items: { select: { quantity: true, groupSize: true } },
+        },
+      });
+
+      return orders.map(({ items, ...order }) => ({
+        ...order,
+        tickets: ticketCount(items),
+      }));
+    }),
+
+  /**
+   * `expireOrder` for every hold on an event at once. A buyer who has already
+   * paid is skipped rather than failing the batch; the webhook issues theirs.
+   */
+  expireHolds: adminProcedure
+    .input(z.object({ eventId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const orders = await ctx.db.ticketOrder.findMany({
+        where: { eventId: input.eventId, status: TicketOrderStatus.PENDING },
+        select: { id: true, stripePaymentIntentId: true },
+      });
+
+      let expired = 0;
+      for (const order of orders) {
+        try {
+          await cancelUnpaidPayment(order.stripePaymentIntentId);
+        } catch (cause) {
+          if (cause instanceof TRPCError && cause.code === "CONFLICT") continue;
+          throw cause;
+        }
+        await cancelPendingOrder(order.id, TicketOrderStatus.EXPIRED);
+        expired += 1;
+      }
+
+      await logActivity({
+        type: ActivityType.TICKET_EVENT_UPDATED,
+        action: `Expired ${expired} held order${expired === 1 ? "" : "s"}`,
+        userId: ctx.session.user.id,
+        details: { eventId: input.eventId },
+      });
+
+      return { expired, paid: orders.length - expired };
     }),
 
   // ------------------------------------------------------------------ comps

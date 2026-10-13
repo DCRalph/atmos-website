@@ -2,7 +2,7 @@ import "server-only";
 
 import { TRPCError } from "@trpc/server";
 
-import { DiscountCodeType, type Prisma } from "~Prisma/client";
+import { DiscountCodeType, EventCodeType, type Prisma } from "~Prisma/client";
 import { ticketCount } from "~/lib/ticketing/capacity";
 import { calcDiscountCents } from "~/lib/ticketing/money";
 
@@ -10,10 +10,11 @@ import { calcDiscountCents } from "~/lib/ticketing/money";
  * Discount codes, in two kinds.
  *
  * A global `DiscountCode` works on any event and is only ever a discount. An
- * `EventCode` belongs to one event: besides a discount (which may be zero) it
- * can be scoped to some of that event's tiers and unlock its hidden ones, which
- * is how a presale or a guest list works. A buyer types either into the same
- * box; the event's own code is looked up first, so it wins a shared string.
+ * `EventCode` belongs to one event: a discount that can be scoped to some of
+ * that event's tiers, or an UNLOCK code that takes nothing off and opens the
+ * hidden tiers it names, which is how a presale or a guest list works. A buyer
+ * types either into the same box; the event's own code is looked up first, so
+ * it wins a shared string.
  *
  * Both are capped by total redemptions and by per-email use, gated by a date
  * window and a minimum ticket count.
@@ -90,7 +91,6 @@ async function findCode(tx: Tx, code: string, eventId: string) {
   return {
     ...global,
     tierIds: [] as string[],
-    unlocksHiddenTiers: false,
     ref: { kind: "GLOBAL", id: global.id } as CodeRef,
   };
 }
@@ -125,21 +125,17 @@ async function findUsableCode(
 }
 
 /**
- * The hidden tiers a code opens on this event: its chosen tiers, or every
- * hidden tier when none were chosen.
+ * The hidden tiers an UNLOCK code opens on this event. A tier unhidden since
+ * the code was made needs no unlocking, so it drops out.
  */
 async function unlockedTierIdsFor(
   tx: Tx,
-  record: { unlocksHiddenTiers: boolean; tierIds: string[] },
+  record: { type: DiscountCodeType | EventCodeType; tierIds: string[] },
   eventId: string,
 ): Promise<string[]> {
-  if (!record.unlocksHiddenTiers) return [];
+  if (record.type !== EventCodeType.UNLOCK) return [];
   const hidden = await tx.ticketTier.findMany({
-    where: {
-      eventId,
-      isHidden: true,
-      ...(record.tierIds.length > 0 ? { id: { in: record.tierIds } } : {}),
-    },
+    where: { eventId, isHidden: true, id: { in: record.tierIds } },
     select: { id: true },
   });
   return hidden.map((t) => t.id);
@@ -205,6 +201,22 @@ export async function applyDiscountCode(
     }
   }
 
+  if (record.type === EventCodeType.UNLOCK) {
+    // Its job is done once the basket holds what it opened.
+    const unlockedTierIds = await unlockedTierIdsFor(tx, record, eventId);
+    if (!lines.some((line) => unlockedTierIds.includes(line.tierId))) {
+      throw new DiscountError(
+        "That code unlocks tickets you haven't picked yet.",
+      );
+    }
+    return {
+      ref: record.ref,
+      code: record.code,
+      amountCents: 0,
+      unlockedTierIds,
+    };
+  }
+
   const scopedTierIds = record.tierIds;
   const eligibleLines =
     scopedTierIds.length === 0
@@ -216,14 +228,7 @@ export async function applyDiscountCode(
     0,
   );
 
-  const unlockedTierIds = await unlockedTierIdsFor(tx, record, eventId);
-  const unlocksBasket = lines.some((line) =>
-    unlockedTierIds.includes(line.tierId),
-  );
-
-  // An unlock code has done its job once the basket holds what it opened, even
-  // with nothing to take off: a free guest list tier, or a code worth 0%.
-  if (eligibleSubtotal <= 0 && !unlocksBasket) {
+  if (eligibleSubtotal <= 0) {
     throw new DiscountError(
       "That code doesn't apply to the tickets you've chosen.",
     );
@@ -235,7 +240,12 @@ export async function applyDiscountCode(
     record.value,
   );
 
-  return { ref: record.ref, code: record.code, amountCents, unlockedTierIds };
+  return {
+    ref: record.ref,
+    code: record.code,
+    amountCents,
+    unlockedTierIds: [],
+  };
 }
 
 /**

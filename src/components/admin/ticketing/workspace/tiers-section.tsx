@@ -102,6 +102,23 @@ export function TiersSection({
     { enabled: Boolean(event), refetchInterval: LIVE_POLL_MS },
   );
   const liveById = new Map(live.data?.tiers.map((tier) => [tier.id, tier]));
+
+  // Which unlock codes open each hidden tier, so hiding one says who can
+  // still buy it.
+  const codes = api.eventCodes.list.useQuery(
+    { eventId: event?.id ?? "" },
+    { enabled: Boolean(event) },
+  );
+  const unlockCodesOf = (tier: TierDraft) =>
+    (codes.data ?? [])
+      .filter(
+        (code) =>
+          code.type === "UNLOCK" &&
+          code.isActive &&
+          tier.id !== undefined &&
+          code.tierIds.includes(tier.id),
+      )
+      .map((code) => code.code);
   // Live where the tier exists, else what the draft was loaded with.
   const countsOf = (tier: TierDraft) => {
     const counts = tier.id ? liveById.get(tier.id) : undefined;
@@ -275,6 +292,7 @@ export function TiersSection({
                       tier={tier}
                       {...countsOf(tier)}
                       previous={draft.tiers[index - 1] ?? null}
+                      unlockCodes={unlockCodesOf(tier)}
                       onPatch={(fields) => patch(tier.key, fields)}
                       expanded={open === tier.key}
                       onToggle={() =>
@@ -323,6 +341,7 @@ function TierRow({
   sold,
   held,
   previous,
+  unlockCodes,
   onPatch,
   expanded,
   onToggle,
@@ -333,6 +352,8 @@ function TierRow({
   sold: number;
   held: number;
   previous: TierDraft | null;
+  /** Active unlock codes that open this tier while it is hidden. */
+  unlockCodes: string[];
   onPatch: (fields: Partial<TierDraft>) => void;
   /** Whether the rarer settings are open under the row. */
   expanded: boolean;
@@ -500,7 +521,12 @@ function TierRow({
         </div>
       </div>
       {expanded ? (
-        <TierDetails tier={tier} previous={previous} onPatch={onPatch} />
+        <TierDetails
+          tier={tier}
+          previous={previous}
+          unlockCodes={unlockCodes}
+          onPatch={onPatch}
+        />
       ) : null}
     </div>
   );
@@ -729,10 +755,12 @@ function MeterBar({
 function TierDetails({
   tier,
   previous,
+  unlockCodes,
   onPatch,
 }: {
   tier: TierDraft;
   previous: TierDraft | null;
+  unlockCodes: string[];
   onPatch: (fields: Partial<TierDraft>) => void;
 }) {
   return (
@@ -830,7 +858,13 @@ function TierDetails({
         ) : null}
         <DetailToggle
           label="Hidden until unlocked by a code"
-          hint="A discount code that unlocks hidden tiers reveals it. The door can always sell it."
+          hint={
+            !tier.isHidden
+              ? "Only buyers with an unlock code for it see it online. The door can always sell it."
+              : unlockCodes.length > 0
+                ? `Unlocked online by ${unlockCodes.join(", ")}. The door can always sell it.`
+                : "No unlock code opens it yet, so nobody can buy it online. Add one under Codes. The door can always sell it."
+          }
           checked={tier.isHidden}
           onChange={(isHidden) => onPatch({ isHidden })}
         />

@@ -19,6 +19,7 @@ import { Button } from "~/components/ui/button";
 import { useConfirm } from "~/components/confirm-provider";
 import { EventOverview } from "~/components/admin/ticketing/event-overview";
 import { cn } from "~/lib/utils";
+import { HeldTickets } from "./held-tickets";
 import type { AdminEvent, ChecklistItem, Section } from "./draft";
 
 /**
@@ -112,6 +113,8 @@ export function OverviewSection({
           ) : null}
         </div>
       </div>
+
+      <HeldTickets eventId={event.id} />
 
       <EventOverview eventId={event.id} />
     </div>

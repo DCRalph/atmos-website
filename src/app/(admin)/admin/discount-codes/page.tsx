@@ -7,7 +7,11 @@ import { toast } from "sonner";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { AdminSection } from "~/components/admin/admin-section";
 import { Button } from "~/components/ui/button";
-import { CodeForm, CodesTable } from "~/components/admin/ticketing/codes";
+import {
+  CodeForm,
+  CodesTable,
+  DISCOUNT_CODE_TYPES,
+} from "~/components/admin/ticketing/codes";
 
 /**
  * Global discount codes: a percentage or fixed amount off, on any event.
@@ -73,10 +77,9 @@ export default function DiscountCodesPage() {
     >
       {creating && (
         <CodeForm
+          types={DISCOUNT_CODE_TYPES}
           pending={create.isPending}
           onCancel={() => setCreating(false)}
-          // Without `hiddenTiers` the form never sets the unlock fields, and
-          // the global endpoint drops them.
           onSubmit={(values) => create.mutate(values)}
         />
       )}
@@ -84,7 +87,8 @@ export default function DiscountCodesPage() {
       {editing && (
         <CodeForm
           key={editing.id}
-          initial={{ ...editing, unlocksHiddenTiers: false, tierIds: [] }}
+          types={DISCOUNT_CODE_TYPES}
+          initial={{ ...editing, tierIds: [] }}
           pending={update.isPending}
           onCancel={() => setEditing(null)}
           onSubmit={(values) => update.mutate({ ...values, id: editing.id })}

@@ -2007,7 +2007,8 @@ model TicketEventStaff {
 }
 
 /// A code that works on any event: a discount and nothing more. Codes that
-/// belong to one event, and can unlock its hidden tiers, are `EventCode`.
+/// belong to one event, including the ones that unlock hidden tiers, are
+/// `EventCode`.
 model DiscountCode {
   id   String @id @default(cuid())
   code String @unique
@@ -2051,9 +2052,18 @@ model DiscountRedemption {
   @@map("discount_redemption")
 }
 
-/// One event's own code, managed on that event's page. Besides a discount it
-/// can unlock the event's hidden tiers (a presale, a guest list): the ones in
-/// `tierIds`, or all of them when empty. `tierIds` also scopes the discount.
+/// What an event code does: take money off, or open hidden tiers.
+enum EventCodeType {
+  PERCENT
+  FIXED
+  /// Worth nothing itself. Reveals the hidden tiers in `tierIds`, which carry
+  /// their own price: the key to a presale or a guest list.
+  UNLOCK
+}
+
+/// One event's own code, managed on that event's page. A PERCENT or FIXED
+/// code is a discount on the tiers in `tierIds`, or on every tier when empty.
+/// An UNLOCK code opens the hidden tiers in `tierIds` and takes nothing off.
 /// Checked before global codes, so it wins if the same string is in both.
 model EventCode {
   id      String      @id @default(cuid())
@@ -2061,12 +2071,11 @@ model EventCode {
   event   TicketEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
   code    String
 
-  type  DiscountCodeType
-  /// Zero is allowed on a code that only unlocks tiers.
+  type  EventCodeType
+  /// Basis points for PERCENT, cents for FIXED, zero for UNLOCK.
   value Int
 
-  tierIds            String[]
-  unlocksHiddenTiers Boolean  @default(false)
+  tierIds String[]
 
   maxRedemptions  Int?
   maxPerEmail     Int? @default(1)

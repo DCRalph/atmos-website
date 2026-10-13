@@ -7,14 +7,18 @@ import { toast } from "sonner";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { CodeForm, CodesTable } from "~/components/admin/ticketing/codes";
+import {
+  CodeForm,
+  CodesTable,
+  EVENT_CODE_TYPES,
+} from "~/components/admin/ticketing/codes";
 import type { AdminEvent } from "~/components/admin/ticketing/workspace/draft";
 
 /**
- * This event's own codes. Like a global code they can take money off; unlike
- * one they can unlock the event's hidden tiers, which is how a presale or a
- * guest list is handed out. Live, not part of the event draft: a code works
- * the moment it is created.
+ * This event's own codes. Like a global code they can take money off, scoped
+ * to some tiers if need be; unlike one they can be an unlock code, which opens
+ * the event's hidden tiers and is how a presale or a guest list is handed out.
+ * Live, not part of the event draft: a code works the moment it is created.
  */
 type Code = RouterOutputs["eventCodes"]["list"][number];
 
@@ -26,9 +30,6 @@ export function EventCodesPanel({ event }: { event: AdminEvent }) {
   const refresh = () => void utils.eventCodes.list.invalidate();
 
   const tierName = new Map(event.tiers.map((tier) => [tier.id, tier.name]));
-  const hiddenTiers = event.tiers
-    .filter((tier) => tier.isHidden)
-    .map((tier) => ({ id: tier.id, name: tier.name }));
 
   const create = api.eventCodes.create.useMutation({
     onSuccess: () => {
@@ -80,7 +81,8 @@ export function EventCodesPanel({ event }: { event: AdminEvent }) {
 
       {creating && (
         <CodeForm
-          hiddenTiers={hiddenTiers}
+          types={EVENT_CODE_TYPES}
+          tiers={event.tiers}
           pending={create.isPending}
           onCancel={() => setCreating(false)}
           onSubmit={(values) => create.mutate({ ...values, eventId: event.id })}
@@ -90,7 +92,8 @@ export function EventCodesPanel({ event }: { event: AdminEvent }) {
       {editing && (
         <CodeForm
           key={editing.id}
-          hiddenTiers={hiddenTiers}
+          types={EVENT_CODE_TYPES}
+          tiers={event.tiers}
           initial={editing}
           pending={update.isPending}
           onCancel={() => setEditing(null)}
@@ -105,13 +108,11 @@ export function EventCodesPanel({ event }: { event: AdminEvent }) {
         storageKey="admin-event-codes"
         extraColumns={[
           {
-            id: "unlocks",
-            header: "Unlocks",
+            id: "tiers",
+            header: "Tiers",
             cell: (row) =>
-              !row.unlocksHiddenTiers ? (
-                <span className="text-muted-foreground">—</span>
-              ) : row.tierIds.length === 0 ? (
-                <Badge variant="outline">All hidden tiers</Badge>
+              row.tierIds.length === 0 ? (
+                <span className="text-muted-foreground">All tiers</span>
               ) : (
                 <div className="flex flex-wrap gap-1">
                   {row.tierIds.map((id) => (

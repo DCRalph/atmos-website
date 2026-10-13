@@ -3,7 +3,7 @@ import "server-only";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { DiscountCodeType } from "~Prisma/client";
+import { DiscountCodeType, EventCodeType } from "~Prisma/client";
 
 /**
  * The fields global and event codes share, and the rules across them. Each
@@ -17,7 +17,7 @@ export const codeFieldsSchema = z.object({
     .max(32)
     .regex(/^[A-Za-z0-9_-]+$/, "Letters, numbers, dashes and underscores only"),
   type: z.enum([DiscountCodeType.PERCENT, DiscountCodeType.FIXED]),
-  /** Basis points for PERCENT, cents for FIXED. Zero only on an unlock code. */
+  /** Basis points for PERCENT, cents for FIXED, zero for UNLOCK. */
   value: z.number().int().min(0),
   maxRedemptions: z.number().int().min(1).nullable().optional(),
   maxPerEmail: z.number().int().min(1).nullable().optional(),
@@ -27,18 +27,45 @@ export const codeFieldsSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
-/** Only a code that unlocks tiers may be worth nothing. */
+/**
+ * An event's own code. A discount here can be scoped to some of the event's
+ * tiers, and UNLOCK opens hidden ones: `tierIds` says which, either way.
+ */
+export const eventCodeFieldsSchema = codeFieldsSchema.extend({
+  type: z.enum(EventCodeType),
+  /** Tiers the discount applies to (empty is all), or the tiers it unlocks. */
+  tierIds: z.array(z.string()).default([]),
+});
+
+/**
+ * A discount takes something off; an unlock takes nothing off and names the
+ * tiers it opens. Shared by global and event codes.
+ */
 export function assertCodeRules(code: {
-  type: DiscountCodeType;
+  type: DiscountCodeType | EventCodeType;
   value: number;
   startsAt?: Date | null;
   endsAt?: Date | null;
-  unlocksHiddenTiers?: boolean;
+  tierIds?: readonly string[];
 }) {
-  if (code.value === 0 && !code.unlocksHiddenTiers) {
+  if (code.type === EventCodeType.UNLOCK) {
+    if (code.value !== 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          "An unlock code takes nothing off. Price the hidden tier instead.",
+      });
+    }
+    if (!code.tierIds?.length) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Pick the tier this code unlocks.",
+      });
+    }
+  } else if (code.value <= 0) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "A code that unlocks nothing needs a discount above zero.",
+      message: "A discount needs to be worth more than zero.",
     });
   }
   if (code.type === DiscountCodeType.PERCENT && code.value > 10_000) {
