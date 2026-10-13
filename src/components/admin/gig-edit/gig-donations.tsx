@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { formatNZD, formatNZDCompact } from "~/lib/ticketing/money";
-import { formatEventDate, formatEventDateTime } from "~/lib/ticketing/dates";
+import { formatEventDateTime } from "~/lib/ticketing/dates";
 
 /**
  * The gig editor's Donations tab: what this gig has raised, what people
@@ -88,7 +88,7 @@ export function GigDonations({ gigId }: { gigId: string }) {
             y: point.cents,
           }))}
           formatValue={(cents) => formatNZDCompact(Math.round(cents))}
-          formatX={(date) => formatEventDate(date)}
+          formatX={(date) => formatEventDateTime(date)}
         />
 
         <section className="space-y-3 rounded-lg border p-4">

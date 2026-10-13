@@ -66,6 +66,8 @@ export type SeriesPoint = { x: Date; y: number };
 /**
  * Cumulative line + area. Used for the sales curve, where the shape — a spike
  * on announcement, a flat middle, a rush in the last week — is the whole point.
+ * Points sit at their time, not evenly spaced, and the line steps: a quiet
+ * week is a long flat stretch rather than a slope between two busy hours.
  * `target` draws a dashed line to climb to, like break even, and the scale
  * always reaches it. `series` picks the colour: revenue unless told otherwise.
  */
@@ -100,15 +102,21 @@ export function TimeSeriesChart({
     const innerW = width - PAD.left - PAD.right;
     const innerH = height - PAD.top - PAD.bottom;
 
+    const start = points[0]!.x.getTime();
+    const span = points.at(-1)!.x.getTime() - start;
     const xAt = (index: number) =>
       PAD.left +
-      (points.length === 1
+      (span === 0
         ? innerW / 2
-        : (index / (points.length - 1)) * innerW);
+        : ((points[index]!.x.getTime() - start) / span) * innerW);
     const yAt = (value: number) => PAD.top + innerH - (value / maxY) * innerH;
 
     const line = points
-      .map((point, i) => `${i === 0 ? "M" : "L"}${xAt(i)},${yAt(point.y)}`)
+      .map((point, i) =>
+        i === 0
+          ? `M${xAt(i)},${yAt(point.y)}`
+          : `H${xAt(i)} V${yAt(point.y)}`,
+      )
       .join(" ");
     const area = `${line} L${xAt(points.length - 1)},${PAD.top + innerH} L${xAt(0)},${PAD.top + innerH} Z`;
 
@@ -134,6 +142,21 @@ export function TimeSeriesChart({
           className="w-full"
           role="img"
           aria-label={title}
+          onPointerMove={(event) => {
+            // The nearest point to the pointer, in viewBox units.
+            const box = event.currentTarget.getBoundingClientRect();
+            const x = ((event.clientX - box.left) / box.width) * width;
+            let nearest = 0;
+            for (let i = 1; i < points.length; i++) {
+              if (
+                Math.abs(geometry.xAt(i) - x) <
+                Math.abs(geometry.xAt(nearest) - x)
+              ) {
+                nearest = i;
+              }
+            }
+            setHover(nearest);
+          }}
           onPointerLeave={() => setHover(null)}
         >
           <defs>
@@ -227,22 +250,6 @@ export function TimeSeriesChart({
               />
             </>
           )}
-
-          {/* Hit targets are full-height columns, much bigger than the marks. */}
-          {points.map((point, i) => (
-            <rect
-              key={point.x.toISOString()}
-              x={
-                geometry.xAt(i) -
-                (width - PAD.left - PAD.right) / points.length / 2
-              }
-              y={PAD.top}
-              width={(width - PAD.left - PAD.right) / points.length}
-              height={geometry.innerH}
-              fill="transparent"
-              onPointerEnter={() => setHover(i)}
-            />
-          ))}
 
           <text
             x={PAD.left}

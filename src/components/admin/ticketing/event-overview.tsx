@@ -8,7 +8,7 @@ import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { formatNZD } from "~/lib/ticketing/money";
 import { paymentMethodLabel } from "~/lib/ticketing/payment-methods";
-import { formatEventDate } from "~/lib/ticketing/dates";
+import { formatEventDateTime } from "~/lib/ticketing/dates";
 import { StatTile, TierBars, TimeSeriesChart } from "./charts";
 
 /** Sales dashboard for one event. */
@@ -20,10 +20,7 @@ export function EventOverview({
   liveHref?: string;
 }) {
   const overview = api.ticketAnalytics.overview.useQuery({ eventId });
-  const sales = api.ticketAnalytics.salesOverTime.useQuery({
-    eventId,
-    bucket: "day",
-  });
+  const sales = api.ticketAnalytics.salesOverTime.useQuery({ eventId });
   const discounts = api.ticketAnalytics.discountPerformance.useQuery({
     eventId,
   });
@@ -116,7 +113,7 @@ export function EventOverview({
           y: row.cumulativeTickets,
         }))}
         formatValue={(value) => String(Math.round(value))}
-        formatX={(date) => formatEventDate(date, event.timezone)}
+        formatX={(date) => formatEventDateTime(date, event.timezone)}
         target={
           costs.breakEvenTickets
             ? {

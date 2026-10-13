@@ -14,6 +14,7 @@ import {
   qrHref,
 } from "~/components/admin/short-links/qr-downloads";
 import { LinkForm } from "~/components/admin/short-links/link-form";
+import { formatEventDateTime } from "~/lib/ticketing/dates";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -107,13 +108,6 @@ export default function ShortLinkPage() {
 /* Overview                                                                   */
 /* -------------------------------------------------------------------------- */
 
-/** Days arrive as "2026-10-04", so they are read and shown as UTC dates. */
-const dayLabel = new Intl.DateTimeFormat("en-NZ", {
-  day: "numeric",
-  month: "short",
-  timeZone: "UTC",
-});
-
 function Overview({ link }: { link: ShortLink }) {
   const { totals, breakdown } = link;
 
@@ -139,12 +133,9 @@ function Overview({ link }: { link: ShortLink }) {
       </div>
 
       <BucketBarChart
-        title="Clicks a day, last 30 days"
-        buckets={link.daily.map((day) => ({
-          x: new Date(`${day.day}T00:00:00Z`),
-          y: day.n,
-        }))}
-        formatX={(date) => dayLabel.format(date)}
+        title="Clicks an hour, last 7 days"
+        buckets={link.hourly.map((hour) => ({ x: hour.hour, y: hour.n }))}
+        formatX={(date) => formatEventDateTime(date)}
         unit={["click", "clicks"]}
       />
 

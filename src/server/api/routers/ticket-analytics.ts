@@ -268,28 +268,19 @@ export const ticketAnalyticsRouter = createTRPCRouter({
       };
     }),
 
-  /** Cumulative sales curve — when tickets actually moved. */
+  /**
+   * Cumulative sales curve, in hourly buckets — when tickets actually moved.
+   * `paidAt` is a UTC timestamp, and truncating to the hour in UTC lands on
+   * the same hours as in the event's zone, so no conversion is needed here.
+   */
   salesOverTime: eventOrganiserProcedure
-    .input(
-      z.object({
-        eventId: z.string(),
-        bucket: z.enum(["hour", "day"]).default("day"),
-      }),
-    )
+    .input(z.object({ eventId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const event = await ctx.db.ticketEvent.findUnique({
-        where: { id: input.eventId },
-        select: { timezone: true },
-      });
-      if (!event) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
-      }
-
       const rows = await ctx.db.$queryRaw<
         { bucket: Date; tickets: bigint; revenue_cents: bigint }[]
       >`
         SELECT
-          date_trunc(${input.bucket}, o."paidAt" AT TIME ZONE ${event.timezone}) AS bucket,
+          date_trunc('hour', o."paidAt") AS bucket,
           COUNT(t.id)::bigint AS tickets,
           COALESCE(SUM(t."pricePaidCents"), 0)::bigint AS revenue_cents
         FROM "ticket_order" o

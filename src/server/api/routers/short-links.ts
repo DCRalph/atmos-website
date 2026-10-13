@@ -109,16 +109,14 @@ export async function assertSlugFree(
   }
 }
 
-/** Calendar days in NZ, oldest first, ending today: "2026-10-04". */
-function recentNzDays(count: number): string[] {
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Pacific/Auckland",
-  }).format(new Date());
-  const [y, m, d] = today.split("-").map(Number) as [number, number, number];
-  return Array.from({ length: count }, (_, i) =>
-    new Date(Date.UTC(y, m - 1, d - (count - 1 - i)))
-      .toISOString()
-      .slice(0, 10),
+const HOUR_MS = 60 * 60 * 1000;
+
+/** The start of each of the last `count` hours, oldest first, ending with this one. */
+function recentHours(count: number): Date[] {
+  const current = Math.floor(Date.now() / HOUR_MS) * HOUR_MS;
+  return Array.from(
+    { length: count },
+    (_, i) => new Date(current - (count - 1 - i) * HOUR_MS),
   );
 }
 
@@ -175,8 +173,8 @@ export const shortLinksRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Link not found" });
       }
 
-      const days = recentNzDays(30);
-      const [[totals], daily, slices, bySource, recent, hosts] =
+      const hours = recentHours(7 * 24);
+      const [[totals], hourly, slices, bySource, recent, hosts] =
         await Promise.all([
           ctx.db.$queryRaw<
             { clicks: number; visitors: number; bots: number }[]
@@ -188,17 +186,15 @@ export const shortLinksRouter = createTRPCRouter({
           from short_link_click
           where "linkId" = ${link.id}
         `,
-          // Prisma stores UTC in a plain timestamp, so it is marked as UTC before
-          // converting: a click at 11pm belongs to that night, not tomorrow.
-          ctx.db.$queryRaw<{ day: string; n: number }[]>`
-          select
-            to_char(("createdAt" at time zone 'UTC') at time zone 'Pacific/Auckland', 'YYYY-MM-DD') as day,
-            count(*)::int as n
+          // Prisma stores UTC in a plain timestamp, and hours line up in every
+          // zone NZ uses, so truncating in UTC needs no conversion.
+          ctx.db.$queryRaw<{ hour: Date; n: number }[]>`
+          select date_trunc('hour', "createdAt") as hour, count(*)::int as n
           from short_link_click
           where "linkId" = ${link.id}
             and device <> 'bot'
-            and "createdAt" >= now() - interval '32 days'
-          group by day
+            and "createdAt" >= ${hours[0]}
+          group by hour
         `,
           ctx.db.$queryRaw<
             { dimension: Dimension; label: string; n: number }[]
@@ -238,7 +234,9 @@ export const shortLinksRouter = createTRPCRouter({
           extraHosts(),
         ]);
 
-      const perDay = new Map(daily.map((row) => [row.day, row.n]));
+      const perHour = new Map(
+        hourly.map((row) => [row.hour.getTime(), row.n]),
+      );
       const breakdown: Record<Dimension, Slice[]> = {
         source: [],
         via: [],
@@ -263,7 +261,10 @@ export const shortLinksRouter = createTRPCRouter({
         /** Every host it answers on, main site first. Downloads pick one. */
         hosts: linkHosts(link.domain, hosts),
         totals: totals ?? { clicks: 0, visitors: 0, bots: 0 },
-        daily: days.map((day) => ({ day, n: perDay.get(day) ?? 0 })),
+        hourly: hours.map((hour) => ({
+          hour,
+          n: perHour.get(hour.getTime()) ?? 0,
+        })),
         breakdown,
         recent,
       };
