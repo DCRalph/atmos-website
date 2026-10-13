@@ -61,7 +61,7 @@ export function HeroSection() {
         >
           ATMOS
         </motion.h1> */}
-        <motion.div
+        <motion.h1
           className="relative aspect-3/1 w-[clamp(8rem,50vw,32rem)]"
           initial={{ opacity: 0, y: 60, filter: "blur(10px)" }}
           animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
@@ -71,9 +71,10 @@ export function HeroSection() {
             src="/logo/atmos-white.png"
             alt="Atmos"
             fill
+            loading="eager"
             className="object-contain"
           />
-        </motion.div>
+        </motion.h1>
         <motion.div
           className="h-px w-12 bg-white/20"
           initial={{ scaleX: 0 }}

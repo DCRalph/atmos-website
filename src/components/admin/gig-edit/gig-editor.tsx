@@ -95,6 +95,7 @@ type MediaRow = {
 /** The admin-visible shape of `gigs.getForEditor`. */
 type LoadedGig = {
   id: string;
+  slug: string | null;
   title: string;
   status: GigStatus;
   subtitle: string;

@@ -20,7 +20,6 @@ import {
   SITE_URL,
   DESCRIPTION_LONG,
   COMMON_KEYWORDS,
-  DEFAULT_ROBOTS,
   DEFAULT_OPENGRAPH,
   DEFAULT_TWITTER,
   VERIFICATION,
@@ -34,7 +33,8 @@ import { PostHogInit } from "~/components/posthog-init";
  * Site-wide fallbacks only. Next merges each key shallowly, so a canonical, an
  * og:url or an og:title set here would be inherited by every page that doesn't
  * set its own, pointing previews and search engines at the home page. Pages
- * set those through `pageMetadata` / `unlistedPageMetadata`.
+ * set those through `pageMetadata` / `unlistedPageMetadata`. Robots too: set
+ * here, `index, follow` would sit beside the `noindex` Next gives a 404.
  */
 export const metadata: Metadata = {
   title: {
@@ -48,7 +48,6 @@ export const metadata: Metadata = {
   icons: ICONS,
   openGraph: DEFAULT_OPENGRAPH,
   twitter: DEFAULT_TWITTER,
-  robots: DEFAULT_ROBOTS,
   verification: VERIFICATION,
   category: "entertainment",
 };

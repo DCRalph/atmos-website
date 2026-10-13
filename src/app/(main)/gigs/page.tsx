@@ -1,6 +1,7 @@
 import GigsPage from "./Gigs";
 import { BreadcrumbJsonLd } from "~/components/seo/json-ld";
 import { pageMetadata } from "~/lib/seo-constants";
+import { api, HydrateClient } from "~/trpc/server";
 
 export const metadata = pageMetadata({
   title: "Gigs",
@@ -15,7 +16,14 @@ export const metadata = pageMetadata({
   ],
 });
 
-export default function Page() {
+export default async function Page() {
+  await Promise.all([
+    api.gigs.getUpcoming.prefetch(),
+    api.gigs.getPast.prefetch({ kind: "OURS" }),
+    api.gigs.getPast.prefetch({ kind: "AFFILIATED" }),
+    api.ticketEvents.upcoming.prefetch(),
+  ]);
+
   return (
     <>
       <BreadcrumbJsonLd
@@ -24,7 +32,9 @@ export default function Page() {
           { name: "Gigs", url: "/gigs" },
         ]}
       />
-      <GigsPage />
+      <HydrateClient>
+        <GigsPage />
+      </HydrateClient>
     </>
   );
 }

@@ -27,6 +27,7 @@ import {
   donationRecommendedSchema,
 } from "~/lib/donations";
 import { resolveGigId } from "~/server/gig-lookup";
+import { syncGigSlug } from "~/server/gig-slug";
 import { teaserPosterUrl } from "~/server/gig-teaser";
 import { userHasPermission } from "~/server/utils/permissions";
 import type { SerializedEditorState } from "lexical";
@@ -944,6 +945,8 @@ async function saveGig(db: GigsContext["db"], userId: string, input: GigEdit) {
         });
       }
     }
+
+    await syncGigSlug(tx, id);
   });
 
   const title = rest.title ?? existing.title;
@@ -1606,6 +1609,8 @@ export const gigsRouter = createTRPCRouter({
         },
       });
 
+      const slug = await syncGigSlug(ctx.db, created.id);
+
       await logUserActivity(
         ActivityType.GIG_CREATED,
         `Created gig "${created.title}"`,
@@ -1618,7 +1623,7 @@ export const gigsRouter = createTRPCRouter({
         },
       );
 
-      return created;
+      return { ...created, slug };
     }),
 
   /**

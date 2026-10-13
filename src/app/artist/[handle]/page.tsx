@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { db } from "~/server/db";
 import { auth } from "~/server/auth";
 import { buildMediaUrl } from "~/lib/media-url";
+import { NOINDEX, pageMetadata } from "~/lib/seo-constants";
 import { parseTheme } from "~/lib/artist-theme";
 import { userHasPermission } from "~/server/utils/permissions";
 import {
@@ -34,24 +35,24 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { handle } = await params;
   const profile = await loadProfile(handle);
-  if (!profile) return { title: "Profile not found" };
+  // An unpublished profile is a 404 to everyone but its owner and admins, and
+  // metadata is the same for every viewer, so it doesn't name the artist.
+  if (!profile?.isPublished) {
+    return { title: "Profile not found", robots: NOINDEX };
+  }
   const title = `${profile.displayName} (@${profile.handle})`;
   const description =
-    profile.tagline ?? profile.bio?.slice(0, 160) ?? undefined;
-  return {
+    profile.tagline ??
+    profile.bio?.slice(0, 160) ??
+    `${profile.displayName} on Atmos.`;
+  const imageId = profile.bannerFileId ?? profile.avatarFileId;
+  const metadata = pageMetadata({
     title,
     description,
-    openGraph: {
-      title,
-      description,
-      images: profile.bannerFileId
-        ? [buildMediaUrl(profile.bannerFileId)]
-        : profile.avatarFileId
-          ? [buildMediaUrl(profile.avatarFileId)]
-          : undefined,
-      type: "profile",
-    },
-  };
+    path: `/artist/${profile.handle}`,
+    image: imageId ? { url: buildMediaUrl(imageId), alt: title } : undefined,
+  });
+  return { ...metadata, openGraph: { ...metadata.openGraph, type: "profile" } };
 }
 
 export default async function PublicArtistProfilePage({

@@ -262,6 +262,7 @@ export function HomeGigsManager() {
     for (const g of gigsList ?? []) {
       map.set(g.id, {
         id: g.id,
+        slug: g.slug,
         title: g.title,
         subtitle: g.subtitle,
         gigStartTime: g.gigStartTime ?? null,

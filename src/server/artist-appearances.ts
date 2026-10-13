@@ -37,6 +37,7 @@ export const APPEARANCE_SELECT = {
       gig: {
         select: {
           id: true,
+          slug: true,
           title: true,
           subtitle: true,
           gigStartTime: true,

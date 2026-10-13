@@ -74,6 +74,31 @@ export function WebSiteJsonLd() {
   );
 }
 
+/** A ticket on offer, priced in NZD. */
+export type JsonLdOffer = {
+  name: string;
+  /** Whole dollars, e.g. 25 or 32.5. */
+  price: number;
+  available: boolean;
+  validFrom?: Date | null;
+};
+
+/** A ticket event's tiers as offers. */
+export const ticketOffers = (event: {
+  tiers: readonly {
+    name: string;
+    priceCents: number;
+    available: boolean;
+    salesStartAt: Date | null;
+  }[];
+}): JsonLdOffer[] =>
+  event.tiers.map((tier) => ({
+    name: tier.name,
+    price: tier.priceCents / 100,
+    available: tier.available,
+    validFrom: tier.salesStartAt,
+  }));
+
 // Event structured data for individual events
 interface EventJsonLdProps {
   name: string;
@@ -85,10 +110,15 @@ interface EventJsonLdProps {
     address?: string;
   };
   image?: string;
+  /** Where to buy. With `offers`, each one links here. */
   ticketUrl?: string;
+  /** The tiers on sale. Without them, a bare offer linking to `ticketUrl`. */
+  offers?: JsonLdOffer[];
   performers?: Array<{
     name: string;
     type?: "Person" | "MusicGroup";
+    /** Their page on the site, e.g. `/artist/handle`. */
+    url?: string;
   }>;
   eventStatus?: "EventScheduled" | "EventCancelled" | "EventPostponed";
   eventAttendanceMode?:
@@ -96,6 +126,9 @@ interface EventJsonLdProps {
     | "OnlineEventAttendanceMode"
     | "MixedEventAttendanceMode";
 }
+
+const availability = (available: boolean) =>
+  `https://schema.org/${available ? "InStock" : "SoldOut"}`;
 
 export function EventJsonLd({
   name,
@@ -105,10 +138,12 @@ export function EventJsonLd({
   venue,
   image,
   ticketUrl,
+  offers,
   performers,
   eventStatus = "EventScheduled",
   eventAttendanceMode = "OfflineEventAttendanceMode",
 }: EventJsonLdProps) {
+  const url = ticketUrl && absoluteUrl(ticketUrl);
   return (
     <JsonLd
       data={{
@@ -135,20 +170,72 @@ export function EventJsonLd({
           name: SITE_NAME,
           url: SITE_URL,
         },
-        ...(ticketUrl && {
-          offers: {
-            "@type": "Offer",
-            url: absoluteUrl(ticketUrl),
-            availability: "https://schema.org/InStock",
-          },
-        }),
+        ...(offers && offers.length > 0
+          ? {
+              offers: offers.map((offer) => ({
+                "@type": "Offer",
+                name: offer.name,
+                price: offer.price,
+                priceCurrency: "NZD",
+                availability: availability(offer.available),
+                url,
+                validFrom: offer.validFrom?.toISOString(),
+              })),
+            }
+          : url && {
+              offers: {
+                "@type": "Offer",
+                url,
+                availability: availability(true),
+              },
+            }),
         ...(performers &&
           performers.length > 0 && {
             performer: performers.map((p) => ({
               "@type": p.type ?? "Person",
               name: p.name,
+              ...(p.url && { url: absoluteUrl(p.url) }),
             })),
           }),
+      }}
+    />
+  );
+}
+
+/** A merch product with its price, for Google's product results. */
+export function ProductJsonLd({
+  name,
+  description,
+  image,
+  url,
+  price,
+  currency,
+  available,
+}: {
+  name: string;
+  description: string;
+  image?: string | null;
+  url: string;
+  price: number;
+  currency: string;
+  available: boolean;
+}) {
+  return (
+    <JsonLd
+      data={{
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name,
+        description,
+        ...(image && { image: absoluteUrl(image) }),
+        brand: { "@type": "Brand", name: SITE_NAME },
+        offers: {
+          "@type": "Offer",
+          url: absoluteUrl(url),
+          price,
+          priceCurrency: currency,
+          availability: availability(available),
+        },
       }}
     />
   );

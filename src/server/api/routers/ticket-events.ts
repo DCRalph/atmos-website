@@ -1015,6 +1015,7 @@ export const ticketEventsRouter = createTRPCRouter({
           gig: {
             select: {
               id: true,
+              slug: true,
               title: true,
               status: true,
               isTba: true,
@@ -1112,6 +1113,7 @@ export const ticketEventsRouter = createTRPCRouter({
           gig: {
             select: {
               id: true,
+              slug: true,
               title: true,
               status: true,
               isTba: true,
@@ -1147,6 +1149,7 @@ export const ticketEventsRouter = createTRPCRouter({
         gig: {
           select: {
             id: true,
+            slug: true,
             title: true,
             status: true,
             isTba: true,
@@ -1166,6 +1169,7 @@ type EventWithTiers = Prisma.TicketEventGetPayload<{
 }> & {
   gig?: {
     id: string;
+    slug: string | null;
     title: string;
     status: GigStatus;
     isTba: boolean;
@@ -1270,7 +1274,7 @@ function toPublicEvent(
     // the link carries its real title.
     gig:
       event.gig?.status === GigStatus.PUBLISHED && !event.gig.isTba
-        ? { id: event.gig.id, title: event.gig.title }
+        ? { id: event.gig.id, slug: event.gig.slug, title: event.gig.title }
         : null,
     tiers,
     onSale,

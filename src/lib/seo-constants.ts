@@ -13,7 +13,7 @@ export const SITE_URL = env.NEXT_PUBLIC_APP_URL ?? "https://atmosmedia.co.nz";
 export const DESCRIPTION_SHORT = "Immersive curated music experiences";
 
 export const DESCRIPTION_LONG =
-  "Gig tickets, weekly radio show, merch drops, dive into the galleries from our past events. Everything Atmos - all in one place";
+  "Curated club nights, underground DJ sets and immersive electronic music events from Atmos.";
 
 /** Formats a page title with the site name suffix for OG/Twitter (which don't use Next.js template) */
 export const formatFullTitle = (title: string) => `${title} | ${SITE_NAME}`;
@@ -103,11 +103,12 @@ type PageMetadataOptions = {
   /** Path from the site root, e.g. "/about". Becomes canonical and og:url. */
   path: string;
   keywords?: readonly string[];
-  /** Replaces the default OG image, e.g. a gig's poster. */
+  /** Replaces the default OG image, e.g. a gig's poster. Leave the size out
+   * when it isn't known; a wrong one is worse than none. */
   image?: {
     url: string;
-    width: number;
-    height: number;
+    width?: number;
+    height?: number;
     alt: string;
     type?: string;
   };
@@ -137,7 +138,7 @@ export function pageMetadata({
     description,
     keywords: keywords && [...keywords],
     alternates: { canonical: path },
-    ...(noindex && { robots: NOINDEX }),
+    robots: noindex ? NOINDEX : DEFAULT_ROBOTS,
     openGraph: {
       ...DEFAULT_OPENGRAPH,
       title: fullTitle,

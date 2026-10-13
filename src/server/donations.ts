@@ -36,6 +36,7 @@ export const donateGig = cache(async (idOrSlug: string) => {
         where: { id: gigId, ...where },
         select: {
           id: true,
+          slug: true,
           title: true,
           subtitle: true,
           gigStartTime: true,

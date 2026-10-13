@@ -109,9 +109,12 @@ export function Media({
 export function AtmosLogo({
   className,
   tone = "dark",
+  eager,
 }: {
   className?: string;
   tone?: "dark" | "light";
+  /** Load straight away, for a logo that is the first thing on screen. */
+  eager?: boolean;
 }) {
   return (
     <Image
@@ -119,6 +122,7 @@ export function AtmosLogo({
       alt="Atmos"
       width={5001}
       height={1120}
+      loading={eager ? "eager" : undefined}
       className={cn("h-auto w-auto object-contain", className)}
     />
   );

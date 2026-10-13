@@ -105,7 +105,7 @@ export type TicketCta = {
  * ticket event wins, the legacy `ticketLink` is the fallback.
  */
 export function ticketCta(
-  gig: Pick<ListGig, "id" | "title" | "isTba" | "ticketLink">,
+  gig: Pick<ListGig, "id" | "slug" | "title" | "isTba" | "ticketLink">,
   event: PublicTicketEvent | undefined,
 ): TicketCta {
   if (isTba(gig)) return { label: "Details", tone: "none", href: null };
@@ -284,7 +284,7 @@ export function GigLink({
   children,
   onMouseEnter,
 }: {
-  gig: Pick<ListGig, "id" | "title" | "isTba">;
+  gig: Pick<ListGig, "id" | "slug" | "title" | "isTba">;
   className?: string;
   children: ReactNode;
   onMouseEnter?: () => void;

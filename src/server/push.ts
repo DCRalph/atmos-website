@@ -219,10 +219,12 @@ function audienceFilter(audience: Audience): Prisma.DeviceTokenWhereInput {
 /** A new gig is up. Goes to everyone who has not muted announcements. */
 export async function announceGig({
   gigId,
+  slug,
   title,
   when,
 }: {
   gigId: string;
+  slug: string | null;
   title: string;
   when: string;
 }): Promise<void> {
@@ -230,7 +232,7 @@ export async function announceGig({
     audience: { kind: "everyone", channel: "gigAnnouncements" },
     title: "New date announced",
     body: `${title} — ${when}`,
-    data: { url: gigPath({ id: gigId, title }) },
+    data: { url: gigPath({ id: gigId, slug }) },
   });
 }
 

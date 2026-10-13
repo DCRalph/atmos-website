@@ -1,6 +1,7 @@
 import EventsClient from "./events-client";
 import { BreadcrumbJsonLd } from "~/components/seo/json-ld";
 import { pageMetadata } from "~/lib/seo-constants";
+import { api, HydrateClient } from "~/trpc/server";
 
 export const metadata = pageMetadata({
   title: "Tickets",
@@ -8,7 +9,9 @@ export const metadata = pageMetadata({
   path: "/events",
 });
 
-export default function EventsPage() {
+export default async function EventsPage() {
+  await api.ticketEvents.upcoming.prefetch();
+
   return (
     <>
       <BreadcrumbJsonLd
@@ -17,7 +20,9 @@ export default function EventsPage() {
           { name: "Tickets", url: "/events" },
         ]}
       />
-      <EventsClient />
+      <HydrateClient>
+        <EventsClient />
+      </HydrateClient>
     </>
   );
 }

@@ -27,7 +27,10 @@ import { GigCountdown, nightOf } from "../on-now";
 
 type UpcomingGig = RouterOutputs["gigs"]["getUpcoming"][number];
 /** What the ticket pill needs from any gig shape. */
-type CtaGig = Pick<UpcomingGig, "id" | "title" | "isTba" | "ticketLink">;
+type CtaGig = Pick<
+  UpcomingGig,
+  "id" | "slug" | "title" | "isTba" | "ticketLink"
+>;
 
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
 const subscribeToMotionPref = (onChange: () => void) => {
@@ -82,7 +85,7 @@ export function HomeHero() {
 
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-6 px-6 pt-20">
         <h1>
-          <AtmosLogo className="w-[min(72vw,640px)]" />
+          <AtmosLogo className="w-[min(72vw,640px)]" eager />
         </h1>
         <p className="t-label text-center text-[12px] text-white/75 md:text-[14px]">
           {live?.phase === "on"
