@@ -4,12 +4,12 @@ import type { Prisma } from "~Prisma/client";
 import { gigSlug } from "~/lib/gig-url";
 
 /**
- * A gig's pretty URL is its stored `slug`: the title slugged, with `-2`, `-3`
- * and so on when another gig already has it, so a night that runs again under
- * the same name gets its own page.
+ * A gig's pretty URL is its stored `slug`: the admin's `slugOverride` if set,
+ * else the title slugged, with `-2`, `-3` and so on when another gig already
+ * has it, so a night that runs again under the same name gets its own page.
  *
- * Call `syncGigSlug` after any write that can change a gig's title or TBA flag;
- * it returns the slug the gig ends up with.
+ * Call `syncGigSlug` after any write that can change a gig's title, slug
+ * override or TBA flag; it returns the slug the gig ends up with.
  *
  * A TBA gig has no slug at all: its title is the secret, and a slug of it in a
  * public payload would give it away. It gets one when it is announced.
@@ -20,25 +20,27 @@ export async function syncGigSlug(
 ): Promise<string | null> {
   const gig = await db.gig.findUnique({
     where: { id: gigId },
-    select: { title: true, isTba: true, slug: true },
+    select: { title: true, isTba: true, slug: true, slugOverride: true },
   });
   if (!gig) return null;
 
-  const slug = gig.isTba ? null : await slugFor(db, gigId, gig.title, gig.slug);
+  const slug = gig.isTba
+    ? null
+    : await slugFor(db, gigId, gig.slugOverride ?? gig.title, gig.slug);
   if (slug !== gig.slug) {
     await db.gig.update({ where: { id: gigId }, data: { slug } });
   }
   return slug;
 }
 
-/** The slug this title calls for, keeping the current one if it still fits. */
+/** The slug this name calls for, keeping the current one if it still fits. */
 async function slugFor(
   db: Prisma.TransactionClient,
   gigId: string,
-  title: string,
+  name: string,
   current: string | null,
 ): Promise<string | null> {
-  const base = gigSlug(title);
+  const base = gigSlug(name);
   // Nothing usable, or the redacted title every unannounced gig shares.
   if (!base || base === "tba") return null;
   if (current && isSlugOf(current, base)) return current;

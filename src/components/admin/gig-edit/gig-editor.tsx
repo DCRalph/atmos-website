@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import type { SerializedEditorState } from "lexical";
 import { ArrowLeft, ExternalLink, Info, Loader2, Trash2 } from "lucide-react";
 import { api } from "~/trpc/react";
-import { gigPath } from "~/lib/gig-url";
+import { gigPath, gigSlug } from "~/lib/gig-url";
 import { AdminSection } from "~/components/admin/admin-section";
 import { GigFlagsField } from "~/components/admin/gig-flags-field";
 import { GigStatusBadge } from "~/components/admin/gig-status-badge";
@@ -96,6 +96,7 @@ type MediaRow = {
 type LoadedGig = {
   id: string;
   slug: string | null;
+  slugOverride: string | null;
   title: string;
   status: GigStatus;
   subtitle: string;
@@ -146,6 +147,7 @@ type LoadedGig = {
 const emptyDraft = (): GigDraft => ({
   title: "",
   subtitle: "",
+  slugOverride: "",
   shortDescription: "",
   descriptionLexical: null,
   isTba: false,
@@ -168,6 +170,7 @@ const emptyDraft = (): GigDraft => ({
 const draftFromGig = (gig: LoadedGig): GigDraft => ({
   title: gig.title,
   subtitle: gig.subtitle,
+  slugOverride: gig.slugOverride ?? "",
   shortDescription: gig.shortDescription ?? "",
   descriptionLexical:
     (gig.descriptionLexical as SerializedEditorState | null) ?? null,
@@ -218,6 +221,7 @@ const fingerprint = (draft: GigDraft): string =>
   JSON.stringify({
     title: draft.title.trim(),
     subtitle: draft.subtitle.trim(),
+    slugOverride: gigSlug(draft.slugOverride),
     shortDescription: draft.shortDescription.trim(),
     description: draft.descriptionLexical
       ? JSON.stringify(draft.descriptionLexical)
@@ -494,6 +498,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
     const core = {
       title: draft.title.trim(),
       subtitle: draft.subtitle.trim(),
+      slugOverride: gigSlug(draft.slugOverride) || null,
       shortDescription: draft.shortDescription.trim(),
       descriptionLexical: draft.descriptionLexical,
       isTba: draft.isTba,
@@ -874,6 +879,27 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
                       />
                     </Field>
                   </div>
+
+                  <Field
+                    id="gig-slug"
+                    label="URL"
+                    hint={
+                      draft.isTba
+                        ? "Used once the gig is announced."
+                        : draft.slugOverride.trim()
+                          ? `/gigs/${gigSlug(draft.slugOverride)}`
+                          : gig?.slug
+                            ? `Follows the title: /gigs/${gig.slug}`
+                            : "Made from the title when left empty."
+                    }
+                  >
+                    <Input
+                      id="gig-slug"
+                      value={draft.slugOverride}
+                      onChange={(e) => update("slugOverride", e.target.value)}
+                      placeholder="auto"
+                    />
+                  </Field>
 
                   <Field
                     id="gig-short-description"
