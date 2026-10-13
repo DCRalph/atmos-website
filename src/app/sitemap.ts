@@ -13,98 +13,85 @@ export const revalidate = 3600;
 
 /**
  * Public pages only. Ticket, pass, receipt, donate and photo signup pages are
- * reached by a link somebody was sent, and are noindex.
+ * reached by a link somebody was sent, and are noindex. Static pages carry no
+ * `lastModified`: the build time would be a guess, and a sitemap whose dates
+ * are always "now" teaches crawlers to ignore its dates.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [
     {
       url: SITE_URL,
-      lastModified: new Date(),
       changeFrequency: "daily",
       priority: 1,
     },
     {
       url: `${SITE_URL}/gigs`,
-      lastModified: new Date(),
       changeFrequency: "daily",
       priority: 0.9,
     },
     {
       url: `${SITE_URL}/events`,
-      lastModified: new Date(),
       changeFrequency: "daily",
       priority: 0.9,
     },
     {
       url: `${SITE_URL}/crew`,
-      lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.8,
     },
     {
       url: `${SITE_URL}/about`,
-      lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.7,
     },
     {
       url: `${SITE_URL}/contact`,
-      lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.6,
     },
     {
       url: `${SITE_URL}/content`,
-      lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.7,
     },
     {
       url: `${SITE_URL}/merch`,
-      lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.6,
     },
     {
       url: `${SITE_URL}/socials`,
-      lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.5,
     },
     {
       url: `${SITE_URL}/equipment`,
-      lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.7,
     },
     {
       url: `${SITE_URL}/legal/privacy`,
-      lastModified: new Date(),
       changeFrequency: "yearly",
       priority: 0.3,
     },
     {
       url: `${SITE_URL}/legal/terms`,
-      lastModified: new Date(),
       changeFrequency: "yearly",
       priority: 0.3,
     },
     {
       url: `${SITE_URL}/legal/ticket-terms`,
-      lastModified: new Date(),
       changeFrequency: "yearly",
       priority: 0.3,
     },
     {
       url: `${SITE_URL}/legal/donation-terms`,
-      lastModified: new Date(),
       changeFrequency: "yearly",
       priority: 0.3,
     },
     {
       url: `${SITE_URL}/legal/kaupapa`,
-      lastModified: new Date(),
       changeFrequency: "yearly",
       priority: 0.3,
     },
@@ -120,10 +107,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       where: {
         status: GigStatus.PUBLISHED,
         isAffiliated: false,
+        // Noindex until announced, and its URL changes when it is.
+        isTba: false,
       },
       select: {
         id: true,
-        title: true,
+        slug: true,
         isTba: true,
         updatedAt: true,
         gigStartTime: true,
@@ -137,9 +126,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${SITE_URL}${gigPath(gig)}`,
       lastModified: gig.updatedAt,
       changeFrequency: "weekly" as const,
-      // Upcoming events get higher priority. A TBA gig is always upcoming, and
-      // its real date must not decide.
-      priority: gig.isTba || gig.gigStartTime > new Date() ? 0.9 : 0.6,
+      // Upcoming events get higher priority.
+      priority: gig.gigStartTime > new Date() ? 0.9 : 0.6,
     }));
   } catch (error) {
     // If database is unavailable, continue with static pages only
@@ -176,5 +164,44 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error("Failed to fetch ticket events for sitemap:", error);
   }
 
-  return [...staticPages, ...eventPages, ...gigPages];
+  let artistPages: MetadataRoute.Sitemap = [];
+  try {
+    const profiles = await db.artistProfile.findMany({
+      where: { isPublished: true },
+      select: { handle: true, updatedAt: true },
+      orderBy: { handle: "asc" },
+    });
+    artistPages = profiles.map((profile) => ({
+      url: `${SITE_URL}/artist/${profile.handle}`,
+      lastModified: profile.updatedAt,
+      changeFrequency: "weekly" as const,
+      priority: 0.5,
+    }));
+  } catch (error) {
+    console.error("Failed to fetch artist profiles for sitemap:", error);
+  }
+
+  let merchPages: MetadataRoute.Sitemap = [];
+  try {
+    const products = await db.shopifyProductCache.findMany({
+      select: { handle: true, syncedAt: true },
+      orderBy: { sortOrder: "asc" },
+    });
+    merchPages = products.map((product) => ({
+      url: `${SITE_URL}/merch/${encodeURIComponent(product.handle)}`,
+      lastModified: product.syncedAt,
+      changeFrequency: "weekly" as const,
+      priority: 0.5,
+    }));
+  } catch (error) {
+    console.error("Failed to fetch merch products for sitemap:", error);
+  }
+
+  return [
+    ...staticPages,
+    ...eventPages,
+    ...gigPages,
+    ...artistPages,
+    ...merchPages,
+  ];
 }

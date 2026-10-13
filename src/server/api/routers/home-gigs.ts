@@ -252,6 +252,7 @@ export const homeGigsRouter = createTRPCRouter({
           gig: {
             select: {
               id: true,
+              slug: true,
               title: true,
               subtitle: true,
               gigStartTime: true,

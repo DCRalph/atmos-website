@@ -17,7 +17,8 @@ export default function robots(): MetadataRoute.Robots {
           "/api/*",
           "/auth-error",
           "/login",
-          "/l",
+          // Rules match by prefix, so a bare "/l" would also block /legal.
+          "/l$",
         ],
       },
     ],

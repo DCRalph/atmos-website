@@ -213,6 +213,7 @@ type MediaItem = {
 
 type Gig = {
   id: string;
+  slug: string | null;
   gigStartTime: Date;
   title: string;
   subtitle: string;

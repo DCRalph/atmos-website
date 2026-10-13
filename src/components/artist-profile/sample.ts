@@ -58,6 +58,7 @@ function set(
     id,
     gig: {
       id: `sample-${id}`,
+      slug: null,
       title,
       isTba: Boolean(extra.tba),
       ticketLink: extra.ticketLink ?? null,

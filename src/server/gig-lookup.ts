@@ -1,37 +1,29 @@
 import "server-only";
 
 import type { Prisma, PrismaClient } from "~Prisma/client";
-import { gigSlug } from "~/lib/gig-url";
 
 /**
- * A gig page URL carries either the cuid or a slug of the title — see
- * `gigPath` in ~/lib/gig-url. The cuid wins; failing that, every title is
- * slugged and compared, newest night first, so a reused title resolves to the
- * most recent gig.
+ * A gig page URL carries either the cuid or the gig's slug — see `gigPath` in
+ * ~/lib/gig-url.
  *
- * A TBA gig is never matched by slug. Its links use the cuid, and matching
- * its real title would let anybody confirm a guess at it.
+ * A TBA gig has no slug, so it is only ever matched by cuid: matching on its
+ * real title would let anybody confirm a guess at it.
  */
 export async function resolveGigId(
   db: PrismaClient,
   idOrSlug: string,
   /**
    * Narrows what may be resolved. Passed `{ status: "PUBLISHED" }` on the
-   * public path, so a draft sharing a title with a live gig cannot take that
-   * title's URL and make the live one unreachable.
+   * public path, so nothing about a draft can be confirmed from outside.
    */
   where: Prisma.GigWhereInput = {},
 ): Promise<string | null> {
-  const byId = await db.gig.findFirst({
-    where: { ...where, id: idOrSlug },
+  const gig = await db.gig.findFirst({
+    where: {
+      ...where,
+      OR: [{ id: idOrSlug }, { slug: idOrSlug, isTba: false }],
+    },
     select: { id: true },
   });
-  if (byId) return byId.id;
-
-  const gigs = await db.gig.findMany({
-    where: { ...where, isTba: false },
-    select: { id: true, title: true },
-    orderBy: { gigStartTime: "desc" },
-  });
-  return gigs.find((gig) => gigSlug(gig.title) === idOrSlug)?.id ?? null;
+  return gig?.id ?? null;
 }

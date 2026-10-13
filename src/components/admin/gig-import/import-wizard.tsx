@@ -314,7 +314,7 @@ export function ImportWizard() {
                 gigId={gigForPublish}
                 gigPath={gigPath({
                   id: gigForPublish,
-                  title: draft.title,
+                  slug: gig?.slug ?? null,
                   isTba: draft.isTba,
                 })}
                 checklist={checklist}

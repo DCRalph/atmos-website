@@ -1,10 +1,12 @@
 /**
  * Pretty gig URLs.
  *
- * A gig is linked by a slug of its title (`/gigs/night-moves`) and the page
- * resolves either that slug or the cuid — see `gigs.getById` — so old cuid
- * links never break. The slug is derived, not stored: renaming a gig moves its
- * pretty URL, and the cuid form remains the durable fallback.
+ * A gig is linked by its stored slug (`/gigs/night-moves`, or
+ * `/gigs/night-moves-2` for the second gig of that name) and the page
+ * resolves either that or the cuid — see `resolveGigId` — so cuid links never
+ * break. The slug follows the title, so renaming a gig moves its pretty URL;
+ * the cuid form is the durable fallback. Slugs are kept by `syncGigSlug` in
+ * `~/server/gig-slug.ts`, which uses `gigSlug` below.
  */
 
 /** "Night Moves! Vol. 2" -> "night-moves-vol-2" */
@@ -18,20 +20,17 @@ export function gigSlug(title: string): string {
 }
 
 /**
- * What goes after `/gigs/` for this gig: the title slug, or the cuid when
- * there is no usable slug — an empty title, or a TBA gig, whose real title is
- * a secret and whose redacted one ("TBA...") would be the same URL for every
- * unannounced gig. Also the `id` to pass to `gigs.getById`, so a card's
- * prefetch shares a cache key with the page it links to.
+ * What goes after `/gigs/` for this gig: its slug, or the cuid when it has
+ * none (a TBA gig, whose title is a secret, or one not yet backfilled). Also
+ * the `id` to pass to `gigs.getById`, so a card's prefetch shares a cache key
+ * with the page it links to.
  */
 export function gigParam(gig: {
   id: string;
-  title: string;
+  slug: string | null;
   isTba?: boolean;
 }): string {
-  if (gig.isTba) return gig.id;
-  const slug = gigSlug(gig.title);
-  return slug && slug !== "tba" ? slug : gig.id;
+  return !gig.isTba && gig.slug ? gig.slug : gig.id;
 }
 
 /** The link to a gig's public page. */

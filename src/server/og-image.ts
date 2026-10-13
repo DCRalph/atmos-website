@@ -62,11 +62,12 @@ export function gigOgImage(gig: {
 }) {
   const wide = gig.isTba ? null : gig.widePosterFileUploadId;
   if (!wide && !gig.posterFileUploadId) return null;
-  return ogImage("gig", gig.id, gig.isTba ? "Atmos" : gig.title, [
-    gig.posterFileUploadId,
-    wide,
-    gig.isTba,
-  ]);
+  return ogImage(
+    "gig",
+    gig.id,
+    gig.isTba ? "An Atmos gig, to be announced" : gig.title,
+    [gig.posterFileUploadId, wide, gig.isTba],
+  );
 }
 
 /**

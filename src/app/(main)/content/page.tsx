@@ -1,5 +1,6 @@
 import ContentPage from "./Content";
 import { pageMetadata } from "~/lib/seo-constants";
+import { api, HydrateClient } from "~/trpc/server";
 
 export const metadata = pageMetadata({
   title: "Content",
@@ -7,6 +8,12 @@ export const metadata = pageMetadata({
   path: "/content",
 });
 
-export default function Page() {
-  return <ContentPage />;
+export default async function Page() {
+  await api.content.getAll.prefetch();
+
+  return (
+    <HydrateClient>
+      <ContentPage />
+    </HydrateClient>
+  );
 }

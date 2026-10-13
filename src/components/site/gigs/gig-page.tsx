@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -389,12 +389,22 @@ function NotFound() {
  * A gig's public page: poster held on the left, facts and tickets on the
  * right, the recap gallery once it's over. TBA gigs keep their secret.
  */
-export function GigPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export function GigPage({ id }: { id: string }) {
   const { data: gig, isPending } = api.gigs.getById.useQuery({ id });
   const { data: viewer } = api.user.me.useQuery();
   const isAdmin = viewer?.effectivePermissions.includes("ADMIN") ?? false;
   const lb = useLightbox();
+
+  // A cuid URL quietly becomes the pretty one once the gig is known. A
+  // history replace, not a redirect: nothing remounts and nothing refetches.
+  // TBA gigs come back from gigPath as the cuid, so they are left alone.
+  useEffect(() => {
+    if (!gig) return;
+    const pretty = gigPath(gig);
+    if (pretty !== `/gigs/${id}`) {
+      window.history.replaceState(null, "", pretty);
+    }
+  }, [gig, id]);
 
   // The page draws after its query, too late for the browser's own jump to a
   // link like `#photos` (the photos email), so it is done once the gig is in.

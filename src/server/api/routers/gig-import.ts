@@ -23,6 +23,7 @@ import {
   type InstagramPost,
 } from "~/server/gig-import/instagram";
 import { resolveExtraction } from "~/server/gig-import/draft";
+import { syncGigSlug } from "~/server/gig-slug";
 import { uploadFromBuffer } from "~/server/uploads/service";
 import { logUserActivity } from "~/server/utils/activity-log";
 import {
@@ -297,6 +298,7 @@ export const gigImportRouter = createTRPCRouter({
         select: { id: true, title: true },
       });
 
+      await syncGigSlug(ctx.db, gig.id);
       await createLineUpFromExtraction(ctx.db, gig.id, extraction);
 
       // Recorded before the poster is fetched: that step reaches out to a CDN

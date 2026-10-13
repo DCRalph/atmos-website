@@ -1,6 +1,7 @@
 import CrewPage from "./Crew";
 import { BreadcrumbJsonLd } from "~/components/seo/json-ld";
 import { pageMetadata } from "~/lib/seo-constants";
+import { api, HydrateClient } from "~/trpc/server";
 
 export const metadata = pageMetadata({
   title: "Crew",
@@ -9,7 +10,9 @@ export const metadata = pageMetadata({
   path: "/crew",
 });
 
-export default function Page() {
+export default async function Page() {
+  await api.crew.getAll.prefetch();
+
   return (
     <>
       <BreadcrumbJsonLd
@@ -18,7 +21,9 @@ export default function Page() {
           { name: "Crew", url: "/crew" },
         ]}
       />
-      <CrewPage />
+      <HydrateClient>
+        <CrewPage />
+      </HydrateClient>
     </>
   );
 }

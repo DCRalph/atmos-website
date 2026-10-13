@@ -41,6 +41,7 @@ export function toPublicProfile(row: PublicProfileRow): PublicProfile {
       id,
       gig: {
         id: gig.id,
+        slug: gig.slug,
         title: gig.title,
         isTba: gig.isTba,
         ticketLink: gig.ticketLink,

@@ -55,6 +55,7 @@ export const photoSignupGig = cache(async (idOrSlug: string) => {
         where: { id: gigId, ...published, isTba: false },
         select: {
           id: true,
+          slug: true,
           title: true,
           subtitle: true,
           gigStartTime: true,
@@ -76,6 +77,7 @@ export const photoSignupGig = cache(async (idOrSlug: string) => {
 
   return {
     id: gig.id,
+    slug: gig.slug,
     title: gig.title,
     venue: gig.subtitle,
     startsAt: gig.gigStartTime,
@@ -168,6 +170,7 @@ export async function sendPhotosEmail(gigId: string) {
     where: { id: gigId },
     select: {
       id: true,
+      slug: true,
       title: true,
       subtitle: true,
       gigStartTime: true,

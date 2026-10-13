@@ -1,5 +1,6 @@
 import MerchPage from "./Merch";
 import { pageMetadata } from "~/lib/seo-constants";
+import { api, HydrateClient } from "~/trpc/server";
 
 export const metadata = pageMetadata({
   title: "Merch",
@@ -7,6 +8,12 @@ export const metadata = pageMetadata({
   path: "/merch",
 });
 
-export default function Page() {
-  return <MerchPage />;
+export default async function Page() {
+  await api.shopify.getProducts.prefetch();
+
+  return (
+    <HydrateClient>
+      <MerchPage />
+    </HydrateClient>
+  );
 }
