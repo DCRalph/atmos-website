@@ -43,7 +43,7 @@ export function MonthBadge({ month, year }: { month?: string; year?: string }) {
   }
   return (
     <span className="flex w-14 flex-col overflow-hidden rounded-[var(--site-r-chip)] text-center">
-      <span className="t-label bg-[var(--site-accent)] py-1.5 text-[10px] text-[var(--site-accent-ink)]">
+      <span className="t-label bg-site-accent text-site-accent-ink py-1.5 text-[10px]">
         {month}
       </span>
       <span className="t-label bg-white/10 py-1.5 text-[10px] text-white/80 tabular-nums">

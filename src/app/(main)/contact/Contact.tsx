@@ -32,7 +32,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
       className="flex size-9 shrink-0 items-center justify-center rounded-full border border-white/15 text-white/70 transition-colors hover:border-white/40 hover:text-white"
     >
       {copied ? (
-        <Check className="size-4 text-[var(--site-accent-text)]" />
+        <Check className="text-site-accent-text size-4" />
       ) : (
         <Copy className="size-3.5" />
       )}
@@ -99,7 +99,7 @@ export default function ContactPage() {
             className="flex items-center gap-3 border-b border-white/10 px-5 py-6 md:gap-5 md:px-10 md:py-8"
           >
             <a {...linkProps(l)} className="group @container min-w-0 flex-1">
-              <span className="t-display block text-[min(5.2cqw,3.25rem)] tabular-nums transition-colors group-hover:text-[var(--site-accent-text)]">
+              <span className="t-display group-hover:text-site-accent-text block text-[min(5.2cqw,3.25rem)] tabular-nums transition-colors">
                 {l.value}
               </span>
               <span className="mt-3 block text-[13px] text-white/60 md:text-[14px]">

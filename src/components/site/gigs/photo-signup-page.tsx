@@ -67,7 +67,7 @@ export function PhotoSignupPage({
 
         <div className="w-full md:max-w-[380px]">
           <section className="glass-dark space-y-4 rounded-[var(--site-r-panel)] rounded-tl-none p-[22px]">
-            <p className="t-label text-[10px] text-[var(--site-accent-text)]">
+            <p className="t-label text-site-accent-text text-[10px]">
               Photos coming soon
             </p>
             <Title gig={gig} />
@@ -122,7 +122,7 @@ function SignupForm({
     return (
       <div role="status" className="space-y-4">
         <p className="flex items-center gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--site-accent)] text-[var(--site-accent-ink)]">
+          <span className="bg-site-accent text-site-accent-ink flex size-10 shrink-0 items-center justify-center rounded-full">
             <Check className="size-5" />
           </span>
           <span className="t-display text-[22px]">You&apos;re on it</span>
@@ -152,7 +152,7 @@ function SignupForm({
       <div
         className={cn(
           "flex h-14 items-center rounded-full border bg-black/30 p-1.5 pl-5 focus-within:border-white/70",
-          error ? "border-[var(--site-danger)]" : "border-white/25",
+          error ? "border-site-danger" : "border-white/25",
         )}
       >
         <label className="sr-only" htmlFor={id}>
@@ -184,10 +184,7 @@ function SignupForm({
         </Button>
       </div>
       {error ? (
-        <p
-          id={`${id}-err`}
-          className="pl-5 text-[13px] text-[var(--site-danger-text)]"
-        >
+        <p id={`${id}-err`} className="text-site-danger-text pl-5 text-[13px]">
           {error}
         </p>
       ) : null}

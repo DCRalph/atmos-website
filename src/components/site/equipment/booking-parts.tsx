@@ -176,7 +176,7 @@ export function ItemRows({ b }: { b: Booking }) {
                       <span className="line-through">
                         {formatMoney(pricing.originalRowTotal)}
                       </span>{" "}
-                      <span className="text-[var(--site-accent-text)]">
+                      <span className="text-site-accent-text">
                         {formatMoney(pricing.discountedRowTotal)}
                       </span>
                       /day for {n}
@@ -186,7 +186,7 @@ export function ItemRows({ b }: { b: Booking }) {
                   )}
                 </p>
                 {n && item.note ? (
-                  <p className="mt-1.5 text-[13px] text-[var(--site-warn)]">
+                  <p className="text-site-warn mt-1.5 text-[13px]">
                     Note: {item.note}
                   </p>
                 ) : null}
@@ -195,9 +195,9 @@ export function ItemRows({ b }: { b: Booking }) {
                 className={cn(
                   "t-label w-16 text-right text-[10px] tabular-nums",
                   left === 0
-                    ? "text-[var(--site-danger-text)]"
+                    ? "text-site-danger-text"
                     : left < item.quantity
-                      ? "text-[var(--site-warn)]"
+                      ? "text-site-warn"
                       : "text-white/55",
                 )}
               >
@@ -267,7 +267,7 @@ function Month({ b, month }: { b: Booking; month: Date }) {
                   aria-hidden
                   className={cn(
                     "absolute inset-y-0.5",
-                    clash ? "bg-[var(--site-danger)]/15" : "bg-white/10",
+                    clash ? "bg-site-danger/15" : "bg-white/10",
                     from && key === dayKey(from)
                       ? "right-0 left-1/2"
                       : end && key === dayKey(end)
@@ -286,10 +286,10 @@ function Month({ b, month }: { b: Booking; month: Date }) {
                   "relative flex size-10 items-center justify-center rounded-full text-[14px] tabular-nums transition-colors disabled:text-white/20",
                   isEnd && inRange
                     ? clash
-                      ? "bg-[var(--site-danger)] text-black"
+                      ? "bg-site-danger text-black"
                       : "bg-white text-black"
                     : clash
-                      ? "text-[var(--site-danger-text)]"
+                      ? "text-site-danger-text"
                       : "text-white/85 hover:bg-white/10",
                 )}
               >
@@ -302,10 +302,10 @@ function Month({ b, month }: { b: Booking; month: Date }) {
                       clash
                         ? isEnd
                           ? "bg-black"
-                          : "bg-[var(--site-danger)]"
+                          : "bg-site-danger"
                         : isEnd && inRange
                           ? "bg-black/60"
-                          : "bg-[var(--site-warn)]",
+                          : "bg-site-warn",
                     )}
                   />
                 ) : null}
@@ -394,11 +394,11 @@ export function BookingCalendar({ b }: { b: Booking }) {
       <div className="mt-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-white/10 pt-4">
         <ul className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-white/60">
           <li className="flex items-center gap-2">
-            <span className="h-0.5 w-3 rounded-full bg-[var(--site-warn)]" />
+            <span className="bg-site-warn h-0.5 w-3 rounded-full" />
             Booked
           </li>
           <li className="flex items-center gap-2">
-            <span className="h-0.5 w-3 rounded-full bg-[var(--site-danger)]" />
+            <span className="bg-site-danger h-0.5 w-3 rounded-full" />
             Clashes with your gear
           </li>
           <li className="flex items-center gap-2">
@@ -439,9 +439,9 @@ export function ClashNotice({ b }: { b: Booking }) {
   return (
     <div
       role="alert"
-      className="flex items-start gap-4 rounded-[var(--site-r-chip)] border border-[var(--site-warn)]/50 bg-white/[0.03] p-4"
+      className="border-site-warn/50 flex items-start gap-4 rounded-[var(--site-r-chip)] border bg-white/[0.03] p-4"
     >
-      <AlertTriangle className="mt-0.5 size-5 shrink-0 text-[var(--site-warn)]" />
+      <AlertTriangle className="text-site-warn mt-0.5 size-5 shrink-0" />
       <div>
         <p className="t-label text-[12px] leading-snug">
           Unavailable due to: {b.limiting.join(", ")}
@@ -468,7 +468,7 @@ function Row({
     <div
       className={cn(
         "flex justify-between gap-4",
-        save ? "text-[var(--site-accent-text)]" : "text-white/70",
+        save ? "text-site-accent-text" : "text-white/70",
       )}
     >
       <span>{label}</span>
@@ -581,7 +581,7 @@ export function RequestForm({ b }: { b: Booking }) {
         role={b.submitError ? "alert" : undefined}
         className={cn(
           "text-[13px]",
-          b.submitError ? "text-[var(--site-danger-text)]" : "text-white/60",
+          b.submitError ? "text-site-danger-text" : "text-white/60",
         )}
       >
         {b.submitError ??
@@ -603,7 +603,7 @@ export function Submitted({ b }: { b: Booking }) {
       role="status"
       className="animate-in fade-in-0 flex flex-col items-start gap-5 duration-300"
     >
-      <span className="flex size-12 items-center justify-center rounded-full bg-[var(--site-accent)] text-[var(--site-accent-ink)]">
+      <span className="bg-site-accent text-site-accent-ink flex size-12 items-center justify-center rounded-full">
         <Check className="size-6" />
       </span>
       <h2 className="t-heading text-3xl">Request sent</h2>

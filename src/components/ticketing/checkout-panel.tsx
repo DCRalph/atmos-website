@@ -17,6 +17,7 @@ import { env } from "~/env";
 import { Button, inputClass } from "~/components/site/ui";
 import { api } from "~/trpc/react";
 import { formatNZD } from "~/lib/ticketing/money";
+import { SITE_ACCENT } from "~/lib/site-constants";
 
 export type CheckoutSession = {
   orderId: string;
@@ -62,7 +63,7 @@ export function getStripePromise() {
 export const stripeAppearance: Appearance = {
   theme: "night",
   variables: {
-    colorPrimary: "#c6ff33",
+    colorPrimary: SITE_ACCENT,
     colorBackground: "#0b0b0b",
     colorText: "#ffffff",
     colorTextSecondary: "rgba(255,255,255,0.6)",
@@ -89,7 +90,7 @@ export function CheckoutSection({ session }: { session: CheckoutSession }) {
 
   if (!stripe || !session.clientSecret) {
     return (
-      <p className="text-[14px] text-[var(--site-danger-text)]">
+      <p className="text-site-danger-text text-[14px]">
         Card payments aren&apos;t available right now. Try again shortly.
       </p>
     );
@@ -231,7 +232,7 @@ function PaidCheckout({ session }: { session: CheckoutSession }) {
         {error && (
           <p
             role="alert"
-            className="rounded-[var(--site-r-chip)] border border-[var(--site-danger)]/50 bg-[var(--site-danger)]/10 px-4 py-3 text-[14px] text-[var(--site-danger-text)]"
+            className="border-site-danger/50 bg-site-danger/10 text-site-danger-text rounded-[var(--site-r-chip)] border px-4 py-3 text-[14px]"
           >
             {error}
           </p>
@@ -334,7 +335,7 @@ function FreeClaim({ session }: { session: CheckoutSession }) {
       )}
 
       {error && (
-        <p role="alert" className="text-[14px] text-[var(--site-danger-text)]">
+        <p role="alert" className="text-site-danger-text text-[14px]">
           {error}
         </p>
       )}

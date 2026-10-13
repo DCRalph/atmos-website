@@ -165,8 +165,8 @@ function ErrorPanel({ onRetry }: { onRetry: () => void }) {
       role="alert"
       className="flex flex-col items-center gap-4 border border-white/10 px-6 py-16 text-center"
     >
-      <span className="flex size-12 items-center justify-center rounded-full border border-[var(--site-danger)]/50">
-        <AlertTriangle className="size-5 text-[var(--site-danger-text)]" />
+      <span className="border-site-danger/50 flex size-12 items-center justify-center rounded-full border">
+        <AlertTriangle className="text-site-danger-text size-5" />
       </span>
       <p className="t-display text-2xl">We couldn&apos;t load gigs</p>
       <p className="max-w-[36ch] text-[14px] text-white/60">
@@ -251,7 +251,7 @@ function NextShowHero({
             <h1 className="t-display max-w-[14ch] text-[clamp(1.75rem,6.4vw,5.5rem)] [overflow-wrap:anywhere] normal-case">
               <Link
                 href={gigPath(next)}
-                className="hover:text-[var(--site-accent-text)]"
+                className="hover:text-site-accent-text"
               >
                 {next.title}
               </Link>
@@ -381,7 +381,7 @@ export function GigsPage() {
                 className={cn(
                   "t-label -mb-px flex shrink-0 items-baseline gap-2 border-b-2 pb-4 text-[11px] transition-colors md:text-[12px]",
                   tab === t.id
-                    ? "border-[var(--site-accent)] text-white"
+                    ? "border-site-accent text-white"
                     : "border-transparent text-white/50 hover:text-white",
                 )}
               >

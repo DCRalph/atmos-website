@@ -13,8 +13,7 @@ export function HomeNewsletter() {
         id="home-newsletter"
         className="t-heading text-[clamp(2.1rem,7.5vw,6rem)] lg:text-[clamp(2.1rem,5.5vw,6rem)]"
       >
-        Join the{" "}
-        <span className="text-[var(--site-accent-text)]">atmosphere</span>
+        Join the <span className="text-site-accent-text">atmosphere</span>
       </h2>
       <div className="space-y-5">
         <p className="max-w-[44ch] text-[15px] text-white/70">

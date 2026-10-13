@@ -13,15 +13,8 @@ import {
   FaYoutube,
 } from "react-icons/fa6";
 import { PageTitle } from "~/components/site/ui";
-import { SOCIALS, type SocialKey } from "~/lib/site-constants";
+import { SOCIALS } from "~/lib/site-constants";
 import { cn } from "~/lib/utils";
-
-/** Profile URLs by platform. Kept as the existing import point; the data lives in site-constants. */
-export const links = Object.fromEntries(
-  Object.entries(SOCIALS).map(([key, { href }]) => [key, href]),
-) as {
-  [K in SocialKey]: (typeof SOCIALS)[K]["href"];
-};
 
 /** Directory rows in display order. Brand colour only tints the icon. */
 const directory = [
@@ -134,7 +127,7 @@ export default function SocialsPage() {
                   className={cn(
                     "pointer-events-auto flex size-11 shrink-0 items-center justify-center rounded-full border transition-colors",
                     copied === s.label
-                      ? "border-transparent bg-[var(--site-accent)] text-[var(--site-accent-ink)]"
+                      ? "bg-site-accent text-site-accent-ink border-transparent"
                       : "border-white/20 text-white/75 hover:border-white hover:text-white",
                   )}
                 >
@@ -146,7 +139,7 @@ export default function SocialsPage() {
                 </button>
                 <span
                   aria-hidden
-                  className="flex size-11 items-center justify-center rounded-full bg-white text-black transition-colors group-hover:bg-[var(--site-accent)] group-hover:text-[var(--site-accent-ink)]"
+                  className="group-hover:bg-site-accent group-hover:text-site-accent-ink flex size-11 items-center justify-center rounded-full bg-white text-black transition-colors"
                 >
                   <ArrowUpRight className="size-5" />
                 </span>

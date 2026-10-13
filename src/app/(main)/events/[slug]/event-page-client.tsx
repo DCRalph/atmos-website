@@ -251,7 +251,7 @@ export function EventPageClient() {
                     {artistProfile.isPublished ? (
                       <Link
                         href={`/artist/${artistProfile.handle}`}
-                        className="hover:text-[var(--site-accent-text)]"
+                        className="hover:text-site-accent-text"
                       >
                         {artistProfile.displayName}
                       </Link>

@@ -46,7 +46,7 @@ function CartButton({ className }: { className: string }) {
       {totalQuantity ? (
         <span
           key={totalQuantity}
-          className="animate-in zoom-in-50 absolute top-1 right-0.5 flex size-4 items-center justify-center rounded-full bg-[var(--site-accent)] text-[9px] font-bold text-[var(--site-accent-ink)] tabular-nums duration-200"
+          className="animate-in zoom-in-50 bg-site-accent text-site-accent-ink absolute top-1 right-0.5 flex size-4 items-center justify-center rounded-full text-[9px] font-bold tabular-nums duration-200"
         >
           {totalQuantity > 9 ? "9+" : totalQuantity}
         </span>
@@ -133,7 +133,7 @@ function AccountMenu({ className }: { className: string }) {
           ))}
           <DropdownMenu.Separator className="my-1.5 h-px bg-white/10" />
           <DropdownMenu.Item
-            className={cn(menuItem, "text-[var(--site-danger-text)]")}
+            className={cn(menuItem, "text-site-danger-text")}
             onSelect={() => void signOut()}
           >
             <LogOut className="size-4" /> Log out
@@ -243,7 +243,7 @@ function MobileMenu({
                     className={cn(
                       // Hit area is the word itself, not the whole row.
                       "t-display inline-block text-[2rem]",
-                      active ? "text-[var(--site-accent-text)]" : "text-white",
+                      active ? "text-site-accent-text" : "text-white",
                     )}
                   >
                     {l.label}
@@ -329,7 +329,7 @@ export function SiteHeader({ tone = "dark" }: { tone?: "dark" | "light" }) {
                     className={cn(
                       "t-label relative text-[11px] transition-colors",
                       active
-                        ? `${ink.active} after:absolute after:inset-x-0 after:-bottom-2 after:h-0.5 after:bg-[var(--site-accent)]`
+                        ? `${ink.active} after:bg-site-accent after:absolute after:inset-x-0 after:-bottom-2 after:h-0.5`
                         : ink.link,
                     )}
                   >

@@ -74,7 +74,7 @@ export default function TicketPage() {
   return (
     <TicketShell poster={poster}>
       {data.invitedByName && (
-        <p className="t-label mb-6 text-[11px] text-[var(--site-accent-text)]">
+        <p className="t-label text-site-accent-text mb-6 text-[11px]">
           {data.invitedByName} put you on the list
         </p>
       )}

@@ -194,7 +194,7 @@ export function PassCode({
 /** Red notice for a cancelled event or a revoked pass. */
 export function DangerNotice({ children }: { children: ReactNode }) {
   return (
-    <p className="mb-6 rounded-[var(--site-r-chip)] border border-[var(--site-danger)]/50 bg-[var(--site-danger)]/10 px-4 py-3 text-[14px] text-[var(--site-danger-text)]">
+    <p className="border-site-danger/50 bg-site-danger/10 text-site-danger-text mb-6 rounded-[var(--site-r-chip)] border px-4 py-3 text-[14px]">
       {children}
     </p>
   );

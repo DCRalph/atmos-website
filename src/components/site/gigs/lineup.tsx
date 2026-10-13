@@ -131,7 +131,7 @@ export function Lineup({ gig }: { gig: DetailGig }) {
               <span>
                 <span
                   className={cn(
-                    "t-display block normal-case transition-colors group-hover:text-[var(--site-accent-text)]",
+                    "t-display group-hover:text-site-accent-text block normal-case transition-colors",
                     i === 0 ? "text-lg" : "text-base text-white/85",
                   )}
                 >
@@ -229,7 +229,7 @@ function ArtistDialog({
                   className={cn(
                     "size-10 text-[12px] transition-[opacity,box-shadow]",
                     i === index
-                      ? "ring-2 ring-[var(--site-accent)]"
+                      ? "ring-site-accent ring-2"
                       : "opacity-55 ring-1 ring-white/25 hover:opacity-100",
                   )}
                 />
@@ -252,7 +252,7 @@ function ArtistDialog({
           <>
             {upcoming.length ? (
               <section>
-                <h3 className="t-label mb-3 flex items-center justify-between text-[11px] text-[var(--site-accent-text)]">
+                <h3 className="t-label text-site-accent-text mb-3 flex items-center justify-between text-[11px]">
                   Upcoming{" "}
                   <span className="tabular-nums">{upcoming.length}</span>
                 </h3>

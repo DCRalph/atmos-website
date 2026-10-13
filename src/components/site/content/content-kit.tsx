@@ -11,6 +11,7 @@ import { cn } from "~/lib/utils";
 import type { RouterOutputs } from "~/trpc/react";
 import { SiteDialog } from "../overlays";
 import { Button, buttonVariants, IconButton, Media } from "../ui";
+import { SITE_ACCENT } from "~/lib/site-constants";
 
 type ContentItem = RouterOutputs["content"]["getAll"][number];
 
@@ -276,7 +277,7 @@ export function CoverDialog({
               title={entry.title}
               params={{
                 auto_play: false,
-                color: "#c6ff33",
+                color: SITE_ACCENT,
                 buying: false,
                 sharing: false,
                 download: false,

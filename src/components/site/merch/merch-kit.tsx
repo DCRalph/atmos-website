@@ -218,9 +218,9 @@ export function CatalogError({
   return (
     <div
       role="alert"
-      className="flex items-start gap-4 rounded-[var(--site-r-chip)] border border-[var(--site-danger)]/50 bg-white/[0.03] p-5"
+      className="border-site-danger/50 flex items-start gap-4 rounded-[var(--site-r-chip)] border bg-white/[0.03] p-5"
     >
-      <AlertTriangle className="mt-0.5 size-5 shrink-0 text-[var(--site-danger-text)]" />
+      <AlertTriangle className="text-site-danger-text mt-0.5 size-5 shrink-0" />
       <div className="min-w-0 flex-1">
         <p className="t-label text-[12px] leading-snug">{title}</p>
         <p className="mt-1.5 text-[14px] text-white/70">

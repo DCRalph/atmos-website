@@ -44,6 +44,7 @@ import { ThemePicker } from "~/components/artist-themes/theme-picker";
 import { ThemeSwatch } from "~/components/artist-themes/theme-swatch";
 import { ProfilePreviewFrame } from "~/components/artist-themes/profile-preview-frame";
 import { orderBlocks } from "~/lib/artist-sections";
+import { SITE_ACCENT } from "~/lib/site-constants";
 
 type Props = {
   /** When provided (admin mode), edits this specific profile. */
@@ -879,7 +880,7 @@ function ThemeCard({
             <input
               type="color"
               aria-label="Accent override picker"
-              value={accentValid ? accent : "#c6ff33"}
+              value={accentValid ? accent : SITE_ACCENT}
               onChange={(e) => setAccent(e.target.value)}
               className="h-9 w-12 shrink-0 cursor-pointer rounded border"
             />
@@ -887,7 +888,7 @@ function ThemeCard({
               id="accent-override"
               value={accent}
               onChange={(e) => setAccent(e.target.value)}
-              placeholder="#c6ff33"
+              placeholder={SITE_ACCENT}
               aria-invalid={accent !== "" && !accentValid}
               className="font-mono"
             />

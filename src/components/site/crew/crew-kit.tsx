@@ -85,7 +85,7 @@ export function MemberLinks({
       {member.profileHandle ? (
         <Link
           href={`/@${member.profileHandle}`}
-          className="t-label inline-flex h-10 items-center gap-1.5 rounded-full bg-white px-4 text-[10px] text-black transition-colors hover:bg-[var(--site-accent)] hover:text-[var(--site-accent-ink)]"
+          className="t-label hover:bg-site-accent hover:text-site-accent-ink inline-flex h-10 items-center gap-1.5 rounded-full bg-white px-4 text-[10px] text-black transition-colors"
         >
           View profile <ArrowUpRight className="size-3.5" />
         </Link>

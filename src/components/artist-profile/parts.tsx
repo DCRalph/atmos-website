@@ -752,7 +752,7 @@ function ClaimDialog({
             className={cn(inputClass, "h-auto rounded-2xl py-3")}
           />
           {request.error ? (
-            <p className="text-[14px] text-[var(--site-danger-text)]">
+            <p className="text-site-danger-text text-[14px]">
               {request.error.message}
             </p>
           ) : null}

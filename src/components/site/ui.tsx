@@ -20,7 +20,7 @@ export const buttonVariants = cva(
       variant: {
         solid: "rounded-full bg-white text-black hover:bg-white/85",
         accent:
-          "rounded-full bg-[var(--site-accent)] text-[var(--site-accent-ink)] hover:brightness-110",
+          "rounded-full bg-site-accent text-site-accent-ink hover:brightness-110",
         outline:
           "rounded-full border border-white/40 text-white hover:border-white hover:bg-white/5",
         glass: "glass rounded-full text-white hover:bg-white/15",
@@ -188,7 +188,7 @@ export function CountdownTiles({
             className={cn(
               "t-display tabular-nums",
               compact ? "text-2xl" : "text-4xl",
-              i === 0 && "text-[var(--site-accent-text)]",
+              i === 0 && "text-site-accent-text",
             )}
           >
             {value === undefined ? "--" : String(value).padStart(2, "0")}
@@ -232,4 +232,4 @@ export function PageTitle({
 
 /** Text input style for forms on black. */
 export const inputClass =
-  "h-12 w-full rounded-full border border-white/15 bg-white/[0.04] px-5 text-[15px] text-white outline-none placeholder:text-white/40 hover:border-white/30 focus:border-white/60 aria-[invalid=true]:border-[var(--site-danger)]";
+  "h-12 w-full rounded-full border border-white/15 bg-white/[0.04] px-5 text-[15px] text-white outline-none placeholder:text-white/40 hover:border-white/30 focus:border-white/60 aria-[invalid=true]:border-site-danger";

@@ -58,7 +58,7 @@ function TabBar({ active }: { active: TabId }) {
           )}
         >
           {id === active ? (
-            <span className="absolute top-0 h-[2px] w-6 bg-[var(--site-accent)]" />
+            <span className="absolute top-0 h-[2px] w-6 bg-site-accent" />
           ) : null}
           <Icon className="size-5" strokeWidth={id === active ? 2.25 : 1.75} />
           <span className="t-label text-[8px]">{label}</span>
@@ -116,11 +116,11 @@ function Home() {
 
         <section className="px-5 pt-8">
           <Label>Next up</Label>
-          <article className="mt-3 overflow-hidden rounded-[var(--site-r-panel)] rounded-tl-none border border-white/10 bg-[var(--site-raised)]">
+          <article className="mt-3 overflow-hidden rounded-[var(--site-r-panel)] rounded-tl-none border border-white/10 bg-site-raised">
             <div className="flex gap-4 p-3">
               <Poster gig={gig} className="aspect-[4/5] w-[112px] shrink-0" />
               <div className="flex min-w-0 flex-col py-1">
-                <p className="t-label text-[10px] text-[var(--site-accent-text)]">
+                <p className="t-label text-[10px] text-site-accent-text">
                   In 4 days
                 </p>
                 <h2 className="t-display mt-2.5 text-[24px]">{gig.headline}</h2>
@@ -327,7 +327,7 @@ function Tickets() {
             {order.tickets.map((ticket, i) => (
               <article
                 key={ticket.number}
-                className="flex w-[318px] shrink-0 snap-start gap-4 rounded-[var(--site-r-panel)] rounded-tl-none border border-white/10 bg-[var(--site-raised)] p-3"
+                className="flex w-[318px] shrink-0 snap-start gap-4 rounded-[var(--site-r-panel)] rounded-tl-none border border-white/10 bg-site-raised p-3"
               >
                 <MockQr seed={ticket.number} className="size-[124px] shrink-0" />
                 <div className="flex min-w-0 flex-col py-1">

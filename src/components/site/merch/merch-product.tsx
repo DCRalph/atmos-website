@@ -162,7 +162,7 @@ function Purchase({ product }: { product: Product }) {
           role="status"
           className="animate-in fade-in-0 flex items-center gap-3 border-y border-white/10 py-3"
         >
-          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--site-accent)] text-[var(--site-accent-ink)]">
+          <span className="bg-site-accent text-site-accent-ink flex size-6 shrink-0 items-center justify-center rounded-full">
             <Check className="size-3.5" />
           </span>
           <p className="min-w-0 flex-1 text-[14px]">
@@ -321,7 +321,7 @@ function NotFound() {
                   sizes="(min-width: 1024px) 25vw, 50vw"
                   className={cn("aspect-[4/5]", isSoldOut(p) && "grayscale")}
                 />
-                <p className="t-display mt-3 text-[15px] [overflow-wrap:anywhere] normal-case group-hover:text-[var(--site-accent-text)]">
+                <p className="t-display group-hover:text-site-accent-text mt-3 text-[15px] [overflow-wrap:anywhere] normal-case">
                   {p.title}
                 </p>
                 <p className="mt-1 text-[13px] text-white/60 tabular-nums">

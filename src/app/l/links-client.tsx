@@ -1,393 +1,206 @@
 "use client";
 
-import { motion } from "motion/react";
+import "~/styles/site.css";
+
 import Link from "next/link";
-import { Ticket, Globe, ArrowRight, ExternalLink } from "lucide-react";
-import Image from "next/image";
+import type { ComponentType, SVGProps } from "react";
+import { ArrowRight, ArrowUpRight, Globe } from "lucide-react";
+import {
+  FaFacebook,
+  FaInstagram,
+  FaSoundcloud,
+  FaSpotify,
+  FaTiktok,
+  FaYoutube,
+} from "react-icons/fa6";
 import { cn } from "~/lib/utils";
-import { FaFacebook, FaSoundcloud } from "react-icons/fa6";
-import { FaSpotify } from "react-icons/fa6";
-import { FaTiktok, FaYoutube } from "react-icons/fa6";
-import { FaInstagram } from "react-icons/fa6";
-
-import { orbitron } from "~/lib/fonts";
-import { formatDate, formatTime } from "~/lib/date-utils";
 import { gigPath } from "~/lib/gig-url";
+import { siteFontVariables } from "~/lib/site-fonts";
+import { SOCIALS, type SocialKey } from "~/lib/site-constants";
+import { api } from "~/trpc/react";
+import { AtmosLogo, Skeleton, buttonVariants } from "~/components/site/ui";
+import {
+  CtaPill,
+  GigPoster,
+  fmtDay,
+  fmtTime,
+  ticketCta,
+  type UpcomingGig,
+} from "~/components/site/gigs/gig-parts";
 
-import { api, type RouterOutputs } from "~/trpc/react";
-
-import { links } from "~/app/(main)/socials/Socials";
-
-type SocialLink = {
-  platform: string;
-  handle?: string;
-  description?: string;
-  url: string;
-  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-  color: string;
-};
-
-const bigLinks: SocialLink[] = [
-  // {
-  //   platform: "Tickets",
-  //   // handle: "@atmos",
-  //   description: "Buy tickets to our events",
-  //   url: "https://tickets.com",
-  //   icon: Ticket,
-  //   color: "#E4405F",
-  // },
-  {
-    platform: "Website",
-    handle: "atmosmedia.co.nz",
-    description: "Atmos platform",
-    url: "/",
-    icon: Globe,
-    color: "#E4405F",
-  },
+/** Icon row, in display order. */
+const socials: [SocialKey, ComponentType<SVGProps<SVGSVGElement>>][] = [
+  ["instagram", FaInstagram],
+  ["tiktok", FaTiktok],
+  ["soundcloud", FaSoundcloud],
+  ["spotify", FaSpotify],
+  ["youtube", FaYoutube],
+  ["facebook", FaFacebook],
 ];
 
-const smallLinks: SocialLink[] = [
-  {
-    platform: "Instagram",
-    handle: "@atmos.nz",
-    url: links.instagram,
-    icon: FaInstagram,
-    color: "#E4405F",
-  },
-  {
-    platform: "TikTok",
-    handle: "@atmos_tv",
-    url: links.tiktok,
-    icon: FaTiktok,
-    color: "#E4405F",
-  },
-  {
-    platform: "SoundCloud",
-    handle: "@atmosmedia",
-    url: links.soundcloud,
-    icon: FaSoundcloud,
-    color: "#E4405F",
-  },
-  {
-    platform: "Spotify",
-    handle: "@atmosmedia",
-    url: links.spotify,
-    icon: FaSpotify,
-    color: "#E4405F",
-  },
-  {
-    platform: "YouTube",
-    handle: "@Atmosmediatv",
-    url: links.youtube,
-    icon: FaYoutube,
-    color: "#E44405F",
-  },
-  {
-    platform: "Facebook",
-    handle: "@atmosmedia",
-    url: links.facebook,
-    icon: FaFacebook,
-    color: "#E4405F",
-  },
-];
+const panel =
+  "rounded-[var(--site-r-panel)] border border-white/12 bg-site-raised";
 
+/** The link in bio: socials, the next gig, and the way into the site. */
 export default function LinksPage() {
-  const upcomingGigs = api.gigs.getUpcoming.useQuery();
+  const upcoming = api.gigs.getUpcoming.useQuery();
+  const next = upcoming.data?.[0];
 
   return (
-    <div className="flex min-h-screen bg-zinc-900 px-4 pt-4 md:pt-12">
-      <div className="shadow-glass mx-auto flex max-w-xl grow flex-col gap-4 rounded-t-xl bg-black p-6 md:gap-8">
-        {/* Header */}
-        <motion.div
-          className="mt-0 text-center select-none md:mt-8"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          {/* Logo */}
-          <div className="mb-6 flex justify-center">
-            <div className="pointer-events-none relative">
-              {/* <h1 className="text-6xl font-black uppercase tracking-tighter text-white sm:text-7xl">ATMOS</h1> */}
-              <div className="relative h-16 w-48 md:w-72">
-                <Image
-                  src="/logo/atmos-white.png"
-                  alt="ATMOS Logo"
-                  fill
-                  sizes="30vw"
-                  className="object-contain"
-                />
-              </div>
-              <div className="from-accent-muted via-accent-muted absolute -bottom-3 left-0 h-1 w-full bg-linear-to-r to-transparent" />
-            </div>
+    <div className={cn("site min-h-dvh", siteFontVariables)}>
+      <main className="site-fade-in mx-auto flex min-h-dvh max-w-xl flex-col gap-7 px-5 pt-10 pb-6 md:pt-16">
+        <header className="flex flex-col items-center text-center">
+          <div className="w-52 md:w-64">
+            <AtmosLogo className="w-full" />
+            <div className="bg-site-accent mt-3 h-[3px]" />
           </div>
-
-          <p className="text-xs font-bold tracking-widest text-white/60 uppercase md:text-sm">
+          <p className="t-label mt-5 text-[11px] text-white/60">
             Connect with us everywhere
           </p>
-        </motion.div>
+        </header>
 
-        <SmallLinks links={smallLinks} />
-
-        {upcomingGigs.data && upcomingGigs.data.length > 0 && (
-          <UpcomingGigLink gig={upcomingGigs.data[0]!} />
-        )}
-
-        <BigLinks links={bigLinks} />
-
-        {/* Footer */}
-        <motion.div
-          className="mt-auto text-center select-none"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
+        <nav
+          aria-label="Socials"
+          className="flex flex-wrap justify-center gap-2"
         >
-          <p className="text-xs font-bold tracking-widest text-white/40 uppercase">
-            © 2026 ATMOS. All rights reserved.
-          </p>
-        </motion.div>
-      </div>
+          {socials.map(([key, Icon]) => (
+            <a
+              key={key}
+              href={SOCIALS[key].href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`${SOCIALS[key].label} ${SOCIALS[key].handle}`}
+              className="flex size-12 items-center justify-center rounded-[14px] border border-white/12 bg-white/5 text-white/80 transition-colors hover:border-white/40 hover:text-white"
+            >
+              <Icon className="size-5" aria-hidden />
+            </a>
+          ))}
+        </nav>
+
+        {upcoming.isPending ? (
+          <Skeleton className="h-52 rounded-[var(--site-r-panel)]" />
+        ) : next ? (
+          <NextGig gig={next} />
+        ) : null}
+
+        <Link
+          href="/"
+          className={cn(
+            panel,
+            "group grid grid-cols-[48px_minmax(0,1fr)_40px] items-center gap-4 p-4 transition-colors hover:border-white/30",
+          )}
+        >
+          <span className="flex size-12 items-center justify-center rounded-full border border-white/20">
+            <Globe className="size-5" aria-hidden />
+          </span>
+          <span className="min-w-0">
+            <span className="t-display block text-xl">Website</span>
+            <span className="t-label mt-1.5 block text-[10px] text-white/60">
+              atmosmedia.co.nz
+            </span>
+          </span>
+          <span className="group-hover:bg-site-accent group-hover:text-site-accent-ink flex size-10 items-center justify-center rounded-full bg-white text-black transition-colors">
+            <ArrowRight className="size-4" aria-hidden />
+          </span>
+        </Link>
+
+        <p className="t-label mt-auto pt-6 text-center text-[9px] text-white/40">
+          © {new Date().getFullYear()} Atmos
+        </p>
+      </main>
     </div>
   );
 }
 
-const MotionLink = motion.create(Link);
+/** "Next event": poster beside the details, then Details and the ticket call to action. */
+function NextGig({ gig }: { gig: UpcomingGig }) {
+  const event = api.ticketEvents.forGig.useQuery({ gigId: gig.id });
+  const cta = ticketCta(gig, event.data ?? undefined);
 
-const BigLinks = ({
-  links,
-  className,
-}: {
-  links: SocialLink[];
-  className?: string;
-}) => {
   return (
-    <div className={cn("space-y-4", className)}>
-      {links.map((link, index) => (
-        <MotionLink
-          key={link.platform}
-          href={link.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group hover:border-accent-muted relative block overflow-hidden border-2 border-white/10 bg-black/90 p-6 transition-all hover:bg-black hover:shadow-[0_0_25px_var(--accent-muted)]"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 + index * 0.1 }}
+    <section aria-labelledby="links-next">
+      <div className="flex items-center gap-3">
+        <span className="h-px flex-1 bg-white/12" />
+        <h2
+          id="links-next"
+          className="t-label text-site-accent-text text-[10px]"
         >
-          {/* Red accent bar on left */}
-          <div className="bg-accent-muted absolute top-0 left-0 h-full w-1 opacity-0 transition-all group-hover:w-2 group-hover:opacity-100" />
-
-          {/* Glow effect */}
-          <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-            <div className="from-accent-muted/5 absolute inset-0 bg-linear-to-r via-transparent to-transparent" />
-          </div>
-
-          <div className="relative flex items-center gap-5">
-            {/* Icon */}
-            <div className="group-hover:border-accent-muted group-hover:bg-accent-muted/10 flex h-14 w-14 shrink-0 items-center justify-center border-2 border-white/20 bg-black/50 transition-all">
-              <link.icon className="group-hover:text-accent-muted h-6 w-6 text-white transition-colors" />
-            </div>
-
-            {/* Content */}
-            <div className="min-w-0 flex-1">
-              <h3
-                className={cn(
-                  "group-hover:text-accent-muted text-xl font-black tracking-tight text-white uppercase transition-colors sm:text-2xl",
-                  orbitron.className,
-                )}
-              >
-                {link.platform}
-              </h3>
-              <p className="mt-1 text-xs font-bold tracking-wider text-white/50 uppercase">
-                {link.handle}
-              </p>
-              <p className="mt-2 text-sm font-medium text-white/70">
-                {link.description}
-              </p>
-            </div>
-
-            {/* Arrow indicator */}
-            <div className="shrink-0 transform transition-transform group-hover:translate-x-1">
-              <ExternalLink
-                className="group-hover:text-accent-muted h-6 w-6 text-white/30 transition-colors"
-                strokeWidth={2.5}
-              />
-            </div>
-          </div>
-        </MotionLink>
-      ))}
-    </div>
-  );
-};
-
-const SmallLinks = ({
-  links,
-  className,
-}: {
-  links: SocialLink[];
-  className?: string;
-}) => {
-  return (
-    <motion.div
-      className={cn("flex flex-wrap justify-center gap-3", className)}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: 0.1 }}
-    >
-      {links.map((link, index) => (
-        <MotionLink
-          key={link.platform}
-          href={link.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group hover:border-accent-muted relative flex h-16 w-16 items-center justify-center border-2 border-white/10 bg-black/90 transition-all hover:bg-black hover:shadow-[0_0_20px_var(--accent-muted)]"
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3, delay: 0.1 + index * 0.05 }}
-          title={link.platform + (link.handle ? ` @${link.handle}` : "")}
-        >
-          <link.icon className="group-hover:text-accent-muted h-7 w-7 text-white/70 transition-all group-hover:scale-110" />
-        </MotionLink>
-      ))}
-    </motion.div>
-  );
-};
-
-type UpcomingGig = RouterOutputs["gigs"]["getUpcoming"][number];
-
-const UpcomingGigLink = ({ gig }: { gig: UpcomingGig }) => {
-  const isTba = gig.isTba;
-  const displayTitle = isTba ? "TBA..." : gig.title;
-
-  return (
-    <motion.div
-      className="space-y-3"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.15 }}
-    >
-      <div className="flex items-center gap-2">
-        <div className="bg-accent-muted/30 h-px flex-1" />
-        <span className="text-accent-muted text-xs font-black tracking-widest uppercase">
-          Next Event
-        </span>
-        <div className="bg-accent-muted/30 h-px flex-1" />
+          Next event
+        </h2>
+        <span className="h-px flex-1 bg-white/12" />
       </div>
 
-      <div className="group border-accent-muted/50 hover:border-accent-muted relative block overflow-hidden border-2 bg-black/90 p-5 transition-all hover:bg-black hover:shadow-[0_0_30px_var(--accent-muted)]">
-        {/* Animated accent bar */}
-        <div className="bg-accent-muted absolute top-0 left-0 h-full w-1.5 transition-all group-hover:w-2" />
-
-        {/* Corner accent */}
-        <div className="absolute top-0 right-0 h-8 w-8 overflow-hidden">
-          <div className="bg-accent-muted/20 group-hover:bg-accent-muted/40 absolute top-0 right-0 h-12 w-12 translate-x-1/2 -translate-y-1/2 rotate-45 transition-all" />
-        </div>
-
-        {/* Glow effect */}
-        <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-          <div className="from-accent-muted/10 absolute inset-0 bg-linear-to-r via-transparent to-transparent" />
-        </div>
-
-        <div className="relative flex gap-4">
-          {/* Poster on the left */}
-          {gig.posterFileUpload?.url && (
-            <div className="group-hover:border-accent-muted/50 relative h-32 w-24 shrink-0 overflow-hidden border-2 border-white/10 bg-black/20 transition-all sm:h-40 sm:w-28">
-              <Image
-                src={gig.posterFileUpload.url}
-                alt={isTba ? "TBA poster" : `${gig.title} poster`}
-                fill
-                sizes="(max-width: 640px) 96px, 112px"
-                className={cn(
-                  "object-cover transition-transform duration-300 group-hover:scale-105",
-                  isTba && "blur-md",
-                )}
-              />
-              {isTba && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-2xl font-black tracking-wider text-white uppercase">
-                    TBA...
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Content on the right */}
-          <div className="flex min-w-0 flex-1 flex-col gap-4">
-            {/* Date & Time */}
-            {isTba ? (
-              <div className="text-xs font-bold tracking-widest text-white/60 uppercase">
+      <div className={cn(panel, "mt-4 p-4")}>
+        <div className="flex gap-4">
+          <GigPoster
+            gig={gig}
+            sizes="96px"
+            tbaSize="text-lg"
+            className="aspect-[4/5] w-24 shrink-0"
+          />
+          <div className="min-w-0">
+            {gig.isTba ? (
+              <p className="t-label text-[10px] text-white/60">
                 Details coming soon
-              </div>
+              </p>
             ) : (
-              <div className="flex items-center gap-4">
-                <div className="text-accent-muted flex items-center gap-2">
-                  {/* <Calendar className="h-4 w-4" /> */}
-                  <span
-                    className={cn(
-                      "text-lg font-black tracking-tight uppercase",
-                      orbitron.className,
-                    )}
-                  >
-                    {formatDate(gig.gigStartTime)}
-                  </span>
-                </div>
-                {gig.gigEndTime && (
-                  <div className="flex items-center gap-1.5 text-white/50">
-                    {/* <Clock className="h-3.5 w-3.5" /> */}
-                    <span className="text-xs font-bold tracking-wider uppercase">
-                      {formatTime(gig.gigStartTime)} -{" "}
-                      {formatTime(gig.gigEndTime)}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Title & Subtitle */}
-            <div>
-              <h3
-                className={cn(
-                  "group-hover:text-accent-muted text-xl leading-tight font-black tracking-tight text-white uppercase transition-colors sm:text-2xl",
-                  orbitron.className,
-                )}
-              >
-                {displayTitle}
-              </h3>
-              {!isTba && gig.subtitle && (
-                <p className="mt-1 text-sm font-medium text-white/60">
-                  {gig.subtitle}
+              <>
+                <p className="t-label text-site-accent-text text-[11px]">
+                  {fmtDay(gig.gigStartTime)}
                 </p>
-              )}
-            </div>
-
-            {/* Actions */}
-            {!isTba && (
-              <div className="flex gap-3">
-                <Link
-                  href={gigPath(gig)}
-                  className="group/btn relative flex flex-1 items-center justify-center gap-2 overflow-hidden border-2 border-white/30 bg-transparent px-4 py-2.5 text-center text-xs font-black tracking-wider text-white uppercase transition-all duration-200 hover:border-white hover:bg-white/10 hover:shadow-[0_0_15px_rgba(255,255,255,0.15)]"
-                >
-                  <span className="relative z-10 transition-transform duration-200 group-hover/btn:-translate-x-0.5">
-                    View Details
-                  </span>
-                  <ArrowRight className="relative z-10 h-3.5 w-3.5 transition-transform duration-200 group-hover/btn:translate-x-1" />
-                </Link>
-
-                {gig.ticketLink && (
-                  <Link
-                    href={gig.ticketLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group/ticket bg-accent-muted hover:bg-accent-muted relative flex items-center gap-2 overflow-hidden px-5 py-2.5 text-xs font-black tracking-wider text-white uppercase transition-all duration-200 hover:shadow-[0_0_25px_var(--accent-muted)]"
-                  >
-                    <Ticket className="relative z-10 h-4 w-4 transition-transform duration-200 group-hover/ticket:scale-110 group-hover/ticket:rotate-[-8deg]" />
-                    <span className="relative z-10">Tickets</span>
-                  </Link>
-                )}
-              </div>
+                <p className="t-label mt-1.5 text-[10px] text-white/60">
+                  {fmtTime(gig.gigStartTime)}
+                  {gig.gigEndTime ? ` - ${fmtTime(gig.gigEndTime)}` : null}
+                </p>
+              </>
             )}
+            <h3 className="t-display mt-3 line-clamp-3 text-[21px] break-words normal-case">
+              {gig.isTba ? "TBA" : gig.title}
+            </h3>
+            {!gig.isTba && gig.subtitle ? (
+              <p className="mt-1.5 line-clamp-2 text-[13px] text-white/60">
+                {gig.subtitle}
+              </p>
+            ) : null}
           </div>
         </div>
+
+        {gig.isTba ? null : (
+          <div className="mt-4 flex gap-2">
+            <Link
+              href={gigPath(gig)}
+              className={cn(
+                buttonVariants({ variant: "outline" }),
+                "px-5 last:flex-1",
+              )}
+            >
+              Details
+            </Link>
+            {event.isPending ? (
+              <Skeleton className="h-11 flex-1 rounded-full" />
+            ) : cta.href ? (
+              <a
+                href={cta.href}
+                target={cta.tone === "external" ? "_blank" : undefined}
+                rel={
+                  cta.tone === "external" ? "noopener noreferrer" : undefined
+                }
+                className={cn(
+                  buttonVariants({ variant: "accent" }),
+                  "min-w-0 flex-1 px-4",
+                )}
+              >
+                {cta.tone === "external" ? "Tickets" : cta.label}
+                {cta.tone === "external" ? (
+                  <ArrowUpRight className="size-4" aria-hidden />
+                ) : null}
+              </a>
+            ) : cta.tone === "muted" ? (
+              <CtaPill cta={cta} size="md" className="flex-1 justify-center" />
+            ) : null}
+          </div>
+        )}
       </div>
-    </motion.div>
+    </section>
   );
-};
+}

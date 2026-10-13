@@ -100,8 +100,7 @@ function EventRow({ event }: { event: PublicEvent }) {
           <p
             className={cn(
               "t-heading text-[2.5rem] tabular-nums md:text-6xl",
-              buyable &&
-                "transition-colors group-hover:text-[var(--site-accent-text)]",
+              buyable && "group-hover:text-site-accent-text transition-colors",
             )}
           >
             {day}

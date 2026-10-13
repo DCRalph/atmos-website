@@ -108,7 +108,7 @@ export function DonatePage({
             ) : (
               <>
                 <div className="shrink-0 space-y-4">
-                  <p className="t-label text-[10px] text-[var(--site-accent-text)]">
+                  <p className="t-label text-site-accent-text text-[10px]">
                     Support the night
                   </p>
                   <h1 className="t-display text-[30px] [overflow-wrap:anywhere]">
@@ -197,7 +197,7 @@ function DonateForm({
     return (
       <div className="min-h-0 space-y-4 overflow-y-auto">
         {intro}
-        <p className="text-[14px] text-[var(--site-danger-text)]">
+        <p className="text-site-danger-text text-[14px]">
           Payments aren&apos;t available right now. Try again shortly.
         </p>
       </div>
@@ -386,7 +386,7 @@ function AmountPicker({
               className={cn(
                 "t-display relative h-16 rounded-full border text-[22px] tabular-nums transition-colors",
                 on
-                  ? "border-[var(--site-accent)] bg-[var(--site-accent)] text-[var(--site-accent-ink)]"
+                  ? "border-site-accent bg-site-accent text-site-accent-ink"
                   : "border-white/25 bg-black/30 hover:border-white/60",
               )}
             >
@@ -405,7 +405,7 @@ function AmountPicker({
         className={cn(
           "flex h-14 items-center gap-2 rounded-full border bg-black/30 px-5 focus-within:border-white/70",
           picked === "custom" && invalid
-            ? "border-[var(--site-danger)]"
+            ? "border-site-danger"
             : picked === "custom"
               ? "border-white/70"
               : "border-white/25",
@@ -435,7 +435,7 @@ function AmountPicker({
         <p
           id={`${id}-err`}
           role="alert"
-          className="pl-5 text-[13px] text-[var(--site-danger-text)]"
+          className="text-site-danger-text pl-5 text-[13px]"
         >
           {invalid}
         </p>
@@ -656,7 +656,7 @@ function PayError({ message }: { message: string }) {
   return (
     <p
       role="alert"
-      className="rounded-[var(--site-r-chip)] border border-[var(--site-danger)]/50 bg-[var(--site-danger)]/10 px-4 py-3 text-[14px] text-[var(--site-danger-text)]"
+      className="border-site-danger/50 bg-site-danger/10 text-site-danger-text rounded-[var(--site-r-chip)] border px-4 py-3 text-[14px]"
     >
       {message}
     </p>
@@ -719,7 +719,7 @@ function Thanks({ gig, cents }: { gig: DonateGig; cents: number }) {
   return (
     <div role="status" className="space-y-4">
       <p className="flex items-center gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--site-accent)] text-[var(--site-accent-ink)]">
+        <span className="bg-site-accent text-site-accent-ink flex size-10 shrink-0 items-center justify-center rounded-full">
           <Heart className="size-5 fill-current" />
         </span>
         <span className="t-display text-[24px]">Thank you</span>

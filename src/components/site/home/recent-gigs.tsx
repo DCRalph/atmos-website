@@ -175,7 +175,7 @@ function PosterRail({ gigs }: { gigs: RecentGig[] }) {
                   </span>
                 ) : null}
               </div>
-              <p className="t-display mt-4 line-clamp-2 text-lg break-words normal-case transition-colors group-hover:text-[var(--site-accent-text)]">
+              <p className="t-display group-hover:text-site-accent-text mt-4 line-clamp-2 text-lg break-words normal-case transition-colors">
                 {gig.title}
               </p>
               <p className="t-label mt-2 truncate text-[10px] text-white/55">

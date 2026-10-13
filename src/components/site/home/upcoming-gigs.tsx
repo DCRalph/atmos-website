@@ -114,7 +114,7 @@ function GigRow({ gig }: { gig: UpcomingGig }) {
   return (
     <li>
       {notice ? (
-        <p className="t-label mt-3 bg-[var(--site-warn)] px-3 py-1.5 text-[9px] text-black">
+        <p className="t-label bg-site-warn mt-3 px-3 py-1.5 text-[9px] text-black">
           {notice}
         </p>
       ) : null}
@@ -143,7 +143,7 @@ function GigRow({ gig }: { gig: UpcomingGig }) {
         </div>
         <div className="min-w-0">
           {onNow ? <OnNowChip className="mb-2" /> : null}
-          <p className="t-display line-clamp-2 text-lg break-words normal-case transition-colors group-hover:text-[var(--site-accent-text)] md:text-2xl">
+          <p className="t-display group-hover:text-site-accent-text line-clamp-2 text-lg break-words normal-case transition-colors md:text-2xl">
             {tba ? "TBA" : gig.title}
           </p>
           <p className="mt-1.5 truncate text-[13px] text-white/60">

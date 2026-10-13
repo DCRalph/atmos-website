@@ -121,7 +121,7 @@ export default function TicketsPage() {
       <h1 className="sr-only">Your tickets for {data.event.name}</h1>
       {isNew && (
         <div className="mb-6">
-          <p className="t-label inline-flex items-center gap-1.5 rounded-full bg-[var(--site-accent)] py-2 pr-3.5 pl-3 text-[10px] text-[var(--site-accent-ink)]">
+          <p className="t-label bg-site-accent text-site-accent-ink inline-flex items-center gap-1.5 rounded-full py-2 pr-3.5 pl-3 text-[10px]">
             <Check className="size-3.5" aria-hidden /> You&apos;re in
           </p>
           <p className="mt-3 text-[14px] text-white/70">

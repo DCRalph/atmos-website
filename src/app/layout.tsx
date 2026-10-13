@@ -28,6 +28,7 @@ import {
 import { RightMenuRail } from "~/components/right-menu-rail";
 import { StripTicketHash } from "~/components/ticketing/strip-ticket-hash";
 import { PostHogInit } from "~/components/posthog-init";
+import { SITE_ACCENT } from "~/lib/site-constants";
 
 /**
  * Site-wide fallbacks only. Next merges each key shallowly, so a canonical, an
@@ -79,7 +80,7 @@ export default function RootLayout({
                   <ConfirmProvider>
                     <NextTopLoader
                       height={3}
-                      color="#c6ff33"
+                      color={SITE_ACCENT}
                       showSpinner={false}
                     />
 

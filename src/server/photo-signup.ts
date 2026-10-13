@@ -12,6 +12,7 @@ import { escapeHtml, sendEmailBatch } from "~/server/email/send";
 import { resolveGigId } from "~/server/gig-lookup";
 import { db } from "~/server/db";
 import { gigOgImage } from "~/server/og-image";
+import { SITE_ACCENT } from "~/lib/site-constants";
 
 /**
  * Gig photo signup, outside the router: what the public page draws, and the
@@ -132,7 +133,7 @@ function renderPhotosEmail(gig: {
 </td></tr>
 ${rows ? `<tr><td style="padding:0 0 18px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table></td></tr>` : ""}
 <tr><td style="padding:0 0 18px;">
-  <a href="${escapeHtml(gig.galleryUrl)}" style="display:inline-block;padding:14px 22px;background:#c6ff33;color:#000;text-decoration:none;font-size:15px;font-weight:700;border-radius:999px;">See the photos</a>
+  <a href="${escapeHtml(gig.galleryUrl)}" style="display:inline-block;padding:14px 22px;background:${SITE_ACCENT};color:#000;text-decoration:none;font-size:15px;font-weight:700;border-radius:999px;">See the photos</a>
 </td></tr>
 <tr><td style="padding:24px 0 8px;color:#999;font-size:12px;line-height:1.6;">
 You asked to hear when the photos from ${title} were up.

@@ -146,7 +146,7 @@ export function CtaPill({
         "t-label inline-flex shrink-0 items-center gap-1 rounded-full whitespace-nowrap transition-colors",
         size === "sm" ? "h-9 px-4 text-[10px]" : "h-11 px-5 text-[11px]",
         cta.tone === "buy" &&
-          "bg-white text-black group-hover:bg-[var(--site-accent)] group-hover:text-[var(--site-accent-ink)]",
+          "group-hover:bg-site-accent group-hover:text-site-accent-ink bg-white text-black",
         cta.tone === "external" &&
           "border border-white/40 text-white group-hover:border-white",
         cta.tone === "muted" && "border border-white/15 text-white/55",
@@ -242,7 +242,7 @@ export function GigPoster({
 export function DateChip({ date }: { date: Date }) {
   return (
     <span className="flex w-14 flex-col overflow-hidden rounded-[var(--site-r-chip)] text-center">
-      <span className="t-label bg-[var(--site-accent)] py-1 text-[10px] text-[var(--site-accent-ink)]">
+      <span className="t-label bg-site-accent text-site-accent-ink py-1 text-[10px]">
         {fmtShortMonth(date)}
       </span>
       <span className="t-label bg-white/10 py-1 text-[10px] text-white/80 tabular-nums">
@@ -268,7 +268,7 @@ export function AdminStrip({
   return (
     <p
       className={cn(
-        "t-label bg-[var(--site-warn)] px-3 py-1.5 text-center text-[9px] text-black",
+        "t-label bg-site-warn px-3 py-1.5 text-center text-[9px] text-black",
         className,
       )}
     >

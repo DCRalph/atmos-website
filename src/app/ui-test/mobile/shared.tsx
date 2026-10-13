@@ -195,7 +195,7 @@ export function MoreBody() {
                       className={cn(
                         "t-label rounded-full px-2.5 py-1.5 text-[9px]",
                         Number.isNaN(Number(row.badge))
-                          ? "bg-[var(--site-accent)] text-[var(--site-accent-ink)]"
+                          ? "bg-site-accent text-site-accent-ink"
                           : "bg-white/10 text-white tabular-nums",
                       )}
                     >
@@ -221,7 +221,7 @@ export function MoreBody() {
         <span
           className={cn(
             buttonVariants({ variant: "ghost", size: "sm" }),
-            "px-0 text-[var(--site-danger-text)]",
+            "px-0 text-site-danger-text",
           )}
         >
           Delete account
@@ -293,7 +293,7 @@ export function DoorScan() {
         ].map((pos) => (
           <span
             key={pos}
-            className={cn("absolute size-10 border-[var(--site-accent)]", pos)}
+            className={cn("absolute size-10 border-site-accent", pos)}
           />
         ))}
       </div>

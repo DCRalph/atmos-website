@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { CSSProperties } from "react";
+import { SITE_ACCENT } from "./site-constants";
 
 /**
  * Artist profile themes.
@@ -112,7 +113,7 @@ export const THEME_PRESETS = {
     theme: {
       layout: "headliner",
       ground: "#000000",
-      accent: "#c6ff33",
+      accent: SITE_ACCENT,
       display: "orbitron",
       corners: "hard",
       photo: "color",
@@ -172,7 +173,7 @@ export const THEME_PRESETS = {
     theme: {
       layout: "stage",
       ground: "#3b0072",
-      accent: "#c6ff33",
+      accent: SITE_ACCENT,
       display: "bodoni",
       corners: "soft",
       photo: "duotone",
@@ -198,7 +199,7 @@ export const GROUND_SWATCHES = [
 ] as const;
 
 export const ACCENT_SWATCHES = [
-  "#c6ff33",
+  SITE_ACCENT,
   "#ff2fd4",
   "#ffc21a",
   "#5ee0ff",

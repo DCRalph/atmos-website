@@ -41,8 +41,8 @@ export function SiteSelect<T extends string>({
         className={cn(
           "group t-label flex h-12 w-full items-center justify-between gap-3 rounded-[24px] border border-white/15 bg-white/[0.04] pr-4 pl-5 text-[12px] text-white outline-none",
           "transition-[border-radius,background-color,border-color] duration-200 ease-out hover:border-white/30",
-          "data-[state=open]:rounded-b-none data-[state=open]:border-white/25 data-[state=open]:bg-[var(--site-raised)]",
-          "aria-[invalid=true]:border-[var(--site-danger)] data-[placeholder]:text-white/45",
+          "data-[state=open]:bg-site-raised data-[state=open]:rounded-b-none data-[state=open]:border-white/25",
+          "aria-[invalid=true]:border-site-danger data-[placeholder]:text-white/45",
           className,
         )}
       >
@@ -57,7 +57,7 @@ export function SiteSelect<T extends string>({
           side="bottom"
           sideOffset={-1}
           avoidCollisions={false}
-          className="site-select-drop glass-float z-[90] max-h-[min(22rem,var(--radix-select-content-available-height))] w-[var(--radix-select-trigger-width)] overflow-hidden rounded-b-[24px] border border-t-0 border-white/25 bg-[var(--site-raised)]"
+          className="site-select-drop glass-float bg-site-raised z-[90] max-h-[min(22rem,var(--radix-select-content-available-height))] w-[var(--radix-select-trigger-width)] overflow-hidden rounded-b-[24px] border border-t-0 border-white/25"
         >
           <Select.Viewport className="border-t border-white/10 p-1.5">
             {options.map((o) => (
@@ -69,7 +69,7 @@ export function SiteSelect<T extends string>({
               >
                 <Select.ItemText>{o.label}</Select.ItemText>
                 <Select.ItemIndicator className="absolute right-3.5">
-                  <Check className="size-4 text-[var(--site-accent-text)]" />
+                  <Check className="text-site-accent-text size-4" />
                 </Select.ItemIndicator>
               </Select.Item>
             ))}
@@ -117,14 +117,14 @@ export function SiteSwitch({
         className={cn(
           "relative mt-0.5 h-7 w-12 shrink-0 rounded-full border transition-colors duration-200",
           checked
-            ? "border-transparent bg-[var(--site-accent)]"
+            ? "bg-site-accent border-transparent"
             : "border-white/20 bg-white/10",
         )}
       >
         <span
           className={cn(
             "absolute top-1/2 left-1 size-5 -translate-y-1/2 rounded-full transition-transform duration-200 ease-out",
-            checked ? "translate-x-5 bg-[var(--site-accent-ink)]" : "bg-white",
+            checked ? "bg-site-accent-ink translate-x-5" : "bg-white",
           )}
         />
       </button>
@@ -152,7 +152,7 @@ export function SiteCheckbox({
         checked={checked}
         onCheckedChange={(c) => onCheckedChange(c === true)}
         aria-invalid={invalid}
-        className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-[var(--site-r-chip)] border border-white/35 transition-colors hover:border-white aria-[invalid=true]:border-[var(--site-danger)] data-[state=checked]:border-white data-[state=checked]:bg-white"
+        className="aria-[invalid=true]:border-site-danger mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-[var(--site-r-chip)] border border-white/35 transition-colors hover:border-white data-[state=checked]:border-white data-[state=checked]:bg-white"
       >
         <Checkbox.Indicator>
           <Check className="size-3.5 text-black" strokeWidth={3} />
@@ -198,7 +198,7 @@ export function PillRadioGroup<T extends string>({
               onChange={() => onChange(o.value)}
               className="peer sr-only"
             />
-            <span className="flex h-10 items-center rounded-full border border-white/15 px-4 text-[14px] text-white/75 transition-colors peer-checked:border-white peer-checked:bg-white peer-checked:text-black peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--site-accent-text)] hover:border-white/40">
+            <span className="peer-focus-visible:outline-site-accent-text flex h-10 items-center rounded-full border border-white/15 px-4 text-[14px] text-white/75 transition-colors peer-checked:border-white peer-checked:bg-white peer-checked:text-black peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 hover:border-white/40">
               {o.label}
             </span>
           </label>

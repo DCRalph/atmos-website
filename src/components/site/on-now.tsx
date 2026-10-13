@@ -66,14 +66,11 @@ export function OnNowChip({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "t-label inline-flex h-7 w-fit shrink-0 items-center gap-1.5 rounded-full bg-[var(--site-accent)] px-3 text-[10px] text-[var(--site-accent-ink)]",
+        "t-label bg-site-accent text-site-accent-ink inline-flex h-7 w-fit shrink-0 items-center gap-1.5 rounded-full px-3 text-[10px]",
         className,
       )}
     >
-      <span
-        className="size-1.5 rounded-full bg-[var(--site-accent-ink)]"
-        aria-hidden
-      />
+      <span className="bg-site-accent-ink size-1.5 rounded-full" aria-hidden />
       On now
     </span>
   );
@@ -102,7 +99,7 @@ export function OnNowPanel({
   return (
     <div
       className={cn(
-        "flex flex-col justify-center rounded-xl bg-[var(--site-accent)] text-[var(--site-accent-ink)]",
+        "bg-site-accent text-site-accent-ink flex flex-col justify-center rounded-xl",
         compact
           ? "h-16 w-[248px] gap-1.5 px-4"
           : "h-24 w-[min(100%,344px)] gap-2.5 px-5 md:w-[392px]",
@@ -117,7 +114,7 @@ export function OnNowPanel({
         >
           <span
             className={cn(
-              "rounded-full bg-[var(--site-accent-ink)]",
+              "bg-site-accent-ink rounded-full",
               compact ? "size-2" : "size-2.5",
             )}
             aria-hidden
@@ -140,7 +137,7 @@ export function OnNowPanel({
           className="relative h-1.5 overflow-hidden rounded-full bg-black/20"
         >
           <div
-            className="absolute inset-y-0 left-0 rounded-full bg-[var(--site-accent-ink)] transition-[width] duration-1000"
+            className="bg-site-accent-ink absolute inset-y-0 left-0 rounded-full transition-[width] duration-1000"
             style={{ width: `${pct}%` }}
           />
         </div>

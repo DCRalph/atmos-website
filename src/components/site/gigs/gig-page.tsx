@@ -196,7 +196,7 @@ function Actions({
           href={`${gigPath(gig)}/donate`}
           className={cn(
             buttonVariants({ variant: "outline", size: "sm" }),
-            "h-10 border-[var(--site-accent)]/60 text-[var(--site-accent-text)] hover:border-[var(--site-accent)]",
+            "border-site-accent/60 text-site-accent-text hover:border-site-accent h-10",
           )}
         >
           <Heart className="size-4" /> Donate
@@ -207,7 +207,7 @@ function Actions({
           href={`/admin/gigs/${gig.id}`}
           className={cn(
             buttonVariants({ variant: "outline", size: "sm" }),
-            "h-10 border-[var(--site-warn)]/60 text-[var(--site-warn)]",
+            "border-site-warn/60 text-site-warn h-10",
           )}
         >
           <Pencil className="size-4" /> Edit

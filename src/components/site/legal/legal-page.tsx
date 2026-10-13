@@ -125,7 +125,7 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
                       className={cn(
                         "-ml-px border-l-2 py-1.5 pl-4",
                         s.id === active
-                          ? "border-[var(--site-accent)]"
+                          ? "border-site-accent"
                           : "border-transparent",
                       )}
                     />
@@ -222,7 +222,7 @@ function TocLink({
       <span
         className={cn(
           "w-7 shrink-0 tabular-nums",
-          active ? "text-[var(--site-accent-text)]" : "text-white/40",
+          active ? "text-site-accent-text" : "text-white/40",
         )}
       >
         {section.n}

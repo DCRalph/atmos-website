@@ -44,7 +44,7 @@ export function NewsletterForm({
           className,
         )}
       >
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--site-accent)] text-[var(--site-accent-ink)]">
+        <span className="bg-site-accent text-site-accent-ink flex size-10 shrink-0 items-center justify-center rounded-full">
           <Check className="size-5" />
         </span>
         <span className="min-w-0 truncate text-[15px]">
@@ -65,7 +65,7 @@ export function NewsletterForm({
         onSubmit={submit}
         className={cn(
           "flex h-14 items-center rounded-full border bg-black/30 p-1.5 pl-6 focus-within:border-white/70",
-          error ? "border-[var(--site-danger)]" : "border-white/25",
+          error ? "border-site-danger" : "border-white/25",
         )}
       >
         <label className="sr-only" htmlFor={id}>
@@ -97,7 +97,7 @@ export function NewsletterForm({
       {error ? (
         <p
           id={`${id}-err`}
-          className="mt-2 pl-6 text-[13px] text-[var(--site-danger-text)]"
+          className="text-site-danger-text mt-2 pl-6 text-[13px]"
         >
           {error}
         </p>

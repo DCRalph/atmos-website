@@ -153,7 +153,7 @@ function PosterTile({ gig }: { gig: MockGig }) {
             className={cn(
               "t-label absolute top-0 left-0 px-2.5 py-1.5 text-[9px]",
               gig.status === "free"
-                ? "bg-[var(--site-accent)] text-[var(--site-accent-ink)]"
+                ? "bg-site-accent text-site-accent-ink"
                 : "glass-dark",
             )}
           >

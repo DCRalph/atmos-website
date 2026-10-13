@@ -136,10 +136,7 @@ export default async function RentalDecisionPage({
       </dl>
 
       {query.error === "unavailable" ? (
-        <p
-          role="alert"
-          className="mt-6 text-[14px] text-[var(--site-danger-text)]"
-        >
+        <p role="alert" className="text-site-danger-text mt-6 text-[14px]">
           Some of this gear is already booked for these dates. Sort it out in
           the admin dashboard.
         </p>
@@ -152,8 +149,8 @@ export default async function RentalDecisionPage({
           className={cn(
             "t-label inline-flex h-14 w-full items-center justify-center rounded-full px-9 text-[13px] transition-[filter,background-color]",
             action === "approve"
-              ? "bg-[var(--site-accent)] text-[var(--site-accent-ink)] hover:brightness-110"
-              : "bg-[var(--site-danger)] text-black hover:brightness-110",
+              ? "bg-site-accent text-site-accent-ink hover:brightness-110"
+              : "bg-site-danger text-black hover:brightness-110",
           )}
         >
           {action === "approve"

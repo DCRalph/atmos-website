@@ -137,7 +137,7 @@ function NextGigStrip() {
 
   return (
     <div className={stripClass}>
-      <div className="flex w-14 flex-col items-center rounded-[var(--site-r-chip)] bg-[var(--site-accent)] py-1.5 text-[var(--site-accent-ink)]">
+      <div className="bg-site-accent text-site-accent-ink flex w-14 flex-col items-center rounded-[var(--site-r-chip)] py-1.5">
         <span className="t-label text-[10px]">
           {nzDate.shortMonth.format(gig.gigStartTime)}
         </span>
@@ -149,7 +149,7 @@ function NextGigStrip() {
         {/* The title link covers the strip; the ticket pill sits above it. */}
         <Link
           href={gigPath(gig)}
-          className="block after:absolute after:inset-0 hover:text-[var(--site-accent-text)]"
+          className="hover:text-site-accent-text block after:absolute after:inset-0"
         >
           <span className="t-display line-clamp-2 text-lg break-words normal-case sm:text-xl md:line-clamp-1 md:text-2xl">
             {gig.title}
@@ -333,7 +333,7 @@ function LiveStrip({
       className={cn(
         "relative z-10 px-5 py-5 md:px-10",
         on
-          ? "bg-[var(--site-accent)] text-[var(--site-accent-ink)]"
+          ? "bg-site-accent text-site-accent-ink"
           : "glass-dark border-x-0 border-b-0",
       )}
     >
@@ -358,7 +358,7 @@ function LiveStrip({
             href={gigPath(gig)}
             className={cn(
               "block after:absolute after:inset-0",
-              !on && "hover:text-[var(--site-accent-text)]",
+              !on && "hover:text-site-accent-text",
             )}
           >
             <span className="t-display line-clamp-2 text-lg break-words normal-case sm:text-xl md:line-clamp-1 md:text-2xl">

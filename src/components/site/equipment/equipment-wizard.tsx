@@ -53,8 +53,7 @@ function Progress({
               className={cn(
                 "t-label flex size-7 shrink-0 items-center justify-center rounded-full text-[10px]",
                 i < index && "bg-white text-black",
-                i === index &&
-                  "bg-[var(--site-accent)] text-[var(--site-accent-ink)]",
+                i === index && "bg-site-accent text-site-accent-ink",
                 i > index && "border border-white/25 text-white/55",
               )}
             >
@@ -102,9 +101,7 @@ function PackageTiles({ b }: { b: Booking }) {
             onClick={() => b.togglePackage(p.id)}
             className={cn(
               "flex min-h-48 flex-col items-start gap-4 p-5 text-left transition-colors",
-              on
-                ? "bg-white text-black"
-                : "bg-black hover:bg-[var(--site-raised)]",
+              on ? "bg-white text-black" : "hover:bg-site-raised bg-black",
             )}
           >
             <span className="flex w-full items-start justify-between gap-3">
@@ -128,7 +125,7 @@ function PackageTiles({ b }: { b: Booking }) {
                 <span
                   className={cn(
                     "t-label text-[10px] tabular-nums",
-                    on ? "text-black/70" : "text-[var(--site-accent-text)]",
+                    on ? "text-black/70" : "text-site-accent-text",
                   )}
                 >
                   Save {formatMoney(sep - p.price)}
@@ -232,7 +229,7 @@ export function EquipmentWizard() {
               {b.error ? (
                 <div
                   role="alert"
-                  className="rounded-[var(--site-r-chip)] border border-[var(--site-danger)]/50 bg-white/[0.03] p-5"
+                  className="border-site-danger/50 rounded-[var(--site-r-chip)] border bg-white/[0.03] p-5"
                 >
                   <p className="t-label text-[12px]">
                     Could not load rental gear.

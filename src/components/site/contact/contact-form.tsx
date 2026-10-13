@@ -42,7 +42,7 @@ const validate = (f: Fields): Errors => {
 
 function FieldError({ id, error }: { id: string; error?: string }) {
   return error ? (
-    <p id={id} className="mt-2 pl-5 text-[13px] text-[var(--site-danger-text)]">
+    <p id={id} className="text-site-danger-text mt-2 pl-5 text-[13px]">
       {error}
     </p>
   ) : null;
@@ -120,7 +120,7 @@ export function ContactForm() {
   if (sentTo) {
     return (
       <div role="status" className="flex flex-col items-start gap-5 py-2">
-        <span className="flex size-12 items-center justify-center rounded-full bg-[var(--site-accent)] text-[var(--site-accent-ink)]">
+        <span className="bg-site-accent text-site-accent-ink flex size-12 items-center justify-center rounded-full">
           <Check className="size-6" />
         </span>
         <h3 className="t-display text-[clamp(1.5rem,3vw,2.25rem)]">
@@ -192,11 +192,11 @@ export function ContactForm() {
           value={fields.message}
           onChange={(e) => set("message", e.target.value)}
           placeholder="Tell us more"
-          className="w-full resize-y rounded-[var(--site-r-panel)] border border-white/15 bg-white/[0.04] px-5 py-4 text-[15px] leading-relaxed text-white outline-none placeholder:text-white/40 hover:border-white/30 focus:border-white/60 disabled:opacity-60 aria-[invalid=true]:border-[var(--site-danger)]"
+          className="aria-[invalid=true]:border-site-danger w-full resize-y rounded-[var(--site-r-panel)] border border-white/15 bg-white/[0.04] px-5 py-4 text-[15px] leading-relaxed text-white outline-none placeholder:text-white/40 hover:border-white/30 focus:border-white/60 disabled:opacity-60"
         />
       </Field>
       {create.isError ? (
-        <p role="alert" className="text-[14px] text-[var(--site-danger-text)]">
+        <p role="alert" className="text-site-danger-text text-[14px]">
           Something went wrong. Please try again.
         </p>
       ) : null}

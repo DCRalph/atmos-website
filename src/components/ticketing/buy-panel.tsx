@@ -230,9 +230,7 @@ export function BuyPanel({
     return (
       <PanelShell className={className}>
         <div className="space-y-2 p-5">
-          <p className="t-display text-xl text-[var(--site-danger-text)]">
-            Cancelled
-          </p>
+          <p className="t-display text-site-danger-text text-xl">Cancelled</p>
           <p className="text-[14px] text-white/70">
             This event has been cancelled. If you bought tickets, check your
             email for refund details.
@@ -330,7 +328,7 @@ export function BuyPanel({
                   </p>
                 )}
                 {tier.lowStock && tier.available && (
-                  <p className="mt-1.5 text-[12px] font-medium text-[var(--site-warn)]">
+                  <p className="text-site-warn mt-1.5 text-[12px] font-medium">
                     Only {tier.remainingIfLow} left
                   </p>
                 )}
@@ -471,7 +469,7 @@ export function BuyPanel({
                 {REASSURANCE.map((line) => (
                   <li key={line} className="flex gap-2.5">
                     <Check
-                      className="mt-0.5 size-3.5 shrink-0 text-[var(--site-accent-text)]"
+                      className="text-site-accent-text mt-0.5 size-3.5 shrink-0"
                       aria-hidden
                     />
                     {line}
@@ -552,7 +550,7 @@ function HoldCountdown({
       className={cn(
         "flex items-center justify-between rounded-[var(--site-r-chip)] px-3 py-2 text-[13px] tabular-nums",
         urgent
-          ? "bg-[var(--site-warn)]/12 text-[var(--site-warn)]"
+          ? "bg-site-warn/12 text-site-warn"
           : "bg-white/[0.05] text-white/65",
       )}
       aria-live="polite"
@@ -619,9 +617,7 @@ function CodeBox({
         </Button>
       </form>
       {error ? (
-        <p className="mt-2 pl-4 text-[13px] text-[var(--site-danger-text)]">
-          {error}
-        </p>
+        <p className="text-site-danger-text mt-2 pl-4 text-[13px]">{error}</p>
       ) : note ? (
         <p className="mt-2 pl-4 text-[13px] text-white/65">{note}</p>
       ) : null}
@@ -675,7 +671,7 @@ function Row({
     <div
       className={cn(
         "flex items-baseline justify-between",
-        accent ? "text-[var(--site-accent-text)]" : "text-white/65",
+        accent ? "text-site-accent-text" : "text-white/65",
       )}
     >
       <dt>{label}</dt>
@@ -710,9 +706,7 @@ function VenueFeeInfo() {
         className={cn(
           // The pseudo-element pads the tap target without growing the dot.
           "relative inline-flex size-4 items-center justify-center transition-colors after:absolute after:-inset-3 after:content-['']",
-          open
-            ? "text-[var(--site-accent-text)]"
-            : "text-white/70 hover:text-white",
+          open ? "text-site-accent-text" : "text-white/70 hover:text-white",
         )}
       >
         <Info className="size-4" aria-hidden />
@@ -732,7 +726,7 @@ function VenueFeeInfo() {
             "data-[state=open]:animate-in data-[state=open]:fade-in-0 z-[80] w-[17rem] max-w-[calc(100vw-1.5rem)] rounded-[var(--site-r-chip)] border border-white/15 bg-[#141414] px-3.5 py-3 text-[13px] leading-snug text-white/85 shadow-[0_12px_32px_rgb(0_0_0/0.6)]",
           )}
         >
-          <p className="t-label mb-1.5 text-[11px] text-[var(--site-accent-text)]">
+          <p className="t-label text-site-accent-text mb-1.5 text-[11px]">
             Straight to the venue
           </p>
           <p>
