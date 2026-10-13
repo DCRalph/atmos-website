@@ -13,6 +13,8 @@ import {
 
 const PASS_TYPE = "pass.nz.co.atmosmedia.ticket";
 const OTHER_TYPE = "pass.nz.co.atmosmedia.other";
+/** Older than every fixture, so the template never decides a test it isn't about. */
+const TEMPLATE = new Date("2026-01-01T00:00:00.000Z");
 
 function at(iso: string): Date {
   return new Date(iso);
@@ -115,6 +117,7 @@ describe("listUpdatedPasses", () => {
       listUpdatedPasses({
         registrations: [otherType],
         passTypeIdentifier: PASS_TYPE,
+        templateUpdatedAt: TEMPLATE,
         passesUpdatedSince: null,
       }),
       null,
@@ -125,6 +128,7 @@ describe("listUpdatedPasses", () => {
     const listed = listUpdatedPasses({
       registrations: [ticketA, ticketB, otherType],
       passTypeIdentifier: PASS_TYPE,
+      templateUpdatedAt: TEMPLATE,
       passesUpdatedSince: null,
     });
     assert.ok(listed);
@@ -147,6 +151,7 @@ describe("listUpdatedPasses", () => {
     const listed = listUpdatedPasses({
       registrations: [eventOnly, stale],
       passTypeIdentifier: PASS_TYPE,
+      templateUpdatedAt: TEMPLATE,
       // Legacy seconds tag from after the ticket write, before the event edit.
       passesUpdatedSince: String(
         Math.floor(at("2026-08-01T12:00:00.000Z").getTime() / 1000),
@@ -168,10 +173,25 @@ describe("listUpdatedPasses", () => {
     const listed = listUpdatedPasses({
       registrations: [levelOnly, stale],
       passTypeIdentifier: PASS_TYPE,
+      templateUpdatedAt: TEMPLATE,
       passesUpdatedSince: formatPassUpdateTag(at("2026-08-10T00:00:00.000Z")),
     });
     assert.ok(listed);
     assert.deepEqual(listed.serialNumbers, ["ticket-level-only"]);
+  });
+
+  test("includes every pass when the template changed after the tag", () => {
+    const listed = listUpdatedPasses({
+      registrations: [ticketA, stale],
+      passTypeIdentifier: PASS_TYPE,
+      passesUpdatedSince: formatPassUpdateTag(at("2026-08-20T00:00:00.000Z")),
+      templateUpdatedAt: at("2026-09-01T00:00:00.000Z"),
+    });
+    assert.ok(listed);
+    assert.deepEqual(
+      new Set(listed.serialNumbers),
+      new Set(["ticket-a", "ticket-stale"]),
+    );
   });
 
   test("returns 204 when ticket and event are both older than the tag", () => {
@@ -179,6 +199,7 @@ describe("listUpdatedPasses", () => {
       listUpdatedPasses({
         registrations: [stale],
         passTypeIdentifier: PASS_TYPE,
+        templateUpdatedAt: TEMPLATE,
         passesUpdatedSince: formatPassUpdateTag(at("2026-08-14T00:00:00.000Z")),
       }),
       null,
@@ -189,6 +210,7 @@ describe("listUpdatedPasses", () => {
     const listed = listUpdatedPasses({
       registrations: [stale, otherType],
       passTypeIdentifier: PASS_TYPE,
+      templateUpdatedAt: TEMPLATE,
       passesUpdatedSince: null,
     });
     assert.ok(listed);

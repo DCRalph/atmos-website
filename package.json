@@ -30,6 +30,7 @@
     "start": "next start",
     "test": "bun test",
     "typecheck": "node node_modules/@typescript/native/bin/tsc --noEmit",
+    "wallet:push-all": "NODE_ENV=production bun --conditions=react-server prisma/push-wallet-passes.ts",
     "refresh-baseline-browser-mapping": "bun i --save-dev baseline-browser-mapping@latest"
   },
   "dependencies": {
