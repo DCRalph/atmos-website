@@ -1,5 +1,5 @@
 // The legal documents served under /legal. Each one is a page:
-// /legal/privacy, /legal/terms and /legal/ticket-terms.
+// /legal/privacy, /legal/terms, /legal/ticket-terms and /legal/kaupapa.
 
 import { CONTACT } from "~/lib/site-constants";
 
@@ -20,7 +20,7 @@ export type LegalSection = {
 };
 
 export type LegalDoc = {
-  id: "privacy" | "terms" | "ticket-terms";
+  id: "privacy" | "terms" | "ticket-terms" | "kaupapa";
   title: string;
   updated: string;
   /** Shown instead of "Last updated" for versioned documents. */
@@ -379,40 +379,8 @@ export const termsDoc: LegalDoc = {
         },
         { sub: "4.1 Our kaupapa" },
         {
-          terms: [
-            {
-              term: "Don't be a dick",
-              text: "Antisocial, threatening or discriminatory behaviour towards anyone is not welcome. That includes racism, sexism, homophobia, transphobia and ableism.",
-            },
-            {
-              term: "Don't guess the yes",
-              text: "If it's not a hell yeah, it's a hell nah. Ask before you touch anyone, and take no for an answer.",
-            },
-            {
-              term: "Pace yourself",
-              text: "Stay hydrated. Free drinking water is available at every event.",
-            },
-            {
-              term: "Look out for each other",
-              text: "Keep an eye on your friends and the people around you, and check in on anyone who seems off.",
-            },
-            {
-              term: "Live in the moment",
-              text: "Avoid phone use. The night is better lived than filmed.",
-            },
-            {
-              term: "Give people space to dance",
-              text: "Practise good dance floor etiquette. No pushing, and leave room for everyone to move.",
-            },
-            {
-              term: "Respect everyone",
-              text: "Respect the venue, the staff, the artists and each other.",
-            },
-            {
-              term: "Have fun",
-              text: "Most importantly. It's why we're all here.",
-            },
-          ],
+          p: "Everyone at our gigs is expected to follow our kaupapa, the values that keep the floor a good place to be. Breaking it can get you removed under 4.5.",
+          link: { text: "kaupapa", href: "/legal/kaupapa" },
         },
         { sub: "4.2 Getting help" },
         {
@@ -799,6 +767,100 @@ export const ticketTermsDoc: LegalDoc = {
           contact: [
             { label: "Website", value: "Contact page", href: "/contact" },
           ],
+        },
+      ],
+    },
+  ],
+};
+
+/**
+ * Our kaupapa: how everyone at a gig looks after each other. The terms
+ * (4.1) make following it a condition of entry.
+ */
+export const kaupapaDoc: LegalDoc = {
+  id: "kaupapa",
+  title: "Our kaupapa",
+  updated: LEGAL_UPDATED,
+  sections: [
+    {
+      id: "dont-be-a-dick",
+      n: "1",
+      title: "Don't be a dick",
+      blocks: [
+        {
+          p: "Antisocial, threatening or discriminatory behaviour towards anyone is not welcome. That includes racism, sexism, homophobia, transphobia and ableism.",
+        },
+      ],
+    },
+    {
+      id: "consent",
+      n: "2",
+      title: "Don't guess the yes",
+      blocks: [
+        {
+          p: "If it's not a hell yeah, it's a hell nah. Ask before you touch anyone, and take no for an answer.",
+        },
+      ],
+    },
+    {
+      id: "pace-yourself",
+      n: "3",
+      title: "Pace yourself",
+      blocks: [
+        {
+          p: "Stay hydrated. Free drinking water is available at every event.",
+        },
+      ],
+    },
+    {
+      id: "look-out",
+      n: "4",
+      title: "Look out for each other",
+      blocks: [
+        {
+          p: "Keep an eye on your friends and the people around you, and check in on anyone who seems off.",
+        },
+      ],
+    },
+    {
+      id: "live-in-the-moment",
+      n: "5",
+      title: "Live in the moment",
+      blocks: [
+        { p: "Avoid phone use. The night is better lived than filmed." },
+      ],
+    },
+    {
+      id: "dance-floor",
+      n: "6",
+      title: "Give people space to dance",
+      blocks: [
+        {
+          p: "Practise good dance floor etiquette. No pushing, and leave room for everyone to boogie.",
+        },
+      ],
+    },
+    {
+      id: "respect",
+      n: "7",
+      title: "Respect everyone",
+      blocks: [
+        { p: "Respect the venue, the staff, the artists and each other." },
+      ],
+    },
+    {
+      id: "have-fun",
+      n: "8",
+      title: "Have fun",
+      blocks: [{ p: "Most importantly. It's why we're all here." }],
+    },
+    {
+      id: "getting-help",
+      n: "9",
+      title: "Getting help",
+      blocks: [
+        {
+          p: "If you or someone else feels uncomfortable or unsafe, or needs medical assistance, tell venue security, bar staff or an Atmos crew member straight away. We are here to help, not to judge.",
         },
       ],
     },
