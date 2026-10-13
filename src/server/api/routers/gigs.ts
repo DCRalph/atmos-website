@@ -27,8 +27,7 @@ import {
   donationRecommendedSchema,
 } from "~/lib/donations";
 import { resolveGigId } from "~/server/gig-lookup";
-import { syncGigSlug } from "~/server/gig-slug";
-import { gigSlug } from "~/lib/gig-url";
+import { claimGigSlug } from "~/server/gig-slug";
 import { teaserPosterUrl } from "~/server/gig-teaser";
 import { userHasPermission } from "~/server/utils/permissions";
 import type { SerializedEditorState } from "lexical";
@@ -115,20 +114,14 @@ const SCHEDULE_ITEM_INPUT = z.array(SCHEDULE_ROW).superRefine((rows, ctx) => {
 
 type ScheduleItemInput = z.infer<typeof SCHEDULE_ITEM_INPUT>;
 
-/**
- * A hand-picked URL slug, slugged on the way in. Empty means follow the title;
- * absent leaves it as stored.
- */
-const SLUG_OVERRIDE_INPUT = z
-  .string()
-  .nullish()
-  .transform((value) => (value == null ? value : gigSlug(value) || null));
+/** The URL slug. Empty makes it from the title; absent leaves it as stored. */
+const SLUG_INPUT = z.string().optional();
 
 /** Everything the gig editor owns. `saveAll` takes all of it, `update` any of it. */
 const GIG_EDITOR_FIELDS = z.object({
   title: z.string().min(1),
   subtitle: z.string().min(1),
-  slugOverride: SLUG_OVERRIDE_INPUT,
+  slug: SLUG_INPUT,
   shortDescription: z.string().nullish(),
   descriptionLexical: LEXICAL_STATE_SCHEMA.optional().nullable(),
   isTba: z.boolean(),
@@ -370,8 +363,8 @@ const forPublic = <T extends PublicGigInput>(gig: T) => {
     // The wide poster is the real thing too, and has no teaser.
     widePosterFileUploadId: null,
     widePosterUrl: null,
-    // A hand-picked slug can say as much as the title.
-    slugOverride: null,
+    // The slug is the title in another form.
+    slug: null,
     posterFileUpload:
       poster && gig.posterFileUploadId
         ? { url: teaserPosterUrl(gig.id, gig.posterFileUploadId) }
@@ -850,11 +843,23 @@ async function saveGig(db: GigsContext["db"], userId: string, input: GigEdit) {
     else firstTagRowIds.set(row.gigTagId, row.id);
   }
 
+  // Only re-claimed when the editor sends one, so a partial update that
+  // renames the gig keeps its URL.
+  const slug =
+    rest.slug === undefined
+      ? undefined
+      : await claimGigSlug(db, {
+          gigId: id,
+          slug: rest.slug,
+          title: rest.title ?? existing.title,
+        });
+
   await db.$transaction(async (tx) => {
     await tx.gig.update({
       where: { id },
       data: {
         ...rest,
+        slug,
         // An announce time means nothing on a gig that is not TBA.
         announceAt: (rest.isTba ?? existing.isTba) ? rest.announceAt : null,
         descriptionLexical: toLexicalJsonInput(descriptionLexical),
@@ -958,8 +963,6 @@ async function saveGig(db: GigsContext["db"], userId: string, input: GigEdit) {
         });
       }
     }
-
-    await syncGigSlug(tx, id);
   });
 
   const title = rest.title ?? existing.title;
@@ -1514,7 +1517,7 @@ export const gigsRouter = createTRPCRouter({
       z.object({
         title: z.string().min(1),
         subtitle: z.string().min(1),
-        slugOverride: SLUG_OVERRIDE_INPUT,
+        slug: SLUG_INPUT,
         shortDescription: z.string().optional(),
         descriptionLexical: LEXICAL_STATE_SCHEMA.optional().nullable(),
         isTba: z
@@ -1574,11 +1577,17 @@ export const gigsRouter = createTRPCRouter({
         ]),
       });
 
+      const slug = await claimGigSlug(ctx.db, {
+        slug: rest.slug,
+        title: rest.title,
+      });
+
       // Nested writes, so a gig never lands without the tags and run sheet that
       // were saved alongside it.
       const created = await ctx.db.gig.create({
         data: {
           ...rest,
+          slug,
           announceAt: rest.isTba ? (rest.announceAt ?? null) : null,
           descriptionLexical: toLexicalJsonInput(descriptionLexical),
           donationDescriptionLexical: toLexicalJsonInput(
@@ -1623,8 +1632,6 @@ export const gigsRouter = createTRPCRouter({
         },
       });
 
-      const slug = await syncGigSlug(ctx.db, created.id);
-
       await logUserActivity(
         ActivityType.GIG_CREATED,
         `Created gig "${created.title}"`,
@@ -1637,7 +1644,7 @@ export const gigsRouter = createTRPCRouter({
         },
       );
 
-      return { ...created, slug };
+      return created;
     }),
 
   /**

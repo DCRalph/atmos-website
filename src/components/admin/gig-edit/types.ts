@@ -91,8 +91,8 @@ export type PosterDraft =
 export type GigDraft = {
   title: string;
   subtitle: string;
-  /** The URL slug as typed. Empty follows the title. */
-  slugOverride: string;
+  /** The URL slug as typed. Empty makes it from the title on save. */
+  slug: string;
   shortDescription: string;
   descriptionLexical: SerializedEditorState | null;
   isTba: boolean;

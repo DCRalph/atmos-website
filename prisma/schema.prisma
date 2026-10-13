@@ -369,13 +369,11 @@ model GigTagRelationship {
 model Gig {
   id                 String    @id @default(cuid())
   title              String
-  /// The pretty URL, `/gigs/<slug>`: `slugOverride` or else the title
-  /// slugged, `-2` and up when taken. Null on a TBA gig, whose title is the
-  /// secret, and on one whose title slugs to nothing. Kept by `syncGigSlug` in
-  /// `~/server/gig-slug.ts`.
+  /// The pretty URL, `/gigs/<slug>`: picked in the editor, or the title
+  /// slugged when left empty. Set by `claimGigSlug` in `~/server/gig-slug.ts`.
+  /// Stored on a TBA gig too, but never shown or matched while it is TBA.
+  /// Null only on old gigs that predate it, which link by cuid.
   slug               String?   @unique
-  /// A hand-picked slug, already slugged. Null follows the title.
-  slugOverride       String?
   subtitle           String
   shortDescription   String?
   /// Rich description stored as a serialized Lexical editor state

@@ -1,12 +1,10 @@
 import "server-only";
 
 import { db } from "~/server/db";
-import { syncGigSlug } from "~/server/gig-slug";
 
 /**
  * Announces every TBA gig whose `announceAt` has come: it stops being TBA and
- * goes on the site with everything it was withholding, and gets the slug it
- * couldn't have while its title was a secret.
+ * goes on the site with everything it was withholding, slug included.
  *
  * Run by the minute ticker at `/api/cron/run-sheet`, so a gig goes out within a
  * minute of its time. `announceAt` is cleared with it, so turning TBA back on
@@ -17,15 +15,9 @@ export async function announceDueGigs(now = new Date()): Promise<number> {
     where: { isTba: true, announceAt: { lte: now } },
     select: { id: true },
   });
-  for (const { id } of due) {
-    // One at a time, so two gigs of the same name can't both claim its slug.
-    await db.$transaction(async (tx) => {
-      await tx.gig.update({
-        where: { id },
-        data: { isTba: false, announceAt: null },
-      });
-      await syncGigSlug(tx, id);
-    });
-  }
+  await db.gig.updateMany({
+    where: { id: { in: due.map((gig) => gig.id) } },
+    data: { isTba: false, announceAt: null },
+  });
   return due.length;
 }
