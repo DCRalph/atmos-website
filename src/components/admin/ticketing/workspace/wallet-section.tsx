@@ -26,10 +26,22 @@ const EVENT_TAB = "event";
  *
  * One tab for the event's own design, then one per access level for anything
  * tickets at that level should do differently here. A level tab inherits from
- * the level's own design (set on the access levels page), then from this event.
+ * the level's own design (set on the access levels page), then from this
+ * event. Under everything sits the linked gig, which lends its poster to a
+ * poster or blur layout that has none of its own.
  */
-export function WalletSection({ state }: { state: EventDraftState }) {
+export function WalletSection({
+  state,
+  gigPosterId,
+}: {
+  state: EventDraftState;
+  gigPosterId: string | null;
+}) {
   const { draft, update, isSaving } = state;
+  const gigLayer = gigPosterId
+    ? [{ source: "from the gig", design: { posterImageId: gigPosterId } }]
+    : [];
+  const venueAddress = draft.venueAddress.trim() || null;
   const [tab, setTab] = useState(EVENT_TAB);
   const { data: allLevels = [] } = api.accessLevels.list.useQuery({
     includeArchived: true,
@@ -60,8 +72,9 @@ export function WalletSection({ state }: { state: EventDraftState }) {
       <CardHeader>
         <CardTitle>Wallet pass</CardTitle>
         <CardDescription>
-          Apple Wallet styling, for every ticket or per access level. Saving
-          pushes the new look to passes already on phones.
+          How the ticket looks in Apple and Google Wallet, for every ticket or
+          per access level. Saving pushes the new look to passes already on
+          phones.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -102,13 +115,16 @@ export function WalletSection({ state }: { state: EventDraftState }) {
             inherits={[
               { source: `from ${level.label} level`, design: levelLayer },
               { source: "from all tickets", design: eventLayer },
+              ...gigLayer,
             ]}
             eventName={draft.name}
+            venueAddress={venueAddress}
             chip={
-              resolveTicketPassDesign(draft.passDesign, {
-                ...level,
-                passDesign: levelLayer,
-              }).chip
+              resolveTicketPassDesign(
+                draft.passDesign,
+                { ...level, passDesign: levelLayer },
+                gigLayer[0]?.design,
+              ).chip
             }
             intensity={level.rank / maxRank}
             showChipControl
@@ -119,8 +135,9 @@ export function WalletSection({ state }: { state: EventDraftState }) {
             key={EVENT_TAB}
             value={eventLayer}
             onChange={setEventLayer}
-            inherits={[]}
+            inherits={gigLayer}
             eventName={draft.name}
+            venueAddress={venueAddress}
             chip={null}
             disabled={isSaving}
           />

@@ -12,9 +12,11 @@ import { getObjectBuffer } from "~/server/uploads/r2";
 
 import {
   DEFAULT_PASS_THEME,
+  PASS_LAYOUT_INFO,
   badgeBox,
   stripSvg,
   stripTitleBox,
+  type PassLayout,
   type PassTheme,
   type StripBadge,
 } from "~/lib/ticketing/pass-theme";
@@ -37,6 +39,11 @@ import { ATMOS_ICON_PNG, ATMOS_WORDMARK_PNG } from "./pass-logo";
  * A design can swap two of them for uploads: a photo for the band and a logo
  * for the wordmark. Those come out of R2, and a missing one degrades to the
  * house artwork rather than failing the pass.
+ *
+ * Two more layouts are built from a portrait poster: `BLUR` lays it behind the
+ * whole pass as `background.png` with a `thumbnail.png` beside the title, and
+ * `POSTER` ships it as the iOS 18 poster artwork while keeping the band for
+ * phones that cannot draw a poster.
  */
 
 type ImageSet = Record<string, Buffer>;
@@ -49,6 +56,11 @@ type PassArtwork = {
    * primary field empty, because that field is what would be drawn over it.
    */
   titleDrawn: boolean;
+  /**
+   * Whether the poster made it into the bundle. False means the layout fell
+   * back to the band, and the pass must not claim a poster it does not carry.
+   */
+  posterDrawn: boolean;
 };
 
 /**
@@ -82,8 +94,12 @@ function themeKey({
   titleLabel = "EVENT",
   stripImageId = null,
   logoImageId = null,
+  layout = "BAND",
+  posterImageId = null,
 }: PassImageOptions): string {
   return [
+    layout,
+    posterImageId ?? "-",
     theme.stripStyle,
     theme.accentHex,
     theme.backgroundHex,
@@ -484,6 +500,54 @@ async function getUploadedLogoImages(source: Buffer): Promise<ImageSet> {
   return { "logo.png": logo, "logo@2x.png": logo2x, "logo@3x.png": logo3x };
 }
 
+/**
+ * Poster artwork sizes, in points, from Apple's Wallet guidelines. Rendered at
+ * 2x and 3x only: nothing that can open a pass today has a 1x screen, and a
+ * photo-sized PNG is the heaviest thing in the bundle.
+ *
+ * Apple's guidelines name the poster artwork `artwork.png`; the pass library's
+ * device-tested poster examples ship it as `background.png`. One constant, so
+ * the day a device says otherwise it is one word to change.
+ */
+const POSTER_ARTWORK_FILE = "background";
+const POSTER_ARTWORK = { width: 358, height: 448 } as const;
+const BLUR_BACKGROUND = { width: 343, height: 503 } as const;
+const THUMBNAIL = { width: 90, height: 90 } as const;
+
+/**
+ * A photo cropped to fill a slot. Palette PNG, which is a third of the bytes
+ * of truecolour and indistinguishable on a phone, where every one of these
+ * ends up.
+ */
+async function renderPhoto(
+  source: Buffer,
+  width: number,
+  height: number,
+): Promise<Buffer> {
+  return sharp(source)
+    .resize(width, height, { fit: "cover" })
+    .png({ palette: true, quality: 90, compressionLevel: 9 })
+    .toBuffer();
+}
+
+async function renderPhotoSet(
+  source: Buffer,
+  name: string,
+  slot: { width: number; height: number },
+  scales: readonly number[],
+): Promise<ImageSet> {
+  const entries = await Promise.all(
+    scales.map(
+      async (scale) =>
+        [
+          `${name}${scale === 1 ? "" : `@${scale}x`}.png`,
+          await renderPhoto(source, slot.width * scale, slot.height * scale),
+        ] as const,
+    ),
+  );
+  return Object.fromEntries(entries);
+}
+
 /** The square mark, for the icon slot Apple shows in notifications. */
 async function renderIcon(size: number): Promise<Buffer> {
   return sharp(ATMOS_ICON_PNG).resize(size, size).png().toBuffer();
@@ -594,6 +658,10 @@ export type PassImageOptions = {
   stripImageId?: string | null;
   /** A logo to use in place of the Atmos wordmark. */
   logoImageId?: string | null;
+  /** Which of the layouts to build. Defaults to the band. */
+  layout?: PassLayout;
+  /** The portrait artwork a `BLUR` or `POSTER` layout is built from. */
+  posterImageId?: string | null;
 };
 
 /** The image files a pass ships with, for one design. */
@@ -609,15 +677,23 @@ export async function getPassImages(
     badge = null,
     title = null,
     titleLabel = "EVENT",
+    layout: wanted = "BAND",
   } = options;
+  const needsPoster = PASS_LAYOUT_INFO[wanted].needsPoster;
 
-  const [brand, photo, logo] = await Promise.all([
+  const [brand, photo, logo, poster] = await Promise.all([
     getBrandImages(),
     options.theme.stripStyle === "PHOTO" && options.stripImageId
       ? loadUpload(options.stripImageId)
       : null,
     options.logoImageId ? loadUpload(options.logoImageId) : null,
+    needsPoster && options.posterImageId
+      ? loadUpload(options.posterImageId)
+      : null,
   ]);
+
+  // A poster that would not load means the band, not a blank card.
+  const layout: PassLayout = needsPoster && !poster ? "BAND" : wanted;
 
   // A photo band whose photo would not load is drawn as the house band, not as
   // a shade over nothing.
@@ -644,39 +720,57 @@ export async function getPassImages(
       ),
     ]);
 
-  // A themeless band would be a black bar over the title rather than no band at
-  // all, so `NONE` omits the file entirely and lets the pass fall back to its
-  // plain layout — and with no band there is nowhere to set the name.
-  const banded = theme.stripStyle !== "NONE";
-  let strips = await render(banded ? title : null);
+  const files: ImageSet = {
+    ...brand,
+    ...(logo ? await getUploadedLogoImages(logo) : {}),
+  };
+  let titleDrawn = false;
 
-  // All three scales or none: a name on the 2x artwork but not the 1x would be
-  // a different pass depending on which phone opened it.
-  if (title && strips.some((strip) => !strip.titleDrawn)) {
-    strips = await render(null);
+  // The blur layout has no band: Wallet lays the poster behind the whole pass
+  // and a band would cover it. A themeless band would be a black bar over the
+  // title rather than no band at all, so `NONE` omits the file entirely and
+  // lets the pass fall back to its plain layout, and with no band there is
+  // nowhere to set the name.
+  const banded = layout !== "BLUR" && theme.stripStyle !== "NONE";
+  if (banded) {
+    let strips = await render(title);
+    // All three scales or none: a name on the 2x artwork but not the 1x would
+    // be a different pass depending on which phone opened it.
+    if (title && strips.some((strip) => !strip.titleDrawn)) {
+      strips = await render(null);
+    }
+    const [strip, strip2x, strip3x] = strips;
+    files["strip.png"] = strip.image;
+    files["strip@2x.png"] = strip2x.image;
+    files["strip@3x.png"] = strip3x.image;
+    titleDrawn = strips.every((item) => item.titleDrawn);
   }
 
-  const [strip, strip2x, strip3x] = strips;
+  if (poster && layout === "BLUR") {
+    Object.assign(
+      files,
+      await renderPhotoSet(poster, "background", BLUR_BACKGROUND, [2, 3]),
+      await renderPhotoSet(poster, "thumbnail", THUMBNAIL, [1, 2, 3]),
+    );
+  }
+  if (poster && layout === "POSTER") {
+    Object.assign(
+      files,
+      await renderPhotoSet(poster, POSTER_ARTWORK_FILE, POSTER_ARTWORK, [2, 3]),
+    );
+  }
 
   const artwork: PassArtwork = {
-    files: {
-      ...brand,
-      ...(logo ? await getUploadedLogoImages(logo) : {}),
-      ...(banded
-        ? {
-            "strip.png": strip.image,
-            "strip@2x.png": strip2x.image,
-            "strip@3x.png": strip3x.image,
-          }
-        : {}),
-    },
-    titleDrawn: banded && strips.every((item) => item.titleDrawn),
+    files,
+    titleDrawn,
+    posterDrawn: layout !== "BAND",
   };
 
   // Stand-in artwork for an upload that failed is not remembered, so the next
   // build tries the upload again instead of serving the stand-in for good.
   const degraded =
     (options.theme.stripStyle === "PHOTO" && !photo) ||
-    (Boolean(options.logoImageId) && !logo);
+    (Boolean(options.logoImageId) && !logo) ||
+    (needsPoster && Boolean(options.posterImageId) && !poster);
   return degraded ? artwork : remember(key, artwork);
 }

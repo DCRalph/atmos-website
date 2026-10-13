@@ -266,7 +266,9 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
             {page === "staff" ? (
               <StaffSection state={state} eventId={event?.id} />
             ) : null}
-            {page === "wallet" ? <WalletSection state={state} /> : null}
+            {page === "wallet" ? (
+              <WalletSection state={state} gigPosterId={gigPosterId} />
+            ) : null}
             {page === "orders" && event ? (
               <OrdersPanel eventId={event.id} />
             ) : null}

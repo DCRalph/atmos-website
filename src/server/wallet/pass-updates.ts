@@ -29,7 +29,7 @@ export function formatPassUpdateTag(date: Date): string {
  * should reach passes already sitting in wallets, then wake the phones with
  * `bun run wallet:push-all` once it is deployed.
  */
-export const PASS_TEMPLATE_UPDATED_AT = new Date("2026-10-13T20:30:00.000Z");
+export const PASS_TEMPLATE_UPDATED_AT = new Date("2026-10-14T00:00:00.000Z");
 
 /**
  * The pass is as fresh as whichever of the things it prints changed last: the
@@ -106,6 +106,9 @@ export type PassVisibleEventSnapshot = {
   venueName: string | null;
   venueAddress: string | null;
   isR18: boolean;
+  /** Optional on both sides: events saved before the pass printed them. */
+  endsAt?: Date | null;
+  reentryAllowed?: boolean;
   /** Stored JSON on the event; the patch side is the parsed form input. */
   passDesign: unknown;
 };
@@ -117,6 +120,7 @@ const PASS_VISIBLE_SCALAR_KEYS = [
   "venueName",
   "venueAddress",
   "isR18",
+  "reentryAllowed",
 ] as const;
 
 function sameInstant(
@@ -147,6 +151,14 @@ export function eventHasPassVisibleChange(
   if (
     patch.doorsAt !== undefined &&
     !sameInstant(patch.doorsAt, existing.doorsAt)
+  ) {
+    return true;
+  }
+  // The end time is the end of the pass's live activity, and re-entry is
+  // printed on the front.
+  if (
+    patch.endsAt !== undefined &&
+    !sameInstant(patch.endsAt, existing.endsAt)
   ) {
     return true;
   }

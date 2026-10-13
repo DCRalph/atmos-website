@@ -11,6 +11,7 @@ import {
   lifetimeIdFromSerial,
 } from "~/server/wallet/apple-lifetime";
 import { isAppleWalletConfigured } from "~/server/wallet/apple-config";
+import { PASS_EVENT_INCLUDE } from "~/server/wallet/pass-event";
 import {
   listUpdatedPasses,
   PASS_TEMPLATE_UPDATED_AT,
@@ -302,7 +303,7 @@ export async function GET(
       include: {
         tier: { select: { name: true } },
         level: { select: { updatedAt: true } },
-        event: true,
+        event: { include: PASS_EVENT_INCLUDE },
         order: true,
       },
     });

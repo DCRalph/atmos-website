@@ -53,6 +53,8 @@ export const env = createEnv({
     APPLE_PASS_KEY_PEM_BASE64: z.string().optional(),
     APPLE_PASS_KEY_PASSWORD: z.string().optional(),
     APPLE_WWDR_PEM_BASE64: z.string().optional(),
+    /** The Atmos app's numeric App Store id. Set, passes offer to open the app. */
+    APPLE_APP_STORE_ID: z.string().regex(/^\d+$/).optional(),
 
     // Ticketing — Google Wallet
     GOOGLE_WALLET_ISSUER_ID: z.string().optional(),
@@ -138,6 +140,7 @@ export const env = createEnv({
     APPLE_PASS_KEY_PEM_BASE64: process.env.APPLE_PASS_KEY_PEM_BASE64,
     APPLE_PASS_KEY_PASSWORD: process.env.APPLE_PASS_KEY_PASSWORD,
     APPLE_WWDR_PEM_BASE64: process.env.APPLE_WWDR_PEM_BASE64,
+    APPLE_APP_STORE_ID: process.env.APPLE_APP_STORE_ID,
 
     GOOGLE_WALLET_ISSUER_ID: process.env.GOOGLE_WALLET_ISSUER_ID,
     GOOGLE_WALLET_SERVICE_ACCOUNT_JSON:

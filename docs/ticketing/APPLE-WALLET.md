@@ -9,12 +9,78 @@ under `/admin/events/[id]` for Wallet to follow.
 
 ## What triggers an update
 
-- Event name, slug, doors/start time, timezone
+- Event name, slug, doors/start/end time, timezone
 - Venue name / address
-- R18 flag
-- Pass theme (strip style and colours)
+- R18 and re-entry flags
+- Pass design (layout, artwork, colours, links, back rows, relevance)
 - Event cancelled
 - Ticket voided or refunded from admin
+
+Editing the linked gig's run sheet does **not** push an update either, even
+though the line-up and set times on the back come from it. They are read
+fresh whenever a pass is built, so they catch up on the next push or re-add.
+
+## Layouts
+
+A design has a `layout`, picked on the event's Wallet tab and inherited per
+level like everything else (`~/lib/ticketing/pass-design.ts`). The registry is
+`PASS_LAYOUT_INFO` in `~/lib/ticketing/pass-theme.ts`; adding a layout is an
+entry there, a branch in `getPassImages`, a branch in the builder and one in
+the admin preview.
+
+- **Band** (`BAND`): what shipped first. `strip.png` behind the title, the
+  level chip on it, every iOS.
+- **Blur** (`BLUR`): the poster as `background.png` (343 × 503 pt, which
+  Wallet blurs) and `thumbnail.png` (90 × 90 pt) beside the title. No band,
+  so no chip; the level reads through the access field.
+- **Poster** (`POSTER`): the iOS 18 poster ticket. `preferredStyleSchemes`
+  asks for it and the artwork ships at 358 × 448 pt. The band is still built
+  and shipped, because a phone before iOS 18 falls back to the classic layout
+  and needs it. The event name is always a primary field here: Wallet sets it
+  over the artwork itself, so there is no chip and no name typeset into the
+  band.
+
+A layout that needs a poster but has none (nothing uploaded, no linked gig
+with a poster, or the upload failed to load) is built as the band. The pass
+only claims a poster it actually carries.
+
+## Links, the back, and the phone
+
+- **Event guide.** `PASS_GUIDE_LINKS` maps each admin field to the pass key
+  Wallet draws a button from (parking, transit, food, bag policy,
+  accessibility, add-ons, merch), plus venue phone, email and website as
+  Contact venue and the address as Directions. Wallet shows the guide on a
+  poster pass once two links are set. On the other layouts the same links are
+  rows on the back.
+- **Transfer** in a poster pass's menu opens the holder's own ticket page.
+  **Sharing off** sets `sharingProhibited`.
+- **Back.** Event name (when the front does not carry it), line-up and set
+  times from the linked gig's run sheet (`~/lib/ticketing/pass-lineup.ts`),
+  address, the organiser's own rows, ticket number, order, a Manage link, R18
+  and terms. Wallet's data detectors are on, so addresses, numbers and links
+  are tappable without being told.
+- **Relevance.** `relevantDate` for phones before iOS 18 and `relevantDates`
+  for the rest; with an end time on the event the entry is an interval, which
+  on a poster pass is a live activity. Venue coordinates on the design become
+  a `locations` entry with `maxDistance`.
+- **Change messages** on doors, date and venue, so a push is also a
+  notification. Off per design.
+- **Semantics** always: event name and type, dates, venue, performers,
+  admission level, attendee. The poster layout needs them to lay itself out.
+- **App.** `APPLE_APP_STORE_ID` set, the pass offers to open the Atmos app.
+
+Google Wallet gets the same inputs: guide links in the links module, custom
+rows and the line-up as text modules, the poster as the hero image.
+
+## Not yet confirmed on a device
+
+Apple's current guidelines name the poster artwork `artwork.png`; the pass
+library's device-tested poster examples ship it as `background.png`, which is
+what this does (`POSTER_ARTWORK_FILE` in `pass-images.ts`). Check on an iOS 18
+phone that the poster draws, that an iOS 17 phone shows the band rather than a
+blurred background, and that the live activity appears from doors. Bump
+`PASS_TEMPLATE_UPDATED_AT` after any change here so passes already on phones
+refresh.
 
 ## What the band carries
 
@@ -49,7 +115,7 @@ Needs a real iPhone, Wallet configured in env (`APPLE_PASS_*`,
 `NODE_ENV=production` so APNs hits `api.push.apple.com`.
 
 1. Buy or issue a test ticket. On the iPhone, add it to Apple Wallet from the
-   email or `/tickets/[token]` page.
+   email or `/tickets/[token]` page. Do it once per layout.
 2. Confirm a `wallet_pass_registration` row exists for that ticket id.
 3. In `/admin/events/[id]`, change doors time, then separately name, venue,
    pass theme, and R18. After each save, open Wallet (or wait a minute) and

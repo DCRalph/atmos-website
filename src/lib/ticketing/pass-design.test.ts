@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 
 import { DEFAULT_PASS_THEME } from "./pass-theme";
 import {
+  DEFAULT_NEAR_VENUE_M,
+  guideLinksOf,
   normaliseEventPassDesign,
   resolvePassDesign,
   resolveTicketPassDesign,
@@ -81,6 +83,80 @@ describe("resolvePassDesign", () => {
     ]);
     assert.equal(design.stripStyle, "BARS");
     assert.equal(design.stripImageId, null);
+  });
+});
+
+describe("layouts", () => {
+  test("a layout that needs a poster is built as the band without one", () => {
+    assert.equal(resolvePassDesign([{ layout: "POSTER" }]).layout, "BAND");
+    assert.equal(
+      resolvePassDesign([{ layout: "POSTER", posterImageId: "art" }]).layout,
+      "POSTER",
+    );
+    assert.equal(resolvePassDesign([{ layout: "BLUR" }]).layout, "BAND");
+  });
+
+  test("the gig's poster is the lowest layer, under the event's own", () => {
+    const fromGig = resolveTicketPassDesign({ layout: "POSTER" }, AAA, {
+      posterImageId: "gig-poster",
+    });
+    assert.equal(fromGig.design.layout, "POSTER");
+    assert.equal(fromGig.design.posterImageId, "gig-poster");
+
+    const own = resolveTicketPassDesign(
+      { layout: "POSTER", posterImageId: "event-poster" },
+      AAA,
+      { posterImageId: "gig-poster" },
+    );
+    assert.equal(own.design.posterImageId, "event-poster");
+  });
+
+  test("the chip is part of the band, so only the band layout has one", () => {
+    assert.ok(resolveTicketPassDesign({}, AAA).chip);
+    assert.equal(
+      resolveTicketPassDesign({ layout: "BLUR", posterImageId: "art" }, AAA)
+        .chip,
+      null,
+    );
+  });
+});
+
+describe("links and relevance", () => {
+  test("guide links come back in display order, set ones only", () => {
+    const design = resolvePassDesign([
+      { merchUrl: "https://atmosmedia.co.nz/shop" },
+      { parkingUrl: "https://example.com/parking" },
+    ]);
+    assert.deepEqual(
+      guideLinksOf(design).map((link) => [link.passKey, link.url]),
+      [
+        ["parkingInformationURL", "https://example.com/parking"],
+        ["merchandiseURL", "https://atmosmedia.co.nz/shop"],
+      ],
+    );
+  });
+
+  test("a venue location needs both coordinates and defaults its radius", () => {
+    assert.equal(resolvePassDesign([{ venueLat: -36.84 }]).venueLocation, null);
+    assert.deepEqual(
+      resolvePassDesign([{ venueLat: -36.84, venueLng: 174.76 }]).venueLocation,
+      { latitude: -36.84, longitude: 174.76, radiusM: DEFAULT_NEAR_VENUE_M },
+    );
+  });
+
+  test("a level's custom rows replace the event's rather than add to them", () => {
+    const { design } = resolveTicketPassDesign(
+      {
+        backRows: [{ label: "Lockers", value: "$5 at the door" }],
+        levels: {
+          AAA: { backRows: [{ label: "Green room", value: "Door 3" }] },
+        },
+      },
+      AAA,
+    );
+    assert.deepEqual(design.backRows, [
+      { label: "Green room", value: "Door 3" },
+    ]);
   });
 });
 

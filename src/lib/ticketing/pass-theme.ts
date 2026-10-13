@@ -62,6 +62,63 @@ export const PASS_STRIP_STYLE_LABELS: Record<
   },
 };
 
+/**
+ * The layouts a ticket can be built in.
+ *
+ * Adding one is an entry here, a branch in `getPassImages` for its artwork, a
+ * branch in the pass builder for its keys and a branch in the admin preview.
+ * Everything else, the colours, the logo, the back, the links, is shared.
+ */
+export const PASS_LAYOUTS = ["BAND", "BLUR", "POSTER"] as const;
+export type PassLayout = (typeof PASS_LAYOUTS)[number];
+
+export const PASS_LAYOUT_INFO: Record<
+  PassLayout,
+  {
+    label: string;
+    description: string;
+    /** Built from the portrait artwork; without one it falls back to the band. */
+    needsPoster: boolean;
+  }
+> = {
+  BAND: {
+    label: "Band",
+    description: "A band across the top with the event name on it. Every iOS.",
+    needsPoster: false,
+  },
+  BLUR: {
+    label: "Blur",
+    description:
+      "The poster blurred behind the pass and sharp beside the title. Every iOS.",
+    needsPoster: true,
+  },
+  POSTER: {
+    label: "Poster",
+    description:
+      "Full artwork with the name over it, plus the event guide. iOS 18; older phones get the band.",
+    needsPoster: true,
+  },
+};
+
+/**
+ * The event guide buttons Wallet draws from URLs on a poster pass, in the
+ * order they are offered. On the other layouts the same links go on the back.
+ */
+export const PASS_GUIDE_LINKS = [
+  { key: "parkingUrl", label: "Parking", passKey: "parkingInformationURL" },
+  { key: "transitUrl", label: "Transit", passKey: "transitInformationURL" },
+  { key: "foodUrl", label: "Food", passKey: "orderFoodURL" },
+  { key: "bagPolicyUrl", label: "Bag policy", passKey: "bagPolicyURL" },
+  {
+    key: "accessibilityUrl",
+    label: "Accessibility",
+    passKey: "accessibilityURL",
+  },
+  { key: "addOnsUrl", label: "Add-ons", passKey: "addOnURL" },
+  { key: "merchUrl", label: "Merch", passKey: "merchandiseURL" },
+] as const;
+export type PassGuideLinkKey = (typeof PASS_GUIDE_LINKS)[number]["key"];
+
 export type PassTheme = {
   stripStyle: PassStripStyle;
   /** The colour the band builds toward. */

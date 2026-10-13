@@ -6,6 +6,7 @@ import {
   findOrderByAccessToken,
   findTicketByAccessToken,
 } from "~/server/ticketing/orders";
+import { PASS_EVENT_INCLUDE } from "./pass-event";
 
 /**
  * Who is allowed to build a wallet pass for a given ticket.
@@ -41,6 +42,9 @@ export async function resolvePassTicket(
 function loadTicket(where: { id: string; orderId?: string }) {
   return db.ticket.findFirst({
     where: { ...where, status: TicketStatus.VALID },
-    include: { tier: { select: { name: true } }, event: true },
+    include: {
+      tier: { select: { name: true } },
+      event: { include: PASS_EVENT_INCLUDE },
+    },
   });
 }
