@@ -30,6 +30,7 @@ import {
   resolveBookingFee,
 } from "~/server/ticketing/settings";
 import { db } from "~/server/db";
+import { readClient } from "~/lib/short-links/clicks";
 
 /**
  * Public checkout.
@@ -58,6 +59,15 @@ const linesSchema = z
     }),
   )
   .min(1);
+
+/** Phone, tablet or computer, and its OS. Null when the browser didn't say. */
+function buyerClient(headers: Headers) {
+  const { device, os } = readClient(
+    headers.get("user-agent") ?? "",
+    headers.get("sec-ch-ua-mobile"),
+  );
+  return device === "unknown" || device === "bot" ? null : { device, os };
+}
 
 function clientIp(headers: Headers): string {
   return (
@@ -218,6 +228,7 @@ export const ticketCheckoutRouter = createTRPCRouter({
         discountCodeInput: input.discountCode ?? null,
         utm: input.utm,
         ipAddress: ip === "unknown" ? null : ip,
+        client: buyerClient(ctx.headers),
         userId: ctx.session?.user.id ?? null,
         termsAccepted: true,
       }).catch(inventoryErrorToTrpc);

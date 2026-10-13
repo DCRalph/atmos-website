@@ -444,7 +444,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
       const window = salesWindow(event.startsAt, input.range);
       const bought = Prisma.sql`o."eventId" = ${input.eventId} AND ${BOUGHT_ORDER} ${paidWithin(window)}`;
 
-      const [weekHours, sizes, sources] = await Promise.all([
+      const [weekHours, sizes, sources, devices] = await Promise.all([
         // 1 is Monday. The stored time is UTC, marked as such, then moved
         // into the event's zone: a 9pm sale belongs to that evening.
         ctx.db.$queryRaw<{ day: number; hour: number; orders: number }[]>`
@@ -484,11 +484,29 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           _count: true,
           _sum: { totalCents: true },
         }),
+        // What each order was bought on, against how it was paid. Device is
+        // null on orders from before it was recorded, kept as a count so the
+        // page can say how much of the range it covers.
+        ctx.db.$queryRaw<
+          {
+            device: string | null;
+            os: string | null;
+            paidWith: string | null;
+            paymentMethod: PaymentMethodKind;
+            orders: number;
+          }[]
+        >`
+          SELECT o.device, o.os, o."paidWith", o."paymentMethod", COUNT(*)::int AS orders
+          FROM "ticket_order" o
+          WHERE ${bought}
+          GROUP BY 1, 2, 3, 4
+        `,
       ]);
 
       return {
         weekHours,
         sizes,
+        devices,
         sources: sources
           .map((row) => ({
             source: row.utmSource ?? "direct",

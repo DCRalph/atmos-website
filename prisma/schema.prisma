@@ -1768,6 +1768,11 @@ model TicketOrder {
   utmMedium   String?
   utmCampaign String?
   ipAddress   String?
+  /// What the buyer checked out on, read from their browser at checkout:
+  /// `mobile`, `tablet` or `desktop`, and `iOS`, `Android`, `macOS`... Null on
+  /// door sales and on orders from before it was recorded.
+  device      String?
+  os          String?
   notes       String?
 
   createdAt DateTime @default(now())

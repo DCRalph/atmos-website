@@ -30,6 +30,7 @@ import {
   BarList,
   BucketBarChart,
   ChartCard,
+  CrossTab,
   StatStrip,
   StatTile,
   TierBars,
@@ -49,7 +50,7 @@ const MEASURES = [
  * Sales dashboard for one event, on the admin event page and the organiser's.
  *
  * The range switch scopes the left column: the sales curve, when people buy,
- * where they came from and how many they bought at once. The right rail and
+ * where they came from, how many they bought at once and on what device. The right rail and
  * the headline numbers are always the whole event.
  */
 export function EventOverview({
@@ -247,6 +248,7 @@ export function EventOverview({
                   }))}
                 />
               </ChartCard>
+              <Devices rows={buyers.data?.devices ?? []} />
             </div>
           </div>
         </div>
@@ -381,6 +383,89 @@ function SalesChart({
         />
       ) : null}
     </ChartCard>
+  );
+}
+
+const DEVICE_NOUN: Record<string, string> = {
+  mobile: "phone",
+  tablet: "tablet",
+  desktop: "computer",
+};
+
+const deviceNoun = (device: string) => DEVICE_NOUN[device] ?? device;
+const capitalise = (word: string) =>
+  word.charAt(0).toUpperCase() + word.slice(1);
+
+/**
+ * What people bought on, then how each kind of device paid. Two cards in the
+ * same row, both over the chosen range. Orders from before devices were
+ * recorded are counted, not guessed at, and the cards say how many.
+ */
+function Devices({
+  rows,
+}: {
+  rows: RouterOutputs["ticketAnalytics"]["buyers"]["devices"];
+}) {
+  const recorded = rows.flatMap((row) =>
+    row.device ? [{ ...row, device: row.device }] : [],
+  );
+  const unrecorded = rows
+    .filter((row) => !row.device)
+    .reduce((sum, row) => sum + row.orders, 0);
+
+  const byDevice = new Map<string, number>();
+  for (const row of recorded) {
+    const label =
+      row.os && row.os !== "Other"
+        ? `${row.os} ${deviceNoun(row.device)}`
+        : capitalise(deviceNoun(row.device));
+    byDevice.set(label, (byDevice.get(label) ?? 0) + row.orders);
+  }
+  const total = recorded.reduce((sum, row) => sum + row.orders, 0);
+
+  const footnote =
+    unrecorded > 0 ? (
+      <p className="text-muted-foreground mt-2 text-xs">
+        {unrecorded} {unrecorded === 1 ? "order" : "orders"} in this range{" "}
+        {unrecorded === 1 ? "was" : "were"} placed before devices were recorded.
+      </p>
+    ) : null;
+  const empty = "No orders in this range recorded a device.";
+
+  return (
+    <>
+      <ChartCard title="Bought on">
+        <BarList
+          empty={empty}
+          rows={[...byDevice]
+            .sort((a, b) => b[1] - a[1])
+            .map(([label, orders]) => ({
+              key: label,
+              label,
+              value: orders,
+              detail: `${orders} · ${Math.round((orders / total) * 100)}%`,
+            }))}
+        />
+        {footnote}
+      </ChartCard>
+      <ChartCard title="Device and payment">
+        {recorded.length === 0 ? (
+          <p className="text-muted-foreground text-sm">{empty}</p>
+        ) : (
+          <CrossTab
+            rowHeading="Paid with"
+            cells={recorded.map((row) => ({
+              row: row.paidWith
+                ? paidWithLabel(row.paidWith)
+                : paymentMethodShort(row.paymentMethod),
+              column: capitalise(deviceNoun(row.device)),
+              n: row.orders,
+            }))}
+          />
+        )}
+        {footnote}
+      </ChartCard>
+    </>
   );
 }
 

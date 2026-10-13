@@ -157,6 +157,7 @@ export async function createPendingOrder({
   discountCodeInput,
   utm,
   ipAddress,
+  client,
   userId,
   termsAccepted,
   boxOffice = false,
@@ -166,6 +167,8 @@ export async function createPendingOrder({
   discountCodeInput?: string | null;
   utm?: { source?: string; medium?: string; campaign?: string };
   ipAddress?: string | null;
+  /** The buyer's device, from `readClient`. Absent at the door. */
+  client?: { device: string; os: string } | null;
   userId?: string | null;
   termsAccepted?: boolean;
   /** Staff selling in person — see `assertEventSellable`. */
@@ -267,6 +270,8 @@ export async function createPendingOrder({
         utmMedium: utm?.medium ?? null,
         utmCampaign: utm?.campaign ?? null,
         ipAddress: ipAddress ?? null,
+        device: client?.device ?? null,
+        os: client?.os ?? null,
         items: {
           create: pricedLines.map((line) => ({
             tierId: line.tierId,

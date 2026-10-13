@@ -671,6 +671,86 @@ export function BarList({
   );
 }
 
+/**
+ * Counts across two dimensions as a table: rows down, columns across, each
+ * cell tinted by its share of the busiest one so the pattern reads before the
+ * numbers do. Rows and columns run busiest first, totals at the end.
+ */
+export function CrossTab({
+  cells,
+  rowHeading,
+  series = "revenue",
+}: {
+  cells: { row: string; column: string; n: number }[];
+  /** What the rows are, over their labels: "Paid with". */
+  rowHeading: string;
+  series?: Series;
+}) {
+  const totals = (key: "row" | "column") => {
+    const sums = new Map<string, number>();
+    for (const cell of cells) {
+      sums.set(cell[key], (sums.get(cell[key]) ?? 0) + cell.n);
+    }
+    return [...sums].sort((a, b) => b[1] - a[1]);
+  };
+  const rows = totals("row");
+  const columns = totals("column");
+  const count = new Map<string, number>();
+  for (const cell of cells) {
+    const key = `${cell.row}\u0000${cell.column}`;
+    count.set(key, (count.get(key) ?? 0) + cell.n);
+  }
+  const max = Math.max(1, ...count.values());
+
+  return (
+    <table className="w-full text-sm tabular-nums">
+      <thead>
+        <tr className="text-muted-foreground text-xs">
+          <th className="w-full pb-1 text-left font-normal">{rowHeading}</th>
+          {columns.map(([column]) => (
+            <th key={column} className="pb-1 pl-3 text-right font-normal">
+              {column}
+            </th>
+          ))}
+          <th className="pb-1 pl-2 text-right font-normal">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(([row, rowTotal]) => (
+          <tr key={row}>
+            <td className="py-0.5 pr-2 whitespace-nowrap">{row}</td>
+            {columns.map(([column]) => {
+              const n = count.get(`${row}\u0000${column}`) ?? 0;
+              return (
+                <td key={column} className="py-0.5 pl-1.5 text-right">
+                  <span
+                    className={cn(
+                      "block rounded px-1.5 py-0.5",
+                      n === 0 && "text-muted-foreground",
+                    )}
+                    style={
+                      n > 0
+                        ? {
+                            background: `color-mix(in oklab, var(--ticket-series-${series}) ${Math.round(18 + 52 * (n / max))}%, transparent)`,
+                          }
+                        : undefined
+                    }
+                  >
+                    {n}
+                  </span>
+                </td>
+              );
+            })}
+            <td className="text-muted-foreground py-0.5 pl-2 text-right">
+              {rowTotal}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 /** Tier progress: each tier's sales against its own allocation. */
 export function TierBars({
   tiers,
