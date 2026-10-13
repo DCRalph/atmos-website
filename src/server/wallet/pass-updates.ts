@@ -24,8 +24,16 @@ export function formatPassUpdateTag(date: Date): string {
 }
 
 /**
+ * When the pass layout itself last changed: fields, wording, links. Nothing in
+ * the database moves when only the code does, so bump this whenever a change
+ * should reach passes already sitting in wallets, then wake the phones with
+ * `bun run wallet:push-all` once it is deployed.
+ */
+export const PASS_TEMPLATE_UPDATED_AT = new Date("2026-10-13T20:30:00.000Z");
+
+/**
  * The pass is as fresh as whichever of the things it prints changed last: the
- * ticket, its event, and its access level.
+ * ticket, its event, its access level, and the template.
  */
 export function passUpdatedAt(first: Date, ...rest: Date[]): Date {
   return rest.reduce(
@@ -55,10 +63,12 @@ export function listUpdatedPasses({
   registrations,
   passTypeIdentifier,
   passesUpdatedSince,
+  templateUpdatedAt,
 }: {
   registrations: RegisteredPassFreshness[];
   passTypeIdentifier: string;
   passesUpdatedSince: string | null;
+  templateUpdatedAt: Date;
 }): { serialNumbers: string[]; lastUpdated: string } | null {
   const since = parsePassesUpdatedSince(passesUpdatedSince);
 
@@ -72,6 +82,7 @@ export function listUpdatedPasses({
         registration.ticketUpdatedAt,
         registration.eventUpdatedAt,
         registration.levelUpdatedAt,
+        templateUpdatedAt,
       ),
     }))
     .filter((pass) => isPassNewerThan(pass.updatedAt, since))

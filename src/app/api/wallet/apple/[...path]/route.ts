@@ -11,7 +11,11 @@ import {
   lifetimeIdFromSerial,
 } from "~/server/wallet/apple-lifetime";
 import { isAppleWalletConfigured } from "~/server/wallet/apple-config";
-import { listUpdatedPasses, passUpdatedAt } from "~/server/wallet/pass-updates";
+import {
+  listUpdatedPasses,
+  PASS_TEMPLATE_UPDATED_AT,
+  passUpdatedAt,
+} from "~/server/wallet/pass-updates";
 
 /**
  * Apple Wallet web service.
@@ -240,6 +244,7 @@ export async function GET(
       passTypeIdentifier,
       passesUpdatedSince:
         request.nextUrl.searchParams.get("passesUpdatedSince"),
+      templateUpdatedAt: PASS_TEMPLATE_UPDATED_AT,
       registrations: registrations.flatMap((registration) => {
         const freshness = freshnessBySerial.get(registration.serialNumber);
         if (!freshness) return [];
@@ -285,6 +290,7 @@ export async function GET(
           "Last-Modified": passUpdatedAt(
             lifetime.updatedAt,
             lifetime.level.updatedAt,
+            PASS_TEMPLATE_UPDATED_AT,
           ).toUTCString(),
           "Cache-Control": "no-store",
         },
@@ -314,6 +320,7 @@ export async function GET(
       ticket.updatedAt,
       ticket.event.updatedAt,
       ticket.level.updatedAt,
+      PASS_TEMPLATE_UPDATED_AT,
     );
 
     return new Response(new Uint8Array(buffer), {
