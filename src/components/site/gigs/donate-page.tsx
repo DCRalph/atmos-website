@@ -100,26 +100,35 @@ export function DonatePage({
         ) : null}
 
         <div className="w-full max-w-[420px] md:max-w-[380px]">
-          <section className="glass-dark space-y-4 rounded-[var(--site-r-panel)] rounded-tl-none p-[22px]">
+          {/* Never taller than the screen: the title stays put and the slides
+              scroll inside it instead. */}
+          <section className="glass-dark flex max-h-[calc(100dvh-6rem)] flex-col gap-4 rounded-[var(--site-r-panel)] rounded-tl-none p-[22px] md:max-h-[calc(100dvh-11rem)]">
             {thanked !== null ? (
               <Thanks gig={gig} cents={thanked} />
             ) : (
               <>
-                <p className="t-label text-[10px] text-[var(--site-accent-text)]">
-                  Support the night
-                </p>
-                <h1 className="t-display text-[30px] [overflow-wrap:anywhere]">
-                  {gig.title}
-                </h1>
-                {gig.description ? (
-                  <LexicalContent
-                    value={gig.description}
-                    namespace={`gig-donation-${gig.id}`}
-                    ariaLabel="About donating"
-                    contentClassName="text-[15px] leading-relaxed text-white/75 [&_a]:text-white [&_a]:underline [&_a]:underline-offset-4 [&_li]:mb-1 [&_p:not(:last-child)]:mb-3 [&_strong]:text-white [&_ul]:list-disc [&_ul]:pl-5"
-                  />
-                ) : null}
-                <DonateForm gig={gig} onPaid={setThanked} />
+                <div className="shrink-0 space-y-4">
+                  <p className="t-label text-[10px] text-[var(--site-accent-text)]">
+                    Support the night
+                  </p>
+                  <h1 className="t-display text-[30px] [overflow-wrap:anywhere]">
+                    {gig.title}
+                  </h1>
+                </div>
+                <DonateForm
+                  gig={gig}
+                  intro={
+                    gig.description ? (
+                      <LexicalContent
+                        value={gig.description}
+                        namespace={`gig-donation-${gig.id}`}
+                        ariaLabel="About donating"
+                        contentClassName="text-[15px] leading-relaxed text-white/75 [&_a]:text-white [&_a]:underline [&_a]:underline-offset-4 [&_li]:mb-1 [&_p:not(:last-child)]:mb-3 [&_strong]:text-white [&_ul]:list-disc [&_ul]:pl-5"
+                      />
+                    ) : null
+                  }
+                  onPaid={setThanked}
+                />
               </>
             )}
           </section>
@@ -141,12 +150,15 @@ type Stage = "amount" | "card";
  * Pick an amount, then pay with a wallet button right there, or tap through
  * to the card form. One Elements group holds both, in Stripe's deferred mode:
  * the intent is only made once they pay, for whatever amount is picked then.
+ * The intro sits above the amounts and slides away with them.
  */
 function DonateForm({
   gig,
+  intro,
   onPaid,
 }: {
   gig: DonateGig;
+  intro: ReactNode;
   onPaid: (cents: number) => void;
 }) {
   const id = useId();
@@ -183,9 +195,12 @@ function DonateForm({
   const stripe = getStripePromise();
   if (!stripe) {
     return (
-      <p className="text-[14px] text-[var(--site-danger-text)]">
-        Payments aren&apos;t available right now. Try again shortly.
-      </p>
+      <div className="min-h-0 space-y-4 overflow-y-auto">
+        {intro}
+        <p className="text-[14px] text-[var(--site-danger-text)]">
+          Payments aren&apos;t available right now. Try again shortly.
+        </p>
+      </div>
     );
   }
 
@@ -207,30 +222,33 @@ function DonateForm({
       <Slides
         stage={stage}
         amount={
-          <div className="space-y-3 pt-3">
-            <AmountPicker
-              id={id}
-              gig={gig}
-              picked={picked}
-              custom={custom}
-              invalid={invalid}
-              onPick={(next) => {
-                setPicked(next);
-                setInvalid(null);
-              }}
-              onCustom={(value) => {
-                setCustom(value);
-                setPicked("custom");
-                setInvalid(null);
-              }}
-            />
-            <PayButtons
-              gigId={gig.id}
-              amount={amount}
-              ready={ready}
-              onCard={() => ready() && setStage("card")}
-              onPaid={onPaid}
-            />
+          <div className="space-y-4">
+            {intro}
+            <div className="space-y-3 pt-3">
+              <AmountPicker
+                id={id}
+                gig={gig}
+                picked={picked}
+                custom={custom}
+                invalid={invalid}
+                onPick={(next) => {
+                  setPicked(next);
+                  setInvalid(null);
+                }}
+                onCustom={(value) => {
+                  setCustom(value);
+                  setPicked("custom");
+                  setInvalid(null);
+                }}
+              />
+              <PayButtons
+                gigId={gig.id}
+                amount={amount}
+                ready={ready}
+                onCard={() => ready() && setStage("card")}
+                onPaid={onPaid}
+              />
+            </div>
           </div>
         }
         card={
@@ -250,7 +268,8 @@ function DonateForm({
 
 /**
  * Two panes side by side, sliding to the active one. The frame takes the
- * active pane's height, so the panel grows and shrinks with it.
+ * active pane's height, so the panel grows and shrinks with it, but shrinks
+ * to fit the panel's cap, where each pane scrolls on its own.
  */
 function Slides({
   stage,
@@ -268,23 +287,47 @@ function Slides({
   const onCard = stage === "card";
 
   return (
-    // The side padding keeps focus outlines clear of the clip.
     <div
-      className="-mx-1 overflow-hidden px-1 transition-[height] duration-300 ease-out motion-reduce:transition-none"
+      className="-mx-1 flex min-h-0 overflow-hidden transition-[height] duration-300 ease-out motion-reduce:transition-none"
       style={{ height: onCard ? cardHeight : amountHeight }}
     >
       <div
-        className="flex items-start gap-3 transition-transform duration-300 ease-out motion-reduce:transition-none"
+        className="flex w-full gap-3 transition-transform duration-300 ease-out motion-reduce:transition-none"
         style={{
           transform: onCard ? "translateX(calc(-100% - 0.75rem))" : "none",
         }}
       >
-        <div ref={amountRef} inert={onCard} className="w-full shrink-0">
+        <Pane paneRef={amountRef} inert={onCard}>
           {amount}
-        </div>
-        <div ref={cardRef} inert={!onCard} className="w-full shrink-0">
+        </Pane>
+        <Pane paneRef={cardRef} inert={!onCard}>
           {card}
-        </div>
+        </Pane>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One slide, scrolling inside the frame when it's too tall. The padding keeps
+ * focus outlines clear of the clip; `paneRef` measures the content's height.
+ */
+function Pane({
+  paneRef,
+  inert,
+  children,
+}: {
+  paneRef: RefObject<HTMLDivElement | null>;
+  inert: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      inert={inert}
+      className="w-full shrink-0 overflow-y-auto overscroll-contain"
+    >
+      <div ref={paneRef} className="px-1 pb-1">
+        {children}
       </div>
     </div>
   );
