@@ -8,6 +8,8 @@ import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { useConfirm } from "~/components/confirm-provider";
 import { formatDateTime } from "~/lib/date-utils";
+import { formatTimeAgo } from "~/lib/ticketing/dates";
+import { cn } from "~/lib/utils";
 
 /**
  * Tickets sitting in somebody's checkout: how many, when each hold lapses, and
@@ -109,15 +111,32 @@ export function HeldTickets({ eventId }: { eventId: string }) {
                     {order.buyerName ?? order.buyerEmail ?? "No details yet"}
                   </span>
                 </p>
+                <p className="text-muted-foreground truncate text-xs">
+                  Held {clockTime(order.createdAt, now)},{" "}
+                  {formatTimeAgo(order.createdAt, new Date(now))}
+                  {order.expiresAt ? (
+                    order.expiresAt.getTime() <= now ? (
+                      <>
+                        {" "}
+                        · Should have expired {clockTime(
+                          order.expiresAt,
+                          now,
+                        )}, {formatTimeAgo(order.expiresAt, new Date(now))}
+                      </>
+                    ) : (
+                      <> · Expires {clockTime(order.expiresAt, now)}</>
+                    )
+                  ) : null}
+                </p>
               </div>
               <div className="flex shrink-0 items-center gap-3">
                 <span
-                  className="text-muted-foreground tabular-nums"
-                  title={
-                    order.expiresAt
-                      ? formatDateTime(order.expiresAt)
-                      : undefined
-                  }
+                  className={cn(
+                    "tabular-nums",
+                    order.expiresAt && order.expiresAt.getTime() <= now
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-muted-foreground",
+                  )}
                 >
                   {expiresIn(order.expiresAt, now)}
                 </span>
@@ -147,13 +166,22 @@ export function HeldTickets({ eventId }: { eventId: string }) {
   );
 }
 
-/** "expires in 8m", or "releasing" once lapsed and waiting on the sweep. */
+/**
+ * "expires in 8m", or "overdue" once lapsed: still holding stock until the
+ * next sweep or checkout on the event releases it.
+ */
 function expiresIn(expiresAt: Date | null, now: number): string {
   if (!expiresAt) return "no expiry";
   const minutes = Math.ceil((expiresAt.getTime() - now) / 60_000);
-  if (minutes <= 0) return "releasing";
+  if (minutes <= 0) return "overdue";
   if (minutes < 60) return `expires in ${minutes}m`;
   return `expires in ${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+
+/** "3:42 pm", with the date too when it isn't today. */
+function clockTime(date: Date, now: number): string {
+  const sameDay = date.toDateString() === new Date(now).toDateString();
+  return formatDateTime(date, { includeDate: !sameDay });
 }
 
 /** The current time, refreshed every `intervalMs` so countdowns move. */

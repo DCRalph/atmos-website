@@ -791,6 +791,7 @@ export const ticketAdminRouter = createTRPCRouter({
           orderNumber: true,
           buyerName: true,
           buyerEmail: true,
+          createdAt: true,
           expiresAt: true,
           items: { select: { quantity: true, groupSize: true } },
         },
