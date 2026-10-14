@@ -7,7 +7,8 @@ import {
   Cancel01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import type { ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import type { MouseEvent, ReactNode } from "react";
 
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
@@ -35,6 +36,9 @@ export interface DataTableProps<TRow> {
   total?: number;
   isLoading?: boolean;
   isFetching?: boolean;
+  /** Where a row goes when clicked. Cmd/Ctrl or middle click opens a new tab. */
+  getRowHref?: (row: TRow) => string;
+  /** For rows that open something in place (a sheet, a drawer). */
   onRowClick?: (row: TRow) => void;
   rowClassName?: (row: TRow) => string | undefined;
   bulkActions?: BulkAction<TRow>[];
@@ -55,6 +59,23 @@ function alignClass(align?: "left" | "right" | "center") {
   if (align === "right") return "text-right";
   if (align === "center") return "text-center";
   return "text-left";
+}
+
+/** Clicks on these inside a row act on themselves, not the row. */
+const ROW_CLICK_IGNORE = "a, button, input, select, textarea, label";
+
+/**
+ * Whether a click was on the row itself rather than a control in it. Menus
+ * and dialogs portalled out of a cell still bubble through React, so anything
+ * outside the row's DOM doesn't count either.
+ */
+function isRowClick(event: MouseEvent<HTMLElement>) {
+  const row = event.currentTarget;
+  if (!(event.target instanceof Element) || !row.contains(event.target)) {
+    return false;
+  }
+  const control = event.target.closest(ROW_CLICK_IGNORE);
+  return !control || !row.contains(control);
 }
 
 /** Anything an accessor returns that we know how to put in order. */
@@ -112,6 +133,7 @@ export function DataTable<TRow>({
   total = data.length,
   isLoading = false,
   isFetching = false,
+  getRowHref,
   onRowClick,
   rowClassName,
   bulkActions,
@@ -133,6 +155,15 @@ export function DataTable<TRow>({
     storageKey,
   });
   const api = suppliedApi ?? localApi;
+  const router = useRouter();
+  const rowsClickable = Boolean(getRowHref ?? onRowClick);
+
+  function openRow(row: TRow, newTab: boolean) {
+    const href = getRowHref?.(row);
+    if (href === undefined) onRowClick?.(row);
+    else if (newTab) window.open(href, "_blank", "noopener");
+    else router.push(href);
+  }
   const visibleColumns = columns.filter((column) =>
     api.isColumnVisible(column.id),
   );
@@ -325,10 +356,26 @@ export function DataTable<TRow>({
                     data-state={selected ? "selected" : undefined}
                     className={cn(
                       "border-border",
-                      onRowClick && "cursor-pointer",
+                      rowsClickable && "cursor-pointer",
                       rowClassName?.(row),
                     )}
-                    onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    onClick={
+                      rowsClickable
+                        ? (event) => {
+                            if (!isRowClick(event)) return;
+                            openRow(row, event.metaKey || event.ctrlKey);
+                          }
+                        : undefined
+                    }
+                    onAuxClick={
+                      getRowHref
+                        ? (event) => {
+                            if (event.button === 1 && isRowClick(event)) {
+                              openRow(row, true);
+                            }
+                          }
+                        : undefined
+                    }
                   >
                     {enableSelection && (
                       <TableCell

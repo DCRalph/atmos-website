@@ -1,7 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-
 import { Badge } from "~/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { useTabParam } from "~/hooks/use-tab-param";
@@ -116,8 +114,6 @@ export function TicketEventsTable({
   storageKey: string;
   emptyMessage?: string;
 }) {
-  const router = useRouter();
-
   const columns: DataTableColumn<TicketEventRow>[] = [
     {
       id: "name",
@@ -192,7 +188,7 @@ export function TicketEventsTable({
       getRowId={(row) => row.id}
       isLoading={isLoading}
       isFetching={isFetching}
-      onRowClick={(row) => router.push(`${basePath}/${row.id}`)}
+      getRowHref={(row) => `${basePath}/${row.id}`}
       storageKey={storageKey}
       emptyMessage={emptyMessage}
     />

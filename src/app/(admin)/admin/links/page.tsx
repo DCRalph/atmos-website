@@ -94,16 +94,11 @@ export default function ShortLinksPage() {
       sortable: true,
       accessor: (row) => row.active,
       cell: (row) => (
-        // The row opens the link's page; the switch shouldn't.
-        <div onClick={(e) => e.stopPropagation()}>
-          <Switch
-            checked={row.active}
-            aria-label={`${row.active ? "Switch off" : "Switch on"} ${row.slug}`}
-            onCheckedChange={(active) =>
-              setActive.mutate({ id: row.id, active })
-            }
-          />
-        </div>
+        <Switch
+          checked={row.active}
+          aria-label={`${row.active ? "Switch off" : "Switch on"} ${row.slug}`}
+          onCheckedChange={(active) => setActive.mutate({ id: row.id, active })}
+        />
       ),
     },
   ];
@@ -140,7 +135,7 @@ export default function ShortLinksPage() {
             getRowId={(row) => row.id}
             isLoading={links.isPending}
             isFetching={links.isFetching}
-            onRowClick={(row) => router.push(`/admin/links/${row.id}`)}
+            getRowHref={(row) => `/admin/links/${row.id}`}
             storageKey="admin-short-links"
             emptyMessage="No links yet."
           />

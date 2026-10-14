@@ -1,13 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Calendar, CheckCircle2, Loader2, Search, XCircle } from "lucide-react";
 
 import { api } from "~/trpc/react";
 import UserAvatar from "~/components/UserAvatar";
 import { Badge } from "~/components/ui/badge";
-import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Card, CardContent } from "~/components/ui/card";
 import { DataTable, type DataTableColumn } from "~/components/data-table";
@@ -102,17 +100,6 @@ export function UsersManager() {
         </div>
       ),
     },
-    {
-      id: "actions",
-      header: "",
-      align: "right",
-      hideable: false,
-      cell: (user) => (
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/admin/users/${user.id}`}>Manage</Link>
-        </Button>
-      ),
-    },
   ];
 
   return (
@@ -141,6 +128,7 @@ export function UsersManager() {
           columns={columns}
           data={rows}
           getRowId={(row) => row.id}
+          getRowHref={(row) => `/admin/users/${row.id}`}
           isLoading={isLoading}
           storageKey="admin-users"
           emptyMessage={search ? "No users found" : "No users yet"}

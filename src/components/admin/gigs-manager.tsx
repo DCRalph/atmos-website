@@ -88,17 +88,6 @@ export function GigsManager({
       sortable: true,
       accessor: (gig) => gig.media.length,
     },
-    {
-      id: "actions",
-      header: "",
-      align: "right",
-      hideable: false,
-      cell: (gig) => (
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/admin/gigs/${gig.id}`}>Manage</Link>
-        </Button>
-      ),
-    },
   ];
 
   return (
@@ -152,6 +141,7 @@ export function GigsManager({
           columns={columns}
           data={rows}
           getRowId={(row) => row.id}
+          getRowHref={(row) => `/admin/gigs/${row.id}`}
           isLoading={isLoading}
           storageKey={onlyDrafts ? "admin-gig-drafts" : "admin-gigs"}
           emptyMessage={

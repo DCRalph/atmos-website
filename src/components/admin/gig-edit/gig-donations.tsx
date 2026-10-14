@@ -19,9 +19,9 @@ import { formatNZD, formatNZDCompact } from "~/lib/ticketing/money";
 import { formatEventDateTime } from "~/lib/ticketing/dates";
 
 /**
- * The gig editor's Donations tab: what this gig has raised, what people
- * picked, the running total, and every donation. Read-only; the switch and
- * the amounts live in the Details tab.
+ * The gig editor's Donations tab, under the donate page's settings: what
+ * this gig has raised, what people picked, the running total, and every
+ * donation. Read-only; the settings above it save with the rest of the gig.
  */
 export function GigDonations({ gigId }: { gigId: string }) {
   const query = api.donations.forGig.useQuery({ gigId });
@@ -33,7 +33,7 @@ export function GigDonations({ gigId }: { gigId: string }) {
       <div className="text-muted-foreground rounded-lg border border-dashed p-10 text-center text-sm">
         {enabled
           ? "No donations yet. They show up here as soon as someone gives."
-          : "Donations are off for this gig. Turn them on in Details to add a Donate button to its page."}
+          : "Donations are off for this gig. Turn them on above to add a Donate button to its page."}
       </div>
     );
   }
