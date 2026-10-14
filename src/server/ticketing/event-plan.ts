@@ -34,8 +34,10 @@ export const tierPlanSchema = z.object({
   allocation: z.number().int().min(0),
   /** Tickets per purchase. Above 1 makes it a group tier. */
   groupSize: z.number().int().min(1).max(20).default(1),
-  /** Off the public list until the tier above stops selling. */
+  /** Can't be bought until the tier above stops selling. */
   releaseAfterPrevious: z.boolean().default(false),
+  /** Off the public list while it waits, rather than shown locked. */
+  hideUntilReleased: z.boolean().default(false),
   /** Online, at the door, or both. Door-only tiers are the door allocation. */
   salesChannel: z.enum(TierSalesChannel).default(TierSalesChannel.ALL),
   salesStartAt: z.date().nullable().optional(),
@@ -176,6 +178,7 @@ export async function applyTierPlan(
       allocation: fields.allocation,
       groupSize: fields.groupSize,
       releaseAfterPrevious: fields.releaseAfterPrevious,
+      hideUntilReleased: fields.hideUntilReleased,
       salesChannel: fields.salesChannel,
       salesStartAt: fields.salesStartAt ?? null,
       salesEndAt: fields.salesEndAt ?? null,

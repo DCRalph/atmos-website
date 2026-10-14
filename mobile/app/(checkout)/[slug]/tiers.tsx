@@ -12,7 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Check, Info, Minus, Plus, X } from "lucide-react-native";
 
-import { tierUnavailableLabel } from "~/lib/ticketing/tiers";
+import { openTiers, tierUnavailableLabel } from "~/lib/ticketing/tiers";
 
 import { api } from "@/lib/api";
 import { API_URL } from "@/lib/env";
@@ -69,13 +69,21 @@ export default function TiersScreen() {
     [event.data?.tiers, codeCheck],
   );
 
-  // Only tiers still on screen: swapping the code away drops what it unlocked.
+  // What can be picked: what's on sale, plus a locked tier whose tier above
+  // is all in the basket.
+  const open = useMemo(() => openTiers(tiers, quantities), [tiers, quantities]);
+
+  // Only tiers still open on screen: swapping the code away drops what it
+  // unlocked, and putting back the last early bird drops what that opened.
   const lines = useMemo(
     () =>
       tiers
-        .map((tier) => ({ tierId: tier.id, quantity: quantities[tier.id] ?? 0 }))
+        .map((tier) => ({
+          tierId: tier.id,
+          quantity: open.has(tier.id) ? (quantities[tier.id] ?? 0) : 0,
+        }))
         .filter((line) => line.quantity > 0),
-    [tiers, quantities],
+    [tiers, quantities, open],
   );
   const discountCode = appliedCode ?? undefined;
 
@@ -121,7 +129,8 @@ export default function TiersScreen() {
       : null;
   // A group tier's purchase is several tickets.
   const ticketCount = tiers.reduce(
-    (sum, tier) => sum + (quantities[tier.id] ?? 0) * tier.groupSize,
+    (sum, tier) =>
+      open.has(tier.id) ? sum + (quantities[tier.id] ?? 0) * tier.groupSize : sum,
     0,
   );
 
@@ -151,7 +160,9 @@ export default function TiersScreen() {
         ) : (
           <View style={{ gap: space.sm }}>
             {tiers.map((tier) => {
-              const quantity = quantities[tier.id] ?? 0;
+              const quantity = open.has(tier.id)
+                ? (quantities[tier.id] ?? 0)
+                : 0;
               // Exact stock is deliberately not published; the server only
               // says "available", and how many are left once it is nearly out.
               const cap = Math.min(
@@ -171,23 +182,31 @@ export default function TiersScreen() {
                         ? ` · admits ${tier.groupSize}`
                         : ""}
                     </Caption>
-                    {!tier.available ? (
+                    {!open.has(tier.id) ? (
                       <Pill tone="deny">
                         {tierUnavailableLabel(tier)}
                       </Pill>
+                    ) : !tier.available ? (
+                      <Pill tone="accent">Unlocked</Pill>
                     ) : tier.lowStock ? (
                       <Pill tone="warn">{tier.remainingIfLow} left</Pill>
                     ) : null}
                   </View>
-                  {tier.available ? (
+                  {open.has(tier.id) ? (
                     <Stepper
                       value={quantity}
                       max={cap}
                       onChange={(next) =>
-                        setQuantities((current) => ({
-                          ...current,
-                          [tier.id]: next,
-                        }))
+                        setQuantities((current) => {
+                          const updated = { ...current, [tier.id]: next };
+                          // A tier that locks again loses its picks.
+                          const stillOpen = openTiers(tiers, updated);
+                          return Object.fromEntries(
+                            Object.entries(updated).filter(([id]) =>
+                              stillOpen.has(id),
+                            ),
+                          );
+                        })
                       }
                     />
                   ) : null}

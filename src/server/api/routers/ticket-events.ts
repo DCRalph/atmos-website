@@ -37,6 +37,7 @@ import {
   tierPlanSchema,
 } from "~/server/ticketing/event-plan";
 import { venueFeePerTicketCents } from "~/lib/ticketing/money";
+import { previousTier } from "~/lib/ticketing/tiers";
 import {
   allocationBudget,
   compCountForEvent,
@@ -121,6 +122,7 @@ async function storedTiers(tx: Prisma.TransactionClient, eventId: string) {
       allocation: true,
       groupSize: true,
       releaseAfterPrevious: true,
+      hideUntilReleased: true,
       salesChannel: true,
       salesStartAt: true,
       salesEndAt: true,
@@ -934,6 +936,7 @@ export const ticketEventsRouter = createTRPCRouter({
               allocation: tier.allocation,
               groupSize: tier.groupSize,
               releaseAfterPrevious: tier.releaseAfterPrevious,
+              hideUntilReleased: tier.hideUntilReleased,
               salesChannel: tier.salesChannel,
               salesStartAt: tier.salesStartAt,
               salesEndAt: tier.salesEndAt,
@@ -1194,8 +1197,8 @@ function toPublicEvent(
   const now = new Date();
   const fee = resolveBookingFee(event, settings);
 
-  // A tier waiting for the one before it isn't shown at all until it opens:
-  // the buyer sees early bird, then general admission, never both.
+  // A tier waiting for the one before it is listed locked, so buyers can see
+  // the price going up, unless it's set to stay hidden until it opens.
   const tiers = event.tiers
     .map((tier) => ({
       tier,
@@ -1207,13 +1210,20 @@ function toPublicEvent(
     .filter(
       ({ tier, reason }) =>
         (!tier.isHidden || unlockedTierIds.has(tier.id)) &&
-        reason !== "WAITING_FOR_PREVIOUS" &&
+        !(reason === "WAITING_FOR_PREVIOUS" && tier.hideUntilReleased) &&
         reason !== "NOT_SOLD_HERE",
     )
     .map(({ tier, reason }) => {
       // In purchases, which is what the buyer is counting: "2 left" of a group
       // tier is two groups.
       const remaining = Math.floor(remainingInTier(tier) / tier.groupSize);
+      const above =
+        reason === "WAITING_FOR_PREVIOUS"
+          ? previousTier(event.tiers, tier)
+          : null;
+      const aboveLeft = above
+        ? Math.floor(remainingInTier(above) / above.groupSize)
+        : 0;
       return {
         id: tier.id,
         name: tier.name,
@@ -1230,6 +1240,18 @@ function toPublicEvent(
         salesEndAt: tier.salesEndAt,
         lowStock: remaining > 0 && remaining <= 10,
         remainingIfLow: remaining > 0 && remaining <= 10 ? remaining : null,
+        /**
+         * The tier this one opens after. `left` is how many of it are left,
+         * published only when one order could take them all, which is what
+         * lets the buy panel open this tier for a basket that does.
+         */
+        waitingFor: above
+          ? {
+              tierId: above.id,
+              name: above.name,
+              left: aboveLeft <= above.maxPerOrder ? aboveLeft : null,
+            }
+          : null,
       };
     });
 
