@@ -1,4 +1,4 @@
-import { randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -38,6 +38,7 @@ import {
 } from "~/server/ticketing/event-plan";
 import { venueFeePerTicketCents } from "~/lib/ticketing/money";
 import { previousTier } from "~/lib/ticketing/tiers";
+import { isBot } from "~/server/ticketing/client";
 import {
   allocationBudget,
   compCountForEvent,
@@ -996,6 +997,49 @@ export const ticketEventsRouter = createTRPCRouter({
     }),
 
   // ---------------------------------------------------------------- public
+
+  /**
+   * One view of an event's page, sent by the page itself. The top of the
+   * funnel per campaign: the tags are the visit's, the same ones a checkout
+   * from this tab will carry. A visit counts once per event, so a refresh
+   * adds nothing, and crawlers and link previews are ignored. Never fails:
+   * a stats row is not worth an error on the page.
+   */
+  recordView: publicProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        visitId: z.string().min(8).max(64),
+        utm: z
+          .object({
+            source: z.string().max(120).optional(),
+            medium: z.string().max(120).optional(),
+            campaign: z.string().max(120).optional(),
+            content: z.string().max(120).optional(),
+          })
+          .optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (isBot(ctx.headers)) return;
+      // One statement that does nothing for an unknown event or a repeat
+      // visit, so neither raises an error worth logging.
+      await ctx.db.$executeRaw`
+        INSERT INTO "ticket_event_view"
+          ("id", "eventId", "visitId", "utmSource", "utmMedium", "utmCampaign", "utmContent")
+        SELECT
+          ${randomUUID()}::text,
+          e.id,
+          ${input.visitId}::text,
+          ${input.utm?.source ?? null}::text,
+          ${input.utm?.medium ?? null}::text,
+          ${input.utm?.campaign ?? null}::text,
+          ${input.utm?.content ?? null}::text
+        FROM "ticket_event" e
+        WHERE e.id = ${input.eventId}
+        ON CONFLICT ("eventId", "visitId") DO NOTHING
+      `.catch(() => undefined);
+    }),
 
   /**
    * The public event page.

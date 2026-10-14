@@ -39,6 +39,7 @@ import { eventCodesRouter } from "~/server/api/routers/event-codes";
 import { campaignsRouter } from "~/server/api/routers/campaigns";
 import { ticketAdminRouter } from "~/server/api/routers/ticket-admin";
 import { ticketAnalyticsRouter } from "~/server/api/routers/ticket-analytics";
+import { analyticsRouter } from "~/server/api/routers/analytics";
 import { lifetimeTicketsRouter } from "~/server/api/routers/lifetime-tickets";
 import { pickersRouter } from "~/server/api/routers/pickers";
 import { shortLinksRouter } from "~/server/api/routers/short-links";
@@ -94,6 +95,8 @@ export const appRouter = createTRPCRouter({
   tickets: ticketsRouter,
   ticketAdmin: ticketAdminRouter,
   ticketAnalytics: ticketAnalyticsRouter,
+  /** Every event at once: the admin Analytics page. */
+  analytics: analyticsRouter,
   discountCodes: discountCodesRouter,
   eventCodes: eventCodesRouter,
   campaigns: campaignsRouter,

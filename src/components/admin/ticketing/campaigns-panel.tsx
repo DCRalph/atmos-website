@@ -10,14 +10,35 @@ import { api, type RouterOutputs } from "~/trpc/react";
 import { useConfirm } from "~/components/confirm-provider";
 import { DataTable, type DataTableColumn } from "~/components/data-table";
 import { Button } from "~/components/ui/button";
+import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { campaignUrl, normaliseTag } from "~/lib/ticketing/campaigns";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
+import {
+  CAMPAIGN_SOURCE_LABELS,
+  CAMPAIGN_SOURCES,
+  CAMPAIGN_TYPE_LABELS,
+  CAMPAIGN_TYPES,
+  campaignSourceOf,
+  campaignTypeOf,
+  campaignUrl,
+  normaliseTag,
+  type CampaignSource,
+  type CampaignType,
+} from "~/lib/ticketing/campaigns";
+import { formatEventDate } from "~/lib/ticketing/dates";
 import { formatNZD, parsePriceToCents } from "~/lib/ticketing/money";
 import { cn } from "~/lib/utils";
 
 /**
- * Campaigns: a tagged link, what it cost, and what it sold.
+ * Campaigns: a tagged link, what it cost, and what it did, as a funnel from
+ * clicks to paid orders.
  *
  * On an event (`event` given) a campaign points at the event page unless told
  * otherwise, and its spend counts toward the event's costs. Without one this
@@ -26,16 +47,24 @@ import { cn } from "~/lib/utils";
  */
 type Campaign = RouterOutputs["campaigns"]["list"][number];
 
-/** Where most links go. Suggestions only: any word works. */
-const SOURCES = [
-  "instagram",
-  "facebook",
-  "tiktok",
-  "newsletter",
-  "poster",
-  "website",
-  "x",
-];
+/** "Instagram · Story · video", then when it ran if it has dates. */
+function describe(campaign: Campaign) {
+  const tags = [
+    CAMPAIGN_SOURCE_LABELS[campaignSourceOf(campaign.source)],
+    CAMPAIGN_TYPE_LABELS[campaignTypeOf(campaign.medium)],
+    campaign.content,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const ran =
+    campaign.startsAt || campaign.endsAt
+      ? [
+          campaign.startsAt ? formatEventDate(campaign.startsAt) : "Before",
+          campaign.endsAt ? formatEventDate(campaign.endsAt) : "onwards",
+        ].join(campaign.startsAt && campaign.endsAt ? " – " : " ")
+      : null;
+  return { tags, ran };
+}
 
 export function CampaignsPanel({
   event,
@@ -48,11 +77,12 @@ export function CampaignsPanel({
   const confirm = useConfirm();
   const campaigns = api.campaigns.list.useQuery({ eventId: event?.id });
 
-  // Spend feeds the event's costs, profit and break even.
+  // Spend feeds the event's costs, profit and break even; dates mark the
+  // sales curve.
   const refresh = () => {
     void utils.campaigns.list.invalidate();
     void utils.ticketEvents.byId.invalidate();
-    void utils.ticketAnalytics.overview.invalidate();
+    void utils.ticketAnalytics.invalidate();
   };
 
   const create = api.campaigns.create.useMutation({
@@ -86,14 +116,18 @@ export function CampaignsPanel({
       header: "Campaign",
       sortable: true,
       accessor: (row) => row.name,
-      cell: (row) => (
-        <div className="min-w-0">
-          <p className="font-medium">{row.name}</p>
-          <p className="text-muted-foreground truncate text-xs">
-            {[row.source, row.medium, row.content].filter(Boolean).join(" · ")}
-          </p>
-        </div>
-      ),
+      cell: (row) => {
+        const { tags, ran } = describe(row);
+        return (
+          <div className="min-w-0">
+            <p className="font-medium">{row.name}</p>
+            <p className="text-muted-foreground truncate text-xs">{tags}</p>
+            {ran ? (
+              <p className="text-muted-foreground truncate text-xs">{ran}</p>
+            ) : null}
+          </div>
+        );
+      },
     },
     ...(event
       ? []
@@ -120,6 +154,23 @@ export function CampaignsPanel({
       id: "link",
       header: "Link",
       cell: (row) => <LinkCell campaign={row} onMade={refresh} />,
+    },
+    {
+      id: "clicks",
+      header: "Clicks",
+      type: "number",
+      align: "right",
+      sortable: true,
+      accessor: (row) => row.results.clicks,
+      cell: (row) => row.results.clicks ?? "–",
+    },
+    {
+      id: "views",
+      header: "Views",
+      type: "number",
+      align: "right",
+      sortable: true,
+      accessor: (row) => row.results.views,
     },
     {
       id: "checkouts",
@@ -269,11 +320,13 @@ export function CampaignsPanel({
 
 type CampaignValues = {
   name: string;
-  source: string;
-  medium: string;
+  source: CampaignSource;
+  medium: CampaignType;
   content: string;
   destination: string;
   spendCents: number;
+  startsAt: Date | null;
+  endsAt: Date | null;
 };
 
 /**
@@ -299,8 +352,14 @@ function CampaignForm({
 }) {
   const eventPage = eventSlug ? `/events/${eventSlug}` : null;
   const [name, setName] = useState(initial?.name ?? "");
-  const [source, setSource] = useState(initial?.source ?? "");
-  const [medium, setMedium] = useState(initial?.medium ?? "");
+  // A campaign from before the lists is read through them, so an old
+  // "ig" / "social" edits as Instagram / Other.
+  const [source, setSource] = useState<CampaignSource | "">(
+    initial ? campaignSourceOf(initial.source) : "",
+  );
+  const [medium, setMedium] = useState<CampaignType | "">(
+    initial ? campaignTypeOf(initial.medium) : "",
+  );
   const [content, setContent] = useState(initial?.content ?? "");
   const [destination, setDestination] = useState(
     initial && initial.destination !== eventPage ? initial.destination : "",
@@ -308,20 +367,27 @@ function CampaignForm({
   const [spend, setSpend] = useState(
     initial?.spendCents ? (initial.spendCents / 100).toFixed(2) : "",
   );
+  const [startsAt, setStartsAt] = useState<Date | null>(
+    initial?.startsAt ?? null,
+  );
+  const [endsAt, setEndsAt] = useState<Date | null>(initial?.endsAt ?? null);
 
   const spendCents = spend.trim() ? parsePriceToCents(spend) : 0;
   const tags = {
-    source: normaliseTag(source),
-    medium: normaliseTag(medium) || null,
+    source,
+    medium: medium || null,
     name: normaliseTag(name),
     content: normaliseTag(content) || null,
   };
   const target = destination.trim() || eventPage;
+  const datesInOrder = !startsAt || !endsAt || endsAt >= startsAt;
   const ready =
-    Boolean(tags.name && tags.source && target) && spendCents !== null;
+    Boolean(tags.name && source && medium && target) &&
+    spendCents !== null &&
+    datesInOrder;
 
   let preview: string | null = null;
-  if (tags.name && tags.source && target) {
+  if (tags.name && source && target) {
     try {
       preview = campaignUrl(env.NEXT_PUBLIC_APP_URL, target, tags);
     } catch {
@@ -342,38 +408,39 @@ function CampaignForm({
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="campaign-source">Where it runs</Label>
-        <Input
-          id="campaign-source"
-          list="campaign-sources"
+        <Select
           value={source}
-          onChange={(e) => setSource(e.target.value)}
-          placeholder="instagram"
-        />
-        <datalist id="campaign-sources">
-          {SOURCES.map((option) => (
-            <option key={option} value={option} />
-          ))}
-        </datalist>
+          onValueChange={(value) => setSource(campaignSourceOf(value))}
+        >
+          <SelectTrigger id="campaign-source" className="w-full">
+            <SelectValue placeholder="Pick one" />
+          </SelectTrigger>
+          <SelectContent>
+            {CAMPAIGN_SOURCES.map((option) => (
+              <SelectItem key={option} value={option}>
+                {CAMPAIGN_SOURCE_LABELS[option]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="campaign-spend">Spend</Label>
-        <Input
-          id="campaign-spend"
-          inputMode="decimal"
-          value={spend}
-          onChange={(e) => setSpend(e.target.value)}
-          placeholder="0.00"
-          className={spendCents === null ? "border-destructive" : ""}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="campaign-medium">Kind of placement</Label>
-        <Input
-          id="campaign-medium"
+        <Label htmlFor="campaign-type">Type</Label>
+        <Select
           value={medium}
-          onChange={(e) => setMedium(e.target.value)}
-          placeholder="story, paid, email…"
-        />
+          onValueChange={(value) => setMedium(campaignTypeOf(value))}
+        >
+          <SelectTrigger id="campaign-type" className="w-full">
+            <SelectValue placeholder="Pick one" />
+          </SelectTrigger>
+          <SelectContent>
+            {CAMPAIGN_TYPES.map((option) => (
+              <SelectItem key={option} value={option}>
+                {CAMPAIGN_TYPE_LABELS[option]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="campaign-content">Version</Label>
@@ -393,6 +460,44 @@ function CampaignForm({
           placeholder={eventPage ?? "/gigs or https://…"}
         />
       </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="campaign-spend">Spend</Label>
+        <Input
+          id="campaign-spend"
+          inputMode="decimal"
+          value={spend}
+          onChange={(e) => setSpend(e.target.value)}
+          placeholder="0.00"
+          className={spendCents === null ? "border-destructive" : ""}
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Ran from</Label>
+        <DateTimePicker
+          date={startsAt ?? undefined}
+          onDateChange={(date) => setStartsAt(date ?? null)}
+          placeholder="Any time"
+          clearable
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Ran until</Label>
+        <DateTimePicker
+          date={endsAt ?? undefined}
+          onDateChange={(date) => setEndsAt(date ?? null)}
+          placeholder="Still running"
+          clearable
+        />
+        {!datesInOrder ? (
+          <p className="text-destructive text-xs">
+            It can&apos;t end before it starts.
+          </p>
+        ) : null}
+      </div>
+      <p className="text-muted-foreground self-end pb-2 text-xs">
+        Results count what happened between these, and the start is marked on
+        the sales curve. Leave both empty to count everything.
+      </p>
 
       <div className="md:col-span-3">
         <div className="flex items-center gap-2 rounded-md border border-dashed px-3 py-2 text-xs">
@@ -414,8 +519,9 @@ function CampaignForm({
 
       <div className="flex flex-wrap gap-2 md:col-span-3">
         <Button
-          disabled={pending || !ready}
-          onClick={() =>
+          disabled={pending || !ready || !source || !medium}
+          onClick={() => {
+            if (!source || !medium) return;
             onSubmit({
               name,
               source,
@@ -423,8 +529,10 @@ function CampaignForm({
               content,
               destination: destination.trim(),
               spendCents: spendCents ?? 0,
-            })
-          }
+              startsAt,
+              endsAt,
+            });
+          }}
         >
           {initial ? "Save" : "Create"}
         </Button>

@@ -225,11 +225,15 @@ export type SeriesPoint = { x: Date; y: number };
  * `target` draws a dashed line to climb to, like break even, and the scale
  * always reaches it. `series` picks the colour: revenue unless told otherwise.
  */
+const NO_MARKS: { at: Date; label: string }[] = [];
+
 export function TimeSeriesChart({
   points,
   formatValue,
   formatX,
   target,
+  reference,
+  marks = NO_MARKS,
   series = "revenue",
   height = 200,
   ...frame
@@ -238,6 +242,14 @@ export function TimeSeriesChart({
   formatValue: (value: number) => string;
   formatX: (date: Date) => string;
   target?: { value: number; label: string };
+  /**
+   * A second line to measure against, like the average past event: dashed,
+   * in the muted colour, labelled at its end, never hovered. Its points are
+   * clipped to the main series' span.
+   */
+  reference?: { points: SeriesPoint[]; label: string };
+  /** Moments worth a tick on the axis, like a campaign going live. */
+  marks?: { at: Date; label: string }[];
   /** Which `--ticket-series-*` colour to draw in. */
   series?: Series;
 }) {
@@ -249,29 +261,63 @@ export function TimeSeriesChart({
     if (points.length === 0) return null;
 
     const maxY = niceCeil(
-      Math.max(...points.map((p) => p.y), target?.value ?? 0, 1),
+      Math.max(
+        ...points.map((p) => p.y),
+        ...(reference?.points.map((p) => p.y) ?? []),
+        target?.value ?? 0,
+        1,
+      ),
     );
     const innerW = width - PAD.left - PAD.right;
     const innerH = height - PAD.top - PAD.bottom;
 
     const start = points[0]!.x.getTime();
     const span = points.at(-1)!.x.getTime() - start;
-    const xAt = (index: number) =>
+    const xOf = (date: Date) =>
       PAD.left +
       (span === 0
         ? innerW / 2
-        : ((points[index]!.x.getTime() - start) / span) * innerW);
+        : Math.min(
+            Math.max(((date.getTime() - start) / span) * innerW, 0),
+            innerW,
+          ));
+    const xAt = (index: number) => xOf(points[index]!.x);
     const yAt = (value: number) => PAD.top + innerH - (value / maxY) * innerH;
 
-    const line = points
-      .map((point, i) =>
-        i === 0 ? `M${xAt(i)},${yAt(point.y)}` : `H${xAt(i)} V${yAt(point.y)}`,
-      )
-      .join(" ");
+    // Steps rather than slopes: a quiet week is a flat stretch.
+    const stepPath = (steps: SeriesPoint[]) =>
+      steps
+        .map((point, i) =>
+          i === 0
+            ? `M${xOf(point.x)},${yAt(point.y)}`
+            : `H${xOf(point.x)} V${yAt(point.y)}`,
+        )
+        .join(" ");
+    const line = stepPath(points);
     const area = `${line} L${xAt(points.length - 1)},${PAD.top + innerH} L${xAt(0)},${PAD.top + innerH} Z`;
 
-    return { maxY, innerH, xAt, yAt, line, area };
-  }, [points, width, height, target?.value]);
+    const referenceEnd = reference?.points.at(-1);
+    const marked = marks
+      .filter((mark) => {
+        const at = mark.at.getTime();
+        return at >= start && at <= start + span;
+      })
+      .map((mark) => ({ x: xOf(mark.at), label: mark.label }));
+
+    return {
+      maxY,
+      innerH,
+      xAt,
+      yAt,
+      line,
+      area,
+      referenceLine: referenceEnd ? stepPath(reference!.points) : null,
+      referenceEnd: referenceEnd
+        ? { x: xOf(referenceEnd.x), y: yAt(referenceEnd.y) }
+        : null,
+      marked,
+    };
+  }, [points, reference, marks, width, height, target?.value]);
 
   const active = hover !== null ? points[hover] : null;
 
@@ -366,6 +412,39 @@ export function TimeSeriesChart({
               </g>
             )}
 
+            {geometry.marked.map((mark) => (
+              <g key={`${mark.x}-${mark.label}`}>
+                <line
+                  x1={mark.x}
+                  x2={mark.x}
+                  y1={PAD.top}
+                  y2={PAD.top + geometry.innerH}
+                  className="stroke-foreground"
+                  strokeOpacity={0.35}
+                  strokeWidth={1}
+                  strokeDasharray="2 3"
+                />
+                <text
+                  x={mark.x + 4}
+                  y={PAD.top + 10}
+                  className="fill-muted-foreground text-[10px]"
+                >
+                  {mark.label}
+                </text>
+              </g>
+            ))}
+
+            {geometry.referenceLine && (
+              <path
+                d={geometry.referenceLine}
+                fill="none"
+                className="stroke-muted-foreground"
+                strokeWidth={1.5}
+                strokeDasharray="5 4"
+                strokeLinejoin="round"
+              />
+            )}
+
             <path d={geometry.area} fill={`url(#${gradientId})`} />
             <path
               d={geometry.line}
@@ -375,6 +454,17 @@ export function TimeSeriesChart({
               strokeLinejoin="round"
               strokeLinecap="round"
             />
+
+            {reference && geometry.referenceEnd && (
+              <text
+                x={geometry.referenceEnd.x - 4}
+                y={geometry.referenceEnd.y - 6}
+                textAnchor="end"
+                className="fill-muted-foreground text-[10px]"
+              >
+                {reference.label}
+              </text>
+            )}
 
             {active && hover !== null && (
               <>
@@ -579,10 +669,13 @@ const hourName = (hour: number) =>
 export function WeekHeatmap({
   cells,
   unit,
+  formatValue,
   series = "revenue",
 }: {
   cells: { day: number; hour: number; n: number }[];
   unit: [string, string];
+  /** How a cell reads in the hover, instead of a count of `unit`. */
+  formatValue?: (n: number) => string;
   series?: Series;
 }) {
   const [hover, setHover] = useState<{ day: number; hour: number } | null>(
@@ -656,7 +749,11 @@ export function WeekHeatmap({
 
       {hover && active !== null && (
         <Tooltip
-          value={`${active} ${active === 1 ? unit[0] : unit[1]}`}
+          value={
+            formatValue
+              ? formatValue(active)
+              : `${active} ${active === 1 ? unit[0] : unit[1]}`
+          }
           label={`${WEEKDAYS[hover.day - 1]} ${hourName(hover.hour)}`}
           at={pointer ?? undefined}
         />

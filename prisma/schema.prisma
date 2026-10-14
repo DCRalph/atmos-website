@@ -1635,6 +1635,7 @@ model TicketEvent {
   idChecks      IdCheck[]
   costs         TicketEventCost[]
   campaigns     Campaign[]
+  views         TicketEventView[]
 
   @@index([status, startsAt])
   @@index([gigId])
@@ -2501,6 +2502,12 @@ model Campaign {
   destination String
   spendCents  Int    @default(0)
 
+  /// When it ran. Results count only what happened between them, so a post
+  /// that keeps selling for months is measured for its run. Either may be
+  /// open-ended.
+  startsAt DateTime?
+  endsAt   DateTime?
+
   shortLinkId String?    @unique
   shortLink   ShortLink? @relation(fields: [shortLinkId], references: [id], onDelete: SetNull)
 
@@ -2511,6 +2518,30 @@ model Campaign {
   @@index([eventId])
   @@index([source, name])
   @@map("campaign")
+}
+
+/// One visit to an event's page, with the tags it arrived on: the top of the
+/// funnel, views → checkouts → paid, per campaign. One row per visit and
+/// event, so a refresh is not another view. Written only by the page itself,
+/// through `ticketEvents.recordView`.
+model TicketEventView {
+  id      String      @id @default(cuid())
+  eventId String
+  event   TicketEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  /// The same tab visit a checkout carries as `TicketOrder.visitId`.
+  visitId String
+
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmContent  String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, visitId])
+  @@index([eventId, createdAt])
+  @@map("ticket_event_view")
 }
 
 /// A named copy of one short link, for counting one place it is used apart

@@ -335,6 +335,18 @@ function SalesChart({
   );
   const daily = bucketUnit(data.from, data.to) === "day";
 
+  // The average past event at this many days out, in the same measure, so
+  // "ahead" or "behind" is a glance rather than a sum.
+  const pace = data.pace
+    ? {
+        label: `Average of ${data.pace.events} past ${data.pace.events === 1 ? "event" : "events"}`,
+        points: data.pace.points.map((point) => ({
+          x: point.at,
+          y: pick(point),
+        })),
+      }
+    : undefined;
+
   return (
     <ChartCard title={measure === "tickets" ? "Tickets sold" : "Revenue"}>
       <TimeSeriesChart
@@ -349,6 +361,11 @@ function SalesChart({
             ? { value: breakEven, label: `Break even · ${breakEven}` }
             : undefined
         }
+        reference={pace}
+        marks={data.launches.map((launch) => ({
+          at: launch.at,
+          label: launch.name,
+        }))}
       />
       {points.length > 0 ? (
         <BucketBarChart
@@ -576,21 +593,38 @@ function PaidWith({ overview }: { overview: Overview }) {
   );
 }
 
-/** From starting a checkout, to paying, to walking in. */
+/**
+ * From seeing the page, to starting a checkout, to paying, to walking in.
+ * Views are visits and the rest are orders, so the first step is a bigger
+ * unit than the others; the detail says which is which.
+ */
 function Funnel({ counts }: { counts: Overview["counts"] }) {
   const started = counts.orders + counts.abandonedCheckouts;
-  if (started === 0) return null;
+  if (started === 0 && counts.views === 0) return null;
 
   return (
-    <ChartCard title="Checkout to door">
+    <ChartCard title="Page to door">
       <BarList
-        max={started}
+        max={Math.max(started, counts.views)}
         rows={[
+          ...(counts.views > 0
+            ? [
+                {
+                  key: "viewed",
+                  label: "Saw the page",
+                  value: counts.views,
+                  detail: `${counts.views} ${counts.views === 1 ? "visit" : "visits"}`,
+                },
+              ]
+            : []),
           {
             key: "started",
             label: "Checkouts started",
             value: started,
-            detail: String(started),
+            detail:
+              counts.views > 0
+                ? `${started} · ${Math.round((started / counts.views) * 100)}% of visits`
+                : String(started),
           },
           {
             key: "paid",

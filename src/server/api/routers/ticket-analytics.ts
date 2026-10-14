@@ -17,6 +17,9 @@ import {
   VISIT,
 } from "~/server/ticketing/order-sql";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
+import { pastEventsPace } from "~/server/ticketing/lead-time";
+import { paceOnAxis } from "~/lib/ticketing/pace";
+import { campaignTypeOf } from "~/lib/ticketing/campaigns";
 import { soldFaceValueCents } from "~/lib/ticketing/tiers";
 import {
   gstComponentCents,
@@ -203,7 +206,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
         },
       });
 
-      const [byPaidWith, [gotIn], arrivals] = await Promise.all([
+      const [byPaidWith, [gotIn], arrivals, views] = await Promise.all([
         ctx.db.ticketOrder.groupBy({
           by: ["paidWith"],
           where: {
@@ -239,6 +242,8 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           GROUP BY 1
           ORDER BY 1 ASC
         `,
+        // Visits to the page: where the funnel starts.
+        ctx.db.ticketEventView.count({ where: { eventId: event.id } }),
       ]);
 
       const grossCents = money._sum.totalCents ?? 0;
@@ -344,6 +349,8 @@ export const ticketAnalyticsRouter = createTRPCRouter({
             ticketsIssued > 0
               ? Math.round((admitted / ticketsIssued) * 100)
               : 0,
+          /** Visits to the event page, one per tab. */
+          views,
           /** Bought orders with anybody through the door. */
           ordersArrived: gotIn?.orders ?? 0,
           /** Paid ÷ (paid + abandoned). The checkout funnel's bottom step. */
@@ -441,12 +448,48 @@ export const ticketAnalyticsRouter = createTRPCRouter({
         Math.min(Date.now(), event.startsAt.getTime() + 24 * HOUR_MS),
       );
       const last = rows.at(-1)?.at;
+      const from = window?.since ?? rows[0]?.at ?? end;
+      const to = window?.until ?? (last && last > end ? last : end);
+
+      // What the average past event had sold by each point on this axis,
+      // and the campaigns that went live inside the range.
+      const [pace, campaigns] = await Promise.all([
+        pastEventsPace(ctx.db, input.eventId),
+        ctx.db.campaign.findMany({
+          where: {
+            eventId: input.eventId,
+            startsAt: { not: null, gte: from, lte: to },
+          },
+          orderBy: { startsAt: "asc" },
+          select: { id: true, name: true, medium: true, startsAt: true },
+        }),
+      ]);
+
       return {
         timezone: event.timezone,
-        from: window?.since ?? rows[0]?.at ?? end,
-        to: window?.until ?? (last && last > end ? last : end),
+        from,
+        to,
         baseline,
         rows,
+        pace:
+          pace.events > 0
+            ? {
+                events: pace.events,
+                points: paceOnAxis(pace.points, event.startsAt, from, to),
+              }
+            : null,
+        launches: campaigns.flatMap((campaign) =>
+          campaign.startsAt
+            ? [
+                {
+                  id: campaign.id,
+                  name: campaign.name,
+                  type: campaignTypeOf(campaign.medium),
+                  at: campaign.startsAt,
+                },
+              ]
+            : [],
+        ),
       };
     }),
 

@@ -6,6 +6,7 @@ import {
   BookOpen,
   Bot,
   Calendar,
+  ChartColumn,
   ListChecks,
   FileText,
   FolderOpen,
@@ -127,6 +128,14 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         url: "/admin/payments",
         icon: Banknote,
         keywords: ["revenue", "donations", "stripe", "refunds", "money"],
+      },
+      {
+        title: "Analytics",
+        description:
+          "Every event at once: when people buy, which campaigns sell, events compared",
+        url: "/admin/analytics",
+        icon: ChartColumn,
+        keywords: ["reports", "heat map", "campaigns", "compare", "pace"],
       },
       {
         title: "Door scanner",

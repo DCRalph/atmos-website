@@ -30,7 +30,7 @@ import {
   resolveBookingFee,
 } from "~/server/ticketing/settings";
 import { db } from "~/server/db";
-import { readClient } from "~/lib/short-links/clicks";
+import { buyerClient, clientIp } from "~/server/ticketing/client";
 
 /**
  * Public checkout.
@@ -59,23 +59,6 @@ const linesSchema = z
     }),
   )
   .min(1);
-
-/** Phone, tablet or computer, and its OS. Null when the browser didn't say. */
-function buyerClient(headers: Headers) {
-  const { device, os } = readClient(
-    headers.get("user-agent") ?? "",
-    headers.get("sec-ch-ua-mobile"),
-  );
-  return device === "unknown" || device === "bot" ? null : { device, os };
-}
-
-function clientIp(headers: Headers): string {
-  return (
-    headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    headers.get("x-real-ip") ??
-    "unknown"
-  );
-}
 
 function inventoryErrorToTrpc(cause: unknown): never {
   if (cause instanceof InventoryError) {

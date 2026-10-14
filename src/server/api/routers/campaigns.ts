@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { ActivityType, Prisma, type PrismaClient } from "~Prisma/client";
+import { ActivityType, type PrismaClient } from "~Prisma/client";
 import { env } from "~/env";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
 import {
@@ -9,12 +9,16 @@ import {
   readLinkInput,
 } from "~/server/api/routers/short-links";
 import {
-  BOUGHT_ORDER,
-  ONLINE_ORDER,
-  VISIT,
-} from "~/server/ticketing/order-sql";
+  campaignResults,
+  NO_RESULTS,
+} from "~/server/ticketing/campaign-results";
 import { logActivity } from "~/server/utils/activity-log";
-import { campaignUrl, normaliseTag } from "~/lib/ticketing/campaigns";
+import {
+  CAMPAIGN_SOURCES,
+  CAMPAIGN_TYPES,
+  campaignUrl,
+  normaliseTag,
+} from "~/lib/ticketing/campaigns";
 import { destinationProblem } from "~/lib/short-links/rules";
 import { SITE_LINK_DOMAIN } from "~/lib/short-links/domains";
 
@@ -25,13 +29,17 @@ import { SITE_LINK_DOMAIN } from "~/lib/short-links/domains";
  */
 
 const campaignInputSchema = z.object({
-  source: z.string().max(64),
-  medium: z.string().max(64),
+  /** Where it runs and what kind of thing it is, from the lists. */
+  source: z.enum(CAMPAIGN_SOURCES),
+  medium: z.enum(CAMPAIGN_TYPES),
   name: z.string().max(64),
   content: z.string().max(64),
   /** Blank on an event's campaign means the event page. */
   destination: z.string().max(2000),
   spendCents: z.number().int().min(0).max(100_000_000),
+  /** When it ran, either end open. Results count only what happened between. */
+  startsAt: z.date().nullable(),
+  endsAt: z.date().nullable(),
 });
 
 type CampaignInput = z.infer<typeof campaignInputSchema>;
@@ -44,15 +52,21 @@ async function readCampaignInput(
   exceptId?: string,
 ) {
   const tags = {
-    source: normaliseTag(input.source),
-    medium: normaliseTag(input.medium) || null,
+    source: input.source,
+    medium: input.medium,
     name: normaliseTag(input.name),
     content: normaliseTag(input.content) || null,
   };
-  if (!tags.source || !tags.name) {
+  if (!tags.name) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "A campaign needs a name and where it runs.",
+      message: "A campaign needs a name.",
+    });
+  }
+  if (input.startsAt && input.endsAt && input.endsAt < input.startsAt) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "A campaign can't end before it starts.",
     });
   }
 
@@ -86,42 +100,13 @@ async function readCampaignInput(
     });
   }
 
-  return { ...tags, destination, spendCents: input.spendCents };
-}
-
-type CampaignResult = {
-  checkouts: number;
-  paid: number;
-  revenueCents: number;
-};
-
-const NO_RESULTS: CampaignResult = { checkouts: 0, paid: 0, revenueCents: 0 };
-
-/**
- * What each campaign sold: online orders carrying exactly its tags, on its
- * event, or on any event for a campaign without one. Checkouts and paid count
- * visits, so changing a basket doesn't count twice.
- */
-async function campaignResults(db: PrismaClient, ids: string[]) {
-  if (ids.length === 0) return new Map<string, CampaignResult>();
-  const rows = await db.$queryRaw<(CampaignResult & { id: string })[]>`
-    SELECT
-      c.id,
-      COUNT(DISTINCT ${VISIT})::int AS checkouts,
-      COUNT(DISTINCT ${VISIT}) FILTER (WHERE ${BOUGHT_ORDER})::int AS paid,
-      COALESCE(SUM(o."totalCents" - o."refundedCents") FILTER (WHERE ${BOUGHT_ORDER}), 0)::int AS "revenueCents"
-    FROM "campaign" c
-    LEFT JOIN "ticket_order" o
-      ON o."utmSource" = c.source
-      AND o."utmCampaign" = c.name
-      AND o."utmMedium" IS NOT DISTINCT FROM c.medium
-      AND o."utmContent" IS NOT DISTINCT FROM c.content
-      AND (c."eventId" IS NULL OR o."eventId" = c."eventId")
-      AND ${ONLINE_ORDER}
-    WHERE c.id IN (${Prisma.join(ids)})
-    GROUP BY c.id
-  `;
-  return new Map(rows.map((row) => [row.id, row]));
+  return {
+    ...tags,
+    destination,
+    spendCents: input.spendCents,
+    startsAt: input.startsAt,
+    endsAt: input.endsAt,
+  };
 }
 
 export const campaignsRouter = createTRPCRouter({

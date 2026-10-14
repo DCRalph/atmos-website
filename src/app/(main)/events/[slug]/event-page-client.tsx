@@ -13,6 +13,7 @@ import {
   formatEventTime,
 } from "~/lib/ticketing/dates";
 import { formatNZD, formatNZDCompact } from "~/lib/ticketing/money";
+import { readAttribution, visitId } from "~/lib/ticketing/attribution";
 import { BuyPanel } from "~/components/ticketing/buy-panel";
 import { LexicalContent } from "~/components/lexical";
 import { IconButton, Skeleton, buttonVariants } from "~/components/site/ui";
@@ -67,6 +68,17 @@ export function EventPageClient() {
     { id: gigId ?? "" },
     { enabled: !!gigId },
   );
+
+  // One view per tab per event, with the tags the visit arrived on, so the
+  // funnel starts here rather than at checkout. Fire and forget: the server
+  // drops repeats and never fails the page.
+  const eventId = event.data?.id;
+  const { mutate: sendView } = api.ticketEvents.recordView.useMutation();
+  useEffect(() => {
+    const visit = eventId ? visitId() : undefined;
+    if (!eventId || !visit) return;
+    sendView({ eventId, visitId: visit, utm: readAttribution() });
+  }, [eventId, sendView]);
 
   const desktop = useDesktop();
   const [sheetOpen, setSheetOpen] = useState(false);
