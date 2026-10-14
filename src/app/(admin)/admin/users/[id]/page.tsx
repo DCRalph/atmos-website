@@ -483,6 +483,14 @@ function ConnectedAccountsCard({ user }: { user: ManageableUser }) {
     },
     onError: (error) => toast.error(error.message),
   });
+  // Every configured provider, plus any linked one that has since been removed
+  // from the config so it can still be unlinked.
+  const providerIds = [
+    ...new Set([
+      ...user.providers,
+      ...user.accounts.map((account) => account.providerId),
+    ]),
+  ];
 
   return (
     <Card>
@@ -493,10 +501,14 @@ function ConnectedAccountsCard({ user }: { user: ManageableUser }) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {user.accounts.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No sign-in methods</p>
-        ) : (
-          user.accounts.map((account) => (
+        {providerIds.map((providerId) => {
+          const linked = user.accounts.filter(
+            (account) => account.providerId === providerId,
+          );
+          if (linked.length === 0) {
+            return <SignInMethodRow key={providerId} providerId={providerId} />;
+          }
+          return linked.map((account) => (
             <SignInMethodRow
               key={account.id}
               providerId={account.providerId}
@@ -522,8 +534,8 @@ function ConnectedAccountsCard({ user }: { user: ManageableUser }) {
                 </Button>
               }
             />
-          ))
-        )}
+          ));
+        })}
       </CardContent>
     </Card>
   );

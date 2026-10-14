@@ -15,6 +15,7 @@ import {
 } from "~/server/utils/permissions";
 import {
   listActiveSessions,
+  listConfiguredProviders,
   listSignInMethods,
   overwritePassword,
   passwordSchema,
@@ -193,11 +194,18 @@ export const usersRouter = createTRPCRouter({
       return { ...base, canManage: false as const };
     }
 
-    const [signIn, sessions] = await Promise.all([
+    const [signIn, sessions, providers] = await Promise.all([
       listSignInMethods(user.id),
       listActiveSessions(user.id),
+      listConfiguredProviders(),
     ]);
-    return { ...base, canManage: true as const, ...signIn, sessions };
+    return {
+      ...base,
+      canManage: true as const,
+      ...signIn,
+      sessions,
+      providers,
+    };
   }),
 
   /**

@@ -33,6 +33,19 @@ export async function listSignInMethods(userId: string) {
   };
 }
 
+/**
+ * Every sign-in method this deployment offers: password plus each social and
+ * generic OAuth provider configured in `auth.ts`, so lists stay in sync as
+ * providers are added or removed.
+ */
+export async function listConfiguredProviders(): Promise<string[]> {
+  const context = await auth.$context;
+  return [
+    PASSWORD_PROVIDER,
+    ...context.socialProviders.map((provider) => provider.id),
+  ];
+}
+
 /** A user's live sessions, most recently active first, without the token. */
 export async function listActiveSessions(userId: string) {
   return db.session.findMany({
