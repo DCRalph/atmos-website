@@ -7,7 +7,37 @@ import { Button } from "~/components/ui/button";
 import { api } from "~/trpc/react";
 import { Input } from "~/components/ui/input";
 import { AdminSection } from "./admin-section";
-import { adminNavigationGroups } from "./admin-navigation";
+import {
+  adminNavigationGroups,
+  adminNavigationItems,
+  type AdminNavigationGroup,
+} from "./admin-navigation";
+
+// Sections the team opens most, pinned above the usual groups on the dashboard.
+const mostUsedUrls = [
+  "/admin/gigs",
+  "/admin/events",
+  "/admin/tasks",
+  "/admin/links",
+  "/admin/content",
+  "/admin/payments",
+];
+
+// The sidebar keeps the original grouping; only the dashboard pulls these up.
+const dashboardGroups: AdminNavigationGroup[] = [
+  {
+    title: "Most used",
+    items: mostUsedUrls.flatMap((url) =>
+      adminNavigationItems.filter((item) => item.url === url),
+    ),
+  },
+  ...adminNavigationGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !mostUsedUrls.includes(item.url)),
+    }))
+    .filter((group) => group.items.length > 0),
+];
 
 export function AdminDashboard() {
   const taskAlerts = api.tasks.alertCount.useQuery();
@@ -33,9 +63,9 @@ export function AdminDashboard() {
   }, []);
 
   const visibleGroups = useMemo(() => {
-    if (!normalisedQuery) return adminNavigationGroups;
+    if (!normalisedQuery) return dashboardGroups;
 
-    return adminNavigationGroups
+    return dashboardGroups
       .map((group) => ({
         ...group,
         items: group.items.filter((item) =>
