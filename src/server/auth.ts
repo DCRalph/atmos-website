@@ -5,7 +5,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { db } from "~/server/db";
 // import { createAuthMiddleware } from "better-auth/api";
 // import { z } from "zod";
-import { lastLoginMethod } from "better-auth/plugins";
+import { genericOAuth, lastLoginMethod } from "better-auth/plugins";
 import { expo } from "@better-auth/expo";
 import {
   sendAccountDeletionEmail,
@@ -24,6 +24,17 @@ import { impersonation } from "~/server/impersonation";
  * Apple sign-in fails audience verification.
  */
 const IOS_BUNDLE_ID = "nz.co.atmosmedia.app";
+
+/**
+ * Sign in with WMGX, an OIDC provider. Endpoints come from its discovery
+ * document. Its token endpoint only accepts the secret over HTTP Basic and
+ * requires PKCE, so both are set explicitly.
+ *
+ * Goes through the generic OAuth plugin, so the client starts it with
+ * `signIn.oauth2` (not `signIn.social`) and the redirect URI registered with
+ * WMGX is `/api/auth/oauth2/callback/wmgx`.
+ */
+const WMGX_ISSUER = "https://wmgx.io/api/auth";
 
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
@@ -143,7 +154,24 @@ export const auth = betterAuth({
     "atmos://*",
     ...DEV_HOSTS.map((host) => `http://${host}:*`),
   ],
-  plugins: [lastLoginMethod(), expo(), impersonation()],
+  plugins: [
+    lastLoginMethod(),
+    expo(),
+    impersonation(),
+    genericOAuth({
+      config: [
+        {
+          providerId: "wmgx",
+          discoveryUrl: `${WMGX_ISSUER}/.well-known/openid-configuration`,
+          clientId: env.WMGX_CLIENT_ID,
+          clientSecret: env.WMGX_CLIENT_SECRET,
+          scopes: ["openid", "profile", "email"],
+          pkce: true,
+          authentication: "basic",
+        },
+      ],
+    }),
+  ],
   // hooks: {
   //   before: createAuthMiddleware(async (ctx) => {
   //     // Check for invites before allowing signup

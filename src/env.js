@@ -14,6 +14,8 @@ export const env = createEnv({
 
     GOOGLE_CLIENT_ID: z.string(),
     GOOGLE_CLIENT_SECRET: z.string(),
+    WMGX_CLIENT_ID: z.string(),
+    WMGX_CLIENT_SECRET: z.string(),
 
     // Cloudflare R2 (file storage)
     R2_ACCOUNT_ID: z.string(),
@@ -101,6 +103,8 @@ export const env = createEnv({
 
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+    WMGX_CLIENT_ID: process.env.WMGX_CLIENT_ID,
+    WMGX_CLIENT_SECRET: process.env.WMGX_CLIENT_SECRET,
 
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
 

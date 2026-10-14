@@ -8,6 +8,7 @@ const PROVIDER_LABELS: Record<string, string> = {
   credential: "Password",
   google: "Google",
   apple: "Apple",
+  wmgx: "WMGX",
 };
 
 export function providerLabel(providerId: string): string {
