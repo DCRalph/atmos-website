@@ -203,8 +203,10 @@ export const ticketCheckoutRouter = createTRPCRouter({
             source: z.string().max(120).optional(),
             medium: z.string().max(120).optional(),
             campaign: z.string().max(120).optional(),
+            content: z.string().max(120).optional(),
           })
           .optional(),
+        visitId: z.string().max(64).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -227,6 +229,7 @@ export const ticketCheckoutRouter = createTRPCRouter({
         lines,
         discountCodeInput: input.discountCode ?? null,
         utm: input.utm,
+        visitId: input.visitId ?? null,
         ipAddress: ip === "unknown" ? null : ip,
         client: buyerClient(ctx.headers),
         userId: ctx.session?.user.id ?? null,

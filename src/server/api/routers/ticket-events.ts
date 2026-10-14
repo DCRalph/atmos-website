@@ -351,6 +351,8 @@ export const ticketEventsRouter = createTRPCRouter({
           tiers: { orderBy: { sortOrder: "asc" } },
           staff: true,
           costs: { orderBy: { sortOrder: "asc" } },
+          // Spend only: the Campaigns tab loads the rest itself.
+          campaigns: { select: { spendCents: true } },
         },
       });
       if (!event) {

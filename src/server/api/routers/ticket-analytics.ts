@@ -11,6 +11,11 @@ import {
 import { createTRPCRouter, eventOrganiserProcedure } from "~/server/api/trpc";
 import { admittedCount, departedCount } from "~/server/ticketing/scan";
 import { compAccounting } from "~/server/ticketing/comps";
+import {
+  BOUGHT_ORDER,
+  ONLINE_ORDER,
+  VISIT,
+} from "~/server/ticketing/order-sql";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
 import { soldFaceValueCents } from "~/lib/ticketing/tiers";
 import { venueFeePerTicketCents } from "~/lib/ticketing/money";
@@ -41,16 +46,6 @@ import {
  */
 
 const ADMIT_RESULTS = "('ADMITTED', 'OVERRIDE_ADMITTED', 'REENTRY')";
-
-/**
- * Orders somebody went through a checkout for: paid, and not a comp, an admin
- * link or a lifetime pass, which are minted as paid orders nobody bought.
- */
-const BOUGHT_ORDER = Prisma.sql`
-  o.status IN ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDED')
-  AND o."paymentMethod" NOT IN ('COMP', 'ADMIN', 'LIFETIME')
-  AND o."paidAt" IS NOT NULL
-`;
 
 /**
  * The stretch a chart range covers, or null for all time. Ranges end now, or
@@ -108,6 +103,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           venueHireCents: true,
           passVenueHire: true,
           costs: { select: { amountCents: true } },
+          campaigns: { select: { spendCents: true } },
           tiers: {
             orderBy: { sortOrder: "asc" },
             select: {
@@ -260,7 +256,11 @@ export const ticketAnalyticsRouter = createTRPCRouter({
         (sum, cost) => sum + cost.amountCents,
         0,
       );
-      const costsCents = venueHireCents + otherCostsCents;
+      const campaignsCents = event.campaigns.reduce(
+        (sum, campaign) => sum + campaign.spendCents,
+        0,
+      );
+      const costsCents = venueHireCents + otherCostsCents + campaignsCents;
       const venueFee = venueFeePerTicketCents(event);
       const revenuePerTicketCents =
         sold > 0
@@ -302,6 +302,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
         costs: {
           venueHireCents,
           otherCents: otherCostsCents,
+          campaignsCents,
           totalCents: costsCents,
           revenuePerTicketCents,
           breakEvenTickets: breakEvenTickets(costsCents, revenuePerTicketCents),
@@ -472,18 +473,33 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           GROUP BY 1
           ORDER BY 1 ASC
         `,
-        ctx.db.ticketOrder.groupBy({
-          by: ["utmSource", "utmMedium", "utmCampaign"],
-          where: {
-            eventId: input.eventId,
-            status: TicketOrderStatus.PAID,
-            ...(window
-              ? { paidAt: { gte: window.since, lte: window.until } }
-              : {}),
-          },
-          _count: true,
-          _sum: { totalCents: true },
-        }),
+        // Checkouts against sales for each set of tags, online only: a door
+        // sale has no link to have come from. Counted in visits, and scoped
+        // by when the checkout started so the two share a window.
+        ctx.db.$queryRaw<
+          {
+            source: string | null;
+            medium: string | null;
+            campaign: string | null;
+            content: string | null;
+            checkouts: number;
+            paid: number;
+            revenueCents: number;
+          }[]
+        >`
+          SELECT
+            o."utmSource" AS source,
+            o."utmMedium" AS medium,
+            o."utmCampaign" AS campaign,
+            o."utmContent" AS content,
+            COUNT(DISTINCT ${VISIT})::int AS checkouts,
+            COUNT(DISTINCT ${VISIT}) FILTER (WHERE ${BOUGHT_ORDER})::int AS paid,
+            COALESCE(SUM(o."totalCents" - o."refundedCents") FILTER (WHERE ${BOUGHT_ORDER}), 0)::int AS "revenueCents"
+          FROM "ticket_order" o
+          WHERE o."eventId" = ${input.eventId} AND ${ONLINE_ORDER}
+            ${window ? Prisma.sql`AND o."createdAt" >= ${window.since} AND o."createdAt" <= ${window.until}` : Prisma.empty}
+          GROUP BY 1, 2, 3, 4
+        `,
         // What each order was bought on, against how it was paid. Orders
         // from before devices were recorded have none and are left out.
         ctx.db.$queryRaw<
@@ -507,14 +523,8 @@ export const ticketAnalyticsRouter = createTRPCRouter({
         sizes,
         devices,
         sources: sources
-          .map((row) => ({
-            source: row.utmSource ?? "direct",
-            medium: row.utmMedium,
-            campaign: row.utmCampaign,
-            orders: row._count,
-            revenueCents: row._sum.totalCents ?? 0,
-          }))
-          .sort((a, b) => b.orders - a.orders),
+          .map((row) => ({ ...row, source: row.source ?? "direct" }))
+          .sort((a, b) => b.checkouts - a.checkouts),
       };
     }),
 

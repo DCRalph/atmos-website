@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Layers,
   Link2,
+  Megaphone,
   Receipt,
   ShoppingCart,
   TicketCheck,
@@ -25,6 +26,7 @@ import { TicketsPanel } from "~/components/admin/ticketing/tickets-panel";
 import { CompsPanel } from "~/components/admin/ticketing/comps-panel";
 import { TicketLinksPanel } from "~/components/admin/ticketing/ticket-links-panel";
 import { EventCodesPanel } from "~/components/admin/ticketing/event-codes-panel";
+import { CampaignsPanel } from "~/components/admin/ticketing/campaigns-panel";
 import {
   SectionNav,
   type SectionNavGroup,
@@ -63,6 +65,7 @@ const PAGES = [
   "orders",
   "tickets",
   "codes",
+  "campaigns",
   "comps",
   "links",
 ] as const;
@@ -169,6 +172,12 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
                 count: event.counts.tickets,
               },
               { value: "codes", label: "Codes", icon: BadgePercent },
+              {
+                value: "campaigns",
+                label: "Campaigns",
+                icon: Megaphone,
+                count: event.campaigns.length,
+              },
             ],
           },
           {
@@ -279,6 +288,9 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
             <TicketsPanel eventId={event.id} />
           ) : null}
           {page === "codes" && event ? <EventCodesPanel event={event} /> : null}
+          {page === "campaigns" && event ? (
+            <CampaignsPanel event={event} />
+          ) : null}
           {page === "comps" && event ? <CompsPanel event={event} /> : null}
           {page === "links" && event ? (
             <TicketLinksPanel event={event} />

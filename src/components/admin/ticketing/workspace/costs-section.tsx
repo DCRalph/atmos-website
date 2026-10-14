@@ -30,7 +30,8 @@ import { Field, Toggle } from "./fields";
  * What the night costs to put on. Venue hire comes first, because it can be
  * passed on to buyers; everything else is internal, and only feeds profit and
  * break even on Overview. The summary here runs off the draft, so it moves as
- * prices and costs are typed.
+ * prices and costs are typed. Campaign spend is saved on its own tab and only
+ * added in.
  */
 export function CostsSection({
   state,
@@ -52,7 +53,11 @@ export function CostsSection({
     (sum, cost) => sum + (parsePriceToCents(cost.amount) ?? 0),
     0,
   );
-  const totalCents = hireCents + otherCents;
+  // Saved on the Campaigns tab, not part of this draft.
+  const campaignCents =
+    event?.campaigns.reduce((sum, campaign) => sum + campaign.spendCents, 0) ??
+    0;
+  const totalCents = hireCents + otherCents + campaignCents;
 
   // The booking fee as the draft would charge it: its own override, or the
   // site default when both fields are blank.
@@ -224,6 +229,9 @@ export function CostsSection({
           <dl className="space-y-1.5 text-sm">
             <Row label="Venue hire" value={formatNZD(hireCents)} />
             <Row label="Other costs" value={formatNZD(otherCents)} />
+            {campaignCents > 0 ? (
+              <Row label="Campaigns" value={formatNZD(campaignCents)} />
+            ) : null}
             <div className="flex justify-between gap-3 border-t pt-1.5 font-semibold">
               <dt>Total costs</dt>
               <dd className="tabular-nums">{formatNZD(totalCents)}</dd>

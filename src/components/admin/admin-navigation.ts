@@ -12,6 +12,7 @@ import {
   IdCard,
   Infinity,
   LayoutDashboard,
+  Megaphone,
   Link2,
   Mail,
   Palette,
@@ -140,6 +141,13 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         url: "/admin/patrons",
         icon: IdCard,
         keywords: ["ban", "banned", "age", "underage", "id", "patron", "r18"],
+      },
+      {
+        title: "Campaigns",
+        description: "Tagged links, what each cost, and what each sold",
+        url: "/admin/campaigns",
+        icon: Megaphone,
+        keywords: ["utm", "marketing", "ads", "spend", "tracking", "links"],
       },
       {
         title: "Discount codes",

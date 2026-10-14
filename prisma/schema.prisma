@@ -1632,6 +1632,7 @@ model TicketEvent {
   doorReceipts  DoorPaymentReceipt[]
   idChecks      IdCheck[]
   costs         TicketEventCost[]
+  campaigns     Campaign[]
 
   @@index([status, startsAt])
   @@index([gigId])
@@ -1776,6 +1777,10 @@ model TicketOrder {
   utmSource   String?
   utmMedium   String?
   utmCampaign String?
+  utmContent  String?
+  /// One browser tab's visit, so a buyer who changes their basket three times
+  /// counts as one checkout, not three. Null on door sales and older orders.
+  visitId     String?
   ipAddress   String?
   /// What the buyer checked out on, read from their browser at checkout:
   /// `mobile`, `tablet` or `desktop`, and `iOS`, `Android`, `macOS`... Null on
@@ -2444,9 +2449,44 @@ model ShortLink {
 
   /// The gig whose photo signup this link leads to, if it is one.
   photoSignupGig Gig?
+  /// The campaign this link was made for, if it was.
+  campaign       Campaign?
 
   @@unique([domain, slug])
   @@map("short_link")
+}
+
+/// A tagged link and what it cost. The tags are the `utm_*` parameters the
+/// link carries; orders that arrive with the same tags are its results.
+///
+/// On an event, the spend counts toward that event's costs. Without one it is
+/// just a link, made here so its tags are typed once and never drift; any
+/// event it sells for still shows its orders.
+model Campaign {
+  id      String       @id @default(cuid())
+  eventId String?
+  event   TicketEvent? @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  /// Stored as they appear in the link: lowercase, dashes for spaces.
+  source  String
+  medium  String?
+  name    String
+  content String?
+
+  /// An absolute http(s) URL, or a path on the main site starting with "/".
+  destination String
+  spendCents  Int    @default(0)
+
+  shortLinkId String?    @unique
+  shortLink   ShortLink? @relation(fields: [shortLinkId], references: [id], onDelete: SetNull)
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([eventId])
+  @@index([source, name])
+  @@map("campaign")
 }
 
 /// A named copy of one short link, for counting one place it is used apart

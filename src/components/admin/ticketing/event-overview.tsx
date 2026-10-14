@@ -217,22 +217,7 @@ export function EventOverview({
                 <Arrivals rows={overview.data.arrivals} timeZone={timeZone} />
               ) : null}
 
-              <ChartCard title="Where buyers came from">
-                <BarList
-                  empty="No sales in this range."
-                  rows={(buyers.data?.sources ?? []).map((row) => ({
-                    key: `${row.source}-${row.medium}-${row.campaign}`,
-                    label: [row.source, row.medium, row.campaign]
-                      .filter(Boolean)
-                      .join(" / "),
-                    value: row.orders,
-                    detail: `${row.orders} · ${formatNZD(row.revenueCents)}`,
-                  }))}
-                />
-                <p className="text-muted-foreground mt-2 text-xs">
-                  Add <code>?utm_source=instagram</code> to a link to track it.
-                </p>
-              </ChartCard>
+              <Sources rows={buyers.data?.sources ?? []} />
               <ChartCard title="Order size">
                 <BarList
                   empty="No sales in this range."
@@ -383,6 +368,78 @@ function SalesChart({
           formatAxis={format}
         />
       ) : null}
+    </ChartCard>
+  );
+}
+
+/**
+ * Where buyers came from, as checkouts against sales. Each bar's length is how
+ * many checkouts a source started, against the busiest; the filled part is how
+ * many paid. A long bar mostly empty is a source that brings people who don't
+ * buy.
+ */
+function Sources({
+  rows,
+}: {
+  rows: RouterOutputs["ticketAnalytics"]["buyers"]["sources"];
+}) {
+  const max = Math.max(1, ...rows.map((row) => row.checkouts));
+  const paidColour = "var(--ticket-series-revenue)";
+  const leftColour =
+    "color-mix(in oklab, var(--ticket-series-revenue) 30%, transparent)";
+
+  return (
+    <ChartCard title="Where buyers came from">
+      {rows.length === 0 ? (
+        <p className="text-muted-foreground text-sm">
+          No online checkouts in this range.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {rows.map((row) => (
+            <li
+              key={`${row.source}-${row.medium}-${row.campaign}-${row.content}`}
+            >
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="truncate">
+                  {[row.source, row.medium, row.campaign, row.content]
+                    .filter(Boolean)
+                    .join(" / ")}
+                </span>
+                <span className="text-muted-foreground shrink-0 tabular-nums">
+                  {row.paid} of {row.checkouts} ·{" "}
+                  {Math.round((row.paid / row.checkouts) * 100)}% ·{" "}
+                  {formatNZD(row.revenueCents)}
+                </span>
+              </div>
+              <div className="bg-muted mt-1 h-1.5 w-full overflow-hidden rounded-full">
+                <div
+                  className="flex h-full overflow-hidden rounded-full"
+                  style={{ width: `${(row.checkouts / max) * 100}%` }}
+                >
+                  <div
+                    style={{
+                      width: `${(row.paid / row.checkouts) * 100}%`,
+                      background: paidColour,
+                    }}
+                  />
+                  <div className="flex-1" style={{ background: leftColour }} />
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="text-muted-foreground mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+        <span className="flex items-center gap-1.5">
+          <i className="size-2 rounded-xs" style={{ background: paidColour }} />
+          Paid
+        </span>
+        <span className="flex items-center gap-1.5">
+          <i className="size-2 rounded-xs" style={{ background: leftColour }} />
+          Didn&apos;t finish
+        </span>
+      </div>
     </ChartCard>
   );
 }
@@ -675,7 +732,7 @@ function BreakEven({
         <StatTile
           label="Costs"
           value={formatNZD(costs.totalCents)}
-          sub={`${formatNZD(costs.venueHireCents)} venue · ${formatNZD(costs.otherCents)} other`}
+          sub={`${formatNZD(costs.venueHireCents)} venue · ${formatNZD(costs.otherCents)} other${costs.campaignsCents > 0 ? ` · ${formatNZD(costs.campaignsCents)} campaigns` : ""}`}
         />
         <StatTile
           label="Profit so far"

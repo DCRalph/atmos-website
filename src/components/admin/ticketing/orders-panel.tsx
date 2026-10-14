@@ -355,7 +355,12 @@ function OrderDetail({
 
   const data = order.data;
   const supportUrl = data.ticketsUrl;
-  const cameFrom = [data.utmSource, data.utmMedium, data.utmCampaign]
+  const cameFrom = [
+    data.utmSource,
+    data.utmMedium,
+    data.utmCampaign,
+    data.utmContent,
+  ]
     .filter(Boolean)
     .join(" · ");
 

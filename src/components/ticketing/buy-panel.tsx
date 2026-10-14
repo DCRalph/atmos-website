@@ -17,6 +17,7 @@ import { Button } from "~/components/site/ui";
 import { cn } from "~/lib/utils";
 import { siteFontVariables } from "~/lib/site-fonts";
 import { api, type RouterOutputs } from "~/trpc/react";
+import { readAttribution, visitId } from "~/lib/ticketing/attribution";
 import { formatCountdown } from "~/lib/ticketing/dates";
 import { formatNZD, formatNZDCompact } from "~/lib/ticketing/money";
 import { openTiers, tierUnavailableLabel } from "~/lib/ticketing/tiers";
@@ -173,7 +174,8 @@ export function BuyPanel({
         discountCode: appliedCode ?? undefined,
         acceptTerms: true,
         replaceOrderId: heldOrderId.current ?? undefined,
-        utm: readUtm(),
+        utm: readAttribution(),
+        visitId: visitId(),
       });
     }, 500);
 
@@ -756,18 +758,4 @@ function VenueFeeInfo() {
       </Popover.Portal>
     </Popover.Root>
   );
-}
-
-/**
- * Campaign attribution, read from the URL the buyer arrived on. Stored with the
- * order so the analytics page can show which post actually sold tickets.
- */
-function readUtm() {
-  if (typeof window === "undefined") return undefined;
-  const params = new URLSearchParams(window.location.search);
-  const source = params.get("utm_source") ?? undefined;
-  const medium = params.get("utm_medium") ?? undefined;
-  const campaign = params.get("utm_campaign") ?? undefined;
-  if (!source && !medium && !campaign) return undefined;
-  return { source, medium, campaign };
 }

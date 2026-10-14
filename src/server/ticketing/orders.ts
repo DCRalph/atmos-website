@@ -156,6 +156,7 @@ export async function createPendingOrder({
   lines,
   discountCodeInput,
   utm,
+  visitId,
   ipAddress,
   client,
   userId,
@@ -165,7 +166,14 @@ export async function createPendingOrder({
   eventId: string;
   lines: CheckoutLine[];
   discountCodeInput?: string | null;
-  utm?: { source?: string; medium?: string; campaign?: string };
+  utm?: {
+    source?: string;
+    medium?: string;
+    campaign?: string;
+    content?: string;
+  };
+  /** The browser tab's visit, from `~/lib/ticketing/attribution`. */
+  visitId?: string | null;
   ipAddress?: string | null;
   /** The buyer's device, from `readClient`. Absent at the door. */
   client?: { device: string; os: string } | null;
@@ -269,6 +277,8 @@ export async function createPendingOrder({
         utmSource: utm?.source ?? null,
         utmMedium: utm?.medium ?? null,
         utmCampaign: utm?.campaign ?? null,
+        utmContent: utm?.content ?? null,
+        visitId: visitId ?? null,
         ipAddress: ipAddress ?? null,
         device: client?.device ?? null,
         os: client?.os ?? null,
