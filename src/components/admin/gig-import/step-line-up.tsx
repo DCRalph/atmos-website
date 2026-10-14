@@ -133,7 +133,7 @@ export function StepLineUp({
                   </p>
                 </div>
                 {slot.artists.length > 1 ? (
-                  <span className="inline-flex items-center rounded-full border border-violet-500/40 bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-300">
+                  <span className="border-admin-accent/40 bg-admin-accent/10 text-admin-accent inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium">
                     Back to back
                   </span>
                 ) : null}

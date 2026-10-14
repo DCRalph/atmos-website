@@ -59,7 +59,7 @@ export function ProvenanceField({
         "flex flex-col gap-2",
         (flagged || isEdited) && "border-l-2 pl-3",
         flagged && "border-amber-500/60",
-        isEdited && "border-violet-500/60",
+        isEdited && "border-admin-accent/60",
       )}
     >
       <div className="flex flex-wrap items-center gap-2">
@@ -70,7 +70,7 @@ export function ProvenanceField({
         {marker ? <FieldMarker field={marker} /> : null}
         <div className="ml-auto flex items-center gap-2">
           {isEdited ? (
-            <span className="inline-flex items-center rounded-full border border-violet-500/40 bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-300">
+            <span className="border-admin-accent/40 bg-admin-accent/10 text-admin-accent inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium">
               Edited
             </span>
           ) : flagged ? (

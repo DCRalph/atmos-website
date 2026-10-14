@@ -55,7 +55,8 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* The public site palette (values in site.css), as Tailwind colours:
+  /* The site palette (accent in :root below, the rest in site.css), as
+     Tailwind colours:
      `bg-site-accent text-site-accent-ink`, `text-site-accent-text`, ... */
   --color-site-accent: var(--site-accent);
   --color-site-accent-ink: var(--site-accent-ink);
@@ -64,6 +65,7 @@
   --color-site-danger-text: var(--site-danger-text);
   --color-site-warn: var(--site-warn);
   --color-site-raised: var(--site-raised);
+  --color-admin-accent: var(--admin-accent);
 
   --shadow-glass: var(--shadow-glass);
 
@@ -72,11 +74,20 @@
 }
 
 :root {
-  /* Ticketing analytics series colours.
-     Validated per mode against the chart surface for lightness band, chroma,
-     CVD separation and contrast — dark is its own selection, not a flip of
-     these. Do not "brighten" one without re-running the palette validator. */
-  --ticket-series-revenue: #6d4aff;
+  /* The brand's one accent colour, for the public site and the admin alike.
+     This is the only definition; artist profiles override the three inline
+     (see `themeVars`), and `SITE_ACCENT` in src/lib/site-constants.ts mirrors
+     it for places CSS can't reach. */
+  --site-accent: #c6ff33;
+  --site-accent-ink: #000;
+  --site-accent-text: #c6ff33;
+
+  /* The accent as the admin draws it: as is on dark, darkened on the light
+     theme so it still reads against white. */
+  --admin-accent: color-mix(in oklab, var(--site-accent), black 40%);
+
+  /* Ticketing analytics series colours. Revenue is the accent. */
+  --ticket-series-revenue: var(--admin-accent);
   --ticket-series-arrivals: #059669;
 
   --radius: 0.625rem;
@@ -117,7 +128,8 @@
 }
 
 .dark {
-  --ticket-series-revenue: #8b5cf6;
+  --admin-accent: var(--site-accent);
+  --ticket-series-revenue: var(--admin-accent);
   --ticket-series-arrivals: #0fa47a;
 
   --background: oklch(0.145 0 0);

@@ -45,8 +45,5 @@ export const SOCIALS = {
 
 export type SocialKey = keyof typeof SOCIALS;
 
-/**
- * The brand accent, for places CSS variables can't reach (Stripe, emails,
- * embeds, the top loader). Mirrors `--site-accent` in src/styles/site.css.
- */
+
 export const SITE_ACCENT = "#c6ff33";

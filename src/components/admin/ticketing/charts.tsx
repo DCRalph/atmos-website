@@ -12,9 +12,9 @@ import { cn } from "~/lib/utils";
  * least. Single series also means no legend — the title names the series — and
  * no categorical palette to get wrong.
  *
- * Series colours come from `--ticket-series-*` in globals.css, which are
- * separately chosen and validated for light and dark. Marks are thin, the grid
- * is recessive, and every plot carries a hover layer.
+ * Series colours come from `--ticket-series-*` in globals.css; revenue is the
+ * site accent. Marks are thin, the grid is recessive, and every plot carries a
+ * hover layer.
  */
 
 type Series = "revenue" | "arrivals";

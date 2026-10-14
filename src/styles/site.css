@@ -11,19 +11,10 @@
  * Utilities: `t-heading`, `t-display`, `t-label`, `glass`, `glass-dark`, `glass-float`,
  * `scrim-bottom`, `scrim-left`. Numbers use Tailwind's `tabular-nums`.
  * Colours: `--site-accent` (fills), `--site-accent-ink` (text on a fill),
- * `--site-accent-text` (accent as text on black). Use them through the
- * Tailwind colours in globals.css (`bg-site-accent`, `text-site-accent-text`).
- * The accent is the brand's one colour; keep `SITE_ACCENT` in
- * src/lib/site-constants.ts in step for places CSS can't reach.
+ * `--site-accent-text` (accent as text on black), defined once in
+ * globals.css. Use them through the Tailwind colours there (`bg-site-accent`,
+ * `text-site-accent-text`).
  */
-
-/* The accent is on :root so the admin can use it too. Artist profiles
-   override all three inline (see `themeVars`). */
-:root {
-  --site-accent: #c6ff33;
-  --site-accent-ink: #000;
-  --site-accent-text: #c6ff33;
-}
 
 /* In the components layer so Tailwind utilities can override per use. */
 @layer components {
