@@ -25,7 +25,6 @@ import {
   VERIFICATION,
   ICONS,
 } from "~/lib/seo-constants";
-import { RightMenuRail } from "~/components/right-menu-rail";
 import { StripTicketHash } from "~/components/ticketing/strip-ticket-hash";
 import { PostHogInit } from "~/components/posthog-init";
 import { SITE_ACCENT } from "~/lib/site-constants";
@@ -98,7 +97,6 @@ export default function RootLayout({
                       id="app-content-wrapper"
                       className="origin-center transition-all duration-700 ease-out"
                     >
-                      {/* <RightMenuRail/> */}
                       {children}
                     </div>
 

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { TRPCError } from "@trpc/server";
 import { format } from "date-fns";
@@ -187,8 +188,8 @@ function Shell({
 
 function AdminLink() {
   return (
-    <a href="/admin/rentals" className={cn(outlinePillClass, "mt-8")}>
+    <Link href="/admin/rentals" className={cn(outlinePillClass, "mt-8")}>
       Open rentals in the admin
-    </a>
+    </Link>
   );
 }
