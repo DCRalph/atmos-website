@@ -3,11 +3,20 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { keepPreviousData } from "@tanstack/react-query";
-import { ExternalLink, Plus, Trash2 } from "lucide-react";
+import {
+  ExternalLink,
+  LayoutDashboard,
+  Link2,
+  MousePointerClick,
+  Plus,
+  Settings,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { api, type RouterOutputs } from "~/trpc/react";
 import { AdminSection } from "~/components/admin/admin-section";
+import { SectionNav } from "~/components/admin/section-nav/section-nav";
 import { BucketBarChart, StatTile } from "~/components/admin/ticketing/charts";
 import { CopyButton } from "~/components/admin/short-links/copy-button";
 import {
@@ -38,7 +47,6 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Skeleton } from "~/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { DataTable, type DataTableColumn } from "~/components/data-table";
 import { useConfirm } from "~/components/confirm-provider";
 import { useTabParam } from "~/hooks/use-tab-param";
@@ -89,27 +97,40 @@ export default function ShortLinkPage() {
         </div>
       }
     >
-      <Tabs {...tab}>
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="sub-links">Sub links</TabsTrigger>
-          <TabsTrigger value="clicks">Clicks</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="mt-6">
-          <Overview link={data} />
-        </TabsContent>
-        <TabsContent value="sub-links" className="mt-6">
-          <SubLinks link={data} />
-        </TabsContent>
-        <TabsContent value="clicks" className="mt-6">
-          <RecentClicks clicks={data.recent} />
-        </TabsContent>
-        <TabsContent value="settings" className="mt-6">
-          <Settings link={data} />
-        </TabsContent>
-      </Tabs>
+      <SectionNav
+        title={`/${data.slug}`}
+        status={
+          !data.active ? (
+            <Badge variant="secondary">Switched off</Badge>
+          ) : undefined
+        }
+        backLink={{ href: "/admin/links", label: "Links" }}
+        groups={[
+          {
+            items: [
+              { value: "overview", label: "Overview", icon: LayoutDashboard },
+              {
+                value: "sub-links",
+                label: "Sub links",
+                icon: Link2,
+                count: data.subLinks.length,
+              },
+              {
+                value: "clicks",
+                label: "Clicks",
+                icon: MousePointerClick,
+                count: data.totals.clicks,
+              },
+              { value: "settings", label: "Settings", icon: Settings },
+            ],
+          },
+        ]}
+        {...tab}
+      />
+      {tab.value === "overview" ? <Overview link={data} /> : null}
+      {tab.value === "sub-links" ? <SubLinks link={data} /> : null}
+      {tab.value === "clicks" ? <RecentClicks clicks={data.recent} /> : null}
+      {tab.value === "settings" ? <LinkSettings link={data} /> : null}
     </AdminSection>
   );
 }
@@ -454,7 +475,7 @@ function RecentClicks({ clicks }: { clicks: Click[] }) {
 /* Settings                                                                   */
 /* -------------------------------------------------------------------------- */
 
-function Settings({ link }: { link: ShortLink }) {
+function LinkSettings({ link }: { link: ShortLink }) {
   const router = useRouter();
   const confirm = useConfirm();
   const utils = api.useUtils();

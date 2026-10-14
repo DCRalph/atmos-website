@@ -2,6 +2,19 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
+import {
+  BadgePercent,
+  FileText,
+  Gift,
+  LayoutDashboard,
+  Layers,
+  Link2,
+  Receipt,
+  ShoppingCart,
+  TicketCheck,
+  UsersRound,
+  WalletCards,
+} from "lucide-react";
 
 import { api } from "~/trpc/react";
 import { AdminSection } from "~/components/admin/admin-section";
@@ -12,10 +25,13 @@ import { TicketsPanel } from "~/components/admin/ticketing/tickets-panel";
 import { CompsPanel } from "~/components/admin/ticketing/comps-panel";
 import { TicketLinksPanel } from "~/components/admin/ticketing/ticket-links-panel";
 import { EventCodesPanel } from "~/components/admin/ticketing/event-codes-panel";
+import {
+  SectionNav,
+  type SectionNavGroup,
+} from "~/components/admin/section-nav/section-nav";
 import { Button } from "~/components/ui/button";
 import { useTabParam } from "~/hooks/use-tab-param";
 import { formatEventDateTime } from "~/lib/ticketing/dates";
-import { cn } from "~/lib/utils";
 import { buildChecklist, type AdminEvent, type Section } from "./draft";
 import { useEventDraft } from "./use-event-draft";
 import { DetailsSection } from "./details-section";
@@ -27,11 +43,11 @@ import { OverviewSection } from "./overview-section";
 import { EventMenu } from "./event-menu";
 
 /**
- * The event page: one draft, one Save, a sidebar grouped by what you're
- * doing. Set up is the draft (details, tiers, costs, door staff, wallet
- * pass). Sell and Give away are live lists, because refunding or issuing a
- * ticket is a real-world action with an email or a Stripe call behind it, not
- * a draft.
+ * The event page: one draft, one Save, a section rail grouped by what you're
+ * doing. Overview comes first. Set up is the draft (details, tiers, costs,
+ * door staff, wallet pass). Sell and Give away are live lists, because
+ * refunding or issuing a ticket is a real-world action with an email or a
+ * Stripe call behind it, not a draft.
  *
  * A new event uses the same page with only the Set up group; creating it
  * lands on its Overview.
@@ -87,35 +103,50 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
     wallet: "Wallet pass",
   };
 
-  const groups: {
-    label: string;
-    items: { page: Page; label: string; count?: number; dirty?: boolean }[];
-  }[] = [
+  const groups: SectionNavGroup[] = [
+    ...(event
+      ? [
+          {
+            items: [
+              { value: "overview", label: "Overview", icon: LayoutDashboard },
+            ],
+          },
+        ]
+      : []),
     {
       label: "Set up",
       items: [
-        { page: "details", label: "Details", dirty: dirty.includes("details") },
         {
-          page: "tiers",
+          value: "details",
+          label: "Details",
+          icon: FileText,
+          dirty: dirty.includes("details"),
+        },
+        {
+          value: "tiers",
           label: "Tiers",
+          icon: Layers,
           count: draft.tiers.length,
           dirty: dirty.includes("tiers"),
         },
         {
-          page: "costs",
+          value: "costs",
           label: "Costs",
+          icon: Receipt,
           count: draft.costs.length + (draft.venueHire.trim() ? 1 : 0),
           dirty: dirty.includes("costs"),
         },
         {
-          page: "staff",
+          value: "staff",
           label: "Door staff",
+          icon: UsersRound,
           count: draft.staff.length,
           dirty: dirty.includes("staff"),
         },
         {
-          page: "wallet",
+          value: "wallet",
           label: "Wallet pass",
+          icon: WalletCards,
           dirty: dirty.includes("wallet"),
         },
       ],
@@ -125,31 +156,34 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
           {
             label: "Sell",
             items: [
-              { page: "overview" as const, label: "Overview" },
               {
-                page: "orders" as const,
+                value: "orders",
                 label: "Orders",
+                icon: ShoppingCart,
                 count: event.counts.orders,
               },
               {
-                page: "tickets" as const,
+                value: "tickets",
                 label: "Tickets",
+                icon: TicketCheck,
                 count: event.counts.tickets,
               },
-              { page: "codes" as const, label: "Codes" },
+              { value: "codes", label: "Codes", icon: BadgePercent },
             ],
           },
           {
             label: "Give away",
             items: [
               {
-                page: "comps" as const,
+                value: "comps",
                 label: "Comps",
+                icon: Gift,
                 count: event.counts.comps,
               },
               {
-                page: "links" as const,
+                value: "links",
                 label: "Ticket links",
+                icon: Link2,
                 count: event.counts.linkBatches,
               },
             ],
@@ -201,88 +235,54 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
         onSave={() => void save()}
         onDiscard={isDirty && event ? state.discard : undefined}
       >
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[180px_minmax(0,1fr)]">
-          <nav
-            aria-label="Event sections"
-            className="flex flex-row flex-wrap gap-1 lg:sticky lg:top-40 lg:flex-col lg:self-start"
-          >
-            {groups.map((group) => (
-              <div key={group.label} className="contents lg:block">
-                <p className="text-muted-foreground hidden px-2.5 pt-3 pb-1 text-[10.5px] font-medium tracking-[0.08em] uppercase first:pt-0 lg:block">
-                  {group.label}
-                </p>
-                {group.items.map((item) => (
-                  <button
-                    key={item.page}
-                    type="button"
-                    onClick={() => open(item.page)}
-                    aria-current={page === item.page ? "page" : undefined}
-                    className={cn(
-                      "text-muted-foreground hover:text-foreground flex w-auto items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-left text-sm lg:w-full",
-                      page === item.page && "bg-muted text-foreground",
-                    )}
-                  >
-                    <span className="flex items-center gap-2">
-                      {item.label}
-                      {item.dirty ? (
-                        <span
-                          className="size-1.5 rounded-full bg-amber-500"
-                          aria-label="Unsaved changes"
-                        />
-                      ) : null}
-                    </span>
-                    {item.count !== undefined ? (
-                      <span className="text-muted-foreground text-xs tabular-nums">
-                        {item.count}
-                      </span>
-                    ) : null}
-                  </button>
-                ))}
-              </div>
-            ))}
-          </nav>
-
-          <div className="min-w-0">
-            {page === "overview" && event ? (
-              <OverviewSection
-                event={event}
-                checklist={checklist}
-                onOpenSection={open}
-              />
-            ) : null}
-            {page === "details" ? (
-              <DetailsSection
-                state={state}
-                event={event}
-                gigPosterId={gigPosterId}
-              />
-            ) : null}
-            {page === "tiers" ? (
-              <TiersSection state={state} event={event} />
-            ) : null}
-            {page === "costs" ? (
-              <CostsSection state={state} event={event} />
-            ) : null}
-            {page === "staff" ? (
-              <StaffSection state={state} eventId={event?.id} />
-            ) : null}
-            {page === "wallet" ? (
-              <WalletSection state={state} gigPosterId={gigPosterId} />
-            ) : null}
-            {page === "orders" && event ? (
-              <OrdersPanel eventId={event.id} />
-            ) : null}
-            {page === "tickets" && event ? (
-              <TicketsPanel eventId={event.id} />
-            ) : null}
-            {page === "codes" && event ? (
-              <EventCodesPanel event={event} />
-            ) : null}
-            {page === "comps" && event ? <CompsPanel event={event} /> : null}
-            {page === "links" && event ? (
-              <TicketLinksPanel event={event} />
-            ) : null}
-          </div>
+        <SectionNav
+          title={event ? event.name : "New ticketed event"}
+          status={
+            event ? <EventStatusBadge status={event.status} /> : undefined
+          }
+          backLink={{ href: "/admin/events", label: "Events" }}
+          groups={groups}
+          value={page}
+          onValueChange={nav.onValueChange}
+        />
+        <div className="min-w-0">
+          {page === "overview" && event ? (
+            <OverviewSection
+              event={event}
+              checklist={checklist}
+              onOpenSection={open}
+            />
+          ) : null}
+          {page === "details" ? (
+            <DetailsSection
+              state={state}
+              event={event}
+              gigPosterId={gigPosterId}
+            />
+          ) : null}
+          {page === "tiers" ? (
+            <TiersSection state={state} event={event} />
+          ) : null}
+          {page === "costs" ? (
+            <CostsSection state={state} event={event} />
+          ) : null}
+          {page === "staff" ? (
+            <StaffSection state={state} eventId={event?.id} />
+          ) : null}
+          {page === "wallet" ? (
+            <WalletSection state={state} gigPosterId={gigPosterId} />
+          ) : null}
+          {page === "orders" && event ? (
+            <OrdersPanel eventId={event.id} />
+          ) : null}
+          {page === "tickets" && event ? (
+            <TicketsPanel eventId={event.id} />
+          ) : null}
+          {page === "codes" && event ? <EventCodesPanel event={event} /> : null}
+          {page === "comps" && event ? <CompsPanel event={event} /> : null}
+          {page === "links" && event ? (
+            <TicketLinksPanel event={event} />
+          ) : null}
         </div>
       </SaveBar>
     </AdminSection>

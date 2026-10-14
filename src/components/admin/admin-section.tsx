@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "~/lib/utils";
+import { useSectionNav } from "~/components/admin/section-nav/store";
 
 export function AdminSection({
   title,
@@ -25,6 +26,9 @@ export function AdminSection({
   maxWidth?: "max-w-2xl" | "max-w-4xl" | "max-w-7xl";
   children: React.ReactNode;
 }) {
+  // A page with a section rail shows its back link in the rail's header on
+  // desktop, so the one here only needs to exist below lg.
+  const hasRail = useSectionNav() !== null;
   return (
     <div
       className={cn(
@@ -37,7 +41,10 @@ export function AdminSection({
           {backLink && (
             <Link
               href={backLink.href}
-              className="text-muted-foreground hover:text-foreground inline-flex w-fit items-center gap-1 text-sm"
+              className={cn(
+                "text-muted-foreground hover:text-foreground inline-flex w-fit items-center gap-1 text-sm",
+                hasRail && "lg:hidden",
+              )}
             >
               <ArrowLeft className="size-3.5" aria-hidden />
               {backLink.label}
