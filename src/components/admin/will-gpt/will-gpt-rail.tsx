@@ -1,17 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
-import {
-  ArrowUp,
-  History,
-  Plus,
-  Sparkles,
-  Square,
-  TriangleAlert,
-  X,
-} from "lucide-react";
+import { ArrowUp, History, Plus, Square, TriangleAlert, X } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
 import {
@@ -36,7 +28,10 @@ import {
 
 /**
  * The header button that opens and closes the rail. An outline button with a
- * violet sparkle and a faint violet tint, a shade deeper while the rail is open.
+ * gradient four point star and a soft glow behind it. While hovered an arc of
+ * light orbits the border and eases to a stop; open tints the button and
+ * parks the arc at the top right. The styling is `.will-gpt-toggle` in
+ * globals.css, since the orbit needs `@property` and a masked pseudo-element.
  */
 export function WillGptToggle() {
   const { open, setOpen } = useWillGpt();
@@ -46,15 +41,29 @@ export function WillGptToggle() {
       onClick={() => setOpen(!open)}
       aria-pressed={open}
       aria-label="Will GPT"
-      className={cn(
-        "hover:text-foreground border-violet-600/25 hover:border-violet-600/50 hover:bg-violet-600/5 dark:border-violet-400/25 dark:hover:border-violet-400/50 dark:hover:bg-violet-400/10",
-        open &&
-          "border-violet-600/50 bg-violet-600/10 hover:bg-violet-600/10 dark:border-violet-400/50 dark:bg-violet-400/15 dark:hover:bg-violet-400/15",
-      )}
+      className="will-gpt-toggle hover:text-foreground"
     >
-      <Sparkles className="text-violet-600 dark:text-violet-400" />
-      <span className="max-sm:hidden">Will GPT</span>
+      <span aria-hidden className="will-gpt-halo" />
+      <Star />
+      <span className="relative max-sm:hidden">Will GPT</span>
     </Button>
+  );
+}
+
+/** The four point star, filled orange to pink to purple. */
+function Star() {
+  const id = useId();
+  return (
+    <svg viewBox="0 0 24 24" fill={`url(#${id})`} className="relative">
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#ff8a3d" />
+          <stop offset="0.5" stopColor="#ff4fd8" />
+          <stop offset="1" stopColor="#a855f7" />
+        </linearGradient>
+      </defs>
+      <path d="M12 1C12.5 7 17 11.5 23 12 17 12.5 12.5 17 12 23 11.5 17 7 12.5 1 12 7 11.5 11.5 7 12 1Z" />
+    </svg>
   );
 }
 
