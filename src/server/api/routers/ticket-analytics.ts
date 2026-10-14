@@ -737,6 +737,445 @@ export const ticketAnalyticsRouter = createTRPCRouter({
       };
     }),
 
+  /**
+   * Sales mode of the live screen: what's happening in checkout right now,
+   * today's figures, the latest orders, and a few campaign-wide shares the
+   * overview doesn't carry. Polled every ten seconds, so it stays to a
+   * handful of aggregate queries.
+   */
+  salesLive: eventOrganiserProcedure
+    .input(z.object({ eventId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const event = await eventClock(ctx.db, input.eventId);
+      const eventId = input.eventId;
+      // Paid today, in the event's own day rather than UTC's.
+      const today = Prisma.sql`(o."paidAt" AT TIME ZONE 'UTC') AT TIME ZONE ${event.timezone} >= date_trunc('day', now() AT TIME ZONE ${event.timezone})`;
+
+      const [
+        [flow],
+        [holding],
+        [orders],
+        [todayRow],
+        latest,
+        sources,
+        [typical],
+        [shares],
+        [returning],
+      ] = await Promise.all([
+        // Visits that opened the page or put a ticket in a basket lately.
+        ctx.db.$queryRaw<{ viewing: number; basket: number }[]>`
+          SELECT
+            COUNT(*) FILTER (WHERE v."createdAt" >= now() - interval '10 minutes')::int AS viewing,
+            COUNT(*) FILTER (WHERE v."firstAddedAt" >= now() - interval '10 minutes')::int AS basket
+          FROM "ticket_event_view" v
+          WHERE v."eventId" = ${eventId}
+        `,
+        // Holds with the clock still running, and the tickets they hold.
+        ctx.db.$queryRaw<
+          { holds: number; tickets: number; nextExpiry: Date | null }[]
+        >`
+          SELECT
+            COUNT(*)::int AS holds,
+            COALESCE(SUM(h.tickets), 0)::int AS tickets,
+            MIN(h."expiresAt") AS "nextExpiry"
+          FROM (
+            SELECT
+              o."expiresAt",
+              (SELECT COALESCE(SUM(i.quantity * i."groupSize"), 0) FROM "ticket_order_item" i WHERE i."orderId" = o.id) AS tickets
+            FROM "ticket_order" o
+            WHERE o."eventId" = ${eventId} AND o.status = 'PENDING' AND o."expiresAt" > now()
+          ) h
+        `,
+        ctx.db.$queryRaw<
+          { paidRecently: number; approvals: number; abandoned: number }[]
+        >`
+          SELECT
+            COUNT(*) FILTER (WHERE ${BOUGHT_ORDER} AND o."paidAt" >= now() - interval '10 minutes')::int AS "paidRecently",
+            COUNT(*) FILTER (WHERE o.status = 'AWAITING_APPROVAL')::int AS approvals,
+            COUNT(*) FILTER (WHERE o.status IN ('EXPIRED', 'CANCELLED', 'FAILED') AND o."updatedAt" >= now() - interval '1 hour')::int AS abandoned
+          FROM "ticket_order" o
+          WHERE o."eventId" = ${eventId}
+        `,
+        ctx.db.$queryRaw<
+          {
+            tickets: number;
+            revenueCents: number;
+            lastHour: number;
+            lastSaleAt: Date | null;
+          }[]
+        >`
+          SELECT
+            COALESCE(SUM(s.tickets) FILTER (WHERE s.today), 0)::int AS tickets,
+            COALESCE(SUM(s.net) FILTER (WHERE s.today), 0)::int AS "revenueCents",
+            COALESCE(SUM(s.tickets) FILTER (WHERE s."paidAt" >= now() - interval '1 hour'), 0)::int AS "lastHour",
+            MAX(s."paidAt") AS "lastSaleAt"
+          FROM (
+            SELECT
+              o."paidAt",
+              o."totalCents" - o."refundedCents" AS net,
+              (SELECT COUNT(*)::int FROM "ticket" t WHERE t."orderId" = o.id AND t."isComp" = false) AS tickets,
+              ${today} AS today
+            FROM "ticket_order" o
+            WHERE o."eventId" = ${eventId} AND ${BOUGHT_ORDER}
+          ) s
+        `,
+        ctx.db.ticketOrder.findMany({
+          where: {
+            eventId,
+            status: {
+              in: [
+                TicketOrderStatus.PAID,
+                TicketOrderStatus.PARTIALLY_REFUNDED,
+                TicketOrderStatus.REFUNDED,
+              ],
+            },
+            paymentMethod: {
+              notIn: [
+                PaymentMethodKind.COMP,
+                PaymentMethodKind.ADMIN,
+                PaymentMethodKind.LIFETIME,
+              ],
+            },
+            paidAt: { not: null },
+          },
+          orderBy: { paidAt: "desc" },
+          take: 8,
+          select: {
+            id: true,
+            paidAt: true,
+            totalCents: true,
+            paidWith: true,
+            paymentMethod: true,
+            utmSource: true,
+            utmMedium: true,
+            items: {
+              select: {
+                quantity: true,
+                groupSize: true,
+                tier: { select: { name: true } },
+              },
+            },
+          },
+        }),
+        ctx.db.$queryRaw<
+          { source: string | null; medium: string | null; orders: number }[]
+        >`
+          SELECT o."utmSource" AS source, o."utmMedium" AS medium, COUNT(*)::int AS orders
+          FROM "ticket_order" o
+          WHERE o."eventId" = ${eventId} AND ${BOUGHT_ORDER} AND ${today}
+          GROUP BY 1, 2
+          ORDER BY 3 DESC
+          LIMIT 4
+        `,
+        ctx.db.$queryRaw<{ seconds: number | null }[]>`
+          SELECT (percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM (o."paidAt" - o."createdAt"))))::float AS seconds
+          FROM "ticket_order" o
+          WHERE o."eventId" = ${eventId} AND ${BOUGHT_ORDER} AND ${ONLINE_ORDER} AND ${today}
+        `,
+        ctx.db.$queryRaw<
+          {
+            orders: number;
+            optIns: number;
+            withDevice: number;
+            phones: number;
+          }[]
+        >`
+          SELECT
+            COUNT(*)::int AS orders,
+            COUNT(*) FILTER (WHERE o."marketingOptIn")::int AS "optIns",
+            COUNT(*) FILTER (WHERE o.device IS NOT NULL)::int AS "withDevice",
+            COUNT(*) FILTER (WHERE o.device = 'mobile')::int AS phones
+          FROM "ticket_order" o
+          WHERE o."eventId" = ${eventId} AND ${BOUGHT_ORDER}
+        `,
+        ctx.db.$queryRaw<{ buyers: number; returning: number }[]>`
+          SELECT COUNT(*)::int AS buyers, COUNT(*) FILTER (WHERE b.returning)::int AS returning
+          FROM (
+            SELECT
+              lower(o."buyerEmail") AS email,
+              bool_or(EXISTS (
+                SELECT 1 FROM "ticket_order" p
+                WHERE lower(p."buyerEmail") = lower(o."buyerEmail")
+                  AND p."eventId" <> o."eventId"
+                  AND p.status IN ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDED')
+                  AND p."paymentMethod" NOT IN ('COMP', 'ADMIN', 'LIFETIME')
+                  AND p."paidAt" < o."paidAt"
+              )) AS returning
+            FROM "ticket_order" o
+            WHERE o."eventId" = ${eventId} AND ${BOUGHT_ORDER} AND o."buyerEmail" IS NOT NULL
+            GROUP BY 1
+          ) b
+        `,
+      ]);
+
+      const share = (part: number, whole: number) =>
+        whole > 0 ? Math.round((part / whole) * 100) : null;
+
+      return {
+        rightNow: {
+          viewing: flow?.viewing ?? 0,
+          basket: flow?.basket ?? 0,
+          holding: holding?.holds ?? 0,
+          ticketsHeld: holding?.tickets ?? 0,
+          nextExpiry: holding?.nextExpiry ?? null,
+          paid: orders?.paidRecently ?? 0,
+          approvals: orders?.approvals ?? 0,
+          abandonedLastHour: orders?.abandoned ?? 0,
+          /** Median seconds from hold to paid, for today's online orders. */
+          typicalCheckoutSeconds: typical?.seconds ?? null,
+        },
+        today: {
+          tickets: todayRow?.tickets ?? 0,
+          revenueCents: todayRow?.revenueCents ?? 0,
+          lastHour: todayRow?.lastHour ?? 0,
+          lastSaleAt: todayRow?.lastSaleAt ?? null,
+        },
+        latest: latest.flatMap((order) =>
+          order.paidAt
+            ? [
+                {
+                  id: order.id,
+                  paidAt: order.paidAt,
+                  totalCents: order.totalCents,
+                  paidWith: order.paidWith,
+                  paymentMethod: order.paymentMethod,
+                  source: order.utmSource,
+                  medium: order.utmMedium,
+                  items: order.items.map((item) => ({
+                    name: item.tier.name,
+                    tickets: item.quantity * item.groupSize,
+                  })),
+                },
+              ]
+            : [],
+        ),
+        sourcesToday: sources,
+        shares: {
+          optIn: share(shares?.optIns ?? 0, shares?.orders ?? 0),
+          phone: share(shares?.phones ?? 0, shares?.withDevice ?? 0),
+          returning: share(returning?.returning ?? 0, returning?.buyers ?? 0),
+        },
+      };
+    }),
+
+  /**
+   * Doors mode of the live screen, beyond what `live` already carries: who's
+   * inside by ticket, door sales, the shape of the night so far, the last
+   * five minutes at the door, and the final headcount to expect from past
+   * events' no-show rate. Polled every ten seconds beside `live`.
+   */
+  doorsLive: eventOrganiserProcedure
+    .input(z.object({ eventId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const eventId = input.eventId;
+      const event = await ctx.db.ticketEvent.findUnique({
+        where: { id: eventId },
+        select: { doorsAt: true, startsAt: true },
+      });
+      if (!event) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+      }
+      const doors = event.doorsAt ?? event.startsAt;
+
+      const [
+        byTier,
+        [doorSales],
+        [night],
+        [idChecks],
+        [now],
+        nowByDevice,
+        [expected],
+      ] = await Promise.all([
+        ctx.db.$queryRaw<{ label: string; issued: number; inside: number }[]>`
+            SELECT x.label, COUNT(*)::int AS issued, COUNT(*) FILTER (WHERE x.inside)::int AS inside
+            FROM (
+              SELECT
+                COALESCE(tr.name, CASE WHEN t."isComp" THEN 'Comps and guest list' ELSE 'Other' END) AS label,
+                EXISTS (
+                  SELECT 1 FROM "ticket_scan" s
+                  WHERE s."ticketId" = t.id
+                    AND s.result IN ('ADMITTED', 'OVERRIDE_ADMITTED', 'REENTRY')
+                    AND NOT EXISTS (
+                      SELECT 1 FROM "ticket_scan" r
+                      WHERE r."ticketId" = t.id
+                        AND r.result IN ('ADMISSION_REVERTED', 'DEPARTED')
+                        AND r."createdAt" > s."createdAt"
+                    )
+                ) AS inside
+              FROM "ticket" t
+              LEFT JOIN "ticket_tier" tr ON tr.id = t."tierId"
+              WHERE t."eventId" = ${eventId} AND t.status = 'VALID'
+            ) x
+            GROUP BY 1
+            ORDER BY 3 DESC, 2 DESC
+          `,
+        // Sold by staff in the last twelve hours: the door, not the website.
+        ctx.db.$queryRaw<
+          {
+            orders: number;
+            tickets: number;
+            revenueCents: number;
+            cash: number;
+            tap: number;
+            terminal: number;
+            recent: number;
+          }[]
+        >`
+            SELECT
+              COUNT(*)::int AS orders,
+              COALESCE(SUM(d.tickets), 0)::int AS tickets,
+              COALESCE(SUM(d.net), 0)::int AS "revenueCents",
+              COUNT(*) FILTER (WHERE d."paymentMethod" = 'CASH')::int AS cash,
+              COUNT(*) FILTER (WHERE d."paymentMethod" = 'TAP_TO_PAY')::int AS tap,
+              COUNT(*) FILTER (WHERE d."paymentMethod" = 'TERMINAL')::int AS terminal,
+              COUNT(*) FILTER (WHERE d."paidAt" >= now() - interval '5 minutes')::int AS recent
+            FROM (
+              SELECT
+                o."paymentMethod",
+                o."paidAt",
+                o."totalCents" - o."refundedCents" AS net,
+                (SELECT COUNT(*)::int FROM "ticket" t WHERE t."orderId" = o.id AND t."isComp" = false) AS tickets
+              FROM "ticket_order" o
+              WHERE o."eventId" = ${eventId} AND ${BOUGHT_ORDER}
+                AND o."soldByUserId" IS NOT NULL
+                AND o."paidAt" >= now() - interval '12 hours'
+            ) d
+          `,
+        // First admissions: when the first came, when half the room was in,
+        // and how long after doors people typically arrive.
+        ctx.db.$queryRaw<
+          {
+            firstAt: Date | null;
+            halfAt: Date | null;
+            avgSeconds: number | null;
+            reentries: number;
+            overrides: number;
+          }[]
+        >`
+            WITH firsts AS (
+              SELECT MIN(s."createdAt") AS at
+              FROM "ticket_scan" s
+              WHERE s."eventId" = ${eventId}
+                AND s."ticketId" IS NOT NULL
+                AND s.result IN ('ADMITTED', 'OVERRIDE_ADMITTED', 'REENTRY')
+              GROUP BY s."ticketId"
+            )
+            SELECT
+              (SELECT MIN(at) FROM firsts) AS "firstAt",
+              (
+                SELECT at FROM firsts ORDER BY at
+                OFFSET GREATEST(0, CEIL((SELECT COUNT(*) FROM "ticket" t WHERE t."eventId" = ${eventId} AND t.status = 'VALID') / 2.0)::int - 1)
+                LIMIT 1
+              ) AS "halfAt",
+              (SELECT AVG(extract(epoch FROM (at - ${doors}::timestamp)))::float FROM firsts) AS "avgSeconds",
+              (SELECT COUNT(*)::int FROM "ticket_scan" s WHERE s."eventId" = ${eventId} AND s.result = 'REENTRY') AS reentries,
+              (SELECT COUNT(*)::int FROM "ticket_scan" s WHERE s."eventId" = ${eventId} AND s."wasOverride") AS overrides
+          `,
+        ctx.db.$queryRaw<{ checks: number; refused: number }[]>`
+            SELECT COUNT(*)::int AS checks, COUNT(*) FILTER (WHERE c.result <> 'PASS')::int AS refused
+            FROM "id_check" c
+            WHERE c."eventId" = ${eventId}
+          `,
+        ctx.db.$queryRaw<
+          {
+            scanned: number;
+            letIn: number;
+            turnedAway: number;
+            departed: number;
+          }[]
+        >`
+            SELECT
+              COUNT(*)::int AS scanned,
+              COUNT(*) FILTER (WHERE s.result IN ('ADMITTED', 'OVERRIDE_ADMITTED', 'REENTRY'))::int AS "letIn",
+              COUNT(*) FILTER (WHERE s.result IN ('DUPLICATE', 'DENIED', 'PREVIOUSLY_DENIED', 'INVALID_SIGNATURE', 'NOT_FOUND', 'WRONG_EVENT', 'VOIDED', 'REFUNDED_TICKET', 'ORDER_UNPAID'))::int AS "turnedAway",
+              COUNT(*) FILTER (WHERE s.result = 'DEPARTED')::int AS departed
+            FROM "ticket_scan" s
+            WHERE s."eventId" = ${eventId} AND s."createdAt" >= now() - interval '5 minutes'
+          `,
+        ctx.db.$queryRaw<
+          {
+            scannedByUserId: string | null;
+            deviceLabel: string | null;
+            count: number;
+          }[]
+        >`
+            SELECT s."scannedByUserId", s."deviceLabel", COUNT(*)::int AS count
+            FROM "ticket_scan" s
+            WHERE s."eventId" = ${eventId}
+              AND s."createdAt" >= now() - interval '5 minutes'
+              AND s.result IN ('ADMITTED', 'OVERRIDE_ADMITTED', 'REENTRY')
+            GROUP BY 1, 2
+            ORDER BY 3 DESC
+          `,
+        // How much of a past event's room turned up, pooled across them.
+        ctx.db.$queryRaw<{ rate: number | null; events: number }[]>`
+            SELECT (SUM(a.admitted)::float / NULLIF(SUM(a.issued), 0)) AS rate, COUNT(*)::int AS events
+            FROM (
+              SELECT
+                (SELECT COUNT(*) FROM "ticket" t WHERE t."eventId" = e.id AND t.status = 'VALID') AS issued,
+                (SELECT COUNT(DISTINCT s."ticketId") FROM "ticket_scan" s WHERE s."eventId" = e.id AND s.result IN ('ADMITTED', 'OVERRIDE_ADMITTED', 'REENTRY')) AS admitted
+              FROM "ticket_event" e
+              WHERE e.id <> ${eventId}
+                AND e."startsAt" < now() - interval '1 day'
+                AND e.status NOT IN ('DRAFT', 'CANCELLED')
+            ) a
+            WHERE a.issued > 0 AND a.admitted > 0
+          `,
+      ]);
+
+      const staff = await ctx.db.user.findMany({
+        where: {
+          id: {
+            in: nowByDevice.flatMap((row) =>
+              row.scannedByUserId ? [row.scannedByUserId] : [],
+            ),
+          },
+        },
+        select: { id: true, name: true },
+      });
+      const nameById = new Map(staff.map((user) => [user.id, user.name]));
+
+      return {
+        byTier,
+        doorSales: doorSales ?? {
+          orders: 0,
+          tickets: 0,
+          revenueCents: 0,
+          cash: 0,
+          tap: 0,
+          terminal: 0,
+          recent: 0,
+        },
+        night: {
+          firstAt: night?.firstAt ?? null,
+          halfAt: night?.halfAt ?? null,
+          avgArrivalSeconds: night?.avgSeconds ?? null,
+          reentries: night?.reentries ?? 0,
+          overrides: night?.overrides ?? 0,
+          idChecks: idChecks?.checks ?? 0,
+          idRefused: idChecks?.refused ?? 0,
+        },
+        now: {
+          scanned: now?.scanned ?? 0,
+          letIn: now?.letIn ?? 0,
+          turnedAway: now?.turnedAway ?? 0,
+          departed: now?.departed ?? 0,
+          byDevice: nowByDevice.map((row) => ({
+            name: row.scannedByUserId
+              ? (nameById.get(row.scannedByUserId) ?? "Unknown")
+              : "Unknown",
+            deviceLabel: row.deviceLabel,
+            count: row.count,
+          })),
+        },
+        /** Share of a past event's tickets that came through, pooled. */
+        expected: {
+          rate: expected?.rate ?? null,
+          events: expected?.events ?? 0,
+        },
+      };
+    }),
+
   /** The checkout journey for one event, with how long each step took. */
   journey: eventOrganiserProcedure
     .input(z.object({ eventId: z.string() }))

@@ -226,7 +226,9 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
             event.status === "SALES_PAUSED" ||
             event.status === "SOLD_OUT" ? (
               <Button asChild>
-                <Link href={`/admin/events/${event.id}/live`}>Live door</Link>
+                <Link href={`/admin/events/${event.id}/live?mode=doors`}>
+                  Live screen
+                </Link>
               </Button>
             ) : null}
             <EventMenu event={event} />

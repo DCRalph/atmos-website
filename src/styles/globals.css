@@ -14,7 +14,8 @@
 }
 
 @theme {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
+  --font-sans:
+    var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
@@ -71,8 +72,7 @@
 
   --shadow-glass: var(--shadow-glass);
 
-  --inset-shadow-lg: -110px 0px 30px -100px rgba(0,0,0,0.5) inset;
-
+  --inset-shadow-lg: -110px 0px 30px -100px rgba(0, 0, 0, 0.5) inset;
 }
 
 :root {
@@ -128,8 +128,9 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
 
-  --shadow-glass: inset 0 1px 2px #ffffff50, /* top highlight */ 0 2px 4px #00000030,
-  /* dark shadow */ 0 4px 8px #00000015 ;
+  --shadow-glass:
+    inset 0 1px 2px #ffffff50, /* top highlight */ 0 2px 4px #00000030,
+    /* dark shadow */ 0 4px 8px #00000015;
 }
 
 .dark {
@@ -332,7 +333,6 @@
   }
 }
 
-
 .italic-backwards {
   -moz-transform: scale(1) rotate(0deg) translate(0px, 0px) skew(30deg, 0deg);
   -webkit-transform: scale(1) rotate(0deg) translate(0px, 0px) skew(30deg, 0deg);
@@ -387,5 +387,56 @@
 @media (max-width: 768px) {
   .min-h-content {
     min-height: calc(100dvh);
+  }
+}
+
+/* The live screen: everything moves once, on change, and nothing loops. */
+@keyframes live-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes live-flash {
+  from {
+    background-color: color-mix(
+      in oklab,
+      var(--ticket-series-revenue) 18%,
+      transparent
+    );
+  }
+  to {
+    background-color: transparent;
+  }
+}
+@keyframes live-grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes live-blink {
+  50% {
+    opacity: 0.2;
+  }
+}
+.live-rise {
+  animation: live-rise 0.5s ease-out both;
+}
+.live-flash {
+  animation: live-flash 2.4s ease-out both;
+}
+.live-grow {
+  animation: live-grow 0.7s ease-out both;
+  transform-origin: bottom;
+}
+.live-blink {
+  animation: live-blink 0.4s ease-in-out 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-rise,
+  .live-flash,
+  .live-grow,
+  .live-blink {
+    animation: none;
   }
 }

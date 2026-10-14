@@ -21,11 +21,18 @@ type Series = "revenue" | "arrivals";
 
 const PAD = { top: 12, right: 12, bottom: 22, left: 44 };
 
+/**
+ * The scale's top: the first round number above `value`. Finer than 1, 2, 5
+ * so a curve that reaches 262 tops out at 300 rather than 500, which left
+ * half the plot empty.
+ */
+const NICE_STEPS = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+
 function niceCeil(value: number): number {
   if (value <= 5) return 5;
   const magnitude = 10 ** Math.floor(Math.log10(value));
   const scaled = value / magnitude;
-  const step = scaled <= 1 ? 1 : scaled <= 2 ? 2 : scaled <= 5 ? 5 : 10;
+  const step = NICE_STEPS.find((candidate) => scaled <= candidate) ?? 10;
   return step * magnitude;
 }
 

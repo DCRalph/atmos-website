@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   computeOrderTotals,
+  formatNZDWhole,
   splitCents,
   venueFeePerTicketCents,
 } from "./money";
@@ -58,5 +59,14 @@ describe("venue fee", () => {
     });
     assert.equal(free.venueFeeCents, 0);
     assert.equal(free.totalCents, 0);
+  });
+});
+
+describe("formatNZDWhole", () => {
+  test("whole dollars with grouping, rounded", () => {
+    assert.equal(formatNZDWhole(831049), "$8,310");
+    assert.equal(formatNZDWhole(831050), "$8,311");
+    assert.equal(formatNZDWhole(0), "$0");
+    assert.equal(formatNZDWhole(-146000), "-$1,460");
   });
 });

@@ -192,6 +192,21 @@ export function formatNZD(cents: number): string {
   return nzdFormatter.format(cents / 100);
 }
 
+const nzdWholeFormatter = new Intl.NumberFormat("en-NZ", {
+  style: "currency",
+  currency: "NZD",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+/**
+ * `831049` -> `"$8,310"`. For totals read from across a room, where cents
+ * are noise. Prices keep theirs: use `formatNZDCompact`.
+ */
+export function formatNZDWhole(cents: number): string {
+  return nzdWholeFormatter.format(Math.round(cents / 100));
+}
+
 /** `2500` -> `"$25"`, `2550` -> `"$25.50"`. For tight spaces like tier chips. */
 export function formatNZDCompact(cents: number): string {
   if (cents % 100 === 0) return `$${cents / 100}`;

@@ -48,7 +48,9 @@ export default function OrganiserEventPage() {
             </Link>
           </Button>
           <Button asChild>
-            <Link href={`/organiser/events/${id}/live`}>Live door</Link>
+            <Link href={`/organiser/events/${id}/live?mode=doors`}>
+              Live screen
+            </Link>
           </Button>
         </div>
       }
@@ -72,7 +74,7 @@ export default function OrganiserEventPage() {
         <TabsContent value="overview" className="mt-2">
           <EventOverview
             eventId={id}
-            liveHref={`/organiser/events/${id}/live`}
+            liveHref={`/organiser/events/${id}/live?mode=sales`}
           />
         </TabsContent>
         <TabsContent value="orders" className="mt-2">

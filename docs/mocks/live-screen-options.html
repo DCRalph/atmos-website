@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>Atmos admin · live screen, sales and doors modes</title><style>
+:root{color-scheme:dark;--page:#000;--bg:#0a0a0a;--card:#171717;--border:rgba(255,255,255,.1);--ink:#fafafa;--muted:#a1a1a1;--dim:#6b6b6b;--rev:#c6ff33;--in:#0fa47a;--red:#f87171;--amber:#fbbf24;--track:#262626}
+*{box-sizing:border-box}html{background:var(--page);color:var(--ink)}body{margin:0;font:14px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+h1,h2,h3,h4,p,ul{margin:0}
+.muted{color:var(--muted)}.num{font-variant-numeric:tabular-nums}
+.doc{max-width:1180px;margin:auto;padding:40px 24px 80px}
+.head h1{font-size:30px;line-height:1.2;letter-spacing:-.025em;font-weight:700}.head p{margin-top:10px;color:var(--muted);max-width:84ch}
+.jump{display:flex;gap:24px;flex-wrap:wrap;margin-top:22px;padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);font-weight:600}.jump a{color:inherit;text-decoration:none}.jump small{color:var(--muted);font-weight:400}
+.option{margin-top:64px}.option h2{font-size:22px;letter-spacing:-.02em}.option h2 span{color:var(--muted);font-weight:500;margin-right:8px}.lede{color:var(--muted);font-size:13.5px;max-width:84ch;margin-top:6px}
+.where{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:22px 0 8px;font-weight:600}
+.notes{font-size:13px;color:var(--muted);margin-top:14px;max-width:90ch}.notes b{color:var(--ink);font-weight:600}.notes ul{margin:6px 0 0;padding-left:18px}.notes li{margin:3px 0}
+.shared{margin-top:64px;padding-top:28px;border-top:1px solid var(--border)}.shared h2{font-size:22px;letter-spacing:-.02em}.shared h3{font-size:15px;margin-top:22px}.shared p,.shared li{color:var(--muted);font-size:13.5px}.shared ul{padding-left:18px;margin-top:6px}.shared li{margin:4px 0}.shared b{color:var(--ink);font-weight:600}
+.q{border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-top:10px}.q b{display:block;margin-bottom:4px}
+code{font-size:12.5px;background:var(--card);padding:1px 5px;border-radius:4px}
+
+/* ---------- the screens ---------- */
+.screen{container-type:inline-size;aspect-ratio:16/9;background:#000;border:1px solid var(--border);border-radius:14px;overflow:hidden;position:relative;color:var(--ink);margin-top:10px}
+.scr{position:absolute;inset:0;display:grid;padding:1.8cqw 2.2cqw;gap:1.2cqw;font-size:1.1cqw;line-height:1.3}
+.top{display:flex;align-items:center;justify-content:space-between;gap:2cqw}
+.top .ev{font-size:1.5cqw;font-weight:700;letter-spacing:-.02em}.top .ev small{display:block;font-size:1cqw;color:var(--muted);font-weight:400;letter-spacing:0;margin-top:.15cqw}
+.modes{display:flex;gap:.3cqw;padding:.3cqw;border:1px solid var(--border);border-radius:99cqw}
+.modes span{padding:.4cqw 1.2cqw;border-radius:99cqw;font-size:1cqw;font-weight:600;color:var(--muted)}.modes span.on{background:var(--ink);color:#000}
+.clock{text-align:right}.clock .t{font-size:1.5cqw;font-weight:600;font-variant-numeric:tabular-nums}.clock .u{font-size:.95cqw;color:var(--muted);display:flex;align-items:center;justify-content:flex-end;gap:.5cqw}
+.dot{width:.65cqw;height:.65cqw;border-radius:50%;background:var(--in);display:inline-block}
+.lbl{font-size:.9cqw;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.rev{color:var(--rev)}.in{color:var(--in)}.bad{color:var(--red)}.warn{color:var(--amber)}
+.num{font-variant-numeric:tabular-nums}
+
+/* one shot on load; the real page runs these on every change */
+@property --n{syntax:'<integer>';initial-value:0;inherits:false}
+.count{counter-reset:n var(--n);animation:count 1.4s cubic-bezier(.2,.7,.2,1) forwards}
+.count::after{content:counter(n)}
+@keyframes count{to{--n:var(--to)}}
+@keyframes grow{from{transform:scaleY(0)}}
+@keyframes growx{from{transform:scaleX(0)}}
+@keyframes rise{from{opacity:0;transform:translateY(.6cqw)}}
+@keyframes flash{from{background:rgba(198,255,51,.16)}to{background:transparent}}
+@keyframes draw{from{stroke-dashoffset:var(--len)}}
+
+/* building blocks */
+.card{background:var(--bg);border:1px solid var(--border);border-radius:.9cqw;padding:1.1cqw 1.3cqw;display:grid;grid-template-rows:auto minmax(0,1fr);gap:.7cqw;min-height:0;min-width:0;animation:rise .6s ease-out both;animation-delay:calc(var(--i,0)*60ms)}
+.card>.lbl{display:flex;justify-content:space-between;gap:1cqw}.card>.lbl span:last-child{text-transform:none;letter-spacing:0;font-weight:400}
+.cell{min-width:0;animation:rise .6s ease-out both;animation-delay:calc(var(--i,0)*50ms)}
+.cell .v{font-size:2.3cqw;font-weight:700;letter-spacing:-.03em;line-height:1.05;font-variant-numeric:tabular-nums;margin-top:.25cqw}
+.cell .v small{font-size:1.05cqw;color:var(--muted);font-weight:500;letter-spacing:0;margin-left:.3cqw}
+.cell .s{font-size:.95cqw;color:var(--muted);margin-top:.2cqw;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.track{height:.55cqw;background:var(--track);border-radius:99cqw;overflow:hidden;position:relative;margin-top:.5cqw}.track i{position:absolute;inset:0 auto 0 0;background:var(--rev);border-radius:99cqw;width:var(--w);transform-origin:left;animation:growx 1s ease-out both}.track.g i{background:var(--in)}.track b{position:absolute;top:-.2cqw;bottom:-.2cqw;width:.16cqw;background:var(--ink)}
+.rows{display:flex;flex-direction:column;gap:.55cqw;min-height:0;overflow:hidden;mask-image:linear-gradient(to bottom,#000 82%,transparent)}
+.rk{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.15cqw 1cqw;font-size:1.05cqw;animation:rise .5s ease-out both;animation-delay:calc(var(--i)*50ms)}
+.rk .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rk .d{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.rk .track{grid-column:1/-1;margin:0}
+.kv{display:flex;flex-direction:column;gap:.35cqw;font-size:1.05cqw;min-height:0;overflow:hidden}
+.kv div{display:flex;justify-content:space-between;gap:1cqw;border-top:1px solid var(--border);padding-top:.35cqw}.kv div:first-child{border-top:0;padding-top:0}
+.kv span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}.kv span:first-child{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.feed{list-style:none;padding:0;display:flex;flex-direction:column;gap:.05cqw;overflow:hidden;min-height:0;mask-image:linear-gradient(to bottom,#000 82%,transparent)}
+.feed li{display:flex;justify-content:space-between;gap:1cqw;padding:.42cqw .5cqw;margin:0 -.5cqw;border-radius:.4cqw;font-size:1.05cqw;animation:rise .5s ease-out both;animation-delay:calc(var(--i)*40ms)}
+.feed li:first-child{animation:flash 2.4s ease-out both}
+.feed li .w{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.feed li .w small{color:var(--muted)}
+.feed li .t{color:var(--muted);flex:none;font-variant-numeric:tabular-nums}
+.plot{position:relative;min-height:0}.plot svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.line{fill:none;stroke:var(--rev);stroke-width:2.2;vector-effect:non-scaling-stroke;stroke-dasharray:var(--len);animation:draw 1.6s ease-out both}
+.pace{fill:none;stroke:var(--muted);stroke-width:1.4;vector-effect:non-scaling-stroke;stroke-dasharray:5 5;opacity:.7}
+.mark{stroke:var(--ink);stroke-width:1;vector-effect:non-scaling-stroke;stroke-dasharray:2 3;opacity:.5}
+.mk{position:absolute;top:0;font-size:.85cqw;color:var(--muted);transform:translateX(.4cqw)}
+.bars{display:flex;align-items:flex-end;gap:.3cqw;height:100%;min-height:0}
+.bars i{flex:1;background:var(--in);border-radius:.2cqw .2cqw 0 0;transform-origin:bottom;animation:grow .7s ease-out both;animation-delay:calc(var(--i)*25ms);opacity:.9}
+.bars i.now{background:var(--ink)}.bars.r i{background:var(--rev)}
+.mini{height:2.6cqw;display:flex;align-items:flex-end;gap:.2cqw;margin-top:.5cqw}.mini i{flex:1;background:var(--rev);opacity:.85;border-radius:.12cqw .12cqw 0 0;transform-origin:bottom;animation:grow .7s ease-out both;animation-delay:calc(var(--i)*30ms)}.mini.g i{background:var(--in)}
+/* the live flow */
+.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.6cqw;align-content:start}
+.step{position:relative;min-width:0}.step+.step::before{content:"›";position:absolute;left:-.55cqw;top:.5cqw;color:var(--dim);font-size:1.4cqw}
+.step .n{font-size:2.2cqw;font-weight:700;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+.step .l{font-size:.9cqw;color:var(--muted);margin-top:.25cqw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.step .track{margin-top:.45cqw}
+.hold{display:flex;flex-direction:column;gap:.3cqw;font-size:1cqw;margin-top:.2cqw}
+.hold div{display:flex;justify-content:space-between;gap:1cqw}.hold span:first-child{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hold span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
+.flowfoot{font-size:.95cqw;color:var(--muted);border-top:1px solid var(--border);padding-top:.6cqw;align-self:end}
+
+/* A: grid board */
+.a{grid-template-rows:auto auto minmax(0,1.25fr) minmax(0,1fr)}
+.strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1.2cqw;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:.9cqw 0}
+.a .mid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:1.2cqw;min-height:0}
+.a .low{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.2cqw;min-height:0}
+
+/* B: numbers left, live right */
+.b{grid-template-rows:auto minmax(0,1fr)}
+.b .main{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(0,1fr);gap:1.2cqw;min-height:0}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:1cqw;min-height:0}
+.tile{background:var(--bg);border:1px solid var(--border);border-radius:.9cqw;padding:1cqw 1.2cqw;display:grid;grid-template-rows:auto minmax(0,1fr);gap:.4cqw;min-height:0;min-width:0;animation:rise .6s ease-out both;animation-delay:calc(var(--i,0)*45ms)}
+.tile>div{align-self:end;min-width:0}
+.tile .v{font-size:3cqw;font-weight:700;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
+.tile .v small{font-size:1.15cqw;color:var(--muted);font-weight:500;letter-spacing:0}
+.tile .s{font-size:.95cqw;color:var(--muted);margin-top:.3cqw;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.b .live{display:grid;grid-template-rows:auto minmax(0,1fr);gap:1cqw;min-height:0}
+
+/* C: chart first */
+.c{grid-template-rows:auto auto minmax(0,1.15fr) minmax(0,1fr)}
+.strip8{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:1cqw;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:.8cqw 0}
+.strip8 .v{font-size:1.9cqw}
+.c .low{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1.2cqw;min-height:0}
+
+/* phone */
+.phone{width:360px;max-width:100%;aspect-ratio:9/18;background:#000;border:1px solid var(--border);border-radius:28px;overflow:hidden;position:relative;margin-top:10px;container-type:inline-size}
+.phone .scr{display:flex;flex-direction:column;gap:4cqw;padding:6cqw 5cqw;font-size:3.6cqw;overflow:hidden}
+.phone .top{flex-wrap:wrap}.phone .top .ev{font-size:5cqw}.phone .top .ev small{font-size:3.2cqw}.phone .modes span{font-size:3.2cqw;padding:1.2cqw 3.4cqw}.phone .modes{padding:.8cqw;gap:.8cqw}
+.phone .lbl{font-size:2.9cqw}
+.phone .strip{grid-template-columns:repeat(2,minmax(0,1fr));gap:3cqw;padding:3cqw 0}.phone .cell .v{font-size:7cqw}.phone .cell .v small{font-size:3.2cqw}.phone .feed,.phone .rows{mask-image:none}.phone .cell .s{font-size:3cqw;white-space:normal}.phone .track{height:1.6cqw;margin-top:1.4cqw}
+.phone .card{padding:3.6cqw 4cqw;border-radius:3cqw;gap:2.4cqw;flex:none}
+.phone .flow{gap:2cqw}.phone .step .n{font-size:6.4cqw}.phone .step .l{font-size:2.8cqw}.phone .step+.step::before{font-size:4cqw;left:-1.6cqw;top:1.5cqw}
+.phone .hold{font-size:3.2cqw;gap:1cqw}.phone .flowfoot{font-size:3cqw;padding-top:2cqw}
+.phone .plot{height:30cqw}
+.phone .fade{position:absolute;left:0;right:0;bottom:0;height:18cqw;background:linear-gradient(transparent,#000)}
+.side-by{display:grid;grid-template-columns:360px minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:760px){.side-by{grid-template-columns:minmax(0,1fr)}}
+</style></head><body><main class="doc">
+
+<header class="head">
+<h1>Live screen: a sales mode and a doors mode, made to be left on</h1>
+<p>Three directions for the event's live page, each shown in both modes, now dense: a dozen or more figures a screen rather than one. Sales mode has a live flow block, what's happening in checkout right now: who's on the page, who has tickets in a basket, who's holding tickets with the clock running, who just paid. Doors mode has the same for the door. Same example event throughout: capacity 400, 262 sold, net $8,310, doors at 8pm, 171 inside at 9:42pm. Frames are 16:9 and the type scales with the frame, so a TV and a laptop get the same layout.</p>
+<nav class="jump">
+<a href="#a">A <small>Grid board</small></a>
+<a href="#b">B <small>Numbers left, live right</small></a>
+<a href="#c">C <small>Chart first</small></a>
+<a href="#phone">Phone <small>shared</small></a>
+<a href="#shared">What's the same <small>and questions</small></a>
+</nav>
+</header>
+
+<!-- ================= A ================= -->
+<section class="option" id="a">
+<h2><span>A</span>Grid board</h2>
+<p class="lede">A strip of six headline figures, then the chart beside the live flow, then three cards along the bottom. Every block has a job and a fixed place, so the eye learns where to look.</p>
+<p class="where">Sales mode</p>
+<div class="screen"><div class="scr a">
+<div class="top">
+<div class="ev">Club Vitamin<small>Fri 24 Oct · Valhalla, Wellington · doors 8:00 pm · on sale 31 days</small></div>
+<div class="modes"><span class="on">Sales</span><span>Doors</span></div>
+<div class="clock"><div class="t">9:42 pm</div><div class="u"><i class="dot"></i>updated 3s ago</div></div>
+</div>
+<div class="strip">
+<div class="cell" style="--i:0"><p class="lbl">Tickets sold</p><p class="v"><b class="count" style="--to:262"></b><small>of 400</small></p><div class="track"><i style="--w:66%"></i><b style="left:54%"></b></div><p class="s">66% of the room · 138 left</p></div>
+<div class="cell" style="--i:1"><p class="lbl">Net revenue</p><p class="v rev">$8,310</p><p class="s">$31.72 a ticket · $12,940 on a sell out</p></div>
+<div class="cell" style="--i:2"><p class="lbl">Today</p><p class="v">23<small>tickets</small></p><p class="s">$730 · 6 in the last hour · last sale 2 min ago</p></div>
+<div class="cell" style="--i:3"><p class="lbl">Orders</p><p class="v">148</p><p class="s">1.8 tickets each · 61% checkout to paid</p></div>
+<div class="cell" style="--i:4"><p class="lbl">Pace</p><p class="v in">+31</p><p class="s">ahead of your average event at 1 day out</p></div>
+<div class="cell" style="--i:5"><p class="lbl">Profit</p><p class="v in">$1,460</p><p class="s">break even at 216, passed Tuesday</p></div>
+</div>
+<div class="mid">
+<div class="card" style="--i:1">
+<p class="lbl"><span>Sales, last 7 days</span><span>running total · dashed is your average event · ticks are campaign launches</span></p>
+<div class="plot">
+<svg viewBox="0 0 100 40" preserveAspectRatio="none">
+<defs><linearGradient id="ga" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c6ff33" stop-opacity=".22"/><stop offset="1" stop-color="#c6ff33" stop-opacity="0"/></linearGradient></defs>
+<path fill="url(#ga)" d="M0,30 H8 V27 H16 V26 H24 V22 H34 V21 H44 V17 H56 V15 H66 V11 H78 V8 H90 V5 H100 V40 H0 Z"/>
+<path class="pace" d="M0,34 H12 V32 H24 V30 H36 V27 H48 V24 H60 V21 H72 V17 H84 V13 H100"/>
+<line class="mark" x1="24" y1="0" x2="24" y2="40"/><line class="mark" x1="66" y1="0" x2="66" y2="40"/>
+<path class="line" style="--len:220" d="M0,30 H8 V27 H16 V26 H24 V22 H34 V21 H44 V17 H56 V15 H66 V11 H78 V8 H90 V5 H100"/>
+</svg>
+<span class="mk" style="left:24%">final-release</span><span class="mk" style="left:66%">last-call story</span>
+</div>
+</div>
+<div class="card" style="--i:2">
+<p class="lbl"><span>Right now</span><span>last 10 minutes</span></p>
+<div class="flow">
+<div class="step"><p class="n">14</p><p class="l">on the page</p><div class="track"><i style="--w:100%"></i></div></div>
+<div class="step"><p class="n">5</p><p class="l">in a basket</p><div class="track"><i style="--w:36%"></i></div></div>
+<div class="step"><p class="n">3</p><p class="l">holding</p><div class="track"><i style="--w:21%"></i></div></div>
+<div class="step"><p class="n in">2</p><p class="l">paid</p><div class="track g"><i style="--w:14%"></i></div></div>
+</div>
+<div class="hold">
+<div><span>Tickets on hold</span><span>7 · next hold expires in 4:12</span></div>
+<div><span>Waiting for approval</span><span>1 guest list request</span></div>
+<div><span>Gave up in the last hour</span><span>4 checkouts</span></div>
+<div><span>Typical checkout tonight</span><span>1m 40s</span></div>
+</div>
+<p class="flowfoot">Today's buyers: 11 Instagram story · 6 newsletter · 4 direct · 2 poster QR</p>
+</div>
+</div>
+<div class="low">
+<div class="card" style="--i:3">
+<p class="lbl"><span>Tiers</span><span>sold / on sale</span></p>
+<div class="rows">
+<div class="rk" style="--i:0"><span class="n">First release · $25</span><span class="d">100 / 100 · sold out · $2,500</span><div class="track"><i style="--w:100%"></i></div></div>
+<div class="rk" style="--i:1"><span class="n">Second release · $30</span><span class="d">140 / 150 · $4,200</span><div class="track"><i style="--w:93%"></i></div></div>
+<div class="rk" style="--i:2"><span class="n">Final release · $35</span><span class="d">22 / 150 · $770</span><div class="track"><i style="--w:15%"></i></div></div>
+<div class="rk" style="--i:3"><span class="n">Comps</span><span class="d">12 of 20 given</span><div class="track g"><i style="--w:60%"></i></div></div>
+</div>
+</div>
+<div class="card" style="--i:4">
+<p class="lbl"><span>Latest orders</span><span>148 so far</span></p>
+<ul class="feed">
+<li style="--i:0"><span class="w">2 × Final release <small>· Apple Pay · Instagram story</small></span><span class="t">$70 · now</span></li>
+<li style="--i:1"><span class="w">1 × Final release <small>· card · phone</small></span><span class="t">$35 · 4m</span></li>
+<li style="--i:2"><span class="w">4 × Final release <small>· Apple Pay · newsletter</small></span><span class="t">$140 · 11m</span></li>
+<li style="--i:3"><span class="w">2 × Final release <small>· Google Pay · direct</small></span><span class="t">$70 · 19m</span></li>
+<li style="--i:4"><span class="w">1 × Final release <small>· card · poster QR</small></span><span class="t">$35 · 26m</span></li>
+<li style="--i:5"><span class="w">2 × Final release <small>· Link · Instagram story</small></span><span class="t">$70 · 31m</span></li>
+</ul>
+</div>
+<div class="card" style="--i:5">
+<p class="lbl"><span>How it's selling</span><span>whole campaign</span></p>
+<div class="kv">
+<div><span>Checkouts started</span><span>243 · 61% paid</span></div>
+<div><span>Bought on a phone</span><span>84%</span></div>
+<div><span>Paid with Apple Pay</span><span>52% · card 31% · Link 9%</span></div>
+<div><span>Discount codes used</span><span>18 · $270 given</span></div>
+<div><span>Marketing opt-in</span><span>44% of orders</span></div>
+<div><span>Returning buyers</span><span>23% bought before</span></div>
+<div><span>Campaign spend</span><span>$180 · 46× back</span></div>
+</div>
+</div>
+</div>
+</div></div>
+
+<p class="where">Doors mode</p>
+<div class="screen"><div class="scr a">
+<div class="top">
+<div class="ev">Club Vitamin<small>Fri 24 Oct · Valhalla, Wellington · doors opened 1h 42m ago · last entry 1:00 am</small></div>
+<div class="modes"><span>Sales</span><span class="on">Doors</span></div>
+<div class="clock"><div class="t">9:42 pm</div><div class="u"><i class="dot"></i>updated 3s ago</div></div>
+</div>
+<div class="strip">
+<div class="cell" style="--i:0"><p class="lbl">Inside</p><p class="v in"><b class="count" style="--to:171"></b><small>of 262</small></p><div class="track g"><i style="--w:65%"></i></div><p class="s">65% of ticket holders · 7 have left</p></div>
+<div class="cell" style="--i:1"><p class="lbl">Still to come</p><p class="v">84</p><p class="s">never scanned · expect ~61 more, 88% final</p></div>
+<div class="cell" style="--i:2"><p class="lbl">Arriving</p><p class="v">4.2<small>a minute</small></p><p class="s">last 15 min · peak 9.1 at 9:05</p></div>
+<div class="cell" style="--i:3"><p class="lbl">Scans tonight</p><p class="v">189</p><p class="s">171 in · 4 re-entries · 7 out · 3 problems</p></div>
+<div class="cell" style="--i:4"><p class="lbl">Door sales</p><p class="v">9<small>tickets</small></p><p class="s">$315 · 6 tap to pay · 3 cash</p></div>
+<div class="cell" style="--i:5"><p class="lbl">Problem scans</p><p class="v warn">3</p><p class="s">2 duplicates · 1 not found · last 25 min ago</p></div>
+</div>
+<div class="mid">
+<div class="card" style="--i:1">
+<p class="lbl"><span>Arrivals</span><span>every 5 minutes since 7:30 pm · white is the current five</span></p>
+<div class="plot"><div class="bars">
+<i style="--i:0;height:4%"></i><i style="--i:1;height:3%"></i><i style="--i:2;height:6%"></i><i style="--i:3;height:9%"></i><i style="--i:4;height:14%"></i><i style="--i:5;height:22%"></i><i style="--i:6;height:31%"></i><i style="--i:7;height:28%"></i><i style="--i:8;height:44%"></i><i style="--i:9;height:52%"></i><i style="--i:10;height:61%"></i><i style="--i:11;height:70%"></i><i style="--i:12;height:88%"></i><i style="--i:13;height:100%"></i><i style="--i:14;height:84%"></i><i style="--i:15;height:72%"></i><i style="--i:16;height:66%"></i><i style="--i:17;height:58%"></i><i style="--i:18;height:49%"></i><i style="--i:19;height:40%"></i><i style="--i:20;height:35%"></i><i style="--i:21;height:38%"></i><i style="--i:22;height:30%"></i><i style="--i:23;height:27%"></i><i style="--i:24;height:24%"></i><i style="--i:25;height:19%"></i><i class="now" style="--i:26;height:12%"></i>
+</div></div>
+</div>
+<div class="card" style="--i:2">
+<p class="lbl"><span>At the door now</span><span>last 5 minutes</span></p>
+<div class="flow">
+<div class="step"><p class="n">19</p><p class="l">scanned</p><div class="track g"><i style="--w:100%"></i></div></div>
+<div class="step"><p class="n in">18</p><p class="l">let in</p><div class="track g"><i style="--w:95%"></i></div></div>
+<div class="step"><p class="n warn">1</p><p class="l">turned away</p><div class="track"><i style="--w:6%;background:var(--amber)"></i></div></div>
+<div class="step"><p class="n">0</p><p class="l">left</p><div class="track"><i style="--w:0"></i></div></div>
+</div>
+<div class="hold">
+<div><span>Ari · iPhone</span><span>8 scans · 1 every 38s</span></div>
+<div><span>Mel · iPhone</span><span>7 scans · 1 every 43s</span></div>
+<div><span>Door 2 · iPad</span><span>4 scans · 1 every 75s</span></div>
+<div><span>Door sales, last 5 min</span><span>1 · tap to pay</span></div>
+</div>
+<p class="flowfoot">At this rate the 84 still to come take about 20 minutes. Busiest five minutes so far: 9:05, 46 in.</p>
+</div>
+</div>
+<div class="low">
+<div class="card" style="--i:3">
+<p class="lbl"><span>Inside by ticket</span><span>171</span></p>
+<div class="rows">
+<div class="rk" style="--i:0"><span class="n">Second release</span><span class="d">86 of 140 · 61%</span><div class="track g"><i style="--w:61%"></i></div></div>
+<div class="rk" style="--i:1"><span class="n">First release</span><span class="d">71 of 100 · 71%</span><div class="track g"><i style="--w:71%"></i></div></div>
+<div class="rk" style="--i:2"><span class="n">Final release</span><span class="d">14 of 22 · 64%</span><div class="track g"><i style="--w:64%"></i></div></div>
+<div class="rk" style="--i:3"><span class="n">Comps and guest list</span><span class="d">9 of 12 · 75%</span><div class="track g"><i style="--w:75%"></i></div></div>
+</div>
+</div>
+<div class="card" style="--i:4">
+<p class="lbl"><span>Recent scans</span><span>live</span></p>
+<ul class="feed">
+<li style="--i:0"><span class="w">Tom Reilly <small>· in · Second release · Ari</small></span><span class="t">now</span></li>
+<li style="--i:1"><span class="w">Priya Natarajan <small>· in · First release · Mel</small></span><span class="t">12s</span></li>
+<li style="--i:2"><span class="w">#0412 <small>· <span class="warn">duplicate</span> · in at 9:20 · Door 2</small></span><span class="t">40s</span></li>
+<li style="--i:3"><span class="w">Sam Okafor <small>· in · Final release · Ari</small></span><span class="t">55s</span></li>
+<li style="--i:4"><span class="w">Jess Whitehead <small>· in · comp · Mel</small></span><span class="t">1m</span></li>
+<li style="--i:5"><span class="w">Liam Hart <small>· in · override · Mel</small></span><span class="t">2m</span></li>
+</ul>
+</div>
+<div class="card" style="--i:5">
+<p class="lbl"><span>The night so far</span><span></span></p>
+<div class="kv">
+<div><span>First through the door</span><span>8:04 pm</span></div>
+<div><span>Half the room in by</span><span>9:12 pm</span></div>
+<div><span>Average arrival after doors</span><span>52 min</span></div>
+<div><span>Re-entries</span><span>4</span></div>
+<div><span>ID checks</span><span>31 · 1 refused</span></div>
+<div><span>Overrides</span><span>2 · both Mel</span></div>
+<div><span>Last event at this point</span><span>59% in · tonight 65%</span></div>
+</div>
+</div>
+</div>
+</div></div>
+<div class="notes"><b>Why pick it:</b> the most information of the three without feeling like a spreadsheet, because the strip, the chart and the three cards never move.
+<ul><li>Every figure in the strip counts to its new value; the chart draws in and extends; a new order or scan slides into its feed with a highlight that fades. The flow bars ease to their new share.</li><li>"At this rate" and "expect ~61 more" come from tonight's own rate and the no-show rate of your past events.</li></ul></div>
+</section>
+
+<!-- ================= B ================= -->
+<section class="option" id="b">
+<h2><span>B</span>Numbers left, live right</h2>
+<p class="lede">Nine tiles in a three by three, each a figure with its own small chart or breakdown. The right third is the live column: the flow on top, the feed underneath. Numbers on the left are the campaign; everything on the right is the last few minutes.</p>
+<p class="where">Sales mode</p>
+<div class="screen"><div class="scr b">
+<div class="top">
+<div class="ev">Club Vitamin<small>Fri 24 Oct · Valhalla, Wellington · doors 8:00 pm · on sale 31 days</small></div>
+<div class="modes"><span class="on">Sales</span><span>Doors</span></div>
+<div class="clock"><div class="t">9:42 pm</div><div class="u"><i class="dot"></i>updated 3s ago</div></div>
+</div>
+<div class="main">
+<div class="tiles">
+<div class="tile" style="--i:0"><p class="lbl">Tickets sold</p><div><p class="v"><b class="count" style="--to:262"></b> <small>of 400</small></p><div class="track"><i style="--w:66%"></i><b style="left:54%"></b></div><p class="s">66% of the room · 138 left · tick is break even</p></div></div>
+<div class="tile" style="--i:1"><p class="lbl">Net revenue</p><div><p class="v rev">$8,310</p><div class="mini"><i style="--i:0;height:20%"></i><i style="--i:1;height:14%"></i><i style="--i:2;height:30%"></i><i style="--i:3;height:26%"></i><i style="--i:4;height:44%"></i><i style="--i:5;height:38%"></i><i style="--i:6;height:60%"></i><i style="--i:7;height:52%"></i><i style="--i:8;height:70%"></i><i style="--i:9;height:66%"></i><i style="--i:10;height:84%"></i><i style="--i:11;height:100%"></i><i style="--i:12;height:72%"></i><i style="--i:13;height:40%"></i></div><p class="s">by day, two weeks · $31.72 a ticket · $12,940 sold out</p></div></div>
+<div class="tile" style="--i:2"><p class="lbl">Profit</p><div><p class="v in">$1,460</p><div class="track"><i style="--w:100%;background:var(--in)"></i></div><p class="s">costs $6,850 · break even 216, passed Tuesday · $6,090 sold out</p></div></div>
+<div class="tile" style="--i:3"><p class="lbl">Today</p><div><p class="v">23 <small>tickets · $730</small></p><div class="mini"><i style="--i:0;height:10%"></i><i style="--i:1;height:0"></i><i style="--i:2;height:0"></i><i style="--i:3;height:0"></i><i style="--i:4;height:0"></i><i style="--i:5;height:0"></i><i style="--i:6;height:0"></i><i style="--i:7;height:20%"></i><i style="--i:8;height:10%"></i><i style="--i:9;height:30%"></i><i style="--i:10;height:40%"></i><i style="--i:11;height:20%"></i><i style="--i:12;height:60%"></i><i style="--i:13;height:30%"></i><i style="--i:14;height:40%"></i><i style="--i:15;height:50%"></i><i style="--i:16;height:30%"></i><i style="--i:17;height:80%"></i><i style="--i:18;height:50%"></i><i style="--i:19;height:100%"></i><i style="--i:20;height:60%"></i><i style="--i:21;height:40%"></i></div><p class="s">by hour · 6 in the last hour · last sale 2 min ago</p></div></div>
+<div class="tile" style="--i:4"><p class="lbl">Pace</p><div><p class="v in">+31</p><p class="s">ahead of your average event at 1 day out</p><p class="s">yesterday +24 · a week ago +9</p></div></div>
+<div class="tile" style="--i:5"><p class="lbl">Tiers</p><div><div class="rk" style="--i:0"><span class="n">First · $25</span><span class="d">100/100</span><div class="track"><i style="--w:100%"></i></div></div><div class="rk" style="--i:1"><span class="n">Second · $30</span><span class="d">140/150</span><div class="track"><i style="--w:93%"></i></div></div><div class="rk" style="--i:2"><span class="n">Final · $35</span><span class="d">22/150</span><div class="track"><i style="--w:15%"></i></div></div></div></div>
+<div class="tile" style="--i:6"><p class="lbl">Orders</p><div><p class="v">148</p><p class="s">1.8 tickets each · 61% of checkouts paid</p><p class="s">84% on a phone · Apple Pay 52% · card 31%</p></div></div>
+<div class="tile" style="--i:7"><p class="lbl">Where buyers came from</p><div><div class="rk" style="--i:0"><span class="n">Instagram story</span><span class="d">61 · 41%</span><div class="track"><i style="--w:100%"></i></div></div><div class="rk" style="--i:1"><span class="n">Newsletter</span><span class="d">34 · 23%</span><div class="track"><i style="--w:56%"></i></div></div><div class="rk" style="--i:2"><span class="n">Direct</span><span class="d">29 · 20%</span><div class="track"><i style="--w:48%"></i></div></div></div></div>
+<div class="tile" style="--i:8"><p class="lbl">Also</p><div><div class="kv"><div><span>Comps</span><span>12 of 20</span></div><div><span>Discount codes</span><span>18 · $270</span></div><div><span>Opt-in</span><span>44%</span></div><div><span>Returning buyers</span><span>23%</span></div></div></div></div>
+</div>
+<div class="live">
+<div class="card" style="--i:2">
+<p class="lbl"><span>Right now</span><span>last 10 minutes</span></p>
+<div class="flow">
+<div class="step"><p class="n">14</p><p class="l">on the page</p><div class="track"><i style="--w:100%"></i></div></div>
+<div class="step"><p class="n">5</p><p class="l">in a basket</p><div class="track"><i style="--w:36%"></i></div></div>
+<div class="step"><p class="n">3</p><p class="l">holding</p><div class="track"><i style="--w:21%"></i></div></div>
+<div class="step"><p class="n in">2</p><p class="l">paid</p><div class="track g"><i style="--w:14%"></i></div></div>
+</div>
+<div class="hold">
+<div><span>Tickets on hold</span><span>7 · next expires in 4:12</span></div>
+<div><span>Waiting for approval</span><span>1 guest list request</span></div>
+<div><span>Gave up, last hour</span><span>4 checkouts</span></div>
+<div><span>Typical checkout tonight</span><span>1m 40s</span></div>
+</div>
+</div>
+<div class="card" style="--i:3">
+<p class="lbl"><span>Latest orders</span><span>148 so far</span></p>
+<ul class="feed">
+<li style="--i:0"><span class="w">2 × Final release <small>· Apple Pay · Instagram story</small></span><span class="t">$70 · now</span></li>
+<li style="--i:1"><span class="w">1 × Final release <small>· card · phone</small></span><span class="t">$35 · 4m</span></li>
+<li style="--i:2"><span class="w">4 × Final release <small>· Apple Pay · newsletter</small></span><span class="t">$140 · 11m</span></li>
+<li style="--i:3"><span class="w">2 × Final release <small>· Google Pay · direct</small></span><span class="t">$70 · 19m</span></li>
+<li style="--i:4"><span class="w">1 × Final release <small>· card · poster QR</small></span><span class="t">$35 · 26m</span></li>
+<li style="--i:5"><span class="w">2 × Final release <small>· Link · Instagram story</small></span><span class="t">$70 · 31m</span></li>
+<li style="--i:6"><span class="w">3 × Final release <small>· Apple Pay · Instagram story</small></span><span class="t">$105 · 40m</span></li>
+<li style="--i:7"><span class="w">1 × Final release <small>· card · bio link</small></span><span class="t">$35 · 52m</span></li>
+<li style="--i:8"><span class="w">2 × Final release <small>· Apple Pay · direct</small></span><span class="t">$70 · 1h</span></li>
+</ul>
+</div>
+</div>
+</div>
+</div></div>
+
+<p class="where">Doors mode</p>
+<div class="screen"><div class="scr b">
+<div class="top">
+<div class="ev">Club Vitamin<small>Fri 24 Oct · Valhalla, Wellington · doors opened 1h 42m ago · last entry 1:00 am</small></div>
+<div class="modes"><span>Sales</span><span class="on">Doors</span></div>
+<div class="clock"><div class="t">9:42 pm</div><div class="u"><i class="dot"></i>updated 3s ago</div></div>
+</div>
+<div class="main">
+<div class="tiles">
+<div class="tile" style="--i:0"><p class="lbl">Inside</p><div><p class="v in"><b class="count" style="--to:171"></b> <small>of 262</small></p><div class="track g"><i style="--w:65%"></i></div><p class="s">65% in · 84 still to come · 7 have left</p></div></div>
+<div class="tile" style="--i:1"><p class="lbl">Arriving</p><div><p class="v">4.2 <small>a minute</small></p><div class="mini g"><i style="--i:0;height:6%"></i><i style="--i:1;height:9%"></i><i style="--i:2;height:14%"></i><i style="--i:3;height:22%"></i><i style="--i:4;height:31%"></i><i style="--i:5;height:28%"></i><i style="--i:6;height:44%"></i><i style="--i:7;height:52%"></i><i style="--i:8;height:61%"></i><i style="--i:9;height:70%"></i><i style="--i:10;height:88%"></i><i style="--i:11;height:100%"></i><i style="--i:12;height:84%"></i><i style="--i:13;height:72%"></i><i style="--i:14;height:66%"></i><i style="--i:15;height:58%"></i><i style="--i:16;height:49%"></i><i style="--i:17;height:40%"></i><i style="--i:18;height:35%"></i><i style="--i:19;height:38%"></i><i style="--i:20;height:30%"></i><i style="--i:21;height:27%"></i><i style="--i:22;height:24%"></i><i style="--i:23;height:19%"></i><i style="--i:24;height:12%"></i></div><p class="s">every 5 min since 7:30 · peak 9.1 a minute at 9:05</p></div></div>
+<div class="tile" style="--i:2"><p class="lbl">Expected final</p><div><p class="v">~232 <small>88%</small></p><p class="s">from the no-show rate of your last 3 events</p><p class="s">61 more to come at this rate · about 20 min</p></div></div>
+<div class="tile" style="--i:3"><p class="lbl">Scanning</p><div><div class="rk" style="--i:0"><span class="n">Ari · iPhone</span><span class="d">71 · 1 every 38s</span><div class="track g"><i style="--w:100%"></i></div></div><div class="rk" style="--i:1"><span class="n">Mel · iPhone</span><span class="d">64 · 1 every 43s</span><div class="track g"><i style="--w:90%"></i></div></div><div class="rk" style="--i:2"><span class="n">Door 2 · iPad</span><span class="d">36 · 1 every 75s</span><div class="track g"><i style="--w:51%"></i></div></div></div></div>
+<div class="tile" style="--i:4"><p class="lbl">Inside by ticket</p><div><div class="rk" style="--i:0"><span class="n">Second release</span><span class="d">86 of 140</span><div class="track g"><i style="--w:61%"></i></div></div><div class="rk" style="--i:1"><span class="n">First release</span><span class="d">71 of 100</span><div class="track g"><i style="--w:71%"></i></div></div><div class="rk" style="--i:2"><span class="n">Final · comps</span><span class="d">14 of 22 · 9 of 12</span><div class="track g"><i style="--w:66%"></i></div></div></div></div>
+<div class="tile" style="--i:5"><p class="lbl">Problem scans</p><div><p class="v warn">3</p><p class="s">2 duplicates · 1 not found</p><p class="s">last one 25 min ago · 2 overrides tonight</p></div></div>
+<div class="tile" style="--i:6"><p class="lbl">Door sales</p><div><p class="v">9 <small>tickets · $315</small></p><p class="s">6 tap to pay · 3 cash · 1 in the last 5 min</p></div></div>
+<div class="tile" style="--i:7"><p class="lbl">Scans tonight</p><div><p class="v">189</p><p class="s">171 in · 4 re-entries · 7 out · 3 problems</p><p class="s">31 ID checks · 1 refused</p></div></div>
+<div class="tile" style="--i:8"><p class="lbl">The night</p><div><div class="kv"><div><span>First in</span><span>8:04 pm</span></div><div><span>Half the room by</span><span>9:12 pm</span></div><div><span>Average arrival</span><span>52 min after doors</span></div><div><span>Last event here</span><span>59% in · tonight 65%</span></div></div></div></div>
+</div>
+<div class="live">
+<div class="card" style="--i:2">
+<p class="lbl"><span>At the door now</span><span>last 5 minutes</span></p>
+<div class="flow">
+<div class="step"><p class="n">19</p><p class="l">scanned</p><div class="track g"><i style="--w:100%"></i></div></div>
+<div class="step"><p class="n in">18</p><p class="l">let in</p><div class="track g"><i style="--w:95%"></i></div></div>
+<div class="step"><p class="n warn">1</p><p class="l">turned away</p><div class="track"><i style="--w:6%;background:var(--amber)"></i></div></div>
+<div class="step"><p class="n">0</p><p class="l">left</p><div class="track"><i style="--w:0"></i></div></div>
+</div>
+<div class="hold">
+<div><span>Ari · Mel · Door 2</span><span>8 · 7 · 4</span></div>
+<div><span>Busiest five minutes</span><span>9:05 · 46 in</span></div>
+</div>
+</div>
+<div class="card" style="--i:3">
+<p class="lbl"><span>Recent scans</span><span>live</span></p>
+<ul class="feed">
+<li style="--i:0"><span class="w">Tom Reilly <small>· in · Second · Ari</small></span><span class="t">now</span></li>
+<li style="--i:1"><span class="w">Priya Natarajan <small>· in · First · Mel</small></span><span class="t">12s</span></li>
+<li style="--i:2"><span class="w">#0412 <small>· <span class="warn">duplicate</span> · Door 2</small></span><span class="t">40s</span></li>
+<li style="--i:3"><span class="w">Sam Okafor <small>· in · Final · Ari</small></span><span class="t">55s</span></li>
+<li style="--i:4"><span class="w">Jess Whitehead <small>· in · comp · Mel</small></span><span class="t">1m</span></li>
+<li style="--i:5"><span class="w">Kai Tane <small>· in · Second · Door 2</small></span><span class="t">1m</span></li>
+<li style="--i:6"><span class="w">Amelia Cho <small>· in · First · Ari</small></span><span class="t">2m</span></li>
+<li style="--i:7"><span class="w">Liam Hart <small>· in · override · Mel</small></span><span class="t">2m</span></li>
+<li style="--i:8"><span class="w">Noor Haddad <small>· in · Second · Ari</small></span><span class="t">3m</span></li>
+</ul>
+</div>
+</div>
+</div>
+</div></div>
+<div class="notes"><b>Why pick it:</b> the clearest split between "how is the event doing" and "what is happening this minute". Someone glancing at the right third sees only live things.
+<ul><li>Tiles count up and their small charts grow; the feed slides a new row in with a fading highlight; the flow bars ease.</li><li>The feed shows as many rows as fit the height and drops the rest, so the page never scrolls.</li></ul></div>
+</section>
+
+<!-- ================= C ================= -->
+<section class="option" id="c">
+<h2><span>C</span>Chart first</h2>
+<p class="lede">Eight figures in a thin strip, then the chart gets the middle of the screen, then four cards: the live flow, tiers, latest, and the rest. For a room where the shape of the night matters as much as the numbers.</p>
+<p class="where">Sales mode</p>
+<div class="screen"><div class="scr c">
+<div class="top">
+<div class="ev">Club Vitamin<small>Fri 24 Oct · Valhalla, Wellington · doors 8:00 pm · on sale 31 days</small></div>
+<div class="modes"><span class="on">Sales</span><span>Doors</span></div>
+<div class="clock"><div class="t">9:42 pm</div><div class="u"><i class="dot"></i>updated 3s ago</div></div>
+</div>
+<div class="strip8">
+<div class="cell" style="--i:0"><p class="lbl">Sold</p><p class="v"><b class="count" style="--to:262"></b><small>/ 400</small></p><p class="s">66% · 138 left</p></div>
+<div class="cell" style="--i:1"><p class="lbl">Net</p><p class="v rev">$8,310</p><p class="s">$31.72 a ticket</p></div>
+<div class="cell" style="--i:2"><p class="lbl">Profit</p><p class="v in">$1,460</p><p class="s">broke even Tue</p></div>
+<div class="cell" style="--i:3"><p class="lbl">Today</p><p class="v">23</p><p class="s">$730 · 6 last hour</p></div>
+<div class="cell" style="--i:4"><p class="lbl">Pace</p><p class="v in">+31</p><p class="s">vs average event</p></div>
+<div class="cell" style="--i:5"><p class="lbl">Orders</p><p class="v">148</p><p class="s">1.8 each · 61% paid</p></div>
+<div class="cell" style="--i:6"><p class="lbl">Sell out</p><p class="v">$12,940</p><p class="s">$6,090 profit</p></div>
+<div class="cell" style="--i:7"><p class="lbl">Last sale</p><p class="v">2<small>min ago</small></p><p class="s">2 × Final · $70</p></div>
+</div>
+<div class="card" style="--i:1">
+<p class="lbl"><span>Sales, whole campaign</span><span>running total · dashed is your average event · ticks are campaign launches · bars are tickets a day</span></p>
+<div class="plot">
+<svg viewBox="0 0 100 40" preserveAspectRatio="none">
+<defs><linearGradient id="gc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c6ff33" stop-opacity=".2"/><stop offset="1" stop-color="#c6ff33" stop-opacity="0"/></linearGradient></defs>
+<path fill="url(#gc)" d="M0,38 H4 V30 H8 V29 H14 V28 H20 V27 H26 V24 H32 V23 H40 V22 H48 V21 H54 V18 H60 V16 H68 V13 H76 V11 H84 V8 H92 V5 H100 V40 H0 Z"/>
+<path class="pace" d="M0,39 H10 V36 H20 V34 H30 V31 H40 V29 H50 V26 H60 V23 H70 V19 H80 V15 H90 V11 H100"/>
+<line class="mark" x1="4" y1="0" x2="4" y2="40"/><line class="mark" x1="26" y1="0" x2="26" y2="40"/><line class="mark" x1="60" y1="0" x2="60" y2="40"/><line class="mark" x1="84" y1="0" x2="84" y2="40"/>
+<path class="line" style="--len:240" d="M0,38 H4 V30 H8 V29 H14 V28 H20 V27 H26 V24 H32 V23 H40 V22 H48 V21 H54 V18 H60 V16 H68 V13 H76 V11 H84 V8 H92 V5 H100"/>
+</svg>
+<span class="mk" style="left:4%">announce</span><span class="mk" style="left:26%">second-release</span><span class="mk" style="left:60%">final-release</span><span class="mk" style="left:84%">last-call story</span>
+</div>
+</div>
+<div class="low">
+<div class="card" style="--i:2">
+<p class="lbl"><span>Right now</span><span>last 10 min</span></p>
+<div class="flow">
+<div class="step"><p class="n">14</p><p class="l">on the page</p><div class="track"><i style="--w:100%"></i></div></div>
+<div class="step"><p class="n">5</p><p class="l">basket</p><div class="track"><i style="--w:36%"></i></div></div>
+<div class="step"><p class="n">3</p><p class="l">holding</p><div class="track"><i style="--w:21%"></i></div></div>
+<div class="step"><p class="n in">2</p><p class="l">paid</p><div class="track g"><i style="--w:14%"></i></div></div>
+</div>
+<div class="hold">
+<div><span>On hold</span><span>7 tickets · 4:12 left</span></div>
+<div><span>Approval queue</span><span>1</span></div>
+<div><span>Gave up, last hour</span><span>4</span></div>
+<div><span>Typical checkout</span><span>1m 40s</span></div>
+</div>
+</div>
+<div class="card" style="--i:3">
+<p class="lbl"><span>Tiers</span><span>sold / on sale</span></p>
+<div class="rows">
+<div class="rk" style="--i:0"><span class="n">First · $25</span><span class="d">100/100 · $2,500</span><div class="track"><i style="--w:100%"></i></div></div>
+<div class="rk" style="--i:1"><span class="n">Second · $30</span><span class="d">140/150 · $4,200</span><div class="track"><i style="--w:93%"></i></div></div>
+<div class="rk" style="--i:2"><span class="n">Final · $35</span><span class="d">22/150 · $770</span><div class="track"><i style="--w:15%"></i></div></div>
+<div class="rk" style="--i:3"><span class="n">Comps</span><span class="d">12 of 20</span><div class="track g"><i style="--w:60%"></i></div></div>
+</div>
+</div>
+<div class="card" style="--i:4">
+<p class="lbl"><span>Latest orders</span><span>148</span></p>
+<ul class="feed">
+<li style="--i:0"><span class="w">2 × Final <small>· Apple Pay · story</small></span><span class="t">$70 · now</span></li>
+<li style="--i:1"><span class="w">1 × Final <small>· card</small></span><span class="t">$35 · 4m</span></li>
+<li style="--i:2"><span class="w">4 × Final <small>· Apple Pay · newsletter</small></span><span class="t">$140 · 11m</span></li>
+<li style="--i:3"><span class="w">2 × Final <small>· Google Pay</small></span><span class="t">$70 · 19m</span></li>
+<li style="--i:4"><span class="w">1 × Final <small>· card · poster QR</small></span><span class="t">$35 · 26m</span></li>
+</ul>
+</div>
+<div class="card" style="--i:5">
+<p class="lbl"><span>How it's selling</span><span></span></p>
+<div class="kv">
+<div><span>Instagram story</span><span>61 · 41%</span></div>
+<div><span>Newsletter</span><span>34 · 23%</span></div>
+<div><span>Direct</span><span>29 · 20%</span></div>
+<div><span>On a phone</span><span>84%</span></div>
+<div><span>Apple Pay</span><span>52% · card 31%</span></div>
+<div><span>Codes used</span><span>18 · $270</span></div>
+</div>
+</div>
+</div>
+</div></div>
+
+<p class="where">Doors mode</p>
+<div class="screen"><div class="scr c">
+<div class="top">
+<div class="ev">Club Vitamin<small>Fri 24 Oct · Valhalla, Wellington · doors opened 1h 42m ago · last entry 1:00 am</small></div>
+<div class="modes"><span>Sales</span><span class="on">Doors</span></div>
+<div class="clock"><div class="t">9:42 pm</div><div class="u"><i class="dot"></i>updated 3s ago</div></div>
+</div>
+<div class="strip8">
+<div class="cell" style="--i:0"><p class="lbl">Inside</p><p class="v in"><b class="count" style="--to:171"></b><small>/ 262</small></p><p class="s">65% · 7 left</p></div>
+<div class="cell" style="--i:1"><p class="lbl">To come</p><p class="v">84</p><p class="s">expect ~61</p></div>
+<div class="cell" style="--i:2"><p class="lbl">Arriving</p><p class="v">4.2<small>/min</small></p><p class="s">peak 9.1 at 9:05</p></div>
+<div class="cell" style="--i:3"><p class="lbl">Expected final</p><p class="v">~232</p><p class="s">88% · ~20 min</p></div>
+<div class="cell" style="--i:4"><p class="lbl">Scans</p><p class="v">189</p><p class="s">4 re-entries · 7 out</p></div>
+<div class="cell" style="--i:5"><p class="lbl">Problems</p><p class="v warn">3</p><p class="s">last 25 min ago</p></div>
+<div class="cell" style="--i:6"><p class="lbl">Door sales</p><p class="v">9</p><p class="s">$315 · 6 tap · 3 cash</p></div>
+<div class="cell" style="--i:7"><p class="lbl">Last scan</p><p class="v">now</p><p class="s">Tom Reilly · Ari</p></div>
+</div>
+<div class="card" style="--i:1">
+<p class="lbl"><span>Arrivals</span><span>every 5 minutes since 7:30 pm · white is the current five · dashed is your last event here</span></p>
+<div class="plot">
+<div class="bars">
+<i style="--i:0;height:4%"></i><i style="--i:1;height:3%"></i><i style="--i:2;height:6%"></i><i style="--i:3;height:9%"></i><i style="--i:4;height:14%"></i><i style="--i:5;height:22%"></i><i style="--i:6;height:31%"></i><i style="--i:7;height:28%"></i><i style="--i:8;height:44%"></i><i style="--i:9;height:52%"></i><i style="--i:10;height:61%"></i><i style="--i:11;height:70%"></i><i style="--i:12;height:88%"></i><i style="--i:13;height:100%"></i><i style="--i:14;height:84%"></i><i style="--i:15;height:72%"></i><i style="--i:16;height:66%"></i><i style="--i:17;height:58%"></i><i style="--i:18;height:49%"></i><i style="--i:19;height:40%"></i><i style="--i:20;height:35%"></i><i style="--i:21;height:38%"></i><i style="--i:22;height:30%"></i><i style="--i:23;height:27%"></i><i style="--i:24;height:24%"></i><i style="--i:25;height:19%"></i><i class="now" style="--i:26;height:12%"></i>
+</div>
+<svg viewBox="0 0 100 40" preserveAspectRatio="none" style="pointer-events:none"><path class="pace" d="M0,39 H8 V37 H16 V33 H24 V26 H32 V16 H40 V9 H48 V12 H56 V20 H64 V26 H72 V30 H80 V33 H88 V36 H100"/></svg>
+</div>
+</div>
+<div class="low">
+<div class="card" style="--i:2">
+<p class="lbl"><span>At the door now</span><span>last 5 min</span></p>
+<div class="flow">
+<div class="step"><p class="n">19</p><p class="l">scanned</p><div class="track g"><i style="--w:100%"></i></div></div>
+<div class="step"><p class="n in">18</p><p class="l">let in</p><div class="track g"><i style="--w:95%"></i></div></div>
+<div class="step"><p class="n warn">1</p><p class="l">turned away</p><div class="track"><i style="--w:6%;background:var(--amber)"></i></div></div>
+<div class="step"><p class="n">0</p><p class="l">left</p><div class="track"><i style="--w:0"></i></div></div>
+</div>
+<div class="hold">
+<div><span>Ari · Mel · Door 2</span><span>8 · 7 · 4</span></div>
+<div><span>Door sales</span><span>1 · tap to pay</span></div>
+<div><span>Busiest five</span><span>9:05 · 46 in</span></div>
+</div>
+</div>
+<div class="card" style="--i:3">
+<p class="lbl"><span>Scanning</span><span>tonight</span></p>
+<div class="rows">
+<div class="rk" style="--i:0"><span class="n">Ari · iPhone</span><span class="d">71 · 1 every 38s</span><div class="track g"><i style="--w:100%"></i></div></div>
+<div class="rk" style="--i:1"><span class="n">Mel · iPhone</span><span class="d">64 · 1 every 43s</span><div class="track g"><i style="--w:90%"></i></div></div>
+<div class="rk" style="--i:2"><span class="n">Door 2 · iPad</span><span class="d">36 · 1 every 75s</span><div class="track g"><i style="--w:51%"></i></div></div>
+<div class="rk" style="--i:3"><span class="n">Overrides</span><span class="d">2 · both Mel</span><div class="track"><i style="--w:3%;background:var(--amber)"></i></div></div>
+</div>
+</div>
+<div class="card" style="--i:4">
+<p class="lbl"><span>Recent scans</span><span>live</span></p>
+<ul class="feed">
+<li style="--i:0"><span class="w">Tom Reilly <small>· in · Ari</small></span><span class="t">now</span></li>
+<li style="--i:1"><span class="w">Priya Natarajan <small>· in · Mel</small></span><span class="t">12s</span></li>
+<li style="--i:2"><span class="w">#0412 <small>· <span class="warn">duplicate</span></small></span><span class="t">40s</span></li>
+<li style="--i:3"><span class="w">Sam Okafor <small>· in · Ari</small></span><span class="t">55s</span></li>
+<li style="--i:4"><span class="w">Jess Whitehead <small>· in · comp</small></span><span class="t">1m</span></li>
+</ul>
+</div>
+<div class="card" style="--i:5">
+<p class="lbl"><span>Inside by ticket</span><span>171</span></p>
+<div class="kv">
+<div><span>Second release</span><span>86 of 140</span></div>
+<div><span>First release</span><span>71 of 100</span></div>
+<div><span>Final release</span><span>14 of 22</span></div>
+<div><span>Comps, guest list</span><span>9 of 12</span></div>
+<div><span>ID checks</span><span>31 · 1 refused</span></div>
+<div><span>Half the room by</span><span>9:12 pm</span></div>
+</div>
+</div>
+</div>
+</div></div>
+<div class="notes"><b>Why pick it:</b> the curve, or the arrival shape, is what you look at from across the room; the numbers are there when you walk up to it.
+<ul><li>The chart grows in and extends on each refresh, with campaign launches and, at the door, last time's arrival shape to compare against.</li><li>Eight figures in the strip is the most that stays readable at TV distance; anything else lives in the bottom cards.</li></ul></div>
+</section>
+
+<!-- ================= PHONE ================= -->
+<section class="option" id="phone">
+<h2><span>Phone</span>The same page on a phone, any option</h2>
+<p class="lede">Below about 900px every block stacks in the same order and the page scrolls: strip two across, then the live flow, the chart, then the cards. Shown for A in Sales mode.</p>
+<div class="side-by">
+<div class="phone"><div class="scr">
+<div class="top">
+<div class="ev">Club Vitamin<small>Fri 24 Oct · doors 8:00 pm</small></div>
+<div class="modes"><span class="on">Sales</span><span>Doors</span></div>
+</div>
+<div class="strip">
+<div class="cell"><p class="lbl">Tickets sold</p><p class="v"><b class="count" style="--to:262"></b><small>/ 400</small></p><div class="track"><i style="--w:66%"></i></div><p class="s">66% · 138 left</p></div>
+<div class="cell"><p class="lbl">Net revenue</p><p class="v rev">$8,310</p><p class="s">$31.72 a ticket</p></div>
+<div class="cell"><p class="lbl">Today</p><p class="v">23</p><p class="s">6 in the last hour</p></div>
+<div class="cell"><p class="lbl">Pace</p><p class="v in">+31</p><p class="s">vs average event</p></div>
+</div>
+<div class="card">
+<p class="lbl"><span>Right now</span><span>last 10 min</span></p>
+<div class="flow">
+<div class="step"><p class="n">14</p><p class="l">on page</p></div>
+<div class="step"><p class="n">5</p><p class="l">basket</p></div>
+<div class="step"><p class="n">3</p><p class="l">holding</p></div>
+<div class="step"><p class="n in">2</p><p class="l">paid</p></div>
+</div>
+<div class="hold"><div><span>On hold</span><span>7 · 4:12 left</span></div><div><span>Gave up, last hour</span><span>4</span></div></div>
+</div>
+<div class="card">
+<p class="lbl"><span>Sales, last 7 days</span></p>
+<div class="plot"><svg viewBox="0 0 100 40" preserveAspectRatio="none"><path class="pace" d="M0,34 H12 V32 H24 V30 H36 V27 H48 V24 H60 V21 H72 V17 H84 V13 H100"/><path class="line" style="--len:220" d="M0,30 H8 V27 H16 V26 H24 V22 H34 V21 H44 V17 H56 V15 H66 V11 H78 V8 H90 V5 H100"/></svg></div>
+</div>
+<div class="fade"></div>
+</div></div>
+<div class="notes" style="margin-top:10px"><b>On a phone:</b> the header pins to the top so the mode switch is always reachable. Figures go two across, the flow keeps its four steps, and the feed shows its full list since there's room to scroll.</div>
+</div>
+</section>
+
+<!-- ================= SHARED ================= -->
+<section class="shared" id="shared">
+<h2>What's the same in every option</h2>
+<h3>The page</h3>
+<ul>
+<li><b>Its own full-screen route.</b> <code>/admin/events/[id]/live?mode=sales</code> and <code>?mode=doors</code>, rendered without the admin sidebar, header or rail, true black behind it. The same for organisers at <code>/organiser/events/[id]/live</code>. A small back link in the header corner, and a fullscreen button that uses the browser's fullscreen so a laptop plugged into a TV shows nothing but the page.</li>
+<li><b>No scrolling on desktop.</b> The layout is a grid that fills the viewport; charts and feeds take whatever height is left and feeds show as many rows as fit. Below about 900px it stacks and scrolls.</li>
+<li><b>The mode is in the address</b>, so a bookmark or a TV browser opens straight into it. Switching is the pills in the header, or the keys S and D.</li>
+</ul>
+<h3>Where the numbers come from</h3>
+<ul>
+<li><b>Doors</b> is the existing 5-second live poll, extended with: inside by tier, door sales tonight, re-entries, ID checks, per-device rate over the last five minutes, and the expected final from past events' no-show rate.</li>
+<li><b>Sales</b> is the event overview and the sales curve, polled every 30 seconds, plus one new query for the last few minutes: visits that opened the page or added a ticket (the view and basket checkpoints), orders currently holding tickets and when the next hold expires, the approval queue, checkouts that expired in the last hour, and the latest paid orders.</li>
+<li>"Typical checkout tonight" is the median from the checkout journey, for today's orders.</li>
+</ul>
+<h3>Animation</h3>
+<ul>
+<li>Everything moves <b>on change</b>, nothing loops. Numbers roll to the new value over about 600 ms. Bars and the flow ease to their new share. A new row slides in at the top of a feed with a highlight that fades over two seconds. On first load everything draws in once, staggered, the way the frames above do.</li>
+<li>The "updated 3s ago" dot stays lit and blinks once per refresh rather than pulsing. If the data stops arriving for more than a minute it turns amber and the header says how old the numbers are.</li>
+</ul>
+<h3>Questions</h3>
+<div class="q"><b>Money on the screen?</b> Net revenue and profit are on every Sales frame. If the screen will be somewhere door staff or the public can see, a "hide money" switch would blank those cells and the order amounts.</div>
+<div class="q"><b>Auto-rotate?</b> An "Auto" option that crossfades between Sales and Doors every 30 seconds, for a screen in the office during an event.</div>
+<div class="q"><b>Window for "Right now".</b> Ten minutes on the page and in a basket, five at the door. Both are a guess at what feels live without flickering to zero between sales; easy to change.</div>
+</section>
+
+</main></body></html>

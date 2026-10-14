@@ -57,7 +57,7 @@ const MEASURES = [
  */
 export function EventOverview({
   eventId,
-  liveHref = `/admin/events/${eventId}/live`,
+  liveHref = `/admin/events/${eventId}/live?mode=sales`,
 }: {
   eventId: string;
   liveHref?: string;
@@ -285,7 +285,7 @@ export function EventOverview({
         </Button>
         <Button variant="outline" size="sm" asChild>
           <a href={liveHref}>
-            <ExternalLink className="size-4" /> Live door view
+            <ExternalLink className="size-4" /> Live screen
           </a>
         </Button>
       </div>
