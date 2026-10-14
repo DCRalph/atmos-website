@@ -19,7 +19,7 @@ import { siteFontVariables } from "~/lib/site-fonts";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { formatCountdown } from "~/lib/ticketing/dates";
 import { formatNZD, formatNZDCompact } from "~/lib/ticketing/money";
-import { tierUnavailableLabel } from "~/lib/ticketing/tiers";
+import { openTiers, tierUnavailableLabel } from "~/lib/ticketing/tiers";
 import { CheckoutSection, type CheckoutSession } from "./checkout-panel";
 
 type PublicEvent = NonNullable<RouterOutputs["ticketEvents"]["bySlug"]>;
@@ -72,22 +72,30 @@ export function BuyPanel({
     [event.tiers, codeCheck],
   );
 
-  // Only tiers still on screen: swapping the code away drops what it unlocked.
+  // What can be picked: what's on sale, plus a locked tier whose tier above
+  // is all in the basket.
+  const open = useMemo(() => openTiers(tiers, quantities), [tiers, quantities]);
+
+  // Only tiers still open on screen: swapping the code away drops what it
+  // unlocked, and putting back the last early bird drops what that opened.
   const lines = useMemo(
     () =>
       tiers
         .map((tier) => ({
           tierId: tier.id,
-          quantity: quantities[tier.id] ?? 0,
+          quantity: open.has(tier.id) ? (quantities[tier.id] ?? 0) : 0,
         }))
         .filter((line) => line.quantity > 0),
-    [tiers, quantities],
+    [tiers, quantities, open],
   );
 
   // People, not purchases: a group tier's one purchase is several tickets, and
   // the per-order cap counts people.
   const totalTickets = tiers.reduce(
-    (sum, tier) => sum + (quantities[tier.id] ?? 0) * tier.groupSize,
+    (sum, tier) =>
+      open.has(tier.id)
+        ? sum + (quantities[tier.id] ?? 0) * tier.groupSize
+        : sum,
     0,
   );
 
@@ -199,7 +207,13 @@ export function BuyPanel({
           (event.maxTicketsPerOrder - others) / tier.groupSize,
         );
         const capped = Math.max(0, Math.min(next, tier.maxPerOrder, fits));
-        return { ...current, [tier.id]: capped };
+        const updated = { ...current, [tier.id]: capped };
+        // A tier that locks again loses its picks, rather than having them
+        // come back the next time it opens.
+        const stillOpen = openTiers(tiers, updated);
+        return Object.fromEntries(
+          Object.entries(updated).filter(([id]) => stillOpen.has(id)),
+        );
       });
     },
     [tiers, event.maxTicketsPerOrder],
@@ -289,7 +303,7 @@ export function BuyPanel({
       <ul className="divide-y divide-white/10">
         {tiers.map((tier) => {
           const quantity = quantities[tier.id] ?? 0;
-          const disabled = !tier.available;
+          const disabled = !open.has(tier.id);
 
           return (
             <li key={tier.id} className="flex items-start gap-4 px-5 py-4">
@@ -332,11 +346,15 @@ export function BuyPanel({
                     Only {tier.remainingIfLow} left
                   </p>
                 )}
-                {disabled && (
+                {disabled ? (
                   <p className="mt-1.5 text-[12px] text-white/50">
                     {tierUnavailableLabel(tier)}
                   </p>
-                )}
+                ) : !tier.available && tier.waitingFor ? (
+                  <p className="text-site-accent-text mt-1.5 text-[12px] font-medium">
+                    Unlocked, you have the last {tier.waitingFor.name}
+                  </p>
+                ) : null}
               </div>
 
               {disabled ? null : (

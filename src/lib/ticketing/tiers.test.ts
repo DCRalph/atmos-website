@@ -2,6 +2,7 @@ import { describe, test } from "bun:test";
 import assert from "node:assert/strict";
 
 import {
+  openTiers,
   soldFaceValueCents,
   tierUnavailableReason,
   type TierRow,
@@ -68,6 +69,69 @@ describe("releaseAfterPrevious", () => {
     const groups = tier("groups", 0, { groupSize: 4, soldCount: 48 });
     const ga = tier("ga", 1, { releaseAfterPrevious: true });
     assert.equal(tierUnavailableReason(ga, now, { tiers: [groups, ga] }), null);
+  });
+});
+
+describe("releaseAfterPrevious with a basket", () => {
+  test("an order that takes the last of the tier above can buy this one", () => {
+    const early = tier("early", 0, { soldCount: 47 });
+    const ga = tier("ga", 1, { releaseAfterPrevious: true });
+    const tiers = [early, ga];
+    assert.equal(
+      tierUnavailableReason(ga, now, { tiers, basket: { early: 2 } }),
+      "WAITING_FOR_PREVIOUS",
+    );
+    assert.equal(
+      tierUnavailableReason(ga, now, { tiers, basket: { early: 3 } }),
+      null,
+    );
+  });
+
+  test("a group tier above opens once no whole group is left", () => {
+    const groups = tier("groups", 0, { groupSize: 4, soldCount: 42 });
+    const ga = tier("ga", 1, { releaseAfterPrevious: true });
+    // 8 left is two groups; taking one leaves another.
+    assert.equal(
+      tierUnavailableReason(ga, now, {
+        tiers: [groups, ga],
+        basket: { groups: 4 },
+      }),
+      "WAITING_FOR_PREVIOUS",
+    );
+    assert.equal(
+      tierUnavailableReason(ga, now, {
+        tiers: [groups, ga],
+        basket: { groups: 8 },
+      }),
+      null,
+    );
+  });
+});
+
+describe("openTiers", () => {
+  const listed = (
+    id: string,
+    waitingFor: { tierId: string; left: number | null } | null = null,
+  ) => ({ id, available: waitingFor === null, waitingFor });
+
+  test("opens a locked tier once the basket holds the last of the one above", () => {
+    const tiers = [listed("early"), listed("ga", { tierId: "early", left: 3 })];
+    assert.deepEqual([...openTiers(tiers, { early: 2 })], ["early"]);
+    assert.deepEqual([...openTiers(tiers, { early: 3 })], ["early", "ga"]);
+  });
+
+  test("chains, and never opens on a count it wasn't given", () => {
+    const tiers = [
+      listed("a"),
+      listed("b", { tierId: "a", left: 2 }),
+      listed("c", { tierId: "b", left: 5 }),
+      listed("d", { tierId: "c", left: null }),
+    ];
+    assert.deepEqual([...openTiers(tiers, { b: 5 })], ["a"]);
+    assert.deepEqual(
+      [...openTiers(tiers, { a: 2, b: 5, c: 50 })],
+      ["a", "b", "c"],
+    );
   });
 });
 

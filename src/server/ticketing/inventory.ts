@@ -364,6 +364,15 @@ export async function holdInventory(
       groupSize: byId.get(line.tierId)?.groupSize ?? 1,
     })),
   );
+  // Tickets per tier, so a tier waiting on the one above opens for an order
+  // that takes the last of it.
+  const basket: Record<string, number> = {};
+  for (const line of lines) {
+    basket[line.tierId] =
+      (basket[line.tierId] ?? 0) +
+      line.quantity * (byId.get(line.tierId)?.groupSize ?? 1);
+  }
+
   if (totalRequested > event.maxTicketsPerOrder) {
     throw new InventoryError(
       `You can buy at most ${event.maxTicketsPerOrder} tickets in one order.`,
@@ -383,6 +392,7 @@ export async function holdInventory(
 
     const reason = tierUnavailableReason(tier, now, {
       tiers,
+      basket,
       unlockedHiddenTiers,
       channel,
     });

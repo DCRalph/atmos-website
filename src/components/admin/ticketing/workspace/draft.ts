@@ -32,6 +32,7 @@ export type TierDraft = {
   groupSize: string;
   salesChannel: SalesChannel;
   releaseAfterPrevious: boolean;
+  hideUntilReleased: boolean;
   salesStartAt: Date | undefined;
   salesEndAt: Date | undefined;
   isActive: boolean;
@@ -114,6 +115,7 @@ export const newTier = (fields: Partial<TierDraft> = {}): TierDraft => ({
   groupSize: "1",
   salesChannel: "ALL",
   releaseAfterPrevious: false,
+  hideUntilReleased: false,
   salesStartAt: undefined,
   salesEndAt: undefined,
   isActive: true,
@@ -137,6 +139,7 @@ const tierFromEvent = (tier: AdminEvent["tiers"][number]): TierDraft => ({
   groupSize: tier.groupSize.toString(),
   salesChannel: tier.salesChannel,
   releaseAfterPrevious: tier.releaseAfterPrevious,
+  hideUntilReleased: tier.hideUntilReleased,
   salesStartAt: tier.salesStartAt ?? undefined,
   salesEndAt: tier.salesEndAt ?? undefined,
   isActive: tier.isActive,
@@ -472,6 +475,7 @@ export function toPayload(draft: EventDraft, startsAt: Date): SavePayload {
       allocation: Number(tier.allocation),
       groupSize: Number(tier.groupSize),
       releaseAfterPrevious: tier.releaseAfterPrevious,
+      hideUntilReleased: tier.hideUntilReleased,
       salesChannel: tier.salesChannel,
       salesStartAt: tier.salesStartAt ?? null,
       salesEndAt: tier.salesEndAt ?? null,

@@ -1689,10 +1689,14 @@ model TicketTier {
   salesEndAt   DateTime?
   isActive     Boolean   @default(true)
   isHidden     Boolean   @default(false)
-  /// Stays off the public list until the tier before it (by `sortOrder`) has
-  /// stopped selling: sold out, past its sale end, or switched off. How
-  /// "early bird, then general admission" runs itself.
+  /// Can't be bought until the tier before it (by `sortOrder`) has stopped
+  /// selling: sold out, past its sale end, or switched off. A basket that takes
+  /// the last of that tier opens this one in the same order. How "early bird,
+  /// then general admission" runs itself. See `tierUnavailableReason`.
   releaseAfterPrevious Boolean @default(false)
+  /// With `releaseAfterPrevious`, keeps the tier off the public list until it
+  /// opens. Off, buyers see it locked, price and all, so they know what's next.
+  hideUntilReleased    Boolean @default(false)
 
   salesChannel TierSalesChannel @default(ALL)
 

@@ -84,19 +84,28 @@ export function previousTier<T extends { id: string; sortOrder: number }>(
  * its sale end, and with at least one purchase left. Hidden tiers count — they
  * sell to whoever holds the code — and so does a tier still waiting its own
  * turn, which is what lets a chain of three release one at a time.
+ *
+ * `inBasket` is tickets of this tier in the order being checked, which come
+ * off what is left: a basket that takes the last three has sold it out.
  */
-export function isStillSelling(tier: TierRow, now: Date): boolean {
+export function isStillSelling(
+  tier: TierRow,
+  now: Date,
+  inBasket = 0,
+): boolean {
   if (!tier.isActive) return false;
   if (tier.salesEndAt && now > tier.salesEndAt) return false;
-  return remainingInTier(tier) >= tier.groupSize;
+  return remainingInTier(tier) - inBasket >= tier.groupSize;
 }
 
 /**
  * Whether a tier is buyable right now.
  *
  * `tiers` is every tier on the event, which a tier set to release after the
- * previous one needs to find it. `unlockedHiddenTiers` carries the ids a
- * discount code has revealed. `channel` is where the sale is happening: a
+ * previous one needs to find it. `basket` is tickets per tier id in the order
+ * being checked, so an order that takes the last of the tier above can buy
+ * from this one too. `unlockedHiddenTiers` carries the ids a discount code
+ * has revealed. `channel` is where the sale is happening: a
  * door-only tier is never sold online, and the door sells hidden tiers too —
  * hiding is about who can find a tier online, and staff can see everything.
  */
@@ -105,10 +114,12 @@ export function tierUnavailableReason(
   now: Date,
   {
     tiers = [],
+    basket = {},
     unlockedHiddenTiers = [],
     channel = "ONLINE",
   }: {
     tiers?: readonly TierRow[];
+    basket?: Readonly<Record<string, number>>;
     unlockedHiddenTiers?: readonly string[];
     channel?: SaleChannel;
   } = {},
@@ -124,7 +135,7 @@ export function tierUnavailableReason(
   if (!tier.isActive) return "DISABLED";
   if (tier.releaseAfterPrevious) {
     const previous = previousTier(tiers, tier);
-    if (previous && isStillSelling(previous, now)) {
+    if (previous && isStillSelling(previous, now, basket[previous.id])) {
       return "WAITING_FOR_PREVIOUS";
     }
   }
@@ -139,6 +150,7 @@ export function tierUnavailableReason(
 export function tierUnavailableLabel(tier: {
   unavailableReason: TierUnavailableReason | null;
   salesStartAt: Date | null;
+  waitingFor?: { name: string } | null;
 }): string {
   switch (tier.unavailableReason) {
     case "SOLD_OUT":
@@ -152,7 +164,40 @@ export function tierUnavailableLabel(tier: {
         : "Not on sale yet";
     case "SALES_CLOSED":
       return "Sales closed";
+    case "WAITING_FOR_PREVIOUS":
+      return tier.waitingFor
+        ? `Opens when ${tier.waitingFor.name} sells out`
+        : "Not on sale yet";
     default:
       return "Unavailable";
   }
+}
+
+/** A tier on the buyer's list, as much of it as `openTiers` needs. */
+type ListedTier = {
+  id: string;
+  available: boolean;
+  /** Set on a tier locked behind the one above. See `toPublicEvent`. */
+  waitingFor: { tierId: string; left: number | null } | null;
+};
+
+/**
+ * The tiers a buyer can pick from, given what they have picked so far: every
+ * available tier, plus any locked behind one whose last purchases are all in
+ * the basket. Chains, so taking the last of the first and the last of the
+ * second opens the third. `quantities` is purchases per tier id. Checkout
+ * re-checks the same thing with `tierUnavailableReason`.
+ */
+export function openTiers(
+  tiers: readonly ListedTier[],
+  quantities: Readonly<Record<string, number>>,
+): Set<string> {
+  const byId = new Map(tiers.map((tier) => [tier.id, tier]));
+  const isOpen = (tier: ListedTier): boolean => {
+    if (tier.available) return true;
+    const above = tier.waitingFor && byId.get(tier.waitingFor.tierId);
+    if (!above || tier.waitingFor?.left == null) return false;
+    return (quantities[above.id] ?? 0) >= tier.waitingFor.left && isOpen(above);
+  };
+  return new Set(tiers.filter(isOpen).map((tier) => tier.id));
 }

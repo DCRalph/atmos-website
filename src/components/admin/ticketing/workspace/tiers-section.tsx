@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -413,6 +413,7 @@ function TierRow({
             ) : null}
             {tier.releaseAfterPrevious && previous ? (
               <Badge variant="outline">
+                {tier.hideUntilReleased ? <EyeOff className="size-3" /> : null}
                 After {previous.name || "the tier above"}
               </Badge>
             ) : null}
@@ -848,13 +849,26 @@ function TierDetails({
         />
         {previous ? (
           <DetailToggle
-            label={`Release after ${previous.name || "the tier above"}`}
-            hint="Stays off the public page and the door until the tier above sells out, passes its sale end, or is switched off."
+            label={`Sell after ${previous.name || "the tier above"}`}
+            hint="Locked online and at the door until the tier above sells out, passes its sale end, or is switched off. An order that takes the last of it unlocks this one straight away."
             checked={tier.releaseAfterPrevious}
             onChange={(releaseAfterPrevious) =>
               onPatch({ releaseAfterPrevious })
             }
-          />
+          >
+            {tier.releaseAfterPrevious ? (
+              <ToggleRow
+                label="Hide until it unlocks"
+                hint={
+                  tier.hideUntilReleased
+                    ? "Buyers won't see this tier until it goes on sale."
+                    : "Buyers see it locked with its price, so they know it goes up next."
+                }
+                checked={tier.hideUntilReleased}
+                onChange={(hideUntilReleased) => onPatch({ hideUntilReleased })}
+              />
+            ) : null}
+          </DetailToggle>
         ) : null}
         <DetailToggle
           label="Hidden until unlocked by a code"
@@ -879,19 +893,29 @@ function TierDetails({
   );
 }
 
-function DetailToggle({
-  label,
-  hint,
-  checked,
-  onChange,
-}: {
+type ToggleProps = {
   label: string;
   hint: string;
   checked: boolean;
   onChange: (value: boolean) => void;
-}) {
+};
+
+/** A boxed setting. `children` sits under it, for options that depend on it. */
+function DetailToggle({
+  children,
+  ...row
+}: ToggleProps & { children?: ReactNode }) {
   return (
-    <label className="flex cursor-pointer items-start justify-between gap-4 rounded-lg border p-3">
+    <div className="rounded-lg border">
+      <ToggleRow {...row} />
+      {children ? <div className="border-t pl-4">{children}</div> : null}
+    </div>
+  );
+}
+
+function ToggleRow({ label, hint, checked, onChange }: ToggleProps) {
+  return (
+    <label className="flex cursor-pointer items-start justify-between gap-4 p-3">
       <span>
         <Label className="cursor-pointer">{label}</Label>
         <span className="text-muted-foreground mt-0.5 block text-xs">
