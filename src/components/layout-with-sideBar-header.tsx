@@ -6,6 +6,8 @@ interface LayoutWithSideBarHeaderProps {
   children: React.ReactNode;
   sidebar: React.ReactNode;
   header: React.ReactNode;
+  /** A second column beside the sidebar, such as a page's section rail. */
+  rail?: React.ReactNode;
   /** A panel docked to the right of the content column, such as Will GPT. */
   aside?: React.ReactNode;
 }
@@ -14,6 +16,7 @@ export function LayoutWithSideBarHeader({
   children,
   sidebar,
   header: header,
+  rail,
   aside,
 }: LayoutWithSideBarHeaderProps) {
   return (
@@ -25,6 +28,7 @@ export function LayoutWithSideBarHeader({
           comes and goes, which is what `h-dvh` was for. */}
       <div className="bg-sidebar fixed inset-0 flex overflow-hidden">
         {sidebar}
+        {rail}
         {/* The inset/rounding is a desktop treatment only, and is done in CSS
             rather than JS so the first paint matches the server render. */}
         {/* `min-w-0` so a wide page shrinks to the viewport and scrolls inside

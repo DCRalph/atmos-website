@@ -8,14 +8,20 @@ import {
   CheckCircle2,
   Clock,
   Eye,
+  FileText,
+  KeyRound,
+  LayoutDashboard,
   Loader2,
   Lock,
+  MonitorSmartphone,
+  TriangleAlert,
   XCircle,
 } from "lucide-react";
 
 import { api, type RouterOutputs } from "~/trpc/react";
 import { authClient } from "~/lib/auth-client";
 import { AdminSection } from "~/components/admin/admin-section";
+import { SectionNav } from "~/components/admin/section-nav/section-nav";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -28,7 +34,6 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import UserAvatar from "~/components/UserAvatar";
 import { useConfirm } from "~/components/confirm-provider";
 import { UserActivityLogs } from "~/components/admin/user-activity-logs";
@@ -42,6 +47,7 @@ import {
 import { SessionsTable } from "~/components/account/sessions-table";
 import { SignInMethodRow } from "~/components/account/sign-in-method-row";
 import { formatDate, formatDateTime } from "~/lib/date-utils";
+import { useTabParam } from "~/hooks/use-tab-param";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -191,6 +197,13 @@ function RestrictedView({ user }: { user: User }) {
 }
 
 function ManageableView({ user }: { user: ManageableUser }) {
+  const tab = useTabParam([
+    "overview",
+    "sign-in",
+    "sessions",
+    "activity",
+    "danger",
+  ]);
   return (
     <>
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -217,41 +230,48 @@ function ManageableView({ user }: { user: ManageableUser }) {
         />
       </div>
 
-      <Tabs defaultValue="overview">
-        <TabsList className="mb-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="sign-in">Sign-in</TabsTrigger>
-          <TabsTrigger value="sessions">Sessions</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
-          <TabsTrigger value="danger">Danger</TabsTrigger>
-        </TabsList>
+      <SectionNav
+        title={user.name}
+        backLink={{ href: "/admin/users", label: "Users" }}
+        groups={[
+          {
+            items: [
+              { value: "overview", label: "Overview", icon: LayoutDashboard },
+              {
+                value: "sign-in",
+                label: "Sign-in",
+                icon: KeyRound,
+                count: user.accounts.length,
+              },
+              {
+                value: "sessions",
+                label: "Sessions",
+                icon: MonitorSmartphone,
+                count: user.sessions.length,
+              },
+              { value: "activity", label: "Activity", icon: FileText },
+              { value: "danger", label: "Danger", icon: TriangleAlert },
+            ],
+          },
+        ]}
+        {...tab}
+      />
 
-        <TabsContent value="overview">
-          <div className="grid gap-6 lg:grid-cols-2">
-            <DetailsCard user={user} />
-            <PermissionsCard user={user} />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="sign-in">
-          <div className="grid gap-6 lg:grid-cols-2">
-            <ConnectedAccountsCard user={user} />
-            <PasswordCard user={user} />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="sessions">
-          <SessionsCard user={user} />
-        </TabsContent>
-
-        <TabsContent value="activity">
-          <UserActivityLogs userId={user.id} />
-        </TabsContent>
-
-        <TabsContent value="danger">
-          <DangerCard user={user} />
-        </TabsContent>
-      </Tabs>
+      {tab.value === "overview" ? (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <DetailsCard user={user} />
+          <PermissionsCard user={user} />
+        </div>
+      ) : null}
+      {tab.value === "sign-in" ? (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <ConnectedAccountsCard user={user} />
+          <PasswordCard user={user} />
+        </div>
+      ) : null}
+      {tab.value === "sessions" ? <SessionsCard user={user} /> : null}
+      {tab.value === "activity" ? <UserActivityLogs userId={user.id} /> : null}
+      {tab.value === "danger" ? <DangerCard user={user} /> : null}
     </>
   );
 }

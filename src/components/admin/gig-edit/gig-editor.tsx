@@ -1,11 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { SerializedEditorState } from "lexical";
-import { ArrowLeft, ExternalLink, Info, Loader2, Trash2 } from "lucide-react";
+import {
+  ExternalLink,
+  FileText,
+  HeartHandshake,
+  Info,
+  ListChecks,
+  Loader2,
+  Trash2,
+} from "lucide-react";
 import { api } from "~/trpc/react";
 import { gigPath, gigSlug } from "~/lib/gig-url";
 import { AdminSection } from "~/components/admin/admin-section";
@@ -13,6 +20,7 @@ import { GigFlagsField } from "~/components/admin/gig-flags-field";
 import { GigStatusBadge } from "~/components/admin/gig-status-badge";
 import { GigMediaManager } from "~/components/admin/gig-media-manager";
 import { SaveBar } from "~/components/admin/save-status";
+import { SectionNav } from "~/components/admin/section-nav/section-nav";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -36,6 +44,7 @@ import {
 } from "~/components/ui/alert-dialog";
 import { DateTimePicker } from "~/components/ui/datetime-picker";
 import { LexicalRichTextEditor } from "~/components/lexical";
+import { useTabParam } from "~/hooks/use-tab-param";
 import { useUnsavedChangesWarning } from "~/hooks/use-unsaved-changes-warning";
 import { useUpload } from "~/hooks/use-upload";
 import { GigStatus } from "~Prisma/browser";
@@ -317,8 +326,9 @@ type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 
 export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
   const router = useRouter();
-  const [editorTab, setEditorTab] = useState<"details" | "tasks" | "donations">(
-    "details",
+  const { value: editorTab, onValueChange: setEditorTab } = useTabParam(
+    ["details", "tasks", "donations"],
+    "section",
   );
   const utils = api.useUtils();
 
@@ -708,6 +718,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
     <AdminSection
       title={isNew ? "Create gig" : "Manage gig"}
       subtitle={isNew ? undefined : (gig?.title ?? undefined)}
+      backLink={{ href: "/admin/gigs", label: "Gigs" }}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           {gig ? (
@@ -767,48 +778,42 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
         </div>
       }
     >
-      <div className="mb-4">
-        {/* A real link, so the unsaved-changes guard can intercept the click —
-            it watches anchors, not programmatic router calls. */}
-        <Button variant="outline" asChild>
-          <Link href="/admin/gigs">
-            <ArrowLeft className="h-4 w-4" />
-            Back to gigs
-          </Link>
-        </Button>
-      </div>
-
       {gigId ? (
-        <div
-          className="mb-5 flex gap-2 border-b pb-3"
-          role="tablist"
-          aria-label="Gig sections"
-        >
-          <Button
-            role="tab"
-            aria-selected={editorTab === "details"}
-            variant={editorTab === "details" ? "secondary" : "ghost"}
-            onClick={() => setEditorTab("details")}
-          >
-            Details
-          </Button>
-          <Button
-            role="tab"
-            aria-selected={editorTab === "tasks"}
-            variant={editorTab === "tasks" ? "secondary" : "ghost"}
-            onClick={() => setEditorTab("tasks")}
-          >
-            Tasks
-          </Button>
-          <Button
-            role="tab"
-            aria-selected={editorTab === "donations"}
-            variant={editorTab === "donations" ? "secondary" : "ghost"}
-            onClick={() => setEditorTab("donations")}
-          >
-            Donations
-          </Button>
-        </div>
+        <SectionNav
+          title={gig?.title ?? "Gig"}
+          status={
+            gig ? (
+              <GigStatusBadge
+                status={gig.status}
+                startsAt={gig.gigStartTime}
+                endsAt={gig.gigEndTime}
+                flags={gig}
+                announceAt={gig.announceAt}
+              />
+            ) : undefined
+          }
+          backLink={{ href: "/admin/gigs", label: "Gigs" }}
+          groups={[
+            {
+              items: [
+                {
+                  value: "details",
+                  label: "Details",
+                  icon: FileText,
+                  dirty: isDirty,
+                },
+                { value: "tasks", label: "Tasks", icon: ListChecks },
+                {
+                  value: "donations",
+                  label: "Donations",
+                  icon: HeartHandshake,
+                },
+              ],
+            },
+          ]}
+          value={editorTab}
+          onValueChange={setEditorTab}
+        />
       ) : null}
       {gigId && editorTab === "tasks" ? <GigTasks gigId={gigId} /> : null}
       {gigId && editorTab === "donations" ? (

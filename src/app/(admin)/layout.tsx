@@ -7,6 +7,7 @@ import { db } from "~/server/db";
 import { LayoutWithSideBarHeader } from "~/components/layout-with-sideBar-header";
 import { DashboardSideBar } from "~/components/admin/admin-sidebar";
 import { DashboardHeader } from "~/components/dash-header";
+import { SectionRail } from "~/components/admin/section-nav/section-rail";
 import { UnsavedChangesProvider } from "~/components/admin/unsaved-changes-provider";
 import { WillGptProvider } from "~/components/admin/will-gpt/will-gpt-provider";
 import {
@@ -48,6 +49,7 @@ export default async function AdminLayout({
         <WillGptProvider>
           <LayoutWithSideBarHeader
             sidebar={<DashboardSideBar />}
+            rail={<SectionRail />}
             header={<DashboardHeader actions={<WillGptToggle />} />}
             aside={<WillGptRail />}
           >

@@ -12,9 +12,20 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { SectionNav } from "~/components/admin/section-nav/section-nav";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Check, X, Pencil } from "lucide-react";
+import {
+  BadgePercent,
+  Boxes,
+  Check,
+  Inbox,
+  Loader2,
+  Package,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import { Badge } from "~/components/ui/badge";
 import {
   Dialog,
@@ -120,6 +131,17 @@ function createEmptyDiscountRule(): DiscountRuleForm {
     requirementQuantities: {},
     requirementDiscountValues: {},
   };
+}
+
+/** One section's content, mounted only while it is open. */
+function Panel({
+  open,
+  children,
+}: {
+  open: boolean;
+  children: React.ReactNode;
+}) {
+  return open ? <div className="space-y-4">{children}</div> : null;
 }
 
 export function GearRentalManager() {
@@ -811,15 +833,34 @@ export function GearRentalManager() {
   ];
 
   return (
-    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-      <TabsList>
-        <TabsTrigger value="requests">Requests</TabsTrigger>
-        <TabsTrigger value="inventory">Inventory</TabsTrigger>
-        <TabsTrigger value="packages">Packages</TabsTrigger>
-        <TabsTrigger value="discounts">Discount rules</TabsTrigger>
-      </TabsList>
+    <div className="space-y-4">
+      <SectionNav
+        title="Rentals"
+        groups={[
+          {
+            items: [
+              {
+                value: "requests",
+                label: "Requests",
+                icon: Inbox,
+                count: rentalRows.filter((row) => row.status === "PENDING")
+                  .length,
+              },
+              { value: "inventory", label: "Inventory", icon: Package },
+              { value: "packages", label: "Packages", icon: Boxes },
+              {
+                value: "discounts",
+                label: "Discount rules",
+                icon: BadgePercent,
+              },
+            ],
+          },
+        ]}
+        value={activeTab}
+        onValueChange={setActiveTab}
+      />
 
-      <TabsContent value="requests" className="space-y-4">
+      <Panel open={activeTab === "requests"}>
         <Card>
           <CardHeader>
             <CardTitle>Rental requests</CardTitle>
@@ -839,9 +880,9 @@ export function GearRentalManager() {
             />
           </CardContent>
         </Card>
-      </TabsContent>
+      </Panel>
 
-      <TabsContent value="inventory" className="space-y-4">
+      <Panel open={activeTab === "inventory"}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -1126,9 +1167,9 @@ export function GearRentalManager() {
             />
           </CardContent>
         </Card>
-      </TabsContent>
+      </Panel>
 
-      <TabsContent value="packages" className="space-y-4">
+      <Panel open={activeTab === "packages"}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -1433,9 +1474,9 @@ export function GearRentalManager() {
             />
           </CardContent>
         </Card>
-      </TabsContent>
+      </Panel>
 
-      <TabsContent value="discounts" className="space-y-4">
+      <Panel open={activeTab === "discounts"}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -1564,8 +1605,8 @@ export function GearRentalManager() {
             />
           </CardContent>
         </Card>
-      </TabsContent>
-    </Tabs>
+      </Panel>
+    </div>
   );
 }
 
