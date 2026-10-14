@@ -18,7 +18,10 @@ import {
 } from "~/server/ticketing/order-sql";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
 import { soldFaceValueCents } from "~/lib/ticketing/tiers";
-import { venueFeePerTicketCents } from "~/lib/ticketing/money";
+import {
+  gstComponentCents,
+  venueFeePerTicketCents,
+} from "~/lib/ticketing/money";
 import { toCsv } from "~/lib/csv";
 import {
   ANALYTICS_RANGES,
@@ -34,6 +37,7 @@ import {
 import {
   getTicketingSettings,
   resolveBookingFee,
+  resolveGstRateBp,
 } from "~/server/ticketing/settings";
 
 /**
@@ -145,7 +149,6 @@ export const ticketAnalyticsRouter = createTRPCRouter({
             bookingFeeCents: true,
             venueFeeCents: true,
             totalCents: true,
-            gstCents: true,
             refundedCents: true,
           },
         }),
@@ -281,6 +284,11 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           ? null
           : netCents + Math.max(0, sellable - sold) * revenuePerTicketCents;
 
+      // GST inside net revenue and the sell out, at the event's rate. Worked
+      // out from the net rather than summed off orders, so refunds take
+      // their GST with them.
+      const gstRateBp = resolveGstRateBp(event);
+
       return {
         event: {
           id: event.id,
@@ -297,7 +305,6 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           discountCents: money._sum.discountCents ?? 0,
           bookingFeeCents: money._sum.bookingFeeCents ?? 0,
           venueFeeCents: money._sum.venueFeeCents ?? 0,
-          gstCents: money._sum.gstCents ?? 0,
         },
         costs: {
           venueHireCents,
@@ -313,6 +320,13 @@ export const ticketAnalyticsRouter = createTRPCRouter({
             revenueIfSoldOutCents === null
               ? null
               : revenueIfSoldOutCents - costsCents,
+        },
+        gst: {
+          netCents: gstComponentCents(netCents, gstRateBp),
+          ifSoldOutCents:
+            revenueIfSoldOutCents === null
+              ? null
+              : gstComponentCents(revenueIfSoldOutCents, gstRateBp),
         },
         counts: {
           orders: orderCount,

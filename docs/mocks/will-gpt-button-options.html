@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Will GPT button, round two</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --fg: #fafafa;
+    --muted: #a1a1a1;
+    --border: rgba(255,255,255,.1);
+    --input: rgba(255,255,255,.15);
+    --pink: #ff4fd8;
+    --orange: #ff8a3d;
+    --purple: #a855f7;
+    --grad: linear-gradient(120deg, var(--orange) 0%, var(--pink) 50%, var(--purple) 100%);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 1040px; margin: 0 auto; padding: 48px 24px 96px; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 6px; }
+  .lede { color: var(--muted); margin: 0 0 24px; }
+  .ref { border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin: 0 0 24px; color: var(--muted); }
+  .ref strong { color: var(--fg); font-weight: 600; }
+  .ref ul { margin: 6px 0 0; padding-left: 18px; }
+  .ref li { margin: 2px 0; }
+  h2 { font-size: 15px; font-weight: 600; margin: 40px 0 4px; display: flex; align-items: baseline; gap: 10px; }
+  h2 span { color: var(--muted); font-weight: 500; font-size: 12px; letter-spacing: .04em; }
+  .note { color: var(--muted); margin: 0 0 14px; }
+  .note b { color: var(--fg); font-weight: 500; }
+
+  /* The admin header the button lives in. */
+  .shell { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .shell + .shell { margin-top: 10px; }
+  .hdr {
+    color: var(--fg); display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    height: 64px; padding: 0 24px; background: var(--bg); border-bottom: 1px solid var(--border);
+  }
+  .crumbs { display: flex; align-items: center; gap: 12px; }
+  .ic { width: 36px; height: 36px; display: grid; place-items: center; color: var(--fg); }
+  .sep { width: 1px; height: 32px; background: var(--border); }
+  .title { font-size: 24px; font-weight: 600; letter-spacing: -.01em; }
+  .right { display: flex; align-items: center; gap: 16px; }
+  .states { display: flex; align-items: center; gap: 10px; }
+  .states > div { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .states small { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .avatar { width: 32px; height: 32px; border-radius: 999px; background: #2a2a2a; border: 1px solid var(--border); }
+  .body { height: 56px; background: var(--bg); }
+  .shell.light { --bg: #fff; --fg: #0a0a0a; --muted: #737373; --border: #e5e5e5; --input: #e5e5e5; }
+
+  /* Base: the admin outline button. */
+  .btn {
+    position: relative; isolation: isolate; display: inline-flex; align-items: center; gap: 8px;
+    height: 36px; padding: 0 12px; border-radius: 8px; overflow: hidden;
+    font: inherit; font-weight: 500; color: var(--fg); cursor: pointer;
+    border: 1px solid var(--input); background: color-mix(in oklab, var(--input) 30%, transparent);
+    transition: border-color .2s, background-color .2s, box-shadow .3s;
+  }
+  .light .btn { background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .btn .w { font-weight: 600; position: relative; }
+  .btn svg { width: 16px; height: 16px; flex: none; position: relative; }
+
+  /* The glow behind the star: a pre blurred disc that only ever moves or fades,
+     so hover and open never repaint the blur. */
+  .halo {
+    position: absolute; left: 20px; top: 50%; width: 28px; height: 28px; margin: -14px 0 0 -14px;
+    border-radius: 999px; pointer-events: none; z-index: 0;
+    background: radial-gradient(circle, rgba(255,79,216,.75), rgba(255,138,61,.35) 40%, transparent 68%);
+    filter: blur(6px); opacity: .7; transform: scale(.8);
+    transition: transform .35s cubic-bezier(.2,.8,.2,1), opacity .35s;
+  }
+  .btn:hover .halo, .btn.hover .halo { opacity: 1; transform: scale(1.3); }
+  .btn.on .halo { opacity: 1; transform: scale(1.7); }
+
+  /* Open: the button tints and lights up. Shared by every variant. */
+  .btn.on {
+    border-color: rgba(255,79,216,.6);
+    background: linear-gradient(120deg, rgba(255,138,61,.14), rgba(255,79,216,.14), rgba(168,85,247,.16));
+    box-shadow: 0 0 20px rgba(255,79,216,.3);
+  }
+  .btn:hover, .btn.hover { border-color: rgba(255,79,216,.4); }
+  .light .btn.on { box-shadow: 0 0 16px rgba(255,79,216,.25); }
+
+  /* 1. Turn: the Gemini style four point star. It quarter turns and grows on hover
+     and sits turned while open, so the open state reads at a glance. */
+  .c1 svg { transition: transform .45s cubic-bezier(.2,.8,.2,1); }
+  .c1:hover svg, .c1.hover svg { transform: rotate(45deg) scale(1.15); }
+  .c1.on svg { transform: rotate(45deg) scale(1.15); }
+
+  /* 2. Sweep: Google's gradient shape, a sharp leading edge diffusing at the tail,
+     crosses the button once on hover. Open parks it at the trailing edge. */
+  .c2 .sweep {
+    position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    background: linear-gradient(90deg, transparent 0%, rgba(168,85,247,.12) 30%, rgba(255,79,216,.45) 58%, rgba(255,138,61,.75) 60%, transparent 61%);
+    transform: translateX(-100%);
+  }
+  .c2:hover .sweep { animation: sweep .9s cubic-bezier(.3,.7,.3,1) forwards; }
+  .c2.hover .sweep { transform: translateX(-15%); }
+  .c2.on .sweep {
+    transform: none;
+    background: linear-gradient(90deg, transparent 0%, rgba(168,85,247,.12) 40%, rgba(255,79,216,.3) 80%, rgba(255,138,61,.55) 100%);
+  }
+  @keyframes sweep { to { transform: translateX(100%); } }
+
+  /* 3. Orbit: a short bright arc runs around the border on hover, the way the
+     Gemini edge light travels, then eases to a stop. Open leaves the arc lit at
+     the top right. Needs @property, so a plain border is the fallback. */
+  @property --orbit { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+  @property --arc { syntax: "<number>"; inherits: true; initial-value: 0; }
+  .c3 { --orbit: 0deg; --arc: 0; transition: --arc .4s, --orbit 0s .4s, background-color .2s, box-shadow .3s; }
+  .c3::before {
+    content: ""; position: absolute; inset: 0; border-radius: 7px; padding: 2px; z-index: 1; pointer-events: none;
+    background: conic-gradient(from var(--orbit), transparent 0 70%, rgba(168,85,247,.0) 70%, var(--purple) 82%, var(--pink) 92%, var(--orange) 99%, transparent 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    opacity: var(--arc); transition: opacity .3s;
+  }
+  .c3:hover { --arc: 1; --orbit: 6turn; transition: --arc 0s, --orbit 9s cubic-bezier(.15,.6,.3,1), background-color .2s; }
+  .c3.hover { --arc: 1; --orbit: 200deg; }
+  .c3.on { --arc: 1; --orbit: 100deg; }
+  .c3.on::before { opacity: 1; }
+
+  /* 4. Breathe: while open, the glow behind the star breathes slowly, like
+     Gemini Live listening. Transform and opacity only, 4s, so it is cheap. */
+  .c4.on .halo { animation: breathe 4s ease-in-out infinite; }
+  @keyframes breathe {
+    0%, 100% { transform: scale(1.5); opacity: .8; }
+    50% { transform: scale(1.9); opacity: 1; }
+  }
+
+  /* 5. Pulse: opening fires one ring outward from the star, a single pulse
+     inspired by the Gemini activation. Hover previews it. */
+  .c5 .ring {
+    position: absolute; left: 20px; top: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px;
+    border-radius: 999px; border: 1.5px solid rgba(255,79,216,.9); opacity: 0; pointer-events: none; z-index: 0;
+    transform: scale(.6);
+  }
+  .c5:hover .ring { animation: pulse .7s cubic-bezier(.2,.7,.3,1) forwards; }
+  .c5.hover .ring { opacity: .6; transform: scale(1.5); }
+  .c5.on .ring { opacity: .35; transform: scale(2.4); border-color: rgba(255,79,216,.5); }
+  .c5:hover svg, .c5.hover svg, .c5.on svg { transform: scale(1.15); }
+  .c5 svg { transition: transform .3s cubic-bezier(.3,1.4,.5,1); }
+  @keyframes pulse {
+    0% { opacity: .9; transform: scale(.6); }
+    100% { opacity: 0; transform: scale(3); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .btn, .btn * , .btn::before { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Will GPT button, round two</h1>
+  <p class="lede">Five refinements of C, the quiet outline button with a glowing icon, taking cues from Google's Gemini motion. Hover any button to see its move. Dark and light, idle, hover and open.</p>
+
+  <div class="ref">
+    <strong>What was borrowed from Google</strong>
+    <ul>
+      <li>The four point star rather than the lucide sparkles. Google's research found one sparkle is enough to say "AI".</li>
+      <li>Gradients with a sharp, nearly opaque leading edge that diffuses at the tail, used to point at what matters.</li>
+      <li>Motion with a defined start and end, played on an action, not forever. The one looping effect here only runs while the rail is open.</li>
+      <li>Everything animates on transform and opacity. The blur is drawn once and only moves or fades, so nothing repaints each frame.</li>
+    </ul>
+  </div>
+
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#ff8a3d"/><stop offset=".5" stop-color="#ff4fd8"/><stop offset="1" stop-color="#a855f7"/>
+      </linearGradient>
+      <symbol id="star" viewBox="0 0 24 24">
+        <path d="M12 1C12.5 7 17 11.5 23 12 17 12.5 12.5 17 12 23 11.5 17 7 12.5 1 12 7 11.5 11.5 7 12 1Z"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- 1 -->
+  <h2>1 <span>TURN</span></h2>
+  <p class="note">The star turns 45 degrees and grows on hover, and stays turned while open. <b>Motion:</b> one 450ms ease on the icon, nothing else moves.</p>
+  <div class="shell">
+    <div class="hdr">
+      <div class="crumbs"><span class="ic">&#9776;</span><span class="sep"></span><span class="title">Ticketing</span></div>
+      <div class="right"><div class="states">
+        <div><button class="btn c1"><span class="halo"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Idle</small></div>
+        <div><button class="btn c1 hover"><span class="halo"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Hover</small></div>
+        <div><button class="btn c1 on"><span class="halo"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Open</small></div>
+      </div><span class="avatar"></span></div>
+    </div>
+    <div class="body"></div>
+  </div>
+  <div class="shell light">
+    <div class="hdr">
+      <div class="crumbs"><span class="ic">&#9776;</span><span class="sep"></span><span class="title">Ticketing</span></div>
+      <div class="right"><div class="states">
+        <div><button class="btn c1"><span class="halo"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Idle</small></div>
+        <div><button class="btn c1 on"><span class="halo"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Open</small></div>
+      </div><span class="avatar"></span></div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <h2>2 <span>SWEEP</span></h2>
+  <p class="note">A gradient with a hard leading edge crosses the button once on hover, left to right, then is gone. Open parks it at the right edge so the colour trails back toward the star. <b>Motion:</b> one 900ms sweep per hover.</p>
+  <div class="shell">
+    <div class="hdr">
+      <div class="crumbs"><span class="ic">&#9776;</span><span class="sep"></span><span class="title">Ticketing</span></div>
+      <div class="right"><div class="states">
+        <div><button class="btn c2"><span class="sweep"></span><span class="halo"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Idle</small></div>
+        <div><button class="btn c2 hover"><span class="sweep"></span><span class="halo"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Mid sweep</small></div>
+        <div><button class="btn c2 on"><span class="sweep"></span><span class="halo"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Open</small></div>
+      </div><span class="avatar"></span></div>
+    </div>
+    <div class="body"></div>
+  </div>
+  <div class="shell light">
+    <div class="hdr">
+      <div class="crumbs"><span class="ic">&#9776;</span><span class="sep"></span><span class="title">Ticketing</span></div>
+      <div class="right"><div class="states">
+        <div><button class="btn c2"><span class="sweep"></span><span class="halo"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Idle</small></div>
+        <div><button class="btn c2 on"><span class="sweep"></span><span class="halo"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Open</small></div>
+      </div><span class="avatar"></span></div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <h2>3 <span>ORBIT</span></h2>
+  <p class="note">A short bright arc travels round the border while hovered, like the Gemini edge light, and eases to a stop when you leave. Open keeps the arc lit at the top right corner. <b>Motion:</b> a 9s decelerating orbit on hover, static when open.</p>
+  <div class="shell">
+    <div class="hdr">
+      <div class="crumbs"><span class="ic">&#9776;</span><span class="sep"></span><span class="title">Ticketing</span></div>
+      <div class="right"><div class="states">
+        <div><button class="btn c3"><span class="halo"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Idle</small></div>
+        <div><button class="btn c3 hover"><span class="halo"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Mid orbit</small></div>
+        <div><button class="btn c3 on"><span class="halo"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Open</small></div>
+      </div><span class="avatar"></span></div>
+    </div>
+    <div class="body"></div>
+  </div>
+  <div class="shell light">
+    <div class="hdr">
+      <div class="crumbs"><span class="ic">&#9776;</span><span class="sep"></span><span class="title">Ticketing</span></div>
+      <div class="right"><div class="states">
+        <div><button class="btn c3"><span class="halo"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Idle</small></div>
+        <div><button class="btn c3 on"><span class="halo"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Open</small></div>
+      </div><span class="avatar"></span></div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <h2>4 <span>BREATHE</span></h2>
+  <p class="note">Same as 1 at rest and on hover. While the rail is open the glow behind the star breathes slowly, the way Gemini Live shows it is listening. <b>Motion:</b> a 4s loop on scale and opacity, open only.</p>
+  <div class="shell">
+    <div class="hdr">
+      <div class="crumbs"><span class="ic">&#9776;</span><span class="sep"></span><span class="title">Ticketing</span></div>
+      <div class="right"><div class="states">
+        <div><button class="btn c4"><span class="halo"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Idle</small></div>
+        <div><button class="btn c4 hover"><span class="halo"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Hover</small></div>
+        <div><button class="btn c4 on"><span class="halo"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Open, breathing</small></div>
+      </div><span class="avatar"></span></div>
+    </div>
+    <div class="body"></div>
+  </div>
+  <div class="shell light">
+    <div class="hdr">
+      <div class="crumbs"><span class="ic">&#9776;</span><span class="sep"></span><span class="title">Ticketing</span></div>
+      <div class="right"><div class="states">
+        <div><button class="btn c4"><span class="halo"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Idle</small></div>
+        <div><button class="btn c4 on"><span class="halo"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Open, breathing</small></div>
+      </div><span class="avatar"></span></div>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <h2>5 <span>PULSE</span></h2>
+  <p class="note">Opening fires one ring out from the star and the star pops up a size. Hover previews the ring. <b>Motion:</b> one 700ms ring per press, nothing loops.</p>
+  <div class="shell">
+    <div class="hdr">
+      <div class="crumbs"><span class="ic">&#9776;</span><span class="sep"></span><span class="title">Ticketing</span></div>
+      <div class="right"><div class="states">
+        <div><button class="btn c5"><span class="halo"></span><span class="ring"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Idle</small></div>
+        <div><button class="btn c5 hover"><span class="halo"></span><span class="ring"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Mid pulse</small></div>
+        <div><button class="btn c5 on"><span class="halo"></span><span class="ring"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Open</small></div>
+      </div><span class="avatar"></span></div>
+    </div>
+    <div class="body"></div>
+  </div>
+  <div class="shell light">
+    <div class="hdr">
+      <div class="crumbs"><span class="ic">&#9776;</span><span class="sep"></span><span class="title">Ticketing</span></div>
+      <div class="right"><div class="states">
+        <div><button class="btn c5"><span class="halo"></span><span class="ring"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Idle</small></div>
+        <div><button class="btn c5 on"><span class="halo"></span><span class="ring"></span><svg fill="url(#g)"><use href="#star"/></svg><span class="w">Will GPT</span></button><small>Open</small></div>
+      </div><span class="avatar"></span></div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

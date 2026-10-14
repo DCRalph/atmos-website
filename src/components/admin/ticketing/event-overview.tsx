@@ -118,7 +118,7 @@ export function EventOverview({
             sub:
               money.refundedCents > 0
                 ? `${formatNZD(money.grossCents)} gross · ${formatNZD(money.refundedCents)} refunded`
-                : `Includes GST ${formatNZD(money.gstCents)}`,
+                : undefined,
             accent: "revenue",
           },
           {
@@ -152,13 +152,12 @@ export function EventOverview({
         ]}
       />
 
-      {costs.totalCents > 0 ? (
-        <BreakEven
-          costs={costs}
-          sold={counts.sold}
-          capacity={counts.capacity}
-        />
-      ) : null}
+      <Profit
+        costs={costs}
+        netCents={money.netCents}
+        sold={counts.sold}
+        capacity={counts.capacity}
+      />
 
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-3">
@@ -244,6 +243,7 @@ export function EventOverview({
           <PaidWith overview={overview.data} />
           <Funnel counts={counts} />
           <MoneyBreakdown money={money} />
+          <Gst gst={overview.data.gst} money={money} costs={costs} />
           {discounts.data && discounts.data.length > 0 ? (
             <ChartCard title="Discount codes">
               <BarList
@@ -647,24 +647,66 @@ function MoneyBreakdown({ money }: { money: Overview["money"] }) {
           <dt>Net</dt>
           <dd className="tabular-nums">{formatNZD(money.netCents)}</dd>
         </div>
-        {/* Below the total, not a step in it: GST is already inside every
-            line above, and listing it as a deduction would double-count. */}
-        <Row label="of which GST" value={formatNZD(money.gstCents)} />
       </dl>
     </ChartCard>
   );
 }
 
 /**
- * Where sales stand against the costs: a bar from nothing to the room with
- * break even marked on it, then the numbers behind it.
+ * GST on its own, so the money above can stay GST inclusive without a tax
+ * line in every card. The sell out figure is the projection's GST, at the
+ * same rate.
  */
-function BreakEven({
+function Gst({
+  gst,
+  money,
   costs,
+}: {
+  gst: Overview["gst"];
+  money: Overview["money"];
+  costs: Overview["costs"];
+}) {
+  return (
+    <ChartCard title="GST">
+      <dl className="space-y-1 text-sm">
+        <Row label="Collected so far" value={formatNZD(gst.netCents)} />
+        <Row
+          label="Net revenue ex GST"
+          value={formatNZD(money.netCents - gst.netCents)}
+        />
+        {gst.ifSoldOutCents !== null && costs.revenueIfSoldOutCents !== null ? (
+          <>
+            <div className="flex justify-between gap-3 border-t pt-1 font-semibold">
+              <dt>On a sell out</dt>
+              <dd className="tabular-nums">{formatNZD(gst.ifSoldOutCents)}</dd>
+            </div>
+            <Row
+              label="Sell out revenue ex GST"
+              value={formatNZD(
+                costs.revenueIfSoldOutCents - gst.ifSoldOutCents,
+              )}
+            />
+          </>
+        ) : null}
+      </dl>
+    </ChartCard>
+  );
+}
+
+/**
+ * Where sales stand against the costs. A bar from nothing to the room with
+ * break even marked on it, once there are costs to break even on, then the
+ * money before costs and after them, so far and on a sell out. Always shown:
+ * with no costs entered, profit is just revenue.
+ */
+function Profit({
+  costs,
+  netCents,
   sold,
   capacity,
 }: {
   costs: Overview["costs"];
+  netCents: number;
   sold: number;
   capacity: number;
 }) {
@@ -673,92 +715,85 @@ function BreakEven({
   const at = (tickets: number) => `${(tickets / scale) * 100}%`;
   const toGo = target === null ? null : Math.max(0, target - sold);
   const perTicket = costs.revenuePerTicketCents;
+  const tone = (cents: number | null) =>
+    cents === null ? undefined : cents < 0 ? "loss" : "gain";
 
   return (
     <div className="rounded-lg border p-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <p className="text-muted-foreground text-sm font-medium">Break even</p>
-        <p className="text-sm tabular-nums">
-          {toGo === null ? (
-            <span className="text-muted-foreground">
-              Needs a priced tier to work out
-            </span>
-          ) : toGo > 0 ? (
-            <>
-              <span className="text-lg font-semibold">{toGo}</span>{" "}
-              <span className="text-muted-foreground">
-                more {toGo === 1 ? "ticket" : "tickets"} to break even
+      {costs.totalCents > 0 ? (
+        <>
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <p className="text-muted-foreground text-sm font-medium">
+              Break even
+            </p>
+            <p className="text-sm tabular-nums">
+              {toGo === null ? (
+                <span className="text-muted-foreground">
+                  Needs a priced tier to work out
+                </span>
+              ) : toGo > 0 ? (
+                <>
+                  <span className="text-lg font-semibold">{toGo}</span>{" "}
+                  <span className="text-muted-foreground">
+                    more {toGo === 1 ? "ticket" : "tickets"} to break even
+                  </span>
+                </>
+              ) : (
+                <span className="font-semibold">Broken even</span>
+              )}
+            </p>
+          </div>
+
+          <div className="relative mt-6">
+            {target !== null ? (
+              <span
+                className="text-muted-foreground absolute bottom-full mb-1 -translate-x-1/2 text-xs whitespace-nowrap tabular-nums"
+                style={{
+                  left: `clamp(3rem, ${at(target)}, calc(100% - 3rem))`,
+                }}
+              >
+                Break even · {target}
               </span>
-            </>
-          ) : (
-            <span className="font-semibold">Broken even</span>
-          )}
-        </p>
-      </div>
+            ) : null}
+            <div className="bg-muted relative h-2 rounded-full">
+              <div
+                className="absolute inset-y-0 left-0 rounded-full"
+                style={{
+                  width: at(sold),
+                  background: "var(--ticket-series-revenue)",
+                }}
+              />
+              {target !== null ? (
+                <div
+                  className="bg-foreground absolute -inset-y-1 w-0.5"
+                  style={{ left: at(target) }}
+                />
+              ) : null}
+            </div>
+          </div>
+          <div className="text-muted-foreground mt-1 mb-4 flex justify-between text-xs tabular-nums">
+            <span>{sold} sold</span>
+            <span>
+              {costs.sellable} on sale · {capacity} cap
+            </span>
+          </div>
+        </>
+      ) : null}
 
-      <div className="relative mt-6">
-        {target !== null ? (
-          <span
-            className="text-muted-foreground absolute bottom-full mb-1 -translate-x-1/2 text-xs whitespace-nowrap tabular-nums"
-            style={{ left: `clamp(3rem, ${at(target)}, calc(100% - 3rem))` }}
-          >
-            Break even · {target}
-          </span>
-        ) : null}
-        <div className="bg-muted relative h-2 rounded-full">
-          <div
-            className="absolute inset-y-0 left-0 rounded-full"
-            style={{
-              width: at(sold),
-              background: "var(--ticket-series-revenue)",
-            }}
-          />
-          {target !== null ? (
-            <div
-              className="bg-foreground absolute -inset-y-1 w-0.5"
-              style={{ left: at(target) }}
-            />
-          ) : null}
-        </div>
-      </div>
-      <div className="text-muted-foreground mt-1 flex justify-between text-xs tabular-nums">
-        <span>{sold} sold</span>
-        <span>
-          {costs.sellable} on sale · {capacity} cap
-        </span>
-      </div>
-
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <ProfitRow title="Before costs">
         <StatTile
-          label="Costs"
-          value={formatNZD(costs.totalCents)}
-          sub={`${formatNZD(costs.venueHireCents)} venue · ${formatNZD(costs.otherCents)} other${costs.campaignsCents > 0 ? ` · ${formatNZD(costs.campaignsCents)} campaigns` : ""}`}
-        />
-        <StatTile
-          label="Profit so far"
-          value={formatNZD(costs.profitCents)}
-          tone={costs.profitCents < 0 ? "loss" : "gain"}
-          sub="Net revenue less costs"
+          label="Revenue so far"
+          value={formatNZD(netCents)}
+          sub={`${sold} sold`}
         />
         <StatTile
           label="If it sells out"
           value={
-            costs.profitIfSoldOutCents === null
-              ? "—"
-              : formatNZD(costs.profitIfSoldOutCents)
-          }
-          tone={
-            costs.profitIfSoldOutCents === null
-              ? undefined
-              : costs.profitIfSoldOutCents < 0
-                ? "loss"
-                : "gain"
-          }
-          sub={
             costs.revenueIfSoldOutCents === null
-              ? `${costs.sellable} sold`
-              : `${formatNZD(costs.revenueIfSoldOutCents)} revenue · ${costs.sellable} sold`
+              ? "—"
+              : formatNZD(costs.revenueIfSoldOutCents)
           }
+          sub={`${costs.sellable} sold`}
         />
         <StatTile
           label="Per ticket"
@@ -769,8 +804,59 @@ function BreakEven({
               : "From the tier plan, fees included"
           }
         />
-      </div>
+      </ProfitRow>
+
+      <ProfitRow title="After costs" className="mt-4">
+        <StatTile
+          label="Costs"
+          value={formatNZD(costs.totalCents)}
+          sub={
+            costs.totalCents > 0
+              ? `${formatNZD(costs.venueHireCents)} venue · ${formatNZD(costs.otherCents)} other${costs.campaignsCents > 0 ? ` · ${formatNZD(costs.campaignsCents)} campaigns` : ""}`
+              : "None entered yet"
+          }
+        />
+        <StatTile
+          label="Profit so far"
+          value={formatNZD(costs.profitCents)}
+          tone={tone(costs.profitCents)}
+          sub="Revenue less costs"
+        />
+        <StatTile
+          label="Profit if it sells out"
+          value={
+            costs.profitIfSoldOutCents === null
+              ? "—"
+              : formatNZD(costs.profitIfSoldOutCents)
+          }
+          tone={tone(costs.profitIfSoldOutCents)}
+          sub={
+            costs.revenueIfSoldOutCents === null
+              ? "Needs a priced tier to work out"
+              : `${formatNZD(costs.revenueIfSoldOutCents)} less ${formatNZD(costs.totalCents)}`
+          }
+        />
+      </ProfitRow>
     </div>
+  );
+}
+
+function ProfitRow({
+  title,
+  className,
+  children,
+}: {
+  title: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className={className}>
+      <h3 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+        {title}
+      </h3>
+      <div className="mt-1.5 grid gap-2 sm:grid-cols-3">{children}</div>
+    </section>
   );
 }
 

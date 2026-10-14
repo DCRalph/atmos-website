@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>Atmos admin · event profit, before costs and GST</title><style>
+:root{color-scheme:dark;--page:#000;--bg:#0a0a0a;--card:#171717;--accent:#262626;--border:rgba(255,255,255,.1);--ink:#fafafa;--muted:#a1a1a1;--rev:#8b5cf6;--red:#f87171;--green:#4ade80;--track:#262626}
+*{box-sizing:border-box}html{background:var(--page);color:var(--ink)}body{margin:0;font:14px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+h1,h2,h3,h4,p{margin:0}
+.muted{color:var(--muted)}.num{font-variant-numeric:tabular-nums}
+.doc{max-width:1180px;margin:auto;padding:40px 24px 80px}
+.head h1{font-size:30px;line-height:1.2;letter-spacing:-.025em;font-weight:700}.head p{margin-top:10px;color:var(--muted);max-width:80ch}
+.jump{display:flex;gap:24px;flex-wrap:wrap;margin-top:22px;padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);font-weight:600}.jump a{color:inherit;text-decoration:none}.jump small{color:var(--muted);font-weight:400}
+.option{margin-top:56px}.option h2{font-size:22px;letter-spacing:-.02em}.option h2 span{color:var(--muted);font-weight:500;margin-right:8px}.lede{color:var(--muted);font-size:13.5px;max-width:84ch;margin-top:6px}
+.where{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:22px 0 8px;font-weight:600}
+.notes{font-size:13px;color:var(--muted);margin-top:14px;max-width:90ch}.notes b{color:var(--ink);font-weight:600}.notes ul{margin:6px 0 0;padding-left:18px}.notes li{margin:3px 0}
+.surface{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:18px}
+.box{border:1px solid var(--border);border-radius:8px;padding:12px;min-width:0}
+.cap{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}.cap>span:first-child{color:var(--muted);font-size:14px;font-weight:500}
+.sub{color:var(--muted);font-size:14px}
+.strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px}
+.strip .l{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}.strip .v{font-size:24px;font-weight:600;font-variant-numeric:tabular-nums}.strip .s{font-size:13px;color:var(--muted)}
+.tiles{display:grid;gap:8px;margin-top:12px}.t4{grid-template-columns:repeat(4,minmax(0,1fr))}.t3{grid-template-columns:repeat(3,minmax(0,1fr))}.t2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.tile{border:1px solid var(--border);border-radius:8px;padding:12px;min-width:0}.tile .l{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}.tile .v{font-size:24px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums}.tile .s{font-size:13px;color:var(--muted);margin-top:2px}
+.pos{color:var(--green)}.neg{color:var(--red)}
+.bar{position:relative;margin-top:26px}.bar .lab{position:absolute;bottom:100%;margin-bottom:4px;transform:translateX(-50%);font-size:12px;color:var(--muted);white-space:nowrap}
+.track{position:relative;height:8px;background:var(--track);border-radius:99px}.track i{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:var(--rev)}.track b{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink)}
+.ends{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:4px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:12px;margin-top:12px}
+.ph{border:1px dashed rgba(255,255,255,.14);border-radius:8px;min-height:120px;display:grid;place-items:center;color:var(--muted);font-size:13px}
+dl{margin:0;font-size:14px}dl .r{display:flex;justify-content:space-between;gap:12px;padding:2px 0}dl dt{color:var(--muted)}dl dd{margin:0;font-variant-numeric:tabular-nums}
+dl .tot{border-top:1px solid var(--border);margin-top:4px;padding-top:4px;font-weight:600}dl .tot dt{color:var(--ink)}
+.rail{display:flex;flex-direction:column;gap:12px}.rail h5{margin:0 0 8px;color:var(--muted);font-size:14px;font-weight:500}
+.sec{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:16px 0 0;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums;margin-top:10px}
+th{font-weight:400;color:var(--muted);font-size:12px;text-align:right;padding:0 0 6px 14px;white-space:nowrap}th:first-child{text-align:left;padding-left:0}
+td{text-align:right;padding:8px 0 8px 14px;border-top:1px solid var(--border);white-space:nowrap}td:first-child{text-align:left;padding-left:0;color:var(--muted)}
+td.big{font-size:18px;font-weight:600}
+.scroll{overflow-x:auto}
+.shared{margin-top:56px;padding-top:28px;border-top:1px solid var(--border)}
+@media (max-width:900px){.grid2{grid-template-columns:minmax(0,1fr)}.t4{grid-template-columns:repeat(2,minmax(0,1fr))}.strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.t3,.t2{grid-template-columns:minmax(0,1fr)}}
+</style></head><body><main class="doc">
+
+<header class="head">
+<h1>Event overview: sell out profit, before costs and GST</h1>
+<p>Three layouts for the money block at the top of an event's Overview. In all three the sell out profit is always there (today it hides until a cost is entered), there's a before costs view, and GST moves out of the headline and the "Where the money went" card into its own card in the right rail. Same example event throughout: 240 sold, 380 on sale, $9,200 of costs.</p>
+<nav class="jump">
+<a href="#a">A <small>Before and after table</small></a>
+<a href="#b">B <small>Two labelled rows of tiles</small></a>
+<a href="#c">C <small>Current card, always on</small></a>
+<a href="#gst">GST card <small>shared</small></a>
+</nav>
+</header>
+
+<!-- ================= A ================= -->
+<section class="option" id="a">
+<h2><span>A</span>Before and after costs, as a small table</h2>
+<p class="lede">The break even bar stays on top. Underneath, one table: so far and if it sells out down the side, before costs, costs and profit across. The sell out profit is the bottom right number, so it's the one the eye lands on.</p>
+<p class="where">Event › Overview · replaces the Break even card</p>
+<div class="surface">
+<div class="box">
+<div class="cap"><span>Break even</span><span class="num"><b style="font-size:18px">16</b> <span class="muted">more tickets to break even</span></span></div>
+<div class="bar"><span class="lab num" style="left:64%">Break even · 256</span><div class="track"><i style="width:60%"></i><b style="left:64%"></b></div></div>
+<div class="ends num"><span>240 sold</span><span>380 on sale · 400 cap</span></div>
+<div class="scroll"><table>
+<thead><tr><th></th><th>Before costs</th><th>Costs</th><th>Profit</th></tr></thead>
+<tbody>
+<tr><td>So far · 240 sold</td><td>$8,640.00</td><td>−$9,200.00</td><td class="big neg">−$560.00</td></tr>
+<tr><td>If it sells out · 380</td><td>$13,680.00</td><td>−$9,200.00</td><td class="big pos">$4,480.00</td></tr>
+</tbody></table></div>
+<p class="muted" style="font-size:13px;margin-top:8px">$36.00 a ticket on average, fees included. Costs: $2,500 venue · $5,900 other · $800 campaigns.</p>
+</div>
+</div>
+<div class="notes"><b>Why pick it:</b> before and after sit side by side, so the gap costs make is obvious.
+<ul><li>With no costs entered the Costs column reads $0.00 and profit equals before costs. The card still shows, without the break even bar.</li></ul></div>
+</section>
+
+<!-- ================= B ================= -->
+<section class="option" id="b">
+<h2><span>B</span>Two labelled rows of tiles</h2>
+<p class="lede">The bar, then a "Before costs" row (revenue so far, revenue on a sell out, per ticket) and an "After costs" row (costs, profit so far, profit if it sells out). Same tiles the dashboard already uses.</p>
+<p class="where">Event › Overview · replaces the Break even card</p>
+<div class="surface">
+<div class="box">
+<div class="cap"><span>Break even</span><span class="num"><b style="font-size:18px">16</b> <span class="muted">more tickets to break even</span></span></div>
+<div class="bar"><span class="lab num" style="left:64%">Break even · 256</span><div class="track"><i style="width:60%"></i><b style="left:64%"></b></div></div>
+<div class="ends num"><span>240 sold</span><span>380 on sale · 400 cap</span></div>
+<p class="sec">Before costs</p>
+<div class="tiles t3" style="margin-top:6px">
+<div class="tile"><p class="l">Revenue so far</p><p class="v">$8,640.00</p><p class="s">240 sold</p></div>
+<div class="tile"><p class="l">If it sells out</p><p class="v">$13,680.00</p><p class="s">380 sold</p></div>
+<div class="tile"><p class="l">Per ticket</p><p class="v">$36.00</p><p class="s">Average so far, fees included</p></div>
+</div>
+<p class="sec">After costs</p>
+<div class="tiles t3" style="margin-top:6px">
+<div class="tile"><p class="l">Costs</p><p class="v">$9,200.00</p><p class="s">$2,500 venue · $5,900 other · $800 campaigns</p></div>
+<div class="tile"><p class="l">Profit so far</p><p class="v neg">−$560.00</p><p class="s">Revenue less costs</p></div>
+<div class="tile"><p class="l">Profit if it sells out</p><p class="v pos">$4,480.00</p><p class="s">$13,680.00 less $9,200.00</p></div>
+</div>
+</div>
+</div>
+<div class="notes"><b>Why pick it:</b> the clearest "before costs" section, literally labelled as one.
+<ul><li><b>Catch:</b> the tallest of the three. Six tiles plus the bar before the sales chart.</li></ul></div>
+</section>
+
+<!-- ================= C ================= -->
+<section class="option" id="c">
+<h2><span>C</span>The current card, always shown, with before costs inside each tile</h2>
+<p class="lede">Smallest change. The card shows even with no costs. Each money tile gets its before costs figure as the line under it, and sell out moves to the first tile.</p>
+<p class="where">Event › Overview · Break even card</p>
+<div class="surface">
+<div class="box">
+<div class="cap"><span>Break even</span><span class="num"><b style="font-size:18px">16</b> <span class="muted">more tickets to break even</span></span></div>
+<div class="bar"><span class="lab num" style="left:64%">Break even · 256</span><div class="track"><i style="width:60%"></i><b style="left:64%"></b></div></div>
+<div class="ends num"><span>240 sold</span><span>380 on sale · 400 cap</span></div>
+<div class="tiles t4">
+<div class="tile"><p class="l">If it sells out</p><p class="v pos">$4,480.00</p><p class="s">$13,680.00 before costs · 380 sold</p></div>
+<div class="tile"><p class="l">Profit so far</p><p class="v neg">−$560.00</p><p class="s">$8,640.00 before costs</p></div>
+<div class="tile"><p class="l">Costs</p><p class="v">$9,200.00</p><p class="s">$2,500 venue · $5,900 other · $800 campaigns</p></div>
+<div class="tile"><p class="l">Per ticket</p><p class="v">$36.00</p><p class="s">Average so far, fees included</p></div>
+</div>
+</div>
+</div>
+<div class="notes"><b>Why pick it:</b> same height as today.
+<ul><li><b>Catch:</b> before costs is a sub line, not a section of its own.</li></ul></div>
+</section>
+
+<!-- ================= GST ================= -->
+<section class="shared" id="gst">
+<h2 style="font-size:22px;letter-spacing:-.02em">GST card, shared by all three</h2>
+<p class="lede">GST leaves the Net revenue headline ("Includes GST …") and the "of which GST" line in "Where the money went". It gets its own card in the right rail instead, under the money breakdown. All figures above stay GST inclusive, as they are now.</p>
+<p class="where">Event › Overview · headline and right rail</p>
+<div class="surface">
+<div class="strip">
+<div><p class="l">Net revenue</p><p class="v" style="color:var(--rev)">$8,640.00</p><p class="s">240 tickets</p></div>
+<div><p class="l">Tickets sold</p><p class="v">240</p><p class="s">60% of 400 · 252 in the room</p></div>
+<div><p class="l">Comped</p><p class="v">12</p><p class="s">8 of 20 left</p></div>
+<div><p class="l">Admitted</p><p class="v">0</p></div>
+</div>
+<div class="grid2">
+<div class="ph">Break even card (A, B or C) and the charts</div>
+<div class="rail">
+<div class="box"><h5>Where the money went</h5><dl>
+<div class="r"><dt>Tickets</dt><dd>$7,680.00</dd></div>
+<div class="r"><dt>Booking fees</dt><dd>$960.00</dd></div>
+<div class="r"><dt>Gross</dt><dd>$8,640.00</dd></div>
+<div class="r tot"><dt>Net</dt><dd>$8,640.00</dd></div>
+</dl></div>
+<div class="box"><h5>GST</h5><dl>
+<div class="r"><dt>Collected so far</dt><dd>$1,126.96</dd></div>
+<div class="r"><dt>Net revenue ex GST</dt><dd>$7,513.04</dd></div>
+<div class="r tot"><dt>On a sell out</dt><dd>$1,784.35</dd></div>
+<div class="r"><dt>Sell out revenue ex GST</dt><dd>$11,895.65</dd></div>
+</dl></div>
+</div>
+</div>
+</div>
+<div class="notes"><b>Note:</b> the sell out GST is estimated at 15% of the projected revenue, like the projection itself. Costs aren't split into GST, since we don't record whether a cost had GST on it.</div>
+</section>
+
+</main></body></html>
