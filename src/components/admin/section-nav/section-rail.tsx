@@ -2,12 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import {
-  AnimatePresence,
-  LayoutGroup,
-  MotionConfig,
-  motion,
-} from "motion/react";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { ArrowLeft } from "lucide-react";
 
 import {
@@ -90,62 +85,51 @@ function RailHeader({ nav }: { nav: SectionNavConfig }) {
 function RailMenu({ nav }: { nav: SectionNavConfig }) {
   return (
     <nav className="no-scrollbar flex-1 overflow-x-hidden overflow-y-auto py-2">
-      <LayoutGroup id="section-rail">
-        {nav.groups.map((group, index) => (
-          <SidebarGroup key={group.label ?? index} className="py-1">
-            {group.label ? (
-              <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-            ) : null}
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map((item) => {
-                  const active = item.value === nav.value;
-                  return (
-                    <SidebarMenuItem key={item.value}>
-                      <SidebarMenuButton
-                        isActive={active}
-                        aria-current={active ? "page" : undefined}
-                        onClick={() => nav.onValueChange(item.value)}
-                        // The active background is the sliding span below,
-                        // not the button's own.
-                        className="relative isolate h-9 data-[active=true]:bg-transparent"
-                      >
-                        {active ? (
-                          <motion.span
-                            layoutId="section-rail-active"
-                            transition={SECTION_NAV_SPRING}
-                            className="bg-sidebar-accent absolute inset-0 -z-10 rounded-md"
-                          />
-                        ) : null}
-                        <item.icon />
-                        <span className="flex-1 truncate">{item.label}</span>
-                        {item.dirty ? (
-                          <span
-                            className="size-1.5 shrink-0 rounded-full bg-amber-500"
-                            aria-label="Unsaved changes"
-                          />
-                        ) : null}
-                        {item.count !== undefined ? (
-                          <span
-                            className={cn(
-                              "shrink-0 text-xs tabular-nums",
-                              active
-                                ? "text-sidebar-accent-foreground/70"
-                                : "text-sidebar-foreground/50",
-                            )}
-                          >
-                            {item.count}
-                          </span>
-                        ) : null}
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
-      </LayoutGroup>
+      {nav.groups.map((group, index) => (
+        <SidebarGroup key={group.label ?? index} className="py-1">
+          {group.label ? (
+            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+          ) : null}
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {group.items.map((item) => {
+                const active = item.value === nav.value;
+                return (
+                  <SidebarMenuItem key={item.value}>
+                    <SidebarMenuButton
+                      isActive={active}
+                      aria-current={active ? "page" : undefined}
+                      onClick={() => nav.onValueChange(item.value)}
+                      className="h-9"
+                    >
+                      <item.icon />
+                      <span className="flex-1 truncate">{item.label}</span>
+                      {item.dirty ? (
+                        <span
+                          className="size-1.5 shrink-0 rounded-full bg-amber-500"
+                          aria-label="Unsaved changes"
+                        />
+                      ) : null}
+                      {item.count !== undefined ? (
+                        <span
+                          className={cn(
+                            "shrink-0 text-xs tabular-nums",
+                            active
+                              ? "text-sidebar-accent-foreground/70"
+                              : "text-sidebar-foreground/50",
+                          )}
+                        >
+                          {item.count}
+                        </span>
+                      ) : null}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      ))}
     </nav>
   );
 }
