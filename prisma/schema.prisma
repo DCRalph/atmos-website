@@ -76,6 +76,11 @@ model User {
   permissions          UserPermissionAssignment[]
   createdAt            DateTime                   @default(now())
   updatedAt            DateTime                   @default(now()) @updatedAt
+  /// Staff sales alerts, per person rather than per device so a new handset
+  /// does not need setting up again. Only honoured while the person is staff;
+  /// see `~/server/ticketing/sales-alerts`.
+  notifyTicketSales    Boolean                    @default(false)
+  notifyTierSoldOut    Boolean                    @default(false)
   sessions             Session[]
   accounts             Account[]
   activities           ActivityLog[]              @relation("UserActivities")

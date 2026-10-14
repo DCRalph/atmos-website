@@ -55,6 +55,26 @@ export function remainingInTier(tier: {
 }
 
 /**
+ * Whether the sale of `sold` tickets is the one that sold this tier out.
+ *
+ * Counts paid tickets only, not holds: a tier with its last seats in somebody's
+ * basket is not sold out until they pay, and may never be. Exactly one sale
+ * crosses the line, so a tier is reported once per time it sells out.
+ */
+export function soldOutBy(
+  tier: { allocation: number; soldCount: number; groupSize: number },
+  sold: number,
+): boolean {
+  const purchaseLeft = (soldCount: number) =>
+    tier.allocation - soldCount >= tier.groupSize;
+  return (
+    sold > 0 &&
+    purchaseLeft(tier.soldCount - sold) &&
+    !purchaseLeft(tier.soldCount)
+  );
+}
+
+/**
  * Face value of what a tier has sold. `soldCount` is in tickets but
  * `priceCents` is per purchase, so a group tier's sales are divided back into
  * groups before they are priced: twelve tickets of a $30 group of four is $90.

@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   openTiers,
   soldFaceValueCents,
+  soldOutBy,
   tierUnavailableReason,
   type TierRow,
 } from "./tiers";
@@ -159,6 +160,29 @@ describe("soldFaceValueCents", () => {
     assert.equal(
       soldFaceValueCents({ soldCount: 12, priceCents: 3000, groupSize: 4 }),
       9000,
+    );
+  });
+});
+
+describe("soldOutBy", () => {
+  test("only the sale that takes the last seat sells the tier out", () => {
+    const tier = { allocation: 10, soldCount: 10, groupSize: 1 };
+    assert.equal(soldOutBy(tier, 2), true);
+    assert.equal(soldOutBy({ ...tier, soldCount: 9 }, 2), false);
+    // Refunded back below the line and re-sold: sold out again.
+    assert.equal(soldOutBy(tier, 1), true);
+  });
+
+  test("a group tier is sold out once a whole group no longer fits", () => {
+    const tier = { allocation: 10, soldCount: 8, groupSize: 4 };
+    assert.equal(soldOutBy(tier, 4), true);
+    assert.equal(soldOutBy({ ...tier, soldCount: 4 }, 4), false);
+  });
+
+  test("selling nothing sells nothing out", () => {
+    assert.equal(
+      soldOutBy({ allocation: 0, soldCount: 0, groupSize: 1 }, 0),
+      false,
     );
   });
 });

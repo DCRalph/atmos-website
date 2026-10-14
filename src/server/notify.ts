@@ -40,7 +40,8 @@ export type PublishedMessage = {
   delivery: { devices: number; delivered: number };
 };
 
-export type PublishSource = "api" | "admin" | "run-sheet" | "tasks";
+export type PublishSource =
+  "api" | "admin" | "run-sheet" | "tasks" | "ticketing";
 
 export async function publish(
   input: PublishInput,

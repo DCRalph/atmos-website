@@ -55,6 +55,9 @@ import {
   resolveBookingFee,
 } from "~/server/ticketing/settings";
 import { stopUnpaidPayment } from "~/server/ticketing/payments";
+import { scheduleSalesAlerts } from "~/server/ticketing/sales-alerts";
+import { soldOutBy } from "~/lib/ticketing/tiers";
+import { ticketCount } from "~/lib/ticketing/capacity";
 
 /**
  * The order lifecycle.
@@ -386,6 +389,9 @@ export async function issueTicketsForOrder({
     };
   }
 
+  // Set by the claiming transaction, for the staff alerts sent after it.
+  let soldOutTierIds: string[] = [];
+
   const result = await withEventInventoryLock<
     IssueResult | { refundIntentId: string }
   >(existing.eventId, async (tx) => {
@@ -471,6 +477,19 @@ export async function issueTicketsForOrder({
 
     await commitHold(tx, order.items);
 
+    const tiers = await tx.ticketTier.findMany({
+      where: { id: { in: order.items.map((item) => item.tierId) } },
+      select: { id: true, allocation: true, soldCount: true, groupSize: true },
+    });
+    soldOutTierIds = tiers
+      .filter((tier) =>
+        soldOutBy(
+          tier,
+          ticketCount(order.items.filter((item) => item.tierId === tier.id)),
+        ),
+      )
+      .map((tier) => tier.id);
+
     const ticketIds: string[] = [];
     let seat = 0;
     for (const item of order.items) {
@@ -513,7 +532,10 @@ export async function issueTicketsForOrder({
     return { orderId, alreadyIssued: false, ticketIds };
   });
 
-  if (!("refundIntentId" in result)) return result;
+  if (!("refundIntentId" in result)) {
+    if (!result.alreadyIssued) scheduleSalesAlerts(orderId, soldOutTierIds);
+    return result;
+  }
 
   // Outside the lock: Stripe never runs inside a transaction.
   await refundLatePayment({

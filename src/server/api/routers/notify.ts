@@ -7,6 +7,8 @@ import {
   eventOrganiserProcedure,
 } from "~/server/api/trpc";
 import { publish } from "~/server/notify";
+import { SALES_ALERT_PERMISSIONS } from "~/server/ticketing/sales-alerts";
+import { userHasPermission } from "~/server/utils/permissions";
 import {
   DEFAULT_PRIORITY,
   isValidTopic,
@@ -25,6 +27,9 @@ import {
  * a door with a problem — but `announcements` reaches every install including
  * punters, so that one topic is admin-only. Managing which device hears what
  * is admin-only throughout.
+ *
+ * Sales alerts are per person: an admin switches their own on and off, and a
+ * superadmin can switch anybody's on the staff list.
  */
 
 const topic = z.string().refine(isValidTopic, "invalid topic");
@@ -173,6 +178,91 @@ export const notifyRouter = createTRPCRouter({
       await ctx.db.deviceToken.update({
         where: { id: input.deviceId },
         data: { topics: [...topics] },
+      });
+      return { ok: true as const };
+    }),
+
+  /**
+   * Who gets sales and sold-out alerts. A superadmin sees every admin and
+   * organiser; anybody else sees only themselves.
+   */
+  salesAlerts: adminProcedure.query(async ({ ctx }) => {
+    const superadmin = userHasPermission(ctx.user, "SUPERADMIN");
+    const users = await ctx.db.user.findMany({
+      where: superadmin
+        ? {
+            permissions: {
+              some: { permission: { in: [...SALES_ALERT_PERMISSIONS] } },
+            },
+          }
+        : { id: ctx.user.id },
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        notifyTicketSales: true,
+        notifyTierSoldOut: true,
+        permissions: { select: { permission: true } },
+        _count: { select: { deviceTokens: true } },
+      },
+    });
+    return users.map(({ _count, permissions, ...user }) => ({
+      ...user,
+      devices: _count.deviceTokens,
+      isYou: user.id === ctx.user.id,
+      isOrganiser: !userHasPermission({ permissions }, "ADMIN"),
+    }));
+  }),
+
+  /**
+   * Switch one alert for one person. Turning one on needs a handset to send it
+   * to; turning one off never does, so a lost phone can still be silenced.
+   */
+  setSalesAlert: adminProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        kind: z.enum(["notifyTicketSales", "notifyTierSoldOut"]),
+        enabled: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (
+        input.userId !== ctx.user.id &&
+        !userHasPermission(ctx.user, "SUPERADMIN")
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only superadmins can change somebody else's alerts.",
+        });
+      }
+
+      const target = await ctx.db.user.findFirst({
+        where: {
+          id: input.userId,
+          permissions: {
+            some: { permission: { in: [...SALES_ALERT_PERMISSIONS] } },
+          },
+        },
+        select: { _count: { select: { deviceTokens: true } } },
+      });
+      if (!target) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Sales alerts are for admins and organisers.",
+        });
+      }
+      if (input.enabled && target._count.deviceTokens === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Install the app and allow notifications first.",
+        });
+      }
+
+      await ctx.db.user.update({
+        where: { id: input.userId },
+        data: { [input.kind]: input.enabled },
       });
       return { ok: true as const };
     }),
