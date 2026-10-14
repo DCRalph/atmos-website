@@ -14,6 +14,7 @@ import {
 import {
   breakEvenTickets,
   planRevenuePerTicketCents,
+  unsoldRevenueCents,
 } from "~/lib/ticketing/break-even";
 import {
   formatNZD,
@@ -74,6 +75,8 @@ export function CostsSection({
       priceCents: parsePriceToCents(tier.price) ?? 0,
       allocation: Number(tier.allocation) || 0,
       groupSize: Number(tier.groupSize) || 1,
+      // The plan, as if nothing had sold yet.
+      soldCount: 0,
     }));
   const perTicket = planRevenuePerTicketCents({
     tiers,
@@ -91,7 +94,17 @@ export function CostsSection({
           planned,
           Math.max(0, capacity - (parseCount(draft.compAllowance) ?? 0)),
         );
-  const sellOutRevenue = perTicket === null ? null : sellable * perTicket;
+  // Each tier at its own price, so a plan bigger than the room loses its
+  // last tiers rather than an average ticket.
+  const sellOutRevenue =
+    perTicket === null
+      ? null
+      : unsoldRevenueCents({
+          tiers,
+          fee,
+          venueFeePerTicket: venueFee,
+          maxTickets: sellable,
+        });
 
   const setCosts = (costs: CostDraft[]) => update("costs", costs);
   const patchCost = (key: string, patch: Partial<CostDraft>) =>

@@ -674,20 +674,14 @@ function Gst({
           label="Net revenue ex GST"
           value={formatNZD(money.netCents - gst.netCents)}
         />
-        {gst.ifSoldOutCents !== null && costs.revenueIfSoldOutCents !== null ? (
-          <>
-            <div className="flex justify-between gap-3 border-t pt-1 font-semibold">
-              <dt>On a sell out</dt>
-              <dd className="tabular-nums">{formatNZD(gst.ifSoldOutCents)}</dd>
-            </div>
-            <Row
-              label="Sell out revenue ex GST"
-              value={formatNZD(
-                costs.revenueIfSoldOutCents - gst.ifSoldOutCents,
-              )}
-            />
-          </>
-        ) : null}
+        <div className="flex justify-between gap-3 border-t pt-1 font-semibold">
+          <dt>On a sell out</dt>
+          <dd className="tabular-nums">{formatNZD(gst.ifSoldOutCents)}</dd>
+        </div>
+        <Row
+          label="Sell out revenue ex GST"
+          value={formatNZD(costs.revenueIfSoldOutCents - gst.ifSoldOutCents)}
+        />
       </dl>
     </ChartCard>
   );
@@ -696,8 +690,9 @@ function Gst({
 /**
  * Where sales stand against the costs. A bar from nothing to the room with
  * break even marked on it, once there are costs to break even on, then the
- * money before costs and after them, so far and on a sell out. Always shown:
- * with no costs entered, profit is just revenue.
+ * money before costs and after them, so far and on a sell out. Always shown,
+ * but with no costs entered there's nothing to take off, so it stops at
+ * before costs.
  */
 function Profit({
   costs,
@@ -715,8 +710,7 @@ function Profit({
   const at = (tickets: number) => `${(tickets / scale) * 100}%`;
   const toGo = target === null ? null : Math.max(0, target - sold);
   const perTicket = costs.revenuePerTicketCents;
-  const tone = (cents: number | null) =>
-    cents === null ? undefined : cents < 0 ? "loss" : "gain";
+  const tone = (cents: number) => (cents < 0 ? "loss" : "gain");
 
   return (
     <div className="rounded-lg border p-3">
@@ -788,11 +782,7 @@ function Profit({
         />
         <StatTile
           label="If it sells out"
-          value={
-            costs.revenueIfSoldOutCents === null
-              ? "—"
-              : formatNZD(costs.revenueIfSoldOutCents)
-          }
+          value={formatNZD(costs.revenueIfSoldOutCents)}
           sub={`${costs.sellable} sold`}
         />
         <StatTile
@@ -806,37 +796,27 @@ function Profit({
         />
       </ProfitRow>
 
-      <ProfitRow title="After costs" className="mt-4">
-        <StatTile
-          label="Costs"
-          value={formatNZD(costs.totalCents)}
-          sub={
-            costs.totalCents > 0
-              ? `${formatNZD(costs.venueHireCents)} venue · ${formatNZD(costs.otherCents)} other${costs.campaignsCents > 0 ? ` · ${formatNZD(costs.campaignsCents)} campaigns` : ""}`
-              : "None entered yet"
-          }
-        />
-        <StatTile
-          label="Profit so far"
-          value={formatNZD(costs.profitCents)}
-          tone={tone(costs.profitCents)}
-          sub="Revenue less costs"
-        />
-        <StatTile
-          label="Profit if it sells out"
-          value={
-            costs.profitIfSoldOutCents === null
-              ? "—"
-              : formatNZD(costs.profitIfSoldOutCents)
-          }
-          tone={tone(costs.profitIfSoldOutCents)}
-          sub={
-            costs.revenueIfSoldOutCents === null
-              ? "Needs a priced tier to work out"
-              : `${formatNZD(costs.revenueIfSoldOutCents)} less ${formatNZD(costs.totalCents)}`
-          }
-        />
-      </ProfitRow>
+      {costs.totalCents > 0 ? (
+        <ProfitRow title="After costs" className="mt-4">
+          <StatTile
+            label="Costs"
+            value={formatNZD(costs.totalCents)}
+            sub={`${formatNZD(costs.venueHireCents)} venue · ${formatNZD(costs.otherCents)} other${costs.campaignsCents > 0 ? ` · ${formatNZD(costs.campaignsCents)} campaigns` : ""}`}
+          />
+          <StatTile
+            label="Profit so far"
+            value={formatNZD(costs.profitCents)}
+            tone={tone(costs.profitCents)}
+            sub="Revenue less costs"
+          />
+          <StatTile
+            label="Profit if it sells out"
+            value={formatNZD(costs.profitIfSoldOutCents)}
+            tone={tone(costs.profitIfSoldOutCents)}
+            sub={`${formatNZD(costs.revenueIfSoldOutCents)} less ${formatNZD(costs.totalCents)}`}
+          />
+        </ProfitRow>
+      ) : null}
     </div>
   );
 }

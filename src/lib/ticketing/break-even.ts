@@ -27,18 +27,64 @@ export function planRevenuePerTicketCents({
   let cents = 0;
   for (const tier of tiers) {
     if (tier.allocation <= 0) continue;
-    // A purchase of a group tier is `groupSize` tickets at one price, and the
-    // fees are worked out on the purchase, exactly as checkout does.
-    const purchase =
-      tier.priceCents > 0
-        ? tier.priceCents +
-          calcBookingFeeCents(tier.priceCents, tier.groupSize, fee) +
-          venueFeePerTicket * tier.groupSize
-        : 0;
     tickets += tier.allocation;
-    cents += (tier.allocation / tier.groupSize) * purchase;
+    cents += tier.allocation * ticketCents(tier, fee, venueFeePerTicket);
   }
   return tickets > 0 ? Math.round(cents / tickets) : null;
+}
+
+/**
+ * What the tickets still on sale would bring in, each at its own tier's price
+ * and fees. Tiers are taken in order and stop at `maxTickets`, the room left
+ * once comps are kept back, so a plan bigger than the room loses its last
+ * tiers first. Pricing what's left by its own tier matters: the cheap early
+ * tiers sell first, so the average so far undersells the rest.
+ */
+export function unsoldRevenueCents({
+  tiers,
+  fee,
+  venueFeePerTicket,
+  maxTickets,
+}: {
+  tiers: {
+    priceCents: number;
+    allocation: number;
+    groupSize: number;
+    soldCount: number;
+  }[];
+  fee: BookingFeeConfig;
+  venueFeePerTicket: number;
+  maxTickets: number;
+}): number {
+  let room = Math.max(0, maxTickets);
+  let cents = 0;
+  for (const tier of tiers) {
+    const tickets = Math.min(
+      room,
+      Math.max(0, tier.allocation - tier.soldCount),
+    );
+    room -= tickets;
+    cents += tickets * ticketCents(tier, fee, venueFeePerTicket);
+  }
+  return Math.round(cents);
+}
+
+/**
+ * One ticket's share of a purchase. A purchase of a group tier is `groupSize`
+ * tickets at one price, and the fees are worked out on the purchase, exactly
+ * as checkout does.
+ */
+function ticketCents(
+  tier: { priceCents: number; groupSize: number },
+  fee: BookingFeeConfig,
+  venueFeePerTicket: number,
+): number {
+  if (tier.priceCents <= 0) return 0;
+  const purchase =
+    tier.priceCents +
+    calcBookingFeeCents(tier.priceCents, tier.groupSize, fee) +
+    venueFeePerTicket * tier.groupSize;
+  return purchase / tier.groupSize;
 }
 
 /**

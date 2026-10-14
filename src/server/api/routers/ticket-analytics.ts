@@ -33,6 +33,7 @@ import {
 import {
   breakEvenTickets,
   planRevenuePerTicketCents,
+  unsoldRevenueCents,
 } from "~/lib/ticketing/break-even";
 import {
   getTicketingSettings,
@@ -265,12 +266,14 @@ export const ticketAnalyticsRouter = createTRPCRouter({
       );
       const costsCents = venueHireCents + otherCostsCents + campaignsCents;
       const venueFee = venueFeePerTicketCents(event);
+      const fee = resolveBookingFee(event, await getTicketingSettings());
+      const activeTiers = event.tiers.filter((tier) => tier.isActive);
       const revenuePerTicketCents =
         sold > 0
           ? Math.round(netCents / sold)
           : planRevenuePerTicketCents({
-              tiers: event.tiers.filter((tier) => tier.isActive),
-              fee: resolveBookingFee(event, await getTicketingSettings()),
+              tiers: activeTiers,
+              fee,
               venueFeePerTicket: venueFee,
             });
       // The room less the seats kept for comps, or given as comps if more.
@@ -278,11 +281,16 @@ export const ticketAnalyticsRouter = createTRPCRouter({
         0,
         capacity - Math.max(comps.allowance ?? 0, comps.issued),
       );
-      // What's in, plus the rest of the sellable room at the same average.
+      // What's in, plus every tier's unsold tickets at that tier's price, as
+      // far as the sellable room goes.
       const revenueIfSoldOutCents =
-        revenuePerTicketCents === null
-          ? null
-          : netCents + Math.max(0, sellable - sold) * revenuePerTicketCents;
+        netCents +
+        unsoldRevenueCents({
+          tiers: activeTiers,
+          fee,
+          venueFeePerTicket: venueFee,
+          maxTickets: sellable - sold,
+        });
 
       // GST inside net revenue and the sell out, at the event's rate. Worked
       // out from the net rather than summed off orders, so refunds take
@@ -316,17 +324,11 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           sellable,
           profitCents: netCents - costsCents,
           revenueIfSoldOutCents,
-          profitIfSoldOutCents:
-            revenueIfSoldOutCents === null
-              ? null
-              : revenueIfSoldOutCents - costsCents,
+          profitIfSoldOutCents: revenueIfSoldOutCents - costsCents,
         },
         gst: {
           netCents: gstComponentCents(netCents, gstRateBp),
-          ifSoldOutCents:
-            revenueIfSoldOutCents === null
-              ? null
-              : gstComponentCents(revenueIfSoldOutCents, gstRateBp),
+          ifSoldOutCents: gstComponentCents(revenueIfSoldOutCents, gstRateBp),
         },
         counts: {
           orders: orderCount,
