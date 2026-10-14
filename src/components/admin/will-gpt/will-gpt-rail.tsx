@@ -28,10 +28,9 @@ import {
 
 /**
  * The header button that opens and closes the rail. An outline button with a
- * gradient four point star and a soft glow behind it. While hovered an arc of
- * light orbits the border and eases to a stop; open tints the button and
- * parks the arc at the top right. The styling is `.will-gpt-toggle` in
- * globals.css, since the orbit needs `@property` and a masked pseudo-element.
+ * gradient four point star and a soft glow behind it that grows on hover;
+ * open tints the button pink to purple. Styled as `.will-gpt-toggle` in
+ * globals.css.
  */
 export function WillGptToggle() {
   const { open, setOpen } = useWillGpt();

@@ -178,48 +178,22 @@
   }
 }
 
-/* The Will GPT toggle in the admin header. A glow sits behind the star, and
-   an arc of light orbits the border while hovered, easing to a stop on leave.
-   Open tints the button and parks the arc at the top right. The glow is a
-   blurred disc that only moves and fades, so nothing repaints per frame. */
-@property --wg-orbit {
-  syntax: "<angle>";
-  inherits: true;
-  initial-value: 0deg;
-}
-@property --wg-arc {
-  syntax: "<number>";
-  inherits: true;
-  initial-value: 0;
-}
-
+/* The Will GPT toggle in the admin header. A glow sits behind the star and
+   grows on hover; open tints the button pink to purple. The glow is a blurred
+   disc that only moves and fades, so nothing repaints per frame. */
 .will-gpt-toggle {
-  --wg-pink: #ff4fd8;
-  --wg-orange: #ff8a3d;
-  --wg-purple: #a855f7;
   position: relative;
   isolation: isolate;
   overflow: hidden;
   transition:
-    --wg-arc 0.4s,
-    --wg-orbit 0s 0.4s,
     border-color 0.2s,
     background-color 0.2s,
     box-shadow 0.3s;
 }
 .will-gpt-toggle:hover {
-  --wg-arc: 1;
-  --wg-orbit: 6turn;
   border-color: rgb(255 79 216 / 0.4);
-  transition:
-    --wg-arc 0s,
-    --wg-orbit 9s cubic-bezier(0.15, 0.6, 0.3, 1),
-    border-color 0.2s,
-    background-color 0.2s;
 }
 .will-gpt-toggle[aria-pressed="true"] {
-  --wg-arc: 1;
-  --wg-orbit: 100deg;
   border-color: rgb(255 79 216 / 0.6);
   background: linear-gradient(
     120deg,
@@ -228,32 +202,6 @@
     rgb(168 85 247 / 0.16)
   );
   box-shadow: 0 0 20px rgb(255 79 216 / 0.3);
-}
-
-/* The orbiting arc: a conic gradient masked down to a 2px ring just inside
-   the border, a short bright tail that fades to nothing. */
-.will-gpt-toggle::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  padding: 2px;
-  border-radius: inherit;
-  pointer-events: none;
-  background: conic-gradient(
-    from var(--wg-orbit),
-    transparent 0 70%,
-    var(--wg-purple) 82%,
-    var(--wg-pink) 92%,
-    var(--wg-orange) 99%,
-    transparent 100%
-  );
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  opacity: var(--wg-arc);
-  transition: opacity 0.3s;
 }
 
 .will-gpt-halo {
@@ -290,8 +238,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .will-gpt-toggle,
-  .will-gpt-toggle:hover,
-  .will-gpt-toggle::before,
   .will-gpt-halo {
     transition: none;
   }
