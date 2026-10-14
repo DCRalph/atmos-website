@@ -63,7 +63,7 @@ export function DashboardSideBar() {
         </Link>
       </SidebarHeader>
 
-      <SidebarContent className="no-scrollbar gap-0 overflow-x-hidden py-2">
+      <SidebarContent className="no-scrollbar gap-0 overflow-x-hidden py-2 group-data-[collapsible=icon]:overflow-auto group-data-[collapsible=icon]:overflow-x-hidden">
         {adminNavigationGroups.map((group) => (
           <SidebarGroup key={group.title} className="py-1">
             <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
