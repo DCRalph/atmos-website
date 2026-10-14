@@ -33,9 +33,6 @@ import { DEFAULT_PRIORITY, type NotifyPriority } from "~/lib/notify/topics";
  *
  * The same card is where a handset is subscribed or unsubscribed (the Switch
  * column), which saves a separate device-management page.
- *
- * Sales alerts sit below it: per person rather than per handset, so they get
- * their own table. See `SalesAlertsCard`.
  */
 
 const PRIORITY_LABELS: Record<
@@ -359,8 +356,6 @@ export function NotificationsManager() {
           </CardContent>
         </Card>
 
-        <SalesAlertsCard />
-
         <Card>
           <CardHeader>
             <CardTitle>Recently sent</CardTitle>
@@ -379,99 +374,6 @@ export function NotificationsManager() {
         </Card>
       </div>
     </div>
-  );
-}
-
-/**
- * Who is pushed about paid orders and sold-out tiers. The server decides the
- * rows: a superadmin gets every admin and organiser, anybody else only
- * themselves. Switches stay off for somebody with no app install, since there
- * is nowhere to send the alert.
- */
-function SalesAlertsCard() {
-  const people = api.notify.salesAlerts.useQuery();
-  const setAlert = api.notify.setSalesAlert.useMutation({
-    onSuccess: () => void people.refetch(),
-    onError: (error) => toast.error(error.message),
-  });
-
-  const rows = people.data ?? [];
-  type PersonRow = (typeof rows)[number];
-  type AlertKind = "notifyTicketSales" | "notifyTierSoldOut";
-
-  const alertSwitch = (row: PersonRow, kind: AlertKind) => (
-    <Switch
-      checked={row[kind]}
-      // Off always works, so a lost phone can still be silenced.
-      disabled={setAlert.isPending || (row.devices === 0 && !row[kind])}
-      onCheckedChange={(enabled) =>
-        setAlert.mutate({ userId: row.id, kind, enabled })
-      }
-    />
-  );
-
-  const columns: DataTableColumn<PersonRow>[] = [
-    {
-      id: "person",
-      header: "Person",
-      sortable: true,
-      accessor: (row) => row.name || row.email,
-      cell: (row) => (
-        <span className="flex items-center gap-2 font-medium">
-          {row.name || row.email}
-          {row.isYou && <Badge variant="outline">You</Badge>}
-          {row.isOrganiser && <Badge variant="outline">Organiser</Badge>}
-        </span>
-      ),
-    },
-    {
-      id: "devices",
-      header: "Devices",
-      align: "right",
-      cell: (row) =>
-        row.devices === 0 ? (
-          <span className="text-xs text-amber-500">No app</span>
-        ) : (
-          <span className="text-muted-foreground text-xs tabular-nums">
-            {row.devices}
-          </span>
-        ),
-    },
-    {
-      id: "orders",
-      header: "Orders",
-      align: "right",
-      hideable: false,
-      cell: (row) => alertSwitch(row, "notifyTicketSales"),
-    },
-    {
-      id: "soldOut",
-      header: "Sold out",
-      align: "right",
-      hideable: false,
-      cell: (row) => alertSwitch(row, "notifyTierSoldOut"),
-    },
-  ];
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Sales alerts</CardTitle>
-        <CardDescription>
-          Who hears about orders and sold-out tiers
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <DataTable
-          columns={columns}
-          data={rows}
-          getRowId={(row) => row.id}
-          isLoading={people.isLoading}
-          storageKey="admin-notify-sales-alerts"
-          emptyMessage="No staff accounts"
-        />
-      </CardContent>
-    </Card>
   );
 }
 

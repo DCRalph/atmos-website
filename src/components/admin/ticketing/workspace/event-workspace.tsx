@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import {
   BadgePercent,
+  BellRing,
   FileText,
   Gift,
   LayoutDashboard,
@@ -27,6 +28,7 @@ import { CompsPanel } from "~/components/admin/ticketing/comps-panel";
 import { TicketLinksPanel } from "~/components/admin/ticketing/ticket-links-panel";
 import { EventCodesPanel } from "~/components/admin/ticketing/event-codes-panel";
 import { CampaignsPanel } from "~/components/admin/ticketing/campaigns-panel";
+import { SalesAlertsPanel } from "~/components/admin/ticketing/sales-alerts-panel";
 import {
   SectionNav,
   type SectionNavGroup,
@@ -49,7 +51,8 @@ import { EventMenu } from "./event-menu";
  * doing. Overview comes first. Set up is the draft (details, tiers, costs,
  * door staff, wallet pass). Sell and Give away are live lists, because
  * refunding or issuing a ticket is a real-world action with an email or a
- * Stripe call behind it, not a draft.
+ * Stripe call behind it, not a draft. Config holds per-event settings that
+ * save on their own, like who gets sales alerts.
  *
  * A new event uses the same page with only the Set up group; creating it
  * lands on its Overview.
@@ -68,6 +71,7 @@ const PAGES = [
   "campaigns",
   "comps",
   "links",
+  "alerts",
 ] as const;
 type Page = (typeof PAGES)[number];
 
@@ -197,6 +201,10 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
               },
             ],
           },
+          {
+            label: "Config",
+            items: [{ value: "alerts", label: "Sales alerts", icon: BellRing }],
+          },
         ]
       : []),
   ];
@@ -294,6 +302,9 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
           {page === "comps" && event ? <CompsPanel event={event} /> : null}
           {page === "links" && event ? (
             <TicketLinksPanel event={event} />
+          ) : null}
+          {page === "alerts" && event ? (
+            <SalesAlertsPanel eventId={event.id} />
           ) : null}
         </div>
       </SaveBar>

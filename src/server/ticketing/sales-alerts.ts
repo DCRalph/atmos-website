@@ -1,7 +1,7 @@
 import "server-only";
 
 import { after } from "next/server";
-import type { UserPermission } from "~Prisma/client";
+import type { Prisma } from "~Prisma/client";
 
 import { env } from "~/env";
 import { db } from "~/server/db";
@@ -11,20 +11,38 @@ import { formatNZD } from "~/lib/ticketing/money";
 /**
  * Push alerts to staff when an order is paid and when a tier sells out.
  *
- * Opt-in per person (`User.notifyTicketSales` / `notifyTierSoldOut`), and
- * delivered to whatever handsets that person has registered, so somebody with
- * no app install is opted in to nothing. The flags are only honoured while the
- * person is still staff: losing ADMIN quietly stops the alerts without anybody
- * having to remember to switch them off.
+ * Opt-in per event and per person (`TicketEventSalesAlert`), delivered to
+ * whatever handsets that person has registered, so somebody with no app
+ * install is opted in to nothing. Only honoured while the person can still
+ * see the event's sales: an admin, or one of the event's managers. Losing that
+ * quietly stops the alerts without anybody having to switch them off.
  */
 
-/** Who may receive sales alerts. SUPERADMIN always comes with ADMIN. */
-export const SALES_ALERT_PERMISSIONS = [
-  "ADMIN",
-  "EVENT_ORGANISER",
-] as const satisfies UserPermission[];
+export type SalesAlertKind = "orders" | "soldOut";
 
-export type SalesAlertKind = "notifyTicketSales" | "notifyTierSoldOut";
+/**
+ * Who may get alerts for an event: every admin, and the event's door staff
+ * with the manager role. Also the filter the sender applies, so a stale
+ * opt-in from somebody who has since lost access goes nowhere.
+ */
+export async function salesAlertEligible(
+  eventId: string,
+): Promise<Prisma.UserWhereInput> {
+  const managers = await db.ticketEventStaff.findMany({
+    where: { eventId, role: "MANAGER" },
+    select: { userId: true },
+  });
+  return {
+    OR: [
+      {
+        permissions: {
+          some: { permission: { in: ["ADMIN", "SUPERADMIN"] } },
+        },
+      },
+      { id: { in: managers.map((manager) => manager.userId) } },
+    ],
+  };
+}
 
 /**
  * Alert opted-in staff about a freshly paid order, after the response is sent.
@@ -46,15 +64,10 @@ export function scheduleSalesAlerts(orderId: string, soldOutTierIds: string[]) {
 }
 
 async function sendSalesAlerts(orderId: string, soldOutTierIds: string[]) {
-  const [sales, soldOut] = await Promise.all([
-    recipients("notifyTicketSales"),
-    soldOutTierIds.length > 0 ? recipients("notifyTierSoldOut") : [],
-  ]);
-  if (sales.length === 0 && soldOut.length === 0) return;
-
   const order = await db.ticketOrder.findUniqueOrThrow({
     where: { id: orderId },
     select: {
+      eventId: true,
       orderNumber: true,
       buyerName: true,
       totalCents: true,
@@ -62,6 +75,12 @@ async function sendSalesAlerts(orderId: string, soldOutTierIds: string[]) {
       items: { select: { quantity: true, tier: { select: { name: true } } } },
     },
   });
+  const [sales, soldOut] = await Promise.all([
+    recipients(order.eventId, "orders"),
+    soldOutTierIds.length > 0 ? recipients(order.eventId, "soldOut") : [],
+  ]);
+  if (sales.length === 0 && soldOut.length === 0) return;
+
   const click = `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/admin/events/${order.event.id}`;
 
   if (sales.length > 0) {
@@ -103,15 +122,17 @@ async function sendSalesAlerts(orderId: string, soldOutTierIds: string[]) {
   }
 }
 
-async function recipients(kind: SalesAlertKind): Promise<string[]> {
-  const users = await db.user.findMany({
+async function recipients(
+  eventId: string,
+  kind: SalesAlertKind,
+): Promise<string[]> {
+  const rows = await db.ticketEventSalesAlert.findMany({
     where: {
+      eventId,
       [kind]: true,
-      permissions: {
-        some: { permission: { in: [...SALES_ALERT_PERMISSIONS] } },
-      },
+      user: await salesAlertEligible(eventId),
     },
-    select: { id: true },
+    select: { userId: true },
   });
-  return users.map((user) => user.id);
+  return rows.map((row) => row.userId);
 }

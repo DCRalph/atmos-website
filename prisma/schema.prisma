@@ -76,11 +76,6 @@ model User {
   permissions          UserPermissionAssignment[]
   createdAt            DateTime                   @default(now())
   updatedAt            DateTime                   @default(now()) @updatedAt
-  /// Staff sales alerts, per person rather than per device so a new handset
-  /// does not need setting up again. Only honoured while the person is staff;
-  /// see `~/server/ticketing/sales-alerts`.
-  notifyTicketSales    Boolean                    @default(false)
-  notifyTierSoldOut    Boolean                    @default(false)
   sessions             Session[]
   accounts             Account[]
   activities           ActivityLog[]              @relation("UserActivities")
@@ -90,6 +85,7 @@ model User {
   artistClaimRequests ArtistClaimRequest[]      @relation("ClaimRequestingUser")
   ownedArtistThemes   ArtistProfileTheme[]      @relation("OwnedArtistThemes")
   deviceTokens         DeviceToken[]
+  ticketSalesAlerts    TicketEventSalesAlert[]
   notifyMessages       NotifyMessage[]
   gigNotifyRecipients  GigNotifyRecipient[]
   gigScheduleRecipients GigScheduleRecipient[]
@@ -1632,6 +1628,7 @@ model TicketEvent {
   tickets       Ticket[]
   scans         TicketScan[]
   staff         TicketEventStaff[]
+  salesAlerts   TicketEventSalesAlert[]
   eventCodes    EventCode[]
   linkBatches   TicketLinkBatch[]
   doorReceipts  DoorPaymentReceipt[]
@@ -2017,6 +2014,28 @@ model TicketScan {
   @@index([ticketId, createdAt])
   @@index([eventId, result])
   @@map("ticket_scan")
+}
+
+/// Who is pushed about one event's sales. Per event and per person, so a new
+/// handset needs no setting up; delivered to every handset the person has.
+/// Only honoured while they are an admin or one of the event's managers — see
+/// `~/server/ticketing/sales-alerts`.
+model TicketEventSalesAlert {
+  eventId String
+  userId  String
+  /// Every paid order.
+  orders  Boolean @default(false)
+  /// A tier selling its last ticket.
+  soldOut Boolean @default(false)
+
+  updatedAt DateTime @updatedAt
+
+  event TicketEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, userId])
+  @@index([userId])
+  @@map("ticket_event_sales_alert")
 }
 
 model TicketEventStaff {
