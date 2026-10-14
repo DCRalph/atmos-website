@@ -18,6 +18,7 @@ import {
 } from "~/server/ticketing/order-sql";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
 import { pastEventsPace } from "~/server/ticketing/lead-time";
+import { checkoutJourney } from "~/server/ticketing/journey";
 import { paceOnAxis } from "~/lib/ticketing/pace";
 import { campaignTypeOf } from "~/lib/ticketing/campaigns";
 import { soldFaceValueCents } from "~/lib/ticketing/tiers";
@@ -735,6 +736,13 @@ export const ticketAnalyticsRouter = createTRPCRouter({
         })),
       };
     }),
+
+  /** The checkout journey for one event, with how long each step took. */
+  journey: eventOrganiserProcedure
+    .input(z.object({ eventId: z.string() }))
+    .query(({ ctx, input }) =>
+      checkoutJourney(ctx.db, Prisma.sql`e.id = ${input.eventId}`),
+    ),
 
   discountPerformance: eventOrganiserProcedure
     .input(z.object({ eventId: z.string() }))

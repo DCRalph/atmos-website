@@ -918,3 +918,91 @@ export function TierBars({
     </ChartCard>
   );
 }
+
+export type FunnelStage = {
+  key: string;
+  label: string;
+  value: number;
+  /** What one is: "visits", "orders". */
+  unit: string;
+  /** How long the typical one took to get here from the step above: "1m 20s". */
+  time?: string;
+  /**
+   * What this step's rate is out of, when not the stage above: the door step
+   * is out of orders for events that have happened.
+   */
+  of?: { value: number; label: string };
+};
+
+/**
+ * A funnel: each stage a centred bar as wide as its share of the first, with
+ * the count and the rate from the stage above beside it. Centred so the shape
+ * reads as a funnel; one hue fading down so the eye follows the drop.
+ */
+export function FunnelChart({
+  stages,
+  series = "revenue",
+}: {
+  stages: FunnelStage[];
+  series?: Series;
+}) {
+  const top = stages[0]?.value ?? 0;
+  if (top === 0) {
+    return (
+      <p className="text-muted-foreground text-sm">Nothing to show yet.</p>
+    );
+  }
+
+  return (
+    <div>
+      <ol className="space-y-1.5">
+        {stages.map((stage, i) => {
+          const above = stage.of?.value ?? stages[i - 1]?.value;
+          const rate = above ? Math.round((stage.value / above) * 100) : null;
+          // A hairline for a stage with something in it, so it never vanishes.
+          const width = Math.max(
+            (stage.value / top) * 100,
+            stage.value > 0 ? 1.5 : 0,
+          );
+          return (
+            <li
+              key={stage.key}
+              className="grid grid-cols-[minmax(6rem,8rem)_minmax(0,1fr)_auto] items-center gap-3 text-sm"
+            >
+              <span className="truncate">{stage.label}</span>
+              <div className="flex justify-center">
+                <div
+                  className="h-6 rounded-sm"
+                  style={{
+                    width: `${width}%`,
+                    background: `var(--ticket-series-${series})`,
+                    opacity: Math.max(0.35, 1 - i * 0.18),
+                  }}
+                />
+              </div>
+              <span className="min-w-[5.5rem] text-right tabular-nums">
+                {stage.value}{" "}
+                <span className="text-muted-foreground text-xs">
+                  {stage.unit}
+                </span>
+                {i > 0 ? (
+                  <span className="text-muted-foreground block text-xs">
+                    {rate === null ? "–" : `${rate}%`}
+                    {stage.of ? ` ${stage.of.label}` : ""}
+                    {stage.time ? ` · ${stage.time}` : ""}
+                  </span>
+                ) : null}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+      {stages.length > 1 ? (
+        <p className="text-muted-foreground mt-2 text-xs">
+          Rates and times are from the step above unless a step says otherwise.
+          Times are the median.
+        </p>
+      ) : null}
+    </div>
+  );
+}

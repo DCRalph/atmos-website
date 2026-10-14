@@ -3,11 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { keepPreviousData } from "@tanstack/react-query";
+import { endOfDay, startOfDay } from "date-fns";
 import { ChevronDown, Download } from "lucide-react";
 import { toast } from "sonner";
 
 import { api, type RouterOutputs } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
+import { DateTimePicker } from "~/components/ui/datetime-picker";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -37,6 +39,7 @@ import {
   StatStrip,
   WeekHeatmap,
 } from "./charts";
+import { CheckoutJourney } from "./checkout-journey";
 
 type Events = RouterOutputs["analytics"]["events"];
 type EventRow = Events["rows"][number];
@@ -75,26 +78,43 @@ const formatAxis = (measure: Measure) => (n: number) =>
 const pct = (part: number, whole: number) =>
   whole > 0 ? Math.round((part / whole) * 100) : null;
 
+const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
+
 /**
- * Every event at once. The controls pick which events; everything below
- * reads them. The left column is when and how people buy and what the
- * campaigns did, the rail is who the buyers are, and the table at the bottom
- * puts the events side by side.
+ * Every event at once. The controls pick which events: past or coming, a
+ * date range on the event's date, or a handful by name. Everything below
+ * reads them, in two columns from `lg` up, with the events side by side in
+ * a table at the end.
  */
 export function AnalyticsOverview() {
   const [scope, setScope] = useState<Scope>("all");
+  const [from, setFrom] = useState<Date | undefined>();
+  const [to, setTo] = useState<Date | undefined>();
   const [picked, setPicked] = useState<string[]>([]);
   const [measure, setMeasure] = useState<Measure>("orders");
-  const input = { scope, eventIds: picked };
 
-  const options = api.analytics.eventOptions.useQuery({ scope });
+  // Dates are picked as days; the range covers both of them whole.
+  const dates = {
+    ...(from ? { from: startOfDay(from) } : {}),
+    ...(to ? { to: endOfDay(to) } : {}),
+  };
+  const input = { scope, eventIds: picked, ...dates };
+
+  const options = api.analytics.eventOptions.useQuery({ scope, ...dates });
   // The previous answer stays drawn, dimmed, while the next loads.
   const held = { placeholderData: keepPreviousData };
   const events = api.analytics.events.useQuery(input, held);
+  const funnel = api.analytics.funnel.useQuery(input, held);
   const timing = api.analytics.timing.useQuery(input, held);
   const campaigns = api.analytics.campaigns.useQuery(input, held);
   const buyers = api.analytics.buyers.useQuery(input, held);
   const utils = api.useUtils();
+
+  // A narrower set of events drops picks that are no longer offered.
+  const narrow = (change: () => void) => {
+    change();
+    setPicked([]);
+  };
 
   async function download() {
     try {
@@ -117,6 +137,7 @@ export function AnalyticsOverview() {
   const rows = events.data.rows;
   const stale =
     events.isPlaceholderData ||
+    funnel.isPlaceholderData ||
     timing.isPlaceholderData ||
     campaigns.isPlaceholderData ||
     buyers.isPlaceholderData;
@@ -129,16 +150,34 @@ export function AnalyticsOverview() {
           label="Which events"
           options={SCOPES}
           value={scope}
-          onChange={(next) => {
-            setScope(next);
-            setPicked([]);
-          }}
+          onChange={(next) => narrow(() => setScope(next))}
         />
         <EventPicker
           options={options.data ?? []}
           picked={picked}
           onChange={setPicked}
         />
+        <div className="flex items-center gap-1.5">
+          <div className="w-40">
+            <DateTimePicker
+              date={from}
+              onDateChange={(date) => narrow(() => setFrom(date))}
+              placeholder="From"
+              showTime={false}
+              clearable
+            />
+          </div>
+          <span className="text-muted-foreground text-xs">to</span>
+          <div className="w-40">
+            <DateTimePicker
+              date={to}
+              onDateChange={(date) => narrow(() => setTo(date))}
+              placeholder="To"
+              showTime={false}
+              clearable
+            />
+          </div>
+        </div>
         <Segmented
           label="Measure"
           options={MEASURES}
@@ -206,49 +245,54 @@ export function AnalyticsOverview() {
 
       <div
         className={cn(
-          "grid grid-cols-1 gap-3 transition-opacity xl:grid-cols-[minmax(0,1fr)_300px]",
+          "grid grid-cols-1 gap-3 transition-opacity lg:grid-cols-2",
           stale && "opacity-60",
         )}
       >
-        <div className="min-w-0 space-y-3">
-          {timing.data ? (
-            <Months months={timing.data.months} measure={measure} />
-          ) : (
-            <Skeleton className="h-44 w-full" />
-          )}
+        {funnel.data ? (
+          <CheckoutJourney journey={funnel.data} />
+        ) : (
+          <Skeleton className="h-44 w-full" />
+        )}
+        {timing.data ? (
+          <Months months={timing.data.months} measure={measure} />
+        ) : (
+          <Skeleton className="h-44 w-full" />
+        )}
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <ChartCard title="When people buy">
-              <WeekHeatmap
-                cells={(timing.data?.weekHours ?? []).map((cell) => ({
-                  day: cell.day,
-                  hour: cell.hour,
-                  n: cell[measure],
-                }))}
-                unit={MEASURE_UNIT[measure]}
-                formatValue={measure === "revenueCents" ? formatNZD : undefined}
-              />
-            </ChartCard>
-            <ChartCard title="How far out they buy">
-              <LeadTime rows={timing.data?.leadTime ?? []} measure={measure} />
-            </ChartCard>
-          </div>
+        <ChartCard title="When people buy">
+          <WeekHeatmap
+            cells={(timing.data?.weekHours ?? []).map((cell) => ({
+              day: cell.day,
+              hour: cell.hour,
+              n: cell[measure],
+            }))}
+            unit={MEASURE_UNIT[measure]}
+            formatValue={measure === "revenueCents" ? formatNZD : undefined}
+          />
+        </ChartCard>
+        <ChartCard title="How far out they buy">
+          <LeadTime rows={timing.data?.leadTime ?? []} measure={measure} />
+        </ChartCard>
 
-          {campaigns.data ? (
-            <CampaignCards data={campaigns.data} />
-          ) : (
-            <Skeleton className="h-60 w-full" />
-          )}
-        </div>
+        {campaigns.data ? (
+          <CampaignCards data={campaigns.data} />
+        ) : (
+          <Skeleton className="h-60 w-full lg:col-span-2" />
+        )}
 
-        <div className="min-w-0 space-y-3">
-          <Prices rows={rows} />
+        <Prices rows={rows} />
+        <Returning rows={rows} />
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:col-span-2">
           {buyers.data ? <BuyerCards data={buyers.data} /> : null}
-          <Returning rows={rows} />
-          {timing.data && timing.data.arrivals.length > 0 ? (
-            <Arrivals rows={timing.data.arrivals} />
-          ) : null}
         </div>
+
+        {timing.data && timing.data.arrivals.length > 0 ? (
+          <div className="lg:col-span-2">
+            <Arrivals rows={timing.data.arrivals} />
+          </div>
+        ) : null}
       </div>
 
       <EventsTable rows={rows} />
@@ -307,7 +351,7 @@ function EventPicker({
         <Button variant="outline" size="sm" className="h-8">
           {picked.length === 0
             ? "Every event"
-            : `${picked.length} ${picked.length === 1 ? "event" : "events"}`}
+            : `${picked.length} ${plural(picked.length, "event", "events")}`}
           <ChevronDown className="size-3.5 opacity-60" aria-hidden />
         </Button>
       </DropdownMenuTrigger>
@@ -519,6 +563,7 @@ function Cell({ children }: { children: React.ReactNode }) {
   return <td className="py-1 pl-3 text-right whitespace-nowrap">{children}</td>;
 }
 
+/** By type and by channel side by side, then the best campaigns across both columns. */
 function CampaignCards({ data }: { data: Campaigns }) {
   const groupRows = (groups: Campaigns["byType"]): FunnelRow[] =>
     groups.map((group) => ({
@@ -526,7 +571,7 @@ function CampaignCards({ data }: { data: Campaigns }) {
       label: group.label,
       sub:
         group.campaigns > 0
-          ? `${group.campaigns} ${group.campaigns === 1 ? "campaign" : "campaigns"}`
+          ? `${group.campaigns} ${plural(group.campaigns, "campaign", "campaigns")}`
           : undefined,
       clicks: group.campaigns > 0 ? group.clicks : null,
       views: group.views,
@@ -537,7 +582,7 @@ function CampaignCards({ data }: { data: Campaigns }) {
     }));
   const direct =
     data.direct.checkouts > 0
-      ? `${data.direct.checkouts} ${data.direct.checkouts === 1 ? "checkout" : "checkouts"} and ${formatNZD(data.direct.revenueCents)} arrived with no tags at all.`
+      ? `${data.direct.checkouts} ${plural(data.direct.checkouts, "checkout", "checkouts")} and ${formatNZD(data.direct.revenueCents)} arrived with no tags at all.`
       : null;
 
   return (
@@ -559,7 +604,7 @@ function CampaignCards({ data }: { data: Campaigns }) {
           empty="No tagged checkouts yet."
         />
       </ChartCard>
-      <ChartCard title="Top campaigns">
+      <ChartCard title="Top campaigns" className="lg:col-span-2">
         <FunnelTable
           heading="Campaign"
           empty="No campaigns yet."
@@ -608,7 +653,7 @@ function Prices({ rows }: { rows: EventRow[] }) {
       {first.share !== null ? (
         <p className="text-muted-foreground mt-3 text-xs">
           The first paid tier took {Math.round(first.share * 100)}% of paid
-          tickets, over {first.events} {first.events === 1 ? "event" : "events"}{" "}
+          tickets, over {first.events} {plural(first.events, "event", "events")}{" "}
           with more than one.
         </p>
       ) : null}
@@ -659,7 +704,7 @@ function BuyerCards({ data }: { data: Buyers }) {
                   ? "4 or more"
                   : `${row.size} tickets`,
             value: row.orders,
-            detail: `${row.orders} ${row.orders === 1 ? "order" : "orders"}`,
+            detail: `${row.orders} ${plural(row.orders, "order", "orders")}`,
           }))}
         />
       </ChartCard>

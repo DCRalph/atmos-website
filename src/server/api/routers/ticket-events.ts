@@ -999,17 +999,20 @@ export const ticketEventsRouter = createTRPCRouter({
   // ---------------------------------------------------------------- public
 
   /**
-   * One view of an event's page, sent by the page itself. The top of the
-   * funnel per campaign: the tags are the visit's, the same ones a checkout
-   * from this tab will carry. A visit counts once per event, so a refresh
-   * adds nothing, and crawlers and link previews are ignored. Never fails:
-   * a stats row is not worth an error on the page.
+   * A checkpoint on a visit to an event's page, sent by the page itself:
+   * `view` when it loads, `basket` the first time a ticket goes in. The top
+   * of the checkout journey; the tags are the visit's, the same ones a
+   * checkout from this tab will carry. A visit counts once per event, so a
+   * refresh adds nothing, a basket before a view still makes the row, and
+   * crawlers and link previews are ignored. Never fails: a stats row is not
+   * worth an error on the page.
    */
-  recordView: publicProcedure
+  recordVisit: publicProcedure
     .input(
       z.object({
         eventId: z.string(),
         visitId: z.string().min(8).max(64),
+        checkpoint: z.enum(["view", "basket"]),
         utm: z
           .object({
             source: z.string().max(120).optional(),
@@ -1022,22 +1025,25 @@ export const ticketEventsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       if (isBot(ctx.headers)) return;
-      // One statement that does nothing for an unknown event or a repeat
-      // visit, so neither raises an error worth logging.
+      // One statement that does nothing for an unknown event, and on a
+      // repeat only fills in a basket time that isn't there yet. The clock
+      // is the database's, the same one `createdAt` defaults to.
       await ctx.db.$executeRaw`
         INSERT INTO "ticket_event_view"
-          ("id", "eventId", "visitId", "utmSource", "utmMedium", "utmCampaign", "utmContent")
+          ("id", "eventId", "visitId", "firstAddedAt", "utmSource", "utmMedium", "utmCampaign", "utmContent")
         SELECT
           ${randomUUID()}::text,
           e.id,
           ${input.visitId}::text,
+          CASE WHEN ${input.checkpoint}::text = 'basket' THEN now() END,
           ${input.utm?.source ?? null}::text,
           ${input.utm?.medium ?? null}::text,
           ${input.utm?.campaign ?? null}::text,
           ${input.utm?.content ?? null}::text
         FROM "ticket_event" e
         WHERE e.id = ${input.eventId}
-        ON CONFLICT ("eventId", "visitId") DO NOTHING
+        ON CONFLICT ("eventId", "visitId") DO UPDATE
+          SET "firstAddedAt" = COALESCE("ticket_event_view"."firstAddedAt", EXCLUDED."firstAddedAt")
       `.catch(() => undefined);
     }),
 

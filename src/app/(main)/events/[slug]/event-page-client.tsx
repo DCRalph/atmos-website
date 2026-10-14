@@ -73,12 +73,17 @@ export function EventPageClient() {
   // funnel starts here rather than at checkout. Fire and forget: the server
   // drops repeats and never fails the page.
   const eventId = event.data?.id;
-  const { mutate: sendView } = api.ticketEvents.recordView.useMutation();
+  const { mutate: sendVisit } = api.ticketEvents.recordVisit.useMutation();
   useEffect(() => {
     const visit = eventId ? visitId() : undefined;
     if (!eventId || !visit) return;
-    sendView({ eventId, visitId: visit, utm: readAttribution() });
-  }, [eventId, sendView]);
+    sendVisit({
+      eventId,
+      visitId: visit,
+      checkpoint: "view",
+      utm: readAttribution(),
+    });
+  }, [eventId, sendVisit]);
 
   const desktop = useDesktop();
   const [sheetOpen, setSheetOpen] = useState(false);

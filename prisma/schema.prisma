@@ -2532,6 +2532,10 @@ model TicketEventView {
   /// The same tab visit a checkout carries as `TicketOrder.visitId`.
   visitId String
 
+  /// When this visit first put a ticket in its basket: the checkpoint between
+  /// seeing the page and pressing hold and pay. Null if it never did.
+  firstAddedAt DateTime?
+
   utmSource   String?
   utmMedium   String?
   utmCampaign String?

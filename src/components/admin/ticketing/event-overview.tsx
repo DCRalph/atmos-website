@@ -38,6 +38,7 @@ import {
   TimeSeriesChart,
   WeekHeatmap,
 } from "./charts";
+import { CheckoutJourney } from "./checkout-journey";
 
 type Overview = RouterOutputs["ticketAnalytics"]["overview"];
 type Measure = "tickets" | "revenue";
@@ -78,6 +79,7 @@ export function EventOverview({
   const discounts = api.ticketAnalytics.discountPerformance.useQuery({
     eventId,
   });
+  const journey = api.ticketAnalytics.journey.useQuery({ eventId });
 
   const utils = api.useUtils();
 
@@ -241,7 +243,7 @@ export function EventOverview({
         <div className="min-w-0 space-y-3">
           <TierBars tiers={tiers} formatMoney={formatNZD} />
           <PaidWith overview={overview.data} />
-          <Funnel counts={counts} />
+          {journey.data ? <CheckoutJourney journey={journey.data} /> : null}
           <MoneyBreakdown money={money} />
           <Gst gst={overview.data.gst} money={money} costs={costs} />
           {discounts.data && discounts.data.length > 0 ? (
@@ -588,66 +590,6 @@ function PaidWith({ overview }: { overview: Overview }) {
           value: row.orders,
           detail: `${row.orders} · ${Math.round((row.orders / total) * 100)}%`,
         }))}
-      />
-    </ChartCard>
-  );
-}
-
-/**
- * From seeing the page, to starting a checkout, to paying, to walking in.
- * Views are visits and the rest are orders, so the first step is a bigger
- * unit than the others; the detail says which is which.
- */
-function Funnel({ counts }: { counts: Overview["counts"] }) {
-  const started = counts.orders + counts.abandonedCheckouts;
-  if (started === 0 && counts.views === 0) return null;
-
-  return (
-    <ChartCard title="Page to door">
-      <BarList
-        max={Math.max(started, counts.views)}
-        rows={[
-          ...(counts.views > 0
-            ? [
-                {
-                  key: "viewed",
-                  label: "Saw the page",
-                  value: counts.views,
-                  detail: `${counts.views} ${counts.views === 1 ? "visit" : "visits"}`,
-                },
-              ]
-            : []),
-          {
-            key: "started",
-            label: "Checkouts started",
-            value: started,
-            detail:
-              counts.views > 0
-                ? `${started} · ${Math.round((started / counts.views) * 100)}% of visits`
-                : String(started),
-          },
-          {
-            key: "paid",
-            label: "Paid",
-            value: counts.orders,
-            detail: `${counts.orders} · ${counts.checkoutConversion ?? 0}%`,
-          },
-          // Only once the doors have opened: before then it's a row of zeros.
-          ...(counts.admitted > 0
-            ? [
-                {
-                  key: "arrived",
-                  label: "Got in",
-                  value: counts.ordersArrived,
-                  detail: `${counts.ordersArrived} · ${
-                    counts.orders > 0
-                      ? Math.round((counts.ordersArrived / counts.orders) * 100)
-                      : 0
-                  }% of paid`,
-                },
-              ]
-            : []),
-        ]}
       />
     </ChartCard>
   );

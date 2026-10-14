@@ -16,6 +16,7 @@ import {
   NO_RESULTS,
 } from "~/server/ticketing/campaign-results";
 import { salesByDaysOut } from "~/server/ticketing/lead-time";
+import { checkoutJourney } from "~/server/ticketing/journey";
 import {
   CAMPAIGN_SOURCE_LABELS,
   CAMPAIGN_TYPE_LABELS,
@@ -41,6 +42,10 @@ const SCOPES = ["all", "past", "upcoming"] as const;
 
 const scopeInput = z.object({
   scope: z.enum(SCOPES).default("all"),
+  /** Only events on or after this moment. */
+  from: z.date().optional(),
+  /** Only events up to this moment. */
+  to: z.date().optional(),
   /** Narrow to these events within the scope. Empty means all of them. */
   eventIds: z.array(z.string()).max(500).default([]),
 });
@@ -54,6 +59,8 @@ function scopeSql(input: ScopeInput): Prisma.Sql {
   if (input.scope === "upcoming") {
     clauses.push(Prisma.sql`e."startsAt" >= now()`);
   }
+  if (input.from) clauses.push(Prisma.sql`e."startsAt" >= ${input.from}`);
+  if (input.to) clauses.push(Prisma.sql`e."startsAt" <= ${input.to}`);
   if (input.eventIds.length > 0) {
     clauses.push(Prisma.sql`e.id IN (${Prisma.join(input.eventIds)})`);
   }
@@ -63,10 +70,16 @@ function scopeSql(input: ScopeInput): Prisma.Sql {
 /** The same scope for Prisma queries. */
 function scopeWhere(input: ScopeInput): Prisma.TicketEventWhereInput {
   const now = new Date();
+  const startsAt: Prisma.DateTimeFilter = {};
+  if (input.scope === "past") startsAt.lt = now;
+  if (input.scope === "upcoming") startsAt.gte = now;
+  if (input.from && (!startsAt.gte || input.from > startsAt.gte)) {
+    startsAt.gte = input.from;
+  }
+  if (input.to) startsAt.lte = input.to;
   return {
     status: { notIn: [TicketEventStatus.DRAFT, TicketEventStatus.CANCELLED] },
-    ...(input.scope === "past" ? { startsAt: { lt: now } } : {}),
-    ...(input.scope === "upcoming" ? { startsAt: { gte: now } } : {}),
+    ...(Object.keys(startsAt).length > 0 ? { startsAt } : {}),
     ...(input.eventIds.length > 0 ? { id: { in: input.eventIds } } : {}),
   };
 }
@@ -325,7 +338,7 @@ type Measured = { orders: number; tickets: number; revenueCents: number };
 export const analyticsRouter = createTRPCRouter({
   /** The events the picker offers for a scope. */
   eventOptions: adminProcedure
-    .input(scopeInput.pick({ scope: true }))
+    .input(scopeInput.omit({ eventIds: true }))
     .query(({ ctx, input }) =>
       ctx.db.ticketEvent.findMany({
         where: scopeWhere({ ...input, eventIds: [] }),
@@ -588,6 +601,15 @@ export const analyticsRouter = createTRPCRouter({
         .slice(0, 10),
     };
   }),
+
+  /**
+   * The checkout journey through every event in scope: who saw a page, added
+   * a ticket, pressed hold and pay, paid and named their tickets, and how
+   * long each step typically took.
+   */
+  funnel: adminProcedure
+    .input(scopeInput)
+    .query(({ ctx, input }) => checkoutJourney(ctx.db, scopeSql(input))),
 
   /** Who buys: how many at once, on what, and how they paid. */
   buyers: adminProcedure.input(scopeInput).query(async ({ ctx, input }) => {

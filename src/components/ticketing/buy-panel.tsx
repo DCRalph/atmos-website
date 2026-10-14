@@ -197,8 +197,25 @@ export function BuyPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accepted]);
 
+  // The first ticket into the basket is a checkpoint on the checkout
+  // journey. Sent once per mount; the server keeps the earliest anyway.
+  const { mutate: sendVisit } = api.ticketEvents.recordVisit.useMutation();
+  const basketSent = useRef(false);
+
   const setQuantity = useCallback(
     (tier: PublicTier, next: number) => {
+      if (next > 0 && !basketSent.current) {
+        basketSent.current = true;
+        const visit = visitId();
+        if (visit) {
+          sendVisit({
+            eventId: event.id,
+            visitId: visit,
+            checkpoint: "basket",
+            utm: readAttribution(),
+          });
+        }
+      }
       setQuantities((current) => {
         const others = tiers.reduce(
           (sum, t) =>
@@ -218,7 +235,7 @@ export function BuyPanel({
         );
       });
     },
-    [tiers, event.maxTicketsPerOrder],
+    [tiers, event.id, event.maxTicketsPerOrder, sendVisit],
   );
 
   const codeBox = (
