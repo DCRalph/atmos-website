@@ -16,6 +16,7 @@ import {
   type AnalyticsRange,
 } from "~/lib/analytics-range";
 import { formatNZD, formatNZDCompact } from "~/lib/ticketing/money";
+import { deviceKindLabel, deviceLabel } from "~/lib/ticketing/devices";
 import {
   paidWithLabel,
   paymentMethodShort,
@@ -386,16 +387,6 @@ function SalesChart({
   );
 }
 
-const DEVICE_NOUN: Record<string, string> = {
-  mobile: "phone",
-  tablet: "tablet",
-  desktop: "computer",
-};
-
-const deviceNoun = (device: string) => DEVICE_NOUN[device] ?? device;
-const capitalise = (word: string) =>
-  word.charAt(0).toUpperCase() + word.slice(1);
-
 /**
  * What people bought on, then how each kind of device paid. Two cards in the
  * same row, both over the chosen range. Orders from before devices were
@@ -412,10 +403,7 @@ function Devices({
 
   const byDevice = new Map<string, number>();
   for (const row of recorded) {
-    const label =
-      row.os && row.os !== "Other"
-        ? `${row.os} ${deviceNoun(row.device)}`
-        : capitalise(deviceNoun(row.device));
+    const label = deviceLabel(row.device, row.os);
     byDevice.set(label, (byDevice.get(label) ?? 0) + row.orders);
   }
   const total = recorded.reduce((sum, row) => sum + row.orders, 0);
@@ -447,7 +435,7 @@ function Devices({
               row: row.paidWith
                 ? paidWithLabel(row.paidWith)
                 : paymentMethodShort(row.paymentMethod),
-              column: capitalise(deviceNoun(row.device)),
+              column: deviceKindLabel(row.device),
               n: row.orders,
             }))}
           />

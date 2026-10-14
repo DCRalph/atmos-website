@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import {
   Copy,
+  ExternalLink,
   Link2,
   Mail,
   Search,
@@ -31,6 +32,7 @@ import {
 } from "~/components/ui/dialog";
 import { useConfirm } from "~/components/confirm-provider";
 import { formatNZD } from "~/lib/ticketing/money";
+import { deviceLabel } from "~/lib/ticketing/devices";
 import {
   PAYMENT_METHODS,
   paidWithLabel,
@@ -287,6 +289,11 @@ function OrderDetail({
   const utils = api.useUtils();
   const confirm = useConfirm();
   const order = api.ticketAdmin.order.useQuery({ id: orderId });
+  // Only admins get `stripeUrl`, and only they may ask Stripe for the receipt.
+  const receipt = api.ticketAdmin.stripeReceiptUrl.useQuery(
+    { orderId },
+    { enabled: !!order.data?.stripeUrl && !!order.data.stripeChargeId },
+  );
   const { level } = useAccessLevels();
   const [selected, setSelected] = useState<string[]>([]);
   // Deleting is superadmin-only; admins refund, void, or expire instead.
@@ -348,6 +355,9 @@ function OrderDetail({
 
   const data = order.data;
   const supportUrl = data.ticketsUrl;
+  const cameFrom = [data.utmSource, data.utmMedium, data.utmCampaign]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <div className="space-y-4">
@@ -454,6 +464,46 @@ function OrderDetail({
           )}
         </div>
       </div>
+
+      <dl className="grid gap-x-8 gap-y-1 border-t pt-4 text-sm sm:grid-cols-2">
+        {data.device && (
+          <Row label="Bought on" value={deviceLabel(data.device, data.os)} />
+        )}
+        {cameFrom && <Row label="Came from" value={cameFrom} />}
+        {data.codeUsed && (
+          <Row
+            label="Code used"
+            value={<span className="font-mono">{data.codeUsed}</span>}
+          />
+        )}
+        {data.soldByName && <Row label="Sold by" value={data.soldByName} />}
+        {/* Only checkout asks, so door sales have no answer to show. */}
+        {data.termsAcceptedAt && (
+          <Row
+            label="Marketing"
+            value={data.marketingOptIn ? "Opted in" : "No"}
+          />
+        )}
+        {data.termsAcceptedAt && (
+          <Row
+            label="Terms accepted"
+            value={`${formatDateTime(data.termsAcceptedAt)}${data.termsVersion ? ` · ${data.termsVersion}` : ""}`}
+          />
+        )}
+        {data.stripeUrl && (
+          <Row
+            label="Stripe"
+            value={
+              <span className="flex gap-3">
+                <ExternalAnchor href={data.stripeUrl}>Payment</ExternalAnchor>
+                {receipt.data && (
+                  <ExternalAnchor href={receipt.data}>Receipt</ExternalAnchor>
+                )}
+              </span>
+            }
+          />
+        )}
+      </dl>
 
       <div>
         <p className="mb-2 text-sm font-medium">Tickets</p>
@@ -623,5 +673,24 @@ function Row({ label, value }: { label: string; value: ReactNode }) {
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="tabular-nums">{value}</dd>
     </div>
+  );
+}
+
+function ExternalAnchor({
+  href,
+  children,
+}: {
+  href: string;
+  children: ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-1 underline-offset-4 hover:underline"
+    >
+      {children} <ExternalLink className="size-3" />
+    </a>
   );
 }

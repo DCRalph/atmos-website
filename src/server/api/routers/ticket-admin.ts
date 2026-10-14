@@ -15,7 +15,11 @@ import {
   eventOrganiserProcedure,
   superadminProcedure,
 } from "~/server/api/trpc";
-import { getStripe, isStripeConfigured } from "~/server/stripe";
+import {
+  getStripe,
+  isStripeConfigured,
+  stripePaymentUrl,
+} from "~/server/stripe";
 import {
   sendCompTicketEmail,
   sendRefundEmail,
@@ -258,10 +262,55 @@ export const ticketAdminRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
       }
 
+      // The order keeps bare ids for these, not relations.
+      const [soldBy, discountCode, eventCode] = await Promise.all([
+        order.soldByUserId
+          ? ctx.db.user.findUnique({
+              where: { id: order.soldByUserId },
+              select: { name: true },
+            })
+          : null,
+        order.discountCodeId
+          ? ctx.db.discountCode.findUnique({
+              where: { id: order.discountCodeId },
+              select: { code: true },
+            })
+          : null,
+        order.eventCodeId
+          ? ctx.db.eventCode.findUnique({
+              where: { id: order.eventCodeId },
+              select: { code: true },
+            })
+          : null,
+      ]);
+
       return {
         ...order,
+        soldByName: soldBy?.name ?? null,
+        codeUsed: discountCode?.code ?? eventCode?.code ?? null,
         ticketsUrl: ctx.isAdmin ? ticketsUrl(orderAccessToken(order)) : null,
+        stripeUrl:
+          ctx.isAdmin && order.stripePaymentIntentId
+            ? stripePaymentUrl(order.stripePaymentIntentId)
+            : null,
       };
+    }),
+
+  /**
+   * The buyer's Stripe receipt for an order. Its own query because it asks
+   * Stripe live, so the order dialog opens without waiting on it. Null when
+   * Stripe never charged the order.
+   */
+  stripeReceiptUrl: adminProcedure
+    .input(z.object({ orderId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const order = await ctx.db.ticketOrder.findUnique({
+        where: { id: input.orderId },
+        select: { stripeChargeId: true },
+      });
+      if (!order?.stripeChargeId || !isStripeConfigured()) return null;
+      const charge = await getStripe().charges.retrieve(order.stripeChargeId);
+      return charge.receipt_url ?? null;
     }),
 
   /** Individual tickets for an event — search, inspect, then void or refund. */
