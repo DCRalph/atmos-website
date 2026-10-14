@@ -71,14 +71,7 @@ export function ContentManager() {
       header: "Title",
       sortable: true,
       accessor: (row) => row.title,
-      cell: (row) => (
-        <Link
-          href={`/admin/content/${row.id}`}
-          className="text-primary font-medium hover:underline"
-        >
-          {row.title}
-        </Link>
-      ),
+      className: "font-medium",
     },
     {
       id: "dj",
@@ -138,9 +131,6 @@ export function ContentManager() {
               <ExternalLink className="h-4 w-4" />
             </a>
           </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/admin/content/${item.id}`}>Edit</Link>
-          </Button>
           <Button
             variant="destructive"
             size="sm"
@@ -197,6 +187,7 @@ export function ContentManager() {
           columns={columns}
           data={rows}
           getRowId={(row) => row.id}
+          getRowHref={(row) => `/admin/content/${row.id}`}
           isLoading={isLoading}
           isFetching={isFetching}
           storageKey="admin-content-items"

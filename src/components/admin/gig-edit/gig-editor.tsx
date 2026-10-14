@@ -8,7 +8,7 @@ import {
   ExternalLink,
   FileText,
   HeartHandshake,
-  Info,
+  Images,
   ListChecks,
   Loader2,
   Trash2,
@@ -224,8 +224,19 @@ const draftFromGig = (gig: LoadedGig): GigDraft => ({
   widePoster: { kind: "keep" },
 });
 
-/** Everything that decides whether the draft differs from what is stored. */
-const fingerprint = (draft: GigDraft): string =>
+/** The donate page's settings, which live in the Donations section. */
+const donationFingerprint = (draft: GigDraft): string =>
+  JSON.stringify({
+    donationsEnabled: draft.donationsEnabled,
+    donationAmounts: draft.donationAmounts.map((amount) => amount.trim()),
+    donationRecommendedIndex: draft.donationRecommendedIndex,
+    donationDescription: draft.donationDescription
+      ? JSON.stringify(draft.donationDescription)
+      : null,
+  });
+
+/** Everything else that decides whether the draft differs from what is stored. */
+const detailsFingerprint = (draft: GigDraft): string =>
   JSON.stringify({
     title: draft.title.trim(),
     subtitle: draft.subtitle.trim(),
@@ -238,12 +249,6 @@ const fingerprint = (draft: GigDraft): string =>
     announceAt: draft.isTba ? (draft.announceAt?.getTime() ?? null) : null,
     isAffiliated: draft.isAffiliated,
     ticketLink: draft.ticketLink.trim(),
-    donationsEnabled: draft.donationsEnabled,
-    donationAmounts: draft.donationAmounts.map((amount) => amount.trim()),
-    donationRecommendedIndex: draft.donationRecommendedIndex,
-    donationDescription: draft.donationDescription
-      ? JSON.stringify(draft.donationDescription)
-      : null,
     startTime: draft.startTime?.getTime() ?? null,
     endTime: draft.endTime?.getTime() ?? null,
     tagIds: [...draft.tagIds].sort(),
@@ -327,7 +332,7 @@ type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
   const router = useRouter();
   const { value: editorTab, onValueChange: setEditorTab } = useTabParam(
-    ["details", "tasks", "donations"],
+    ["details", "gallery", "tasks", "donations"],
     "section",
   );
   const utils = api.useUtils();
@@ -371,10 +376,15 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
   // Seeds a new doors row once. The buy page keeps its own door time.
   const ticketEventDoorsAt = gig?.ticketEvents[0]?.doorsAt ?? null;
 
-  const isDirty = useMemo(
-    () => fingerprint(draft) !== fingerprint(baseline),
+  const detailsDirty = useMemo(
+    () => detailsFingerprint(draft) !== detailsFingerprint(baseline),
     [draft, baseline],
   );
+  const donationsDirty = useMemo(
+    () => donationFingerprint(draft) !== donationFingerprint(baseline),
+    [draft, baseline],
+  );
+  const isDirty = detailsDirty || donationsDirty;
 
   /**
    * Adopt server state when it is genuinely newer, but never on top of unsaved
@@ -492,8 +502,13 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
 
     const found = validate(draft);
     setErrors(found);
-    const firstError = Object.values(found).find(Boolean);
+    const [firstKey, firstError] =
+      Object.entries(found).find(([, message]) => message) ?? [];
     if (firstError) {
+      // Show the section the complaint is in. A new gig has only Details.
+      if (gigId) {
+        setEditorTab(firstKey === "donationAmounts" ? "donations" : "details");
+      }
       setSaveState("error");
       setErrorMessage(firstError);
       toast.error(firstError);
@@ -657,6 +672,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
     resetPosterUpload,
     resetWidePosterUpload,
     saveGig,
+    setEditorTab,
     setPoster,
     uploadPoster,
     uploadWidePoster,
@@ -800,13 +816,15 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
                   value: "details",
                   label: "Details",
                   icon: FileText,
-                  dirty: isDirty,
+                  dirty: detailsDirty,
                 },
+                { value: "gallery", label: "Gallery", icon: Images },
                 { value: "tasks", label: "Tasks", icon: ListChecks },
                 {
                   value: "donations",
                   label: "Donations",
                   icon: HeartHandshake,
+                  dirty: donationsDirty,
                 },
               ],
             },
@@ -816,10 +834,28 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
         />
       ) : null}
       {gigId && editorTab === "tasks" ? <GigTasks gigId={gigId} /> : null}
-      {gigId && editorTab === "donations" ? (
-        <GigDonations gigId={gigId} />
+      {gigId && gig && editorTab === "gallery" ? (
+        // Its sections are cards already, so on a phone this one drops its
+        // own chrome and gives them the width. Media saves as it goes.
+        <Card className="max-sm:gap-4 max-sm:border-0 max-sm:bg-transparent max-sm:py-0 max-sm:shadow-none">
+          <CardHeader className="max-sm:px-0">
+            <CardTitle>Media gallery</CardTitle>
+            <CardDescription>
+              Photos and video for the featured and gallery sections. Drag or
+              use ⋯ to reorder.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="max-sm:px-0">
+            <GigMediaManager
+              gigId={gigId}
+              media={gig.media ?? []}
+              onRefetch={() => void query.refetch()}
+            />
+          </CardContent>
+        </Card>
       ) : null}
-      <div hidden={editorTab !== "details"}>
+      {/* Details and Donations share the draft, so they share the one Save. */}
+      <div hidden={editorTab !== "details" && editorTab !== "donations"}>
         {/* The page's one and only Save, kept in reach of every field. */}
         <SaveBar
           status={status}
@@ -845,7 +881,39 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
               : undefined
           }
         >
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+          {gigId ? (
+            <div
+              hidden={editorTab !== "donations"}
+              className="flex flex-col gap-6"
+            >
+              <DonationsField
+                enabled={draft.donationsEnabled}
+                amounts={draft.donationAmounts}
+                recommended={draft.donationRecommendedIndex}
+                description={draft.donationDescription}
+                onDescriptionChange={(value) =>
+                  update("donationDescription", value)
+                }
+                editorNamespace={`gig-donation-${gigId}`}
+                onRecommendedChange={(index) =>
+                  update("donationRecommendedIndex", index)
+                }
+                onEnabledChange={(on) => update("donationsEnabled", on)}
+                onAmountsChange={(amounts) =>
+                  update("donationAmounts", amounts)
+                }
+                error={errors.donationAmounts}
+                disabled={isSaving}
+              />
+              {editorTab === "donations" ? (
+                <GigDonations gigId={gigId} />
+              ) : null}
+            </div>
+          ) : null}
+          <div
+            hidden={editorTab !== "details"}
+            className="grid grid-cols-1 gap-6 xl:grid-cols-12"
+          >
             <div className="flex flex-col gap-6 xl:col-span-8">
               <Card>
                 <CardHeader>
@@ -1075,70 +1143,6 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
                 onChange={(tagIds) => update("tagIds", tagIds)}
                 disabled={isSaving}
               />
-
-              <DonationsField
-                enabled={draft.donationsEnabled}
-                amounts={draft.donationAmounts}
-                recommended={draft.donationRecommendedIndex}
-                description={draft.donationDescription}
-                onDescriptionChange={(value) =>
-                  update("donationDescription", value)
-                }
-                editorNamespace={`gig-donation-${gigId ?? "new"}`}
-                onRecommendedChange={(index) =>
-                  update("donationRecommendedIndex", index)
-                }
-                onEnabledChange={(on) => update("donationsEnabled", on)}
-                onAmountsChange={(amounts) =>
-                  update("donationAmounts", amounts)
-                }
-                error={errors.donationAmounts}
-                disabled={isSaving}
-              />
-            </div>
-
-            {/* The gallery's own order bar sticks to the bottom too; on a
-                phone it is lifted clear of the page's bar rather than sitting
-                on it. */}
-            <div className="xl:col-span-12 max-sm:[&_.sticky]:bottom-[calc(4rem+env(safe-area-inset-bottom))]">
-              {gigId && gig ? (
-                // Its sections are cards already, so on a phone this one
-                // drops its own chrome and gives them the width.
-                <Card className="max-sm:gap-4 max-sm:border-0 max-sm:bg-transparent max-sm:py-0 max-sm:shadow-none">
-                  <CardHeader className="max-sm:px-0">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <CardTitle>Media gallery</CardTitle>
-                        <CardDescription>
-                          Photos and video for the featured and gallery
-                          sections. Drag or use ⋯ to reorder.
-                        </CardDescription>
-                      </div>
-                      <span className="text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium">
-                        <Info className="h-3.5 w-3.5" />
-                        Separate from the page&apos;s Save
-                      </span>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="max-sm:px-0">
-                    <GigMediaManager
-                      gigId={gigId}
-                      media={gig.media ?? []}
-                      onRefetch={() => void query.refetch()}
-                    />
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card className="border-dashed">
-                  <CardHeader>
-                    <CardTitle>Media gallery</CardTitle>
-                    <CardDescription>
-                      Available as soon as the gig is created — you stay on this
-                      page, so you can add photos and video straight afterwards.
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              )}
             </div>
 
             {gigId && gig ? (

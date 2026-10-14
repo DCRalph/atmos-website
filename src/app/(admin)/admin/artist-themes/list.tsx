@@ -90,12 +90,7 @@ export function AdminArtistThemesList() {
       accessor: (theme) => theme.name,
       cell: (theme) => (
         <>
-          <Link
-            href={`/admin/artist-themes/${theme.id}`}
-            className="font-medium hover:underline"
-          >
-            {theme.name}
-          </Link>
+          <div className="font-medium">{theme.name}</div>
           {theme.description && (
             <div className="text-muted-foreground line-clamp-1 text-xs">
               {theme.description}
@@ -174,21 +169,16 @@ export function AdminArtistThemesList() {
       align: "right",
       hideable: false,
       cell: (theme) => (
-        <div className="flex items-center justify-end gap-1">
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/admin/artist-themes/${theme.id}`}>Edit</Link>
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={`Delete ${theme.name}`}
-            disabled={deleteMut.isPending}
-            className="text-destructive hover:text-destructive"
-            onClick={() => void handleDelete(theme.id, theme.name)}
-          >
-            <Trash2 className="h-4 w-4" aria-hidden />
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={`Delete ${theme.name}`}
+          disabled={deleteMut.isPending}
+          className="text-destructive hover:text-destructive"
+          onClick={() => void handleDelete(theme.id, theme.name)}
+        >
+          <Trash2 className="h-4 w-4" aria-hidden />
+        </Button>
       ),
     },
   ];
@@ -240,6 +230,7 @@ export function AdminArtistThemesList() {
         columns={columns}
         data={themes}
         getRowId={(row) => row.id}
+        getRowHref={(row) => `/admin/artist-themes/${row.id}`}
         isLoading={listQ.isLoading}
         storageKey="admin-artist-themes"
         emptyMessage="No themes match these filters."

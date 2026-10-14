@@ -201,37 +201,45 @@ export function StepSource({
             </CardDescription>
           </CardHeader>
           <CardContent className="divide-border divide-y">
-            {recent.data.map((entry) => (
-              <div
-                key={entry.id}
-                className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">
-                    {entry.gig?.title ?? "Draft discarded"}
-                  </p>
-                  <p className="text-muted-foreground truncate text-xs">
-                    {entry.sourceUrl ?? "Pasted caption"}
-                  </p>
+            {recent.data.map((entry) => {
+              const row = (
+                <>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {entry.gig?.title ?? "Draft discarded"}
+                    </p>
+                    <p className="text-muted-foreground truncate text-xs">
+                      {entry.sourceUrl ?? "Pasted caption"}
+                    </p>
+                  </div>
+                  {entry.gig ? (
+                    <GigStatusBadge status={entry.gig.status} startsAt={null} />
+                  ) : null}
+                  <span className="text-muted-foreground text-xs">
+                    {entry.createdAt.toLocaleDateString("en-NZ", {
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </span>
+                </>
+              );
+              const className =
+                "flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0";
+              // A discarded draft has nothing left to open.
+              return entry.gig ? (
+                <Link
+                  key={entry.id}
+                  href={`/admin/gigs/import?import=${entry.id}`}
+                  className={`${className} hover:bg-muted/50 -mx-2 rounded-md px-2`}
+                >
+                  {row}
+                </Link>
+              ) : (
+                <div key={entry.id} className={className}>
+                  {row}
                 </div>
-                {entry.gig ? (
-                  <GigStatusBadge status={entry.gig.status} startsAt={null} />
-                ) : null}
-                <span className="text-muted-foreground text-xs">
-                  {entry.createdAt.toLocaleDateString("en-NZ", {
-                    day: "numeric",
-                    month: "short",
-                  })}
-                </span>
-                {entry.gig ? (
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/admin/gigs/import?import=${entry.id}`}>
-                      {entry.gig.status === "DRAFT" ? "Resume" : "Open"}
-                    </Link>
-                  </Button>
-                ) : null}
-              </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Card>
       ) : null}

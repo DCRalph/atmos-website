@@ -188,13 +188,6 @@ export function AccessLevelsPanel() {
       hideable: false,
       cell: (level) => (
         <div className="flex justify-end gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link
-              href={`/admin/access-levels/${encodeURIComponent(level.code)}`}
-            >
-              Edit
-            </Link>
-          </Button>
           <Button
             variant="destructive"
             size="sm"
@@ -242,6 +235,9 @@ export function AccessLevelsPanel() {
           data={rows}
           isLoading={isLoading}
           getRowId={(row) => row.code}
+          getRowHref={(row) =>
+            `/admin/access-levels/${encodeURIComponent(row.code)}`
+          }
           storageKey="admin-access-levels"
           rowClassName={(row) => (row.archived ? "opacity-50" : undefined)}
         />
