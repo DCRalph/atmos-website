@@ -25,7 +25,10 @@ export function LoginForm({ next }: { next: string | null }) {
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  // Which provider we're redirecting to, so both buttons lock while one runs.
+  const [oauthPending, setOauthPending] = useState<"google" | "wmgx" | null>(
+    null,
+  );
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +92,7 @@ export function LoginForm({ next }: { next: string | null }) {
 
   const handleGoogleSignIn = async () => {
     setError(null);
-    setIsGoogleLoading(true);
+    setOauthPending("google");
 
     try {
       await authClient.signIn.social({
@@ -99,7 +102,24 @@ export function LoginForm({ next }: { next: string | null }) {
     } catch (err) {
       console.error(err);
       setError("Failed to sign in with Google");
-      setIsGoogleLoading(false);
+      setOauthPending(null);
+    }
+  };
+
+  // WMGX goes through the generic OAuth plugin, hence `oauth2` not `social`.
+  const handleWmgxSignIn = async () => {
+    setError(null);
+    setOauthPending("wmgx");
+
+    try {
+      await authClient.signIn.oauth2({
+        providerId: "wmgx",
+        callbackURL: destination,
+      });
+    } catch (err) {
+      console.error(err);
+      setError("Failed to sign in with WMGX");
+      setOauthPending(null);
     }
   };
 
@@ -167,7 +187,7 @@ export function LoginForm({ next }: { next: string | null }) {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={isLoading || isGoogleLoading}
+                disabled={isLoading || oauthPending !== null}
               >
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
@@ -188,7 +208,7 @@ export function LoginForm({ next }: { next: string | null }) {
                 variant="outline"
                 className="w-full"
                 onClick={handleGoogleSignIn}
-                disabled={isLoading || isGoogleLoading}
+                disabled={isLoading || oauthPending !== null}
               >
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                   <path
@@ -208,8 +228,15 @@ export function LoginForm({ next }: { next: string | null }) {
                     fill="#EA4335"
                   />
                 </svg>
-                {isGoogleLoading ? "Signing in..." : "Continue with Google"}
+                {oauthPending === "google"
+                  ? "Signing in..."
+                  : "Continue with Google"}
               </Button>
+
+              <ContinueWithWmgx
+                onClick={handleWmgxSignIn}
+                disabled={isLoading || oauthPending !== null}
+              />
             </form>
           </TabsContent>
 
@@ -260,7 +287,7 @@ export function LoginForm({ next }: { next: string | null }) {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={isLoading || isGoogleLoading}
+                disabled={isLoading || oauthPending !== null}
               >
                 {isLoading ? "Creating account..." : "Sign Up"}
               </Button>
@@ -281,7 +308,7 @@ export function LoginForm({ next }: { next: string | null }) {
                 variant="outline"
                 className="w-full"
                 onClick={handleGoogleSignIn}
-                disabled={isLoading || isGoogleLoading}
+                disabled={isLoading || oauthPending !== null}
               >
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                   <path
@@ -301,12 +328,54 @@ export function LoginForm({ next }: { next: string | null }) {
                     fill="#EA4335"
                   />
                 </svg>
-                {isGoogleLoading ? "Signing in..." : "Continue with Google"}
+                {oauthPending === "google"
+                  ? "Signing in..."
+                  : "Continue with Google"}
               </Button>
+
+              <ContinueWithWmgx
+                onClick={handleWmgxSignIn}
+                disabled={isLoading || oauthPending !== null}
+              />
             </form>
           </TabsContent>
         </Tabs>
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * WMGX's official button, used as supplied: their brand rules forbid
+ * restyling or stretching it. Black on light, white on dark.
+ */
+function ContinueWithWmgx({
+  onClick,
+  disabled,
+}: {
+  onClick: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label="Continue with WMGX"
+      className="mx-auto block rounded-full disabled:opacity-50"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element -- static SVG */}
+      <img
+        src="/wmgx/continue-with-wmgx-black.svg"
+        alt=""
+        className="h-11 w-auto dark:hidden"
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element -- static SVG */}
+      <img
+        src="/wmgx/continue-with-wmgx-white.svg"
+        alt=""
+        className="hidden h-11 w-auto dark:block"
+      />
+    </button>
   );
 }

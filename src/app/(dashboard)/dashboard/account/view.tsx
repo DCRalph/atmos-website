@@ -26,7 +26,7 @@ import { SignInMethodRow } from "~/components/account/sign-in-method-row";
 type Security = RouterOutputs["user"]["security"];
 
 /** Providers a person can link from the website. Apple is native only. */
-const WEB_PROVIDERS = ["google"] as const;
+const WEB_PROVIDERS = ["google", "wmgx"] as const;
 
 export function AccountView() {
   const { data: me } = api.user.me.useQuery();
@@ -283,10 +283,18 @@ function ConnectedAccountsCard({ security }: { security: Security }) {
   const link = async (provider: (typeof WEB_PROVIDERS)[number]) => {
     setLinking(true);
     try {
-      await authClient.linkSocial({
-        provider,
-        callbackURL: "/dashboard/account",
-      });
+      // WMGX comes from the generic OAuth plugin, which links through its own endpoint.
+      if (provider === "wmgx") {
+        await authClient.oauth2.link({
+          providerId: provider,
+          callbackURL: "/dashboard/account",
+        });
+      } else {
+        await authClient.linkSocial({
+          provider,
+          callbackURL: "/dashboard/account",
+        });
+      }
     } catch {
       toast.error("Couldn't start linking. Try again.");
       setLinking(false);

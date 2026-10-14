@@ -15,6 +15,7 @@ const LOGIN_METHOD_LABELS: Record<
 > = {
   email: { label: "Email", variant: "default" },
   google: { label: "Google", variant: "secondary" },
+  wmgx: { label: "WMGX", variant: "secondary" },
 };
 
 export function LoginMethodBadge({ method }: { method: string | null }) {
