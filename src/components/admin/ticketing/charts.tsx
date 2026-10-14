@@ -179,9 +179,36 @@ function Empty({ height }: { height: number }) {
   );
 }
 
-function Tooltip({ value, label }: { value: string; label: string }) {
+/**
+ * The hover readout. Pinned to the top right corner, or beside the pointer
+ * when given `at` (relative to the positioned parent), on whichever side has
+ * more room.
+ */
+function Tooltip({
+  value,
+  label,
+  at,
+}: {
+  value: string;
+  label: string;
+  at?: { x: number; y: number; flip: boolean };
+}) {
   return (
-    <div className="bg-popover text-popover-foreground pointer-events-none absolute top-0 right-0 rounded-md border px-2.5 py-1.5 text-xs shadow-sm">
+    <div
+      className={cn(
+        "bg-popover text-popover-foreground pointer-events-none absolute z-10 rounded-md border px-2.5 py-1.5 text-xs whitespace-nowrap shadow-sm",
+        !at && "top-0 right-0",
+      )}
+      style={
+        at
+          ? {
+              left: at.x,
+              top: at.y,
+              transform: `translate(${at.flip ? "calc(-100% - 12px)" : "12px"}, -50%)`,
+            }
+          : undefined
+      }
+    >
       <p className="font-medium tabular-nums">{value}</p>
       <p className="text-muted-foreground">{label}</p>
     </div>
@@ -561,6 +588,11 @@ export function WeekHeatmap({
   const [hover, setHover] = useState<{ day: number; hour: number } | null>(
     null,
   );
+  const [pointer, setPointer] = useState<{
+    x: number;
+    y: number;
+    flip: boolean;
+  } | null>(null);
   const counts = new Map(
     cells.map((cell) => [`${cell.day}:${cell.hour}`, cell.n]),
   );
@@ -568,7 +600,15 @@ export function WeekHeatmap({
   const active = hover ? (counts.get(`${hover.day}:${hover.hour}`) ?? 0) : null;
 
   return (
-    <div className="relative" onPointerLeave={() => setHover(null)}>
+    <div
+      className="relative"
+      onPointerMove={(e) => {
+        const box = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - box.left;
+        setPointer({ x, y: e.clientY - box.top, flip: x > box.width / 2 });
+      }}
+      onPointerLeave={() => setHover(null)}
+    >
       <div className="grid grid-cols-[2rem_repeat(24,minmax(0,1fr))] gap-0.5">
         {WEEKDAYS.map((name, row) => (
           <div key={name} className="contents">
@@ -618,6 +658,7 @@ export function WeekHeatmap({
         <Tooltip
           value={`${active} ${active === 1 ? unit[0] : unit[1]}`}
           label={`${WEEKDAYS[hover.day - 1]} ${hourName(hover.hour)}`}
+          at={pointer ?? undefined}
         />
       )}
     </div>
