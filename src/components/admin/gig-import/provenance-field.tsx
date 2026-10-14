@@ -70,7 +70,7 @@ export function ProvenanceField({
         {marker ? <FieldMarker field={marker} /> : null}
         <div className="ml-auto flex items-center gap-2">
           {isEdited ? (
-            <span className="border-admin-accent/40 bg-admin-accent/10 text-admin-accent inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium">
+            <span className="border-admin-accent/40 bg-admin-accent/10 text-admin-accent-text inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium">
               Edited
             </span>
           ) : flagged ? (

@@ -66,6 +66,8 @@
   --color-site-warn: var(--site-warn);
   --color-site-raised: var(--site-raised);
   --color-admin-accent: var(--admin-accent);
+  --color-admin-accent-ink: var(--admin-accent-ink);
+  --color-admin-accent-text: var(--admin-accent-text);
 
   --shadow-glass: var(--shadow-glass);
 
@@ -82,12 +84,15 @@
   --site-accent-ink: #000;
   --site-accent-text: #c6ff33;
 
-  /* The accent as the admin draws it: as is on dark, darkened on the light
-     theme so it still reads against white. */
-  --admin-accent: color-mix(in oklab, var(--site-accent), black 40%);
+  /* The admin's accent, the trio the admin UI follows. For now it is the site
+     accent; change these three to give the admin its own. The text form is
+     darkened on the light theme so it still reads against white. */
+  --admin-accent: var(--site-accent);
+  --admin-accent-ink: var(--site-accent-ink);
+  --admin-accent-text: color-mix(in oklab, var(--site-accent), black 40%);
 
-  /* Ticketing analytics series colours. Revenue is the accent. */
-  --ticket-series-revenue: var(--admin-accent);
+  /* Ticketing analytics series colours. Revenue is the admin accent. */
+  --ticket-series-revenue: var(--admin-accent-text);
   --ticket-series-arrivals: #059669;
 
   --radius: 0.625rem;
@@ -128,8 +133,7 @@
 }
 
 .dark {
-  --admin-accent: var(--site-accent);
-  --ticket-series-revenue: var(--admin-accent);
+  --admin-accent-text: var(--site-accent-text);
   --ticket-series-arrivals: #0fa47a;
 
   --background: oklch(0.145 0 0);

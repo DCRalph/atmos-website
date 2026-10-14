@@ -128,7 +128,7 @@ export function DetailsSection({
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
       <div className="flex flex-col gap-6 xl:col-span-7">
         {!event ? (
-          <Card className="border-site-accent/40 bg-site-accent/5">
+          <Card className="border-admin-accent/40 bg-admin-accent/5">
             <CardContent className="grid gap-5 pt-6 md:grid-cols-2">
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
