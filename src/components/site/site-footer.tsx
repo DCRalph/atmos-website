@@ -35,9 +35,6 @@ export function SiteFooter() {
       <div className="grid gap-10 px-5 pt-12 pb-12 md:px-10 md:pb-14 lg:grid-cols-[1fr_auto]">
         <div>
           <AtmosLogo className="w-40" />
-          <p className="mt-5 max-w-[36ch] text-[14px] text-white/60">
-            Immersive electronic music events.
-          </p>
           <div className="mt-6 -ml-3 flex gap-1">
             {footerSocials.map(({ label, href, Icon }) => (
               <a
