@@ -46,6 +46,7 @@ import {
   MAX_PLUS_PER_LINK,
   MAX_PRIMARY_LINKS,
   deleteTicketLinkBatch,
+  editTicketLinkBatch,
   getTicketLinkBatch,
   issueTicketLinkBatch,
   listTicketLinkBatches,
@@ -1341,6 +1342,53 @@ export const ticketAdminRouter = createTRPCRouter({
   ticketLinkBatch: adminProcedure
     .input(z.object({ batchId: z.string() }))
     .query(async ({ input }) => getTicketLinkBatch(input.batchId)),
+
+  /**
+   * Relabel a batch, or change how many links or extras it has. Shrinking only
+   * takes back tickets nobody has claimed or used.
+   */
+  editTicketLinkBatch: adminProcedure
+    .input(
+      z.object({
+        batchId: z.string(),
+        label: z.string().trim().max(120).nullable(),
+        primaryCount: z.number().int().min(1).max(MAX_PRIMARY_LINKS),
+        plusCount: z.number().int().min(0).max(MAX_PLUS_PER_LINK),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const result = await editTicketLinkBatch({
+          ...input,
+          editedByUserId: ctx.session.user.id,
+        });
+
+        await logActivity({
+          type: ActivityType.TICKET_LINK_BATCH_CREATED,
+          action: `Edited the ${result.label ?? result.tierName} link batch: ${
+            input.primaryCount
+          } link${input.primaryCount === 1 ? "" : "s"}${
+            input.plusCount > 0 ? ` (+${input.plusCount} each)` : ""
+          }`,
+          userId: ctx.session.user.id,
+          details: {
+            batchId: input.batchId,
+            primaryCount: input.primaryCount,
+            plusCount: input.plusCount,
+            plusBefore: result.plusBefore,
+            linksAdded: result.linksAdded,
+            linksRemoved: result.linksRemoved,
+          },
+        });
+
+        return result;
+      } catch (cause) {
+        if (cause instanceof InventoryError) {
+          throw new TRPCError({ code: "CONFLICT", message: cause.message });
+        }
+        throw cause;
+      }
+    }),
 
   /**
    * Bin a whole batch: the links, every ticket behind them, and the order they
