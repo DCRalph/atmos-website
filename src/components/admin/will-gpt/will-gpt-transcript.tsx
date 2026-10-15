@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import ReactMarkdown, { type Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Ban, Check, Clock, TriangleAlert, X } from "lucide-react";
 
 import { cn } from "~/lib/utils";
@@ -179,23 +180,67 @@ export function Code({
   );
 }
 
+/** GitHub flavoured markdown, so the tables and task lists models write render. */
 const MARKDOWN: Components = {
   p: ({ children }) => <p className="leading-relaxed">{children}</p>,
+  h1: ({ children }) => (
+    <h3 className="mt-1 text-base font-semibold">{children}</h3>
+  ),
+  h2: ({ children }) => (
+    <h3 className="mt-1 text-base font-semibold">{children}</h3>
+  ),
+  h3: ({ children }) => <h4 className="mt-1 font-semibold">{children}</h4>,
+  h4: ({ children }) => <h4 className="mt-1 font-semibold">{children}</h4>,
+  strong: ({ children }) => (
+    <strong className="text-foreground font-semibold">{children}</strong>
+  ),
   ul: ({ children }) => (
     <ul className="list-disc space-y-1 pl-5 leading-relaxed">{children}</ul>
   ),
   ol: ({ children }) => (
     <ol className="list-decimal space-y-1 pl-5 leading-relaxed">{children}</ol>
   ),
+  blockquote: ({ children }) => (
+    <blockquote className="text-muted-foreground flex flex-col gap-2 border-l-2 pl-3">
+      {children}
+    </blockquote>
+  ),
+  hr: () => <hr className="my-1" />,
   code: ({ children }) => (
     <code className="rounded bg-white/[0.06] px-1 py-0.5 font-mono text-xs">
       {children}
     </code>
   ),
+  // Fenced blocks drop the inline code chip.
   pre: ({ children }) => (
-    <pre className="overflow-auto rounded-md border bg-white/[0.04] p-2.5">
+    <pre className="overflow-auto rounded-md border bg-white/[0.04] p-2.5 [&>code]:bg-transparent [&>code]:p-0">
       {children}
     </pre>
+  ),
+  table: ({ children }) => (
+    <div className="overflow-x-auto rounded-md border">
+      <table className="w-full text-left text-[13px] tabular-nums">
+        {children}
+      </table>
+    </div>
+  ),
+  thead: ({ children }) => (
+    <thead className="text-muted-foreground border-b bg-white/[0.03] text-xs">
+      {children}
+    </thead>
+  ),
+  tr: ({ children }) => (
+    <tr className="border-b last:border-b-0">{children}</tr>
+  ),
+  th: ({ children, style }) => (
+    <th style={style} className="px-2.5 py-1.5 font-medium whitespace-nowrap">
+      {children}
+    </th>
+  ),
+  td: ({ children, style }) => (
+    <td style={style} className="px-2.5 py-1.5">
+      {children}
+    </td>
   ),
   // Admin links stay in the app, so the chat and the rail stay open.
   a: ({ href = "", children }) => {
@@ -216,7 +261,9 @@ const MARKDOWN: Components = {
 export function Markdown({ text }: { text: string }) {
   return (
     <div className="flex flex-col gap-2">
-      <ReactMarkdown components={MARKDOWN}>{text}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN}>
+        {text}
+      </ReactMarkdown>
     </div>
   );
 }

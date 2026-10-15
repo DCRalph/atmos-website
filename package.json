@@ -99,6 +99,7 @@
     "react-icons": "^5.7.0",
     "react-lite-youtube-embed": "^3.6.2",
     "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "resend": "^6.19.0",
     "server-only": "^0.0.1",
     "sharp": "^0.35.3",

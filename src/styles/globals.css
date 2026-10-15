@@ -237,9 +237,87 @@
   transform: scale(1.7);
 }
 
+/* The admin shell inside WillGptStage. On desktop, opening Will GPT zooms it
+   out into a lit card on the left, leaving 412px of black for the chat. The
+   shell lays out at its card size divided by the scale, so it reflows once and
+   then only transforms. It always carries a transform so the shell's `fixed`
+   children are held inside it, and the sidebar is sized to the card rather
+   than the viewport. */
+.will-gpt-stage {
+  --scale: 0.86;
+  position: absolute;
+  inset: 0;
+}
+@media (min-width: 1024px) {
+  .will-gpt-stage {
+    inset: auto;
+    top: 0;
+    left: 0;
+    z-index: 10;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    transform-origin: 0 0;
+    transform: translate(0, 0) scale(1);
+    box-shadow: 0 0 0 0 rgb(255 79 216 / 0);
+    transition:
+      transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+      width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+      height 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+      border-radius 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 0.5s;
+  }
+  .will-gpt-stage[data-open] {
+    width: calc((100vw - 424px) / var(--scale));
+    height: calc((100vh - 24px) / var(--scale));
+    transform: translate(12px, 12px) scale(var(--scale));
+    border-radius: calc(16px / var(--scale));
+    box-shadow:
+      0 0 0 1px rgb(255 79 216 / 0.3),
+      0 0 60px rgb(255 79 216 / 0.16);
+  }
+  .will-gpt-stage [data-slot="sidebar-container"] {
+    height: 100%;
+  }
+}
+
+/* The Will GPT prompt: a pink ring and a glow rising behind it. */
+.will-gpt-prompt {
+  border-color: rgb(255 79 216 / 0.55);
+  background:
+    linear-gradient(
+      120deg,
+      rgb(255 138 61 / 0.08),
+      rgb(255 79 216 / 0.08),
+      rgb(168 85 247 / 0.1)
+    ),
+    rgb(23 23 23 / 0.7);
+  box-shadow: 0 0 20px rgb(255 79 216 / 0.22);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.will-gpt-prompt:focus-within {
+  border-color: rgb(255 79 216 / 0.85);
+  box-shadow: 0 0 28px rgb(255 79 216 / 0.35);
+}
+.will-gpt-prompt-glow {
+  position: absolute;
+  inset-inline: -20px;
+  bottom: -96px;
+  z-index: -1;
+  height: 256px;
+  pointer-events: none;
+  background:
+    radial-gradient(45% 50% at 30% 50%, rgb(255 79 216 / 0.4), transparent 70%),
+    radial-gradient(40% 50% at 75% 55%, rgb(168 85 247 / 0.38), transparent 70%);
+  filter: blur(40px);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .will-gpt-toggle,
-  .will-gpt-halo {
+  .will-gpt-halo,
+  .will-gpt-stage {
     transition: none;
   }
 }
