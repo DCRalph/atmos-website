@@ -352,7 +352,7 @@ export function BuyPanel({
                       disabled ? "text-white/40" : "text-white/70",
                     )}
                   >
-                    Admits {tier.groupSize}, one ticket each
+                    Admits {tier.groupSize}
                   </p>
                 )}
                 {tier.description && (
