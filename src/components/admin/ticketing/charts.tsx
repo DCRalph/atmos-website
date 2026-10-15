@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useId, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useId,
+  useMemo,
+  useState,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
 
 import { cn } from "~/lib/utils";
 
@@ -51,6 +58,23 @@ function useWidth() {
     return () => observer.disconnect();
   }, []);
   return [ref, width] as const;
+}
+
+type Pointer = { x: number; y: number; flip: boolean };
+
+/**
+ * Where the pointer is inside the element the handler sits on, for placing
+ * the hover readout beside it. `flip` puts the readout on the left once the
+ * pointer is past the middle, so it never runs off the right edge.
+ */
+function usePointer() {
+  const [pointer, setPointer] = useState<Pointer>({ x: 0, y: 0, flip: false });
+  const onPointerMove = useCallback((event: PointerEvent<HTMLElement>) => {
+    const box = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - box.left;
+    setPointer({ x, y: event.clientY - box.top, flip: x > box.width / 2 });
+  }, []);
+  return [pointer, onPointerMove] as const;
 }
 
 export function StatTile({
@@ -187,9 +211,8 @@ function Empty({ height }: { height: number }) {
 }
 
 /**
- * The hover readout. Pinned to the top right corner, or beside the pointer
- * when given `at` (relative to the positioned parent), on whichever side has
- * more room.
+ * The hover readout, beside the pointer (`at`, from `usePointer`, relative to
+ * the positioned parent) on whichever side has more room.
  */
 function Tooltip({
   value,
@@ -198,23 +221,16 @@ function Tooltip({
 }: {
   value: string;
   label: string;
-  at?: { x: number; y: number; flip: boolean };
+  at: Pointer;
 }) {
   return (
     <div
-      className={cn(
-        "bg-popover text-popover-foreground pointer-events-none absolute z-10 rounded-md border px-2.5 py-1.5 text-xs whitespace-nowrap shadow-sm",
-        !at && "top-0 right-0",
-      )}
-      style={
-        at
-          ? {
-              left: at.x,
-              top: at.y,
-              transform: `translate(${at.flip ? "calc(-100% - 12px)" : "12px"}, -50%)`,
-            }
-          : undefined
-      }
+      className="bg-popover text-popover-foreground pointer-events-none absolute z-10 rounded-md border px-2.5 py-1.5 text-xs whitespace-nowrap shadow-sm"
+      style={{
+        left: at.x,
+        top: at.y,
+        transform: `translate(${at.flip ? "calc(-100% - 12px)" : "12px"}, -50%)`,
+      }}
     >
       <p className="font-medium tabular-nums">{value}</p>
       <p className="text-muted-foreground">{label}</p>
@@ -263,6 +279,7 @@ export function TimeSeriesChart({
   const gradientId = useId();
   const [hover, setHover] = useState<number | null>(null);
   const [ref, width] = useWidth();
+  const [pointer, onPointerMove] = usePointer();
 
   const geometry = useMemo(() => {
     if (points.length === 0) return null;
@@ -330,7 +347,7 @@ export function TimeSeriesChart({
 
   return (
     <Framed {...frame}>
-      <div ref={ref} className="relative">
+      <div ref={ref} className="relative" onPointerMove={onPointerMove}>
         {!geometry ? (
           <Empty height={height} />
         ) : (
@@ -516,7 +533,11 @@ export function TimeSeriesChart({
         )}
 
         {active && (
-          <Tooltip value={formatValue(active.y)} label={formatX(active.x)} />
+          <Tooltip
+            value={formatValue(active.y)}
+            label={formatX(active.x)}
+            at={pointer}
+          />
         )}
       </div>
     </Framed>
@@ -549,6 +570,7 @@ export function BucketBarChart({
 }) {
   const [hover, setHover] = useState<number | null>(null);
   const [ref, width] = useWidth();
+  const [pointer, onPointerMove] = usePointer();
 
   const maxY = niceCeil(Math.max(...buckets.map((b) => b.y), 1));
   const innerW = width - PAD.left - PAD.right;
@@ -566,7 +588,7 @@ export function BucketBarChart({
 
   return (
     <Framed {...frame}>
-      <div ref={ref} className="relative">
+      <div ref={ref} className="relative" onPointerMove={onPointerMove}>
         {buckets.length === 0 ? (
           <Empty height={height} />
         ) : (
@@ -651,7 +673,11 @@ export function BucketBarChart({
         )}
 
         {active && (
-          <Tooltip value={valueLabel(active.y)} label={formatX(active.x)} />
+          <Tooltip
+            value={valueLabel(active.y)}
+            label={formatX(active.x)}
+            at={pointer}
+          />
         )}
       </div>
     </Framed>
@@ -688,11 +714,7 @@ export function WeekHeatmap({
   const [hover, setHover] = useState<{ day: number; hour: number } | null>(
     null,
   );
-  const [pointer, setPointer] = useState<{
-    x: number;
-    y: number;
-    flip: boolean;
-  } | null>(null);
+  const [pointer, onPointerMove] = usePointer();
   const counts = new Map(
     cells.map((cell) => [`${cell.day}:${cell.hour}`, cell.n]),
   );
@@ -702,11 +724,7 @@ export function WeekHeatmap({
   return (
     <div
       className="relative"
-      onPointerMove={(e) => {
-        const box = e.currentTarget.getBoundingClientRect();
-        const x = e.clientX - box.left;
-        setPointer({ x, y: e.clientY - box.top, flip: x > box.width / 2 });
-      }}
+      onPointerMove={onPointerMove}
       onPointerLeave={() => setHover(null)}
     >
       <div className="grid grid-cols-[2rem_repeat(24,minmax(0,1fr))] gap-0.5">
@@ -762,7 +780,7 @@ export function WeekHeatmap({
               : `${active} ${active === 1 ? unit[0] : unit[1]}`
           }
           label={`${WEEKDAYS[hover.day - 1]} ${hourName(hover.hour)}`}
-          at={pointer ?? undefined}
+          at={pointer}
         />
       )}
     </div>
