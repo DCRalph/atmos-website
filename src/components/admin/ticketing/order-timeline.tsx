@@ -11,12 +11,7 @@ import {
   paymentCardLabel,
   type PaymentCard,
 } from "~/lib/ticketing/declines";
-import {
-  formatDuration,
-  formatEventDate,
-  formatEventDateTime,
-  formatEventTime,
-} from "~/lib/ticketing/dates";
+import { formatDuration, formatEventDateTime } from "~/lib/ticketing/dates";
 import {
   paidWithLabel,
   paymentMethodLabel,
@@ -73,10 +68,11 @@ function steps(order: Order, openOrder: (id: string) => void): Step[] {
                 ? "Same card, tried again"
                 : `${card}, after the decline`
               : card}
-            {order.decline?.outcome === "no_tickets" ? (
+            {order.decline?.outcome === "no_tickets" &&
+            order.refundedCents < order.totalCents ? (
               <span className="text-destructive">
                 {" "}
-                · but no tickets were issued. Refund it in Stripe.
+                · but no tickets were issued. Refund the order below.
               </span>
             ) : null}
           </>
@@ -168,10 +164,6 @@ export function OrderTimeline({
       <ol>
         {list.map((step, index) => {
           const before = list[index - 1];
-          const sameDay =
-            before &&
-            formatEventDate(before.at, timeZone) ===
-              formatEventDate(step.at, timeZone);
           return (
             <li
               key={`${step.label}-${step.at.getTime()}`}
@@ -197,9 +189,7 @@ export function OrderTimeline({
                   )}
                 </span>
                 <span className="text-muted-foreground text-xs whitespace-nowrap tabular-nums">
-                  {sameDay
-                    ? formatEventTime(step.at, timeZone)
-                    : formatEventDateTime(step.at, timeZone)}
+                  {formatEventDateTime(step.at, timeZone)}
                 </span>
               </div>
               {step.detail && (

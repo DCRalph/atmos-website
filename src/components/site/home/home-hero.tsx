@@ -1,8 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { use, useCallback, useSyncExternalStore } from "react";
-import { ArrowRight, ArrowUpRight, Navigation, X } from "lucide-react";
+import { use, useCallback, useRef, useSyncExternalStore } from "react";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  ChevronDown,
+  Navigation,
+  X,
+} from "lucide-react";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { cn } from "~/lib/utils";
 import { ScrollContainerContext } from "~/components/scroll-container-provider";
@@ -70,17 +76,22 @@ function useScrolled() {
  * Home hero: the logo over the looping crowd video (a still for reduced
  * motion), with the next announced gig docked along the bottom edge. While a
  * gig is live the line under the logo says so and the strip becomes the live
- * strip (solid accent once doors are open). The strip hides once the page
- * scrolls.
+ * strip (solid accent once doors are open). A scroll cue sits under the
+ * logo, and the video blurs and fades into the black of the page below. The
+ * cue and the strip hide once the page scrolls.
  */
 export function HomeHero() {
   const motionAllowed = useMotionAllowed();
   const live = useLiveGig();
   const venue = useVenue(live?.gig);
   const scrolled = useScrolled();
+  const section = useRef<HTMLElement>(null);
 
   return (
-    <section className="relative flex h-dvh min-h-[560px] flex-col overflow-hidden">
+    <section
+      ref={section}
+      className="relative flex h-dvh flex-col overflow-hidden"
+    >
       <div className="absolute inset-0 opacity-70">
         <Media
           src="/home/atmos-1.jpg"
@@ -103,6 +114,21 @@ export function HomeHero() {
         ) : null}
       </div>
       <div className="absolute inset-0 bg-black/45" />
+      {/* Into the page below: two blur layers, the stronger one nearer the
+          edge, under a fade to the page's black. Static, so the only cost is
+          blurring the video frames behind it. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 [mask-image:linear-gradient(to_top,black_40%,transparent)] backdrop-blur-[3px]"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-1/4 [mask-image:linear-gradient(to_top,black_30%,transparent)] backdrop-blur-lg"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-linear-to-t from-black via-black/60 to-transparent"
+      />
 
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-6 px-6 pt-20">
         <h1 className="relative">
@@ -112,7 +138,7 @@ export function HomeHero() {
             className="pointer-events-none absolute -inset-x-[20%] -inset-y-[120%] bg-[radial-gradient(closest-side,rgb(255_255_255/0.38),rgb(255_255_255/0.14)_50%,transparent)]"
           />
           <AtmosLogo
-            className="relative w-[min(72vw,640px)] drop-shadow-[0_0_28px_rgb(255_255_255/0.45)]"
+            className="relative w-[min(72vw,640px,150dvh)] drop-shadow-[0_0_28px_rgb(255_255_255/0.45)]"
             eager
           />
         </h1>
@@ -125,6 +151,31 @@ export function HomeHero() {
                 : liveChipLabel.wrap}
           </p>
         ) : null}
+        <button
+          type="button"
+          inert={scrolled}
+          onClick={() =>
+            section.current?.nextElementSibling?.scrollIntoView({
+              behavior: motionAllowed ? "smooth" : "auto",
+            })
+          }
+          className={cn(
+            "t-label group flex items-center gap-1 text-[12px] text-white/70 hover:text-white motion-safe:transition-[color,opacity] motion-safe:duration-300 md:text-[14px]",
+            scrolled && "opacity-0",
+          )}
+        >
+          <ChevronDown
+            aria-hidden
+            strokeWidth={1.5}
+            className="size-5 motion-safe:animate-[site-nudge_1.6s_ease-in-out_3]"
+          />
+          Scroll
+          <ChevronDown
+            aria-hidden
+            strokeWidth={1.5}
+            className="size-5 motion-safe:animate-[site-nudge_1.6s_ease-in-out_3]"
+          />
+        </button>
       </div>
 
       {/* The strip drops away once the page scrolls and comes back at the top. */}

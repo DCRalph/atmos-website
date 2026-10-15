@@ -402,6 +402,16 @@ function OrderDetail({
     onError: (error) => toast.error(error.message),
   });
 
+  const refundOrder = api.ticketAdmin.refundOrder.useMutation({
+    onSuccess: () => {
+      toast.success("Order refunded.");
+      setSelected([]);
+      void utils.ticketAdmin.invalidate();
+      void utils.ticketAnalytics.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
   const resend = api.ticketAdmin.resendTickets.useMutation({
     onSuccess: () => toast.success("Sent."),
     onError: (error) => toast.error(error.message),
@@ -431,6 +441,14 @@ function OrderDetail({
 
   const data = order.data;
   const supportUrl = data.ticketsUrl;
+  // Stripe took money and some of it is still ours, tickets or not: a
+  // payment that landed after the order failed has none.
+  const canRefundOrder =
+    !readOnly &&
+    !!data.stripeUrl &&
+    data.refundedCents < data.totalCents &&
+    (!!data.paidAt ||
+      data.paymentAttempts.some((attempt) => attempt.status === "SUCCEEDED"));
   const cameFrom = [
     data.utmSource,
     data.utmMedium,
@@ -649,23 +667,46 @@ function OrderDetail({
         </ul>
       </div>
 
-      {!readOnly && selected.length > 0 && (
-        <Button
-          variant="destructive"
-          disabled={refund.isPending}
-          onClick={async () => {
-            const ok = await confirm({
-              title: `Refund ${selected.length} ticket${selected.length === 1 ? "" : "s"}?`,
-              description:
-                "Refunds through Stripe, voids the QR codes immediately, puts the seats back on sale, and emails the buyer.",
-              confirmLabel: "Refund",
-              variant: "destructive",
-            });
-            if (ok) refund.mutate({ orderId, ticketIds: selected });
-          }}
-        >
-          <Undo2 className="size-4" /> Refund selected
-        </Button>
+      {((!readOnly && selected.length > 0) || canRefundOrder) && (
+        <div className="flex flex-wrap gap-2">
+          {!readOnly && selected.length > 0 && (
+            <Button
+              variant="destructive"
+              disabled={refund.isPending}
+              onClick={async () => {
+                const ok = await confirm({
+                  title: `Refund ${selected.length} ticket${selected.length === 1 ? "" : "s"}?`,
+                  description:
+                    "Refunds through Stripe, voids the QR codes immediately, puts the seats back on sale, and emails the buyer.",
+                  confirmLabel: "Refund",
+                  variant: "destructive",
+                });
+                if (ok) refund.mutate({ orderId, ticketIds: selected });
+              }}
+            >
+              <Undo2 className="size-4" /> Refund selected
+            </Button>
+          )}
+          {canRefundOrder && (
+            <Button
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              disabled={refundOrder.isPending}
+              onClick={async () => {
+                const ok = await confirm({
+                  title: `Refund all of ${data.orderNumber}?`,
+                  description:
+                    "Refunds everything Stripe still holds for this order, voids any tickets on it, and emails the buyer if we have their email.",
+                  confirmLabel: "Refund order",
+                  variant: "destructive",
+                });
+                if (ok) refundOrder.mutate({ orderId });
+              }}
+            >
+              <Undo2 className="size-4" /> Refund order
+            </Button>
+          )}
+        </div>
       )}
 
       {canDelete &&
