@@ -11,7 +11,7 @@ import { SectionRail } from "~/components/admin/section-nav/section-rail";
 import { UnsavedChangesProvider } from "~/components/admin/unsaved-changes-provider";
 import { WillGptProvider } from "~/components/admin/will-gpt/will-gpt-provider";
 import {
-  WillGptRail,
+  WillGptStage,
   WillGptToggle,
 } from "~/components/admin/will-gpt/will-gpt-rail";
 import { userHasPermission } from "~/server/utils/permissions";
@@ -47,14 +47,15 @@ export default async function AdminLayout({
       {/* <UserIndicator /> */}
       <UnsavedChangesProvider>
         <WillGptProvider>
-          <LayoutWithSideBarHeader
-            sidebar={<DashboardSideBar />}
-            rail={<SectionRail />}
-            header={<DashboardHeader actions={<WillGptToggle />} />}
-            aside={<WillGptRail />}
-          >
-            {children}
-          </LayoutWithSideBarHeader>
+          <WillGptStage>
+            <LayoutWithSideBarHeader
+              sidebar={<DashboardSideBar />}
+              rail={<SectionRail />}
+              header={<DashboardHeader actions={<WillGptToggle />} />}
+            >
+              {children}
+            </LayoutWithSideBarHeader>
+          </WillGptStage>
         </WillGptProvider>
       </UnsavedChangesProvider>
     </>

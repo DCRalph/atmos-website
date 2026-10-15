@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Will GPT rail glow</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cabin:wght@600&family=Geist:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#0a0a0a;--sidebar:#171717;--fg:#fafafa;--muted:#a1a1a1;--border:rgba(255,255,255,.1);--input:rgba(255,255,255,.15);
+--pink:#ff4fd8;--orange:#ff8a3d;--purple:#a855f7;--grad:linear-gradient(120deg,var(--orange),var(--pink) 50%,var(--purple))}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 Geist,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+main{max-width:1100px;margin:0 auto;padding:48px 24px 96px}
+h1{font-size:22px;font-weight:600;margin:0 0 6px}
+.lede{color:var(--muted);margin:0 0 8px}
+h2{font-size:15px;font-weight:600;margin:44px 0 4px}
+.note{color:var(--muted);margin:0 0 14px;max-width:720px}
+.i{width:16px;height:16px;flex:none;color:var(--fg)}
+.i.sm{width:14px;height:14px;color:var(--muted)}
+.star{width:16px;height:16px;flex:none;position:relative}
+
+.shell{display:flex;height:660px;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg)}
+.page{flex:1;min-width:0;display:flex;flex-direction:column}
+.hdr{display:flex;align-items:center;justify-content:space-between;height:64px;padding:0 20px;border-bottom:1px solid var(--border)}
+.crumbs{display:flex;align-items:center;gap:12px}
+.sep{width:1px;height:28px;background:var(--border)}
+.title{font-size:22px;font-weight:600}
+.right{display:flex;align-items:center;gap:14px}
+.avatar{width:32px;height:32px;border-radius:999px;background:#2a2a2a;border:1px solid var(--border)}
+.pbody{padding:16px 20px}
+.prow{display:grid;grid-template-columns:1fr 70px 80px;padding:10px 0;border-bottom:1px solid var(--border)}
+.m{color:var(--muted);font-variant-numeric:tabular-nums}
+
+.btn{position:relative;isolation:isolate;display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 12px;border-radius:8px;overflow:hidden;font:inherit;font-weight:500;color:var(--fg);
+border:1px solid rgba(255,79,216,.6);background:linear-gradient(120deg,rgba(255,138,61,.14),rgba(255,79,216,.14),rgba(168,85,247,.16));box-shadow:0 0 20px rgba(255,79,216,.3)}
+.btn .w{position:relative}
+.halo{position:absolute;left:20px;top:50%;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:999px;z-index:0;
+background:radial-gradient(circle,rgba(255,79,216,.75),rgba(255,138,61,.35) 40%,transparent 68%);filter:blur(6px);transform:scale(1.7)}
+
+.rail{position:relative;isolation:isolate;width:400px;flex:none;display:flex;flex-direction:column;background:var(--sidebar);border-left:1px solid var(--border);margin-top:8px;overflow:hidden}
+.glow{display:none}
+.rh{position:relative;display:flex;align-items:center;gap:10px;height:56px;padding:0 12px 0 16px;border-bottom:1px solid var(--border)}
+.rh h3{flex:1;margin:0;font:600 20px/1 Cabin,ui-sans-serif,system-ui,sans-serif}
+.rh .star{width:18px;height:18px}
+.model{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--fg);margin-right:4px}
+.rh .i{margin:0 4px}
+.thread{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;gap:12px;padding:18px 20px;overflow:hidden}
+.thread>*{flex:none}
+.thread p{margin:0;line-height:1.6}
+.thread b{font-weight:600}
+.user{align-self:flex-end;max-width:88%;background:#262626;border-radius:8px;padding:9px 12px}
+.calls{border-left:1px solid var(--border);padding-left:12px}
+.call{display:flex;align-items:center;gap:8px;min-height:28px;font-size:13px;color:var(--muted)}
+.call .ok{width:14px;height:14px;color:#34d399}
+.call .s{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.call .p{font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tbl{border:1px solid var(--border);border-radius:6px;overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums;text-align:left}
+th{font-weight:500;font-size:12px;color:var(--muted);background:rgba(255,255,255,.03);padding:6px 10px;border-bottom:1px solid var(--border)}
+td{padding:6px 10px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:0}
+.composer{position:relative;padding:12px 16px 16px;border-top:1px solid var(--border)}
+.box{display:flex;flex-direction:column;gap:6px;border:1px solid var(--input);background:rgba(255,255,255,.045);border-radius:8px;padding:10px 12px 8px;min-height:84px}
+.ph{color:var(--muted);flex:1}
+.send{align-self:flex-end;width:32px;height:32px;border-radius:6px;display:grid;place-items:center;background:#e5e5e5}
+.send .i{color:#171717}
+
+/* 1. Edge light */
+.v1 .rail{border-left:0;box-shadow:-16px 0 48px -12px rgba(255,79,216,.35)}
+.v1 .rail::before{content:"";position:absolute;left:0;top:0;bottom:0;width:1px;z-index:2;background:linear-gradient(180deg,var(--orange),var(--pink) 45%,var(--purple))}
+.v1 .glow{display:block;position:absolute;left:-60px;top:0;bottom:0;width:120px;z-index:-1;background:radial-gradient(50% 60% at 50% 35%,rgba(255,79,216,.22),transparent 70%)}
+
+/* 2. Aurora */
+.v2 .rail{border-left-color:rgba(255,79,216,.25)}
+.v2 .glow{display:block;position:absolute;left:-40px;right:-40px;top:-120px;height:320px;z-index:-1;filter:blur(36px);
+background:radial-gradient(40% 50% at 22% 55%,rgba(255,138,61,.18),transparent 70%),radial-gradient(45% 55% at 52% 50%,rgba(255,79,216,.42),transparent 70%),radial-gradient(40% 50% at 82% 45%,rgba(168,85,247,.42),transparent 70%)}
+.v2 .rh{border-bottom-color:transparent}
+
+/* 3. Lit panel */
+.v3 .rail{margin:8px;border:1px solid rgba(255,79,216,.55);border-radius:12px;box-shadow:0 0 24px rgba(255,79,216,.25);
+background:linear-gradient(160deg,rgba(255,138,61,.06),rgba(255,79,216,.05) 35%,rgba(168,85,247,.06)),var(--sidebar)}
+.v3 .rh,.v3 .composer{border-color:rgba(255,79,216,.18)}
+
+/* 4. Glow at the prompt */
+.v4 .rail{border-left-color:rgba(255,79,216,.25)}
+.v4 .glow{display:block;position:absolute;left:-20px;right:-20px;bottom:-110px;height:300px;z-index:-1;filter:blur(40px);
+background:radial-gradient(45% 50% at 30% 50%,rgba(255,79,216,.4),transparent 70%),radial-gradient(40% 50% at 75% 55%,rgba(168,85,247,.38),transparent 70%)}
+.v4 .composer{border-top-color:transparent}
+.v4 .box{border-color:rgba(255,79,216,.55);background:linear-gradient(120deg,rgba(255,138,61,.08),rgba(255,79,216,.08),rgba(168,85,247,.1)),rgba(23,23,23,.7);box-shadow:0 0 20px rgba(255,79,216,.22)}
+.v4 .send{background:var(--grad)}
+.v4 .send .i{color:#fff}
+</style></head><body><main>
+<h1>Will GPT rail glow</h1>
+<p class="lede">Four ways to carry the button's pink glow into the open rail. All static, no running animation. The rail header gains the gradient star in each.</p>
+<h2>1. Edge light</h2><p class="note">A gradient seam on the rail's left edge, orange to pink to purple, with a soft pink glow spilling both ways. The rest of the rail stays quiet.</p>
+<div class="shell v1">
+  <div class="page">
+    <div class="hdr">
+      <div class="crumbs"><svg class="i " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg><span class="sep"></span><span class="title">Events</span></div>
+      <div class="right">
+        <button class="btn on"><span class="halo"></span><svg class="star" viewBox="0 0 24 24" fill="url(#bv1)"><defs><linearGradient id="bv1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff8a3d"/><stop offset=".5" stop-color="#ff4fd8"/><stop offset="1" stop-color="#a855f7"/></linearGradient></defs><path d="M12 1C12.5 7 17 11.5 23 12 17 12.5 12.5 17 12 23 11.5 17 7 12.5 1 12 7 11.5 11.5 7 12 1Z"/></svg><span class="w">Will GPT</span></button>
+        <span class="avatar"></span>
+      </div>
+    </div>
+    <div class="pbody"><div class="prow"><span>Club Vitamin</span><span class="m">16 Oct</span><span class="m">60 / 150</span></div><div class="prow"><span>Moon Bar Late</span><span class="m">23 Oct</span><span class="m">12 / 120</span></div><div class="prow"><span>Atmos Halloween</span><span class="m">31 Oct</span><span class="m">204 / 400</span></div><div class="prow"><span>Rooftop Sessions</span><span class="m">7 Nov</span><span class="m">0 / 80</span></div></div>
+  </div>
+  <aside class="rail">
+    <span class="glow"></span>
+    <header class="rh">
+      <svg class="star" viewBox="0 0 24 24" fill="url(#rv1)"><defs><linearGradient id="rv1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff8a3d"/><stop offset=".5" stop-color="#ff4fd8"/><stop offset="1" stop-color="#a855f7"/></linearGradient></defs><path d="M12 1C12.5 7 17 11.5 23 12 17 12.5 12.5 17 12 23 11.5 17 7 12.5 1 12 7 11.5 11.5 7 12 1Z"/></svg><h3>Will GPT</h3>
+      <span class="model">GLM 5.3 Flash <svg class="i sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
+      <svg class="i " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg><svg class="i " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg><svg class="i " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </header>
+    <div class="thread">
+      <p class="user">how is the club vitamin sales going</p>
+      <div class="calls"><div class="call"><svg class="i ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span class="s">List ticket events to find Club Vitamin</span><span class="p">ticketEvents.list</span></div><div class="call"><svg class="i ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span class="s">Get sales overview for Club Vitamin</span><span class="p">ticketAnalytics.overview</span></div></div>
+      <p>Club Vitamin, Friday 16 Oct at Moon Bar. <b>60 of 150 sold, $534 gross.</b></p>
+      <div class="tbl"><table><thead><tr><th>Tier</th><th>Price</th><th>Sold</th></tr></thead><tbody><tr><td>10Mg</td><td>$10</td><td>30/30 sold out</td></tr><tr><td>12Mg</td><td>$12</td><td>2/50</td></tr><tr><td>Multi vitamin</td><td>$30</td><td>28/28 sold out</td></tr><tr><td>Doors</td><td>$20</td><td>0/32</td></tr></tbody></table></div>
+      <p>The <b>12Mg tier has stalled</b>. Want me to pull the abandoned checkouts?</p>
+    </div>
+    <div class="composer"><div class="box"><span class="ph">Ask Will GPT to change something</span><span class="send"><svg class="i " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></span></div></div>
+  </aside>
+</div><h2>2. Aurora</h2><p class="note">The button's halo, scaled up: a blurred pink and purple wash behind the header that fades out by the first message. The border picks up a pink tint.</p>
+<div class="shell v2">
+  <div class="page">
+    <div class="hdr">
+      <div class="crumbs"><svg class="i " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg><span class="sep"></span><span class="title">Events</span></div>
+      <div class="right">
+        <button class="btn on"><span class="halo"></span><svg class="star" viewBox="0 0 24 24" fill="url(#bv2)"><defs><linearGradient id="bv2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff8a3d"/><stop offset=".5" stop-color="#ff4fd8"/><stop offset="1" stop-color="#a855f7"/></linearGradient></defs><path d="M12 1C12.5 7 17 11.5 23 12 17 12.5 12.5 17 12 23 11.5 17 7 12.5 1 12 7 11.5 11.5 7 12 1Z"/></svg><span class="w">Will GPT</span></button>
+        <span class="avatar"></span>
+      </div>
+    </div>
+    <div class="pbody"><div class="prow"><span>Club Vitamin</span><span class="m">16 Oct</span><span class="m">60 / 150</span></div><div class="prow"><span>Moon Bar Late</span><span class="m">23 Oct</span><span class="m">12 / 120</span></div><div class="prow"><span>Atmos Halloween</span><span class="m">31 Oct</span><span class="m">204 / 400</span></div><div class="prow"><span>Rooftop Sessions</span><span class="m">7 Nov</span><span class="m">0 / 80</span></div></div>
+  </div>
+  <aside class="rail">
+    <span class="glow"></span>
+    <header class="rh">
+      <svg class="star" viewBox="0 0 24 24" fill="url(#rv2)"><defs><linearGradient id="rv2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff8a3d"/><stop offset=".5" stop-color="#ff4fd8"/><stop offset="1" stop-color="#a855f7"/></linearGradient></defs><path d="M12 1C12.5 7 17 11.5 23 12 17 12.5 12.5 17 12 23 11.5 17 7 12.5 1 12 7 11.5 11.5 7 12 1Z"/></svg><h3>Will GPT</h3>
+      <span class="model">GLM 5.3 Flash <svg class="i sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
+      <svg class="i " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg><svg class="i " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg><svg class="i " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </header>
+    <div class="thread">
+      <p class="user">how is the club vitamin sales going</p>
+      <div class="calls"><div class="call"><svg class="i ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span class="s">List ticket events to find Club Vitamin</span><span class="p">ticketEvents.list</span></div><div class="call"><svg class="i ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span class="s">Get sales overview for Club Vitamin</span><span class="p">ticketAnalytics.overview</span></div></div>
+      <p>Club Vitamin, Friday 16 Oct at Moon Bar. <b>60 of 150 sold, $534 gross.</b></p>
+      <div class="tbl"><table><thead><tr><th>Tier</th><th>Price</th><th>Sold</th></tr></thead><tbody><tr><td>10Mg</td><td>$10</td><td>30/30 sold out</td></tr><tr><td>12Mg</td><td>$12</td><td>2/50</td></tr><tr><td>Multi vitamin</td><td>$30</td><td>28/28 sold out</td></tr><tr><td>Doors</td><td>$20</td><td>0/32</td></tr></tbody></table></div>
+      <p>The <b>12Mg tier has stalled</b>. Want me to pull the abandoned checkouts?</p>
+    </div>
+    <div class="composer"><div class="box"><span class="ph">Ask Will GPT to change something</span><span class="send"><svg class="i " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></span></div></div>
+  </aside>
+</div><h2>3. Lit panel</h2><p class="note">The rail becomes the open button: a floating panel with the pink border, the outer glow and the faint gradient tint. Reads as one object with the button.</p>
+<div class="shell v3">
+  <div class="page">
+    <div class="hdr">
+      <div class="crumbs"><svg class="i " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg><span class="sep"></span><span class="title">Events</span></div>
+      <div class="right">
+        <button class="btn on"><span class="halo"></span><svg class="star" viewBox="0 0 24 24" fill="url(#bv3)"><defs><linearGradient id="bv3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff8a3d"/><stop offset=".5" stop-color="#ff4fd8"/><stop offset="1" stop-color="#a855f7"/></linearGradient></defs><path d="M12 1C12.5 7 17 11.5 23 12 17 12.5 12.5 17 12 23 11.5 17 7 12.5 1 12 7 11.5 11.5 7 12 1Z"/></svg><span class="w">Will GPT</span></button>
+        <span class="avatar"></span>
+      </div>
+    </div>
+    <div class="pbody"><div class="prow"><span>Club Vitamin</span><span class="m">16 Oct</span><span class="m">60 / 150</span></div><div class="prow"><span>Moon Bar Late</span><span class="m">23 Oct</span><span class="m">12 / 120</span></div><div class="prow"><span>Atmos Halloween</span><span class="m">31 Oct</span><span class="m">204 / 400</span></div><div class="prow"><span>Rooftop Sessions</span><span class="m">7 Nov</span><span class="m">0 / 80</span></div></div>
+  </div>
+  <aside class="rail">
+    <span class="glow"></span>
+    <header class="rh">
+      <svg class="star" viewBox="0 0 24 24" fill="url(#rv3)"><defs><linearGradient id="rv3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff8a3d"/><stop offset=".5" stop-color="#ff4fd8"/><stop offset="1" stop-color="#a855f7"/></linearGradient></defs><path d="M12 1C12.5 7 17 11.5 23 12 17 12.5 12.5 17 12 23 11.5 17 7 12.5 1 12 7 11.5 11.5 7 12 1Z"/></svg><h3>Will GPT</h3>
+      <span class="model">GLM 5.3 Flash <svg class="i sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
+      <svg class="i " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg><svg class="i " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg><svg class="i " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </header>
+    <div class="thread">
+      <p class="user">how is the club vitamin sales going</p>
+      <div class="calls"><div class="call"><svg class="i ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span class="s">List ticket events to find Club Vitamin</span><span class="p">ticketEvents.list</span></div><div class="call"><svg class="i ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span class="s">Get sales overview for Club Vitamin</span><span class="p">ticketAnalytics.overview</span></div></div>
+      <p>Club Vitamin, Friday 16 Oct at Moon Bar. <b>60 of 150 sold, $534 gross.</b></p>
+      <div class="tbl"><table><thead><tr><th>Tier</th><th>Price</th><th>Sold</th></tr></thead><tbody><tr><td>10Mg</td><td>$10</td><td>30/30 sold out</td></tr><tr><td>12Mg</td><td>$12</td><td>2/50</td></tr><tr><td>Multi vitamin</td><td>$30</td><td>28/28 sold out</td></tr><tr><td>Doors</td><td>$20</td><td>0/32</td></tr></tbody></table></div>
+      <p>The <b>12Mg tier has stalled</b>. Want me to pull the abandoned checkouts?</p>
+    </div>
+    <div class="composer"><div class="box"><span class="ph">Ask Will GPT to change something</span><span class="send"><svg class="i " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></span></div></div>
+  </aside>
+</div><h2>4. Glow at the prompt</h2><p class="note">The glow sits where you type. A halo rises behind the composer, the input gets the pink ring, and send uses the gradient. Header gets the star.</p>
+<div class="shell v4">
+  <div class="page">
+    <div class="hdr">
+      <div class="crumbs"><svg class="i " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg><span class="sep"></span><span class="title">Events</span></div>
+      <div class="right">
+        <button class="btn on"><span class="halo"></span><svg class="star" viewBox="0 0 24 24" fill="url(#bv4)"><defs><linearGradient id="bv4" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff8a3d"/><stop offset=".5" stop-color="#ff4fd8"/><stop offset="1" stop-color="#a855f7"/></linearGradient></defs><path d="M12 1C12.5 7 17 11.5 23 12 17 12.5 12.5 17 12 23 11.5 17 7 12.5 1 12 7 11.5 11.5 7 12 1Z"/></svg><span class="w">Will GPT</span></button>
+        <span class="avatar"></span>
+      </div>
+    </div>
+    <div class="pbody"><div class="prow"><span>Club Vitamin</span><span class="m">16 Oct</span><span class="m">60 / 150</span></div><div class="prow"><span>Moon Bar Late</span><span class="m">23 Oct</span><span class="m">12 / 120</span></div><div class="prow"><span>Atmos Halloween</span><span class="m">31 Oct</span><span class="m">204 / 400</span></div><div class="prow"><span>Rooftop Sessions</span><span class="m">7 Nov</span><span class="m">0 / 80</span></div></div>
+  </div>
+  <aside class="rail">
+    <span class="glow"></span>
+    <header class="rh">
+      <svg class="star" viewBox="0 0 24 24" fill="url(#rv4)"><defs><linearGradient id="rv4" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff8a3d"/><stop offset=".5" stop-color="#ff4fd8"/><stop offset="1" stop-color="#a855f7"/></linearGradient></defs><path d="M12 1C12.5 7 17 11.5 23 12 17 12.5 12.5 17 12 23 11.5 17 7 12.5 1 12 7 11.5 11.5 7 12 1Z"/></svg><h3>Will GPT</h3>
+      <span class="model">GLM 5.3 Flash <svg class="i sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>
+      <svg class="i " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg><svg class="i " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg><svg class="i " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </header>
+    <div class="thread">
+      <p class="user">how is the club vitamin sales going</p>
+      <div class="calls"><div class="call"><svg class="i ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span class="s">List ticket events to find Club Vitamin</span><span class="p">ticketEvents.list</span></div><div class="call"><svg class="i ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span class="s">Get sales overview for Club Vitamin</span><span class="p">ticketAnalytics.overview</span></div></div>
+      <p>Club Vitamin, Friday 16 Oct at Moon Bar. <b>60 of 150 sold, $534 gross.</b></p>
+      <div class="tbl"><table><thead><tr><th>Tier</th><th>Price</th><th>Sold</th></tr></thead><tbody><tr><td>10Mg</td><td>$10</td><td>30/30 sold out</td></tr><tr><td>12Mg</td><td>$12</td><td>2/50</td></tr><tr><td>Multi vitamin</td><td>$30</td><td>28/28 sold out</td></tr><tr><td>Doors</td><td>$20</td><td>0/32</td></tr></tbody></table></div>
+      <p>The <b>12Mg tier has stalled</b>. Want me to pull the abandoned checkouts?</p>
+    </div>
+    <div class="composer"><div class="box"><span class="ph">Ask Will GPT to change something</span><span class="send"><svg class="i " viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></span></div></div>
+  </aside>
+</div>
+</main></body></html>

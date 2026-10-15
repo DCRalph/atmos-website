@@ -8,8 +8,6 @@ interface LayoutWithSideBarHeaderProps {
   header: React.ReactNode;
   /** A second column beside the sidebar, such as a page's section rail. */
   rail?: React.ReactNode;
-  /** A panel docked to the right of the content column, such as Will GPT. */
-  aside?: React.ReactNode;
 }
 
 export function LayoutWithSideBarHeader({
@@ -17,7 +15,6 @@ export function LayoutWithSideBarHeader({
   sidebar,
   header: header,
   rail,
-  aside,
 }: LayoutWithSideBarHeaderProps) {
   return (
     <SidebarProvider>
@@ -37,7 +34,6 @@ export function LayoutWithSideBarHeader({
           {header}
           {children}
         </div>
-        {aside}
       </div>
     </SidebarProvider>
   );
