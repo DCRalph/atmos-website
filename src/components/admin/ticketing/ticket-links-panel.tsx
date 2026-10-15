@@ -9,6 +9,7 @@ import {
   Link2,
   Loader2,
   Minus,
+  Pencil,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -84,6 +85,7 @@ export function TicketLinksPanel({ event }: { event: AdminEvent }) {
   const [label, setLabel] = useState("");
   const [openBatchId, setOpenBatchId] = useState<string | null>(null);
   const [deletingBatch, setDeletingBatch] = useState<Batch | null>(null);
+  const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
 
   const batches = api.ticketAdmin.ticketLinkBatches.useQuery({
     eventId: event.id,
@@ -192,18 +194,31 @@ export function TicketLinksPanel({ event }: { event: AdminEvent }) {
         hideable: false,
         align: "right",
         cell: (row) => (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`Delete ${row.label ?? "this batch"}`}
-            onClick={(event) => {
-              // The row itself opens the batch; this button doesn't.
-              event.stopPropagation();
-              setDeletingBatch(row);
-            }}
-          >
-            <Trash2 className="size-4" />
-          </Button>
+          <div className="flex justify-end">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Edit ${row.label ?? "this batch"}`}
+              onClick={(event) => {
+                // The row itself opens the batch; these buttons don't.
+                event.stopPropagation();
+                setEditingBatch(row);
+              }}
+            >
+              <Pencil className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Delete ${row.label ?? "this batch"}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                setDeletingBatch(row);
+              }}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          </div>
         ),
       },
     ],
@@ -419,12 +434,45 @@ export function TicketLinksPanel({ event }: { event: AdminEvent }) {
                 <Trash2 className="size-4" /> Delete batch
               </Button>
               <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setEditingBatch(detail.data ?? null);
+                    setOpenBatchId(null);
+                  }}
+                >
+                  <Pencil className="size-4" /> Edit
+                </Button>
                 <BatchActions batch={detail.data} />
               </div>
             </DialogFooter>
           )}
         </DialogContent>
       </Dialog>
+
+      {editingBatch && (
+        <EditBatchDialog
+          // Keyed so the form starts from this batch each time it opens.
+          key={editingBatch.id}
+          batch={editingBatch}
+          remaining={remainingInTier(
+            event.tiers.find((tier) => tier.id === editingBatch.tierId) ?? {
+              allocation: 0,
+              soldCount: 0,
+              heldCount: 0,
+            },
+          )}
+          onClose={() => setEditingBatch(null)}
+          onSaved={async () => {
+            setEditingBatch(null);
+            await Promise.all([
+              refresh(),
+              utils.ticketAdmin.ticketLinkBatch.invalidate(),
+            ]);
+          }}
+        />
+      )}
 
       <DeleteBatchDialog
         batch={deletingBatch}
@@ -435,6 +483,162 @@ export function TicketLinksPanel({ event }: { event: AdminEvent }) {
         }}
       />
     </div>
+  );
+}
+
+/**
+ * Change a batch after the fact. Growing draws from the tier like generating
+ * did; shrinking only takes back links and extras nobody has claimed or used,
+ * and the server says so when there aren't enough of those.
+ */
+function EditBatchDialog({
+  batch,
+  remaining,
+  onClose,
+  onSaved,
+}: {
+  batch: Batch;
+  remaining: number;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
+  const [label, setLabel] = useState(batch.label ?? "");
+  const [primaryCount, setPrimaryCount] = useState(batch.primaryCount);
+  const [plusCount, setPlusCount] = useState(batch.plusCount);
+
+  const ticketCount = primaryCount * (1 + plusCount);
+  const delta = ticketCount - batch.ticketCount;
+  const unchanged =
+    label.trim() === (batch.label ?? "") &&
+    primaryCount === batch.primaryCount &&
+    plusCount === batch.plusCount;
+
+  const save = api.ticketAdmin.editTicketLinkBatch.useMutation({
+    onSuccess: async () => {
+      toast.success("Batch updated.");
+      await onSaved();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !save.isPending) onClose();
+      }}
+    >
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Edit {batch.label ?? "batch"}</DialogTitle>
+          <DialogDescription>
+            Existing links keep working. Fewer links or extras only takes back
+            ones nobody has claimed or used.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-batch-label">Label</Label>
+            <Input
+              id="edit-batch-label"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="Press list, radio guests…"
+              maxLength={120}
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-batch-count">Links</Label>
+              <Input
+                id="edit-batch-count"
+                type="number"
+                min={1}
+                max={MAX_PRIMARY_LINKS}
+                value={primaryCount}
+                onChange={(e) => {
+                  const next = Number.parseInt(e.target.value, 10);
+                  setPrimaryCount(
+                    Number.isNaN(next)
+                      ? 1
+                      : Math.min(MAX_PRIMARY_LINKS, Math.max(1, next)),
+                  );
+                }}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>+ tickets per link</Label>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  aria-label="One fewer extra ticket"
+                  disabled={plusCount === 0}
+                  onClick={() => setPlusCount((n) => Math.max(0, n - 1))}
+                >
+                  <Minus className="size-4" />
+                </Button>
+                <span className="w-8 text-center tabular-nums">
+                  {plusCount}
+                </span>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  aria-label="One more extra ticket"
+                  disabled={plusCount >= MAX_PLUS_PER_LINK}
+                  onClick={() =>
+                    setPlusCount((n) => Math.min(MAX_PLUS_PER_LINK, n + 1))
+                  }
+                >
+                  <Plus className="size-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-muted-foreground text-sm">
+            {ticketCount} ticket{ticketCount === 1 ? "" : "s"} from{" "}
+            {batch.tierName}
+            {delta > 0
+              ? ` · ${delta} more drawn, ${remaining} left`
+              : delta < 0
+                ? ` · ${-delta} back on sale`
+                : ""}
+            .
+          </p>
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" disabled={save.isPending} onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            disabled={unchanged || save.isPending || delta > remaining}
+            onClick={() =>
+              save.mutate({
+                batchId: batch.id,
+                label: label.trim() || null,
+                primaryCount,
+                plusCount,
+              })
+            }
+          >
+            {save.isPending ? (
+              <>
+                <Loader2 className="size-4 animate-spin" /> Saving…
+              </>
+            ) : (
+              "Save"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
