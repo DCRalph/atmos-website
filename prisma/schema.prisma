@@ -1403,6 +1403,13 @@ enum TicketEventVisibility {
   PRIVATE
 }
 
+/// Stripe's charge status, for `TicketPaymentAttempt`.
+enum PaymentAttemptStatus {
+  SUCCEEDED
+  FAILED
+  PENDING
+}
+
 enum TicketOrderStatus {
   /// Inventory is held, payment not yet confirmed. Expires at `expiresAt`.
   PENDING
@@ -1807,6 +1814,7 @@ model TicketOrder {
   eventCodeRedemptions EventCodeRedemption[]
   linkBatch    TicketLinkBatch?     @relation(fields: [linkBatchId], references: [id], onDelete: SetNull)
   doorReceipts DoorPaymentReceipt[]
+  paymentAttempts TicketPaymentAttempt[]
 
   @@index([eventId, status])
   @@index([buyerEmail])
@@ -1814,6 +1822,37 @@ model TicketOrder {
   @@index([createdAt])
   @@index([linkBatchId])
   @@map("ticket_order")
+}
+
+/// One go at paying for an order online, as Stripe saw it. Every card,
+/// wallet or Afterpay try is its own charge, declines included, so an order
+/// that paid on the second try has two. The order's own status only ever
+/// shows how it ended. Written by the Stripe webhook (`syncPaymentAttempts`).
+model TicketPaymentAttempt {
+  id      String      @id @default(cuid())
+  orderId String
+  order   TicketOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  stripeChargeId String               @unique
+  status         PaymentAttemptStatus
+  amountCents    Int
+  /// `apple_pay`, `card`, `afterpay_clearpay`... See `paidWithFromCharge`.
+  paidWith       String?
+  /// `visa`, `mastercard`, and the last four, to tell a retry on the same
+  /// card from a switch to another.
+  cardBrand      String?
+  cardLast4      String?
+  /// Stripe's code and the bank's reason: `card_declined`, `insufficient_funds`.
+  failureCode    String?
+  declineReason  String?
+  /// The billing email on the try. A declined order never gets a buyer email
+  /// of its own, so this is what ties it to the order they paid on next.
+  email          String?
+  attemptedAt    DateTime
+
+  @@index([orderId])
+  @@index([status, attemptedAt])
+  @@map("ticket_payment_attempt")
 }
 
 model TicketOrderItem {

@@ -39,6 +39,7 @@ import {
   WeekHeatmap,
 } from "./charts";
 import { CheckoutJourney } from "./checkout-journey";
+import { DeclinesCard, NoTicketsAlert, type OrderHref } from "./declines-card";
 
 type Overview = RouterOutputs["ticketAnalytics"]["overview"];
 type Measure = "tickets" | "revenue";
@@ -58,9 +59,12 @@ const MEASURES = [
 export function EventOverview({
   eventId,
   liveHref = `/admin/events/${eventId}/live?mode=sales`,
+  ordersHref = `/admin/events/${eventId}?section=orders`,
 }: {
   eventId: string;
   liveHref?: string;
+  /** This event's Orders; an order's dialog opens from `&order=`. */
+  ordersHref?: string;
 }) {
   const [range, setRange] = useState<AnalyticsRange>("all");
   const [measure, setMeasure] = useState<Measure>("tickets");
@@ -80,6 +84,9 @@ export function EventOverview({
     eventId,
   });
   const journey = api.ticketAnalytics.journey.useQuery({ eventId });
+  const declines = api.ticketAnalytics.declines.useQuery({ eventId });
+  const orderHref: OrderHref = (_eventId, orderId) =>
+    `${ordersHref}&order=${orderId}`;
 
   const utils = api.useUtils();
 
@@ -112,6 +119,13 @@ export function EventOverview({
 
   return (
     <div className="space-y-3">
+      {declines.data ? (
+        <NoTicketsAlert
+          stranded={declines.data.stranded}
+          orderHref={orderHref}
+        />
+      ) : null}
+
       <StatStrip
         items={[
           {
@@ -238,6 +252,10 @@ export function EventOverview({
               <Devices rows={buyers.data?.devices ?? []} />
             </div>
           </div>
+
+          {declines.data && declines.data.tries > 0 ? (
+            <DeclinesCard report={declines.data} orderHref={orderHref} />
+          ) : null}
         </div>
 
         <div className="min-w-0 space-y-3">

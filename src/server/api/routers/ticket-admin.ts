@@ -3,8 +3,9 @@ import { z } from "zod";
 
 import {
   ActivityType,
+  PaymentAttemptStatus,
   PaymentMethodKind,
-  type Prisma,
+  Prisma,
   TicketEmailType,
   TicketOrderStatus,
   TicketStatus,
@@ -41,6 +42,7 @@ import {
   reassignHandout,
 } from "~/server/ticketing/comps";
 import { InventoryError } from "~/server/ticketing/inventory";
+import { declinedOrders } from "~/server/ticketing/declines";
 import { stopUnpaidPayment } from "~/server/ticketing/payments";
 import {
   MAX_PLUS_PER_LINK,
@@ -169,6 +171,8 @@ export const ticketAdminRouter = createTRPCRouter({
          * the chase-list: orders whose tickets nobody has claimed.
          */
         names: z.enum(["COMPLETE", "MISSING"]).optional(),
+        /** Only orders where a card was declined at least once. */
+        declined: z.boolean().optional(),
         limit: z.number().int().min(1).max(200).default(50),
         cursor: z.string().optional(),
       }),
@@ -192,6 +196,13 @@ export const ticketAdminRouter = createTRPCRouter({
             : input.names === "COMPLETE"
               ? { tickets: { none: unnamedTicket } }
               : {}),
+          ...(input.declined
+            ? {
+                paymentAttempts: {
+                  some: { status: PaymentAttemptStatus.FAILED },
+                },
+              }
+            : {}),
           ...(search
             ? {
                 OR: [
@@ -207,15 +218,40 @@ export const ticketAdminRouter = createTRPCRouter({
         ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
         include: {
           event: { select: { id: true, name: true, slug: true } },
-          _count: { select: { tickets: true } },
+          _count: {
+            select: {
+              tickets: true,
+              paymentAttempts: {
+                where: { status: PaymentAttemptStatus.FAILED },
+              },
+            },
+          },
         },
       });
 
       const hasMore = orders.length > input.limit;
       const page = hasMore ? orders.slice(0, input.limit) : orders;
 
+      // What came of each decline, for the marker beside its status.
+      const declinedIds = page
+        .filter((order) => order._count.paymentAttempts > 0)
+        .map((order) => order.id);
+      const declines = new Map(
+        declinedIds.length > 0
+          ? (
+              await declinedOrders(
+                ctx.db,
+                Prisma.sql`o.id IN (${Prisma.join(declinedIds)})`,
+              )
+            ).map((decline) => [decline.orderId, decline])
+          : [],
+      );
+
       return {
-        orders: page,
+        orders: page.map((order) => ({
+          ...order,
+          decline: declines.get(order.id) ?? null,
+        })),
         nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
       };
     }),
@@ -256,6 +292,7 @@ export const ticketAdminRouter = createTRPCRouter({
             orderBy: { ticketNumber: "asc" },
           },
           emails: { orderBy: { createdAt: "desc" }, take: 20 },
+          paymentAttempts: { orderBy: { attemptedAt: "asc" } },
         },
       });
 
@@ -264,7 +301,7 @@ export const ticketAdminRouter = createTRPCRouter({
       }
 
       // The order keeps bare ids for these, not relations.
-      const [soldBy, discountCode, eventCode] = await Promise.all([
+      const [soldBy, discountCode, eventCode, [decline]] = await Promise.all([
         order.soldByUserId
           ? ctx.db.user.findUnique({
               where: { id: order.soldByUserId },
@@ -283,10 +320,17 @@ export const ticketAdminRouter = createTRPCRouter({
               select: { code: true },
             })
           : null,
+        order.paymentAttempts.some(
+          (attempt) => attempt.status === PaymentAttemptStatus.FAILED,
+        )
+          ? declinedOrders(ctx.db, Prisma.sql`o.id = ${order.id}`)
+          : [],
       ]);
 
       return {
         ...order,
+        /** What came of a declined card, null when none was. */
+        decline: decline ?? null,
         soldByName: soldBy?.name ?? null,
         codeUsed: discountCode?.code ?? eventCode?.code ?? null,
         ticketsUrl: ctx.isAdmin ? ticketsUrl(orderAccessToken(order)) : null,

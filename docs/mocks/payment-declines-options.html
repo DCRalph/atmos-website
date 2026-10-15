@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>Atmos admin · declined payments, timeline and analytics</title><style>
+:root{color-scheme:dark;--page:#000;--bg:#0a0a0a;--card:#171717;--accent:#262626;--border:rgba(255,255,255,.1);--ink:#fafafa;--muted:#a1a1a1;--rev:#c6ff33;--red:#ff6467;--green:#0fa47a;--track:#262626}
+*{box-sizing:border-box}html{background:var(--page);color:var(--ink)}body{margin:0;font:14px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+h1,h2,h3,h4,p{margin:0}
+.muted{color:var(--muted)}.num{font-variant-numeric:tabular-nums}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.doc{max-width:1180px;margin:auto;padding:40px 24px 80px}
+.head h1{font-size:30px;line-height:1.2;letter-spacing:-.025em;font-weight:700}.head p{margin-top:10px;color:var(--muted);max-width:84ch}
+.jump{display:flex;gap:24px;flex-wrap:wrap;margin-top:22px;padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);font-weight:600}.jump a{color:inherit;text-decoration:none}.jump small{color:var(--muted);font-weight:400}
+.part{margin-top:64px;padding-top:24px;border-top:1px solid var(--border)}.part>h2{font-size:26px;letter-spacing:-.02em}
+.option{margin-top:44px}.option h3{font-size:20px;letter-spacing:-.02em}.option h3 span{color:var(--muted);font-weight:500;margin-right:8px}.lede{color:var(--muted);font-size:13.5px;max-width:84ch;margin-top:6px}
+.where{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:20px 0 8px;font-weight:600}
+.notes{font-size:13px;color:var(--muted);margin-top:14px;max-width:90ch}.notes b{color:var(--ink);font-weight:600}.notes ul{margin:6px 0 0;padding-left:18px}.notes li{margin:3px 0}
+.surface{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:18px}
+.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.dialog{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:20px;max-width:672px}
+.dialog .t{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:18px;font-weight:600}.dialog .d{color:var(--muted);font-size:14px;margin-top:2px}
+.box{border:1px solid var(--border);border-radius:8px;padding:12px;min-width:0}
+.cap{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px}.cap>span:first-child{color:var(--muted);font-size:14px;font-weight:500}
+dl{margin:0;font-size:14px}dl .r{display:flex;justify-content:space-between;gap:12px;padding:2px 0}dl dt{color:var(--muted)}dl dd{margin:0;font-variant-numeric:tabular-nums;text-align:right}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 32px;margin-top:16px}
+.sep{border-top:1px solid var(--border);margin-top:16px;padding-top:16px}
+.lbl{font-size:14px;font-weight:500;margin-bottom:8px}
+.badge{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:6px;padding:0 7px;font-size:12px;font-weight:500;line-height:20px;white-space:nowrap}
+.badge.solid{background:var(--ink);color:#000;border-color:transparent}.badge.red{background:rgba(255,100,103,.15);color:var(--red);border-color:transparent}
+.red{color:var(--red)}.green{color:var(--green)}.lime{color:var(--rev)}
+a.link{color:var(--ink);text-underline-offset:4px}
+/* timeline */
+.tl{list-style:none;margin:0;padding:0;position:relative}
+.tl li{position:relative;padding:0 0 14px 22px;font-size:14px}
+.tl li:before{content:"";position:absolute;left:4px;top:7px;width:8px;height:8px;border-radius:99px;background:var(--muted)}
+.tl li:after{content:"";position:absolute;left:7.5px;top:18px;bottom:-2px;width:1px;background:var(--border)}
+.tl li:last-child{padding-bottom:0}.tl li:last-child:after{display:none}
+.tl li.bad:before{background:var(--red)}.tl li.ok:before{background:var(--rev)}.tl li.next:before{background:transparent;border:1px solid var(--rev)}
+.tl .when{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}.tl .gap{color:var(--muted);font-size:12px;margin-left:6px}
+.tl .what{display:flex;justify-content:space-between;gap:12px}.tl .sub{color:var(--muted);font-size:13px}
+/* tables */
+table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+th{font-weight:400;color:var(--muted);font-size:12px;text-align:left;padding:0 12px 6px 0;white-space:nowrap}
+td{text-align:left;padding:8px 12px 8px 0;border-top:1px solid var(--border);vertical-align:top}
+td.r,th.r{text-align:right;padding-right:0}
+.scroll{overflow-x:auto}
+details summary{color:var(--muted);cursor:pointer;font-size:14px}
+/* analytics */
+.strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 24px}
+.strip .l{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}.strip .v{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}.strip .s{font-size:14px;color:var(--muted)}
+.bars{list-style:none;margin:0;padding:0}.bars li{margin-bottom:8px}.bars .row{display:flex;justify-content:space-between;gap:12px;font-size:14px}.bars .row span:last-child{color:var(--muted);font-variant-numeric:tabular-nums}
+.bars .tr{height:6px;background:var(--track);border-radius:99px;margin-top:4px;overflow:hidden}.bars .tr i{display:block;height:100%;border-radius:99px;background:var(--rev)}
+.funnel .st{display:grid;grid-template-columns:170px minmax(0,1fr) 120px;gap:12px;align-items:center;font-size:14px;margin-bottom:8px}
+.funnel .b{height:22px;background:var(--rev);border-radius:4px}.funnel .b.split{display:flex;background:transparent;gap:2px}.funnel .b.split i{display:block;height:100%;border-radius:4px}
+.funnel .n{font-variant-numeric:tabular-nums;text-align:right}.funnel .n small{color:var(--muted);display:block;font-size:12px}
+.alert{border:1px solid rgba(255,100,103,.4);background:rgba(255,100,103,.07);border-radius:8px;padding:12px 14px;font-size:14px;display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:13px;font-weight:500;background:var(--bg);white-space:nowrap}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.findings{margin-top:22px;border:1px solid var(--border);border-radius:10px;padding:16px 18px;background:var(--bg)}
+.findings h2{font-size:16px}.findings ol{margin:8px 0 0;padding-left:20px;color:var(--muted)}.findings li{margin:4px 0}.findings b{color:var(--ink)}
+@media (max-width:900px){.pair{grid-template-columns:minmax(0,1fr)}.strip{grid-template-columns:repeat(2,minmax(0,1fr))}.funnel .st{grid-template-columns:120px minmax(0,1fr) 90px}}
+@media (max-width:520px){.g2{grid-template-columns:minmax(0,1fr)}.strip{grid-template-columns:minmax(0,1fr)}.funnel .st{grid-template-columns:minmax(0,1fr) 80px}.funnel .b{grid-column:1/-1;order:3}}
+</style></head><body><main class="doc">
+
+<header class="head">
+<h1>Declined payments: order timeline and analytics</h1>
+<p>Stripe records every try at paying, but the site only keeps how an order ended. These mocks use the four real declines from Club Vitamin. Buyer names, cards and order numbers are made up. The decline figures are real; the funnel counts and the email and naming times are illustrative.</p>
+<div class="findings">
+<h2>What Stripe shows that the site doesn't</h2>
+<ol>
+<li><b>Retried and paid on the same order (2).</b> These orders just show "paid". The decline before it isn't recorded anywhere.</li>
+<li><b>Came back on a new order (2).</b> The declined order stays "failed" with no email, so nothing links it to the order they paid on a couple of minutes later.</li>
+<li><b>One buyer paid $10.00 and never got a ticket.</b> On 8 Oct, Apple Pay was declined, then accepted on another card 11 seconds later. Back then a "failed" order couldn't be paid, so it stayed failed with no tickets and no refund. The 13 Oct change fixed this for new orders, but this order still needs a refund or tickets issued by hand.</li>
+</ol>
+<p class="muted" style="font-size:13px;margin-top:10px">Already built on <span class="mono">feat/payment-attempts</span>: the webhook now saves every try (declines included) with card, method, Stripe's decline reason and billing email, and a backfill fills in past orders. The options below show how to display it.</p>
+</div>
+<nav class="jump">
+<a href="#t">1 <small>Order timeline, 3 options</small></a>
+<a href="#a">2 <small>Analytics, 3 options</small></a>
+<a href="#s">3 <small>Shared bits</small></a>
+</nav>
+</header>
+
+<!-- ======================= PART 1 ======================= -->
+<section class="part" id="t">
+<h2>1. In the order dialog</h2>
+<p class="lede">Ticketing › event › Orders › click an order. Each option is shown on two orders: one that paid on its second try, and one that was declined and paid as a new order.</p>
+
+<!-- A -->
+<section class="option" id="ta">
+<h3><span>A</span>Full order timeline</h3>
+<p class="lede">A new "Timeline" section under the details, from hold to names. Each step shows the gap since the last one. Declines are red and include the bank's reason.</p>
+<p class="where">Order dialog · new section above Tickets</p>
+<div class="pair">
+<div class="dialog">
+<p class="t">ATN-B3N8TV</p><p class="d">Casey T. · casey.t@example.com</p>
+<div class="g2"><dl><div class="r"><dt>Total</dt><dd>$12.00</dd></div><div class="r"><dt>Paid with</dt><dd><span class="badge">Card</span></dd></div></dl><dl><div class="r"><dt>Bought on</dt><dd>Mobile · iOS</dd></div></dl></div>
+<div class="sep"><p class="lbl">Timeline</p>
+<ol class="tl">
+<li><div class="what"><span>Held 1 ticket</span><span class="when">Wed 15 Oct, 10:27:44 am</span></div></li>
+<li class="bad"><div class="what"><span>Declined <span class="gap">+14s</span></span><span class="when">10:27:58 am</span></div><p class="sub">Visa ••8821 · Insufficient funds</p></li>
+<li class="ok"><div class="what"><span>Paid $12.00 <span class="gap">+40s</span></span><span class="when">10:28:38 am</span></div><p class="sub">Same card, second try</p></li>
+<li><div class="what"><span>Tickets emailed <span class="gap">+2s</span></span><span class="when">10:28:40 am</span></div></li>
+<li><div class="what"><span>Named their ticket <span class="gap">+1m 05s</span></span><span class="when">10:29:45 am</span></div></li>
+</ol></div>
+</div>
+<div class="dialog">
+<p class="t">ATN-K4P2QX</p><p class="d">No name · jordan.m@example.com <span class="muted">(from the declined card)</span></p>
+<div class="g2"><dl><div class="r"><dt>Total</dt><dd>$12.00</dd></div><div class="r"><dt>Status</dt><dd><span class="badge">failed</span></dd></div></dl><dl><div class="r"><dt>Bought on</dt><dd>Mobile · Android</dd></div></dl></div>
+<div class="sep"><p class="lbl">Timeline</p>
+<ol class="tl">
+<li><div class="what"><span>Held 1 ticket</span><span class="when">Tue 14 Oct, 7:58:59 pm</span></div></li>
+<li class="bad"><div class="what"><span>Declined <span class="gap">+2m 01s</span></span><span class="when">8:01:00 pm</span></div><p class="sub">Visa ••4410 · Insufficient funds</p></li>
+<li><div class="what"><span>Hold released</span><span class="when">8:01:01 pm</span></div></li>
+<li class="next"><div class="what"><span>Came back and paid <span class="gap">+1m 53s</span></span><span class="when">8:02:53 pm</span></div><p class="sub">On <a class="link mono" href="#ta">ATN-R7W9LD</a> · same card</p></li>
+</ol></div>
+</div>
+</div>
+<div class="notes"><b>Why pick it:</b> one place for the whole story, answering "what happened to this person?" without opening Stripe.
+<ul><li>Hold, payment, email and naming times are already stored. The only new data is the payment tries.</li><li><b>Catch:</b> five rows tall on every order, even the 90% that paid on the first try. It could collapse to one line for those.</li></ul></div>
+</section>
+
+<!-- B -->
+<section class="option" id="tb">
+<h3><span>B</span>Payment tries table</h3>
+<p class="lede">Payments only. One row per try, the way Stripe lists charges, plus a line linking to the order they paid on if they came back.</p>
+<p class="where">Order dialog · new section above Tickets</p>
+<div class="pair">
+<div class="dialog">
+<p class="t">ATN-B3N8TV</p><p class="d">Casey T. · casey.t@example.com</p>
+<div class="sep"><p class="lbl">Payment tries</p>
+<div class="scroll"><table><thead><tr><th>When</th><th>Card</th><th>Result</th><th class="r">Amount</th></tr></thead><tbody>
+<tr><td class="muted">10:27:58 am</td><td>Visa ••8821</td><td><span class="red">Declined</span> <span class="muted">· Insufficient funds</span></td><td class="r">$12.00</td></tr>
+<tr><td class="muted">10:28:38 am</td><td>Visa ••8821</td><td class="lime">Paid</td><td class="r">$12.00</td></tr>
+</tbody></table></div></div>
+</div>
+<div class="dialog">
+<p class="t">ATN-K4P2QX</p><p class="d">No name · jordan.m@example.com</p>
+<div class="sep"><p class="lbl">Payment tries</p>
+<div class="scroll"><table><thead><tr><th>When</th><th>Card</th><th>Result</th><th class="r">Amount</th></tr></thead><tbody>
+<tr><td class="muted">8:01:00 pm</td><td>Visa ••4410</td><td><span class="red">Declined</span> <span class="muted">· Insufficient funds</span></td><td class="r">$12.00</td></tr>
+</tbody></table></div>
+<p style="margin-top:10px;font-size:14px">Paid 1m 53s later on <a class="link mono" href="#tb">ATN-R7W9LD</a> <span class="muted">· same card</span></p></div>
+</div>
+</div>
+<div class="notes"><b>Why pick it:</b> the closest match to Stripe, and it scans quickly with several tries.
+<ul><li>Hidden on orders with one successful try, so most orders look the same as today.</li></ul></div>
+</section>
+
+<!-- C -->
+<section class="option" id="tc">
+<h3><span>C</span>One row plus a log</h3>
+<p class="lede">Smallest change. A "Payment" row in the details summarises it, and the tries sit in a collapsible log like the existing Email log at the bottom.</p>
+<p class="where">Order dialog · details list and bottom log</p>
+<div class="pair">
+<div class="dialog">
+<p class="t">ATN-B3N8TV</p><p class="d">Casey T. · casey.t@example.com</p>
+<div class="g2"><dl><div class="r"><dt>Total</dt><dd>$12.00</dd></div><div class="r"><dt>Paid with</dt><dd><span class="badge">Card</span></dd></div><div class="r"><dt>Payment</dt><dd><span class="badge">2nd try</span></dd></div></dl><dl></dl></div>
+<details class="sep" open><summary>Payment tries (2)</summary>
+<p class="muted" style="font-size:12px;margin-top:8px">15 Oct, 10:27:58 am · Visa ••8821 · <span class="red">declined</span> · insufficient funds<br>15 Oct, 10:28:38 am · Visa ••8821 · <span class="lime">paid</span> · $12.00</p></details>
+<details style="margin-top:10px"><summary>Email log (1)</summary></details>
+</div>
+<div class="dialog">
+<p class="t">ATN-K4P2QX</p><p class="d">No name · jordan.m@example.com</p>
+<div class="g2"><dl><div class="r"><dt>Total</dt><dd>$12.00</dd></div><div class="r"><dt>Payment</dt><dd><span class="badge red">declined</span></dd></div><div class="r"><dt>Then</dt><dd>Paid <a class="link mono" href="#tc">ATN-R7W9LD</a> 1m 53s later</dd></div></dl><dl></dl></div>
+<details class="sep" open><summary>Payment tries (1)</summary>
+<p class="muted" style="font-size:12px;margin-top:8px">14 Oct, 8:01:00 pm · Visa ••4410 · <span class="red">declined</span> · insufficient funds</p></details>
+</div>
+</div>
+<div class="notes"><b>Why pick it:</b> almost no extra height, and it reuses the dialog's existing layout.
+<ul><li><b>Catch:</b> the timing story (held → declined → back in 2 minutes) is spread across three places.</li></ul></div>
+</section>
+</section>
+
+<!-- ======================= PART 2 ======================= -->
+<section class="part" id="a">
+<h2>2. Analytics</h2>
+<p class="lede">Ticketing › Analytics, filtered by the same event and date controls as the rest of the page. Each option can also show on an event's Overview for one event. Real figures for Club Vitamin: 40 orders tried to pay, 42 tries, 4 declined.</p>
+
+<!-- A -->
+<section class="option" id="aa">
+<h3><span>A</span>A "Declined payments" card with a feed</h3>
+<p class="lede">Four headline numbers, why cards were declined, how buyers recovered, and a feed of recent declines. Each feed row opens the order.</p>
+<p class="where">Analytics · full-width card under the checkout journey</p>
+<div class="surface"><figure class="box" style="margin:0">
+<div class="cap"><span>Declined payments</span></div>
+<div class="strip">
+<div><p class="l">Declined at least once</p><p class="v">4</p><p class="s">of 40 orders · 10%</p></div>
+<div><p class="l">Came back and paid</p><p class="v lime">4 of 4</p><p class="s">2 retried · 2 new order</p></div>
+<div><p class="l">Lost to declines</p><p class="v">$0.00</p><p class="s">$44.00 recovered</p></div>
+<div><p class="l">Back within</p><p class="v">1m 17s</p><p class="s">median, decline to paid</p></div>
+</div>
+<div class="pair" style="margin-top:18px">
+<div><p class="muted" style="font-size:13px;margin-bottom:8px">Why</p><ul class="bars">
+<li><div class="row"><span>Insufficient funds</span><span>3</span></div><div class="tr"><i style="width:100%"></i></div></li>
+<li><div class="row"><span>Declined by Afterpay</span><span>1</span></div><div class="tr"><i style="width:33%"></i></div></li>
+</ul></div>
+<div><p class="muted" style="font-size:13px;margin-bottom:8px">How they paid in the end</p><ul class="bars">
+<li><div class="row"><span>Same card again</span><span>2</span></div><div class="tr"><i style="width:100%"></i></div></li>
+<li><div class="row"><span>Another card or method</span><span>2</span></div><div class="tr"><i style="width:100%"></i></div></li>
+</ul></div>
+</div>
+<p class="muted" style="font-size:13px;margin:18px 0 6px">Recent declines</p>
+<ol class="tl">
+<li class="ok"><div class="what"><span>Casey T. · Visa ••8821 · Insufficient funds</span><span class="when">15 Oct, 10:27 am</span></div><p class="sub">Retried, paid 40s later · <span class="mono">ATN-B3N8TV</span></p></li>
+<li class="ok"><div class="what"><span>Jordan M. · Visa ••4410 · Insufficient funds</span><span class="when">14 Oct, 8:01 pm</span></div><p class="sub">New order, paid 1m 53s later · <span class="mono">ATN-R7W9LD</span></p></li>
+<li class="ok"><div class="what"><span>Riley P. · Afterpay · Declined</span><span class="when">12 Oct, 6:26 pm</span></div><p class="sub">Switched to Visa ••5036, paid 2m 50s later · <span class="mono">ATN-T9C4JS</span></p></li>
+<li class="bad"><div class="what"><span>Morgan L. · Apple Pay ••7712 · Insufficient funds</span><span class="when">8 Oct, 7:36 pm</span></div><p class="sub">Paid 11s later on ••3305, <span class="red">but no tickets were issued</span> · <span class="mono">ATN-W2F7YN</span></p></li>
+</ol>
+</figure></div>
+<div class="notes"><b>Why pick it:</b> it answers "how many, why, did they come back, and who" in one card, and the feed doubles as the cross-order timeline.
+<ul><li>A buyer who came back on a new order is matched by the same browser visit or the same billing email, for the same event.</li></ul></div>
+</section>
+
+<!-- B -->
+<section class="option" id="ab">
+<h3><span>B</span>Folded into the checkout journey</h3>
+<p class="lede">No new card. The existing funnel gets a "Declined" step between hold and paid, with the bar split into first-try success and paid after a decline. One headline tile joins the stat strip.</p>
+<p class="where">Analytics · Checkout journey card and stat strip</p>
+<div class="surface">
+<div class="strip" style="margin-bottom:16px"><div><p class="l">Declined payments</p><p class="v">4 <span class="muted" style="font-size:14px;font-weight:400">· 10%</span></p><p class="s">All 4 came back and paid</p></div></div>
+<figure class="box funnel" style="margin:0">
+<div class="cap"><span>Checkout journey</span></div>
+<div class="st"><span>Pressed hold and pay</span><div class="b" style="width:100%"></div><span class="n">54 <small>visits</small></span></div>
+<div class="st"><span>Tried to pay</span><div class="b" style="width:74%"></div><span class="n">40 <small>2m 10s</small></span></div>
+<div class="st"><span class="red">Declined</span><div class="b" style="width:7.4%;background:var(--red)"></div><span class="n">4 <small>all came back</small></span></div>
+<div class="st"><span>Paid</span><div class="b split" style="width:68.5%"><i style="flex:34;background:var(--rev)"></i><i style="flex:3;background:repeating-linear-gradient(135deg,var(--rev) 0 3px,transparent 3px 6px);border:1px solid var(--rev)"></i></div><span class="n">37 <small>3 after a decline</small></span></div>
+</figure>
+</div>
+<div class="notes"><b>Why pick it:</b> declines show up where you already look at drop-off, with no extra card.
+<ul><li><b>Catch:</b> no reasons and no names. To see who it was, you'd filter Orders by "Declined first".</li></ul></div>
+</section>
+
+<!-- C -->
+<section class="option" id="ac">
+<h3><span>C</span>A decline log table</h3>
+<p class="lede">No charts. A headline strip and one row per declined order with the outcome, sortable like other admin tables. Best if you want the list more than the trend.</p>
+<p class="where">Analytics · full-width card, or its own "Declines" tab on an event</p>
+<div class="surface">
+<div class="strip" style="margin-bottom:14px">
+<div><p class="l">Declined</p><p class="v">4</p><p class="s">10% of orders</p></div>
+<div><p class="l">Came back</p><p class="v lime">4</p><p class="s">100%</p></div>
+<div><p class="l">Lost</p><p class="v">$0.00</p></div>
+<div><p class="l">Tries accepted</p><p class="v">90%</p><p class="s">38 of 42</p></div>
+</div>
+<div class="scroll"><table><thead><tr><th>Declined</th><th>Buyer</th><th>Card</th><th>Why</th><th>Then</th><th class="r">Amount</th></tr></thead><tbody>
+<tr><td class="muted">15 Oct, 10:27 am</td><td>Casey T.</td><td>Visa ••8821</td><td>Insufficient funds</td><td>Retried, paid in 40s</td><td class="r">$12.00</td></tr>
+<tr><td class="muted">14 Oct, 8:01 pm</td><td>Jordan M.</td><td>Visa ••4410</td><td>Insufficient funds</td><td>New order, paid in 1m 53s</td><td class="r">$12.00</td></tr>
+<tr><td class="muted">12 Oct, 6:26 pm</td><td>Riley P.</td><td>Afterpay</td><td>Declined</td><td>New order on a card, 2m 50s</td><td class="r">$10.00</td></tr>
+<tr><td class="muted">8 Oct, 7:36 pm</td><td>Morgan L.</td><td>Apple Pay ••7712</td><td>Insufficient funds</td><td class="red">Paid, no tickets</td><td class="r">$10.00</td></tr>
+</tbody></table></div>
+</div>
+<div class="notes"><b>Why pick it:</b> the densest view, and it exports to CSV like the events table.
+<ul><li><b>Catch:</b> with dozens of declines, reasons are harder to see at a glance than in A's bars.</li></ul></div>
+</section>
+</section>
+
+<!-- ======================= PART 3 ======================= -->
+<section class="part" id="s">
+<h2>3. Shared by every option</h2>
+
+<section class="option">
+<h3>Orders list</h3>
+<p class="lede">A "Declined first" filter and a small marker on the status badge, so you can find these orders without opening each one.</p>
+<p class="where">Event › Orders</p>
+<div class="surface">
+<div class="filters"><span class="btn">Status</span><span class="btn">Payment</span><span class="btn">Names</span><span class="btn" style="border-color:var(--rev)">Declined first ✓</span></div>
+<div class="scroll"><table><thead><tr><th>Order</th><th>Status</th><th>Buyer</th><th class="r">Total</th></tr></thead><tbody>
+<tr><td class="mono">ATN-B3N8TV</td><td><span class="badge solid">paid</span> <span class="muted" style="font-size:12px">2nd try</span></td><td>Casey T.</td><td class="r">$12.00</td></tr>
+<tr><td class="mono">ATN-K4P2QX</td><td><span class="badge">failed</span> <span class="muted" style="font-size:12px">paid on ATN-R7W9LD</span></td><td>jordan.m@example.com</td><td class="r">$12.00</td></tr>
+</tbody></table></div>
+</div>
+</section>
+
+<section class="option">
+<h3>Money taken, no tickets</h3>
+<p class="lede">A warning on the analytics page and the event Overview when Stripe accepted a payment but the order isn't paid. It's a cheap check on the same data, and it would have caught the 8 Oct order.</p>
+<p class="where">Analytics and event Overview · top of page, only when there's one</p>
+<div class="surface"><div class="alert"><span><b>Stripe took $10.00 on <span class="mono">ATN-W2F7YN</span> but no tickets were issued.</b> <span class="muted">Refund it or issue the tickets.</span></span><span class="btn">Open order</span></div></div>
+</section>
+</section>
+
+</main></body></html>

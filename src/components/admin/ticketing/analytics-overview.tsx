@@ -40,6 +40,7 @@ import {
   WeekHeatmap,
 } from "./charts";
 import { CheckoutJourney } from "./checkout-journey";
+import { DeclinesCard, NoTicketsAlert, type OrderHref } from "./declines-card";
 
 type Events = RouterOutputs["analytics"]["events"];
 type EventRow = Events["rows"][number];
@@ -108,6 +109,7 @@ export function AnalyticsOverview() {
   const timing = api.analytics.timing.useQuery(input, held);
   const campaigns = api.analytics.campaigns.useQuery(input, held);
   const buyers = api.analytics.buyers.useQuery(input, held);
+  const declines = api.analytics.declines.useQuery(input, held);
   const utils = api.useUtils();
 
   // A narrower set of events drops picks that are no longer offered.
@@ -140,7 +142,8 @@ export function AnalyticsOverview() {
     funnel.isPlaceholderData ||
     timing.isPlaceholderData ||
     campaigns.isPlaceholderData ||
-    buyers.isPlaceholderData;
+    buyers.isPlaceholderData ||
+    declines.isPlaceholderData;
   const headline = summarise(rows, events.data.buyers);
 
   return (
@@ -186,6 +189,13 @@ export function AnalyticsOverview() {
           className="ml-auto"
         />
       </div>
+
+      {declines.data ? (
+        <NoTicketsAlert
+          stranded={declines.data.stranded}
+          orderHref={adminOrderHref}
+        />
+      ) : null}
 
       <StatStrip
         items={[
@@ -260,6 +270,14 @@ export function AnalyticsOverview() {
           <Skeleton className="h-44 w-full" />
         )}
 
+        {declines.data && declines.data.tries > 0 ? (
+          <DeclinesCard
+            report={declines.data}
+            orderHref={adminOrderHref}
+            className="lg:col-span-2"
+          />
+        ) : null}
+
         <ChartCard title="When people buy">
           <WeekHeatmap
             cells={(timing.data?.weekHours ?? []).map((cell) => ({
@@ -303,6 +321,9 @@ export function AnalyticsOverview() {
     </div>
   );
 }
+
+const adminOrderHref: OrderHref = (eventId, orderId) =>
+  `/admin/events/${eventId}?section=orders&order=${orderId}`;
 
 /** The headline, summed from the table rows so the two always agree. */
 function summarise(rows: EventRow[], buyers: Events["buyers"]) {

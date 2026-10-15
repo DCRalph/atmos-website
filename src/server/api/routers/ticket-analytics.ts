@@ -19,6 +19,7 @@ import {
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
 import { pastEventsPace } from "~/server/ticketing/lead-time";
 import { checkoutJourney } from "~/server/ticketing/journey";
+import { declineReport } from "~/server/ticketing/declines";
 import { paceOnAxis } from "~/lib/ticketing/pace";
 import { campaignTypeOf } from "~/lib/ticketing/campaigns";
 import {
@@ -1191,6 +1192,13 @@ export const ticketAnalyticsRouter = createTRPCRouter({
     .input(z.object({ eventId: z.string() }))
     .query(({ ctx, input }) =>
       checkoutJourney(ctx.db, Prisma.sql`e.id = ${input.eventId}`),
+    ),
+
+  /** Declined payments for one event. See `analytics.declines`. */
+  declines: eventOrganiserProcedure
+    .input(z.object({ eventId: z.string() }))
+    .query(({ ctx, input }) =>
+      declineReport(ctx.db, Prisma.sql`e.id = ${input.eventId}`),
     ),
 
   discountPerformance: eventOrganiserProcedure
