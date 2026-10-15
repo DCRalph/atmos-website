@@ -10,7 +10,8 @@ export type LegalBlock =
   | { sub: string }
   | { list: readonly string[] }
   | { terms: readonly { term: string; text: string }[] }
-  | { contact: readonly { label: string; value: string; href: string }[] };
+  /** The contact page as the main route, with the email in small print beneath. */
+  | { contact: { value: string; href: string }; email: string };
 
 export type LegalSection = {
   /** Anchor id, e.g. `/legal/privacy#cookies`. */
@@ -34,10 +35,8 @@ export type LegalDoc = {
 const LEGAL_UPDATED = "13 October 2026";
 
 const contactBlock: LegalBlock = {
-  contact: [
-    { label: "Email", value: CONTACT.email, href: `mailto:${CONTACT.email}` },
-    { label: "Website", value: "Contact page", href: "/contact" },
-  ],
+  contact: { value: "Contact page", href: "/contact" },
+  email: CONTACT.email,
 };
 
 export const privacyDoc: LegalDoc = {
@@ -754,11 +753,7 @@ export const ticketTermsDoc: LegalDoc = {
       title: "Contact",
       blocks: [
         { p: "Questions about a ticket or an order? Get in touch:" },
-        {
-          contact: [
-            { label: "Website", value: "Contact page", href: "/contact" },
-          ],
-        },
+        contactBlock,
       ],
     },
   ],
