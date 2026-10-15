@@ -110,6 +110,18 @@ export const auth = betterAuth({
     },
   },
   /**
+   * Connecting Google or WMGX from the account page works whatever email that
+   * login has: the person is already signed in, so the link is theirs to make.
+   * Their account keeps its own email: better-auth never changes it on a
+   * link. This only covers linking while signed in; signing in with a new
+   * login never joins it to an account with a different email.
+   */
+  account: {
+    accountLinking: {
+      allowDifferentEmails: true,
+    },
+  },
+  /**
    * Delete my account — App Store Guideline 5.1.1(v).
    *
    * `deleteUser` rather than a tRPC mutation of our own so that better-auth
