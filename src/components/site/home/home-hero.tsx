@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useSyncExternalStore } from "react";
+import { use, useCallback, useSyncExternalStore } from "react";
 import { ArrowRight, ArrowUpRight, Navigation, X } from "lucide-react";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { cn } from "~/lib/utils";
+import { ScrollContainerContext } from "~/components/scroll-container-provider";
 import { gigPath } from "~/lib/gig-url";
 import { gigOffSiteNotice } from "~/lib/gig-visibility";
 import { formatEventTime } from "~/lib/ticketing/dates";
@@ -47,16 +48,36 @@ const useMotionAllowed = () =>
     () => false,
   );
 
+/** True once the page's scroll container has left the top, false on the server. */
+function useScrolled() {
+  const container = use(ScrollContainerContext);
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const el = container?.current;
+      el?.addEventListener("scroll", onChange, { passive: true });
+      return () => el?.removeEventListener("scroll", onChange);
+    },
+    [container],
+  );
+  return useSyncExternalStore(
+    subscribe,
+    () => (container?.current?.scrollTop ?? 0) > 24,
+    () => false,
+  );
+}
+
 /**
  * Home hero: the logo over the looping crowd video (a still for reduced
  * motion), with the next announced gig docked along the bottom edge. While a
  * gig is live the line under the logo says so and the strip becomes the live
- * strip (solid accent once doors are open).
+ * strip (solid accent once doors are open). The strip hides once the page
+ * scrolls.
  */
 export function HomeHero() {
   const motionAllowed = useMotionAllowed();
   const live = useLiveGig();
   const venue = useVenue(live?.gig);
+  const scrolled = useScrolled();
 
   return (
     <section className="relative flex h-dvh min-h-[560px] flex-col overflow-hidden">
@@ -84,28 +105,47 @@ export function HomeHero() {
       <div className="absolute inset-0 bg-black/45" />
 
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-6 px-6 pt-20">
-        <h1>
-          <AtmosLogo className="w-[min(72vw,640px)]" eager />
+        <h1 className="relative">
+          {/* Static glow: a wide halo plus a drop-shadow hugging the letterforms. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -inset-x-[20%] -inset-y-[120%] bg-[radial-gradient(closest-side,rgb(255_255_255/0.38),rgb(255_255_255/0.14)_50%,transparent)]"
+          />
+          <AtmosLogo
+            className="relative w-[min(72vw,640px)] drop-shadow-[0_0_28px_rgb(255_255_255/0.45)]"
+            eager
+          />
         </h1>
-        <p className="t-label text-center text-[12px] text-white/75 md:text-[14px]">
-          {live?.phase === "on"
-            ? `On now at ${venue.name}`
-            : live?.phase === "tonight"
-              ? `Tonight at ${venue.name}`
-              : "Electronic music"}
-        </p>
+        {live ? (
+          <p className="t-label text-center text-[12px] text-white/75 md:text-[14px]">
+            {live.phase === "on"
+              ? `On now at ${venue.name}`
+              : live.phase === "tonight"
+                ? `Tonight at ${venue.name}`
+                : liveChipLabel.wrap}
+          </p>
+        ) : null}
       </div>
 
-      {live ? (
-        <LiveStrip
-          gig={live.gig}
-          phase={live.phase}
-          now={live.now}
-          venue={venue}
-        />
-      ) : (
-        <NextGigStrip />
-      )}
+      {/* The strip drops away once the page scrolls and comes back at the top. */}
+      <div
+        inert={scrolled}
+        className={cn(
+          "relative z-10 motion-safe:transition-[translate,opacity] motion-safe:duration-300",
+          scrolled && "translate-y-full opacity-0",
+        )}
+      >
+        {live ? (
+          <LiveStrip
+            gig={live.gig}
+            phase={live.phase}
+            now={live.now}
+            venue={venue}
+          />
+        ) : (
+          <NextGigStrip />
+        )}
+      </div>
     </section>
   );
 }
