@@ -47,9 +47,10 @@ const HOST = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
 /**
  * Hosts that are the main site itself, in any of its guises: production,
  * Vercel previews and local dev. `devHosts` are the extra names `next dev` is
- * opened on (Tailscale, LAN), as listed in `DEV_ORIGINS`; `*.example.ts.net`
- * covers its subdomains. `src/proxy.ts` lets these through untouched and
- * treats every other host as a short link domain.
+ * opened on (Tailscale, LAN), see `~/lib/dev-hosts`: `*.example.ts.net`
+ * covers its subdomains, and `10.*.*.*` any address with `*` in those parts.
+ * `src/proxy.ts` lets these through untouched and treats every other host as
+ * a short link domain.
  */
 export function isMainSiteHost(
   host: string,
@@ -63,11 +64,17 @@ export function isMainSiteHost(
     bare === "localhost" ||
     bare === "127.0.0.1" ||
     bare.endsWith(".vercel.app") ||
-    devHosts.some((dev) =>
-      dev.startsWith("*.")
-        ? bare.endsWith(normaliseHost(dev.slice(1)))
-        : bare === normaliseHost(dev),
-    )
+    devHosts.some((dev) => matchesDevHost(bare, normaliseHost(dev)))
+  );
+}
+
+function matchesDevHost(bare: string, pattern: string): boolean {
+  if (pattern.startsWith("*.")) return bare.endsWith(pattern.slice(1));
+  const want = pattern.split(".");
+  const got = bare.split(".");
+  return (
+    want.length === got.length &&
+    want.every((part, i) => part === "*" || part === got[i])
   );
 }
 

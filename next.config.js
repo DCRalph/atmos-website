@@ -3,13 +3,18 @@
  * for Docker builds.
  */
 import "./src/env.js";
+import { PRIVATE_NETWORK_HOSTS } from "./src/lib/private-network-hosts.js";
 
 /** @type {import("next").NextConfig} */
 const config = {
-  // Extra hostnames allowed to load dev assets, for opening `next dev` via a
-  // machine name instead of localhost. Comma-separated, e.g. DEV_ORIGINS=my-box.
-  // The app reads the same list through `~/lib/dev-hosts`.
-  allowedDevOrigins: process.env.DEV_ORIGINS?.split(","),
+  // Extra hostnames allowed to load dev assets: any private network address,
+  // so a phone on the same Wi-Fi works, plus DEV_ORIGINS for machine names
+  // (comma-separated, e.g. DEV_ORIGINS=my-box). The app reads the same list
+  // through `~/lib/dev-hosts`.
+  allowedDevOrigins: [
+    ...PRIVATE_NETWORK_HOSTS,
+    ...(process.env.DEV_ORIGINS?.split(",") ?? []),
+  ],
   images: {
     // In dev, media URLs point at this same server (`/api/media` on
     // localhost), which Next 16 refuses to optimise by default. Production

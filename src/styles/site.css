@@ -173,6 +173,17 @@
   }
 }
 
+/* The home hero's scroll cue: a few nudges down on arrival, then still. */
+@keyframes site-nudge {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 4px;
+  }
+}
+
 @keyframes site-fade {
   from {
     opacity: 0;

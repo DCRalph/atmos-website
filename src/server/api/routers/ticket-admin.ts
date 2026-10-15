@@ -614,6 +614,117 @@ export const ticketAdminRouter = createTRPCRouter({
       return { ok: true as const, refundedCents: updated.refundedCents };
     }),
 
+  /**
+   * Refund whatever Stripe still holds for an order and void any tickets left
+   * on it. Works with no tickets at all, for a payment that went through after
+   * the order had already failed. Stripe decides the amount, so this can never
+   * refund more than was actually taken.
+   */
+  refundOrder: adminProcedure
+    .input(
+      z.object({
+        orderId: z.string(),
+        reason: z.string().trim().max(200).default("Refunded by admin"),
+        notifyBuyer: z.boolean().default(true),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const order = await ctx.db.ticketOrder.findUnique({
+        where: { id: input.orderId },
+        include: {
+          tickets: {
+            where: { status: TicketStatus.VALID },
+            select: { id: true, ticketNumber: true },
+          },
+        },
+      });
+      if (!order) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+      }
+      if (!order.stripePaymentIntentId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This order wasn't paid through Stripe.",
+        });
+      }
+      if (!isStripeConfigured()) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Stripe isn't configured, so this can't be refunded here.",
+        });
+      }
+
+      const stripe = getStripe();
+      const intent = await stripe.paymentIntents.retrieve(
+        order.stripePaymentIntentId,
+        { expand: ["latest_charge"] },
+      );
+      const charge =
+        typeof intent.latest_charge === "object" ? intent.latest_charge : null;
+      const amountCents = charge?.paid
+        ? charge.amount_captured - charge.amount_refunded
+        : 0;
+      if (!charge || amountCents <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Stripe has nothing left to refund on this order.",
+        });
+      }
+
+      await stripe.refunds.create(
+        {
+          charge: charge.id,
+          amount: amountCents,
+          metadata: { orderId: order.id, reason: input.reason },
+        },
+        {
+          idempotencyKey: `refund-order-${order.id}-${charge.amount_refunded}`,
+        },
+      );
+
+      for (const ticket of order.tickets) {
+        await voidTicket({
+          ticketId: ticket.id,
+          reason: input.reason,
+          status: TicketStatus.REFUNDED,
+        });
+        schedulePassUpdate(ticket.id);
+      }
+
+      const updated = await ctx.db.ticketOrder.update({
+        where: { id: order.id },
+        data: {
+          // Stripe's running total, not an increment: the `charge.refunded`
+          // webhook writes the same number and may land first.
+          refundedCents: charge.amount_refunded + amountCents,
+          refundedAt: new Date(),
+          status: TicketOrderStatus.REFUNDED,
+        },
+      });
+
+      await logActivity({
+        type: ActivityType.TICKET_ORDER_REFUNDED,
+        action: `Refunded order ${order.orderNumber}`,
+        userId: ctx.session.user.id,
+        details: {
+          orderId: order.id,
+          amountCents,
+          tickets: order.tickets.length,
+          reason: input.reason,
+        },
+      });
+
+      if (input.notifyBuyer && order.buyerEmail) {
+        await sendRefundEmail({
+          orderId: order.id,
+          amountCents,
+          ticketNumbers: order.tickets.map((t) => t.ticketNumber),
+        });
+      }
+
+      return { ok: true as const, refundedCents: updated.refundedCents };
+    }),
+
   /** Cancel a ticket without refunding — comps, duplicates, fraud. */
   voidTicket: adminProcedure
     .input(

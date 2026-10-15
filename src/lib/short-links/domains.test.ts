@@ -43,6 +43,15 @@ describe("isMainSiteHost", () => {
     assert.equal(isMainSiteHost("atms.nz", site, dev), false);
     assert.equal(isMainSiteHost("my-box", site), false);
   });
+
+  test("matches a private network address by pattern", () => {
+    const site = "http://localhost:3000";
+    const dev = ["10.*.*.*", "192.168.*.*"];
+    assert.ok(isMainSiteHost("10.99.0.41:3000", site, dev));
+    assert.ok(isMainSiteHost("192.168.1.20:3000", site, dev));
+    assert.equal(isMainSiteHost("10.99.0", site, dev), false);
+    assert.equal(isMainSiteHost("11.99.0.41", site, dev), false);
+  });
 });
 
 describe("hostProblem", () => {
