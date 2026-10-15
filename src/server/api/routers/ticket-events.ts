@@ -43,6 +43,7 @@ import {
   allocationBudget,
   compCountForEvent,
   eventHeadcount,
+  moveUnsoldToDoor,
   remainingInTier,
   tierUnavailableReason,
   withEventInventoryLock,
@@ -441,14 +442,36 @@ export const ticketEventsRouter = createTRPCRouter({
   liveCounts: eventOrganiserProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const [tiers, comps] = await Promise.all([
+      const [event, tiers, comps] = await Promise.all([
+        ctx.db.ticketEvent.findUniqueOrThrow({
+          where: { id: input.id },
+          select: { salesCloseAt: true },
+        }),
         ctx.db.ticketTier.findMany({
           where: { eventId: input.id },
-          select: { id: true, soldCount: true, heldCount: true },
+          select: {
+            id: true,
+            sortOrder: true,
+            salesChannel: true,
+            isActive: true,
+            allocation: true,
+            soldCount: true,
+            heldCount: true,
+          },
         }),
         compCountForEvent(ctx.db, input.id),
       ]);
-      return { tiers, comps };
+      return {
+        tiers: moveUnsoldToDoor(tiers, event.salesCloseAt, new Date()).map(
+          ({ id, soldCount, heldCount, moved }) => ({
+            id,
+            soldCount,
+            heldCount,
+            moved,
+          }),
+        ),
+        comps,
+      };
     }),
 
   create: adminProcedure

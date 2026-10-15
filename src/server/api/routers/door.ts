@@ -25,6 +25,7 @@ import {
 } from "~/server/ticketing/scan";
 import { sellAtDoor } from "~/server/ticketing/box-office";
 import {
+  moveUnsoldToDoor,
   remainingInTier,
   tierUnavailableReason,
 } from "~/server/ticketing/inventory";
@@ -1139,11 +1140,19 @@ export const doorRouter = createTRPCRouter({
 
       // Every tier, switched off or not, because a tier that waits for the
       // one before it has to be able to find it.
-      const tiers = await ctx.db.ticketTier.findMany({
-        where: { eventId: input.eventId },
-        orderBy: { priceCents: "asc" },
-      });
+      const [event, rows] = await Promise.all([
+        ctx.db.ticketEvent.findUniqueOrThrow({
+          where: { id: input.eventId },
+          select: { salesCloseAt: true },
+        }),
+        ctx.db.ticketTier.findMany({
+          where: { eventId: input.eventId },
+          orderBy: { priceCents: "asc" },
+        }),
+      ]);
       const now = new Date();
+      // Once online sales close, the last door tier sells what online didn't.
+      const tiers = moveUnsoldToDoor(rows, event.salesCloseAt, now);
 
       // Only what the door can sell this minute, by the same rule checkout
       // enforces: the door's own allocation and anything sold both ways, but

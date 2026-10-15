@@ -120,11 +120,13 @@ export function TiersSection({
       )
       .map((code) => code.code);
   // Live where the tier exists, else what the draft was loaded with.
+  // `moved` is what went to the door when online sales closed.
   const countsOf = (tier: TierDraft) => {
     const counts = tier.id ? liveById.get(tier.id) : undefined;
     return {
       sold: counts?.soldCount ?? tier.soldCount,
       held: counts?.heldCount ?? tier.heldCount,
+      moved: counts?.moved ?? 0,
     };
   };
 
@@ -178,6 +180,7 @@ export function TiersSection({
   const door = draft.tiers.filter((tier) => tier.salesChannel === "DOOR");
   const doorAllocation = tierAllocation(door);
   const doorSold = door.reduce((sum, tier) => sum + countsOf(tier).sold, 0);
+  const doorMoved = door.reduce((sum, tier) => sum + countsOf(tier).moved, 0);
   const shared = draft.tiers.filter((tier) => tier.salesChannel === "ALL");
 
   return (
@@ -319,11 +322,14 @@ export function TiersSection({
             <DoorOpen className="text-muted-foreground size-4" />
             <span className="font-semibold">
               Door allocation {doorAllocation}
+              {doorMoved > 0 ? ` + ${doorMoved} unsold online` : ""}
             </span>
             <span className="text-muted-foreground">·</span>
             <span>{doorSold} sold at the door</span>
             <span className="text-muted-foreground">·</span>
-            <span>{Math.max(0, doorAllocation - doorSold)} left</span>
+            <span>
+              {Math.max(0, doorAllocation + doorMoved - doorSold)} left
+            </span>
             <p className="text-muted-foreground basis-full text-xs">
               {shared.length > 0
                 ? `Online buyers never see it. The scanner can also sell ${shared.map((t) => t.name || "an unnamed tier").join(", ")}, sold both ways; set ${shared.length === 1 ? "it" : "them"} to online only to hold the door to its allocation.`
@@ -340,6 +346,7 @@ function TierRow({
   tier,
   sold,
   held,
+  moved,
   previous,
   unlockCodes,
   onPatch,
@@ -351,6 +358,8 @@ function TierRow({
   /** Live counts, which the draft's own copies fall behind. */
   sold: number;
   held: number;
+  /** Tickets moved in (+) or out (−) when online sales closed. */
+  moved: number;
   previous: TierDraft | null;
   /** Active unlock codes that open this tier while it is hidden. */
   unlockCodes: string[];
@@ -371,10 +380,14 @@ function TierRow({
   } = useSortable({ id: tier.key });
 
   const allocation = Number(tier.allocation) || 0;
-  const remaining = Math.max(0, allocation - sold - held);
+  const remaining = Math.max(0, allocation + moved - sold - held);
   const groupSize = Number(tier.groupSize) || 1;
   const soldOut = remaining < groupSize;
   const heldNote = held > 0 ? ` +${held} held` : "";
+  // The last door tier reads "of 30 + 37 unsold online"; the online tiers
+  // it came from say where their leftovers went.
+  const movedIn = moved > 0 ? ` + ${moved} unsold online` : "";
+  const movedOut = moved < 0 ? ` · ${-moved} moved to the door` : "";
 
   return (
     <div
@@ -423,7 +436,11 @@ function TierRow({
             {isElevated(tier.accessLevel) ? (
               <Badge variant="secondary">{level(tier.accessLevel).short}</Badge>
             ) : null}
-            {tier.id && soldOut && tier.isActive ? (
+            {moved < 0 ? (
+              <Badge variant="outline">
+                <DoorOpen className="size-3" /> Moved to door
+              </Badge>
+            ) : tier.id && soldOut && tier.isActive ? (
               <Badge variant="outline">Sold out</Badge>
             ) : null}
           </div>
@@ -452,14 +469,18 @@ function TierRow({
                 {Math.floor(remaining / groupSize)} of{" "}
                 {Math.floor(allocation / groupSize)} groups left
               </span>
-              {sold} / {allocation} tickets{heldNote}
+              {sold} / {allocation}
+              {movedIn} tickets{heldNote}
+              {movedOut}
             </>
           ) : tier.id ? (
             <>
               <span className="text-foreground block">
-                {remaining} of {allocation} left
+                {remaining} of {allocation}
+                {movedIn} left
               </span>
               {sold} sold{heldNote}
+              {movedOut}
             </>
           ) : (
             "New"

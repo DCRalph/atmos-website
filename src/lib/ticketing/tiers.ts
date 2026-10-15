@@ -43,15 +43,68 @@ export type TierRow = {
   salesChannel: TierSalesChannel;
   salesStartAt: Date | null;
   salesEndAt: Date | null;
+  /** Set by `moveUnsoldToDoor` once online sales have closed. */
+  moved?: number;
 };
 
-/** Tickets still sellable in this tier, ignoring sale windows. */
+/**
+ * Tickets still sellable in this tier, ignoring sale windows. Counts tickets
+ * moved in or out by `moveUnsoldToDoor`, when the tier has been through it.
+ */
 export function remainingInTier(tier: {
   allocation: number;
   soldCount: number;
   heldCount: number;
+  moved?: number;
 }): number {
-  return Math.max(0, tier.allocation - tier.soldCount - tier.heldCount);
+  return Math.max(
+    0,
+    tier.allocation + (tier.moved ?? 0) - tier.soldCount - tier.heldCount,
+  );
+}
+
+/**
+ * Once the event's online sales close, every ticket the online-only tiers
+ * didn't sell moves to the last door-only tier, so the door can sell the room
+ * out at the door price. No allocation changes: `moved` is worked out from
+ * the live counts each time, so an online hold that lapses after close moves
+ * too, and pushing the close date back moves everything home again.
+ *
+ * `moved` is tickets in (positive) or out (negative), which `remainingInTier`
+ * adds on. With no active door-only tier there is nowhere to go, and nothing
+ * moves.
+ */
+export function moveUnsoldToDoor<
+  T extends {
+    sortOrder: number;
+    salesChannel: TierSalesChannel;
+    isActive: boolean;
+    allocation: number;
+    soldCount: number;
+    heldCount: number;
+  },
+>(
+  tiers: readonly T[],
+  salesCloseAt: Date | null,
+  now: Date,
+): (T & { moved: number })[] {
+  const closed = salesCloseAt !== null && now > salesCloseAt;
+  const door = closed
+    ? tiers
+        .filter((tier) => tier.salesChannel === "DOOR" && tier.isActive)
+        .reduce<T | undefined>(
+          (last, tier) =>
+            !last || tier.sortOrder >= last.sortOrder ? tier : last,
+          undefined,
+        )
+    : undefined;
+  const unsold = (tier: T) =>
+    door && tier.salesChannel === "ONLINE" ? remainingInTier(tier) : 0;
+  const total = tiers.reduce((sum, tier) => sum + unsold(tier), 0);
+  return tiers.map((tier) => ({
+    ...tier,
+    moved: tier === door ? total : -unsold(tier),
+  }));
 }
 
 /**

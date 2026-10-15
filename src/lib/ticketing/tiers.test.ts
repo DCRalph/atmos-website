@@ -2,7 +2,9 @@ import { describe, test } from "bun:test";
 import assert from "node:assert/strict";
 
 import {
+  moveUnsoldToDoor,
   openTiers,
+  remainingInTier,
   soldFaceValueCents,
   soldOutBy,
   tierUnavailableReason,
@@ -152,6 +154,44 @@ describe("salesChannel", () => {
     const guests = tier("guests", 0, { isHidden: true });
     assert.equal(tierUnavailableReason(guests, now), "HIDDEN");
     assert.equal(tierUnavailableReason(guests, now, { channel: "DOOR" }), null);
+  });
+});
+
+describe("moveUnsoldToDoor", () => {
+  const closeAt = new Date("2026-10-18T08:00:00Z");
+  const tiers = [
+    tier("early", 0, { salesChannel: "ONLINE", allocation: 50, soldCount: 50 }),
+    tier("ga", 1, { salesChannel: "ONLINE", allocation: 100, soldCount: 60 }),
+    tier("both", 2, { allocation: 20, soldCount: 5 }),
+    tier("door1", 3, { salesChannel: "DOOR", allocation: 30, soldCount: 30 }),
+    tier("door2", 4, { salesChannel: "DOOR", allocation: 30, soldCount: 10 }),
+  ];
+  const remaining = (moved: ReturnType<typeof moveUnsoldToDoor<TierRow>>) =>
+    Object.fromEntries(moved.map((t) => [t.id, remainingInTier(t)]));
+
+  test("moves what online-only tiers didn't sell to the last door tier", () => {
+    assert.deepEqual(remaining(moveUnsoldToDoor(tiers, closeAt, now)), {
+      early: 0,
+      ga: 0,
+      both: 15,
+      door1: 0,
+      door2: 60,
+    });
+  });
+
+  test("moves nothing before sales close", () => {
+    const later = new Date("2026-10-18T10:00:00Z");
+    assert.ok(moveUnsoldToDoor(tiers, later, now).every((t) => t.moved === 0));
+    assert.ok(moveUnsoldToDoor(tiers, null, now).every((t) => t.moved === 0));
+  });
+
+  test("moves nothing without an active door tier", () => {
+    const noDoor = tiers.map((t) =>
+      t.salesChannel === "DOOR" ? { ...t, isActive: false } : t,
+    );
+    assert.ok(
+      moveUnsoldToDoor(noDoor, closeAt, now).every((t) => t.moved === 0),
+    );
   });
 });
 

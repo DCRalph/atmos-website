@@ -10,6 +10,7 @@ import {
 import { db } from "~/server/db";
 import { stopUnpaidPayment } from "~/server/ticketing/payments";
 import {
+  moveUnsoldToDoor,
   remainingInTier,
   tierUnavailableReason,
   type SaleChannel,
@@ -43,6 +44,7 @@ import {
 type Tx = Prisma.TransactionClient;
 
 export {
+  moveUnsoldToDoor,
   remainingInTier,
   tierUnavailableReason,
   type TierUnavailableReason,
@@ -333,10 +335,10 @@ export async function holdInventory(
 ): Promise<void> {
   const event = await tx.ticketEvent.findUniqueOrThrow({
     where: { id: eventId },
-    select: { capacity: true, maxTicketsPerOrder: true },
+    select: { capacity: true, maxTicketsPerOrder: true, salesCloseAt: true },
   });
 
-  const tiers = await tx.ticketTier.findMany({
+  const rows = await tx.ticketTier.findMany({
     where: { eventId },
     select: {
       id: true,
@@ -355,6 +357,7 @@ export async function holdInventory(
       maxPerOrder: true,
     },
   });
+  const tiers = moveUnsoldToDoor(rows, event.salesCloseAt, now);
   const byId = new Map(tiers.map((t) => [t.id, t]));
 
   // The per-order cap is people, so a group of four uses four of it.

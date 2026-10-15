@@ -320,8 +320,10 @@ export function SalesView({
               ...tiers.map((tier) => ({
                 key: tier.id,
                 name: `${tier.name} · ${formatNZDCompact(tier.priceCents)}`,
-                detail: `${tier.sold} / ${tier.allocation}${tier.remaining === 0 ? " · sold out" : ""} · ${formatNZDWhole(tier.revenueCents)}`,
-                share: tier.allocation > 0 ? tier.sold / tier.allocation : 0,
+                detail: `${tier.sold} / ${tier.allocation}${tier.moved > 0 ? ` + ${tier.moved} unsold online` : ""}${tier.moved < 0 ? ` · ${-tier.moved} to the door` : tier.remaining === 0 ? " · sold out" : ""} · ${formatNZDWhole(tier.revenueCents)}`,
+                share:
+                  tier.sold /
+                  Math.max(1, tier.allocation + Math.max(0, tier.moved)),
               })),
               ...(counts.comped > 0 || counts.compAllowance
                 ? [

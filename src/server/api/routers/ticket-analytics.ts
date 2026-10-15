@@ -21,7 +21,11 @@ import { pastEventsPace } from "~/server/ticketing/lead-time";
 import { checkoutJourney } from "~/server/ticketing/journey";
 import { paceOnAxis } from "~/lib/ticketing/pace";
 import { campaignTypeOf } from "~/lib/ticketing/campaigns";
-import { soldFaceValueCents } from "~/lib/ticketing/tiers";
+import {
+  moveUnsoldToDoor,
+  remainingInTier,
+  soldFaceValueCents,
+} from "~/lib/ticketing/tiers";
 import {
   gstComponentCents,
   venueFeePerTicketCents,
@@ -106,6 +110,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           capacity: true,
           timezone: true,
           startsAt: true,
+          salesCloseAt: true,
           gstRateBp: true,
           bookingFeeFixedCents: true,
           bookingFeePercentBp: true,
@@ -124,6 +129,8 @@ export const ticketAnalyticsRouter = createTRPCRouter({
               soldCount: true,
               heldCount: true,
               isActive: true,
+              sortOrder: true,
+              salesChannel: true,
             },
           },
         },
@@ -367,17 +374,20 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           sold: ticketsIssued - comps.issued,
         },
         comps,
-        tiers: event.tiers.map((tier) => ({
+        tiers: moveUnsoldToDoor(
+          event.tiers,
+          event.salesCloseAt,
+          new Date(),
+        ).map((tier) => ({
           id: tier.id,
           name: tier.name,
           priceCents: tier.priceCents,
           allocation: tier.allocation,
+          /** Moved to (+) or from (−) the door when online sales closed. */
+          moved: tier.moved,
           sold: tier.soldCount,
           held: tier.heldCount,
-          remaining: Math.max(
-            0,
-            tier.allocation - tier.soldCount - tier.heldCount,
-          ),
+          remaining: remainingInTier(tier),
           revenueCents: soldFaceValueCents(tier),
         })),
         byPaymentMethod: byMethod.map((row) => ({
