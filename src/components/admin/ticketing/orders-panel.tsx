@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Copy,
   ExternalLink,
@@ -39,6 +40,7 @@ import {
   paymentMethodLabel,
 } from "~/lib/ticketing/payment-methods";
 import { FilterSelect, ListFilters } from "../list-filters";
+import { OrderTimeline } from "./order-timeline";
 import { TicketAccessLevelSelect } from "~/components/admin/ticketing/access-level-select";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
 import { useAccessLevels } from "~/hooks/use-access-levels";
@@ -65,13 +67,32 @@ type OrderFilters = {
     | null;
   paymentMethod: PaymentMethodKind | null;
   names: "COMPLETE" | "MISSING" | null;
+  declined: "DECLINED" | null;
 };
 
 const NO_ORDER_FILTERS: OrderFilters = {
   status: null,
   paymentMethod: null,
   names: null,
+  declined: null,
 };
+
+/** What came of a declined card, beside the order's status. */
+function declineNote(row: OrderRow): string | null {
+  const decline = row.decline;
+  if (!decline) return null;
+  const declines = row._count.paymentAttempts;
+  switch (decline.outcome) {
+    case "retried":
+      return declines === 1 ? "after a decline" : `after ${declines} declines`;
+    case "new_order":
+      return `paid on ${decline.nextOrder?.orderNumber ?? "another order"}`;
+    case "no_tickets":
+      return "paid, no tickets";
+    case "lost":
+      return "declined";
+  }
+}
 
 export function OrdersPanel({
   eventId,
@@ -81,7 +102,11 @@ export function OrdersPanel({
   readOnly?: boolean;
 }) {
   const [search, setSearch] = useState("");
-  const [openOrderId, setOpenOrderId] = useState<string | null>(null);
+  // `?order=` opens one straight away: the declined payments feed links here.
+  const searchParams = useSearchParams();
+  const [openOrderId, setOpenOrderId] = useState<string | null>(() =>
+    searchParams.get("order"),
+  );
   const [filters, setFilters] = useState<OrderFilters>(NO_ORDER_FILTERS);
 
   const activeFilters = Object.values(filters).filter(Boolean).length;
@@ -94,11 +119,17 @@ export function OrdersPanel({
     status: filters.status ?? undefined,
     paymentMethod: filters.paymentMethod ?? undefined,
     names: filters.names ?? undefined,
+    declined: filters.declined ? true : undefined,
     limit: 50,
   });
+  // Shares the detail's query, for the title: the open order may be one the
+  // timeline jumped to, outside the filtered rows.
+  const openOrder = api.ticketAdmin.order.useQuery(
+    { id: openOrderId ?? "" },
+    { enabled: openOrderId !== null },
+  ).data;
 
   const rows = orders.data?.orders ?? [];
-  const openOrder = rows.find((order) => order.id === openOrderId);
 
   const columns: DataTableColumn<OrderRow>[] = [
     {
@@ -112,17 +143,37 @@ export function OrdersPanel({
     {
       id: "status",
       header: "Status",
-      type: "badge",
       accessor: (row) => statusLabel(row.status),
-      badge: (_value, row) => ({
-        label: statusLabel(row.status),
-        variant:
-          row.status === "PAID"
-            ? "default"
-            : row.status === "REFUNDED" || row.status === "PARTIALLY_REFUNDED"
-              ? "destructive"
-              : "outline",
-      }),
+      cell: (row) => {
+        const note = declineNote(row);
+        return (
+          <span className="flex items-center gap-2 whitespace-nowrap">
+            <Badge
+              variant={
+                row.status === "PAID"
+                  ? "default"
+                  : row.status === "REFUNDED" ||
+                      row.status === "PARTIALLY_REFUNDED"
+                    ? "destructive"
+                    : "outline"
+              }
+            >
+              {statusLabel(row.status)}
+            </Badge>
+            {note && (
+              <span
+                className={
+                  row.decline?.outcome === "no_tickets"
+                    ? "text-destructive text-xs"
+                    : "text-muted-foreground text-xs"
+                }
+              >
+                {note}
+              </span>
+            )}
+          </span>
+        );
+      },
     },
     {
       id: "paymentMethod",
@@ -223,6 +274,14 @@ export function OrdersPanel({
             { value: "COMPLETE", label: "Every ticket named" },
           ]}
         />
+        <FilterSelect
+          label="Declines"
+          value={filters.declined}
+          onChange={(value) => set("declined", value)}
+          options={[
+            { value: "DECLINED", label: "Card declined at least once" },
+          ]}
+        />
       </ListFilters>
 
       <DataTable
@@ -261,14 +320,16 @@ export function OrdersPanel({
             </DialogTitle>
             <DialogDescription>
               {openOrder?.buyerName ?? "No name"} ·{" "}
-              {openOrder?.buyerEmail ?? "no email"}
+              {openOrder?.buyerEmail ?? openOrder?.decline?.email ?? "no email"}
             </DialogDescription>
           </DialogHeader>
           {openOrderId && (
             <OrderDetail
+              key={openOrderId}
               orderId={openOrderId}
               readOnly={readOnly}
               onDeleted={() => setOpenOrderId(null)}
+              onOpenOrder={setOpenOrderId}
             />
           )}
         </DialogContent>
@@ -281,10 +342,12 @@ function OrderDetail({
   orderId,
   readOnly,
   onDeleted,
+  onOpenOrder,
 }: {
   orderId: string;
   readOnly: boolean;
   onDeleted: () => void;
+  onOpenOrder: (orderId: string) => void;
 }) {
   const utils = api.useUtils();
   const confirm = useConfirm();
@@ -509,6 +572,10 @@ function OrderDetail({
           />
         )}
       </dl>
+
+      <div className="border-t pt-4">
+        <OrderTimeline order={data} onOpenOrder={onOpenOrder} />
+      </div>
 
       <div>
         <p className="mb-2 text-sm font-medium">Tickets</p>

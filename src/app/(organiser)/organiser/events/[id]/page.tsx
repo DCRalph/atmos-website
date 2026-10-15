@@ -75,6 +75,7 @@ export default function OrganiserEventPage() {
           <EventOverview
             eventId={id}
             liveHref={`/organiser/events/${id}/live?mode=sales`}
+            ordersHref={`/organiser/events/${id}?tab=orders`}
           />
         </TabsContent>
         <TabsContent value="orders" className="mt-2">

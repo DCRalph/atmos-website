@@ -12,6 +12,7 @@ import { db } from "~/server/db";
 import { isDonationIntent, recordDonation } from "~/server/donations";
 import { buyerFromCharge, getStripe } from "~/server/stripe";
 import { sendTicketEmail } from "~/server/ticketing/email/send";
+import { syncPaymentAttempts } from "~/server/ticketing/payment-attempts";
 import {
   cancelPendingOrder,
   issueTicketsForOrder,
@@ -22,6 +23,9 @@ import { logActivity } from "~/server/utils/activity-log";
 
 /**
  * Stripe webhook — the authority on whether an order was paid.
+ *
+ * Each success and decline also records every try at paying the order,
+ * declined cards included (`syncPaymentAttempts`).
  *
  * Donations ride the same events: a donation intent is recorded rather than
  * issued, and its refunds are tracked. See `~/server/donations.ts`.
@@ -118,6 +122,9 @@ async function handlePaymentSucceeded(
     paymentMethod: PaymentMethodKind.STRIPE,
   });
 
+  // Before the early return: the browser's confirm usually issues first.
+  await syncPaymentAttempts(orderId, intent.id);
+
   if (result.alreadyIssued) return;
 
   await syncMarketingConsent(orderId);
@@ -143,6 +150,7 @@ async function handlePaymentFailed(
   await cancelPendingOrder(orderId, TicketOrderStatus.FAILED, {
     keepPaymentOpen: true,
   });
+  await syncPaymentAttempts(orderId, intent.id);
 }
 
 async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {

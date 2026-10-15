@@ -16,6 +16,7 @@
     "artists:export": "bun prisma/export-artists.ts",
     "db:backfill-verified": "bun prisma/backfill-email-verified.ts",
     "db:backfill-paid-with": "bun --conditions=react-server prisma/backfill-paid-with.ts",
+    "db:backfill-payment-attempts": "bun --conditions=react-server prisma/backfill-payment-attempts.ts",
     "db:seed": "bun prisma/seed.ts",
     "db:seed-themes": "bun prisma/seed-themes.ts",
     "db:seed-app-review": "bun --conditions=react-server prisma/seed-app-review.ts",

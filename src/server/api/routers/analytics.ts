@@ -17,6 +17,7 @@ import {
 } from "~/server/ticketing/campaign-results";
 import { salesByDaysOut } from "~/server/ticketing/lead-time";
 import { checkoutJourney } from "~/server/ticketing/journey";
+import { declineReport } from "~/server/ticketing/declines";
 import {
   CAMPAIGN_SOURCE_LABELS,
   CAMPAIGN_TYPE_LABELS,
@@ -610,6 +611,14 @@ export const analyticsRouter = createTRPCRouter({
   funnel: adminProcedure
     .input(scopeInput)
     .query(({ ctx, input }) => checkoutJourney(ctx.db, scopeSql(input))),
+
+  /**
+   * Declined payments across every event in scope: how many, why, whether
+   * the buyer came back and paid, and any payment taken without tickets.
+   */
+  declines: adminProcedure
+    .input(scopeInput)
+    .query(({ ctx, input }) => declineReport(ctx.db, scopeSql(input))),
 
   /** Who buys: how many at once, on what, and how they paid. */
   buyers: adminProcedure.input(scopeInput).query(async ({ ctx, input }) => {
