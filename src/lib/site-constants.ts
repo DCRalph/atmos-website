@@ -1,13 +1,10 @@
 /**
- * Public contact details and social accounts. One source for the site header,
- * footer, contact page, legal pages and structured data.
+ * Public contact details and social accounts. Enquiries should go through the
+ * contact form; the email is only a quiet fallback on the contact and legal pages.
  */
 
 export const CONTACT = {
-  name: "Finn",
-  email: "finn@atmosmedia.co.nz",
-  phone: "+64 27 472 6850",
-  phoneHref: "tel:+64274726850",
+  email: "admin@atmosmedia.co.nz",
 } as const;
 
 export const SOCIALS = {

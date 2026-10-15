@@ -314,16 +314,22 @@ function Block({ block }: { block: LegalBlock }) {
 
   if ("contact" in block)
     return (
-      <dl className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-6 gap-y-3 text-[16px] md:text-[17px]">
-        {block.contact.map((c) => (
-          <div key={c.label} className="contents">
-            <dt className="t-label text-[10px] text-white/60">{c.label}</dt>
-            <dd>
-              <InlineLink href={c.href}>{c.value}</InlineLink>
-            </dd>
-          </div>
-        ))}
-      </dl>
+      <div>
+        <p className="text-[16px] md:text-[17px]">
+          <InlineLink href={block.contact.href}>
+            {block.contact.value}
+          </InlineLink>
+        </p>
+        <p className="mt-2 text-[13px] text-white/50">
+          Or email{" "}
+          <a
+            href={`mailto:${block.email}`}
+            className="underline underline-offset-4 hover:text-white"
+          >
+            {block.email}
+          </a>
+        </p>
+      </div>
     );
 
   const { p, link } = block;

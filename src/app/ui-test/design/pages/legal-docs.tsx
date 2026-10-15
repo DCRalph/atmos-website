@@ -28,8 +28,8 @@ const contactBlock: LegalBlock = {
   contact: [
     {
       label: "Email",
-      value: "finn@atmos-wlg.com",
-      href: "mailto:finn@atmos-wlg.com",
+      value: "admin@atmosmedia.co.nz",
+      href: "mailto:admin@atmosmedia.co.nz",
     },
     { label: "Website", value: "Contact page", href: "#" },
   ],

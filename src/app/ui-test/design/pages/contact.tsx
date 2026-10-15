@@ -19,13 +19,10 @@ const instagram = {
 };
 const pro = {
   who: "For agencies, promoters, brands, venues and other professional enquiries.",
-  name: "Finn",
-  phone: "+64 27 472 6850",
-  phoneHref: "tel:+64274726850",
-  email: "finn@atmosmedia.co.nz",
+  email: "admin@atmosmedia.co.nz",
 };
 
-/** Copies a phone number or email, confirming with a toast and a tick. */
+/** Copies an email, confirming with a toast and a tick. */
 function CopyButton({
   value,
   label,
@@ -61,7 +58,7 @@ function CopyButton({
       )}
     >
       {copied ? (
-        <Check className="size-4 text-[var(--mx-accent-text)]" />
+        <Check className="size-4 text-(--mx-accent-text)" />
       ) : (
         <Copy className="size-3.5" />
       )}
@@ -69,7 +66,7 @@ function CopyButton({
   );
 }
 
-/** Finn's contact lines as a definition list; used by drafts A and B. */
+/** The professional contact line as a definition list; used by drafts A and B. */
 function ProDetails({
   glass = false,
   className,
@@ -79,8 +76,6 @@ function ProDetails({
 }) {
   // Over the photo the panel is narrow, so email takes its own row there.
   const rows = [
-    { term: "Contact", value: pro.name },
-    { term: "Phone", value: pro.phone, href: pro.phoneHref },
     { term: "Email", value: pro.email, href: `mailto:${pro.email}` },
   ];
   return (
@@ -148,7 +143,7 @@ function PhotoDraft({ state }: { state: string }) {
       />
       <div className="absolute inset-0 bg-black/55" />
       <div className="mx-scrim-left absolute inset-0" />
-      <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/70 to-transparent" />
+      <div className="absolute inset-x-0 top-0 h-40 bg-linear-to-b from-black/70 to-transparent" />
 
       <div className="relative grid gap-10 px-5 pt-28 pb-16 md:px-10 md:pt-36 md:pb-24 lg:grid-cols-[minmax(0,1fr)_minmax(0,540px)] lg:gap-16">
         <div>
@@ -254,14 +249,8 @@ const posterLines = [
     external: true,
   },
   {
-    value: pro.phone,
-    meta: "Finn · Phone · Professional enquiries",
-    href: pro.phoneHref,
-    copy: "Phone",
-  },
-  {
     value: pro.email,
-    meta: "Finn · Email · Agencies, promoters, brands, venues",
+    meta: "Email · Agencies, promoters, brands, venues",
     href: `mailto:${pro.email}`,
     copy: "Email",
   },
@@ -354,7 +343,7 @@ export const contactPage: PageSpec = {
     {
       id: "b",
       label: "B · Directory",
-      note: "No photo. A ruled directory: Instagram, Finn, then the form as the last route. Copy buttons on phone and email.",
+      note: "No photo. A ruled directory: Instagram, email, then the form as the last route. Copy button on email.",
       Component: DirectoryDraft,
     },
     {
