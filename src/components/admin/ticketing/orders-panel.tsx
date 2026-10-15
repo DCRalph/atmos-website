@@ -39,6 +39,7 @@ import {
   paidWithLabel,
   paymentMethodLabel,
 } from "~/lib/ticketing/payment-methods";
+import { InfiniteScrollTrigger } from "~/components/infinite-scroll-trigger";
 import { FilterSelect, ListFilters } from "../list-filters";
 import { OrderTimeline } from "./order-timeline";
 import { TicketAccessLevelSelect } from "~/components/admin/ticketing/access-level-select";
@@ -113,15 +114,19 @@ export function OrdersPanel({
   const set = <K extends keyof OrderFilters>(key: K, value: OrderFilters[K]) =>
     setFilters((current) => ({ ...current, [key]: value }));
 
-  const orders = api.ticketAdmin.orders.useQuery({
-    eventId,
-    search: search || undefined,
-    status: filters.status ?? undefined,
-    paymentMethod: filters.paymentMethod ?? undefined,
-    names: filters.names ?? undefined,
-    declined: filters.declined ? true : undefined,
-    limit: 50,
-  });
+  // Paged, and filtered in the query: every order is reachable by scrolling.
+  const orders = api.ticketAdmin.orders.useInfiniteQuery(
+    {
+      eventId,
+      search: search || undefined,
+      status: filters.status ?? undefined,
+      paymentMethod: filters.paymentMethod ?? undefined,
+      names: filters.names ?? undefined,
+      declined: filters.declined ? true : undefined,
+      limit: 50,
+    },
+    { getNextPageParam: (page) => page.nextCursor ?? undefined },
+  );
   // Shares the detail's query, for the title: the open order may be one the
   // timeline jumped to, outside the filtered rows.
   const openOrder = api.ticketAdmin.order.useQuery(
@@ -129,7 +134,7 @@ export function OrdersPanel({
     { enabled: openOrderId !== null },
   ).data;
 
-  const rows = orders.data?.orders ?? [];
+  const rows = orders.data?.pages.flatMap((page) => page.orders) ?? [];
 
   const columns: DataTableColumn<OrderRow>[] = [
     {
@@ -238,7 +243,9 @@ export function OrdersPanel({
         summary={
           orders.isPending
             ? null
-            : `${rows.length} order${rows.length === 1 ? "" : "s"}`
+            : `${rows.length}${orders.hasNextPage ? "+" : ""} order${
+                rows.length === 1 ? "" : "s"
+              }`
         }
       >
         <FilterSelect
@@ -289,7 +296,7 @@ export function OrdersPanel({
         data={rows}
         getRowId={(row) => row.id}
         isLoading={orders.isPending}
-        isFetching={orders.isFetching}
+        isFetching={orders.isFetching && !orders.isFetchingNextPage}
         onRowClick={(row) => setOpenOrderId(row.id)}
         storageKey="admin-ticket-orders"
         emptyMessage="No orders yet."
@@ -307,6 +314,12 @@ export function OrdersPanel({
             />
           </div>
         }
+      />
+
+      <InfiniteScrollTrigger
+        hasMore={orders.hasNextPage}
+        loading={orders.isFetchingNextPage}
+        onLoadMore={() => void orders.fetchNextPage()}
       />
 
       <Dialog

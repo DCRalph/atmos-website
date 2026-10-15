@@ -32,6 +32,7 @@ import {
 } from "~/components/ui/dialog";
 import { useConfirm } from "~/components/confirm-provider";
 import { useDebouncedValue } from "~/hooks/use-debounced-value";
+import { InfiniteScrollTrigger } from "~/components/infinite-scroll-trigger";
 import { FilterSelect, ListFilters } from "../list-filters";
 import { formatNZD } from "~/lib/ticketing/money";
 import { TicketAccessLevelSelect } from "~/components/admin/ticketing/access-level-select";
@@ -363,15 +364,11 @@ export function TicketsPanel({
         }
       />
 
-      {tickets.hasNextPage && (
-        <Button
-          variant="outline"
-          disabled={tickets.isFetchingNextPage}
-          onClick={() => void tickets.fetchNextPage()}
-        >
-          {tickets.isFetchingNextPage ? "Loading…" : "Load more"}
-        </Button>
-      )}
+      <InfiniteScrollTrigger
+        hasMore={tickets.hasNextPage}
+        loading={tickets.isFetchingNextPage}
+        onLoadMore={() => void tickets.fetchNextPage()}
+      />
 
       <Dialog
         open={selected !== null}

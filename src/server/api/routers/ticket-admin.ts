@@ -213,7 +213,8 @@ export const ticketAdminRouter = createTRPCRouter({
               }
             : {}),
         },
-        orderBy: { createdAt: "desc" },
+        // The id breaks ties, so a page boundary never skips or repeats a row.
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: input.limit + 1,
         ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
         include: {
@@ -415,7 +416,8 @@ export const ticketAdminRouter = createTRPCRouter({
               }
             : {}),
         },
-        orderBy: { createdAt: "desc" },
+        // The id breaks ties, so a page boundary never skips or repeats a row.
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: input.limit + 1,
         ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
         select: {
