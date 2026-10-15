@@ -26,11 +26,19 @@ const STORAGE_KEY = "will-gpt";
 
 const DEFAULT_MODEL: WillGptModelId = WILL_GPT_MODELS[0].id;
 
+/** The desktop chat column's width in px, including its gap to the page. */
+export const CHAT_WIDTH = { min: 340, max: 760, initial: 412 } as const;
+
 /** What is saved. Anything unreadable, from an older shape, falls back. */
 const savedSchema = z.object({
   open: z.boolean().catch(false),
   model: z.enum(WILL_GPT_MODELS.map((model) => model.id)).catch(DEFAULT_MODEL),
   conversationId: z.uuid().nullable().catch(null),
+  width: z
+    .number()
+    .min(CHAT_WIDTH.min)
+    .max(CHAT_WIDTH.max)
+    .catch(CHAT_WIDTH.initial),
 });
 
 type WillGptContextValue = {
@@ -38,6 +46,9 @@ type WillGptContextValue = {
   setOpen: (open: boolean) => void;
   model: WillGptModelId;
   setModel: (model: WillGptModelId) => void;
+  /** See CHAT_WIDTH. */
+  width: number;
+  setWidth: (width: number) => void;
   messages: WillGptMessage[];
   /** Tool call ids waiting for the admin's approval. */
   awaiting: string[];
@@ -63,6 +74,7 @@ export function WillGptProvider({ children }: { children: React.ReactNode }) {
   const [loaded, setLoaded] = useState(false);
   const [open, setOpen] = useState(false);
   const [model, setModel] = useState<WillGptModelId>(DEFAULT_MODEL);
+  const [width, setWidth] = useState<number>(CHAT_WIDTH.initial);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<WillGptMessage[]>([]);
   const [awaiting, setAwaiting] = useState<string[]>([]);
@@ -98,6 +110,7 @@ export function WillGptProvider({ children }: { children: React.ReactNode }) {
     if (parsed.success) {
       setOpen(parsed.data.open);
       setModel(parsed.data.model);
+      setWidth(parsed.data.width);
     }
     conversationRef.current = id;
     setConversationId(id);
@@ -111,9 +124,9 @@ export function WillGptProvider({ children }: { children: React.ReactNode }) {
     if (!loaded) return;
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ open, model, conversationId }),
+      JSON.stringify({ open, model, conversationId, width }),
     );
-  }, [loaded, open, model, conversationId]);
+  }, [loaded, open, model, conversationId, width]);
 
   const run = async (
     turn: { message: string } | { decisions: Record<string, boolean> },
@@ -188,6 +201,8 @@ export function WillGptProvider({ children }: { children: React.ReactNode }) {
     setOpen,
     model,
     setModel,
+    width,
+    setWidth,
     messages,
     awaiting,
     draft,
