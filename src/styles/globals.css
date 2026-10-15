@@ -238,7 +238,8 @@
 }
 
 /* The admin shell inside WillGptStage. On desktop, opening Will GPT zooms it
-   out into a lit card on the left, leaving 412px of black for the chat. The
+   out into a lit card on the left, leaving --will-gpt-width of black for the
+   chat (set by WillGptStage, and live while its edge is dragged). The
    shell lays out at its card size divided by the scale, so it reflows once and
    then only transforms. It always carries a transform so the shell's `fixed`
    children are held inside it, and the sidebar is sized to the card rather
@@ -268,7 +269,7 @@
       box-shadow 0.5s;
   }
   .will-gpt-stage[data-open] {
-    width: calc((100vw - 424px) / var(--scale));
+    width: calc((100vw - var(--will-gpt-width) - 12px) / var(--scale));
     height: calc((100vh - 24px) / var(--scale));
     transform: translate(12px, 12px) scale(var(--scale));
     border-radius: calc(16px / var(--scale));
@@ -278,6 +279,10 @@
   }
   .will-gpt-stage [data-slot="sidebar-container"] {
     height: 100%;
+  }
+  [data-resizing] > .will-gpt-stage,
+  [data-resizing] > aside {
+    transition: none;
   }
 }
 

@@ -15,7 +15,7 @@ import {
 import { cabin } from "~/lib/fonts";
 import { cn } from "~/lib/utils";
 import { WILL_GPT_MODELS, type WillGptToolCall } from "~/lib/will-gpt";
-import { useWillGpt } from "./will-gpt-provider";
+import { CHAT_WIDTH, useWillGpt } from "./will-gpt-provider";
 import {
   asJson,
   Code,
@@ -74,9 +74,19 @@ function Star() {
  * streaming into it.
  */
 export function WillGptStage({ children }: { children: React.ReactNode }) {
-  const { open } = useWillGpt();
+  const { open, width } = useWillGpt();
+  const stageRef = useRef<HTMLDivElement>(null);
   return (
-    <div className="fixed inset-0 overflow-hidden bg-black">
+    <div
+      ref={stageRef}
+      // A saved width gives way on a smaller screen, so the page keeps its room.
+      style={
+        {
+          "--will-gpt-width": `min(${width}px, max(${CHAT_WIDTH.min}px, 100vw - ${MIN_PAGE_WIDTH}px))`,
+        } as React.CSSProperties
+      }
+      className="group/stage fixed inset-0 overflow-hidden bg-black data-resizing:cursor-col-resize data-resizing:select-none"
+    >
       <div data-open={open || undefined} className="will-gpt-stage">
         {children}
       </div>
@@ -86,17 +96,85 @@ export function WillGptStage({ children }: { children: React.ReactNode }) {
         className={cn(
           "flex flex-col transition-[opacity,translate] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none",
           "max-lg:bg-sidebar max-lg:fixed max-lg:inset-0 max-lg:z-50",
-          "lg:absolute lg:inset-y-0 lg:right-0 lg:w-103 lg:pl-3",
+          "lg:absolute lg:inset-y-0 lg:right-0 lg:w-(--will-gpt-width) lg:pl-3",
           open
             ? "lg:opacity-100 lg:delay-150"
             : "max-lg:translate-y-full lg:translate-x-6 lg:opacity-0",
         )}
       >
+        <ResizeHandle stageRef={stageRef} />
         <RailHeader />
         <Thread />
         <Composer />
       </aside>
     </div>
+  );
+}
+
+/** The page always keeps at least this much of the screen. */
+const MIN_PAGE_WIDTH = 640;
+
+const clampWidth = (width: number) =>
+  Math.round(
+    Math.max(
+      CHAT_WIDTH.min,
+      Math.min(width, CHAT_WIDTH.max, window.innerWidth - MIN_PAGE_WIDTH),
+    ),
+  );
+
+/**
+ * Drags the gap between the page and the chat to resize the chat, desktop
+ * only. While dragging it writes the width straight onto the stage, with the
+ * zoom transitions off, and saves it once on release. Arrow keys nudge it and
+ * a double click puts it back.
+ */
+function ResizeHandle({
+  stageRef,
+}: {
+  stageRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const { width, setWidth } = useWillGpt();
+  /** The width being dragged to; null until the edge actually moves. */
+  const live = useRef<number | null>(null);
+
+  const release = () => {
+    stageRef.current?.removeAttribute("data-resizing");
+    if (live.current !== null) setWidth(live.current);
+    live.current = null;
+  };
+
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize Will GPT"
+      aria-valuemin={CHAT_WIDTH.min}
+      aria-valuemax={CHAT_WIDTH.max}
+      aria-valuenow={width}
+      tabIndex={0}
+      onPointerDown={(event) => {
+        event.currentTarget.setPointerCapture(event.pointerId);
+        stageRef.current?.setAttribute("data-resizing", "");
+      }}
+      onPointerMove={(event) => {
+        if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+        live.current = clampWidth(window.innerWidth - event.clientX);
+        stageRef.current?.style.setProperty(
+          "--will-gpt-width",
+          `${live.current}px`,
+        );
+      }}
+      onPointerUp={release}
+      onPointerCancel={release}
+      onDoubleClick={() => setWidth(CHAT_WIDTH.initial)}
+      onKeyDown={(event) => {
+        const step = { ArrowLeft: 24, ArrowRight: -24 }[event.key];
+        if (!step) return;
+        event.preventDefault();
+        setWidth(clampWidth(width + step));
+      }}
+      className="absolute inset-y-0 left-0 z-10 w-3 cursor-col-resize outline-none after:absolute after:inset-y-3 after:left-1/2 after:w-0.5 after:-translate-x-1/2 after:rounded-full after:bg-[rgb(255_79_216/0.7)] after:opacity-0 after:transition-opacity group-data-resizing/stage:after:opacity-100 hover:after:opacity-100 focus-visible:after:opacity-100 max-lg:hidden"
+    />
   );
 }
 
