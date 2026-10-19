@@ -169,7 +169,7 @@ function PosterRail({ gigs }: { gigs: RecentGig[] }) {
                   className="aspect-[4/5] transition-opacity group-hover:opacity-85"
                 />
                 {photos ? (
-                  <span className="glass t-label absolute right-2 bottom-2 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[9px]">
+                  <span className="glass-dark t-label absolute right-2 bottom-2 flex items-center gap-1.5 rounded-full bg-black/75 px-3 py-1.5 text-[9px]">
                     <Images className="size-3.5" /> {photos}{" "}
                     {photos === 1 ? "photo" : "photos"}
                   </span>

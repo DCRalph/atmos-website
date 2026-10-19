@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import * as Dialog from "@radix-ui/react-dialog";
 import { LogOut, Menu, ShoppingBag, User, X } from "lucide-react";
 import {
   FaInstagram,
@@ -55,16 +55,27 @@ function CartButton({ className }: { className: string }) {
   );
 }
 
-const menuItem =
-  "t-label flex h-11 cursor-default items-center gap-3 rounded-[10px] px-3 text-[11px] text-white/80 outline-none select-none data-[highlighted]:bg-white/10 data-[highlighted]:text-white";
+const accountRoles = [
+  { permission: "SUPERADMIN", label: "Superadmin" },
+  { permission: "ADMIN", label: "Admin" },
+  { permission: "EVENT_ORGANISER", label: "Event organiser" },
+  { permission: "ARTIST", label: "Artist" },
+] as const;
 
-/** Signed-in account menu: the same destinations the old user indicator had. */
+/** Mirrors the main menu, with personal links first and account details below. */
 function AccountMenu({ className }: { className: string }) {
   const router = useRouter();
+  const pathname = usePathname();
   const utils = api.useUtils();
   const { portalContainer } = useSite();
   const { data: user } = api.user.me.useQuery();
+  const [open, setOpen] = useState(false);
   if (!user) return null;
+
+  const role =
+    accountRoles.find(({ permission }) =>
+      user.effectivePermissions.includes(permission),
+    )?.label ?? "Member";
 
   const signOut = () =>
     authClient.signOut({
@@ -97,8 +108,8 @@ function AccountMenu({ className }: { className: string }) {
   ].filter((l) => l.show);
 
   return (
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger asChild>
+    <Dialog.Root open={open} onOpenChange={setOpen}>
+      <Dialog.Trigger asChild>
         <button
           type="button"
           aria-label="Account"
@@ -109,38 +120,113 @@ function AccountMenu({ className }: { className: string }) {
         >
           <User className="size-5" />
         </button>
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Portal container={portalContainer}>
-        <DropdownMenu.Content
-          sideOffset={8}
-          align="end"
-          className="glass-dark glass-float data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 z-[90] min-w-60 rounded-[var(--site-r-panel)] rounded-tr-none p-1.5"
+      </Dialog.Trigger>
+      <Dialog.Portal container={portalContainer}>
+        <Dialog.Overlay
+          className={cn(
+            "fixed inset-0 z-[65]",
+            open ? "site-veil-in" : "site-veil-out",
+          )}
+        />
+        <Dialog.Content
+          aria-describedby={undefined}
+          className={cn(
+            "fixed inset-0 z-[66] flex h-dvh flex-col text-right text-white outline-none",
+            open ? "site-fade-in" : "site-fade-out",
+          )}
+          onClick={(event) => {
+            if (
+              event.target instanceof Element &&
+              !event.target.closest("a, button, [data-account-details]")
+            ) {
+              setOpen(false);
+            }
+          }}
         >
-          <DropdownMenu.Label className="px-3 pt-2 pb-3">
-            <span className="block truncate text-[14px]">
-              {user.name ?? "Signed in"}
-            </span>
-            {user.email ? (
-              <span className="mt-0.5 block truncate text-[12px] text-white/55">
-                {user.email}
-              </span>
-            ) : null}
-          </DropdownMenu.Label>
-          {links.map((l) => (
-            <DropdownMenu.Item key={l.href} asChild className={menuItem}>
-              <Link href={l.href}>{l.label}</Link>
-            </DropdownMenu.Item>
-          ))}
-          <DropdownMenu.Separator className="my-1.5 h-px bg-white/10" />
-          <DropdownMenu.Item
-            className={cn(menuItem, "text-site-danger-text")}
-            onSelect={() => void signOut()}
+          <Dialog.Title className="sr-only">Account menu</Dialog.Title>
+          <div className="flex h-16 shrink-0 items-center justify-between px-5 md:h-20 md:px-10">
+            <Dialog.Close asChild>
+              <IconButton label="Close account menu">
+                <X className="size-5" />
+              </IconButton>
+            </Dialog.Close>
+            <Link
+              href="/"
+              onClick={() => setOpen(false)}
+              aria-label="Atmos home"
+            >
+              <AtmosLogo className="w-24 md:w-28" />
+            </Link>
+          </div>
+          <nav
+            aria-label="Account"
+            className="mt-4 min-h-0 flex-1 overflow-y-auto px-5 md:px-10"
           >
-            <LogOut className="size-4" /> Log out
-          </DropdownMenu.Item>
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
-    </DropdownMenu.Root>
+            <ul>
+              {links.map((link, i) => {
+                const active =
+                  link.href === "/dashboard"
+                    ? pathname === link.href
+                    : isActive(pathname, link.href);
+                return (
+                  <li
+                    key={link.href}
+                    className={cn(
+                      "fill-mode-both motion-reduce:animate-none",
+                      i === 2 && "mt-6",
+                      open
+                        ? "animate-in fade-in-0 slide-in-from-right-6"
+                        : "animate-out fade-out-0 slide-out-to-right-6",
+                    )}
+                    style={{
+                      animationDuration: `${LINK_MS}ms`,
+                      animationDelay: `${(open ? i : links.length - 1 - i) * LINK_STAGGER_MS}ms`,
+                    }}
+                  >
+                    <Link
+                      href={link.href}
+                      onClick={() => setOpen(false)}
+                      aria-current={active ? "page" : undefined}
+                      className={cn(
+                        "t-display inline-flex min-h-11 items-center justify-end py-1.5 transition-colors",
+                        i < 2 ? "text-[2rem]" : "text-[22px]",
+                        active
+                          ? "text-site-accent-text"
+                          : "hover:text-site-accent-text text-white",
+                      )}
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+          <div className="shrink-0 px-5 pt-6 pb-6 md:px-10">
+            <div data-account-details className="ml-auto w-fit max-w-full">
+              <p className="text-base font-semibold wrap-anywhere">
+                {user.name ?? "Signed in"}
+              </p>
+              {user.email ? (
+                <p className="mt-1 text-sm wrap-anywhere text-white/75">
+                  {user.email}
+                </p>
+              ) : null}
+              <p className="t-label mt-2 text-[10px] leading-relaxed text-white/65">
+                Role: {role}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="t-label text-site-danger-text mt-4 inline-flex min-h-11 items-center gap-3 text-[11px] hover:text-white"
+              onClick={() => void signOut()}
+            >
+              Log out <LogOut className="size-4" />
+            </button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
