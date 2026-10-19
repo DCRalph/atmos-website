@@ -36,6 +36,11 @@ import {
 } from "~/lib/donations";
 import { formatNZDCompact, parsePriceToCents } from "~/lib/ticketing/money";
 import { cn } from "~/lib/utils";
+import type { DonationAmountChoice } from "~/lib/donation-analytics";
+import {
+  DonationAnalyticsProvider,
+  useDonationAnalytics,
+} from "./donation-analytics";
 import { DonationThanks } from "./donation-thanks";
 import { AtmosLogo, Button, IconButton, inputClass } from "../ui";
 
@@ -57,6 +62,26 @@ export function DonatePage({
   /** Set when a redirecting payment method has just sent them back paid. */
   thankedCents: number | null;
 }) {
+  return (
+    <DonationAnalyticsProvider
+      key={gig.id}
+      gigId={gig.id}
+      gigTitle={gig.title}
+      thankedCents={thankedCents}
+    >
+      <DonateContent gig={gig} thankedCents={thankedCents} />
+    </DonationAnalyticsProvider>
+  );
+}
+
+function DonateContent({
+  gig,
+  thankedCents,
+}: {
+  gig: DonateGig;
+  thankedCents: number | null;
+}) {
+  const { track } = useDonationAnalytics();
   const [thanked, setThanked] = useState(thankedCents);
   const poster = gig.posterUrl;
 
@@ -127,7 +152,10 @@ export function DonatePage({
                       />
                     ) : null
                   }
-                  onPaid={setThanked}
+                  onPaid={(cents) => {
+                    track("donation_thank_you_viewed", { amount_cents: cents });
+                    setThanked(cents);
+                  }}
                 />
               </>
             )}
@@ -161,6 +189,7 @@ function DonateForm({
   intro: ReactNode;
   onPaid: (cents: number) => void;
 }) {
+  const { track } = useDonationAnalytics();
   const id = useId();
   // The recommended suggestion starts picked. Without one, nothing does.
   const [picked, setPicked] = useState<number | "custom" | null>(
@@ -178,10 +207,20 @@ function DonateForm({
         : (gig.amountsCents[picked] ?? null);
   const parsed = donationCentsSchema.safeParse(cents);
   const amount = parsed.success ? parsed.data : null;
+  const amountChoice: DonationAmountChoice =
+    picked === "custom"
+      ? "custom"
+      : picked === gig.recommendedIndex
+        ? "recommended"
+        : "suggested";
 
   /** True when the amount can be paid; otherwise says why and stays put. */
   const ready = () => {
     if (parsed.success) return true;
+    track("donation_payment_failed", {
+      stage: "amount",
+      error_code: picked === null ? "amount_missing" : "amount_invalid",
+    });
     setInvalid(
       picked === null
         ? "Pick an amount."
@@ -234,6 +273,18 @@ function DonateForm({
                 onPick={(next) => {
                   setPicked(next);
                   setInvalid(null);
+                  track("donation_amount_selected", {
+                    amount_cents:
+                      next === "custom"
+                        ? parsePriceToCents(custom)
+                        : (gig.amountsCents[next] ?? null),
+                    amount_choice:
+                      next === "custom"
+                        ? "custom"
+                        : next === gig.recommendedIndex
+                          ? "recommended"
+                          : "suggested",
+                  });
                 }}
                 onCustom={(value) => {
                   setCustom(value);
@@ -244,8 +295,17 @@ function DonateForm({
               <PayButtons
                 gigId={gig.id}
                 amount={amount}
+                amountChoice={amountChoice}
                 ready={ready}
-                onCard={() => ready() && setStage("card")}
+                onCard={() => {
+                  if (!ready()) return;
+                  track("donation_checkout_started", {
+                    amount_cents: amount,
+                    amount_choice: amountChoice,
+                    payment_method: "card",
+                  });
+                  setStage("card");
+                }}
                 onPaid={onPaid}
               />
               <Consent />
@@ -257,7 +317,11 @@ function DonateForm({
             <CardForm
               gigId={gig.id}
               amount={amount}
-              onBack={() => setStage("amount")}
+              amountChoice={amountChoice}
+              onBack={() => {
+                track("donation_amount_revisited", {});
+                setStage("amount");
+              }}
               onPaid={onPaid}
             />
           )
@@ -453,17 +517,20 @@ function AmountPicker({
 function PayButtons({
   gigId,
   amount,
+  amountChoice,
   ready,
   onCard,
   onPaid,
 }: {
   gigId: string;
   amount: number | null;
+  amountChoice: DonationAmountChoice;
   ready: () => boolean;
   onCard: () => void;
   onPaid: (cents: number) => void;
 }) {
-  const donate = useDonate(gigId);
+  const { track } = useDonationAnalytics();
+  const donate = useDonate(gigId, amountChoice);
   // Null until Stripe says which wallets this device has, if any.
   const [wallets, setWallets] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -478,15 +545,37 @@ function PayButtons({
             buttonTheme: { applePay: "white", googlePay: "white" },
             layout: { maxColumns: 1, overflow: "never" },
           }}
-          onReady={({ availablePaymentMethods }) =>
-            setWallets(!!availablePaymentMethods)
+          onReady={({ availablePaymentMethods }) => {
+            const methods = Object.entries(availablePaymentMethods ?? {})
+              .filter(([, available]) => available)
+              .map(([method]) => method);
+            setWallets(methods.length > 0);
+            track("donation_wallets_available", { payment_methods: methods });
+          }}
+          onLoadError={({ error }) =>
+            track("donation_payment_failed", {
+              stage: "loading",
+              error_code: error.code ?? "wallet_load_failed",
+            })
           }
           // The wallet already knows it, so a receipt costs them nothing.
-          onClick={({ resolve }) => resolve({ emailRequired: true })}
+          onClick={({ resolve, expressPaymentType }) => {
+            track("donation_checkout_started", {
+              amount_cents: amount,
+              amount_choice: amountChoice,
+              payment_method: expressPaymentType,
+            });
+            resolve({ emailRequired: true });
+          }}
+          onCancel={() => track("donation_wallet_cancelled", {})}
           onConfirm={async (event) => {
             if (amount === null) return event.paymentFailed();
             setError(null);
-            const failed = await donate(amount, event.billingDetails?.email);
+            const failed = await donate(
+              amount,
+              event.billingDetails?.email,
+              event.expressPaymentType,
+            );
             if (failed === null) return onPaid(amount);
             event.paymentFailed({ reason: "fail" });
             setError(failed);
@@ -535,16 +624,19 @@ const emailSchema = z.email();
 function CardForm({
   gigId,
   amount,
+  amountChoice,
   onBack,
   onPaid,
 }: {
   gigId: string;
   amount: number;
+  amountChoice: DonationAmountChoice;
   onBack: () => void;
   onPaid: (cents: number) => void;
 }) {
   const id = useId();
-  const donate = useDonate(gigId);
+  const { track } = useDonationAnalytics();
+  const donate = useDonate(gigId, amountChoice);
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -553,11 +645,15 @@ function CardForm({
     e.preventDefault();
     const trimmed = email.trim();
     if (trimmed && !emailSchema.safeParse(trimmed).success) {
+      track("donation_payment_failed", {
+        stage: "email",
+        error_code: "email_invalid",
+      });
       return setError("That email doesn't look right. Leave it empty to skip.");
     }
     setBusy(true);
     setError(null);
-    const failed = await donate(amount, trimmed || undefined);
+    const failed = await donate(amount, trimmed || undefined, "card");
     if (failed === null) return onPaid(amount);
     setError(failed);
     setBusy(false);
@@ -592,6 +688,12 @@ function CardForm({
       />
 
       <PaymentElement
+        onLoadError={({ error }) =>
+          track("donation_payment_failed", {
+            stage: "loading",
+            error_code: error.code ?? "card_load_failed",
+          })
+        }
         options={{
           layout: "tabs",
           // The wallets have their own buttons a slide back.
@@ -669,7 +771,8 @@ function PayError({ message }: { message: string }) {
  * records it. Resolves to an error to show, or null once paid. A method that
  * has to leave for its own page comes back to this page, which thanks them.
  */
-function useDonate(gigId: string) {
+function useDonate(gigId: string, amountChoice: DonationAmountChoice) {
+  const { track, paymentContext } = useDonationAnalytics();
   const stripe = useStripe();
   const elements = useElements();
   const intent = api.donations.intent.useMutation();
@@ -678,20 +781,38 @@ function useDonate(gigId: string) {
   return async (
     amountCents: number,
     email: string | undefined,
+    paymentMethod: string,
   ): Promise<string | null> => {
-    if (!stripe || !elements) return "Payments are still loading.";
-
-    const submitted = await elements.submit();
-    if (submitted.error) {
-      return submitted.error.message ?? "Check the details and try again.";
-    }
-
+    track("donation_payment_submitted", {
+      amount_cents: amountCents,
+      payment_method: paymentMethod,
+    });
+    let stage: "loading" | "validation" | "intent" | "payment" = "loading";
     try {
+      if (!stripe || !elements) {
+        track("donation_payment_failed", {
+          stage,
+          error_code: "stripe_not_ready",
+        });
+        return "Payments are still loading.";
+      }
+      stage = "validation";
+      const submitted = await elements.submit();
+      if (submitted.error) {
+        track("donation_payment_failed", {
+          stage,
+          error_code: submitted.error.code ?? "validation_failed",
+        });
+        return submitted.error.message ?? "Check the details and try again.";
+      }
+      stage = "intent";
       const { clientSecret } = await intent.mutateAsync({
         gigId,
         amountCents,
         email,
+        analytics: paymentContext(amountChoice),
       });
+      stage = "payment";
       const result = await stripe.confirmPayment({
         elements,
         clientSecret,
@@ -701,7 +822,19 @@ function useDonate(gigId: string) {
         redirect: "if_required",
       });
       if (result.error) {
+        track("donation_payment_failed", {
+          stage,
+          error_code:
+            result.error.decline_code ?? result.error.code ?? "payment_failed",
+        });
         return result.error.message ?? "That payment didn't go through.";
+      }
+      if (result.paymentIntent.status !== "succeeded") {
+        track("donation_payment_processing", {
+          amount_cents: amountCents,
+          payment_method: paymentMethod,
+        });
+        return "Your payment is still processing. Please wait before trying again.";
       }
       // Recording here is a head start on the webhook, which does it anyway.
       await confirm
@@ -709,6 +842,8 @@ function useDonate(gigId: string) {
         .catch(() => null);
       return null;
     } catch (cause) {
+      // Error messages can contain user input or Stripe secrets; report codes only.
+      track("donation_payment_failed", { stage, error_code: "request_failed" });
       return cause instanceof Error ? cause.message : "Something went wrong.";
     }
   };

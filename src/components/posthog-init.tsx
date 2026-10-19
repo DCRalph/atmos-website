@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import posthog from "posthog-js";
-import { env } from "~/env";
+import { initPostHog } from "~/lib/posthog";
 
 /**
  * PostHog is initialised from an effect (not `instrumentation-client.ts`) on
@@ -14,13 +13,6 @@ import { env } from "~/env";
  * earliest point that is guaranteed safe.
  */
 export function PostHogInit() {
-  useEffect(() => {
-    if (posthog.__loaded) return; // hot reload / strict-mode double mount
-    posthog.init(env.NEXT_PUBLIC_POSTHOG_KEY, {
-      api_host: "/ph",
-      ui_host: "https://us.posthog.com",
-      defaults: "2025-11-30",
-    });
-  }, []);
+  useEffect(initPostHog, []);
   return null;
 }

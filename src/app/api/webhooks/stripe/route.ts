@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { after } from "next/server";
 import type Stripe from "stripe";
 
 import {
@@ -10,6 +11,7 @@ import {
 import { env } from "~/env";
 import { db } from "~/server/db";
 import { isDonationIntent, recordDonation } from "~/server/donations";
+import { captureDonationCompleted } from "~/server/donation-analytics";
 import { buyerFromCharge, getStripe } from "~/server/stripe";
 import { sendTicketEmail } from "~/server/ticketing/email/send";
 import { syncPaymentAttempts } from "~/server/ticketing/payment-attempts";
@@ -98,7 +100,8 @@ async function handlePaymentSucceeded(
   intent: Stripe.PaymentIntent,
 ): Promise<void> {
   if (isDonationIntent(intent)) {
-    await recordDonation(intent);
+    const donation = await recordDonation(intent);
+    after(() => captureDonationCompleted(intent, donation));
     return;
   }
 

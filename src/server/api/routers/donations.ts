@@ -13,6 +13,10 @@ import {
   summariseDonations,
 } from "~/lib/donations";
 import { paidDonationCents } from "~/server/donations";
+import {
+  donationAnalyticsMetadata,
+  donationAnalyticsSchema,
+} from "~/lib/donation-analytics";
 import { chargeReceiptUrl, getStripe, stripePaymentUrl } from "~/server/stripe";
 import { enforceRateLimit } from "~/server/ticketing/rate-limit";
 
@@ -36,6 +40,8 @@ export const donationsRouter = createTRPCRouter({
         amountCents: donationCentsSchema,
         /** Where Stripe sends the receipt, from the wallet or the card form. */
         email: z.email().optional(),
+        // Invalid or missing analytics must never prevent a donation.
+        analytics: donationAnalyticsSchema.optional().catch(undefined),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -69,7 +75,11 @@ export const donationsRouter = createTRPCRouter({
           amount: input.amountCents,
           currency: "nzd",
           payment_method_types: [...DONATION_PAYMENT_METHODS],
-          metadata: { kind: "donation", gigId: gig.id },
+          metadata: {
+            kind: "donation",
+            gigId: gig.id,
+            ...donationAnalyticsMetadata(input.analytics),
+          },
           description: `Donation: ${gig.title}`,
           receipt_email: input.email,
         });
