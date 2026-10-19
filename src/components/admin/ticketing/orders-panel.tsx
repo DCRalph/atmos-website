@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Copy,
-  ExternalLink,
   Link2,
   Mail,
   Search,
@@ -13,6 +12,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { skipToken } from "@tanstack/react-query";
 
 import type { PaymentMethodKind } from "~Prisma/client";
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -32,6 +32,7 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { useConfirm } from "~/components/confirm-provider";
+import { DetailRow, ExternalAnchor } from "~/components/admin/detail-row";
 import { formatNZD } from "~/lib/ticketing/money";
 import { deviceLabel } from "~/lib/ticketing/devices";
 import {
@@ -127,12 +128,6 @@ export function OrdersPanel({
     },
     { getNextPageParam: (page) => page.nextCursor ?? undefined },
   );
-  // Shares the detail's query, for the title: the open order may be one the
-  // timeline jumped to, outside the filtered rows.
-  const openOrder = api.ticketAdmin.order.useQuery(
-    { id: openOrderId ?? "" },
-    { enabled: openOrderId !== null },
-  ).data;
 
   const rows = orders.data?.pages.flatMap((page) => page.orders) ?? [];
 
@@ -322,32 +317,66 @@ export function OrdersPanel({
         onLoadMore={() => void orders.fetchNextPage()}
       />
 
-      <Dialog
-        open={openOrderId !== null}
-        onOpenChange={(open) => !open && setOpenOrderId(null)}
-      >
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="font-mono">
-              {openOrder?.orderNumber ?? "Order"}
-            </DialogTitle>
-            <DialogDescription>
-              {openOrder?.buyerName ?? "No name"} ·{" "}
-              {openOrder?.buyerEmail ?? openOrder?.decline?.email ?? "no email"}
-            </DialogDescription>
-          </DialogHeader>
-          {openOrderId && (
-            <OrderDetail
-              key={openOrderId}
-              orderId={openOrderId}
-              readOnly={readOnly}
-              onDeleted={() => setOpenOrderId(null)}
-              onOpenOrder={setOpenOrderId}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      <OrderDialog
+        orderId={openOrderId}
+        readOnly={readOnly}
+        onClose={() => setOpenOrderId(null)}
+        onOpenOrder={setOpenOrderId}
+      />
     </div>
+  );
+}
+
+/**
+ * One order, opened from a list: its money, buyer, tickets and the support
+ * actions on them. Used by an event's Orders tab and the Payments page.
+ * Closed while `orderId` is null. `onOpenOrder` swaps in another order the
+ * timeline links to.
+ */
+export function OrderDialog({
+  orderId,
+  readOnly = false,
+  onClose,
+  onOpenOrder,
+}: {
+  orderId: string | null;
+  readOnly?: boolean;
+  onClose: () => void;
+  onOpenOrder: (orderId: string) => void;
+}) {
+  const order = api.ticketAdmin.order.useQuery(
+    orderId ? { id: orderId } : skipToken,
+  );
+
+  return (
+    <Dialog open={orderId !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="font-mono">
+            {order.data?.orderNumber ?? "Order"}
+          </DialogTitle>
+          <DialogDescription>
+            {order.data ? (
+              <>
+                {order.data.buyerName ?? "No name"} ·{" "}
+                {order.data.buyerEmail ??
+                  order.data.decline?.email ??
+                  "no email"}
+              </>
+            ) : null}
+          </DialogDescription>
+        </DialogHeader>
+        {orderId && (
+          <OrderDetail
+            key={orderId}
+            orderId={orderId}
+            readOnly={readOnly}
+            onDeleted={onClose}
+            onOpenOrder={onOpenOrder}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -387,6 +416,7 @@ function OrderDetail({
       void utils.ticketAdmin.invalidate();
       void utils.ticketEvents.byId.invalidate();
       void utils.ticketAnalytics.invalidate();
+      void utils.payments.invalidate();
       onDeleted();
     },
     onError: (error) => toast.error(error.message),
@@ -398,6 +428,7 @@ function OrderDetail({
       setSelected([]);
       void utils.ticketAdmin.invalidate();
       void utils.ticketAnalytics.invalidate();
+      void utils.payments.invalidate();
     },
     onError: (error) => toast.error(error.message),
   });
@@ -430,6 +461,7 @@ function OrderDetail({
       toast.success("Hold released. The seats are back on sale.");
       void utils.ticketAdmin.invalidate();
       void utils.ticketAnalytics.invalidate();
+      void utils.payments.invalidate();
     },
     onError: (error) => toast.error(error.message),
   });
@@ -462,23 +494,29 @@ function OrderDetail({
     <div className="space-y-4">
       <div className="grid gap-4 text-sm sm:grid-cols-2">
         <dl className="space-y-1">
-          <Row label="Tickets" value={formatNZD(data.subtotalCents)} />
+          <DetailRow label="Tickets" value={formatNZD(data.subtotalCents)} />
           {data.discountCents > 0 && (
-            <Row label="Discount" value={`−${formatNZD(data.discountCents)}`} />
+            <DetailRow
+              label="Discount"
+              value={`−${formatNZD(data.discountCents)}`}
+            />
           )}
           {data.venueFeeCents > 0 && (
-            <Row
+            <DetailRow
               label="Venue booking fee"
               value={formatNZD(data.venueFeeCents)}
             />
           )}
           {data.bookingFeeCents > 0 && (
-            <Row label="Booking fee" value={formatNZD(data.bookingFeeCents)} />
+            <DetailRow
+              label="Booking fee"
+              value={formatNZD(data.bookingFeeCents)}
+            />
           )}
-          <Row label="Total" value={formatNZD(data.totalCents)} />
-          <Row label="GST included" value={formatNZD(data.gstCents)} />
+          <DetailRow label="Total" value={formatNZD(data.totalCents)} />
+          <DetailRow label="GST included" value={formatNZD(data.gstCents)} />
           {data.paidWith && (
-            <Row
+            <DetailRow
               label="Paid with"
               value={
                 <Badge variant="outline">{paidWithLabel(data.paidWith)}</Badge>
@@ -486,14 +524,19 @@ function OrderDetail({
             />
           )}
           {data.refundedCents > 0 && (
-            <Row label="Refunded" value={formatNZD(data.refundedCents)} />
+            <DetailRow label="Refunded" value={formatNZD(data.refundedCents)} />
           )}
-          {data.buyerPhone && <Row label="Phone" value={data.buyerPhone} />}
+          {data.buyerPhone && (
+            <DetailRow label="Phone" value={data.buyerPhone} />
+          )}
           {data.buyerAddress && (
-            <Row label="Address" value={data.buyerAddress} />
+            <DetailRow label="Address" value={data.buyerAddress} />
           )}
           {data.status === "PENDING" && data.expiresAt && (
-            <Row label="Held until" value={formatDateTime(data.expiresAt)} />
+            <DetailRow
+              label="Held until"
+              value={formatDateTime(data.expiresAt)}
+            />
           )}
         </dl>
 
@@ -566,31 +609,36 @@ function OrderDetail({
 
       <dl className="grid gap-x-8 gap-y-1 border-t pt-4 text-sm sm:grid-cols-2">
         {data.device && (
-          <Row label="Bought on" value={deviceLabel(data.device, data.os)} />
+          <DetailRow
+            label="Bought on"
+            value={deviceLabel(data.device, data.os)}
+          />
         )}
-        {cameFrom && <Row label="Came from" value={cameFrom} />}
+        {cameFrom && <DetailRow label="Came from" value={cameFrom} />}
         {data.codeUsed && (
-          <Row
+          <DetailRow
             label="Code used"
             value={<span className="font-mono">{data.codeUsed}</span>}
           />
         )}
-        {data.soldByName && <Row label="Sold by" value={data.soldByName} />}
+        {data.soldByName && (
+          <DetailRow label="Sold by" value={data.soldByName} />
+        )}
         {/* Only checkout asks, so door sales have no answer to show. */}
         {data.termsAcceptedAt && (
-          <Row
+          <DetailRow
             label="Marketing"
             value={data.marketingOptIn ? "Opted in" : "No"}
           />
         )}
         {data.termsAcceptedAt && (
-          <Row
+          <DetailRow
             label="Terms accepted"
             value={`${formatDateTime(data.termsAcceptedAt)}${data.termsVersion ? ` · ${data.termsVersion}` : ""}`}
           />
         )}
         {data.stripeUrl && (
-          <Row
+          <DetailRow
             label="Stripe"
             value={
               <span className="flex gap-3">
@@ -790,33 +838,5 @@ function OrderDetail({
         </details>
       )}
     </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="flex justify-between gap-3">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="tabular-nums">{value}</dd>
-    </div>
-  );
-}
-
-function ExternalAnchor({
-  href,
-  children,
-}: {
-  href: string;
-  children: ReactNode;
-}) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className="inline-flex items-center gap-1 underline-offset-4 hover:underline"
-    >
-      {children} <ExternalLink className="size-3" />
-    </a>
   );
 }

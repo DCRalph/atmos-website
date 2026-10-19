@@ -92,6 +92,18 @@ function formatAddress(address: Stripe.Address | null | undefined) {
     .join(", ");
 }
 
+/**
+ * The payer's Stripe receipt for a charge. Asks Stripe live, so callers give
+ * it its own query. Null without a charge or without Stripe.
+ */
+export async function chargeReceiptUrl(
+  chargeId: string | null,
+): Promise<string | null> {
+  if (!chargeId || !isStripeConfigured()) return null;
+  const charge = await getStripe().charges.retrieve(chargeId);
+  return charge.receipt_url ?? null;
+}
+
 /** A payment in the Stripe dashboard, in test or live mode to match the key. */
 export function stripePaymentUrl(paymentIntentId: string): string {
   const mode = isStripeTestMode() ? "test/" : "";

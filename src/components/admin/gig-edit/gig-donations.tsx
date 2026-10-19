@@ -3,6 +3,8 @@
 import { useState } from "react";
 
 import { api } from "~/trpc/react";
+import { DonationDialog } from "~/components/admin/payments/donation-dialog";
+import { Badge } from "~/components/ui/badge";
 import { RangeSwitch } from "~/components/admin/range-switch";
 import { rangeStart, type AnalyticsRange } from "~/lib/analytics-range";
 import { StatTile, TimeSeriesChart } from "~/components/admin/ticketing/charts";
@@ -17,14 +19,17 @@ import {
 } from "~/components/ui/table";
 import { formatNZD, formatNZDCompact } from "~/lib/ticketing/money";
 import { formatEventDateTime } from "~/lib/ticketing/dates";
+import { paidWithLabel } from "~/lib/ticketing/payment-methods";
 
 /**
  * The gig editor's Donations tab, under the donate page's settings: what
  * this gig has raised, what people picked, the running total, and every
- * donation. Read-only; the settings above it save with the rest of the gig.
+ * donation, each opening its detail. Read-only; the settings above it save
+ * with the rest of the gig.
  */
 export function GigDonations({ gigId }: { gigId: string }) {
   const query = api.donations.forGig.useQuery({ gigId });
+  const [openDonationId, setOpenDonationId] = useState<string | null>(null);
   if (!query.data) return <Skeleton className="h-96 w-full" />;
 
   const { enabled, recommendedIndex, summary, donations } = query.data;
@@ -127,13 +132,18 @@ export function GigDonations({ gigId }: { gigId: string }) {
               <TableHead>When</TableHead>
               <TableHead>Who</TableHead>
               <TableHead>Email</TableHead>
+              <TableHead>Paid with</TableHead>
               <TableHead className="text-right">Amount</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
             {donations.map((donation) => (
-              <TableRow key={donation.id}>
+              <TableRow
+                key={donation.id}
+                className="cursor-pointer"
+                onClick={() => setOpenDonationId(donation.id)}
+              >
                 <TableCell className="text-muted-foreground">
                   {formatEventDateTime(donation.paidAt)}
                 </TableCell>
@@ -144,6 +154,13 @@ export function GigDonations({ gigId }: { gigId: string }) {
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {donation.donorEmail ?? ""}
+                </TableCell>
+                <TableCell>
+                  {donation.paidWith ? (
+                    <Badge variant="outline">
+                      {paidWithLabel(donation.paidWith)}
+                    </Badge>
+                  ) : null}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
                   {donation.refundedCents > 0 ? (
@@ -160,6 +177,7 @@ export function GigDonations({ gigId }: { gigId: string }) {
                     href={donation.stripeUrl}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={(event) => event.stopPropagation()}
                     className="text-muted-foreground hover:text-foreground text-xs"
                   >
                     Stripe ↗
@@ -170,6 +188,11 @@ export function GigDonations({ gigId }: { gigId: string }) {
           </TableBody>
         </Table>
       </section>
+
+      <DonationDialog
+        donationId={openDonationId}
+        onClose={() => setOpenDonationId(null)}
+      />
     </div>
   );
 }

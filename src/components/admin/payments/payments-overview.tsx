@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import Link from "next/link";
 import { Download } from "lucide-react";
 import { toast } from "sonner";
+import { keepPreviousData } from "@tanstack/react-query";
 
 import { api, type RouterOutputs } from "~/trpc/react";
 import { AdminSection } from "~/components/admin/admin-section";
+import { DonationDialog } from "~/components/admin/payments/donation-dialog";
+import { OrderDialog } from "~/components/admin/ticketing/orders-panel";
 import { Segmented } from "~/components/admin/segmented";
 import { StatTile } from "~/components/admin/ticketing/charts";
 import { Badge } from "~/components/ui/badge";
@@ -29,6 +32,10 @@ import { formatNZD } from "~/lib/ticketing/money";
 import { formatEventDate, formatEventDateTime } from "~/lib/ticketing/dates";
 
 type Overview = RouterOutputs["payments"]["overview"];
+type Payment = RouterOutputs["payments"]["latest"]["rows"][number];
+
+/** How many more payments each "Show more" adds to the list. */
+const PAGE_SIZE = 25;
 
 /** Ticket sales in the revenue colour, donations in the arrivals green. */
 const seriesColour = (donation: boolean) =>
@@ -80,17 +87,20 @@ export function PaymentsOverview() {
         </div>
       }
     >
-      {overview.data ? (
-        <Breakdown data={overview.data} />
-      ) : (
-        <Skeleton className="h-96 w-full" />
-      )}
+      <div className="space-y-4">
+        {overview.data ? (
+          <Breakdown data={overview.data} />
+        ) : (
+          <Skeleton className="h-96 w-full" />
+        )}
+        <LatestPayments key={range} range={range} />
+      </div>
     </AdminSection>
   );
 }
 
 function Breakdown({ data }: { data: Overview }) {
-  const { totals, methods, nights, latest } = data;
+  const { totals, methods, nights } = data;
   const share = (cents: number) =>
     totals.netCents > 0 ? Math.max(0, (cents / totals.netCents) * 100) : 0;
 
@@ -233,79 +243,131 @@ function Breakdown({ data }: { data: Overview }) {
           )}
         </section>
       </div>
-
-      <section className="rounded-lg border p-4">
-        <h2 className="text-muted-foreground mb-2 text-sm font-medium">
-          Latest payments
-        </h2>
-        {latest.length === 0 ? (
-          <p className="text-muted-foreground py-6 text-center text-sm">
-            No payments in this range.
-          </p>
-        ) : (
-          <Table>
-            <TableBody>
-              {latest.map((row) => (
-                <TableRow key={`${row.source}-${row.id}`}>
-                  <TableCell className="text-muted-foreground w-44">
-                    {formatEventDateTime(row.paidAt)}
-                  </TableCell>
-                  <TableCell>
-                    <span className="inline-flex items-center gap-2">
-                      <span
-                        aria-hidden
-                        className="size-1.5 rounded-full"
-                        style={{
-                          background: seriesColour(row.source === "donation"),
-                        }}
-                      />
-                      {row.href ? (
-                        <Link href={row.href} className="hover:underline">
-                          {row.forLabel}
-                        </Link>
-                      ) : (
-                        row.forLabel
-                      )}
-                      <span className="text-muted-foreground">
-                        {row.reference ? `${row.reference} · ` : ""}
-                        {row.method}
-                      </span>
-                      {row.paidWith ? (
-                        <Badge variant="outline">{row.paidWith}</Badge>
-                      ) : null}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {row.name ?? row.email ?? "No name given"}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {row.refundedCents > 0 ? (
-                      <span className="text-destructive mr-2 text-xs">
-                        {row.refundedCents >= row.amountCents
-                          ? "Refunded"
-                          : `${formatNZD(row.refundedCents)} refunded`}
-                      </span>
-                    ) : null}
-                    {formatNZD(row.amountCents)}
-                  </TableCell>
-                  <TableCell className="w-16 text-right">
-                    {row.stripeUrl ? (
-                      <a
-                        href={row.stripeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-muted-foreground hover:text-foreground text-xs"
-                      >
-                        Stripe ↗
-                      </a>
-                    ) : null}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </section>
     </div>
+  );
+}
+
+/**
+ * Every payment in the range, newest first, a page at a time. A row opens the
+ * same detail its event's Orders tab or its gig's Donations tab would.
+ * Keyed on the range by its parent, so a new range starts back at one page.
+ */
+function LatestPayments({ range }: { range: PaymentRange }) {
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  const [open, setOpen] = useState<Pick<Payment, "source" | "id"> | null>(null);
+  const latest = api.payments.latest.useQuery(
+    { range, limit },
+    { placeholderData: keepPreviousData },
+  );
+  const rows = latest.data?.rows ?? [];
+  // Links inside a row go where they say, not into the dialog.
+  const stayInRow = (event: MouseEvent) => event.stopPropagation();
+
+  return (
+    <section className="rounded-lg border p-4">
+      <h2 className="text-muted-foreground mb-2 text-sm font-medium">
+        Latest payments
+      </h2>
+      {!latest.data ? (
+        <Skeleton className="h-40 w-full" />
+      ) : rows.length === 0 ? (
+        <p className="text-muted-foreground py-6 text-center text-sm">
+          No payments in this range.
+        </p>
+      ) : (
+        <Table>
+          <TableBody>
+            {rows.map((row) => (
+              <TableRow
+                key={`${row.source}-${row.id}`}
+                className="cursor-pointer"
+                onClick={() => setOpen({ source: row.source, id: row.id })}
+              >
+                <TableCell className="text-muted-foreground w-44">
+                  {formatEventDateTime(row.paidAt)}
+                </TableCell>
+                <TableCell>
+                  <span className="inline-flex items-center gap-2">
+                    <span
+                      aria-hidden
+                      className="size-1.5 rounded-full"
+                      style={{
+                        background: seriesColour(row.source === "donation"),
+                      }}
+                    />
+                    {row.href ? (
+                      <Link
+                        href={row.href}
+                        onClick={stayInRow}
+                        className="hover:underline"
+                      >
+                        {row.forLabel}
+                      </Link>
+                    ) : (
+                      row.forLabel
+                    )}
+                    <span className="text-muted-foreground">
+                      {row.reference ? `${row.reference} · ` : ""}
+                      {row.method}
+                    </span>
+                    {row.paidWith ? (
+                      <Badge variant="outline">{row.paidWith}</Badge>
+                    ) : null}
+                  </span>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {row.name ?? row.email ?? "No name given"}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {row.refundedCents > 0 ? (
+                    <span className="text-destructive mr-2 text-xs">
+                      {row.refundedCents >= row.amountCents
+                        ? "Refunded"
+                        : `${formatNZD(row.refundedCents)} refunded`}
+                    </span>
+                  ) : null}
+                  {formatNZD(row.amountCents)}
+                </TableCell>
+                <TableCell className="w-16 text-right">
+                  {row.stripeUrl ? (
+                    <a
+                      href={row.stripeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={stayInRow}
+                      className="text-muted-foreground hover:text-foreground text-xs"
+                    >
+                      Stripe ↗
+                    </a>
+                  ) : null}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+      {latest.data?.hasMore ? (
+        <div className="mt-3 flex justify-center">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={latest.isFetching}
+            onClick={() => setLimit((current) => current + PAGE_SIZE)}
+          >
+            {latest.isFetching ? "Loading…" : "Show more"}
+          </Button>
+        </div>
+      ) : null}
+
+      <OrderDialog
+        orderId={open?.source === "tickets" ? open.id : null}
+        onClose={() => setOpen(null)}
+        onOpenOrder={(id) => setOpen({ source: "tickets", id })}
+      />
+      <DonationDialog
+        donationId={open?.source === "donation" ? open.id : null}
+        onClose={() => setOpen(null)}
+      />
+    </section>
   );
 }

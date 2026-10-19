@@ -13,7 +13,7 @@ import {
   summariseDonations,
 } from "~/lib/donations";
 import { paidDonationCents } from "~/server/donations";
-import { getStripe, stripePaymentUrl } from "~/server/stripe";
+import { chargeReceiptUrl, getStripe, stripePaymentUrl } from "~/server/stripe";
 import { enforceRateLimit } from "~/server/ticketing/rate-limit";
 
 /**
@@ -119,6 +119,7 @@ export const donationsRouter = createTRPCRouter({
               donorName: true,
               donorEmail: true,
               paidAt: true,
+              paidWith: true,
               stripePaymentIntentId: true,
             },
           },
@@ -139,5 +140,39 @@ export const donationsRouter = createTRPCRouter({
           }),
         ),
       };
+    }),
+
+  /** One donation, everything recorded about it, for its admin dialog. */
+  donation: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const donation = await ctx.db.donation.findUnique({
+        where: { id: input.id },
+        include: { gig: { select: { id: true, title: true } } },
+      });
+      if (!donation) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Donation not found",
+        });
+      }
+      return {
+        ...donation,
+        stripeUrl: stripePaymentUrl(donation.stripePaymentIntentId),
+      };
+    }),
+
+  /**
+   * The donor's Stripe receipt. Its own query because it asks Stripe live,
+   * like `ticketAdmin.stripeReceiptUrl` for orders.
+   */
+  stripeReceiptUrl: adminProcedure
+    .input(z.object({ donationId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const donation = await ctx.db.donation.findUnique({
+        where: { id: input.donationId },
+        select: { stripeChargeId: true },
+      });
+      return chargeReceiptUrl(donation?.stripeChargeId ?? null);
     }),
 });

@@ -17,6 +17,7 @@ import {
   superadminProcedure,
 } from "~/server/api/trpc";
 import {
+  chargeReceiptUrl,
   getStripe,
   isStripeConfigured,
   stripePaymentUrl,
@@ -354,9 +355,7 @@ export const ticketAdminRouter = createTRPCRouter({
         where: { id: input.orderId },
         select: { stripeChargeId: true },
       });
-      if (!order?.stripeChargeId || !isStripeConfigured()) return null;
-      const charge = await getStripe().charges.retrieve(order.stripeChargeId);
-      return charge.receipt_url ?? null;
+      return chargeReceiptUrl(order?.stripeChargeId ?? null);
     }),
 
   /** Individual tickets for an event — search, inspect, then void or refund. */

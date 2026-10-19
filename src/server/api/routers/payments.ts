@@ -151,42 +151,29 @@ export const paymentsRouter = createTRPCRouter({
     const orders = orderWhere(since);
     const donations = donationWhere(since);
 
-    const [byMethod, donated, byEvent, byGig, latestOrders, latestDonations] =
-      await Promise.all([
-        ctx.db.ticketOrder.groupBy({
-          by: ["paymentMethod"],
-          where: orders,
-          _sum: { totalCents: true, refundedCents: true },
-          _count: { _all: true },
-        }),
-        ctx.db.donation.aggregate({
-          where: donations,
-          _sum: { amountCents: true, refundedCents: true },
-          _count: { _all: true },
-        }),
-        ctx.db.ticketOrder.groupBy({
-          by: ["eventId"],
-          where: orders,
-          _sum: { totalCents: true, refundedCents: true },
-        }),
-        ctx.db.donation.groupBy({
-          by: ["gigId"],
-          where: donations,
-          _sum: { amountCents: true, refundedCents: true },
-        }),
-        ctx.db.ticketOrder.findMany({
-          where: orders,
-          orderBy: { paidAt: "desc" },
-          take: 10,
-          select: ORDER_ROW,
-        }),
-        ctx.db.donation.findMany({
-          where: donations,
-          orderBy: { paidAt: "desc" },
-          take: 10,
-          select: DONATION_ROW,
-        }),
-      ]);
+    const [byMethod, donated, byEvent, byGig] = await Promise.all([
+      ctx.db.ticketOrder.groupBy({
+        by: ["paymentMethod"],
+        where: orders,
+        _sum: { totalCents: true, refundedCents: true },
+        _count: { _all: true },
+      }),
+      ctx.db.donation.aggregate({
+        where: donations,
+        _sum: { amountCents: true, refundedCents: true },
+        _count: { _all: true },
+      }),
+      ctx.db.ticketOrder.groupBy({
+        by: ["eventId"],
+        where: orders,
+        _sum: { totalCents: true, refundedCents: true },
+      }),
+      ctx.db.donation.groupBy({
+        by: ["gigId"],
+        where: donations,
+        _sum: { amountCents: true, refundedCents: true },
+      }),
+    ]);
 
     const donationGross = donated._sum.amountCents ?? 0;
     const donationRefunded = donated._sum.refundedCents ?? 0;
@@ -241,14 +228,46 @@ export const paymentsRouter = createTRPCRouter({
       },
       methods,
       nights: await nightsFor(ctx.db, byEvent, byGig),
-      latest: [
-        ...latestOrders.map(orderRow),
-        ...latestDonations.map(donationRow),
-      ]
-        .sort(newestFirst)
-        .slice(0, 10),
     };
   }),
+
+  /**
+   * The newest payments in the range, both kinds merged, for the list under
+   * the breakdown. The page asks for more by raising `limit`.
+   */
+  latest: adminProcedure
+    .input(
+      rangeInput.extend({
+        limit: z.number().int().min(1).max(500).default(25),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const since = paymentRangeStart(input.range);
+      // One past the limit from each, so the merge can tell there's more.
+      const take = input.limit + 1;
+      const [orders, donations] = await Promise.all([
+        ctx.db.ticketOrder.findMany({
+          where: orderWhere(since),
+          orderBy: { paidAt: "desc" },
+          take,
+          select: ORDER_ROW,
+        }),
+        ctx.db.donation.findMany({
+          where: donationWhere(since),
+          orderBy: { paidAt: "desc" },
+          take,
+          select: DONATION_ROW,
+        }),
+      ]);
+      const rows = [
+        ...orders.map(orderRow),
+        ...donations.map(donationRow),
+      ].sort(newestFirst);
+      return {
+        rows: rows.slice(0, input.limit),
+        hasMore: rows.length > input.limit,
+      };
+    }),
 
   /** Every payment in the range, newest first, as a CSV. */
   exportCsv: adminProcedure.input(rangeInput).query(async ({ ctx, input }) => {
