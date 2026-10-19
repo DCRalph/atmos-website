@@ -36,13 +36,8 @@ import {
 } from "~/lib/donations";
 import { formatNZDCompact, parsePriceToCents } from "~/lib/ticketing/money";
 import { cn } from "~/lib/utils";
-import {
-  AtmosLogo,
-  Button,
-  IconButton,
-  buttonVariants,
-  inputClass,
-} from "../ui";
+import { DonationThanks } from "./donation-thanks";
+import { AtmosLogo, Button, IconButton, inputClass } from "../ui";
 
 /** What `/gigs/[id]/donate` loads. */
 type DonateGig = NonNullable<Awaited<ReturnType<typeof donateGig>>>;
@@ -102,9 +97,14 @@ export function DonatePage({
         <div className="w-full max-w-[420px] md:max-w-[380px]">
           {/* Never taller than the screen: the title stays put and the slides
               scroll inside it instead. */}
-          <section className="glass-dark flex max-h-[calc(100dvh-6rem)] flex-col gap-4 rounded-[var(--site-r-panel)] rounded-tl-none p-[22px] md:max-h-[calc(100dvh-11rem)]">
+          <section
+            className={cn(
+              "glass-dark flex max-h-[calc(100dvh-6rem)] flex-col gap-4 rounded-[var(--site-r-panel)] rounded-tl-none p-[22px] md:max-h-[calc(100dvh-11rem)]",
+              thanked !== null && "overflow-y-auto",
+            )}
+          >
             {thanked !== null ? (
-              <Thanks gig={gig} cents={thanked} />
+              <DonationThanks gig={gig} cents={thanked} />
             ) : (
               <>
                 <div className="shrink-0 space-y-4">
@@ -712,43 +712,4 @@ function useDonate(gigId: string) {
       return cause instanceof Error ? cause.message : "Something went wrong.";
     }
   };
-}
-
-/** Once they've given. */
-function Thanks({ gig, cents }: { gig: DonateGig; cents: number }) {
-  return (
-    <div role="status" className="space-y-4">
-      <p className="flex items-center gap-3">
-        <span className="bg-site-accent text-site-accent-ink flex size-10 shrink-0 items-center justify-center rounded-full">
-          <Heart className="size-5 fill-current" />
-        </span>
-        <span className="t-display text-[24px]">Thank you</span>
-      </p>
-      <p className="text-[15px] leading-relaxed text-white/75">
-        Your{" "}
-        <b className="font-semibold text-white">{formatNZDCompact(cents)}</b>{" "}
-        helps keep nights like this going. We really appreciate it.
-      </p>
-      <div className="flex gap-2">
-        <Link
-          href={gig.gigHref}
-          className={cn(
-            buttonVariants({ variant: "outline", size: "sm" }),
-            "h-10 flex-1",
-          )}
-        >
-          Back to the gig
-        </Link>
-        <Link
-          href="/gigs"
-          className={cn(
-            buttonVariants({ variant: "outline", size: "sm" }),
-            "h-10 flex-1",
-          )}
-        >
-          Upcoming gigs
-        </Link>
-      </div>
-    </div>
-  );
 }

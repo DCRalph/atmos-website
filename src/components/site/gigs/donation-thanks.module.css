@@ -1,0 +1,266 @@
+.thanks {
+  --duration: 1000ms;
+  animation: basic-reveal var(--duration) ease-out both;
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.heading h1 {
+  font-size: 24px;
+  animation: basic-title var(--duration) cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.heading h1:focus {
+  outline: none;
+}
+
+.heart {
+  position: relative;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--site-accent);
+  color: var(--site-accent-ink);
+  animation: basic-heart var(--duration) cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.heart::after {
+  position: absolute;
+  inset: -5px;
+  border: 1px solid var(--site-accent);
+  border-radius: 50%;
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  animation: basic-ring var(--duration) ease-out both;
+}
+
+.burst {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.burst > span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+}
+
+.burst i {
+  position: absolute;
+  width: 3px;
+  height: 7px;
+  border-radius: 1px;
+  background: var(--site-accent);
+  opacity: 0;
+  animation: basic-spark var(--duration) cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.burst > span:nth-child(3n) i {
+  background: #fff;
+  width: 2px;
+  height: 5px;
+}
+
+.copy {
+  margin-top: 16px;
+  font-size: 15px;
+  line-height: 1.65;
+  color: rgb(255 255 255 / 75%);
+  animation: basic-copy var(--duration) cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.copy strong {
+  font-weight: 600;
+  color: #fff;
+}
+
+.shareArea {
+  margin-top: 20px;
+  animation: basic-actions var(--duration) cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.shareButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.shareButtons > button {
+  flex: 1;
+  min-height: 46px;
+  padding-inline: 17px;
+  font-size: 10px;
+}
+
+.shareFeedback {
+  margin-top: 12px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgb(255 255 255 / 65%);
+}
+
+.manualLink {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 9px;
+  padding: 12px;
+  border: 1px solid rgb(255 255 255 / 35%);
+  border-radius: 6px;
+  color: var(--site-accent-text);
+}
+
+.manualLink input {
+  min-width: 0;
+  width: 100%;
+  background: transparent;
+  font-size: 12px;
+  color: #fff;
+}
+
+.returnLinks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 18px;
+  animation: basic-actions var(--duration) cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.returnLinks a {
+  min-height: 40px;
+  padding-inline: 12px;
+}
+
+.thanks[data-reduced-motion="true"],
+.thanks[data-reduced-motion="true"] *,
+.thanks[data-reduced-motion="true"] *::before,
+.thanks[data-reduced-motion="true"] *::after {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thanks,
+  .thanks *,
+  .thanks *::before,
+  .thanks *::after {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 650px) {
+  .shareButtons > button {
+    font-size: 9px;
+    padding-inline: 13px;
+  }
+  .returnLinks a {
+    font-size: 9px;
+    padding-inline: 8px;
+  }
+}
+
+@keyframes basic-reveal {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  24%,
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes basic-heart {
+  0% {
+    transform: scale(0.6) rotate(-12deg);
+  }
+  22% {
+    transform: scale(1.16) rotate(4deg);
+  }
+  42% {
+    transform: scale(0.98) rotate(-1deg);
+  }
+  62%,
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes basic-ring {
+  0%,
+  14% {
+    opacity: 0;
+    transform: scale(0.65);
+  }
+  24% {
+    opacity: 0.6;
+  }
+  75%,
+  100% {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+
+@keyframes basic-spark {
+  0%,
+  17% {
+    opacity: 0;
+    transform: translateX(16px) rotate(0);
+  }
+  28% {
+    opacity: 1;
+  }
+  78%,
+  100% {
+    opacity: 0;
+    transform: translateX(56px) rotate(110deg);
+  }
+}
+
+@keyframes basic-title {
+  0%,
+  12% {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  45%,
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes basic-copy {
+  0%,
+  23% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  66%,
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes basic-actions {
+  0%,
+  42% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
