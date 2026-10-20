@@ -4,6 +4,7 @@ import { Plus, Trash2 } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { DoorTotalsPanel } from "~/components/admin/ticketing/door-totals-panel";
 import {
   Card,
   CardContent,
@@ -59,6 +60,15 @@ export function CostsSection({
 
   return (
     <div className="space-y-4">
+      {event?.hasEnded ? (
+        <DoorTotalsPanel
+          key={event.id}
+          eventId={event.id}
+          totals={event.doorTotals}
+          timezone={event.timezone}
+        />
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle>Venue hire</CardTitle>

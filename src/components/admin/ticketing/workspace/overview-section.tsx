@@ -116,7 +116,7 @@ export function OverviewSection({
 
       <HeldTickets eventId={event.id} />
 
-      <EventOverview eventId={event.id} canRecordDoorTotals />
+      <EventOverview eventId={event.id} />
     </div>
   );
 }

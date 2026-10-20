@@ -39,7 +39,6 @@ import {
   WeekHeatmap,
 } from "./charts";
 import { CheckoutJourney } from "./checkout-journey";
-import { DoorTotalsPanel } from "./door-totals-panel";
 import { DeclinesCard, NoTicketsAlert, type OrderHref } from "./declines-card";
 
 type Overview = RouterOutputs["ticketAnalytics"]["overview"];
@@ -61,13 +60,11 @@ export function EventOverview({
   eventId,
   liveHref = `/admin/events/${eventId}/live?mode=sales`,
   ordersHref = `/admin/events/${eventId}?section=orders`,
-  canRecordDoorTotals = false,
 }: {
   eventId: string;
   liveHref?: string;
   /** This event's Orders; an order's dialog opens from `&order=`. */
   ordersHref?: string;
-  canRecordDoorTotals?: boolean;
 }) {
   const [range, setRange] = useState<AnalyticsRange>("all");
   const [measure, setMeasure] = useState<Measure>("tickets");
@@ -172,16 +169,6 @@ export function EventOverview({
           },
         ]}
       />
-
-      {canRecordDoorTotals &&
-      (event.endsAt ?? event.startsAt).getTime() <= Date.now() ? (
-        <DoorTotalsPanel
-          key={eventId}
-          eventId={eventId}
-          totals={overview.data.doorTotals}
-          timezone={timeZone}
-        />
-      ) : null}
 
       <Profit
         costs={costs}

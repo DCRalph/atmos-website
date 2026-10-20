@@ -363,6 +363,7 @@ export const ticketEventsRouter = createTRPCRouter({
           tiers: { orderBy: { sortOrder: "asc" } },
           staff: true,
           costs: { orderBy: { sortOrder: "asc" } },
+          doorTotals: true,
           // Spend only: the Campaigns tab loads the rest itself.
           campaigns: { select: { spendCents: true } },
         },
@@ -425,6 +426,7 @@ export const ticketEventsRouter = createTRPCRouter({
 
       return {
         ...event,
+        hasEnded: (event.endsAt ?? event.startsAt).getTime() <= Date.now(),
         shareUrl: shareUrl(event),
         effectiveBookingFee: resolveBookingFee(event, settings),
         siteDefaults: settings,
