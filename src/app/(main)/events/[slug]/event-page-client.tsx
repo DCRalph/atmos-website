@@ -160,7 +160,14 @@ export function EventPageClient() {
         .join(" · "),
     },
     ...(data.venueName
-      ? [{ label: "Where", value: data.venueName, sub: data.venueAddress }]
+      ? [
+          {
+            label: "Where",
+            value: data.venueName,
+            sub: data.venueAddress,
+            logo: data.venueLogoFileId,
+          },
+        ]
       : []),
     ...(data.isR18
       ? [{ label: "Age", value: "R18, photo ID at the door" }]
@@ -239,13 +246,24 @@ export function EventPageClient() {
             {facts.map(({ label, value, ...rest }) => (
               <div key={label} className="border-b border-white/10 py-4">
                 <dt className="t-label text-[10px] text-white/55">{label}</dt>
-                <dd className="mt-2 text-[15px] text-white/90">
-                  {value}
-                  {"sub" in rest && rest.sub ? (
-                    <span className="mt-1 block text-[13px] text-white/55">
-                      {rest.sub}
-                    </span>
+                <dd className="mt-2 flex items-center gap-3 text-[15px] text-white/90">
+                  {"logo" in rest && rest.logo ? (
+                    // A plain img: a small, already-cached /api/media response.
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={buildMediaUrl(rest.logo)}
+                      alt=""
+                      className="size-9 shrink-0 rounded-[var(--site-r-chip)] object-contain"
+                    />
                   ) : null}
+                  <span>
+                    {value}
+                    {"sub" in rest && rest.sub ? (
+                      <span className="mt-1 block text-[13px] text-white/55">
+                        {rest.sub}
+                      </span>
+                    ) : null}
+                  </span>
                 </dd>
               </div>
             ))}
