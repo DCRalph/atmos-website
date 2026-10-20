@@ -60,6 +60,7 @@ import {
 } from "~/components/admin/venues/venue-picker";
 import { DonationsField, dollarText } from "./donations-field";
 import { GigDonations } from "./gig-donations";
+import { GalleryVisibilityField } from "./gallery-visibility-field";
 import {
   DEFAULT_DONATION_AMOUNTS_CENTS,
   donationCentsSchema,
@@ -120,6 +121,7 @@ type LoadedGig = {
   venue: PickedVenue | null;
   ticketLink: string | null;
   donationsEnabled: boolean;
+  showGalleryBeforeGig: boolean;
   donationAmountsCents: number[];
   donationRecommendedIndex: number | null;
   donationDescriptionLexical: unknown;
@@ -855,6 +857,10 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
             </CardDescription>
           </CardHeader>
           <CardContent className="max-sm:px-0">
+            <GalleryVisibilityField
+              gigId={gigId}
+              enabled={gig.showGalleryBeforeGig}
+            />
             <GigMediaManager
               gigId={gigId}
               media={gig.media ?? []}

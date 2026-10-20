@@ -414,6 +414,8 @@ model Gig {
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   media     GigMedia[]
+  /// Show the public gallery before the gig ends. Off keeps it as a recap only.
+  showGalleryBeforeGig Boolean @default(true)
 
   gigTags           GigTagRelationship[]
   homeGigPlacements HomeGigPlacement[]

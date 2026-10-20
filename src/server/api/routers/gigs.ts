@@ -133,6 +133,8 @@ const GIG_EDITOR_FIELDS = z.object({
   ticketLink: z.string().nullish(),
   gigStartTime: z.date(),
   gigEndTime: z.date().nullish(),
+  /** Gallery settings save immediately and are left as stored when omitted. */
+  showGalleryBeforeGig: z.boolean().optional(),
   /** Left as stored when absent: the import wizard does not edit them. */
   donationsEnabled: z.boolean().optional(),
   donationAmountsCents: donationAmountsSchema.optional(),
@@ -1411,6 +1413,7 @@ export const gigsRouter = createTRPCRouter({
         venueId: z.string().nullish(),
         gigStartTime: z.date(),
         gigEndTime: z.date().optional(),
+        showGalleryBeforeGig: z.boolean().optional(),
         ticketLink: z.string().optional(),
         /** Off unless asked for. See `~/lib/donations.ts`. */
         donationsEnabled: z.boolean().optional(),

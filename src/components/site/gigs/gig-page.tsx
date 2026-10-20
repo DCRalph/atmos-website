@@ -298,7 +298,7 @@ function TicketsBlock({ gig }: { gig: DetailGig }) {
   return null;
 }
 
-/** Past gig photos and videos; photos open the lightbox. */
+/** Uploaded gig photos and videos; photos open the lightbox. */
 function Gallery({ gig }: { gig: DetailGig }) {
   const lb = useLightbox();
   const cursor = useHoverCursor(<Expand />);
@@ -422,7 +422,8 @@ function NotFound() {
 
 /**
  * A gig's public page: poster held on the left, facts and tickets on the
- * right, the recap gallery once it's over. TBA gigs keep their secret.
+ * right, and its gallery before or after the gig according to its setting.
+ * TBA gigs keep their secret.
  */
 export function GigPage({ id }: { id: string }) {
   const { data: gig, isPending } = api.gigs.getById.useQuery({ id });
@@ -454,6 +455,8 @@ export function GigPage({ id }: { id: string }) {
 
   const tba = isTba(gig);
   const past = isPast(gig);
+  const showGallery =
+    !tba && (past || (gig.showGalleryBeforeGig && gig.media.length > 0));
   const poster = gig.posterFileUpload?.url ?? null;
 
   return (
@@ -549,7 +552,7 @@ export function GigPage({ id }: { id: string }) {
         </div>
       </section>
 
-      {past ? (
+      {showGallery ? (
         <section id="photos" className="scroll-mt-24 px-5 pb-20 md:px-10">
           <Gallery gig={gig} />
         </section>
