@@ -16,6 +16,7 @@ import {
   Megaphone,
   Link2,
   Mail,
+  MapPin,
   Palette,
   ScanLine,
   Settings,
@@ -95,6 +96,13 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         description: "Organise gigs with reusable tags",
         url: "/admin/gig-tags",
         icon: Tag,
+      },
+      {
+        title: "Venues",
+        description: "Venues, their addresses and logos",
+        url: "/admin/venues",
+        icon: MapPin,
+        keywords: ["location", "address", "logo", "place"],
       },
       {
         title: "Media files",

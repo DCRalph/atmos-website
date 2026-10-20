@@ -24,15 +24,15 @@ import { SearchableSelect } from "~/components/ui/searchable-select";
 import { ImageUploadField } from "~/components/uploads/image-upload-field";
 import { LexicalRichTextEditor } from "~/components/lexical";
 import { buildMediaUrl } from "~/lib/media-url";
-import { formatNZD } from "~/lib/ticketing/money";
 import type { AdminEvent, Visibility } from "./draft";
 import type { EventDraftState } from "./use-event-draft";
 import { Field, Toggle } from "./fields";
+import { VenuePicker } from "~/components/admin/venues/venue-picker";
 
 /**
  * Everything about the event itself: what it's called, when and where, how
- * it sells, who can find it, and what the door asks. Tiers, staff and the
- * wallet pass have their own sections.
+ * it sells, who can find it, and what the door asks. Tiers, costs (booking
+ * fee included), staff and the wallet pass have their own sections.
  */
 
 const VISIBILITIES = [
@@ -101,7 +101,13 @@ export function DetailsSection({
           name: gig.title,
           startsAt: gig.gigStartTime ?? current.startsAt,
           endsAt: gig.gigEndTime ?? undefined,
-          venueName: gig.subtitle || current.venueName,
+          ...(gig.venue
+            ? {
+                venue: gig.venue,
+                venueName: gig.venue.name,
+                venueAddress: gig.venue.address ?? "",
+              }
+            : { venueName: gig.subtitle || current.venueName }),
           shortDescription: gig.shortDescription ?? current.shortDescription,
           descriptionLexical:
             (gig.descriptionLexical as SerializedEditorState | null) ??
@@ -121,8 +127,6 @@ export function DetailsSection({
     if (!draft.startsAt) return;
     update("doorsAt", new Date(draft.startsAt.getTime() - minutes * 60_000));
   };
-
-  const fee = event?.siteDefaults.bookingFee;
 
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
@@ -455,20 +459,42 @@ export function DetailsSection({
             <CardTitle>Venue</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Field id="event-venue" label="Name">
-              <Input
-                id="event-venue"
-                value={draft.venueName}
-                onChange={(e) => update("venueName", e.target.value)}
-              />
-            </Field>
-            <Field id="event-address" label="Address">
-              <Input
-                id="event-address"
-                value={draft.venueAddress}
-                onChange={(e) => update("venueAddress", e.target.value)}
-              />
-            </Field>
+            <VenuePicker
+              value={draft.venue}
+              onChange={(venue) =>
+                state.setDraft((current) => ({
+                  ...current,
+                  venue,
+                  // Taking the venue off leaves its text to edit as a one-off.
+                  ...(venue
+                    ? {
+                        venueName: venue.name,
+                        venueAddress: venue.address ?? "",
+                      }
+                    : {}),
+                }))
+              }
+              createLabel="Create & use for this event"
+              disabled={isSaving}
+            />
+            {draft.venue ? null : (
+              <>
+                <Field id="event-venue" label="Name">
+                  <Input
+                    id="event-venue"
+                    value={draft.venueName}
+                    onChange={(e) => update("venueName", e.target.value)}
+                  />
+                </Field>
+                <Field id="event-address" label="Address">
+                  <Input
+                    id="event-address"
+                    value={draft.venueAddress}
+                    onChange={(e) => update("venueAddress", e.target.value)}
+                  />
+                </Field>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -546,45 +572,6 @@ export function DetailsSection({
                 min={0}
                 value={draft.compAllowance}
                 onChange={(e) => update("compAllowance", e.target.value)}
-              />
-            </Field>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Booking fee</CardTitle>
-            <CardDescription>
-              {fee
-                ? `Leave both blank for the site default, ${formatNZD(fee.fixedCents)} + ${fee.percentBp / 100}%.`
-                : "Leave both blank for the site default."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
-            <Field
-              id="event-fee-fixed"
-              label="Fixed, per ticket"
-              error={errors.feeFixed}
-            >
-              <Input
-                id="event-fee-fixed"
-                inputMode="decimal"
-                placeholder={fee ? (fee.fixedCents / 100).toFixed(2) : "0.00"}
-                value={draft.feeFixed}
-                onChange={(e) => update("feeFixed", e.target.value)}
-              />
-            </Field>
-            <Field
-              id="event-fee-percent"
-              label="Percent of subtotal"
-              error={errors.feePercent}
-            >
-              <Input
-                id="event-fee-percent"
-                inputMode="decimal"
-                placeholder={fee ? (fee.percentBp / 100).toString() : "0"}
-                value={draft.feePercent}
-                onChange={(e) => update("feePercent", e.target.value)}
               />
             </Field>
           </CardContent>

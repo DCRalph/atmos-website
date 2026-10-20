@@ -11,28 +11,19 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import {
-  breakEvenTickets,
-  planRevenuePerTicketCents,
-  unsoldRevenueCents,
-} from "~/lib/ticketing/break-even";
-import {
-  formatNZD,
-  parsePriceToCents,
-  venueFeePerTicketCents,
-  ZERO_BOOKING_FEE,
-} from "~/lib/ticketing/money";
+import { formatNZD, venueFeePerTicketCents } from "~/lib/ticketing/money";
 import { cn } from "~/lib/utils";
-import { newCost, parseCount, type AdminEvent, type CostDraft } from "./draft";
+import { newCost, type AdminEvent, type CostDraft } from "./draft";
 import type { EventDraftState } from "./use-event-draft";
+import { sellOutPlan } from "./sell-out";
 import { Field, Toggle } from "./fields";
 
 /**
- * What the night costs to put on. Venue hire comes first, because it can be
- * passed on to buyers; everything else is internal, and only feeds profit and
- * break even on Overview. The summary here runs off the draft, so it moves as
- * prices and costs are typed. Campaign spend is saved on its own tab and only
- * added in.
+ * What the night costs to put on, and the fees buyers pay on top. Venue hire
+ * and the booking fee come first, because buyers see them; everything else is
+ * internal, and only feeds profit and break even on Overview. The summary
+ * runs off the draft (see `sellOutPlan`), so it moves as prices and costs are
+ * typed.
  */
 export function CostsSection({
   state,
@@ -43,68 +34,20 @@ export function CostsSection({
 }) {
   const { draft, update, errors } = state;
 
-  const hireCents = parsePriceToCents(draft.venueHire) ?? 0;
-  const capacity = parseCount(draft.capacity);
-  const venueFee = venueFeePerTicketCents({
-    venueHireCents: hireCents,
-    passVenueHire: draft.passVenueHire,
+  const {
     capacity,
-  });
-  const otherCents = draft.costs.reduce(
-    (sum, cost) => sum + (parsePriceToCents(cost.amount) ?? 0),
-    0,
-  );
-  // Saved on the Campaigns tab, not part of this draft.
-  const campaignCents =
-    event?.campaigns.reduce((sum, campaign) => sum + campaign.spendCents, 0) ??
-    0;
-  const totalCents = hireCents + otherCents + campaignCents;
-
-  // The booking fee as the draft would charge it: its own override, or the
-  // site default when both fields are blank.
-  const fee =
-    draft.feeFixed.trim() || draft.feePercent.trim()
-      ? {
-          fixedCents: parsePriceToCents(draft.feeFixed) ?? 0,
-          percentBp: Math.round((Number(draft.feePercent) || 0) * 100),
-        }
-      : (event?.siteDefaults.bookingFee ?? ZERO_BOOKING_FEE);
-  const tiers = draft.tiers
-    .filter((tier) => tier.isActive)
-    .map((tier) => ({
-      priceCents: parsePriceToCents(tier.price) ?? 0,
-      allocation: Number(tier.allocation) || 0,
-      groupSize: Number(tier.groupSize) || 1,
-      // The plan, as if nothing had sold yet.
-      soldCount: 0,
-    }));
-  const perTicket = planRevenuePerTicketCents({
-    tiers,
-    fee,
-    venueFeePerTicket: venueFee,
-  });
-  const breakEven = breakEvenTickets(totalCents, perTicket);
-
-  // A sell-out is every tier gone, but never past the room less its comps.
-  const planned = tiers.reduce((sum, tier) => sum + tier.allocation, 0);
-  const sellable =
-    capacity === null
-      ? planned
-      : Math.min(
-          planned,
-          Math.max(0, capacity - (parseCount(draft.compAllowance) ?? 0)),
-        );
-  // Each tier at its own price, so a plan bigger than the room loses its
-  // last tiers rather than an average ticket.
-  const sellOutRevenue =
-    perTicket === null
-      ? null
-      : unsoldRevenueCents({
-          tiers,
-          fee,
-          venueFeePerTicket: venueFee,
-          maxTickets: sellable,
-        });
+    siteFee,
+    venueFee,
+    hireCents,
+    otherCents,
+    campaignCents,
+    costsCents: totalCents,
+    perTicket,
+    breakEven,
+    sellable,
+    revenue,
+  } = sellOutPlan(draft, event);
+  const sellOutRevenue = perTicket === null ? null : revenue.totalCents;
 
   const setCosts = (costs: CostDraft[]) => update("costs", costs);
   const patchCost = (key: string, patch: Partial<CostDraft>) =>
@@ -170,6 +113,47 @@ export function CostsSection({
               onChange={(value) => update("passVenueHire", value)}
             />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Booking fee</CardTitle>
+          <CardDescription>
+            {siteFee
+              ? `Leave both blank for the site default, ${formatNZD(siteFee.fixedCents)} + ${siteFee.percentBp / 100}%.`
+              : "Leave both blank for the site default."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-4">
+          <Field
+            id="event-fee-fixed"
+            label="Fixed, per ticket"
+            error={errors.feeFixed}
+          >
+            <Input
+              id="event-fee-fixed"
+              inputMode="decimal"
+              placeholder={
+                siteFee ? (siteFee.fixedCents / 100).toFixed(2) : "0.00"
+              }
+              value={draft.feeFixed}
+              onChange={(e) => update("feeFixed", e.target.value)}
+            />
+          </Field>
+          <Field
+            id="event-fee-percent"
+            label="Percent of subtotal"
+            error={errors.feePercent}
+          >
+            <Input
+              id="event-fee-percent"
+              inputMode="decimal"
+              placeholder={siteFee ? (siteFee.percentBp / 100).toString() : "0"}
+              value={draft.feePercent}
+              onChange={(e) => update("feePercent", e.target.value)}
+            />
+          </Field>
         </CardContent>
       </Card>
 

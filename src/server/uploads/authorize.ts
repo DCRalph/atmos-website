@@ -70,6 +70,7 @@ const resolvers: Record<UploadPresetName, Resolver> = {
   ticketEventPoster: async () => ({}),
   ticketPassImage: async () => ({}),
   crewPhoto: async () => ({}),
+  venueLogo: async () => ({}),
   artistAvatar: resolveProfile,
   artistBanner: resolveProfile,
   artistThemeBackground: resolveProfile,

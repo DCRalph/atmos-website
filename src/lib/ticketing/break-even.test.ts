@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   breakEvenTickets,
   planRevenuePerTicketCents,
-  unsoldRevenueCents,
+  sellOutBreakdown,
 } from "./break-even";
 
 describe("break even", () => {
@@ -48,13 +48,51 @@ describe("break even", () => {
     const fee = { fixedCents: 0, percentBp: 0 };
     // 49 at $12 and 32 at $20.
     assert.equal(
-      unsoldRevenueCents({ tiers, fee, venueFeePerTicket: 0, maxTickets: 81 }),
+      sellOutBreakdown({ tiers, fee, venueFeePerTicket: 0, maxTickets: 81 })
+        .totalCents,
       122_800,
     );
     // Only 60 fit in the room: the 49 dearer tickets, then 11 at the door.
     assert.equal(
-      unsoldRevenueCents({ tiers, fee, venueFeePerTicket: 0, maxTickets: 60 }),
+      sellOutBreakdown({ tiers, fee, venueFeePerTicket: 0, maxTickets: 60 })
+        .totalCents,
       80_800,
+    );
+  });
+
+  test("splits each tier into tickets, booking fees and venue fees", () => {
+    const { tiers, ...total } = sellOutBreakdown({
+      tiers: [
+        { priceCents: 2500, allocation: 50, groupSize: 1, soldCount: 0 },
+        // $100 for four, so 8 tickets are 2 purchases.
+        { priceCents: 10_000, allocation: 8, groupSize: 4, soldCount: 0 },
+        { priceCents: 0, allocation: 10, groupSize: 1, soldCount: 0 },
+      ],
+      fee: { fixedCents: 150, percentBp: 300 },
+      venueFeePerTicket: 800,
+      maxTickets: 1000,
+    });
+    // $1.50 + 3% of $25 = $2.25 a ticket.
+    assert.deepEqual(tiers[0], {
+      priceCents: 2500,
+      allocation: 50,
+      groupSize: 1,
+      soldCount: 0,
+      tickets: 50,
+      ticketCents: 125_000,
+      bookingFeeCents: 11_250,
+      venueFeeCents: 40_000,
+      totalCents: 176_250,
+    });
+    // Per purchase: $1.50 × 4 + 3% of $100 = $9.00.
+    assert.equal(tiers[1]?.bookingFeeCents, 1800);
+    // Free tickets count toward the room but carry no fees.
+    assert.equal(tiers[2]?.tickets, 10);
+    assert.equal(tiers[2]?.totalCents, 0);
+    assert.equal(total.tickets, 68);
+    assert.equal(
+      total.totalCents,
+      total.ticketCents + total.bookingFeeCents + total.venueFeeCents,
     );
   });
 });

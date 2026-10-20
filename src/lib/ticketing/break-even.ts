@@ -33,40 +33,84 @@ export function planRevenuePerTicketCents({
   return tickets > 0 ? Math.round(cents / tickets) : null;
 }
 
+/** One tier's share of `sellOutBreakdown`, in cents. */
+export type SellOutTier = {
+  tickets: number;
+  ticketCents: number;
+  bookingFeeCents: number;
+  venueFeeCents: number;
+  totalCents: number;
+};
+
 /**
- * What the tickets still on sale would bring in, each at its own tier's price
- * and fees. Tiers are taken in order and stop at `maxTickets`, the room left
- * once comps are kept back, so a plan bigger than the room loses its last
- * tiers first. Pricing what's left by its own tier matters: the cheap early
- * tiers sell first, so the average so far undersells the rest.
+ * What the tickets still on sale would bring in, tier by tier and split into
+ * ticket money, booking fees and venue fees. Tiers are taken in order and stop
+ * at `maxTickets`, the room left once comps are kept back, so a plan bigger
+ * than the room loses its last tiers first. Pricing what's left by its own
+ * tier matters: the cheap early tiers sell first, so the average so far
+ * undersells the rest. Each tier in the result keeps its input fields.
  */
-export function unsoldRevenueCents({
+export function sellOutBreakdown<
+  Tier extends {
+    priceCents: number;
+    allocation: number;
+    groupSize: number;
+    soldCount: number;
+  },
+>({
   tiers,
   fee,
   venueFeePerTicket,
   maxTickets,
 }: {
-  tiers: {
-    priceCents: number;
-    allocation: number;
-    groupSize: number;
-    soldCount: number;
-  }[];
+  tiers: Tier[];
   fee: BookingFeeConfig;
   venueFeePerTicket: number;
   maxTickets: number;
-}): number {
+}): SellOutTier & { tiers: (Tier & SellOutTier)[] } {
   let room = Math.max(0, maxTickets);
-  let cents = 0;
-  for (const tier of tiers) {
+  const rows = tiers.map((tier): Tier & SellOutTier => {
     const tickets = Math.min(
       room,
       Math.max(0, tier.allocation - tier.soldCount),
     );
     room -= tickets;
-    cents += tickets * ticketCents(tier, fee, venueFeePerTicket);
-  }
-  return Math.round(cents);
+    // Free tickets carry no fees, exactly as checkout charges them.
+    if (tier.priceCents <= 0) {
+      return {
+        ...tier,
+        tickets,
+        ticketCents: 0,
+        bookingFeeCents: 0,
+        venueFeeCents: 0,
+        totalCents: 0,
+      };
+    }
+    const purchases = tickets / tier.groupSize;
+    const ticketCents = Math.round(purchases * tier.priceCents);
+    const bookingFeeCents = Math.round(
+      purchases * calcBookingFeeCents(tier.priceCents, tier.groupSize, fee),
+    );
+    const venueFeeCents = Math.round(tickets * venueFeePerTicket);
+    return {
+      ...tier,
+      tickets,
+      ticketCents,
+      bookingFeeCents,
+      venueFeeCents,
+      totalCents: ticketCents + bookingFeeCents + venueFeeCents,
+    };
+  });
+  const sum = (key: keyof SellOutTier) =>
+    rows.reduce((total, row) => total + row[key], 0);
+  return {
+    tiers: rows,
+    tickets: sum("tickets"),
+    ticketCents: sum("ticketCents"),
+    bookingFeeCents: sum("bookingFeeCents"),
+    venueFeeCents: sum("venueFeeCents"),
+    totalCents: sum("totalCents"),
+  };
 }
 
 /**

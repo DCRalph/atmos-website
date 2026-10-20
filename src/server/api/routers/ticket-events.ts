@@ -60,6 +60,7 @@ import { enforceRateLimit } from "~/server/ticketing/rate-limit";
 import { scheduleEventPassUpdates } from "~/server/wallet/apple-push";
 import { eventHasPassVisibleChange } from "~/server/wallet/pass-updates";
 import type { SerializedEditorState } from "lexical";
+import { venueColumns } from "~/server/api/routers/venues";
 
 /**
  * Admin CRUD for ticketed events, their tiers, and door staff assignments,
@@ -146,6 +147,8 @@ const eventInputSchema = z.object({
   shortDescription: z.string().trim().max(300).nullable().optional(),
   descriptionLexical: LEXICAL_STATE_SCHEMA.nullable().optional(),
   posterFileUploadId: z.string().nullable().optional(),
+  /** A saved venue. When given, its name and address win over the two below. */
+  venueId: z.string().nullable().optional(),
   venueName: z.string().trim().nullable().optional(),
   venueAddress: z.string().trim().nullable().optional(),
   timezone: z.string().trim().default("Pacific/Auckland"),
@@ -350,6 +353,9 @@ export const ticketEventsRouter = createTRPCRouter({
               posterFileUploadId: true,
             },
           },
+          venue: {
+            select: { id: true, name: true, address: true, logoFileId: true },
+          },
           tiers: { orderBy: { sortOrder: "asc" } },
           staff: true,
           costs: { orderBy: { sortOrder: "asc" } },
@@ -493,6 +499,7 @@ export const ticketEventsRouter = createTRPCRouter({
             posterFileUploadId: input.posterFileUploadId ?? null,
             venueName: input.venueName ?? null,
             venueAddress: input.venueAddress ?? null,
+            ...(input.venueId ? await venueColumns(tx, input.venueId) : {}),
             timezone: input.timezone,
             doorsAt: input.doorsAt ?? null,
             startsAt: input.startsAt,
@@ -641,6 +648,8 @@ export const ticketEventsRouter = createTRPCRouter({
             ...(rest.venueAddress !== undefined
               ? { venueAddress: rest.venueAddress }
               : {}),
+            ...(rest.venueId === null ? { venueId: null } : {}),
+            ...(rest.venueId ? await venueColumns(tx, rest.venueId) : {}),
             ...(rest.timezone !== undefined ? { timezone: rest.timezone } : {}),
             ...(rest.doorsAt !== undefined ? { doorsAt: rest.doorsAt } : {}),
             ...(rest.startsAt !== undefined ? { startsAt: rest.startsAt } : {}),
@@ -921,6 +930,7 @@ export const ticketEventsRouter = createTRPCRouter({
           shortDescription: source.shortDescription,
           descriptionLexical: source.descriptionLexical ?? Prisma.JsonNull,
           posterFileUploadId: source.posterFileUploadId,
+          venueId: source.venueId,
           venueName: source.venueName,
           venueAddress: source.venueAddress,
           timezone: source.timezone,
