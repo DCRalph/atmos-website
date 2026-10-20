@@ -17,6 +17,7 @@ import {
   VISIT,
 } from "~/server/ticketing/order-sql";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
+import { sumDoorTotals } from "~/lib/ticketing/door-totals";
 import { pastEventsPace } from "~/server/ticketing/lead-time";
 import { checkoutJourney } from "~/server/ticketing/journey";
 import { declineReport } from "~/server/ticketing/declines";
@@ -111,6 +112,8 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           capacity: true,
           timezone: true,
           startsAt: true,
+          endsAt: true,
+          doorTotals: true,
           salesCloseAt: true,
           gstRateBp: true,
           bookingFeeFixedCents: true,
@@ -255,7 +258,9 @@ export const ticketAnalyticsRouter = createTRPCRouter({
         ctx.db.ticketEventView.count({ where: { eventId: event.id } }),
       ]);
 
-      const grossCents = money._sum.totalCents ?? 0;
+      const offPlatform = sumDoorTotals(event.doorTotals);
+      const grossCents =
+        (money._sum.totalCents ?? 0) + offPlatform.revenueCents;
       const refundedCents = money._sum.refundedCents ?? 0;
 
       const allocation = event.tiers.reduce((s, t) => s + t.allocation, 0);
@@ -268,7 +273,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
       // Profit and break even. A ticket is worth what sold ones have averaged,
       // net of refunds; before the first sale, what the tier plan would bring.
       const netCents = grossCents - refundedCents;
-      const sold = ticketsIssued - comps.issued;
+      const sold = ticketsIssued - comps.issued + offPlatform.tickets;
       const venueHireCents = event.venueHireCents ?? 0;
       const otherCostsCents = event.costs.reduce(
         (sum, cost) => sum + cost.amountCents,
@@ -317,12 +322,14 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           name: event.name,
           timezone: event.timezone,
           startsAt: event.startsAt,
+          endsAt: event.endsAt,
           capacity,
         },
         money: {
           grossCents,
           refundedCents,
           netCents,
+          offPlatformCents: offPlatform.revenueCents,
           faceValueCents: money._sum.subtotalCents ?? 0,
           discountCents: money._sum.discountCents ?? 0,
           bookingFeeCents: money._sum.bookingFeeCents ?? 0,
@@ -353,7 +360,11 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           notArrived: Math.max(0, ticketsIssued - admitted),
           capacity,
           percentSold:
-            capacity > 0 ? Math.round((ticketsIssued / capacity) * 100) : 0,
+            capacity > 0
+              ? Math.round(
+                  ((ticketsIssued + offPlatform.tickets) / capacity) * 100,
+                )
+              : 0,
           attendanceRate:
             ticketsIssued > 0
               ? Math.round((admitted / ticketsIssued) * 100)
@@ -372,8 +383,10 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           compAllowance: comps.allowance,
           compsAdmitted: comps.admitted,
           handoutsUnsent: comps.handouts.unsent,
-          sold: ticketsIssued - comps.issued,
+          sold,
+          offPlatform: offPlatform.tickets,
         },
+        doorTotals: event.doorTotals,
         comps,
         tiers: moveUnsoldToDoor(
           event.tiers,
@@ -439,6 +452,32 @@ export const ticketAnalyticsRouter = createTRPCRouter({
         GROUP BY 1
         ORDER BY 1 ASC
       `;
+
+      // A final tally has no per-sale timestamps. Attribute it to the event,
+      // not the day an administrator happened to record or correct it.
+      const doorTotals = await ctx.db.eventDoorTotals.findUnique({
+        where: { eventId: input.eventId },
+      });
+      const offPlatform = sumDoorTotals(doorTotals);
+      if (offPlatform.tickets > 0 || offPlatform.revenueCents > 0) {
+        const at = floorHour(event.startsAt);
+        if (!window || at <= window.until) {
+          const existing = hours.find(
+            (hour) => hour.at.getTime() === at.getTime(),
+          );
+          if (existing) {
+            existing.tickets += offPlatform.tickets;
+            existing.revenue_cents += offPlatform.revenueCents;
+          } else {
+            hours.push({
+              at,
+              tickets: offPlatform.tickets,
+              revenue_cents: offPlatform.revenueCents,
+            });
+            hours.sort((a, b) => a.at.getTime() - b.at.getTime());
+          }
+        }
+      }
 
       const baseline = { tickets: 0, revenueCents: 0 };
       const rows: { at: Date; tickets: number; revenueCents: number }[] = [];

@@ -839,7 +839,18 @@ function EventsTable({ rows }: { rows: EventRow[] }) {
       align: "right",
       sortable: true,
       accessor: (row) => row.sold,
-      cell: (row) => `${row.sold} / ${row.capacity} · ${row.percentSold}%`,
+      cell: (row) => (
+        <div>
+          <p>
+            {row.sold} / {row.capacity} · {row.percentSold}%
+          </p>
+          {row.offPlatform.tickets > 0 ? (
+            <p className="text-muted-foreground text-xs">
+              {row.offPlatform.tickets} off-platform
+            </p>
+          ) : null}
+        </div>
+      ),
     },
     {
       id: "net",
@@ -848,7 +859,16 @@ function EventsTable({ rows }: { rows: EventRow[] }) {
       align: "right",
       sortable: true,
       accessor: (row) => row.netCents,
-      cell: (row) => money(row.netCents),
+      cell: (row) => (
+        <div>
+          <p>{money(row.netCents)}</p>
+          {row.offPlatform.revenueCents > 0 ? (
+            <p className="text-muted-foreground text-xs">
+              {money(row.offPlatform.revenueCents)} off-platform
+            </p>
+          ) : null}
+        </div>
+      ),
     },
     {
       id: "costs",

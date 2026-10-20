@@ -57,6 +57,7 @@ import {
 import { ADMITTING_RESULTS, admissionStates } from "~/server/ticketing/scan";
 import { logActivity } from "~/server/utils/activity-log";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
+import { doorTotalsSchema } from "~/lib/ticketing/door-totals";
 import { ticketCount } from "~/lib/ticketing/capacity";
 import {
   accessLevelCode,
@@ -138,6 +139,36 @@ async function cancelUnpaidPayment(paymentIntentId: string | null) {
 }
 
 export const ticketAdminRouter = createTRPCRouter({
+  /** Replace the final tally; recording money never invokes checkout or email. */
+  saveDoorTotals: adminProcedure
+    .input(doorTotalsSchema.and(z.object({ eventId: z.string() })))
+    .mutation(async ({ ctx, input }) => {
+      const event = await ctx.db.ticketEvent.findUnique({
+        where: { id: input.eventId },
+        select: { startsAt: true, endsAt: true },
+      });
+      if (!event) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+      }
+      if ((event.endsAt ?? event.startsAt).getTime() > Date.now()) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Record final door totals after the event.",
+        });
+      }
+      const { eventId, ...totals } = input;
+      const data = {
+        ...totals,
+        notes: totals.notes || null,
+        updatedByUserId: ctx.user.id,
+      };
+      return ctx.db.eventDoorTotals.upsert({
+        where: { eventId },
+        create: { eventId, ...data },
+        update: data,
+      });
+    }),
+
   orders: eventOrganiserProcedure
     .input(
       z.object({

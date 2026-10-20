@@ -27,6 +27,7 @@ import {
 import { toCsv } from "~/lib/csv";
 import { eventDayKey } from "~/lib/ticketing/dates";
 import { formatNZD } from "~/lib/ticketing/money";
+import { sumDoorTotals } from "~/lib/ticketing/door-totals";
 
 /**
  * Analytics across events: the admin Analytics page. Where the event
@@ -113,6 +114,7 @@ async function eventRows(db: Prisma.TransactionClient, input: ScopeInput) {
         timezone: true,
         capacity: true,
         venueHireCents: true,
+        doorTotals: true,
         tiers: {
           select: {
             priceCents: true,
@@ -225,8 +227,9 @@ async function eventRows(db: Prisma.TransactionClient, input: ScopeInput) {
     const capacity = event.capacity ?? allocation;
     const issued = t?.issued ?? 0;
     const comped = t?.comped ?? 0;
-    const sold = issued - comped;
-    const netCents = o?.netCents ?? 0;
+    const offPlatform = sumDoorTotals(event.doorTotals);
+    const sold = issued - comped + offPlatform.tickets;
+    const netCents = (o?.netCents ?? 0) + offPlatform.revenueCents;
     const campaignSpendCents = event.campaigns.reduce(
       (sum, campaign) => sum + campaign.spendCents,
       0,
@@ -253,7 +256,8 @@ async function eventRows(db: Prisma.TransactionClient, input: ScopeInput) {
       sold,
       comped,
       /** Of the room, comps included: the same figure as the event page. */
-      percentSold: percent(issued, capacity) ?? 0,
+      percentSold: percent(issued + offPlatform.tickets, capacity) ?? 0,
+      offPlatform,
       netCents,
       costsCents,
       profitCents: netCents - costsCents,
@@ -393,10 +397,21 @@ export const analyticsRouter = createTRPCRouter({
       ctx.db.$queryRaw<({ month: Date } & Measured)[]>`
         SELECT
           date_trunc('month', s.local) AS month,
-          COUNT(*)::int AS orders,
+          SUM(s.orders)::int AS orders,
           SUM(s.tickets)::int AS tickets,
           SUM(s."revenueCents")::int AS "revenueCents"
-        FROM (${sales}) s
+        FROM (
+          SELECT local, 1 AS orders, tickets, "revenueCents" FROM (${sales}) platform
+          UNION ALL
+          SELECT
+            e."startsAt" AT TIME ZONE e.timezone AS local,
+            0 AS orders,
+            d."cashTickets" + d."eftposTickets" AS tickets,
+            d."cashCents" + d."eftposCents" AS "revenueCents"
+          FROM "event_door_totals" d
+          JOIN "ticket_event" e ON e.id = d."eventId"
+          WHERE ${scope}
+        ) s
         GROUP BY 1
         ORDER BY 1 ASC
       `,

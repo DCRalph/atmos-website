@@ -1646,6 +1646,7 @@ model TicketEvent {
   updatedAt DateTime @updatedAt
 
   tiers         TicketTier[]
+  doorTotals    EventDoorTotals?
   orders        TicketOrder[]
   tickets       Ticket[]
   scans         TicketScan[]
@@ -1664,6 +1665,25 @@ model TicketEvent {
   @@index([posterFileUploadId])
   @@index([venueId])
   @@map("ticket_event")
+}
+
+/// Final off-platform takings, replaced on correction. Never issues tickets
+/// or changes tier inventory; sales belong to the related event's date.
+model EventDoorTotals {
+  eventId String      @id
+  event   TicketEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  cashTickets   Int @default(0)
+  cashCents     Int @default(0)
+  eftposTickets Int @default(0)
+  eftposCents   Int @default(0)
+  notes         String?
+
+  updatedByUserId String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("event_door_totals")
 }
 
 /// Anything else the night costs to put on, besides venue hire. Internal only:

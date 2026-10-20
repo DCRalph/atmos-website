@@ -39,6 +39,7 @@ import {
   WeekHeatmap,
 } from "./charts";
 import { CheckoutJourney } from "./checkout-journey";
+import { DoorTotalsPanel } from "./door-totals-panel";
 import { DeclinesCard, NoTicketsAlert, type OrderHref } from "./declines-card";
 
 type Overview = RouterOutputs["ticketAnalytics"]["overview"];
@@ -60,11 +61,13 @@ export function EventOverview({
   eventId,
   liveHref = `/admin/events/${eventId}/live?mode=sales`,
   ordersHref = `/admin/events/${eventId}?section=orders`,
+  canRecordDoorTotals = false,
 }: {
   eventId: string;
   liveHref?: string;
   /** This event's Orders; an order's dialog opens from `&order=`. */
   ordersHref?: string;
+  canRecordDoorTotals?: boolean;
 }) {
   const [range, setRange] = useState<AnalyticsRange>("all");
   const [measure, setMeasure] = useState<Measure>("tickets");
@@ -132,15 +135,17 @@ export function EventOverview({
             label: "Net revenue",
             value: formatNZD(money.netCents),
             sub:
-              money.refundedCents > 0
-                ? `${formatNZD(money.grossCents)} gross · ${formatNZD(money.refundedCents)} refunded`
-                : undefined,
+              counts.offPlatform > 0
+                ? `Includes ${formatNZD(money.offPlatformCents)} off-platform`
+                : money.refundedCents > 0
+                  ? `${formatNZD(money.grossCents)} gross · ${formatNZD(money.refundedCents)} refunded`
+                  : undefined,
             accent: "revenue",
           },
           {
             label: "Tickets sold",
             value: String(counts.sold),
-            sub: `${counts.percentSold}% of ${counts.capacity} · ${counts.ticketsIssued} in the room`,
+            sub: `${counts.percentSold}% of ${counts.capacity}${counts.offPlatform > 0 ? ` · ${counts.offPlatform} off-platform` : ` · ${counts.ticketsIssued} issued`}`,
           },
           // Next to sold rather than buried in the comps tab: the front page
           // of an event should read "240 sold, 20 comped, 40 left".
@@ -167,6 +172,16 @@ export function EventOverview({
           },
         ]}
       />
+
+      {canRecordDoorTotals &&
+      (event.endsAt ?? event.startsAt).getTime() <= Date.now() ? (
+        <DoorTotalsPanel
+          key={eventId}
+          eventId={eventId}
+          totals={overview.data.doorTotals}
+          timezone={timeZone}
+        />
+      ) : null}
 
       <Profit
         costs={costs}
@@ -623,6 +638,12 @@ function MoneyBreakdown({ money }: { money: Overview["money"] }) {
     <ChartCard title="Where the money went">
       <dl className="space-y-1 text-sm">
         <Row label="Tickets" value={formatNZD(money.faceValueCents)} />
+        {money.offPlatformCents > 0 ? (
+          <Row
+            label="Off-platform door sales"
+            value={formatNZD(money.offPlatformCents)}
+          />
+        ) : null}
         {money.discountCents > 0 && (
           <Row label="Discounts" value={`−${formatNZD(money.discountCents)}`} />
         )}

@@ -2,6 +2,7 @@ import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { sumDoorTotals } from "~/lib/ticketing/door-totals";
 
 import { env } from "~/env";
 import {
@@ -324,12 +325,15 @@ export const ticketEventsRouter = createTRPCRouter({
             },
           },
           _count: { select: { tickets: true } },
+          doorTotals: true,
         },
       });
 
       return events.map((event) => {
         const allocation = event.tiers.reduce((s, t) => s + t.allocation, 0);
-        const sold = event.tiers.reduce((s, t) => s + t.soldCount, 0);
+        const sold =
+          event.tiers.reduce((s, t) => s + t.soldCount, 0) +
+          sumDoorTotals(event.doorTotals).tickets;
         return {
           ...event,
           totalAllocation: event.capacity ?? allocation,

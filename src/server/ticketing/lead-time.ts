@@ -7,7 +7,7 @@ import { BOUGHT_ORDER } from "./order-sql";
  * Sales by whole days before doors, per event: the rows under the analytics
  * page's "how far out they buy" and the pace line on an event's sales curve.
  *
- * `where` is over `ticket_event e` and `ticket_order o`. Revenue is ticket
+ * `where` is over `ticket_event e`. Revenue is ticket
  * face value as paid, the same as the sales curve; comps count for nothing.
  */
 export async function salesByDaysOut(
@@ -26,6 +26,16 @@ export async function salesByDaysOut(
     JOIN "ticket" t ON t."orderId" = o.id AND t."isComp" = false
     WHERE ${where} AND ${BOUGHT_ORDER}
     GROUP BY 1, 2
+    UNION ALL
+    SELECT
+      e.id AS "eventId",
+      0 AS days,
+      0 AS orders,
+      d."cashTickets" + d."eftposTickets" AS tickets,
+      d."cashCents" + d."eftposCents" AS "revenueCents"
+    FROM "event_door_totals" d
+    JOIN "ticket_event" e ON e.id = d."eventId"
+    WHERE ${where} AND (d."cashTickets" + d."eftposTickets") > 0
     ORDER BY 2 DESC
   `;
 }
