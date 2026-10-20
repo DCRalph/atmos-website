@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import {
   FaInstagram,
   FaSoundcloud,
@@ -7,7 +8,6 @@ import {
   FaYoutube,
 } from "react-icons/fa6";
 import { SOCIALS } from "~/lib/site-constants";
-import { primaryNav, secondaryNav } from "./nav";
 import { AtmosLogo } from "./ui";
 
 const footerSocials = [
@@ -19,9 +19,8 @@ const footerSocials = [
 ];
 
 /**
- * Public site footer: brand, socials, every page and the legal links, all in
- * one block with the oversized logo watermarked behind it, cropped by the
- * bottom edge.
+ * Centered brand, socials, legal links and login, with the oversized logo
+ * watermarked behind them and cropped by the bottom edge.
  */
 export function SiteFooter() {
   return (
@@ -32,58 +31,56 @@ export function SiteFooter() {
       >
         <AtmosLogo className="w-full" />
       </div>
-      <div className="grid gap-10 px-5 pt-12 pb-12 md:px-10 md:pb-14 lg:grid-cols-[1fr_auto]">
-        <div>
-          <AtmosLogo className="w-40" />
-          <div className="mt-6 -ml-3 flex gap-1">
-            {footerSocials.map(({ label, href, Icon }) => (
-              <a
-                key={label}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={label}
-                className="flex size-11 items-center justify-center rounded-full text-white/65 transition-colors hover:bg-white/10 hover:text-white"
-              >
-                <Icon className="size-[18px]" />
-              </a>
-            ))}
-          </div>
-          <p className="mt-6 text-[12px] text-white/50">
-            © {new Date().getFullYear()} ATMOS. All rights reserved.
-          </p>
+      <div className="flex flex-col items-center px-5 pt-9 pb-7 text-center md:px-10 md:pt-12 md:pb-9">
+        <AtmosLogo className="w-48 md:w-56" />
+        <div className="mt-6 flex justify-center gap-1">
+          {footerSocials.map(({ label, href, Icon }) => (
+            <a
+              key={label}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={label}
+              className="flex size-11 items-center justify-center rounded-full text-white/65 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <Icon className="size-[18px]" />
+            </a>
+          ))}
         </div>
-        <nav aria-label="Footer" className="space-y-8">
-          <ul className="grid grid-cols-2 gap-x-12 gap-y-4 sm:grid-cols-3">
+        <nav aria-label="Footer" className="mt-5">
+          <ul className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[12px] text-white/65">
             {[
-              ...primaryNav,
-              ...secondaryNav,
-              { label: "Tickets", href: "/events" },
+              { label: "Terms", href: "/legal/terms" },
+              { label: "Privacy", href: "/legal/privacy" },
             ].map((l) => (
               <li key={l.href}>
                 <Link
                   href={l.href}
-                  className="t-label text-[12px] text-white/75 hover:text-white"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center hover:text-white"
                 >
                   {l.label}
                 </Link>
               </li>
             ))}
-          </ul>
-          <ul className="flex flex-wrap gap-x-6 gap-y-2 text-[12px] text-white/55">
-            {[
-              { label: "Terms", href: "/legal/terms" },
-              { label: "Privacy", href: "/legal/privacy" },
-              { label: "Login", href: "/login" },
-            ].map((l) => (
-              <li key={l.href}>
-                <Link href={l.href} className="hover:text-white">
-                  {l.label}
-                </Link>
-              </li>
-            ))}
+            <li>
+              <Link
+                href="/login"
+                className="group t-label hover:text-site-accent-text focus-visible:text-site-accent-text active:bg-site-accent active:text-site-accent-ink inline-flex min-h-11 items-center justify-center gap-3 px-1.5 text-[11px] text-white motion-safe:transition-[color,background-color,transform] motion-safe:duration-150 motion-safe:active:scale-[0.98]"
+              >
+                <span className="after:bg-site-accent relative after:absolute after:inset-x-0 after:-bottom-1.5 after:h-px after:origin-left after:scale-x-0 group-hover:after:scale-x-100 group-focus-visible:after:scale-x-100 motion-safe:after:transition-transform motion-safe:after:duration-150">
+                  Login
+                </span>
+                <ArrowRight
+                  aria-hidden
+                  className="size-4 motion-safe:transition-transform motion-safe:duration-150 motion-safe:group-hover:translate-x-[3px] motion-safe:group-focus-visible:translate-x-[3px]"
+                />
+              </Link>
+            </li>
           </ul>
         </nav>
+        <p className="mt-2.5 text-[11px] text-white/60 md:text-[12px]">
+          © {new Date().getFullYear()} ATMOS. All rights reserved.
+        </p>
       </div>
     </footer>
   );

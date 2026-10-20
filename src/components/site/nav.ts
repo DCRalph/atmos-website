@@ -1,4 +1,4 @@
-/** Public site navigation, shared by the header, mobile menu and footer. */
+/** Public site navigation, shared by the header and mobile menu. */
 export const primaryNav = [
   { label: "Gigs", href: "/gigs" },
   { label: "Content", href: "/content" },
