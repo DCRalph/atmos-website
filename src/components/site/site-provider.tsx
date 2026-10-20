@@ -7,6 +7,9 @@ type SiteContext = {
   portalContainer: HTMLElement | null;
   cartOpen: boolean;
   setCartOpen: (open: boolean) => void;
+  /** Admin preference for the home list; kept while navigating the public site. */
+  showHiddenEvents: boolean;
+  setShowHiddenEvents: (show: boolean) => void;
 };
 
 const Context = createContext<SiteContext | null>(null);
@@ -23,8 +26,17 @@ export function SiteProvider({ children }: { children: ReactNode }) {
     null,
   );
   const [cartOpen, setCartOpen] = useState(false);
+  const [showHiddenEvents, setShowHiddenEvents] = useState(true);
   return (
-    <Context.Provider value={{ portalContainer, cartOpen, setCartOpen }}>
+    <Context.Provider
+      value={{
+        portalContainer,
+        cartOpen,
+        setCartOpen,
+        showHiddenEvents,
+        setShowHiddenEvents,
+      }}
+    >
       {children}
       <div ref={setPortalContainer} />
     </Context.Provider>

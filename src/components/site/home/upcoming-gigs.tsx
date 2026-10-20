@@ -16,6 +16,7 @@ import {
   nzDate,
 } from "./parts";
 import { OnNowChip, nightOf, useIsOnNow } from "../on-now";
+import { useSite } from "../site-provider";
 
 type UpcomingGig = RouterOutputs["gigs"]["getUpcoming"][number];
 
@@ -35,9 +36,16 @@ function groupByMonth(gigs: UpcomingGig[]) {
   return groups;
 }
 
-/** Every upcoming gig as month-grouped rows. Admins also see drafts, flagged. */
+/** Upcoming gigs, with flagged admin-only rows controlled by the account menu. */
 export function UpcomingGigs() {
   const upcoming = api.gigs.getUpcoming.useQuery();
+  const { data: user } = api.user.me.useQuery();
+  const { showHiddenEvents } = useSite();
+  const hideHiddenEvents =
+    user?.effectivePermissions.includes("ADMIN") && !showHiddenEvents;
+  const gigs = (upcoming.data ?? []).filter(
+    (gig) => !hideHiddenEvents || gigOffSiteNotice(gig) === null,
+  );
 
   return (
     <section
@@ -54,7 +62,7 @@ export function UpcomingGigs() {
         <ListSkeleton />
       ) : upcoming.isError ? (
         <SectionError what="gigs" onRetry={() => void upcoming.refetch()} />
-      ) : upcoming.data.length === 0 ? (
+      ) : gigs.length === 0 ? (
         <SectionEmpty>
           Nothing announced yet.{" "}
           <Link
@@ -66,7 +74,7 @@ export function UpcomingGigs() {
         </SectionEmpty>
       ) : (
         <div className="space-y-12">
-          {groupByMonth(upcoming.data).map(({ key, gigs }) => (
+          {groupByMonth(gigs).map(({ key, gigs }) => (
             <MonthGroup key={key} gigs={gigs} tba={key === "tba"} />
           ))}
         </div>

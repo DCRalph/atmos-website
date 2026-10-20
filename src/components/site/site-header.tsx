@@ -67,7 +67,7 @@ function AccountMenu({ className }: { className: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const utils = api.useUtils();
-  const { portalContainer } = useSite();
+  const { portalContainer, showHiddenEvents, setShowHiddenEvents } = useSite();
   const { data: user } = api.user.me.useQuery();
   const [open, setOpen] = useState(false);
   if (!user) return null;
@@ -203,6 +203,48 @@ function AccountMenu({ className }: { className: string }) {
             </ul>
           </nav>
           <div className="shrink-0 px-5 pt-6 pb-6 md:px-10">
+            {user.effectivePermissions.includes("ADMIN") ? (
+              <button
+                type="button"
+                role="switch"
+                aria-checked={showHiddenEvents}
+                aria-labelledby="home-event-visibility-label"
+                aria-describedby="home-event-visibility-description"
+                onClick={() => setShowHiddenEvents(!showHiddenEvents)}
+                className="group mb-6 ml-auto flex min-h-11 max-w-full items-center justify-end gap-4 text-right"
+              >
+                <span className="flex min-w-0 flex-col gap-1">
+                  <span
+                    id="home-event-visibility-label"
+                    className="group-hover:text-site-accent-text text-sm"
+                  >
+                    Show hidden / draft events
+                  </span>
+                  <span
+                    id="home-event-visibility-description"
+                    className="text-xs text-white/75"
+                  >
+                    Home screen only
+                  </span>
+                </span>
+                <span
+                  aria-hidden
+                  className={cn(
+                    "flex h-[22px] w-9 shrink-0 items-center rounded-full p-[3px]",
+                    showHiddenEvents ? "bg-site-accent" : "bg-white/25",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "size-4 rounded-full motion-safe:transition-transform",
+                      showHiddenEvents
+                        ? "translate-x-3.5 bg-black"
+                        : "bg-white",
+                    )}
+                  />
+                </span>
+              </button>
+            ) : null}
             <div data-account-details className="ml-auto w-fit max-w-full">
               <p className="text-base font-semibold wrap-anywhere">
                 {user.name ?? "Signed in"}
