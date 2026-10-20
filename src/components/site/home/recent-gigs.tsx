@@ -16,18 +16,14 @@ import {
   nzDate,
 } from "./parts";
 
-type RecentGig = RouterOutputs["homeGigs"]["getHomeRecent"]["pastGigs"][number];
+type RecentGig = RouterOutputs["homeGigs"]["getHomeRecent"][number];
 
 const cardClass = "w-[62vw] shrink-0 snap-start sm:w-[280px]";
 
-/** Admin-curated past gigs (featured first) as a horizontal poster rail. */
+/** Admin-curated past gigs as a horizontal poster rail. */
 export function RecentGigs() {
   const recent = api.homeGigs.getHomeRecent.useQuery();
-  const gigs = recent.data
-    ? [recent.data.featuredGig, ...recent.data.pastGigs].filter(
-        (g): g is RecentGig => g !== null,
-      )
-    : [];
+  const gigs = recent.data ?? [];
 
   if (recent.isPending)
     return (

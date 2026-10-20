@@ -56,7 +56,6 @@ const OVERRIDES: Partial<Record<string, Risk>> = {
   // Not named like an edit, but no more final than one.
   "gigs.setPosterFromUpload": "write",
   "homeGigs.setPlacements": "write",
-  "homeGigs.setAllPlacements": "write",
   "homeContent.setPlacements": "write",
   "homeContent.setAllPlacements": "write",
   "artistProfiles.saveLayout": "write",

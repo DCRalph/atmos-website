@@ -1,13 +1,33 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
+
+const HIDDEN_EVENTS_STORAGE_KEY = "atmos_show_hidden_events";
+
+const noSubscribe = () => () => {
+  // Toggle changes are handled by local React state.
+};
+
+function readSavedHiddenEvents() {
+  try {
+    return window.localStorage.getItem(HIDDEN_EVENTS_STORAGE_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}
 
 type SiteContext = {
   /** Overlays portal here, inside `.site`, so they keep its fonts and tokens. */
   portalContainer: HTMLElement | null;
   cartOpen: boolean;
   setCartOpen: (open: boolean) => void;
-  /** Admin preference for the home list; kept while navigating the public site. */
+  /** Admin preference for the home list; saved locally across visits. */
   showHiddenEvents: boolean;
   setShowHiddenEvents: (show: boolean) => void;
 };
@@ -26,7 +46,24 @@ export function SiteProvider({ children }: { children: ReactNode }) {
     null,
   );
   const [cartOpen, setCartOpen] = useState(false);
-  const [showHiddenEvents, setShowHiddenEvents] = useState(true);
+  // Restore after hydration; local state keeps the toggle usable if saving fails.
+  const savedHiddenEvents = useSyncExternalStore(
+    noSubscribe,
+    readSavedHiddenEvents,
+    () => true,
+  );
+  const [hiddenEventsOverride, setHiddenEvents] = useState<boolean>();
+  const showHiddenEvents = hiddenEventsOverride ?? savedHiddenEvents;
+
+  const setShowHiddenEvents = (show: boolean) => {
+    setHiddenEvents(show);
+    try {
+      window.localStorage.setItem(HIDDEN_EVENTS_STORAGE_KEY, String(show));
+    } catch {
+      // The toggle still works in memory when browser storage is unavailable.
+    }
+  };
+
   return (
     <Context.Provider
       value={{

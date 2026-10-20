@@ -4,22 +4,28 @@ Donation tracking uses the site's existing PostHog project and `/ph` proxy.
 There are no new credentials or database migrations. Data starts collecting
 when this code is deployed; it does not backfill past visits.
 
-## Reports to create in PostHog
+## Configured reports in PostHog
+
+The [Donation analytics dashboard](https://us.posthog.com/project/309967/dashboard/2228900)
+is configured in the `atmosmedia.co.nz` project. Reports use production
+visits and Pacific/Auckland time. See [the wider PostHog setup](POSTHOG-ANALYTICS.md)
+for site traffic, other actions, and tracking coverage.
 
 - **Visitors and visits:** count unique users of `donation_page_viewed` for
   people, and unique `page_view_id` values for visits. Filter by `gig_id` to
   inspect one gig. A confirmed Stripe return records a thank you rather than
   another visit to the donation form.
-- **Conversion and drop-off:** create a funnel with `donation_page_viewed`,
+- **Conversion and drop-off:** the funnel uses `donation_page_viewed`,
   `donation_checkout_started`, `donation_payment_submitted`, then
-  `donation_completed`. Hold `gig_id` and `page_view_id` constant and use a
-  one-day conversion window. PostHog's time-to-convert view shows how long
+  `donation_completed`. It counts visits by `page_view_id`, which belongs to
+  one gig, and uses a one-day conversion window. The time-to-convert report shows how long
   donors take. Amount selection is optional because the recommended amount
   starts selected.
 - **Time on page:** sum `visible_seconds_delta` from
   `donation_page_engagement` **per `page_view_id`**, then average or take the
   median of those visit totals. Include visits with a `donation_page_viewed`
-  event when measuring the donation form. Do not average cumulative
+  event when measuring the donation form; the saved report treats visits
+  without a recorded heartbeat as zero. Do not average cumulative
   `visible_seconds` across heartbeat events; longer visits emit more events.
 - **Traffic quality:** break the funnel down by `utm_source`, `utm_medium`,
   or `utm_campaign`. The browser events also carry PostHog's usual referrer,
@@ -28,7 +34,9 @@ when this code is deployed; it does not backfill past visits.
 - **Amounts and revenue:** use `donation_completed` with `amount_choice`
   (`recommended`, `suggested`, `custom`), `amount_cents`, `revenue` in dollars,
   and `currency`. Count unique `payment_id` for completed donations. These
-  are gross successful payments; refunds remain in the Donations admin totals.
+  are gross successful payments attributed to production visits. Both the
+  visit and payment must be in the selected range; refunds remain in the
+  Donations admin totals.
 - **Payment friction:** break `donation_payment_failed` down by `stage` and
   `error_code`. Compare `donation_wallets_available`,
   `donation_wallet_cancelled`, and `payment_method` on checkout starts with

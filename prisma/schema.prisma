@@ -42,11 +42,6 @@ enum ArtistBlockType {
   CUSTOM_EMBED
 }
 
-enum HomeGigSection {
-  FEATURED
-  PAST
-}
-
 enum HomeContentSection {
   FEATURED
   PAST
@@ -409,13 +404,8 @@ model Gig {
   /// When it first went live. Null while it is still a draft.
   publishedAt DateTime?
 
-  // Home/site ordering controls
-  // - `isFeatured`: whether this gig is eligible for the featured slot (used on home + can be reused elsewhere)
-  // - `featuredSortOrder`: lower shows earlier among featured gigs
-  // - `pastSortOrder`: lower shows earlier in past gigs lists
-  isFeatured        Boolean @default(false)
-  featuredSortOrder Int     @default(0)
-  pastSortOrder     Int     @default(0)
+  // Archive ordering; the home page uses HomeGigPlacement instead.
+  pastSortOrder Int @default(0)
 
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
@@ -833,18 +823,16 @@ model GigChatRead {
 }
 
 model HomeGigPlacement {
-  id        String         @id @default(cuid())
-  section   HomeGigSection
-  sortOrder Int            @default(0)
+  id        String @id @default(cuid())
+  sortOrder Int    @default(0)
 
-  gigId String
+  gigId String @unique
   gig   Gig    @relation(fields: [gigId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([section, gigId])
-  @@index([section, sortOrder])
+  @@index([sortOrder])
   @@map("home_gig_placement")
 }
 
