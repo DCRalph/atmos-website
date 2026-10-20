@@ -28,6 +28,7 @@ import { formatNZD } from "~/lib/ticketing/money";
 import type { AdminEvent, Visibility } from "./draft";
 import type { EventDraftState } from "./use-event-draft";
 import { Field, Toggle } from "./fields";
+import { VenuePicker } from "~/components/admin/venues/venue-picker";
 
 /**
  * Everything about the event itself: what it's called, when and where, how
@@ -101,7 +102,13 @@ export function DetailsSection({
           name: gig.title,
           startsAt: gig.gigStartTime ?? current.startsAt,
           endsAt: gig.gigEndTime ?? undefined,
-          venueName: gig.subtitle || current.venueName,
+          ...(gig.venue
+            ? {
+                venue: gig.venue,
+                venueName: gig.venue.name,
+                venueAddress: gig.venue.address ?? "",
+              }
+            : { venueName: gig.subtitle || current.venueName }),
           shortDescription: gig.shortDescription ?? current.shortDescription,
           descriptionLexical:
             (gig.descriptionLexical as SerializedEditorState | null) ??
@@ -455,20 +462,42 @@ export function DetailsSection({
             <CardTitle>Venue</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Field id="event-venue" label="Name">
-              <Input
-                id="event-venue"
-                value={draft.venueName}
-                onChange={(e) => update("venueName", e.target.value)}
-              />
-            </Field>
-            <Field id="event-address" label="Address">
-              <Input
-                id="event-address"
-                value={draft.venueAddress}
-                onChange={(e) => update("venueAddress", e.target.value)}
-              />
-            </Field>
+            <VenuePicker
+              value={draft.venue}
+              onChange={(venue) =>
+                state.setDraft((current) => ({
+                  ...current,
+                  venue,
+                  // Taking the venue off leaves its text to edit as a one-off.
+                  ...(venue
+                    ? {
+                        venueName: venue.name,
+                        venueAddress: venue.address ?? "",
+                      }
+                    : {}),
+                }))
+              }
+              createLabel="Create & use for this event"
+              disabled={isSaving}
+            />
+            {draft.venue ? null : (
+              <>
+                <Field id="event-venue" label="Name">
+                  <Input
+                    id="event-venue"
+                    value={draft.venueName}
+                    onChange={(e) => update("venueName", e.target.value)}
+                  />
+                </Field>
+                <Field id="event-address" label="Address">
+                  <Input
+                    id="event-address"
+                    value={draft.venueAddress}
+                    onChange={(e) => update("venueAddress", e.target.value)}
+                  />
+                </Field>
+              </>
+            )}
           </CardContent>
         </Card>
 

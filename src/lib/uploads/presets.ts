@@ -233,6 +233,30 @@ export const uploadPresets = {
     keyPrefix: () => "crew",
   }),
 
+  /**
+   * A venue's logo. One shared bucket so it can be picked in the create
+   * dialog before the venue exists. WebP keeps a logo's transparency.
+   */
+  venueLogo: definePreset({
+    label: "Venue logo",
+    description: "A venue's logo, shown on its gigs and events.",
+    access: "admin",
+    accept: IMAGE_TYPES,
+    maxFileSize: mb(10),
+    maxFiles: 1,
+    maxTotalSize: mb(10),
+    for: "venue_logo",
+    image: {
+      maxDimension: 512,
+      format: "webp",
+      quality: 90,
+      maxOutputSize: mb(0.3),
+    },
+    context: z.object({}),
+    forId: () => "venues",
+    keyPrefix: () => "venues",
+  }),
+
   /** An artist's profile photo. */
   artistAvatar: definePreset({
     label: "Artist avatar",

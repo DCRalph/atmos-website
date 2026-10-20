@@ -387,6 +387,10 @@ model Gig {
   /// and stays up through the night, then moves to the past gigs page's
   /// affiliated tab. See `listVisibleTo` in `~/server/api/routers/gigs.ts`.
   isAffiliated       Boolean   @default(false)
+  /// Where it is on. Shown on the gig page with its logo. `subtitle` still
+  /// carries the venue as text on gigs that predate venues.
+  venueId            String?
+  venue              Venue?    @relation(fields: [venueId], references: [id], onDelete: SetNull)
   gigStartTime       DateTime
   gigEndTime         DateTime?
   ticketLink         String?
@@ -457,7 +461,25 @@ model Gig {
 
   @@index([status, gigStartTime])
   @@index([posterFileUploadId])
+  @@index([venueId])
   @@map("gig")
+}
+
+/// A place gigs and ticketed events are on at. Picked in the gig and event
+/// editors, which can also create one inline, and managed at /admin/venues.
+model Venue {
+  id         String   @id @default(cuid())
+  name       String
+  address    String?
+  /// A `file_upload` id from the `venueLogo` preset.
+  logoFileId String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  gigs         Gig[]
+  ticketEvents TicketEvent[]
+
+  @@map("venue")
 }
 
 /// One run of the import wizard: what was read, what was made of it, and what
@@ -1574,6 +1596,11 @@ model TicketEvent {
   descriptionLexical Json?
   posterFileUploadId String?
 
+  /// The venue picked for this event. When set, `venueName` and
+  /// `venueAddress` are copies of it, kept in step by the venues router, so
+  /// passes, emails and the door can keep reading the columns.
+  venueId      String?
+  venue        Venue?    @relation(fields: [venueId], references: [id], onDelete: SetNull)
   venueName    String?
   venueAddress String?
   timezone     String    @default("Pacific/Auckland")
@@ -1635,6 +1662,7 @@ model TicketEvent {
   @@index([status, startsAt])
   @@index([gigId])
   @@index([posterFileUploadId])
+  @@index([venueId])
   @@map("ticket_event")
 }
 

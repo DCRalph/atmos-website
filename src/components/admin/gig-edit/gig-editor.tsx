@@ -54,6 +54,10 @@ import { GigTasks } from "~/components/admin/tasks/gig-tasks";
 import { RunSheetField } from "./run-sheet-field";
 import { PosterField } from "./poster-field";
 import { TagsField } from "./tags-field";
+import {
+  VenuePicker,
+  type PickedVenue,
+} from "~/components/admin/venues/venue-picker";
 import { DonationsField, dollarText } from "./donations-field";
 import { GigDonations } from "./gig-donations";
 import {
@@ -113,6 +117,7 @@ type LoadedGig = {
   isTba: boolean;
   announceAt: Date | null;
   isAffiliated: boolean;
+  venue: PickedVenue | null;
   ticketLink: string | null;
   donationsEnabled: boolean;
   donationAmountsCents: number[];
@@ -161,6 +166,7 @@ const emptyDraft = (): GigDraft => ({
   isTba: false,
   announceAt: undefined,
   isAffiliated: false,
+  venue: null,
   ticketLink: "",
   donationsEnabled: false,
   donationAmounts: DEFAULT_DONATION_AMOUNTS_CENTS.map(dollarText),
@@ -185,6 +191,7 @@ const draftFromGig = (gig: LoadedGig): GigDraft => ({
   isTba: gig.isTba,
   announceAt: gig.announceAt ? new Date(gig.announceAt) : undefined,
   isAffiliated: gig.isAffiliated,
+  venue: gig.venue,
   ticketLink: gig.ticketLink ?? "",
   donationsEnabled: gig.donationsEnabled,
   donationAmounts: gig.donationAmountsCents.map(dollarText),
@@ -248,6 +255,7 @@ const detailsFingerprint = (draft: GigDraft): string =>
     isTba: draft.isTba,
     announceAt: draft.isTba ? (draft.announceAt?.getTime() ?? null) : null,
     isAffiliated: draft.isAffiliated,
+    venueId: draft.venue?.id ?? null,
     ticketLink: draft.ticketLink.trim(),
     startTime: draft.startTime?.getTime() ?? null,
     endTime: draft.endTime?.getTime() ?? null,
@@ -528,6 +536,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
       isTba: draft.isTba,
       announceAt: draft.isTba ? (draft.announceAt ?? null) : null,
       isAffiliated: draft.isAffiliated,
+      venueId: draft.venue?.id ?? null,
       ticketLink: draft.ticketLink.trim() || null,
       donationsEnabled: draft.donationsEnabled,
       // `validate` has already checked every amount parses.
@@ -939,7 +948,8 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
                     </Field>
                     <Field
                       id="gig-subtitle"
-                      label="Subtitle (venue)"
+                      label="Subtitle"
+                      hint="Shown under the title. Often the venue."
                       error={errors.subtitle}
                       required
                     >
@@ -1135,6 +1145,28 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
                       clearable
                     />
                   </Field>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Venue</CardTitle>
+                  <CardDescription>
+                    Shown with its logo on the gig page
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <VenuePicker
+                    value={draft.venue}
+                    onChange={(venue) => {
+                      update("venue", venue);
+                      if (venue && !draft.subtitle.trim()) {
+                        update("subtitle", venue.name);
+                      }
+                    }}
+                    createLabel="Create & use for this gig"
+                    disabled={isSaving}
+                  />
                 </CardContent>
               </Card>
 

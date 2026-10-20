@@ -4,6 +4,7 @@ import type { RouterInputs, RouterOutputs } from "~/trpc/react";
 import { DEFAULT_ACCESS_LEVEL } from "~/lib/ticketing/access-levels";
 import { toAllocationBudget } from "~/lib/ticketing/capacity";
 import { parsePriceToCents } from "~/lib/ticketing/money";
+import type { PickedVenue } from "~/components/admin/venues/venue-picker";
 import {
   normaliseEventPassDesign,
   parseEventPassDesign,
@@ -68,6 +69,8 @@ export type EventDraft = {
   shortDescription: string;
   descriptionLexical: SerializedEditorState | null;
   posterFileUploadId: string | null;
+  /** A saved venue. While set, `venueName` and `venueAddress` are its own. */
+  venue: PickedVenue | null;
   venueName: string;
   venueAddress: string;
   timezone: string;
@@ -159,6 +162,7 @@ export const emptyDraft = (): EventDraft => ({
   shortDescription: "",
   descriptionLexical: null,
   posterFileUploadId: null,
+  venue: null,
   venueName: "",
   venueAddress: "",
   timezone: "Pacific/Auckland",
@@ -192,6 +196,7 @@ export const draftFromEvent = (event: AdminEvent): EventDraft => ({
   descriptionLexical:
     (event.descriptionLexical as SerializedEditorState | null) ?? null,
   posterFileUploadId: event.posterFileUploadId,
+  venue: event.venue,
   venueName: event.venueName ?? "",
   venueAddress: event.venueAddress ?? "",
   timezone: event.timezone,
@@ -254,6 +259,7 @@ export function sectionFingerprints(
         ? JSON.stringify(draft.descriptionLexical)
         : null,
       poster: draft.posterFileUploadId,
+      venueId: draft.venue?.id ?? null,
       venueName: draft.venueName.trim(),
       venueAddress: draft.venueAddress.trim(),
       timezone: draft.timezone,
@@ -437,6 +443,7 @@ export function toPayload(draft: EventDraft, startsAt: Date): SavePayload {
     shortDescription: draft.shortDescription.trim() || null,
     descriptionLexical: draft.descriptionLexical,
     posterFileUploadId: draft.posterFileUploadId,
+    venueId: draft.venue?.id ?? null,
     venueName: draft.venueName.trim() || null,
     venueAddress: draft.venueAddress.trim() || null,
     timezone: draft.timezone,

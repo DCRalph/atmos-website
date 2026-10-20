@@ -128,6 +128,8 @@ const GIG_EDITOR_FIELDS = z.object({
   /** Only kept on a TBA gig. */
   announceAt: z.date().nullish(),
   isAffiliated: z.boolean(),
+  /** A saved venue, shown on the gig page with its logo. */
+  venueId: z.string().nullish(),
   ticketLink: z.string().nullish(),
   gigStartTime: z.date(),
   gigEndTime: z.date().nullish(),
@@ -235,6 +237,14 @@ const LINE_UP_SELECT = {
   },
 } satisfies Prisma.GigScheduleItemSelect;
 
+/** What a gig shows of its venue. */
+const VENUE_SELECT = {
+  id: true,
+  name: true,
+  address: true,
+  logoFileId: true,
+} satisfies Prisma.VenueSelect;
+
 /**
  * Fails cleanly on ids that no longer exist, rather than letting the write hit
  * a foreign key and surface as an opaque 500.
@@ -245,8 +255,20 @@ const assertReferencesExist = async (
     tagIds,
     artistProfileIds,
     userIds = [],
-  }: { tagIds: string[]; artistProfileIds: string[]; userIds?: string[] },
+    venueId,
+  }: {
+    tagIds: string[];
+    artistProfileIds: string[];
+    userIds?: string[];
+    venueId?: string | null;
+  },
 ) => {
+  if (venueId && !(await db.venue.count({ where: { id: venueId } }))) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "That venue no longer exists",
+    });
+  }
   if (userIds.length > 0) {
     const found = await db.user.count({ where: { id: { in: userIds } } });
     if (found !== userIds.length) {
@@ -351,6 +373,8 @@ const forPublic = <T extends PublicGigInput>(gig: T) => {
     ...gig,
     title: TBA_TITLE,
     subtitle: "",
+    venue: null,
+    venueId: null,
     shortDescription: "",
     descriptionLexical: null,
     ticketLink: null,
@@ -790,6 +814,7 @@ async function saveGig(db: GigsContext["db"], userId: string, input: GigEdit) {
   }
 
   await assertReferencesExist(db, {
+    venueId: rest.venueId,
     tagIds: wantedTagIds ?? [],
     artistProfileIds: wantedArtistIds ?? [],
     userIds: uniqueStrings([
@@ -1271,6 +1296,7 @@ export const gigsRouter = createTRPCRouter({
               },
               gigTags: { include: { gigTag: true } },
               scheduleItems: { select: LINE_UP_SELECT },
+              venue: { select: VENUE_SELECT },
             },
           })
         : null;
@@ -1316,6 +1342,7 @@ export const gigsRouter = createTRPCRouter({
             ],
           },
           gigTags: { include: { gigTag: true } },
+          venue: { select: VENUE_SELECT },
           scheduleItems: {
             orderBy: { sortOrder: "asc" },
             include: {
@@ -1381,6 +1408,7 @@ export const gigsRouter = createTRPCRouter({
         /** Only kept on a TBA gig. */
         announceAt: z.date().nullish(),
         isAffiliated: z.boolean().optional(),
+        venueId: z.string().nullish(),
         gigStartTime: z.date(),
         gigEndTime: z.date().optional(),
         ticketLink: z.string().optional(),
@@ -1421,6 +1449,7 @@ export const gigsRouter = createTRPCRouter({
       const wantedRecipients = uniqueStrings(notifyUserIds);
 
       await assertReferencesExist(ctx.db, {
+        venueId: rest.venueId,
         tagIds: wantedTagIds,
         artistProfileIds: artistIdsIn(scheduleItems),
         userIds: uniqueStrings([

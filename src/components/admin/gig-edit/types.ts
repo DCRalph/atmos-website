@@ -1,6 +1,7 @@
 import type { SerializedEditorState } from "lexical";
 import type { GigScheduleKind } from "~Prisma/browser";
 import { defaultLeadMinutes } from "~/lib/run-sheet/schedule";
+import type { PickedVenue } from "~/components/admin/venues/venue-picker";
 
 /**
  * The gig editor is a buffered form: nothing reaches the database until Save.
@@ -99,6 +100,7 @@ export type GigDraft = {
   /** When a TBA gig goes public by itself. Ignored when `isTba` is off. */
   announceAt: Date | undefined;
   isAffiliated: boolean;
+  venue: PickedVenue | null;
   ticketLink: string;
   donationsEnabled: boolean;
   /** The three suggested amounts as typed, in dollars. Parsed on save. */
