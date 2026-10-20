@@ -6,7 +6,9 @@ import { AlertTriangle, ArrowRight, CalendarX2, Images } from "lucide-react";
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
 import { gigPath } from "~/lib/gig-url";
+import { gigOffSiteNotice } from "~/lib/gig-visibility";
 import { NewsletterForm } from "../newsletter-form";
+import { useSite } from "../site-provider";
 import { Button, Media, Skeleton, buttonVariants } from "../ui";
 import {
   AdminStrip,
@@ -340,6 +342,8 @@ function NextShowHero({
  */
 export function GigsPage() {
   const [tab, setTab] = useState<TabId>("upcoming");
+  const { data: user } = api.user.me.useQuery();
+  const { showHiddenEvents } = useSite();
   const upcoming = api.gigs.getUpcoming.useQuery();
   const past = api.gigs.getPast.useQuery({ kind: "OURS" });
   const affiliated = api.gigs.getPast.useQuery({ kind: "AFFILIATED" });
@@ -353,13 +357,22 @@ export function GigsPage() {
   }, [ticketEvents.data]);
 
   const queries = { upcoming, past, affiliated };
+  const hideHiddenEvents =
+    user?.effectivePermissions.includes("ADMIN") && !showHiddenEvents;
+  const visible = (gig: ListGig) =>
+    !hideHiddenEvents || gigOffSiteNotice(gig) === null;
+  const lists = {
+    upcoming: upcoming.data?.filter(visible),
+    past: past.data?.filter(visible),
+    affiliated: affiliated.data?.filter(visible),
+  };
   const active = queries[tab];
-  const gigs = active.data ?? [];
+  const gigs = lists[tab] ?? [];
 
   return (
     <>
       <NextShowHero
-        gigs={upcoming.data ?? []}
+        gigs={lists.upcoming ?? []}
         events={events}
         loading={upcoming.isPending}
       />
@@ -370,7 +383,7 @@ export function GigsPage() {
           className="no-scrollbar mb-8 flex gap-7 overflow-x-auto border-b border-white/10"
         >
           {TABS.map((t) => {
-            const count = queries[t.id].data?.length;
+            const count = lists[t.id]?.length;
             return (
               <button
                 key={t.id}

@@ -27,7 +27,7 @@ type SiteContext = {
   portalContainer: HTMLElement | null;
   cartOpen: boolean;
   setCartOpen: (open: boolean) => void;
-  /** Admin preference for the home list; saved locally across visits. */
+  /** Admin preference for home and gigs lists; saved locally across visits. */
   showHiddenEvents: boolean;
   setShowHiddenEvents: (show: boolean) => void;
 };

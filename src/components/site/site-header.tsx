@@ -224,7 +224,7 @@ function AccountMenu({ className }: { className: string }) {
                     id="home-event-visibility-description"
                     className="text-xs text-white/75"
                   >
-                    Home screen only
+                    Home and gigs pages
                   </span>
                 </span>
                 <span
