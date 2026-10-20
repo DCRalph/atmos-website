@@ -934,28 +934,41 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
                 <CardHeader>
                   <CardTitle>Core details</CardTitle>
                   <CardDescription>
-                    Title, description, mode and ticket link
+                    Title, venue, subtitle and event details
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-5">
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <Field
+                  <Field
+                    id="gig-title"
+                    label="Title"
+                    error={errors.title}
+                    required
+                  >
+                    <Input
                       id="gig-title"
-                      label="Title"
-                      error={errors.title}
-                      required
-                    >
-                      <Input
-                        id="gig-title"
-                        value={draft.title}
-                        onChange={(e) => update("title", e.target.value)}
-                        aria-invalid={Boolean(errors.title)}
+                      value={draft.title}
+                      onChange={(e) => update("title", e.target.value)}
+                      aria-invalid={Boolean(errors.title)}
+                    />
+                  </Field>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div role="group" aria-label="Venue" className="space-y-2">
+                      <div className="text-sm font-medium">Venue</div>
+                      <VenuePicker
+                        value={draft.venue}
+                        onChange={(venue) => {
+                          update("venue", venue);
+                          if (venue) update("subtitle", venue.name);
+                        }}
+                        createLabel="Create & use for this gig"
+                        disabled={isSaving}
                       />
-                    </Field>
+                    </div>
                     <Field
                       id="gig-subtitle"
                       label="Subtitle"
-                      hint="Shown under the title. Often the venue."
+                      hint="Selecting a venue replaces this text. You can edit it afterwards."
                       error={errors.subtitle}
                       required
                     >
@@ -1151,28 +1164,6 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
                       clearable
                     />
                   </Field>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Venue</CardTitle>
-                  <CardDescription>
-                    Shown with its logo on the gig page
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <VenuePicker
-                    value={draft.venue}
-                    onChange={(venue) => {
-                      update("venue", venue);
-                      if (venue && !draft.subtitle.trim()) {
-                        update("subtitle", venue.name);
-                      }
-                    }}
-                    createLabel="Create & use for this gig"
-                    disabled={isSaving}
-                  />
                 </CardContent>
               </Card>
 
