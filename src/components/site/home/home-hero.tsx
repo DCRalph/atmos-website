@@ -31,6 +31,7 @@ import {
 } from "./live-gig";
 import { GigPoster, nzDate } from "./parts";
 import { GigCountdown, nightOf } from "../on-now";
+import { NextGigMarquee } from "./next-gig-marquee";
 
 type UpcomingGig = RouterOutputs["gigs"]["getUpcoming"][number];
 /** What the ticket pill needs from any gig shape. */
@@ -187,29 +188,29 @@ export function HomeHero() {
             venue={venue}
           />
         ) : (
-          <NextGigStrip />
+          <NextGigStrip paused={scrolled} />
         )}
       </div>
     </section>
   );
 }
 
-const stripClass =
-  "glass-dark relative z-10 grid min-h-[88px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 border-x-0 border-b-0 px-5 py-4 md:gap-8 md:px-10 lg:grid-cols-[auto_minmax(0,1fr)_auto_auto]";
+const nextStripClass =
+  "next-gig-row glass-dark relative z-10 grid min-h-[108px] grid-cols-[auto_minmax(0,1fr)] items-stretch gap-4 overflow-hidden border-x-0 border-b-0 pr-5 md:gap-6 md:pr-6 lg:grid-cols-[auto_minmax(0,1fr)_auto]";
 
 /** The next gig the public can see, as an edge-to-edge glass strip. Nothing when none is announced. */
-function NextGigStrip() {
+function NextGigStrip({ paused }: { paused: boolean }) {
   const upcoming = api.gigs.getUpcoming.useQuery();
 
   if (upcoming.isPending) {
     return (
-      <div className={stripClass} aria-busy>
-        <Skeleton className="aspect-[4/5] w-12 bg-white/10 md:w-14" />
-        <div className="space-y-2.5">
+      <div className={nextStripClass} aria-busy>
+        <Skeleton className="min-h-[107px] w-[5.4rem] bg-white/10" />
+        <div className="space-y-2.5 self-center py-2">
+          <Skeleton className="h-5 w-20 bg-white/10" />
           <Skeleton className="h-5 w-2/3 max-w-[420px] rounded-full bg-white/10" />
           <Skeleton className="h-3.5 w-1/3 max-w-[200px] rounded-full bg-white/10" />
         </div>
-        <Skeleton className="h-14 w-14 bg-white/10 lg:col-start-4" />
       </div>
     );
   }
@@ -220,43 +221,36 @@ function NextGigStrip() {
   if (!gig) return null;
 
   return (
-    <div className={stripClass}>
+    <div className={nextStripClass}>
       <GigPoster
         gig={gig}
-        sizes="56px"
-        className="aspect-[4/5] w-12 md:w-14"
+        sizes="87px"
+        className="min-h-[107px] w-[5.4rem]"
         fit="contain"
       />
-      <div className="min-w-0">
-        <span className="t-label bg-site-accent text-site-accent-ink mb-2 inline-block rounded-[var(--site-r-chip)] px-2 py-1.5 text-[8px] md:text-[9px]">
+      <div className="flex min-w-0 flex-col justify-center gap-2 py-2">
+        <span className="t-label bg-site-accent text-site-accent-ink self-start rounded-[var(--site-r-chip)] px-2 py-1.5 text-[8px] md:text-[9px]">
           Next gig
         </span>
-        {/* The title link covers the strip, including the poster and date. */}
+        {/* One accessible title/date link covers the whole strip. */}
         <Link
           href={gigPath(gig)}
           className="hover:text-site-accent-text block after:absolute after:inset-0"
         >
-          <span className="t-display line-clamp-2 text-lg break-words normal-case sm:text-xl md:line-clamp-1 md:text-2xl">
-            {gig.title}
-          </span>
+          <NextGigMarquee
+            title={gig.title}
+            date={`${nzDate.weekday.format(gig.gigStartTime)} ${nzDate.full.format(gig.gigStartTime)}`}
+            paused={paused}
+          />
         </Link>
-        <p className="mt-1.5 truncate text-sm text-white/65">
+        <p className="truncate text-xs text-white/65 md:text-[13px]">
           {[gig.subtitle, formatEventTime(gig.gigStartTime)]
             .filter(Boolean)
             .join(" · ")}
         </p>
       </div>
-      <div className="hidden lg:block">
+      <div className="hidden lg:flex lg:items-center">
         <GigCountdown night={nightOf(gig)} compact />
-      </div>
-      <div className="flex w-14 flex-col items-center text-center md:w-16">
-        <span className="t-label text-[8px] whitespace-nowrap text-white/75 md:text-[9px]">
-          {nzDate.weekday.format(gig.gigStartTime)} ·{" "}
-          {nzDate.shortMonth.format(gig.gigStartTime)}
-        </span>
-        <span className="t-display text-site-accent-text mt-1 text-3xl tabular-nums md:text-4xl">
-          {nzDate.day.format(gig.gigStartTime)}
-        </span>
       </div>
     </div>
   );

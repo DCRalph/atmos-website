@@ -157,6 +157,66 @@
   }
 }
 
+.next-gig-marquee {
+  container-type: inline-size;
+}
+
+.next-gig-marquee-track {
+  display: flex;
+  width: max-content;
+}
+
+.next-gig-marquee-run {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 40px;
+  min-width: 100cqw;
+  padding-right: 56px;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .next-gig-marquee-track {
+    animation: next-gig-scroll 19s linear infinite paused;
+  }
+
+  .next-gig-marquee[data-running="true"] .next-gig-marquee-track {
+    animation-play-state: running;
+  }
+
+  .next-gig-row:is(:hover, :focus-within) .next-gig-marquee-track {
+    animation-play-state: paused;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .next-gig-marquee-track {
+    display: block;
+    width: auto;
+  }
+
+  .next-gig-marquee-run {
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    min-width: 0;
+    padding-right: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .next-gig-marquee-run + .next-gig-marquee-run {
+    display: none;
+  }
+}
+
+@keyframes next-gig-scroll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 @keyframes site-select-unroll {
   from {
     clip-path: inset(0 0 100% 0);
