@@ -21,7 +21,12 @@ import {
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
 import { gigPath } from "~/lib/gig-url";
-import { getMediaDisplayUrl, getMediaDownloadUrl } from "~/lib/media-url";
+import {
+  buildMediaUrl,
+  getMediaDisplayUrl,
+  getMediaDownloadUrl,
+} from "~/lib/media-url";
+import { venueMapsUrl } from "~/lib/venue";
 import { LexicalContent } from "~/components/lexical";
 import { Lineup } from "./lineup";
 import { BuyPanel } from "~/components/ticketing/buy-panel";
@@ -69,9 +74,35 @@ function MetaLine({ gig, past }: { gig: DetailGig; past: boolean }) {
         </div>
       ) : null}
       <div className="flex items-center gap-1.5">
-        <MapPin className="size-3.5 text-white/55" aria-hidden />
         <dt className="sr-only">Venue</dt>
-        <dd className="t-label text-[12px]">{gig.subtitle}</dd>
+        {gig.venue ? (
+          <dd className="flex items-center gap-1.5">
+            {gig.venue.logoFileId ? (
+              // A plain img: a tiny, already-cached /api/media response.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={buildMediaUrl(gig.venue.logoFileId)}
+                alt=""
+                className="size-[18px] rounded-[3px] object-contain"
+              />
+            ) : (
+              <MapPin className="size-3.5 text-white/55" aria-hidden />
+            )}
+            <a
+              href={venueMapsUrl(gig.venue)}
+              target="_blank"
+              rel="noreferrer"
+              className="t-label text-[12px] underline decoration-white/30 underline-offset-[3px] hover:decoration-white"
+            >
+              {gig.venue.name}
+            </a>
+          </dd>
+        ) : (
+          <>
+            <MapPin className="size-3.5 text-white/55" aria-hidden />
+            <dd className="t-label text-[12px]">{gig.subtitle}</dd>
+          </>
+        )}
       </div>
     </dl>
   );
@@ -118,7 +149,11 @@ function downloadIcs(gig: DetailGig) {
     `DTSTART:${stamp(gig.gigStartTime)}`,
     `DTEND:${stamp(end)}`,
     `SUMMARY:${escape(gig.title)}`,
-    `LOCATION:${escape(gig.subtitle)}`,
+    `LOCATION:${escape(
+      gig.venue
+        ? [gig.venue.name, gig.venue.address].filter(Boolean).join(", ")
+        : gig.subtitle,
+    )}`,
     `URL:${window.location.href.split("#")[0]}`,
     "END:VEVENT",
     "END:VCALENDAR",

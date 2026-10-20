@@ -1100,6 +1100,7 @@ export const ticketEventsRouter = createTRPCRouter({
         where: { slug: input.slug },
         include: {
           tiers: { orderBy: { sortOrder: "asc" } },
+          venue: { select: { logoFileId: true } },
           gig: {
             select: {
               id: true,
@@ -1263,6 +1264,8 @@ type EventWithTiers = Prisma.TicketEventGetPayload<{
     isTba: boolean;
     posterFileUploadId: string | null;
   } | null;
+  /** Only the event page loads it, for the logo beside "Where". */
+  venue?: { logoFileId: string | null } | null;
 };
 
 /**
@@ -1368,6 +1371,7 @@ function toPublicEvent(
     posterFileUploadId: eventPosterId(event),
     venueName: event.venueName,
     venueAddress: event.venueAddress,
+    venueLogoFileId: event.venue?.logoFileId ?? null,
     timezone: event.timezone,
     doorsAt: event.doorsAt,
     startsAt: event.startsAt,

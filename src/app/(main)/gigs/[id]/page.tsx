@@ -35,6 +35,7 @@ const truncate = (value: string, length: number) =>
 function gigDescription(gig: {
   title: string;
   subtitle: string;
+  venue: { name: string } | null;
   shortDescription: string | null;
   descriptionLexical: unknown;
   gigStartTime: Date;
@@ -43,7 +44,7 @@ function gigDescription(gig: {
   const own =
     (short.toLowerCase() === gig.title.trim().toLowerCase() ? "" : short) ||
     cleanText(lexicalToPlainText(gig.descriptionLexical));
-  const venue = cleanText(gig.subtitle);
+  const venue = cleanText(gig.venue?.name ?? gig.subtitle);
   const when = `${formatEventDateLong(gig.gigStartTime)}${venue ? ` at ${venue}` : ""}.`;
 
   if (!own) return `${gig.title} on ${when}`;
@@ -72,6 +73,7 @@ export async function generateMetadata({
           slug: true,
           title: true,
           subtitle: true,
+          venue: { select: { name: true } },
           shortDescription: true,
           descriptionLexical: true,
           gigStartTime: true,
@@ -130,12 +132,16 @@ export default async function Page({
             description={gigDescription(gig)}
             startDate={gig.gigStartTime}
             endDate={gig.gigEndTime ?? undefined}
-            // The ticket event knows the venue. A subtitle is often a venue,
-            // but not always.
+            // A picked venue, else the ticket event's. A subtitle is often a
+            // venue, but not always.
             venue={{
               name:
-                event?.venueName ?? (gig.subtitle || "Venue to be announced"),
-              address: event?.venueAddress ?? undefined,
+                gig.venue?.name ??
+                event?.venueName ??
+                (gig.subtitle || "Venue to be announced"),
+              address:
+                (gig.venue ? gig.venue.address : event?.venueAddress) ??
+                undefined,
             }}
             image={gig.posterFileUpload?.url ?? gigOgImage(gig)?.url}
             ticketUrl={event ? path : (gig.ticketLink ?? undefined)}
