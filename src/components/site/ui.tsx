@@ -83,12 +83,14 @@ export function Media({
   className,
   sizes = "(min-width: 1024px) 33vw, 100vw",
   priority,
+  fit = "cover",
 }: {
   src: string;
   alt: string;
   className?: string;
   sizes?: string;
   priority?: boolean;
+  fit?: "cover" | "contain";
 }) {
   return (
     <div className={cn("relative overflow-hidden bg-white/5", className)}>
@@ -99,7 +101,7 @@ export function Media({
         sizes={sizes}
         priority={priority}
         unoptimized={src.endsWith(".gif")}
-        className="object-cover"
+        className={fit === "contain" ? "object-contain" : "object-cover"}
       />
     </div>
   );

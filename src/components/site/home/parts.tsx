@@ -70,11 +70,13 @@ export function GigPoster({
   className,
   sizes,
   tbaClassName = "text-sm",
+  fit,
 }: {
   gig: PosterGig;
   className?: string;
   sizes: string;
   tbaClassName?: string;
+  fit?: "cover" | "contain";
 }) {
   const src =
     gig.posterFileUpload?.url ?? gig.media?.find((m) => m.url)?.url ?? null;
@@ -122,6 +124,7 @@ export function GigPoster({
       alt={`${gig.title} poster`}
       sizes={sizes}
       className={className}
+      fit={fit}
     />
   );
 }

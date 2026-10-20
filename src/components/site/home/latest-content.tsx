@@ -1,11 +1,12 @@
 "use client";
 
-import { ArrowUpRight } from "lucide-react";
+import { Play } from "lucide-react";
 import type { IconType } from "react-icons";
 import { FaSoundcloud, FaSpotify, FaYoutube } from "react-icons/fa6";
 import { api, type RouterOutputs } from "~/trpc/react";
+import { contentCoverFor } from "~/lib/content-covers";
 import { cn } from "~/lib/utils";
-import { Skeleton } from "../ui";
+import { Media, Skeleton } from "../ui";
 import { SectionEmpty, SectionError, SectionHeader, nzDate } from "./parts";
 
 type ContentItem = NonNullable<
@@ -33,7 +34,9 @@ function platformOf(item: ContentItem) {
   );
 }
 
-/** Admin-curated latest content: the featured item large, the rest as rows. */
+const gridClass = "grid grid-cols-3 items-start gap-x-3 gap-y-6 md:gap-8";
+
+/** A three-column cover grid, with the featured item spanning two columns. */
 export function LatestContent() {
   const latest = api.homeContent.getHomeLatest.useQuery();
   const featured = latest.data?.featuredItem;
@@ -56,111 +59,96 @@ export function LatestContent() {
       ) : !featured ? (
         <SectionEmpty>Nothing published yet.</SectionEmpty>
       ) : (
-        <div className="grid gap-x-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-          <FeaturedItem item={featured} />
-          {latest.data.items.length ? (
-            <ul className="max-lg:mt-2">
-              {latest.data.items.map((item) => (
-                <ItemRow key={item.id} item={item} />
-              ))}
-            </ul>
-          ) : null}
-        </div>
+        <ul className={gridClass}>
+          <ContentCard item={featured} featured />
+          {latest.data.items.map((item) => (
+            <ContentCard key={item.id} item={item} />
+          ))}
+        </ul>
       )}
     </section>
   );
 }
 
-/** Kind, platform and date. */
-function Meta({ item }: { item: ContentItem }) {
+function ContentCard({
+  item,
+  featured = false,
+}: {
+  item: ContentItem;
+  featured?: boolean;
+}) {
   const platform = platformOf(item);
-  return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-      <span className="t-label rounded-[var(--site-r-chip)] border border-white/20 px-2 py-1.5 text-[9px] text-white/75">
-        {item.type}
-      </span>
-      {platform ? (
-        <span className="inline-flex items-center gap-2 text-white/70">
-          {platform.Icon ? <platform.Icon className="size-4 shrink-0" /> : null}
-          <span className="t-label text-[10px]">{platform.label}</span>
-        </span>
-      ) : null}
-      <span className="t-label text-[10px] text-white/55 tabular-nums">
-        {nzDate.full.format(item.date)}
-      </span>
-    </div>
-  );
-}
 
-const external = { target: "_blank", rel: "noopener noreferrer" } as const;
-
-function FeaturedItem({ item }: { item: ContentItem }) {
-  const platform = platformOf(item);
   return (
-    <a
-      href={item.link}
-      {...external}
-      className="group block border-t border-white/15 py-6"
-    >
-      <Meta item={item} />
-      <h3 className="t-display group-hover:text-site-accent-text mt-6 text-[clamp(1.75rem,3.5vw,3rem)] break-words normal-case transition-colors">
-        {item.title}
-      </h3>
-      {item.dj ? (
-        <p className="mt-3 text-[16px] text-white/85">with {item.dj}</p>
-      ) : null}
-      <p className="mt-3 line-clamp-3 max-w-[56ch] text-[15px] text-white/65">
-        {item.description}
-      </p>
-      <span className="t-label mt-6 inline-flex items-center gap-1.5 text-[11px] text-white/70 group-hover:text-white">
-        {platform ? `Open on ${platform.label}` : "Open"}
-        <ArrowUpRight className="size-3.5" />
-      </span>
-    </a>
-  );
-}
-
-function ItemRow({ item }: { item: ContentItem }) {
-  return (
-    <li>
+    <li className={cn("min-w-0", featured && "col-span-2 row-span-2")}>
       <a
         href={item.link}
-        {...external}
-        className="group grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 border-t border-white/15 py-6"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group block"
       >
-        <div className="min-w-0">
-          <Meta item={item} />
-          <p className="t-display group-hover:text-site-accent-text mt-4 line-clamp-2 text-xl break-words normal-case transition-colors">
-            {item.title}
-          </p>
-          <p className="mt-2 truncate text-[14px] text-white/60">
-            {item.dj ? `with ${item.dj} · ` : null}
-            {item.description}
-          </p>
+        <div className="relative">
+          <Media
+            src={contentCoverFor(item.id)}
+            alt=""
+            sizes={featured ? "67vw" : "33vw"}
+            className="aspect-square transition-opacity group-hover:opacity-85"
+          />
+          <span className="t-label pointer-events-none absolute top-0 left-0 bg-black px-1.5 py-1.5 text-[7px] text-white md:px-2.5 md:py-2 md:text-[9px]">
+            {featured ? "Featured " : null}
+            {item.type}
+          </span>
+          <span
+            aria-hidden
+            className={cn(
+              "absolute right-2 bottom-2 flex size-7 items-center justify-center rounded-full bg-white text-black md:right-4 md:bottom-4 md:size-10",
+              featured && "bg-site-accent size-10 md:size-14",
+            )}
+          >
+            <Play className="ml-0.5 size-3.5 md:size-5" fill="currentColor" />
+          </span>
         </div>
-        <ArrowUpRight className="mt-1 size-4 text-white/50 group-hover:text-white" />
+        <h3
+          className={cn(
+            "t-display group-hover:text-site-accent-text mt-3 break-words normal-case transition-colors md:mt-4",
+            featured
+              ? "text-lg leading-tight sm:text-2xl md:text-4xl"
+              : "text-xs leading-tight sm:text-base md:text-xl",
+          )}
+        >
+          {item.title}
+        </h3>
+        {item.dj ? (
+          <p className="mt-2 text-xs break-words text-white/85 md:text-base">
+            {item.dj}
+          </p>
+        ) : null}
+        <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px] text-white/65 md:text-sm">
+          {platform ? (
+            <span className="inline-flex min-w-0 items-center gap-1.5 break-words">
+              {platform.Icon ? (
+                <platform.Icon className="size-3 shrink-0 md:size-4" />
+              ) : null}
+              {platform.label}
+            </span>
+          ) : null}
+          {featured ? <span>{nzDate.full.format(item.date)}</span> : null}
+        </p>
       </a>
     </li>
   );
 }
 
 function ContentSkeleton() {
-  const block = (large: boolean) => (
-    <div className="space-y-4 border-t border-white/15 py-6">
-      <Skeleton className="h-6 w-48 rounded-full" />
-      <Skeleton
-        className={cn("rounded-full", large ? "h-10 w-3/4" : "h-6 w-1/2")}
-      />
-      <Skeleton className="h-3.5 w-2/3 rounded-full" />
-    </div>
-  );
   return (
-    <div aria-busy className="grid gap-x-10 lg:grid-cols-2">
-      {block(true)}
-      <div>
-        {block(false)}
-        {block(false)}
-      </div>
+    <div aria-busy aria-label="Loading latest content" className={gridClass}>
+      {[true, false, false].map((featured, i) => (
+        <div key={i} className={featured ? "col-span-2 row-span-2" : undefined}>
+          <Skeleton className="aspect-square" />
+          <Skeleton className="mt-4 h-5 w-3/4" />
+          <Skeleton className="mt-2 h-3.5 w-1/2" />
+        </div>
+      ))}
     </div>
   );
 }

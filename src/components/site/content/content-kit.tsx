@@ -8,6 +8,7 @@ import { SoundCloudPlayer } from "~/components/soundcloud-player";
 import { YouTubePlayer } from "~/components/youtube-player";
 import { SOCIALS } from "~/lib/site-constants";
 import { cn } from "~/lib/utils";
+import { contentCoverFor } from "~/lib/content-covers";
 import type { RouterOutputs } from "~/trpc/react";
 import { SiteDialog } from "../overlays";
 import { Button, buttonVariants, IconButton, Media } from "../ui";
@@ -41,27 +42,6 @@ export const channels = [
 const platforms = new Map<string, { label: string; Icon: IconType }>(
   channels.map((c) => [c.key, c]),
 );
-
-/**
- * Items have no artwork of their own yet, so each gets a stable gig photo as
- * its cover, picked by id so it doesn't move when new drops land.
- */
-const covers = [
-  "/home/atmos-10.jpg",
-  "/home/atmos-6.jpg",
-  "/home/atmos-8.jpg",
-  "/home/atmos-46.jpg",
-  "/home/atmos-17.jpg",
-  "/home/atmos-9.jpg",
-  "/home/atmos-15.jpg",
-  "/home/atmos-1.jpg",
-] as const;
-
-const coverFor = (id: string) => {
-  let hash = 0;
-  for (const ch of id) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
-  return covers[hash % covers.length] ?? covers[0];
-};
 
 const typeLabels: Record<string, { one: string; many: string }> = {
   mix: { one: "Mix", many: "Mixes" },
@@ -105,7 +85,7 @@ export function toEntry(item: ContentItem) {
     platformKey,
     platformLabel: known?.label ?? (rawPlatform === "" ? null : rawPlatform),
     PlatformIcon: known?.Icon ?? null,
-    cover: coverFor(item.id),
+    cover: contentCoverFor(item.id),
     embed,
   };
 }

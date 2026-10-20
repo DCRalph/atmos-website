@@ -29,7 +29,7 @@ import {
   type LivePhase,
   type TodayGig,
 } from "./live-gig";
-import { nzDate } from "./parts";
+import { GigPoster, nzDate } from "./parts";
 import { GigCountdown, nightOf } from "../on-now";
 
 type UpcomingGig = RouterOutputs["gigs"]["getUpcoming"][number];
@@ -76,9 +76,9 @@ function useScrolled() {
  * Home hero: the logo over the looping crowd video (a still for reduced
  * motion), with the next announced gig docked along the bottom edge. While a
  * gig is live the line under the logo says so and the strip becomes the live
- * strip (solid accent once doors are open). A scroll cue sits under the
- * logo, and the video blurs and fades into the black of the page below. The
- * cue and the strip hide once the page scrolls.
+ * strip (solid accent once doors are open). The scroll cue is centred between
+ * the logo's bottom edge and the viewport bottom, independently of the live
+ * message and docked strip. Both the cue and strip hide after scrolling.
  */
 export function HomeHero() {
   const motionAllowed = useMotionAllowed();
@@ -90,7 +90,7 @@ export function HomeHero() {
   return (
     <section
       ref={section}
-      className="relative flex h-dvh flex-col overflow-hidden"
+      className="relative grid h-dvh grid-rows-[2fr_auto_3fr] overflow-hidden"
     >
       <div className="absolute inset-0 opacity-70">
         <Media
@@ -130,7 +130,7 @@ export function HomeHero() {
         className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-linear-to-t from-black via-black/60 to-transparent"
       />
 
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-6 px-6 pt-20">
+      <div className="relative z-10 row-start-2 justify-self-center">
         <h1 className="relative">
           {/* Static glow: a wide halo plus a drop-shadow hugging the letterforms. */}
           <div
@@ -143,7 +143,7 @@ export function HomeHero() {
           />
         </h1>
         {live ? (
-          <p className="t-label text-center text-[12px] text-white/75 md:text-[14px]">
+          <p className="t-label absolute inset-x-0 top-full mt-6 text-center text-[12px] text-white/75 md:text-[14px]">
             {live.phase === "on"
               ? `On now at ${venue.name}`
               : live.phase === "tonight"
@@ -151,38 +151,31 @@ export function HomeHero() {
                 : liveChipLabel.wrap}
           </p>
         ) : null}
-        <button
-          type="button"
-          inert={scrolled}
-          onClick={() =>
-            section.current?.nextElementSibling?.scrollIntoView({
-              behavior: motionAllowed ? "smooth" : "auto",
-            })
-          }
-          className={cn(
-            "t-label group flex items-center gap-1 text-[12px] text-white/70 hover:text-white motion-safe:transition-[color,opacity] motion-safe:duration-300 md:text-[14px]",
-            scrolled && "opacity-0",
-          )}
-        >
-          <ChevronDown
-            aria-hidden
-            strokeWidth={1.5}
-            className="size-5 motion-safe:animate-[site-nudge_1.6s_ease-in-out_3]"
-          />
-          Scroll
-          <ChevronDown
-            aria-hidden
-            strokeWidth={1.5}
-            className="size-5 motion-safe:animate-[site-nudge_1.6s_ease-in-out_3]"
-          />
-        </button>
       </div>
+
+      <button
+        type="button"
+        inert={scrolled}
+        onClick={() =>
+          section.current?.nextElementSibling?.scrollIntoView({
+            behavior: motionAllowed ? "smooth" : "auto",
+          })
+        }
+        className={cn(
+          "t-label relative z-10 row-start-3 flex min-h-11 items-center gap-1 self-center justify-self-center text-[12px] text-white motion-safe:transition-opacity motion-safe:duration-300 md:text-[14px]",
+          scrolled ? "opacity-0" : "opacity-50",
+        )}
+      >
+        <ChevronDown aria-hidden strokeWidth={1.5} className="size-5" />
+        Scroll
+        <ChevronDown aria-hidden strokeWidth={1.5} className="size-5" />
+      </button>
 
       {/* The strip drops away once the page scrolls and comes back at the top. */}
       <div
         inert={scrolled}
         className={cn(
-          "relative z-10 motion-safe:transition-[translate,opacity] motion-safe:duration-300",
+          "absolute inset-x-0 bottom-0 z-10 motion-safe:transition-[translate,opacity] motion-safe:duration-300",
           scrolled && "translate-y-full opacity-0",
         )}
       >
@@ -211,12 +204,12 @@ function NextGigStrip() {
   if (upcoming.isPending) {
     return (
       <div className={stripClass} aria-busy>
-        <Skeleton className="h-14 w-14 rounded-[var(--site-r-chip)] bg-white/10" />
+        <Skeleton className="aspect-[4/5] w-12 bg-white/10 md:w-14" />
         <div className="space-y-2.5">
           <Skeleton className="h-5 w-2/3 max-w-[420px] rounded-full bg-white/10" />
           <Skeleton className="h-3.5 w-1/3 max-w-[200px] rounded-full bg-white/10" />
         </div>
-        <Skeleton className="size-11 rounded-full bg-white/10 sm:w-36" />
+        <Skeleton className="h-14 w-14 bg-white/10 lg:col-start-4" />
       </div>
     );
   }
@@ -228,16 +221,17 @@ function NextGigStrip() {
 
   return (
     <div className={stripClass}>
-      <div className="bg-site-accent text-site-accent-ink flex w-14 flex-col items-center rounded-[var(--site-r-chip)] py-1.5">
-        <span className="t-label text-[10px]">
-          {nzDate.shortMonth.format(gig.gigStartTime)}
-        </span>
-        <span className="t-display text-2xl tabular-nums">
-          {nzDate.day.format(gig.gigStartTime)}
-        </span>
-      </div>
+      <GigPoster
+        gig={gig}
+        sizes="56px"
+        className="aspect-[4/5] w-12 md:w-14"
+        fit="contain"
+      />
       <div className="min-w-0">
-        {/* The title link covers the strip; the ticket pill sits above it. */}
+        <span className="t-label bg-site-accent text-site-accent-ink mb-2 inline-block rounded-[var(--site-r-chip)] px-2 py-1.5 text-[8px] md:text-[9px]">
+          Next gig
+        </span>
+        {/* The title link covers the strip, including the poster and date. */}
         <Link
           href={gigPath(gig)}
           className="hover:text-site-accent-text block after:absolute after:inset-0"
@@ -247,11 +241,7 @@ function NextGigStrip() {
           </span>
         </Link>
         <p className="mt-1.5 truncate text-sm text-white/65">
-          {[
-            nzDate.weekday.format(gig.gigStartTime),
-            gig.subtitle,
-            formatEventTime(gig.gigStartTime),
-          ]
+          {[gig.subtitle, formatEventTime(gig.gigStartTime)]
             .filter(Boolean)
             .join(" · ")}
         </p>
@@ -259,7 +249,15 @@ function NextGigStrip() {
       <div className="hidden lg:block">
         <GigCountdown night={nightOf(gig)} compact />
       </div>
-      <TicketPill gig={gig} />
+      <div className="flex w-14 flex-col items-center text-center md:w-16">
+        <span className="t-label text-[8px] whitespace-nowrap text-white/75 md:text-[9px]">
+          {nzDate.weekday.format(gig.gigStartTime)} ·{" "}
+          {nzDate.shortMonth.format(gig.gigStartTime)}
+        </span>
+        <span className="t-display text-site-accent-text mt-1 text-3xl tabular-nums md:text-4xl">
+          {nzDate.day.format(gig.gigStartTime)}
+        </span>
+      </div>
     </div>
   );
 }
