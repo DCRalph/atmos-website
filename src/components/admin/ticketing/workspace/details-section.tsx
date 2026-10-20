@@ -24,7 +24,6 @@ import { SearchableSelect } from "~/components/ui/searchable-select";
 import { ImageUploadField } from "~/components/uploads/image-upload-field";
 import { LexicalRichTextEditor } from "~/components/lexical";
 import { buildMediaUrl } from "~/lib/media-url";
-import { formatNZD } from "~/lib/ticketing/money";
 import type { AdminEvent, Visibility } from "./draft";
 import type { EventDraftState } from "./use-event-draft";
 import { Field, Toggle } from "./fields";
@@ -32,8 +31,8 @@ import { VenuePicker } from "~/components/admin/venues/venue-picker";
 
 /**
  * Everything about the event itself: what it's called, when and where, how
- * it sells, who can find it, and what the door asks. Tiers, staff and the
- * wallet pass have their own sections.
+ * it sells, who can find it, and what the door asks. Tiers, costs (booking
+ * fee included), staff and the wallet pass have their own sections.
  */
 
 const VISIBILITIES = [
@@ -128,8 +127,6 @@ export function DetailsSection({
     if (!draft.startsAt) return;
     update("doorsAt", new Date(draft.startsAt.getTime() - minutes * 60_000));
   };
-
-  const fee = event?.siteDefaults.bookingFee;
 
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
@@ -575,45 +572,6 @@ export function DetailsSection({
                 min={0}
                 value={draft.compAllowance}
                 onChange={(e) => update("compAllowance", e.target.value)}
-              />
-            </Field>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Booking fee</CardTitle>
-            <CardDescription>
-              {fee
-                ? `Leave both blank for the site default, ${formatNZD(fee.fixedCents)} + ${fee.percentBp / 100}%.`
-                : "Leave both blank for the site default."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
-            <Field
-              id="event-fee-fixed"
-              label="Fixed, per ticket"
-              error={errors.feeFixed}
-            >
-              <Input
-                id="event-fee-fixed"
-                inputMode="decimal"
-                placeholder={fee ? (fee.fixedCents / 100).toFixed(2) : "0.00"}
-                value={draft.feeFixed}
-                onChange={(e) => update("feeFixed", e.target.value)}
-              />
-            </Field>
-            <Field
-              id="event-fee-percent"
-              label="Percent of subtotal"
-              error={errors.feePercent}
-            >
-              <Input
-                id="event-fee-percent"
-                inputMode="decimal"
-                placeholder={fee ? (fee.percentBp / 100).toString() : "0"}
-                value={draft.feePercent}
-                onChange={(e) => update("feePercent", e.target.value)}
               />
             </Field>
           </CardContent>

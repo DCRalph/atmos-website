@@ -54,7 +54,11 @@ import {
   toAllocationBudget,
   type AllocationBudget,
 } from "~/lib/ticketing/capacity";
-import { parsePriceToCents } from "~/lib/ticketing/money";
+import {
+  formatNZD,
+  formatNZDWhole,
+  parsePriceToCents,
+} from "~/lib/ticketing/money";
 import { isElevated } from "~/lib/ticketing/access-levels";
 import { useAccessLevels } from "~/hooks/use-access-levels";
 import { cn } from "~/lib/utils";
@@ -68,6 +72,7 @@ import {
 } from "./draft";
 import type { EventDraftState } from "./use-event-draft";
 import { Field } from "./fields";
+import { sellOutPlan } from "./sell-out";
 
 /**
  * The tiers as a table you type into. Name, price, allocation, per buy and
@@ -337,6 +342,10 @@ export function TiersSection({
             </p>
           </CardContent>
         </Card>
+      ) : null}
+
+      {draft.tiers.length > 0 ? (
+        <SellOutCard plan={sellOutPlan(draft, event)} />
       ) : null}
     </div>
   );
@@ -769,6 +778,179 @@ function MeterBar({
           aria-hidden
         />
       ) : null}
+    </div>
+  );
+}
+
+const BOOKING_FEE_COLOR =
+  "color-mix(in oklab, var(--ticket-series-revenue) 50%, var(--ticket-series-arrivals))";
+
+/**
+ * What a sell-out brings in against what the night costs: the headline
+ * numbers, revenue split into tickets and fees with a tick where costs are
+ * covered, then each tier's share. Costs are edited on the Costs section;
+ * this only reads them.
+ */
+function SellOutCard({ plan }: { plan: ReturnType<typeof sellOutPlan> }) {
+  const { revenue, costsCents, breakEven, sellable } = plan;
+  const profit = revenue.totalCents - costsCents;
+  const segments: Segment[] = [
+    {
+      label: "Tickets",
+      value: revenue.ticketCents,
+      color: "var(--ticket-series-revenue)",
+    },
+    {
+      label: "Booking fees",
+      value: revenue.bookingFeeCents,
+      color: BOOKING_FEE_COLOR,
+    },
+    {
+      label: "Venue fees",
+      value: revenue.venueFeeCents,
+      color: "var(--ticket-series-arrivals)",
+    },
+  ];
+  const scale = Math.max(1, revenue.totalCents, costsCents);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>If it sells out</CardTitle>
+        <CardDescription>
+          {sellable} {sellable === 1 ? "ticket" : "tickets"}
+          {plan.capacity !== null ? ", the cap less comps" : ""}.
+          {revenue.tiers.some((tier) => tier.tickets < tier.allocation)
+            ? " Tiers sell in order, so the room runs out before the last ones."
+            : ""}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <HeadlineStat
+            label="Sell-out revenue"
+            value={formatNZDWhole(revenue.totalCents)}
+          />
+          <HeadlineStat label="Costs" value={formatNZDWhole(costsCents)} />
+          <HeadlineStat
+            label="Profit"
+            value={formatNZDWhole(profit)}
+            className={
+              profit < 0
+                ? "text-destructive"
+                : "text-emerald-600 dark:text-emerald-400"
+            }
+          />
+          <HeadlineStat
+            label="Break even"
+            value={
+              breakEven === null
+                ? "Needs a priced tier"
+                : `${breakEven} ${breakEven === 1 ? "ticket" : "tickets"}`
+            }
+            className={cn(
+              breakEven !== null && breakEven > sellable && "text-amber-500",
+            )}
+          />
+        </dl>
+
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm tabular-nums">
+            <span className="font-medium">Revenue</span>
+            {segments
+              .filter((segment) => segment.value > 0)
+              .map((segment) => (
+                <span key={segment.label} className="flex items-center gap-1.5">
+                  <span
+                    className="size-2 rounded-full"
+                    style={{ background: segment.color }}
+                  />
+                  <span className="text-muted-foreground">{segment.label}</span>
+                  <span className="font-medium">
+                    {formatNZDWhole(segment.value)}
+                  </span>
+                </span>
+              ))}
+            {costsCents > 0 ? (
+              <span className="ml-auto flex items-center gap-1.5">
+                <span className="bg-foreground h-3 w-0.5" aria-hidden />
+                <span className="text-muted-foreground">Costs covered at</span>
+                <span className="font-medium">
+                  {formatNZDWhole(costsCents)}
+                </span>
+              </span>
+            ) : null}
+          </div>
+          <MeterBar
+            segments={segments}
+            scale={scale}
+            marker={costsCents > 0 ? costsCents : undefined}
+          />
+        </div>
+
+        <div className="space-y-2">
+          {revenue.tiers.map((tier) => {
+            const cut = tier.allocation - tier.tickets;
+            return (
+              <div
+                key={tier.key}
+                className="grid grid-cols-[minmax(0,1fr)_minmax(3rem,8rem)_6.5rem] items-center gap-3 text-sm"
+              >
+                <span className="min-w-0 truncate">
+                  {tier.name || "Unnamed tier"}{" "}
+                  <span className="text-muted-foreground tabular-nums">
+                    {tier.tickets} ×{" "}
+                    {formatNZD(
+                      tier.tickets > 0 ? tier.totalCents / tier.tickets : 0,
+                    )}
+                  </span>
+                  {cut > 0 ? (
+                    <span className="text-amber-600 dark:text-amber-500">
+                      {" "}
+                      · {cut} cut by cap
+                    </span>
+                  ) : null}
+                </span>
+                <div className="bg-muted h-1.5 overflow-hidden rounded-full">
+                  <div
+                    className="h-full"
+                    style={{
+                      width: `${revenue.totalCents > 0 ? (tier.totalCents / revenue.totalCents) * 100 : 0}%`,
+                      background: "var(--ticket-series-revenue)",
+                    }}
+                  />
+                </div>
+                <span className="text-right tabular-nums">
+                  {formatNZD(tier.totalCents)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-muted-foreground text-xs">
+          Per-ticket amounts include booking and venue fees. Switched-off tiers
+          are left out. Costs are set in the Costs section.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function HeadlineStat({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
+  return (
+    <div>
+      <dt className="text-muted-foreground text-xs">{label}</dt>
+      <dd className={cn("text-xl font-semibold tabular-nums", className)}>
+        {value}
+      </dd>
     </div>
   );
 }

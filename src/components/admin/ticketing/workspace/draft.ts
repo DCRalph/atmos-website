@@ -275,8 +275,6 @@ export function sectionFingerprints(
       isR18: draft.isR18,
       reentryAllowed: draft.reentryAllowed,
       requireNames: draft.requireNames,
-      feeFixed: draft.feeFixed.trim(),
-      feePercent: draft.feePercent.trim(),
     }),
     tiers: JSON.stringify(
       draft.tiers.map((tier) => ({
@@ -291,6 +289,8 @@ export function sectionFingerprints(
       })),
     ),
     costs: JSON.stringify({
+      feeFixed: draft.feeFixed.trim(),
+      feePercent: draft.feePercent.trim(),
       venueHire: draft.venueHire.trim(),
       passVenueHire: draft.passVenueHire,
       costs: draft.costs.map((cost) => [cost.label.trim(), cost.amount.trim()]),
@@ -337,7 +337,10 @@ export type FieldErrors = Partial<
 export const errorSection = (field: keyof FieldErrors): Section =>
   field === "tiers"
     ? "tiers"
-    : field === "venueHire" || field === "costs"
+    : field === "feeFixed" ||
+        field === "feePercent" ||
+        field === "venueHire" ||
+        field === "costs"
       ? "costs"
       : "details";
 

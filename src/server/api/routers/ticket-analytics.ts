@@ -42,7 +42,7 @@ import {
 import {
   breakEvenTickets,
   planRevenuePerTicketCents,
-  unsoldRevenueCents,
+  sellOutBreakdown,
 } from "~/lib/ticketing/break-even";
 import {
   getTicketingSettings,
@@ -299,12 +299,12 @@ export const ticketAnalyticsRouter = createTRPCRouter({
       // far as the sellable room goes.
       const revenueIfSoldOutCents =
         netCents +
-        unsoldRevenueCents({
+        sellOutBreakdown({
           tiers: activeTiers,
           fee,
           venueFeePerTicket: venueFee,
           maxTickets: sellable - sold,
-        });
+        }).totalCents;
 
       // GST inside net revenue and the sell out, at the event's rate. Worked
       // out from the net rather than summed off orders, so refunds take
