@@ -4,7 +4,6 @@ import { Play } from "lucide-react";
 import type { IconType } from "react-icons";
 import { FaSoundcloud, FaSpotify, FaYoutube } from "react-icons/fa6";
 import { api, type RouterOutputs } from "~/trpc/react";
-import { contentCoverFor } from "~/lib/content-covers";
 import { cn } from "~/lib/utils";
 import { Media, Skeleton } from "../ui";
 import { SectionEmpty, SectionError, SectionHeader, nzDate } from "./parts";
@@ -80,34 +79,42 @@ function ContentCard({
   const platform = platformOf(item);
 
   return (
-    <li className={cn("min-w-0", featured && "col-span-2 row-span-2")}>
+    <li
+      className={cn(
+        "min-w-0",
+        featured && "col-span-2",
+        featured && item.imageUrl && "row-span-2",
+      )}
+    >
       <a
         href={item.link}
         target="_blank"
         rel="noopener noreferrer"
         className="group block"
       >
-        <div className="relative">
-          <Media
-            src={contentCoverFor(item.id)}
-            alt=""
-            sizes={featured ? "67vw" : "33vw"}
-            className="aspect-square transition-opacity group-hover:opacity-85"
-          />
-          <span className="t-label pointer-events-none absolute top-0 left-0 bg-black px-1.5 py-1.5 text-[7px] text-white md:px-2.5 md:py-2 md:text-[9px]">
-            {featured ? "Featured " : null}
-            {item.type}
-          </span>
-          <span
-            aria-hidden
-            className={cn(
-              "absolute right-2 bottom-2 flex size-7 items-center justify-center rounded-full bg-white text-black md:right-4 md:bottom-4 md:size-10",
-              featured && "bg-site-accent size-10 md:size-14",
-            )}
-          >
-            <Play className="ml-0.5 size-3.5 md:size-5" fill="currentColor" />
-          </span>
-        </div>
+        {item.imageUrl ? (
+          <div className="relative">
+            <Media
+              src={item.imageUrl}
+              alt=""
+              sizes={featured ? "67vw" : "33vw"}
+              className="aspect-square transition-opacity group-hover:opacity-85"
+            />
+            <span className="t-label pointer-events-none absolute top-0 left-0 bg-black px-1.5 py-1.5 text-[7px] text-white md:px-2.5 md:py-2 md:text-[9px]">
+              {featured ? "Featured " : null}
+              {item.type}
+            </span>
+            <span
+              aria-hidden
+              className={cn(
+                "absolute right-2 bottom-2 flex size-7 items-center justify-center rounded-full bg-white text-black md:right-4 md:bottom-4 md:size-10",
+                featured && "bg-site-accent size-10 md:size-14",
+              )}
+            >
+              <Play className="ml-0.5 size-3.5 md:size-5" fill="currentColor" />
+            </span>
+          </div>
+        ) : null}
         <h3
           className={cn(
             "t-display group-hover:text-site-accent-text mt-3 break-words normal-case transition-colors md:mt-4",
@@ -124,6 +131,7 @@ function ContentCard({
           </p>
         ) : null}
         <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px] text-white/65 md:text-sm">
+          {!item.imageUrl ? <span>{item.type}</span> : null}
           {platform ? (
             <span className="inline-flex min-w-0 items-center gap-1.5 break-words">
               {platform.Icon ? (

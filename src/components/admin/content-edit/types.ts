@@ -2,6 +2,7 @@ import type { ContentLinkType } from "~Prisma/browser";
 
 /** A content item as the editor holds it before Save. */
 export type ContentDraft = {
+  imageFileUploadId: string | null;
   type: string;
   title: string;
   platform: string;

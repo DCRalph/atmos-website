@@ -78,6 +78,7 @@ type SaveBarProps = {
   message?: React.ReactNode;
   saveLabel: string;
   isSaving: boolean;
+  disabled?: boolean;
   onSave: () => void;
   /** Offered only when given, so pass it only while there is something to discard. */
   onDiscard?: () => void;
@@ -103,6 +104,7 @@ export function SaveBar({
   message,
   saveLabel,
   isSaving,
+  disabled,
   onSave,
   onDiscard,
   children,
@@ -127,12 +129,16 @@ export function SaveBar({
         ) : null}
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {onDiscard ? (
-            <Button variant="ghost" disabled={isSaving} onClick={onDiscard}>
+            <Button
+              variant="ghost"
+              disabled={isSaving || disabled}
+              onClick={onDiscard}
+            >
               <Undo2 className="size-4" />
               Discard<span className="max-sm:hidden"> changes</span>
             </Button>
           ) : null}
-          <Button onClick={onSave} disabled={isSaving}>
+          <Button onClick={onSave} disabled={isSaving || disabled}>
             {isSaving ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (

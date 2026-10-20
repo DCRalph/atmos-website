@@ -609,7 +609,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
         } else if (poster.kind === "remove") {
           await clearPoster.mutateAsync({
             gigId: gigIdForPosters,
-            deleteFile: true,
+            deleteFile: false,
             slot,
           });
         }

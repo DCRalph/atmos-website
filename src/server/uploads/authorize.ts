@@ -53,6 +53,7 @@ const resolveProfile: Resolver = async (ctx, context) => {
 };
 
 const resolvers: Record<UploadPresetName, Resolver> = {
+  contentArtwork: async () => ({}),
   taskProof: async (ctx, context) => {
     const taskId = str(context, "taskId");
     if (

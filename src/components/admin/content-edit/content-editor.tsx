@@ -11,7 +11,8 @@ import {
   Trash2,
   TriangleAlert,
 } from "lucide-react";
-import { api } from "~/trpc/react";
+import { api, type RouterOutputs } from "~/trpc/react";
+import { ImageUploadField } from "~/components/uploads/image-upload-field";
 import { AdminSection } from "~/components/admin/admin-section";
 import { SaveBar, type SaveStatus } from "~/components/admin/save-status";
 import { Button } from "~/components/ui/button";
@@ -62,21 +63,10 @@ import type { ContentDraft } from "./types";
  * editing the item you just made.
  */
 
-type LoadedContentItem = {
-  id: string;
-  type: string;
-  title: string;
-  platform: string | null;
-  dj: string | null;
-  description: string;
-  date: Date;
-  linkType: ContentLinkType;
-  link: string;
-  embedUrl: string | null;
-  updatedAt: Date | string;
-};
+type LoadedContentItem = NonNullable<RouterOutputs["content"]["getById"]>;
 
 const emptyDraft = (): ContentDraft => ({
+  imageFileUploadId: null,
   type: "",
   title: "",
   platform: "",
@@ -89,6 +79,7 @@ const emptyDraft = (): ContentDraft => ({
 });
 
 const draftFromItem = (item: LoadedContentItem): ContentDraft => ({
+  imageFileUploadId: item.imageFileUploadId,
   type: item.type,
   title: item.title,
   platform: item.platform ?? "",
@@ -102,6 +93,7 @@ const draftFromItem = (item: LoadedContentItem): ContentDraft => ({
 
 const fingerprint = (draft: ContentDraft): string =>
   JSON.stringify({
+    imageFileUploadId: draft.imageFileUploadId,
     type: draft.type.trim(),
     title: draft.title.trim(),
     platform: draft.platform.trim(),
@@ -207,6 +199,7 @@ export function ContentEditor({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [artworkUploading, setArtworkUploading] = useState(false);
 
   const isNew = itemId === null;
   const isSaving = saveState === "saving";
@@ -215,7 +208,7 @@ export function ContentEditor({
     { id: itemId ?? "" },
     { enabled: itemId !== null },
   );
-  const item = (query.data ?? null) as LoadedContentItem | null;
+  const item = query.data ?? null;
   const facets = api.content.facets.useQuery();
 
   const isDirty = useMemo(
@@ -235,7 +228,9 @@ export function ContentEditor({
     setBaseline(next);
   }
 
-  useUnsavedChangesWarning({ enabled: isDirty && !isSaving });
+  useUnsavedChangesWarning({
+    enabled: (isDirty || artworkUploading) && !isSaving,
+  });
 
   useEffect(() => {
     if (saveState !== "saved") return;
@@ -267,7 +262,7 @@ export function ContentEditor({
   });
 
   const save = useCallback(async () => {
-    if (isSaving) return;
+    if (isSaving || artworkUploading) return;
 
     const found = validate(draft);
     setErrors(found);
@@ -284,6 +279,7 @@ export function ContentEditor({
     setErrorMessage(null);
 
     const payload = {
+      imageFileUploadId: draft.imageFileUploadId,
       type: draft.type.trim(),
       title: draft.title.trim(),
       platform: draft.platform.trim() || null,
@@ -327,7 +323,15 @@ export function ContentEditor({
       setErrorMessage(message);
       toast.error(message);
     }
-  }, [createItem, draft, isSaving, itemId, updateItem, utils]);
+  }, [
+    artworkUploading,
+    createItem,
+    draft,
+    isSaving,
+    itemId,
+    updateItem,
+    utils,
+  ]);
 
   const saveRef = useRef(save);
   useEffect(() => {
@@ -453,6 +457,7 @@ export function ContentEditor({
         }
         saveLabel={isNew ? "Add content" : "Save"}
         isSaving={isSaving}
+        disabled={artworkUploading}
         onSave={() => void save()}
         onDiscard={
           isDirty && !isNew
@@ -588,6 +593,30 @@ export function ContentEditor({
                   placeholder="Select a date"
                 />
               </Field>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Artwork</CardTitle>
+              <CardDescription>
+                Shown on Home and the content page. Optional.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ImageUploadField
+                preset="contentArtwork"
+                value={draft.imageFileUploadId}
+                onChange={(id) => update("imageFileUploadId", id)}
+                onUploadingChange={setArtworkUploading}
+                aspect="square"
+                disabled={isSaving}
+              />
+              <p className="text-muted-foreground mt-3 text-xs">
+                {draft.imageFileUploadId
+                  ? "Removing artwork keeps the file in your media library."
+                  : "Without artwork, this item displays as text only."}
+              </p>
             </CardContent>
           </Card>
 

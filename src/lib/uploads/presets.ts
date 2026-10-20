@@ -69,6 +69,25 @@ const IMAGE_TYPES = [
 ];
 
 export const uploadPresets = {
+  contentArtwork: definePreset({
+    label: "Content artwork",
+    description: "Artwork for mixes, playlists and videos.",
+    access: "admin",
+    accept: IMAGE_TYPES,
+    maxFileSize: mb(25),
+    maxFiles: 1,
+    maxTotalSize: mb(25),
+    for: "content_artwork",
+    image: {
+      maxDimension: 2048,
+      format: "webp",
+      quality: 82,
+      maxOutputSize: mb(1),
+    },
+    context: z.object({}),
+    forId: () => "artwork",
+    keyPrefix: () => "content/artwork",
+  }),
   taskProof: definePreset({
     label: "Task proof",
     description: "Completion photos attached to a task timeline.",
@@ -118,12 +137,7 @@ export const uploadPresets = {
     maxFileSize: mb(50),
     maxFiles: 1,
     maxTotalSize: mb(50),
-    /**
-     * Deliberately its own bucket rather than sharing `gig` with `gigMedia`.
-     * Dedupe is scoped to `for` + `forId`, so a shared bucket handed the poster
-     * the *gallery's* file record whenever the same image was used for both —
-     * and replacing the poster then soft-deleted the gallery image with it.
-     */
+    // Keep uploads grouped by their original purpose in the media library.
     for: "gig_poster",
     image: {
       maxDimension: 2048,
@@ -144,8 +158,6 @@ export const uploadPresets = {
     maxFileSize: mb(50),
     maxFiles: 1,
     maxTotalSize: mb(50),
-    // Its own bucket for the same reason as `gigPoster`: one image used as both
-    // would otherwise share a file record, and replacing one retires the other.
     for: "gig_wide_poster",
     image: {
       // Wider than the poster's cap, since it fills a full-width hero.

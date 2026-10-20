@@ -8,7 +8,6 @@ import { SoundCloudPlayer } from "~/components/soundcloud-player";
 import { YouTubePlayer } from "~/components/youtube-player";
 import { SOCIALS } from "~/lib/site-constants";
 import { cn } from "~/lib/utils";
-import { contentCoverFor } from "~/lib/content-covers";
 import type { RouterOutputs } from "~/trpc/react";
 import { SiteDialog } from "../overlays";
 import { Button, buttonVariants, IconButton, Media } from "../ui";
@@ -85,7 +84,7 @@ export function toEntry(item: ContentItem) {
     platformKey,
     platformLabel: known?.label ?? (rawPlatform === "" ? null : rawPlatform),
     PlatformIcon: known?.Icon ?? null,
-    cover: contentCoverFor(item.id),
+    cover: item.imageUrl,
     embed,
   };
 }
@@ -164,40 +163,46 @@ export function CoverCard({
 }) {
   return (
     <article
-      className={cn("group min-w-0", featured && "col-span-2 lg:row-span-2")}
+      className={cn(
+        "group min-w-0",
+        featured && "col-span-2",
+        featured && entry.cover && "lg:row-span-2",
+      )}
     >
-      <div className="relative">
-        <button
-          type="button"
-          onClick={onOpen}
-          aria-label={`Open ${entry.title}${entry.dj ? ` with ${entry.dj}` : ""}`}
-          className="block w-full"
-        >
-          <Media
-            src={entry.cover}
-            alt=""
-            sizes={
-              featured
-                ? "(min-width: 1024px) 50vw, 100vw"
-                : "(min-width: 1024px) 25vw, 50vw"
-            }
-            className="aspect-square transition-opacity group-hover:opacity-85"
-            priority={featured}
-          />
-        </button>
-        <span className="t-label pointer-events-none absolute top-0 left-0 bg-black px-2.5 py-2 text-[9px] text-white">
-          {kindLabel(entry.kind)}
-        </span>
-        {entry.embed ? (
-          <IconButton
-            label={`${entry.embed.kind === "youtube" ? "Watch" : "Play"} ${entry.title}`}
+      {entry.cover ? (
+        <div className="relative">
+          <button
+            type="button"
             onClick={onOpen}
-            className={cn("absolute right-3 bottom-3", featured && "size-14")}
+            aria-label={`Open ${entry.title}${entry.dj ? ` with ${entry.dj}` : ""}`}
+            className="block w-full"
           >
-            <Play className="ml-0.5 size-5" fill="currentColor" />
-          </IconButton>
-        ) : null}
-      </div>
+            <Media
+              src={entry.cover}
+              alt=""
+              sizes={
+                featured
+                  ? "(min-width: 1024px) 50vw, 100vw"
+                  : "(min-width: 1024px) 25vw, 50vw"
+              }
+              className="aspect-square transition-opacity group-hover:opacity-85"
+              priority={featured}
+            />
+          </button>
+          <span className="t-label pointer-events-none absolute top-0 left-0 bg-black px-2.5 py-2 text-[9px] text-white">
+            {kindLabel(entry.kind)}
+          </span>
+          {entry.embed ? (
+            <IconButton
+              label={`${entry.embed.kind === "youtube" ? "Watch" : "Play"} ${entry.title}`}
+              onClick={onOpen}
+              className={cn("absolute right-3 bottom-3", featured && "size-14")}
+            >
+              <Play className="ml-0.5 size-5" fill="currentColor" />
+            </IconButton>
+          ) : null}
+        </div>
+      ) : null}
       <h3
         className={cn(
           "t-display mt-4 break-words normal-case",
@@ -206,9 +211,16 @@ export function CoverCard({
             : "line-clamp-2 text-base sm:text-xl",
         )}
       >
-        {entry.title}
+        <button
+          type="button"
+          onClick={onOpen}
+          className="hover:text-site-accent-text text-left"
+        >
+          {entry.title}
+        </button>
       </h3>
       <p className="t-label mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-white/60">
+        {!entry.cover ? <span>{kindLabel(entry.kind)}</span> : null}
         {entry.dj ? <span className="text-white/85">{entry.dj}</span> : null}
         {entry.platformLabel ? <span>{entry.platformLabel}</span> : null}
         <span className="tabular-nums">{contentDate.format(entry.date)}</span>
@@ -243,14 +255,14 @@ export function CoverDialog({
         <div className="space-y-5 p-5">
           {entry.embed?.kind === "youtube" ? (
             <YouTubePlayer videoId={entry.embed.id} title={entry.title} />
-          ) : (
+          ) : entry.cover ? (
             <Media
               src={entry.cover}
               alt=""
               sizes="560px"
               className="aspect-[16/9]"
             />
-          )}
+          ) : null}
           {entry.embed?.kind === "soundcloud" ? (
             <SoundCloudPlayer
               url={entry.embed.url}

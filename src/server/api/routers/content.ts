@@ -1,5 +1,10 @@
 import { z } from "zod";
 import {
+  CONTENT_ARTWORK_INCLUDE,
+  withContentArtwork,
+} from "~/server/api/content-artwork";
+import { assertContentArtwork } from "~/server/uploads/image-selection";
+import {
   createTRPCRouter,
   publicProcedure,
   adminProcedure,
@@ -38,18 +43,22 @@ export const contentRouter = createTRPCRouter({
           }
         : undefined;
 
-      return ctx.db.contentItem.findMany({
+      const items = await ctx.db.contentItem.findMany({
         where,
         orderBy: { date: "desc" },
+        include: CONTENT_ARTWORK_INCLUDE,
       });
+      return items.map(withContentArtwork);
     }),
 
   getById: publicProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      return ctx.db.contentItem.findUnique({
+      const item = await ctx.db.contentItem.findUnique({
         where: { id: input.id },
+        include: CONTENT_ARTWORK_INCLUDE,
       });
+      return item ? withContentArtwork(item) : null;
     }),
 
   /**
@@ -152,9 +161,12 @@ export const contentRouter = createTRPCRouter({
         link: z.string().min(1),
         platform: z.string().nullish(),
         embedUrl: z.string().nullish(),
+        imageFileUploadId: z.string().min(1).nullish(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      if (input.imageFileUploadId)
+        await assertContentArtwork(ctx.db, input.imageFileUploadId);
       return ctx.db.contentItem.create({
         data: {
           ...input,
@@ -179,10 +191,13 @@ export const contentRouter = createTRPCRouter({
         link: z.string().min(1).optional(),
         platform: z.string().optional().nullable(),
         embedUrl: z.string().optional().nullable(),
+        imageFileUploadId: z.string().min(1).nullish(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
+      if (data.imageFileUploadId)
+        await assertContentArtwork(ctx.db, data.imageFileUploadId);
       return ctx.db.contentItem.update({
         where: { id },
         data,

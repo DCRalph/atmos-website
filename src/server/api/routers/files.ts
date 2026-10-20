@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { isUploadPresetName } from "~/lib/uploads/presets";
+import { imageSelectionWhere } from "~/server/uploads/image-selection";
 import { createTRPCRouter, adminProcedure } from "~/server/api/trpc";
 import { softDeleteFile, deleteFile } from "~/server/uploads/files";
 import {
@@ -88,6 +90,46 @@ async function enrichFilesWithLinkedEntities<
 }
 
 export const filesRouter = createTRPCRouter({
+  images: adminProcedure
+    .input(
+      z.object({
+        preset: z.string().refine(isUploadPresetName, "Unknown upload preset"),
+        search: z.string().trim().max(200).default(""),
+        page: z.number().int().positive().default(1),
+        limit: z.number().int().min(1).max(48).default(24),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      // Narrow the validated preset before indexing the shared registry.
+      if (!isUploadPresetName(input.preset))
+        throw new Error("Unknown upload preset");
+      const where = {
+        AND: [
+          imageSelectionWhere(input.preset),
+          { name: { contains: input.search, mode: "insensitive" as const } },
+        ],
+      };
+      const [files, total] = await Promise.all([
+        ctx.db.file_upload.findMany({
+          where,
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          skip: (input.page - 1) * input.limit,
+          take: input.limit,
+          select: {
+            id: true,
+            url: true,
+            key: true,
+            name: true,
+            size: true,
+            mimeType: true,
+            width: true,
+            height: true,
+          },
+        }),
+        ctx.db.file_upload.count({ where }),
+      ]);
+      return { files, total, totalPages: Math.ceil(total / input.limit) };
+    }),
   /**
    * Get all files with pagination and filtering
    * Cached for 5 minutes

@@ -316,8 +316,12 @@ model ContentItem {
   linkType ContentLinkType @default(OTHER)
   embedUrl String?
 
+  imageFileUploadId String?
+  image file_upload? @relation("ContentArtwork", fields: [imageFileUploadId], references: [id], onDelete: SetNull)
+
   homeContentPlacements HomeContentPlacement[]
 
+  @@index([imageFileUploadId])
   @@map("content_item")
 }
 
@@ -1025,6 +1029,7 @@ model file_upload {
   category FileCategory @default(FILE)
 
   fileTags file_tag[]
+  contentItems ContentItem[] @relation("ContentArtwork")
 
   /// SHA-256 of the bytes actually stored in R2 (post-processing).
   hash String?

@@ -6,6 +6,10 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import { HomeContentSection } from "~Prisma/client";
+import {
+  CONTENT_ARTWORK_INCLUDE,
+  withContentArtwork,
+} from "~/server/api/content-artwork";
 
 const HOME_LATEST_FEATURED_COUNT = 1;
 const HOME_LATEST_LIST_COUNT = 4;
@@ -16,7 +20,7 @@ const isDefined = <T>(value: T | null | undefined): value is T =>
 export const homeContentRouter = createTRPCRouter({
   /**
    * Public endpoint for the Home page “Latest Content” section.
-   * Returns 1 featured item + up to 2 additional items, ordered by admin-defined placements.
+   * Returns 1 featured item + up to 4 additional items, ordered by admin-defined placements.
    * Falls back to date-ordering when placements are missing/invalid.
    */
   getHomeLatest: publicProcedure.query(async ({ ctx }) => {
@@ -40,6 +44,7 @@ export const homeContentRouter = createTRPCRouter({
     const itemsFromPlacements = placementIds.length
       ? await ctx.db.contentItem.findMany({
           where: { id: { in: placementIds } },
+          include: CONTENT_ARTWORK_INCLUDE,
         })
       : [];
 
@@ -66,6 +71,7 @@ export const homeContentRouter = createTRPCRouter({
       featuredItem =
         (await ctx.db.contentItem.findFirst({
           orderBy: { date: "desc" },
+          include: CONTENT_ARTWORK_INCLUDE,
         })) ?? null;
     }
 
@@ -80,13 +86,14 @@ export const homeContentRouter = createTRPCRouter({
         where: { id: { notIn: Array.from(selectedIds) } },
         orderBy: { date: "desc" },
         take: missingCount,
+        include: CONTENT_ARTWORK_INCLUDE,
       });
       listItems = [...listItems, ...fallback];
     }
 
     return {
-      featuredItem,
-      items: listItems.slice(0, HOME_LATEST_LIST_COUNT),
+      featuredItem: featuredItem ? withContentArtwork(featuredItem) : null,
+      items: listItems.slice(0, HOME_LATEST_LIST_COUNT).map(withContentArtwork),
     };
   }),
 

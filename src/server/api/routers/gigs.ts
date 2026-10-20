@@ -1979,11 +1979,6 @@ export const gigsRouter = createTRPCRouter({
         data: posterSlotData(input.slot, input.fileUploadId),
       });
 
-      const previous = posterInSlot(gig, input.slot);
-      if (previous && previous !== input.fileUploadId) {
-        await softDeleteFile({ id: previous });
-      }
-
       const posterFileUpload = await getFileUploadInfoById(
         ctx.db,
         input.fileUploadId,
@@ -1995,7 +1990,7 @@ export const gigsRouter = createTRPCRouter({
     .input(
       z.object({
         gigId: z.string(),
-        deleteFile: z.boolean().default(true),
+        deleteFile: z.boolean().default(false),
         slot: POSTER_SLOT.default("poster"),
       }),
     )

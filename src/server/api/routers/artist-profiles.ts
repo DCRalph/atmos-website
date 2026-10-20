@@ -15,12 +15,8 @@ import {
   adminProcedure,
 } from "~/server/api/trpc";
 import { logUserActivity } from "~/server/utils/activity-log";
-import { softDeleteFile } from "~/server/uploads/files";
 import { resolveTargetProfileId } from "~/server/utils/artist-profile-access";
-import {
-  HANDLE_REGEX,
-  uniqueHandleFrom,
-} from "~/server/utils/artist-handles";
+import { HANDLE_REGEX, uniqueHandleFrom } from "~/server/utils/artist-handles";
 import { resolveSocialPlatform } from "~/lib/social-pills";
 import {
   setProfileSocial,
@@ -511,14 +507,6 @@ export const artistProfilesRouter = createTRPCRouter({
         data: { avatarFileId: file.id },
       });
 
-      if (prev?.avatarFileId && prev.avatarFileId !== file.id) {
-        try {
-          await softDeleteFile({ id: prev.avatarFileId });
-        } catch {
-          // Previous file already gone; nothing to retire.
-        }
-      }
-
       await logUserActivity(
         ActivityType.ARTIST_PROFILE_UPDATED,
         `Updated profile photo for @${prev?.handle ?? profileId}`,
@@ -551,14 +539,6 @@ export const artistProfilesRouter = createTRPCRouter({
         data: { bannerFileId: file.id },
       });
 
-      if (prev?.bannerFileId && prev.bannerFileId !== file.id) {
-        try {
-          await softDeleteFile({ id: prev.bannerFileId });
-        } catch {
-          // Previous file already gone; nothing to retire.
-        }
-      }
-
       await logUserActivity(
         ActivityType.ARTIST_PROFILE_UPDATED,
         `Updated banner image for @${prev?.handle ?? profileId}`,
@@ -580,16 +560,10 @@ export const artistProfilesRouter = createTRPCRouter({
       if (!prev?.avatarFileId) {
         return { ok: true as const, avatarFileId: null as string | null };
       }
-      const oldId = prev.avatarFileId;
       await ctx.db.artistProfile.update({
         where: { id: profileId },
         data: { avatarFileId: null },
       });
-      try {
-        await softDeleteFile({ id: oldId });
-      } catch {
-        // ignore
-      }
       await logUserActivity(
         ActivityType.ARTIST_PROFILE_UPDATED,
         `Removed profile photo from @${prev.handle}`,
@@ -611,16 +585,10 @@ export const artistProfilesRouter = createTRPCRouter({
       if (!prev?.bannerFileId) {
         return { ok: true as const, bannerFileId: null as string | null };
       }
-      const oldId = prev.bannerFileId;
       await ctx.db.artistProfile.update({
         where: { id: profileId },
         data: { bannerFileId: null },
       });
-      try {
-        await softDeleteFile({ id: oldId });
-      } catch {
-        // ignore
-      }
       await logUserActivity(
         ActivityType.ARTIST_PROFILE_UPDATED,
         `Removed banner image from @${prev.handle}`,

@@ -1,7 +1,9 @@
 "use client";
 
-import { useRef } from "react";
-import { ImagePlus, Loader2, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { FolderOpen, ImagePlus, Loader2, Trash2 } from "lucide-react";
+import { api } from "~/trpc/react";
+import { MediaImagePicker } from "./media-image-picker";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
 import { Label } from "~/components/ui/label";
@@ -19,6 +21,7 @@ type Props<K extends UploadPresetName> = {
   value: string | null;
   /** Receives the new file id, or null when the image is removed. */
   onChange: (fileId: string | null, file?: UploadedFile) => void;
+  onUploadingChange?: (uploading: boolean) => void;
   label?: string;
   helperText?: string;
   /** Thumbnail shape. */
@@ -36,6 +39,7 @@ export function ImageUploadField<K extends UploadPresetName>({
   context,
   value,
   onChange,
+  onUploadingChange,
   label,
   helperText,
   aspect = "wide",
@@ -43,6 +47,10 @@ export function ImageUploadField<K extends UploadPresetName>({
   className,
 }: Props<K>) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const me = api.user.me.useQuery();
+  const canChooseExisting =
+    me.data?.effectivePermissions.includes("ADMIN") ?? false;
 
   const { upload, items, isUploading, constraints, accept } = useUpload(
     preset,
@@ -57,6 +65,9 @@ export function ImageUploadField<K extends UploadPresetName>({
   );
 
   const pending = isUploading || disabled;
+  useEffect(() => {
+    onUploadingChange?.(isUploading);
+  }, [isUploading, onUploadingChange]);
   const previewUrl = value ? buildMediaUrl(value) : null;
   const progress = items.at(-1)?.progress ?? 0;
 
@@ -77,7 +88,7 @@ export function ImageUploadField<K extends UploadPresetName>({
         }}
       />
 
-      <div className="flex items-start gap-3">
+      <div className="flex flex-wrap items-start gap-3">
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
@@ -128,7 +139,7 @@ export function ImageUploadField<K extends UploadPresetName>({
           ) : null}
         </button>
 
-        <div className="flex min-w-0 flex-col gap-1">
+        <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1">
           <div className="flex flex-wrap gap-1.5">
             <Button
               type="button"
@@ -144,6 +155,18 @@ export function ImageUploadField<K extends UploadPresetName>({
               )}
               <span className="ml-1.5">{value ? "Replace" : "Upload"}</span>
             </Button>
+            {canChooseExisting ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={pending}
+                onClick={() => setPickerOpen(true)}
+              >
+                <FolderOpen className="h-4 w-4" />
+                <span className="ml-1.5">Choose existing</span>
+              </Button>
+            ) : null}
             {value ? (
               <Button
                 type="button"
@@ -163,6 +186,14 @@ export function ImageUploadField<K extends UploadPresetName>({
           </p>
         </div>
       </div>
+      {pickerOpen && !pending ? (
+        <MediaImagePicker
+          preset={preset}
+          value={value}
+          onSelect={(file) => onChange(file.id, file)}
+          onClose={() => setPickerOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
