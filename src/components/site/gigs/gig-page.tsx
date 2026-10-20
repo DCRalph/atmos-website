@@ -15,7 +15,6 @@ import {
   Heart,
   MapPin,
   Pencil,
-  Play,
   Share2,
 } from "lucide-react";
 import { api } from "~/trpc/react";
@@ -33,6 +32,12 @@ import { BuyPanel } from "~/components/ticketing/buy-panel";
 import { NewsletterForm } from "../newsletter-form";
 import { useHoverCursor } from "../hover-cursor";
 import { Lightbox, useLightbox } from "../overlays";
+import { useSite } from "../site-provider";
+import { VideoPlayer } from "~/components/media/video-player";
+import {
+  MediaViewer,
+  type ViewerSelection,
+} from "~/components/media/media-viewer";
 import { Button, Media, Skeleton, buttonVariants } from "../ui";
 import {
   AdminStrip,
@@ -298,21 +303,29 @@ function TicketsBlock({ gig }: { gig: DetailGig }) {
   return null;
 }
 
-/** Uploaded gig photos and videos; photos open the lightbox. */
+/** Uploaded gig media, with uncropped video playback and a shared larger viewer. */
 function Gallery({ gig }: { gig: DetailGig }) {
-  const lb = useLightbox();
+  const [selection, setSelection] = useState<ViewerSelection | null>(null);
+  const { portalContainer } = useSite();
   const cursor = useHoverCursor(<Expand />);
   const photos = gig.media
     .filter((m) => m.type === "photo")
     .map((m, i) => ({
       id: m.id,
+      type: "photo" as const,
       src: getMediaDisplayUrl(m),
       download: getMediaDownloadUrl(m),
       alt: `${gig.title}, photo ${i + 1}`,
     }));
   const videos = gig.media
     .filter((m) => m.type === "video")
-    .map((m) => ({ id: m.id, src: getMediaDisplayUrl(m) }));
+    .map((m, i) => ({
+      id: m.id,
+      type: "video" as const,
+      src: getMediaDisplayUrl(m),
+      download: getMediaDownloadUrl(m),
+      alt: `${gig.title}, video ${i + 1}`,
+    }));
 
   if (!photos.length && !videos.length) {
     return (
@@ -337,7 +350,7 @@ function Gallery({ gig }: { gig: DetailGig }) {
           <button
             key={m.id}
             type="button"
-            onClick={() => lb.open(i)}
+            onClick={() => setSelection({ index: i })}
             aria-label={`Open photo ${i + 1}`}
             {...cursor.targets}
             className={cn(
@@ -361,26 +374,25 @@ function Gallery({ gig }: { gig: DetailGig }) {
             />
           </button>
         ))}
-        {videos.map((v) => (
-          <div
+        {videos.map((v, i) => (
+          <VideoPlayer
             key={v.id}
-            className="relative col-span-2 aspect-video bg-white/5"
-          >
-            <video
-              src={v.src}
-              controls
-              playsInline
-              preload="metadata"
-              className="size-full object-cover"
-            />
-            <Play
-              className="pointer-events-none absolute top-3 left-3 size-4 text-white/70"
-              aria-hidden
-            />
-          </div>
+            src={v.src}
+            label={v.alt}
+            suspended={selection !== null}
+            className="col-span-2 self-start"
+            onExpand={(playback) =>
+              setSelection({ index: photos.length + i, playback })
+            }
+          />
         ))}
       </div>
-      <Lightbox images={photos} {...lb.props} />
+      <MediaViewer
+        media={[...photos, ...videos]}
+        selection={selection}
+        onSelectionChange={setSelection}
+        container={portalContainer}
+      />
       {cursor.circle}
     </div>
   );

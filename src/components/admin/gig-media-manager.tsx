@@ -86,7 +86,12 @@ import {
   MoreHorizontal,
   Star,
 } from "lucide-react";
-import { getMediaDisplayUrl } from "~/lib/media-url";
+import { getMediaDisplayUrl, getMediaDownloadUrl } from "~/lib/media-url";
+import { VideoPlayer } from "~/components/media/video-player";
+import {
+  MediaViewer,
+  type ViewerSelection,
+} from "~/components/media/media-viewer";
 
 type MediaItem = {
   id: string;
@@ -276,9 +281,10 @@ function SortableMediaItem({
           <div className="relative h-full w-full">
             <video
               src={url}
-              className="h-full w-full object-cover"
+              className="h-full w-full bg-black object-contain"
               muted
               playsInline
+              preload="metadata"
             />
             <div className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-1">
               <Film className="h-3 w-3 text-white" />
@@ -347,9 +353,10 @@ function SortableMediaItem({
           <div className="relative h-full w-full">
             <video
               src={url}
-              className="h-full w-full object-cover"
+              className="h-full w-full bg-black object-contain"
               muted
               playsInline
+              preload="metadata"
               onLoadedData={() => setIsLoading(false)}
               onError={() => {
                 setIsLoading(false);
@@ -659,6 +666,17 @@ export function GigMediaManager({
     "gallery",
   );
   const [infoMedia, setInfoMedia] = useState<MediaItem | null>(null);
+  const [viewerSelection, setViewerSelection] =
+    useState<ViewerSelection | null>(null);
+  const viewerMedia = media.map((item) => ({
+    id: item.id,
+    type: item.type === "video" ? ("video" as const) : ("photo" as const),
+    src: getMediaDisplayUrl(item),
+    download: getMediaDownloadUrl(item),
+    alt:
+      item.fileUpload?.name ??
+      (item.type === "video" ? "Gig video" : "Gig photo"),
+  }));
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSelectDialogOpen, setIsSelectDialogOpen] = useState(false);
@@ -1361,7 +1379,12 @@ export function GigMediaManager({
       {/* Media Info Dialog */}
       <Dialog
         open={!!infoMedia}
-        onOpenChange={(open) => !open && setInfoMedia(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setInfoMedia(null);
+            setViewerSelection(null);
+          }
+        }}
       >
         <DialogContent>
           <DialogHeader>
@@ -1381,14 +1404,24 @@ export function GigMediaManager({
           {infoMedia && (
             <DialogBody className="space-y-3">
               {/* Preview */}
-              <div className="bg-muted relative aspect-video w-full overflow-hidden rounded-lg border">
-                {infoMedia.type === "video" ? (
-                  <video
-                    src={getMediaDisplayUrl(infoMedia)}
-                    className="h-full w-full object-contain"
-                    controls
-                  />
-                ) : (
+              {infoMedia.type === "video" ? (
+                <VideoPlayer
+                  key={infoMedia.id}
+                  src={getMediaDisplayUrl(infoMedia)}
+                  label={infoMedia.fileUpload?.name ?? "Gig video"}
+                  suspended={viewerSelection !== null}
+                  className="rounded-lg border"
+                  onExpand={(playback) =>
+                    setViewerSelection({
+                      index: media.findIndex(
+                        (item) => item.id === infoMedia.id,
+                      ),
+                      playback,
+                    })
+                  }
+                />
+              ) : (
+                <div className="bg-muted relative aspect-video w-full overflow-hidden rounded-lg border">
                   <Image
                     src={getMediaDisplayUrl(infoMedia)}
                     alt={infoMedia.fileUpload?.name ?? "Media preview"}
@@ -1396,8 +1429,8 @@ export function GigMediaManager({
                     sizes="30vw"
                     className="object-contain"
                   />
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Info Grid */}
               <div className="grid gap-2 text-sm">
@@ -1530,6 +1563,11 @@ export function GigMediaManager({
               </div>
             </DialogBody>
           )}
+          <MediaViewer
+            media={viewerMedia}
+            selection={viewerSelection}
+            onSelectionChange={setViewerSelection}
+          />
         </DialogContent>
       </Dialog>
 
@@ -1625,9 +1663,10 @@ export function GigMediaManager({
                         {isVideo ? (
                           <video
                             src={upload.url}
-                            className="h-full w-full object-cover"
+                            className="h-full w-full bg-black object-contain"
                             muted
                             playsInline
+                            preload="metadata"
                           />
                         ) : (
                           <Image

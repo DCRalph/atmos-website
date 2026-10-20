@@ -7,7 +7,8 @@ import { api } from "~/trpc/react";
 import { useUpload } from "~/hooks/use-upload";
 import { UploadProgressList } from "~/components/uploads/upload-progress-list";
 import { describeConstraints } from "~/lib/uploads/validate";
-import { buildMediaUrl } from "~/lib/media-url";
+import { buildMediaUrl, getMediaDownloadUrl } from "~/lib/media-url";
+import { VideoPreview } from "~/components/media/video-preview";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -159,11 +160,10 @@ export function FilesManager() {
   const [tagFilter, setTagFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 25;
-  const [previewFile, setPreviewFile] = useState<{
-    url: string;
-    name: string;
-    mimeType: string;
-  } | null>(null);
+  const [previewFile, setPreviewFile] = useState<Pick<
+    FileInfo,
+    "id" | "url" | "name" | "mimeType"
+  > | null>(null);
   const [deleteFileId, setDeleteFileId] = useState<string | null>(null);
   const [deletePermanently, setDeletePermanently] = useState(false);
 
@@ -643,6 +643,7 @@ export function FilesManager() {
             className="h-8 w-8 p-0"
             onClick={() =>
               setPreviewFile({
+                id: file.id,
                 url: buildMediaUrl(file.id),
                 name: file.name,
                 mimeType: file.mimeType,
@@ -936,10 +937,13 @@ export function FilesManager() {
                   className="max-h-[60vh] w-auto rounded object-contain"
                 />
               ) : previewFile.mimeType.startsWith("video/") ? (
-                <video
-                  src={previewFile.url}
-                  controls
-                  className="max-h-[60vh] w-auto rounded"
+                <VideoPreview
+                  key={previewFile.id}
+                  src={buildMediaUrl(previewFile.id)}
+                  label={previewFile.name}
+                  download={getMediaDownloadUrl({
+                    fileUploadId: previewFile.id,
+                  })}
                 />
               ) : (
                 <div className="text-muted-foreground text-center">
@@ -1219,10 +1223,13 @@ export function FilesManager() {
                     className="max-h-[200px] w-auto rounded object-contain"
                   />
                 ) : infoFile.mimeType.startsWith("video/") ? (
-                  <video
+                  <VideoPreview
+                    key={infoFile.id}
                     src={buildMediaUrl(infoFile.id)}
-                    controls
-                    className="max-h-[200px] w-auto rounded"
+                    label={infoFile.name}
+                    download={getMediaDownloadUrl({
+                      fileUploadId: infoFile.id,
+                    })}
                   />
                 ) : (
                   <div className="text-muted-foreground text-center">
