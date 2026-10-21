@@ -49,6 +49,7 @@ import { donationsRouter } from "~/server/api/routers/donations";
 import { paymentsRouter } from "~/server/api/routers/payments";
 import { webRouter } from "~/server/api/routers/web";
 import { willGptRouter } from "~/server/api/routers/will-gpt";
+import { reportsRouter } from "~/server/api/routers/reports";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -122,6 +123,7 @@ export const appRouter = createTRPCRouter({
 
   /** The admin assistant, which works by calling the procedures above. */
   willGpt: willGptRouter,
+  reports: reportsRouter,
 });
 
 // export type definition of API

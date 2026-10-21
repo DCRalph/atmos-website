@@ -75,6 +75,7 @@ model User {
   accounts             Account[]
   activities           ActivityLog[]              @relation("UserActivities")
   willGptConversations WillGptConversation[]
+  htmlReports          HtmlReport[]
   targetActivities     ActivityLog[]              @relation("TargetUserActivities")
   artistProfile       ArtistProfile?
   artistClaimRequests ArtistClaimRequest[]      @relation("ClaimRequestingUser")
@@ -1370,10 +1371,30 @@ model WillGptConversation {
   updatedAt   DateTime @updatedAt
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  reports HtmlReport[]
 
   @@index([userId])
   @@index([updatedAt])
   @@map("will_gpt_conversation")
+}
+
+/// Generated HTML lives in R2; the database keeps the library and its provenance.
+model HtmlReport {
+  id             String   @id @default(uuid())
+  title          String
+  objectKey      String   @unique
+  byteSize       Int
+  userId         String?
+  conversationId String?
+  createdAt      DateTime @default(now())
+
+  user         User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  conversation WillGptConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([conversationId])
+  @@index([createdAt, id])
+  @@map("html_report")
 }
 
 model KeyValueStore {
