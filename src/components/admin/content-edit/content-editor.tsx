@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
+  CheckCircle2,
   ExternalLink,
   Loader2,
   Trash2,
@@ -53,6 +53,7 @@ import {
 import { ContentLinkType } from "~Prisma/browser";
 import { SoundCloudEmbedParserDialog } from "./soundcloud-embed-dialog";
 import type { ContentDraft } from "./types";
+import { getYouTubeId, youtubeThumbnail } from "~/lib/youtube";
 
 /**
  * The content item admin form, for both creating and editing.
@@ -120,38 +121,6 @@ const httpUrlProblem = (value: string): string | null => {
   }
 };
 
-/**
- * A YouTube id out of a pasted watch/share URL. Pasting the whole URL into a
- * field that wants the bare id is the easy mistake to make, and it fails
- * silently — the embed just never renders.
- */
-export const extractYouTubeId = (value: string): string | null => {
-  const trimmed = value.trim();
-  if (!trimmed || !/[/.]/.test(trimmed)) return null;
-  const candidate = /^https?:\/\//i.test(trimmed)
-    ? trimmed
-    : `https://${trimmed}`;
-  try {
-    const url = new URL(candidate);
-    const host = url.hostname.replace(/^www\./, "");
-    if (host === "youtu.be") {
-      return url.pathname.split("/").find(Boolean) ?? null;
-    }
-    if (host.endsWith("youtube.com")) {
-      const v = url.searchParams.get("v");
-      if (v) return v;
-      const parts = url.pathname.split("/").filter(Boolean);
-      const marker = parts.findIndex((part) =>
-        ["embed", "shorts", "live", "v"].includes(part),
-      );
-      if (marker >= 0) return parts[marker + 1] ?? null;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-};
-
 type FieldErrors = Partial<
   Record<
     "type" | "title" | "description" | "date" | "link" | "embedUrl",
@@ -163,9 +132,6 @@ const validate = (draft: ContentDraft): FieldErrors => {
   const errors: FieldErrors = {};
   if (!draft.type.trim()) errors.type = "A type is required";
   if (!draft.title.trim()) errors.title = "A title is required";
-  if (!draft.description.trim()) {
-    errors.description = "A description is required";
-  }
   if (!draft.date) errors.date = "A date is required";
 
   const link = draft.link.trim();
@@ -210,6 +176,67 @@ export function ContentEditor({
   );
   const item = query.data ?? null;
   const facets = api.content.facets.useQuery();
+  const youtubeId = getYouTubeId(draft.link);
+  const metadata = api.content.youtubeMetadata.useQuery(
+    { link: youtubeId ?? "" },
+    { enabled: youtubeId !== null, retry: false, staleTime: 60_000 },
+  );
+  const autoTitle = useRef<string | null>(null);
+  useEffect(() => {
+    const data = metadata.data;
+    if (!data) return;
+    const previousAutoTitle = autoTitle.current;
+    autoTitle.current = data.title;
+    setDraft((current) => {
+      if (getYouTubeId(current.link) !== data.videoId) return current;
+      if (current.title.trim() && current.title !== previousAutoTitle)
+        return current;
+      return { ...current, title: data.title };
+    });
+  }, [metadata.data]);
+
+  const changeLink = (link: string) => {
+    setErrors((current) => ({ ...current, link: undefined }));
+    setDraft((current) => {
+      const videoId = getYouTubeId(link);
+      if (videoId)
+        return {
+          ...current,
+          link,
+          linkType: ContentLinkType.YOUTUBE_VIDEO,
+          embedUrl: videoId,
+          platform: "YouTube",
+          type: current.type || "VIDEO",
+          date: current.date ?? new Date(),
+        };
+      try {
+        const url = new URL(link);
+        if (["soundcloud.com", "www.soundcloud.com"].includes(url.hostname)) {
+          const playlist = url.pathname.includes("/sets/");
+          return {
+            ...current,
+            link,
+            platform: "Soundcloud",
+            linkType: playlist
+              ? ContentLinkType.SOUNDCLOUD_PLAYLIST
+              : ContentLinkType.SOUNDCLOUD_TRACK,
+            type: current.type || (playlist ? "PLAYLIST" : "MIX"),
+            embedUrl: isSoundCloud(current.linkType) ? current.embedUrl : "",
+            date: current.date ?? new Date(),
+          };
+        }
+      } catch {
+        /* Keep the draft while a URL is being typed. */
+      }
+      return {
+        ...current,
+        link,
+        ...(current.linkType === ContentLinkType.YOUTUBE_VIDEO
+          ? { linkType: ContentLinkType.OTHER, platform: "", embedUrl: "" }
+          : {}),
+      };
+    });
+  };
 
   const isDirty = useMemo(
     () => fingerprint(draft) !== fingerprint(baseline),
@@ -359,10 +386,6 @@ export function ContentEditor({
     : null;
   const platformUnknown =
     platformValue.length > 0 && !findPlatform(platformValue);
-  const youtubeIdFromUrl =
-    draft.linkType === ContentLinkType.YOUTUBE_VIDEO
-      ? extractYouTubeId(draft.embedUrl)
-      : null;
 
   const typeSuggestions = (facets.data?.types ?? []).filter(
     (row) => row.value !== draft.type,
@@ -411,6 +434,7 @@ export function ContentEditor({
       title={isNew ? "Add content" : "Manage content"}
       subtitle={isNew ? undefined : (item?.title ?? undefined)}
       maxWidth="max-w-4xl"
+      backLink={{ href: "/admin/content", label: "Content" }}
       actions={
         <div className="flex items-center gap-2">
           {draft.link.trim() && !httpUrlProblem(draft.link.trim()) ? (
@@ -434,16 +458,6 @@ export function ContentEditor({
         </div>
       }
     >
-      <div className="mb-4">
-        {/* A real link, so the unsaved-changes guard can intercept the click. */}
-        <Button variant="outline" asChild>
-          <Link href="/admin/content">
-            <ArrowLeft className="h-4 w-4" />
-            Back to content
-          </Link>
-        </Button>
-      </div>
-
       {/* The page's one and only Save. */}
       <SaveBar
         status={status}
@@ -473,32 +487,97 @@ export function ContentEditor({
         <div className="flex flex-col gap-6">
           <Card>
             <CardHeader>
+              <CardTitle>Content link</CardTitle>
+              <CardDescription>
+                Start with a video, mix or playlist link.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Field
+                id="content-link"
+                label="Link"
+                error={errors.link}
+                required
+              >
+                <Input
+                  id="content-link"
+                  type="url"
+                  value={draft.link}
+                  onChange={(e) => changeLink(e.target.value)}
+                  placeholder="Paste a YouTube, SoundCloud or other link"
+                  aria-invalid={Boolean(errors.link)}
+                />
+              </Field>
+              {youtubeId ? (
+                <>
+                  <p
+                    className="text-muted-foreground flex items-center gap-2 text-sm"
+                    role="status"
+                  >
+                    <CheckCircle2 className="text-admin-accent-text size-4 shrink-0" />
+                    YouTube detected. Video and thumbnail are ready.
+                  </p>
+                  <div className="relative aspect-video max-w-lg overflow-hidden rounded-md">
+                    <Image
+                      src={youtubeThumbnail(youtubeId)}
+                      alt="YouTube video thumbnail"
+                      fill
+                      sizes="(min-width: 640px) 512px, 100vw"
+                      className="object-cover"
+                    />
+                  </div>
+                  {metadata.isFetching ? (
+                    <p role="status" className="text-muted-foreground text-xs">
+                      Loading video details…
+                    </p>
+                  ) : metadata.isError ? (
+                    <p role="status" className="text-muted-foreground text-xs">
+                      Couldn&apos;t load the title. Enter it below or{" "}
+                      <button
+                        type="button"
+                        className="text-foreground underline"
+                        onClick={() => void metadata.refetch()}
+                      >
+                        try again
+                      </button>
+                      .
+                    </p>
+                  ) : metadata.data ? (
+                    <p className="text-muted-foreground text-xs">
+                      {metadata.data.author}
+                    </p>
+                  ) : null}
+                </>
+              ) : null}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
               <CardTitle>Details</CardTitle>
               <CardDescription>
-                What this item is, and who it is by
+                Review the title and choose how this item appears.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <Field
+              <Field
+                id="content-title"
+                label="Title"
+                error={errors.title}
+                required
+              >
+                <Input
                   id="content-title"
-                  label="Title"
-                  error={errors.title}
-                  required
-                >
-                  <Input
-                    id="content-title"
-                    value={draft.title}
-                    onChange={(e) => update("title", e.target.value)}
-                    aria-invalid={Boolean(errors.title)}
-                  />
-                </Field>
+                  value={draft.title}
+                  onChange={(e) => update("title", e.target.value)}
+                  aria-invalid={Boolean(errors.title)}
+                />
+              </Field>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Field
                   id="content-type"
                   label="Type"
                   error={errors.type}
                   required
-                  hint="Free text — reuse an existing value to keep the list tidy."
                 >
                   <Input
                     id="content-type"
@@ -514,131 +593,79 @@ export function ContentEditor({
                     disabled={isSaving}
                   />
                 </Field>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Field
-                  id="content-platform"
-                  label="Platform"
-                  hint="Optional. Decides the badge colour and icon on the public card."
+                  id="content-date"
+                  label="Date"
+                  error={errors.date}
+                  required
+                  hint="Orders the content list, newest first."
                 >
-                  <Input
-                    id="content-platform"
-                    value={draft.platform}
-                    onChange={(e) => update("platform", e.target.value)}
-                    placeholder="Soundcloud, Spotify, YouTube"
-                  />
-                  <Suggestions
-                    label="Known"
-                    values={platformSuggestions}
-                    onPick={(value) => update("platform", value)}
-                    disabled={isSaving}
-                  />
-                  {platformUnknown ? (
-                    <p className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-xs">
-                      <TriangleAlert className="h-3.5 w-3.5 text-amber-500" />
-                      <span>
-                        &quot;{platformValue}&quot; has no icon or colour on the
-                        public card.
-                      </span>
-                      {platformCasingFix ? (
-                        <button
-                          type="button"
-                          className="text-foreground underline"
-                          onClick={() =>
-                            update("platform", platformCasingFix.value)
-                          }
-                        >
-                          Use &quot;{platformCasingFix.value}&quot; instead
-                        </button>
-                      ) : null}
-                    </p>
-                  ) : null}
-                </Field>
-                <Field id="content-dj" label="DJ" hint="Optional.">
-                  <Input
-                    id="content-dj"
-                    value={draft.dj}
-                    onChange={(e) => update("dj", e.target.value)}
-                    placeholder="DJ name"
+                  <DatePicker
+                    date={draft.date}
+                    onDateChange={(value) => update("date", value)}
+                    placeholder="Select a date"
                   />
                 </Field>
               </div>
-
+              <Field id="content-dj" label="Artist / DJ" hint="Optional.">
+                <Input
+                  id="content-dj"
+                  value={draft.dj}
+                  onChange={(e) => update("dj", e.target.value)}
+                  placeholder="Artist or DJ name"
+                />
+              </Field>
               <Field
                 id="content-description"
                 label="Description"
-                error={errors.description}
-                required
+                hint="Optional."
               >
                 <Textarea
                   id="content-description"
-                  rows={4}
+                  rows={3}
                   value={draft.description}
                   onChange={(e) => update("description", e.target.value)}
-                  aria-invalid={Boolean(errors.description)}
-                />
-              </Field>
-
-              <Field
-                id="content-date"
-                label="Date"
-                error={errors.date}
-                required
-                hint="Orders the content list, newest first."
-              >
-                <DatePicker
-                  date={draft.date}
-                  onDateChange={(value) => update("date", value)}
-                  placeholder="Select a date"
                 />
               </Field>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Artwork</CardTitle>
-              <CardDescription>
-                Shown on Home and the content page. Optional.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ImageUploadField
-                preset="contentArtwork"
-                value={draft.imageFileUploadId}
-                onChange={(id) => update("imageFileUploadId", id)}
-                onUploadingChange={setArtworkUploading}
-                aspect="square"
-                disabled={isSaving}
-              />
-              <p className="text-muted-foreground mt-3 text-xs">
-                {draft.imageFileUploadId
-                  ? "Removing artwork keeps the file in your media library."
-                  : "Without artwork, this item displays as text only."}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Link & embed</CardTitle>
-              <CardDescription>
-                Where the item points, and what plays inline when it is featured
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
+          <details className="bg-card text-card-foreground rounded-xl border shadow-sm">
+            <summary className="cursor-pointer px-6 py-5 font-semibold">
+              Artwork & embed settings
+            </summary>
+            <div className="space-y-6 border-t p-6">
+              <div className="space-y-3">
+                <h3 className="font-medium">Artwork</h3>
+                <ImageUploadField
+                  preset="contentArtwork"
+                  value={draft.imageFileUploadId}
+                  onChange={(id) => update("imageFileUploadId", id)}
+                  onUploadingChange={setArtworkUploading}
+                  aspect="square"
+                  disabled={isSaving}
+                />
+                <p className="text-muted-foreground text-xs">
+                  {draft.imageFileUploadId
+                    ? "Removing artwork keeps the file in your media library."
+                    : youtubeId
+                      ? "The YouTube thumbnail is used unless you choose custom artwork."
+                      : "Choose artwork to show on Home and the content page."}
+                </p>
+              </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="flex flex-col gap-2">
+                <div className="space-y-2">
                   <Label htmlFor="content-link-type">Link type</Label>
                   <Select
                     value={draft.linkType}
-                    onValueChange={(value) =>
-                      update("linkType", value as ContentLinkType)
-                    }
+                    onValueChange={(value) => {
+                      const parsed = Object.values(ContentLinkType).find(
+                        (type) => type === value,
+                      );
+                      if (parsed) update("linkType", parsed);
+                    }}
                   >
                     <SelectTrigger id="content-link-type" className="w-full">
-                      <SelectValue placeholder="Select link type" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={ContentLinkType.OTHER}>
@@ -655,97 +682,70 @@ export function ContentEditor({
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-muted-foreground text-xs">
-                    Decides whether a player can be embedded.
-                  </p>
                 </div>
-                <Field
-                  id="content-link"
-                  label="Link"
-                  error={errors.link}
-                  required
-                >
+                <Field id="content-platform" label="Platform">
                   <Input
-                    id="content-link"
-                    type="url"
-                    value={draft.link}
-                    onChange={(e) => update("link", e.target.value)}
-                    placeholder={
-                      isSoundCloud(draft.linkType)
-                        ? "SoundCloud track/playlist URL"
-                        : draft.linkType === ContentLinkType.YOUTUBE_VIDEO
-                          ? "YouTube video URL"
-                          : "Content URL"
-                    }
-                    aria-invalid={Boolean(errors.link)}
+                    id="content-platform"
+                    value={draft.platform}
+                    onChange={(e) => update("platform", e.target.value)}
+                    placeholder="Soundcloud, Spotify, YouTube"
                   />
+                  <Suggestions
+                    label="Known"
+                    values={platformSuggestions}
+                    onPick={(value) => update("platform", value)}
+                    disabled={isSaving}
+                  />
+                  {platformUnknown ? (
+                    <p className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-xs">
+                      <TriangleAlert className="size-3.5 text-amber-500" />
+                      No platform icon is available.
+                      {platformCasingFix ? (
+                        <button
+                          type="button"
+                          className="text-foreground underline"
+                          onClick={() =>
+                            update("platform", platformCasingFix.value)
+                          }
+                        >
+                          Use {platformCasingFix.value}
+                        </button>
+                      ) : null}
+                    </p>
+                  ) : null}
                 </Field>
               </div>
-
-              {draft.linkType === ContentLinkType.OTHER ? (
-                <p className="text-muted-foreground text-sm">
-                  Link type <span className="font-medium">Other</span> has no
-                  inline player — the card links straight out. Pick a SoundCloud
-                  or YouTube type to embed one.
-                </p>
-              ) : (
-                <div className="flex flex-col gap-2">
+              {isSoundCloud(draft.linkType) ? (
+                <div className="space-y-2">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Label htmlFor="content-embed">
-                      {draft.linkType === ContentLinkType.YOUTUBE_VIDEO
-                        ? "YouTube video ID"
-                        : "Embed URL"}
-                    </Label>
-                    {isSoundCloud(draft.linkType) ? (
-                      <SoundCloudEmbedParserDialog
-                        onApply={(value) => update("embedUrl", value)}
-                        disabled={isSaving}
-                      />
-                    ) : null}
+                    <Label htmlFor="content-embed">SoundCloud embed URL</Label>
+                    <SoundCloudEmbedParserDialog
+                      onApply={(value) => update("embedUrl", value)}
+                      disabled={isSaving}
+                    />
                   </div>
                   <Input
                     id="content-embed"
                     value={draft.embedUrl}
                     onChange={(e) => update("embedUrl", e.target.value)}
-                    placeholder={
-                      draft.linkType === ContentLinkType.YOUTUBE_VIDEO
-                        ? "e.g. dQw4w9WgXcQ"
-                        : "SoundCloud embed URL for the player"
-                    }
+                    placeholder="Optional. Uses the content link when empty."
                     aria-invalid={Boolean(errors.embedUrl)}
                   />
                   {errors.embedUrl ? (
                     <p className="text-destructive text-xs">
                       {errors.embedUrl}
                     </p>
-                  ) : youtubeIdFromUrl ? (
-                    <p className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-xs">
-                      <TriangleAlert className="h-3.5 w-3.5 text-amber-500" />
-                      <span>
-                        This field wants the bare video ID, not a URL — the
-                        embed will not render.
-                      </span>
-                      <button
-                        type="button"
-                        className="text-foreground underline"
-                        onClick={() => update("embedUrl", youtubeIdFromUrl)}
-                      >
-                        Use &quot;{youtubeIdFromUrl}&quot;
-                      </button>
-                    </p>
-                  ) : (
-                    <p className="text-muted-foreground text-xs">
-                      Optional.{" "}
-                      {draft.linkType === ContentLinkType.YOUTUBE_VIDEO
-                        ? "Without it, no YouTube player is embedded."
-                        : "Without it, the link above is used for the player."}{" "}
-                      The player only appears on the featured item.
-                    </p>
-                  )}
+                  ) : null}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              ) : draft.linkType === ContentLinkType.YOUTUBE_VIDEO ? (
+                <p className="text-muted-foreground text-sm">
+                  {youtubeId
+                    ? `Video ID: ${youtubeId}. The player is configured from your link.`
+                    : "Paste a valid YouTube link above to configure the player."}
+                </p>
+              ) : null}
+            </div>
+          </details>
         </div>
       </SaveBar>
 

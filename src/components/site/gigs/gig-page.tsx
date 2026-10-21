@@ -486,7 +486,12 @@ export function GigPage({ id }: { id: string }) {
       <section className="grid grid-cols-1 gap-8 px-5 pt-6 pb-14 md:px-10 lg:grid-cols-[minmax(0,440px)_minmax(0,1fr)] lg:gap-14">
         <div className="lg:sticky lg:top-28 lg:self-start">
           {tba ? (
-            <TbaPoster src={poster} className="aspect-[4/5]" size="text-7xl" />
+            <TbaPoster
+              src={poster}
+              text={gigTitle(gig)}
+              className="aspect-[4/5]"
+              size="text-[clamp(2rem,5vw,4.5rem)]"
+            />
           ) : poster ? (
             <button
               type="button"

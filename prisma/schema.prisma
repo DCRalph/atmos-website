@@ -43,8 +43,8 @@ enum ArtistBlockType {
 }
 
 enum HomeContentSection {
-  FEATURED
-  PAST
+  VIDEO @map("FEATURED")
+  ITEMS @map("PAST")
 }
 
 /// Whether a gig is on the public site. Every public read filters on this;
@@ -383,6 +383,8 @@ model Gig {
   /// To be announced: listed with the title, line-up, date and poster
   /// withheld. See `forPublic` in `~/server/api/routers/gigs.ts`.
   isTba              Boolean   @default(false)
+  /// Public placeholder while the gig's real title and details are withheld.
+  tbaText            String?
   /// When a TBA gig announces itself. The minute ticker turns `isTba` off at
   /// this time and clears it — see `announceDueGigs`. Null on a gig that is
   /// not TBA, or one that will be announced by hand.

@@ -1,3 +1,4 @@
+import { getTbaText } from "~/lib/gig-flags";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
@@ -125,6 +126,7 @@ const GIG_EDITOR_FIELDS = z.object({
   shortDescription: z.string().nullish(),
   descriptionLexical: LEXICAL_STATE_SCHEMA.optional().nullable(),
   isTba: z.boolean(),
+  tbaText: z.string().trim().max(120).nullish(),
   /** Only kept on a TBA gig. */
   announceAt: z.date().nullish(),
   isAffiliated: z.boolean(),
@@ -338,6 +340,7 @@ const isAdminSession = async (ctx: GigsContext): Promise<boolean> => {
 type PublicGigInput = {
   id: string;
   isTba: boolean;
+  tbaText: string | null;
   posterFileUploadId: string | null;
   posterFileUpload: FileUploadInfo;
   media: EnrichedMedia[];
@@ -373,7 +376,7 @@ const forPublic = <T extends PublicGigInput>(gig: T) => {
 
   return {
     ...gig,
-    title: TBA_TITLE,
+    title: getTbaText(gig.tbaText, TBA_TITLE),
     subtitle: "",
     venue: null,
     venueId: null,
@@ -1409,6 +1412,7 @@ export const gigsRouter = createTRPCRouter({
           ),
         /** Only kept on a TBA gig. */
         announceAt: z.date().nullish(),
+        tbaText: z.string().trim().max(120).nullish(),
         isAffiliated: z.boolean().optional(),
         venueId: z.string().nullish(),
         gigStartTime: z.date(),

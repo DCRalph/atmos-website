@@ -22,6 +22,11 @@ const config = {
     dangerouslyAllowLocalIP: process.env.NODE_ENV === "development",
     remotePatterns: [
       {
+        protocol: "https",
+        hostname: "i.ytimg.com",
+        pathname: "/vi/**",
+      },
+      {
         protocol: "http",
         hostname: "localhost",
       },

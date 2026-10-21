@@ -4,12 +4,13 @@ import { Play } from "lucide-react";
 import type { IconType } from "react-icons";
 import { FaSoundcloud, FaSpotify, FaYoutube } from "react-icons/fa6";
 import { api, type RouterOutputs } from "~/trpc/react";
-import { cn } from "~/lib/utils";
+import { YouTubePlayer } from "~/components/youtube-player";
+import { contentVideoId } from "~/lib/home-content";
 import { Media, Skeleton } from "../ui";
 import { SectionEmpty, SectionError, SectionHeader, nzDate } from "./parts";
 
 type ContentItem = NonNullable<
-  RouterOutputs["homeContent"]["getHomeLatest"]["featuredItem"]
+  RouterOutputs["homeContent"]["getHomeLatest"]["video"]
 >;
 
 // Stored platform casing varies ("soundcloud", "Soundcloud"), so match loosely.
@@ -35,10 +36,11 @@ function platformOf(item: ContentItem) {
 
 const gridClass = "grid grid-cols-3 items-start gap-x-3 gap-y-6 md:gap-8";
 
-/** A three-column cover grid, with the featured item spanning two columns. */
+/** A full-width YouTube player followed by three equally sized content items. */
 export function LatestContent() {
   const latest = api.homeContent.getHomeLatest.useQuery();
-  const featured = latest.data?.featuredItem;
+  const video = latest.data?.video;
+  const videoId = video ? contentVideoId(video) : null;
 
   return (
     <section
@@ -55,37 +57,41 @@ export function LatestContent() {
         <ContentSkeleton />
       ) : latest.isError ? (
         <SectionError what="content" onRetry={() => void latest.refetch()} />
-      ) : !featured ? (
+      ) : !video && !latest.data.items.length ? (
         <SectionEmpty>Nothing published yet.</SectionEmpty>
       ) : (
-        <ul className={gridClass}>
-          <ContentCard item={featured} featured />
-          {latest.data.items.map((item) => (
-            <ContentCard key={item.id} item={item} />
-          ))}
-        </ul>
+        <div className="space-y-8 md:space-y-10">
+          {video && videoId ? (
+            <article>
+              <YouTubePlayer videoId={videoId} title={video.title} />
+              <h3 className="t-display mt-4 text-xl leading-tight break-words normal-case md:text-3xl">
+                {video.title}
+              </h3>
+              <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/65 md:text-sm">
+                <span className="inline-flex items-center gap-1.5">
+                  <FaYoutube className="size-4" /> YouTube
+                </span>
+                {video.dj ? <span>{video.dj}</span> : null}
+                <span>{nzDate.full.format(video.date)}</span>
+              </p>
+            </article>
+          ) : null}
+          <ul className={gridClass}>
+            {latest.data.items.map((item) => (
+              <ContentCard key={item.id} item={item} />
+            ))}
+          </ul>
+        </div>
       )}
     </section>
   );
 }
 
-function ContentCard({
-  item,
-  featured = false,
-}: {
-  item: ContentItem;
-  featured?: boolean;
-}) {
+function ContentCard({ item }: { item: ContentItem }) {
   const platform = platformOf(item);
 
   return (
-    <li
-      className={cn(
-        "min-w-0",
-        featured && "col-span-2",
-        featured && item.imageUrl && "row-span-2",
-      )}
-    >
+    <li className="min-w-0">
       <a
         href={item.link}
         target="_blank"
@@ -97,32 +103,21 @@ function ContentCard({
             <Media
               src={item.imageUrl}
               alt=""
-              sizes={featured ? "67vw" : "33vw"}
+              sizes="33vw"
               className="aspect-square transition-opacity group-hover:opacity-85"
             />
             <span className="t-label pointer-events-none absolute top-0 left-0 bg-black px-1.5 py-1.5 text-[7px] text-white md:px-2.5 md:py-2 md:text-[9px]">
-              {featured ? "Featured " : null}
               {item.type}
             </span>
             <span
               aria-hidden
-              className={cn(
-                "absolute right-2 bottom-2 flex size-7 items-center justify-center rounded-full bg-white text-black md:right-4 md:bottom-4 md:size-10",
-                featured && "bg-site-accent size-10 md:size-14",
-              )}
+              className="absolute right-2 bottom-2 flex size-7 items-center justify-center rounded-full bg-white text-black md:right-4 md:bottom-4 md:size-10"
             >
               <Play className="ml-0.5 size-3.5 md:size-5" fill="currentColor" />
             </span>
           </div>
         ) : null}
-        <h3
-          className={cn(
-            "t-display group-hover:text-site-accent-text mt-3 break-words normal-case transition-colors md:mt-4",
-            featured
-              ? "text-lg leading-tight sm:text-2xl md:text-4xl"
-              : "text-xs leading-tight sm:text-base md:text-xl",
-          )}
-        >
+        <h3 className="t-display group-hover:text-site-accent-text mt-3 text-xs leading-tight break-words normal-case transition-colors sm:text-base md:mt-4 md:text-xl">
           {item.title}
         </h3>
         {item.dj ? (
@@ -140,7 +135,6 @@ function ContentCard({
               {platform.label}
             </span>
           ) : null}
-          {featured ? <span>{nzDate.full.format(item.date)}</span> : null}
         </p>
       </a>
     </li>
@@ -149,14 +143,20 @@ function ContentCard({
 
 function ContentSkeleton() {
   return (
-    <div aria-busy aria-label="Loading latest content" className={gridClass}>
-      {[true, false, false].map((featured, i) => (
-        <div key={i} className={featured ? "col-span-2 row-span-2" : undefined}>
-          <Skeleton className="aspect-square" />
-          <Skeleton className="mt-4 h-5 w-3/4" />
-          <Skeleton className="mt-2 h-3.5 w-1/2" />
-        </div>
-      ))}
+    <div aria-busy aria-label="Loading latest content" className="space-y-8">
+      <div>
+        <Skeleton className="aspect-video" />
+        <Skeleton className="mt-4 h-6 w-3/4" />
+      </div>
+      <div className={gridClass}>
+        {[0, 1, 2].map((i) => (
+          <div key={i}>
+            <Skeleton className="aspect-square" />
+            <Skeleton className="mt-4 h-5 w-3/4" />
+            <Skeleton className="mt-2 h-3.5 w-1/2" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

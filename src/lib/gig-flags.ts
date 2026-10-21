@@ -3,6 +3,12 @@ import type { Gig } from "~Prisma/browser";
 /** The two independent switches on how a gig behaves on the public site. */
 export type GigFlags = Pick<Gig, "isTba" | "isAffiliated">;
 
+/** The public placeholder, never the gig's private title. */
+export function getTbaText(text: string | null | undefined, fallback = "TBA") {
+  const trimmed = text?.trim();
+  return trimmed ? trimmed : fallback;
+}
+
 /**
  * What each gig flag is called and what turning it on actually does.
  *

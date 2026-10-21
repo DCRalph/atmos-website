@@ -97,6 +97,7 @@ export type GigDraft = {
   shortDescription: string;
   descriptionLexical: SerializedEditorState | null;
   isTba: boolean;
+  tbaText: string;
   /** When a TBA gig goes public by itself. Ignored when `isTba` is off. */
   announceAt: Date | undefined;
   isAffiliated: boolean;

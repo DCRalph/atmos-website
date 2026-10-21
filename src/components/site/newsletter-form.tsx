@@ -4,7 +4,8 @@ import { useId, useState, type FormEvent } from "react";
 import { Check } from "lucide-react";
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
-import { Button } from "./ui";
+import { useNewsletterSound } from "~/hooks/use-newsletter-sound";
+import { AtmosLogo, Button } from "./ui";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -25,32 +26,44 @@ export function NewsletterForm({
   const id = useId();
   const [email, setEmail] = useState("");
   const [invalid, setInvalid] = useState(false);
+  const sound = useNewsletterSound();
   const subscribe = api.newsletter.subscribe.useMutation({
-    onSuccess: () => onSubscribed?.(),
+    onSuccess: () => {
+      void sound.play();
+      onSubscribed?.();
+    },
   });
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
+    if (subscribe.isPending) return;
     if (!EMAIL.test(email.trim())) return setInvalid(true);
+    sound.prepare();
     subscribe.mutate({ email: email.trim() });
   };
 
   if (subscribe.isSuccess) {
     return (
-      <p
+      <div
         role="status"
         className={cn(
-          "flex h-14 items-center gap-3 rounded-full border border-white/25 px-2 pr-6",
+          "newsletter-success relative flex min-h-14 items-center gap-3 rounded-full border border-white/25 px-2 py-1.5 pr-6",
           className,
         )}
       >
-        <span className="bg-site-accent text-site-accent-ink flex size-10 shrink-0 items-center justify-center rounded-full">
+        <span
+          aria-hidden
+          className="newsletter-logo-burst pointer-events-none absolute bottom-full left-1/2 mb-3 w-24 -translate-x-1/2"
+        >
+          <AtmosLogo className="w-full" />
+        </span>
+        <span className="newsletter-check bg-site-accent text-site-accent-ink flex size-10 shrink-0 items-center justify-center rounded-full">
           <Check className="size-5" />
         </span>
         <span className="min-w-0 truncate text-[15px]">
           You&apos;re on the list.
         </span>
-      </p>
+      </div>
     );
   }
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { getTbaText } from "~/lib/gig-flags";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowUpRight } from "lucide-react";
@@ -28,7 +30,7 @@ type GigLike = Pick<
   | "gigStartTime"
   | "gigEndTime"
   | "posterFileUpload"
->;
+> & { tbaText?: string | null };
 
 // ---------------------------------------------------------------------------
 // Dates, always in NZ time (gigs have no timezone of their own).
@@ -73,8 +75,9 @@ export const isPast = (
 ) => !isTba(gig) && (gig.gigEndTime ?? gig.gigStartTime).getTime() < now;
 
 /** The display title: a TBA gig's real name is a secret. */
-export const gigTitle = (gig: Pick<ListGig, "isTba" | "title">) =>
-  isTba(gig) ? "TBA" : gig.title;
+export const gigTitle = (
+  gig: Pick<ListGig, "isTba" | "title"> & { tbaText?: string | null },
+) => (isTba(gig) ? getTbaText(gig.tbaText) : gig.title);
 
 /** Groups items by a key, keeping input order (the server's order is meaningful). */
 export function groupConsecutive<T>(
@@ -166,10 +169,12 @@ export function CtaPill({
 /** An unannounced gig's poster, blurred as a teaser. */
 export function TbaPoster({
   src,
+  text = "TBA",
   className,
   size = "text-5xl",
 }: {
   src: string | null;
+  text?: string;
   className?: string;
   size?: string;
 }) {
@@ -186,11 +191,11 @@ export function TbaPoster({
       <div className="absolute inset-0 bg-black/30" />
       <p
         className={cn(
-          "t-display absolute inset-0 flex items-center justify-center",
+          "t-display absolute inset-0 flex items-center justify-center p-4 text-center [overflow-wrap:anywhere]",
           size,
         )}
       >
-        TBA
+        {text}
       </p>
     </div>
   );
@@ -214,7 +219,14 @@ export function GigPoster({
 }) {
   const src = gig.posterFileUpload?.url ?? null;
   if (isTba(gig))
-    return <TbaPoster src={src} className={className} size={tbaSize} />;
+    return (
+      <TbaPoster
+        src={src}
+        text={gigTitle(gig)}
+        className={className}
+        size={tbaSize}
+      />
+    );
   if (!src) {
     return (
       <div

@@ -1,244 +1,88 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
+  HOME_ITEM_COUNT,
+  contentVideoId,
+  selectHomeContent,
+} from "~/lib/home-content";
+import {
   adminProcedure,
   createTRPCRouter,
   publicProcedure,
 } from "~/server/api/trpc";
-import { HomeContentSection } from "~Prisma/client";
 import {
   CONTENT_ARTWORK_INCLUDE,
   withContentArtwork,
 } from "~/server/api/content-artwork";
 
-const HOME_LATEST_FEATURED_COUNT = 1;
-const HOME_LATEST_LIST_COUNT = 4;
-
-const isDefined = <T>(value: T | null | undefined): value is T =>
-  value !== null && value !== undefined;
-
 export const homeContentRouter = createTRPCRouter({
-  /**
-   * Public endpoint for the Home page “Latest Content” section.
-   * Returns 1 featured item + up to 4 additional items, ordered by admin-defined placements.
-   * Falls back to date-ordering when placements are missing/invalid.
-   */
+  /** One playable YouTube video, then three items in the admin's chosen order. */
   getHomeLatest: publicProcedure.query(async ({ ctx }) => {
-    const [featuredPlacements, listPlacements] = await Promise.all([
-      ctx.db.homeContentPlacement.findMany({
-        where: { section: HomeContentSection.FEATURED },
-        orderBy: { sortOrder: "asc" },
-        select: { contentItemId: true },
-      }),
-      ctx.db.homeContentPlacement.findMany({
-        where: { section: HomeContentSection.PAST },
-        orderBy: { sortOrder: "asc" },
-        select: { contentItemId: true },
-      }),
-    ]);
-
-    const featuredIds = featuredPlacements.map((p) => p.contentItemId);
-    const listIds = listPlacements.map((p) => p.contentItemId);
-    const placementIds = Array.from(new Set([...featuredIds, ...listIds]));
-
-    const itemsFromPlacements = placementIds.length
-      ? await ctx.db.contentItem.findMany({
-          where: { id: { in: placementIds } },
-          include: CONTENT_ARTWORK_INCLUDE,
-        })
-      : [];
-
-    const itemMap = new Map(itemsFromPlacements.map((c) => [c.id, c]));
-
-    // Pick featured from FEATURED placements
-    let featuredItem =
-      featuredIds.map((id) => itemMap.get(id)).find(isDefined) ?? null;
-
-    // Build list from PAST placements (excluding featured)
-    let listItems = listIds
-      .map((id) => itemMap.get(id))
-      .filter(isDefined)
-      .filter((c) => c.id !== featuredItem?.id);
-
-    // If featured is unset/invalid, promote first list placement (if any) to featured.
-    if (!featuredItem && listItems.length > 0) {
-      featuredItem = listItems[0] ?? null;
-      listItems = listItems.slice(1);
-    }
-
-    // If still no featured, fall back to latest by date.
-    if (!featuredItem) {
-      featuredItem =
-        (await ctx.db.contentItem.findFirst({
-          orderBy: { date: "desc" },
-          include: CONTENT_ARTWORK_INCLUDE,
-        })) ?? null;
-    }
-
-    // Fill remaining list items up to desired count (date desc)
-    const selectedIds = new Set<string>();
-    if (featuredItem) selectedIds.add(featuredItem.id);
-    for (const c of listItems) selectedIds.add(c.id);
-
-    const missingCount = Math.max(0, HOME_LATEST_LIST_COUNT - listItems.length);
-    if (missingCount > 0) {
-      const fallback = await ctx.db.contentItem.findMany({
-        where: { id: { notIn: Array.from(selectedIds) } },
-        orderBy: { date: "desc" },
-        take: missingCount,
+    const [items, placements] = await Promise.all([
+      ctx.db.contentItem.findMany({
+        orderBy: [{ date: "desc" }, { id: "asc" }],
         include: CONTENT_ARTWORK_INCLUDE,
-      });
-      listItems = [...listItems, ...fallback];
-    }
-
+      }),
+      ctx.db.homeContentPlacement.findMany({ orderBy: { sortOrder: "asc" } }),
+    ]);
+    const selected = selectHomeContent(items, placements);
     return {
-      featuredItem: featuredItem ? withContentArtwork(featuredItem) : null,
-      items: listItems.slice(0, HOME_LATEST_LIST_COUNT).map(withContentArtwork),
+      video: selected.video ? withContentArtwork(selected.video) : null,
+      items: selected.items.map(withContentArtwork),
     };
   }),
 
-  getPlacements: adminProcedure
-    .input(
-      z.object({
-        section: z.nativeEnum(HomeContentSection),
-      }),
-    )
-    .query(async ({ ctx, input }) => {
-      return ctx.db.homeContentPlacement.findMany({
-        where: { section: input.section },
-        orderBy: { sortOrder: "asc" },
-        include: {
-          contentItem: {
-            select: {
-              id: true,
-              type: true,
-              title: true,
-              dj: true,
-              description: true,
-              date: true,
-              linkType: true,
-              link: true,
-            },
-          },
-        },
-      });
-    }),
-
-  /**
-   * Both sections in one transaction.
-   *
-   * The reorder tab commits featured and list together behind a single Save, and
-   * doing that as two `setPlacements` calls meant one could land while the other
-   * failed — leaving the Home page showing a half-applied arrangement that
-   * matched neither what was there before nor what was asked for.
-   */
+  /** Save the video and the three items together so Home never gets half a change. */
   setAllPlacements: adminProcedure
     .input(
       z.object({
-        featuredContentItemIds: z.array(z.string()),
-        listContentItemIds: z.array(z.string()),
+        videoContentItemId: z.string().min(1),
+        itemContentItemIds: z.array(z.string().min(1)).length(HOME_ITEM_COUNT),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const featured = Array.from(new Set(input.featuredContentItemIds));
-      const list = Array.from(new Set(input.listContentItemIds));
-
-      if (featured.length > HOME_LATEST_FEATURED_COUNT) {
+      const ids = [input.videoContentItemId, ...input.itemContentItemIds];
+      if (new Set(ids).size !== ids.length) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: `Featured placement can only contain ${HOME_LATEST_FEATURED_COUNT} content item.`,
+          message: "Choose four different content items.",
         });
       }
-
-      const referenced = Array.from(new Set([...featured, ...list]));
-      if (referenced.length > 0) {
-        const found = await ctx.db.contentItem.count({
-          where: { id: { in: referenced } },
+      await ctx.db.$transaction(async (tx) => {
+        const items = await tx.contentItem.findMany({
+          where: { id: { in: ids } },
         });
-        if (found !== referenced.length) {
+        if (items.length !== ids.length) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "One or more of those content items no longer exists",
+            message: "One or more of those content items no longer exists.",
           });
         }
-      }
-
-      await ctx.db.$transaction(async (tx) => {
-        for (const [section, ids] of [
-          [HomeContentSection.FEATURED, featured],
-          [HomeContentSection.PAST, list],
-        ] as const) {
-          // Spelled out rather than relying on `notIn: []`, so clearing a
-          // section actually clears it.
-          await tx.homeContentPlacement.deleteMany({
-            where:
-              ids.length > 0
-                ? { section, contentItemId: { notIn: ids } }
-                : { section },
-          });
-          for (const [sortOrder, contentItemId] of ids.entries()) {
-            await tx.homeContentPlacement.upsert({
-              where: { section_contentItemId: { section, contentItemId } },
-              create: { section, contentItemId, sortOrder },
-              update: { sortOrder },
-            });
-          }
-        }
-      });
-
-      return { ok: true as const };
-    }),
-
-  setPlacements: adminProcedure
-    .input(
-      z.object({
-        section: z.nativeEnum(HomeContentSection),
-        contentItemIds: z.array(z.string()),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const ids = Array.from(new Set(input.contentItemIds));
-
-      if (
-        input.section === HomeContentSection.FEATURED &&
-        ids.length > HOME_LATEST_FEATURED_COUNT
-      ) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Featured placement can only contain 1 content item.",
-        });
-      }
-
-      await ctx.db.$transaction(async (tx) => {
-        await tx.homeContentPlacement.deleteMany({
-          where: {
-            section: input.section,
-            contentItemId: { notIn: ids.length ? ids : ["__none__"] },
-          },
-        });
-
-        await Promise.all(
-          ids.map((contentItemId, sortOrder) =>
-            tx.homeContentPlacement.upsert({
-              where: {
-                section_contentItemId: {
-                  section: input.section,
-                  contentItemId,
-                },
-              },
-              create: {
-                section: input.section,
-                contentItemId,
-                sortOrder,
-              },
-              update: {
-                sortOrder,
-              },
-            }),
-          ),
+        const video = items.find(
+          (item) => item.id === input.videoContentItemId,
         );
+        if (!video || !contentVideoId(video)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Choose a playable YouTube video for the top slot.",
+          });
+        }
+        await tx.homeContentPlacement.deleteMany({});
+        await tx.homeContentPlacement.createMany({
+          data: [
+            {
+              section: "VIDEO",
+              contentItemId: input.videoContentItemId,
+              sortOrder: 0,
+            },
+            ...input.itemContentItemIds.map((contentItemId, sortOrder) => ({
+              section: "ITEMS" as const,
+              contentItemId,
+              sortOrder,
+            })),
+          ],
+        });
       });
-
-      return { ok: true };
+      return { ok: true as const };
     }),
 });

@@ -1,3 +1,4 @@
+import { getTbaText } from "~/lib/gig-flags";
 import { type Metadata } from "next";
 import { notFound } from "next/navigation";
 import { db } from "~/server/db";
@@ -78,6 +79,7 @@ export async function generateMetadata({
           descriptionLexical: true,
           gigStartTime: true,
           isTba: true,
+          tbaText: true,
           posterFileUploadId: true,
           widePosterFileUploadId: true,
         },
@@ -91,7 +93,7 @@ export async function generateMetadata({
   // either, and its URL changes once it is announced.
   if (gig.isTba) {
     return pageMetadata({
-      title: "TBA...",
+      title: getTbaText(gig.tbaText, "TBA..."),
       description: truncate(`ATMOS: ${DESCRIPTION_SHORT}`, 160),
       path: gigPath(gig),
       image: gigOgImage(gig) ?? undefined,

@@ -116,6 +116,7 @@ type LoadedGig = {
   shortDescription: string | null;
   descriptionLexical: unknown;
   isTba: boolean;
+  tbaText: string | null;
   announceAt: Date | null;
   isAffiliated: boolean;
   venue: PickedVenue | null;
@@ -166,6 +167,7 @@ const emptyDraft = (): GigDraft => ({
   shortDescription: "",
   descriptionLexical: null,
   isTba: false,
+  tbaText: "",
   announceAt: undefined,
   isAffiliated: false,
   venue: null,
@@ -191,6 +193,7 @@ const draftFromGig = (gig: LoadedGig): GigDraft => ({
   descriptionLexical:
     (gig.descriptionLexical as SerializedEditorState | null) ?? null,
   isTba: gig.isTba,
+  tbaText: gig.tbaText ?? "",
   announceAt: gig.announceAt ? new Date(gig.announceAt) : undefined,
   isAffiliated: gig.isAffiliated,
   venue: gig.venue,
@@ -255,6 +258,7 @@ const detailsFingerprint = (draft: GigDraft): string =>
       ? JSON.stringify(draft.descriptionLexical)
       : null,
     isTba: draft.isTba,
+    tbaText: draft.tbaText.trim(),
     announceAt: draft.isTba ? (draft.announceAt?.getTime() ?? null) : null,
     isAffiliated: draft.isAffiliated,
     venueId: draft.venue?.id ?? null,
@@ -536,6 +540,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
       shortDescription: draft.shortDescription.trim(),
       descriptionLexical: draft.descriptionLexical,
       isTba: draft.isTba,
+      tbaText: draft.tbaText.trim() || null,
       announceAt: draft.isTba ? (draft.announceAt ?? null) : null,
       isAffiliated: draft.isAffiliated,
       venueId: draft.venue?.id ?? null,
@@ -1040,6 +1045,21 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
                       <p className="text-muted-foreground text-xs">
                         Both off is a normal gig.
                       </p>
+                      {draft.isTba ? (
+                        <Field
+                          id="gig-tba-text"
+                          label="Public TBA text"
+                          hint="Shown instead of the title while the gig is TBA. Leave empty for TBA."
+                        >
+                          <Input
+                            id="gig-tba-text"
+                            value={draft.tbaText}
+                            onChange={(e) => update("tbaText", e.target.value)}
+                            maxLength={120}
+                            placeholder="TBA"
+                          />
+                        </Field>
+                      ) : null}
                       {draft.isTba ? (
                         <Field
                           id="gig-announce-at"

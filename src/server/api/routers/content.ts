@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
+import { getYouTubeId, youtubeThumbnail } from "~/lib/youtube";
 import {
   CONTENT_ARTWORK_INCLUDE,
   withContentArtwork,
@@ -17,7 +19,62 @@ const ContentLinkTypeSchema = z.enum([
   "OTHER",
 ]);
 
+function youtubeFields(item: {
+  linkType: string;
+  link: string;
+  embedUrl?: string | null;
+}) {
+  if (item.linkType !== "YOUTUBE_VIDEO") return {};
+  const videoId = getYouTubeId(item.link) ?? getYouTubeId(item.embedUrl);
+  if (!videoId) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Enter a valid YouTube video link.",
+    });
+  }
+  return {
+    link: `https://www.youtube.com/watch?v=${videoId}`,
+    embedUrl: videoId,
+    platform: "YouTube",
+  };
+}
+
 export const contentRouter = createTRPCRouter({
+  youtubeMetadata: adminProcedure
+    .input(z.object({ link: z.string() }))
+    .query(async ({ input }) => {
+      const videoId = getYouTubeId(input.link);
+      if (!videoId)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Enter a valid YouTube video link.",
+        });
+      const url = new URL("https://www.youtube.com/oembed");
+      url.searchParams.set("url", `https://www.youtube.com/watch?v=${videoId}`);
+      url.searchParams.set("format", "json");
+      try {
+        const response = await fetch(url, {
+          signal: AbortSignal.timeout(10_000),
+        });
+        if (!response.ok)
+          throw new Error("YouTube did not return video details");
+        const metadata = z
+          .object({ title: z.string(), author_name: z.string() })
+          .parse(await response.json());
+        return {
+          videoId,
+          title: metadata.title,
+          author: metadata.author_name,
+          thumbnailUrl: youtubeThumbnail(videoId),
+        };
+      } catch {
+        throw new TRPCError({
+          code: "BAD_GATEWAY",
+          message:
+            "Couldn't load the YouTube details. You can still enter them yourself.",
+        });
+      }
+    }),
   getAll: publicProcedure
     .input(
       z
@@ -156,7 +213,7 @@ export const contentRouter = createTRPCRouter({
         // Nullish rather than optional so the editor can send one payload shape
         // for both create and update instead of translating empties twice.
         dj: z.string().nullish(),
-        description: z.string().min(1),
+        description: z.string().default(""),
         date: z.date(),
         link: z.string().min(1),
         platform: z.string().nullish(),
@@ -174,6 +231,7 @@ export const contentRouter = createTRPCRouter({
           platform: input.platform ?? null,
           embedUrl: input.embedUrl ?? null,
           linkType: input.linkType ?? "OTHER",
+          ...youtubeFields({ ...input, linkType: input.linkType ?? "OTHER" }),
         },
       });
     }),
@@ -186,7 +244,7 @@ export const contentRouter = createTRPCRouter({
         linkType: ContentLinkTypeSchema.optional(),
         title: z.string().min(1).optional(),
         dj: z.string().optional().nullable(),
-        description: z.string().min(1).optional(),
+        description: z.string().optional(),
         date: z.date().optional(),
         link: z.string().min(1).optional(),
         platform: z.string().optional().nullable(),
@@ -198,9 +256,18 @@ export const contentRouter = createTRPCRouter({
       const { id, ...data } = input;
       if (data.imageFileUploadId)
         await assertContentArtwork(ctx.db, data.imageFileUploadId);
+      const existing =
+        data.linkType !== undefined ||
+        data.link !== undefined ||
+        data.embedUrl !== undefined
+          ? await ctx.db.contentItem.findUniqueOrThrow({ where: { id } })
+          : null;
       return ctx.db.contentItem.update({
         where: { id },
-        data,
+        data: {
+          ...data,
+          ...(existing ? youtubeFields({ ...existing, ...data }) : {}),
+        },
       });
     }),
 

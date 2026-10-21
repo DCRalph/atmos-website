@@ -19,23 +19,12 @@ export const newsletterRouter = createTRPCRouter({
         where: { email },
       });
 
-      if (existing) {
-        if (existing.removed) {
-          const revived = await ctx.db.newsletterSubscription.update({
-            where: { email },
-            data: { removed: false },
-          });
-          return { created: true, subscription: revived };
-        }
-
-        return { created: false, subscription: existing };
-      }
-
-      const created = await ctx.db.newsletterSubscription.create({
-        data: { email, removed: false },
+      const subscription = await ctx.db.newsletterSubscription.upsert({
+        where: { email },
+        create: { email, removed: false },
+        update: { removed: false },
       });
-
-      return { created: true, subscription: created };
+      return { created: !existing || existing.removed, subscription };
     }),
 
   getAll: adminProcedure
