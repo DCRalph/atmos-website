@@ -193,7 +193,7 @@ export const getObjectStream = async (key: string): Promise<ObjectStream> => {
   };
 };
 
-/** Pulls a whole object into memory. Only used for images we are about to process. */
+/** Pulls a whole object into memory for image processing or reading bounded attachments. */
 export const getObjectBuffer = async (key: string): Promise<Buffer> => {
   const res = await client().send(
     new GetObjectCommand({ Bucket: Bucket(), Key: key }),

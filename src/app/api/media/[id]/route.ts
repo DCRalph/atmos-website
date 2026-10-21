@@ -2,14 +2,15 @@ import { NextResponse, type NextRequest } from "next/server";
 import { db } from "~/server/db";
 import { buildPublicUrl, presignGet } from "~/server/uploads/r2";
 import { FileUploadStatus } from "~Prisma/client";
+import { auth } from "~/server/auth";
+import { userHasPermission } from "~/server/utils/permissions";
 
 const ONE_DAY_SECONDS = 60 * 60 * 24;
 
 /**
- * Stable address for an uploaded file. Redirects to the object on R2's public
- * domain rather than streaming it, so the bytes never pass through Vercel.
- * The redirect itself is cached by the CDN, so repeat hits never reach this
- * function either.
+ * Stable address for an uploaded file. Public media redirects to R2 and the
+ * redirect is cached by the CDN. Conversation attachments check admin access
+ * and use an uncached presigned redirect instead. Bytes do not pass through Vercel.
  *
  * `?download=1` redirects to a short-lived presigned URL that tells R2 to save
  * the original under its uploaded name instead of displaying it.
@@ -22,10 +23,34 @@ export async function GET(
 
   const record = await db.file_upload.findUnique({
     where: { id, status: FileUploadStatus.OK },
-    select: { key: true, name: true },
+    select: { key: true, name: true, preset: true },
   });
   if (!record) {
     return NextResponse.json({ error: "File not found" }, { status: 404 });
+  }
+
+  // Conversation documents are admin material; their stable URLs must not be cached publicly.
+  if (record.preset === "willGptAttachment") {
+    const session = await auth.api.getSession({ headers: request.headers });
+    const user = session?.user
+      ? await db.user.findUnique({
+          where: { id: session.user.id },
+          include: { permissions: true },
+        })
+      : null;
+    if (!user || !userHasPermission(user, "ADMIN")) {
+      return NextResponse.json(
+        { error: "Forbidden" },
+        { status: 403, headers: { "Cache-Control": "private, no-store" } },
+      );
+    }
+    return NextResponse.redirect(
+      await presignGet({
+        key: record.key,
+        contentDisposition: `${request.nextUrl.searchParams.has("download") ? "attachment" : "inline"}; filename*=UTF-8''${encodeURIComponent(record.name)}`,
+      }),
+      { status: 307, headers: { "Cache-Control": "private, no-store" } },
+    );
   }
 
   if (request.nextUrl.searchParams.has("download")) {

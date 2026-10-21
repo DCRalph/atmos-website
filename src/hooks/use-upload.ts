@@ -242,17 +242,22 @@ export function useUpload<K extends UploadPresetName>(
       if (batch.length === 0) return [];
 
       setIsUploading(true);
-      const succeeded: UploadedFile[] = [];
+      const results = new Map<string, UploadedFile>();
       try {
         await runWithConcurrency(batch, concurrency, async (item) => {
           const result = await runOne(item);
-          if (result) succeeded.push(result);
+          if (result) results.set(item.id, result);
+        });
+        // Keep selection order even when transfers finish out of order.
+        const succeeded = batch.flatMap((item) => {
+          const result = results.get(item.id);
+          return result ? [result] : [];
         });
         if (succeeded.length > 0) await latest.current.onComplete?.(succeeded);
+        return succeeded;
       } finally {
         setIsUploading(false);
       }
-      return succeeded;
     },
     [concurrency, runOne],
   );

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { api } from "~/trpc/react";
 import {
   WILL_GPT_MODELS,
+  type WillGptAttachment,
   type WillGptMessage,
   type WillGptModelId,
 } from "~/lib/will-gpt";
@@ -42,6 +43,7 @@ const savedSchema = z.object({
 });
 
 type WillGptContextValue = {
+  conversationId: string | null;
   open: boolean;
   setOpen: (open: boolean) => void;
   model: WillGptModelId;
@@ -57,7 +59,7 @@ type WillGptContextValue = {
   running: boolean;
   /** Why the last run stopped short, when it did. */
   notice: string | null;
-  send: (text: string) => void;
+  send: (text: string, attachments?: WillGptAttachment[]) => Promise<boolean>;
   /** Answer every call in `awaiting` at once. */
   decide: (approved: boolean) => void;
   stop: () => void;
@@ -92,6 +94,7 @@ export function WillGptProvider({ children }: { children: React.ReactNode }) {
     if (conversationRef.current !== id) return;
     setMessages(saved?.messages ?? []);
     setAwaiting(saved?.awaiting ?? []);
+    return saved;
   };
 
   // Read after mount rather than during render, so the server render and the
@@ -129,10 +132,12 @@ export function WillGptProvider({ children }: { children: React.ReactNode }) {
   }, [loaded, open, model, conversationId, width]);
 
   const run = async (
-    turn: { message: string } | { decisions: Record<string, boolean> },
+    turn:
+      | { message: string; attachmentIds: string[] }
+      | { decisions: Record<string, boolean> },
   ) => {
     const id = conversationRef.current;
-    if (!id) return;
+    if (!id) return false;
     const controller = new AbortController();
     controllerRef.current = controller;
     setRunning(true);
@@ -141,6 +146,10 @@ export function WillGptProvider({ children }: { children: React.ReactNode }) {
     setDraft("");
 
     let failed = false;
+    let accepted = false;
+    const previousUserCount = messages.filter(
+      (message) => message.role === "user",
+    ).length;
     let changed = false;
     try {
       const events = await utils.client.willGpt.run.mutate(
@@ -148,6 +157,7 @@ export function WillGptProvider({ children }: { children: React.ReactNode }) {
         { signal: controller.signal },
       );
       for await (const event of events) {
+        accepted = true;
         // Started over with "New chat" while this was still streaming.
         if (controllerRef.current !== controller) break;
         switch (event.type) {
@@ -185,7 +195,19 @@ export function WillGptProvider({ children }: { children: React.ReactNode }) {
         setRunning(false);
         controllerRef.current = null;
         // What arrived before a stop or an error may not be all that ran.
-        if (failed) void readBack(id);
+        if (failed) {
+          try {
+            const saved = await readBack(id);
+            if (
+              "message" in turn &&
+              (saved?.messages.filter((message) => message.role === "user")
+                .length ?? 0) > previousUserCount
+            )
+              accepted = true;
+          } catch {
+            // Keep the draft when we cannot establish whether it was saved.
+          }
+        }
       }
       // Whatever page is open may be showing what just changed. A stopped
       // run may have changed things too.
@@ -194,9 +216,11 @@ export function WillGptProvider({ children }: { children: React.ReactNode }) {
         router.refresh();
       }
     }
+    return (!failed || accepted) && conversationRef.current === id;
   };
 
   const value: WillGptContextValue = {
+    conversationId,
     open,
     setOpen,
     model,
@@ -208,11 +232,28 @@ export function WillGptProvider({ children }: { children: React.ReactNode }) {
     draft,
     running,
     notice,
-    send: (text) => {
+    send: async (text, attachments = []) => {
       const trimmed = text.trim();
-      if (!trimmed || running || awaiting.length > 0) return;
-      setMessages((messages) => [...messages, { role: "user", text: trimmed }]);
-      void run({ message: trimmed });
+      // An upload may have finished after the admin started another chat.
+      if (
+        !trimmed ||
+        running ||
+        awaiting.length > 0 ||
+        conversationRef.current !== conversationId
+      )
+        return false;
+      setMessages((messages) => [
+        ...messages,
+        {
+          role: "user",
+          text: trimmed,
+          ...(attachments.length ? { attachments } : {}),
+        },
+      ]);
+      return run({
+        message: trimmed,
+        attachmentIds: attachments.map((file) => file.id),
+      });
     },
     decide: (approved) => {
       if (running || awaiting.length === 0) return;

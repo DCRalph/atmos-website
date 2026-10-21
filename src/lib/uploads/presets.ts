@@ -69,6 +69,33 @@ const IMAGE_TYPES = [
 ];
 
 export const uploadPresets = {
+  willGptAttachment: definePreset({
+    label: "Will GPT attachment",
+    description:
+      "Images, PDFs and text files attached to an admin conversation.",
+    access: "admin",
+    accept: [
+      ...IMAGE_TYPES,
+      "application/pdf",
+      "text/*",
+      "application/json",
+      "application/xml",
+      "application/yaml",
+    ],
+    maxFileSize: mb(25),
+    maxFiles: 8,
+    maxTotalSize: mb(50),
+    for: "will_gpt_attachment",
+    image: {
+      maxDimension: 2560,
+      format: "webp",
+      quality: 90,
+      maxOutputSize: mb(2),
+    },
+    context: z.object({ conversationId: z.uuid() }),
+    forId: (c) => c.conversationId,
+    keyPrefix: (c) => `will-gpt/${c.conversationId}`,
+  }),
   contentArtwork: definePreset({
     label: "Content artwork",
     description: "Artwork for mixes, playlists and videos.",

@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import { Ban, Check, Clock, TriangleAlert, X } from "lucide-react";
 
 import { cn } from "~/lib/utils";
+import { AttachmentPreview } from "./will-gpt-attachment";
 import {
   callArgsSchema,
   describeArgsSchema,
@@ -42,12 +43,27 @@ export function Transcript({
   return messages.map((message, index) => {
     if (message.role === "user") {
       return (
-        <p
+        <div
           key={index}
           className="bg-muted max-w-[88%] self-end rounded-lg px-3 py-2.5 leading-relaxed whitespace-pre-wrap"
         >
-          {message.text}
-        </p>
+          {message.attachments?.length ? (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {message.attachments.map((file) => (
+                <a
+                  key={file.id}
+                  href={`/api/media/${file.id}?download=1`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Download ${file.name}`}
+                >
+                  <AttachmentPreview {...file} />
+                </a>
+              ))}
+            </div>
+          ) : null}
+          <p>{message.text}</p>
+        </div>
       );
     }
     if (message.role === "tool") return null;

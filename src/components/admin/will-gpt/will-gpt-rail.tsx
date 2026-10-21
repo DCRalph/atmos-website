@@ -2,8 +2,21 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowUp, History, Plus, Square, TriangleAlert, X } from "lucide-react";
+import {
+  ArrowUp,
+  History,
+  Paperclip,
+  Plus,
+  Square,
+  TriangleAlert,
+  X,
+} from "lucide-react";
 
+import { toast } from "sonner";
+
+import { useUpload } from "~/hooks/use-upload";
+import { resolveMimeType, validateBatch } from "~/lib/uploads/validate";
+import { AttachmentPreview } from "./will-gpt-attachment";
 import { Button } from "~/components/ui/button";
 import {
   Select,
@@ -74,7 +87,7 @@ function Star() {
  * streaming into it.
  */
 export function WillGptStage({ children }: { children: React.ReactNode }) {
-  const { open, width } = useWillGpt();
+  const { open, width, conversationId } = useWillGpt();
   const stageRef = useRef<HTMLDivElement>(null);
   return (
     <div
@@ -105,7 +118,7 @@ export function WillGptStage({ children }: { children: React.ReactNode }) {
         <ResizeHandle stageRef={stageRef} />
         <RailHeader />
         <Thread />
-        <Composer />
+        <Composer key={conversationId} />
       </aside>
     </div>
   );
@@ -333,14 +346,48 @@ function Approval({ calls }: { calls: WillGptToolCall[] }) {
 }
 
 function Composer() {
-  const { send, stop, running, awaiting } = useWillGpt();
+  const { send, stop, running, awaiting, conversationId } = useWillGpt();
   const [text, setText] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const uploader = useUpload("willGptAttachment", {
+    context: conversationId ? { conversationId } : undefined,
+    onError: (message) => toast.error(message),
+  });
   const locked = awaiting.length > 0;
+  const busy = running || submitting;
 
-  const submit = () => {
-    if (!text.trim() || running || locked) return;
-    send(text);
-    setText("");
+  const addFiles = (incoming: File[]) => {
+    if (busy || locked) return;
+    const { accepted, rejected } = validateBatch(
+      incoming,
+      uploader.constraints,
+      {
+        count: files.length,
+        size: files.reduce((size, file) => size + file.size, 0),
+      },
+    );
+    for (const { reason } of rejected) toast.error(reason);
+    setFiles((files) => [...files, ...accepted]);
+  };
+
+  const submit = async () => {
+    if (!text.trim() || busy || locked || !conversationId) return;
+    setSubmitting(true);
+    try {
+      uploader.reset();
+      const uploaded = await uploader.upload(files);
+      // Keep every file and the message for retry; never silently send half a batch.
+      if (uploaded.length !== files.length) return;
+      if (await send(text, uploaded)) {
+        setText("");
+        setFiles([]);
+        uploader.reset();
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -348,7 +395,20 @@ function Composer() {
       className="relative isolate shrink-0 px-4 pt-3 pb-4"
       onSubmit={(event) => {
         event.preventDefault();
-        submit();
+        void submit();
+      }}
+      onDragOver={(event) => {
+        if (event.dataTransfer.types.includes("Files")) event.preventDefault();
+      }}
+      onDrop={(event) => {
+        if (!event.dataTransfer.files.length) return;
+        event.preventDefault();
+        addFiles(Array.from(event.dataTransfer.files));
+      }}
+      onPaste={(event) => {
+        if (!event.clipboardData.files.length) return;
+        event.preventDefault();
+        addFiles(Array.from(event.clipboardData.files));
       }}
     >
       <span aria-hidden className="will-gpt-prompt-glow" />
@@ -358,16 +418,44 @@ function Composer() {
           locked && "opacity-55",
         )}
       >
+        {files.length > 0 ? (
+          <div className="mb-2 flex max-h-48 flex-wrap gap-2 overflow-y-auto pt-1 pr-1">
+            {files.map((file, index) => (
+              <div key={index} className="relative">
+                <AttachmentPreview
+                  file={file}
+                  name={file.name}
+                  mimeType={resolveMimeType(file.name, file.type)}
+                />
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() =>
+                    setFiles((files) => files.filter((_, i) => i !== index))
+                  }
+                  aria-label={`Remove ${file.name}`}
+                  className="bg-muted absolute -top-1 -right-1 grid size-5 place-items-center rounded-full border disabled:opacity-50"
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
         <textarea
           value={text}
           onChange={(event) => setText(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
+            if (
+              event.key === "Enter" &&
+              !event.shiftKey &&
+              !event.nativeEvent.isComposing
+            ) {
               event.preventDefault();
-              submit();
+              void submit();
             }
           }}
-          disabled={locked}
+          disabled={locked || busy}
           rows={2}
           aria-label="Message Will GPT"
           placeholder={
@@ -377,7 +465,44 @@ function Composer() {
           }
           className="placeholder:text-muted-foreground field-sizing-content max-h-48 min-h-10 w-full resize-none bg-transparent text-sm leading-normal outline-none"
         />
-        <div className="mt-1.5 flex justify-end">
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          hidden
+          accept={`${uploader.accept},.txt,.md,.markdown,.csv,.tsv,.json,.xml,.yaml,.yml,.log`}
+          disabled={busy || locked || !conversationId}
+          onChange={(event) => {
+            addFiles(Array.from(event.target.files ?? []));
+            event.target.value = "";
+          }}
+        />
+        <div className="mt-1.5 flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => inputRef.current?.click()}
+            disabled={
+              busy ||
+              locked ||
+              !conversationId ||
+              files.length >= uploader.constraints.maxFiles
+            }
+            title="Attach images, PDFs or text files (25 MB each, 8 files max)"
+            aria-label="Attach files"
+          >
+            <Paperclip />
+          </Button>
+          <span role="status" className="text-muted-foreground flex-1 text-xs">
+            {uploader.isUploading
+              ? `Uploading ${Math.round(uploader.items.reduce((sum, item) => sum + item.progress, 0) / Math.max(1, uploader.items.length))}%`
+              : running && files.length
+                ? "Reading and working…"
+                : files.length
+                  ? `${files.length} file${files.length === 1 ? "" : "s"} attached`
+                  : "Images, PDFs, text"}
+          </span>
           {running ? (
             <Button
               type="button"
@@ -393,7 +518,7 @@ function Composer() {
             <Button
               type="submit"
               size="icon-sm"
-              disabled={!text.trim() || locked}
+              disabled={!text.trim() || locked || busy || !conversationId}
               title="Send"
               className="bg-linear-120 from-[#ff8a3d] via-[#ff4fd8] to-[#a855f7] text-white"
             >

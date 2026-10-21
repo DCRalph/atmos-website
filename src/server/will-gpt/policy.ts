@@ -62,6 +62,7 @@ const OVERRIDES: Partial<Record<string, Risk>> = {
   "artistProfiles.setAvatar": "write", // the old image is soft deleted, not gone
   "artistProfiles.setBanner": "write",
   "uploads.importFromUrl": "write", // stores a file; attaching it is separate
+  "uploads.copyFromWillGptAttachment": "write",
   "gigImport.read": "write", // reads a post into a draft; publishing is separate
   "gigImport.resolveHandle": "write",
   "shopify.syncProducts": "write", // refreshes the cached catalogue from Shopify
