@@ -88,10 +88,12 @@ export function useUpload<K extends UploadPresetName>(
   const constraints = useMemo(() => presetConstraints(preset), [preset]);
   const [items, setItems] = useState<UploadItem[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const activeBatches = useRef(0);
 
   const client = api.useUtils().client;
   /** In-flight transfers, so `cancel` can abort them. */
   const transfers = useRef(new Map<string, XMLHttpRequest>());
+  const cancelled = useRef(new Set<string>());
   /** Upload ids the server has reserved, so cancelling can clean them up. */
   const reservations = useRef(new Map<string, string>());
   /**
@@ -137,8 +139,15 @@ export function useUpload<K extends UploadPresetName>(
 
   const cancel = useCallback(
     (itemId?: string) => {
-      const ids = itemId ? [itemId] : [...transfers.current.keys()];
+      const ids = itemId
+        ? [itemId]
+        : itemsRef.current
+            .filter(
+              (item) => !["done", "error", "cancelled"].includes(item.status),
+            )
+            .map((item) => item.id);
       for (const id of ids) {
+        cancelled.current.add(id);
         transfers.current.get(id)?.abort();
         transfers.current.delete(id);
         const uploadId = reservations.current.get(id);
@@ -154,8 +163,17 @@ export function useUpload<K extends UploadPresetName>(
 
   /** Runs one file all the way through. Resolves to null if it did not land. */
   const runOne = useCallback(
-    async (item: UploadItem): Promise<UploadedFile | null> => {
+    async (
+      item: UploadItem,
+      signal?: AbortSignal,
+    ): Promise<UploadedFile | null> => {
+      const checkCancelled = () => {
+        signal?.throwIfAborted();
+        if (cancelled.current.has(item.id))
+          throw new DOMException("Aborted", "AbortError");
+      };
       try {
+        checkCancelled();
         patch(item.id, {
           status: "preparing",
           progress: 1,
@@ -163,19 +181,26 @@ export function useUpload<K extends UploadPresetName>(
         });
 
         const sourceHash = await hashFile(item.file);
+        checkCancelled();
 
-        const started = await client.uploads.start.mutate({
-          preset,
-          context: contexts.current.get(item.id) ?? latest.current.context,
-          tagIds: latest.current.tagIds,
-          file: {
-            name: item.file.name,
-            size: item.file.size,
-            type: item.file.type,
-            ...(sourceHash ? { sourceHash } : {}),
+        const started = await client.uploads.start.mutate(
+          {
+            preset,
+            context: contexts.current.get(item.id) ?? latest.current.context,
+            tagIds: latest.current.tagIds,
+            file: {
+              name: item.file.name,
+              size: item.file.size,
+              type: item.file.type,
+              ...(sourceHash ? { sourceHash } : {}),
+            },
           },
-        });
+          { signal },
+        );
 
+        if (started.status !== "duplicate")
+          reservations.current.set(item.id, started.uploadId);
+        checkCancelled();
         if (started.status === "duplicate") {
           patch(item.id, {
             status: "done",
@@ -186,7 +211,6 @@ export function useUpload<K extends UploadPresetName>(
           return started.file;
         }
 
-        reservations.current.set(item.id, started.uploadId);
         patch(item.id, { status: "uploading", progress: 2 });
 
         await putToS3({
@@ -204,15 +228,18 @@ export function useUpload<K extends UploadPresetName>(
         });
 
         transfers.current.delete(item.id);
+        checkCancelled();
         patch(item.id, {
           status: "processing",
           progress: Math.round(TRANSFER_SHARE * 100),
         });
 
-        const result = await client.uploads.finish.mutate({
-          uploadId: started.uploadId,
-        });
+        const result = await client.uploads.finish.mutate(
+          { uploadId: started.uploadId },
+          { signal },
+        );
         reservations.current.delete(item.id);
+        checkCancelled();
 
         patch(item.id, { status: "done", progress: 100, result });
         await latest.current.onFileComplete?.(result);
@@ -224,7 +251,7 @@ export function useUpload<K extends UploadPresetName>(
           reservations.current.delete(item.id);
           void client.uploads.abort.mutate({ uploadId }).catch(() => undefined);
         }
-        if (isAbort(error)) {
+        if (signal?.aborted || isAbort(error)) {
           patch(item.id, { status: "cancelled", progress: 0 });
           return null;
         }
@@ -238,14 +265,21 @@ export function useUpload<K extends UploadPresetName>(
   );
 
   const runBatch = useCallback(
-    async (batch: UploadItem[]): Promise<UploadedFile[]> => {
+    async (
+      batch: UploadItem[],
+      signal?: AbortSignal,
+    ): Promise<UploadedFile[]> => {
       if (batch.length === 0) return [];
 
+      for (const item of batch) cancelled.current.delete(item.id);
+      activeBatches.current += 1;
       setIsUploading(true);
+      const onAbort = () => batch.forEach((item) => cancel(item.id));
+      signal?.addEventListener("abort", onAbort, { once: true });
       const results = new Map<string, UploadedFile>();
       try {
         await runWithConcurrency(batch, concurrency, async (item) => {
-          const result = await runOne(item);
+          const result = await runOne(item, signal);
           if (result) results.set(item.id, result);
         });
         // Keep selection order even when transfers finish out of order.
@@ -253,13 +287,17 @@ export function useUpload<K extends UploadPresetName>(
           const result = results.get(item.id);
           return result ? [result] : [];
         });
-        if (succeeded.length > 0) await latest.current.onComplete?.(succeeded);
+        if (succeeded.length > 0 && !signal?.aborted)
+          await latest.current.onComplete?.(succeeded);
         return succeeded;
       } finally {
-        setIsUploading(false);
+        signal?.removeEventListener("abort", onAbort);
+        for (const item of batch) cancelled.current.delete(item.id);
+        activeBatches.current -= 1;
+        setIsUploading(activeBatches.current > 0);
       }
     },
-    [concurrency, runOne],
+    [cancel, concurrency, runOne],
   );
 
   /**
@@ -271,7 +309,7 @@ export function useUpload<K extends UploadPresetName>(
   const upload = useCallback(
     async (
       input: FileList | File[] | null,
-      options?: { context?: UploadContext<K> },
+      options?: { context?: UploadContext<K>; signal?: AbortSignal },
     ): Promise<UploadedFile[]> => {
       const files = Array.from(input ?? []);
       if (files.length === 0) return [];
@@ -288,14 +326,13 @@ export function useUpload<K extends UploadPresetName>(
         status: "queued",
         progress: 0,
       }));
-      if (options?.context !== undefined) {
-        for (const item of queued) {
-          contexts.current.set(item.id, options.context);
-        }
+      const batchContext = options?.context ?? latest.current.context;
+      if (batchContext !== undefined) {
+        for (const item of queued) contexts.current.set(item.id, batchContext);
       }
       commit([...itemsRef.current, ...queued]);
 
-      return runBatch(queued);
+      return runBatch(queued, options?.signal);
     },
     [commit, constraints, runBatch],
   );

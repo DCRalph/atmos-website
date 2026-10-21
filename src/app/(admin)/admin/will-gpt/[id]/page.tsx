@@ -7,6 +7,7 @@ import { api } from "~/trpc/react";
 import { AdminSection } from "~/components/admin/admin-section";
 import UserAvatar from "~/components/UserAvatar";
 import { Skeleton } from "~/components/ui/skeleton";
+import { Button } from "~/components/ui/button";
 import { Transcript } from "~/components/admin/will-gpt/will-gpt-transcript";
 import { formatDateTime } from "~/lib/date-utils";
 import { WILL_GPT_MODELS } from "~/lib/will-gpt";
@@ -21,6 +22,22 @@ export default function WillGptConversationPage() {
       <div className="px-4 py-4 sm:px-6 sm:py-5">
         <Skeleton className="h-12 w-1/2" />
         <Skeleton className="mt-6 h-96 w-full max-w-3xl" />
+      </div>
+    );
+  }
+  if (conversation.isError) {
+    return (
+      <div className="space-y-2 px-4 py-4 text-sm sm:px-6 sm:py-5">
+        <p role="alert" className="text-destructive">
+          Could not load this conversation.
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => void conversation.refetch()}
+        >
+          Retry
+        </Button>
       </div>
     );
   }

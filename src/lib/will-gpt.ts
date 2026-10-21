@@ -114,6 +114,8 @@ export type WillGptAttachment = z.infer<typeof willGptAttachmentSchema>;
 export const willGptMessageSchema = z.discriminatedUnion("role", [
   z.object({
     role: z.literal("user"),
+    /** Browser request identity, used to recover interrupted submissions. */
+    id: z.uuid().optional(),
     text: z.string(),
     attachments: z.array(willGptAttachmentSchema).optional(),
   }),
@@ -214,6 +216,7 @@ export const willGptRunInputSchema = z.object({
   conversationId: z.uuid(),
   model: z.enum(WILL_GPT_MODELS.map((model) => model.id)),
   message: z.string().trim().min(1).max(20_000).optional(),
+  messageId: z.uuid().optional(),
   attachmentIds: z.array(z.uuid()).max(8).default([]),
   /**
    * The admin's answers to the last `awaiting` event, by tool call id. A

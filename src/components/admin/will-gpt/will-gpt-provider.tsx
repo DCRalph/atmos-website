@@ -1,46 +1,33 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { z } from "zod";
+import { toast } from "sonner";
 
 import { api } from "~/trpc/react";
+import { useUpload } from "~/hooks/use-upload";
 import {
   WILL_GPT_MODELS,
-  type WillGptAttachment,
   type WillGptMessage,
   type WillGptModelId,
+  type WillGptRunInput,
 } from "~/lib/will-gpt";
+import {
+  CHAT_WIDTH,
+  readChatSession,
+  recoverChatSession,
+  writeChatSession,
+  type WillGptSession,
+} from "~/lib/will-gpt-session";
 
-/**
- * Will GPT's side of the browser: the conversation on screen, the run in
- * flight, and whether the rail is open. Mounted once in the admin layout, so a
- * chat carries on across admin pages.
- *
- * The conversation itself is the server's (see `~/lib/will-gpt`). The browser
- * remembers only which one is open, and shows a run's events as they arrive;
- * after a reload, a stop or an error it reads the conversation back rather than
- * trusting what it had.
- */
-
-const STORAGE_KEY = "will-gpt";
-
-const DEFAULT_MODEL: WillGptModelId = WILL_GPT_MODELS[0].id;
-
-/** The desktop chat column's width in px, including its gap to the page. */
-export const CHAT_WIDTH = { min: 340, max: 760, initial: 412 } as const;
-
-/** What is saved. Anything unreadable, from an older shape, falls back. */
-const savedSchema = z.object({
-  open: z.boolean().catch(false),
-  model: z.enum(WILL_GPT_MODELS.map((model) => model.id)).catch(DEFAULT_MODEL),
-  conversationId: z.uuid().nullable().catch(null),
-  width: z
-    .number()
-    .min(CHAT_WIDTH.min)
-    .max(CHAT_WIDTH.max)
-    .catch(CHAT_WIDTH.initial),
-});
+export { CHAT_WIDTH };
 
 type WillGptContextValue = {
   conversationId: string | null;
@@ -48,231 +35,405 @@ type WillGptContextValue = {
   setOpen: (open: boolean) => void;
   model: WillGptModelId;
   setModel: (model: WillGptModelId) => void;
-  /** See CHAT_WIDTH. */
   width: number;
   setWidth: (width: number) => void;
   messages: WillGptMessage[];
-  /** Tool call ids waiting for the admin's approval. */
   awaiting: string[];
-  /** The assistant message being written, as it streams in. */
+  /** The assistant text being streamed. The composer has its own saved input. */
   draft: string;
+  input: string;
+  setInput: (text: string) => void;
+  files: File[];
+  setFiles: React.Dispatch<React.SetStateAction<File[]>>;
+  uploadProgress: number | null;
+  ready: boolean;
   running: boolean;
-  /** Why the last run stopped short, when it did. */
   notice: string | null;
-  send: (text: string, attachments?: WillGptAttachment[]) => Promise<boolean>;
-  /** Answer every call in `awaiting` at once. */
+  send: () => void;
   decide: (approved: boolean) => void;
   stop: () => void;
   reset: () => void;
+  reload: () => void;
 };
 
 const WillGptContext = createContext<WillGptContextValue | null>(null);
 
-export function WillGptProvider({ children }: { children: React.ReactNode }) {
+/** Mounted in the admin layout so navigation and closing the rail keep a run alive. */
+export function WillGptProvider({
+  children,
+  userId,
+}: {
+  children: React.ReactNode;
+  userId: string;
+}) {
   const utils = api.useUtils();
+  const client = utils.client;
   const router = useRouter();
   const pathname = usePathname();
-
-  const [loaded, setLoaded] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [model, setModel] = useState<WillGptModelId>(DEFAULT_MODEL);
-  const [width, setWidth] = useState<number>(CHAT_WIDTH.initial);
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  // Do not share a previous admin's conversation or unsent text after switching accounts.
+  const storageKey = `will-gpt:${userId}`;
+  const [session, setSession] = useState<WillGptSession | null>(null);
+  const sessionRef = useRef<WillGptSession | null>(null);
   const [messages, setMessages] = useState<WillGptMessage[]>([]);
   const [awaiting, setAwaiting] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
+  const [files, setFilesState] = useState<File[]>([]);
+  const filesRef = useRef<File[]>([]);
+  const pendingFiles = useRef<File[]>([]);
+  const [ready, setReady] = useState(false);
+  const readyRef = useRef(false);
   const [running, setRunning] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
-  /** The open conversation, for async work that outlives a render. */
-  const conversationRef = useRef<string | null>(null);
+  const loadVersion = useRef(0);
+  const uploader = useUpload("willGptAttachment", {
+    onError: (message) => toast.error(message),
+  });
 
-  /** Show the conversation as the server has it. */
-  const readBack = async (id: string) => {
-    const saved = await utils.client.willGpt.byId.query({ id });
-    // A newer chat was started while this was loading.
-    if (conversationRef.current !== id) return;
-    setMessages(saved?.messages ?? []);
-    setAwaiting(saved?.awaiting ?? []);
-    return saved;
-  };
+  // Write synchronously with user actions, including clearing the input before any await.
+  const updateSession = useCallback(
+    (patch: Partial<WillGptSession>) => {
+      if (!sessionRef.current) return;
+      const next = { ...sessionRef.current, ...patch };
+      sessionRef.current = next;
+      setSession(next);
+      try {
+        writeChatSession(localStorage, storageKey, next);
+      } catch {
+        /* Storage may be disabled. */
+      }
+    },
+    [storageKey],
+  );
 
-  // Read after mount rather than during render, so the server render and the
-  // first client render agree.
+  const setFiles = useCallback<React.Dispatch<React.SetStateAction<File[]>>>(
+    (next) => {
+      const selected =
+        typeof next === "function" ? next(filesRef.current) : next;
+      filesRef.current = selected;
+      setFilesState(selected);
+      updateSession({ fileNames: selected.map((file) => file.name) });
+    },
+    [updateSession],
+  );
+
+  /** Reads are versioned so stale loads cannot overwrite a new chat or an active run. */
+  const readBack = useCallback(
+    async (reason?: string) => {
+      const id = sessionRef.current?.conversationId;
+      if (!id) return;
+      const version = ++loadVersion.current;
+      readyRef.current = false;
+      setReady(false);
+      try {
+        let saved = await client.willGpt.byId.query({ id });
+        if (
+          version !== loadVersion.current ||
+          sessionRef.current?.conversationId !== id
+        )
+          return;
+        if (saved && saved.user?.id !== userId) {
+          // Legacy storage was shared between admins. Keep another admin's chat out of this panel.
+          updateSession({
+            conversationId: crypto.randomUUID(),
+            input: "",
+            pending: null,
+            responding: false,
+            fileNames: [],
+          });
+          saved = null;
+        }
+        const hadPending = !!sessionRef.current.pending;
+        const wasResponding = sessionRef.current.responding;
+        const haveFiles =
+          pendingFiles.current.length > 0 || filesRef.current.length > 0;
+        const recovered = recoverChatSession(
+          sessionRef.current,
+          saved?.messages ?? [],
+        );
+        updateSession(recovered.session);
+        if (hadPending) {
+          if (!recovered.received && pendingFiles.current.length)
+            setFiles(pendingFiles.current);
+          pendingFiles.current = [];
+        }
+        setMessages(saved?.messages ?? []);
+        setAwaiting(saved?.awaiting ?? []);
+        setNotice(
+          [
+            reason ??
+              (hadPending || wasResponding
+                ? recovered.received || !hadPending
+                  ? "Reply interrupted. Saved messages are restored. Check any changes before trying again."
+                  : "Your message was not received. It has been restored below."
+                : null),
+            (recovered.missingFiles ||
+              recovered.session.fileNames.length > 0) &&
+            !haveFiles
+              ? "Reattach your files before sending again."
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" ") || null,
+        );
+        readyRef.current = true;
+        setReady(true);
+        return recovered;
+      } catch (error) {
+        if (
+          version !== loadVersion.current ||
+          sessionRef.current?.conversationId !== id
+        )
+          return;
+        setNotice(
+          error instanceof Error
+            ? error.message
+            : "Could not load the conversation. Reload it before sending.",
+        );
+      }
+    },
+    [client, setFiles, updateSession, userId],
+  );
+
   useEffect(() => {
-    let saved: unknown = null;
+    let saved: WillGptSession;
+    // Accessing localStorage itself can throw, before getItem is even called.
     try {
-      saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
+      const key =
+        localStorage.getItem(storageKey) === null ? "will-gpt" : storageKey;
+      saved = readChatSession(localStorage, key);
     } catch {
-      // Unreadable is the same as nothing saved.
+      saved = readChatSession({ getItem: () => null }, storageKey);
     }
-    const parsed = savedSchema.safeParse(saved ?? {});
-    const id =
-      (parsed.success ? parsed.data.conversationId : null) ??
-      crypto.randomUUID();
-    if (parsed.success) {
-      setOpen(parsed.data.open);
-      setModel(parsed.data.model);
-      setWidth(parsed.data.width);
-    }
-    conversationRef.current = id;
-    setConversationId(id);
-    setLoaded(true);
-    void readBack(id);
-    // Once, on mount; `readBack` only reads refs and stable setters.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!loaded) return;
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ open, model, conversationId, width }),
-    );
-  }, [loaded, open, model, conversationId, width]);
+    sessionRef.current = saved;
+    updateSession(saved);
+    void readBack();
+    const interrupt = () => controllerRef.current?.abort();
+    const reconnect = () => {
+      if (!controllerRef.current) void readBack();
+    };
+    const visible = () => {
+      if (document.visibilityState === "visible") reconnect();
+    };
+    window.addEventListener("pagehide", interrupt);
+    window.addEventListener("focus", reconnect);
+    window.addEventListener("online", reconnect);
+    document.addEventListener("visibilitychange", visible);
+    const invalidateLoads = () => {
+      ++loadVersion.current;
+    };
+    return () => {
+      invalidateLoads();
+      readyRef.current = false;
+      sessionRef.current = null;
+      controllerRef.current?.abort();
+      controllerRef.current = null;
+      window.removeEventListener("pagehide", interrupt);
+      window.removeEventListener("focus", reconnect);
+      window.removeEventListener("online", reconnect);
+      document.removeEventListener("visibilitychange", visible);
+    };
+  }, [readBack, storageKey, updateSession]);
 
   const run = async (
-    turn:
-      | { message: string; attachmentIds: string[] }
-      | { decisions: Record<string, boolean> },
+    turn: Pick<WillGptRunInput, "message" | "messageId" | "decisions">,
+    selected: File[] = [],
   ) => {
-    const id = conversationRef.current;
-    if (!id) return false;
+    const current = sessionRef.current;
+    // The ref locks synchronously, before React renders a disabled submit/approval button.
+    if (!current || !readyRef.current || controllerRef.current) return;
+    const id = current.conversationId;
     const controller = new AbortController();
     controllerRef.current = controller;
+    ++loadVersion.current;
     setRunning(true);
     setNotice(null);
-    setAwaiting([]);
-    setDraft("");
-
+    updateSession({ responding: true });
+    if (turn.message && turn.messageId) {
+      updateSession({
+        input: "",
+        pending: {
+          id: turn.messageId,
+          text: turn.message,
+          fileNames: selected.map((file) => file.name),
+        },
+      });
+      pendingFiles.current = selected;
+      setFiles([]);
+    }
+    const isCurrent = () =>
+      controllerRef.current === controller &&
+      sessionRef.current?.conversationId === id;
     let failed = false;
-    let accepted = false;
-    const previousUserCount = messages.filter(
-      (message) => message.role === "user",
-    ).length;
     let changed = false;
     try {
-      const events = await utils.client.willGpt.run.mutate(
-        { conversationId: id, model, page: pathname, ...turn },
-        { signal: controller.signal },
-      );
-      for await (const event of events) {
-        accepted = true;
-        // Started over with "New chat" while this was still streaming.
-        if (controllerRef.current !== controller) break;
-        switch (event.type) {
-          case "delta":
-            setDraft((draft) => draft + event.text);
-            break;
-          case "message":
-            setDraft("");
-            setMessages((messages) => [...messages, event.message]);
-            if (
-              event.message.role === "tool" &&
-              event.message.status === "ok" &&
-              event.message.risk !== "read"
-            ) {
-              changed = true;
-            }
-            break;
-          case "awaiting":
-            setAwaiting(event.callIds);
-            break;
-          case "notice":
-            setNotice(event.text);
-            break;
-        }
-      }
-    } catch (error) {
-      failed = true;
-      if (!controller.signal.aborted) {
-        setNotice(error instanceof Error ? error.message : "Will GPT stopped.");
-      }
-    } finally {
-      // A reset has already cleared this run's state; leave it cleared.
-      if (controllerRef.current === controller) {
-        setDraft("");
-        setRunning(false);
-        controllerRef.current = null;
-        // What arrived before a stop or an error may not be all that ran.
-        if (failed) {
-          try {
-            const saved = await readBack(id);
-            if (
-              "message" in turn &&
-              (saved?.messages.filter((message) => message.role === "user")
-                .length ?? 0) > previousUserCount
-            )
-              accepted = true;
-          } catch {
-            // Keep the draft when we cannot establish whether it was saved.
+      const work = async () => {
+        uploader.reset();
+        setUploading(selected.length > 0);
+        const uploaded = await uploader.upload(selected, {
+          context: { conversationId: id },
+          signal: controller.signal,
+        });
+        controller.signal.throwIfAborted();
+        if (!isCurrent()) return;
+        setUploading(false);
+        if (uploaded.length !== selected.length)
+          throw new Error(
+            "Upload failed. Your message and files are ready to retry.",
+          );
+        const message = turn.message;
+        if (message)
+          setMessages((messages) => [
+            ...messages,
+            {
+              role: "user",
+              id: turn.messageId,
+              text: message,
+              ...(uploaded.length ? { attachments: uploaded } : {}),
+            },
+          ]);
+        setAwaiting([]);
+        const events = await client.willGpt.run.mutate(
+          {
+            conversationId: id,
+            model: current.model,
+            page: pathname,
+            attachmentIds: uploaded.map((file) => file.id),
+            ...turn,
+          },
+          { signal: controller.signal },
+        );
+        for await (const event of events) {
+          if (!isCurrent()) break;
+          switch (event.type) {
+            case "delta":
+              setDraft((draft) => draft + event.text);
+              break;
+            case "message":
+              setDraft("");
+              setMessages((messages) => [...messages, event.message]);
+              if (
+                event.message.role === "tool" &&
+                event.message.status === "ok" &&
+                event.message.risk !== "read"
+              )
+                changed = true;
+              break;
+            case "awaiting":
+              setAwaiting(event.callIds);
+              break;
+            case "notice":
+              setNotice(event.text);
+              break;
           }
         }
+      };
+      // Prevent two browser tabs from submitting or approving the same conversation together.
+      if (navigator.locks)
+        await navigator.locks.request(
+          `will-gpt:${id}`,
+          { ifAvailable: true },
+          async (lock) => {
+            if (!lock)
+              throw new Error(
+                "This chat is running in another tab. Wait for it to finish, then reload the conversation.",
+              );
+            await work();
+          },
+        );
+      else await work();
+    } catch (error) {
+      failed = true;
+      if (isCurrent()) {
+        const reason = controller.signal.aborted
+          ? "Stopped. Check any changes before trying again."
+          : error instanceof Error
+            ? error.message
+            : "Will GPT stopped.";
+        await readBack(reason);
       }
-      // Whatever page is open may be showing what just changed. A stopped
-      // run may have changed things too.
-      if (changed || failed) {
+    } finally {
+      if (isCurrent()) {
+        if (!failed) {
+          updateSession({ pending: null, responding: false });
+          pendingFiles.current = [];
+        }
+        setDraft("");
+        setRunning(false);
+        setUploading(false);
+        controllerRef.current = null;
+        uploader.reset();
+      }
+      // A stopped tool may already have changed something, even without a result event.
+      if (sessionRef.current && (changed || failed)) {
         void utils.invalidate();
         router.refresh();
       }
     }
-    return (!failed || accepted) && conversationRef.current === id;
   };
 
   const value: WillGptContextValue = {
-    conversationId,
-    open,
-    setOpen,
-    model,
-    setModel,
-    width,
-    setWidth,
+    conversationId: session?.conversationId ?? null,
+    open: session?.open ?? false,
+    setOpen: (open) => updateSession({ open }),
+    model: session?.model ?? WILL_GPT_MODELS[0].id,
+    setModel: (model) => updateSession({ model }),
+    width: session?.width ?? CHAT_WIDTH.initial,
+    setWidth: (width) => updateSession({ width }),
     messages,
     awaiting,
     draft,
     running,
+    ready,
     notice,
-    send: async (text, attachments = []) => {
-      const trimmed = text.trim();
-      // An upload may have finished after the admin started another chat.
-      if (
-        !trimmed ||
-        running ||
-        awaiting.length > 0 ||
-        conversationRef.current !== conversationId
-      )
-        return false;
-      setMessages((messages) => [
-        ...messages,
-        {
-          role: "user",
-          text: trimmed,
-          ...(attachments.length ? { attachments } : {}),
-        },
-      ]);
-      return run({
-        message: trimmed,
-        attachmentIds: attachments.map((file) => file.id),
-      });
+    files,
+    setFiles,
+    input: session?.input ?? "",
+    setInput: (input) => updateSession({ input }),
+    uploadProgress:
+      uploading && uploader.isUploading
+        ? Math.round(
+            uploader.items.reduce((sum, item) => sum + item.progress, 0) /
+              Math.max(1, uploader.items.length),
+          )
+        : null,
+    send: () => {
+      const text = sessionRef.current?.input.trim();
+      if (!text || text.length > 20_000 || awaiting.length) return;
+      void run({ message: text, messageId: crypto.randomUUID() }, files);
     },
     decide: (approved) => {
-      if (running || awaiting.length === 0) return;
+      if (!awaiting.length) return;
       void run({
         decisions: Object.fromEntries(awaiting.map((id) => [id, approved])),
       });
     },
     stop: () => controllerRef.current?.abort(),
+    reload: () => {
+      if (!controllerRef.current) void readBack();
+    },
     reset: () => {
       controllerRef.current?.abort();
       controllerRef.current = null;
-      const id = crypto.randomUUID();
-      conversationRef.current = id;
-      setConversationId(id);
+      ++loadVersion.current;
+      updateSession({
+        conversationId: crypto.randomUUID(),
+        responding: false,
+        input: "",
+        pending: null,
+      });
+      readyRef.current = true;
+      setReady(true);
       setRunning(false);
+      setUploading(false);
       setMessages([]);
       setAwaiting([]);
       setNotice(null);
       setDraft("");
+      setFiles([]);
+      pendingFiles.current = [];
+      uploader.reset();
     },
   };
 
