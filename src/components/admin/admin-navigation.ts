@@ -70,6 +70,13 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         icon: Bot,
         keywords: ["ai", "assistant", "agent", "history", "chat"],
       },
+      {
+        title: "Reports",
+        description: "Saved reports and analysis created with Will GPT",
+        url: "/admin/reports",
+        icon: FileText,
+        keywords: ["html", "analytics", "analysis", "documents"],
+      },
     ],
   },
   {

@@ -53,11 +53,18 @@ const STATIC_PATH_LABELS: Record<string, string> = {
   "/admin/files": "Files",
   "/admin/wallet-debugger": "Wallet Debugger",
   "/admin/will-gpt": "Will GPT",
+  "/admin/reports": "Reports",
   "/dashboard": "Dashboard",
 };
 
 /** Smart crumb resolvers for dynamic routes */
 const SMART_CRUMB_RESOLVERS: SmartCrumbResolver[] = [
+  {
+    pattern: /^\/admin\/reports\/([^/]+)$/,
+    key: "report",
+    fallbackLabel: "Report",
+    parentPath: "/admin/reports",
+  },
   {
     pattern: /^\/admin\/users\/([^/]+)$/,
     key: "user",
@@ -252,6 +259,14 @@ function useConversationCrumb(conversationId: string | null) {
   };
 }
 
+function useReportCrumb(reportId: string | null) {
+  const { data, isLoading } = api.reports.byId.useQuery(
+    { id: reportId ?? "" },
+    { enabled: !!reportId },
+  );
+  return { label: data?.title ?? null, isLoading: !!reportId && isLoading };
+}
+
 /**
  * Combined hook that resolves the appropriate smart crumb based on path
  */
@@ -268,12 +283,14 @@ function useSmartCrumb(pathname: string): {
   const linkId = smartMatch?.resolver.key === "link" ? smartMatch.id : null;
   const conversationId =
     smartMatch?.resolver.key === "conversation" ? smartMatch.id : null;
+  const reportId = smartMatch?.resolver.key === "report" ? smartMatch.id : null;
 
   // Call all resolver hooks (React hooks must be called unconditionally)
   const userCrumb = useUserCrumb(userId);
   const gigCrumb = useGigCrumb(gigId);
   const linkCrumb = useLinkCrumb(linkId);
   const conversationCrumb = useConversationCrumb(conversationId);
+  const reportCrumb = useReportCrumb(reportId);
 
   // Return the appropriate result based on which resolver matched
   if (!smartMatch) return null;
@@ -281,6 +298,12 @@ function useSmartCrumb(pathname: string): {
   const { resolver, id } = smartMatch;
 
   switch (resolver.key) {
+    case "report":
+      return {
+        path: pathname,
+        label: reportCrumb.label ?? resolver.fallbackLabel,
+        isLoading: reportCrumb.isLoading,
+      };
     case "user":
       return {
         path: pathname,
