@@ -19,6 +19,7 @@ import { useNow } from "./parts";
 /**
  * The event's live screen, made to be left up on a TV: a Sales mode for
  * watching tickets go and a Doors mode for watching the room fill. The mode
+ * defaults to Sales before doors open and Doors afterwards. An explicit mode
  * is in the address so a bookmark opens straight into it; the pills, or the
  * keys S and D, switch. F toggles the browser's fullscreen. On desktop the
  * whole thing fits the viewport with no scrolling; on a phone it stacks and
@@ -53,7 +54,6 @@ export function LiveScreen({
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const mode: LiveMode = params.get("mode") === "doors" ? "doors" : "sales";
   const setMode = useCallback(
     (next: LiveMode) => router.replace(`${pathname}?mode=${next}`),
     [router, pathname],
@@ -62,6 +62,14 @@ export function LiveScreen({
   const event = api.ticketEvents.byId.useQuery({ id: eventId });
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const now = useNow(1000);
+  const requestedMode = params.get("mode");
+  const doorsAt = event.data?.doorsAt ?? event.data?.startsAt;
+  const mode: LiveMode =
+    requestedMode === "sales" || requestedMode === "doors"
+      ? requestedMode
+      : doorsAt && now.getTime() >= doorsAt.getTime()
+        ? "doors"
+        : "sales";
   const [fullscreen, setFullscreen] = useState(false);
 
   const toggleFullscreen = useCallback(() => {

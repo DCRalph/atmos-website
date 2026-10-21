@@ -58,7 +58,7 @@ const MEASURES = [
  */
 export function EventOverview({
   eventId,
-  liveHref = `/admin/events/${eventId}/live?mode=sales`,
+  liveHref = `/admin/events/${eventId}/live`,
   ordersHref = `/admin/events/${eventId}?section=orders`,
 }: {
   eventId: string;
