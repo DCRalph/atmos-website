@@ -1048,15 +1048,15 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
                       {draft.isTba ? (
                         <Field
                           id="gig-tba-text"
-                          label="Public TBA text"
-                          hint="Shown instead of the title while the gig is TBA. Leave empty for TBA."
+                          label="Text below TBA poster"
+                          hint="Replaces Date & time TBA on Home. The poster overlay always says TBA."
                         >
                           <Input
                             id="gig-tba-text"
                             value={draft.tbaText}
                             onChange={(e) => update("tbaText", e.target.value)}
                             maxLength={120}
-                            placeholder="TBA"
+                            placeholder="Date & time TBA"
                           />
                         </Field>
                       ) : null}

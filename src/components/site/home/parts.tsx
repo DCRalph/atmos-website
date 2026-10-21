@@ -1,7 +1,5 @@
 "use client";
 
-import { getTbaText } from "~/lib/gig-flags";
-
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
@@ -59,7 +57,6 @@ export function MonthBadge({ month, year }: { month?: string; year?: string }) {
 type PosterGig = {
   title: string;
   isTba: boolean;
-  tbaText?: string | null;
   posterFileUpload?: { url: string } | null;
   media?: { url: string | null }[];
 };
@@ -102,7 +99,7 @@ export function GigPoster({
             tbaClassName,
           )}
         >
-          {getTbaText(gig.tbaText)}
+          TBA
         </p>
       </div>
     );

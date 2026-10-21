@@ -4,6 +4,7 @@ import Link from "next/link";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { gigPath } from "~/lib/gig-url";
 import { gigOffSiteNotice } from "~/lib/gig-visibility";
+import { getTbaText } from "~/lib/gig-flags";
 import { formatEventDate, formatEventTime } from "~/lib/ticketing/dates";
 import { AtmosLogo, Skeleton } from "../ui";
 import { GigPoster, SectionError, SectionHeader } from "./parts";
@@ -84,9 +85,9 @@ function GigCard({ gig }: { gig: UpcomingGig }) {
           />
           {onNow ? <OnNowChip className="absolute bottom-3 left-3" /> : null}
         </div>
-        <p className="mt-3 text-[12px] text-white md:mt-4 md:text-[17px]">
+        <p className="mt-3 text-[12px] break-words text-white md:mt-4 md:text-[17px]">
           {gig.isTba ? (
-            "Date & time TBA"
+            getTbaText(gig.tbaText, "Date & time TBA")
           ) : (
             <>
               {formatEventDate(gig.gigStartTime)} ·{" "}

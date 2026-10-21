@@ -488,7 +488,6 @@ export function GigPage({ id }: { id: string }) {
           {tba ? (
             <TbaPoster
               src={poster}
-              text={gigTitle(gig)}
               className="aspect-[4/5]"
               size="text-[clamp(2rem,5vw,4.5rem)]"
             />

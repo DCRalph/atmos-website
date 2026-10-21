@@ -30,7 +30,7 @@ type GigLike = Pick<
   | "gigStartTime"
   | "gigEndTime"
   | "posterFileUpload"
-> & { tbaText?: string | null };
+>;
 
 // ---------------------------------------------------------------------------
 // Dates, always in NZ time (gigs have no timezone of their own).
@@ -169,12 +169,10 @@ export function CtaPill({
 /** An unannounced gig's poster, blurred as a teaser. */
 export function TbaPoster({
   src,
-  text = "TBA",
   className,
   size = "text-5xl",
 }: {
   src: string | null;
-  text?: string;
   className?: string;
   size?: string;
 }) {
@@ -195,7 +193,7 @@ export function TbaPoster({
           size,
         )}
       >
-        {text}
+        TBA
       </p>
     </div>
   );
@@ -219,14 +217,7 @@ export function GigPoster({
 }) {
   const src = gig.posterFileUpload?.url ?? null;
   if (isTba(gig))
-    return (
-      <TbaPoster
-        src={src}
-        text={gigTitle(gig)}
-        className={className}
-        size={tbaSize}
-      />
-    );
+    return <TbaPoster src={src} className={className} size={tbaSize} />;
   if (!src) {
     return (
       <div
