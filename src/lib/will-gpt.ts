@@ -100,8 +100,23 @@ const toolCallSchema = z.object({
 
 export type WillGptToolCall = z.infer<typeof toolCallSchema>;
 
+export const willGptAttachmentSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  mimeType: z.string(),
+  size: z.number(),
+  /** Read once on the server, then reused on every turn. Never client input. */
+  content: z.string().optional(),
+});
+
+export type WillGptAttachment = z.infer<typeof willGptAttachmentSchema>;
+
 export const willGptMessageSchema = z.discriminatedUnion("role", [
-  z.object({ role: z.literal("user"), text: z.string() }),
+  z.object({
+    role: z.literal("user"),
+    text: z.string(),
+    attachments: z.array(willGptAttachmentSchema).optional(),
+  }),
   z.object({
     role: z.literal("assistant"),
     text: z.string(),
@@ -199,6 +214,7 @@ export const willGptRunInputSchema = z.object({
   conversationId: z.uuid(),
   model: z.enum(WILL_GPT_MODELS.map((model) => model.id)),
   message: z.string().trim().min(1).max(20_000).optional(),
+  attachmentIds: z.array(z.uuid()).max(8).default([]),
   /**
    * The admin's answers to the last `awaiting` event, by tool call id. A
    * destructive call runs only on an explicit `true`.

@@ -16,6 +16,7 @@ import {
   saveConversation,
 } from "~/server/will-gpt/conversations";
 import { generateTitle } from "~/server/will-gpt/title";
+import { readAttachments } from "~/server/will-gpt/attachments";
 
 const userSelect = {
   select: { id: true, name: true, email: true, image: true },
@@ -33,6 +34,11 @@ export const willGptRouter = createTRPCRouter({
     input,
     signal,
   }): AsyncGenerator<WillGptEvent> {
+    // Includes document reading, so a batch cannot outlive the route's 300s limit.
+    const runSignal = AbortSignal.any([
+      AbortSignal.timeout(270_000),
+      ...(signal ? [signal] : []),
+    ]);
     const saved = await loadOwnConversation(
       ctx.db,
       input.conversationId,
@@ -51,8 +57,29 @@ export const willGptRouter = createTRPCRouter({
       });
     }
 
+    if (!input.message && input.attachmentIds.length > 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Send a message with your attachments.",
+      });
+    }
+    const attachments = await readAttachments({
+      db: ctx.db,
+      ids: input.attachmentIds,
+      conversationId: input.conversationId,
+      userId: ctx.user.id,
+      signal: runSignal,
+    });
+
     let messages: WillGptMessage[] = input.message
-      ? [...saved.messages, { role: "user", text: input.message }]
+      ? [
+          ...saved.messages,
+          {
+            role: "user",
+            text: input.message,
+            ...(attachments.length ? { attachments } : {}),
+          },
+        ]
       : saved.messages;
     let awaiting: string[] = [];
     const save = () =>
@@ -85,9 +112,10 @@ export const willGptRouter = createTRPCRouter({
       for await (const event of runWillGpt({
         router: appRouter,
         ctx,
-        signal,
+        signal: runSignal,
         model: input.model,
         page: input.page,
+        conversationId: input.conversationId,
         messages,
         // Only a call that was actually waiting can be approved.
         decisions: Object.fromEntries(

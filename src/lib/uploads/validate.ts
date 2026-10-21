@@ -39,6 +39,16 @@ const EXTENSION_MIME: Record<string, string> = {
   wav: "audio/wav",
   ogg: "audio/ogg",
   pdf: "application/pdf",
+  txt: "text/plain",
+  md: "text/markdown",
+  markdown: "text/markdown",
+  csv: "text/csv",
+  tsv: "text/tab-separated-values",
+  json: "application/json",
+  xml: "application/xml",
+  yaml: "application/yaml",
+  yml: "application/yaml",
+  log: "text/plain",
 };
 
 export const extensionOf = (fileName: string): string => {
@@ -52,7 +62,8 @@ export const extensionOf = (fileName: string): string => {
  * they do not recognise, which would otherwise fail every accept check.
  */
 export const resolveMimeType = (fileName: string, declaredType?: string) => {
-  if (declaredType) return declaredType.toLowerCase();
+  if (declaredType && declaredType !== "application/octet-stream")
+    return declaredType.toLowerCase();
   return EXTENSION_MIME[extensionOf(fileName)] ?? "application/octet-stream";
 };
 

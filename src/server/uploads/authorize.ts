@@ -53,6 +53,20 @@ const resolveProfile: Resolver = async (ctx, context) => {
 };
 
 const resolvers: Record<UploadPresetName, Resolver> = {
+  willGptAttachment: async (ctx, context) => {
+    const conversationId = str(context, "conversationId");
+    const conversation = await ctx.db.willGptConversation.findUnique({
+      where: { id: conversationId },
+      select: { userId: true },
+    });
+    if (conversation && conversation.userId !== ctx.session?.user.id) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Not your conversation",
+      });
+    }
+    return { conversationId };
+  },
   contentArtwork: async () => ({}),
   taskProof: async (ctx, context) => {
     const taskId = str(context, "taskId");

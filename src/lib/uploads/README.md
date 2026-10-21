@@ -3,6 +3,26 @@
 One system for every file that reaches the R2 bucket. Adding a new upload
 location means adding a preset — not writing an upload path.
 
+## Will GPT attachments
+
+The `willGptAttachment` preset accepts images, PDFs and UTF-8 text documents
+(including Markdown, CSV, JSON and YAML): up to 8 files, 25 MB each and 50 MB
+combined. Uploads belong to the admin and conversation that started them.
+
+Text is decoded directly. Images and PDFs are transcribed once with the
+configured vision model (`OPENROUTER_MODEL`), using OpenRouter's
+[PDF parser](https://openrouter.ai/docs/guides/overview/multimodal/pdfs) for PDFs.
+The resulting text and attachment metadata are saved in the conversation's
+existing JSON transcript, so follow-up turns do not reread the files. Reading
+must succeed before the assistant can act on that message.
+
+To place a chat image on the site, Will GPT calls
+`uploads.copyFromWillGptAttachment` with the destination preset and context,
+then attaches the returned file id using the destination's procedure. This
+keeps the chat's original separate and applies the destination's processing
+rules. PDFs and text files provide source information, such as gig announcement
+details; they cannot be copied into image fields.
+
 ## How a file gets to R2
 
 ```

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import {
   createTRPCRouter,
   protectedProcedure,
@@ -18,6 +19,8 @@ import {
 } from "~/server/uploads/service";
 import { downloadImage } from "~/server/web";
 import { FileUploadStatus } from "~Prisma/client";
+import { ownAttachment } from "~/server/will-gpt/attachments";
+import { getObjectBuffer } from "~/server/uploads/r2";
 
 const presetNames = Object.keys(uploadPresets) as [
   UploadPresetName,
@@ -29,6 +32,57 @@ const presetNames = Object.keys(uploadPresets) as [
  * straight from the browser to R2 via the presigned URL handed out by `start`.
  */
 export const uploadsRouter = createTRPCRouter({
+  /** Copy a chat image through its destination's own processing and access rules. */
+  copyFromWillGptAttachment: adminProcedure
+    .input(
+      z.object({
+        fileUploadId: z.uuid(),
+        conversationId: z.uuid(),
+        preset: z.enum([
+          "gigPoster",
+          "gigWidePoster",
+          "gigMedia",
+          "ticketEventPoster",
+          "ticketPassImage",
+          "contentArtwork",
+          "artistAvatar",
+          "artistBanner",
+          "artistThemeBackground",
+          "artistBlockImage",
+          "crewPhoto",
+          "venueLogo",
+          "taskProof",
+          "mediaLibrary",
+        ]),
+        context: z.record(z.string(), z.unknown()).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const file = await ownAttachment(
+        ctx.db,
+        input.fileUploadId,
+        input.conversationId,
+        ctx.user.id,
+      );
+      if (!file.mimeType.startsWith("image/")) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Only image attachments can be placed in an image field.",
+        });
+      }
+      return uploadFromBuffer(
+        {
+          preset: input.preset,
+          context: input.context,
+          file: {
+            name: file.name,
+            type: file.mimeType,
+            body: await getObjectBuffer(file.key),
+          },
+        },
+        ctx,
+      );
+    }),
   /**
    * Reserve an upload slot and get a presigned PUT URL. Returns immediately
    * with `status: "duplicate"` when the same file already exists at the same
