@@ -44,6 +44,18 @@ export const willGptRouter = createTRPCRouter({
       input.conversationId,
       ctx.user.id,
     );
+    if (
+      input.messageId &&
+      saved.messages.some(
+        (message) => message.role === "user" && message.id === input.messageId,
+      )
+    ) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message:
+          "This message was already received. Reload the conversation before continuing.",
+      });
+    }
     if (input.message && saved.awaiting.length > 0) {
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -71,11 +83,13 @@ export const willGptRouter = createTRPCRouter({
       signal: runSignal,
     });
 
+    runSignal.throwIfAborted();
     let messages: WillGptMessage[] = input.message
       ? [
           ...saved.messages,
           {
             role: "user",
+            ...(input.messageId ? { id: input.messageId } : {}),
             text: input.message,
             ...(attachments.length ? { attachments } : {}),
           },

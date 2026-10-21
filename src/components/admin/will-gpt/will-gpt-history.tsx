@@ -70,6 +70,19 @@ export function WillGptHistory() {
 
       {list.isPending ? (
         <p className="text-muted-foreground text-sm">Loading…</p>
+      ) : list.isError ? (
+        <div className="space-y-2 text-sm">
+          <p role="alert" className="text-destructive">
+            Could not load conversations.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void list.refetch()}
+          >
+            Retry
+          </Button>
+        </div>
       ) : conversations.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           {show === "changed"
@@ -207,6 +220,19 @@ function Changes({ conversation }: { conversation: Conversation }) {
     <div className="flex flex-col gap-0.5 border-t py-2.5 pr-3.5 pl-[3.25rem] text-[13px]">
       {changes.isPending ? (
         <p className="text-muted-foreground">Loading…</p>
+      ) : changes.isError ? (
+        <div className="space-y-2">
+          <p role="alert" className="text-destructive">
+            Could not load changes.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void changes.refetch()}
+          >
+            Retry
+          </Button>
+        </div>
       ) : shown.length === 0 ? (
         <p className="text-muted-foreground">Nothing changed.</p>
       ) : (

@@ -46,7 +46,7 @@ export default async function AdminLayout({
     <>
       {/* <UserIndicator /> */}
       <UnsavedChangesProvider>
-        <WillGptProvider>
+        <WillGptProvider key={session.user.id} userId={session.user.id}>
           <WillGptStage>
             <LayoutWithSideBarHeader
               sidebar={<DashboardSideBar />}

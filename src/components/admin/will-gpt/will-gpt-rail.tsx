@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef } from "react";
 import Link from "next/link";
 import {
   ArrowUp,
@@ -14,8 +14,12 @@ import {
 
 import { toast } from "sonner";
 
-import { useUpload } from "~/hooks/use-upload";
-import { resolveMimeType, validateBatch } from "~/lib/uploads/validate";
+import { presetConstraints } from "~/lib/uploads/presets";
+import {
+  acceptAttribute,
+  resolveMimeType,
+  validateBatch,
+} from "~/lib/uploads/validate";
 import { AttachmentPreview } from "./will-gpt-attachment";
 import { Button } from "~/components/ui/button";
 import {
@@ -49,7 +53,8 @@ export function WillGptToggle() {
     <Button
       variant="outline"
       onClick={() => setOpen(!open)}
-      aria-pressed={open}
+      aria-expanded={open}
+      aria-controls="will-gpt-panel"
       aria-label="Will GPT"
       className="will-gpt-toggle hover:text-foreground"
     >
@@ -87,7 +92,28 @@ function Star() {
  * streaming into it.
  */
 export function WillGptStage({ children }: { children: React.ReactNode }) {
-  const { open, width, conversationId } = useWillGpt();
+  const { open, setOpen, width, conversationId } = useWillGpt();
+  const panelRef = useRef<HTMLElement>(null);
+  const returnFocus = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (open) {
+      returnFocus.current =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
+      (
+        panelRef.current?.querySelector<HTMLElement>(
+          "textarea:not(:disabled)",
+        ) ??
+        panelRef.current?.querySelector<HTMLElement>("button:not(:disabled)")
+      )?.focus();
+    } else if (
+      document.activeElement === document.body ||
+      panelRef.current?.contains(document.activeElement)
+    ) {
+      returnFocus.current?.focus();
+    }
+  }, [open]);
   const stageRef = useRef<HTMLDivElement>(null);
   return (
     <div
@@ -104,8 +130,32 @@ export function WillGptStage({ children }: { children: React.ReactNode }) {
         {children}
       </div>
       <aside
+        id="will-gpt-panel"
+        ref={panelRef}
         aria-label="Will GPT"
         inert={!open}
+        onKeyDown={(event) => {
+          if (event.defaultPrevented) return;
+          if (event.key === "Escape") {
+            event.preventDefault();
+            setOpen(false);
+          }
+          if (event.key !== "Tab" || window.innerWidth >= 1024) return;
+          const controls = Array.from(
+            panelRef.current?.querySelectorAll<HTMLElement>(
+              'button:not(:disabled), a[href], textarea:not(:disabled), [tabindex="0"]',
+            ) ?? [],
+          ).filter((element) => element.getClientRects().length > 0);
+          const first = controls[0];
+          const last = controls.at(-1);
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last?.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first?.focus();
+          }
+        }}
         className={cn(
           "flex flex-col transition-[opacity,translate] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none",
           "max-lg:bg-sidebar max-lg:fixed max-lg:inset-0 max-lg:z-50",
@@ -117,8 +167,8 @@ export function WillGptStage({ children }: { children: React.ReactNode }) {
       >
         <ResizeHandle stageRef={stageRef} />
         <RailHeader />
-        <Thread />
-        <Composer key={conversationId} />
+        <Thread key={`thread:${conversationId}`} />
+        <Composer key={`composer:${conversationId}`} />
       </aside>
     </div>
   );
@@ -192,7 +242,7 @@ function ResizeHandle({
 }
 
 function RailHeader() {
-  const { setOpen, model, setModel, reset } = useWillGpt();
+  const { setOpen, model, setModel, reset, running } = useWillGpt();
   return (
     <header className="flex h-14 shrink-0 items-center gap-1.5 pr-2.5 pl-4 max-lg:border-b">
       <span aria-hidden className="flex size-4.5 [&_svg]:size-full">
@@ -207,6 +257,7 @@ function RailHeader() {
         Will GPT
       </h2>
       <Select
+        disabled={running}
         value={model}
         onValueChange={(value) => {
           const option = WILL_GPT_MODELS.find((model) => model.id === value);
@@ -252,15 +303,26 @@ function RailHeader() {
 }
 
 function Thread() {
-  const { messages, awaiting, draft, running, notice } = useWillGpt();
+  const { messages, awaiting, draft, running, notice, ready, reload } =
+    useWillGpt();
   const threadRef = useRef<HTMLDivElement>(null);
+
+  const pinned = useRef(true);
+  const previousUserCount = useRef(0);
 
   // Scrolls the thread itself: scrollIntoView would also scroll the stage's
   // clipped ancestors to reveal the chat while it is closed.
   useEffect(() => {
     const thread = threadRef.current;
-    if (thread) thread.scrollTop = thread.scrollHeight;
-  }, [messages, awaiting, draft, notice]);
+    const userCount = messages.filter(
+      (message) => message.role === "user",
+    ).length;
+    if (thread && (pinned.current || userCount > previousUserCount.current)) {
+      thread.scrollTop = thread.scrollHeight;
+      pinned.current = true;
+    }
+    previousUserCount.current = userCount;
+  }, [messages, awaiting, draft, notice, running, ready]);
 
   const awaitingCalls = messages
     .flatMap((message) =>
@@ -271,9 +333,17 @@ function Thread() {
   return (
     <div
       ref={threadRef}
+      role="log"
+      aria-label="Conversation"
+      aria-busy={running || !ready}
+      onScroll={(event) => {
+        const thread = event.currentTarget;
+        pinned.current =
+          thread.scrollHeight - thread.scrollTop - thread.clientHeight < 80;
+      }}
       className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5 text-sm"
     >
-      {messages.length === 0 && !running ? (
+      {messages.length === 0 && !running && ready ? (
         <p className="text-muted-foreground m-auto max-w-64 text-center leading-relaxed">
           Ask for changes anywhere in the admin. Deletes, and anything that
           emails people, wait for your approval.
@@ -287,10 +357,18 @@ function Thread() {
       {running && !draft ? (
         <p className="text-muted-foreground">Working…</p>
       ) : null}
+      {!ready && !running && !notice ? (
+        <p className="text-muted-foreground">Loading conversation…</p>
+      ) : null}
       {notice ? (
         <p role="status" className="text-destructive leading-relaxed">
           {notice}
         </p>
+      ) : null}
+      {!ready && notice && !running ? (
+        <Button variant="outline" size="sm" onClick={reload}>
+          Reload conversation
+        </Button>
       ) : null}
     </div>
   );
@@ -298,7 +376,7 @@ function Thread() {
 
 /** The calls the run stopped for, with the exact input each will run with. */
 function Approval({ calls }: { calls: WillGptToolCall[] }) {
-  const { decide, running } = useWillGpt();
+  const { decide, running, ready } = useWillGpt();
 
   return (
     <div
@@ -327,7 +405,7 @@ function Approval({ calls }: { calls: WillGptToolCall[] }) {
         <Button
           variant="outline"
           size="sm"
-          disabled={running}
+          disabled={running || !ready}
           onClick={() => decide(false)}
         >
           Decline
@@ -335,7 +413,7 @@ function Approval({ calls }: { calls: WillGptToolCall[] }) {
         <Button
           variant="destructive"
           size="sm"
-          disabled={running}
+          disabled={running || !ready}
           onClick={() => decide(true)}
         >
           {calls.length > 1 ? `Approve ${calls.length}` : "Approve"}
@@ -346,48 +424,39 @@ function Approval({ calls }: { calls: WillGptToolCall[] }) {
 }
 
 function Composer() {
-  const { send, stop, running, awaiting, conversationId } = useWillGpt();
-  const [text, setText] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
-  const [submitting, setSubmitting] = useState(false);
+  const {
+    send,
+    stop,
+    running,
+    awaiting,
+    conversationId,
+    ready,
+    input: text,
+    setInput: setText,
+    files,
+    setFiles,
+    uploadProgress,
+  } = useWillGpt();
   const inputRef = useRef<HTMLInputElement>(null);
-  const uploader = useUpload("willGptAttachment", {
-    context: conversationId ? { conversationId } : undefined,
-    onError: (message) => toast.error(message),
-  });
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const constraints = presetConstraints("willGptAttachment");
   const locked = awaiting.length > 0;
-  const busy = running || submitting;
+  const busy = running;
 
   const addFiles = (incoming: File[]) => {
-    if (busy || locked) return;
-    const { accepted, rejected } = validateBatch(
-      incoming,
-      uploader.constraints,
-      {
-        count: files.length,
-        size: files.reduce((size, file) => size + file.size, 0),
-      },
-    );
+    if (busy || locked || !ready) return;
+    const { accepted, rejected } = validateBatch(incoming, constraints, {
+      count: files.length,
+      size: files.reduce((size, file) => size + file.size, 0),
+    });
     for (const { reason } of rejected) toast.error(reason);
     setFiles((files) => [...files, ...accepted]);
   };
 
-  const submit = async () => {
-    if (!text.trim() || busy || locked || !conversationId) return;
-    setSubmitting(true);
-    try {
-      uploader.reset();
-      const uploaded = await uploader.upload(files);
-      // Keep every file and the message for retry; never silently send half a batch.
-      if (uploaded.length !== files.length) return;
-      if (await send(text, uploaded)) {
-        setText("");
-        setFiles([]);
-        uploader.reset();
-      }
-    } finally {
-      setSubmitting(false);
-    }
+  const submit = () => {
+    if (!text.trim() || busy || locked || !conversationId || !ready) return;
+    send();
+    textareaRef.current?.focus();
   };
 
   return (
@@ -443,7 +512,9 @@ function Composer() {
           </div>
         ) : null}
         <textarea
+          ref={textareaRef}
           value={text}
+          maxLength={20_000}
           onChange={(event) => setText(event.target.value)}
           onKeyDown={(event) => {
             if (
@@ -455,7 +526,7 @@ function Composer() {
               void submit();
             }
           }}
-          disabled={locked || busy}
+          disabled={locked || !ready}
           rows={2}
           aria-label="Message Will GPT"
           placeholder={
@@ -470,8 +541,8 @@ function Composer() {
           type="file"
           multiple
           hidden
-          accept={`${uploader.accept},.txt,.md,.markdown,.csv,.tsv,.json,.xml,.yaml,.yml,.log`}
-          disabled={busy || locked || !conversationId}
+          accept={`${acceptAttribute(constraints.accept)},.txt,.md,.markdown,.csv,.tsv,.json,.xml,.yaml,.yml,.log`}
+          disabled={busy || locked || !ready || !conversationId}
           onChange={(event) => {
             addFiles(Array.from(event.target.files ?? []));
             event.target.value = "";
@@ -487,7 +558,8 @@ function Composer() {
               busy ||
               locked ||
               !conversationId ||
-              files.length >= uploader.constraints.maxFiles
+              !ready ||
+              files.length >= constraints.maxFiles
             }
             title="Attach images, PDFs or text files (25 MB each, 8 files max)"
             aria-label="Attach files"
@@ -495,10 +567,10 @@ function Composer() {
             <Paperclip />
           </Button>
           <span role="status" className="text-muted-foreground flex-1 text-xs">
-            {uploader.isUploading
-              ? `Uploading ${Math.round(uploader.items.reduce((sum, item) => sum + item.progress, 0) / Math.max(1, uploader.items.length))}%`
-              : running && files.length
-                ? "Reading and working…"
+            {text.length > 20_000
+              ? "Message is too long (20,000 characters max)"
+              : uploadProgress !== null
+                ? `Uploading ${uploadProgress}%`
                 : files.length
                   ? `${files.length} file${files.length === 1 ? "" : "s"} attached`
                   : "Images, PDFs, text"}
@@ -518,7 +590,9 @@ function Composer() {
             <Button
               type="submit"
               size="icon-sm"
-              disabled={!text.trim() || locked || busy || !conversationId}
+              disabled={
+                !text.trim() || locked || busy || !ready || !conversationId
+              }
               title="Send"
               className="bg-linear-120 from-[#ff8a3d] via-[#ff4fd8] to-[#a855f7] text-white"
             >

@@ -1,7 +1,15 @@
 import { describe, test } from "bun:test";
 import assert from "node:assert/strict";
 
-import { cleanTitle } from "./conversations";
+import { cleanTitle, readMessages } from "./conversations";
+
+test("stored transcripts retain request IDs and still read older messages", () => {
+  const messages = [
+    { role: "user", text: "An older message" },
+    { role: "user", id: crypto.randomUUID(), text: "A recoverable submission" },
+  ];
+  assert.deepEqual(readMessages(messages), messages);
+});
 
 describe("cleanTitle", () => {
   test("keeps the words and drops what small models wrap them in", () => {
