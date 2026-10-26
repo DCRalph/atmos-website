@@ -170,7 +170,9 @@ extends the grant.
 
 The app degrades honestly: `supportsReadersOfType` returns false, the sell sheet
 shows "Tap to Pay unavailable", and staff take cash. Delete that line from the
-script once distribution is granted.
+script once distribution is granted. What to send Apple to get there, and the
+release steps after, are under "Submitting to Apple" in
+`docs/ticketing/APP-REVIEW-ANSWERS.md`.
 
 ### Push environment
 

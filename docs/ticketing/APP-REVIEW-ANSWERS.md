@@ -14,7 +14,7 @@ Anything marked ⚠️ still needs a human before submission.
 | App Name | Atmos |
 | PSP Name | Stripe |
 | Date | ⚠️ date of submission |
-| Version | 1.0.0 (⚠️ confirm against `mobile/app.config.ts` at build time) |
+| Version | 1.1.0 is live without Tap to Pay. Give the version the recordings were made on (`version` in `mobile/package.json`). |
 | Existing or New app | Existing |
 | Distribution type | **Public** (App Store) |
 | Number of Devices | ⚠️ count of Atmos door handsets — typically 2–4 |
@@ -221,14 +221,56 @@ Rehearse on a spare handset — this is not something to discover on the day.
 
 ---
 
-## Before this can be submitted
+## Submitting to Apple
 
-1. **Apple's distribution entitlement.** Still development-only as of
-   2026-08-13. This submission is the route to it; `scripts/build-ipa.sh` sets
-   `TAP_TO_PAY=0` until it is granted, and that line comes out once it is.
-2. **Marketing assets** for 6.1, 6.2 and 6.3.
-3. **Confirm `MIN_TAP_TO_PAY_IOS`** with Stripe. 17.6 is the checklist's own
-   boundary and a safe starting value; Apple's Business Register is the
-   authority and it moves as versions age out.
-4. **Confirm the card networks** enabled on the Atmos Stripe account, for the
-   "Supported schemes" answer.
+The app is live on the App Store as 1.1.0, built with `TAP_TO_PAY=0` because
+Apple granted the entitlement for development only. Apple extends it to
+distribution after reviewing this checklist and the three recordings. Nothing
+here is a form in App Store Connect: it all goes back to Apple's Tap to Pay
+team by email.
+
+1. **Get the marketing assets.** Open the Marketing Guide link in the checklist
+   (rows 6.1 to 6.3) signed in as the developer account's Account Holder; it
+   lands on Apple's partner portal, and only the Account Holder was sent
+   access. Put the four assets where the 6.x table above says. Apple checks
+   1.9 and 6.x against them, so placeholder copy will bounce the request.
+2. **Fill the blanks**: the card networks enabled on the Atmos Stripe account
+   ("Supported schemes"), and how many door handsets ("Number of Devices").
+   While in Stripe, confirm `MIN_TAP_TO_PAY_IOS` (17.6) is still inside the
+   supported window; Apple's Business Register moves it as versions age out.
+3. **Install a Tap to Pay build** on a door handset with `bun run install:ios`
+   in `mobile/`. It signs for development, which is the profile that carries
+   the entitlement, and builds Release, so it talks to a real reader rather
+   than the simulated one. Confirm the entitlement before recording, pointing
+   the `codesign` check in `TAP-TO-PAY.md` at the app this script archived,
+   `mobile/build/AtmosDev.xcarchive/Products/Applications/Atmos.app`.
+4. **Reset the demo data** with `bun run db:seed-app-review`.
+5. **Unlink the merchant ID** from the Apple Account that accepted the terms
+   (the link is in the checklist), so acceptance can be shown on camera.
+   Rehearse once on a spare handset.
+6. **Record the three flows** above with a second iPhone.
+7. **Fill in the spreadsheet** Apple sent (`docs/App Review Requirements
+   Checklist 1_6.xhtml` is a copy) from the tables above, dated the day you
+   send it.
+8. **Reply to Apple's original Tap to Pay entitlement email**, in the same
+   thread so the case ID comes with it, asking for the entitlement to be
+   extended to distribution for `nz.co.atmosmedia.app` on team `QB4T85D6S2`.
+   Attach the spreadsheet, and link the recordings if they are too large to
+   attach. Put the single-merchant explanation in the body, with the App Store
+   link and the door-staff demo account. Questions about the case go to
+   `ttpoientitlements@apple.com` with the case ID.
+9. **Wait.** Usually one to two weeks, often with a round of feedback.
+
+### Once distribution is granted
+
+1. Run the profile check in `TAP-TO-PAY.md`. The store profile should now read
+   `tapToPay=1`.
+2. In `mobile/scripts/build-ipa.sh`, delete `export TAP_TO_PAY=0` and its
+   comment, and turn the "Tap to Pay entitlement present" guard into a check
+   that it is there. Bump `version` in `mobile/package.json` past 1.1.0.
+3. `bun run build:ipa`, upload, and submit for App Review. Rewrite the Tap to
+   Pay paragraph of the review notes in `mobile/appstore/LISTING.md` §7: it
+   currently says this build ships without it.
+4. Once that version is live, send the launch campaign from **Admin ›
+   Settings › Tap to Pay launch campaign** (6.1, 6.3). It sends once per
+   person, so only after the approved copy is in.
