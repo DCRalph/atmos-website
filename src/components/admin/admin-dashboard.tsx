@@ -1,242 +1,227 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CalendarPlus, Plus, Search, X } from "lucide-react";
-import { Button } from "~/components/ui/button";
+import { CalendarPlus, ListPlus, Plus } from "lucide-react";
 import { api } from "~/trpc/react";
-import { Input } from "~/components/ui/input";
-import { AdminSection } from "./admin-section";
+import { Button } from "~/components/ui/button";
+import { Skeleton } from "~/components/ui/skeleton";
 import {
-  adminNavigationGroups,
-  adminNavigationItems,
-  type AdminNavigationGroup,
-} from "./admin-navigation";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog";
+import { Segmented } from "~/components/admin/segmented";
+import { TaskDrawer } from "~/components/admin/tasks/task-drawer";
+import { TaskForm } from "~/components/admin/tasks/task-form";
+import { cn } from "~/lib/utils";
+import { addDays, dayKey, nzDate } from "~/lib/tasks/time";
+import { formatEventDate, formatEventTime } from "~/lib/ticketing/dates";
+import { formatNZDWhole } from "~/lib/ticketing/money";
+import { AdminSearch } from "./dashboard/admin-search";
+import { ComingUp } from "./dashboard/coming-up";
+import { LiveBand } from "./dashboard/live-band";
+import { NeedsYou } from "./dashboard/needs-you";
+import type { Overview } from "./dashboard/parts";
 
-// Sections the team opens most, pinned above the usual groups on the dashboard.
-const mostUsedUrls = [
-  "/admin/gigs",
-  "/admin/events",
-  "/admin/tasks",
-  "/admin/links",
-  "/admin/content",
-  "/admin/payments",
-];
+const longDate = new Intl.DateTimeFormat("en-NZ", {
+  timeZone: "Pacific/Auckland",
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+});
 
-// The sidebar keeps the original grouping; only the dashboard pulls these up.
-const dashboardGroups: AdminNavigationGroup[] = [
-  {
-    title: "Most used",
-    items: mostUsedUrls.flatMap((url) =>
-      adminNavigationItems.filter((item) => item.url === url),
-    ),
-  },
-  ...adminNavigationGroups
-    .map((group) => ({
-      ...group,
-      items: group.items.filter((item) => !mostUsedUrls.includes(item.url)),
-    }))
-    .filter((group) => group.items.length > 0),
-];
-
+/**
+ * The admin home: what's on now, the queue of things that need you or the
+ * team, and the month ahead. On desktop the page fits the window and the queue
+ * and Coming up scroll on their own; on a phone the page scrolls, and the two
+ * are tabs.
+ */
 export function AdminDashboard() {
-  const taskAlerts = api.tasks.alertCount.useQuery();
-  const [query, setQuery] = useState("");
-  const searchRef = useRef<HTMLInputElement>(null);
-  const normalisedQuery = query.trim().toLowerCase();
+  const overview = api.dashboard.overview.useQuery(undefined, {
+    // Faster while a night is on, so the door and the stage stay current.
+    refetchInterval: (query) =>
+      query.state.data?.live.length ? 20_000 : 60_000,
+  });
+  const utils = api.useUtils();
+  const [taskId, setTaskId] = useState<string | null>(null);
+  const [addingTask, setAddingTask] = useState(false);
+  const [tab, setTab] = useState<"needs" | "coming">("needs");
 
-  useEffect(() => {
-    const focusSearch = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement;
-
-      if (
-        event.key === "/" &&
-        !target.closest("input, textarea, select, [contenteditable='true']")
-      ) {
-        event.preventDefault();
-        searchRef.current?.focus();
-      }
-    };
-
-    window.addEventListener("keydown", focusSearch);
-    return () => window.removeEventListener("keydown", focusSearch);
-  }, []);
-
-  const visibleGroups = useMemo(() => {
-    if (!normalisedQuery) return dashboardGroups;
-
-    return dashboardGroups
-      .map((group) => ({
-        ...group,
-        items: group.items.filter((item) =>
-          [item.title, item.description, ...(item.keywords ?? [])]
-            .join(" ")
-            .toLowerCase()
-            .includes(normalisedQuery),
-        ),
-      }))
-      .filter((group) => group.items.length > 0);
-  }, [normalisedQuery]);
-
-  const resultCount = visibleGroups.reduce(
-    (count, group) => count + group.items.length,
-    0,
-  );
+  const data = overview.data;
+  const now = data?.now ?? new Date();
 
   return (
-    <AdminSection
-      title="Admin workspace"
-      description="Find a section, start something new, or manage the day-to-day running of Atmos."
-    >
-      <div className="space-y-10">
-        {taskAlerts.data?.count ? (
-          <Link
-            href="/admin/tasks"
-            className="border-destructive/30 block rounded-lg border p-4 text-sm"
-          >
-            <strong>{taskAlerts.data.count} task alerts</strong> ·{" "}
-            {taskAlerts.data.overdue} overdue. Open tasks to see who needs a
-            hand.
-          </Link>
-        ) : null}
-        <section className="from-primary/10 via-card to-card overflow-hidden rounded-2xl border bg-linear-to-br p-5 shadow-sm sm:p-6">
-          <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-            <div className="max-w-xl">
-              <p className="text-primary mb-2 text-xs font-semibold tracking-widest uppercase">
-                Quick actions
-              </p>
-              <h2 className="text-2xl font-semibold tracking-tight">
-                What would you like to manage?
-              </h2>
-              <p className="text-muted-foreground mt-2 text-sm">
-                Search every admin area below, or jump straight into a common
-                task.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button asChild>
-                <Link href="/admin/gigs/new">
-                  <Plus />
-                  Add gig
-                </Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/admin/events/new">
-                  <CalendarPlus />
-                  Create event
-                </Link>
-              </Button>
-            </div>
+    <div className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-3 px-4 py-4 sm:px-6 sm:py-5 lg:min-h-[40rem] lg:flex-1">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold">{longDate.format(now)}</h1>
+          <p className="text-muted-foreground text-sm">
+            {data ? headline(data) : "\u00a0"}
+          </p>
+        </div>
+        <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center max-sm:[&>a]:px-2 max-sm:[&>a>svg]:hidden max-sm:[&>button]:px-2 max-sm:[&>button>svg]:hidden">
+          <div className="col-span-3 sm:contents">
+            <AdminSearch />
           </div>
-
-          <div className="relative mt-6 max-w-2xl">
-            <label htmlFor="admin-section-search" className="sr-only">
-              Search admin sections
-            </label>
-            <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-            <Input
-              ref={searchRef}
-              id="admin-section-search"
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search sections, tools, or tasks..."
-              className="bg-background h-11 pr-20 pl-9 shadow-sm"
-            />
-            {query ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setQuery("");
-                  searchRef.current?.focus();
-                }}
-                className="text-muted-foreground hover:text-foreground focus-visible:ring-ring absolute top-1/2 right-2 grid size-7 -translate-y-1/2 place-items-center rounded-md outline-none focus-visible:ring-2"
-                aria-label="Clear search"
-              >
-                <X className="size-4" />
-              </button>
-            ) : (
-              <kbd className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 hidden -translate-y-1/2 rounded border px-2 py-0.5 font-sans text-xs sm:block">
-                /
-              </kbd>
-            )}
-          </div>
-        </section>
-
-        <div className="space-y-9">
-          {normalisedQuery && (
-            <p className="text-muted-foreground text-sm" aria-live="polite">
-              {resultCount === 1
-                ? "1 section found"
-                : `${resultCount} sections found`}
-            </p>
-          )}
-
-          {visibleGroups.map((group) => {
-            const headingId = `admin-group-${group.title
-              .toLowerCase()
-              .replaceAll(/[^a-z0-9]+/g, "-")}`;
-
-            return (
-              <section key={group.title} aria-labelledby={headingId}>
-                <div className="mb-3 flex items-center gap-3">
-                  <h2
-                    id={headingId}
-                    className="text-sm font-semibold tracking-wide"
-                  >
-                    {group.title}
-                  </h2>
-                  <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs tabular-nums">
-                    {group.items.length}
-                  </span>
-                  <div className="bg-border h-px flex-1" />
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {group.items.map((item) => (
-                    <Link
-                      key={item.url}
-                      href={item.url}
-                      className="group bg-card hover:border-primary/35 hover:bg-muted/35 focus-visible:border-ring focus-visible:ring-ring/40 flex min-h-32 items-start gap-4 rounded-xl border p-4 shadow-xs transition-[background-color,border-color,box-shadow,transform] outline-none hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-[3px]"
-                    >
-                      <span className="bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground grid size-10 shrink-0 place-items-center rounded-lg transition-colors">
-                        <item.icon className="size-5" aria-hidden="true" />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-center justify-between gap-2 font-medium">
-                          {item.title}
-                          <ArrowRight className="text-muted-foreground size-4 shrink-0 transition-transform group-hover:translate-x-1" />
-                        </span>
-                        <span className="text-muted-foreground mt-1.5 block text-sm leading-relaxed">
-                          {item.description}
-                        </span>
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            );
-          })}
-
-          {visibleGroups.length === 0 && (
-            <div className="rounded-xl border border-dashed py-14 text-center">
-              <Search className="text-muted-foreground mx-auto size-6" />
-              <h2 className="mt-3 font-medium">No matching sections</h2>
-              <p className="text-muted-foreground mt-1 text-sm">
-                Try a page name or task such as “tickets” or “uploads”.
-              </p>
-              <Button
-                type="button"
-                variant="link"
-                className="mt-2"
-                onClick={() => setQuery("")}
-              >
-                Clear search
-              </Button>
-            </div>
-          )}
+          <Button variant="outline" onClick={() => setAddingTask(true)}>
+            <ListPlus />
+            Add task
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/admin/events/new">
+              <CalendarPlus />
+              Create event
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/admin/gigs/new">
+              <Plus />
+              Create gig
+            </Link>
+          </Button>
         </div>
       </div>
-    </AdminSection>
+
+      {data ? (
+        <>
+          <Pulse pulse={data.pulse} />
+          {data.live.map((night) => (
+            <LiveBand key={night.key} night={night} now={now} />
+          ))}
+          <Segmented
+            label="Show"
+            className="w-fit lg:hidden"
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: "needs", label: "Needs you" },
+              { value: "coming", label: `Coming up ${data.comingUp.length}` },
+            ]}
+          />
+          <div className="grid min-h-0 gap-3 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_23.75rem]">
+            <NeedsYou
+              needs={data.needs}
+              now={now}
+              onOpenTask={setTaskId}
+              className={cn(tab !== "needs" && "max-lg:hidden")}
+            />
+            <ComingUp
+              items={data.comingUp}
+              now={now}
+              className={cn(tab !== "coming" && "max-lg:hidden")}
+            />
+          </div>
+        </>
+      ) : overview.isError ? (
+        <p className="text-destructive text-sm">
+          Couldn&apos;t load the dashboard. {overview.error.message}
+        </p>
+      ) : (
+        <div className="grid gap-3 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_23.75rem]">
+          <Skeleton className="h-96 lg:h-full" />
+          <Skeleton className="h-96 max-lg:hidden lg:h-full" />
+        </div>
+      )}
+
+      <TaskDrawer
+        id={taskId}
+        onClose={() => {
+          setTaskId(null);
+          void utils.dashboard.overview.invalidate();
+        }}
+        onOpen={setTaskId}
+      />
+      <Dialog open={addingTask} onOpenChange={setAddingTask}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add task</DialogTitle>
+            <DialogDescription>
+              One owner and an agreed due time.
+            </DialogDescription>
+          </DialogHeader>
+          {addingTask ? (
+            <TaskForm
+              due={nzDate(addDays(dayKey(now), 1), 17)}
+              onSaved={(id) => {
+                setAddingTask(false);
+                setTaskId(id);
+                void utils.dashboard.overview.invalidate();
+              }}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+/** The line under the date: what's on, or what's next. */
+function headline(data: Overview) {
+  const time = formatEventTime(data.now);
+  const live = data.live[0];
+  if (live) return `${time} · ${live.title} is on`;
+  const next = data.comingUp.find((item) => item.kind === "night");
+  if (next) {
+    return `${time} · next up ${next.title}, ${formatEventDate(next.at)}`;
+  }
+  return `${time} · nothing on in the next month`;
+}
+
+/** A sentence of numbers. Money is net of refunds, as on Payments. */
+function Pulse({ pulse }: { pulse: Overview["pulse"] }) {
+  const items = [
+    {
+      href: "/admin/payments",
+      value: pulse.ticketsToday,
+      label: "tickets in 24h",
+    },
+    {
+      href: "/admin/payments",
+      value: formatNZDWhole(pulse.takenWeekCents),
+      label: "in tickets this week",
+    },
+    {
+      href: "/admin/payments",
+      value: formatNZDWhole(pulse.donatedWeekCents),
+      label: "donated this week",
+    },
+    {
+      href: "/admin/analytics",
+      value: pulse.declinesToday,
+      label:
+        pulse.declinesToday === 1
+          ? "card decline in 24h"
+          : "card declines in 24h",
+      warn: pulse.declinesToday > 0,
+    },
+    {
+      href: "/admin/activity-logs",
+      value: pulse.changesToday,
+      label: "changes by the team in 24h",
+    },
+  ];
+  return (
+    <p className="text-muted-foreground no-scrollbar -mx-4 flex gap-x-5 overflow-x-auto px-4 text-sm whitespace-nowrap sm:mx-0 sm:flex-wrap sm:gap-y-1 sm:overflow-visible sm:px-0">
+      {items.map((item) => (
+        <Link
+          key={item.label}
+          href={item.href}
+          className="hover:text-foreground"
+        >
+          <span
+            className={cn(
+              "text-foreground font-semibold tabular-nums",
+              item.warn && "text-amber-400",
+            )}
+          >
+            {item.value}
+          </span>{" "}
+          {item.label}
+        </Link>
+      ))}
+    </p>
   );
 }

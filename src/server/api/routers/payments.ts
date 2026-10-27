@@ -41,14 +41,18 @@ const PAID_STATUSES = [
 
 const rangeInput = z.object({ range: z.enum(PAYMENT_RANGES) });
 
-const orderWhere = (since: Date | null): Prisma.TicketOrderWhereInput => ({
+/** Ticket orders that took money since `since`. Also read by the dashboard. */
+export const orderWhere = (
+  since: Date | null,
+): Prisma.TicketOrderWhereInput => ({
   status: { in: PAID_STATUSES },
   paymentMethod: { in: TAKING_METHODS },
   totalCents: { gt: 0 },
   paidAt: since ? { gte: since } : { not: null },
 });
 
-const donationWhere = (since: Date | null): Prisma.DonationWhereInput =>
+/** Donations given since `since`. */
+export const donationWhere = (since: Date | null): Prisma.DonationWhereInput =>
   since ? { paidAt: { gte: since } } : {};
 
 const ORDER_ROW = {
