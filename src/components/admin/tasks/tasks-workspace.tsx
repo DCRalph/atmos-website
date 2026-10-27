@@ -27,13 +27,16 @@ import { TaskSelect, taskFlag, taskGroup, type TaskRow } from "./shared";
 import { TasksCalendar } from "./calendar";
 import { TaskDrawer } from "./task-drawer";
 import { TaskForm } from "./task-form";
-import {
-  ApplyPlaybook,
-  PasteChat,
-  TaskSettings,
-  TaskStandings,
-} from "./task-tools";
-const VIEWS = ["calendar", "list", "team", "proposed", "standings"];
+import { PasteChat, TaskSettings, TaskStandings } from "./task-tools";
+import { PlaybooksView } from "./playbooks";
+const VIEWS = [
+  "calendar",
+  "list",
+  "team",
+  "proposed",
+  "standings",
+  "playbooks",
+];
 export function TasksWorkspace() {
   const search = useSearchParams(),
     router = useRouter();
@@ -51,9 +54,7 @@ export function TasksWorkspace() {
     [gig, setGig] = useState(search.get("gig") ?? ""),
     [groupBy, setGroupBy] = useState("status"),
     [cellTasks, setCellTasks] = useState<string[] | null>(null),
-    [dialog, setDialog] = useState<
-      "new" | "paste" | "settings" | "playbook" | null
-    >(null),
+    [dialog, setDialog] = useState<"new" | "paste" | "settings" | null>(null),
     [newDay, setNewDay] = useState(dayKey(new Date()));
   const open = (id: string) => {
     const next = new URLSearchParams(search.toString());
@@ -282,36 +283,38 @@ export function TasksWorkspace() {
               </Button>
             ))}
           </div>
-          <div className="flex w-full gap-2 sm:w-auto">
-            <div className="min-w-0 flex-1 sm:w-40 sm:flex-none">
-              <TaskSelect
-                aria-label="Person filter"
-                value={person}
-                onValueChange={setPerson}
-                options={[
-                  { value: "", label: "Everyone" },
-                  ...(options.data?.people.map((p) => ({
-                    value: p.id,
-                    label: p.name,
-                  })) ?? []),
-                ]}
-              />
+          {view === "playbooks" ? null : (
+            <div className="flex w-full gap-2 sm:w-auto">
+              <div className="min-w-0 flex-1 sm:w-40 sm:flex-none">
+                <TaskSelect
+                  aria-label="Person filter"
+                  value={person}
+                  onValueChange={setPerson}
+                  options={[
+                    { value: "", label: "Everyone" },
+                    ...(options.data?.people.map((p) => ({
+                      value: p.id,
+                      label: p.name,
+                    })) ?? []),
+                  ]}
+                />
+              </div>
+              <div className="min-w-0 flex-1 sm:w-44 sm:flex-none">
+                <TaskSelect
+                  aria-label="Gig filter"
+                  value={gig}
+                  onValueChange={setGig}
+                  options={[
+                    { value: "", label: "All gigs" },
+                    ...(options.data?.gigs.map((g) => ({
+                      value: g.id,
+                      label: g.title,
+                    })) ?? []),
+                  ]}
+                />
+              </div>
             </div>
-            <div className="min-w-0 flex-1 sm:w-44 sm:flex-none">
-              <TaskSelect
-                aria-label="Gig filter"
-                value={gig}
-                onValueChange={setGig}
-                options={[
-                  { value: "", label: "All gigs" },
-                  ...(options.data?.gigs.map((g) => ({
-                    value: g.id,
-                    label: g.title,
-                  })) ?? []),
-                ]}
-              />
-            </div>
-          </div>
+          )}
         </div>
         {query.error ? (
           <p role="alert" className="text-destructive">
@@ -593,9 +596,10 @@ export function TasksWorkspace() {
           </div>
         ) : null}
         {view === "standings" ? <TaskStandings onOpen={open} /> : null}
-        <Button variant="outline" onClick={() => setDialog("playbook")}>
-          Apply playbook
-        </Button>
+        {/* Kept mounted on other tabs, so unsaved playbook edits survive a look at the calendar. */}
+        <div hidden={view !== "playbooks"}>
+          <PlaybooksView />
+        </div>
       </div>
       <TaskDrawer id={selected} onClose={close} onOpen={open} />
       <Dialog
@@ -611,18 +615,14 @@ export function TasksWorkspace() {
                 ? "Add task"
                 : dialog === "paste"
                   ? "Paste chat"
-                  : dialog === "playbook"
-                    ? "Apply playbook"
-                    : "Task settings"}
+                  : "Task settings"}
             </DialogTitle>
             <DialogDescription>
               {dialog === "new"
                 ? "One owner and an agreed due time."
                 : dialog === "paste"
                   ? "Review proposals before assigning responsibility."
-                  : dialog === "playbook"
-                    ? "Assign the roles and create the gig’s usual tasks."
-                    : "Team preferences, calendar feeds and reusable playbooks."}
+                  : "Team preferences and your calendar feed."}
             </DialogDescription>
           </DialogHeader>
           {dialog === "new" ? (
@@ -636,11 +636,6 @@ export function TasksWorkspace() {
             />
           ) : dialog === "paste" ? (
             <PasteChat />
-          ) : dialog === "playbook" ? (
-            <ApplyPlaybook
-              gigId={gig || undefined}
-              onDone={() => setDialog(null)}
-            />
           ) : dialog === "settings" ? (
             <TaskSettings />
           ) : null}

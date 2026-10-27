@@ -7,7 +7,7 @@ import { Button } from "~/components/ui/button";
 import { criticalPathOwners } from "~/lib/tasks/critical-path";
 import { formatTaskDate } from "~/lib/tasks/time";
 import { taskFlag } from "./shared";
-import { ApplyPlaybook } from "./task-tools";
+import { ApplyPlaybook } from "./playbooks";
 import { TaskDrawer } from "./task-drawer";
 export function GigTasks({ gigId }: { gigId: string }) {
   const query = api.tasks.list.useQuery({ gigId });

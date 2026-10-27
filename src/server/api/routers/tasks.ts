@@ -28,6 +28,10 @@ import {
   taskSettingsSchema,
 } from "~/lib/tasks/input";
 import { impact, orderTasks } from "~/lib/tasks/schedule";
+import {
+  playbookDependencies,
+  playbookHardDeadline,
+} from "~/lib/tasks/playbooks";
 import { taskLoad } from "~/lib/tasks/load";
 import { standings } from "~/lib/tasks/standings";
 import { taskDayActivity } from "~/lib/tasks/live-activity";
@@ -618,7 +622,10 @@ export const tasksRouter = createTRPCRouter({
                   : null,
                 plannedDueAt: dueAt,
                 dueAt,
-                hardDeadlineAt: gig.gigStartTime,
+                hardDeadlineAt: playbookHardDeadline(
+                  item.offsetMinutes,
+                  gig.gigStartTime,
+                ),
                 critical: item.critical,
                 source: "PLAYBOOK",
                 playbookItemId: `${book.id}:${item.key}`,
@@ -634,17 +641,11 @@ export const tasksRouter = createTRPCRouter({
             }),
           );
         }
-        const deps = items.flatMap((item) =>
-          item.dependsOn.map((key) => ({
-            taskId: ids.get(item.key)!,
-            dependsOnId: ids.get(key)!,
-            gapMinutes: Math.max(
-              0,
-              item.offsetMinutes -
-                items.find((parent) => parent.key === key)!.offsetMinutes,
-            ),
-          })),
-        );
+        const deps = playbookDependencies(items).map((dep) => ({
+          ...dep,
+          taskId: ids.get(dep.taskId)!,
+          dependsOnId: ids.get(dep.dependsOnId)!,
+        }));
         orderTasks(rows, deps);
         await tx.taskDependency.createMany({ data: deps });
         return rows;

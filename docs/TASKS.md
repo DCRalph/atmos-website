@@ -79,10 +79,17 @@ anyone with the link can read that person's open tasks and assigned gigs.
 Replacing the link revokes the old URL. Removing admin access also invalidates
 it. Entries use projected dates, stable IDs, UTC timestamps, and two-hour alarms.
 
-The playbook editor uses task fields, roles, days before the gig, and dependency
-checkboxes. Applying one asks for the people filling each owner/reviewer role,
-then creates the dates, dependencies, and gig hard deadlines together. Existing
-tasks remain when a playbook is edited or removed.
+Playbooks have their own tab on `/admin/tasks` (`?view=playbooks`). The editor
+is a table, one row per task, grouped by how far out it is: day from the gig
+(negative before, up to 30 days after for wrap-up), task, owner role, reviewer
+role, what it waits for, notes and a critical flag. Changes collect until Save.
+Starter playbooks (Club night, Headline show, On someone else's bill, Private
+party) live in `src/lib/tasks/starter-playbooks.ts` and are copied into the
+team's playbooks with one click. Applying one, from the playbook or a gig's
+Tasks tab, asks who fills each role and previews every task's date first,
+flagging any already past. It then creates the dates, dependencies, and hard
+deadlines at gig start for work before the gig; wrap-up after it has none.
+Existing tasks remain when a playbook is edited or removed.
 
 ## Inbox and AI
 
