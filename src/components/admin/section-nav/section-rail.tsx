@@ -64,7 +64,7 @@ export function SectionRail() {
 
 function RailHeader({ nav }: { nav: SectionNavConfig }) {
   return (
-    <div className="border-sidebar-border flex h-16 shrink-0 flex-col justify-center gap-0.5 border-b px-4">
+    <div className="border-sidebar-border flex h-18 shrink-0 flex-col justify-center gap-0.5 border-b px-4">
       {nav.backLink ? (
         <Link
           href={nav.backLink.href}

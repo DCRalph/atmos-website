@@ -40,26 +40,26 @@ export function DashboardSideBar() {
 
   return (
     <Sidebar collapsible="icon" className="fixed top-0 left-0 border-r-0!">
-      <SidebarHeader className="border-sidebar-border h-16 justify-center border-b p-2">
+      {/* Matches the page header plus the main column's top inset, so the
+          two bottom borders line up. */}
+      <SidebarHeader className="border-sidebar-border h-18 justify-center border-b p-2 group-data-[collapsible=icon]:px-1">
         <Link
           href="/admin"
           onClick={closeOnMobile}
-          className="focus-visible:ring-sidebar-ring flex min-w-0 items-center gap-3 rounded-lg px-1 outline-none group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 focus-visible:ring-2"
+          aria-label="Atmos Admin"
+          className="focus-visible:ring-sidebar-ring flex min-w-0 items-center gap-3 rounded-lg px-2 outline-none group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 focus-visible:ring-2"
         >
-          <div className="bg-background grid size-10 shrink-0 place-items-center overflow-hidden rounded-xl shadow-sm group-data-[collapsible=icon]:size-8">
-            <Image
-              src="/android-chrome-512x512.png"
-              alt="Atmos Logo"
-              width={40}
-              height={40}
-            />
-          </div>
-          <div className="min-w-0 leading-tight group-data-[collapsible=icon]:hidden">
-            <p className="truncate text-sm font-semibold">Atmos Admin</p>
-            <p className="text-sidebar-foreground/60 truncate text-xs">
-              Control centre
-            </p>
-          </div>
+          <Image
+            src="/logo/atmos-white.png"
+            alt=""
+            width={5001}
+            height={1120}
+            priority
+            className="h-6 w-auto shrink-0 group-data-[collapsible=icon]:h-auto group-data-[collapsible=icon]:w-full"
+          />
+          <span className="text-sidebar-foreground/50 text-[10px] font-medium tracking-[0.2em] uppercase group-data-[collapsible=icon]:hidden">
+            Admin
+          </span>
         </Link>
       </SidebarHeader>
 
