@@ -1447,6 +1447,8 @@ export const ticketAnalyticsRouter = createTRPCRouter({
                   AND p."eventId" <> o."eventId"
                   AND e."startsAt" < ${event.startsAt}::timestamp
                   AND p.status IN ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDED')
+                  AND p."paymentMethod" NOT IN ('COMP', 'ADMIN', 'LIFETIME')
+                  AND p."paidAt" IS NOT NULL
               )
             )::int AS returning,
             COUNT(DISTINCT lower(o."buyerEmail")) FILTER (
@@ -1549,18 +1551,22 @@ export const ticketAnalyticsRouter = createTRPCRouter({
             : [],
         ),
       );
+      // An undone admission never happened, so a later one is their arrival.
       const firstIn = new Map<string, Date>();
       for (const scan of scans) {
-        if (
-          scan.ticketId &&
+        if (!scan.ticketId) continue;
+        if (scan.result === TicketScanResult.ADMISSION_REVERTED) {
+          firstIn.delete(scan.ticketId);
+        } else if (
           scan.result !== TicketScanResult.DEPARTED &&
-          scan.result !== TicketScanResult.ADMISSION_REVERTED &&
           !firstIn.has(scan.ticketId)
         ) {
           firstIn.set(scan.ticketId, scan.createdAt);
         }
       }
-      const arrivals = [...firstIn.values()];
+      const arrivals = [...firstIn.values()].sort(
+        (a, b) => a.getTime() - b.getTime(),
+      );
       const avgArrivalSeconds =
         arrivals.length > 0
           ? arrivals.reduce(
