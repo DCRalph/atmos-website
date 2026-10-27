@@ -146,7 +146,9 @@ export default function GigScreen() {
             tbaSize={56}
             style={StyleSheet.absoluteFill}
           />
-          <Scrim from={0.6} />
+          {/* Only the poster's foot needs it: the text overlaps the last
+              `BODY_OVERLAP`, and the site shows the whole poster. */}
+          <Scrim from={0.75} />
         </View>
 
         <View style={styles.body}>

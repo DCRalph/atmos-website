@@ -80,8 +80,13 @@ export function MonthBadge({ month, year }: { month?: string; year?: string }) {
 /**
  * Black fade over imagery, the site's `scrim-bottom`: solid at the bottom,
  * clear by three quarters of the way up, so type can sit on a poster.
+ *
+ * `from` is where it starts. The 70% stop keeps the site's proportions within
+ * that span (never before the site's own 65%), so a late start stays a short
+ * fade behind the text instead of blacking out the poster above it.
  */
 export function Scrim({ from = 0.25 }: { from?: number }) {
+  const mid = Math.max(0.65, from + ((1 - from) * 0.4) / 0.75);
   return (
     <Svg
       pointerEvents="none"
@@ -91,7 +96,7 @@ export function Scrim({ from = 0.25 }: { from?: number }) {
       <Defs>
         <LinearGradient id="scrim" x1="0" y1="0" x2="0" y2="1">
           <Stop offset={String(from)} stopColor="#000" stopOpacity="0" />
-          <Stop offset="0.65" stopColor="#000" stopOpacity="0.7" />
+          <Stop offset={String(mid)} stopColor="#000" stopOpacity="0.7" />
           <Stop offset="1" stopColor="#000" stopOpacity="1" />
         </LinearGradient>
       </Defs>
