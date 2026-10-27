@@ -46,7 +46,7 @@ export type AdminNavigationGroup = {
 
 export const adminHomeItem: AdminNavigationItem = {
   title: "Dashboard",
-  description: "Overview and shortcuts",
+  description: "What's on, what needs you, and what's coming up",
   url: "/admin",
   icon: LayoutDashboard,
 };

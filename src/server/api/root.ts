@@ -39,6 +39,7 @@ import { discountCodesRouter } from "~/server/api/routers/discount-codes";
 import { eventCodesRouter } from "~/server/api/routers/event-codes";
 import { campaignsRouter } from "~/server/api/routers/campaigns";
 import { ticketAdminRouter } from "~/server/api/routers/ticket-admin";
+import { dashboardRouter } from "~/server/api/routers/dashboard";
 import { ticketAnalyticsRouter } from "~/server/api/routers/ticket-analytics";
 import { analyticsRouter } from "~/server/api/routers/analytics";
 import { lifetimeTicketsRouter } from "~/server/api/routers/lifetime-tickets";
@@ -58,6 +59,8 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
+  /** The admin home page. */
+  dashboard: dashboardRouter,
   crew: crewRouter,
   tasks: tasksRouter,
   content: contentRouter,

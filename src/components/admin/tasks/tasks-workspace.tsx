@@ -33,13 +33,18 @@ import {
   TaskSettings,
   TaskStandings,
 } from "./task-tools";
+const VIEWS = ["calendar", "list", "team", "proposed", "standings"];
 export function TasksWorkspace() {
   const search = useSearchParams(),
     router = useRouter();
   const selected = search.get("task");
   const query = api.tasks.list.useQuery(undefined, { refetchInterval: 60_000 });
   const options = api.tasks.options.useQuery();
-  const [view, setView] = useState("calendar"),
+  // `?view=proposed` and the like, so other pages can link straight to a view.
+  const [view, setView] = useState(() => {
+      const linked = search.get("view");
+      return linked && VIEWS.includes(linked) ? linked : "calendar";
+    }),
     [week, setWeek] = useState(true),
     [day, setDay] = useState(dayKey(new Date())),
     [person, setPerson] = useState(""),
@@ -258,7 +263,7 @@ export function TasksWorkspace() {
             role="tablist"
             aria-label="Task views"
           >
-            {["calendar", "list", "team", "proposed", "standings"].map((v) => (
+            {VIEWS.map((v) => (
               <Button
                 role="tab"
                 aria-selected={view === v}
