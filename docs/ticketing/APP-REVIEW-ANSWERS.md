@@ -14,7 +14,7 @@ Anything marked ⚠️ still needs a human before submission.
 | App Name | Atmos |
 | PSP Name | Stripe |
 | Date | ⚠️ date of submission |
-| Version | 1.1.0 is live without Tap to Pay. Give the version the recordings were made on (`version` in `mobile/package.json`). |
+| Version | 1.0.0 is live on the App Store without Tap to Pay. Give the version the recordings were made on (`version` in `mobile/package.json`). |
 | Existing or New app | Existing |
 | Distribution type | **Public** (App Store) |
 | Number of Devices | ⚠️ count of Atmos door handsets — typically 2–4 |
@@ -223,9 +223,10 @@ Rehearse on a spare handset — this is not something to discover on the day.
 
 ## Submitting to Apple
 
-The app is live on the App Store as 1.1.0, built with `TAP_TO_PAY=0` because
-Apple granted the entitlement for development only. Apple extends it to
-distribution after reviewing this checklist and the three recordings. Nothing
+The app is live on the App Store as 1.0.0, and later builds are in TestFlight,
+all built with `TAP_TO_PAY=0` because Apple granted the entitlement for
+development only. Apple extends it to distribution after reviewing this
+checklist and the three recordings. Nothing
 here is a form in App Store Connect: it all goes back to Apple's Tap to Pay
 team by email.
 
@@ -267,7 +268,8 @@ team by email.
    `tapToPay=1`.
 2. In `mobile/scripts/build-ipa.sh`, delete `export TAP_TO_PAY=0` and its
    comment, and turn the "Tap to Pay entitlement present" guard into a check
-   that it is there. Bump `version` in `mobile/package.json` past 1.1.0.
+   that it is there. Bump `version` in `mobile/package.json` past the last
+   TestFlight build.
 3. `bun run build:ipa`, upload, and submit for App Review. Rewrite the Tap to
    Pay paragraph of the review notes in `mobile/appstore/LISTING.md` §7: it
    currently says this build ships without it.
