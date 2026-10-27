@@ -34,6 +34,15 @@ import {
 } from "~/lib/ticketing/money";
 import { toCsv } from "~/lib/csv";
 import {
+  CHANNELS,
+  LEAD_TIMES,
+  TICKET_CHANNELS,
+  type TicketChannel,
+  headcountTimeline,
+  leadTime,
+  ticketChannel,
+} from "~/lib/ticketing/event-summary";
+import {
   ANALYTICS_RANGES,
   HOUR_MS,
   floorHour,
@@ -61,6 +70,18 @@ import {
  */
 
 const ADMIT_RESULTS = "('ADMITTED', 'OVERRIDE_ADMITTED', 'REENTRY')";
+
+/** Scans that came back wrong: a code that wasn't, or wasn't any more. */
+const SCAN_PROBLEMS = new Set<TicketScanResult>([
+  TicketScanResult.DUPLICATE,
+  TicketScanResult.PREVIOUSLY_DENIED,
+  TicketScanResult.INVALID_SIGNATURE,
+  TicketScanResult.NOT_FOUND,
+  TicketScanResult.WRONG_EVENT,
+  TicketScanResult.VOIDED,
+  TicketScanResult.REFUNDED_TICKET,
+  TicketScanResult.ORDER_UNPAID,
+]);
 
 /**
  * The stretch a chart range covers, or null for all time. Ranges end now, or
@@ -1223,6 +1244,420 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           rate: expected?.rate ?? null,
           events: expected?.events ?? 0,
         },
+      };
+    }),
+
+  /**
+   * The post-event summary: where every ticket went out (online, the door,
+   * given away), each tier's sell-through and turn-up, the night's headcount,
+   * trouble at the door, who worked it, and how far ahead people bought. The
+   * money and costs come from `overview`, so the two pages always agree.
+   *
+   * "Came" here is anyone ever let in whose admission wasn't undone, which
+   * unlike `admittedCount` still counts the people who have since gone home.
+   */
+  summary: eventOrganiserProcedure
+    .input(z.object({ eventId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const eventId = input.eventId;
+      const event = await ctx.db.ticketEvent.findUnique({
+        where: { id: eventId },
+        select: {
+          timezone: true,
+          doorsAt: true,
+          startsAt: true,
+          endsAt: true,
+          doorTotals: true,
+          tiers: {
+            orderBy: { sortOrder: "asc" },
+            select: {
+              id: true,
+              name: true,
+              priceCents: true,
+              groupSize: true,
+              allocation: true,
+              salesChannel: true,
+            },
+          },
+        },
+      });
+      if (!event) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+      }
+      const doors = event.doorsAt ?? event.startsAt;
+
+      const [
+        ticketRows,
+        orderRows,
+        scans,
+        scanRows,
+        overrides,
+        idChecks,
+        scansByStaff,
+        salesByStaff,
+        leadRows,
+        [buyers],
+      ] = await Promise.all([
+        ctx.db.$queryRaw<
+          {
+            tierId: string | null;
+            paymentMethod: PaymentMethodKind;
+            atDoor: boolean;
+            isComp: boolean;
+            tickets: number;
+            came: number;
+            faceValueCents: number;
+          }[]
+        >`
+          WITH came AS (
+            SELECT DISTINCT s."ticketId" AS id
+            FROM "ticket_scan" s
+            WHERE s."eventId" = ${eventId}
+              AND s."ticketId" IS NOT NULL
+              AND s.result IN ${Prisma.raw(ADMIT_RESULTS)}
+              AND NOT EXISTS (
+                SELECT 1 FROM "ticket_scan" r
+                WHERE r."ticketId" = s."ticketId"
+                  AND r.result = 'ADMISSION_REVERTED'
+                  AND r."createdAt" > s."createdAt"
+              )
+          )
+          SELECT
+            t."tierId",
+            o."paymentMethod",
+            (o."soldByUserId" IS NOT NULL) AS "atDoor",
+            t."isComp",
+            COUNT(*)::int AS tickets,
+            COUNT(c.id)::int AS came,
+            COALESCE(SUM(t."pricePaidCents"), 0)::int AS "faceValueCents"
+          FROM "ticket" t
+          JOIN "ticket_order" o ON o.id = t."orderId"
+          LEFT JOIN came c ON c.id = t.id
+          WHERE t."eventId" = ${eventId} AND t.status = 'VALID'
+          GROUP BY 1, 2, 3, 4
+        `,
+        ctx.db.$queryRaw<
+          {
+            paymentMethod: PaymentMethodKind;
+            atDoor: boolean;
+            orders: number;
+            netCents: number;
+          }[]
+        >`
+          SELECT
+            o."paymentMethod",
+            (o."soldByUserId" IS NOT NULL) AS "atDoor",
+            COUNT(*)::int AS orders,
+            COALESCE(SUM(o."totalCents" - o."refundedCents"), 0)::int AS "netCents"
+          FROM "ticket_order" o
+          WHERE o."eventId" = ${eventId}
+            AND o.status IN ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDED')
+          GROUP BY 1, 2
+        `,
+        ctx.db.ticketScan.findMany({
+          where: {
+            eventId,
+            ticketId: { not: null },
+            result: {
+              in: [
+                TicketScanResult.ADMITTED,
+                TicketScanResult.OVERRIDE_ADMITTED,
+                TicketScanResult.REENTRY,
+                TicketScanResult.DEPARTED,
+                TicketScanResult.ADMISSION_REVERTED,
+              ],
+            },
+          },
+          orderBy: { createdAt: "asc" },
+          select: { ticketId: true, result: true, createdAt: true },
+        }),
+        ctx.db.$queryRaw<
+          {
+            result: TicketScanResult;
+            denyReason: string | null;
+            count: number;
+          }[]
+        >`
+          SELECT s.result, s."denyReason", COUNT(*)::int AS count
+          FROM "ticket_scan" s
+          WHERE s."eventId" = ${eventId}
+          GROUP BY 1, 2
+        `,
+        ctx.db.ticketScan.count({ where: { eventId, wasOverride: true } }),
+        ctx.db.idCheck.groupBy({
+          by: ["result"],
+          where: { eventId },
+          _count: true,
+        }),
+        ctx.db.$queryRaw<{ userId: string; scans: number }[]>`
+          SELECT s."scannedByUserId" AS "userId", COUNT(*)::int AS scans
+          FROM "ticket_scan" s
+          WHERE s."eventId" = ${eventId}
+            AND s."scannedByUserId" IS NOT NULL
+            AND s.result IN ${Prisma.raw(ADMIT_RESULTS)}
+          GROUP BY 1
+        `,
+        ctx.db.$queryRaw<
+          {
+            userId: string;
+            orders: number;
+            tickets: number;
+            netCents: number;
+          }[]
+        >`
+          SELECT
+            o."soldByUserId" AS "userId",
+            COUNT(*)::int AS orders,
+            COALESCE(SUM((
+              SELECT COUNT(*) FROM "ticket" t
+              WHERE t."orderId" = o.id AND t.status = 'VALID'
+            )), 0)::int AS tickets,
+            COALESCE(SUM(o."totalCents" - o."refundedCents"), 0)::int AS "netCents"
+          FROM "ticket_order" o
+          WHERE o."eventId" = ${eventId}
+            AND o."soldByUserId" IS NOT NULL
+            AND ${BOUGHT_ORDER}
+          GROUP BY 1
+        `,
+        // Hours before doors each bought ticket was paid for; bucketed below.
+        ctx.db.$queryRaw<{ hours: number; tickets: number }[]>`
+          SELECT
+            floor(extract(epoch FROM (${doors}::timestamp - o."paidAt")) / 3600)::int AS hours,
+            COUNT(*)::int AS tickets
+          FROM "ticket" t
+          JOIN "ticket_order" o ON o.id = t."orderId"
+          WHERE t."eventId" = ${eventId}
+            AND t.status = 'VALID'
+            AND t."isComp" = false
+            AND ${BOUGHT_ORDER}
+          GROUP BY 1
+        `,
+        // Returning means they bought for an event that started before this.
+        ctx.db.$queryRaw<
+          { buyers: number; returning: number; optedIn: number }[]
+        >`
+          SELECT
+            COUNT(DISTINCT lower(o."buyerEmail"))::int AS buyers,
+            COUNT(DISTINCT lower(o."buyerEmail")) FILTER (
+              WHERE EXISTS (
+                SELECT 1
+                FROM "ticket_order" p
+                JOIN "ticket_event" e ON e.id = p."eventId"
+                WHERE lower(p."buyerEmail") = lower(o."buyerEmail")
+                  AND p."eventId" <> o."eventId"
+                  AND e."startsAt" < ${event.startsAt}::timestamp
+                  AND p.status IN ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDED')
+              )
+            )::int AS returning,
+            COUNT(DISTINCT lower(o."buyerEmail")) FILTER (
+              WHERE o."marketingOptIn"
+            )::int AS "optedIn"
+          FROM "ticket_order" o
+          WHERE o."eventId" = ${eventId}
+            AND o."buyerEmail" IS NOT NULL
+            AND ${BOUGHT_ORDER}
+        `,
+      ]);
+
+      // Every ticket, order and dollar by channel. Off-platform door takings
+      // have no orders or scans behind them, only the totals typed in.
+      const channels = new Map<
+        TicketChannel,
+        {
+          orders: number | null;
+          tickets: number;
+          netCents: number;
+          came: number | null;
+        }
+      >();
+      const add = (
+        channel: TicketChannel,
+        row: {
+          orders?: number;
+          tickets?: number;
+          netCents?: number;
+          came?: number;
+        },
+      ) => {
+        const totals = channels.get(channel) ?? {
+          orders: 0,
+          tickets: 0,
+          netCents: 0,
+          came: 0,
+        };
+        channels.set(channel, {
+          orders: (totals.orders ?? 0) + (row.orders ?? 0),
+          tickets: totals.tickets + (row.tickets ?? 0),
+          netCents: totals.netCents + (row.netCents ?? 0),
+          came: (totals.came ?? 0) + (row.came ?? 0),
+        });
+      };
+      for (const row of ticketRows) add(ticketChannel(row), row);
+      for (const row of orderRows) {
+        add(ticketChannel({ ...row, isComp: false }), row);
+      }
+      const door = event.doorTotals;
+      if (door) {
+        channels.set("OFF_PLATFORM_CASH", {
+          orders: null,
+          tickets: door.cashTickets,
+          netCents: door.cashCents,
+          came: null,
+        });
+        channels.set("OFF_PLATFORM_EFTPOS", {
+          orders: null,
+          tickets: door.eftposTickets,
+          netCents: door.eftposCents,
+          came: null,
+        });
+      }
+
+      // Each tier split by where it sold. Comps and lifetime passes come from
+      // no tier, so they sit on a row of their own.
+      const blankSplit = () => ({
+        online: 0,
+        door: 0,
+        given: 0,
+        tickets: 0,
+        came: 0,
+        faceValueCents: 0,
+      });
+      const byTier = new Map(
+        event.tiers.map((tier) => [tier.id, blankSplit()]),
+      );
+      const untiered = blankSplit();
+      for (const row of ticketRows) {
+        const split =
+          (row.tierId ? byTier.get(row.tierId) : undefined) ?? untiered;
+        split[CHANNELS[ticketChannel(row)].group] += row.tickets;
+        split.tickets += row.tickets;
+        split.came += row.came;
+        split.faceValueCents += row.faceValueCents;
+      }
+
+      // The night, from first admissions and the running headcount.
+      const headcount = headcountTimeline(
+        scans.flatMap((scan) =>
+          scan.ticketId
+            ? [
+                {
+                  ticketId: scan.ticketId,
+                  result: scan.result,
+                  at: scan.createdAt,
+                },
+              ]
+            : [],
+        ),
+      );
+      const firstIn = new Map<string, Date>();
+      for (const scan of scans) {
+        if (
+          scan.ticketId &&
+          scan.result !== TicketScanResult.DEPARTED &&
+          scan.result !== TicketScanResult.ADMISSION_REVERTED &&
+          !firstIn.has(scan.ticketId)
+        ) {
+          firstIn.set(scan.ticketId, scan.createdAt);
+        }
+      }
+      const arrivals = [...firstIn.values()];
+      const avgArrivalSeconds =
+        arrivals.length > 0
+          ? arrivals.reduce(
+              (sum, at) => sum + (at.getTime() - doors.getTime()) / 1000,
+              0,
+            ) / arrivals.length
+          : null;
+
+      const scanCount = (result: TicketScanResult) =>
+        scanRows
+          .filter((row) => row.result === result)
+          .reduce((sum, row) => sum + row.count, 0);
+      const refusals = scanRows
+        .filter((row) => row.result === TicketScanResult.DENIED)
+        .map((row) => ({ reason: row.denyReason, count: row.count }))
+        .sort((a, b) => b.count - a.count);
+      const problems = scanRows
+        .filter((row) => SCAN_PROBLEMS.has(row.result))
+        .map((row) => ({ result: row.result, count: row.count }))
+        .sort((a, b) => b.count - a.count);
+
+      const staffIds = [
+        ...new Set([
+          ...scansByStaff.map((row) => row.userId),
+          ...salesByStaff.map((row) => row.userId),
+        ]),
+      ];
+      const users = await ctx.db.user.findMany({
+        where: { id: { in: staffIds } },
+        select: { id: true, name: true },
+      });
+      const nameById = new Map(users.map((user) => [user.id, user.name]));
+      const staff = staffIds
+        .map((id) => {
+          const sales = salesByStaff.find((row) => row.userId === id);
+          return {
+            id,
+            name: nameById.get(id) ?? "Unknown",
+            admitted: scansByStaff.find((row) => row.userId === id)?.scans ?? 0,
+            doorOrders: sales?.orders ?? 0,
+            doorTickets: sales?.tickets ?? 0,
+            doorNetCents: sales?.netCents ?? 0,
+          };
+        })
+        .sort(
+          (a, b) => b.admitted + b.doorTickets - (a.admitted + a.doorTickets),
+        );
+
+      const leadTimes = new Map(LEAD_TIMES.map((bucket) => [bucket.key, 0]));
+      for (const row of leadRows) {
+        const key = leadTime(row.hours);
+        leadTimes.set(key, (leadTimes.get(key) ?? 0) + row.tickets);
+      }
+
+      return {
+        event: {
+          timezone: event.timezone,
+          /** Past its end, or its start when it has none. */
+          over: (event.endsAt ?? event.startsAt).getTime() < Date.now(),
+        },
+        channels: TICKET_CHANNELS.flatMap((channel) => {
+          const totals = channels.get(channel);
+          return totals && (totals.tickets > 0 || totals.netCents > 0)
+            ? [{ channel, ...CHANNELS[channel], ...totals }]
+            : [];
+        }),
+        tiers: event.tiers.map((tier) => ({
+          ...tier,
+          ...byTier.get(tier.id)!,
+        })),
+        untiered,
+        night: {
+          headcount: headcount.points,
+          peak: headcount.peak,
+          firstAt: arrivals[0] ?? null,
+          lastAt: arrivals.at(-1) ?? null,
+          halfAt: arrivals[Math.ceil(arrivals.length / 2) - 1] ?? null,
+          avgArrivalSeconds,
+          reentries: scanCount(TicketScanResult.REENTRY),
+          departures: scanCount(TicketScanResult.DEPARTED),
+          reverted: scanCount(TicketScanResult.ADMISSION_REVERTED),
+          overrides,
+        },
+        door: {
+          refusals,
+          refusalsUndone: scanCount(TicketScanResult.DENIAL_REVERTED),
+          problems,
+          idChecks: idChecks
+            .map((row) => ({ result: row.result, count: row._count }))
+            .sort((a, b) => b.count - a.count),
+        },
+        staff,
+        leadTimes: LEAD_TIMES.map((bucket) => ({
+          ...bucket,
+          tickets: leadTimes.get(bucket.key) ?? 0,
+        })),
+        buyers: buyers ?? { buyers: 0, returning: 0, optedIn: 0 },
       };
     }),
 

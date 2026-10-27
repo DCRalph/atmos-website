@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   BadgePercent,
   BellRing,
+  ClipboardList,
   FileText,
   Gift,
   LayoutDashboard,
@@ -29,6 +30,7 @@ import { TicketLinksPanel } from "~/components/admin/ticketing/ticket-links-pane
 import { EventCodesPanel } from "~/components/admin/ticketing/event-codes-panel";
 import { CampaignsPanel } from "~/components/admin/ticketing/campaigns-panel";
 import { SalesAlertsPanel } from "~/components/admin/ticketing/sales-alerts-panel";
+import { EventSummary } from "~/components/admin/ticketing/event-summary";
 import {
   SectionNav,
   type SectionNavGroup,
@@ -48,7 +50,7 @@ import { EventMenu } from "./event-menu";
 
 /**
  * The event page: one draft, one Save, a section rail grouped by what you're
- * doing. Overview comes first. Set up is the draft (details, tiers, costs,
+ * doing. Overview comes first, then Summary, the after-the-night recap. Set up is the draft (details, tiers, costs,
  * door staff, wallet pass). Sell and Give away are live lists, because
  * refunding or issuing a ticket is a real-world action with an email or a
  * Stripe call behind it, not a draft. Config holds per-event settings that
@@ -60,6 +62,7 @@ import { EventMenu } from "./event-menu";
 
 const PAGES = [
   "overview",
+  "summary",
   "details",
   "tiers",
   "costs",
@@ -116,6 +119,7 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
           {
             items: [
               { value: "overview", label: "Overview", icon: LayoutDashboard },
+              { value: "summary", label: "Summary", icon: ClipboardList },
             ],
           },
         ]
@@ -269,6 +273,9 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
               checklist={checklist}
               onOpenSection={open}
             />
+          ) : null}
+          {page === "summary" && event ? (
+            <EventSummary eventId={event.id} />
           ) : null}
           {page === "details" ? (
             <DetailsSection
