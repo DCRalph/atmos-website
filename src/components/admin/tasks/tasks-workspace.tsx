@@ -596,7 +596,10 @@ export function TasksWorkspace() {
           </div>
         ) : null}
         {view === "standings" ? <TaskStandings onOpen={open} /> : null}
-        {view === "playbooks" ? <PlaybooksView /> : null}
+        {/* Kept mounted on other tabs, so unsaved playbook edits survive a look at the calendar. */}
+        <div hidden={view !== "playbooks"}>
+          <PlaybooksView />
+        </div>
       </div>
       <TaskDrawer id={selected} onClose={close} onOpen={open} />
       <Dialog

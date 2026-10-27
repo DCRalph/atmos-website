@@ -35,6 +35,7 @@ import {
   DEFAULT_PLAYBOOK_ROLES,
   formatOffset,
   playbookPhase,
+  playbookPlan,
   playbookRoles,
   playbookSpan,
 } from "~/lib/tasks/playbooks";
@@ -113,18 +114,18 @@ export function PlaybooksView() {
     (starter) => !playbooks.some((book) => book.name === starter.name),
   );
 
+  /** True when it's fine to leave the playbook being edited. */
+  const canLeave = async () =>
+    !dirty ||
+    confirm({
+      title: "Discard changes?",
+      description: "This playbook has changes that haven't been saved.",
+      confirmLabel: "Discard",
+      variant: "destructive",
+    });
+
   const choose = async (next: string) => {
-    if (next === editing) return;
-    if (
-      dirty &&
-      !(await confirm({
-        title: "Discard changes?",
-        description: "This playbook has changes that haven't been saved.",
-        confirmLabel: "Discard",
-        variant: "destructive",
-      }))
-    )
-      return;
+    if (next === editing || !(await canLeave())) return;
     setDirty(false);
     setSelected(next);
   };
@@ -216,12 +217,13 @@ export function PlaybooksView() {
                       variant="outline"
                       className="h-7 px-2.5 text-xs"
                       disabled={addStarter.isPending}
-                      onClick={() =>
-                        addStarter.mutate({
-                          name: starter.name,
-                          items: starter.items,
-                        })
-                      }
+                      onClick={async () => {
+                        if (await canLeave())
+                          addStarter.mutate({
+                            name: starter.name,
+                            items: starter.items,
+                          });
+                      }}
                     >
                       Add
                     </Button>
@@ -794,14 +796,12 @@ export function ApplyPlaybook({
     options.data?.people.find((person) => person.id === id)?.name;
   const preview =
     book && gigRow
-      ? [...book.items].sort(byOffset).map((item) => ({
-          item,
-          dueAt: new Date(
-            gigRow.gigStartTime.getTime() + item.offsetMinutes * 60_000,
-          ),
-        }))
+      ? playbookPlan(book.items, gigRow.gigStartTime, new Date(now))
       : [];
   const late = preview.filter(({ dueAt }) => dueAt.getTime() < now).length;
+  const pushed = preview.filter(
+    ({ dueAt, projectedAt }) => projectedAt.getTime() > dueAt.getTime(),
+  ).length;
 
   const apply = api.tasks.applyPlaybook.useMutation({
     onSuccess: (result) => {
@@ -883,10 +883,13 @@ export function ApplyPlaybook({
               {late === 1
                 ? "1 task is already past its date and will start late."
                 : `${late} tasks are already past their date and will start late.`}
+              {pushed > 0
+                ? ` ${pushed} ${pushed === 1 ? "task moves" : "tasks move"} later to wait on what's late.`
+                : null}
             </p>
           ) : null}
           <ul className="max-h-72 overflow-y-auto pr-1">
-            {preview.map(({ item, dueAt }) => (
+            {preview.map(({ item, dueAt, projectedAt, atRisk }) => (
               <li
                 key={item.key}
                 className="grid grid-cols-[6.5rem_minmax(0,1fr)_auto] gap-2 py-1 text-sm"
@@ -901,7 +904,21 @@ export function ApplyPlaybook({
                 >
                   {formatEventDate(dueAt)}
                 </time>
-                <span className="min-w-0 truncate">{item.title}</span>
+                <span className="min-w-0">
+                  <span className="block truncate">{item.title}</span>
+                  {projectedAt.getTime() > dueAt.getTime() ? (
+                    <span
+                      className={cn(
+                        "block text-xs",
+                        atRisk ? "text-destructive" : "text-muted-foreground",
+                      )}
+                    >
+                      {atRisk
+                        ? "At risk: what it waits for runs past the gig"
+                        : `Moves to ${formatEventDate(projectedAt)}, waiting on what's late`}
+                    </span>
+                  ) : null}
+                </span>
                 <span className="text-muted-foreground text-xs leading-5">
                   {nameOf(roles[item.role]) ?? item.role}
                 </span>
