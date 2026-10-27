@@ -491,7 +491,7 @@ function PlaybookEditor({
           }}
         >
           <Plus />
-          Add task
+          Add playbook task
         </Button>
       </div>
 
@@ -906,7 +906,7 @@ export function ApplyPlaybook({
                 </time>
                 <span className="min-w-0">
                   <span className="block truncate">{item.title}</span>
-                  {projectedAt.getTime() > dueAt.getTime() ? (
+                  {atRisk || projectedAt.getTime() > dueAt.getTime() ? (
                     <span
                       className={cn(
                         "block text-xs",
