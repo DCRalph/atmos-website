@@ -245,7 +245,12 @@ function ArtistSheet({
                   "Loading")}
             </Text>
           </View>
-          <Pressable onPress={onClose} hitSlop={10}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            onPress={onClose}
+            hitSlop={10}
+          >
             <X color={colors.textFaint} size={18} strokeWidth={2.5} />
           </Pressable>
         </View>

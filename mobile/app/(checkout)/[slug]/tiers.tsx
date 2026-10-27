@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Check, Info, Minus, Plus, X } from "lucide-react-native";
 
+import { formatNZDCompact } from "~/lib/ticketing/money";
 import { openTiers, tierUnavailableLabel } from "~/lib/ticketing/tiers";
 
 import { api } from "@/lib/api";
@@ -21,9 +22,9 @@ import {
   Body,
   Button,
   Caption,
+  Display,
   Loading,
   Notice,
-  Pill,
   Title,
 } from "@/components/ui";
 
@@ -139,7 +140,12 @@ export default function TiersScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={[styles.header, { paddingTop: insets.top + space.sm }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+          onPress={() => router.back()}
+          hitSlop={12}
+        >
           <X color={colors.text} size={22} strokeWidth={2.5} />
         </Pressable>
         <Title style={{ fontSize: 18 }}>Tickets</Title>
@@ -160,9 +166,8 @@ export default function TiersScreen() {
         ) : (
           <View style={{ gap: space.sm }}>
             {tiers.map((tier) => {
-              const quantity = open.has(tier.id)
-                ? (quantities[tier.id] ?? 0)
-                : 0;
+              const locked = !open.has(tier.id);
+              const quantity = locked ? 0 : (quantities[tier.id] ?? 0);
               // Exact stock is deliberately not published; the server only
               // says "available", and how many are left once it is nearly out.
               const cap = Math.min(
@@ -171,28 +176,46 @@ export default function TiersScreen() {
               );
               return (
                 <View key={tier.id} style={styles.tier}>
+                  {/* The site's tier row: a locked tier is dimmed with a
+                      quiet reason, never an error-red badge. */}
                   <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-                    <Body style={{ fontWeight: "700" }}>{tier.name}</Body>
+                    <View style={styles.tierHead}>
+                      <Display
+                        size={16}
+                        keepCase
+                        style={locked && { color: colors.textFaint }}
+                      >
+                        {tier.name}
+                      </Display>
+                      <Caption
+                        style={{
+                          color: locked ? colors.textFaint : colors.textSoft,
+                        }}
+                      >
+                        {tier.isFree ? "Free" : formatNZDCompact(tier.priceCents)}
+                      </Caption>
+                    </View>
+                    {tier.groupSize > 1 ? (
+                      <Caption>Admits {tier.groupSize}</Caption>
+                    ) : null}
                     {tier.description ? (
                       <Caption numberOfLines={2}>{tier.description}</Caption>
                     ) : null}
-                    <Caption>
-                      {tier.isFree ? "Free" : money(tier.priceCents)}
-                      {tier.groupSize > 1
-                        ? ` · admits ${tier.groupSize}`
-                        : ""}
-                    </Caption>
-                    {!open.has(tier.id) ? (
-                      <Pill tone="deny">
+                    {locked ? (
+                      <Caption style={{ color: colors.textFaint }}>
                         {tierUnavailableLabel(tier)}
-                      </Pill>
-                    ) : !tier.available ? (
-                      <Pill tone="accent">Unlocked</Pill>
+                      </Caption>
+                    ) : !tier.available && tier.waitingFor ? (
+                      <Caption style={{ color: colors.accent }}>
+                        Unlocked, you have the last {tier.waitingFor.name}
+                      </Caption>
                     ) : tier.lowStock ? (
-                      <Pill tone="warn">{tier.remainingIfLow} left</Pill>
+                      <Caption style={{ color: colors.warn }}>
+                        Only {tier.remainingIfLow} left
+                      </Caption>
                     ) : null}
                   </View>
-                  {open.has(tier.id) ? (
+                  {!locked ? (
                     <Stepper
                       value={quantity}
                       max={cap}
@@ -424,6 +447,12 @@ const styles = StyleSheet.create({
     paddingBottom: space.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+  },
+  tierHead: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "baseline",
+    columnGap: space.sm,
   },
   tier: {
     flexDirection: "row",
