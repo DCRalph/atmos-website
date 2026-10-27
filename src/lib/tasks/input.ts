@@ -25,7 +25,8 @@ export const playbookItemSchema = z.object({
   key: z.string().min(1).max(80),
   title: z.string().trim().min(1).max(200),
   notes: z.string().max(20_000).optional(),
-  offsetMinutes: z.number().int().min(-525600).max(0),
+  /** From gig start: up to a year before, or a month after for wrap-up. */
+  offsetMinutes: z.number().int().min(-525600).max(43200),
   role: z.string().min(1).max(80),
   reviewerRole: z.string().max(80).optional(),
   critical: z.boolean().default(false),

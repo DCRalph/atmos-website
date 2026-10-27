@@ -618,7 +618,9 @@ export const tasksRouter = createTRPCRouter({
                   : null,
                 plannedDueAt: dueAt,
                 dueAt,
-                hardDeadlineAt: gig.gigStartTime,
+                // Work before the gig cannot slip past it. Wrap-up after it can.
+                hardDeadlineAt:
+                  item.offsetMinutes <= 0 ? gig.gigStartTime : null,
                 critical: item.critical,
                 source: "PLAYBOOK",
                 playbookItemId: `${book.id}:${item.key}`,
