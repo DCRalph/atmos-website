@@ -48,7 +48,12 @@ export default function EventAnalyticsScreen() {
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={[styles.header, { paddingTop: insets.top + space.sm }]}>
         <View style={styles.headerTop}>
-          <Pressable onPress={() => router.back()} hitSlop={12}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            onPress={() => router.back()}
+            hitSlop={12}
+          >
             <ArrowLeft color={colors.text} size={22} strokeWidth={2.5} />
           </Pressable>
           <Text numberOfLines={1} style={styles.title}>

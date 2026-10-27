@@ -47,7 +47,12 @@ export default function AdminEventsScreen() {
       }}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: space.md }}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          onPress={() => router.back()}
+          hitSlop={12}
+        >
           <ArrowLeft color={colors.text} size={22} strokeWidth={2.5} />
         </Pressable>
         <Title>Events</Title>

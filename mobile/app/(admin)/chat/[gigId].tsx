@@ -117,7 +117,12 @@ export default function ChatRoomScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={[styles.header, { paddingTop: insets.top + space.sm }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          onPress={() => router.back()}
+          hitSlop={12}
+        >
           <ArrowLeft color={colors.text} size={22} strokeWidth={2.5} />
         </Pressable>
 
