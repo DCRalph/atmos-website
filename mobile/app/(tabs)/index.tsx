@@ -25,6 +25,7 @@ import { useAuth } from "@/lib/auth";
 import { colors, space, type } from "@/lib/theme";
 import { formatGigDate, formatGigTime } from "@/lib/dates";
 import { formatNZDCompact } from "~/lib/ticketing/money";
+import { getTbaText } from "~/lib/gig-flags";
 import {
   Button,
   Display,
@@ -76,9 +77,9 @@ export default function HomeScreen() {
   const [next, ...rest] = upcoming.data ?? [];
   const heroHeight = Math.round(height * 0.78);
 
-  // On a phone the featured/list split buys nothing; one run of rows.
+  // On a phone the video/list split buys nothing; one run of rows.
   const latestItems = [
-    ...(latest.data?.featuredItem ? [latest.data.featuredItem] : []),
+    ...(latest.data?.video ? [latest.data.video] : []),
     ...(latest.data?.items ?? []),
   ];
 
@@ -222,7 +223,7 @@ function Hero({
         ) : (
           <Eyebrow style={{ color: colors.textSoft }}>
             {gig.isTba
-              ? "Next up · Date TBA"
+              ? `Next up · ${getTbaText(gig.tbaText, "Date & time TBA")}`
               : `Next up · ${formatGigDate(gig.gigStartTime)} · ${formatGigTime(gig.gigStartTime)}`}
           </Eyebrow>
         )}

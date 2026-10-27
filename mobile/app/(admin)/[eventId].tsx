@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft } from "lucide-react-native";
+import { eachDayOfInterval, format } from "date-fns";
 
 import { api } from "@/lib/api";
 import { formatNZD } from "~/lib/ticketing/money";
@@ -224,12 +225,12 @@ function SalesTab({ eventId }: { eventId: string }) {
     { eventId },
     { enabled: !!eventId, retry: false },
   );
-  const sources = api.ticketAnalytics.sources.useQuery(
+  const buyers = api.ticketAnalytics.buyers.useQuery(
     { eventId },
     { enabled: !!eventId, retry: false },
   );
   const sales = api.ticketAnalytics.salesOverTime.useQuery(
-    { eventId, bucket: "day" },
+    { eventId },
     { enabled: !!eventId, retry: false },
   );
 
@@ -242,7 +243,9 @@ function SalesTab({ eventId }: { eventId: string }) {
     );
   }
 
-  const { money, counts, tiers, byPaymentMethod, comps } = overview.data;
+  const { money, gst, counts, tiers, byPaymentMethod, comps } = overview.data;
+  const perDay = sales.data ? ticketsPerDay(sales.data.rows) : [];
+  const sources = buyers.data?.sources.filter((row) => row.paid > 0) ?? [];
 
   return (
     <ScrollView contentContainerStyle={styles.body}>
@@ -310,7 +313,7 @@ function SalesTab({ eventId }: { eventId: string }) {
             label="Booking fees"
             value={formatNZD(money.bookingFeeCents)}
           />
-          <LineItem label="GST included" value={formatNZD(money.gstCents)} />
+          <LineItem label="GST included" value={formatNZD(gst.netCents)} />
           {money.refundedCents > 0 ? (
             <LineItem
               label="Refunded"
@@ -396,12 +399,9 @@ function SalesTab({ eventId }: { eventId: string }) {
         </Section>
       ) : null}
 
-      {sales.data && sales.data.length > 1 ? (
+      {perDay.length > 1 ? (
         <Section title="Sales by day" hint="Tickets sold per day, oldest left.">
-          <MiniBars
-            values={sales.data.map((row) => row.tickets)}
-            tone={colors.left}
-          />
+          <MiniBars values={perDay} tone={colors.left} />
         </Section>
       ) : null}
 
@@ -421,15 +421,15 @@ function SalesTab({ eventId }: { eventId: string }) {
         </Section>
       ) : null}
 
-      {sources.data && sources.data.length > 0 ? (
+      {sources.length > 0 ? (
         <Section title="Where buyers came from">
           <View>
-            {sources.data.map((row, index) => (
+            {sources.map((row, index) => (
               <LineItem
                 key={`${row.source}-${row.medium ?? ""}-${row.campaign ?? ""}-${index}`}
                 label={row.source}
                 sub={[row.medium, row.campaign].filter(Boolean).join(" · ") || null}
-                value={`${row.orders} · ${formatNZD(row.revenueCents)}`}
+                value={`${row.paid} · ${formatNZD(row.revenueCents)}`}
               />
             ))}
           </View>
@@ -439,6 +439,24 @@ function SalesTab({ eventId }: { eventId: string }) {
   );
 }
 
+/**
+ * The sales curve's hourly rows as one total per day, empty days included so
+ * a quiet week reads as a gap. Days are the handset's, which at Atmos is the
+ * event's own zone.
+ */
+function ticketsPerDay(rows: { at: Date; tickets: number }[]): number[] {
+  const first = rows[0];
+  const last = rows.at(-1);
+  if (!first || !last) return [];
+  const byDay = new Map<string, number>();
+  for (const row of rows) {
+    const day = format(row.at, "yyyy-MM-dd");
+    byDay.set(day, (byDay.get(day) ?? 0) + row.tickets);
+  }
+  return eachDayOfInterval({ start: first.at, end: last.at }).map(
+    (day) => byDay.get(format(day, "yyyy-MM-dd")) ?? 0,
+  );
+}
 
 const styles = StyleSheet.create({
   header: {

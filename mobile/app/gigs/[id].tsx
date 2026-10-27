@@ -64,7 +64,8 @@ const BODY_OVERLAP = space.xxl;
  * The poster opens the page edge to edge, with round glass back and share
  * buttons over it that never scroll away; once the poster has gone under the
  * top, a black bar with the gig's name fills in behind them. Below: when and
- * where, the bill, the description, and on a past gig the photos. Tickets
+ * where, the bill, the description, and the photos once it is over (or
+ * before, when the gig is set to show its gallery early). Tickets
  * sit in a floating glass panel whose corners run concentric with the
  * display's, and check out through the `(checkout)` modal, where the hold
  * and release logic lives once.
@@ -213,7 +214,7 @@ export default function GigScreen() {
                 </Section>
               ) : null}
 
-              {!upcoming && photos.length > 0 ? (
+              {(!upcoming || data.showGalleryBeforeGig) && photos.length > 0 ? (
                 <Section title="Photos">
                   <MediaGallery media={photos} />
                 </Section>

@@ -9,6 +9,8 @@ import {
 } from "react-native";
 import { ArrowRight } from "lucide-react-native";
 
+import { getTbaText } from "~/lib/gig-flags";
+
 import { colors, space, type } from "@/lib/theme";
 import { gigWhen, groupByMonth } from "@/lib/gig";
 import { formatGigTime } from "@/lib/dates";
@@ -22,6 +24,8 @@ export type GigCardData = {
   gigStartTime: Date;
   /** The date is a placeholder — see `@/lib/gig`. */
   isTba: boolean;
+  /** What Home says in place of a TBA gig's date. */
+  tbaText?: string | null;
   posterFileUpload?: { url: string } | null;
 };
 
@@ -79,7 +83,7 @@ export function GigRow({ gig }: { gig: GigCardData }) {
               </Display>
               <Text numberOfLines={1} style={styles.meta}>
                 {gig.isTba
-                  ? "Date to be announced"
+                  ? getTbaText(gig.tbaText, "Date & time TBA")
                   : [
                       gigWhen(gig),
                       formatGigTime(gig.gigStartTime),
