@@ -41,7 +41,6 @@ import {
   SheetTitle,
 } from "~/components/ui/sheet";
 import { useConfirm } from "~/components/confirm-provider";
-import { useUnsavedChangesWarning } from "~/hooks/use-unsaved-changes-warning";
 import { cn } from "~/lib/utils";
 import { playbookInputSchema } from "~/lib/tasks/input";
 import {
@@ -171,13 +170,22 @@ function useWide() {
  * the playbook's roles beside it. The team's playbooks and the starters sit
  * in the picker top left.
  */
-export function PlaybooksView() {
+export function PlaybooksView({
+  onDirtyChange,
+}: {
+  /**
+   * Whether the open playbook has unsaved changes. The Tasks page guards
+   * leaving with one warning for everything on it, so it asks here.
+   */
+  onDirtyChange: (dirty: boolean) => void;
+}) {
   const options = api.tasks.options.useQuery();
   const utils = api.useUtils();
   const confirm = useConfirm();
   const playbooks = options.data?.playbooks ?? [];
   const [selected, setSelected] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
 
   // Nothing picked yet opens the first playbook, so the tab is never blank.
   const current =
@@ -453,7 +461,6 @@ function PlaybookEditor({
     : draft.name.trim() !== "" ||
       draft.tasks.some((task) => task.title.trim() !== "");
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
-  useUnsavedChangesWarning({ enabled: dirty });
 
   // Dates are shown for a real upcoming gig when one is far enough out that
   // none of the playbook has passed, else a sample Saturday.

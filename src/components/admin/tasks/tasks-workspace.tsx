@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Plus, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "~/trpc/react";
 import { AdminSection } from "~/components/admin/admin-section";
@@ -19,9 +19,11 @@ import {
   dayKey,
   formatTaskDate,
   nzDate,
+  nzParts,
   TASK_TIMEZONE,
   startOfWeek,
 } from "~/lib/tasks/time";
+import { useUnsavedChangesWarning } from "~/hooks/use-unsaved-changes-warning";
 import { isOpen } from "~/lib/tasks/status";
 import { TaskSelect, taskFlag, taskGroup, type TaskRow } from "./shared";
 import { TasksCalendar, type CalendarColorBy } from "./calendar";
@@ -60,6 +62,14 @@ export function TasksWorkspace() {
     [cellTasks, setCellTasks] = useState<string[] | null>(null),
     [dialog, setDialog] = useState<"new" | "paste" | "settings" | null>(null),
     [newDay, setNewDay] = useState(dayKey(new Date()));
+  // Calendar drags, held until Save. Each drop is undone one at a time.
+  const [moves, setMoves] = useState<ReadonlyMap<string, Date>>(new Map());
+  const [history, setHistory] = useState<
+    { id: string; previous: Date | undefined }[]
+  >([]);
+  // One guard for the page: calendar moves or an unsaved playbook.
+  const [playbookDirty, setPlaybookDirty] = useState(false);
+  useUnsavedChangesWarning({ enabled: moves.size > 0 || playbookDirty });
   const [colorChoice, setColorChoice] = useLocalStorage(
     "tasks.calendar.colorBy",
     "person",
@@ -106,6 +116,67 @@ export function TasksWorkspace() {
   const proposals = tasks.filter((task) => task.status === "PROPOSED");
   const readyProposals = proposals.filter((task) => task.assigneeId);
 
+  /** A task dropped on a day: due that day, at the same time of day. */
+  const moveTask = (id: string, toDay: string) => {
+    // Held while saving: the save settles what's staged now.
+    if (saveMoves.isPending) return;
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+    const previous = moves.get(id);
+    if (dayKey(previous ?? task.projectedDueAt) === toDay) return;
+    const { hour, minute } = nzParts(task.dueAt);
+    const next = nzDate(toDay, hour, minute);
+    setHistory((steps) => [...steps, { id, previous }]);
+    setMoves((current) => {
+      const updated = new Map(current);
+      // Back on the day it's saved for is no change at all.
+      if (toDay === dayKey(task.dueAt)) updated.delete(id);
+      else updated.set(id, next);
+      return updated;
+    });
+  };
+  const undoMove = () => {
+    const last = history.at(-1);
+    if (!last) return;
+    setHistory((steps) => steps.slice(0, -1));
+    setMoves((current) => {
+      const updated = new Map(current);
+      if (last.previous) updated.set(last.id, last.previous);
+      else updated.delete(last.id);
+      return updated;
+    });
+  };
+  const discardMoves = () => {
+    setMoves(new Map());
+    setHistory([]);
+  };
+  const saveMoves = api.tasks.bulk.useMutation({
+    onSuccess: ({ changed, failed }) => {
+      void utils.tasks.invalidate();
+      void utils.dashboard.overview.invalidate();
+      if (changed)
+        toast.success(
+          `Saved ${changed} ${changed === 1 ? "new date" : "new dates"}`,
+        );
+      if (failed.length)
+        toast.error(
+          `${failed.length} ${failed.length === 1 ? "task" : "tasks"} couldn't move`,
+          {
+            description: failed
+              .slice(0, 3)
+              .map(({ title, message }) => `${title}: ${message}`)
+              .join(" · "),
+          },
+        );
+      // What didn't save stays moved, to undo or try again.
+      const kept = new Set(failed.map((task) => task.id));
+      setMoves(
+        (current) => new Map([...current].filter(([id]) => kept.has(id))),
+      );
+      setHistory((steps) => steps.filter((step) => kept.has(step.id)));
+    },
+    onError: (error) => toast.error(error.message),
+  });
   const take = api.tasks.take.useMutation({
     onSuccess: () => {
       void utils.tasks.invalidate();
@@ -497,6 +568,57 @@ export function TasksWorkspace() {
             </div>
           </div>
         ) : null}
+        {view === "calendar" && (moves.size > 0 || history.length > 0) ? (
+          <div
+            role="toolbar"
+            aria-label="Unsaved calendar changes"
+            className="bg-background/95 sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 backdrop-blur-sm"
+          >
+            <span className="text-sm font-medium">
+              {moves.size
+                ? `${moves.size} ${moves.size === 1 ? "task" : "tasks"} moved`
+                : "Back where they were"}
+            </span>
+            <span className="text-muted-foreground text-sm">
+              {moves.size ? "Not saved yet" : "Nothing to save"}
+            </span>
+            <div className="ml-auto flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={saveMoves.isPending}
+                onClick={discardMoves}
+              >
+                Discard
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!history.length || saveMoves.isPending}
+                onClick={undoMove}
+              >
+                <Undo2 />
+                Undo
+              </Button>
+              <Button
+                size="sm"
+                disabled={!moves.size || saveMoves.isPending}
+                onClick={() =>
+                  saveMoves.mutate({
+                    ids: [...moves.keys()],
+                    action: {
+                      kind: "dates",
+                      dueAts: Object.fromEntries(moves),
+                    },
+                  })
+                }
+              >
+                <Check />
+                {saveMoves.isPending ? "Saving…" : "Save"}
+              </Button>
+            </div>
+          </div>
+        ) : null}
         {view === "calendar" ? (
           <TasksCalendar
             tasks={tasks}
@@ -507,6 +629,8 @@ export function TasksWorkspace() {
             colorBy={colorBy}
             day={day}
             week={week}
+            moves={moves}
+            onMove={moveTask}
             onOpen={open}
             onNew={(d) => {
               setNewDay(d);
@@ -749,7 +873,7 @@ export function TasksWorkspace() {
         {view === "standings" ? <TaskStandings onOpen={open} /> : null}
         {/* Kept mounted on other tabs, so unsaved playbook edits survive a look at the calendar. */}
         <div hidden={view !== "playbooks"}>
-          <PlaybooksView />
+          <PlaybooksView onDirtyChange={setPlaybookDirty} />
         </div>
       </div>
       <TaskDrawer id={selected} onClose={close} onOpen={open} />

@@ -768,6 +768,16 @@ export async function bulkTasks(
           );
           break;
         }
+        case "dates": {
+          const dueAt = action.dueAts[id];
+          if (!dueAt)
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "No new date for this task",
+            });
+          await updateTask(id, { dueAt }, actorId, { superadmin, collect });
+          break;
+        }
         case "critical":
           await updateTask(id, { critical: action.critical }, actorId, {
             superadmin,

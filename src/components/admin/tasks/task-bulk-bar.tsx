@@ -53,6 +53,8 @@ function doneMessage(action: Action, count: number) {
       return `Reassigned ${tasks}`;
     case "shift":
       return `Moved ${tasks} ${shiftLabel(action.days)}`;
+    case "dates":
+      return `Moved ${tasks}`;
     case "critical":
       return action.critical
         ? `Flagged ${tasks} critical`

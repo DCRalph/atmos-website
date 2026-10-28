@@ -6,6 +6,19 @@ import { taskFlag, type TaskRow } from "./shared";
 import type { RouterOutputs } from "~/trpc/react";
 type Point = { x: number; y: number };
 
+const DRAG_TYPE = "application/x-task";
+const timeOfDay = new Intl.DateTimeFormat("en-NZ", {
+  timeZone: TASK_TIMEZONE,
+  hour: "numeric",
+  minute: "2-digit",
+});
+const shortDay = new Intl.DateTimeFormat("en-NZ", {
+  timeZone: TASK_TIMEZONE,
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+});
+
 /** What the calendar colors tasks by: who owns them, or which gig they're for. */
 export type CalendarColorBy = "person" | "gig";
 
@@ -64,6 +77,8 @@ export function TasksCalendar({
   colorBy,
   day,
   week,
+  moves,
+  onMove,
   onOpen,
   onNew,
 }: {
@@ -74,10 +89,17 @@ export function TasksCalendar({
   colorBy: CalendarColorBy;
   day: string;
   week: boolean;
+  /** New due dates dragged in but not saved yet, by task. */
+  moves: ReadonlyMap<string, Date>;
+  /** A task dropped on a day. */
+  onMove: (id: string, day: string) => void;
   onOpen: (id: string) => void;
   onNew: (day: string) => void;
 }) {
   const grid = useRef<HTMLDivElement>(null);
+  const [over, setOver] = useState<string | null>(null);
+  /** Where a task shows: its unsaved new date, else where the schedule puts it. */
+  const at = (task: TaskRow) => moves.get(task.id) ?? task.projectedDueAt;
   const nodes = useRef(new Map<string, HTMLButtonElement>());
   const [lines, setLines] = useState<{ from: Point; to: Point }[]>([]);
   const [related, setRelated] = useState<string[]>([]);
@@ -148,8 +170,7 @@ export function TasksCalendar({
   const keyOf = (task: TaskRow) =>
     colorBy === "person" ? task.assigneeId : task.gigId;
   const shown = tasks.filter(
-    (task) =>
-      task.status !== "PROPOSED" && dates.includes(dayKey(task.projectedDueAt)),
+    (task) => task.status !== "PROPOSED" && dates.includes(dayKey(at(task))),
   );
   const legend = [
     ...new Map(
@@ -187,6 +208,7 @@ export function TasksCalendar({
               Grayed out: waiting on something else
             </li>
           ) : null}
+          <li className="ml-auto">Drag a task to another day to move it</li>
         </ul>
       ) : null}
       <div
@@ -208,10 +230,25 @@ export function TasksCalendar({
         {dates.map((date) => (
           <div
             key={date}
+            onDragOver={(event) => {
+              if (!event.dataTransfer.types.includes(DRAG_TYPE)) return;
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "move";
+              setOver(date);
+            }}
+            onDragLeave={() => setOver((cell) => (cell === date ? null : cell))}
+            onDrop={(event) => {
+              const id = event.dataTransfer.getData(DRAG_TYPE);
+              setOver(null);
+              if (!id) return;
+              event.preventDefault();
+              onMove(id, date);
+            }}
             className={cn(
               "min-h-32 border-r border-b p-2 last:border-r-0",
               date.slice(0, 7) !== day.slice(0, 7) && !week && "bg-muted/15",
               date === dayKey(new Date()) && "bg-primary/5",
+              over === date && "bg-accent/60",
             )}
           >
             <button
@@ -244,68 +281,79 @@ export function TasksCalendar({
             {tasks
               .filter(
                 (task) =>
-                  task.status !== "PROPOSED" &&
-                  dayKey(task.projectedDueAt) === date,
+                  task.status !== "PROPOSED" && dayKey(at(task)) === date,
               )
-              .map((task) => (
-                <button
-                  type="button"
-                  key={task.id}
-                  ref={(node) => {
-                    if (node) nodes.current.set(task.id, node);
-                    else nodes.current.delete(task.id);
-                  }}
-                  onMouseEnter={() => showLinks(task)}
-                  onMouseLeave={clear}
-                  onFocus={() => showLinks(task)}
-                  onBlur={clear}
-                  onClick={() => onOpen(task.id)}
-                  title={task.risk?.detail}
-                  className={cn(
-                    "hover:bg-muted focus-visible:ring-ring mb-1 block w-full rounded border-l-[3px] p-1.5 text-left text-xs transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2",
-                    swatch(keyOf(task)).bar,
-                    swatch(keyOf(task)).wash,
-                    related.includes(task.id)
-                      ? "ring-primary/40 ring-1"
-                      : paused(task) && "opacity-55",
-                  )}
-                >
-                  <span className="block font-medium">
-                    {task.critical ? "! " : ""}
-                    {task.title}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {task.assignee?.name ?? "Unassigned"} ·{" "}
-                    {new Intl.DateTimeFormat("en-NZ", {
-                      timeZone: TASK_TIMEZONE,
-                      hour: "numeric",
-                      minute: "2-digit",
-                    }).format(task.projectedDueAt)}
-                  </span>
-                  {task.projectedDueAt.getTime() !== task.dueAt.getTime() ? (
-                    <span className="text-muted-foreground block">
-                      Projected
+              .map((task) => {
+                const moved = moves.get(task.id);
+                return (
+                  <button
+                    type="button"
+                    key={task.id}
+                    draggable
+                    onDragStart={(event) => {
+                      clear();
+                      event.dataTransfer.setData(DRAG_TYPE, task.id);
+                      event.dataTransfer.effectAllowed = "move";
+                    }}
+                    ref={(node) => {
+                      if (node) nodes.current.set(task.id, node);
+                      else nodes.current.delete(task.id);
+                    }}
+                    onMouseEnter={() => showLinks(task)}
+                    onMouseLeave={clear}
+                    onFocus={() => showLinks(task)}
+                    onBlur={clear}
+                    onClick={() => onOpen(task.id)}
+                    title={task.risk?.detail}
+                    className={cn(
+                      "hover:bg-muted focus-visible:ring-ring mb-1 block w-full cursor-grab rounded border-l-[3px] p-1.5 text-left text-xs transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 active:cursor-grabbing",
+                      moved &&
+                        "outline-admin-accent/70 outline-1 outline-dashed",
+                      swatch(keyOf(task)).bar,
+                      swatch(keyOf(task)).wash,
+                      related.includes(task.id)
+                        ? "ring-primary/40 ring-1"
+                        : paused(task) && "opacity-55",
+                    )}
+                  >
+                    <span className="block font-medium">
+                      {task.critical ? "! " : ""}
+                      {task.title}
                     </span>
-                  ) : null}
-                  {paused(task) || task.atRisk || task.overdue ? (
-                    <span
-                      className={cn(
-                        "block",
-                        LATE.includes(taskFlag(task))
-                          ? "text-destructive"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      {taskFlag(task)}
+                    <span className="text-muted-foreground">
+                      {task.assignee?.name ?? "Unassigned"} ·{" "}
+                      {timeOfDay.format(at(task))}
                     </span>
-                  ) : null}
-                  {task.risk ? (
-                    <span className="text-muted-foreground line-clamp-3 block">
-                      {task.risk.short}
-                    </span>
-                  ) : null}
-                </button>
-              ))}
+                    {moved ? (
+                      <span className="text-admin-accent block">
+                        Moved, was {shortDay.format(task.dueAt)}
+                      </span>
+                    ) : task.projectedDueAt.getTime() !==
+                      task.dueAt.getTime() ? (
+                      <span className="text-muted-foreground block">
+                        Projected
+                      </span>
+                    ) : null}
+                    {paused(task) || task.atRisk || task.overdue ? (
+                      <span
+                        className={cn(
+                          "block",
+                          LATE.includes(taskFlag(task))
+                            ? "text-destructive"
+                            : "text-muted-foreground",
+                        )}
+                      >
+                        {taskFlag(task)}
+                      </span>
+                    ) : null}
+                    {task.risk && !moved ? (
+                      <span className="text-muted-foreground line-clamp-3 block">
+                        {task.risk.short}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
           </div>
         ))}
         <svg

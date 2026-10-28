@@ -320,6 +320,29 @@ if (testUrl) {
     );
     assert.equal(byId.get(tight.id)!.dueAt.getTime(), due.getTime());
 
+    // Dragged on the calendar: each task to its own date, by the same rules.
+    const dragged = await ana.bulk({
+      ids: [loose.id, tight.id],
+      action: {
+        kind: "dates",
+        dueAts: {
+          [loose.id]: new Date(due.getTime() + 4 * day),
+          [tight.id]: new Date(due.getTime() + 4 * day),
+        },
+      },
+    });
+    assert.equal(dragged.changed, 1);
+    assert.deepEqual(
+      dragged.failed.map(({ title, message }) => [title, message]),
+      [["Door kit", "The due date cannot be past the hard deadline"]],
+    );
+    assert.equal(
+      (
+        await db.task.findUniqueOrThrow({ where: { id: loose.id } })
+      ).dueAt.getTime(),
+      due.getTime() + 4 * day,
+    );
+
     // Setting a status outright and moving the agreed date are superadmin only.
     await assert.rejects(
       ana.bulk({ ids, action: { kind: "status", status: "DONE" } }),

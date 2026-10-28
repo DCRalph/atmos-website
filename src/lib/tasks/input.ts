@@ -167,8 +167,9 @@ export const taskSettingsSchema = z.object({
   nagVoice: z.boolean().default(false),
 });
 /**
- * One change across many tasks from the list. Everyone can reassign, move due
- * dates, flag critical, cancel or delete. Setting a status outright, and
+ * One change across many tasks from the list or calendar. Everyone can
+ * reassign, move due dates (by a number of days, or each to its own date),
+ * flag critical, cancel or delete. Setting a status outright, and
  * moving the agreed date with the due date, are superadmin only.
  */
 export const bulkTaskActionSchema = z.discriminatedUnion("kind", [
@@ -180,6 +181,11 @@ export const bulkTaskActionSchema = z.discriminatedUnion("kind", [
     agreed: z.boolean().default(false),
   }),
   z.object({ kind: z.literal("critical"), critical: z.boolean() }),
+  /** Each task to its own new due date: what dragging on the calendar saves. */
+  z.object({
+    kind: z.literal("dates"),
+    dueAts: z.record(z.string(), z.date()),
+  }),
   z.object({ kind: z.literal("cancel") }),
   z.object({ kind: z.literal("delete") }),
   z.object({
