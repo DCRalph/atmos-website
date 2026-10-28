@@ -5,9 +5,63 @@ import { cn } from "~/lib/utils";
 import { taskFlag, type TaskRow } from "./shared";
 import type { RouterOutputs } from "~/trpc/react";
 type Point = { x: number; y: number };
+
+/** What the calendar colors tasks by: who owns them, or which gig they're for. */
+export type CalendarColorBy = "person" | "gig";
+
+/**
+ * A bar and a faint wash per person or gig, readable on the dark admin and
+ * clear of the reds, ambers and lime that already mean late, critical and
+ * today. Neighbours differ most, since gigs close together sit side by side.
+ */
+const SWATCHES = [
+  { bar: "border-l-sky-400", wash: "bg-sky-400/10", dot: "bg-sky-400" },
+  {
+    bar: "border-l-orange-400",
+    wash: "bg-orange-400/10",
+    dot: "bg-orange-400",
+  },
+  {
+    bar: "border-l-violet-400",
+    wash: "bg-violet-400/10",
+    dot: "bg-violet-400",
+  },
+  {
+    bar: "border-l-emerald-400",
+    wash: "bg-emerald-400/10",
+    dot: "bg-emerald-400",
+  },
+  { bar: "border-l-pink-400", wash: "bg-pink-400/10", dot: "bg-pink-400" },
+  {
+    bar: "border-l-yellow-200",
+    wash: "bg-yellow-200/10",
+    dot: "bg-yellow-200",
+  },
+  { bar: "border-l-cyan-300", wash: "bg-cyan-300/10", dot: "bg-cyan-300" },
+  {
+    bar: "border-l-indigo-300",
+    wash: "bg-indigo-300/10",
+    dot: "bg-indigo-300",
+  },
+] as const;
+/** Unassigned, or not for a gig. */
+const PLAIN = {
+  bar: "border-l-muted-foreground/40",
+  wash: "bg-muted/40",
+  dot: "bg-muted-foreground/40",
+};
+
+/** The labels shown in red: the task is late, or will be. */
+const LATE = ["At risk", "Overdue", "Late, flagged"];
+
+/** Waiting on another task, or blocked on something outside the team. */
+const paused = (task: TaskRow) => task.waiting || task.status === "BLOCKED";
+
 export function TasksCalendar({
   tasks,
   gigs,
+  people,
+  colorBy,
   day,
   week,
   onOpen,
@@ -15,6 +69,9 @@ export function TasksCalendar({
 }: {
   tasks: TaskRow[];
   gigs: RouterOutputs["tasks"]["options"]["gigs"];
+  /** Everyone who can own tasks, in a fixed order so their colors hold still. */
+  people: readonly { id: string; name: string }[];
+  colorBy: CalendarColorBy;
   day: string;
   week: boolean;
   onOpen: (id: string) => void;
@@ -72,8 +129,66 @@ export function TasksCalendar({
     setLines([]);
     setRelated([]);
   };
+
+  // A color per person, or per gig in date order (then any older gig a task
+  // is still open for), so the same one keeps its color from week to week.
+  const keys =
+    colorBy === "person"
+      ? people.map((person) => person.id)
+      : [
+          ...new Set([
+            ...gigs.map((gig) => gig.id),
+            ...tasks.flatMap((task) => (task.gigId ? [task.gigId] : [])),
+          ]),
+        ];
+  const swatch = (key: string | null | undefined) => {
+    const index = key ? keys.indexOf(key) : -1;
+    return index < 0 ? PLAIN : SWATCHES[index % SWATCHES.length]!;
+  };
+  const keyOf = (task: TaskRow) =>
+    colorBy === "person" ? task.assigneeId : task.gigId;
+  const shown = tasks.filter(
+    (task) =>
+      task.status !== "PROPOSED" && dates.includes(dayKey(task.projectedDueAt)),
+  );
+  const legend = [
+    ...new Map(
+      shown.map((task) => {
+        const key = keyOf(task) ?? "";
+        const name =
+          colorBy === "person"
+            ? (task.assignee?.name ?? "Unassigned")
+            : (task.gig?.title ?? "No gig");
+        return [key, { key, name }];
+      }),
+    ).values(),
+  ].sort(
+    (a, b) =>
+      (a.key ? keys.indexOf(a.key) : Infinity) -
+      (b.key ? keys.indexOf(b.key) : Infinity),
+  );
+
   return (
     <div className="overflow-x-auto rounded-lg border">
+      {legend.length > 0 ? (
+        <ul
+          aria-label={`Colors by ${colorBy}`}
+          className="text-muted-foreground flex min-w-[720px] flex-wrap gap-x-4 gap-y-1 border-b px-3 py-2 text-xs"
+        >
+          {legend.map(({ key, name }) => (
+            <li key={key} className="flex items-center gap-1.5">
+              <span className={cn("size-2 rounded-full", swatch(key).dot)} />
+              <span className="text-foreground/85">{name}</span>
+            </li>
+          ))}
+          {shown.some(paused) ? (
+            <li className="flex items-center gap-1.5">
+              <span className="bg-muted-foreground/40 size-2 rounded-full opacity-60" />
+              Grayed out: waiting on something else
+            </li>
+          ) : null}
+        </ul>
+      ) : null}
       <div
         ref={grid}
         className={cn(
@@ -112,7 +227,16 @@ export function TasksCalendar({
               .map((gig) => (
                 <div
                   key={gig.id}
-                  className="border-primary bg-primary/10 mb-1 border-l-2 p-1.5 text-xs font-semibold"
+                  className={cn(
+                    "mb-1 p-1.5 text-xs font-semibold",
+                    colorBy === "gig"
+                      ? cn(
+                          "rounded border-l-[3px]",
+                          swatch(gig.id).bar,
+                          swatch(gig.id).wash,
+                        )
+                      : "border-primary bg-primary/10 border-l-2",
+                  )}
                 >
                   {gig.title} · Gig
                 </div>
@@ -137,12 +261,12 @@ export function TasksCalendar({
                   onBlur={clear}
                   onClick={() => onOpen(task.id)}
                   className={cn(
-                    "bg-muted/40 hover:bg-muted focus-visible:ring-ring mb-1 block w-full rounded border-l-2 p-1.5 text-left text-xs focus-visible:ring-2",
-                    task.atRisk || task.overdue
-                      ? "border-destructive"
-                      : "border-primary/40",
-                    related.includes(task.id) &&
-                      "bg-primary/15 ring-primary/40 ring-1",
+                    "hover:bg-muted focus-visible:ring-ring mb-1 block w-full rounded border-l-[3px] p-1.5 text-left text-xs transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2",
+                    swatch(keyOf(task)).bar,
+                    swatch(keyOf(task)).wash,
+                    related.includes(task.id)
+                      ? "ring-primary/40 ring-1"
+                      : paused(task) && "opacity-55",
                   )}
                 >
                   <span className="block font-medium">
@@ -162,8 +286,15 @@ export function TasksCalendar({
                       Projected
                     </span>
                   ) : null}
-                  {task.waiting || task.atRisk || task.overdue ? (
-                    <span className="text-muted-foreground block">
+                  {paused(task) || task.atRisk || task.overdue ? (
+                    <span
+                      className={cn(
+                        "block",
+                        LATE.includes(taskFlag(task))
+                          ? "text-destructive"
+                          : "text-muted-foreground",
+                      )}
+                    >
                       {taskFlag(task)}
                     </span>
                   ) : null}
