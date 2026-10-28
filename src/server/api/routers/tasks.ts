@@ -29,12 +29,14 @@ import { notifyTasks } from "~/server/tasks/notifications";
 import {
   taskFields,
   taskStatusSchema,
-  playbookSchema,
+  playbookInputSchema,
+  storedPlaybookSchema,
   taskSettingsSchema,
 } from "~/lib/tasks/input";
 import { impact, orderTasks } from "~/lib/tasks/schedule";
 import {
   playbookDependencies,
+  playbookDueDates,
   playbookHardDeadline,
 } from "~/lib/tasks/playbooks";
 import { taskLoad } from "~/lib/tasks/load";
@@ -54,6 +56,28 @@ import { sendTaskNudge } from "~/server/tasks";
 const idInput = z.object({ id: z.string().min(1) });
 const reason = z.string().trim().min(1).max(4000);
 const personFields = { id: true, name: true } as const;
+/** What a playbook counts from on a gig: its start, and doors and end when it has them. */
+const gigTimes = {
+  gigStartTime: true,
+  gigEndTime: true,
+  ticketEvents: {
+    select: { doorsAt: true, endsAt: true },
+    orderBy: { startsAt: "asc" },
+    take: 1,
+  },
+} as const;
+function playbookGig(gig: {
+  gigStartTime: Date;
+  gigEndTime: Date | null;
+  ticketEvents: { doorsAt: Date | null; endsAt: Date | null }[];
+}) {
+  const event = gig.ticketEvents[0];
+  return {
+    startsAt: gig.gigStartTime,
+    doorsAt: event?.doorsAt ?? null,
+    endsAt: gig.gigEndTime ?? event?.endsAt ?? null,
+  };
+}
 export const tasksRouter = createTRPCRouter({
   access: adminProcedure.query(({ ctx }) => ({ userId: ctx.session.user.id })),
   list: adminProcedure
@@ -128,7 +152,7 @@ export const tasksRouter = createTRPCRouter({
       taskPeople(),
       ctx.db.gig.findMany({
         where: { gigStartTime: { gte: new Date(Date.now() - 7 * 86400_000) } },
-        select: { id: true, title: true, gigStartTime: true },
+        select: { id: true, title: true, ...gigTimes },
         orderBy: { gigStartTime: "asc" },
         take: 100,
       }),
@@ -151,10 +175,15 @@ export const tasksRouter = createTRPCRouter({
           to,
         ),
       })),
-      gigs,
-      playbooks: playbooks.map((book) => ({
+      gigs: gigs.map(({ id, title, ...times }) => ({
+        id,
+        title,
+        gigStartTime: times.gigStartTime,
+        times: playbookGig(times),
+      })),
+      playbooks: playbooks.map(({ items, ...book }) => ({
         ...book,
-        items: playbookSchema.parse(book.items),
+        ...storedPlaybookSchema.parse(items),
       })),
       settings,
     };
@@ -585,23 +614,18 @@ export const tasksRouter = createTRPCRouter({
       });
     }),
   createPlaybook: adminProcedure
-    .input(
-      z.object({
-        name: z.string().trim().min(1).max(100),
-        items: playbookSchema,
-      }),
-    )
-    .mutation(({ ctx, input }) => ctx.db.taskPlaybook.create({ data: input })),
+    .input(playbookInputSchema)
+    .mutation(({ ctx, input: { name, ...items } }) =>
+      ctx.db.taskPlaybook.create({ data: { name, items } }),
+    ),
   updatePlaybook: adminProcedure
-    .input(
-      idInput.extend({
-        name: z.string().trim().min(1).max(100),
-        items: playbookSchema,
-      }),
-    )
-    .mutation(({ ctx, input }) => {
-      const { id, ...data } = input;
-      return ctx.db.taskPlaybook.update({ where: { id }, data });
+    .input(z.object({ id: z.string().min(1), playbook: playbookInputSchema }))
+    .mutation(({ ctx, input: { id, playbook } }) => {
+      const { name, ...items } = playbook;
+      return ctx.db.taskPlaybook.update({
+        where: { id },
+        data: { name, items },
+      });
     }),
   deletePlaybook: adminProcedure
     .input(idInput)
@@ -614,20 +638,26 @@ export const tasksRouter = createTRPCRouter({
         playbookId: z.string(),
         gigId: z.string(),
         roles: z.record(z.string(), z.string()),
+        /** Save these picks as the playbook's usual people. */
+        remember: z.boolean().default(false),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const tasks = await taskTransaction(async (tx) => {
         const [book, gig] = await Promise.all([
           tx.taskPlaybook.findUnique({ where: { id: input.playbookId } }),
-          tx.gig.findUnique({ where: { id: input.gigId } }),
+          tx.gig.findUnique({
+            where: { id: input.gigId },
+            select: { id: true, ...gigTimes },
+          }),
         ]);
         if (!book || !gig)
           throw new TRPCError({
             code: "NOT_FOUND",
             message: "Playbook or gig not found",
           });
-        const items = playbookSchema.parse(book.items);
+        const playbook = storedPlaybookSchema.parse(book.items);
+        const items = playbook.tasks;
         for (const item of items) {
           if (
             !input.roles[item.role] ||
@@ -641,12 +671,12 @@ export const tasksRouter = createTRPCRouter({
           if (item.reviewerRole)
             await requireTaskPerson(tx, input.roles[item.reviewerRole]);
         }
+        const times = playbookGig(gig);
+        const dates = playbookDueDates(playbook, times);
         const ids = new Map(items.map((item) => [item.key, randomUUID()]));
         const rows = [];
         for (const item of items) {
-          const dueAt = new Date(
-            gig.gigStartTime.getTime() + item.offsetMinutes * 60_000,
-          );
+          const { dueAt } = dates.get(item.key)!;
           rows.push(
             await tx.task.create({
               data: {
@@ -660,10 +690,7 @@ export const tasksRouter = createTRPCRouter({
                   : null,
                 plannedDueAt: dueAt,
                 dueAt,
-                hardDeadlineAt: playbookHardDeadline(
-                  item.offsetMinutes,
-                  gig.gigStartTime,
-                ),
+                hardDeadlineAt: playbookHardDeadline(dueAt, times),
                 critical: item.critical,
                 source: "PLAYBOOK",
                 playbookItemId: `${book.id}:${item.key}`,
@@ -679,13 +706,26 @@ export const tasksRouter = createTRPCRouter({
             }),
           );
         }
-        const deps = playbookDependencies(items).map((dep) => ({
+        const deps = playbookDependencies(items, dates).map((dep) => ({
           ...dep,
           taskId: ids.get(dep.taskId)!,
           dependsOnId: ids.get(dep.dependsOnId)!,
         }));
         orderTasks(rows, deps);
         await tx.taskDependency.createMany({ data: deps });
+        if (input.remember)
+          await tx.taskPlaybook.update({
+            where: { id: book.id },
+            data: {
+              items: {
+                ...playbook,
+                roles: playbook.roles.map((role) => ({
+                  ...role,
+                  userId: input.roles[role.name] ?? role.userId,
+                })),
+              },
+            },
+          });
         return rows;
       });
       await notifyTasks(

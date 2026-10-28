@@ -2906,6 +2906,8 @@ model TaskCalendarFeed {
 model TaskPlaybook {
   id    String @id @default(cuid())
   name  String
+  /// `{ dueTime, roles, tasks }`, read through `storedPlaybookSchema`, which
+  /// also reads the bare task arrays saved before date rules.
   items Json
 
   @@map("task_playbook")
