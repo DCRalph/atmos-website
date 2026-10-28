@@ -88,17 +88,49 @@ anyone with the link can read that person's open tasks and assigned gigs.
 Replacing the link revokes the old URL. Removing admin access also invalidates
 it. Entries use projected dates, stable IDs, UTC timestamps, and two-hour alarms.
 
-Playbooks have their own tab on `/admin/tasks` (`?view=playbooks`). The editor
-is a table, one row per task, grouped by how far out it is: day from the gig
-(negative before, up to 30 days after for wrap-up), task, owner role, reviewer
-role, what it waits for, notes and a critical flag. Changes collect until Save.
-Starter playbooks (Club night, Headline show, On someone else's bill, Private
-party) live in `src/lib/tasks/starter-playbooks.ts` and are copied into the
-team's playbooks with one click. Applying one, from the playbook or a gig's
-Tasks tab, asks who fills each role and previews every task's date first,
-flagging any already past. It then creates the dates, dependencies, and hard
-deadlines at gig start for work before the gig; wrap-up after it has none.
-Existing tasks remain when a playbook is edited or removed.
+Playbooks have their own tab on `/admin/tasks` (`?view=playbooks`). Each task
+says when it's due as a rule counted from the gig (`playbookWhenSchema`):
+
+- **Days**: whole days or weeks before or after the gig's date. "Weekdays
+  only" moves a weekend date to the Friday before, or the Monday after for
+  wrap-up.
+- **Weekday**: "the Monday before", "the Wednesday after", "the Monday 3 weeks
+  before". Never the gig day itself, so on a Monday gig the Monday before is a
+  week earlier.
+- **Hours**: from the gig's start, doors or close, for gig-day work. Doors and
+  close come from the gig's ticketed event and end time, else the start.
+
+Days and weekday rules are due at the task's own time, else the playbook's
+(5pm on the starters), else the gig's start time. Everything is counted in NZ
+time, so a 5pm task stays at 5pm across daylight saving. `src/lib/tasks/playbooks.ts`
+turns a rule and a gig into a date, and the editor, the apply preview and
+applying all use it.
+
+The editor lays the playbook out on a real gig ("Dates shown for", defaulting
+to the first upcoming gig none of it has passed for, else a sample Saturday): a
+run-up calendar, Monday to Sunday, from the first task's week to the last.
+Dragging a task to another day keeps its kind of rule. The side panel edits the
+picked task, or the playbook's name and roles. A table view edits every task
+in its row. Changes collect until Save.
+
+Tasks belong to the playbook's roles. Each role has a name, who usually fills
+it and a line on what it covers. Renaming a role moves its tasks with it;
+renaming it to another role's name merges the two, and removing a role in use
+asks where its tasks go. Starter playbooks (Club night, Headline show, On
+someone else's bill, Private party) live in `src/lib/tasks/starter-playbooks.ts`
+and are copied into the team's playbooks with one click. Applying one, from the
+playbook or a gig's Tasks tab, starts with each role's usual person picked,
+previews every task's date and flags any already past. Changing the picks
+offers to make them the usual people. It then creates the dates, dependencies,
+and hard deadlines at gig start for work before the gig; wrap-up after it has
+none.
+
+Playbooks live as JSON in `task_playbook.items`: `{ dueTime, roles, tasks }`.
+Ones saved before date rules are a bare array of tasks counted in minutes from
+the gig's start; `storedPlaybookSchema` reads them as day counts (or hours) due
+at the gig's start time, so they apply as they always did, and saving one
+writes the new shape. Existing tasks remain when a playbook is edited or
+removed.
 
 ## Inbox and AI
 

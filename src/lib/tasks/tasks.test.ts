@@ -278,13 +278,18 @@ test("playbooks reject cyclic or unknown dependency keys", () => {
   const item = {
     key: "a",
     title: "A",
-    offsetMinutes: -100,
+    when: { kind: "days", days: -1 },
     role: "promo",
     dependsOn: ["b"],
   };
-  expect(playbookSchema.safeParse([item]).success).toBe(false);
+  const roles = [{ name: "promo" }];
+  expect(playbookSchema.safeParse({ roles, tasks: [item] }).success).toBe(
+    false,
+  );
   expect(
-    playbookSchema.safeParse([item, { ...item, key: "b", dependsOn: ["a"] }])
-      .success,
+    playbookSchema.safeParse({
+      roles,
+      tasks: [item, { ...item, key: "b", dependsOn: ["a"] }],
+    }).success,
   ).toBe(false);
 });

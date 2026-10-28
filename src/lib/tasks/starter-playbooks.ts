@@ -1,14 +1,44 @@
-import type { PlaybookItem } from "./playbooks";
+import type {
+  PlaybookItem,
+  PlaybookRole,
+  PlaybookWhen,
+  Weekday,
+} from "./playbooks";
 
 /**
  * Playbooks for the nights Atmos runs most, offered on the Playbooks tab.
  * Adding one copies it into the team's own playbooks, where it can be edited
- * like any other. They use four roles so applying one is four picks: lead
- * (bookings, money, sign-off), promo, design and production (the room, the
- * door, the run sheet).
+ * like any other. They share four roles so applying one is four picks, and
+ * their tasks are due at 5pm unless they say otherwise.
  */
 
-const days = (n: number) => n * 1440;
+const ROLES: PlaybookRole[] = [
+  { name: "lead", userId: null, note: "Bookings, money and sign-off" },
+  { name: "promo", userId: null, note: "Announcements, socials and tickets" },
+  { name: "design", userId: null, note: "Posters and artwork" },
+  {
+    name: "production",
+    userId: null,
+    note: "The room, the door and the run sheet",
+  },
+];
+
+/** Whole days from the gig. */
+const days = (days: number, weekdays?: true): PlaybookWhen =>
+  weekdays ? { kind: "days", days, weekdays } : { kind: "days", days };
+/** The weekday before the gig, `weeks` further out. */
+const before = (day: Weekday, weeks = 0): PlaybookWhen => ({
+  kind: "weekday",
+  day,
+  side: "before",
+  weeks,
+});
+const after = (day: Weekday, weeks = 0): PlaybookWhen => ({
+  kind: "weekday",
+  day,
+  side: "after",
+  weeks,
+});
 
 type Task = Omit<PlaybookItem, "critical" | "dependsOn"> &
   Partial<Pick<PlaybookItem, "critical" | "dependsOn">>;
@@ -16,7 +46,9 @@ type Task = Omit<PlaybookItem, "critical" | "dependsOn"> &
 export type StarterPlaybook = {
   name: string;
   description: string;
-  items: PlaybookItem[];
+  dueTime: string;
+  roles: PlaybookRole[];
+  tasks: PlaybookItem[];
 };
 
 const starter = (
@@ -26,11 +58,12 @@ const starter = (
 ): StarterPlaybook => ({
   name,
   description,
-  items: tasks.map((task) => ({
-    critical: false,
-    dependsOn: [],
-    ...task,
-  })),
+  dueTime: "17:00",
+  // Only the roles its tasks use.
+  roles: ROLES.filter((role) =>
+    tasks.some((task) => [task.role, task.reviewerRole].includes(role.name)),
+  ),
+  tasks: tasks.map((task) => ({ critical: false, dependsOn: [], ...task })),
 });
 
 export const STARTER_PLAYBOOKS: StarterPlaybook[] = [
@@ -38,7 +71,7 @@ export const STARTER_PLAYBOOKS: StarterPlaybook[] = [
     {
       key: "venue",
       title: "Confirm venue, date and hire",
-      offsetMinutes: days(-42),
+      when: days(-42),
       role: "lead",
       critical: true,
       notes: "Hire cost goes on the event's costs so break even is right.",
@@ -46,7 +79,7 @@ export const STARTER_PLAYBOOKS: StarterPlaybook[] = [
     {
       key: "lineup",
       title: "Lock the line-up and send offers",
-      offsetMinutes: days(-35),
+      when: days(-35),
       role: "lead",
       critical: true,
       dependsOn: ["venue"],
@@ -54,7 +87,7 @@ export const STARTER_PLAYBOOKS: StarterPlaybook[] = [
     {
       key: "poster",
       title: "Poster design",
-      offsetMinutes: days(-30),
+      when: before("mon", 3),
       role: "design",
       reviewerRole: "lead",
       dependsOn: ["lineup"],
@@ -64,7 +97,7 @@ export const STARTER_PLAYBOOKS: StarterPlaybook[] = [
     {
       key: "event",
       title: "Set up the ticketed event and tiers",
-      offsetMinutes: days(-28),
+      when: before("tue", 3),
       role: "promo",
       reviewerRole: "lead",
       dependsOn: ["lineup"],
@@ -74,28 +107,31 @@ export const STARTER_PLAYBOOKS: StarterPlaybook[] = [
     {
       key: "announce",
       title: "Announce the night",
-      offsetMinutes: days(-28),
+      when: before("wed", 3),
+      time: "18:00",
       role: "promo",
       dependsOn: ["poster", "event"],
     },
     {
       key: "print",
       title: "Print posters",
-      offsetMinutes: days(-21),
+      when: days(-21, true),
+      notes:
+        "Printers don't work weekends, so a weekend date moves to the Friday before.",
       role: "promo",
       dependsOn: ["poster"],
     },
     {
       key: "posters-up",
       title: "Put posters up around town",
-      offsetMinutes: days(-18),
+      when: before("thu", 2),
       role: "promo",
       dependsOn: ["print"],
     },
     {
       key: "door",
       title: "Book door staff and security",
-      offsetMinutes: days(-14),
+      when: before("mon", 1),
       role: "production",
       critical: true,
       notes: "Add them as door staff on the event so they can scan.",
@@ -103,40 +139,40 @@ export const STARTER_PLAYBOOKS: StarterPlaybook[] = [
     {
       key: "photographer",
       title: "Book a photographer",
-      offsetMinutes: days(-14),
+      when: days(-14),
       role: "production",
     },
     {
       key: "campaigns",
       title: "Set up campaigns and tagged links",
-      offsetMinutes: days(-10),
+      when: days(-10),
       role: "promo",
       dependsOn: ["announce"],
     },
     {
       key: "run-sheet",
       title: "Build the run sheet with set times",
-      offsetMinutes: days(-7),
+      when: before("mon"),
       role: "production",
       dependsOn: ["lineup"],
     },
     {
       key: "gear",
       title: "Confirm sound, lights and gear",
-      offsetMinutes: days(-7),
+      when: before("tue"),
       role: "production",
     },
     {
       key: "set-times",
       title: "Send artists set times and load-in",
-      offsetMinutes: days(-3),
+      when: before("wed"),
       role: "lead",
       dependsOn: ["run-sheet"],
     },
     {
       key: "cues",
       title: "Choose who hears cues",
-      offsetMinutes: days(-2),
+      when: days(-2),
       role: "production",
       dependsOn: ["run-sheet"],
       notes: "Check everyone on the list has the app, or they hear nothing.",
@@ -144,33 +180,35 @@ export const STARTER_PLAYBOOKS: StarterPlaybook[] = [
     {
       key: "final-push",
       title: "Final push on socials",
-      offsetMinutes: days(-1),
+      when: days(-1),
+      time: "12:00",
       role: "promo",
     },
     {
       key: "door-kit",
       title: "Door kit: float, wristbands, scanner charged",
-      offsetMinutes: 0,
+      when: { kind: "hours", hours: -2, from: "doors" },
       role: "production",
       critical: true,
     },
     {
       key: "door-totals",
       title: "Enter door totals",
-      offsetMinutes: days(1),
+      when: days(1),
+      time: "12:00",
       role: "production",
       notes: "Cash and EFTPOS taken off the platform, under the event's costs.",
     },
     {
       key: "photos",
       title: "Photos up and send the photos email",
-      offsetMinutes: days(2),
+      when: after("tue"),
       role: "promo",
     },
     {
       key: "settle",
       title: "Pay artists and settle the venue",
-      offsetMinutes: days(3),
+      when: after("wed"),
       role: "lead",
     },
   ]),
@@ -178,14 +216,14 @@ export const STARTER_PLAYBOOKS: StarterPlaybook[] = [
     {
       key: "venue",
       title: "Venue contract and deposit",
-      offsetMinutes: days(-70),
+      when: days(-70),
       role: "lead",
       critical: true,
     },
     {
       key: "headliner",
       title: "Book the headliner: fee, travel and rider",
-      offsetMinutes: days(-63),
+      when: days(-63),
       role: "lead",
       critical: true,
       dependsOn: ["venue"],
@@ -193,7 +231,7 @@ export const STARTER_PLAYBOOKS: StarterPlaybook[] = [
     {
       key: "licence",
       title: "Apply for a special licence",
-      offsetMinutes: days(-56),
+      when: days(-56),
       role: "production",
       critical: true,
       dependsOn: ["venue"],
@@ -202,14 +240,14 @@ export const STARTER_PLAYBOOKS: StarterPlaybook[] = [
     {
       key: "support",
       title: "Book support acts",
-      offsetMinutes: days(-49),
+      when: days(-49),
       role: "lead",
       dependsOn: ["headliner"],
     },
     {
       key: "artwork",
       title: "Poster and announcement artwork",
-      offsetMinutes: days(-45),
+      when: days(-45),
       role: "design",
       reviewerRole: "lead",
       dependsOn: ["headliner"],
@@ -217,7 +255,7 @@ export const STARTER_PLAYBOOKS: StarterPlaybook[] = [
     {
       key: "event",
       title: "Set up the event, tiers and early bird",
-      offsetMinutes: days(-42),
+      when: days(-42),
       role: "promo",
       reviewerRole: "lead",
       dependsOn: ["headliner"],
@@ -225,14 +263,14 @@ export const STARTER_PLAYBOOKS: StarterPlaybook[] = [
     {
       key: "announce",
       title: "Announce the headliner",
-      offsetMinutes: days(-42),
+      when: days(-42),
       role: "promo",
       dependsOn: ["artwork", "event"],
     },
     {
       key: "ads",
       title: "Plan the ad campaign and spend",
-      offsetMinutes: days(-35),
+      when: days(-35),
       role: "promo",
       dependsOn: ["announce"],
       notes: "One campaign per channel, so each shows what it cost and sold.",
@@ -240,100 +278,100 @@ export const STARTER_PLAYBOOKS: StarterPlaybook[] = [
     {
       key: "support-announce",
       title: "Announce support and release the next tier",
-      offsetMinutes: days(-28),
+      when: days(-28),
       role: "promo",
       dependsOn: ["support", "announce"],
     },
     {
       key: "merch",
       title: "Order merch",
-      offsetMinutes: days(-28),
+      when: days(-28),
       role: "lead",
     },
     {
       key: "security",
       title: "Book security, door staff and first aid",
-      offsetMinutes: days(-21),
+      when: days(-21),
       role: "production",
       critical: true,
     },
     {
       key: "travel",
       title: "Book headliner travel and accommodation",
-      offsetMinutes: days(-21),
+      when: days(-21),
       role: "lead",
       dependsOn: ["headliner"],
     },
     {
       key: "posters",
       title: "Print and put up posters",
-      offsetMinutes: days(-14),
+      when: days(-14),
       role: "promo",
       dependsOn: ["artwork"],
     },
     {
       key: "content",
       title: "Book a photographer and videographer",
-      offsetMinutes: days(-14),
+      when: days(-14),
       role: "production",
     },
     {
       key: "production",
       title: "Production plan: stage, sound, lights and backline",
-      offsetMinutes: days(-10),
+      when: days(-10),
       role: "production",
       dependsOn: ["headliner"],
     },
     {
       key: "run-sheet",
       title: "Run sheet with set times and cues",
-      offsetMinutes: days(-7),
+      when: before("mon", 1),
       role: "production",
       dependsOn: ["support"],
     },
     {
       key: "day-sheet",
       title: "Send artists their day sheet",
-      offsetMinutes: days(-5),
+      when: before("tue"),
       role: "lead",
       dependsOn: ["run-sheet", "travel"],
     },
     {
       key: "cues",
       title: "Choose who hears cues",
-      offsetMinutes: days(-2),
+      when: days(-2),
       role: "production",
       dependsOn: ["run-sheet"],
     },
     {
       key: "final-push",
       title: "Final push and capacity check",
-      offsetMinutes: days(-1),
+      when: days(-1),
       role: "promo",
     },
     {
       key: "door-kit",
       title: "Door kit and float",
-      offsetMinutes: 0,
+      when: days(0),
       role: "production",
       critical: true,
     },
     {
       key: "door-totals",
       title: "Enter door totals and final costs",
-      offsetMinutes: days(1),
+      when: days(1),
       role: "production",
     },
     {
       key: "photos",
       title: "Photos up and send the photos email",
-      offsetMinutes: days(2),
+      when: days(2),
       role: "promo",
     },
     {
       key: "settle",
       title: "Settle artists, venue and suppliers",
-      offsetMinutes: days(4),
+      when: after("wed"),
       role: "lead",
     },
   ]),
@@ -341,14 +379,14 @@ export const STARTER_PLAYBOOKS: StarterPlaybook[] = [
     {
       key: "confirm",
       title: "Confirm set time, fee and gear",
-      offsetMinutes: days(-21),
+      when: days(-21),
       role: "lead",
       critical: true,
     },
     {
       key: "listing",
       title: "Add the gig to the site as affiliated",
-      offsetMinutes: days(-14),
+      when: days(-14),
       role: "promo",
       dependsOn: ["confirm"],
       notes: "Their ticket link goes on the gig, there is no event of ours.",
@@ -356,27 +394,27 @@ export const STARTER_PLAYBOOKS: StarterPlaybook[] = [
     {
       key: "share",
       title: "Share their poster and tag the line-up",
-      offsetMinutes: days(-14),
+      when: days(-14),
       role: "promo",
       dependsOn: ["confirm"],
     },
     {
       key: "load-in",
       title: "Confirm load-in and what we bring",
-      offsetMinutes: days(-3),
+      when: days(-3),
       role: "production",
       dependsOn: ["confirm"],
     },
     {
       key: "story",
       title: "Post a story the day before",
-      offsetMinutes: days(-1),
+      when: days(-1),
       role: "promo",
     },
     {
       key: "thanks",
       title: "Post photos and a thank you",
-      offsetMinutes: days(2),
+      when: days(2),
       role: "promo",
     },
   ]),
@@ -384,14 +422,14 @@ export const STARTER_PLAYBOOKS: StarterPlaybook[] = [
     {
       key: "venue",
       title: "Confirm venue and numbers",
-      offsetMinutes: days(-21),
+      when: days(-21),
       role: "lead",
       critical: true,
     },
     {
       key: "event",
       title: "Set up a private event with a guest list tier",
-      offsetMinutes: days(-18),
+      when: days(-18),
       role: "promo",
       reviewerRole: "lead",
       dependsOn: ["venue"],
@@ -401,35 +439,35 @@ export const STARTER_PLAYBOOKS: StarterPlaybook[] = [
     {
       key: "invites",
       title: "Send the invite link to the guest list",
-      offsetMinutes: days(-14),
+      when: days(-14),
       role: "promo",
       dependsOn: ["event"],
     },
     {
       key: "approvals",
       title: "Approve guest list requests",
-      offsetMinutes: days(-7),
+      when: days(-7),
       role: "lead",
       dependsOn: ["invites"],
     },
     {
       key: "run-sheet",
       title: "Run sheet and who's on the door",
-      offsetMinutes: days(-7),
+      when: days(-7),
       role: "production",
       dependsOn: ["venue"],
     },
     {
       key: "door",
       title: "Check the door list and brief staff",
-      offsetMinutes: days(-1),
+      when: days(-1),
       role: "production",
       dependsOn: ["approvals", "run-sheet"],
     },
     {
       key: "thanks",
       title: "Thank you and photos",
-      offsetMinutes: days(2),
+      when: days(2),
       role: "promo",
     },
   ]),
