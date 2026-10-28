@@ -309,10 +309,15 @@ export function playbookHardDeadline(dueAt: Date, gig: PlaybookGig) {
   return dueAt.getTime() <= gig.startsAt.getTime() ? gig.startsAt : null;
 }
 
+/** The most a playbook dependency asks for after the task it waits on. */
+const MAX_GAP_MINUTES = 1440;
+
 /**
- * A playbook's dependencies between its own keys, each with the gap their
- * dates imply for this gig, so a task that waits on another keeps the same
- * distance from it when the first one slips.
+ * A playbook's dependencies between its own keys. The gap is the time the
+ * later task needs once the earlier one is done: the spacing their dates imply
+ * for this gig, but never more than a day. The full spacing would make every
+ * slip push everything after it by the same amount, even work weeks away with
+ * plenty of room.
  */
 export function playbookDependencies(
   tasks: readonly Pick<PlaybookTask, "key" | "dependsOn">[],
@@ -323,7 +328,10 @@ export function playbookDependencies(
     task.dependsOn.map((key) => ({
       taskId: task.key,
       dependsOnId: key,
-      gapMinutes: Math.max(0, Math.round((at(task.key) - at(key)) / 60_000)),
+      gapMinutes: Math.min(
+        MAX_GAP_MINUTES,
+        Math.max(0, Math.round((at(task.key) - at(key)) / 60_000)),
+      ),
     })),
   );
 }
