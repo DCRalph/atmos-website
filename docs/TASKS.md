@@ -142,7 +142,9 @@ playbook or a gig's Tasks tab, starts with each role's usual person picked,
 previews every task's date and flags any already past. Changing the picks
 offers to make them the usual people. It then creates the dates, dependencies,
 and hard deadlines at gig start for work before the gig; wrap-up after it has
-none.
+none. Each dependency's gap is the spacing between the two tasks' dates, capped
+at a day: a late task gives the next one up to a day after it, without pushing
+work weeks away that still has room.
 
 Playbooks live as JSON in `task_playbook.items`: `{ dueTime, roles, tasks }`.
 Ones saved before date rules are a bare array of tasks counted in minutes from

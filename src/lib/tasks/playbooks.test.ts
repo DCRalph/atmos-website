@@ -241,12 +241,15 @@ describe("playbook plan", () => {
       expect(row.projectedAt.getTime()).toBe(row.dueAt.getTime());
   });
 
-  test("applied a week out, work behind a late task moves to where the schedule puts it", () => {
+  test("applied a week out, work behind a late task gets a day after it, not the whole spacing", () => {
     const plan = playbookPlan(playbook, saturday, nzDate("2026-12-05", 17));
     const lineup = at(plan, "lineup");
     expect(nz(lineup.dueAt)).toBe("2026-11-07 17:00");
-    // It keeps its week after the venue, counted from now: gig day.
-    expect(nz(lineup.projectedAt)).toBe("2026-12-12 17:00");
+    // A day after the late venue, counted from now, rather than its week.
+    expect(nz(lineup.projectedAt)).toBe("2026-12-06 17:00");
+    // The run sheet waits on the line-up but is due days later, so it stays.
+    const runSheet = at(plan, "run-sheet");
+    expect(runSheet.projectedAt.getTime()).toBe(runSheet.dueAt.getTime());
     // The venue waits on nothing, so it stays put, just late.
     expect(at(plan, "venue").projectedAt.getTime()).toBe(
       at(plan, "venue").dueAt.getTime(),
