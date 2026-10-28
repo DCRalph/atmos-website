@@ -166,3 +166,24 @@ export const taskSettingsSchema = z.object({
   roundsEnabled: z.boolean().default(false),
   nagVoice: z.boolean().default(false),
 });
+/**
+ * One change across many tasks from the list. Everyone can reassign, move due
+ * dates, flag critical, cancel or delete. Setting a status outright, and
+ * moving the agreed date with the due date, are superadmin only.
+ */
+export const bulkTaskActionSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("assign"), assigneeId: z.string().min(1) }),
+  z.object({
+    kind: z.literal("shift"),
+    days: z.number().int().min(-90).max(90),
+    /** Move the agreed date by the same amount, so standings don't count it late. */
+    agreed: z.boolean().default(false),
+  }),
+  z.object({ kind: z.literal("critical"), critical: z.boolean() }),
+  z.object({ kind: z.literal("cancel") }),
+  z.object({ kind: z.literal("delete") }),
+  z.object({
+    kind: z.literal("status"),
+    status: z.enum(["TODO", "IN_PROGRESS", "DONE"]),
+  }),
+]);

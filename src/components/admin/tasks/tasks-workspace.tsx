@@ -30,6 +30,8 @@ import { TaskForm } from "./task-form";
 import { PasteChat, TaskSettings, TaskStandings } from "./task-tools";
 import { PlaybooksView } from "./playbooks";
 import { useLocalStorage } from "~/hooks/use-local-storage";
+import { Checkbox } from "~/components/ui/checkbox";
+import { TaskBulkBar } from "./task-bulk-bar";
 const VIEWS = [
   "calendar",
   "list",
@@ -129,6 +131,34 @@ export function TasksWorkspace() {
   const visible = openTasks.filter(
     (t) => !cellTasks || cellTasks.includes(t.id),
   );
+  // Picked in the list for a bulk change. Only what's still listed counts.
+  const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
+  const selection = visible.filter((t) => picked.has(t.id));
+  const pick = (ids: readonly string[], on: boolean) =>
+    setPicked((current) => {
+      const next = new Set(current);
+      for (const id of ids) {
+        if (on) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
+  /** A checkbox that picks every task in `rows`, half-ticked when some are. */
+  const pickAll = (rows: readonly TaskRow[], label: string) => {
+    const on = rows.filter((t) => picked.has(t.id)).length;
+    return (
+      <Checkbox
+        aria-label={label}
+        checked={on === 0 ? false : on === rows.length ? true : "indeterminate"}
+        onCheckedChange={(checked) =>
+          pick(
+            rows.map((t) => t.id),
+            checked === true,
+          )
+        }
+      />
+    );
+  };
   const groups = [
     ...new Set(
       visible.map((t) =>
@@ -151,6 +181,18 @@ export function TasksWorkspace() {
     groups.sort((a, b) => groupOrder.indexOf(a) - groupOrder.indexOf(b));
   else groups.sort((a, b) => a.localeCompare(b));
   const columns: DataTableColumn<TaskRow>[] = [
+    {
+      id: "pick",
+      header: "",
+      className: "w-10",
+      cell: (t) => (
+        <Checkbox
+          aria-label={`Select ${t.title}`}
+          checked={picked.has(t.id)}
+          onCheckedChange={(checked) => pick([t.id], checked === true)}
+        />
+      ),
+    },
     {
       id: "title",
       header: "Task",
@@ -476,25 +518,49 @@ export function TasksWorkspace() {
                   Clear day selection
                 </Button>
               ) : null}
+              {visible.length ? (
+                <label className="flex items-center gap-2 text-sm">
+                  {pickAll(visible, "Select every task in the list")}
+                  Select all
+                </label>
+              ) : null}
             </div>
-            {groups.map((group) => (
-              <div key={group}>
-                <h2 className="mb-2 text-sm font-semibold">{group}</h2>
-                <DataTable
-                  data={visible.filter(
-                    (t) =>
-                      (groupBy === "person"
-                        ? (t.assignee?.name ?? "Unassigned")
-                        : taskGroup(t)) === group,
-                  )}
-                  columns={columns}
-                  getRowId={(t) => t.id}
-                  onRowClick={(t) => open(t.id)}
-                  enableSearch={false}
-                  enablePagination={false}
-                />
-              </div>
-            ))}
+            {selection.length ? (
+              <TaskBulkBar
+                tasks={selection}
+                people={options.data?.people ?? []}
+                superadmin={!!options.data?.superadmin}
+                onDone={(failed) => setPicked(new Set(failed))}
+                onClear={() => setPicked(new Set())}
+              />
+            ) : null}
+            {groups.map((group) => {
+              const rows = visible.filter(
+                (t) =>
+                  (groupBy === "person"
+                    ? (t.assignee?.name ?? "Unassigned")
+                    : taskGroup(t)) === group,
+              );
+              return (
+                <div key={group}>
+                  <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                    {pickAll(rows, `Select every task in ${group}`)}
+                    {group}
+                    <span className="text-muted-foreground font-normal">
+                      {rows.length}
+                    </span>
+                  </h2>
+                  <DataTable
+                    data={rows}
+                    columns={columns}
+                    getRowId={(t) => t.id}
+                    onRowClick={(t) => open(t.id)}
+                    enableSearch={false}
+                    enablePagination={false}
+                  />
+                </div>
+              );
+            })}
             {!groups.length ? (
               <p className="text-muted-foreground py-8 text-sm">
                 No tasks in this view. Add a task or apply a playbook to a gig.

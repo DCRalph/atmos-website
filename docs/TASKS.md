@@ -34,6 +34,16 @@ Each override is recorded in the timeline as "Superadmin override". The task
 drawer has the controls, and the Tasks alert strip and the dashboard queue have
 **Mark done** beside **Take it**.
 
+The List view picks tasks for a bulk change (`tasks.bulk`): reassign, move due
+dates by days (keeping each task's time of day), flag or unflag critical,
+cancel, or delete. Superadmins also get **Mark done**, To do and In progress
+outright, and can move the agreed date with the due date. Each task goes
+through the same mutation as a one-off change, so the rules, timeline and
+activity log are unchanged; a task the change can't apply to is reported back
+and stays picked. Edits that don't move a date aren't held to the hard
+deadline, so a task a superadmin pushed past it can still be reassigned.
+Pushes are bundled: each person hears once about the lot.
+
 `plannedDueAt` records the agreed commitment. `dueAt` changes only through a
 mutation. A pure topological projection moves downstream dates while an upstream
 task remains late. Completing it or reporting a delay commits shifts and sends

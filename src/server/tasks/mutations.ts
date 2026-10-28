@@ -2,11 +2,17 @@ import "server-only";
 import { TRPCError } from "@trpc/server";
 import type { z } from "zod";
 import { Prisma, type TaskSource } from "~Prisma/client";
-import { type taskFields } from "~/lib/tasks/input";
+import { type bulkTaskActionSchema, type taskFields } from "~/lib/tasks/input";
 import { isOpen, transitionFor, type TaskStatus } from "~/lib/tasks/status";
 import { downstreamIds, projectSchedule } from "~/lib/tasks/schedule";
 import { wasFlagged } from "~/lib/tasks/standings";
-import { formatTaskDate } from "~/lib/tasks/time";
+import {
+  addDays,
+  dayKey,
+  formatTaskDate,
+  nzDate,
+  nzParts,
+} from "~/lib/tasks/time";
 import {
   taskTransaction,
   requireTask,
@@ -14,8 +20,18 @@ import {
   taskSettings,
   type TaskDatabase,
 } from "./data";
-import { notifyTasks, type TaskNotice } from "./notifications";
+import { bundleNotices, notifyTasks, type TaskNotice } from "./notifications";
 import { logActivity } from "~/server/utils/activity-log";
+import { db } from "~/server/db";
+
+/**
+ * Takes a mutation's notices instead of sending them, so a bulk change can
+ * send each person one push for the lot.
+ */
+type Collect = (
+  notices: TaskNotice[],
+  userIds: (string | null | undefined)[],
+) => Promise<void>;
 
 export async function commitShifts(
   tx: TaskDatabase,
@@ -229,7 +245,10 @@ export async function updateTask(
   id: string,
   input: Partial<z.output<typeof taskFields>> & { plannedDueAt?: Date },
   actorId: string,
-  { superadmin = false }: { superadmin?: boolean } = {},
+  {
+    superadmin = false,
+    collect,
+  }: { superadmin?: boolean; collect?: Collect } = {},
 ) {
   const result = await taskTransaction(async (tx) => {
     const task = await requireTask(tx, id);
@@ -263,7 +282,13 @@ export async function updateTask(
           : task.hardDeadlineAt
         : input.hardDeadlineAt;
     const due = input.dueAt ?? task.dueAt;
-    if (!superadmin && deadline && due > deadline)
+    // Only edits that move a date are held to the deadline, so a task a
+    // superadmin pushed past it can still be reassigned or flagged.
+    const moves =
+      input.dueAt !== undefined ||
+      input.hardDeadlineAt !== undefined ||
+      input.gigId !== undefined;
+    if (!superadmin && moves && deadline && due > deadline)
       throw new TRPCError({
         code: "BAD_REQUEST",
         message: "The due date cannot be past the hard deadline",
@@ -354,7 +379,7 @@ export async function updateTask(
     action: `Updated task: ${result.updated.title}`,
     details: { taskId: id },
   });
-  await notifyTasks(result.notices, result.userIds);
+  await (collect ?? notifyTasks)(result.notices, result.userIds);
   return result.updated;
 }
 /**
@@ -373,7 +398,7 @@ export async function setTaskStatus(
     tx: TaskDatabase,
     task: Awaited<ReturnType<typeof requireTask>>,
   ) => Promise<void>,
-  { override = false }: { override?: boolean } = {},
+  { override = false, collect }: { override?: boolean; collect?: Collect } = {},
 ) {
   const result = await taskTransaction(async (tx) => {
     const task = await requireTask(tx, id);
@@ -498,7 +523,7 @@ export async function setTaskStatus(
     action: `${result.updated.title}: ${status}`,
     details: { taskId: id },
   });
-  await notifyTasks(result.notices, result.userIds);
+  await (collect ?? notifyTasks)(result.notices, result.userIds);
   return result.updated;
 }
 export async function reportTaskDelay(
@@ -653,4 +678,129 @@ export async function takeTask(id: string, actorId: string) {
     [result.previous, actorId],
   );
   return result.updated;
+}
+
+/** Deletes a task. Its owner's live activity refreshes; nobody gets a push. */
+export async function deleteTask(
+  id: string,
+  actorId: string,
+  { collect }: { collect?: Collect } = {},
+) {
+  const task = await taskTransaction(async (tx) => {
+    const task = await requireTask(tx, id);
+    await tx.task.delete({ where: { id } });
+    return task;
+  });
+  await logActivity({
+    type: "TASK_DELETED",
+    userId: actorId,
+    action: `Deleted task: ${task.title}`,
+    details: {
+      taskId: task.id,
+      assigneeId: task.assigneeId,
+      onBehalf: task.createdById !== actorId,
+    },
+  });
+  await (collect ?? notifyTasks)([], [task.assigneeId]);
+  return { deleted: true };
+}
+
+/** A date moved by whole days in NZ, keeping its time of day. */
+function shiftDays(date: Date, days: number) {
+  const { hour, minute } = nzParts(date);
+  return nzDate(addDays(dayKey(date), days), hour, minute);
+}
+
+/**
+ * One action across many tasks, each by the same rules as doing it to one
+ * task, with the same timeline and activity log. A task that can't take it
+ * is reported back rather than stopping the rest. Each person then hears once
+ * about the lot, not once per task.
+ */
+export async function bulkTasks(
+  ids: readonly string[],
+  action: z.output<typeof bulkTaskActionSchema>,
+  actorId: string,
+  { superadmin = false }: { superadmin?: boolean } = {},
+) {
+  const notices: TaskNotice[] = [];
+  const live: (string | null | undefined)[] = [];
+  const collect: Collect = async (more, userIds) => {
+    notices.push(...more);
+    live.push(...userIds);
+  };
+  const failed: { id: string; title: string; message: string }[] = [];
+  let changed = 0;
+  for (const id of new Set(ids)) {
+    try {
+      switch (action.kind) {
+        case "assign":
+          await updateTask(id, { assigneeId: action.assigneeId }, actorId, {
+            superadmin,
+            collect,
+          });
+          break;
+        case "shift": {
+          const task = await requireTask(db, id);
+          await updateTask(
+            id,
+            {
+              dueAt: shiftDays(task.dueAt, action.days),
+              ...(action.agreed
+                ? { plannedDueAt: shiftDays(task.plannedDueAt, action.days) }
+                : {}),
+            },
+            actorId,
+            { superadmin, collect },
+          );
+          break;
+        }
+        case "critical":
+          await updateTask(id, { critical: action.critical }, actorId, {
+            superadmin,
+            collect,
+          });
+          break;
+        case "cancel":
+          await setTaskStatus(
+            id,
+            "CANCELLED",
+            actorId,
+            undefined,
+            undefined,
+            undefined,
+            { collect },
+          );
+          break;
+        case "status":
+          await setTaskStatus(
+            id,
+            action.status,
+            actorId,
+            undefined,
+            undefined,
+            undefined,
+            { override: true, collect },
+          );
+          break;
+        case "delete":
+          await deleteTask(id, actorId, { collect });
+          break;
+      }
+      changed++;
+    } catch (error) {
+      const task = await db.task.findUnique({
+        where: { id },
+        select: { title: true },
+      });
+      failed.push({
+        id,
+        title: task?.title ?? "A task",
+        message:
+          error instanceof TRPCError ? error.message : "Something went wrong",
+      });
+    }
+  }
+  await notifyTasks(bundleNotices(notices), live);
+  return { changed, failed };
 }

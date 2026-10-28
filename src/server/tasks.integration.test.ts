@@ -4,6 +4,7 @@ import { createHmac } from "node:crypto";
 import type { createTRPCContext } from "./api/trpc";
 import type { publish } from "./notify";
 import type { sendPush } from "./push";
+import { addDays, dayKey, nzParts } from "~/lib/tasks/time";
 
 // Opt in with a disposable, schema-initialised database. Never fall back to .env.
 const testUrl = process.env.TASKS_TEST_DATABASE_URL;
@@ -239,6 +240,144 @@ if (testUrl) {
         event.body?.startsWith("Superadmin override: agreed date moved"),
       ),
     );
+  }, 60_000);
+  test("bulk changes follow each task's rules, report what failed, and push once per person", async () => {
+    await db.task.deleteMany();
+    for (const [id, name, permission] of [
+      ["task-test-a", "Ana", "ADMIN"],
+      ["task-test-b", "Ben", "SUPERADMIN"],
+      ["task-test-c", "Cat", "ADMIN"],
+    ] as const) {
+      await db.user.upsert({
+        where: { id },
+        create: {
+          id,
+          name,
+          email: `${id}@example.test`,
+          emailVerified: true,
+          permissions: { create: { permission } },
+        },
+        update: { permissions: { deleteMany: {}, create: { permission } } },
+      });
+    }
+    const ana = caller("task-test-a", "Ana"),
+      ben = caller("task-test-b", "Ben");
+    const day = 86400_000;
+    const due = new Date(Date.now() + 3 * day);
+    const loose = await ana.create({
+      title: "Book a photographer",
+      assigneeId: "task-test-a",
+      dueAt: due,
+    });
+    const tight = await ana.create({
+      title: "Door kit",
+      assigneeId: "task-test-a",
+      dueAt: due,
+      hardDeadlineAt: new Date(due.getTime() + day),
+    });
+    const waiting = await ana.create({
+      title: "Send set times",
+      assigneeId: "task-test-a",
+      dueAt: due,
+      dependsOnId: loose.id,
+    });
+    const ids = [loose.id, tight.id, waiting.id];
+
+    // Three reassigned to Cat: Cat and Ana hear once each, not three times.
+    pushes.length = 0;
+    assert.deepEqual(
+      await ana.bulk({
+        ids,
+        action: { kind: "assign", assigneeId: "task-test-c" },
+      }),
+      { changed: 3, failed: [] },
+    );
+    const heard = (id: string) =>
+      pushes.filter(
+        (push) =>
+          push.audience.kind === "users" && push.audience.userIds.includes(id),
+      );
+    assert.equal(heard("task-test-c").length, 1);
+    assert.equal(heard("task-test-c")[0]!.title, "3 tasks updated");
+    assert.equal(heard("task-test-a").length, 1);
+
+    // Two days later is past the door kit's hard deadline: that one is
+    // reported, the rest move, keeping their time of day.
+    const shifted = await ana.bulk({ ids, action: { kind: "shift", days: 2 } });
+    assert.equal(shifted.changed, 2);
+    assert.deepEqual(
+      shifted.failed.map(({ title, message }) => [title, message]),
+      [["Door kit", "The due date cannot be past the hard deadline"]],
+    );
+    const after = await db.task.findMany({ where: { id: { in: ids } } });
+    const byId = new Map(after.map((task) => [task.id, task]));
+    const moved = byId.get(loose.id)!.dueAt;
+    assert.equal(dayKey(moved), addDays(dayKey(due), 2));
+    assert.deepEqual(
+      [nzParts(moved).hour, nzParts(moved).minute],
+      [nzParts(due).hour, nzParts(due).minute],
+    );
+    assert.equal(byId.get(tight.id)!.dueAt.getTime(), due.getTime());
+
+    // Setting a status outright and moving the agreed date are superadmin only.
+    await assert.rejects(
+      ana.bulk({ ids, action: { kind: "status", status: "DONE" } }),
+      /Only a superadmin/,
+    );
+    await assert.rejects(
+      ana.bulk({ ids, action: { kind: "shift", days: 2, agreed: true } }),
+      /Only a superadmin/,
+    );
+    const agreed = await ben.bulk({
+      ids: [tight.id],
+      action: { kind: "shift", days: 2, agreed: true },
+    });
+    assert.deepEqual(agreed, { changed: 1, failed: [] });
+    const door = await db.task.findUniqueOrThrow({ where: { id: tight.id } });
+    assert.equal(door.plannedDueAt.getTime(), door.dueAt.getTime());
+    assert(door.dueAt > door.hardDeadlineAt!);
+
+    // A superadmin finishes work still waiting on another task; admins cancel,
+    // flag and delete.
+    assert.deepEqual(
+      await ben.bulk({
+        ids: [waiting.id],
+        action: { kind: "status", status: "DONE" },
+      }),
+      { changed: 1, failed: [] },
+    );
+    assert.equal(
+      (await db.task.findUniqueOrThrow({ where: { id: waiting.id } })).status,
+      "DONE",
+    );
+    // Past its deadline now, but flagging it doesn't move a date.
+    assert.deepEqual(
+      await ana.bulk({
+        ids: [tight.id],
+        action: { kind: "critical", critical: true },
+      }),
+      { changed: 1, failed: [] },
+    );
+    assert.equal(
+      (await db.task.findUniqueOrThrow({ where: { id: tight.id } })).critical,
+      true,
+    );
+    await ana.bulk({ ids: [tight.id], action: { kind: "cancel" } });
+    assert.equal(
+      (await db.task.findUniqueOrThrow({ where: { id: tight.id } })).status,
+      "CANCELLED",
+    );
+    assert.deepEqual(
+      await ana.bulk({
+        ids: [loose.id, "missing"],
+        action: { kind: "delete" },
+      }),
+      {
+        changed: 1,
+        failed: [{ id: "missing", title: "A task", message: "Task not found" }],
+      },
+    );
+    assert.equal(await db.task.count({ where: { id: loose.id } }), 0);
   }, 60_000);
   test("admin gates, transactional graph changes, reminder reservations and inbox dedupe", async () => {
     try {
