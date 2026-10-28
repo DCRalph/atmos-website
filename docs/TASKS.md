@@ -25,6 +25,15 @@ both without restarting it. A reviewer must approve submitted work. Submission
 stops the owner's clock, while dependencies resolve only at DONE. Required proof
 must still be an existing, completed image upload scoped to that task.
 
+Superadmins can step outside those rules (`tasks.override`, superadmin only).
+They can set any task to To do, In progress, Done or Cancelled outright. Done
+skips the review, unfinished dependencies and proof, and nobody has to take the
+task first; the owner stays the owner. They can also save a due date past the
+hard deadline, change the reviewer during review, and move the agreed date.
+Each override is recorded in the timeline as "Superadmin override". The task
+drawer has the controls, and the Tasks alert strip and the dashboard queue have
+**Mark done** beside **Take it**.
+
 `plannedDueAt` records the agreed commitment. `dueAt` changes only through a
 mutation. A pure topological projection moves downstream dates while an upstream
 task remains late. Completing it or reporting a delay commits shifts and sends

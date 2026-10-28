@@ -221,10 +221,15 @@ export async function acceptTaskProposals(
   );
   return tasks;
 }
+/**
+ * Edits a task. A superadmin is not held to the hard deadline or to keeping
+ * the reviewer during review, and may move the agreed date.
+ */
 export async function updateTask(
   id: string,
-  input: Partial<z.output<typeof taskFields>>,
+  input: Partial<z.output<typeof taskFields>> & { plannedDueAt?: Date },
   actorId: string,
+  { superadmin = false }: { superadmin?: boolean } = {},
 ) {
   const result = await taskTransaction(async (tx) => {
     const task = await requireTask(tx, id);
@@ -236,6 +241,7 @@ export async function updateTask(
         message: "Active tasks need an owner",
       });
     if (
+      !superadmin &&
       input.reviewerId !== undefined &&
       input.reviewerId !== task.reviewerId &&
       task.status === "IN_REVIEW"
@@ -257,7 +263,7 @@ export async function updateTask(
           : task.hardDeadlineAt
         : input.hardDeadlineAt;
     const due = input.dueAt ?? task.dueAt;
-    if (deadline && due > deadline)
+    if (!superadmin && deadline && due > deadline)
       throw new TRPCError({
         code: "BAD_REQUEST",
         message: "The due date cannot be past the hard deadline",
@@ -300,6 +306,19 @@ export async function updateTask(
         userIds: [task.assigneeId, input.assigneeId, task.createdById],
       });
     }
+    if (
+      input.plannedDueAt &&
+      input.plannedDueAt.getTime() !== task.plannedDueAt.getTime()
+    )
+      await tx.taskEvent.create({
+        data: {
+          taskId: id,
+          actorId,
+          kind: "COMMENT",
+          body: `Superadmin override: agreed date moved from ${formatTaskDate(task.plannedDueAt)} to ${formatTaskDate(input.plannedDueAt)}`,
+          onBehalf: task.assigneeId !== actorId,
+        },
+      });
     let shifts = {
       notices: [] as TaskNotice[],
       userIds: [] as (string | null)[],
@@ -338,6 +357,12 @@ export async function updateTask(
   await notifyTasks(result.notices, result.userIds);
   return result.updated;
 }
+/**
+ * Moves a task to a new status, by the transition table and its checks.
+ * `override` is a superadmin setting the status outright: no transition
+ * table, no review step, no waiting on dependencies and no proof. The owner
+ * stays the owner, and the timeline records it as an override.
+ */
 export async function setTaskStatus(
   id: string,
   status: TaskStatus,
@@ -348,17 +373,20 @@ export async function setTaskStatus(
     tx: TaskDatabase,
     task: Awaited<ReturnType<typeof requireTask>>,
   ) => Promise<void>,
+  { override = false }: { override?: boolean } = {},
 ) {
   const result = await taskTransaction(async (tx) => {
     const task = await requireTask(tx, id);
     await validate?.(tx, task);
-    const rule = transitionFor(task.status, status, !!task.reviewerId);
-    if (!rule)
+    const rule = override
+      ? null
+      : transitionFor(task.status, status, !!task.reviewerId);
+    if (!override && !rule)
       throw new TRPCError({
         code: "BAD_REQUEST",
         message: "That status transition is not available",
       });
-    if (rule.reason && !body?.trim())
+    if (rule?.reason && !body?.trim())
       throw new TRPCError({
         code: "BAD_REQUEST",
         message: "Explain why before changing this status",
@@ -369,7 +397,7 @@ export async function setTaskStatus(
         code: "BAD_REQUEST",
         message: "Choose a future check-back time",
       });
-    if (status === "DONE" || status === "IN_REVIEW") {
+    if (!override && (status === "DONE" || status === "IN_REVIEW")) {
       const pending = await tx.taskDependency.count({
         where: { taskId: id, dependsOn: { status: { not: "DONE" } } },
       });
@@ -397,16 +425,19 @@ export async function setTaskStatus(
         });
     }
     const target =
-      rule.who === "reviewer"
+      rule?.who === "reviewer"
         ? task.reviewerId
-        : rule.who === "assignee"
+        : rule?.who === "assignee" || override
           ? task.assigneeId
           : actorId;
     const submitted =
       status === "IN_REVIEW" ||
       (status === "DONE" && task.status !== "IN_REVIEW");
     const reopened =
-      status === "IN_PROGRESS" && ["DONE", "IN_REVIEW"].includes(task.status);
+      (status === "IN_PROGRESS" || status === "TODO") &&
+      ["DONE", "IN_REVIEW", "CANCELLED"].includes(task.status);
+    if (override)
+      body = ["Superadmin override", body?.trim()].filter(Boolean).join(": ");
     const updated = await tx.task.update({
       where: { id },
       data: {

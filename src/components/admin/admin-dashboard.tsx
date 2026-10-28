@@ -105,6 +105,7 @@ export function AdminDashboard() {
             <NeedsYou
               needs={data.needs}
               now={now}
+              superadmin={data.superadmin}
               onOpenTask={setTaskId}
               className={cn(tab !== "needs" && "max-lg:hidden")}
             />

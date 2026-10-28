@@ -58,6 +58,9 @@ export function TaskForm({
   const [hard, setHard] = useState<Date | undefined>(
     task?.hardDeadlineAt ?? undefined,
   );
+  // Only a superadmin may rewrite what was agreed.
+  const superadmin = options.data?.superadmin ?? false;
+  const [agreed, setAgreed] = useState(task?.plannedDueAt);
   const [critical, setCritical] = useState(task?.critical ?? false);
   const [proof, setProof] = useState(task?.proofRequired ?? false);
   const originalAutomation = automationSchema.safeParse(task?.automation);
@@ -108,7 +111,16 @@ export function TaskForm({
           proofRequired: proof,
           automation: parsed.success ? parsed.data : null,
         };
-        if (task) update.mutate({ id: task.id, ...data });
+        if (task)
+          update.mutate({
+            id: task.id,
+            ...data,
+            ...(superadmin &&
+            agreed &&
+            agreed.getTime() !== task.plannedDueAt.getTime()
+              ? { plannedDueAt: agreed }
+              : {}),
+          });
         else create.mutate(data);
       }}
     >
@@ -183,6 +195,20 @@ export function TaskForm({
       <TaskField label="Hard deadline · Auckland time">
         <TaskDatePicker date={hard} onChange={setHard} clearable />
       </TaskField>
+      {task && superadmin ? (
+        <TaskField label="Agreed date · superadmin only">
+          <TaskDatePicker
+            date={agreed}
+            onChange={(d) => {
+              if (d) setAgreed(d);
+            }}
+          />
+          <span className="text-muted-foreground text-xs font-normal">
+            What was first agreed. Standings judge on time against it.
+            Superadmins can also save a due date past the hard deadline.
+          </span>
+        </TaskField>
+      ) : null}
       {task && date.getTime() !== task.dueAt.getTime() ? (
         <TaskImpact id={task.id} dueAt={date} />
       ) : null}

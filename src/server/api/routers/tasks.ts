@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { randomBytes, randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, adminProcedure } from "~/server/api/trpc";
+import {
+  createTRPCRouter,
+  adminProcedure,
+  superadminProcedure,
+} from "~/server/api/trpc";
+import { userHasPermission } from "~/server/utils/permissions";
 import {
   readTasks,
   taskAlerts,
@@ -135,6 +140,8 @@ export const tasksRouter = createTRPCRouter({
     const to = nzDate(addDays(dayKey(from), 7));
     return {
       userId: ctx.session.user.id,
+      /** Superadmins get the override controls: done without review, any status, past the guards. */
+      superadmin: userHasPermission(ctx.user, "SUPERADMIN"),
       people: people.map((person) => ({
         ...person,
         load: taskLoad(
@@ -170,11 +177,19 @@ export const tasksRouter = createTRPCRouter({
         // Zod 4 applies inner defaults even inside optional fields. Partial edits must preserve flags.
         critical: z.boolean().optional(),
         proofRequired: z.boolean().optional(),
+        /** The agreed date. Superadmins only. */
+        plannedDueAt: z.date().optional(),
       }),
     )
     .mutation(({ ctx, input }) => {
       const { id, ...fields } = input;
-      return updateTask(id, fields, ctx.session.user.id);
+      const superadmin = userHasPermission(ctx.user, "SUPERADMIN");
+      if (fields.plannedDueAt && !superadmin)
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only a superadmin can move the agreed date",
+        });
+      return updateTask(id, fields, ctx.session.user.id, { superadmin });
     }),
   assign: adminProcedure
     .input(idInput.extend({ assigneeId: z.string().min(1) }))
@@ -200,6 +215,29 @@ export const tasksRouter = createTRPCRouter({
         ctx.session.user.id,
         input.body,
         input.checkBackAt,
+      ),
+    ),
+  /**
+   * A superadmin setting a task's status outright, past the usual flow:
+   * done without review, waiting dependencies or proof, or reopened from
+   * done or cancelled. The owner stays the owner.
+   */
+  override: superadminProcedure
+    .input(
+      idInput.extend({
+        status: z.enum(["TODO", "IN_PROGRESS", "DONE", "CANCELLED"]),
+        body: reason.optional(),
+      }),
+    )
+    .mutation(({ ctx, input }) =>
+      setTaskStatus(
+        input.id,
+        input.status,
+        ctx.session.user.id,
+        input.body,
+        undefined,
+        undefined,
+        { override: true },
       ),
     ),
   reportDelay: adminProcedure

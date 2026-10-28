@@ -94,6 +94,14 @@ export function TasksWorkspace() {
     },
     onError: (e) => toast.error(e.message),
   });
+  // Superadmins finish an alert outright instead of taking it on.
+  const markDone = api.tasks.override.useMutation({
+    onSuccess: () => {
+      toast.success("Marked done");
+      void utils.tasks.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
   const load = api.tasks.load.useQuery(
     {
       from: nzDate(week ? startOfWeek(day) : `${day.slice(0, 7)}-01`),
@@ -229,18 +237,32 @@ export function TasksWorkspace() {
                     {t.blockedReason ? ` · ${t.blockedReason}` : ""}
                   </span>
                 </button>
-                {t.status !== "IN_REVIEW" &&
-                t.assigneeId !== options.data?.userId &&
-                !t.waiting ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={take.isPending}
-                    onClick={() => take.mutate({ id: t.id })}
-                  >
-                    Take it
-                  </Button>
-                ) : null}
+                <div className="flex gap-2">
+                  {t.status !== "IN_REVIEW" &&
+                  t.assigneeId !== options.data?.userId &&
+                  !t.waiting ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={take.isPending}
+                      onClick={() => take.mutate({ id: t.id })}
+                    >
+                      Take it
+                    </Button>
+                  ) : null}
+                  {options.data?.superadmin ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={markDone.isPending}
+                      onClick={() =>
+                        markDone.mutate({ id: t.id, status: "DONE" })
+                      }
+                    >
+                      Mark done
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             ))}
           </section>
