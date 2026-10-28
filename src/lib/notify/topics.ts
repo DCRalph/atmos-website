@@ -51,6 +51,21 @@ export const KNOWN_TOPICS = [
 ] as const satisfies readonly KnownTopic[];
 
 /**
+ * What a send to named people or devices is logged under, so it sits in the
+ * same history as everything else. Not a topic anything subscribes to.
+ */
+export const DIRECT_TOPIC = "direct";
+
+/**
+ * What a handset shows as the title when a notification has none: the topic's
+ * label, or the app's name for a direct send.
+ */
+export function fallbackTitle(topic: string): string {
+  if (topic === DIRECT_TOPIC) return "Atmos";
+  return KNOWN_TOPICS.find((known) => known.name === topic)?.label ?? topic;
+}
+
+/**
  * The topics a device starts out subscribed to, from the permissions of
  * whoever is signed in on it.
  *
@@ -86,7 +101,10 @@ export function defaultTopicsFor(
  * what it was about rather than who heard it.
  */
 export const PUBLISH_SOURCES = {
-  api: { label: "API", description: "Sent through /api/notify" },
+  api: {
+    label: "API",
+    description: "Sent with an API key, through /api/v1 or /api/notify",
+  },
   admin: { label: "Compose", description: "Written in the admin or the app" },
   "run-sheet": {
     label: "Run sheet",

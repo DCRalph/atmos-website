@@ -179,7 +179,9 @@ export function NotificationsManager() {
       header: "Sender",
       cell: (row) => (
         <span className="text-muted-foreground">
-          {row.sender?.name ?? <span className="font-mono">api</span>}
+          {row.sender?.name ?? row.apiKey?.name ?? (
+            <span className="font-mono">api</span>
+          )}
         </span>
       ),
     },

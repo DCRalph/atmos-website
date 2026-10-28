@@ -7,6 +7,7 @@ import {
   Bot,
   Calendar,
   ChartColumn,
+  Code,
   ListChecks,
   FileText,
   FolderOpen,
@@ -37,6 +38,11 @@ export type AdminNavigationItem = {
   url: string;
   icon: LucideIcon;
   keywords?: string[];
+  /**
+   * Hidden from everyone else. Not the protection, just tidiness: the page
+   * and its tRPC router check SUPERADMIN themselves.
+   */
+  superadminOnly?: boolean;
 };
 
 export type AdminNavigationGroup = {
@@ -287,6 +293,14 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         keywords: ["apple", "passkit", "pkpass", "ios", "ticket"],
       },
       {
+        title: "Developer",
+        description: "API keys, and the reference for the notifications API",
+        url: "/admin/developer",
+        icon: Code,
+        keywords: ["api", "keys", "tokens", "integrations", "docs"],
+        superadminOnly: true,
+      },
+      {
         title: "Activity logs",
         description: "Every administrative action, and who took it",
         url: "/admin/activity-logs",
@@ -303,7 +317,3 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
     ],
   },
 ];
-
-export const adminNavigationItems = adminNavigationGroups.flatMap(
-  (group) => group.items,
-);

@@ -2,15 +2,16 @@ import "server-only";
 
 import { db } from "~/server/db";
 import { countAudience, sendPush, type Audience } from "~/server/push";
-import { KNOWN_TOPICS, type PublishSource } from "~/lib/notify/topics";
+import { fallbackTitle, type PublishSource } from "~/lib/notify/topics";
+import type { Prisma } from "~Prisma/client";
 import type { PublishInput } from "~/lib/notify/ntfy-request";
 
 /**
  * Publishing a notification to a topic.
  *
  * The one place a notification is turned into pushes, shared by the ntfy
- * endpoint, the admin compose page and the app's compose screen — so all three
- * enforce the same limits and leave the same audit row.
+ * endpoint, the developer API, the admin compose page and the app's compose
+ * screen — so all of them enforce the same limits and leave the same audit row.
  *
  * ntfy semantics are kept where they are cheap and dropped where they are not:
  * publishing to a topic nobody is subscribed to succeeds with `devices: 0`
@@ -48,6 +49,10 @@ export async function publish(
     /** Defaults to everyone subscribed to `input.topic`. */
     audience?: Audience;
     categoryId?: string;
+    /** The developer API key that sent it. */
+    apiKeyId?: string;
+    /** For a direct send, what it was addressed to, kept for the history. */
+    recipients?: Prisma.InputJsonValue;
   },
 ): Promise<PublishedMessage> {
   const audience: Audience = origin.audience ?? {
@@ -60,7 +65,7 @@ export async function publish(
     audience,
     // A notification with no title is nearly unreadable on a lock screen, so
     // the topic names itself rather than leaving the app name to do it.
-    title: input.title ?? topicLabel(input.topic),
+    title: input.title ?? fallbackTitle(input.topic),
     body: input.message,
     data: notificationData(input),
     // 1 and 2 are ntfy's "do not interrupt me" tiers.
@@ -79,6 +84,8 @@ export async function publish(
       click: input.click ?? null,
       source: origin.source,
       senderId: origin.senderId ?? null,
+      apiKeyId: origin.apiKeyId ?? null,
+      recipients: origin.recipients,
       devices,
       delivered: sent,
     },
@@ -109,8 +116,4 @@ function notificationData(input: PublishInput): Record<string, string> {
   if (input.click) data.url = input.click;
   if (input.tags.length > 0) data.tags = input.tags.join(",");
   return data;
-}
-
-function topicLabel(topic: string): string {
-  return KNOWN_TOPICS.find((known) => known.name === topic)?.label ?? topic;
 }

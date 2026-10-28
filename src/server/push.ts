@@ -64,6 +64,8 @@ export type Audience =
    * switch.
    */
   | { kind: "users"; userIds: string[]; channel?: PushChannel }
+  /** Particular handsets, by `DeviceToken.id`. Operational, like `users`. */
+  | { kind: "devices"; deviceIds: string[] }
   | { kind: "topic"; topic: string };
 
 /**
@@ -207,6 +209,8 @@ function audienceFilter(audience: Audience): Prisma.DeviceTokenWhereInput {
         userId: { in: audience.userIds },
         ...(audience.channel ? { [audience.channel]: true } : {}),
       };
+    case "devices":
+      return { id: { in: audience.deviceIds } };
     case "topic":
       return { topics: { has: audience.topic } };
     case "everyone":

@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "~/components/ui/button";
 
-/** Copies a link, and says so for two seconds. */
+/** Copies a value, and says so for two seconds. */
 export function CopyButton({
   value,
   label = "Copy",
@@ -24,7 +24,7 @@ export function CopyButton({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("Couldn't copy. Select the link and copy it manually.");
+      toast.error("Couldn't copy. Select it and copy it manually.");
     }
   }
 

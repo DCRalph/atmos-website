@@ -189,11 +189,71 @@ model NotifyMessage {
   devices   Int @default(0)
   delivered Int @default(0)
 
+  /// The API key that sent it. Null for the compose screens, the site's own
+  /// sends, and the legacy `NOTIFY_TOKEN`.
+  apiKeyId String?
+  apiKey   ApiKey? @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+  /// For a direct send, what it was addressed to as given:
+  /// `{ "users": [...] }` or `{ "devices": [...] }`. Null for a topic send.
+  recipients Json?
+
   createdAt DateTime @default(now())
 
   @@index([topic, createdAt])
   @@index([senderId])
+  @@index([apiKeyId])
   @@map("notify_message")
+}
+
+/// An API key, as better-auth's api-key plugin stores it. The field names are
+/// the plugin's own. Keys are created and managed only from /admin/developer
+/// by a superadmin; see `docs/DEVELOPER-API.md`.
+model ApiKey {
+  id       String  @id
+  configId String  @default("default")
+  name     String?
+  /// The first characters of the key, `atmos_k3Qx`, so a key sitting in some
+  /// config file can be matched to its row.
+  start    String?
+  prefix   String?
+  /// SHA-256 of the key. The key itself is never stored.
+  key      String
+
+  /// The superadmin who created it. No foreign key on purpose: a key belongs
+  /// to the site and keeps working after its creator's account is gone.
+  referenceId String
+
+  /// Scopes as JSON, `{ "notifications": ["topic", ...] }`. See
+  /// `~/lib/developer/scopes`.
+  permissions String?
+  metadata    String?
+
+  enabled     Boolean   @default(true)
+  expiresAt   DateTime?
+  /// When it last authenticated a request: "last used" in the admin.
+  lastRequest DateTime?
+
+  /// The plugin's rate limit window. Set from the plugin config, not per key.
+  rateLimitEnabled    Boolean @default(true)
+  rateLimitTimeWindow Int?
+  rateLimitMax        Int?
+  requestCount        Int     @default(0)
+
+  /// Usage caps and refills. The plugin supports them; nothing here sets them.
+  remaining      Int?
+  refillInterval Int?
+  refillAmount   Int?
+  lastRefillAt   DateTime?
+
+  notifyMessages NotifyMessage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([configId])
+  @@index([referenceId])
+  @@index([key])
+  @@map("apikey")
 }
 
 model UserPermissionAssignment {
@@ -1325,6 +1385,9 @@ enum ActivityType {
   TASK_STATUS_CHANGED
   TASK_DELAY_REPORTED
   TASK_TAKEN
+  API_KEY_CREATED
+  API_KEY_UPDATED
+  API_KEY_DELETED
 }
 
 model ActivityLog {

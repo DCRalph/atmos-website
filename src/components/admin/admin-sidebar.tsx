@@ -17,10 +17,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "~/components/ui/sidebar";
-import {
-  adminNavigationGroups,
-  adminNavigationItems,
-} from "./admin-navigation";
+import { useAdminNavigation } from "./use-admin-navigation";
 
 export function DashboardSideBar() {
   const pathname = usePathname();
@@ -28,7 +25,8 @@ export function DashboardSideBar() {
   // On mobile the sidebar is a sheet over the page, so it has to be dismissed
   // when a link is tapped or it covers the page it just navigated to.
   const closeOnMobile = () => setOpenMobile(false);
-  const activeItem = adminNavigationItems
+  const { groups, items } = useAdminNavigation();
+  const activeItem = items
     .filter((item) =>
       item.url === "/admin"
         ? pathname === item.url
@@ -64,7 +62,7 @@ export function DashboardSideBar() {
       </SidebarHeader>
 
       <SidebarContent className="no-scrollbar gap-0 overflow-x-hidden py-2 group-data-[collapsible=icon]:overflow-auto group-data-[collapsible=icon]:overflow-x-hidden">
-        {adminNavigationGroups.map((group) => (
+        {groups.map((group) => (
           <SidebarGroup key={group.title} className="py-1">
             <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
             <SidebarGroupContent>

@@ -3,15 +3,17 @@
 import { useState } from "react";
 import Link from "next/link";
 import { formatDistanceToNowStrict } from "date-fns";
+import { z } from "zod";
 import { ChevronRight, Loader2, Search } from "lucide-react";
 
 import { api, type RouterOutputs } from "~/trpc/react";
 import { useDebouncedValue } from "~/hooks/use-debounced-value";
 import { formatDateTime } from "~/lib/date-utils";
 import {
+  DIRECT_TOPIC,
+  fallbackTitle,
   isPriority,
   isPublishSource,
-  KNOWN_TOPICS,
   PRIORITY_LABELS,
   PUBLISH_SOURCES,
   type PublishSource,
@@ -45,19 +47,29 @@ const SOURCE_OPTIONS = Object.entries(PUBLISH_SOURCES).map(
   ([value, { label }]) => ({ value: value as PublishSource, label }),
 );
 
-export function NotificationHistory() {
+/** `initialApiKeyId` opens it filtered to one key, from the Developer page. */
+export function NotificationHistory({
+  initialApiKeyId,
+}: {
+  initialApiKeyId?: string;
+}) {
   const [topic, setTopic] = useState<string | null>(null);
   const [source, setSource] = useState<PublishSource | null>(null);
+  const [apiKeyId, setApiKeyId] = useState<string | null>(
+    initialApiKeyId ?? null,
+  );
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search).trim();
   const [open, setOpen] = useState<SentNotification | null>(null);
 
   const topics = api.notify.historyTopics.useQuery();
+  const keys = api.notify.historyKeys.useQuery();
   const history = api.notify.history.useInfiniteQuery(
     {
       limit: 50,
       topic: topic ?? undefined,
       source: source ?? undefined,
+      apiKeyId: apiKeyId ?? undefined,
       search: debouncedSearch || undefined,
     },
     { getNextPageParam: (page) => page.nextCursor },
@@ -65,7 +77,7 @@ export function NotificationHistory() {
 
   const rows = history.data?.pages.flatMap((page) => page.messages) ?? [];
   const total = history.data?.pages[0]?.total;
-  const filtered = Boolean(topic ?? source ?? debouncedSearch);
+  const filtered = Boolean(topic ?? source ?? apiKeyId ?? debouncedSearch);
 
   const columns: DataTableColumn<SentNotification>[] = [
     {
@@ -141,10 +153,13 @@ export function NotificationHistory() {
   return (
     <div className="space-y-4">
       <ListFilters
-        activeCount={[topic, source, debouncedSearch].filter(Boolean).length}
+        activeCount={
+          [topic, source, apiKeyId, debouncedSearch].filter(Boolean).length
+        }
         onClear={() => {
           setTopic(null);
           setSource(null);
+          setApiKeyId(null);
           setSearch("");
         }}
         summary={
@@ -184,6 +199,18 @@ export function NotificationHistory() {
           options={SOURCE_OPTIONS}
           anyLabel="All sources"
         />
+        {(keys.data?.length ?? 0) > 0 || apiKeyId ? (
+          <FilterSelect
+            label="API key"
+            value={apiKeyId}
+            onChange={setApiKeyId}
+            options={(keys.data ?? []).map((key) => ({
+              value: key.id,
+              label: `${key.name ?? "Unnamed key"} (${key._count.notifyMessages})`,
+            }))}
+            anyLabel="All API keys"
+          />
+        ) : null}
       </ListFilters>
 
       <DataTable
@@ -269,7 +296,8 @@ function NotificationDetail({ row }: { row: SentNotification }) {
         </p>
         {!row.title && (
           <p className="text-muted-foreground -mt-2 text-xs">
-            Sent without a title, so handsets showed the topic name instead.
+            Sent without a title, so handsets showed{" "}
+            {row.topic === DIRECT_TOPIC ? "“Atmos”" : "the topic name"} instead.
           </p>
         )}
 
@@ -313,6 +341,12 @@ function NotificationDetail({ row }: { row: SentNotification }) {
             }
           />
           <DetailRow label="Source" value={source?.label ?? row.source} />
+          {row.recipients !== null && (
+            <DetailRow
+              label="Sent to"
+              value={<RecipientIds recipients={row.recipients} />}
+            />
+          )}
           <DetailRow
             label="Sent by"
             value={
@@ -369,20 +403,49 @@ function DeliveryCount({ row }: { row: SentNotification }) {
 
 /** What the lock screen said: a blank title falls back to the topic's name. */
 function displayTitle(row: SentNotification): string {
-  return (
-    row.title ??
-    KNOWN_TOPICS.find((known) => known.name === row.topic)?.label ??
-    row.topic
-  );
+  return row.title ?? fallbackTitle(row.topic);
 }
 
 function sourceLabel(source: string): string {
   return isPublishSource(source) ? PUBLISH_SOURCES[source].label : source;
 }
 
-/** A person, or what sent it when nobody did. */
+/**
+ * What a direct send was addressed to, as the API was given it. Ids rather
+ * than names: the row records the request, and staff can change.
+ */
+function RecipientIds({
+  recipients,
+}: {
+  recipients: SentNotification["recipients"];
+}) {
+  const parsed = directRecipients.safeParse(recipients);
+  if (!parsed.success) return "Unknown";
+
+  const target = parsed.data;
+  const people = "users" in target;
+  const ids = "users" in target ? target.users : target.devices;
+  const one = ids.length === 1;
+  return (
+    <span className="text-right">
+      {ids.length}{" "}
+      {people ? (one ? "person" : "people") : one ? "device" : "devices"}
+      <span className="text-muted-foreground block font-mono text-xs break-all">
+        {ids.join(", ")}
+      </span>
+    </span>
+  );
+}
+
+const directRecipients = z.union([
+  z.object({ users: z.array(z.string()) }),
+  z.object({ devices: z.array(z.string()) }),
+]);
+
+/** A person, an API key, or what sent it when nobody did. */
 function senderLabel(row: SentNotification): string {
   if (row.sender) return row.sender.name;
+  if (row.apiKey) return row.apiKey.name ?? "Unnamed key";
   if (row.source === "api") return "API key";
   if (row.source === "admin") return "Deleted user";
   return "Automatic";

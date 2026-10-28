@@ -117,13 +117,16 @@ export enum ActivityType {
   TASK_STATUS_CHANGED = "TASK_STATUS_CHANGED",
   TASK_DELAY_REPORTED = "TASK_DELAY_REPORTED",
   TASK_TAKEN = "TASK_TAKEN",
+  API_KEY_CREATED = "API_KEY_CREATED",
+  API_KEY_UPDATED = "API_KEY_UPDATED",
+  API_KEY_DELETED = "API_KEY_DELETED",
 }
 
 /** Every member, for filter dropdowns. */
 export const ACTIVITY_TYPE_VALUES = Object.values(ActivityType);
 
 /** Words that should keep their casing when a member name is turned into a label. */
-const KEEP_UPPERCASE = new Set(["ID", "GST", "AAA"]);
+const KEEP_UPPERCASE = new Set(["ID", "GST", "AAA", "API"]);
 
 /**
  * "TICKET_SCAN_OVERRIDE" -> "Ticket scan override".

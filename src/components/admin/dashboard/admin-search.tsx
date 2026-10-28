@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { Input } from "~/components/ui/input";
-import { adminNavigationItems } from "~/components/admin/admin-navigation";
+import { useAdminNavigation } from "~/components/admin/use-admin-navigation";
 
 /**
  * Jump to any admin section by name. `/` focuses it from anywhere on the
@@ -16,6 +16,7 @@ export function AdminSearch() {
   const input = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const normalised = query.trim().toLowerCase();
+  const { items } = useAdminNavigation();
 
   useEffect(() => {
     const focusSearch = (event: KeyboardEvent) => {
@@ -35,7 +36,7 @@ export function AdminSearch() {
   const matches = useMemo(
     () =>
       normalised
-        ? adminNavigationItems
+        ? items
             .filter((item) => item.url !== "/admin")
             .filter((item) =>
               [item.title, item.description, ...(item.keywords ?? [])]
@@ -45,7 +46,7 @@ export function AdminSearch() {
             )
             .slice(0, 8)
         : [],
-    [normalised],
+    [items, normalised],
   );
 
   return (
