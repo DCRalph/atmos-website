@@ -2,7 +2,7 @@ import "server-only";
 
 import { db } from "~/server/db";
 import { countAudience, sendPush, type Audience } from "~/server/push";
-import { KNOWN_TOPICS } from "~/lib/notify/topics";
+import { KNOWN_TOPICS, type PublishSource } from "~/lib/notify/topics";
 import type { PublishInput } from "~/lib/notify/ntfy-request";
 
 /**
@@ -39,9 +39,6 @@ export type PublishedMessage = {
   /** Atmos extension: devices subscribed, and pushes Expo accepted. */
   delivery: { devices: number; delivered: number };
 };
-
-export type PublishSource =
-  "api" | "admin" | "run-sheet" | "tasks" | "ticketing";
 
 export async function publish(
   input: PublishInput,

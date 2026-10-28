@@ -78,11 +78,53 @@ export function defaultTopicsFor(
   return [...topics];
 }
 
+/**
+ * Where a notification came from, as logged on `NotifyMessage.source`.
+ *
+ * `api` and `admin` go to whoever is subscribed to the topic. The rest pick
+ * their own people and only log under a topic, so for those the topic says
+ * what it was about rather than who heard it.
+ */
+export const PUBLISH_SOURCES = {
+  api: { label: "API", description: "Sent through /api/notify" },
+  admin: { label: "Compose", description: "Written in the admin or the app" },
+  "run-sheet": {
+    label: "Run sheet",
+    description: "A cue, to the people picked for that gig",
+  },
+  tasks: {
+    label: "Tasks",
+    description: "A task reminder, to the task's people",
+  },
+  ticketing: {
+    label: "Ticketing",
+    description: "A sales alert, to the people who asked for it",
+  },
+} as const satisfies Record<string, { label: string; description: string }>;
+
+export type PublishSource = keyof typeof PUBLISH_SOURCES;
+
+export function isPublishSource(value: string): value is PublishSource {
+  return Object.hasOwn(PUBLISH_SOURCES, value);
+}
+
 /** ntfy priorities, lowest to highest. 3 is the default. */
 export const PRIORITIES = [1, 2, 3, 4, 5] as const;
 export type NotifyPriority = (typeof PRIORITIES)[number];
 
 export const DEFAULT_PRIORITY = 3 satisfies NotifyPriority;
+
+/** What each priority is called, and what it does on a handset. */
+export const PRIORITY_LABELS: Record<
+  NotifyPriority,
+  { name: string; effect: string }
+> = {
+  1: { name: "Min", effect: "Silent" },
+  2: { name: "Low", effect: "Silent" },
+  3: { name: "Normal", effect: "Sound" },
+  4: { name: "High", effect: "Sound, arrives immediately" },
+  5: { name: "Max", effect: "Sound, arrives immediately" },
+};
 
 export function isPriority(value: number): value is NotifyPriority {
   return PRIORITIES.some((priority) => priority === value);

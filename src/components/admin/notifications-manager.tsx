@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { formatDistanceToNowStrict } from "date-fns";
 import { toast } from "sonner";
 
@@ -9,6 +10,7 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -19,7 +21,15 @@ import { Label } from "~/components/ui/label";
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { DataTable, type DataTableColumn } from "~/components/data-table";
-import { DEFAULT_PRIORITY, type NotifyPriority } from "~/lib/notify/topics";
+import {
+  NotificationDialog,
+  type SentNotification,
+} from "~/components/admin/notification-history";
+import {
+  DEFAULT_PRIORITY,
+  PRIORITY_LABELS,
+  type NotifyPriority,
+} from "~/lib/notify/topics";
 
 /**
  * Sending a team notification.
@@ -35,17 +45,6 @@ import { DEFAULT_PRIORITY, type NotifyPriority } from "~/lib/notify/topics";
  * column), which saves a separate device-management page.
  */
 
-const PRIORITY_LABELS: Record<
-  NotifyPriority,
-  { name: string; effect: string }
-> = {
-  1: { name: "Min", effect: "Silent" },
-  2: { name: "Low", effect: "Silent" },
-  3: { name: "Normal", effect: "Sound" },
-  4: { name: "High", effect: "Sound, arrives immediately" },
-  5: { name: "Max", effect: "Sound, arrives immediately" },
-};
-
 export function NotificationsManager() {
   const [topic, setTopic] = useState("team");
   const [title, setTitle] = useState("");
@@ -54,7 +53,8 @@ export function NotificationsManager() {
 
   const topics = api.notify.topics.useQuery();
   const audience = api.notify.audience.useQuery({ topic });
-  const recent = api.notify.recent.useQuery({ limit: 10 });
+  const recent = api.notify.history.useQuery({ limit: 10 });
+  const [openSent, setOpenSent] = useState<SentNotification | null>(null);
 
   const send = api.notify.send.useMutation({
     onSuccess: (sent) => {
@@ -142,9 +142,8 @@ export function NotificationsManager() {
     },
   ];
 
-  const sentRows = recent.data ?? [];
-  type SentRow = (typeof sentRows)[number];
-  const sentColumns: DataTableColumn<SentRow>[] = [
+  const sentRows = recent.data?.messages ?? [];
+  const sentColumns: DataTableColumn<SentNotification>[] = [
     {
       id: "sent",
       header: "Sent",
@@ -359,19 +358,31 @@ export function NotificationsManager() {
         <Card>
           <CardHeader>
             <CardTitle>Recently sent</CardTitle>
-            <CardDescription>The last 10 notifications</CardDescription>
+            <CardDescription>
+              The last 10. Open one to see everything that was sent
+            </CardDescription>
+            <CardAction>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/admin/notifications/history">Full history</Link>
+              </Button>
+            </CardAction>
           </CardHeader>
           <CardContent>
             <DataTable
               columns={sentColumns}
               data={sentRows}
               getRowId={(row) => row.id}
+              onRowClick={setOpenSent}
               isLoading={recent.isLoading}
               storageKey="admin-notify-recent"
               emptyMessage="Nothing sent yet"
             />
           </CardContent>
         </Card>
+        <NotificationDialog
+          notification={openSent}
+          onClose={() => setOpenSent(null)}
+        />
       </div>
     </div>
   );

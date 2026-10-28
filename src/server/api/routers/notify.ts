@@ -9,6 +9,7 @@ import {
 import { publish } from "~/server/notify";
 import {
   DEFAULT_PRIORITY,
+  isPublishSource,
   isValidTopic,
   KNOWN_TOPICS,
   PRIORITIES,
@@ -73,16 +74,69 @@ export const notifyRouter = createTRPCRouter({
     return [...known, ...extra];
   }),
 
-  /** What has gone out lately, newest first. */
-  recent: eventOrganiserProcedure
-    .input(z.object({ limit: z.number().int().min(1).max(100).default(20) }))
+  /**
+   * Everything the site has sent, newest first, a page at a time.
+   *
+   * Backs both the compose screen's short list and the history page. Filters
+   * are the questions people ask of it: what went to this topic, what did the
+   * run sheet send, did anyone tell the team about the fire alarm.
+   */
+  history: eventOrganiserProcedure
+    .input(
+      z.object({
+        limit: z.number().int().min(1).max(100).default(50),
+        cursor: z.string().optional(),
+        topic: topic.optional(),
+        source: z.string().refine(isPublishSource).optional(),
+        search: z.string().trim().max(200).optional(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
-      return ctx.db.notifyMessage.findMany({
-        orderBy: { createdAt: "desc" },
-        take: input.limit,
-        include: { sender: { select: { id: true, name: true } } },
-      });
+      const where = {
+        topic: input.topic,
+        source: input.source,
+        ...(input.search && {
+          OR: [
+            { title: { contains: input.search, mode: "insensitive" as const } },
+            {
+              message: { contains: input.search, mode: "insensitive" as const },
+            },
+          ],
+        }),
+      };
+
+      const [rows, total] = await Promise.all([
+        ctx.db.notifyMessage.findMany({
+          where,
+          // id breaks ties, so two sends in the same millisecond page stably.
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: input.limit + 1,
+          cursor: input.cursor ? { id: input.cursor } : undefined,
+          include: {
+            sender: { select: { id: true, name: true } },
+          },
+        }),
+        ctx.db.notifyMessage.count({ where }),
+      ]);
+
+      // The extra row is the first of the next page: Prisma's cursor is
+      // inclusive.
+      const next = rows.length > input.limit ? rows.pop() : undefined;
+      return { messages: rows, total, nextCursor: next?.id };
     }),
+
+  /** Every topic anything has been logged under, busiest first, for filtering. */
+  historyTopics: eventOrganiserProcedure.query(async ({ ctx }) => {
+    const groups = await ctx.db.notifyMessage.groupBy({
+      by: ["topic"],
+      _count: { _all: true },
+      orderBy: { _count: { topic: "desc" } },
+    });
+    return groups.map((group) => ({
+      topic: group.topic,
+      count: group._count._all,
+    }));
+  }),
 
   send: eventOrganiserProcedure
     .input(publishInput)
