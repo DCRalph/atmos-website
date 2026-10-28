@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { db } from "~/server/db";
 import type { Prisma } from "~Prisma/client";
 import { projectSchedule } from "~/lib/tasks/schedule";
+import { explainRisk } from "~/lib/tasks/risk";
 import { isOpen } from "~/lib/tasks/status";
 import { taskSettingsSchema } from "~/lib/tasks/input";
 import { userHasPermission } from "~/server/utils/permissions";
@@ -73,6 +74,10 @@ export async function readTasks(client: TaskDatabase = db, now = new Date()) {
     now,
   );
   const byId = new Map(rows.map((task) => [task.id, task]));
+  // What `explainRisk` follows back to say why a task is at risk.
+  const scheduled = new Map(
+    rows.map((task) => [task.id, { ...task, ...projected.get(task.id)! }]),
+  );
   return rows.map((task) => {
     const state = projected.get(task.id)!;
     const assignee =
@@ -103,6 +108,10 @@ export async function readTasks(client: TaskDatabase = db, now = new Date()) {
     return {
       ...task,
       ...state,
+      /** Why it's at risk, in words, or null when it isn't. */
+      risk: state.atRisk
+        ? explainRisk(scheduled.get(task.id)!, scheduled, now)
+        : null,
       actionableAt: state.waiting
         ? null
         : new Date(

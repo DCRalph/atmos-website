@@ -95,6 +95,7 @@ export function GigTasks({ gigId }: { gigId: string }) {
             </span>
             <span className="text-muted-foreground">
               {formatTaskDate(t.projectedDueAt)} · {taskFlag(t)}
+              {t.risk ? ` · ${t.risk.short}` : null}
             </span>
           </button>
         ))

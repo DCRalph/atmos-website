@@ -41,7 +41,9 @@ function reminderCopy(
   if (step === "at-risk")
     return {
       title: "Task deadline at risk",
-      body: `${task.title} needs ${task.shortMinutes} more minutes before its hard deadline.`,
+      body: task.risk
+        ? `${task.title}: ${task.risk.detail}`
+        : `${task.title} needs ${task.shortMinutes} more minutes before its hard deadline.`,
     };
   if (task.overdue)
     return {

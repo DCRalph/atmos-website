@@ -51,7 +51,8 @@ export function TasksWorkspace() {
       const linked = search.get("view");
       return linked && VIEWS.includes(linked) ? linked : "calendar";
     }),
-    [week, setWeek] = useState(true),
+    // The calendar opens on the month; Week is one click away.
+    [week, setWeek] = useState(false),
     [day, setDay] = useState(dayKey(new Date())),
     [person, setPerson] = useState(""),
     [gig, setGig] = useState(search.get("gig") ?? ""),
@@ -223,7 +224,21 @@ export function TasksWorkspace() {
         </span>
       ),
     },
-    { id: "status", header: "Status", accessor: taskFlag },
+    {
+      id: "status",
+      header: "Status",
+      accessor: taskFlag,
+      cell: (t) => (
+        <span>
+          {taskFlag(t)}
+          {t.risk ? (
+            <span className="text-muted-foreground block max-w-72 text-xs">
+              {t.risk.short}
+            </span>
+          ) : null}
+        </span>
+      ),
+    },
     { id: "gig", header: "Gig", accessor: (t) => t.gig?.title ?? "" },
   ];
   const title = new Intl.DateTimeFormat("en-NZ", {
@@ -285,8 +300,8 @@ export function TasksWorkspace() {
                   </span>
                   {t.title} · {t.assignee?.name ?? "Unassigned"}
                   <span className="text-muted-foreground ml-2">
-                    {t.atRisk
-                      ? `${Math.ceil(t.shortMinutes / 60)}h short of deadline`
+                    {t.risk
+                      ? t.risk.short
                       : t.overdue
                         ? `${Math.max(1, Math.floor(t.lateMinutes / 60))}h late`
                         : formatTaskDate(t.dueAt)}{" "}
