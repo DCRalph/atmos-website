@@ -44,6 +44,13 @@ and stays picked. Edits that don't move a date aren't held to the hard
 deadline, so a task a superadmin pushed past it can still be reassigned.
 Pushes are bundled: each person hears once about the lot.
 
+On the Calendar, drag a task to another day to move its due date there,
+keeping its time of day. Moves are held, shown dashed with the old date, until
+**Save**; **Undo** takes back the last drop and **Discard** drops them all.
+Save goes through `tasks.bulk` (`dates`), so the same rules, timeline and one
+push per person apply, and a move that's refused stays on the calendar to undo
+or retry.
+
 `plannedDueAt` records the agreed commitment. `dueAt` changes only through a
 mutation. A pure topological projection moves downstream dates while an upstream
 task remains late. Completing it or reporting a delay commits shifts and sends
