@@ -111,6 +111,7 @@ if (testUrl) {
   const { tasksRouter } = await import("./api/routers/tasks");
   const { sweepTasks } = await import("./tasks");
   const { extractTasks } = await import("./tasks/extract");
+  const { bundleNotices } = await import("./tasks/notifications");
   const { GET: calendar } =
     await import("~/app/api/tasks/calendar/[token]/route");
   const { POST: inbound } =
@@ -336,6 +337,62 @@ if (testUrl) {
     const door = await db.task.findUniqueOrThrow({ where: { id: tight.id } });
     assert.equal(door.plannedDueAt.getTime(), door.dueAt.getTime());
     assert(door.dueAt > door.hardDeadlineAt!);
+    // The task form sends every date back unchanged: an admin can still save
+    // a new owner on a task a superadmin moved past its deadline.
+    await ana.update({
+      id: tight.id,
+      title: "Door kit",
+      assigneeId: "task-test-a",
+      dueAt: door.dueAt,
+      hardDeadlineAt: door.hardDeadlineAt,
+      gigId: null,
+    });
+
+    // A task and the one waiting on it, moved together, each move once.
+    const first = await ana.create({
+      title: "Lock the line-up",
+      assigneeId: "task-test-a",
+      dueAt: due,
+    });
+    const next = await ana.create({
+      title: "Announce the night",
+      assigneeId: "task-test-a",
+      dueAt: new Date(due.getTime() + day),
+      dependsOnId: first.id,
+    });
+    await ana.bulk({
+      ids: [first.id, next.id],
+      action: { kind: "shift", days: 7 },
+    });
+    const [lineup, announce] = await Promise.all(
+      [first.id, next.id].map((id) =>
+        db.task.findUniqueOrThrow({ where: { id } }),
+      ),
+    );
+    assert.equal(dayKey(lineup!.dueAt), addDays(dayKey(due), 7));
+    assert.equal(dayKey(announce!.dueAt), addDays(dayKey(due), 8));
+
+    // Everyone-alerts are bundled with the rest: one push each.
+    const bundled = bundleNotices(
+      [
+        {
+          taskId: "x",
+          title: "At risk",
+          body: "A.",
+          userIds: [],
+          allAdmins: true,
+        },
+        { taskId: "y", title: "Moved", body: "B.", userIds: ["task-test-a"] },
+      ],
+      ["task-test-a", "task-test-b"],
+    );
+    assert.deepEqual(
+      bundled.map((notice) => [notice.userIds, notice.title]),
+      [
+        [["task-test-a"], "2 tasks updated"],
+        [["task-test-b"], "At risk"],
+      ],
+    );
 
     // A superadmin finishes work still waiting on another task; admins cancel,
     // flag and delete.

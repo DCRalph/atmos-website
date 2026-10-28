@@ -34,6 +34,8 @@ type Action = z.input<typeof bulkTaskActionSchema>;
 
 /** Moves offered for due dates, in days. */
 const SHIFTS = [-7, -1, 1, 2, 7, 14];
+/** The most one bulk change takes, as `tasks.bulk` allows. */
+const MOST = 200;
 
 const shiftLabel = (days: number) => {
   const weeks = Math.abs(days) % 7 === 0 ? Math.abs(days) / 7 : 0;
@@ -89,6 +91,7 @@ export function TaskBulkBar({
   const utils = api.useUtils();
   const confirm = useConfirm();
   const [agreed, setAgreed] = useState(false);
+  const [moving, setMoving] = useState(false);
   const bulk = api.tasks.bulk.useMutation({
     onSuccess: ({ changed, failed }, { action }) => {
       void utils.tasks.invalidate();
@@ -109,6 +112,7 @@ export function TaskBulkBar({
     onError: (error) => toast.error(error.message),
   });
   const count = tasks.length;
+  const busy = bulk.isPending || count > MOST;
   const run = (action: Action) =>
     bulk.mutate({ ids: tasks.map((task) => task.id), action });
   const confirmed = async (action: "cancel" | "delete") =>
@@ -142,7 +146,7 @@ export function TaskBulkBar({
       <div className="w-40">
         <TaskSelect
           aria-label="Reassign the picked tasks"
-          disabled={bulk.isPending}
+          disabled={busy}
           value=""
           onValueChange={(assigneeId) => {
             if (assigneeId) run({ kind: "assign", assigneeId });
@@ -156,9 +160,9 @@ export function TaskBulkBar({
           ]}
         />
       </div>
-      <Popover>
+      <Popover open={moving} onOpenChange={setMoving}>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" disabled={bulk.isPending}>
+          <Button variant="outline" size="sm" disabled={busy}>
             <CalendarClock />
             Move due
           </Button>
@@ -174,7 +178,11 @@ export function TaskBulkBar({
                 variant="ghost"
                 size="sm"
                 className="tabular-nums"
-                onClick={() => run({ kind: "shift", days, agreed })}
+                disabled={busy}
+                onClick={() => {
+                  setMoving(false);
+                  run({ kind: "shift", days, agreed });
+                }}
               >
                 {shiftLabel(days)}
               </Button>
@@ -202,7 +210,7 @@ export function TaskBulkBar({
         <Button
           variant="outline"
           size="sm"
-          disabled={bulk.isPending}
+          disabled={busy}
           onClick={() => run({ kind: "status", status: "DONE" })}
         >
           <CheckCheck />
@@ -211,7 +219,7 @@ export function TaskBulkBar({
       ) : null}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" disabled={bulk.isPending}>
+          <Button variant="outline" size="sm" disabled={busy}>
             More
             <ChevronDown />
           </Button>
@@ -267,7 +275,11 @@ export function TaskBulkBar({
         </DropdownMenuContent>
       </DropdownMenu>
       <span className="text-muted-foreground text-sm" aria-live="polite">
-        {bulk.isPending ? "Working…" : null}
+        {bulk.isPending
+          ? "Working…"
+          : count > MOST
+            ? `Up to ${MOST} at a time`
+            : null}
       </span>
     </div>
   );

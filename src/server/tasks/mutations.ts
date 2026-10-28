@@ -18,6 +18,7 @@ import {
   requireTask,
   requireTaskPerson,
   taskSettings,
+  taskPeople,
   type TaskDatabase,
 } from "./data";
 import { bundleNotices, notifyTasks, type TaskNotice } from "./notifications";
@@ -284,10 +285,12 @@ export async function updateTask(
     const due = input.dueAt ?? task.dueAt;
     // Only edits that move a date are held to the deadline, so a task a
     // superadmin pushed past it can still be reassigned or flagged.
+    const time = (date: Date | null | undefined) => date?.getTime() ?? null;
     const moves =
-      input.dueAt !== undefined ||
-      input.hardDeadlineAt !== undefined ||
-      input.gigId !== undefined;
+      (input.dueAt !== undefined && time(input.dueAt) !== time(task.dueAt)) ||
+      (input.hardDeadlineAt !== undefined &&
+        time(input.hardDeadlineAt) !== time(task.hardDeadlineAt)) ||
+      (input.gigId !== undefined && input.gigId !== task.gigId);
     if (!superadmin && moves && deadline && due > deadline)
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -731,6 +734,16 @@ export async function bulkTasks(
   };
   const failed: { id: string; title: string; message: string }[] = [];
   let changed = 0;
+  // Dates as picked: moving one task can move its dependents, and a picked
+  // dependent should still move by the days chosen, not twice.
+  const before = new Map(
+    (
+      await db.task.findMany({
+        where: { id: { in: [...ids] } },
+        select: { id: true, dueAt: true, plannedDueAt: true },
+      })
+    ).map((task) => [task.id, task]),
+  );
   for (const id of new Set(ids)) {
     try {
       switch (action.kind) {
@@ -741,7 +754,7 @@ export async function bulkTasks(
           });
           break;
         case "shift": {
-          const task = await requireTask(db, id);
+          const task = before.get(id) ?? (await requireTask(db, id));
           await updateTask(
             id,
             {
@@ -801,6 +814,7 @@ export async function bulkTasks(
       });
     }
   }
-  await notifyTasks(bundleNotices(notices), live);
+  const admins = (await taskPeople()).map((person) => person.id);
+  await notifyTasks(bundleNotices(notices, admins), live);
   return { changed, failed };
 }
