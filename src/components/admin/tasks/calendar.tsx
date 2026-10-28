@@ -260,6 +260,7 @@ export function TasksCalendar({
                   onFocus={() => showLinks(task)}
                   onBlur={clear}
                   onClick={() => onOpen(task.id)}
+                  title={task.risk?.detail}
                   className={cn(
                     "hover:bg-muted focus-visible:ring-ring mb-1 block w-full rounded border-l-[3px] p-1.5 text-left text-xs transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2",
                     swatch(keyOf(task)).bar,
@@ -296,6 +297,11 @@ export function TasksCalendar({
                       )}
                     >
                       {taskFlag(task)}
+                    </span>
+                  ) : null}
+                  {task.risk ? (
+                    <span className="text-muted-foreground line-clamp-3 block">
+                      {task.risk.short}
                     </span>
                   ) : null}
                 </button>

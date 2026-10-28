@@ -51,6 +51,15 @@ affected people the new date and reason. Hard deadlines cap displayed dates;
 uncapped required finish times carry risk through the whole chain. Dependency
 cycles are rejected. Date and delay forms show impact before saving.
 
+A task is at risk when that uncapped finish lands past its hard deadline.
+`explainRisk` (`src/lib/tasks/risk.ts`) says why, and `readTasks` attaches it
+as `risk`: what the task waits on, what further back is actually late, the gap
+it needs, and the earliest it can be done against the deadline. Or, with
+nothing upstream, that its own due date is past the deadline. The alert strip,
+calendar, list, gig tab and dashboard show the short form; the task drawer and
+the at-risk push show the whole sentence, and the drawer links to each task in
+the chain and shows "Earliest done" instead of the capped projection.
+
 Graph-changing mutations use a transaction and one Postgres advisory lock.
 Creating a task with its initial dependency and accepting a selection of
 proposals are atomic. Timeline events retain ownership, submission, delay,

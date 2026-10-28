@@ -210,7 +210,11 @@ export function NeedsYou({
       ...YOUR_REASON[reason],
       title: task.title,
       taskId: task.id,
-      meta: [task.gigTitle, reason === "check-back" ? task.blockedReason : null]
+      meta: [
+        task.gigTitle,
+        reason === "check-back" ? task.blockedReason : null,
+        reason === "at-risk" ? task.riskReason : null,
+      ]
         .filter(Boolean)
         .join(" · "),
       ...taskWhen(task, reason, now),
@@ -250,7 +254,12 @@ export function NeedsYou({
       ...TEAM_REASON[reason],
       title: task.title,
       taskId: task.id,
-      meta: [task.gigTitle, task.assigneeName, task.blockedReason]
+      meta: [
+        task.gigTitle,
+        task.assigneeName,
+        task.blockedReason,
+        reason === "at-risk" ? task.riskReason : null,
+      ]
         .filter(Boolean)
         .join(" · "),
       ...taskWhen(task, reason, now),

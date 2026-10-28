@@ -22,6 +22,7 @@ import { formatTaskDate } from "~/lib/tasks/time";
 import { useUpload } from "~/hooks/use-upload";
 import { TaskForm, TaskImpact } from "./task-form";
 import { TaskDatePicker, TaskField, TaskSelect, taskFlag } from "./shared";
+import { formatSpan } from "~/lib/tasks/risk";
 export function TaskDrawer({
   id,
   onClose,
@@ -171,6 +172,29 @@ function TaskDetail({
           {t.critical ? " · Critical" : ""} · {t.assignee?.name ?? "Unassigned"}
         </p>
       </div>
+      {t.risk ? (
+        <div
+          role="note"
+          className="rounded border border-amber-400/30 bg-amber-400/5 p-3 text-sm"
+        >
+          <p className="font-medium text-amber-400">Why it&apos;s at risk</p>
+          <p className="mt-1">{t.risk.detail}</p>
+          {t.risk.causes.length ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {t.risk.causes.map((cause) => (
+                <Button
+                  key={cause.id}
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onOpen(cause.id)}
+                >
+                  Open {cause.title}
+                </Button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       {editing ? (
         <>
           <TaskForm task={t} onSaved={() => setEditing(false)} />
@@ -188,7 +212,15 @@ function TaskDetail({
             <dd>{formatTaskDate(t.dueAt)}</dd>
             <dt className="text-muted-foreground">Agreed</dt>
             <dd>{formatTaskDate(t.plannedDueAt)}</dd>
-            {t.projectedDueAt.getTime() !== t.dueAt.getTime() ? (
+            {t.atRisk ? (
+              // The projection stops at the deadline; at risk, show where it really lands.
+              <>
+                <dt className="text-muted-foreground">Earliest done</dt>
+                <dd className="text-amber-400">
+                  {formatTaskDate(t.requiredDueAt)}
+                </dd>
+              </>
+            ) : t.projectedDueAt.getTime() !== t.dueAt.getTime() ? (
               <>
                 <dt className="text-muted-foreground">Projected</dt>
                 <dd>{formatTaskDate(t.projectedDueAt)}</dd>
@@ -463,7 +495,10 @@ function TaskDetail({
                 onClick={() => onOpen(dep.dependsOnId)}
               >
                 Waits on {linked?.title} ·{" "}
-                {linked?.assignee?.name ?? "Unassigned"} · {dep.gapMinutes} min
+                {linked?.assignee?.name ?? "Unassigned"} ·{" "}
+                {dep.gapMinutes
+                  ? `${formatSpan(dep.gapMinutes)} after`
+                  : "no gap"}
               </button>
               <Button
                 variant="ghost"

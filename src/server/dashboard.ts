@@ -334,6 +334,7 @@ function taskSummary(task: TaskRow) {
     dueAt: task.dueAt,
     lateMinutes: task.lateMinutes,
     shortMinutes: task.shortMinutes,
+    riskReason: task.risk?.short ?? null,
     flagged: task.flagged,
     blockedReason: task.blockedReason,
     checkBackAt: task.checkBackAt,
