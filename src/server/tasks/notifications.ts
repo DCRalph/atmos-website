@@ -10,6 +10,32 @@ export type TaskNotice = {
   userIds: (string | null | undefined)[];
   allAdmins?: boolean;
 };
+/**
+ * Notices from many task changes as one push per person: someone with a
+ * single change gets that notice, someone with several gets a count and what
+ * changed (cut to fit by `taskPushBody`). Everyone-alerts count for each of
+ * `admins`, so they're bundled too.
+ */
+export function bundleNotices(
+  notices: readonly TaskNotice[],
+  admins: readonly string[],
+): TaskNotice[] {
+  const byPerson = new Map<string, TaskNotice[]>();
+  for (const notice of notices)
+    for (const id of new Set(notice.allAdmins ? admins : notice.userIds))
+      if (id) byPerson.set(id, [...(byPerson.get(id) ?? []), notice]);
+  return [...byPerson].map(([id, mine]) =>
+    mine.length === 1
+      ? { ...mine[0]!, allAdmins: false, userIds: [id] }
+      : {
+          taskId: mine[0]!.taskId,
+          title: `${mine.length} tasks updated`,
+          body: mine.map((notice) => notice.body).join(" "),
+          userIds: [id],
+        },
+  );
+}
+
 /** Post-commit effects cannot undo work that has already been saved. Only current admins are reached. */
 export async function notifyTasks(
   notices: readonly TaskNotice[],

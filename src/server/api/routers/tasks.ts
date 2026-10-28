@@ -24,6 +24,8 @@ import {
   reportTaskDelay,
   takeTask,
   commitShifts,
+  deleteTask,
+  bulkTasks,
 } from "~/server/tasks/mutations";
 import { notifyTasks } from "~/server/tasks/notifications";
 import {
@@ -32,6 +34,7 @@ import {
   playbookInputSchema,
   storedPlaybookSchema,
   taskSettingsSchema,
+  bulkTaskActionSchema,
 } from "~/lib/tasks/input";
 import { impact, orderTasks } from "~/lib/tasks/schedule";
 import {
@@ -287,25 +290,33 @@ export const tasksRouter = createTRPCRouter({
         },
       });
     }),
-  delete: adminProcedure.input(idInput).mutation(async ({ ctx, input }) => {
-    const task = await taskTransaction(async (tx) => {
-      const task = await requireTask(tx, input.id);
-      await tx.task.delete({ where: { id: input.id } });
-      return task;
-    });
-    await logActivity({
-      type: "TASK_DELETED",
-      userId: ctx.session.user.id,
-      action: `Deleted task: ${task.title}`,
-      details: {
-        taskId: task.id,
-        assigneeId: task.assigneeId,
-        onBehalf: task.createdById !== ctx.session.user.id,
-      },
-    });
-    await notifyTasks([], [task.assigneeId]);
-    return { deleted: true };
-  }),
+  delete: adminProcedure
+    .input(idInput)
+    .mutation(({ ctx, input }) => deleteTask(input.id, ctx.session.user.id)),
+  /** One change across many tasks from the list. Partial: failures come back per task. */
+  bulk: adminProcedure
+    .input(
+      z.object({
+        ids: z.array(z.string().min(1)).min(1).max(200),
+        action: bulkTaskActionSchema,
+      }),
+    )
+    .mutation(({ ctx, input }) => {
+      const superadmin = userHasPermission(ctx.user, "SUPERADMIN");
+      const { action } = input;
+      if (
+        !superadmin &&
+        (action.kind === "status" || (action.kind === "shift" && action.agreed))
+      )
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            action.kind === "status"
+              ? "Only a superadmin can set a status outright"
+              : "Only a superadmin can move the agreed date",
+        });
+      return bulkTasks(input.ids, action, ctx.session.user.id, { superadmin });
+    }),
   impact: adminProcedure
     .input(idInput.extend({ dueAt: z.date() }))
     .query(async ({ ctx, input }) => {
