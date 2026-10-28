@@ -7,6 +7,7 @@ import { db } from "~/server/db";
 // import { z } from "zod";
 import { genericOAuth, lastLoginMethod } from "better-auth/plugins";
 import { expo } from "@better-auth/expo";
+import { apiKey } from "@better-auth/api-key";
 import {
   sendAccountDeletionEmail,
   sendPasswordResetEmail,
@@ -14,6 +15,10 @@ import {
 } from "~/server/auth-emails";
 import { anonymiseAndDeleteUser } from "~/server/account-deletion";
 import { impersonation } from "~/server/impersonation";
+import {
+  KEY_NAME_MAX_LENGTH,
+  KEY_REQUESTS_PER_MINUTE,
+} from "~/lib/developer/scopes";
 
 /**
  * The iOS bundle identifier, which is also the `aud` of every Sign in with
@@ -166,10 +171,46 @@ export const auth = betterAuth({
     "atmos://*",
     ...DEV_HOSTS.map((host) => `http://${host}:*`),
   ],
+  /**
+   * The api-key plugin's own HTTP routes, off.
+   *
+   * As shipped they let any signed-in account, a punter included, mint a key
+   * for itself. Keys are made and managed only by superadmins, through the
+   * `developer` tRPC router calling `auth.api.*` on the server, which this
+   * list does not touch: better-auth only checks it in its HTTP router.
+   */
+  disabledPaths: [
+    "/api-key/create",
+    "/api-key/update",
+    "/api-key/delete",
+    "/api-key/list",
+    "/api-key/get",
+  ],
   plugins: [
     lastLoginMethod(),
     expo(),
     impersonation(),
+    /**
+     * API keys for the developer API. See `docs/DEVELOPER-API.md` and
+     * `~/server/api-keys`.
+     */
+    apiKey({
+      defaultPrefix: "atmos_",
+      // "atmos_k3Qx": enough to tell keys apart in the admin list.
+      startingCharactersConfig: { shouldStore: true, charactersLength: 10 },
+      requireName: true,
+      maximumNameLength: KEY_NAME_MAX_LENGTH,
+      enableMetadata: false,
+      // The plugin's default is ten requests a day. A monitor that alerts more
+      // than that is having exactly the night it needs to reach us.
+      rateLimit: {
+        enabled: true,
+        timeWindow: 60_000,
+        maxRequests: KEY_REQUESTS_PER_MINUTE,
+      },
+      keyExpiration: { defaultExpiresIn: null },
+      schema: { apikey: { modelName: "apiKey" } },
+    }),
     genericOAuth({
       config: [
         {

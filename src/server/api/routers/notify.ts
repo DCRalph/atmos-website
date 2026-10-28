@@ -7,13 +7,8 @@ import {
   eventOrganiserProcedure,
 } from "~/server/api/trpc";
 import { publish } from "~/server/notify";
-import {
-  DEFAULT_PRIORITY,
-  isPublishSource,
-  isValidTopic,
-  KNOWN_TOPICS,
-  PRIORITIES,
-} from "~/lib/notify/topics";
+import { isPublishSource, KNOWN_TOPICS } from "~/lib/notify/topics";
+import { messageFields, topicName } from "~/lib/notify/send-request";
 
 /**
  * Team notifications, for the compose screens.
@@ -28,19 +23,10 @@ import {
  * is admin-only throughout.
  */
 
-const topic = z.string().refine(isValidTopic, "invalid topic");
+const topic = topicName;
 
-/** ntfy's own limits, mirrored from `~/lib/notify/ntfy-request`. */
-const publishInput = z.object({
-  topic,
-  message: z.string().trim().min(1).max(4096),
-  title: z.string().trim().max(250).optional(),
-  priority: z
-    .union(PRIORITIES.map((value) => z.literal(value)))
-    .default(DEFAULT_PRIORITY),
-  tags: z.array(z.string().trim().min(1)).max(20).default([]),
-  click: z.string().trim().max(2000).optional(),
-});
+/** The same fields and limits as the developer API's send. */
+const publishInput = z.object({ topic, ...messageFields });
 
 export const notifyRouter = createTRPCRouter({
   /** Every topic worth offering, with how many devices would actually hear it. */
@@ -88,6 +74,8 @@ export const notifyRouter = createTRPCRouter({
         cursor: z.string().optional(),
         topic: topic.optional(),
         source: z.string().refine(isPublishSource).optional(),
+        /** What one developer API key has sent. */
+        apiKeyId: z.string().optional(),
         search: z.string().trim().max(200).optional(),
       }),
     )
@@ -95,6 +83,7 @@ export const notifyRouter = createTRPCRouter({
       const where = {
         topic: input.topic,
         source: input.source,
+        apiKeyId: input.apiKeyId,
         ...(input.search && {
           OR: [
             { title: { contains: input.search, mode: "insensitive" as const } },
@@ -114,6 +103,7 @@ export const notifyRouter = createTRPCRouter({
           cursor: input.cursor ? { id: input.cursor } : undefined,
           include: {
             sender: { select: { id: true, name: true } },
+            apiKey: { select: { id: true, name: true } },
           },
         }),
         ctx.db.notifyMessage.count({ where }),
@@ -137,6 +127,22 @@ export const notifyRouter = createTRPCRouter({
       count: group._count._all,
     }));
   }),
+
+  /**
+   * Developer API keys that have sent something, for the history's filter.
+   * Names only: the keys themselves are hashed and never leave the server.
+   */
+  historyKeys: eventOrganiserProcedure.query(({ ctx }) =>
+    ctx.db.apiKey.findMany({
+      where: { notifyMessages: { some: {} } },
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        _count: { select: { notifyMessages: true } },
+      },
+    }),
+  ),
 
   send: eventOrganiserProcedure
     .input(publishInput)

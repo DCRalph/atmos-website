@@ -10,17 +10,19 @@ here — can notify the team with no shim on either side.
 
 ## The pieces
 
-| Where                                            | What                                                                                  |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| `src/lib/notify/topics.ts`                       | The topic vocabulary, and which topics a device is subscribed to by default.          |
-| `src/lib/notify/ntfy-request.ts`                 | Turns an ntfy request into a publish. Pure, and where the tests are.                  |
-| `src/app/api/notify/[[...topic]]/route.ts`       | The HTTP endpoint: auth and I/O, nothing else.                                        |
-| `src/server/notify.ts`                           | `publish()` — the one path a notification takes, whatever published it.               |
-| `src/server/push.ts`                             | Expo fan-out, dead-token pruning. Predates this and is shared with gig announcements. |
-| `src/server/api/routers/notify.ts`               | tRPC for the compose screens and device management.                                   |
-| `src/components/admin/notifications-manager.tsx` | The web admin compose page, at `/admin/notifications`.                                |
-| `mobile/app/(admin)/notify.tsx`                  | The app's compose screen, reached from More.                                          |
-| `mobile/src/lib/push.ts`                         | Registration and tap routing on the handset.                                          |
+| Where                                            | What                                                                                            |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `src/lib/notify/topics.ts`                       | The topic vocabulary, and which topics a device is subscribed to by default.                    |
+| `src/lib/notify/ntfy-request.ts`                 | Turns an ntfy request into a publish. Pure, and where the tests are.                            |
+| `src/app/api/notify/[[...topic]]/route.ts`       | The HTTP endpoint: auth and I/O, nothing else.                                                  |
+| `src/app/api/v1/notifications/`                  | The JSON developer API: discovery and direct sends. See [DEVELOPER-API.md](./DEVELOPER-API.md). |
+| `src/server/api-keys.ts`                         | API key auth for both endpoints.                                                                |
+| `src/server/notify.ts`                           | `publish()` — the one path a notification takes, whatever published it.                         |
+| `src/server/push.ts`                             | Expo fan-out, dead-token pruning. Predates this and is shared with gig announcements.           |
+| `src/server/api/routers/notify.ts`               | tRPC for the compose screens and device management.                                             |
+| `src/components/admin/notifications-manager.tsx` | The web admin compose page, at `/admin/notifications`.                                          |
+| `mobile/app/(admin)/notify.tsx`                  | The app's compose screen, reached from More.                                                    |
+| `mobile/src/lib/push.ts`                         | Registration and tap routing on the handset.                                                    |
 
 Run sheet cues are published through the same `publish()`, with the audience
 overridden to the people an admin picked for that gig. See
@@ -29,7 +31,7 @@ overridden to the people an admin picked for that gig. See
 ## Publishing
 
 ```bash
-curl -H "Authorization: Bearer $NOTIFY_TOKEN" \
+curl -H "Authorization: Bearer $ATMOS_API_KEY" \
      -H "Title: Side door" \
      -H "Priority: high" \
      -H "Tags: warning,door" \
@@ -40,7 +42,7 @@ curl -H "Authorization: Bearer $NOTIFY_TOKEN" \
 The same message as JSON, which is what you want when the topic is dynamic:
 
 ```bash
-curl -H "Authorization: Bearer $NOTIFY_TOKEN" \
+curl -H "Authorization: Bearer $ATMOS_API_KEY" \
      -d '{"topic":"team","title":"Side door","message":"Card reader is down","priority":4}' \
      https://atmosmedia.co.nz/api/notify
 ```
@@ -112,17 +114,20 @@ back the next time the app opened.
 
 ## Auth
 
-One shared secret, `NOTIFY_TOKEN`, accepted as a bearer token, as the password
-in HTTP basic (the username is ignored), or as `?auth=` carrying the base64url
-of the whole `Authorization` header. There are no per-topic permissions: anyone
-holding it can publish anywhere, including `announcements`, so it is an internal
-credential and belongs nowhere near a client.
+An API key from **Admin → Developer** (superadmins only), with the
+`notifications:topic` scope, plus `notifications:announce` to publish to
+`announcements`. It is accepted as a bearer token, as the password in HTTP
+basic (the username is ignored), or as `?auth=` carrying the base64url of the
+whole `Authorization` header. One key per integration, so any one can be
+turned off without touching the rest, and the history names the key that sent
+each message. See [DEVELOPER-API.md](./DEVELOPER-API.md).
 
-**Unset means the endpoint refuses everything.** A notification channel anyone
-can post to is a notification channel nobody reads.
+`NOTIFY_TOKEN`, the shared secret this endpoint started with, still works here
+(not on `/api/v1`) and can publish to any topic. It is legacy: once every
+integration has its own key, unset it.
 
-The compose screens do not use it. They go through tRPC as the signed-in user:
-organisers can publish, and `announcements` is admin-only.
+The compose screens do not use either. They go through tRPC as the signed-in
+user: organisers can publish, and `announcements` is admin-only.
 
 ## The compose screens
 
@@ -171,10 +176,10 @@ the production value for a store build.
 
 ## Testing without a device
 
-`NOTIFY_TOKEN` set locally, and any publish returns `delivery.devices` — which
+With a key made locally, any publish returns `delivery.devices` — which
 is `0` when nothing is subscribed. That distinguishes "the endpoint is wrong"
 from "nobody is listening", which is the question you actually have at 11pm.
 
 ```bash
-bun test src/lib/notify        # the request parser
+bun test src/lib/notify src/lib/developer   # parsers, send body, scopes
 ```
