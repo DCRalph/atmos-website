@@ -116,9 +116,46 @@ describe("why a task is at risk", () => {
     expect(explainRisk(tasks.get("kit")!, tasks, now)).toBe(null);
   });
 
-  test("spans read in the largest whole unit", () => {
+  test("a finished task ends the chain: what held it up no longer matters", () => {
+    const done = new Date(now.getTime() - day);
+    const tasks = project(
+      [
+        {
+          id: "lineup",
+          title: "Lock the line-up",
+          dueAt: new Date(now.getTime() - 5 * day),
+        },
+        {
+          id: "poster",
+          title: "Design the poster",
+          dueAt: new Date(now.getTime() - 3 * day),
+          status: "DONE",
+          completedAt: done,
+        },
+        {
+          id: "announce",
+          title: "Announce the night",
+          dueAt: new Date(now.getTime() + day),
+          hardDeadlineAt: gigStart,
+        },
+      ],
+      [
+        { taskId: "poster", dependsOnId: "lineup", gapMinutes: 3 * 1440 },
+        { taskId: "announce", dependsOnId: "poster", gapMinutes: 4 * 1440 },
+      ],
+    );
+    const reason = explainRisk(tasks.get("announce")!, tasks, now)!;
+    expect(reason.causes.map((cause) => cause.id)).toEqual(["poster"]);
+    expect(reason.short).toBe(
+      `Waits on Design the poster (done ${formatTaskDate(done)})`,
+    );
+    expect(reason.detail).toContain("It needs 4 days after that");
+  });
+
+  test("gaps read exactly, in the largest units first", () => {
     expect(formatSpan(3 * 1440)).toBe("3 days");
-    expect(formatSpan(90)).toBe("2 hours");
+    expect(formatSpan(90)).toBe("1 hour 30 minutes");
+    expect(formatSpan(36 * 60)).toBe("1 day 12 hours");
     expect(formatSpan(1)).toBe("1 minute");
   });
 });

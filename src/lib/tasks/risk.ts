@@ -34,14 +34,23 @@ export type RiskReason = {
   causes: { id: string; title: string }[];
 };
 
-/** `2 days`, `5 hours`, `40 minutes`. */
+/** `1 day 12 hours`, `1 hour 30 minutes`, `40 minutes`: exact, largest first. */
 export function formatSpan(minutes: number) {
-  const unit = (count: number, name: string) =>
-    `${count} ${name}${count === 1 ? "" : "s"}`;
-  if (minutes >= 1440) return unit(Math.round(minutes / 1440), "day");
-  if (minutes >= 60) return unit(Math.round(minutes / 60), "hour");
-  return unit(Math.max(1, Math.round(minutes)), "minute");
+  const total = Math.max(1, Math.round(minutes));
+  const units = [
+    [Math.floor(total / 1440), "day"],
+    [Math.floor((total % 1440) / 60), "hour"],
+    [total % 60, "minute"],
+  ] as const;
+  return units
+    .filter(([count]) => count > 0)
+    .map(([count, name]) => `${count} ${name}${count === 1 ? "" : "s"}`)
+    .join(" ");
 }
+
+/** A span measured from now, to the hour once it's over one: lateness doesn't need minutes. */
+const roughly = (minutes: number) =>
+  formatSpan(minutes >= 60 ? Math.round(minutes / 60) * 60 : minutes);
 
 export function explainRisk(
   task: RiskTask,
@@ -52,17 +61,19 @@ export function explainRisk(
   if (!deadline || task.shortMinutes <= 0) return null;
 
   const gigStart = task.gig?.gigStartTime.getTime() === deadline.getTime();
-  const past = `${formatSpan(task.shortMinutes)} after ${
+  const past = `${roughly(task.shortMinutes)} after ${
     gigStart
       ? `the gig starts (${formatTaskDate(deadline)})`
       : `its hard deadline (${formatTaskDate(deadline)})`
   }`;
 
+  // Back through what it waits on, stopping at a finished task: from there it
+  // counts from when that was actually done, not from what held it up.
   const causeIds: string[] = [];
   for (
     let id = task.causeTaskId;
     id && byId.has(id) && !causeIds.includes(id);
-    id = byId.get(id)!.causeTaskId
+    id = byId.get(id)!.status === "DONE" ? null : byId.get(id)!.causeTaskId
   )
     causeIds.push(id);
 
@@ -79,7 +90,7 @@ export function explainRisk(
     other.status === "DONE" && other.completedAt
       ? `done ${formatTaskDate(other.completedAt)}`
       : other.dueAt < now
-        ? `${formatSpan((now.getTime() - other.dueAt.getTime()) / 60_000)} late`
+        ? `${roughly((now.getTime() - other.dueAt.getTime()) / 60_000)} late`
         : `due ${formatTaskDate(other.dueAt)}`;
   const short =
     causeIds.length === 1
