@@ -128,8 +128,9 @@ none.
 Playbooks live as JSON in `task_playbook.items`: `{ dueTime, roles, tasks }`.
 Ones saved before date rules are a bare array of tasks counted in minutes from
 the gig's start; `storedPlaybookSchema` reads them as day counts (or hours) due
-at the gig's start time, so they apply as they always did, and saving one
-writes the new shape. Existing tasks remain when a playbook is edited or
+at the gig's start time, so they land on the same days as before (across a
+daylight saving change, at the gig's own time of day where minute counts
+drifted an hour), and saving one writes the new shape. Existing tasks remain when a playbook is edited or
 removed.
 
 ## Inbox and AI

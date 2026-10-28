@@ -124,6 +124,11 @@ export function WhenEditor({
     when.kind === "days" && when.days !== 0 && when.days % 7 === 0,
   );
   const setWhen = (next: PlaybookWhen) => onChange({ when: next });
+  // Zero has no sign, so the side picked at zero is kept for the next count.
+  const count =
+    when.kind === "days" ? when.days : when.kind === "hours" ? when.hours : 0;
+  const [afterAtZero, setAfterAtZero] = useState(false);
+  const after = count === 0 ? afterAtZero : count > 0;
 
   const switchTo = (kind: PlaybookWhen["kind"]) => {
     if (kind === when.kind) return;
@@ -187,10 +192,7 @@ export function WhenEditor({
                 const days = Math.round(count) * (weeksUnit ? 7 : 1);
                 setWhen({
                   ...when,
-                  days: Math.min(
-                    30,
-                    Math.max(-365, when.days > 0 ? days : -days),
-                  ),
+                  days: Math.min(30, Math.max(-365, after ? days : -days)),
                 });
               }}
             />
@@ -207,10 +209,7 @@ export function WhenEditor({
                 const days = count * (weeks ? 7 : 1);
                 setWhen({
                   ...when,
-                  days: Math.min(
-                    30,
-                    Math.max(-365, when.days > 0 ? days : -days),
-                  ),
+                  days: Math.min(30, Math.max(-365, after ? days : -days)),
                 });
               }}
               options={[
@@ -221,8 +220,9 @@ export function WhenEditor({
             <Pick
               aria-label="Before or after the gig"
               className="w-24"
-              value={when.days > 0 ? "after" : "before"}
-              onValueChange={(side) =>
+              value={after ? "after" : "before"}
+              onValueChange={(side) => {
+                setAfterAtZero(side === "after");
                 setWhen({
                   ...when,
                   days: Math.min(
@@ -231,8 +231,8 @@ export function WhenEditor({
                       ? Math.abs(when.days)
                       : -Math.abs(when.days),
                   ),
-                })
-              }
+                });
+              }}
               options={sides}
             />
             <span>the gig</span>
@@ -318,10 +318,7 @@ export function WhenEditor({
             onCommit={(hours) =>
               setWhen({
                 ...when,
-                hours: Math.min(
-                  720,
-                  when.hours > 0 ? hours : -Math.min(8760, hours),
-                ),
+                hours: Math.min(720, after ? hours : -Math.min(8760, hours)),
               })
             }
           />
@@ -329,16 +326,17 @@ export function WhenEditor({
           <Pick
             aria-label="Before or after"
             className="w-24"
-            value={when.hours > 0 ? "after" : "before"}
-            onValueChange={(side) =>
+            value={after ? "after" : "before"}
+            onValueChange={(side) => {
+              setAfterAtZero(side === "after");
               setWhen({
                 ...when,
                 hours:
                   side === "after"
                     ? Math.min(720, Math.abs(when.hours))
                     : -Math.abs(when.hours),
-              })
-            }
+              });
+            }}
             options={sides}
           />
           <Pick

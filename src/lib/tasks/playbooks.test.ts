@@ -185,7 +185,7 @@ describe("roles", () => {
 });
 
 describe("playbooks saved before date rules", () => {
-  test("read as day counts and hours due at the gig's start, so they apply as before", () => {
+  test("read as day counts and hours due at the gig's start, landing where they did", () => {
     const stored = [
       {
         key: "poster",
@@ -219,6 +219,11 @@ describe("playbooks saved before date rules", () => {
       ).toBe(
         saturday.startsAt.getTime() + stored[index]!.offsetMinutes * 60_000,
       );
+    // Across daylight saving a day count keeps the gig's time of day, where
+    // the old minute count landed an hour early.
+    expect(
+      nz(playbookDueAt(playbook.tasks[0]!, gigOn("2026-10-03"), null).dueAt),
+    ).toBe("2026-09-03 21:00");
   });
 });
 

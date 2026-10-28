@@ -439,6 +439,15 @@ function PlaybookEditor({
   const [highlight, setHighlight] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
 
+  // An untouched draft follows the saved playbook, so remembering the usual
+  // people while applying doesn't leave stale ones to save back. Edits in
+  // progress are left alone.
+  const [base, setBase] = useState(book);
+  if (book !== base) {
+    setBase(book);
+    if (book && base && fingerprint(draft) === fingerprint(toDraft(base)))
+      setDraft(toDraft(book));
+  }
   const dirty = book
     ? fingerprint(draft) !== fingerprint(toDraft(book))
     : draft.name.trim() !== "" ||

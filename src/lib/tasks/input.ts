@@ -133,8 +133,9 @@ export const playbookInputSchema = playbookFields
 /**
  * A playbook as stored in `task_playbook.items`. Ones saved before date rules
  * are a bare array of tasks counted in minutes from the gig's start. They read
- * as day counts (or hours) due at the gig's start time, so they apply as they
- * always did.
+ * as day counts (or hours) due at the gig's start time, so they land on the
+ * same days as before. Across a daylight saving change that's now the gig's
+ * own time of day, where minute counts drifted by an hour.
  */
 export const storedPlaybookSchema = z.preprocess(
   (value) => (Array.isArray(value) ? upgradePlaybook(value) : value),
