@@ -130,11 +130,14 @@ function taskWhen(
 export function NeedsYou({
   needs,
   now,
+  superadmin,
   onOpenTask,
   className,
 }: {
   needs: Overview["needs"];
   now: Date;
+  /** Adds Mark done to the team's tasks, without anyone taking them. */
+  superadmin: boolean;
   onOpenTask: (id: string) => void;
   className?: string;
 }) {
@@ -153,6 +156,13 @@ export function NeedsYou({
   const take = api.tasks.take.useMutation({
     onSuccess: async () => {
       toast.success("It's yours");
+      await refresh();
+    },
+    onError: failed,
+  });
+  const markDone = api.tasks.override.useMutation({
+    onSuccess: async () => {
+      toast.success("Marked done");
       await refresh();
     },
     onError: failed,
@@ -244,30 +254,43 @@ export function NeedsYou({
         .filter(Boolean)
         .join(" · "),
       ...taskWhen(task, reason, now),
-      actions:
-        reason === "unassigned" && task.status !== "IN_REVIEW" ? (
-          <Button
-            size="sm"
-            className={ACTION}
-            variant="outline"
-            disabled={take.isPending}
-            onClick={() => take.mutate({ id: task.id })}
-          >
-            Take it
-          </Button>
-        ) : reason === "overdue" && !task.flagged ? (
-          <Button
-            size="sm"
-            className={ACTION}
-            variant="outline"
-            disabled={nudge.isPending}
-            onClick={() => nudge.mutate({ id: task.id })}
-          >
-            Nudge
-          </Button>
-        ) : (
-          open(task.id)
-        ),
+      actions: (
+        <>
+          {reason === "unassigned" && task.status !== "IN_REVIEW" ? (
+            <Button
+              size="sm"
+              className={ACTION}
+              variant="outline"
+              disabled={take.isPending}
+              onClick={() => take.mutate({ id: task.id })}
+            >
+              Take it
+            </Button>
+          ) : reason === "overdue" && !task.flagged ? (
+            <Button
+              size="sm"
+              className={ACTION}
+              variant="outline"
+              disabled={nudge.isPending}
+              onClick={() => nudge.mutate({ id: task.id })}
+            >
+              Nudge
+            </Button>
+          ) : (
+            open(task.id)
+          )}
+          {superadmin ? (
+            <Button
+              size="sm"
+              className={ACTION}
+              disabled={markDone.isPending}
+              onClick={() => markDone.mutate({ id: task.id, status: "DONE" })}
+            >
+              Mark done
+            </Button>
+          ) : null}
+        </>
+      ),
     })),
     ...(team.proposals.count > 0
       ? [

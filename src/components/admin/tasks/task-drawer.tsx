@@ -356,6 +356,9 @@ function TaskDetail({
                   </Button>
                 ) : null}
               </div>
+              {options.data?.superadmin ? (
+                <SuperadminControls id={id} status={t.status} />
+              ) : null}
             </>
           )}
           {mode ? (
@@ -630,5 +633,77 @@ function TaskDetail({
         Delete task
       </Button>
     </div>
+  );
+}
+
+const OVERRIDES = [
+  { status: "DONE", label: "Mark done" },
+  { status: "TODO", label: "Back to to do" },
+  { status: "IN_PROGRESS", label: "In progress" },
+  { status: "CANCELLED", label: "Cancel task" },
+] as const;
+
+/**
+ * What only a superadmin can do to a task: set its status outright. Done
+ * skips the review, unfinished dependencies and proof, and nobody has to take
+ * the task first. Each one is recorded in the timeline as an override.
+ */
+function SuperadminControls({
+  id,
+  status,
+}: {
+  id: string;
+  status: TaskStatus;
+}) {
+  const utils = api.useUtils();
+  const [reason, setReason] = useState("");
+  const override = api.tasks.override.useMutation({
+    onSuccess: (task) => {
+      void utils.tasks.invalidate();
+      void utils.dashboard.overview.invalidate();
+      setReason("");
+      toast.success(`Set to ${statusLabels[task.status].toLowerCase()}`);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  return (
+    <section className="space-y-2 rounded border p-3">
+      <div>
+        <h3 className="text-sm font-medium">Superadmin</h3>
+        <p className="text-muted-foreground text-xs">
+          Set the status outright, past the usual flow. Done skips the review,
+          unfinished dependencies and proof, and keeps the owner. Recorded in
+          the timeline.
+        </p>
+      </div>
+      <Input
+        aria-label="Reason for the override"
+        placeholder="Reason, optional"
+        maxLength={4000}
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+      />
+      <div className="flex flex-wrap gap-2">
+        {OVERRIDES.filter((target) => target.status !== status).map(
+          (target) => (
+            <Button
+              key={target.status}
+              size="sm"
+              variant={target.status === "DONE" ? "default" : "outline"}
+              disabled={override.isPending}
+              onClick={() =>
+                override.mutate({
+                  id,
+                  status: target.status,
+                  ...(reason.trim() ? { body: reason.trim() } : {}),
+                })
+              }
+            >
+              {target.label}
+            </Button>
+          ),
+        )}
+      </div>
+    </section>
   );
 }

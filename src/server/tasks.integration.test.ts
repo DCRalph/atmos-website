@@ -145,6 +145,101 @@ if (testUrl) {
       session: session(id, name),
       headers: new Headers(),
     });
+  test("superadmins finish, reopen and edit tasks past the rules; admins cannot", async () => {
+    await db.task.deleteMany();
+    for (const [id, name, permission] of [
+      ["task-test-a", "Ana", "ADMIN"],
+      ["task-test-b", "Ben", "SUPERADMIN"],
+    ] as const) {
+      await db.user.upsert({
+        where: { id },
+        create: {
+          id,
+          name,
+          email: `${id}@example.test`,
+          emailVerified: true,
+          permissions: { create: { permission } },
+        },
+        update: { permissions: { deleteMany: {}, create: { permission } } },
+      });
+    }
+    const ana = caller("task-test-a", "Ana"),
+      ben = caller("task-test-b", "Ben");
+    const due = new Date(Date.now() + 86400_000);
+    const parent = await ana.create({
+      title: "Lock the line-up",
+      assigneeId: "task-test-a",
+      dueAt: due,
+    });
+    // Reviewed, waiting on an open task, and needing proof: no admin can finish it.
+    const child = await ana.create({
+      title: "Poster design",
+      assigneeId: "task-test-a",
+      reviewerId: "task-test-b",
+      dueAt: new Date(due.getTime() + 3600_000),
+      proofRequired: true,
+      dependsOnId: parent.id,
+    });
+    assert.equal((await ana.options()).superadmin, false);
+    assert.equal((await ben.options()).superadmin, true);
+    await assert.rejects(
+      ana.override({ id: child.id, status: "DONE" }),
+      /superadmin permission required/,
+    );
+    await assert.rejects(ana.setStatus({ id: child.id, status: "DONE" }));
+
+    await ben.override({ id: child.id, status: "DONE", body: "Done offline" });
+    const done = await ben.get({ id: child.id });
+    assert.equal(done.status, "DONE");
+    assert.equal(done.assigneeId, "task-test-a");
+    assert.equal(done.completedById, "task-test-b");
+    assert(
+      done.timeline.some(
+        (event) =>
+          event.kind === "STATUS_CHANGED" &&
+          event.toStatus === "DONE" &&
+          event.body === "Superadmin override: Done offline" &&
+          event.onBehalf,
+      ),
+    );
+
+    // Back to the start from done, and out of cancelled, neither of which the table allows.
+    await ben.override({ id: child.id, status: "TODO" });
+    const reopened = await ben.get({ id: child.id });
+    assert.equal(reopened.status, "TODO");
+    assert.equal(reopened.completedAt, null);
+    await ben.override({ id: child.id, status: "CANCELLED" });
+    await assert.rejects(
+      ana.setStatus({ id: child.id, status: "IN_PROGRESS" }),
+    );
+    await ben.override({ id: child.id, status: "IN_PROGRESS" });
+    assert.equal((await ben.get({ id: child.id })).status, "IN_PROGRESS");
+
+    // Past the hard deadline, and the agreed date, are superadmin edits.
+    const late = new Date(due.getTime() + 7 * 86400_000);
+    await ana.update({ id: parent.id, hardDeadlineAt: due });
+    await assert.rejects(
+      ana.update({ id: parent.id, dueAt: late }),
+      /past the hard deadline/,
+    );
+    await ben.update({ id: parent.id, dueAt: late });
+    assert.equal(
+      (await ben.get({ id: parent.id })).dueAt.getTime(),
+      late.getTime(),
+    );
+    await assert.rejects(
+      ana.update({ id: parent.id, plannedDueAt: late }),
+      /Only a superadmin/,
+    );
+    await ben.update({ id: parent.id, plannedDueAt: late });
+    const moved = await ben.get({ id: parent.id });
+    assert.equal(moved.plannedDueAt.getTime(), late.getTime());
+    assert(
+      moved.timeline.some((event) =>
+        event.body?.startsWith("Superadmin override: agreed date moved"),
+      ),
+    );
+  }, 60_000);
   test("admin gates, transactional graph changes, reminder reservations and inbox dedupe", async () => {
     try {
       await db.task.deleteMany();
