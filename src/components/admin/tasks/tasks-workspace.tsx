@@ -24,11 +24,12 @@ import {
 } from "~/lib/tasks/time";
 import { isOpen } from "~/lib/tasks/status";
 import { TaskSelect, taskFlag, taskGroup, type TaskRow } from "./shared";
-import { TasksCalendar } from "./calendar";
+import { TasksCalendar, type CalendarColorBy } from "./calendar";
 import { TaskDrawer } from "./task-drawer";
 import { TaskForm } from "./task-form";
 import { PasteChat, TaskSettings, TaskStandings } from "./task-tools";
 import { PlaybooksView } from "./playbooks";
+import { useLocalStorage } from "~/hooks/use-local-storage";
 const VIEWS = [
   "calendar",
   "list",
@@ -56,6 +57,20 @@ export function TasksWorkspace() {
     [cellTasks, setCellTasks] = useState<string[] | null>(null),
     [dialog, setDialog] = useState<"new" | "paste" | "settings" | null>(null),
     [newDay, setNewDay] = useState(dayKey(new Date()));
+  const [colorChoice, setColorChoice] = useLocalStorage(
+    "tasks.calendar.colorBy",
+    "person",
+  );
+  // Filtered to one person (or one gig), coloring by them says nothing, so
+  // the calendar colors by the other.
+  const colorBy: CalendarColorBy =
+    person && !gig
+      ? "gig"
+      : gig && !person
+        ? "person"
+        : colorChoice === "gig"
+          ? "gig"
+          : "person";
   const open = (id: string) => {
     const next = new URLSearchParams(search.toString());
     next.set("task", id);
@@ -378,19 +393,50 @@ export function TasksWorkspace() {
                 Today
               </Button>
             </div>
-            <div className="flex gap-1">
-              <Button
-                variant={week ? "ghost" : "secondary"}
-                onClick={() => setWeek(false)}
-              >
-                Month
-              </Button>
-              <Button
-                variant={week ? "secondary" : "ghost"}
-                onClick={() => setWeek(true)}
-              >
-                Week
-              </Button>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              {view === "calendar" ? (
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground mr-1 text-sm">
+                    Color by
+                  </span>
+                  <Button
+                    variant={colorBy === "person" ? "secondary" : "ghost"}
+                    aria-pressed={colorBy === "person"}
+                    disabled={!!person && !gig}
+                    title={
+                      person && !gig ? "Showing one person's tasks" : undefined
+                    }
+                    onClick={() => setColorChoice("person")}
+                  >
+                    Person
+                  </Button>
+                  <Button
+                    variant={colorBy === "gig" ? "secondary" : "ghost"}
+                    aria-pressed={colorBy === "gig"}
+                    disabled={!!gig && !person}
+                    title={
+                      gig && !person ? "Showing one gig's tasks" : undefined
+                    }
+                    onClick={() => setColorChoice("gig")}
+                  >
+                    Gig
+                  </Button>
+                </div>
+              ) : null}
+              <div className="flex gap-1">
+                <Button
+                  variant={week ? "ghost" : "secondary"}
+                  onClick={() => setWeek(false)}
+                >
+                  Month
+                </Button>
+                <Button
+                  variant={week ? "secondary" : "ghost"}
+                  onClick={() => setWeek(true)}
+                >
+                  Week
+                </Button>
+              </div>
             </div>
           </div>
         ) : null}
@@ -400,6 +446,8 @@ export function TasksWorkspace() {
             gigs={(options.data?.gigs ?? []).filter(
               (g) => !gig || g.id === gig,
             )}
+            people={options.data?.people ?? []}
+            colorBy={colorBy}
             day={day}
             week={week}
             onOpen={open}
