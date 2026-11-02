@@ -3,6 +3,7 @@
  * for Docker builds.
  */
 import "./src/env.js";
+import { withBotId } from "botid/next/config";
 import { PRIVATE_NETWORK_HOSTS } from "./src/lib/private-network-hosts.js";
 
 /** @type {import("next").NextConfig} */
@@ -124,4 +125,4 @@ const config = {
   skipTrailingSlashRedirect: true,
 };
 
-export default config;
+export default withBotId(config);

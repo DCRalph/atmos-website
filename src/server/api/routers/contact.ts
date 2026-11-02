@@ -1,10 +1,12 @@
+import { TRPCError } from "@trpc/server";
+import { checkBotId } from "botid/server";
 import { z } from "zod";
 import {
   createTRPCRouter,
   publicProcedure,
   adminProcedure,
 } from "~/server/api/trpc";
-import { sendEmail } from "~/server/email/send";
+import { escapeHtml, sendEmail } from "~/server/email/send";
 
 export const contactRouter = createTRPCRouter({
   getAll: adminProcedure
@@ -53,6 +55,11 @@ export const contactRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Spam bots were filling the form. `src/instrumentation-client.ts`
+      // attaches the BotID token this verifies.
+      const { isBot } = await checkBotId();
+      if (isBot) throw new TRPCError({ code: "FORBIDDEN" });
+
       const submission = await ctx.db.contactSubmission.create({
         data: {
           name: input.name,
@@ -80,11 +87,11 @@ export const contactRouter = createTRPCRouter({
               `Message:\n${input.message}`,
             html: `
               <h1>New Contact Submission</h1>
-              <p><strong>From:</strong> ${input.name} &lt;${input.email}&gt;</p>
-              <p><strong>Reason:</strong> ${input.reason}</p>
+              <p><strong>From:</strong> ${escapeHtml(input.name)} &lt;${escapeHtml(input.email)}&gt;</p>
+              <p><strong>Reason:</strong> ${escapeHtml(input.reason)}</p>
               <p><strong>Message:</strong></p>
               <div style="white-space: pre-wrap; background: #f4f4f4; padding: 1rem; border-radius: 4px;">
-                ${input.message}
+                ${escapeHtml(input.message)}
               </div>
               <br/>
               <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/contact">View all submissions in Admin Dashboard</a></p>
