@@ -17,14 +17,15 @@ import { cn } from "~/lib/utils";
  * Hand-rolled SVG rather than a charting library: every chart here is a single
  * series, which is the case libraries add the most weight for and deliver the
  * least. Single series also means no legend — the title names the series — and
- * no categorical palette to get wrong.
+ * no categorical palette to get wrong. The one exception is `WeekHeatmap`,
+ * which can lay sales over page views, and carries a two-item legend for it.
  *
  * Series colours come from `--ticket-series-*` in globals.css; revenue is the
  * site accent. Marks are thin, the grid is recessive, and every plot carries a
  * hover layer.
  */
 
-type Series = "revenue" | "arrivals";
+type Series = "revenue" | "arrivals" | "views";
 
 const PAD = { top: 12, right: 12, bottom: 22, left: 44 };
 
@@ -117,11 +118,19 @@ export function StatTile({
  */
 export function StatStrip({
   items,
+  className,
 }: {
   items: { label: string; value: string; sub?: string; accent?: Series }[];
+  /** For a different number across, like five on a wide screen. */
+  className?: string;
 }) {
   return (
-    <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-4">
+    <dl
+      className={cn(
+        "grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-4",
+        className,
+      )}
+    >
       {items.map((item) => (
         <div
           key={item.label}
@@ -146,6 +155,30 @@ export function StatStrip({
         </div>
       ))}
     </dl>
+  );
+}
+
+/**
+ * Page views today and this week, for a card's top right: "41 views today ·
+ * 212 this week".
+ */
+export function ViewsToday({
+  today,
+  thisWeek,
+}: {
+  today: number;
+  thisWeek: number;
+}) {
+  return (
+    <span className="text-muted-foreground text-xs tabular-nums">
+      <span
+        className="font-semibold"
+        style={{ color: "var(--ticket-series-views)" }}
+      >
+        {today}
+      </span>{" "}
+      {today === 1 ? "view" : "views"} today · {thisWeek} this week
+    </span>
   );
 }
 
@@ -695,18 +728,29 @@ const HOUR_LABELS: Record<number, string> = {
 const hourName = (hour: number) =>
   `${hour % 12 === 0 ? 12 : hour % 12}${hour < 12 ? " am" : " pm"}`;
 
+type WeekCell = { day: number; hour: number; n: number };
+
 /**
  * When in the week something happens: a day by hour grid, one hue getting
  * stronger with the count. `cells` are sparse, `day` 1 being Monday.
+ *
+ * Given `views` as well, those fill each cell in the views colour and `cells`
+ * shrink to a square inside it, sized by count, so when people look and when
+ * they buy read off the one grid.
  */
 export function WeekHeatmap({
   cells,
+  views,
   unit,
+  label,
   formatValue,
   series = "revenue",
 }: {
-  cells: { day: number; hour: number; n: number }[];
+  cells: WeekCell[];
+  views?: WeekCell[];
   unit: [string, string];
+  /** What `cells` count, for the legend beside views: "Orders". */
+  label?: string;
   /** How a cell reads in the hover, instead of a count of `unit`. */
   formatValue?: (n: number) => string;
   series?: Series;
@@ -715,11 +759,26 @@ export function WeekHeatmap({
     null,
   );
   const [pointer, onPointerMove] = usePointer();
-  const counts = new Map(
-    cells.map((cell) => [`${cell.day}:${cell.hour}`, cell.n]),
-  );
+  const byHour = (list: WeekCell[]) =>
+    new Map(list.map((cell) => [`${cell.day}:${cell.hour}`, cell.n]));
+  const counts = byHour(cells);
+  const viewCounts = byHour(views ?? []);
   const max = Math.max(1, ...cells.map((cell) => cell.n));
-  const active = hover ? (counts.get(`${hover.day}:${hover.hour}`) ?? 0) : null;
+  const maxViews = Math.max(1, ...(views ?? []).map((cell) => cell.n));
+  const at = (map: Map<string, number>, day: number, hour: number) =>
+    map.get(`${day}:${hour}`) ?? 0;
+  // A square root keeps one busy hour from washing every other cell out to
+  // near nothing.
+  const strength = (n: number, top: number) => Math.sqrt(n / top);
+  const value = (n: number) =>
+    formatValue ? formatValue(n) : `${n} ${n === 1 ? unit[0] : unit[1]}`;
+
+  const active = hover
+    ? {
+        n: at(counts, hover.day, hover.hour),
+        views: at(viewCounts, hover.day, hover.hour),
+      }
+    : null;
 
   return (
     <div
@@ -734,29 +793,45 @@ export function WeekHeatmap({
               {name}
             </span>
             {Array.from({ length: 24 }, (_, hour) => {
-              const n = counts.get(`${row + 1}:${hour}`) ?? 0;
+              const day = row + 1;
+              const n = at(counts, day, hour);
+              const seen = at(viewCounts, day, hour);
+              const filled = views ? seen > 0 : n > 0;
               return (
                 <span
                   key={hour}
-                  onPointerEnter={() => setHover({ day: row + 1, hour })}
+                  onPointerEnter={() => setHover({ day, hour })}
                   className={cn(
-                    "aspect-square rounded-[3px]",
-                    n === 0 && "bg-muted",
-                    hover?.day === row + 1 &&
+                    "grid aspect-square place-items-center rounded-[3px]",
+                    !filled && "bg-muted",
+                    hover?.day === day &&
                       hover.hour === hour &&
                       "ring-foreground ring-1",
                   )}
                   style={
-                    n > 0
-                      ? {
-                          background: `var(--ticket-series-${series})`,
-                          // A square root keeps one busy hour from washing
-                          // every other cell out to near nothing.
-                          opacity: 0.25 + 0.75 * Math.sqrt(n / max),
-                        }
-                      : undefined
+                    !filled
+                      ? undefined
+                      : views
+                        ? {
+                            background: `color-mix(in oklab, var(--ticket-series-views) ${Math.round(16 + 70 * strength(seen, maxViews))}%, transparent)`,
+                          }
+                        : {
+                            background: `var(--ticket-series-${series})`,
+                            opacity: 0.25 + 0.75 * strength(n, max),
+                          }
                   }
-                />
+                >
+                  {views && n > 0 ? (
+                    <span
+                      className="block rounded-[2px] shadow-[0_0_0_1px_rgb(0_0_0/0.35)]"
+                      style={{
+                        background: `var(--ticket-series-${series})`,
+                        width: `${34 + 46 * strength(n, max)}%`,
+                        height: `${34 + 46 * strength(n, max)}%`,
+                      }}
+                    />
+                  ) : null}
+                </span>
               );
             })}
           </div>
@@ -772,12 +847,19 @@ export function WeekHeatmap({
         ))}
       </div>
 
-      {hover && active !== null && (
+      {views ? (
+        <div className="text-muted-foreground mt-2 flex gap-3.5 text-[11px]">
+          <Swatch series="views">Views</Swatch>
+          <Swatch series={series}>{label ?? unit[1]}</Swatch>
+        </div>
+      ) : null}
+
+      {hover && active && (
         <Tooltip
           value={
-            formatValue
-              ? formatValue(active)
-              : `${active} ${active === 1 ? unit[0] : unit[1]}`
+            views
+              ? `${active.views} ${active.views === 1 ? "view" : "views"} · ${value(active.n)}`
+              : value(active.n)
           }
           label={`${WEEKDAYS[hover.day - 1]} ${hourName(hover.hour)}`}
           at={pointer}
@@ -787,21 +869,40 @@ export function WeekHeatmap({
   );
 }
 
+function Swatch({ series, children }: { series: Series; children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span
+        className="size-2 rounded-[2px]"
+        style={{ background: `var(--ticket-series-${series})` }}
+      />
+      {children}
+    </span>
+  );
+}
+
 /**
  * Direct-labelled bars: a label, a number on the right, and a bar for its
  * share of `max` (the largest row unless given). The label carries identity,
  * so the colour is only doing magnitude.
+ *
+ * With `onToggle`, rows are buttons that pick themselves as a filter; once
+ * any are `selected`, the rest dim.
  */
 export function BarList({
   rows,
   max,
   series = "revenue",
   empty = "Nothing yet.",
+  selected = [],
+  onToggle,
 }: {
   rows: { key: string; label: string; value: number; detail: string }[];
   max?: number;
   series?: Series;
   empty?: string;
+  selected?: string[];
+  onToggle?: (key: string) => void;
 }) {
   const scale = max ?? Math.max(1, ...rows.map((row) => row.value));
 
@@ -810,26 +911,50 @@ export function BarList({
   }
 
   return (
-    <ul className="space-y-2">
-      {rows.map((row) => (
-        <li key={row.key}>
-          <div className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="truncate">{row.label}</span>
-            <span className="text-muted-foreground shrink-0 tabular-nums">
-              {row.detail}
-            </span>
-          </div>
-          <div className="bg-muted mt-1 h-1.5 w-full overflow-hidden rounded-full">
-            <div
-              className="h-full rounded-full"
-              style={{
-                width: `${Math.min(100, (row.value / scale) * 100)}%`,
-                background: `var(--ticket-series-${series})`,
-              }}
-            />
-          </div>
-        </li>
-      ))}
+    <ul className={cn("space-y-2", onToggle && "-mx-1.5 space-y-0.5")}>
+      {rows.map((row) => {
+        const on = selected.includes(row.key);
+        const body = (
+          <>
+            <div className="flex items-baseline justify-between gap-3 text-sm">
+              <span className={cn("truncate", on && "font-medium")}>
+                {row.label}
+              </span>
+              <span className="text-muted-foreground shrink-0 tabular-nums">
+                {row.detail}
+              </span>
+            </div>
+            <div className="bg-muted mt-1 h-1.5 w-full overflow-hidden rounded-full">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${Math.min(100, (row.value / scale) * 100)}%`,
+                  background: `var(--ticket-series-${series})`,
+                }}
+              />
+            </div>
+          </>
+        );
+        return (
+          <li key={row.key}>
+            {onToggle ? (
+              <button
+                type="button"
+                aria-pressed={on}
+                onClick={() => onToggle(row.key)}
+                className={cn(
+                  "hover:bg-muted/60 focus-visible:ring-ring block w-full rounded-md px-1.5 py-1 text-left outline-none focus-visible:ring-2",
+                  selected.length > 0 && !on && "opacity-50",
+                )}
+              >
+                {body}
+              </button>
+            ) : (
+              body
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }

@@ -25,9 +25,10 @@ import {
   campaignTypeOf,
 } from "~/lib/ticketing/campaigns";
 import { toCsv } from "~/lib/csv";
-import { eventDayKey } from "~/lib/ticketing/dates";
+import { DEFAULT_EVENT_TIMEZONE, eventDayKey } from "~/lib/ticketing/dates";
 import { formatNZD } from "~/lib/ticketing/money";
 import { sumDoorTotals } from "~/lib/ticketing/door-totals";
+import { todayAndThisWeek, type TodayAndThisWeek } from "~/server/view-sql";
 
 /**
  * Analytics across events: the admin Analytics page. Where the event
@@ -340,6 +341,36 @@ const boughtOrders = (scope: Prisma.Sql) => Prisma.sql`
 
 type Measured = { orders: number; tickets: number; revenueCents: number };
 
+/**
+ * Event page views in scope: by hour of the week in each event's own zone,
+ * like the sales they sit under, and how many today and this week, in New
+ * Zealand.
+ */
+async function eventViews(db: Prisma.TransactionClient, scope: Prisma.Sql) {
+  const [hours, [counts]] = await Promise.all([
+    db.$queryRaw<{ day: number; hour: number; views: number }[]>`
+      SELECT
+        extract(isodow FROM l.local)::int AS day,
+        extract(hour FROM l.local)::int AS hour,
+        COUNT(*)::int AS views
+      FROM (
+        SELECT (v."createdAt" AT TIME ZONE 'UTC') AT TIME ZONE e.timezone AS local
+        FROM "ticket_event" e
+        JOIN "ticket_event_view" v ON v."eventId" = e.id
+        WHERE ${scope}
+      ) l
+      GROUP BY 1, 2
+    `,
+    db.$queryRaw<TodayAndThisWeek[]>`
+      SELECT ${todayAndThisWeek(Prisma.sql`v."createdAt"`, DEFAULT_EVENT_TIMEZONE)}
+      FROM "ticket_event" e
+      JOIN "ticket_event_view" v ON v."eventId" = e.id
+      WHERE ${scope}
+    `,
+  ]);
+  return { hours, today: counts?.today ?? 0, thisWeek: counts?.thisWeek ?? 0 };
+}
+
 export const analyticsRouter = createTRPCRouter({
   /** The events the picker offers for a scope. */
   eventOptions: adminProcedure
@@ -373,13 +404,13 @@ export const analyticsRouter = createTRPCRouter({
 
   /**
    * When people buy: by hour of the week, by days before doors, by month, and
-   * when they turn up relative to doors.
+   * when they turn up relative to doors. And when they look: event page views.
    */
   timing: adminProcedure.input(scopeInput).query(async ({ ctx, input }) => {
     const scope = scopeSql(input);
     const sales = boughtOrders(scope);
 
-    const [weekHours, months, daysOut, arrivals] = await Promise.all([
+    const [weekHours, months, daysOut, arrivals, views] = await Promise.all([
       // 1 is Monday. Each order sits in its own event's zone: a 9pm sale
       // belongs to that evening wherever the event is.
       ctx.db.$queryRaw<({ day: number; hour: number } & Measured)[]>`
@@ -435,6 +466,7 @@ export const analyticsRouter = createTRPCRouter({
         GROUP BY 1
         ORDER BY 1 ASC
       `,
+      eventViews(ctx.db, scope),
     ]);
 
     // Days out, summed across events. Sparse; the client buckets them.
@@ -457,6 +489,7 @@ export const analyticsRouter = createTRPCRouter({
       months,
       leadTime: [...byDay.values()].sort((a, b) => b.days - a.days),
       arrivals,
+      views,
     };
   }),
 

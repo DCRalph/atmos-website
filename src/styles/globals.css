@@ -91,9 +91,11 @@
   --admin-accent-ink: var(--site-accent-ink);
   --admin-accent-text: color-mix(in oklab, var(--site-accent), black 40%);
 
-  /* Ticketing analytics series colours. Revenue is the admin accent. */
+  /* Ticketing analytics series colours. Revenue is the admin accent; views
+     are a sky blue, the next step on from lime and emerald. */
   --ticket-series-revenue: var(--admin-accent-text);
   --ticket-series-arrivals: #059669;
+  --ticket-series-views: #0284c7;
 
   --radius: 0.625rem;
   --background: oklch(1 0 0);
@@ -136,6 +138,7 @@
 .dark {
   --admin-accent-text: var(--site-accent-text);
   --ticket-series-arrivals: #0fa47a;
+  --ticket-series-views: #56c4f0;
 
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);

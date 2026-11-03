@@ -20,6 +20,7 @@ import { ticketTypeName } from "~/lib/ticketing/access-levels";
 import { sumDoorTotals } from "~/lib/ticketing/door-totals";
 import { pastEventsPace } from "~/server/ticketing/lead-time";
 import { checkoutJourney } from "~/server/ticketing/journey";
+import { todayAndThisWeek, type TodayAndThisWeek } from "~/server/view-sql";
 import { declineReport } from "~/server/ticketing/declines";
 import { paceOnAxis } from "~/lib/ticketing/pace";
 import { campaignTypeOf } from "~/lib/ticketing/campaigns";
@@ -239,7 +240,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
         },
       });
 
-      const [byPaidWith, [gotIn], arrivals, views] = await Promise.all([
+      const [byPaidWith, [gotIn], arrivals, [views]] = await Promise.all([
         ctx.db.ticketOrder.groupBy({
           by: ["paidWith"],
           where: {
@@ -276,7 +277,13 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           ORDER BY 1 ASC
         `,
         // Visits to the page: where the funnel starts.
-        ctx.db.ticketEventView.count({ where: { eventId: event.id } }),
+        ctx.db.$queryRaw<(TodayAndThisWeek & { total: number })[]>`
+          SELECT
+            COUNT(*)::int AS total,
+            ${todayAndThisWeek(Prisma.sql`v."createdAt"`, event.timezone)}
+          FROM "ticket_event_view" v
+          WHERE v."eventId" = ${event.id}
+        `,
       ]);
 
       const offPlatform = sumDoorTotals(event.doorTotals);
@@ -391,7 +398,10 @@ export const ticketAnalyticsRouter = createTRPCRouter({
               ? Math.round((admitted / ticketsIssued) * 100)
               : 0,
           /** Visits to the event page, one per tab. */
-          views,
+          views: views?.total ?? 0,
+          /** Of those, since midnight and since Monday where the event is. */
+          viewsToday: views?.today ?? 0,
+          viewsThisWeek: views?.thisWeek ?? 0,
           /** Bought orders with anybody through the door. */
           ordersArrived: gotIn?.orders ?? 0,
           /** Paid ÷ (paid + abandoned). The checkout funnel's bottom step. */
@@ -567,7 +577,8 @@ export const ticketAnalyticsRouter = createTRPCRouter({
 
   /**
    * Who bought in a range, and how: when in the week, how many at once, and
-   * which link brought them.
+   * which link brought them. Page views by hour of the week ride along, for
+   * the same grid.
    */
   buyers: eventOrganiserProcedure
     .input(rangeInput)
@@ -576,7 +587,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
       const window = salesWindow(event.startsAt, input.range);
       const bought = Prisma.sql`o."eventId" = ${input.eventId} AND ${BOUGHT_ORDER} ${paidWithin(window)}`;
 
-      const [weekHours, sizes, sources, devices] = await Promise.all([
+      const [weekHours, views, sizes, sources, devices] = await Promise.all([
         // 1 is Monday. The stored time is UTC, marked as such, then moved
         // into the event's zone: a 9pm sale belongs to that evening.
         ctx.db.$queryRaw<{ day: number; hour: number; orders: number }[]>`
@@ -589,6 +600,20 @@ export const ticketAnalyticsRouter = createTRPCRouter({
             FROM "ticket_order" o
             WHERE ${bought}
           ) sales
+          GROUP BY 1, 2
+        `,
+        // Views of the page on the same grid, in the same window.
+        ctx.db.$queryRaw<{ day: number; hour: number; views: number }[]>`
+          SELECT
+            extract(isodow FROM local)::int AS day,
+            extract(hour FROM local)::int AS hour,
+            COUNT(*)::int AS views
+          FROM (
+            SELECT (v."createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${event.timezone} AS local
+            FROM "ticket_event_view" v
+            WHERE v."eventId" = ${input.eventId}
+              ${window ? Prisma.sql`AND v."createdAt" >= ${window.since} AND v."createdAt" <= ${window.until}` : Prisma.empty}
+          ) seen
           GROUP BY 1, 2
         `,
         // Four and up share a bar: nobody needs eleven bars for one group booking.
@@ -651,6 +676,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
 
       return {
         weekHours,
+        viewHours: views,
         sizes,
         devices,
         sources: sources
