@@ -18,6 +18,8 @@ import { gigPath } from "~/lib/gig-url";
 import { siteFontVariables } from "~/lib/site-fonts";
 import { SOCIALS, type SocialKey } from "~/lib/site-constants";
 import { api } from "~/trpc/react";
+import { useCaptureAttribution } from "~/lib/ticketing/attribution";
+import { useRecordPageView } from "~/lib/use-record-page-view";
 import { AtmosLogo, Skeleton, buttonVariants } from "~/components/site/ui";
 import {
   CtaPill,
@@ -43,6 +45,10 @@ const panel =
 
 /** The link in bio: socials, the next gig, and the way into the site. */
 export default function LinksPage() {
+  // The link in bio is where Instagram visits land, so its tags are kept
+  // for checkout like any public page's, and its views count.
+  useCaptureAttribution();
+  useRecordPageView();
   const upcoming = api.gigs.getUpcoming.useQuery();
   const next = upcoming.data?.[0];
 

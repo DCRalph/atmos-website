@@ -2716,6 +2716,35 @@ model TicketEventView {
   @@map("ticket_event_view")
 }
 
+/// One visit to one public page: home, the gigs list, a gig, about, an
+/// event... One row per visit and page, so a refresh is not another view, the
+/// same rule as `TicketEventView`. Written by the public site through
+/// `pageViews.record`, read by the Site tab on Analytics. Only paths
+/// `~/lib/page-views` knows are kept.
+model PageView {
+  id      String @id @default(cuid())
+  /// The pathname alone, no query: `/gigs/night-moves`.
+  path    String
+  /// The tab's visit, as `TicketOrder.visitId`.
+  visitId String
+
+  /// The visit's tags, as checkout reads them: a tagged link, else the
+  /// referring site ("instagram", medium "referral"), else none for direct.
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmContent  String?
+
+  /// `mobile`, `tablet` or `desktop`, from the browser. Null if unknown.
+  device String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([path, visitId])
+  @@index([createdAt])
+  @@map("page_view")
+}
+
 /// A named copy of one short link, for counting one place it is used apart
 /// from the rest: "Cuba St lamp post", "Instagram bio", "Newsletter, Oct".
 ///

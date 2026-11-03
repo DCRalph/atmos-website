@@ -36,6 +36,7 @@ import {
   StatTile,
   TierBars,
   TimeSeriesChart,
+  ViewsToday,
   WeekHeatmap,
 } from "./charts";
 import { CheckoutJourney } from "./checkout-journey";
@@ -52,8 +53,9 @@ const MEASURES = [
 /**
  * Sales dashboard for one event, on the admin event page and the organiser's.
  *
- * The range switch scopes the left column: the sales curve, when people buy,
- * where they came from, how many they bought at once and on what device. The right rail and
+ * The range switch scopes the left column: the sales curve, when people buy
+ * (and look), where they came from, how many they bought at once and on what
+ * device. The right rail and
  * the headline numbers are always the whole event.
  */
 export function EventOverview({
@@ -167,7 +169,14 @@ export function EventOverview({
                 : undefined,
             accent: "arrivals",
           },
+          {
+            label: "Page views",
+            value: `${counts.viewsToday} today`,
+            sub: `${counts.viewsThisWeek} this week · ${counts.views} in all`,
+            accent: "views",
+          },
         ]}
+        className="xl:grid-cols-5"
       />
 
       <Profit
@@ -217,6 +226,12 @@ export function EventOverview({
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <ChartCard
                 title="When people buy"
+                action={
+                  <ViewsToday
+                    today={counts.viewsToday}
+                    thisWeek={counts.viewsThisWeek}
+                  />
+                }
                 className={cn(
                   overview.data.arrivals.length === 0 && "md:col-span-2",
                 )}
@@ -227,7 +242,13 @@ export function EventOverview({
                     hour: cell.hour,
                     n: cell.orders,
                   }))}
+                  views={(buyers.data?.viewHours ?? []).map((cell) => ({
+                    day: cell.day,
+                    hour: cell.hour,
+                    n: cell.views,
+                  }))}
                   unit={["order", "orders"]}
+                  label="Orders"
                 />
               </ChartCard>
               {overview.data.arrivals.length > 0 ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { keepPreviousData } from "@tanstack/react-query";
 import { endOfDay, startOfDay } from "date-fns";
@@ -37,6 +37,7 @@ import {
   BucketBarChart,
   ChartCard,
   StatStrip,
+  ViewsToday,
   WeekHeatmap,
 } from "./charts";
 import { CheckoutJourney } from "./checkout-journey";
@@ -85,9 +86,10 @@ const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
  * Every event at once. The controls pick which events: past or coming, a
  * date range on the event's date, or a handful by name. Everything below
  * reads them, in two columns from `lg` up, with the events side by side in
- * a table at the end.
+ * a table at the end. `tabs` leads the controls: the page's Events / Site
+ * switch.
  */
-export function AnalyticsOverview() {
+export function AnalyticsOverview({ tabs }: { tabs?: ReactNode }) {
   const [scope, setScope] = useState<Scope>("all");
   const [from, setFrom] = useState<Date | undefined>();
   const [to, setTo] = useState<Date | undefined>();
@@ -149,6 +151,7 @@ export function AnalyticsOverview() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
+        {tabs}
         <Segmented
           label="Which events"
           options={SCOPES}
@@ -278,14 +281,30 @@ export function AnalyticsOverview() {
           />
         ) : null}
 
-        <ChartCard title="When people buy">
+        <ChartCard
+          title="When people buy"
+          action={
+            timing.data ? (
+              <ViewsToday
+                today={timing.data.views.today}
+                thisWeek={timing.data.views.thisWeek}
+              />
+            ) : null
+          }
+        >
           <WeekHeatmap
             cells={(timing.data?.weekHours ?? []).map((cell) => ({
               day: cell.day,
               hour: cell.hour,
               n: cell[measure],
             }))}
+            views={(timing.data?.views.hours ?? []).map((cell) => ({
+              day: cell.day,
+              hour: cell.hour,
+              n: cell.views,
+            }))}
             unit={MEASURE_UNIT[measure]}
+            label={MEASURES.find((option) => option.value === measure)?.label}
             formatValue={measure === "revenueCents" ? formatNZD : undefined}
           />
         </ChartCard>
