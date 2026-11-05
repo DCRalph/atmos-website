@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, Plus } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { formatMoney } from "../cart-sheet";
 import { Button, Media, Skeleton } from "../ui";
@@ -25,6 +25,10 @@ import {
 const steps = ["Gear", "Dates", "Details", "Done"] as const;
 type Step = (typeof steps)[number];
 
+/** Step headings, on the same scale as the home page section headings. */
+const stepHeading = "t-heading text-[clamp(1.75rem,4.5vw,3.5rem)]";
+
+/** The steps as numbered labels. Steps already reachable are buttons back to them. */
 function Progress({
   step,
   onStep,
@@ -36,56 +40,50 @@ function Progress({
 }) {
   const index = steps.indexOf(step);
   return (
-    <ol className="flex items-center gap-2" aria-label="Booking progress">
+    <ol
+      className="flex flex-wrap gap-x-5 gap-y-3 md:gap-x-7"
+      aria-label="Booking progress"
+    >
       {steps.map((s, i) => (
-        <li
-          key={s}
-          className="flex flex-1 items-center gap-2 last:flex-none"
-          aria-current={i === index ? "step" : undefined}
-        >
+        <li key={s} aria-current={i === index ? "step" : undefined}>
           <button
             type="button"
             disabled={!reachable(s) || step === "Done"}
             onClick={() => onStep(s)}
-            className="flex items-center gap-2 disabled:cursor-default"
+            className={cn(
+              "t-label flex items-baseline gap-2 text-[11px] transition-colors disabled:cursor-default",
+              i === index
+                ? "text-white"
+                : i < index
+                  ? "text-white/70 enabled:hover:text-white"
+                  : "text-white/45",
+            )}
           >
             <span
               className={cn(
-                "t-label flex size-7 shrink-0 items-center justify-center rounded-full text-[10px]",
-                i < index && "bg-white text-black",
-                i === index && "bg-site-accent text-site-accent-ink",
-                i > index && "border border-white/25 text-white/55",
+                "tabular-nums",
+                i === index ? "text-site-accent-text" : "text-white/35",
               )}
             >
-              {i < index ? <Check className="size-3.5" /> : i + 1}
+              {String(i + 1).padStart(2, "0")}
             </span>
-            <span
-              className={cn(
-                "t-label text-[10px] max-sm:sr-only",
-                i === index ? "text-white" : "text-white/55",
-              )}
-            >
-              {s}
-            </span>
+            {s}
           </button>
-          {i < steps.length - 1 ? (
-            <span className="h-px flex-1 bg-white/15" />
-          ) : null}
         </li>
       ))}
     </ol>
   );
 }
 
-/** Packages as a tile grid; the picked one turns white. */
-function PackageTiles({ b }: { b: Booking }) {
+/** Packages as numbered rows, like the crew list. The picked one goes accent. */
+function PackageRows({ b }: { b: Booking }) {
   return (
     <div
       role="radiogroup"
       aria-label="Package"
-      className="grid gap-px border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3"
+      className="border-t border-white/10"
     >
-      {b.packages.map((p) => {
+      {b.packages.map((p, i) => {
         const on = b.pkg?.id === p.id;
         const lines = p.items.map((i) => ({
           item: i.gearItem,
@@ -99,38 +97,50 @@ function PackageTiles({ b }: { b: Booking }) {
             role="radio"
             aria-checked={on}
             onClick={() => b.togglePackage(p.id)}
-            className={cn(
-              "flex min-h-48 flex-col items-start gap-4 p-5 text-left transition-colors",
-              on ? "bg-white text-black" : "hover:bg-site-raised bg-black",
-            )}
+            className="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3 border-b border-white/10 py-5 text-left transition-colors hover:bg-white/[0.03] md:grid-cols-[2rem_minmax(0,1.5fr)_minmax(0,1fr)_auto_auto] md:gap-x-6 md:px-3"
           >
-            <span className="flex w-full items-start justify-between gap-3">
-              <span className="t-display text-lg normal-case">{p.name}</span>
-              {on ? <Check className="size-5 shrink-0" /> : null}
+            <span
+              className={cn(
+                "text-[13px] tabular-nums max-md:hidden",
+                on ? "text-site-accent-text" : "text-white/45",
+              )}
+            >
+              {String(i + 1).padStart(2, "0")}
             </span>
-            <GearChips lines={lines} inverted={on} />
-            <span className="mt-auto flex w-full flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-              <span className="t-display text-2xl tabular-nums">
+            <span
+              className={cn(
+                "t-display text-[clamp(1.25rem,2.4vw,2rem)] normal-case transition-colors",
+                on && "text-site-accent-text",
+              )}
+            >
+              {p.name}
+            </span>
+            <GearChips
+              lines={lines}
+              className="max-md:col-span-2 max-md:row-start-3"
+            />
+            {/* Phones: price under the name, so the name gets the width. */}
+            <span className="max-md:row-start-2 md:text-right">
+              <span className="t-display text-[clamp(1.125rem,2.4vw,2rem)] tabular-nums">
                 {formatMoney(p.price)}
-                <span
-                  className={cn(
-                    "text-[12px]",
-                    on ? "text-black/60" : "text-white/60",
-                  )}
-                >
-                  /day
-                </span>
+                <span className="t-label text-[10px] text-white/60">/day</span>
               </span>
               {sep > p.price ? (
-                <span
-                  className={cn(
-                    "t-label text-[10px] tabular-nums",
-                    on ? "text-black/70" : "text-site-accent-text",
-                  )}
-                >
+                <span className="t-label text-site-accent-text text-[10px] tabular-nums max-md:ml-3 md:mt-2 md:block">
                   Save {formatMoney(sep - p.price)}
                 </span>
               ) : null}
+            </span>
+            <span
+              aria-hidden
+              className={cn(
+                "flex size-9 shrink-0 items-center justify-center rounded-full border transition-colors max-md:col-start-2 max-md:row-span-2 max-md:row-start-1 md:size-11",
+                on
+                  ? "bg-site-accent text-site-accent-ink border-transparent"
+                  : "border-white/25 text-white/70 group-hover:border-white/60 group-hover:text-white",
+              )}
+            >
+              {on ? <Check className="size-4" /> : <Plus className="size-4" />}
             </span>
           </button>
         );
@@ -141,21 +151,25 @@ function PackageTiles({ b }: { b: Booking }) {
 
 function GearSkeleton() {
   return (
-    <div
-      aria-busy
-      className="grid gap-px border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3"
-    >
-      {Array.from({ length: 6 }, (_, i) => (
-        <div key={i} className="min-h-48 space-y-4 bg-black p-5">
-          <Skeleton className="h-5 w-2/3 rounded-full" />
-          <Skeleton className="h-6 w-1/2 rounded-full" />
+    <div aria-busy className="border-t border-white/10">
+      {Array.from({ length: 4 }, (_, i) => (
+        <div
+          key={i}
+          className="flex items-center justify-between gap-6 border-b border-white/10 py-6 md:px-3"
+        >
+          <Skeleton className="h-7 w-2/5 rounded-full" />
+          <Skeleton className="h-7 w-24 rounded-full" />
         </div>
       ))}
     </div>
   );
 }
 
-/** /equipment, "Wizard": booth photo hero, then gear, dates and details one step at a time with the total pinned to the bottom. */
+/**
+ * /equipment, "Wizard": booth photo hero, then gear, dates and details one
+ * step at a time with the total pinned to the bottom. Laid out like the crew
+ * page: full width on the site gutter, gear as numbered rows.
+ */
 export function EquipmentWizard() {
   const b = useBooking();
   const [step, setStepState] = useState<Step>("Gear");
@@ -187,7 +201,7 @@ export function EquipmentWizard() {
 
   return (
     <div>
-      <section className="relative flex h-[52svh] min-h-[420px] items-end">
+      <section className="relative flex min-h-[520px] items-end overflow-hidden md:min-h-[600px]">
         <Media
           src="/home/atmos-17.jpg"
           alt="DJ booth at an Atmos gig"
@@ -197,7 +211,7 @@ export function EquipmentWizard() {
         />
         <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/75 to-transparent" />
         <div className="scrim-bottom absolute inset-0" />
-        <div className="relative w-full px-5 pb-8 md:px-10 md:pb-12">
+        <div className="relative w-full px-5 pt-28 pb-10 md:px-10 md:pb-14">
           <h1 className="t-heading text-[clamp(2.25rem,10vw,9rem)]">
             Equipment
           </h1>
@@ -213,17 +227,14 @@ export function EquipmentWizard() {
         </div>
       </section>
 
-      <div
-        ref={topRef}
-        className="mx-auto max-w-5xl scroll-mt-20 px-5 pt-10 pb-16 md:px-10"
-      >
+      <div ref={topRef} className="scroll-mt-20 px-5 py-14 md:px-10 md:py-20">
         <Progress step={current} onStep={setStep} reachable={reachable} />
 
-        <div className="mt-10 min-h-[420px]">
+        <div className="mt-6 min-h-[420px]">
           {current === "Gear" ? (
             <section className="animate-in fade-in-0 duration-200">
-              <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <h2 className="t-heading text-3xl">Pick your gear</h2>
+              <div className="mb-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 md:mb-10">
+                <h2 className={stepHeading}>Pick your gear</h2>
                 <ModeSwitch b={b} />
               </div>
               {b.error ? (
@@ -249,7 +260,7 @@ export function EquipmentWizard() {
               ) : b.loading ? (
                 <GearSkeleton />
               ) : b.mode === "PACKAGE" ? (
-                <PackageTiles b={b} />
+                <PackageRows b={b} />
               ) : (
                 <ItemRows b={b} />
               )}
@@ -261,7 +272,9 @@ export function EquipmentWizard() {
 
           {current === "Dates" ? (
             <section className="animate-in fade-in-0 duration-200">
-              <h2 className="t-heading mb-8 text-3xl">When do you need it?</h2>
+              <h2 className={cn(stepHeading, "mb-8 md:mb-10")}>
+                When do you need it?
+              </h2>
               <BookingCalendar b={b} />
               <div className="mt-4">
                 <ClashNotice b={b} />
@@ -272,11 +285,11 @@ export function EquipmentWizard() {
           {current === "Details" ? (
             <section className="animate-in fade-in-0 grid gap-12 duration-200 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <div>
-                <h2 className="t-heading mb-8 text-3xl">Who&apos;s it for?</h2>
+                <h2 className={cn(stepHeading, "mb-8")}>Who&apos;s it for?</h2>
                 <RequestForm b={b} />
               </div>
               <div className="md:border-l md:border-white/10 md:pl-10">
-                <h2 className="t-heading mb-8 text-3xl">Summary</h2>
+                <h2 className={cn(stepHeading, "mb-8")}>Summary</h2>
                 <BookingSummary b={b} />
               </div>
             </section>
@@ -288,7 +301,7 @@ export function EquipmentWizard() {
 
       {current !== "Done" ? (
         <div className="sticky bottom-0 z-20 border-t border-white/10 bg-black">
-          <div className="mx-auto flex max-w-5xl items-center gap-3 px-5 py-3 md:px-10">
+          <div className="flex items-center gap-3 px-5 py-3 md:px-10">
             {current !== "Gear" ? (
               <Button
                 variant="outline"

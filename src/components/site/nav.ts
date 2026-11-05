@@ -1,14 +1,11 @@
 /** Public site navigation, shared by the header and mobile menu. */
-export const primaryNav = [
+export const siteNav = [
   { label: "Gigs", href: "/gigs" },
   { label: "Content", href: "/content" },
   { label: "Merch", href: "/merch" },
   { label: "Socials", href: "/socials" },
   { label: "Crew", href: "/crew" },
   { label: "Contact", href: "/contact" },
-] as const;
-
-export const secondaryNav = [
   { label: "Equipment", href: "/equipment" },
   { label: "About", href: "/about" },
 ] as const;

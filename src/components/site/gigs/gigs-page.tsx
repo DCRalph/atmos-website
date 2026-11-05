@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, CalendarX2, Images } from "lucide-react";
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
+import { useTabParam } from "~/hooks/use-tab-param";
 import { gigPath } from "~/lib/gig-url";
 import { gigOffSiteNotice } from "~/lib/gig-visibility";
 import { NewsletterForm } from "../newsletter-form";
@@ -41,7 +42,6 @@ const TABS = [
     empty: "No affiliated gigs yet",
   },
 ] as const;
-type TabId = (typeof TABS)[number]["id"];
 
 /** Upcoming row: poster, date, title and venue, ticket status. */
 function UpcomingRow({
@@ -341,7 +341,12 @@ function NextShowHero({
  * after announced ones, past gigs as an admin arranged them.
  */
 export function GigsPage() {
-  const [tab, setTab] = useState<TabId>("upcoming");
+  // In the URL, so Back from a gig lands on the tab it was opened from.
+  const { value: tab, onValueChange: setTab } = useTabParam([
+    "upcoming",
+    "past",
+    "affiliated",
+  ]);
   const { data: user } = api.user.me.useQuery();
   const { showHiddenEvents } = useSite();
   const upcoming = api.gigs.getUpcoming.useQuery();

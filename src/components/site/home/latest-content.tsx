@@ -35,8 +35,10 @@ function platformOf(item: ContentItem) {
 }
 
 const gridClass = "grid grid-cols-3 items-start gap-x-3 gap-y-6 md:gap-8";
+// Full width at 16:9 is most of a desktop screen tall, so cap it there.
+const videoClass = "lg:max-w-[50vw]";
 
-/** A full-width YouTube player followed by three equally sized content items. */
+/** A YouTube player (half the screen wide on desktop) followed by three equally sized content items. */
 export function LatestContent() {
   const latest = api.homeContent.getHomeLatest.useQuery();
   const video = latest.data?.video;
@@ -62,7 +64,7 @@ export function LatestContent() {
       ) : (
         <div className="space-y-8 md:space-y-10">
           {video && videoId ? (
-            <article>
+            <article className={videoClass}>
               <YouTubePlayer videoId={videoId} title={video.title} />
               <h3 className="t-display mt-4 text-xl leading-tight break-words normal-case md:text-3xl">
                 {video.title}
@@ -144,7 +146,7 @@ function ContentCard({ item }: { item: ContentItem }) {
 function ContentSkeleton() {
   return (
     <div aria-busy aria-label="Loading latest content" className="space-y-8">
-      <div>
+      <div className={videoClass}>
         <Skeleton className="aspect-video" />
         <Skeleton className="mt-4 h-6 w-3/4" />
       </div>

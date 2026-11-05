@@ -159,12 +159,12 @@ export function ItemRows({ b }: { b: Booking }) {
           return (
             <li
               key={item.id}
-              className="flex flex-wrap items-center gap-x-5 gap-y-3 border-b border-white/10 py-4"
+              className="flex flex-wrap items-center gap-x-5 gap-y-3 border-b border-white/10 py-5 md:px-3"
             >
               <div className="min-w-0 flex-1">
                 <p
                   className={cn(
-                    "t-display text-base normal-case",
+                    "t-display text-lg normal-case md:text-xl",
                     n ? "text-white" : "text-white/85",
                   )}
                 >
@@ -606,7 +606,9 @@ export function Submitted({ b }: { b: Booking }) {
       <span className="bg-site-accent text-site-accent-ink flex size-12 items-center justify-center rounded-full">
         <Check className="size-6" />
       </span>
-      <h2 className="t-heading text-3xl">Request sent</h2>
+      <h2 className="t-heading text-[clamp(1.75rem,4.5vw,3.5rem)]">
+        Request sent
+      </h2>
       <p className="max-w-[40ch] text-[16px] text-white/75">
         {successCopy(b.submittedMode ?? "PACKAGE")}
       </p>

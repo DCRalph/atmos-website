@@ -443,8 +443,11 @@ function Composer() {
   const locked = awaiting.length > 0;
   const busy = running;
 
+  // Not gated on `ready`: closing the file picker focuses the window, which
+  // reloads the conversation (ready=false) just before the picker's change
+  // event, and the picked files were silently dropped. Sending still waits.
   const addFiles = (incoming: File[]) => {
-    if (busy || locked || !ready) return;
+    if (busy || locked) return;
     const { accepted, rejected } = validateBatch(incoming, constraints, {
       count: files.length,
       size: files.reduce((size, file) => size + file.size, 0),
@@ -542,7 +545,7 @@ function Composer() {
           multiple
           hidden
           accept={`${acceptAttribute(constraints.accept)},.txt,.md,.markdown,.csv,.tsv,.json,.xml,.yaml,.yml,.log`}
-          disabled={busy || locked || !ready || !conversationId}
+          disabled={busy || locked || !conversationId}
           onChange={(event) => {
             addFiles(Array.from(event.target.files ?? []));
             event.target.value = "";
@@ -558,7 +561,6 @@ function Composer() {
               busy ||
               locked ||
               !conversationId ||
-              !ready ||
               files.length >= constraints.maxFiles
             }
             title="Attach images, PDFs or text files (25 MB each, 8 files max)"
