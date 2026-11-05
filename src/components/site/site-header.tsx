@@ -17,12 +17,7 @@ import { SOCIALS } from "~/lib/site-constants";
 import { cn } from "~/lib/utils";
 import { useMerchCart } from "~/components/merch/merch-cart-provider";
 import { GradientBlur } from "~/components/gradient-blur";
-import {
-  HERO_ROUTES,
-  HERO_ROUTE_PREFIXES,
-  primaryNav,
-  secondaryNav,
-} from "./nav";
+import { HERO_ROUTES, HERO_ROUTE_PREFIXES, siteNav } from "./nav";
 import { useSite } from "./site-provider";
 import { AtmosLogo, IconButton } from "./ui";
 
@@ -289,7 +284,7 @@ const VEIL_MS = 480;
  * Full-screen phone menu: the page blurs behind it, links go huge. `closing`
  * plays the exit (links slide back out, the veil fades) before unmount.
  */
-const menuLinkCount = 1 + primaryNav.length + secondaryNav.length;
+const menuLinkCount = 1 + siteNav.length;
 
 function MobileMenu({
   pathname,
@@ -306,7 +301,7 @@ function MobileMenu({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const links = [{ label: "Home", href: "/" }, ...primaryNav, ...secondaryNav];
+  const links = [{ label: "Home", href: "/" }, ...siteNav];
 
   return (
     // No animation on this wrapper: tw-animate keyframes set `filter`, and a
@@ -446,8 +441,8 @@ export function SiteHeader({ tone = "dark" }: { tone?: "dark" | "light" }) {
           <AtmosLogo className="w-24 md:w-28" tone={tone} />
         </Link>
         <nav aria-label="Main" className="hidden lg:block">
-          <ul className="flex gap-7">
-            {primaryNav.map((l) => {
+          <ul className="flex gap-5 xl:gap-7">
+            {siteNav.map((l) => {
               const active = isActive(pathname, l.href);
               return (
                 <li key={l.href}>
