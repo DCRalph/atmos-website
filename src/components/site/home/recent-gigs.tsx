@@ -6,6 +6,7 @@ import { ArrowUpRight, ChevronLeft, ChevronRight, Images } from "lucide-react";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { gigPath } from "~/lib/gig-url";
 import { cn } from "~/lib/utils";
+import { useDragScroll } from "~/hooks/use-drag-scroll";
 import { useHoverCursor } from "../hover-cursor";
 import { Button, Skeleton } from "../ui";
 import {
@@ -88,11 +89,12 @@ function Shell({
   );
 }
 
-/** The rail itself. Arrows appear on desktop only when it overflows. */
+/** The rail itself. Arrows appear on desktop only when it overflows; a mouse can also drag it. */
 function PosterRail({ gigs }: { gigs: RecentGig[] }) {
   const railRef = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ start: true, end: true });
   const cursor = useHoverCursor(<ArrowUpRight />);
+  useDragScroll(railRef);
 
   useEffect(() => {
     const rail = railRef.current;
@@ -147,7 +149,7 @@ function PosterRail({ gigs }: { gigs: RecentGig[] }) {
     >
       <div
         ref={railRef}
-        className="flex snap-x snap-mandatory scroll-px-5 [scrollbar-width:none] gap-4 overflow-x-auto px-5 pb-2 md:scroll-px-10 md:px-10"
+        className="flex snap-x snap-mandatory scroll-px-5 [scrollbar-width:none] gap-4 overflow-x-auto px-5 pb-2 select-none md:scroll-px-10 md:px-10"
       >
         {gigs.map((gig) => {
           const photos = gig.media.filter((m) => m.type === "photo").length;
