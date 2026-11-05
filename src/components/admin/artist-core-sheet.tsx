@@ -87,7 +87,10 @@ export function ArtistCoreSheet({
   );
 
   return (
-    <Sheet open={Boolean(profileId)} onOpenChange={(open) => !open && onClose()}>
+    <Sheet
+      open={Boolean(profileId)}
+      onOpenChange={(open) => !open && onClose()}
+    >
       <SheetContent
         className="w-full gap-0 overflow-y-auto sm:max-w-md"
         onKeyDown={(event) => {
@@ -139,25 +142,40 @@ function CoreDetails({
     soundcloud: socialHandle(profile, "soundcloud"),
   };
   const [form, setForm] = useState(saved);
-  const isDirty = (Object.keys(saved) as (keyof typeof saved)[]).some(
+  // The photo uploads when picked but only goes on the profile with Save:
+  // saving it straight away remounted the form and lost unsaved text.
+  const [avatarFileId, setAvatarFileId] = useState(profile.avatarFileId);
+  const [uploading, setUploading] = useState(false);
+  const textDirty = (Object.keys(saved) as (keyof typeof saved)[]).some(
     (key) => form[key].trim() !== saved[key],
   );
+  const avatarDirty = avatarFileId !== profile.avatarFileId;
 
-  const updateCore = api.artistProfiles.updateCore.useMutation({
-    onSuccess: async () => {
-      toast.success("Saved");
-      await refresh(profile.id);
-    },
-    onError: (error) => toast.error(error.message),
-  });
-  const setAvatar = api.artistProfiles.setAvatar.useMutation({
-    onSuccess: () => refresh(profile.id),
-    onError: (error) => toast.error(error.message),
-  });
-  const clearAvatar = api.artistProfiles.clearAvatar.useMutation({
-    onSuccess: () => refresh(profile.id),
-    onError: (error) => toast.error(error.message),
-  });
+  const onError = (error: { message: string }) => toast.error(error.message);
+  const updateCore = api.artistProfiles.updateCore.useMutation({ onError });
+  const setAvatar = api.artistProfiles.setAvatar.useMutation({ onError });
+  const clearAvatar = api.artistProfiles.clearAvatar.useMutation({ onError });
+  const saving =
+    updateCore.isPending || setAvatar.isPending || clearAvatar.isPending;
+
+  /** Saves text and photo together; the form remounts from the stored values after. */
+  async function save() {
+    try {
+      if (textDirty)
+        await updateCore.mutateAsync({ profileId: profile.id, ...form });
+      if (avatarDirty)
+        await (avatarFileId
+          ? setAvatar.mutateAsync({
+              profileId: profile.id,
+              fileId: avatarFileId,
+            })
+          : clearAvatar.mutateAsync({ profileId: profile.id }));
+    } catch {
+      return; // onError has already said why
+    }
+    toast.success("Saved");
+    await refresh(profile.id);
+  }
   const unlinkUser = api.artistProfiles.unlinkUser.useMutation({
     onSuccess: async () => {
       toast.success("User unlinked");
@@ -210,22 +228,19 @@ function CoreDetails({
         <ImageUploadField
           preset="artistAvatar"
           context={{ profileId: profile.id }}
-          value={profile.avatarFileId}
+          value={avatarFileId}
           aspect="square"
           label="Photo"
-          disabled={setAvatar.isPending || clearAvatar.isPending}
-          onChange={(fileId) =>
-            fileId
-              ? setAvatar.mutate({ profileId: profile.id, fileId })
-              : clearAvatar.mutate({ profileId: profile.id })
-          }
+          disabled={saving}
+          onChange={setAvatarFileId}
+          onUploadingChange={setUploading}
         />
 
         <form
           className="space-y-4"
           onSubmit={(event) => {
             event.preventDefault();
-            updateCore.mutate({ profileId: profile.id, ...form });
+            void save();
           }}
         >
           <div className="space-y-2">
@@ -269,20 +284,24 @@ function CoreDetails({
             />
           </div>
           <div className="flex justify-end gap-2">
-            {isDirty ? (
+            {textDirty || avatarDirty ? (
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => setForm(saved)}
-                disabled={updateCore.isPending}
+                onClick={() => {
+                  setForm(saved);
+                  setAvatarFileId(profile.avatarFileId);
+                }}
+                disabled={saving}
               >
                 Reset
               </Button>
             ) : null}
-            <Button type="submit" disabled={!isDirty || updateCore.isPending}>
-              {updateCore.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : null}
+            <Button
+              type="submit"
+              disabled={(!textDirty && !avatarDirty) || saving || uploading}
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Save
             </Button>
           </div>
