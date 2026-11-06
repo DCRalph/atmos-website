@@ -19,7 +19,8 @@ import {
 
 type RecentGig = RouterOutputs["homeGigs"]["getHomeRecent"][number];
 
-const cardClass = "w-[62vw] shrink-0 snap-start sm:w-[280px]";
+// 25% bigger on desktop so the posters sit level with the latest content tiles.
+const cardClass = "w-[62vw] shrink-0 snap-start sm:w-[280px] md:w-[350px]";
 
 /** Admin-curated past gigs as a horizontal poster rail. */
 export function RecentGigs() {
@@ -163,7 +164,7 @@ function PosterRail({ gigs }: { gigs: RecentGig[] }) {
               <div className="relative">
                 <GigPoster
                   gig={gig}
-                  sizes="(min-width: 640px) 280px, 62vw"
+                  sizes="(min-width: 768px) 350px, (min-width: 640px) 280px, 62vw"
                   className="aspect-[4/5] transition-opacity group-hover:opacity-85"
                 />
                 {photos ? (
