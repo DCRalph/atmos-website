@@ -20,6 +20,7 @@ import { ImageUploadField } from "~/components/uploads/image-upload-field";
 import { ImageGalleryField } from "~/components/uploads/image-gallery-field";
 import {
   BLOCK_TYPES,
+  defaultTileLabel,
   getBlockDef,
   type BlockGroup,
   type ClientBlock,
@@ -134,6 +135,13 @@ export function BlockPanel({
     <div className="space-y-6">
       <BlockContent store={store} block={block} profileId={profileId} />
 
+      {block.type === "GIG_LIST" ||
+      block.type === "PAST_GIGS" ||
+      block.type === "DIVIDER" ||
+      block.type === "SPACER" ? null : (
+        <LabelField store={store} block={block} />
+      )}
+
       <PanelSection title="Size">
         <Field
           label="Width"
@@ -223,6 +231,47 @@ export function BlockPanel({
         </PanelButton>
       </div>
     </div>
+  );
+}
+
+/**
+ * The small line at the top of a tile, or above a heading. Empty uses the
+ * block's own (`defaultTileLabel`).
+ */
+function LabelField({
+  store,
+  block,
+}: {
+  store: EditorStore;
+  block: ClientBlock;
+}) {
+  const fallback = defaultTileLabel(block.type, str(block, "url"));
+  const heading = block.type === "HEADING";
+  return (
+    <PanelSection title={heading ? "Line above" : "Label"}>
+      <Field
+        label={heading ? "Small line above the heading" : "Top of the tile"}
+        hint={
+          heading
+            ? "In your accent colour. Leave it empty for none."
+            : fallback
+              ? `Leave it empty for “${fallback}”.`
+              : "Leave it empty for none."
+        }
+      >
+        {(id) => (
+          <TextInput
+            id={id}
+            value={str(block, "label")}
+            placeholder={fallback ?? (heading ? "Welcome" : "")}
+            maxLength={60}
+            onChange={(e) =>
+              updateData(store, block.id, { label: e.target.value })
+            }
+          />
+        )}
+      </Field>
+    </PanelSection>
   );
 }
 
@@ -413,6 +462,60 @@ function BlockContent({
       );
     case "LINK_LIST":
       return <LinksField block={block} onChange={(links) => set({ links })} />;
+    case "RELEASE":
+      return (
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <p className="t-label text-[10px] text-white/60">Cover</p>
+            <ImageUploadField
+              aspect="square"
+              value={
+                typeof block.data.coverFileId === "string" &&
+                block.data.coverFileId
+                  ? block.data.coverFileId
+                  : null
+              }
+              onChange={(coverFileId) => set({ coverFileId })}
+              preset="artistBlockImage"
+              context={{ profileId }}
+              helperText="Shown as made: your theme's photo style doesn't touch it."
+            />
+          </div>
+          <Field label="Title">
+            {(id) => (
+              <TextInput
+                id={id}
+                autoFocus={!str(block, "title")}
+                value={str(block, "title")}
+                placeholder="Anxiety"
+                maxLength={120}
+                onChange={(e) => set({ title: e.target.value })}
+              />
+            )}
+          </Field>
+          <Field
+            label="Under the title"
+            hint="Who it's by, the label, the catalogue number."
+          >
+            {(id) => (
+              <TextInput
+                id={id}
+                value={str(block, "artist")}
+                placeholder="Sunday and Clinkz · Can You Cope? CYC011"
+                maxLength={160}
+                onChange={(e) => set({ artist: e.target.value })}
+              />
+            )}
+          </Field>
+          <LinksField
+            block={block}
+            onChange={(links) => set({ links })}
+            title="Where to get it"
+            placeholder="Spotify"
+            hint="The first is the accent button. Spotify, Apple Music, Bandcamp, SoundCloud and YouTube links get their logo."
+          />
+        </div>
+      );
     case "GIG_LIST":
       return (
         <Field
@@ -531,9 +634,15 @@ type LinkRow = { label: string; url: string };
 function LinksField({
   block,
   onChange,
+  title = "Links",
+  placeholder = "Bookings",
+  hint = "The first link is the accent button, and also a button in the header.",
 }: {
   block: ClientBlock;
   onChange: (links: LinkRow[]) => void;
+  title?: string;
+  placeholder?: string;
+  hint?: string;
 }) {
   const text = (v: unknown) => (typeof v === "string" ? v : "");
   const links: LinkRow[] = Array.isArray(block.data.links)
@@ -548,7 +657,7 @@ function LinksField({
 
   return (
     <div className="space-y-3">
-      <p className="t-label text-[10px] text-white/60">Links</p>
+      <p className="t-label text-[10px] text-white/60">{title}</p>
       {links.map((link, i) => {
         const bad =
           link.url.trim() !== "" && !/^https?:\/\//.test(link.url.trim());
@@ -560,7 +669,7 @@ function LinksField({
             <div className="flex gap-2">
               <TextInput
                 aria-label={`Link ${i + 1} name`}
-                placeholder="Bookings"
+                placeholder={placeholder}
                 value={link.label}
                 onChange={(e) => edit(i, { label: e.target.value })}
               />
@@ -594,9 +703,7 @@ function LinksField({
       >
         <Plus className="size-3.5" /> Add a link
       </PanelButton>
-      <p className="text-[13px] leading-snug text-white/50">
-        The first link is also a button in the Stage layout&apos;s header.
-      </p>
+      <p className="text-[13px] leading-snug text-white/50">{hint}</p>
     </div>
   );
 }

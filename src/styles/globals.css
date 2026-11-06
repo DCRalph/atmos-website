@@ -75,15 +75,19 @@
   --inset-shadow-lg: -110px 0px 30px -100px rgba(0, 0, 0, 0.5) inset;
 }
 
-:root {
+:root,
+.site-brand {
   /* The brand's one accent colour, for the public site and the admin alike.
      This is the only definition; artist profiles override the three inline
-     (see `themeVars`), and `SITE_ACCENT` in src/lib/site-constants.ts mirrors
-     it for places CSS can't reach. */
+     (see `themeVars`), and `.site-brand` puts them back for site chrome
+     inside a profile (its footer). `SITE_ACCENT` in src/lib/site-constants.ts
+     mirrors it for places CSS can't reach. */
   --site-accent: #c6ff33;
   --site-accent-ink: #000;
   --site-accent-text: #c6ff33;
+}
 
+:root {
   /* The admin's accent, the trio the admin UI follows. For now it is the site
      accent; change these three to give the admin its own. The text form is
      darkened on the light theme so it still reads against white. */

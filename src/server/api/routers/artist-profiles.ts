@@ -57,6 +57,7 @@ const blockInputSchema = z.object({
     "SOUNDCLOUD_PLAYLIST",
     "YOUTUBE_VIDEO",
     "SPOTIFY_EMBED",
+    "RELEASE",
     "SOCIAL_LINKS",
     "LINK_LIST",
     "GIG_LIST",

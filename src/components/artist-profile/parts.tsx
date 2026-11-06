@@ -58,12 +58,12 @@ export const pill = cva(
     variants: {
       variant: {
         accent:
-          "bg-[var(--cp-accent)] text-[var(--cp-accent-ink)] hover:brightness-110",
+          "bg-[var(--cp-accent)] text-[var(--cp-accent-ink)] shadow-[var(--accent-ring)] hover:brightness-110",
         solid: "bg-[var(--cp-ink)] text-[var(--cp-ground)] hover:opacity-85",
         outline:
-          "border border-[var(--cp-faint)] text-[var(--cp-ink)] hover:border-[var(--cp-ink)]",
+          "border-[length:var(--line-bw)] border-[var(--pill-line)] text-[var(--cp-ink)] hover:border-[var(--cp-ink)]",
         glass:
-          "cp-glass text-[var(--cp-ink)] hover:bg-[color-mix(in_oklab,var(--cp-ink)_14%,transparent)]",
+          "cp-ctl text-[var(--cp-ink)] hover:bg-[color-mix(in_oklab,var(--cp-ink)_14%,transparent)]",
       },
       size: {
         sm: "h-9 px-4 text-[10px]",
@@ -165,8 +165,8 @@ export function RoundButton({
       className={cn(
         "inline-flex size-11 shrink-0 items-center justify-center rounded-full text-[var(--cp-ink)] transition-colors disabled:opacity-35",
         glass
-          ? "cp-glass hover:bg-[color-mix(in_oklab,var(--cp-ink)_14%,transparent)]"
-          : "border border-[var(--cp-line)] hover:border-[var(--cp-ink)]",
+          ? "cp-ctl hover:bg-[color-mix(in_oklab,var(--cp-ink)_14%,transparent)]"
+          : "border-[length:var(--line-bw)] border-[var(--pill-line)] hover:border-[var(--cp-ink)]",
         className,
       )}
       {...props}
@@ -224,8 +224,8 @@ export function SocialLinks({
               className={cn(
                 "flex size-11 items-center justify-center rounded-full text-[var(--cp-ink)] transition-colors",
                 glass
-                  ? "cp-glass hover:bg-[color-mix(in_oklab,var(--cp-ink)_14%,transparent)]"
-                  : "border border-[var(--cp-line)] hover:border-[var(--cp-ink)]",
+                  ? "cp-ctl hover:bg-[color-mix(in_oklab,var(--cp-ink)_14%,transparent)]"
+                  : "border-[length:var(--line-bw)] border-[var(--pill-line)] hover:border-[var(--cp-ink)]",
               )}
             >
               <Icon className="size-[18px]" />
@@ -567,7 +567,10 @@ export function OnNowTag({ className }: { className?: string }) {
 // ---------------------------------------------------------------------------
 // Layout pieces
 
-/** Section heading in the artist's face, with optional controls on the right. */
+/**
+ * The top of a sets tile: its title as the tile's label, a line about it
+ * underneath, and any controls on the right.
+ */
 export function SectionHeading({
   title,
   aside,
@@ -582,13 +585,13 @@ export function SectionHeading({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-end justify-between gap-x-8 gap-y-5",
+        "mb-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-3",
         className,
       )}
     >
       <div className="min-w-0">
         {title ? (
-          <h2 className="cp-display text-[clamp(2rem,8cqw,4.75rem)] [overflow-wrap:anywhere]">
+          <h2 className="t-label cp-tag text-[11px] [overflow-wrap:anywhere]">
             {title}
           </h2>
         ) : null}

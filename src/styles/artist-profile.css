@@ -7,6 +7,12 @@
  *
  * Utilities: `cp-display`, `cp-glass`, `cp-photo`, `cp-scrim-bottom`,
  * `cp-scrim-left`, `cp-scrim-top`.
+ *
+ * Styles: `data-style` (glass | flat | print) sets a handful of variables
+ * that the tile pieces read: `cp-tile`, `cp-tag` (a tile's label), `cp-chip`,
+ * `cp-ctl` (round buttons), `cp-media` (photos and players inside a tile)
+ * and `cp-ambient` (light behind glass). Any element can set its own
+ * `data-style`, which is how the editor previews them.
  */
 @layer components {
   /* `.site.cp`, not `.cp`: these override `.site`'s own black ground, white
@@ -141,4 +147,330 @@
   .cp[data-tone="light"][data-photo="duotone"] .cp-photo::after {
     mix-blend-mode: multiply;
   }
+
+  /* ---------------------------------------------------------------------
+     Styles. Glass's recipe depends on the tone, so it lives on the root;
+     each style then picks its values. */
+  .cp {
+    --glass-gloss: linear-gradient(
+      150deg,
+      rgb(255 255 255 / 0.07) 0%,
+      rgb(255 255 255 / 0.028) 34%,
+      rgb(255 255 255 / 0.016) 64%,
+      rgb(255 255 255 / 0.03) 100%
+    );
+    --glass-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    --glass-rim: rgb(255 255 255 / 0.075);
+    --glass-lit: rgb(255 255 255 / 0.2);
+    --glass-base: rgb(0 0 0 / 0.5);
+    --glass-pool: rgb(255 255 255 / 0.05);
+    --glass-shadow:
+      0 1px 1px rgb(0 0 0 / 0.5), 0 3px 8px -2px rgb(0 0 0 / 0.35),
+      0 28px 56px -24px rgb(0 0 0 / 0.75);
+    --glass-bezel:
+      0 0 0 1px rgb(255 255 255 / 0.08), 0 8px 18px -10px rgb(0 0 0 / 0.8);
+    --tile-pad: 20px;
+  }
+
+  .cp[data-tone="light"] {
+    --glass-gloss: linear-gradient(
+      150deg,
+      rgb(255 255 255 / 0.72) 0%,
+      rgb(255 255 255 / 0.5) 40%,
+      rgb(255 255 255 / 0.42) 100%
+    );
+    --glass-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    --glass-rim: rgb(10 10 10 / 0.07);
+    --glass-lit: rgb(255 255 255);
+    --glass-base: rgb(10 10 10 / 0.1);
+    --glass-pool: rgb(255 255 255 / 0.6);
+    --glass-shadow:
+      0 1px 1px rgb(10 10 10 / 0.07), 0 3px 8px -2px rgb(10 10 10 / 0.06),
+      0 28px 56px -26px rgb(10 10 10 / 0.22);
+    --glass-bezel:
+      0 0 0 1px rgb(10 10 10 / 0.08), 0 8px 18px -10px rgb(10 10 10 / 0.25);
+  }
+
+  @media (min-width: 768px) {
+    .cp {
+      --tile-pad: 24px;
+    }
+  }
+
+  /* Frosted panels over light carried down from the header. */
+  .cp[data-style="glass"],
+  .cp [data-style="glass"] {
+    --chip-icon-bg: var(--cp-ink);
+    --chip-icon-ink: var(--cp-ground);
+    --pill-line: var(--cp-faint);
+    --tile-bg: var(--glass-grain) 0 0 / 180px, var(--glass-gloss);
+    --tile-bw: 0px;
+    --tile-line: transparent;
+    --tile-shadow:
+      inset 0 0 0 1px var(--glass-rim), inset 0 1px 0 var(--glass-lit),
+      inset 0 -1px 0 var(--glass-base),
+      inset 0 30px 40px -32px var(--glass-pool), var(--glass-shadow);
+    --tile-blur: blur(28px) saturate(160%);
+    --tag-bg: transparent;
+    --tag-ink: var(--cp-muted);
+    --tag-pad: 0px;
+    --chip-bg: color-mix(in oklab, var(--cp-ink) 6%, transparent);
+    --chip-ring: inset 0 0 0 1px
+      color-mix(in oklab, var(--cp-ink) 10%, transparent);
+    --ctl-bg: color-mix(in oklab, var(--cp-ground) 42%, transparent);
+    --ctl-ring:
+      inset 0 0 0 1px color-mix(in oklab, var(--cp-ink) 16%, transparent),
+      inset 0 1px 0 color-mix(in oklab, var(--cp-ink) 10%, transparent);
+    --ctl-blur: blur(18px) saturate(150%);
+    --media-ring: var(--glass-bezel);
+    --line-bw: 1px;
+    --accent-ring: 0 0 0 0 transparent;
+    --ambient: 1;
+  }
+
+  /* Solid surfaces a step lighter than the ground. */
+  .cp[data-style="flat"],
+  .cp [data-style="flat"] {
+    --chip-icon-bg: var(--cp-ink);
+    --chip-icon-ink: var(--cp-ground);
+    --pill-line: var(--cp-faint);
+    --tile-bg: color-mix(in oklab, var(--cp-ground), var(--cp-ink) 6%);
+    --tile-bw: 0px;
+    --tile-line: transparent;
+    --tile-shadow: none;
+    --tile-blur: none;
+    --tag-bg: transparent;
+    --tag-ink: var(--cp-muted);
+    --tag-pad: 0px;
+    --chip-bg: color-mix(in oklab, var(--cp-ground), var(--cp-ink) 11%);
+    --chip-ring: none;
+    --ctl-bg: color-mix(in oklab, var(--cp-ground), var(--cp-ink) 11%);
+    --ctl-ring: none;
+    --ctl-blur: none;
+    --media-ring: none;
+    --line-bw: 1px;
+    --accent-ring: 0 0 0 0 transparent;
+    --ambient: 0;
+  }
+
+  /* Ink outlines and a hard offset shadow, like a screen-printed poster. */
+  .cp[data-style="print"],
+  .cp [data-style="print"] {
+    --chip-icon-bg: var(--cp-accent);
+    --chip-icon-ink: var(--cp-accent-ink);
+    --pill-line: var(--cp-ink);
+    --tile-bg: var(--cp-ground);
+    --tile-bw: 2px;
+    --tile-line: var(--cp-ink);
+    --tile-shadow: 6px 6px 0 var(--cp-accent);
+    --tile-blur: none;
+    --tag-bg: var(--cp-ink);
+    --tag-ink: var(--cp-ground);
+    --tag-pad: 6px 9px;
+    --chip-bg: var(--cp-ground);
+    --chip-ring: inset 0 0 0 2px var(--cp-ink);
+    --ctl-bg: var(--cp-ground);
+    --ctl-ring: inset 0 0 0 2px var(--cp-ink);
+    --ctl-blur: none;
+    --media-ring: 0 0 0 2px var(--cp-ink);
+    --line-bw: 2px;
+    --accent-ring: inset 0 0 0 2px var(--cp-ink);
+    --ambient: 0;
+  }
+
+  /* A block's tile. The border comes out of the padding, so content sits
+     `--tile-pad` in whatever the style. */
+  .cp .cp-tile {
+    position: relative;
+    min-width: 0;
+    border: var(--tile-bw) solid var(--tile-line);
+    border-radius: var(--cp-r-panel);
+    background: var(--tile-bg);
+    box-shadow: var(--tile-shadow);
+    -webkit-backdrop-filter: var(--tile-blur);
+    backdrop-filter: var(--tile-blur);
+    padding: calc(var(--tile-pad) - var(--tile-bw));
+  }
+
+  /* A tile's label: small caps, an ink tab in Print. */
+  .cp .cp-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    white-space: nowrap;
+    border-radius: min(var(--cp-r-media), 6px);
+    background: var(--tag-bg);
+    color: var(--tag-ink);
+    padding: var(--tag-pad);
+  }
+
+  .cp .cp-chip {
+    background: var(--chip-bg);
+    box-shadow: var(--chip-ring);
+  }
+
+  .cp .cp-ctl {
+    background: var(--ctl-bg);
+    box-shadow: var(--ctl-ring);
+    -webkit-backdrop-filter: var(--ctl-blur);
+    backdrop-filter: var(--ctl-blur);
+  }
+
+  .cp .cp-media {
+    box-shadow: var(--media-ring);
+  }
+
+  /* Light behind the glass: the header photo, blurred and carried down, and
+     soft pools of the accent. Static, so nothing repaints. */
+  .cp .cp-ambient {
+    opacity: var(--ambient);
+  }
+
+  .cp .cp-ambient::before {
+    content: "";
+    position: absolute;
+    inset: -80px -80px auto;
+    height: 1100px;
+    background: var(--cp-banner, none) center / cover;
+    filter: grayscale(1) blur(36px) brightness(0.8);
+    opacity: 0.5;
+    -webkit-mask: linear-gradient(transparent 40px, #000 220px, transparent);
+    mask: linear-gradient(transparent 40px, #000 220px, transparent);
+  }
+
+  .cp[data-tone="light"] .cp-ambient::before {
+    filter: grayscale(1) blur(36px) brightness(1.2);
+    opacity: 0.3;
+  }
+
+  .cp .cp-ambient::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(
+        36% 22% at 10% 16%,
+        color-mix(in oklab, var(--cp-accent) 34%, transparent),
+        transparent 72%
+      ),
+      radial-gradient(
+        34% 20% at 92% 44%,
+        color-mix(in oklab, var(--cp-accent) 26%, transparent),
+        transparent 72%
+      ),
+      radial-gradient(
+        30% 18% at 46% 82%,
+        color-mix(in oklab, var(--cp-accent) 14%, transparent),
+        transparent 72%
+      );
+  }
+
+  /* Long text fades out by itself, so it fades the same on any surface. */
+  .cp .cp-fold {
+    -webkit-mask: linear-gradient(#000 55%, transparent);
+    mask: linear-gradient(#000 55%, transparent);
+  }
+
+  /* Header A: the photo as atmosphere, with an accent glow. */
+  .cp .cp-hero-photo {
+    filter: brightness(0.6) contrast(1.15);
+  }
+
+  .cp[data-tone="light"] .cp-hero-photo {
+    filter: brightness(1.12) contrast(1.05);
+  }
+
+  .cp .cp-hero-glow {
+    background: radial-gradient(
+      70% 80% at 80% 0%,
+      var(--cp-accent),
+      transparent 70%
+    );
+    mix-blend-mode: screen;
+    opacity: 0.4;
+  }
+
+  .cp[data-tone="light"] .cp-hero-glow {
+    mix-blend-mode: multiply;
+    opacity: 0.18;
+  }
+
+  .cp .cp-hero-fade {
+    background: linear-gradient(
+      to top,
+      var(--cp-ground) 0%,
+      color-mix(in oklab, var(--cp-ground) 80%, transparent) 28%,
+      color-mix(in oklab, var(--cp-ground) 25%, transparent) 64%,
+      color-mix(in oklab, var(--cp-ground) 55%, transparent) 100%
+    );
+  }
+
+  /* The site's own footer is never themed. */
+  .site.cp .site-brand :focus-visible {
+    outline-color: var(--site-accent-text);
+  }
+
+  .site.cp .site-brand ::selection {
+    background: var(--site-accent);
+    color: var(--site-accent-ink);
+  }
+}
+
+/* Outside the components layer on purpose: these restyle markup that brings
+   its own utility classes (Lexical's theme) or unlayered CSS (the YouTube
+   embed), which a layered rule can't outrank. */
+/* Smaller headings inside text read as a tile's own labels, in the accent;
+   the first paragraph leads a little larger. */
+.cp .cp-prose :is(h3, h4) {
+  margin: 24px 0 8px;
+  font-family:
+    var(--font-site-display-ext), var(--font-site-display), ui-sans-serif,
+    sans-serif;
+  font-size: 11px;
+  font-stretch: 135%;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--cp-accent-text);
+}
+
+.cp .cp-prose :is(h3, h4):first-child {
+  margin-top: 0;
+}
+
+.cp .cp-prose p:first-of-type {
+  font-size: 19px;
+  line-height: 1.5;
+  color: var(--cp-ink);
+}
+
+/* YouTube's play button in the accent. */
+.cp .yt-lite > .lty-playbtn {
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  background: var(--cp-accent);
+  box-shadow:
+    var(--accent-ring),
+    0 12px 30px -8px rgb(0 0 0 / 0.7);
+  filter: none;
+  opacity: 1;
+}
+
+.cp .yt-lite > .lty-playbtn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 26px;
+  height: 26px;
+  translate: 2px 0;
+  background: var(--cp-accent-ink);
+  clip-path: polygon(20% 10%, 90% 50%, 20% 90%);
+}
+
+.cp .yt-lite:hover > .lty-playbtn {
+  filter: brightness(1.1);
 }

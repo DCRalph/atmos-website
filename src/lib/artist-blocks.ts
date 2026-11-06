@@ -10,6 +10,7 @@ export type ArtistBlockTypeName =
   | "SOUNDCLOUD_PLAYLIST"
   | "YOUTUBE_VIDEO"
   | "SPOTIFY_EMBED"
+  | "RELEASE"
   | "SOCIAL_LINKS"
   | "LINK_LIST"
   | "GIG_LIST"
@@ -123,6 +124,21 @@ export const BLOCK_TYPES = [
     w: 6,
     minW: 3,
     defaultData: { url: "" },
+  }),
+  def({
+    type: "RELEASE",
+    label: "Release",
+    description: "A record: cover, title and where to get it",
+    group: "Music",
+    sizing: "auto",
+    w: 6,
+    minW: 4,
+    defaultData: {
+      title: "",
+      artist: "",
+      coverFileId: null as string | null,
+      links: [] as Array<{ label: string; url: string }>,
+    },
   }),
   def({
     type: "IMAGE",
@@ -261,4 +277,40 @@ export function newBlock(type: ArtistBlockTypeName): ClientBlock {
     h: d.h,
     data: structuredClone(d.defaultData),
   };
+}
+
+/**
+ * The small line at the top of a block's tile when the artist hasn't written
+ * one (`data.label`). Null means no line. Headings and the sets blocks (which
+ * have their own titles) aren't tiles' labels: see `ProfileSection`.
+ */
+export function defaultTileLabel(
+  type: ArtistBlockTypeName,
+  url = "",
+): string | null {
+  switch (type) {
+    case "GALLERY":
+      return "Photos";
+    case "SOUNDCLOUD_TRACK":
+    case "SOUNDCLOUD_PLAYLIST":
+      return "Listen · SoundCloud";
+    case "SPOTIFY_EMBED":
+      return "Listen · Spotify";
+    case "YOUTUBE_VIDEO":
+      return "Watch";
+    case "RELEASE":
+      return "Out now";
+    case "SOCIAL_LINKS":
+      return "Find me";
+    case "LINK_LIST":
+      return "Links";
+    case "CUSTOM_EMBED":
+      try {
+        return new URL(url).hostname.replace(/^www\./, "");
+      } catch {
+        return null;
+      }
+    default:
+      return null;
+  }
 }

@@ -248,7 +248,7 @@ function Upcoming({
   const rest = profile.upcoming.filter((s) => s !== next);
   return (
     <section>
-      <SectionHeading title={section.title} className="mb-8" />
+      <SectionHeading title={section.title} />
       {next ? <NextStub set={next} /> : null}
       {rest.length ? (
         <ul className="mt-8 border-t border-[var(--cp-line)]">
@@ -354,7 +354,7 @@ function Past({
     : profile.past;
   return (
     <section>
-      <SectionHeading title={section.title} className="mb-8" />
+      <SectionHeading title={section.title} />
       <ul className="border-t border-[var(--cp-line)]">
         {sets.map((s) => (
           <li key={s.id}>

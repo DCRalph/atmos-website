@@ -20,11 +20,12 @@ const footerSocials = [
 
 /**
  * Centered brand, socials, legal links and login, with the oversized logo
- * watermarked behind them and cropped by the bottom edge.
+ * watermarked behind them and cropped by the bottom edge. Always the brand's
+ * own colours (`site-brand`), even at the foot of a themed artist page.
  */
 export function SiteFooter() {
   return (
-    <footer className="relative isolate overflow-hidden border-t border-white/10 bg-black">
+    <footer className="site-brand relative isolate overflow-hidden border-t border-white/10 bg-black text-white">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-5 -bottom-[10vw] -z-10 opacity-[0.07] select-none md:inset-x-10"

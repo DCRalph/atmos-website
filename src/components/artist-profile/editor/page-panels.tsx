@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, Check, Loader2, Plus, Trash2 } from "lucide-react";
@@ -13,11 +13,13 @@ import {
   FACES,
   GROUND_SWATCHES,
   LAYOUTS,
+  STYLES,
   parseTheme,
   resolveTheme,
   type ArtistTheme,
   type FaceKey,
   type LayoutKey,
+  type StyleKey,
 } from "~/lib/artist-theme";
 import { SOCIAL_PLATFORMS, matchSocialPlatform } from "~/lib/social-pills";
 import { normalizeSocialUrl } from "~/lib/artist-socials";
@@ -215,6 +217,42 @@ export function ThemePanel({ store }: { store: EditorStore }) {
         </div>
       </PanelSection>
 
+      <PanelSection title="Style">
+        <div role="radiogroup" aria-label="Style" className="grid gap-2">
+          {(Object.keys(STYLES) as StyleKey[]).map((key) => {
+            const active = theme.style === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => patch({ style: key })}
+                className={cn(
+                  "grid grid-cols-[84px_minmax(0,1fr)] items-center gap-3 rounded-[14px] border p-2 text-left transition-colors",
+                  active
+                    ? "border-white bg-white/[0.06]"
+                    : "border-white/10 hover:border-white/35",
+                )}
+              >
+                <StyleSwatch style={key} />
+                <span className="min-w-0">
+                  <span className="t-label flex items-center gap-1.5 text-[10px] text-white">
+                    {STYLES[key].label}
+                    {active ? (
+                      <Check className="size-3.5 text-[var(--ed)]" />
+                    ) : null}
+                  </span>
+                  <span className="mt-1.5 block text-[12px] leading-snug text-white/55">
+                    {STYLES[key].description}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </PanelSection>
+
       <PanelSection title="Colours">
         <ColourField
           label="Background"
@@ -316,6 +354,27 @@ export function ThemePanel({ store }: { store: EditorStore }) {
         )}
       </p>
     </div>
+  );
+}
+
+/**
+ * A tiny tile drawn in a style, on the page's own colours: the swatch for
+ * each Style option. Sets its own `data-style`, so it shows that style
+ * whatever the page is using.
+ */
+function StyleSwatch({ style }: { style: StyleKey }) {
+  return (
+    <span
+      aria-hidden
+      data-style={style}
+      className="block h-14 overflow-hidden rounded-[8px] bg-[var(--cp-ground)] p-2.5 pr-3.5 pb-3.5"
+      style={{ "--tile-pad": "8px" } as CSSProperties}
+    >
+      <span className="cp-tile flex h-full flex-col justify-center gap-1.5 !rounded-[6px]">
+        <span className="t-label cp-tag w-fit !gap-1 text-[6px]">Listen</span>
+        <span className="block h-1 w-3/4 rounded-full bg-[var(--cp-muted)] opacity-60" />
+      </span>
+    </span>
   );
 }
 

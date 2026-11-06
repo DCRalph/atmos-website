@@ -13,10 +13,12 @@ import {
   FACES,
   GROUND_SWATCHES,
   LAYOUTS,
+  STYLES,
   resolveTheme,
   type ArtistTheme,
   type FaceKey,
   type LayoutKey,
+  type StyleKey,
 } from "~/lib/artist-theme";
 import { ThemeSchematic } from "./theme-swatch";
 
@@ -126,6 +128,22 @@ export function ThemeControls({
                   }}
                 >
                   {FACES[key].label}
+                </Choice>
+              ))}
+            </div>
+          </OptionGroup>
+          <OptionGroup
+            label="Style"
+            hint="How tiles and buttons are drawn: glass, solid, or ink outlines."
+          >
+            <div className="flex flex-wrap gap-1.5">
+              {(Object.keys(STYLES) as StyleKey[]).map((key) => (
+                <Choice
+                  key={key}
+                  active={tokens.style === key}
+                  onClick={() => patch({ style: key })}
+                >
+                  {STYLES[key].label}
                 </Choice>
               ))}
             </div>
