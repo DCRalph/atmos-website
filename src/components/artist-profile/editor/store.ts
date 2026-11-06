@@ -266,7 +266,13 @@ export function createEditorStore(
     patchTheme: (patch, group) =>
       set((s) => ({
         theme: { ...s.theme, ...patch },
-        themeHistory: recordThemeChange(s.themeHistory, s.theme, group),
+        // A change drops the page's own accent (see `customizeTheme`), so
+        // undo brings back the accent the page was showing, in the theme.
+        themeHistory: recordThemeChange(
+          s.themeHistory,
+          s.accentColor ? { ...s.theme, accent: s.accentColor } : s.theme,
+          group,
+        ),
         accentColor: null,
         changes: bump(s, "theme"),
       })),
