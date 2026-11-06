@@ -9,12 +9,10 @@ import { parseTheme } from "~/lib/artist-theme";
 import { userHasPermission } from "~/server/utils/permissions";
 import {
   PUBLIC_PROFILE_INCLUDE,
+  toEditableProfile,
   toPublicProfile,
 } from "~/server/artist-public-profile";
-import {
-  ArtistProfilePage,
-  type OwnerTools,
-} from "~/components/artist-profile/artist-profile-page";
+import { ArtistProfilePage } from "~/components/artist-profile/artist-profile-page";
 import type { ClaimState } from "~/components/artist-profile/parts";
 
 export const revalidate = 60;
@@ -57,10 +55,12 @@ export async function generateMetadata({
 
 export default async function PublicArtistProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<Params>;
+  searchParams: Promise<{ edit?: string }>;
 }) {
-  const { handle } = await params;
+  const [{ handle }, { edit }] = await Promise.all([params, searchParams]);
   const profile = await loadProfile(handle);
   if (!profile) return notFound();
 
@@ -86,24 +86,18 @@ export default async function PublicArtistProfilePage({
     return notFound();
   }
 
-  const owner: OwnerTools | null =
+  // The owner and admins can edit the page in place (`?edit` opens it so).
+  const editable =
     viewerIsOwner || viewerIsAdmin
-      ? {
-          draft: !profile.isPublished,
-          links: [
-            ...(viewerIsOwner
-              ? [{ label: "Edit profile", href: "/dashboard/profile" }]
-              : []),
-            ...(viewerIsAdmin
-              ? [
-                  {
-                    label: "Edit as admin",
-                    href: `/admin/artist-profiles/${profile.id}`,
-                  },
-                ]
-              : []),
-          ],
-        }
+      ? toEditableProfile(
+          profile,
+          viewerIsOwner ? "owner" : "admin",
+          profile.themeId
+            ? await db.artistProfile.count({
+                where: { themeId: profile.themeId },
+              })
+            : 0,
+        )
       : null;
 
   // Anyone signed in without a profile of their own can ask to claim an
@@ -123,7 +117,8 @@ export default async function PublicArtistProfilePage({
       theme={parseTheme(profile.themeRef?.tokens)}
       accentOverride={profile.accentColor}
       claim={claim}
-      owner={owner}
+      editable={editable}
+      startEditing={edit !== undefined}
     />
   );
 }

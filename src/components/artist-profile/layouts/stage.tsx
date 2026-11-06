@@ -34,6 +34,7 @@ import {
   type ClaimState,
 } from "../parts";
 import { ProfileSections, sectionAnchor } from "../sections";
+import { HeroEditButton } from "../editor/hero-edit-button";
 import { BioText, firstMusicAnchor, nameLength } from "./shared";
 import type { ProfileSet, PublicProfile } from "../types";
 
@@ -122,6 +123,7 @@ function Identity({ profile }: { profile: PublicProfile }) {
       ) : null}
       <div className="cp-scrim-bottom absolute inset-0" />
       <div className="cp-scrim-top absolute inset-x-0 top-0 h-40" />
+      <HeroEditButton />
 
       <div className="@container relative px-5 pb-8 md:px-10 md:pb-12">
         <h1
@@ -253,14 +255,14 @@ function Upcoming({
           {rest.map((s) => (
             <li
               key={s.id}
-              className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-x-4 gap-y-3 border-b border-[var(--cp-line)] py-4 sm:grid-cols-[56px_64px_minmax(0,1fr)_auto] md:gap-x-6"
+              className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-x-4 gap-y-3 border-b border-[var(--cp-line)] py-4 @lg:grid-cols-[56px_64px_minmax(0,1fr)_auto] @2xl:gap-x-6"
             >
               <SetPoster
                 set={s}
                 className="aspect-[4/5] w-14 rounded-[min(var(--cp-r-media),4px)]"
                 sizes="56px"
               />
-              <div className="max-sm:hidden">
+              <div className="hidden @lg:block">
                 {setIsTba(s) ? (
                   <p className="cp-display text-3xl text-[var(--cp-faint)]">
                     --
@@ -277,7 +279,7 @@ function Upcoming({
                 )}
               </div>
               <div className="min-w-0">
-                <p className="cp-display truncate text-lg leading-tight md:text-xl">
+                <p className="cp-display truncate text-lg leading-tight @2xl:text-xl">
                   <a
                     href={setHref(s)}
                     className="hover:text-[var(--cp-accent-text)]"
@@ -286,7 +288,7 @@ function Upcoming({
                   </a>
                 </p>
                 <p className="mt-1.5 truncate text-[13px] text-[var(--cp-muted)]">
-                  <span className="sm:hidden">
+                  <span className="@lg:hidden">
                     {setIsTba(s) ? "" : `${fmtDay(s.start)} · `}
                   </span>
                   {s.venue}
@@ -296,7 +298,7 @@ function Upcoming({
               </div>
               <TicketPill
                 set={s}
-                className="col-start-2 w-fit sm:col-start-4"
+                className="col-start-2 w-fit @lg:col-start-4"
               />
             </li>
           ))}
@@ -309,7 +311,7 @@ function Upcoming({
 function NextStub({ set }: { set: ProfileSet }) {
   const onNow = useSetOnNow(set);
   return (
-    <div className="grid grid-cols-[110px_minmax(0,1fr)] gap-5 rounded-[var(--cp-r-panel)] rounded-tl-none bg-[var(--cp-raised)] p-4 md:grid-cols-[150px_minmax(0,1fr)] md:gap-7 md:p-5">
+    <div className="grid grid-cols-[110px_minmax(0,1fr)] gap-5 rounded-[var(--cp-r-panel)] rounded-tl-none bg-[var(--cp-raised)] p-4 @2xl:grid-cols-[150px_minmax(0,1fr)] @2xl:gap-7 @2xl:p-5">
       <SetPoster
         set={set}
         className="aspect-[4/5] rounded-[min(var(--cp-r-media),6px)]"
@@ -318,7 +320,7 @@ function NextStub({ set }: { set: ProfileSet }) {
       <div className="flex min-w-0 flex-col justify-between gap-5">
         <div>
           {onNow ? <OnNowTag className="mb-3" /> : null}
-          <p className="cp-display text-[clamp(1.4rem,2.6vw,2.25rem)] [overflow-wrap:anywhere]">
+          <p className="cp-display text-[clamp(1.4rem,4.4cqw,2.25rem)] [overflow-wrap:anywhere]">
             <a
               href={setHref(set)}
               className="hover:text-[var(--cp-accent-text)]"
@@ -358,22 +360,22 @@ function Past({
           <li key={s.id}>
             <a
               href={setHref(s)}
-              className="group grid grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-4 border-b border-[var(--cp-line)] py-3 md:grid-cols-[44px_120px_minmax(0,1fr)_auto]"
+              className="group grid grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-4 border-b border-[var(--cp-line)] py-3 @2xl:grid-cols-[44px_120px_minmax(0,1fr)_auto]"
             >
               <SetPoster
                 set={s}
                 className="aspect-[4/5] w-11 rounded-[min(var(--cp-r-media),4px)]"
                 sizes="44px"
               />
-              <span className="t-label text-[11px] text-[var(--cp-muted)] max-md:hidden">
+              <span className="t-label hidden text-[11px] text-[var(--cp-muted)] @2xl:inline">
                 {setIsTba(s) ? "TBA" : fmtDay(s.start).slice(4)}
               </span>
               <span className="min-w-0">
-                <span className="cp-display block truncate text-[15px] leading-tight group-hover:text-[var(--cp-accent-text)] md:text-[17px]">
+                <span className="cp-display block truncate text-[15px] leading-tight group-hover:text-[var(--cp-accent-text)] @2xl:text-[17px]">
                   {setTitle(s)}
                 </span>
                 <span className="mt-1 block truncate text-[13px] text-[var(--cp-muted)]">
-                  <span className="md:hidden">
+                  <span className="@2xl:hidden">
                     {setIsTba(s) ? "" : `${fmtDay(s.start).slice(4)} · `}
                   </span>
                   {s.venue}

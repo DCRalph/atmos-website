@@ -1,4 +1,6 @@
 import type { ListGig } from "~/components/site/gigs/gig-parts";
+import type { ClientBlock } from "~/lib/artist-blocks";
+import type { ArtistTheme } from "~/lib/artist-theme";
 import type { ProfileSection } from "~/lib/artist-sections";
 
 /**
@@ -42,4 +44,32 @@ export type ProfileSet = {
   /** Gig poster URL. Shown as made, never theme-treated. */
   poster: string | null;
   role: string | null;
+};
+
+/**
+ * Everything the page editor edits, sent only to the profile's owner and
+ * admins (see `toEditableProfile`). Blocks are already in today's grid.
+ */
+export type EditableProfile = {
+  id: string;
+  handle: string;
+  displayName: string;
+  tagline: string | null;
+  bio: string | null;
+  avatarFileId: string | null;
+  bannerFileId: string | null;
+  /** The profile's own accent, over its theme's. */
+  accentColor: string | null;
+  isPublished: boolean;
+  theme: {
+    id: string;
+    name: string;
+    tokens: ArtistTheme;
+    /** Changes go into this theme rather than a copy (see `customizeTheme`). */
+    own: boolean;
+  } | null;
+  blocks: ClientBlock[];
+  socials: PublicSocial[];
+  /** Admins editing someone else's page get a way back to the admin. */
+  editor: "owner" | "admin";
 };

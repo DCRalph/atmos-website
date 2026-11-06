@@ -37,7 +37,7 @@ import {
   LinkUserDialog,
   type LinkUserTarget,
 } from "~/components/admin/link-user-dialog";
-import { ArtistProfileEditor } from "~/components/artist/artist-profile-editor";
+import { ProfilePreviewFrame } from "~/components/artist-themes/profile-preview-frame";
 import { api } from "~/trpc/react";
 
 export function AdminEditArtistProfileView({ id }: { id: string }) {
@@ -102,7 +102,12 @@ export function AdminEditArtistProfileView({ id }: { id: string }) {
             </Button>
             <Button variant="outline" size="sm" asChild>
               <Link href={`/@${profile.handle}`} target="_blank">
-                <ExternalLink className="mr-2 h-4 w-4" /> Preview
+                <ExternalLink className="mr-2 h-4 w-4" /> View page
+              </Link>
+            </Button>
+            <Button size="sm" asChild>
+              <Link href={`/artist/${profile.handle}?edit`}>
+                <Pencil className="mr-2 h-4 w-4" /> Edit page
               </Link>
             </Button>
           </div>
@@ -143,7 +148,10 @@ export function AdminEditArtistProfileView({ id }: { id: string }) {
             </div>
           )}
 
-          <ArtistProfileEditor profileId={id} mode="admin" />
+          <ProfilePreviewFrame
+            src={`/artist/${profile.handle}`}
+            label={`${profile.isPublished ? "Live" : "Draft"} at /@${profile.handle}. Edit page opens it in edit mode, where you change everything in place.`}
+          />
 
           <Dialog open={manageOpen} onOpenChange={setManageOpen}>
             <DialogContent className="sm:max-w-md">

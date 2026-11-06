@@ -1,3 +1,4 @@
+import { normalize } from "~/lib/artist-grid";
 import type { ProfileSection } from "~/lib/artist-sections";
 import type { ProfileSet, PublicProfile } from "./types";
 
@@ -138,15 +139,42 @@ const PAST: ProfileSet[] = [
   ),
 ];
 
-const SECTIONS: ProfileSection[] = [
-  { id: "gigs", type: "GIG_LIST", title: "Sets" },
-  { id: "listen-h", type: "HEADING", text: "Listen", level: 2, align: "left" },
+const cell = (x: number, y: number, w: number, h = 1) => ({ x, y, w, h });
+
+/** A grid like an artist might make: sets, then music beside bookings, photos, history. */
+const SECTIONS: ProfileSection[] = normalize<ProfileSection>([
+  { id: "gigs", type: "GIG_LIST", title: "Sets", ...cell(0, 0, 12) },
+  {
+    id: "listen-h",
+    type: "HEADING",
+    text: "Listen",
+    level: 2,
+    align: "left",
+    ...cell(0, 1, 12, 2),
+  },
   {
     id: "listen",
     type: "SOUNDCLOUD_PLAYLIST",
     url: "https://soundcloud.com/atmosmedia",
+    ...cell(0, 3, 7, 11),
   },
-  { id: "photos-h", type: "HEADING", text: "Photos", level: 2, align: "left" },
+  {
+    id: "links-h",
+    type: "HEADING",
+    text: "Bookings",
+    level: 3,
+    align: "left",
+    ...cell(7, 3, 5, 2),
+  },
+  {
+    id: "links",
+    type: "LINK_LIST",
+    links: [
+      { label: "Bookings", url: "https://atmosmedia.co.nz/contact" },
+      { label: "Press kit", url: "https://atmosmedia.co.nz/about" },
+    ],
+    ...cell(7, 5, 5, 6),
+  },
   {
     id: "photos",
     type: "GALLERY",
@@ -157,6 +185,7 @@ const SECTIONS: ProfileSection[] = [
       "/home/atmos-8.jpg",
       "/home/atmos-6.jpg",
     ],
+    ...cell(0, 14, 12, 10),
   },
   {
     id: "past",
@@ -164,17 +193,9 @@ const SECTIONS: ProfileSection[] = [
     title: "Past sets",
     showRole: true,
     includeUpcoming: false,
+    ...cell(0, 24, 12),
   },
-  { id: "links-h", type: "HEADING", text: "Bookings", level: 2, align: "left" },
-  {
-    id: "links",
-    type: "LINK_LIST",
-    links: [
-      { label: "Bookings", url: "https://atmosmedia.co.nz/contact" },
-      { label: "Press kit", url: "https://atmosmedia.co.nz/about" },
-    ],
-  },
-];
+]);
 
 /** The sample profile in one of the board's states, dated relative to `now`. */
 export function buildSampleProfile(
@@ -236,7 +257,7 @@ export function buildSampleProfile(
     handle: "yourname",
     name: "Your name",
     tagline: "House, garage and breaks from Pōneke",
-    bio: "A line or two about who you are and what you play. This is a sample profile, so the words here are placeholders.\n\nEverything below the hero is yours to arrange in the profile builder: sets, music, video, photos, text and links, in any order.",
+    bio: "A line or two about who you are and what you play. This is a sample profile, so the words here are placeholders.\n\nEverything below the hero is a grid you arrange on the page itself: sets, music, video, photos, text and links, side by side or stacked.",
     portrait: "/home/atmos-2.jpg",
     banner: "/home/atmos-1.jpg",
     claimed: true,
