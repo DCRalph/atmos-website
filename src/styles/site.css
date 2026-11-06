@@ -177,8 +177,15 @@
   white-space: nowrap;
 }
 
+/* Fits on screen (or not yet measured): one static copy, no scrolling. */
+.next-gig-marquee:not([data-overflow="true"])
+  .next-gig-marquee-run
+  + .next-gig-marquee-run {
+  display: none;
+}
+
 @media (prefers-reduced-motion: no-preference) {
-  .next-gig-marquee-track {
+  .next-gig-marquee[data-overflow="true"] .next-gig-marquee-track {
     animation: next-gig-scroll 19s linear infinite paused;
   }
 

@@ -2,7 +2,10 @@
 
 import { useEffect, useRef } from "react";
 
-/** Two identical runs make one seamless loop, including when the title is short. */
+/**
+ * Shows the next gig's title and date, scrolling only when they overflow.
+ * Two identical runs make one seamless loop; the second is hidden when static.
+ */
 export function NextGigMarquee({
   title,
   date,
@@ -13,22 +16,37 @@ export function NextGigMarquee({
   paused: boolean;
 }) {
   const viewport = useRef<HTMLSpanElement>(null);
+  const firstRun = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     const element = viewport.current;
-    if (!element) return;
+    const run = firstRun.current;
+    if (!element || !run) return;
     let inView = false;
     const sync = () => {
       element.dataset.running = String(inView && !document.hidden && !paused);
+    };
+    // The run is stretched to the viewport, so measure its title-to-date span.
+    const measure = () => {
+      const first = run.firstElementChild?.getBoundingClientRect();
+      const last = run.lastElementChild?.getBoundingClientRect();
+      if (!first || !last) return;
+      element.dataset.overflow = String(
+        last.right - first.left > element.clientWidth,
+      );
     };
     const observer = new IntersectionObserver(([entry]) => {
       inView = entry?.isIntersecting ?? false;
       sync();
     });
+    const resize = new ResizeObserver(measure);
     observer.observe(element);
+    resize.observe(element);
+    for (const child of run.children) resize.observe(child);
     document.addEventListener("visibilitychange", sync);
     return () => {
       observer.disconnect();
+      resize.disconnect();
       document.removeEventListener("visibilitychange", sync);
     };
   }, [paused]);
@@ -45,6 +63,7 @@ export function NextGigMarquee({
         {[0, 1].map((copy) => (
           <span
             key={copy}
+            ref={copy === 0 ? firstRun : undefined}
             className="next-gig-marquee-run t-display text-xl normal-case md:text-2xl"
           >
             <span>{title}</span>
