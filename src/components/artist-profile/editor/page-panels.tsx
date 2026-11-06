@@ -1,38 +1,26 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, Check, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
-import { artistFontVariables } from "~/lib/artist-fonts";
-import {
-  ACCENT_SWATCHES,
-  FACES,
-  GROUND_SWATCHES,
-  LAYOUTS,
-  STYLES,
-  parseTheme,
-  resolveTheme,
-  type ArtistTheme,
-  type FaceKey,
-  type LayoutKey,
-  type StyleKey,
-} from "~/lib/artist-theme";
+import { buildMediaUrl } from "~/lib/media-url";
+import { parseTheme, resolveTheme } from "~/lib/artist-theme";
 import { SOCIAL_PLATFORMS, matchSocialPlatform } from "~/lib/social-pills";
 import { normalizeSocialUrl } from "~/lib/artist-socials";
 import { SiteSelect, SiteSwitch } from "~/components/site/inputs";
 import { ImageUploadField } from "~/components/uploads/image-upload-field";
 import { ThemeSchematic } from "~/components/artist-themes/theme-swatch";
+import { ThemeTabs } from "~/components/artist-themes/theme-tabs";
 import type { PublicSocial } from "../types";
 import {
   Field,
   IconAction,
   PanelButton,
   PanelSection,
-  Segmented,
   TextArea,
   TextInput,
 } from "./fields";
@@ -59,8 +47,9 @@ export function ThemePanel({ store }: { store: EditorStore }) {
   });
   const setTheme = api.artistProfiles.setTheme.useMutation();
   const clearAccent = api.artistProfiles.updateProfile.useMutation();
-  const patch = (p: Partial<ArtistTheme>) => store.getState().patchTheme(p);
-  const resolved = resolveTheme(theme);
+  const history = useEditor(store, (s) => s.themeHistory);
+  const displayName = useEditor(store, (s) => s.identity.displayName);
+  const photos = useThemePhotos(store);
 
   const rows = [
     ...(mine.data ?? []),
@@ -90,6 +79,66 @@ export function ThemePanel({ store }: { store: EditorStore }) {
     }
   };
 
+  const starters = (
+    <PanelSection
+      title="Start from"
+      aside={
+        setTheme.isPending ? (
+          <Loader2 className="size-4 animate-spin text-white/60" />
+        ) : null
+      }
+    >
+      {shared.isLoading ? (
+        <div className="grid grid-cols-3 gap-2">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div
+              key={i}
+              className="aspect-[4/3] rounded-[10px] bg-white/[0.06]"
+            />
+          ))}
+        </div>
+      ) : (
+        <ul className="grid grid-cols-3 gap-2">
+          {rows.map((row) => {
+            const t = resolveTheme(parseTheme(row.tokens));
+            const active = row.id === info?.id;
+            return (
+              <li key={row.id}>
+                <button
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => void pick(row)}
+                  disabled={active}
+                  className="group/theme block w-full text-left"
+                >
+                  <span
+                    className={cn(
+                      "relative block aspect-[4/3] overflow-hidden rounded-[10px] border transition-[border-color,box-shadow]",
+                      active
+                        ? "border-[var(--ed)] shadow-[0_0_0_1px_var(--ed)]"
+                        : "border-white/15 group-hover/theme:border-white/45",
+                    )}
+                    style={{ background: t.ground }}
+                  >
+                    <ThemeSchematic layout={t.layout} theme={t} />
+                    {active ? (
+                      <span className="absolute top-1.5 right-1.5 inline-flex size-5 items-center justify-center rounded-full bg-[var(--ed)] text-black">
+                        <Check className="size-3" />
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="mt-1.5 block truncate text-[12px] text-white/75">
+                    {row.name}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </PanelSection>
+  );
+
   return (
     <div className="space-y-6">
       {accentColor ? (
@@ -117,341 +166,76 @@ export function ThemePanel({ store }: { store: EditorStore }) {
         </div>
       ) : null}
 
-      <PanelSection
-        title="Start from"
-        aside={
-          setTheme.isPending ? (
-            <Loader2 className="size-4 animate-spin text-white/60" />
-          ) : null
+      <ThemeTabs
+        sticky
+        value={theme}
+        onChange={(patch, group) => store.getState().patchTheme(patch, group)}
+        undo={{
+          run: () => store.getState().undoTheme(),
+          can: history.past.length > 0,
+        }}
+        starters={starters}
+        photos={photos}
+        sample={displayName}
+        note={
+          info?.own ? (
+            <>
+              Changes save to {info.name}.{" "}
+              <Link
+                href={
+                  admin
+                    ? `/admin/artist-themes/${info.id}`
+                    : `/dashboard/themes/${info.id}`
+                }
+                className="text-white underline underline-offset-4 hover:text-[var(--ed)]"
+              >
+                Rename or share it
+              </Link>
+            </>
+          ) : info ? (
+            `Your first change copies ${info.name} into a theme of your own, so other pages using it stay as they are.`
+          ) : (
+            "Your first change makes a theme of your own from the Atmos look."
+          )
         }
-      >
-        {shared.isLoading ? (
-          <div className="grid grid-cols-3 gap-2">
-            {Array.from({ length: 6 }, (_, i) => (
-              <div
-                key={i}
-                className="aspect-[4/3] rounded-[10px] bg-white/[0.06]"
-              />
-            ))}
-          </div>
-        ) : (
-          <ul className="grid grid-cols-3 gap-2">
-            {rows.map((row) => {
-              const t = resolveTheme(parseTheme(row.tokens));
-              const active = row.id === info?.id;
-              return (
-                <li key={row.id}>
-                  <button
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => void pick(row)}
-                    disabled={active}
-                    className="group/theme block w-full text-left"
-                  >
-                    <span
-                      className={cn(
-                        "relative block aspect-[4/3] overflow-hidden rounded-[10px] border transition-[border-color,box-shadow]",
-                        active
-                          ? "border-[var(--ed)] shadow-[0_0_0_1px_var(--ed)]"
-                          : "border-white/15 group-hover/theme:border-white/45",
-                      )}
-                      style={{ background: t.ground }}
-                    >
-                      <ThemeSchematic layout={t.layout} theme={t} />
-                      {active ? (
-                        <span className="absolute top-1.5 right-1.5 inline-flex size-5 items-center justify-center rounded-full bg-[var(--ed)] text-black">
-                          <Check className="size-3" />
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className="mt-1.5 block truncate text-[12px] text-white/75">
-                      {row.name}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </PanelSection>
-
-      <PanelSection title="Layout">
-        <div role="radiogroup" aria-label="Layout" className="grid gap-2">
-          {(Object.keys(LAYOUTS) as LayoutKey[]).map((key) => {
-            const active = theme.layout === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                onClick={() => patch({ layout: key })}
-                className={cn(
-                  "grid grid-cols-[84px_minmax(0,1fr)] items-center gap-3 rounded-[14px] border p-2 text-left transition-colors",
-                  active
-                    ? "border-white bg-white/[0.06]"
-                    : "border-white/10 hover:border-white/35",
-                )}
-              >
-                <span
-                  aria-hidden
-                  className="block h-14 overflow-hidden rounded-[8px]"
-                  style={{ background: resolved.ground }}
-                >
-                  <ThemeSchematic layout={key} theme={resolved} />
-                </span>
-                <span className="min-w-0">
-                  <span className="t-label flex items-center gap-1.5 text-[10px] text-white">
-                    {LAYOUTS[key].label}
-                    {active ? (
-                      <Check className="size-3.5 text-[var(--ed)]" />
-                    ) : null}
-                  </span>
-                  <span className="mt-1.5 block text-[12px] leading-snug text-white/55">
-                    {LAYOUTS[key].description}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </PanelSection>
-
-      <PanelSection title="Style">
-        <div role="radiogroup" aria-label="Style" className="grid gap-2">
-          {(Object.keys(STYLES) as StyleKey[]).map((key) => {
-            const active = theme.style === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                onClick={() => patch({ style: key })}
-                className={cn(
-                  "grid grid-cols-[84px_minmax(0,1fr)] items-center gap-3 rounded-[14px] border p-2 text-left transition-colors",
-                  active
-                    ? "border-white bg-white/[0.06]"
-                    : "border-white/10 hover:border-white/35",
-                )}
-              >
-                <StyleSwatch style={key} />
-                <span className="min-w-0">
-                  <span className="t-label flex items-center gap-1.5 text-[10px] text-white">
-                    {STYLES[key].label}
-                    {active ? (
-                      <Check className="size-3.5 text-[var(--ed)]" />
-                    ) : null}
-                  </span>
-                  <span className="mt-1.5 block text-[12px] leading-snug text-white/55">
-                    {STYLES[key].description}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </PanelSection>
-
-      <PanelSection title="Colours">
-        <ColourField
-          label="Background"
-          value={theme.ground}
-          swatches={GROUND_SWATCHES}
-          onChange={(ground) => patch({ ground })}
-        />
-        <ColourField
-          label="Accent"
-          value={theme.accent}
-          swatches={ACCENT_SWATCHES}
-          onChange={(accent) => patch({ accent })}
-        />
-        <p className="text-[13px] leading-snug text-white/50">
-          Text colours follow from these, so everything stays readable.
-          {resolved.accentText !== resolved.accent
-            ? " This accent is too faint on this background to use for text, so links and headline roles use the text colour."
-            : ""}
-        </p>
-      </PanelSection>
-
-      <PanelSection title="Type and shape">
-        <Field label="Display font">
-          {() => (
-            <div className={cn("flex flex-wrap gap-1.5", artistFontVariables)}>
-              {(Object.keys(FACES) as FaceKey[]).map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  aria-pressed={theme.display === key}
-                  onClick={() => patch({ display: key })}
-                  className={cn(
-                    "inline-flex h-10 items-center rounded-full border px-4 text-[13px] transition-colors",
-                    theme.display === key
-                      ? "border-white bg-white text-black"
-                      : "border-white/15 text-white/80 hover:border-white/40",
-                  )}
-                  style={{
-                    fontFamily: FACES[key].family,
-                    fontStretch: FACES[key].stretch,
-                    fontWeight: FACES[key].weight,
-                    textTransform: FACES[key].upper ? "uppercase" : "none",
-                  }}
-                >
-                  {FACES[key].label}
-                </button>
-              ))}
-            </div>
-          )}
-        </Field>
-        <Field label="Corners">
-          {() => (
-            <Segmented
-              label="Corners"
-              value={theme.corners}
-              options={[
-                { value: "hard", label: "Hard" },
-                { value: "soft", label: "Soft" },
-              ]}
-              onChange={(corners) => patch({ corners })}
-            />
-          )}
-        </Field>
-        <Field label="Your photos" hint="Gig posters always show as made.">
-          {() => (
-            <Segmented
-              label="Photo treatment"
-              value={theme.photo}
-              options={[
-                { value: "color", label: "Colour" },
-                { value: "mono", label: "Black and white" },
-                { value: "duotone", label: "Duotone" },
-              ]}
-              onChange={(photo) => patch({ photo })}
-            />
-          )}
-        </Field>
-      </PanelSection>
-
-      <p className="border-t border-white/10 pt-5 text-[13px] leading-snug text-white/50">
-        {info?.own ? (
-          <>
-            Changes save to {info.name}.{" "}
-            <Link
-              href={
-                admin
-                  ? `/admin/artist-themes/${info.id}`
-                  : `/dashboard/themes/${info.id}`
-              }
-              className="text-white underline underline-offset-4 hover:text-[var(--ed)]"
-            >
-              Rename or share it
-            </Link>
-          </>
-        ) : info ? (
-          `Your first change copies ${info.name} into a theme of your own, so other pages using it stay as they are.`
-        ) : (
-          "Your first change makes a theme of your own from the Atmos look."
-        )}
-      </p>
+      />
     </div>
   );
 }
 
 /**
- * A tiny tile drawn in a style, on the page's own colours: the swatch for
- * each Style option. Sets its own `data-style`, so it shows that style
- * whatever the page is using.
+ * The artist's images to pick palettes from, the most colourful kinds first:
+ * release covers, gig posters, then their banner, portrait and photos.
  */
-function StyleSwatch({ style }: { style: StyleKey }) {
-  return (
-    <span
-      aria-hidden
-      data-style={style}
-      className="block h-14 overflow-hidden rounded-[8px] bg-[var(--cp-ground)] p-2.5 pr-3.5 pb-3.5"
-      style={{ "--tile-pad": "8px" } as CSSProperties}
-    >
-      <span className="cp-tile flex h-full flex-col justify-center gap-1.5 !rounded-[6px]">
-        <span className="t-label cp-tag w-fit !gap-1 text-[6px]">Listen</span>
-        <span className="block h-1 w-3/4 rounded-full bg-[var(--cp-muted)] opacity-60" />
-      </span>
-    </span>
-  );
-}
-
-const HEX = /^#[0-9a-fA-F]{6}$/;
-
-/** Swatches, a picker and a hex field for one colour. */
-function ColourField({
-  label,
-  value,
-  swatches,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  swatches: readonly string[];
-  onChange: (hex: string) => void;
-}) {
-  // The hex field holds what's typed until it's a valid colour.
-  const [draft, setDraft] = useState(value);
-  const [shown, setShown] = useState(value);
-  if (shown !== value) {
-    setShown(value);
-    setDraft(value);
-  }
-  return (
-    <Field label={label}>
-      {(id) => (
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            {swatches.map((c) => (
-              <button
-                key={c}
-                type="button"
-                aria-label={`${label} ${c}`}
-                aria-pressed={value.toLowerCase() === c}
-                onClick={() => onChange(c)}
-                className={cn(
-                  "size-8 rounded-full border border-white/20 transition-shadow",
-                  value.toLowerCase() === c
-                    ? "shadow-[0_0_0_2px_#000,0_0_0_4px_var(--ed)]"
-                    : "hover:shadow-[0_0_0_2px_#000,0_0_0_4px_rgb(255_255_255/0.4)]",
-                )}
-                style={{ background: c }}
-              />
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="relative size-11 shrink-0 cursor-pointer overflow-hidden rounded-full border border-white/20">
-              <span className="sr-only">{label} picker</span>
-              <span
-                className="absolute inset-0"
-                style={{ background: value }}
-              />
-              <input
-                type="color"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                className="absolute inset-0 size-full cursor-pointer opacity-0"
-              />
-            </label>
-            <TextInput
-              id={id}
-              value={draft}
-              spellCheck={false}
-              aria-invalid={!HEX.test(draft)}
-              onChange={(e) => {
-                setDraft(e.target.value);
-                if (HEX.test(e.target.value))
-                  onChange(e.target.value.toLowerCase());
-              }}
-              className="w-36 font-mono uppercase"
-            />
-          </div>
-        </div>
-      )}
-    </Field>
-  );
+function useThemePhotos(store: EditorStore) {
+  const banner = useEditor(store, (s) => s.identity.bannerFileId);
+  const portrait = useEditor(store, (s) => s.identity.avatarFileId);
+  const blocks = useEditor(store, (s) => s.blocks);
+  const posters = useEditor(store, (s) => s.posters);
+  return useMemo(() => {
+    const file = (id: unknown, label: string) =>
+      typeof id === "string" && id ? [{ src: buildMediaUrl(id), label }] : [];
+    const covers = blocks.flatMap((b) =>
+      b.type === "RELEASE"
+        ? file(
+            b.data.coverFileId,
+            typeof b.data.title === "string" && b.data.title.trim()
+              ? `From the ${b.data.title.trim()} cover`
+              : "From a cover",
+          )
+        : [],
+    );
+    const photos = blocks.flatMap((b) =>
+      b.type === "IMAGE" ? file(b.data.fileId, "From a photo") : [],
+    );
+    return [
+      ...covers,
+      ...posters,
+      ...file(banner, "From your banner"),
+      ...file(portrait, "From your portrait"),
+      ...photos,
+    ];
+  }, [banner, portrait, blocks, posters]);
 }
 
 // ---------------------------------------------------------------------------

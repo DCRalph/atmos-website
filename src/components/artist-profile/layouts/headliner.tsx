@@ -9,6 +9,7 @@ import {
   fmtYear,
   groupConsecutive,
 } from "~/components/site/gigs/gig-parts";
+import { cn } from "~/lib/utils";
 import type { ProfileSection } from "~/lib/artist-sections";
 import type { ResolvedTheme } from "~/lib/artist-theme";
 import {
@@ -35,7 +36,13 @@ import {
 } from "../parts";
 import { ProfileSections, sectionAnchor } from "../sections";
 import { HeroEditButton } from "../editor/hero-edit-button";
-import { BioText, firstMusicAnchor, nameLength, pastSetsLine } from "./shared";
+import {
+  BioTile,
+  firstMusicAnchor,
+  nameLength,
+  pastSetsLine,
+  shortBio,
+} from "./shared";
 import type { ProfileSet, PublicProfile } from "../types";
 
 type Of<T extends ProfileSection["type"]> = Extract<
@@ -73,11 +80,6 @@ export function HeadlinerLayout({
     </>
   );
 }
-
-/** A bio short enough to sit in the header, under the name. */
-const SHORT_BIO = 200;
-const shortBio = (bio: string | null) =>
-  bio && bio.length <= SHORT_BIO && !/\n\s*\n/.test(bio) ? bio : null;
 
 function Hero({ profile }: { profile: PublicProfile }) {
   const next = nextSet(profile);
@@ -117,7 +119,7 @@ function Hero({ profile }: { profile: PublicProfile }) {
               </p>
             ) : null}
             <h1
-              className="cp-display mt-4 text-[min(9.5rem,calc(100cqw/(var(--len)*var(--cp-display-em))*0.97))] [overflow-wrap:anywhere]"
+              className="cp-display mt-4 text-[min(9.5rem,var(--cp-name-cap),calc(100cqw/(var(--len)*var(--cp-display-em))*0.97))] [overflow-wrap:anywhere]"
               style={nameLength(profile.name)}
             >
               {profile.name}
@@ -164,9 +166,15 @@ function Hero({ profile }: { profile: PublicProfile }) {
 }
 
 /** Their photo (or their initial) in a frame, like a record sleeve. */
-function Mark({ profile }: { profile: PublicProfile }) {
+export function Mark({
+  profile,
+  className = "w-26 md:w-54",
+}: {
+  profile: PublicProfile;
+  className?: string;
+}) {
   return (
-    <div className="cp-tile w-26 shrink-0 rounded-tl-none !p-2 md:w-54">
+    <div className={cn("cp-tile shrink-0 rounded-tl-none !p-2", className)}>
       {profile.portrait ? (
         <Photo
           src={profile.portrait}
@@ -276,10 +284,7 @@ function AboutTile({ profile }: { profile: PublicProfile }) {
   if (!profile.bio || shortBio(profile.bio)) return null;
   return (
     <div id="about" className="scroll-mt-36 px-5 pb-16 md:px-10 md:pb-24">
-      <div className="cp-tile">
-        <p className="t-label cp-tag mb-4 text-[11px]">About</p>
-        <BioText bio={profile.bio} className="max-w-[65ch]" />
-      </div>
+      <BioTile bio={profile.bio} />
     </div>
   );
 }
@@ -291,8 +296,8 @@ const views = [
   { id: "grid", label: "Grid" },
 ] as const;
 
-/** Upcoming sets by month, each month headed by a calendar tile that sticks. */
-function Agenda({
+/** Upcoming sets by month, each month headed by a calendar tile. */
+export function Agenda({
   section,
   profile,
 }: {
@@ -403,7 +408,7 @@ function AgendaRow({ set }: { set: ProfileSet }) {
 }
 
 /** Past sets as a poster carousel, like the reference's past events. */
-function Carousel({
+export function Carousel({
   section,
   profile,
 }: {

@@ -36,6 +36,20 @@ export function firstMusicAnchor(profile: PublicProfile) {
   );
 }
 
+/** A bio short enough to sit in a header, under the name: one paragraph, 200 characters. */
+export const shortBio = (bio: string | null) =>
+  bio && bio.length <= 200 && !/\n\s*\n/.test(bio) ? bio : null;
+
+/** A bio too long for the header, as a tile. */
+export function BioTile({ bio }: { bio: string }) {
+  return (
+    <div className="cp-tile">
+      <p className="t-label cp-tag mb-4 text-[11px]">About</p>
+      <BioText bio={bio} className="max-w-[65ch]" />
+    </div>
+  );
+}
+
 /** The bio as paragraphs: blank lines split them, single breaks are kept. */
 export function BioText({
   bio,

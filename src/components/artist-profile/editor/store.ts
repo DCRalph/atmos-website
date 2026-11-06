@@ -4,8 +4,13 @@ import { GRID } from "~/lib/artist-grid";
 import { toSections } from "~/lib/artist-sections";
 import { completeSocials } from "~/lib/artist-socials";
 import type { ClientBlock } from "~/lib/artist-blocks";
-import type { ArtistTheme } from "~/lib/artist-theme";
-import { DEFAULT_THEME } from "~/lib/artist-theme";
+import {
+  DEFAULT_THEME,
+  NO_HISTORY,
+  recordThemeChange,
+  type ArtistTheme,
+  type ThemeHistory,
+} from "~/lib/artist-theme";
 import type { EditableProfile, PublicProfile, PublicSocial } from "../types";
 
 /**
@@ -47,6 +52,10 @@ export type EditorState = {
   identity: Identity;
   socials: PublicSocial[];
   theme: ArtistTheme;
+  /** Undo for theme changes made in the Theme panel. */
+  themeHistory: ThemeHistory;
+  /** Their gig posters, for the Theme panel's palettes. Not edited here. */
+  posters: { src: string; label: string }[];
   themeInfo: Omit<NonNullable<EditableProfile["theme"]>, "tokens"> | null;
   accentColor: string | null;
   isPublished: boolean;
@@ -79,7 +88,9 @@ export type EditorState = {
   openPanel: (panel: Panel | null) => void;
   patchIdentity: (patch: Partial<Identity>, opts?: { saved?: boolean }) => void;
   setSocials: (socials: PublicSocial[]) => void;
-  patchTheme: (patch: Partial<ArtistTheme>) => void;
+  /** A change to the theme; see `recordThemeChange` for `group`. */
+  patchTheme: (patch: Partial<ArtistTheme>, group?: string) => void;
+  undoTheme: () => void;
   /** A whole theme, already saved (picked from the list, or a copy made). */
   setTheme: (
     info: EditorState["themeInfo"],
@@ -130,6 +141,7 @@ const starterBlocks = (): ClientBlock[] => [
 export function createEditorStore(
   profile: EditableProfile,
   startEditing: boolean,
+  posters: EditorState["posters"] = [],
 ): EditorStore {
   const bump = (s: EditorState, key: keyof Changes) => ({
     ...s.changes,
@@ -158,6 +170,8 @@ export function createEditorStore(
     },
     socials: profile.socials,
     theme: profile.theme?.tokens ?? DEFAULT_THEME,
+    themeHistory: NO_HISTORY,
+    posters,
     themeInfo: profile.theme
       ? {
           id: profile.theme.id,
@@ -249,17 +263,33 @@ export function createEditorStore(
       })),
     setSocials: (socials) =>
       set((s) => ({ socials, changes: bump(s, "socials") })),
-    patchTheme: (patch) =>
+    patchTheme: (patch, group) =>
       set((s) => ({
         theme: { ...s.theme, ...patch },
+        themeHistory: recordThemeChange(s.themeHistory, s.theme, group),
         accentColor: null,
         changes: bump(s, "theme"),
       })),
-    // Whatever theme change was waiting to save is replaced by this one.
+    undoTheme: () =>
+      set((s) => {
+        const prev = s.themeHistory.past.at(-1);
+        if (!prev) return s;
+        return {
+          theme: prev,
+          themeHistory: {
+            ...NO_HISTORY,
+            past: s.themeHistory.past.slice(0, -1),
+          },
+          changes: bump(s, "theme"),
+        };
+      }),
+    // Whatever theme change was waiting to save is replaced by this one, and
+    // undo starts over from it.
     setTheme: (themeInfo, theme, accentColor) =>
       set((s) => ({
         themeInfo,
         theme,
+        themeHistory: NO_HISTORY,
         accentColor,
         saved: { ...s.saved, theme: s.changes.theme },
       })),

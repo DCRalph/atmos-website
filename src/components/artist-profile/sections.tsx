@@ -124,9 +124,9 @@ const nodeKey = (node: GridNode<ProfileSection>): string => {
   }
 };
 
-// The grid's gap: 24 on wider screens (`GRID.gap`, which the editor draws
-// with), 20 on phones.
-const gap = "gap-5 md:gap-6";
+// The grid's gap, from the theme's spacing (`--cp-gap`): 24 on wider screens
+// at Regular (`GRID.gap`, which the editor draws with), 20 on phones.
+const gap = "gap-[var(--cp-gap)]";
 
 /**
  * Whether a part holds a photo or embed. Only those grow to fill spare height
@@ -195,7 +195,7 @@ function Node({
       return (
         <div
           className={cn(
-            "flex flex-col md:-mb-6 md:grid md:grid-cols-[repeat(var(--n),minmax(0,1fr))] md:grid-rows-[repeat(var(--rows),auto)] md:!gap-y-0",
+            "flex flex-col md:-mb-[var(--cp-gap)] md:grid md:grid-cols-[repeat(var(--n),minmax(0,1fr))] md:grid-rows-[repeat(var(--rows),auto)] md:!gap-y-0",
             gap,
             fills(node) && "grow",
           )}
@@ -209,7 +209,7 @@ function Node({
           {node.blocks.map((block) => (
             <div
               key={block.id}
-              className="flex min-w-0 flex-col md:mb-6 md:[grid-area:var(--r0)/var(--x)/var(--r1)/span_var(--w)]"
+              className="flex min-w-0 flex-col md:mb-[var(--cp-gap)] md:[grid-area:var(--r0)/var(--x)/var(--r1)/span_var(--w)]"
               style={
                 {
                   "--x": block.x - node.x + 1,
@@ -592,12 +592,14 @@ function linkIcon(url: string): IconType | null {
 /** A record: cover, title, who it's by, and where to get it. */
 function Release({ section }: { section: Of<"RELEASE"> }) {
   return (
-    <div className="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-4 @md:grid-cols-[11rem_minmax(0,1fr)] @md:gap-6">
+    // Cover above the words in the narrowest tiles (a Reel card on a phone),
+    // beside them from @xs up.
+    <div className="grid gap-4 @xs:grid-cols-[6rem_minmax(0,1fr)] @xs:items-center @md:grid-cols-[11rem_minmax(0,1fr)] @md:gap-6">
       <Poster
         title={section.title}
         src={section.cover}
         sizes="176px"
-        className={cn(media, "aspect-square")}
+        className={cn(media, "aspect-square w-28 @xs:w-auto")}
       />
       <div className="min-w-0">
         <p className="cp-display text-[clamp(1.75rem,9cqw,2.75rem)] [overflow-wrap:anywhere]">
@@ -653,9 +655,9 @@ function SocialChips({
               target="_blank"
               rel="noopener noreferrer"
               aria-label={`${name} on ${platform}`}
-              className="cp-chip group flex items-center gap-4 rounded-full py-2 pr-4 pl-2 transition-[filter] hover:brightness-110"
+              className="cp-chip group flex items-center gap-4 rounded-[var(--cp-r-button,999px)] py-2 pr-4 pl-2 transition-[filter] hover:brightness-110"
             >
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--chip-icon-bg)] text-[var(--chip-icon-ink)]">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-[var(--cp-r-button,999px)] bg-[var(--chip-icon-bg)] text-[var(--chip-icon-ink)]">
                 <Icon className="size-[19px]" />
               </span>
               <span className="min-w-0 flex-1">
@@ -688,7 +690,7 @@ function LinkPills({ links }: { links: { label: string; url: string }[] }) {
             target="_blank"
             rel="noopener noreferrer"
             className={cn(
-              "t-label group flex h-14 items-center justify-between gap-4 rounded-full px-6 text-[12px] transition-[filter] hover:brightness-110",
+              "t-label group flex h-14 items-center justify-between gap-4 rounded-[var(--cp-r-button,999px)] px-6 text-[12px] transition-[filter] hover:brightness-110",
               i === 0
                 ? "bg-[var(--cp-accent)] text-[var(--cp-accent-ink)] shadow-[var(--accent-ring)]"
                 : "cp-chip text-[var(--cp-ink)]",

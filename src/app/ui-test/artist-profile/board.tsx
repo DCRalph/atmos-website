@@ -9,7 +9,7 @@ import {
   sampleStates,
   type SampleState,
 } from "~/components/artist-profile/sample";
-import { ThemeControls } from "~/components/artist-themes/theme-controls";
+import { ThemeTabsPanel } from "~/components/artist-themes/theme-tabs";
 import { ThemeSwatch } from "~/components/artist-themes/theme-swatch";
 import { ProfilePreviewFrame } from "~/components/artist-themes/profile-preview-frame";
 
@@ -88,7 +88,7 @@ export function ArtistProfileBoard({
               </div>
             </CardContent>
           </Card>
-          <ThemeControls
+          <ThemeTabsPanel
             value={theme}
             onChange={(patch) => setTheme((t) => ({ ...t, ...patch }))}
           />

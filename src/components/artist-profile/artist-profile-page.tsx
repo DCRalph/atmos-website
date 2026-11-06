@@ -25,9 +25,10 @@ import {
 } from "~/lib/artist-theme";
 import { SiteShell } from "~/components/site/site-shell";
 import { HeadlinerLayout } from "./layouts/headliner";
+import { ReelLayout } from "./layouts/reel";
 import { StageLayout } from "./layouts/stage";
 import { WallLayout } from "./layouts/wall";
-import { pill, type ClaimState } from "./parts";
+import { pill, setTitle, type ClaimState } from "./parts";
 import { postPreviewMessage, readPreviewMessage } from "./theme-preview";
 import {
   ProfileEditorContext,
@@ -45,6 +46,7 @@ const layouts = {
   headliner: HeadlinerLayout,
   wall: WallLayout,
   stage: StageLayout,
+  reel: ReelLayout,
 } satisfies Record<LayoutKey, unknown>;
 
 // The editor's UI, loaded the first time edit mode opens.
@@ -81,7 +83,19 @@ export function ArtistProfilePage({
   const embedded = useSyncExternalStore(noSubscribe, getEmbedded, () => false);
   const [previewTheme, setPreviewTheme] = useState<ArtistTheme | null>(null);
   const [store] = useState(() =>
-    editable ? createEditorStore(editable, startEditing) : null,
+    editable
+      ? createEditorStore(
+          editable,
+          startEditing,
+          [...profile.upcoming, ...profile.past]
+            .filter((set) => set.poster)
+            .slice(0, 4)
+            .map((set) => ({
+              src: set.poster!,
+              label: `From the ${setTitle(set)} poster`,
+            })),
+        )
+      : null,
   );
 
   useEffect(() => {
@@ -187,6 +201,7 @@ function ThemedPage({
 }) {
   const resolved = resolveTheme(theme, accentOverride);
   const Layout = layouts[resolved.layout];
+  const photo = profile.banner ?? profile.portrait;
   return (
     <SiteShell
       tone={resolved.tone}
@@ -195,6 +210,8 @@ function ThemedPage({
       style={
         {
           ...themeVars(resolved),
+          // For a photo background (`data-bg="photo"`).
+          "--cp-photo": photo ? `url("${photo}")` : undefined,
           // The editor's own colours: the Atmos accent for its controls, and
           // for outlines whatever reads on this ground.
           "--ed": SITE_ACCENT,
@@ -205,7 +222,9 @@ function ThemedPage({
       {...themeAttributes(resolved)}
     >
       {children}
-      <Layout profile={profile} theme={resolved} claim={claim} />
+      <div className="cp-body">
+        <Layout profile={profile} theme={resolved} claim={claim} />
+      </div>
     </SiteShell>
   );
 }
@@ -230,7 +249,7 @@ function OwnerBar({
       {adminHref ? (
         <Link
           href={adminHref}
-          className={pill({ variant: "glass", size: "sm" })}
+          className={cn(pill({ variant: "glass", size: "sm" }), "rounded-full")}
         >
           <Shield className="size-3.5" /> Admin
         </Link>
@@ -240,7 +259,8 @@ function OwnerBar({
         onClick={onEdit}
         className={cn(
           pill({ size: "sm" }),
-          "bg-[var(--ed)] text-black hover:opacity-90",
+          // The editor's own button: a pill whatever the theme's shape.
+          "rounded-full bg-[var(--ed)] text-black hover:opacity-90",
         )}
       >
         <Pencil className="size-3.5" /> Edit page

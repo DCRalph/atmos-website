@@ -53,7 +53,7 @@ import type { ProfileSet, PublicProfile, PublicSocial } from "./types";
  * `solid` the primary non-buy action, `glass` only over imagery.
  */
 export const pill = cva(
-  "t-label inline-flex shrink-0 items-center justify-center gap-2 rounded-full whitespace-nowrap transition-[background-color,color,border-color,filter,opacity] duration-150 ease-out disabled:pointer-events-none disabled:opacity-40",
+  "t-label inline-flex shrink-0 items-center justify-center gap-2 rounded-[var(--cp-r-button,999px)] whitespace-nowrap transition-[background-color,color,border-color,filter,opacity] duration-150 ease-out disabled:pointer-events-none disabled:opacity-40",
   {
     variants: {
       variant: {
@@ -163,7 +163,7 @@ export function RoundButton({
       type="button"
       aria-label={label}
       className={cn(
-        "inline-flex size-11 shrink-0 items-center justify-center rounded-full text-[var(--cp-ink)] transition-colors disabled:opacity-35",
+        "inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--cp-r-button,999px)] text-[var(--cp-ink)] transition-colors disabled:opacity-35",
         glass
           ? "cp-ctl hover:bg-[color-mix(in_oklab,var(--cp-ink)_14%,transparent)]"
           : "border-[length:var(--line-bw)] border-[var(--pill-line)] hover:border-[var(--cp-ink)]",
@@ -222,7 +222,7 @@ export function SocialLinks({
               aria-label={`${profile.name} on ${name}`}
               title={name}
               className={cn(
-                "flex size-11 items-center justify-center rounded-full text-[var(--cp-ink)] transition-colors",
+                "flex size-11 items-center justify-center rounded-[var(--cp-r-button,999px)] text-[var(--cp-ink)] transition-colors",
                 glass
                   ? "cp-ctl hover:bg-[color-mix(in_oklab,var(--cp-ink)_14%,transparent)]"
                   : "border-[length:var(--line-bw)] border-[var(--pill-line)] hover:border-[var(--cp-ink)]",
