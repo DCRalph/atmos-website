@@ -15,16 +15,56 @@ import { useConfirm } from "~/components/confirm-provider";
 import { useUnsavedChangesWarning } from "~/hooks/use-unsaved-changes-warning";
 import {
   DEFAULT_THEME,
+  NO_HISTORY,
   parseTheme,
+  recordThemeChange,
   type ArtistTheme,
 } from "~/lib/artist-theme";
 import { ProfilePreviewFrame } from "./profile-preview-frame";
-import { ThemeControls } from "./theme-controls";
+import { buildMediaUrl } from "~/lib/media-url";
+import { ThemeTabsPanel } from "./theme-tabs";
 
 type Mode = "self" | "admin";
 
+/** An artist's own images, for the Colour tab's palettes. */
+function photosOf(
+  profile:
+    | {
+        bannerFileId: string | null;
+        avatarFileId: string | null;
+        blocks: { type: string; data: unknown }[];
+      }
+    | null
+    | undefined,
+) {
+  if (!profile) return [];
+  const covers = profile.blocks.flatMap((b) => {
+    const data = b.data as { coverFileId?: unknown; title?: unknown } | null;
+    return b.type === "RELEASE" && typeof data?.coverFileId === "string"
+      ? [
+          {
+            id: data.coverFileId,
+            label:
+              typeof data.title === "string" && data.title.trim()
+                ? `From the ${data.title.trim()} cover`
+                : "From a cover",
+          },
+        ]
+      : [];
+  });
+  return [
+    ...covers,
+    ...(profile.bannerFileId
+      ? [{ id: profile.bannerFileId, label: "From your banner" }]
+      : []),
+    ...(profile.avatarFileId
+      ? [{ id: profile.avatarFileId, label: "From your portrait" }]
+      : []),
+  ].map((p) => ({ src: buildMediaUrl(p.id), label: p.label }));
+}
+
 /**
- * Edit an artist theme: its layout and five looks, with the profile previewed
+ * Edit an artist theme: its layout and looks, with the profile previewed
  * live beside the controls. Changes autosave. Artists preview their own
  * profile; admins (and artists without a profile yet) preview the sample.
  */
@@ -47,6 +87,7 @@ export function ThemeEditor({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [tokens, setTokens] = useState<ArtistTheme>(DEFAULT_THEME);
+  const [history, setHistory] = useState(NO_HISTORY);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -138,8 +179,17 @@ export function ThemeEditor({
     );
   }
 
-  function patch(next: Partial<ArtistTheme>) {
+  function patch(next: Partial<ArtistTheme>, group?: string) {
+    setHistory((h) => recordThemeChange(h, tokens, group));
     setTokens((prev) => ({ ...prev, ...next }));
+    setDirty(true);
+  }
+
+  function undo() {
+    const prev = history.past.at(-1);
+    if (!prev) return;
+    setHistory({ ...NO_HISTORY, past: history.past.slice(0, -1) });
+    setTokens(prev);
     setDirty(true);
   }
 
@@ -240,7 +290,13 @@ export function ThemeEditor({
           </CardContent>
         </Card>
 
-        <ThemeControls value={tokens} onChange={patch} />
+        <ThemeTabsPanel
+          value={tokens}
+          onChange={patch}
+          undo={{ run: undo, can: history.past.length > 0 }}
+          sample={mineQ.data?.displayName}
+          photos={photosOf(mineQ.data)}
+        />
       </div>
 
       <div className="xl:sticky xl:top-4">

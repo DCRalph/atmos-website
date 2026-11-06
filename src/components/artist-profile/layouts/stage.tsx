@@ -127,7 +127,7 @@ function Identity({ profile }: { profile: PublicProfile }) {
 
       <div className="@container relative px-5 pb-8 md:px-10 md:pb-12">
         <h1
-          className="cp-display text-[min(7rem,calc(100cqw/(var(--len)*var(--cp-display-em))*0.97))] [overflow-wrap:anywhere]"
+          className="cp-display text-[min(7rem,var(--cp-name-cap),calc(100cqw/(var(--len)*var(--cp-display-em))*0.97))] [overflow-wrap:anywhere]"
           style={nameLength(profile.name)}
         >
           {profile.name}

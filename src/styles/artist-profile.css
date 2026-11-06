@@ -1,12 +1,14 @@
 /* Themed artist profile, scoped to `.cp` (always inside `.site`).
  *
- * The root carries every `--cp-*` variable from `themeVars` plus three data
- * attributes: `data-tone` (dark | light), `data-photo` (color | mono |
- * duotone) and `data-corners`. Everything below reads those, so a block never
- * needs to know which theme it's in.
+ * The root carries every `--cp-*` variable from `themeVars` plus the data
+ * attributes from `themeAttributes`: `data-tone` (dark | light), `data-photo`
+ * (color | mono | duotone), `data-density`, `data-bg` and `data-texture`.
+ * Everything below reads those, so a block never needs to know which theme
+ * it's in.
  *
- * Utilities: `cp-display`, `cp-glass`, `cp-photo`, `cp-scrim-bottom`,
- * `cp-scrim-left`, `cp-scrim-top`.
+ * Utilities: `cp-body` (the artist's body face, around the layout, so the
+ * site header and footer keep the site's), `cp-display`, `cp-glass`,
+ * `cp-photo`, `cp-scrim-bottom`, `cp-scrim-left`, `cp-scrim-top`.
  *
  * Styles: `data-style` (glass | flat | print) sets a handful of variables
  * that the tile pieces read: `cp-tile`, `cp-tag` (a tile's label), `cp-chip`,
@@ -18,9 +20,49 @@
   /* `.site.cp`, not `.cp`: these override `.site`'s own black ground, white
      text, selection and focus ring, and site.css can load after this file. */
   .site.cp {
-    background: var(--cp-ground);
+    --cp-texture: none;
+    --cp-wash: none;
+    background: var(--cp-texture), var(--cp-wash), var(--cp-ground);
     color: var(--cp-ink);
     scrollbar-color: var(--cp-faint) transparent;
+  }
+
+  /* The ground. `.site.cp` is the page's scroller: a gradient scrolls with
+     the page (local), from the top colour behind the header to the ground a
+     screen or two down; a photo stays put behind it, under a veil of the
+     ground so text still reads. */
+  .site.cp[data-bg="gradient"] {
+    --cp-wash: linear-gradient(
+      var(--cp-ground-top) 0,
+      var(--cp-ground-top) 600px,
+      var(--cp-ground) 2200px
+    );
+    background-attachment: local;
+  }
+
+  .site.cp[data-bg="photo"] {
+    --cp-wash:
+      linear-gradient(
+        color-mix(in oklab, var(--cp-ground) 78%, transparent),
+        color-mix(in oklab, var(--cp-ground) 90%, transparent)
+      ),
+      var(--cp-photo, none) center / cover;
+  }
+
+  .site.cp[data-texture="grain"] {
+    --cp-texture: var(--glass-grain) 0 0 / 180px;
+  }
+
+  .site.cp[data-texture="halftone"] {
+    --cp-texture: radial-gradient(
+        color-mix(in oklab, var(--cp-ink) 10%, transparent) 0.9px,
+        transparent 1.5px
+      )
+      0 0 / 7px 7px;
+  }
+
+  .cp .cp-body {
+    font-family: var(--cp-body-font), ui-sans-serif, system-ui, sans-serif;
   }
 
   .site.cp ::selection {
@@ -54,11 +96,13 @@
     backdrop-filter: blur(18px) saturate(150%);
   }
 
+  /* Headers fade into the top of the page: the ground, or a gradient's top
+     colour. */
   .cp .cp-scrim-bottom {
     background: linear-gradient(
       to top,
-      var(--cp-ground) 0%,
-      color-mix(in oklab, var(--cp-ground) 72%, transparent) 35%,
+      var(--cp-ground-top) 0%,
+      color-mix(in oklab, var(--cp-ground-top) 72%, transparent) 35%,
       transparent 75%
     );
   }
@@ -170,6 +214,7 @@
     --glass-bezel:
       0 0 0 1px rgb(255 255 255 / 0.08), 0 8px 18px -10px rgb(0 0 0 / 0.8);
     --tile-pad: 20px;
+    --cp-gap: 20px;
   }
 
   .cp[data-tone="light"] {
@@ -194,6 +239,30 @@
   @media (min-width: 768px) {
     .cp {
       --tile-pad: 24px;
+      --cp-gap: 24px;
+    }
+  }
+
+  /* Spacing: between tiles and inside them, together. */
+  .cp[data-density="compact"] {
+    --tile-pad: 16px;
+    --cp-gap: 12px;
+  }
+
+  .cp[data-density="airy"] {
+    --tile-pad: 24px;
+    --cp-gap: 24px;
+  }
+
+  @media (min-width: 768px) {
+    .cp[data-density="compact"] {
+      --tile-pad: 18px;
+      --cp-gap: 16px;
+    }
+
+    .cp[data-density="airy"] {
+      --tile-pad: 32px;
+      --cp-gap: 32px;
     }
   }
 
@@ -260,7 +329,7 @@
     --chip-icon-ink: var(--cp-accent-ink);
     --pill-line: var(--cp-ink);
     --tile-bg: var(--cp-ground);
-    --tile-bw: 2px;
+    --tile-bw: var(--cp-outline, 2px);
     --tile-line: var(--cp-ink);
     --tile-shadow: 6px 6px 0 var(--cp-accent);
     --tile-blur: none;
@@ -268,13 +337,13 @@
     --tag-ink: var(--cp-ground);
     --tag-pad: 6px 9px;
     --chip-bg: var(--cp-ground);
-    --chip-ring: inset 0 0 0 2px var(--cp-ink);
+    --chip-ring: inset 0 0 0 var(--cp-outline, 2px) var(--cp-ink);
     --ctl-bg: var(--cp-ground);
-    --ctl-ring: inset 0 0 0 2px var(--cp-ink);
+    --ctl-ring: inset 0 0 0 var(--cp-outline, 2px) var(--cp-ink);
     --ctl-blur: none;
-    --media-ring: 0 0 0 2px var(--cp-ink);
-    --line-bw: 2px;
-    --accent-ring: inset 0 0 0 2px var(--cp-ink);
+    --media-ring: 0 0 0 var(--cp-outline, 2px) var(--cp-ink);
+    --line-bw: var(--cp-outline, 2px);
+    --accent-ring: inset 0 0 0 var(--cp-outline, 2px) var(--cp-ink);
     --ambient: 0;
   }
 
@@ -285,7 +354,9 @@
     min-width: 0;
     border: var(--tile-bw) solid var(--tile-line);
     border-radius: var(--cp-r-panel);
-    background: var(--tile-bg);
+    /* A wash of the accent (`tint`) over the style's own surface. */
+    background:
+      linear-gradient(var(--cp-tint, transparent) 0 0), var(--tile-bg);
     box-shadow: var(--tile-shadow);
     -webkit-backdrop-filter: var(--tile-blur);
     backdrop-filter: var(--tile-blur);
@@ -399,10 +470,10 @@
   .cp .cp-hero-fade {
     background: linear-gradient(
       to top,
-      var(--cp-ground) 0%,
-      color-mix(in oklab, var(--cp-ground) 80%, transparent) 28%,
-      color-mix(in oklab, var(--cp-ground) 25%, transparent) 64%,
-      color-mix(in oklab, var(--cp-ground) 55%, transparent) 100%
+      var(--cp-ground-top) 0%,
+      color-mix(in oklab, var(--cp-ground-top) 80%, transparent) 28%,
+      color-mix(in oklab, var(--cp-ground-top) 25%, transparent) 64%,
+      color-mix(in oklab, var(--cp-ground-top) 55%, transparent) 100%
     );
   }
 
@@ -473,4 +544,127 @@
 
 .cp .yt-lite:hover > .lty-playbtn {
   filter: brightness(1.1);
+}
+
+/* Reel: the page scrolls sideways (see `layouts/reel.tsx`). On phones a row
+   of cards that snap, each scrolling on its own if it's taller than the
+   screen; from md up, columns as tall as the screen that flow on to the
+   right, on a stage that sticks while the page's scroll runs the track.
+   `--pt` and `--pb` keep panels clear of the site header and the bar; the
+   header panel runs up under the site header. */
+@layer components {
+  .cp .cp-reel {
+    position: relative;
+    height: 100dvh;
+  }
+
+  .cp .cp-reel-stage {
+    position: relative;
+    height: 100dvh;
+  }
+
+  .cp .cp-reel-track {
+    --pt: 80px;
+    --pb: 72px;
+    display: flex;
+    gap: 12px;
+    height: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 20px;
+    scrollbar-width: none;
+    padding: var(--pt) 20px var(--pb);
+  }
+
+  .cp .cp-reel-item {
+    display: flex;
+    flex: 0 0 86%;
+    flex-direction: column;
+    max-height: 100%;
+    overflow-y: auto;
+    scrollbar-width: none;
+    scroll-snap-align: start;
+  }
+
+  /* Centred in its card when it's short, from the top when it's tall. */
+  .cp .cp-reel-item > * {
+    flex-shrink: 0;
+    margin-block: auto;
+  }
+
+  .cp .cp-reel-hero {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex: 0 0 calc(100% + 4px);
+    flex-direction: column;
+    justify-content: flex-end;
+    overflow: hidden;
+    height: calc(100% + var(--pt));
+    margin: calc(-1 * var(--pt)) 0 0 -20px;
+    scroll-snap-align: start;
+  }
+
+  .cp .cp-reel-bar {
+    position: absolute;
+    inset: auto 20px 16px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: var(--cp-r-button, 999px);
+  }
+
+  @media (min-width: 768px) {
+    /* As tall as the track is long, so the page's scroll can run it. */
+    .cp .cp-reel {
+      height: calc(100dvh + var(--reel-run, 0px));
+    }
+
+    .cp .cp-reel-stage {
+      position: sticky;
+      top: 0;
+      overflow: hidden;
+    }
+
+    .cp .cp-reel-track {
+      --pt: 104px;
+      --pb: 88px;
+      overflow-x: hidden;
+      display: block;
+      columns: 400px;
+      column-gap: var(--cp-gap);
+      column-fill: auto;
+      scroll-snap-type: none;
+      padding-inline: 40px;
+    }
+
+    .cp .cp-reel-item {
+      display: block;
+      max-height: none;
+      overflow: visible;
+      break-inside: avoid;
+      margin-bottom: var(--cp-gap);
+    }
+
+    .cp .cp-reel-item > * {
+      margin-block: 0;
+    }
+
+    .cp .cp-reel-hero {
+      width: calc(100% + 40px);
+      margin-left: -40px;
+      break-after: column;
+    }
+
+    .cp .cp-reel-bar {
+      inset: auto 40px 24px;
+      height: 48px;
+      padding: 0 6px 0 20px;
+    }
+  }
 }

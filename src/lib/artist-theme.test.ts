@@ -3,8 +3,10 @@ import assert from "node:assert/strict";
 
 import {
   DEFAULT_THEME,
+  NO_HISTORY,
   THEME_PRESETS,
   parseTheme,
+  recordThemeChange,
   resolveTheme,
 } from "./artist-theme";
 
@@ -28,15 +30,48 @@ describe("parseTheme", () => {
         blockRadius: 12,
       }),
       {
-        layout: "headliner",
-        style: "glass",
+        ...DEFAULT_THEME,
         ground: "#ffffff",
+        groundTop: "#ffffff",
         accent: "#6366f1",
         display: "bodoni",
-        corners: "soft",
-        photo: "color",
+        case: "typed",
+        radius: 16,
       },
     );
+  });
+
+  test("reads themes saved before the Type and Shape choices as they looked", () => {
+    const before = {
+      layout: "stage",
+      style: "print",
+      ground: "#3b0072",
+      accent: "#c6ff33",
+      display: "bodoni",
+      corners: "soft",
+      photo: "duotone",
+    };
+    assert.deepEqual(parseTheme(before), {
+      layout: "stage",
+      style: "print",
+      ground: "#3b0072",
+      background: "solid",
+      groundTop: "#3b0072",
+      texture: "none",
+      accent: "#c6ff33",
+      ink: null,
+      tint: 0,
+      display: "bodoni",
+      case: "typed",
+      nameSize: "fill",
+      body: "archivo",
+      radius: 16,
+      buttons: "pill",
+      density: "regular",
+      outline: 2,
+      photo: "duotone",
+    });
+    assert.equal(parseTheme({ ...before, corners: "hard" }).radius, 0);
   });
 
   test("reads themes saved before styles as glass", () => {
@@ -72,11 +107,33 @@ describe("resolveTheme", () => {
     assert.equal(t.accentText, t.ink);
   });
 
+  test("uses their own text colour only while it reads on the ground", () => {
+    const warm = resolveTheme({ ...DEFAULT_THEME, ink: "#f4ede4" });
+    assert.equal(warm.ink, "#f4ede4");
+    const faint = resolveTheme({ ...DEFAULT_THEME, ink: "#333333" });
+    assert.equal(faint.ink, "#ffffff");
+  });
+
   test("lets the profile's own accent win", () => {
     assert.equal(resolveTheme(DEFAULT_THEME, "#ff4d1a").accent, "#ff4d1a");
     assert.equal(
       resolveTheme(DEFAULT_THEME, "nope").accent,
       DEFAULT_THEME.accent,
     );
+  });
+});
+
+describe("recordThemeChange", () => {
+  test("keeps a drag as one step, and separate changes as their own", () => {
+    const a = DEFAULT_THEME;
+    const b = { ...a, radius: 4 };
+    const c = { ...a, radius: 8 };
+    let h = recordThemeChange(NO_HISTORY, a, "radius", 1000);
+    h = recordThemeChange(h, b, "radius", 1400);
+    assert.deepEqual(h.past, [a]);
+    h = recordThemeChange(h, c, "radius", 3000);
+    h = recordThemeChange(h, a, undefined, 3100);
+    h = recordThemeChange(h, a, undefined, 3200);
+    assert.equal(h.past.length, 4);
   });
 });

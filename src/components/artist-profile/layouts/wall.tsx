@@ -77,7 +77,7 @@ function Masthead({ profile }: { profile: PublicProfile }) {
       <HeroEditButton />
       <div className="@container">
         <h1
-          className="cp-display text-[calc(100cqw/(var(--len)*var(--cp-display-em))*0.98)] leading-[0.82] whitespace-nowrap"
+          className="cp-display text-[min(var(--cp-name-cap),calc(100cqw/(var(--len)*var(--cp-display-em))*0.98))] leading-[0.82] whitespace-nowrap"
           style={nameLength(profile.name)}
         >
           {profile.name}

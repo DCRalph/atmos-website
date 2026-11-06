@@ -30,7 +30,7 @@ export function ThemeSwatch({
         className={cn(
           "relative w-full overflow-hidden border",
           compact ? "h-8" : "h-16",
-          theme.corners === "soft" ? "rounded-md" : "rounded-none",
+          theme.radius >= 8 ? "rounded-md" : "rounded-none",
         )}
         style={{ background: theme.ground }}
       >
@@ -77,6 +77,28 @@ export function ThemeSchematic({
             </span>
           ))}
         </div>
+      </div>
+    );
+
+  if (layout === "reel")
+    return (
+      <div className="flex h-full gap-1 p-1.5">
+        <span
+          className="flex w-[34%] shrink-0 flex-col justify-end gap-1 p-1"
+          style={{ background: ink(18) }}
+        >
+          {bar("80%", 5, theme.ink)}
+          {bar("50%", 3, theme.accent)}
+        </span>
+        {[28, 18, 26].map((h, i) => (
+          <span key={i} className="flex w-[22%] shrink-0 flex-col gap-1">
+            <span
+              className="block"
+              style={{ height: h, background: ink(14) }}
+            />
+            <span className="block flex-1" style={{ background: ink(8) }} />
+          </span>
+        ))}
       </div>
     );
 
