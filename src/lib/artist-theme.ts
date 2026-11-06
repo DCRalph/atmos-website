@@ -5,10 +5,11 @@ import { SITE_ACCENT } from "./site-constants";
 /**
  * Artist profile themes.
  *
- * A theme is six choices: a layout and five looks. Everything else is
+ * A theme is seven choices: a layout and six looks. Everything else is
  * derived, so no combination an artist can pick ends up unreadable.
  *
  *  - layout:  how the page is put together (see `LAYOUTS`)
+ *  - style:   how tiles and controls are drawn (see `STYLES`)
  *  - ground:  page colour
  *  - accent:  fills (buy buttons, calendar tiles, on now) and accent text
  *  - display: the face for their name and section headings
@@ -38,6 +39,28 @@ export const LAYOUTS = {
 } as const;
 
 export type LayoutKey = keyof typeof LAYOUTS;
+
+/**
+ * How the grid's tiles, the header's sets strip, chips and buttons are drawn.
+ * Colours, face and corners still come from the rest of the theme; see
+ * `[data-style]` in `src/styles/artist-profile.css`.
+ */
+export const STYLES = {
+  glass: {
+    label: "Glass",
+    description: "Frosted glass over light from the header.",
+  },
+  flat: {
+    label: "Flat",
+    description: "Solid surfaces. No edges, no shadows.",
+  },
+  print: {
+    label: "Print",
+    description: "Ink outlines and a hard offset shadow.",
+  },
+} as const;
+
+export type StyleKey = keyof typeof STYLES;
 
 /**
  * Display faces. `family` is the CSS variable next/font sets (site faces from
@@ -94,6 +117,7 @@ const zHex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Use a #rrggbb colour");
 
 export const zArtistTheme = z.object({
   layout: z.enum(["headliner", "wall", "stage"]),
+  style: z.enum(["glass", "flat", "print"]),
   ground: zHex,
   accent: zHex,
   display: z.enum(["orbitron", "anybody", "unbounded", "shoulders", "bodoni"]),
@@ -103,6 +127,7 @@ export const zArtistTheme = z.object({
 
 export type ArtistTheme = z.infer<typeof zArtistTheme>;
 export type Corners = ArtistTheme["corners"];
+export type TileStyle = ArtistTheme["style"];
 export type PhotoTreatment = ArtistTheme["photo"];
 
 /** Starter themes. `bun run db:seed-themes` keeps a system theme for each. */
@@ -112,6 +137,7 @@ export const THEME_PRESETS = {
     description: "True black, acid accent, Orbitron. The site's own look.",
     theme: {
       layout: "headliner",
+      style: "glass",
       ground: "#000000",
       accent: SITE_ACCENT,
       display: "orbitron",
@@ -124,6 +150,7 @@ export const THEME_PRESETS = {
     description: "Violet black with magenta duotone photos.",
     theme: {
       layout: "wall",
+      style: "glass",
       ground: "#08020f",
       accent: "#ff2fd4",
       display: "unbounded",
@@ -136,6 +163,7 @@ export const THEME_PRESETS = {
     description: "Near black and gold, wide caps, soft corners.",
     theme: {
       layout: "headliner",
+      style: "flat",
       ground: "#0a0a0a",
       accent: "#ffc21a",
       display: "anybody",
@@ -148,6 +176,7 @@ export const THEME_PRESETS = {
     description: "Cold blue on black, tall condensed type, mono photos.",
     theme: {
       layout: "wall",
+      style: "flat",
       ground: "#020a10",
       accent: "#5ee0ff",
       display: "shoulders",
@@ -160,6 +189,7 @@ export const THEME_PRESETS = {
     description: "Light grey and electric blue, like a printed flyer.",
     theme: {
       layout: "stage",
+      style: "print",
       ground: "#efefec",
       accent: "#2335ff",
       display: "anybody",
@@ -172,6 +202,7 @@ export const THEME_PRESETS = {
     description: "Atmos purple drenched, Bodoni name, acid duotone.",
     theme: {
       layout: "stage",
+      style: "print",
       ground: "#3b0072",
       accent: SITE_ACCENT,
       display: "bodoni",
@@ -238,6 +269,7 @@ export function parseTheme(raw: unknown): ArtistTheme {
   if (!("layout" in r) && ("pageBg" in r || "blockBg" in r)) {
     return {
       layout: "headliner",
+      style: DEFAULT_THEME.style,
       ground: isHex(r.pageBg) ? r.pageBg : DEFAULT_THEME.ground,
       accent: isHex(r.accent) ? r.accent : DEFAULT_THEME.accent,
       display:
@@ -261,6 +293,7 @@ export function parseTheme(raw: unknown): ArtistTheme {
   };
   return {
     layout: field("layout"),
+    style: field("style"),
     ground: field("ground"),
     accent: field("accent"),
     display: field("display"),
@@ -362,4 +395,5 @@ export const themeAttributes = (t: ResolvedTheme) => ({
   "data-tone": t.tone,
   "data-photo": t.photo,
   "data-corners": t.corners,
+  "data-style": t.style,
 });

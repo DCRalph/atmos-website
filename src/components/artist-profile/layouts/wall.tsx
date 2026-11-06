@@ -11,6 +11,7 @@ import type { ProfileSection } from "~/lib/artist-sections";
 import type { ResolvedTheme } from "~/lib/artist-theme";
 import {
   ClaimBand,
+  SectionHeading,
   OnNowTag,
   Photo,
   Role,
@@ -28,7 +29,7 @@ import {
   useTicketCta,
   type ClaimState,
 } from "../parts";
-import { ProfileSections, useCell } from "../sections";
+import { ProfileSections } from "../sections";
 import { HeroEditButton } from "../editor/hero-edit-button";
 import { About, nameLength, pastSetsLine } from "./shared";
 import type { ProfileSet, PublicProfile } from "../types";
@@ -61,7 +62,7 @@ export function WallLayout({
         accent={theme.accent}
         tone={theme.tone}
         gigs={{ upcoming: ComingUp, past: Archive }}
-        className="px-5 py-14 md:px-10 md:py-20"
+        className="px-5 pt-8 pb-14 md:px-10 md:pt-12 md:pb-20"
       />
       <About profile={profile} className="border-t border-[var(--cp-line)]" />
     </>
@@ -142,7 +143,14 @@ function NextUp({ set }: { set: ProfileSet }) {
 }
 
 const posterGrid =
-  "grid grid-cols-2 gap-x-3 gap-y-10 pt-6 @xl:grid-cols-3 @2xl:gap-x-5 @4xl:grid-cols-4 @6xl:grid-cols-5";
+  "grid grid-cols-2 gap-x-3 gap-y-8 pt-4 @xl:grid-cols-3 @2xl:gap-x-5 @4xl:grid-cols-4 @6xl:grid-cols-5";
+
+/** "8 sets", for a sets tile's label row. */
+const SetCount = ({ count }: { count: number }) => (
+  <span className="t-label shrink-0 text-[10px] text-[var(--cp-faint)] tabular-nums">
+    {count} {count === 1 ? "set" : "sets"}
+  </span>
+);
 
 function GroupHeading({
   title,
@@ -157,7 +165,7 @@ function GroupHeading({
     <div className="flex items-baseline justify-between gap-6 border-b border-[var(--cp-line)] pb-4">
       <h2
         className={cn(
-          "cp-display text-[clamp(2.25rem,8.5cqw,6rem)] [overflow-wrap:anywhere]",
+          "cp-display text-[clamp(1.75rem,7cqw,3.5rem)] [overflow-wrap:anywhere]",
           faint ? "text-[var(--cp-faint)]" : "text-[var(--cp-ink)]",
         )}
       >
@@ -179,9 +187,9 @@ function ComingUp({
 }) {
   return (
     <section>
-      <GroupHeading
+      <SectionHeading
         title={section.title || "Coming up"}
-        count={profile.upcoming.length}
+        aside={<SetCount count={profile.upcoming.length} />}
       />
       <ul className={posterGrid}>
         {profile.upcoming.map((set) => (
@@ -208,7 +216,7 @@ const filters: {
   },
 ];
 
-/** Past sets by year, with sticky filters when there's more than one kind. */
+/** Past sets by year, with filters when there's more than one kind. */
 function Archive({
   section,
   profile,
@@ -217,7 +225,6 @@ function Archive({
   profile: PublicProfile;
 }) {
   const [filter, setFilter] = useState<Filter>("all");
-  const { full } = useCell();
   const sets = section.includeUpcoming
     ? [...profile.upcoming, ...profile.past]
     : profile.past;
@@ -231,18 +238,12 @@ function Archive({
 
   return (
     <section>
-      {section.title ? (
-        <h2 className="cp-display mb-6 text-[clamp(2rem,8cqw,4.75rem)] [overflow-wrap:anywhere]">
-          {section.title}
-        </h2>
-      ) : null}
+      <SectionHeading
+        title={section.title}
+        aside={options.length > 1 ? null : <SetCount count={sets.length} />}
+      />
       {options.length > 1 ? (
-        <div
-          className={cn(
-            "no-scrollbar sticky top-16 z-20 flex items-center gap-1 overflow-x-auto bg-[color-mix(in_oklab,var(--cp-ground)_92%,transparent)] py-3 backdrop-blur-md md:top-20",
-            full && "-mx-5 px-5 md:-mx-10 md:px-10",
-          )}
-        >
+        <div className="no-scrollbar -mt-1 flex items-center gap-1 overflow-x-auto">
           {options.map((f) => (
             <button
               key={f.id}
@@ -263,7 +264,7 @@ function Archive({
         </div>
       ) : null}
       {groups.map((g) => (
-        <div key={g.key} className="pt-10 @2xl:pt-14">
+        <div key={g.key} className="pt-6 @2xl:pt-8">
           <GroupHeading title={g.key} count={g.items.length} faint />
           <ul className={posterGrid}>
             {g.items.map((set) => (

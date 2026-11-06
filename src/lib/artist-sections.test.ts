@@ -95,3 +95,43 @@ describe("readLayout", () => {
     assert.equal(image!.h, 12);
   });
 });
+
+describe("releases and labels", () => {
+  test("a release needs a title and keeps only complete links", () => {
+    const [release] = toSections(
+      [
+        block("r", "RELEASE", 0, {
+          title: " Anxiety ",
+          artist: "Sunday and Clinkz",
+          coverFileId: "c1",
+          links: [
+            { label: "Spotify", url: "https://open.spotify.com/track/1" },
+            { label: "Half typed", url: "open.spot" },
+          ],
+        }),
+        block("e", "RELEASE", 2, { title: "  " }),
+      ],
+      ctx,
+    );
+    assert.deepEqual(release, {
+      id: "r",
+      type: "RELEASE",
+      title: "Anxiety",
+      artist: "Sunday and Clinkz",
+      cover: "/media/c1",
+      links: [{ label: "Spotify", url: "https://open.spotify.com/track/1" }],
+      x: 0,
+      y: 0,
+      w: 12,
+      h: 2,
+    });
+  });
+
+  test("keeps the artist's own label", () => {
+    const [section] = toSections(
+      [block("i", "IMAGE", 0, { fileId: "f", label: " On tour " })],
+      ctx,
+    );
+    assert.equal(section?.label, "On tour");
+  });
+});

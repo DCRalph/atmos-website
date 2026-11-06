@@ -1,21 +1,46 @@
 "use client";
 
 import {
-  createContext,
-  useContext,
+  useEffect,
+  useRef,
+  useState,
   type CSSProperties,
   type ReactNode,
 } from "react";
+import {
+  AlignLeft,
+  ArrowRight,
+  ArrowUpRight,
+  Code,
+  Disc3,
+  Image as ImageIcon,
+  Images,
+  Link as LinkIcon,
+  Share2,
+  type LucideIcon,
+} from "lucide-react";
+import type { IconType } from "react-icons";
+import {
+  FaApple,
+  FaBandcamp,
+  FaSoundcloud,
+  FaSpotify,
+  FaYoutube,
+} from "react-icons/fa6";
 import { cn } from "~/lib/utils";
 import { LexicalContent } from "~/components/lexical";
 import { SoundCloudPlayer } from "~/components/soundcloud-player";
 import { YouTubePlayer } from "~/components/youtube-player";
 import { Lightbox, useLightbox } from "~/components/site/overlays";
-import { getBlockDef, type ArtistBlockTypeName } from "~/lib/artist-blocks";
+import {
+  defaultTileLabel,
+  getBlockDef,
+  type ArtistBlockTypeName,
+} from "~/lib/artist-blocks";
 import { GRID, rowsToPx, toTree, type GridNode } from "~/lib/artist-grid";
 import type { ProfileSection } from "~/lib/artist-sections";
 import { useProfileEditor } from "./editor/context";
-import { LinkRows, Photo, socialMeta } from "./parts";
+import { Photo, Pill, Poster, pill, socialMeta } from "./parts";
 import type { PublicProfile } from "./types";
 
 type Of<T extends ProfileSection["type"]> = Extract<
@@ -42,13 +67,6 @@ export type GigSectionRenderers = {
 export const sectionAnchor = (section: Pick<ProfileSection, "id">) =>
   `s-${section.id}`;
 
-/**
- * Where a block sits. `full` blocks span the whole grid, so sections that
- * bleed to the page edge (carousels, sticky filters) may.
- */
-const CellContext = createContext({ full: true });
-export const useCell = () => useContext(CellContext);
-
 /** Everything a section needs to draw itself. */
 export type SectionProps = {
   profile: PublicProfile;
@@ -67,11 +85,27 @@ export function ProfileSections({
   ...props
 }: SectionProps & { className?: string }) {
   const editor = useProfileEditor();
+  const banner = props.profile.banner ?? props.profile.portrait;
+  const ambient = (
+    <div
+      aria-hidden
+      className="cp-ambient pointer-events-none absolute inset-x-0 top-0 -z-10 h-[1400px] overflow-hidden"
+      style={
+        banner ? ({ "--cp-banner": `url("${banner}")` } as CSSProperties) : {}
+      }
+    />
+  );
   if (editor?.editing)
-    return <div className={className}>{editor.renderGrid(props)}</div>;
+    return (
+      <div className={cn("relative isolate", className)}>
+        {ambient}
+        {editor.renderGrid(props)}
+      </div>
+    );
   if (!props.profile.sections.length) return null;
   return (
-    <div className={cn("flex flex-col", className)}>
+    <div className={cn("relative isolate flex flex-col", className)}>
+      {ambient}
       <Node node={toTree(props.profile.sections)} {...props} />
     </div>
   );
@@ -90,7 +124,9 @@ const nodeKey = (node: GridNode<ProfileSection>): string => {
   }
 };
 
-const gap = { gap: GRID.gap } satisfies CSSProperties;
+// The grid's gap: 24 on wider screens (`GRID.gap`, which the editor draws
+// with), 20 on phones.
+const gap = "gap-5 md:gap-6";
 
 /**
  * Whether a part holds a photo or embed. Only those grow to fill spare height
@@ -122,7 +158,7 @@ function Node({
       );
     case "stack":
       return (
-        <div className={cn("flex flex-col", fills(node) && "grow")} style={gap}>
+        <div className={cn("flex flex-col", gap, fills(node) && "grow")}>
           {node.children.map((child) => (
             <Node key={nodeKey(child)} node={child} {...props} />
           ))}
@@ -133,9 +169,10 @@ function Node({
         <div
           className={cn(
             "flex flex-col md:grid md:grid-cols-[repeat(var(--n),minmax(0,1fr))]",
+            gap,
             fills(node) && "grow",
           )}
-          style={{ ...gap, "--n": node.cols } as CSSProperties}
+          style={{ "--n": node.cols } as CSSProperties}
         >
           {node.children.map((child) => (
             <div
@@ -159,11 +196,11 @@ function Node({
         <div
           className={cn(
             "flex flex-col md:-mb-6 md:grid md:grid-cols-[repeat(var(--n),minmax(0,1fr))] md:grid-rows-[repeat(var(--rows),auto)] md:!gap-y-0",
+            gap,
             fills(node) && "grow",
           )}
           style={
             {
-              ...gap,
               "--n": node.cols,
               "--rows": edges.length - 1,
             } as CSSProperties
@@ -211,28 +248,104 @@ export function BlockCell({
 }) {
   const fill = getBlockDef(section.type).sizing === "fill";
   return (
-    <CellContext.Provider value={{ full: section.w === GRID.cols }}>
-      <div
-        id={sectionAnchor(section)}
-        className={cn(
-          "@container relative min-w-0 scroll-mt-36",
-          fill ? "flex min-h-[var(--fill)] grow flex-col" : "shrink-0",
-          className,
-        )}
-        style={
-          fill
-            ? ({
-                "--fill": `${rowsToPx(section.h)}px`,
-                ...style,
-              } as CSSProperties)
-            : style
-        }
-      >
-        {children}
-      </div>
-    </CellContext.Provider>
+    <div
+      id={sectionAnchor(section)}
+      className={cn(
+        "@container relative min-w-0 scroll-mt-36",
+        fill ? "flex min-h-[var(--fill)] grow flex-col" : "shrink-0",
+        className,
+      )}
+      style={
+        fill
+          ? ({
+              "--fill": `${rowsToPx(section.h)}px`,
+              ...style,
+            } as CSSProperties)
+          : style
+      }
+    >
+      {children}
+    </div>
   );
 }
+
+const LABEL_ICONS: Partial<Record<ArtistBlockTypeName, LucideIcon | IconType>> =
+  {
+    RICH_TEXT: AlignLeft,
+    IMAGE: ImageIcon,
+    GALLERY: Images,
+    SOUNDCLOUD_TRACK: FaSoundcloud,
+    SOUNDCLOUD_PLAYLIST: FaSoundcloud,
+    SPOTIFY_EMBED: FaSpotify,
+    YOUTUBE_VIDEO: FaYoutube,
+    RELEASE: Disc3,
+    SOCIAL_LINKS: Share2,
+    LINK_LIST: LinkIcon,
+    CUSTOM_EMBED: Code,
+  };
+
+/**
+ * A block's tile (see `cp-tile`): its label (the artist's own, or the type's
+ * default) and an optional action on one line, then the content.
+ */
+function Tile({
+  section,
+  url,
+  action,
+  className,
+  children,
+}: {
+  section: ProfileSection;
+  /** For the default label of an embed (its site's name). */
+  url?: string;
+  action?: ReactNode;
+  className?: string;
+  children: ReactNode;
+}) {
+  const label = section.label ?? defaultTileLabel(section.type, url);
+  const Icon = LABEL_ICONS[section.type];
+  return (
+    <div className={cn("cp-tile flex flex-col", className)}>
+      {label || action ? (
+        <div className="mb-4 flex min-h-4 items-center justify-between gap-4">
+          {label ? (
+            <span className="t-label cp-tag text-[11px]">
+              {Icon ? <Icon className="size-3.5 shrink-0" /> : null}
+              <span className="truncate">{label}</span>
+            </span>
+          ) : (
+            <span />
+          )}
+          {action}
+        </div>
+      ) : null}
+      {children}
+    </div>
+  );
+}
+
+/** "Open" and friends: a quiet link out, in a tile's label row. */
+function OpenLink({
+  href,
+  children = "Open",
+}: {
+  href: string;
+  children?: ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="t-label inline-flex shrink-0 items-center gap-1.5 text-[10px] text-[var(--cp-faint)] transition-colors hover:text-[var(--cp-ink)]"
+    >
+      {children}
+      <ArrowUpRight className="size-3.5" />
+    </a>
+  );
+}
+
+const media = "cp-media overflow-hidden rounded-[var(--cp-r-media)]";
 
 /** One section's content. Photos and embeds fill their cell. */
 export function Section({
@@ -248,82 +361,129 @@ export function Section({
       return <Heading section={section} />;
     case "RICH_TEXT":
       return (
-        <div className="cp-prose max-w-[65ch]">
-          <LexicalContent
-            value={section.lexical}
-            namespace={`artist-section-${section.id}`}
-            contentClassName="break-words !whitespace-normal"
-          />
-        </div>
+        <Tile section={section}>
+          <FoldText>
+            <div className="cp-prose max-w-[65ch]">
+              <LexicalContent
+                value={section.lexical}
+                namespace={`artist-section-${section.id}`}
+                contentClassName="break-words !whitespace-normal"
+              />
+            </div>
+          </FoldText>
+        </Tile>
       );
     case "IMAGE":
       return (
-        <Photo
-          src={section.src}
-          alt={section.alt}
-          sizes={sizes}
-          className="flex-1 rounded-[var(--cp-r-media)]"
-        />
+        <Tile section={section} className="flex-1">
+          <Photo
+            src={section.src}
+            alt={section.alt}
+            sizes={sizes}
+            className={cn(media, "min-h-24 flex-1")}
+          />
+        </Tile>
       );
     case "GALLERY":
-      return <Gallery srcs={section.srcs} name={profile.name} />;
+      return (
+        <Tile
+          section={section}
+          action={
+            <span className="t-label text-[10px] text-[var(--cp-faint)] tabular-nums">
+              {section.srcs.length}
+            </span>
+          }
+        >
+          <Gallery srcs={section.srcs} name={profile.name} />
+        </Tile>
+      );
     case "SOUNDCLOUD_TRACK":
       return (
-        <div className="overflow-hidden rounded-[var(--cp-r-media)]">
-          <SoundCloudPlayer
-            url={section.url}
-            params={{ color: accent.replace("#", ""), visual: true }}
-          />
-        </div>
+        <Tile section={section} action={<OpenLink href={section.url} />}>
+          <div className={media}>
+            <SoundCloudPlayer
+              url={section.url}
+              params={{ color: accent.replace("#", ""), visual: true }}
+            />
+          </div>
+        </Tile>
       );
     case "SOUNDCLOUD_PLAYLIST":
       return (
-        <Frame
-          title={`${profile.name} on SoundCloud`}
-          src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(section.url)}&color=${accent.replace("#", "")}&visual=true`}
-        />
+        <Tile
+          section={section}
+          className="flex-1"
+          action={<OpenLink href={section.url} />}
+        >
+          <Frame
+            title={`${profile.name} on SoundCloud`}
+            src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(section.url)}&color=${accent.replace("#", "")}&visual=true`}
+          />
+        </Tile>
       );
     case "YOUTUBE_VIDEO":
       return (
-        <div className="overflow-hidden rounded-[var(--cp-r-media)]">
-          <YouTubePlayer
-            videoId={section.videoId}
-            title={`${profile.name} video`}
-          />
-        </div>
+        <Tile
+          section={section}
+          action={
+            <OpenLink href={`https://youtu.be/${section.videoId}`}>
+              YouTube
+            </OpenLink>
+          }
+        >
+          <div className={media}>
+            <YouTubePlayer
+              videoId={section.videoId}
+              title={`${profile.name} video`}
+            />
+          </div>
+        </Tile>
       );
     case "SPOTIFY_EMBED":
       return (
-        <iframe
-          title={`${profile.name} on Spotify`}
-          src={
-            tone === "dark" ? withParam(section.src, "theme", "0") : section.src
-          }
-          height={section.tall ? 352 : 152}
-          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-          loading="lazy"
-          className="block w-full rounded-[12px]"
-        />
+        <Tile
+          section={section}
+          action={<OpenLink href={section.src.replace("/embed/", "/")} />}
+        >
+          <iframe
+            title={`${profile.name} on Spotify`}
+            src={
+              tone === "dark"
+                ? withParam(section.src, "theme", "0")
+                : section.src
+            }
+            height={section.tall ? 352 : 152}
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            loading="lazy"
+            className="cp-media block w-full rounded-[12px]"
+          />
+        </Tile>
+      );
+    case "RELEASE":
+      return (
+        <Tile section={section}>
+          <Release section={section} />
+        </Tile>
       );
     case "SOCIAL_LINKS":
       return (
-        <LinkRows
-          links={profile.socials.map((s) => {
-            const { name, handle } = socialMeta(s);
-            return {
-              label: name,
-              detail: handle ? `@${handle}` : null,
-              url: s.url,
-            };
-          })}
-        />
+        <Tile section={section}>
+          <SocialChips socials={profile.socials} name={profile.name} />
+        </Tile>
       );
     case "LINK_LIST":
-      return <LinkRows links={section.links} />;
+      return (
+        <Tile section={section}>
+          <LinkPills links={section.links} />
+        </Tile>
+      );
     case "GIG_LIST":
-      return gigs.upcoming({ section, profile });
+      // The sets blocks title their own tile (see `SectionHeading`).
+      return (
+        <div className="cp-tile">{gigs.upcoming({ section, profile })}</div>
+      );
     case "PAST_GIGS":
-      return gigs.past({ section, profile });
+      return <div className="cp-tile">{gigs.past({ section, profile })}</div>;
     case "DIVIDER":
       return (
         <div className="flex h-4 items-center">
@@ -333,14 +493,25 @@ export function Section({
     case "SPACER":
       return <div aria-hidden className="flex-1" />;
     case "CUSTOM_EMBED":
-      return <Frame title="Embedded content" src={section.url} />;
+      return (
+        <Tile
+          section={section}
+          url={section.url}
+          className="flex-1"
+          action={<OpenLink href={section.url} />}
+        >
+          <Frame title="Embedded content" src={section.url} />
+        </Tile>
+      );
   }
 }
 
-/** An embed that fills its cell. */
+/** An embed that fills its tile. */
 function Frame({ title, src }: { title: string; src: string }) {
   return (
-    <div className="relative flex-1 overflow-hidden rounded-[var(--cp-r-media)] bg-[var(--cp-raised)]">
+    <div
+      className={cn(media, "relative min-h-40 flex-1 bg-[var(--cp-raised)]")}
+    >
       <iframe
         title={title}
         src={src}
@@ -349,6 +520,186 @@ function Frame({ title, src }: { title: string; src: string }) {
         className="absolute inset-0 block size-full"
       />
     </div>
+  );
+}
+
+/**
+ * Long text, cut short with Read more. It fades out by itself (`cp-fold`),
+ * so it looks right on glass as well as solid tiles.
+ */
+function FoldText({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [long, setLong] = useState(false);
+
+  // Measure after every render (the text can change in the editor) and
+  // whenever the width changes.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || open) return;
+    const check = () => setLong(el.scrollHeight > el.clientHeight + 1);
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+  });
+
+  return (
+    <>
+      <div
+        ref={ref}
+        className={cn(
+          !open && "max-h-[22rem] overflow-hidden",
+          !open && long && "cp-fold",
+        )}
+      >
+        {children}
+      </div>
+      {long || open ? (
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+          className={cn(
+            pill({ variant: "outline", size: "sm" }),
+            "mt-4 self-start",
+          )}
+        >
+          {open ? "Show less" : "Read more"}
+        </button>
+      ) : null}
+    </>
+  );
+}
+
+/** Store and streaming links get their service's mark. */
+function linkIcon(url: string): IconType | null {
+  const host = (() => {
+    try {
+      return new URL(url).hostname.replace(/^www\./, "");
+    } catch {
+      return "";
+    }
+  })();
+  if (host.endsWith("spotify.com")) return FaSpotify;
+  if (host.endsWith("apple.com")) return FaApple;
+  if (host.endsWith("bandcamp.com")) return FaBandcamp;
+  if (host.endsWith("soundcloud.com")) return FaSoundcloud;
+  if (host.endsWith("youtube.com") || host === "youtu.be") return FaYoutube;
+  return null;
+}
+
+/** A record: cover, title, who it's by, and where to get it. */
+function Release({ section }: { section: Of<"RELEASE"> }) {
+  return (
+    <div className="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-4 @md:grid-cols-[11rem_minmax(0,1fr)] @md:gap-6">
+      <Poster
+        title={section.title}
+        src={section.cover}
+        sizes="176px"
+        className={cn(media, "aspect-square")}
+      />
+      <div className="min-w-0">
+        <p className="cp-display text-[clamp(1.75rem,9cqw,2.75rem)] [overflow-wrap:anywhere]">
+          {section.title}
+        </p>
+        {section.artist ? (
+          <p className="mt-2 text-[14px] text-[var(--cp-muted)]">
+            {section.artist}
+          </p>
+        ) : null}
+        {section.links.length ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {section.links.map((l, i) => {
+              const Icon = linkIcon(l.url);
+              return (
+                <Pill
+                  key={`${l.url}-${i}`}
+                  href={l.url}
+                  variant={i === 0 ? "accent" : "outline"}
+                  size="sm"
+                >
+                  {Icon ? <Icon className="size-3.5" /> : null}
+                  {l.label || hostOf(l.url)}
+                </Pill>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+const hostOf = (url: string) =>
+  url.replace(/^https?:\/\/(www\.)?/, "").split("/")[0];
+
+/** The artist's socials as chips: the platform's mark, its name and the handle. */
+function SocialChips({
+  socials,
+  name,
+}: {
+  socials: PublicProfile["socials"];
+  name: string;
+}) {
+  return (
+    <ul className="grid grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-2">
+      {socials.map((social, i) => {
+        const { name: platform, handle, Icon } = socialMeta(social);
+        return (
+          <li key={`${social.url}-${i}`}>
+            <a
+              href={social.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`${name} on ${platform}`}
+              className="cp-chip group flex items-center gap-4 rounded-full py-2 pr-4 pl-2 transition-[filter] hover:brightness-110"
+            >
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--chip-icon-bg)] text-[var(--chip-icon-ink)]">
+                <Icon className="size-[19px]" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="t-label block truncate text-[11px]">
+                  {platform}
+                </span>
+                {handle ? (
+                  <span className="mt-1 block truncate text-[13px] text-[var(--cp-muted)]">
+                    @{handle}
+                  </span>
+                ) : null}
+              </span>
+              <ArrowUpRight className="size-4 shrink-0 text-[var(--cp-faint)] transition-colors group-hover:text-[var(--cp-accent-text)]" />
+            </a>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** Links as big pills; the first is the accent. */
+function LinkPills({ links }: { links: { label: string; url: string }[] }) {
+  return (
+    <ul className="flex flex-col gap-2">
+      {links.map((l, i) => (
+        <li key={`${l.url}-${i}`}>
+          <a
+            href={l.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              "t-label group flex h-14 items-center justify-between gap-4 rounded-full px-6 text-[12px] transition-[filter] hover:brightness-110",
+              i === 0
+                ? "bg-[var(--cp-accent)] text-[var(--cp-accent-ink)] shadow-[var(--accent-ring)]"
+                : "cp-chip text-[var(--cp-ink)]",
+            )}
+          >
+            <span className="truncate">{l.label || hostOf(l.url)}</span>
+            <ArrowRight className="size-[18px] shrink-0 transition-transform group-hover:translate-x-0.5" />
+          </a>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -363,17 +714,32 @@ const headingSizes = {
 function Heading({ section }: { section: Of<"HEADING"> }) {
   // The artist's level 1 is still a section heading: the page's h1 is their name.
   const Tag = section.level <= 2 ? "h2" : section.level === 3 ? "h3" : "h4";
+  const align = cn(
+    section.align === "center" && "text-center",
+    section.align === "right" && "text-right",
+  );
   return (
-    <Tag
-      className={cn(
-        "cp-display [overflow-wrap:anywhere]",
-        headingSizes[section.level],
-        section.align === "center" && "text-center",
-        section.align === "right" && "text-right",
-      )}
-    >
-      {section.text}
-    </Tag>
+    <div className="py-2">
+      {section.label ? (
+        <p
+          className={cn(
+            "t-label mb-4 text-[11px] text-[var(--cp-accent-text)]",
+            align,
+          )}
+        >
+          {section.label}
+        </p>
+      ) : null}
+      <Tag
+        className={cn(
+          "cp-display [overflow-wrap:anywhere]",
+          headingSizes[section.level],
+          align,
+        )}
+      >
+        {section.text}
+      </Tag>
+    </div>
   );
 }
 
@@ -394,7 +760,7 @@ function Gallery({ srcs, name }: { srcs: string[]; name: string }) {
             onClick={() => lightbox.open(i)}
             aria-label={`Open ${img.alt}`}
             className={cn(
-              "group relative overflow-hidden rounded-[var(--cp-r-media)]",
+              "group cp-media relative overflow-hidden rounded-[var(--cp-r-media)]",
               i === 0 && srcs.length > 2
                 ? "col-span-2 aspect-[3/2] @2xl:row-span-2 @2xl:aspect-auto"
                 : "aspect-[3/2]",

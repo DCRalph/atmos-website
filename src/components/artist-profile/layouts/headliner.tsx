@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight } from "lucide-react";
-import { cn } from "~/lib/utils";
+import { ArrowLeft, ArrowRight, Play } from "lucide-react";
 import {
+  fmtDay,
   fmtMonth,
   fmtTime,
   fmtYear,
@@ -18,13 +18,11 @@ import {
   OnNowTag,
   Photo,
   Pill,
-  Poster,
   Role,
   RoundButton,
   SectionHeading,
   Segmented,
   SetPoster,
-  SetTimer,
   SocialLinks,
   TicketPill,
   nextSet,
@@ -33,12 +31,11 @@ import {
   setMeta,
   setTitle,
   useSetOnNow,
-  useTicketCta,
   type ClaimState,
 } from "../parts";
-import { ProfileSections, sectionAnchor, useCell } from "../sections";
+import { ProfileSections, sectionAnchor } from "../sections";
 import { HeroEditButton } from "../editor/hero-edit-button";
-import { About, firstMusicAnchor, nameLength, pastSetsLine } from "./shared";
+import { BioText, firstMusicAnchor, nameLength, pastSetsLine } from "./shared";
 import type { ProfileSet, PublicProfile } from "../types";
 
 type Of<T extends ProfileSection["type"]> = Extract<
@@ -47,10 +44,10 @@ type Of<T extends ProfileSection["type"]> = Extract<
 >;
 
 /**
- * Headliner. The DnB Allstars "next show" page turned into a person: their
- * photo and name own the left of the first viewport with the next set
- * counting down under it, the rest of their run in a rail on the right. Their
- * sections follow, then about, then their name signing off.
+ * Headliner. Header A: the artist's photo as atmosphere (darkened, an accent
+ * glow, fading into the page), their mark framed like a record sleeve, and
+ * their name, what they do and every action together in one block. Their
+ * sets run along the bottom of the header, then their grid of tiles.
  */
 export function HeadlinerLayout({
   profile,
@@ -70,118 +67,203 @@ export function HeadlinerLayout({
         accent={theme.accent}
         tone={theme.tone}
         gigs={{ upcoming: Agenda, past: Carousel }}
-        className="px-5 py-16 md:px-10 md:py-24"
+        className="px-5 pt-5 pb-16 md:px-10 md:pt-12 md:pb-24"
       />
-      <About profile={profile} withPortrait />
-      <SignOff name={profile.name} />
+      <AboutTile profile={profile} />
     </>
   );
 }
 
+/** A bio short enough to sit in the header, under the name. */
+const SHORT_BIO = 200;
+const shortBio = (bio: string | null) =>
+  bio && bio.length <= SHORT_BIO && !/\n\s*\n/.test(bio) ? bio : null;
+
 function Hero({ profile }: { profile: PublicProfile }) {
   const next = nextSet(profile);
-  const rest = profile.upcoming.filter((s) => s !== next);
   const backdrop = profile.banner ?? profile.portrait;
-  const fallbackPoster = (next ?? profile.past[0])?.poster ?? null;
-  const rail = rest.length
-    ? { title: "Then", sets: rest.slice(0, 4), recent: false }
-    : profile.past.length
-      ? { title: "Recently", sets: profile.past.slice(0, 4), recent: true }
-      : null;
   const listen = firstMusicAnchor(profile);
+  const link = profile.sections.find((s) => s.type === "LINK_LIST")?.links[0];
+  const upcoming = profile.upcoming.length > 0;
+  const strip = upcoming ? profile.upcoming : profile.past;
+  const meta = [
+    shortBio(profile.bio),
+    strip.length ? pastSetsLine(profile) : null,
+  ].filter(Boolean);
 
   return (
-    <section
-      className={cn(
-        "relative grid min-h-[640px] lg:min-h-[min(820px,100dvh)]",
-        rail && "lg:grid-cols-[minmax(0,1fr)_minmax(360px,34%)]",
-      )}
-    >
+    <section className="relative isolate flex min-h-[600px] flex-col justify-end overflow-hidden md:min-h-[min(680px,100dvh)]">
       <HeroEditButton />
-      <div className="relative flex flex-col justify-end overflow-hidden max-lg:min-h-[640px]">
-        {backdrop ? (
-          <Photo
-            src={backdrop}
-            alt=""
-            priority
-            sizes="(min-width: 1024px) 66vw, 100vw"
-            className="absolute inset-0"
-            position="50% 35%"
-          />
-        ) : fallbackPoster ? (
-          // No photo yet: their latest poster, blurred into an atmosphere.
-          <Poster
-            title=""
-            src={fallbackPoster}
-            className="absolute inset-0 scale-110 opacity-70 blur-2xl"
-            sizes="50vw"
+      {backdrop ? (
+        <Photo
+          src={backdrop}
+          alt=""
+          priority
+          sizes="100vw"
+          className="cp-hero-photo absolute -inset-6 -z-10 blur-[1.5px]"
+          position="50% 40%"
+        />
+      ) : null}
+      <div aria-hidden className="cp-hero-glow absolute inset-0 -z-10" />
+      <div aria-hidden className="cp-hero-fade absolute inset-0 -z-10" />
+
+      <div className="px-5 pt-28 pb-5 md:px-10 md:pt-32 md:pb-6">
+        <div className="flex flex-col gap-6 md:flex-row md:items-end md:gap-10">
+          <Mark profile={profile} />
+          <div className="@container min-w-0 flex-1">
+            {profile.tagline ? (
+              <p className="t-label text-[11px] leading-[1.45] text-[var(--cp-muted)] md:text-[12px]">
+                {profile.tagline}
+              </p>
+            ) : null}
+            <h1
+              className="cp-display mt-4 text-[min(9.5rem,calc(100cqw/(var(--len)*var(--cp-display-em))*0.97))] [overflow-wrap:anywhere]"
+              style={nameLength(profile.name)}
+            >
+              {profile.name}
+            </h1>
+            {meta.length ? (
+              <p className="mt-4 max-w-[60ch] text-[14px] text-[var(--cp-muted)] md:text-[15px]">
+                {meta.join(" · ")}
+              </p>
+            ) : null}
+            <div className="mt-6 flex flex-wrap items-center gap-2">
+              {next ? (
+                <TicketPill set={next} size="lg" />
+              ) : listen ? (
+                <Pill href={`#${listen}`} variant="accent" size="lg">
+                  <Play className="size-4 fill-current" /> Listen
+                </Pill>
+              ) : null}
+              {next && listen ? (
+                <Pill href={`#${listen}`} variant="outline" size="lg">
+                  <Play className="size-4" /> Listen
+                </Pill>
+              ) : link ? (
+                <Pill href={link.url} variant="outline" size="lg">
+                  <span className="max-w-[16ch] truncate">
+                    {link.label || "Link"}
+                  </span>
+                </Pill>
+              ) : null}
+              <SocialLinks profile={profile} glass className="md:ml-2" />
+            </div>
+          </div>
+        </div>
+
+        {strip.length ? (
+          <SetsStrip
+            profile={profile}
+            sets={strip.slice(0, 3)}
+            upcoming={upcoming}
           />
         ) : null}
-        <div className="cp-scrim-bottom absolute inset-0" />
-        <div className="cp-scrim-left absolute inset-0 max-lg:hidden" />
-        <div className="cp-scrim-top absolute inset-x-0 top-0 h-40" />
-
-        <div className="@container relative px-5 pt-32 pb-10 md:px-10 md:pb-14">
-          <h1
-            className="cp-display text-[min(9rem,calc(100cqw/(var(--len)*var(--cp-display-em))*0.97))] [overflow-wrap:anywhere]"
-            style={nameLength(profile.name)}
-          >
-            {profile.name}
-          </h1>
-          {profile.tagline ? (
-            <p className="t-label mt-5 text-[12px] leading-[1.45] text-[var(--cp-muted)] md:text-[13px]">
-              {profile.tagline}
-            </p>
-          ) : !profile.claimed ? (
-            <p className="t-label mt-5 text-[12px] text-[var(--cp-muted)]">
-              {pastSetsLine(profile)}
-            </p>
-          ) : null}
-          <SocialLinks profile={profile} glass className="mt-6" />
-
-          {next ? (
-            <NextSet set={next} />
-          ) : listen ? (
-            <Pill
-              href={`#${listen}`}
-              variant="accent"
-              size="lg"
-              className="mt-10"
-            >
-              Listen
-            </Pill>
-          ) : null}
-        </div>
       </div>
-
-      {rail ? (
-        <aside
-          aria-labelledby="rail-title"
-          className="flex flex-col justify-center bg-[var(--cp-raised)] px-5 py-10 md:px-10 lg:px-[clamp(28px,3.2vw,56px)] lg:pt-32 lg:pb-12"
-        >
-          <h2
-            id="rail-title"
-            className="t-label mb-5 text-[11px] text-[var(--cp-faint)]"
-          >
-            {rail.title}
-          </h2>
-          <ol>
-            {rail.sets.map((set) => (
-              <RailItem key={set.id} set={set} recent={rail.recent} />
-            ))}
-          </ol>
-          <MoreLink href={railMoreHref(profile, rail.recent)} className="mt-6">
-            {rail.recent
-              ? `All ${profile.past.length} past sets`
-              : `All ${profile.upcoming.length} upcoming`}
-          </MoreLink>
-        </aside>
-      ) : null}
     </section>
   );
 }
 
-/** Where the rail's "all" link goes: the matching section if the page has one. */
+/** Their photo (or their initial) in a frame, like a record sleeve. */
+function Mark({ profile }: { profile: PublicProfile }) {
+  return (
+    <div className="cp-tile w-26 shrink-0 rounded-tl-none !p-2 md:w-54">
+      {profile.portrait ? (
+        <Photo
+          src={profile.portrait}
+          alt={profile.name}
+          sizes="216px"
+          className="cp-media aspect-square rounded-[max(0px,calc(var(--cp-r-panel)-8px))] rounded-tl-none"
+        />
+      ) : (
+        <div
+          aria-hidden
+          className="@container flex aspect-square items-center justify-center rounded-[max(0px,calc(var(--cp-r-panel)-8px))] rounded-tl-none bg-[var(--cp-raised)]"
+        >
+          <span className="cp-display text-[56cqw] leading-none text-[var(--cp-faint)]">
+            {profile.name.slice(0, 1)}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Their next sets (or, with none booked, their latest) along the bottom of
+ * the header: a bar on wider screens, a row of posters on phones.
+ */
+function SetsStrip({
+  profile,
+  sets,
+  upcoming,
+}: {
+  profile: PublicProfile;
+  sets: ProfileSet[];
+  upcoming: boolean;
+}) {
+  const total = upcoming ? profile.upcoming.length : profile.past.length;
+  const more = (
+    <MoreLink href={railMoreHref(profile, !upcoming)} className="shrink-0">
+      {upcoming ? `All ${total} upcoming` : `All ${total} sets`}
+    </MoreLink>
+  );
+  return (
+    <>
+      <div className="cp-tile mt-10 hidden items-center gap-8 !py-4 md:flex">
+        <span className="t-label w-32 shrink-0 text-[11px] leading-snug text-[var(--cp-muted)]">
+          {upcoming ? "Coming up" : "Recently with Atmos"}
+        </span>
+        <ul className="flex min-w-0 flex-1 gap-8">
+          {sets.map((set) => (
+            <li key={set.id} className="min-w-0">
+              <a href={setHref(set)} className="group flex items-center gap-4">
+                <SetPoster
+                  set={set}
+                  className="cp-media aspect-[4/5] w-10 shrink-0 rounded-[min(var(--cp-r-media),4px)]"
+                  sizes="40px"
+                />
+                <span className="min-w-0">
+                  <span className="cp-display block truncate text-[14px] leading-tight group-hover:text-[var(--cp-accent-text)]">
+                    {setTitle(set)}
+                  </span>
+                  <span className="mt-1 block truncate text-[12.5px] text-[var(--cp-muted)]">
+                    {setMeta(set)}
+                  </span>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+        {more}
+      </div>
+
+      <div className="-mx-5 mt-8 md:hidden">
+        <ul className="no-scrollbar flex snap-x snap-mandatory scroll-px-5 gap-5 overflow-x-auto px-5">
+          {sets.map((set) => (
+            <li key={set.id} className="w-[7.25rem] shrink-0 snap-start">
+              <a href={setHref(set)} className="group block">
+                <SetPoster
+                  set={set}
+                  className="cp-media aspect-[4/5] rounded-[var(--cp-r-media)]"
+                  sizes="116px"
+                />
+                <span className="cp-display mt-2 block truncate text-[12px] leading-tight">
+                  {setTitle(set)}
+                </span>
+                <span className="mt-1 block truncate text-[12px] text-[var(--cp-muted)]">
+                  {setIsTba(set) ? "Date TBA" : fmtDay(set.start)}
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-4 px-5">{more}</div>
+      </div>
+    </>
+  );
+}
+
+/** Where the strip's "all" link goes: the matching section if the page has one. */
 function railMoreHref(profile: PublicProfile, recent: boolean) {
   const section = profile.sections.find(
     (s) => s.type === (recent ? "PAST_GIGS" : "GIG_LIST"),
@@ -189,68 +271,14 @@ function railMoreHref(profile: PublicProfile, recent: boolean) {
   return section ? `#${sectionAnchor(section)}` : "/gigs";
 }
 
-function RailItem({ set, recent }: { set: ProfileSet; recent: boolean }) {
-  const cta = useTicketCta()(set);
-  const buyable = !recent && (cta.tone === "buy" || cta.tone === "external");
-  const label = recent
-    ? "View"
-    : buyable
-      ? "Tickets"
-      : cta.tone === "muted"
-        ? cta.label
-        : "Details";
+/** A bio too long for the header, as a tile closing the page. */
+function AboutTile({ profile }: { profile: PublicProfile }) {
+  if (!profile.bio || shortBio(profile.bio)) return null;
   return (
-    <li>
-      <a
-        href={setHref(set)}
-        className="group grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 border-t border-[var(--cp-line)] py-4"
-      >
-        <SetPoster
-          set={set}
-          className="aspect-[4/5] w-16 rounded-[min(var(--cp-r-media),4px)]"
-          sizes="64px"
-        />
-        <span className="min-w-0">
-          <span className="cp-display block truncate text-[17px] leading-tight group-hover:text-[var(--cp-accent-text)]">
-            {setTitle(set)}
-          </span>
-          <span className="mt-1.5 block truncate text-[13px] text-[var(--cp-muted)]">
-            {setMeta(set)}
-          </span>
-          <Role set={set} className="mt-2 block" />
-        </span>
-        <span
-          className={cn(
-            "t-label max-w-[9ch] text-right text-[10px] leading-tight",
-            buyable ? "text-[var(--cp-accent-text)]" : "text-[var(--cp-faint)]",
-          )}
-        >
-          {label}
-        </span>
-      </a>
-    </li>
-  );
-}
-
-/** The next set under the name: what, where, a countdown and the buy button. */
-function NextSet({ set }: { set: ProfileSet }) {
-  const onNow = useSetOnNow(set);
-  return (
-    <div className="mt-10 max-w-[600px] border-t border-[var(--cp-line)] pt-7">
-      <p className="cp-display text-[clamp(1.5rem,3.2vw,2.5rem)] [overflow-wrap:anywhere]">
-        <a href={setHref(set)} className="hover:text-[var(--cp-accent-text)]">
-          {setTitle(set)}
-        </a>
-      </p>
-      <p className="t-label mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] text-[var(--cp-muted)] md:text-[12px]">
-        <span>{setMeta(set, { time: !onNow })}</span>
-        <Role set={set} />
-      </p>
-      <div className="mt-6">
-        <SetTimer set={set} />
-      </div>
-      <div className="mt-6 flex flex-wrap gap-3">
-        <TicketPill set={set} size="lg" />
+    <div id="about" className="scroll-mt-36 px-5 pb-16 md:px-10 md:pb-24">
+      <div className="cp-tile">
+        <p className="t-label cp-tag mb-4 text-[11px]">About</p>
+        <BioText bio={profile.bio} className="max-w-[65ch]" />
       </div>
     </div>
   );
@@ -280,7 +308,6 @@ function Agenda({
     <section>
       <SectionHeading
         title={section.title}
-        className="mb-8"
         aside={
           <Segmented
             label="View"
@@ -294,7 +321,7 @@ function Agenda({
         const first = g.items[0]!;
         return (
           <div key={g.key}>
-            <h3 className="sticky top-16 z-10 flex items-center gap-4 border-b border-[var(--cp-line-soft)] bg-[color-mix(in_oklab,var(--cp-ground)_94%,transparent)] py-3 backdrop-blur-md md:top-20">
+            <h3 className="flex items-center gap-4 border-b border-[var(--cp-line-soft)] py-3">
               {g.key === "TBA" ? (
                 <span className="t-label text-[12px] text-[var(--cp-muted)]">
                   Date to be announced
@@ -384,7 +411,6 @@ function Carousel({
   profile: PublicProfile;
 }) {
   const scroller = useRef<HTMLUListElement>(null);
-  const { full } = useCell();
   const sets = section.includeUpcoming
     ? [...profile.upcoming, ...profile.past]
     : profile.past;
@@ -427,7 +453,6 @@ function Carousel({
     <section>
       <SectionHeading
         title={section.title}
-        className="mb-10"
         aside={
           edges.more ? (
             <div className="flex gap-2">
@@ -455,11 +480,7 @@ function Carousel({
       </SectionHeading>
       <ul
         ref={scroller}
-        className={cn(
-          "no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto @2xl:gap-5",
-          // A full-width carousel runs to the window's edges.
-          full && "-mx-5 scroll-px-5 px-5 md:-mx-10 md:scroll-px-10 md:px-10",
-        )}
+        className="no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto @2xl:gap-5"
       >
         {sets.map((s) => (
           <li
@@ -486,22 +507,5 @@ function Carousel({
         ))}
       </ul>
     </section>
-  );
-}
-
-/** Their name, oversized and cropped at the bottom: the site footer's logo move. */
-function SignOff({ name }: { name: string }) {
-  return (
-    <div
-      aria-hidden
-      className="@container overflow-hidden px-5 pt-10 select-none md:px-10"
-    >
-      <p
-        className="cp-display translate-y-[22%] text-center text-[min(26rem,calc(100cqw/(var(--len)*var(--cp-display-em))*0.98))] leading-[0.8] whitespace-nowrap text-[var(--cp-line)]"
-        style={nameLength(name)}
-      >
-        {name}
-      </p>
-    </div>
   );
 }

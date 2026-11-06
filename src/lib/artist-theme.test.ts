@@ -29,6 +29,7 @@ describe("parseTheme", () => {
       }),
       {
         layout: "headliner",
+        style: "glass",
         ground: "#ffffff",
         accent: "#6366f1",
         display: "bodoni",
@@ -36,6 +37,14 @@ describe("parseTheme", () => {
         photo: "color",
       },
     );
+  });
+
+  test("reads themes saved before styles as glass", () => {
+    const before: Record<string, unknown> = { ...THEME_PRESETS.flyer.theme };
+    delete before.style;
+    assert.equal(parseTheme(before).style, "glass");
+    assert.equal(parseTheme({ ...before, style: "neon" }).style, "glass");
+    assert.equal(parseTheme({ ...before, style: "flat" }).style, "flat");
   });
 
   test("falls back to the default for anything unreadable", () => {

@@ -11,7 +11,11 @@ import { GRID, normalize, rescaleRows, type Rect } from "./artist-grid";
  * embed links are validated, and anything with nothing to show is dropped and
  * the rest settled, so the public page never renders an empty state or a hole.
  */
-export type ProfileSection = { id: string } & Rect &
+export type ProfileSection = {
+  id: string;
+  /** The artist's own line at the top of the block, over `defaultTileLabel`. */
+  label?: string;
+} & Rect &
   (
     | { type: "HEADING"; text: string; level: 1 | 2 | 3 | 4; align: Align }
     | { type: "RICH_TEXT"; lexical: unknown }
@@ -20,6 +24,13 @@ export type ProfileSection = { id: string } & Rect &
     | { type: "SOUNDCLOUD_TRACK" | "SOUNDCLOUD_PLAYLIST"; url: string }
     | { type: "YOUTUBE_VIDEO"; videoId: string }
     | { type: "SPOTIFY_EMBED"; src: string; tall: boolean }
+    | {
+        type: "RELEASE";
+        title: string;
+        artist: string;
+        cover: string | null;
+        links: { label: string; url: string }[];
+      }
     | { type: "SOCIAL_LINKS" }
     | { type: "LINK_LIST"; links: { label: string; url: string }[] }
     | { type: "GIG_LIST"; title: string }
@@ -127,7 +138,12 @@ export function toSection(
   const content = toContent(block, ctx);
   if (!content) return null;
   const { x, y, w, h } = block;
-  return { ...content, x, y, w, h };
+  const raw =
+    block.data && typeof block.data === "object" && "label" in block.data
+      ? block.data.label
+      : null;
+  const label = typeof raw === "string" ? raw.trim() : "";
+  return { ...content, x, y, w, h, ...(label ? { label } : {}) };
 }
 
 /** A section without its place in the grid. */
@@ -203,16 +219,22 @@ function toContent(
     case "SOCIAL_LINKS":
       return ctx.socials ? { id, type: "SOCIAL_LINKS" } : null;
     case "LINK_LIST": {
-      const links = Array.isArray(d.links)
-        ? d.links.flatMap((l: unknown) => {
-            if (!l || typeof l !== "object") return [];
-            const { label, url } = l as Record<string, unknown>;
-            return typeof url === "string" && /^https?:\/\//.test(url)
-              ? [{ label: typeof label === "string" ? label : "", url }]
-              : [];
-          })
-        : [];
+      const links = readLinks(d.links);
       return links.length ? { id, type: "LINK_LIST", links } : null;
+    }
+    case "RELEASE": {
+      const title = str("title").trim();
+      const cover = str("coverFileId");
+      return title
+        ? {
+            id,
+            type: "RELEASE",
+            title,
+            artist: str("artist").trim(),
+            cover: cover ? ctx.mediaUrl(cover) : null,
+            links: readLinks(d.links),
+          }
+        : null;
     }
     case "GIG_LIST":
       return ctx.upcoming
@@ -248,6 +270,18 @@ function toContent(
       // CONTENT_LIST and anything else the page doesn't render.
       return null;
   }
+}
+
+/** Labelled links with a web address; anything half-typed is left out. */
+function readLinks(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((l: unknown) => {
+    if (!l || typeof l !== "object") return [];
+    const { label, url } = l as Record<string, unknown>;
+    return typeof url === "string" && /^https?:\/\//.test(url)
+      ? [{ label: typeof label === "string" ? label : "", url }]
+      : [];
+  });
 }
 
 const isLexical = (v: unknown) =>
