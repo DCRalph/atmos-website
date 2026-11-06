@@ -35,8 +35,8 @@ function platformOf(item: ContentItem) {
 }
 
 const gridClass = "grid grid-cols-3 items-start gap-x-3 gap-y-6 md:gap-8";
-// Full width at 16:9 is most of a desktop screen tall, so cap it there.
-const videoClass = "lg:max-w-[50vw]";
+// Full width at 16:9 is most of a desktop screen tall, so cap it there and center it.
+const videoClass = "mx-auto lg:max-w-[50vw]";
 
 /** A YouTube player (half the screen wide on desktop) followed by three equally sized content items. */
 export function LatestContent() {
