@@ -84,6 +84,12 @@ const SMART_CRUMB_RESOLVERS: SmartCrumbResolver[] = [
     parentPath: "/admin/links",
   },
   {
+    pattern: /^\/admin\/artist-profiles\/([^/]+)$/,
+    key: "artist",
+    fallbackLabel: "Artist",
+    parentPath: "/admin/artist-profiles",
+  },
+  {
     pattern: /^\/admin\/will-gpt\/([^/]+)$/,
     key: "conversation",
     fallbackLabel: "Conversation",
@@ -259,6 +265,18 @@ function useConversationCrumb(conversationId: string | null) {
   };
 }
 
+/** An artist profile's name, from the query its admin page already makes. */
+function useArtistCrumb(profileId: string | null) {
+  const { data, isLoading } = api.artistProfiles.getById.useQuery(
+    { id: profileId ?? "" },
+    { enabled: !!profileId && profileId !== "claims" },
+  );
+  return {
+    label: data?.displayName ?? null,
+    isLoading: !!profileId && profileId !== "claims" && isLoading,
+  };
+}
+
 function useReportCrumb(reportId: string | null) {
   const { data, isLoading } = api.reports.byId.useQuery(
     { id: reportId ?? "" },
@@ -284,6 +302,7 @@ function useSmartCrumb(pathname: string): {
   const conversationId =
     smartMatch?.resolver.key === "conversation" ? smartMatch.id : null;
   const reportId = smartMatch?.resolver.key === "report" ? smartMatch.id : null;
+  const artistId = smartMatch?.resolver.key === "artist" ? smartMatch.id : null;
 
   // Call all resolver hooks (React hooks must be called unconditionally)
   const userCrumb = useUserCrumb(userId);
@@ -291,6 +310,7 @@ function useSmartCrumb(pathname: string): {
   const linkCrumb = useLinkCrumb(linkId);
   const conversationCrumb = useConversationCrumb(conversationId);
   const reportCrumb = useReportCrumb(reportId);
+  const artistCrumb = useArtistCrumb(artistId);
 
   // Return the appropriate result based on which resolver matched
   if (!smartMatch) return null;
@@ -335,6 +355,13 @@ function useSmartCrumb(pathname: string): {
         path: pathname,
         label: conversationCrumb.label ?? resolver.fallbackLabel,
         isLoading: conversationCrumb.isLoading,
+      };
+    case "artist":
+      if (id === "claims") return null;
+      return {
+        path: pathname,
+        label: artistCrumb.label ?? resolver.fallbackLabel,
+        isLoading: artistCrumb.isLoading,
       };
     default:
       return null;

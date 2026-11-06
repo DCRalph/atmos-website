@@ -28,7 +28,8 @@ import {
   useTicketCta,
   type ClaimState,
 } from "../parts";
-import { ProfileSections } from "../sections";
+import { ProfileSections, useCell } from "../sections";
+import { HeroEditButton } from "../editor/hero-edit-button";
 import { About, nameLength, pastSetsLine } from "./shared";
 import type { ProfileSet, PublicProfile } from "../types";
 
@@ -71,7 +72,8 @@ function Masthead({ profile }: { profile: PublicProfile }) {
   const next = nextSet(profile);
   const intro = profile.bio?.split(/\n\s*\n/)[0]?.trim();
   return (
-    <header className="px-5 pt-24 md:px-10 md:pt-32">
+    <header className="relative px-5 pt-24 md:px-10 md:pt-32">
+      <HeroEditButton />
       <div className="@container">
         <h1
           className="cp-display text-[calc(100cqw/(var(--len)*var(--cp-display-em))*0.98)] leading-[0.82] whitespace-nowrap"
@@ -140,7 +142,7 @@ function NextUp({ set }: { set: ProfileSet }) {
 }
 
 const posterGrid =
-  "grid grid-cols-2 gap-x-3 gap-y-10 pt-6 sm:grid-cols-3 md:gap-x-5 lg:grid-cols-4 xl:grid-cols-5";
+  "grid grid-cols-2 gap-x-3 gap-y-10 pt-6 @xl:grid-cols-3 @2xl:gap-x-5 @4xl:grid-cols-4 @6xl:grid-cols-5";
 
 function GroupHeading({
   title,
@@ -155,7 +157,7 @@ function GroupHeading({
     <div className="flex items-baseline justify-between gap-6 border-b border-[var(--cp-line)] pb-4">
       <h2
         className={cn(
-          "cp-display text-[clamp(2.5rem,8vw,6rem)] [overflow-wrap:anywhere]",
+          "cp-display text-[clamp(2.25rem,8.5cqw,6rem)] [overflow-wrap:anywhere]",
           faint ? "text-[var(--cp-faint)]" : "text-[var(--cp-ink)]",
         )}
       >
@@ -215,6 +217,7 @@ function Archive({
   profile: PublicProfile;
 }) {
   const [filter, setFilter] = useState<Filter>("all");
+  const { full } = useCell();
   const sets = section.includeUpcoming
     ? [...profile.upcoming, ...profile.past]
     : profile.past;
@@ -229,12 +232,17 @@ function Archive({
   return (
     <section>
       {section.title ? (
-        <h2 className="cp-display mb-6 text-[clamp(2.25rem,6vw,4.75rem)] [overflow-wrap:anywhere]">
+        <h2 className="cp-display mb-6 text-[clamp(2rem,8cqw,4.75rem)] [overflow-wrap:anywhere]">
           {section.title}
         </h2>
       ) : null}
       {options.length > 1 ? (
-        <div className="no-scrollbar sticky top-16 z-20 -mx-5 flex items-center gap-1 overflow-x-auto bg-[color-mix(in_oklab,var(--cp-ground)_92%,transparent)] px-5 py-3 backdrop-blur-md md:top-20 md:-mx-10 md:px-10">
+        <div
+          className={cn(
+            "no-scrollbar sticky top-16 z-20 flex items-center gap-1 overflow-x-auto bg-[color-mix(in_oklab,var(--cp-ground)_92%,transparent)] py-3 backdrop-blur-md md:top-20",
+            full && "-mx-5 px-5 md:-mx-10 md:px-10",
+          )}
+        >
           {options.map((f) => (
             <button
               key={f.id}
@@ -255,7 +263,7 @@ function Archive({
         </div>
       ) : null}
       {groups.map((g) => (
-        <div key={g.key} className="pt-10 md:pt-14">
+        <div key={g.key} className="pt-10 @2xl:pt-14">
           <GroupHeading title={g.key} count={g.items.length} faint />
           <ul className={posterGrid}>
             {g.items.map((set) => (
@@ -299,7 +307,7 @@ function WallCard({
                 ? "rounded-t-[var(--cp-r-media)]"
                 : "rounded-[var(--cp-r-media)]",
             )}
-            sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 25vw, 50vw"
+            sizes="(min-width: 1024px) 25vw, 50vw"
           />
           {onNow ? <OnNowTag className="absolute top-3 left-3" /> : null}
         </div>
@@ -322,7 +330,7 @@ function WallCard({
             </span>
           </div>
         ) : null}
-        <p className="cp-display mt-3 line-clamp-2 text-[15px] leading-tight group-hover:text-[var(--cp-accent-text)] md:text-[17px]">
+        <p className="cp-display mt-3 line-clamp-2 text-[15px] leading-tight group-hover:text-[var(--cp-accent-text)] @2xl:text-[17px]">
           {setTitle(set)}
         </p>
         <p className="mt-1.5 truncate text-[13px] text-[var(--cp-muted)]">

@@ -42,6 +42,7 @@ import {
   ticketCta,
   type PublicTicketEvent,
 } from "~/components/site/gigs/gig-parts";
+import { useProfileEditor } from "./editor/context";
 import type { ProfileSet, PublicProfile, PublicSocial } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -256,7 +257,7 @@ export function LinkRows({
             className="group flex items-center gap-4 border-b border-[var(--cp-line)] py-5"
           >
             <span className="min-w-0 flex-1">
-              <span className="cp-display block text-[clamp(1.25rem,2.4vw,1.75rem)] [overflow-wrap:anywhere]">
+              <span className="cp-display block text-[clamp(1.25rem,3.4cqw,1.75rem)] [overflow-wrap:anywhere]">
                 {l.label || l.url.replace(/^https?:\/\/(www\.)?/, "")}
               </span>
               {l.detail ? (
@@ -587,7 +588,7 @@ export function SectionHeading({
     >
       <div className="min-w-0">
         {title ? (
-          <h2 className="cp-display text-[clamp(2.25rem,6vw,4.75rem)] [overflow-wrap:anywhere]">
+          <h2 className="cp-display text-[clamp(2rem,8cqw,4.75rem)] [overflow-wrap:anywhere]">
             {title}
           </h2>
         ) : null}
@@ -675,7 +676,9 @@ export function ClaimBand({
   claim: ClaimState;
   className?: string;
 }) {
-  if (profile.claimed || !claim) return null;
+  const editor = useProfileEditor();
+  // Claiming is for visitors, not whoever is editing the page.
+  if (profile.claimed || !claim || editor?.editing) return null;
   return (
     <section
       className={cn(

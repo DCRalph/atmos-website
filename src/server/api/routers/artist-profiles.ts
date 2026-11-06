@@ -23,11 +23,14 @@ import {
   socialUrlFromInput,
 } from "~/server/utils/artist-socials";
 import { grantUserPermission } from "~/server/utils/permissions";
+import { isOwnTheme } from "~/server/artist-public-profile";
+import { GRID } from "~/lib/artist-grid";
+import { readLayout } from "~/lib/artist-sections";
+import { zArtistTheme } from "~/lib/artist-theme";
 import {
   ActivityType,
   ClaimStatus,
   FileUploadStatus,
-  type ArtistBlockType,
   type PrismaClient,
 } from "~Prisma/client";
 
@@ -41,7 +44,10 @@ const handleSchema = z
   );
 
 const blockInputSchema = z.object({
+  /** The block's row, when it has one. */
   id: z.string().optional(),
+  /** The editor's own id for the block, to map a new row back to it. */
+  clientId: z.string().max(40).optional(),
   type: z.enum([
     "HEADING",
     "RICH_TEXT",
@@ -60,14 +66,16 @@ const blockInputSchema = z.object({
     "SPACER",
     "CUSTOM_EMBED",
   ]),
-  x: z.number().int().min(0).max(48),
-  y: z.number().int().min(0).max(10_000),
-  w: z.number().int().min(1).max(48),
-  h: z.number().int().min(1).max(200),
+  x: z
+    .number()
+    .int()
+    .min(0)
+    .max(GRID.cols - 1),
+  y: z.number().int().min(0).max(100_000),
+  w: z.number().int().min(1).max(GRID.cols),
+  h: z.number().int().min(1).max(5_000),
   data: z.record(z.string(), z.any()).default({}),
 });
-
-type BlockInput = z.infer<typeof blockInputSchema>;
 
 const profileDataSchema = z.object({
   handle: handleSchema.optional(),
@@ -81,8 +89,6 @@ const profileDataSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/)
     .nullish(),
   themeId: z.string().nullish(),
-  gridCols: z.number().int().min(4).max(24).optional(),
-  rowHeightPx: z.number().int().min(20).max(200).optional(),
 });
 
 const socialInputSchema = z.object({
@@ -119,6 +125,50 @@ async function assertUsableImage(db: PrismaClient, fileId: string) {
     });
   }
   return file;
+}
+
+/** Whether two JSON values are equal, whatever order their keys are in. */
+function sameJson(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== "object" || typeof b !== "object" || !a || !b) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  const ka = Object.keys(a);
+  const kb = Object.keys(b);
+  return (
+    ka.length === kb.length &&
+    ka.every((k) =>
+      sameJson(
+        (a as Record<string, unknown>)[k],
+        (b as Record<string, unknown>)[k],
+      ),
+    )
+  );
+}
+
+/** A theme the caller may put on a profile: shared, a starter, or theirs. */
+async function assertThemeUsable(
+  ctx: { db: PrismaClient; session: { user: { id: string } } },
+  themeId: string,
+  isAdmin: boolean,
+) {
+  const theme = await ctx.db.artistProfileTheme.findUnique({
+    where: { id: themeId },
+    select: { ownerUserId: true, isPublic: true, isSystem: true },
+  });
+  if (!theme) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Theme not found" });
+  }
+  const readable =
+    theme.isPublic ||
+    theme.isSystem ||
+    isAdmin ||
+    theme.ownerUserId === ctx.session.user.id;
+  if (!readable) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You cannot use this theme",
+    });
+  }
 }
 
 export const artistProfilesRouter = createTRPCRouter({
@@ -249,6 +299,18 @@ export const artistProfilesRouter = createTRPCRouter({
       });
       if (existing) return existing;
 
+      if (input.handle) {
+        const taken = await ctx.db.artistProfile.findUnique({
+          where: { handle: input.handle },
+          select: { id: true },
+        });
+        if (taken) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "That handle is taken. Try another.",
+          });
+        }
+      }
       const fallbackHandle =
         input.handle ??
         (await generateUniqueHandle(ctx.db, ctx.session.user.id));
@@ -395,27 +457,7 @@ export const artistProfilesRouter = createTRPCRouter({
         }
       }
       if (input.data.themeId) {
-        const theme = await ctx.db.artistProfileTheme.findUnique({
-          where: { id: input.data.themeId },
-          select: { ownerUserId: true, isPublic: true, isSystem: true },
-        });
-        if (!theme) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Theme not found",
-          });
-        }
-        const readable =
-          theme.isPublic ||
-          theme.isSystem ||
-          isAdmin ||
-          theme.ownerUserId === ctx.session.user.id;
-        if (!readable) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "You cannot use this theme",
-          });
-        }
+        await assertThemeUsable(ctx, input.data.themeId, isAdmin);
       }
       const updated = await ctx.db.artistProfile.update({
         where: { id: profileId },
@@ -635,64 +677,226 @@ export const artistProfilesRouter = createTRPCRouter({
       return updated;
     }),
 
+  /**
+   * Replace a profile's blocks with the page editor's. Blocks without a row
+   * (new ones, or ones deleted by an earlier save and brought back by undo)
+   * are created; the answer maps each one's `clientId` (or the stale `id`) to
+   * its new row so the editor's next save updates rather than recreates it.
+   * Stamps the layout with today's row height (see `readLayout`).
+   */
   saveLayout: protectedProcedure
     .input(
       z.object({
         profileId: z.string().optional(),
-        blocks: z.array(blockInputSchema),
+        blocks: z.array(blockInputSchema).max(200),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const { profileId } = await resolveTargetProfileId(ctx, input.profileId);
-      const existing = await ctx.db.artistBlock.findMany({
-        where: { profileId },
-        select: { id: true },
-      });
-      const existingIds = new Set(existing.map((b) => b.id));
+      const [profile, existing] = await Promise.all([
+        ctx.db.artistProfile.findUniqueOrThrow({
+          where: { id: profileId },
+          select: { rowHeightPx: true, gridCols: true },
+        }),
+        ctx.db.artistBlock.findMany({
+          where: { profileId },
+          select: {
+            id: true,
+            type: true,
+            x: true,
+            y: true,
+            w: true,
+            h: true,
+            data: true,
+          },
+        }),
+      ]);
+      const rows = new Map(existing.map((b) => [b.id, b]));
+      // A layout saved in older units is rewritten whole, in today's.
+      const rescaled =
+        profile.rowHeightPx !== GRID.row || profile.gridCols !== GRID.cols;
       const keepIds = new Set(
-        input.blocks.map((b) => b.id).filter(Boolean) as string[],
+        input.blocks.flatMap((b) => (b.id ? [b.id] : [])),
       );
-      const toDelete = [...existingIds].filter((id) => !keepIds.has(id));
+      const toDelete = existing.flatMap((b) =>
+        keepIds.has(b.id) ? [] : [b.id],
+      );
+      const created: Record<string, string> = {};
 
-      await ctx.db.$transaction(async (tx) => {
-        if (toDelete.length) {
-          await tx.artistBlock.deleteMany({
-            where: { id: { in: toDelete } },
-          });
-        }
-        for (const block of input.blocks) {
-          if (block.id && existingIds.has(block.id)) {
-            await tx.artistBlock.update({
-              where: { id: block.id },
-              data: {
-                type: block.type as ArtistBlockType,
-                x: block.x,
-                y: block.y,
-                w: block.w,
-                h: block.h,
-                data: block.data as object,
-              },
-            });
-          } else {
-            await tx.artistBlock.create({
-              data: {
-                profileId,
-                type: block.type as ArtistBlockType,
-                x: block.x,
-                y: block.y,
-                w: block.w,
-                h: block.h,
-                data: block.data as object,
-              },
+      // Each autosave sends every block, so rows that haven't changed are
+      // left alone: most saves touch a handful.
+      await ctx.db.$transaction(
+        async (tx) => {
+          if (toDelete.length) {
+            await tx.artistBlock.deleteMany({
+              where: { id: { in: toDelete }, profileId },
             });
           }
-        }
+          for (const { id, clientId, ...block } of input.blocks) {
+            const fields = {
+              type: block.type,
+              x: block.x,
+              y: block.y,
+              w: block.w,
+              h: block.h,
+              data: block.data as object,
+            };
+            const row = id ? rows.get(id) : undefined;
+            if (row) {
+              const same =
+                !rescaled &&
+                row.type === fields.type &&
+                row.x === fields.x &&
+                row.y === fields.y &&
+                row.w === fields.w &&
+                row.h === fields.h &&
+                sameJson(row.data, fields.data);
+              if (!same)
+                await tx.artistBlock.update({
+                  where: { id: row.id },
+                  data: fields,
+                });
+            } else {
+              const made = await tx.artistBlock.create({
+                data: { profileId, ...fields },
+                select: { id: true },
+              });
+              const key = clientId ?? id;
+              if (key) created[key] = made.id;
+            }
+          }
+          if (rescaled) {
+            await tx.artistProfile.update({
+              where: { id: profileId },
+              data: { rowHeightPx: GRID.row, gridCols: GRID.cols },
+            });
+          }
+        },
+        { timeout: 20_000 },
+      );
+      return { created };
+    }),
+
+  /**
+   * Put a theme on a profile from the page editor. Answers with whether
+   * later changes go into it or into a copy (see `isOwnTheme`).
+   */
+  setTheme: protectedProcedure
+    .input(z.object({ profileId: z.string().optional(), themeId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const { profileId, isAdmin } = await resolveTargetProfileId(
+        ctx,
+        input.profileId,
+      );
+      await assertThemeUsable(ctx, input.themeId, isAdmin);
+      const profile = await ctx.db.artistProfile.update({
+        where: { id: profileId },
+        data: { themeId: input.themeId },
+        select: {
+          userId: true,
+          themeRef: {
+            select: {
+              id: true,
+              name: true,
+              isSystem: true,
+              isPublic: true,
+              ownerUserId: true,
+              _count: { select: { profiles: true } },
+            },
+          },
+        },
+      });
+      const theme = profile.themeRef;
+      if (!theme) throw new TRPCError({ code: "NOT_FOUND" });
+      return {
+        theme: {
+          id: theme.id,
+          name: theme.name,
+          own: isOwnTheme(
+            { ...theme, profiles: theme._count.profiles },
+            profile.userId,
+          ),
+        },
+      };
+    }),
+
+  /**
+   * Change the look of a profile from the page editor. A theme made for this
+   * page is changed in place; a starter, someone else's theme or one shared
+   * with other pages is copied into a new theme for this page first, so no
+   * other page changes. The profile's own accent override is cleared, since
+   * the accent being set here is the one the artist sees.
+   */
+  customizeTheme: protectedProcedure
+    .input(
+      z.object({
+        profileId: z.string().optional(),
+        tokens: zArtistTheme,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { profileId } = await resolveTargetProfileId(ctx, input.profileId);
+      const profile = await ctx.db.artistProfile.findUniqueOrThrow({
+        where: { id: profileId },
+        select: {
+          userId: true,
+          displayName: true,
+          handle: true,
+          themeRef: {
+            select: {
+              id: true,
+              name: true,
+              isSystem: true,
+              isPublic: true,
+              ownerUserId: true,
+              _count: { select: { profiles: true } },
+            },
+          },
+        },
+      });
+      const current = profile.themeRef;
+      const inPlace =
+        current &&
+        isOwnTheme(
+          { ...current, profiles: current._count.profiles },
+          profile.userId,
+        );
+
+      const theme = await ctx.db.$transaction(async (tx) => {
+        const saved = inPlace
+          ? await tx.artistProfileTheme.update({
+              where: { id: current.id },
+              data: { tokens: input.tokens },
+              select: { id: true, name: true },
+            })
+          : await tx.artistProfileTheme.create({
+              data: {
+                name: `${profile.displayName}'s theme`.slice(0, 80),
+                description: current ? `Started from ${current.name}` : null,
+                ownerUserId: profile.userId,
+                isPublic: false,
+                isSystem: false,
+                tokens: input.tokens,
+              },
+              select: { id: true, name: true },
+            });
         await tx.artistProfile.update({
           where: { id: profileId },
-          data: { updatedAt: new Date() },
+          data: { themeId: saved.id, accentColor: null },
         });
+        return saved;
       });
-      return { ok: true as const };
+
+      if (!inPlace) {
+        await logUserActivity(
+          ActivityType.ARTIST_THEME_CREATED,
+          `Made a theme for @${profile.handle} from the page editor`,
+          ctx.session.user.id,
+          undefined,
+          { themeId: theme.id, profileId },
+        );
+      }
+      return { theme: { ...theme, own: true } };
     }),
 
   setSocials: protectedProcedure
@@ -850,9 +1054,32 @@ export const artistProfilesRouter = createTRPCRouter({
           });
         }
         await ctx.db.$transaction(async (tx) => {
-          await tx.artistBlock.updateMany({
-            where: { profileId: existingMine.id },
-            data: { profileId: input.profileId },
+          // Both layouts in today's grid units, the moved blocks under the
+          // ones already here.
+          const [kept, moved] = await Promise.all([
+            tx.artistBlock.findMany({ where: { profileId: input.profileId } }),
+            tx.artistBlock.findMany({ where: { profileId: existingMine.id } }),
+          ]);
+          const keptLayout = readLayout(kept, profile.rowHeightPx);
+          const below = Math.max(0, ...keptLayout.map((b) => b.y + b.h));
+          const movedLayout = readLayout(moved, existingMine.rowHeightPx).map(
+            (b) => ({ ...b, y: b.y + below }),
+          );
+          for (const b of [...keptLayout, ...movedLayout]) {
+            await tx.artistBlock.update({
+              where: { id: b.id },
+              data: {
+                profileId: input.profileId,
+                x: b.x,
+                y: b.y,
+                w: b.w,
+                h: b.h,
+              },
+            });
+          }
+          await tx.artistProfile.update({
+            where: { id: input.profileId },
+            data: { rowHeightPx: GRID.row, gridCols: GRID.cols },
           });
           await tx.artistSocial.updateMany({
             where: { profileId: existingMine.id },

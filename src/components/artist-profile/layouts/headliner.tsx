@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { cn } from "~/lib/utils";
 import {
@@ -36,7 +36,8 @@ import {
   useTicketCta,
   type ClaimState,
 } from "../parts";
-import { ProfileSections, sectionAnchor } from "../sections";
+import { ProfileSections, sectionAnchor, useCell } from "../sections";
+import { HeroEditButton } from "../editor/hero-edit-button";
 import { About, firstMusicAnchor, nameLength, pastSetsLine } from "./shared";
 import type { ProfileSet, PublicProfile } from "../types";
 
@@ -96,6 +97,7 @@ function Hero({ profile }: { profile: PublicProfile }) {
         rail && "lg:grid-cols-[minmax(0,1fr)_minmax(360px,34%)]",
       )}
     >
+      <HeroEditButton />
       <div className="relative flex flex-col justify-end overflow-hidden max-lg:min-h-[640px]">
         {backdrop ? (
           <Photo
@@ -314,7 +316,7 @@ function Agenda({
                 ))}
               </ul>
             ) : (
-              <ul className="grid grid-cols-2 gap-x-3 gap-y-8 py-6 md:grid-cols-4 md:gap-x-5">
+              <ul className="grid grid-cols-2 gap-x-3 gap-y-8 py-6 @3xl:grid-cols-4 @3xl:gap-x-5">
                 {g.items.map((s) => (
                   <li key={s.id}>
                     <a href={setHref(s)} className="group block">
@@ -323,7 +325,7 @@ function Agenda({
                         className="aspect-[4/5] rounded-[var(--cp-r-media)]"
                         sizes="(min-width: 768px) 25vw, 50vw"
                       />
-                      <p className="cp-display mt-3 text-[15px] leading-tight group-hover:text-[var(--cp-accent-text)] md:text-[18px]">
+                      <p className="cp-display mt-3 text-[15px] leading-tight group-hover:text-[var(--cp-accent-text)] @3xl:text-[18px]">
                         {setTitle(s)}
                       </p>
                       <p className="mt-1.5 text-[13px] text-[var(--cp-muted)]">
@@ -344,21 +346,21 @@ function Agenda({
 function AgendaRow({ set }: { set: ProfileSet }) {
   const onNow = useSetOnNow(set);
   return (
-    <li className="grid grid-cols-[72px_minmax(0,1fr)] items-center gap-x-4 gap-y-3 border-b border-[var(--cp-line-soft)] py-5 sm:grid-cols-[72px_minmax(0,1fr)_auto] md:grid-cols-[104px_minmax(0,1fr)_auto] md:gap-x-7">
+    <li className="grid grid-cols-[72px_minmax(0,1fr)] items-center gap-x-4 gap-y-3 border-b border-[var(--cp-line-soft)] py-5 @lg:grid-cols-[72px_minmax(0,1fr)_auto] @2xl:grid-cols-[104px_minmax(0,1fr)_auto] @2xl:gap-x-7">
       <SetPoster
         set={set}
         fit="contain"
-        className="aspect-square w-[72px] rounded-[var(--cp-r-media)] md:w-[104px]"
+        className="aspect-square w-[72px] rounded-[var(--cp-r-media)] @2xl:w-[104px]"
         sizes="104px"
       />
       <div className="min-w-0">
         {onNow ? <OnNowTag className="mb-2" /> : null}
-        <p className="cp-display text-lg leading-tight [overflow-wrap:anywhere] md:text-[26px]">
+        <p className="cp-display text-lg leading-tight [overflow-wrap:anywhere] @2xl:text-[26px]">
           <a href={setHref(set)} className="hover:text-[var(--cp-accent-text)]">
             {setTitle(set)}
           </a>
         </p>
-        <p className="mt-1.5 text-[13px] text-[var(--cp-muted)] md:text-[15px]">
+        <p className="mt-1.5 text-[13px] text-[var(--cp-muted)] @2xl:text-[15px]">
           {setMeta(set)}
           {setIsTba(set) ? "" : ` · ${fmtTime(set.start)}`}
         </p>
@@ -367,7 +369,7 @@ function AgendaRow({ set }: { set: ProfileSet }) {
       <TicketPill
         set={set}
         size="md"
-        className="col-start-2 w-fit sm:col-start-3"
+        className="col-start-2 w-fit @lg:col-start-3"
       />
     </li>
   );
@@ -382,6 +384,7 @@ function Carousel({
   profile: PublicProfile;
 }) {
   const scroller = useRef<HTMLUListElement>(null);
+  const { full } = useCell();
   const sets = section.includeUpcoming
     ? [...profile.upcoming, ...profile.past]
     : profile.past;
@@ -391,18 +394,55 @@ function Carousel({
       behavior: "smooth",
     });
 
+  // Arrows only when the posters run past the edge, each off at its end.
+  const [edges, setEdges] = useState({ more: false, start: true, end: true });
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const measure = () => {
+      const next = {
+        more: el.scrollWidth > el.clientWidth + 1,
+        start: el.scrollLeft <= 1,
+        end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 1,
+      };
+      setEdges((prev) =>
+        prev.more === next.more &&
+        prev.start === next.start &&
+        prev.end === next.end
+          ? prev
+          : next,
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    el.addEventListener("scroll", measure, { passive: true });
+    return () => {
+      observer.disconnect();
+      el.removeEventListener("scroll", measure);
+    };
+  }, []);
+
   return (
     <section>
       <SectionHeading
         title={section.title}
         className="mb-10"
         aside={
-          sets.length > 2 ? (
+          edges.more ? (
             <div className="flex gap-2">
-              <RoundButton label="Previous" onClick={() => scroll(-1)}>
+              <RoundButton
+                label="Previous"
+                disabled={edges.start}
+                onClick={() => scroll(-1)}
+              >
                 <ArrowLeft className="size-5" />
               </RoundButton>
-              <RoundButton label="Next" onClick={() => scroll(1)}>
+              <RoundButton
+                label="Next"
+                disabled={edges.end}
+                onClick={() => scroll(1)}
+              >
                 <ArrowRight className="size-5" />
               </RoundButton>
             </div>
@@ -415,17 +455,24 @@ function Carousel({
       </SectionHeading>
       <ul
         ref={scroller}
-        className="no-scrollbar -mx-5 flex snap-x snap-mandatory scroll-px-5 gap-4 overflow-x-auto px-5 md:-mx-10 md:scroll-px-10 md:gap-5 md:px-10"
+        className={cn(
+          "no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto @2xl:gap-5",
+          // A full-width carousel runs to the window's edges.
+          full && "-mx-5 scroll-px-5 px-5 md:-mx-10 md:scroll-px-10 md:px-10",
+        )}
       >
         {sets.map((s) => (
-          <li key={s.id} className="w-[200px] shrink-0 snap-start md:w-[260px]">
+          <li
+            key={s.id}
+            className="w-[200px] shrink-0 snap-start @2xl:w-[260px]"
+          >
             <a href={setHref(s)} className="group block">
               <SetPoster
                 set={s}
                 className="aspect-[4/5] rounded-[var(--cp-r-media)]"
                 sizes="260px"
               />
-              <p className="cp-display mt-3 line-clamp-2 text-[15px] leading-tight group-hover:text-[var(--cp-accent-text)] md:text-[18px]">
+              <p className="cp-display mt-3 line-clamp-2 text-[15px] leading-tight group-hover:text-[var(--cp-accent-text)] @2xl:text-[18px]">
                 {setTitle(s)}
               </p>
               <p className="mt-1.5 text-[13px] text-[var(--cp-muted)]">

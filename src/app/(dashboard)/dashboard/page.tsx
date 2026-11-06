@@ -47,11 +47,11 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <p className="text-muted-foreground text-sm">
-                    Build a fully customizable profile page with music embeds,
-                    galleries, links, and more.
+                    Arrange your page on a grid of blocks: sets, music, video,
+                    photos, text and links. You edit it on the page itself.
                   </p>
                   <Button asChild>
-                    <Link href="/dashboard/profile">Open profile builder</Link>
+                    <Link href="/dashboard/profile">Edit your page</Link>
                   </Button>
                 </CardContent>
               </Card>
