@@ -202,7 +202,7 @@ export async function cancelMailout(id: string) {
 /**
  * Queue again the recipients Resend never took, and send them. One it took
  * and later reported failed or suppressed stays failed: that is Resend's
- * answer about the address, and the same batch key would only replay it.
+ * answer about the address, and resending it would replay that answer.
  */
 export async function retryFailed(id: string) {
   return db.$transaction(async (tx) => {
@@ -212,12 +212,9 @@ export async function retryFailed(id: string) {
         status: MailoutRecipientStatus.FAILED,
         resendId: null,
       },
-      data: {
-        status: MailoutRecipientStatus.QUEUED,
-        attempts: 0,
-        batchKey: null,
-        error: null,
-      },
+      // Rows that failed as a batch keep its key and go again as it: Resend
+      // may have taken that batch without saying so.
+      data: { status: MailoutRecipientStatus.QUEUED, attempts: 0, error: null },
     });
     if (count) {
       await tx.mailout.updateMany({
@@ -257,19 +254,36 @@ async function sendBatch(mailout: {
 }): Promise<BatchOutcome> {
   return db.$transaction(
     async (tx) => {
-      const rows = await tx.$queryRaw<Claimed[]>`
-        SELECT r."id", r."subscriberId", r."email", r."batchKey"
-        FROM "mailout_recipient" r
-        WHERE r."mailoutId" = ${mailout.id} AND r."status" = 'QUEUED'
-        ORDER BY r."batchKey" NULLS LAST, r."id"
-        LIMIT ${BATCH_SIZE}
-        FOR UPDATE SKIP LOCKED`;
-      if (!rows.length) return "empty";
+      // A failed batch first, locked whole: waiting on a worker that holds
+      // it rather than skipping, so it is never sent as part of itself.
+      const [keyed] = await tx.$queryRaw<{ batchKey: string }[]>`
+        SELECT "batchKey" FROM "mailout_recipient"
+        WHERE "mailoutId" = ${mailout.id} AND "status" = 'QUEUED'
+          AND "batchKey" IS NOT NULL
+        LIMIT 1`;
+      let claimed = keyed
+        ? await tx.$queryRaw<Claimed[]>`
+            SELECT r."id", r."subscriberId", r."email", r."batchKey"
+            FROM "mailout_recipient" r
+            WHERE r."mailoutId" = ${mailout.id} AND r."status" = 'QUEUED'
+              AND r."batchKey" = ${keyed.batchKey}
+            ORDER BY r."id"
+            FOR UPDATE`
+        : [];
+      if (!claimed.length) {
+        claimed = await tx.$queryRaw<Claimed[]>`
+          SELECT r."id", r."subscriberId", r."email", r."batchKey"
+          FROM "mailout_recipient" r
+          WHERE r."mailoutId" = ${mailout.id} AND r."status" = 'QUEUED'
+            AND r."batchKey" IS NULL
+          ORDER BY r."id"
+          LIMIT ${BATCH_SIZE}
+          FOR UPDATE SKIP LOCKED`;
+      }
+      if (!claimed.length) return "empty";
 
-      // A batch is at most 100 rows, so a retried one comes back whole.
-      const retryKey = rows[0]!.batchKey;
+      const retryKey = claimed[0]!.batchKey;
       const retrying = retryKey !== null;
-      const claimed = rows.filter((row) => row.batchKey === retryKey);
       const stillWanted = new Set(
         retrying
           ? claimed.map((row) => row.subscriberId)
@@ -370,9 +384,11 @@ async function sendBatch(mailout: {
       for (const row of refused) {
         await tx.mailoutRecipient.update({
           where: { id: row.id },
+          // Refused on its own, so its retry is a batch of its own.
           data: {
             status: MailoutRecipientStatus.FAILED,
             attempts: { increment: 1 },
+            batchKey: null,
             error: row.error,
           },
         });
