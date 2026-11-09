@@ -76,12 +76,21 @@ export async function refundOrderThroughStripe({
     });
   }
 
-  const earlier = offerId
-    ? (await stripe.refunds.list({ charge: charge.id, limit: 100 })).data.find(
-        (refund) =>
-          refund.metadata?.offerId === offerId && refund.status !== "failed",
-      )
-    : undefined;
+  // This offer's refunds so far. A live one is the refund; ones that failed
+  // or were cancelled gave nothing back, and a replacement needs its own
+  // idempotency key or Stripe would hand back the dead one.
+  const tagged = offerId
+    ? (
+        await stripe.refunds.list({ charge: charge.id, limit: 100 })
+      ).data.filter((refund) => refund.metadata?.offerId === offerId)
+    : [];
+  const earlier = tagged.find(
+    (refund) =>
+      refund.status === "succeeded" ||
+      refund.status === "pending" ||
+      refund.status === "requires_action",
+  );
+  const deadAttempts = tagged.length - (earlier ? 1 : 0);
 
   let amount: number;
   // Stripe's running total, not an increment: the `charge.refunded` webhook
@@ -109,7 +118,11 @@ export async function refundOrderThroughStripe({
           ...(offerId ? { offerId } : {}),
         },
       },
-      { idempotencyKey: idempotencyKey(charge.amount_refunded) },
+      {
+        idempotencyKey:
+          idempotencyKey(charge.amount_refunded) +
+          (deadAttempts ? `-retry${deadAttempts}` : ""),
+      },
     );
     refundedCents = charge.amount_refunded + amount;
   }
