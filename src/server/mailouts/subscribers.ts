@@ -1,8 +1,8 @@
 import "server-only";
 
 import {
+  SuppressionReason,
   type Prisma,
-  type SuppressionReason,
   type UnsubscribeVia,
 } from "~Prisma/client";
 import { normaliseEmail } from "~/lib/mailouts/emails";
@@ -122,14 +122,24 @@ export async function unsubscribe(
 }
 
 /** Stop all marketing to an address: a hard bounce or a spam complaint. The
- * first reason sticks. */
+ * first reason sticks, except that a complaint replaces a bounce, since only
+ * a bounce can be cleared by an admin. */
 export async function suppress(
   client: Client,
   subscriberId: string,
   reason: SuppressionReason,
 ) {
   await client.subscriber.updateMany({
-    where: { id: subscriberId, suppressedAt: null },
+    where:
+      reason === SuppressionReason.COMPLAINED
+        ? {
+            id: subscriberId,
+            OR: [
+              { suppressedAt: null },
+              { suppressedReason: { not: SuppressionReason.COMPLAINED } },
+            ],
+          }
+        : { id: subscriberId, suppressedAt: null },
     data: { suppressedAt: new Date(), suppressedReason: reason },
   });
 }

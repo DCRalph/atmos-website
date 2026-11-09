@@ -1209,6 +1209,9 @@ model MailoutRecipient {
 
   status   MailoutRecipientStatus @default(QUEUED)
   attempts Int                    @default(0)
+  /// The idempotency key of the batch that failed with this row in it, so
+  /// the retry sends the same batch under the same key.
+  batchKey String?
   error    String?
 
   /// Resend's id, which its webhook events carry.

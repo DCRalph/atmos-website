@@ -199,12 +199,25 @@ export async function cancelMailout(id: string) {
   });
 }
 
-/** Queue the recipients whose batches failed again, and send them. */
+/**
+ * Queue again the recipients Resend never took, and send them. One it took
+ * and later reported failed or suppressed stays failed: that is Resend's
+ * answer about the address, and the same batch key would only replay it.
+ */
 export async function retryFailed(id: string) {
   return db.$transaction(async (tx) => {
     const { count } = await tx.mailoutRecipient.updateMany({
-      where: { mailoutId: id, status: MailoutRecipientStatus.FAILED },
-      data: { status: MailoutRecipientStatus.QUEUED, attempts: 0, error: null },
+      where: {
+        mailoutId: id,
+        status: MailoutRecipientStatus.FAILED,
+        resendId: null,
+      },
+      data: {
+        status: MailoutRecipientStatus.QUEUED,
+        attempts: 0,
+        batchKey: null,
+        error: null,
+      },
     });
     if (count) {
       await tx.mailout.updateMany({
@@ -216,7 +229,12 @@ export async function retryFailed(id: string) {
   });
 }
 
-type Claimed = { id: string; subscriberId: string; email: string };
+type Claimed = {
+  id: string;
+  subscriberId: string;
+  email: string;
+  batchKey: string | null;
+};
 
 type BatchOutcome = "sent" | "rate-limited" | "empty";
 
@@ -224,6 +242,11 @@ type BatchOutcome = "sent" | "rate-limited" | "empty";
  * Claim and send one batch of a sending mailout. Rows whose person left or
  * was suppressed after they were queued are skipped here, so an unsubscribe
  * is honoured even halfway through a send.
+ *
+ * A batch that failed keeps its key on its rows, and is retried first, as
+ * exactly those people, unchecked, under that key. If Resend took it and only
+ * the answer was lost, the retry is a no-op there rather than a second email
+ * to everyone in it; regrouping or skipping anyone would change the key.
  */
 async function sendBatch(mailout: {
   id: string;
@@ -235,27 +258,33 @@ async function sendBatch(mailout: {
   return db.$transaction(
     async (tx) => {
       const rows = await tx.$queryRaw<Claimed[]>`
-        SELECT r."id", r."subscriberId", r."email"
+        SELECT r."id", r."subscriberId", r."email", r."batchKey"
         FROM "mailout_recipient" r
         WHERE r."mailoutId" = ${mailout.id} AND r."status" = 'QUEUED'
-        ORDER BY r."id"
+        ORDER BY r."batchKey" NULLS LAST, r."id"
         LIMIT ${BATCH_SIZE}
         FOR UPDATE SKIP LOCKED`;
       if (!rows.length) return "empty";
 
+      // A batch is at most 100 rows, so a retried one comes back whole.
+      const retryKey = rows[0]!.batchKey;
+      const retrying = retryKey !== null;
+      const claimed = rows.filter((row) => row.batchKey === retryKey);
       const stillWanted = new Set(
-        (
-          await tx.subscriber.findMany({
-            where: {
-              id: { in: rows.map((row) => row.subscriberId) },
-              ...audienceWhere(mailout.listIds),
-            },
-            select: { id: true },
-          })
-        ).map((subscriber) => subscriber.id),
+        retrying
+          ? claimed.map((row) => row.subscriberId)
+          : (
+              await tx.subscriber.findMany({
+                where: {
+                  id: { in: claimed.map((row) => row.subscriberId) },
+                  ...audienceWhere(mailout.listIds),
+                },
+                select: { id: true },
+              })
+            ).map((subscriber) => subscriber.id),
       );
-      const skip = rows.filter((row) => !stillWanted.has(row.subscriberId));
-      const send = rows.filter((row) => stillWanted.has(row.subscriberId));
+      const skip = claimed.filter((row) => !stillWanted.has(row.subscriberId));
+      const send = claimed.filter((row) => stillWanted.has(row.subscriberId));
       if (skip.length) {
         await tx.mailoutRecipient.updateMany({
           where: { id: { in: skip.map((row) => row.id) } },
@@ -278,9 +307,11 @@ async function sendBatch(mailout: {
         return "sent";
       }
 
-      const key = createHash("sha256")
-        .update(send.map((row) => row.id).join(","))
-        .digest("hex");
+      const key =
+        retryKey ??
+        createHash("sha256")
+          .update(send.map((row) => row.id).join(","))
+          .digest("hex");
       const result = await sendEmailBatch(
         send.map((row) => {
           const token = unsubscribeToken(row.subscriberId, mailout.id);
@@ -305,6 +336,7 @@ async function sendBatch(mailout: {
         await tx.$executeRaw`
           UPDATE "mailout_recipient"
           SET "attempts" = "attempts" + 1,
+              "batchKey" = ${key},
               "error" = ${result.error ?? "Send failed"},
               "status" = CASE WHEN "attempts" + 1 >= ${MAX_ATTEMPTS}
                 THEN 'FAILED'::"MailoutRecipientStatus" ELSE "status" END

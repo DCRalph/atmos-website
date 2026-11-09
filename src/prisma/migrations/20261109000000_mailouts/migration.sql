@@ -96,6 +96,7 @@ CREATE TABLE "mailout_recipient" (
     "email" TEXT NOT NULL,
     "status" "MailoutRecipientStatus" NOT NULL DEFAULT 'QUEUED',
     "attempts" INTEGER NOT NULL DEFAULT 0,
+    "batchKey" TEXT,
     "error" TEXT,
     "resendId" TEXT,
     "sentAt" TIMESTAMP(3),

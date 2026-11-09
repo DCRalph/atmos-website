@@ -1038,8 +1038,15 @@ export function ticketAccessToken(ticket: {
  * Buying a ticket is not consent to marketing — the Unsolicited Electronic
  * Messages Act needs that to be express — so this is driven entirely by the
  * `marketingOptIn` flag captured at checkout.
+ *
+ * `rejoin` is whether the tick is fresh. Off, someone who has unsubscribed
+ * since stays off: the details form shows the order's old tick, and saving a
+ * name there is not asking for email again.
  */
-export async function syncMarketingConsent(orderId: string): Promise<void> {
+export async function syncMarketingConsent(
+  orderId: string,
+  { rejoin = true }: { rejoin?: boolean } = {},
+): Promise<void> {
   const order = await db.ticketOrder.findUnique({
     where: { id: orderId },
     select: { marketingOptIn: true, buyerEmail: true, eventId: true },
@@ -1050,6 +1057,7 @@ export async function syncMarketingConsent(orderId: string): Promise<void> {
     email: order.buyerEmail,
     list: NEWSLETTER,
     source: `checkout:${order.eventId}`,
+    rejoin,
   }).catch((cause: unknown) =>
     console.error(`[ticketing] marketing consent for ${orderId}`, cause),
   );
