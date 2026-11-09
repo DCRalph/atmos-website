@@ -17,6 +17,10 @@ import { schedulePassUpdate } from "~/server/wallet/apple-push";
  * and is capped at what Stripe still holds. `idempotencyKey` gets the amount
  * already refunded, so a doubled request is one refund.
  *
+ * With `offerId`, a refund Stripe already made for that offer is used
+ * instead of making another: a retry after the refund went through but
+ * something after it failed finishes the job rather than refunding twice.
+ *
  * Throws a `TRPCError` when there is nothing to refund here.
  */
 export async function refundOrderThroughStripe({
@@ -24,12 +28,14 @@ export async function refundOrderThroughStripe({
   amountCents,
   reason,
   idempotencyKey,
+  offerId,
 }: {
   orderId: string;
   /** Left out, everything Stripe still holds. */
   amountCents?: number;
   reason: string;
   idempotencyKey: (alreadyRefundedCents: number) => string;
+  offerId?: string;
 }) {
   const order = await db.ticketOrder.findUnique({
     where: { id: orderId },
@@ -63,25 +69,50 @@ export async function refundOrderThroughStripe({
   );
   const charge =
     typeof intent.latest_charge === "object" ? intent.latest_charge : null;
-  const available = charge?.paid
-    ? charge.amount_captured - charge.amount_refunded
-    : 0;
-  const amount = Math.min(amountCents ?? available, available);
-  if (!charge || amount <= 0) {
+  if (!charge?.paid) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "Stripe has nothing left to refund on this order.",
     });
   }
 
-  await stripe.refunds.create(
-    {
-      charge: charge.id,
-      amount,
-      metadata: { orderId: order.id, reason },
-    },
-    { idempotencyKey: idempotencyKey(charge.amount_refunded) },
-  );
+  const earlier = offerId
+    ? (await stripe.refunds.list({ charge: charge.id, limit: 100 })).data.find(
+        (refund) =>
+          refund.metadata?.offerId === offerId && refund.status !== "failed",
+      )
+    : undefined;
+
+  let amount: number;
+  // Stripe's running total, not an increment: the `charge.refunded` webhook
+  // writes the same number and may land first.
+  let refundedCents: number;
+  if (earlier) {
+    amount = earlier.amount;
+    refundedCents = charge.amount_refunded;
+  } else {
+    const available = charge.amount_captured - charge.amount_refunded;
+    amount = Math.min(amountCents ?? available, available);
+    if (amount <= 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Stripe has nothing left to refund on this order.",
+      });
+    }
+    await stripe.refunds.create(
+      {
+        charge: charge.id,
+        amount,
+        metadata: {
+          orderId: order.id,
+          reason,
+          ...(offerId ? { offerId } : {}),
+        },
+      },
+      { idempotencyKey: idempotencyKey(charge.amount_refunded) },
+    );
+    refundedCents = charge.amount_refunded + amount;
+  }
 
   for (const ticket of order.tickets) {
     await voidTicket({
@@ -92,9 +123,6 @@ export async function refundOrderThroughStripe({
     schedulePassUpdate(ticket.id);
   }
 
-  // Stripe's running total, not an increment: the `charge.refunded` webhook
-  // writes the same number and may land first.
-  const refundedCents = charge.amount_refunded + amount;
   const updated = await db.ticketOrder.update({
     where: { id: order.id },
     data: {

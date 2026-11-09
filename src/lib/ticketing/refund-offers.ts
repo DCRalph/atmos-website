@@ -10,21 +10,35 @@ export type OfferAmount = "everything" | "ticketsOnly";
 
 /**
  * What an offer on this order refunds. Everything is what is left of what
- * they paid; tickets only is what the valid tickets cost, so booking fees
- * stay with us. Taking it is capped again by Stripe at the time.
+ * they paid; tickets only is what the valid tickets cost after any
+ * discount, so booking fees stay with us. Taking it is capped again by
+ * Stripe at the time.
  */
 export function offerAmountCents(
-  order: {
-    totalCents: number;
-    refundedCents: number;
-    tickets: { pricePaidCents: number }[];
-  },
+  order: OrderMoney & { totalCents: number; refundedCents: number },
   amount: OfferAmount,
 ) {
   const left = Math.max(0, order.totalCents - order.refundedCents);
   if (amount === "everything") return left;
-  const tickets = order.tickets.reduce((sum, t) => sum + t.pricePaidCents, 0);
-  return Math.min(tickets, left);
+  return Math.min(discountedTicketCents(order), left);
+}
+
+type OrderMoney = {
+  subtotalCents: number;
+  discountCents: number;
+  tickets: { pricePaidCents: number }[];
+};
+
+/**
+ * What the valid tickets cost after the order's discount. Tickets keep their
+ * full price, and a discount comes off the whole order, so each ticket
+ * carries its share of it.
+ */
+export function discountedTicketCents(order: OrderMoney) {
+  const full = order.tickets.reduce((sum, t) => sum + t.pricePaidCents, 0);
+  if (order.subtotalCents <= 0 || order.discountCents <= 0) return full;
+  const kept = Math.max(0, order.subtotalCents - order.discountCents);
+  return Math.round((full * kept) / order.subtotalCents);
 }
 
 const sign = (key: string, payload: string) =>

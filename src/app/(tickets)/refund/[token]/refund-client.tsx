@@ -163,6 +163,14 @@ function OfferStep({
               </dd>
             </div>
           ))}
+          {offer.discountCents > 0 && (
+            <div className="flex justify-between gap-4">
+              <dt className="text-white/60">Discount</dt>
+              <dd className="text-white/80 tabular-nums">
+                −{formatNZD(offer.discountCents)}
+              </dd>
+            </div>
+          )}
           {offer.feeCents > 0 && (
             <div className="flex justify-between gap-4">
               <dt className="text-white/60">Booking fee</dt>

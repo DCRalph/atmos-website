@@ -12,6 +12,8 @@ describe("offerAmountCents", () => {
   const order = {
     totalCents: 8600,
     refundedCents: 0,
+    subtotalCents: 8000,
+    discountCents: 0,
     tickets: [{ pricePaidCents: 4000 }, { pricePaidCents: 4000 }],
   };
 
@@ -21,6 +23,13 @@ describe("offerAmountCents", () => {
 
   test("tickets only keeps the booking fee", () => {
     expect(offerAmountCents(order, "ticketsOnly")).toBe(8000);
+  });
+
+  test("tickets only takes the discount off, never the fee", () => {
+    // $80 of tickets with $20 off, plus the $6 fee: $66 paid.
+    const discounted = { ...order, totalCents: 6600, discountCents: 2000 };
+    expect(offerAmountCents(discounted, "ticketsOnly")).toBe(6000);
+    expect(offerAmountCents(discounted, "everything")).toBe(6600);
   });
 
   test("never more than is left after an earlier refund", () => {

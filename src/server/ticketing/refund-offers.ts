@@ -19,6 +19,7 @@ import {
 } from "~Prisma/client";
 import { env } from "~/env";
 import {
+  discountedTicketCents,
   maskEmail,
   offerAmountCents,
   readOfferId,
@@ -110,6 +111,8 @@ const ORDER_FOR_OFFER = {
   buyerEmail: true,
   totalCents: true,
   refundedCents: true,
+  subtotalCents: true,
+  discountCents: true,
   tickets: {
     where: { status: TicketStatus.VALID },
     select: { pricePaidCents: true },
@@ -196,8 +199,16 @@ async function offerEmail(
   };
 }
 
-/** Send offer emails in batches, and record which went. */
-async function sendOfferEmails(emails: OfferEmail[], replyTo: string | null) {
+/**
+ * Send offer emails in batches, and record which went. `sendId` names this
+ * send, so a deliberate resend is not mistaken by Resend for a retry of the
+ * first one.
+ */
+async function sendOfferEmails(
+  emails: OfferEmail[],
+  replyTo: string | null,
+  sendId: string,
+) {
   let sent = 0;
   for (let i = 0; i < emails.length; i += BATCH_SIZE) {
     const batch = emails.slice(i, i + BATCH_SIZE);
@@ -211,7 +222,7 @@ async function sendOfferEmails(emails: OfferEmail[], replyTo: string | null) {
         ...item.email,
         replyTo: replyTo ?? undefined,
       })),
-      { idempotencyKey: `refund-offer/${key}`, permissive: true },
+      { idempotencyKey: `refund-offer/${sendId}/${key}`, permissive: true },
     );
     const now = new Date();
     const went = batch.filter((_, index) => {
@@ -295,7 +306,7 @@ export async function createOffers({
       offerEmail(offer, order, settings.supportEmail),
     ),
   );
-  const emailed = await sendOfferEmails(emails, settings.supportEmail);
+  const emailed = await sendOfferEmails(emails, settings.supportEmail, "offer");
 
   await logActivity({
     type: ActivityType.REFUND_OFFERED,
@@ -331,6 +342,7 @@ export async function resendOffer(offerId: string) {
   const emailed = await sendOfferEmails(
     [await offerEmail(offer, offer.order, settings.supportEmail)],
     settings.supportEmail,
+    `resend-${Date.now()}`,
   );
   return { emailed: emailed > 0 };
 }
@@ -402,8 +414,8 @@ async function offerByToken(token: string) {
           id: true,
           orderNumber: true,
           buyerEmail: true,
-          bookingFeeCents: true,
-          venueFeeCents: true,
+          subtotalCents: true,
+          discountCents: true,
           tickets: {
             where: { status: TicketStatus.VALID },
             select: { pricePaidCents: true, tier: { select: { name: true } } },
@@ -439,6 +451,7 @@ export async function loadOffer(token: string) {
     });
   }
   const ticketCents = order.tickets.reduce((s, t) => s + t.pricePaidCents, 0);
+  const paidForTickets = discountedTicketCents(order);
 
   return {
     state: stateOf(offer),
@@ -452,9 +465,10 @@ export async function loadOffer(token: string) {
     expiresAt: offer.expiresAt,
     ticketCount: order.tickets.length,
     lines: [...lines].map(([tier, line]) => ({ tier, ...line })),
-    // Shown only when the offer gives the fees back, as the gap between the
-    // tickets and the amount.
-    feeCents: Math.max(0, offer.amountCents - ticketCents),
+    discountCents: ticketCents - paidForTickets,
+    // Shown only when the offer gives the fees back, as the gap between what
+    // the tickets cost and the amount.
+    feeCents: Math.max(0, offer.amountCents - paidForTickets),
     maskedEmail: order.buyerEmail ? maskEmail(order.buyerEmail) : null,
   };
 }
@@ -521,7 +535,9 @@ export async function sendOfferCode(token: string) {
 
 /**
  * Check the code and refund. The offer is marked taken before Stripe is
- * asked, so two taps refund once; if Stripe refuses, it is opened again.
+ * asked, so two taps refund once. If anything fails it is opened again for
+ * another try, which is safe: the refund is tagged with the offer, so a retry
+ * after Stripe already refunded only finishes the cancelling.
  */
 export async function takeOffer(token: string, code: string) {
   const offer = await openOfferOrThrow(token);
@@ -572,6 +588,7 @@ export async function takeOffer(token: string, code: string) {
       amountCents: offer.amountCents,
       reason: "Refund offer taken by the buyer",
       idempotencyKey: () => `refund-offer-${offer.id}`,
+      offerId: offer.id,
     });
   } catch (cause) {
     await db.refundOffer.update({
