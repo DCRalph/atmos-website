@@ -107,6 +107,20 @@ function steps(order: Order, openOrder: (id: string) => void): Step[] {
     list.push({ at: order.detailsCompletedAt, label: "Named their tickets" });
   }
 
+  for (const offer of order.refundOffers) {
+    list.push({
+      at: offer.createdAt,
+      label: `Refund of ${formatNZD(offer.amountCents)} offered`,
+      detail: offer.offeredBy ? `By ${offer.offeredBy}` : undefined,
+    });
+    if (offer.withdrawnAt) {
+      list.push({ at: offer.withdrawnAt, label: "Refund offer withdrawn" });
+    }
+    if (offer.claimedAt) {
+      list.push({ at: offer.claimedAt, label: "Took the refund offer" });
+    }
+  }
+
   if (order.refundedAt) {
     list.push({
       at: order.refundedAt,

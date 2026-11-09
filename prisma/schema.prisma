@@ -1525,6 +1525,9 @@ enum ActivityType {
   TICKET_TIER_DELETED
   TICKET_ORDER_PAID
   TICKET_ORDER_REFUNDED
+  /// An admin offered the buyer a refund they can take themselves.
+  REFUND_OFFERED
+  REFUND_OFFER_WITHDRAWN
   TICKET_ISSUED
   TICKET_VOIDED
   /// Deleted outright, row and all. The log is the only record left of it.
@@ -1852,12 +1855,52 @@ enum TicketEmailType {
   CONFIRMATION
   RESEND
   REFUND
+  REFUND_OFFER
+  REFUND_CODE
   DETAILS_NUDGE
   REMINDER
   APPROVAL_REQUIRED
   COMP
   HANDOUT
   LIFETIME
+}
+
+/// A refund an admin has offered and the buyer can take themselves, from a
+/// link in the email it comes in. Taking it needs a code sent to the order's
+/// email, so a forwarded link or a friend holding a ticket can't.
+///
+/// Open while it has not been taken, withdrawn or passed `expiresAt`. One
+/// open offer per order at a time.
+model RefundOffer {
+  id      String      @id @default(cuid())
+  orderId String
+  order   TicketOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  /// What taking it refunds, worked out when it was offered. Capped at what
+  /// Stripe still holds when it is taken.
+  amountCents Int
+  /// False when it was offered as "tickets only", keeping the booking fee.
+  includesFees Boolean
+  /// The admin's own words, shown in the email and on the refund page.
+  message     String  @db.Text
+  /// Who offered it, as the message is signed.
+  offeredById String?
+  offeredBy   String?
+
+  expiresAt   DateTime
+  emailedAt   DateTime?
+  withdrawnAt DateTime?
+  claimedAt   DateTime?
+
+  /// The latest code emailed to the buyer, hashed, and how it is going.
+  codeHash      String?
+  codeExpiresAt DateTime?
+  codeAttempts  Int       @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@map("refund_offer")
 }
 
 enum EventStaffRole {
@@ -2132,6 +2175,7 @@ model TicketOrder {
   linkBatch    TicketLinkBatch?     @relation(fields: [linkBatchId], references: [id], onDelete: SetNull)
   doorReceipts DoorPaymentReceipt[]
   paymentAttempts TicketPaymentAttempt[]
+  refundOffers    RefundOffer[]
 
   @@index([eventId, status])
   @@index([buyerEmail])

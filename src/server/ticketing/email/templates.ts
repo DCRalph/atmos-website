@@ -566,6 +566,118 @@ export function renderRefundEmail({
 }
 
 /**
+ * A refund an admin has offered, with their message, and the button that
+ * starts taking it. Says plainly that doing nothing keeps the tickets.
+ */
+export function renderRefundOfferEmail({
+  eventName,
+  eventStartsAt,
+  timezone,
+  orderNumber,
+  message,
+  offeredBy,
+  amountCents,
+  ticketCount,
+  expiresAt,
+  url,
+  supportEmail,
+}: {
+  eventName: string;
+  eventStartsAt: Date;
+  timezone: string;
+  orderNumber: string;
+  message: string;
+  offeredBy: string | null;
+  amountCents: number;
+  ticketCount: number;
+  expiresAt: Date;
+  url: string;
+  supportEmail: string | null;
+}): { subject: string; html: string; text: string } {
+  const tickets =
+    ticketCount === 1
+      ? "Your ticket stops"
+      : `Your ${ticketCount} tickets stop`;
+  const until = formatEventDateLong(expiresAt, timezone);
+  const signed = offeredBy ? `${offeredBy}, Atmos` : "Atmos";
+
+  const body = `
+<tr><td style="padding:0 0 18px;">
+  <div style="font-size:30px;line-height:1.2;font-weight:800;letter-spacing:-0.02em;color:${TEXT};margin-bottom:10px;">You can get a refund</div>
+  <div style="font-size:15px;color:${MUTED};line-height:1.7;">For order ${escapeHtml(orderNumber)}, ${escapeHtml(eventName)}, ${escapeHtml(formatEventDateLong(eventStartsAt, timezone))}.</div>
+</td></tr>
+<tr><td style="padding:0 0 18px;">
+  <div style="border-left:3px solid ${STRONG_BORDER};padding:4px 0 4px 14px;font-size:15px;line-height:1.65;color:${TEXT};white-space:pre-line;">${escapeHtml(message)}</div>
+  <div style="padding:8px 0 0 17px;font-size:12px;color:${MUTED};">${escapeHtml(signed)}</div>
+</td></tr>
+<tr><td style="padding:0 0 18px;">
+  <div style="background:${CARD};border:2px solid ${BORDER};padding:16px 18px;font-size:14px;color:${MUTED};line-height:1.7;">
+    <span style="color:${TEXT};font-weight:600;">${formatNZD(amountCents)}</span> back to the card you paid with. ${tickets} working once you take it.<br>
+    If you want to keep ${ticketCount === 1 ? "it" : "them"}, do nothing.
+  </div>
+</td></tr>
+<tr><td style="padding:0 0 8px;">
+  <a href="${escapeHtml(url)}" style="display:inline-block;padding:14px 22px;background:${ACCENT};color:#000000;text-decoration:none;font-size:15px;font-weight:700;">Get my refund</a>
+</td></tr>`;
+
+  const footer = [
+    `Open until ${escapeHtml(until)}.`,
+    supportEmail
+      ? `Questions? <a href="mailto:${supportEmail}" style="color:${MUTED};">${escapeHtml(supportEmail)}</a>`
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const text = [
+    "You can get a refund",
+    "",
+    `For order ${orderNumber}, ${eventName}, ${formatEventDateLong(eventStartsAt, timezone)}.`,
+    "",
+    message,
+    `- ${signed}`,
+    "",
+    `${formatNZD(amountCents)} back to the card you paid with. ${tickets} working once you take it. If you want to keep ${ticketCount === 1 ? "it" : "them"}, do nothing.`,
+    "",
+    `Get my refund: ${url}`,
+    "",
+    `Open until ${until}.`,
+  ].join("\n");
+
+  return {
+    subject: `You can get a refund for ${eventName}`,
+    html: layout(`You can get a refund for ${eventName}`, body, footer),
+    text,
+  };
+}
+
+/** The code that proves a refund is going to the order's own inbox. */
+export function renderRefundCodeEmail({
+  code,
+  eventName,
+}: {
+  code: string;
+  eventName: string;
+}): { subject: string; html: string; text: string } {
+  const body = `
+<tr><td style="padding:0 0 18px;">
+  <div style="font-size:15px;color:${MUTED};line-height:1.7;margin-bottom:12px;">Your code to take the refund for ${escapeHtml(eventName)}:</div>
+  <div style="font-size:36px;font-weight:800;letter-spacing:0.2em;color:${TEXT};font-family:Menlo,Consolas,monospace;">${escapeHtml(code)}</div>
+  <div style="font-size:14px;color:${MUTED};line-height:1.7;margin-top:12px;">It works for 10 minutes. If you didn't ask for it, ignore this email: nothing is refunded without it.</div>
+</td></tr>`;
+  const text = [
+    `Your code to take the refund for ${eventName}: ${code}`,
+    "",
+    "It works for 10 minutes. If you didn't ask for it, ignore this email: nothing is refunded without it.",
+  ].join("\n");
+  return {
+    subject: `${code} is your refund code`,
+    html: layout(`${code} is your refund code`, body, ""),
+    text,
+  };
+}
+
+/**
  * Receipt for a card payment taken at a door.
  *
  * Apple's App Review checklist 5.10 requires a confidential digital receipt to

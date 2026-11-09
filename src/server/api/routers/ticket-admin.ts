@@ -54,6 +54,7 @@ import {
   issueTicketLinkBatch,
   listTicketLinkBatches,
 } from "~/server/ticketing/ticket-link-batches";
+import { refundOrderThroughStripe } from "~/server/ticketing/refunds";
 import { ADMITTING_RESULTS, admissionStates } from "~/server/ticketing/scan";
 import { logActivity } from "~/server/utils/activity-log";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
@@ -326,6 +327,20 @@ export const ticketAdminRouter = createTRPCRouter({
           },
           emails: { orderBy: { createdAt: "desc" }, take: 20 },
           paymentAttempts: { orderBy: { attemptedAt: "asc" } },
+          refundOffers: {
+            orderBy: { createdAt: "asc" },
+            select: {
+              id: true,
+              amountCents: true,
+              includesFees: true,
+              offeredBy: true,
+              expiresAt: true,
+              emailedAt: true,
+              withdrawnAt: true,
+              claimedAt: true,
+              createdAt: true,
+            },
+          },
         },
       });
 
@@ -659,78 +674,13 @@ export const ticketAdminRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const order = await ctx.db.ticketOrder.findUnique({
-        where: { id: input.orderId },
-        include: {
-          tickets: {
-            where: { status: TicketStatus.VALID },
-            select: { id: true, ticketNumber: true },
-          },
-        },
-      });
-      if (!order) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
-      }
-      if (!order.stripePaymentIntentId) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "This order wasn't paid through Stripe.",
-        });
-      }
-      if (!isStripeConfigured()) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Stripe isn't configured, so this can't be refunded here.",
-        });
-      }
-
-      const stripe = getStripe();
-      const intent = await stripe.paymentIntents.retrieve(
-        order.stripePaymentIntentId,
-        { expand: ["latest_charge"] },
-      );
-      const charge =
-        typeof intent.latest_charge === "object" ? intent.latest_charge : null;
-      const amountCents = charge?.paid
-        ? charge.amount_captured - charge.amount_refunded
-        : 0;
-      if (!charge || amountCents <= 0) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Stripe has nothing left to refund on this order.",
-        });
-      }
-
-      await stripe.refunds.create(
-        {
-          charge: charge.id,
-          amount: amountCents,
-          metadata: { orderId: order.id, reason: input.reason },
-        },
-        {
-          idempotencyKey: `refund-order-${order.id}-${charge.amount_refunded}`,
-        },
-      );
-
-      for (const ticket of order.tickets) {
-        await voidTicket({
-          ticketId: ticket.id,
+      const { order, amountCents, ticketNumbers } =
+        await refundOrderThroughStripe({
+          orderId: input.orderId,
           reason: input.reason,
-          status: TicketStatus.REFUNDED,
+          idempotencyKey: (refunded) =>
+            `refund-order-${input.orderId}-${refunded}`,
         });
-        schedulePassUpdate(ticket.id);
-      }
-
-      const updated = await ctx.db.ticketOrder.update({
-        where: { id: order.id },
-        data: {
-          // Stripe's running total, not an increment: the `charge.refunded`
-          // webhook writes the same number and may land first.
-          refundedCents: charge.amount_refunded + amountCents,
-          refundedAt: new Date(),
-          status: TicketOrderStatus.REFUNDED,
-        },
-      });
 
       await logActivity({
         type: ActivityType.TICKET_ORDER_REFUNDED,
@@ -739,7 +689,7 @@ export const ticketAdminRouter = createTRPCRouter({
         details: {
           orderId: order.id,
           amountCents,
-          tickets: order.tickets.length,
+          tickets: ticketNumbers.length,
           reason: input.reason,
         },
       });
@@ -748,11 +698,11 @@ export const ticketAdminRouter = createTRPCRouter({
         await sendRefundEmail({
           orderId: order.id,
           amountCents,
-          ticketNumbers: order.tickets.map((t) => t.ticketNumber),
+          ticketNumbers,
         });
       }
 
-      return { ok: true as const, refundedCents: updated.refundedCents };
+      return { ok: true as const, refundedCents: order.refundedCents };
     }),
 
   /** Cancel a ticket without refunding — comps, duplicates, fraud. */

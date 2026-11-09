@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { useRouter } from "next/navigation";
 import {
   Archive,
@@ -7,6 +9,7 @@ import {
   Ban,
   Copy,
   ExternalLink,
+  Mail,
   MoreHorizontal,
   PauseCircle,
   PlayCircle,
@@ -26,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { useConfirm } from "~/components/confirm-provider";
+import { RefundOfferDialog } from "../refund-offer-dialog";
 import type { AdminEvent } from "./draft";
 
 /**
@@ -81,127 +85,145 @@ export function EventMenu({ event }: { event: AdminEvent }) {
     resetEntry.isPending ||
     remove.isPending;
   const { status } = event;
+  const [offering, setOffering] = useState(false);
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon" aria-label="More" disabled={busy}>
-          <MoreHorizontal className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuItem asChild>
-          <a href={`/events/${event.slug}`} target="_blank" rel="noreferrer">
-            <ExternalLink className="size-4" /> View public page
-          </a>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <a href={`/door/${event.id}`} target="_blank" rel="noreferrer">
-            <ScanLine className="size-4" /> Open scanner
-          </a>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => duplicate.mutate({ id: event.id })}>
-          <Copy className="size-4" /> Duplicate
-        </DropdownMenuItem>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="More"
+            disabled={busy}
+          >
+            <MoreHorizontal className="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuItem asChild>
+            <a href={`/events/${event.slug}`} target="_blank" rel="noreferrer">
+              <ExternalLink className="size-4" /> View public page
+            </a>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <a href={`/door/${event.id}`} target="_blank" rel="noreferrer">
+              <ScanLine className="size-4" /> Open scanner
+            </a>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => duplicate.mutate({ id: event.id })}>
+            <Copy className="size-4" /> Duplicate
+          </DropdownMenuItem>
 
-        <DropdownMenuSeparator />
+          <DropdownMenuSeparator />
 
-        {status === "PUBLISHED" ? (
-          <DropdownMenuItem
-            onClick={() =>
-              setStatus.mutate({ id: event.id, status: "SALES_PAUSED" })
-            }
-          >
-            <PauseCircle className="size-4" /> Pause sales
+          {status === "PUBLISHED" ? (
+            <DropdownMenuItem
+              onClick={() =>
+                setStatus.mutate({ id: event.id, status: "SALES_PAUSED" })
+              }
+            >
+              <PauseCircle className="size-4" /> Pause sales
+            </DropdownMenuItem>
+          ) : null}
+          {status === "SALES_PAUSED" || status === "SOLD_OUT" ? (
+            <DropdownMenuItem
+              onClick={() =>
+                setStatus.mutate({ id: event.id, status: "PUBLISHED" })
+              }
+            >
+              <PlayCircle className="size-4" />{" "}
+              {status === "SOLD_OUT" ? "Back on sale" : "Resume sales"}
+            </DropdownMenuItem>
+          ) : null}
+          {status === "PUBLISHED" || status === "SALES_PAUSED" ? (
+            <DropdownMenuItem
+              onClick={() =>
+                setStatus.mutate({ id: event.id, status: "SOLD_OUT" })
+              }
+            >
+              <Ban className="size-4" /> Mark sold out
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuItem onClick={() => setOffering(true)}>
+            <Mail className="size-4" /> Offer refunds…
           </DropdownMenuItem>
-        ) : null}
-        {status === "SALES_PAUSED" || status === "SOLD_OUT" ? (
-          <DropdownMenuItem
-            onClick={() =>
-              setStatus.mutate({ id: event.id, status: "PUBLISHED" })
-            }
-          >
-            <PlayCircle className="size-4" />{" "}
-            {status === "SOLD_OUT" ? "Back on sale" : "Resume sales"}
-          </DropdownMenuItem>
-        ) : null}
-        {status === "PUBLISHED" || status === "SALES_PAUSED" ? (
-          <DropdownMenuItem
-            onClick={() =>
-              setStatus.mutate({ id: event.id, status: "SOLD_OUT" })
-            }
-          >
-            <Ban className="size-4" /> Mark sold out
-          </DropdownMenuItem>
-        ) : null}
-        {status !== "CANCELLED" && status !== "ARCHIVED" ? (
+          {status !== "CANCELLED" && status !== "ARCHIVED" ? (
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={async () => {
+                const ok = await confirm({
+                  title: "Cancel this event?",
+                  description:
+                    "Sales stop, the public page says cancelled, and wallet passes are updated. Refunds are not automatic: refund the orders yourself.",
+                  confirmLabel: "Cancel event",
+                  variant: "destructive",
+                });
+                if (ok) setStatus.mutate({ id: event.id, status: "CANCELLED" });
+              }}
+            >
+              <Ban className="size-4" /> Cancel event…
+            </DropdownMenuItem>
+          ) : null}
+          {status === "ARCHIVED" ? (
+            <DropdownMenuItem
+              onClick={() =>
+                setStatus.mutate({ id: event.id, status: "DRAFT" })
+              }
+            >
+              <ArchiveRestore className="size-4" /> Restore as draft
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem
+              onClick={() =>
+                setStatus.mutate({ id: event.id, status: "ARCHIVED" })
+              }
+            >
+              <Archive className="size-4" /> Archive
+            </DropdownMenuItem>
+          )}
+
+          <DropdownMenuSeparator />
+
+          {canResetEntry ? (
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={async () => {
+                const ok = await confirm({
+                  title: "Reset entry?",
+                  description:
+                    "Everyone is unadmitted and every ticket scans fresh. All scans, denials, notes and ID checks for this event are deleted. Tickets, orders and refunds are untouched. This cannot be undone.",
+                  confirmLabel: "Reset entry",
+                  variant: "destructive",
+                });
+                if (ok) resetEntry.mutate({ id: event.id });
+              }}
+            >
+              <RotateCcw className="size-4" /> Reset entry…
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem
             variant="destructive"
             onClick={async () => {
               const ok = await confirm({
-                title: "Cancel this event?",
+                title: `Delete ${event.name}?`,
                 description:
-                  "Sales stop, the public page says cancelled, and wallet passes are updated. Refunds are not automatic: refund the orders yourself.",
-                confirmLabel: "Cancel event",
+                  "Only possible before any ticket has been issued. Its tiers and any abandoned checkouts go with it. This cannot be undone.",
+                confirmLabel: "Delete event",
                 variant: "destructive",
               });
-              if (ok) setStatus.mutate({ id: event.id, status: "CANCELLED" });
+              if (ok) remove.mutate({ id: event.id });
             }}
           >
-            <Ban className="size-4" /> Cancel event…
+            <Trash2 className="size-4" /> Delete…
           </DropdownMenuItem>
-        ) : null}
-        {status === "ARCHIVED" ? (
-          <DropdownMenuItem
-            onClick={() => setStatus.mutate({ id: event.id, status: "DRAFT" })}
-          >
-            <ArchiveRestore className="size-4" /> Restore as draft
-          </DropdownMenuItem>
-        ) : (
-          <DropdownMenuItem
-            onClick={() =>
-              setStatus.mutate({ id: event.id, status: "ARCHIVED" })
-            }
-          >
-            <Archive className="size-4" /> Archive
-          </DropdownMenuItem>
-        )}
-
-        <DropdownMenuSeparator />
-
-        {canResetEntry ? (
-          <DropdownMenuItem
-            variant="destructive"
-            onClick={async () => {
-              const ok = await confirm({
-                title: "Reset entry?",
-                description:
-                  "Everyone is unadmitted and every ticket scans fresh. All scans, denials, notes and ID checks for this event are deleted. Tickets, orders and refunds are untouched. This cannot be undone.",
-                confirmLabel: "Reset entry",
-                variant: "destructive",
-              });
-              if (ok) resetEntry.mutate({ id: event.id });
-            }}
-          >
-            <RotateCcw className="size-4" /> Reset entry…
-          </DropdownMenuItem>
-        ) : null}
-        <DropdownMenuItem
-          variant="destructive"
-          onClick={async () => {
-            const ok = await confirm({
-              title: `Delete ${event.name}?`,
-              description:
-                "Only possible before any ticket has been issued. Its tiers and any abandoned checkouts go with it. This cannot be undone.",
-              confirmLabel: "Delete event",
-              variant: "destructive",
-            });
-            if (ok) remove.mutate({ id: event.id });
-          }}
-        >
-          <Trash2 className="size-4" /> Delete…
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <RefundOfferDialog
+        target={{ eventId: event.id, eventName: event.name }}
+        open={offering}
+        onOpenChange={setOffering}
+      />
+    </>
   );
 }
