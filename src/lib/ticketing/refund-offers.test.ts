@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  defaultOfferExpiry,
   maskEmail,
   offerAmountCents,
   readOfferId,
@@ -58,4 +59,24 @@ describe("offer links", () => {
 
 test("maskEmail keeps the first letter and the domain", () => {
   expect(maskEmail("sam.taylor@gmail.com")).toBe("s•••@gmail.com");
+});
+
+describe("defaultOfferExpiry", () => {
+  const now = new Date("2027-03-01T00:00:00Z");
+
+  test("a day before the event starts", () => {
+    expect(
+      defaultOfferExpiry(new Date("2027-03-07T08:00:00Z"), now).toISOString(),
+    ).toBe("2027-03-06T08:00:00.000Z");
+  });
+
+  test("two weeks out when the event is under a day away or over", () => {
+    const twoWeeks = "2027-03-15T00:00:00.000Z";
+    expect(
+      defaultOfferExpiry(new Date("2027-03-01T20:00:00Z"), now).toISOString(),
+    ).toBe(twoWeeks);
+    expect(
+      defaultOfferExpiry(new Date("2027-02-01T20:00:00Z"), now).toISOString(),
+    ).toBe(twoWeeks);
+  });
 });

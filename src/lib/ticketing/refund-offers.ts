@@ -63,3 +63,18 @@ export function maskEmail(email: string) {
   const [name = "", domain = ""] = email.split("@");
   return `${name.slice(0, 1)}•••@${domain}`;
 }
+
+const DAY_MS = 86_400_000;
+
+/**
+ * When an offer closes unless the admin picks otherwise: a day before the
+ * event starts, so a refund is settled before the doors open. An event that
+ * is less than a day away, or already over, gets two weeks instead, since an
+ * offer has to stay open for at least an hour.
+ */
+export function defaultOfferExpiry(startsAt: Date, now = new Date()) {
+  const dayBefore = new Date(startsAt.getTime() - DAY_MS);
+  return dayBefore.getTime() - now.getTime() > 60 * 60_000
+    ? dayBefore
+    : new Date(now.getTime() + 14 * DAY_MS);
+}
