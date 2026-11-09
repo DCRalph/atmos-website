@@ -589,7 +589,6 @@ export function renderRefundOfferEmail({
   timezone,
   orderNumber,
   message,
-  offeredBy,
   amountCents,
   ticketCount,
   expiresAt,
@@ -601,7 +600,6 @@ export function renderRefundOfferEmail({
   timezone: string;
   orderNumber: string;
   message: string;
-  offeredBy: string | null;
   amountCents: number;
   ticketCount: number;
   expiresAt: Date;
@@ -613,7 +611,8 @@ export function renderRefundOfferEmail({
       ? "Your ticket stops"
       : `Your ${ticketCount} tickets stop`;
   const until = formatEventDateLong(expiresAt, timezone);
-  const signed = offeredBy ? `${offeredBy}, Atmos` : "Atmos";
+  // Signed by the team, not whichever admin sent it.
+  const signed = "Atmos crew";
 
   const body = `
 <tr><td style="padding:0 0 18px;">

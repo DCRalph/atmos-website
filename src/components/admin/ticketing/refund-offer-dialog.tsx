@@ -255,8 +255,8 @@ function OfferForm({ target, onDone }: { target: Target; onDone: () => void }) {
           placeholder="Vol. 3 has moved to Saturday 14 March. If you can't make the new date, you can have your money back."
         />
         <p className="text-muted-foreground text-xs">
-          Shown in the email above the refund button, signed with your first
-          name.
+          Shown in the email above the refund button, signed &quot;Atmos
+          crew&quot;.
         </p>
       </div>
 

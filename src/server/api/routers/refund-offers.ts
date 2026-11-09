@@ -7,6 +7,7 @@ import {
   createTRPCRouter,
   publicProcedure,
 } from "~/server/api/trpc";
+import { defaultOfferExpiry } from "~/lib/ticketing/refund-offers";
 import { enforceRateLimit } from "~/server/ticketing/rate-limit";
 import {
   OPEN_OFFER,
@@ -56,8 +57,8 @@ export const refundOffersRouter = createTRPCRouter({
 
   /**
    * What the event dialog needs: its tiers with how many orders each could
-   * be offered, how earlier offers went, and a default closing date (two
-   * weeks, or the event's start if that is sooner).
+   * be offered, how earlier offers went, and a default closing date (a day
+   * before the event starts).
    */
   forEvent: adminProcedure
     .input(z.object({ eventId: z.string() }))
@@ -97,7 +98,7 @@ export const refundOffersRouter = createTRPCRouter({
       const now = new Date();
       return {
         tiers,
-        defaultExpiresAt: defaultExpiry(event.startsAt),
+        defaultExpiresAt: defaultOfferExpiry(event.startsAt),
         offered: offers.length,
         open: offers.filter(
           (o) => !o.claimedAt && !o.withdrawnAt && o.expiresAt > now,
@@ -115,7 +116,7 @@ export const refundOffersRouter = createTRPCRouter({
         select: { event: { select: { startsAt: true } } },
       });
       if (!order) throw new TRPCError({ code: "NOT_FOUND" });
-      return defaultExpiry(order.event.startsAt);
+      return defaultOfferExpiry(order.event.startsAt);
     }),
 
   /** Offer, and email every buyer it reaches. */
@@ -242,11 +243,3 @@ export const refundOffersRouter = createTRPCRouter({
       return takeOffer(input.token, input.code);
     }),
 });
-
-/** Two weeks from now, or the event's start if that comes first and is
- * still more than a day away. */
-function defaultExpiry(startsAt: Date) {
-  const twoWeeks = new Date(Date.now() + 14 * 86_400_000);
-  const beforeStart = startsAt.getTime() - Date.now() > 86_400_000;
-  return beforeStart && startsAt < twoWeeks ? startsAt : twoWeeks;
-}

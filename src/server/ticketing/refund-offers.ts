@@ -173,7 +173,6 @@ async function offerEmail(
     id: string;
     amountCents: number;
     message: string;
-    offeredBy: string | null;
     expiresAt: Date;
   },
   order: OrderForOffer,
@@ -189,7 +188,6 @@ async function offerEmail(
       timezone: order.event.timezone,
       orderNumber: order.orderNumber,
       message: offer.message,
-      offeredBy: offer.offeredBy,
       amountCents: offer.amountCents,
       ticketCount: order.tickets.length,
       expiresAt: offer.expiresAt,
@@ -372,7 +370,6 @@ export async function sendTestOffer({
       id: "test",
       amountCents: offerAmountCents(order, amount),
       message,
-      offeredBy: admin.name.split(" ")[0] ?? null,
       expiresAt,
     },
     order,
@@ -460,7 +457,6 @@ export async function loadOffer(token: string) {
     timezone: order.event.timezone,
     posterFileId: order.event.gig?.posterFileUploadId ?? null,
     message: offer.message,
-    offeredBy: offer.offeredBy,
     amountCents: offer.amountCents,
     expiresAt: offer.expiresAt,
     ticketCount: order.tickets.length,

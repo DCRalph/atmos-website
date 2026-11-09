@@ -148,7 +148,7 @@ function OfferStep({
         <blockquote className="border-l-2 border-white/25 pl-3 text-[14px] whitespace-pre-line text-white/85">
           {offer.message}
           <span className="mt-1.5 block text-[12px] text-white/45">
-            {offer.offeredBy ? `${offer.offeredBy}, Atmos` : "Atmos"}
+            Atmos crew
           </span>
         </blockquote>
 
