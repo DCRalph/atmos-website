@@ -48,6 +48,7 @@ export const RESERVED_SLUGS = new Set([
   "terms",
   "tickets",
   "ui-test",
+  "unsubscribe",
   "verify-email",
   "wallet-debugger-preview",
   // Redirects and rewrites in next.config.js

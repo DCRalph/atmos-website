@@ -1,13 +1,6 @@
-import { AdminSection } from "~/components/admin/admin-section";
-import { NewsletterManager } from "~/components/admin/newsletter-manager";
+import { redirect } from "next/navigation";
 
+/** The old Newsletter page. Its subscribers live on the Mailouts page now. */
 export default function AdminNewsletterPage() {
-  return (
-    <AdminSection
-      title="Newsletter"
-      description="Everyone signed up, and whether they are still being sent to."
-    >
-      <NewsletterManager />
-    </AdminSection>
-  );
+  redirect("/admin/mailouts?tab=subscribers");
 }

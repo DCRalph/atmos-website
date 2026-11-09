@@ -58,6 +58,7 @@ import { stopUnpaidPayment } from "~/server/ticketing/payments";
 import { scheduleSalesAlerts } from "~/server/ticketing/sales-alerts";
 import { soldOutBy } from "~/lib/ticketing/tiers";
 import { ticketCount } from "~/lib/ticketing/capacity";
+import { NEWSLETTER, subscribe } from "~/server/mailouts/subscribers";
 
 /**
  * The order lifecycle.
@@ -1041,17 +1042,17 @@ export function ticketAccessToken(ticket: {
 export async function syncMarketingConsent(orderId: string): Promise<void> {
   const order = await db.ticketOrder.findUnique({
     where: { id: orderId },
-    select: { marketingOptIn: true, buyerEmail: true },
+    select: { marketingOptIn: true, buyerEmail: true, eventId: true },
   });
   if (!order?.marketingOptIn || !order.buyerEmail) return;
 
-  await db.newsletterSubscription
-    .upsert({
-      where: { email: order.buyerEmail },
-      update: { removed: false },
-      create: { email: order.buyerEmail },
-    })
-    .catch(() => undefined);
+  await subscribe(db, {
+    email: order.buyerEmail,
+    list: NEWSLETTER,
+    source: `checkout:${order.eventId}`,
+  }).catch((cause: unknown) =>
+    console.error(`[ticketing] marketing consent for ${orderId}`, cause),
+  );
 }
 
 /** Rebuild the buyer's ticket link — for re-sending email, and admin tools. */

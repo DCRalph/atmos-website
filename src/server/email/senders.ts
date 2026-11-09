@@ -14,6 +14,8 @@ export const EMAIL_SENDERS = {
   rentals: "Atmos Rentals <noreply@atmosmedia.co.nz>",
   /** Gig news people asked for: "the photos are up". */
   gigs: "Atmos <noreply@atmosmedia.co.nz>",
+  /** Mailouts: marketing sent to a mailing list. */
+  news: "Atmos <news@atmosmedia.co.nz>",
   /** Internal alerts to staff: contact form and rental requests. */
   notifications: "Atmos <noreply@atmosmedia.co.nz>",
 } as const;

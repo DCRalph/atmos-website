@@ -10,6 +10,9 @@ import { userRouter } from "~/server/api/routers/user";
 import { invitesRouter } from "~/server/api/routers/invites";
 import { usersRouter } from "~/server/api/routers/users";
 import { newsletterRouter } from "~/server/api/routers/newsletter";
+import { mailoutsRouter } from "~/server/api/routers/mailouts";
+import { mailingListsRouter } from "~/server/api/routers/mailing-lists";
+import { subscribersRouter } from "~/server/api/routers/subscribers";
 import { filesRouter } from "~/server/api/routers/files";
 import { homeGigsRouter } from "~/server/api/routers/home-gigs";
 import { homeContentRouter } from "~/server/api/routers/home-content";
@@ -75,6 +78,10 @@ export const appRouter = createTRPCRouter({
   homeContent: homeContentRouter,
   contact: contactRouter,
   newsletter: newsletterRouter,
+  /** Marketing email to mailing lists. */
+  mailouts: mailoutsRouter,
+  mailingLists: mailingListsRouter,
+  subscribers: subscribersRouter,
   user: userRouter,
   invites: invitesRouter,
   users: usersRouter,

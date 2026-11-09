@@ -15,10 +15,13 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
  */
 export function NewsletterForm({
   cta = "Subscribe",
+  list,
   className,
   onSubscribed,
 }: {
   cta?: string;
+  /** A public mailing list's slug. Left out, it is the newsletter. */
+  list?: string;
   className?: string;
   /** Called once the address is on the list. */
   onSubscribed?: () => void;
@@ -39,7 +42,7 @@ export function NewsletterForm({
     if (subscribe.isPending) return;
     if (!EMAIL.test(email.trim())) return setInvalid(true);
     sound.prepare();
-    subscribe.mutate({ email: email.trim() });
+    subscribe.mutate({ email: email.trim(), list });
   };
 
   if (subscribe.isSuccess) {

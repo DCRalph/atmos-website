@@ -47,7 +47,7 @@ const STATIC_PATH_LABELS: Record<string, string> = {
   "/admin/venues": "Venues",
   "/admin/merch": "Merch",
   "/admin/contact": "Contact",
-  "/admin/newsletter": "Newsletter",
+  "/admin/mailouts": "Mailouts",
   "/admin/notifications": "Notifications",
   "/admin/users": "Users",
   "/admin/files": "Files",
@@ -88,6 +88,12 @@ const SMART_CRUMB_RESOLVERS: SmartCrumbResolver[] = [
     key: "artist",
     fallbackLabel: "Artist",
     parentPath: "/admin/artist-profiles",
+  },
+  {
+    pattern: /^\/admin\/mailouts\/([^/]+)$/,
+    key: "mailout",
+    fallbackLabel: "Mailout",
+    parentPath: "/admin/mailouts",
   },
   {
     pattern: /^\/admin\/will-gpt\/([^/]+)$/,
@@ -235,6 +241,18 @@ function useGigCrumb(gigId: string | null) {
   };
 }
 
+/** A mailout's subject, from the same query as its own page. */
+function useMailoutCrumb(mailoutId: string | null) {
+  const { data, isLoading } = api.mailouts.get.useQuery(
+    { id: mailoutId ?? "" },
+    { enabled: !!mailoutId },
+  );
+  return {
+    label: data ? data.subject || "New mailout" : null,
+    isLoading: !!mailoutId && isLoading,
+  };
+}
+
 /**
  * Hook to resolve a short link's path from ID. Same query as the link's own
  * page, so it is served from that page's cache rather than fetched twice.
@@ -303,6 +321,8 @@ function useSmartCrumb(pathname: string): {
     smartMatch?.resolver.key === "conversation" ? smartMatch.id : null;
   const reportId = smartMatch?.resolver.key === "report" ? smartMatch.id : null;
   const artistId = smartMatch?.resolver.key === "artist" ? smartMatch.id : null;
+  const mailoutId =
+    smartMatch?.resolver.key === "mailout" ? smartMatch.id : null;
 
   // Call all resolver hooks (React hooks must be called unconditionally)
   const userCrumb = useUserCrumb(userId);
@@ -311,6 +331,7 @@ function useSmartCrumb(pathname: string): {
   const conversationCrumb = useConversationCrumb(conversationId);
   const reportCrumb = useReportCrumb(reportId);
   const artistCrumb = useArtistCrumb(artistId);
+  const mailoutCrumb = useMailoutCrumb(mailoutId);
 
   // Return the appropriate result based on which resolver matched
   if (!smartMatch) return null;
@@ -349,6 +370,12 @@ function useSmartCrumb(pathname: string): {
         path: pathname,
         label: linkCrumb.label ?? resolver.fallbackLabel,
         isLoading: linkCrumb.isLoading,
+      };
+    case "mailout":
+      return {
+        path: pathname,
+        label: mailoutCrumb.label ?? resolver.fallbackLabel,
+        isLoading: mailoutCrumb.isLoading,
       };
     case "conversation":
       return {
