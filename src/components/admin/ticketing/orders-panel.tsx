@@ -43,6 +43,7 @@ import {
 import { InfiniteScrollTrigger } from "~/components/infinite-scroll-trigger";
 import { FilterSelect, ListFilters } from "../list-filters";
 import { OrderTimeline } from "./order-timeline";
+import { RefundOfferDialog } from "./refund-offer-dialog";
 import { TicketAccessLevelSelect } from "~/components/admin/ticketing/access-level-select";
 import { ticketTypeName } from "~/lib/ticketing/access-levels";
 import { useAccessLevels } from "~/hooks/use-access-levels";
@@ -407,6 +408,7 @@ function OrderDetail({
     !readOnly &&
     (me.data?.effectivePermissions.includes("SUPERADMIN") ?? false);
   const [deleteReason, setDeleteReason] = useState<string | null>(null);
+  const [offering, setOffering] = useState(false);
 
   const removeOrder = api.ticketAdmin.deleteOrder.useMutation({
     onSuccess: (result) => {
@@ -481,6 +483,19 @@ function OrderDetail({
     data.refundedCents < data.totalCents &&
     (!!data.paidAt ||
       data.paymentAttempts.some((attempt) => attempt.status === "SUCCEEDED"));
+  // At most one offer is open at a time; the latest one is the one to show.
+  const now = new Date();
+  const offer = data.refundOffers.at(-1);
+  const openOffer =
+    offer && !offer.claimedAt && !offer.withdrawnAt && offer.expiresAt > now
+      ? offer
+      : null;
+  const canOffer =
+    canRefundOrder &&
+    !!data.buyerEmail &&
+    !openOffer &&
+    data.paymentMethod === "STRIPE" &&
+    data.tickets.some((ticket) => ticket.status === "VALID");
   const cameFrom = [
     data.utmSource,
     data.utmMedium,
@@ -715,6 +730,14 @@ function OrderDetail({
         </ul>
       </div>
 
+      {openOffer && (
+        <OpenOffer
+          offer={openOffer}
+          timezone={data.event.timezone}
+          readOnly={readOnly}
+        />
+      )}
+
       {((!readOnly && selected.length > 0) || canRefundOrder) && (
         <div className="flex flex-wrap gap-2">
           {!readOnly && selected.length > 0 && (
@@ -754,7 +777,20 @@ function OrderDetail({
               <Undo2 className="size-4" /> Refund order
             </Button>
           )}
+          {canOffer && (
+            <Button variant="outline" onClick={() => setOffering(true)}>
+              <Mail className="size-4" /> Offer refund
+            </Button>
+          )}
         </div>
+      )}
+
+      {canOffer && (
+        <RefundOfferDialog
+          target={{ orderId, buyerName: data.buyerName }}
+          open={offering}
+          onOpenChange={setOffering}
+        />
       )}
 
       {canDelete &&
@@ -837,6 +873,79 @@ function OrderDetail({
           </ul>
         </details>
       )}
+    </div>
+  );
+}
+
+type Offer = RouterOutputs["ticketAdmin"]["order"]["refundOffers"][number];
+
+/** An offer the buyer has not taken yet, with ways to chase or close it. */
+function OpenOffer({
+  offer,
+  timezone,
+  readOnly,
+}: {
+  offer: Offer;
+  timezone: string;
+  readOnly: boolean;
+}) {
+  const confirm = useConfirm();
+  const utils = api.useUtils();
+  const onError = (error: { message: string }) => toast.error(error.message);
+  const resend = api.refundOffers.resend.useMutation({
+    onSuccess: ({ emailed }) =>
+      emailed ? toast.success("Emailed again") : toast.error("It did not send"),
+    onError,
+  });
+  const withdraw = api.refundOffers.withdraw.useMutation({
+    onSuccess: () => {
+      toast.success("Offer withdrawn");
+      void utils.ticketAdmin.invalidate();
+    },
+    onError,
+  });
+  return (
+    <div className="border-l-2 border-emerald-500 py-0.5 pl-3 text-sm">
+      <p>
+        Refund of {formatNZD(offer.amountCents)} offered{" "}
+        {formatEventDateTime(offer.createdAt, timezone)}, open until{" "}
+        {formatEventDateTime(offer.expiresAt, timezone)}
+      </p>
+      <p className="text-muted-foreground text-xs">
+        {offer.includesFees ? "Including fees" : "Tickets only"} · Not taken yet
+        {!offer.emailedAt && " · The email did not send"}
+        {!readOnly && (
+          <>
+            {" · "}
+            <button
+              type="button"
+              className="underline underline-offset-2"
+              disabled={resend.isPending}
+              onClick={() => resend.mutate({ offerId: offer.id })}
+            >
+              Resend email
+            </button>
+            {" · "}
+            <button
+              type="button"
+              className="underline underline-offset-2"
+              disabled={withdraw.isPending}
+              onClick={async () => {
+                const ok = await confirm({
+                  title: "Withdraw this offer?",
+                  description:
+                    "The link in their email stops working. Their tickets stay as they are.",
+                  confirmLabel: "Withdraw",
+                  variant: "destructive",
+                });
+                if (ok) withdraw.mutate({ offerId: offer.id });
+              }}
+            >
+              Withdraw offer
+            </button>
+          </>
+        )}
+      </p>
     </div>
   );
 }

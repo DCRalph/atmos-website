@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>Atmos · refund offer options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anybody:wdth,wght@50..150,400..900&family=Archivo:wght@400;500;600&family=Montserrat:wght@400;500;600;700&family=Orbitron:wght@800;900&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--page:#000;--bg:#0a0a0a;--card:#171717;--accent:#262626;--border:rgba(255,255,255,.1);--ink:#fafafa;--muted:#a1a1a1;--red:#f87171;--lime:#c6ff33}
+*{box-sizing:border-box}html{background:var(--page);color:var(--ink)}body{margin:0;font:14px/1.5 Montserrat,ui-sans-serif,system-ui,sans-serif}
+h1,h2,h3,h4,p{margin:0}code{font:12.5px ui-monospace,Menlo,monospace;background:var(--accent);padding:1px 5px;border-radius:4px}
+.doc{max-width:1180px;margin:auto;padding:40px 16px 96px}
+.head h1{font-size:30px;line-height:1.2;letter-spacing:-.025em;font-weight:700}.head p{margin-top:10px;color:var(--muted);max-width:80ch}
+.jump{display:flex;gap:6px 22px;flex-wrap:wrap;margin-top:22px;padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);font-weight:600}.jump a{color:inherit;text-decoration:none}.jump small{color:var(--muted);font-weight:400}
+section{margin-top:64px}section>h2{font-size:22px;letter-spacing:-.02em}section>h2 span{color:var(--muted);font-weight:500;margin-right:8px}
+.lede{color:var(--muted);font-size:13.5px;max-width:84ch;margin-top:6px}
+.where{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:24px 0 8px;font-weight:600}
+.notes{font-size:13px;color:var(--muted);margin-top:14px;max-width:90ch}.notes b{color:var(--ink);font-weight:600}.notes ul{margin:6px 0 0;padding-left:18px}.notes li{margin:3px 0}
+.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px;counter-reset:f}
+.flow div{border-top:2px solid var(--border);padding-top:10px;font-size:13px;color:var(--muted)}.flow div b{display:block;color:var(--ink);font-weight:600;margin-bottom:2px}
+.flow div::before{counter-increment:f;content:counter(f);font-size:12px;color:var(--muted)}
+@media (max-width:760px){.flow{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.row>*{min-width:0}
+/* admin pieces */
+.dialog{width:100%;max-width:640px;border:1px solid var(--border);border-radius:12px;background:#0a0a0a;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.dialog.sm{max-width:520px}
+.dialog h3{font-size:18px;font-weight:600}.dialog .desc{font-size:13px;color:var(--muted);margin-top:4px}
+.mono{font-family:ui-monospace,Menlo,monospace}
+.dl{display:grid;grid-template-columns:1fr auto;gap:4px 16px;font-size:13.5px;margin-top:14px;max-width:300px}.dl dt{color:var(--muted)}.dl dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:6px;font-size:13.5px;font-weight:500;white-space:nowrap;border:1px solid transparent}
+.btn.primary{background:#e5e5e5;color:#171717}.btn.outline{border-color:rgba(255,255,255,.15);background:rgba(255,255,255,.04)}.btn.danger{color:var(--red)}.btn.ghost{color:var(--muted)}
+.btn.new{box-shadow:0 0 0 2px var(--lime)}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.field{display:flex;flex-direction:column;gap:6px;margin-top:16px}.field label,.lab{font-size:13px;font-weight:500}
+.input{min-height:36px;display:flex;align-items:center;padding:0 12px;border:1px solid rgba(255,255,255,.15);border-radius:6px;background:rgba(255,255,255,.04);font-size:13.5px}
+.textarea{padding:10px 12px;border:1px solid rgba(255,255,255,.15);border-radius:6px;background:rgba(255,255,255,.04);font-size:13.5px;line-height:1.55;min-height:112px}
+.hint{font-size:12px;color:var(--muted)}
+.radio{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid rgba(255,255,255,.12);border-radius:8px;margin-top:8px;font-size:13.5px}
+.radio i{flex:0 0 16px;height:16px;border-radius:50%;border:1.5px solid rgba(255,255,255,.4);margin-top:2px}.radio.on{border-color:rgba(255,255,255,.4)}.radio.on i{border:5px solid #e5e5e5}
+.radio .amt{margin-left:auto;font-variant-numeric:tabular-nums}.radio small{display:block;color:var(--muted);font-size:12px}
+.foot{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.state{margin-top:16px;border-left:2px solid var(--lime);padding:2px 0 2px 12px;font-size:13.5px}.state p+p{color:var(--muted);font-size:12.5px;margin-top:2px}
+.state a{color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+.check{display:flex;gap:8px;align-items:center;font-size:13.5px;margin-top:8px}.check i{width:16px;height:16px;border-radius:4px;border:1.5px solid rgba(255,255,255,.4);flex:0 0 16px}.check.on i{background:#e5e5e5;border-color:#e5e5e5}
+.check .n{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
+.menu{width:240px;border:1px solid var(--border);border-radius:8px;background:#0a0a0a;padding:4px;font-size:13.5px}.menu div{padding:7px 10px;border-radius:5px}.menu .on{background:var(--accent)}.menu hr{border:0;border-top:1px solid var(--border);margin:4px 0}
+.tl{font-size:13px;margin-top:4px}.tl li{list-style:none;padding:6px 0;border-top:1px solid var(--border);display:flex;justify-content:space-between;gap:12px}.tl{padding:0}.tl span{color:var(--muted)}
+/* email */
+.email{width:100%;max-width:560px;background:#000;border:1px solid var(--border);border-radius:8px;padding:28px 24px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+.email .brand{font-size:18px;font-weight:800;letter-spacing:.22em}
+.email h4{font-size:28px;line-height:1.2;font-weight:800;letter-spacing:-.02em;margin-top:22px}
+.email .muted{color:#999;font-size:15px;line-height:1.7;margin-top:10px}
+.email .msg{border-left:3px solid #333;padding:4px 0 4px 14px;margin-top:18px;color:#ddd;font-size:15px;line-height:1.65;white-space:pre-line}
+.email .msg small{display:block;color:#777;font-size:12px;margin-top:8px}
+.email .box{border:2px solid #1a1a1a;padding:16px 18px;margin-top:18px;font-size:14px;color:#999;line-height:1.7}.email .box b{color:#fff;font-weight:600}
+.email .cta{display:inline-block;margin-top:20px;padding:14px 22px;background:#fff;color:#000;font-weight:700;font-size:15px;text-decoration:none}
+.email .fine{color:#777;font-size:12px;line-height:1.6;margin-top:22px}
+/* customer phone */
+.phones{display:flex;gap:18px;flex-wrap:wrap}
+.phone{width:340px;max-width:100%;border-radius:28px;border:1px solid #222;overflow:hidden;position:relative;background:#000;font-family:Archivo,ui-sans-serif,system-ui,sans-serif;color:#fff}
+.phone .poster{position:absolute;inset:0;background:radial-gradient(120% 70% at 30% 10%,#5b2b8a 0%,#1d0f33 40%,#000 75%),#000;filter:blur(2px);opacity:.75}
+.phone .in{position:relative;padding:22px 16px 26px;min-height:640px;display:flex;flex-direction:column;gap:16px}
+.cap{font-size:11px;color:var(--muted);text-align:center;margin-top:8px;max-width:340px}
+.t-heading{font-family:Orbitron,sans-serif;font-weight:900;text-transform:uppercase;line-height:.95}
+.t-display{font-family:Anybody,sans-serif;font-stretch:135%;font-weight:800;text-transform:uppercase;letter-spacing:-.01em;line-height:.95}
+.t-label{font-family:Anybody,sans-serif;font-stretch:135%;font-weight:700;text-transform:uppercase;letter-spacing:.04em;line-height:1}
+.logo{font-family:Orbitron,sans-serif;font-weight:900;letter-spacing:.06em;font-size:18px}
+.panel{background:rgba(8,8,8,.62);border:1px solid rgba(255,255,255,.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.08);border-radius:16px;border-top-left-radius:0;padding:18px}
+.panel p{font-size:14px;color:rgba(255,255,255,.7);line-height:1.55}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:8px 12px;font-size:10px}
+.pill.lime{background:var(--lime);color:#000}
+.pill.ghost{border:1px solid rgba(255,255,255,.25);color:#fff}
+.sbtn{display:flex;align-items:center;justify-content:center;height:48px;border-radius:999px;font-size:12px;width:100%}
+.sbtn.lime{background:var(--lime);color:#000}.sbtn.line{border:1px solid rgba(255,255,255,.25);color:#fff}
+.sinput{height:48px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.04);display:flex;align-items:center;padding:0 20px;font-size:15px;color:#fff}
+.code{display:flex;gap:6px}.code span{flex:1;height:52px;border-radius:12px;border:1px solid rgba(255,255,255,.25);display:grid;place-items:center;font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}.code .empty{color:transparent}
+.flabel{font-size:10px;color:rgba(255,255,255,.7);padding-left:20px}
+.lines{font-size:14px;display:grid;grid-template-columns:1fr auto;gap:6px 12px}.lines dt{color:rgba(255,255,255,.6)}.lines dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.8)}
+.lines .tot{border-top:1px solid rgba(255,255,255,.1);padding-top:10px;color:#fff}
+.quote{border-left:2px solid rgba(255,255,255,.25);padding-left:12px;font-size:14px;color:rgba(255,255,255,.8);line-height:1.55}
+.quote small{display:block;color:rgba(255,255,255,.45);font-size:12px;margin-top:6px}
+.pass{border-radius:16px;border-top-left-radius:0;background:#f4f1ea;color:#000;padding:16px;opacity:.35}
+.pass .qr{width:120px;height:120px;margin:12px auto 0;background:repeating-linear-gradient(90deg,#000 0 6px,transparent 6px 12px),repeating-linear-gradient(0deg,#000 0 6px,transparent 6px 12px);background-blend-mode:multiply;opacity:.8}
+.void{position:relative}.void::after{content:"REFUNDED";position:absolute;inset:0;display:grid;place-items:center;font-family:Anybody,sans-serif;font-stretch:135%;font-weight:800;font-size:22px;color:#000;letter-spacing:.04em}
+.decide{counter-reset:q;list-style:none;margin:12px 0 0;padding:0;max-width:92ch}
+.decide li{counter-increment:q;padding:12px 0;border-top:1px solid var(--border);display:grid;grid-template-columns:28px minmax(0,1fr);gap:4px}
+.decide li::before{content:counter(q);color:var(--muted)}.decide b{font-weight:600}.decide .rec{display:block;color:var(--muted);font-size:13px;margin-top:3px}
+.new-tag{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#000;background:var(--lime);border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:2px}
+</style></head><body><main class="doc">
+
+<header class="head">
+<h1>Refund offers</h1>
+<p>An admin offers a refund. The buyer gets an email with the admin's own message and a link. To take it, they confirm their email with a code, then the refund goes through Stripe and their tickets stop working. Nobody can claim a refund that was not offered.</p>
+<nav class="jump">
+<a href="#flow">How it works</a>
+<a href="#admin-a">Admin A <small>one order</small></a>
+<a href="#admin-b">Admin B <small>whole event</small></a>
+<a href="#email">The email</a>
+<a href="#cust-a">Buyer A <small>refund page</small></a>
+<a href="#cust-b">Buyer B <small>on their tickets</small></a>
+<a href="#decide">Decisions</a>
+</nav>
+</header>
+
+<section id="flow">
+<h2>How it works</h2>
+<div class="flow">
+<div><b>Admin offers</b>Picks the amount, writes a message, sets how long it stays open.</div>
+<div><b>Buyer is emailed</b>The message, the amount, and a "Get my refund" button.</div>
+<div><b>Buyer confirms</b>A 6-digit code goes to the order's email. Forwarded links and friends holding a ticket can't claim it.</div>
+<div><b>Refund goes through</b>Stripe refunds the card, the tickets are voided, the seats go back on sale, the usual refund email follows.</div>
+</div>
+<p class="notes">Pick one admin option and one buyer option. They mix freely; the email is the same either way.</p>
+</section>
+
+<!-- ================= ADMIN A ================= -->
+<section id="admin-a">
+<h2><span>Admin A</span>Offer from one order</h2>
+<p class="lede">A new button next to "Refund order" in the order dialog. Good for one-off requests: a buyer who emailed in, someone who can't make it.</p>
+
+<p class="where">Event › Orders › order dialog</p>
+<div class="row">
+<div class="dialog">
+<h3 class="mono">A3F9-2K</h3>
+<p class="desc">Sam Taylor · sam.taylor@gmail.com · Paid Mon, 2 Nov, 7:14 pm</p>
+<dl class="dl"><dt>Tickets</dt><dd>$80.00</dd><dt>Booking fee</dt><dd>$6.00</dd><dt>Total</dt><dd>$86.00</dd></dl>
+<div class="actions">
+<span class="btn outline danger">↶ Refund order</span>
+<span class="btn outline new">✉ Offer refund</span>
+</div>
+</div>
+</div>
+
+<p class="where">Offer refund dialog</p>
+<div class="row">
+<div class="dialog sm">
+<h3>Offer a refund</h3>
+<p class="desc">Sam gets this by email and can take it until it closes. Nothing is refunded until they do.</p>
+<div class="field"><span class="lab">Amount</span>
+<div class="radio on"><i></i><div>Everything they paid<small>Tickets and booking fee</small></div><span class="amt">$86.00</span></div>
+<div class="radio"><i></i><div>Tickets only<small>Keeps the $6.00 booking fee</small></div><span class="amt">$80.00</span></div>
+</div>
+<div class="field"><label>Message</label>
+<div class="textarea">Hi Sam, Vol. 3 has moved to Saturday 14 March. If you can't make the new date, you can have your money back.</div>
+<span class="hint">Shown in the email above the refund button.</span></div>
+<div class="field"><label>Open until</label><div class="input">Mon, 23 Nov, 11:59 pm</div></div>
+<div class="foot"><span class="btn ghost">Send a test to me</span><span class="btn outline">Cancel</span><span class="btn primary">Email Sam</span></div>
+</div>
+</div>
+
+<p class="where">The order once it is offered</p>
+<div class="row">
+<div class="dialog">
+<h3 class="mono">A3F9-2K</h3>
+<div class="state"><p>Refund of $86.00 offered Mon, 9 Nov · open until Mon, 23 Nov</p><p>Not taken yet · <a>Resend email</a> · <a>Withdraw offer</a></p></div>
+<p class="where" style="margin-top:18px">Timeline</p>
+<ul class="tl">
+<li>Refund offered by Will, $86.00 <span>9 Nov, 4:02 pm</span></li>
+<li>Paid with Apple Pay <span>2 Nov, 7:14 pm</span></li>
+</ul>
+</div>
+</div>
+<div class="notes"><ul>
+<li>"Refund order" stays for refunding straight away without asking.</li>
+<li>Withdrawing kills the link. A taken offer shows as a normal refund, by the buyer.</li>
+</ul></div>
+</section>
+
+<!-- ================= ADMIN B ================= -->
+<section id="admin-b">
+<h2><span>Admin B</span>Offer to a whole event</h2>
+<p class="lede">From the event's menu, for a date change, a lineup change or a venue move. Same dialog, plus who gets it. Each buyer still gets their own link and amount. Admin A comes with it: one order is just this with one buyer.</p>
+
+<p class="where">Event › ⋯ menu</p>
+<div class="row">
+<div class="menu">
+<div>View public page</div><div>Open scanner</div><div>Duplicate</div><hr><div>Pause sales</div><div>Mark sold out</div><div class="on">Offer refunds… <span class="new-tag">new</span></div><div>Cancel event…</div><hr><div>Archive</div>
+</div>
+<div class="dialog sm">
+<h3>Offer refunds for Vol. 3</h3>
+<p class="desc">Each buyer gets their own email and link. Nothing is refunded until they take it.</p>
+<div class="field"><span class="lab">Who</span>
+<div class="check on"><i></i>General admission<span class="n">142 orders</span></div>
+<div class="check on"><i></i>Early bird<span class="n">60 orders</span></div>
+<div class="check"><i></i>Comps and lifetime passes<span class="n">not paid</span></div>
+<span class="hint">Orders already refunded, or paid at the door in cash, are left out.</span></div>
+<div class="field"><span class="lab">Amount</span>
+<div class="radio on"><i></i><div>Everything they paid<small>Tickets and booking fee</small></div><span class="amt">$17,388</span></div>
+<div class="radio"><i></i><div>Tickets only<small>Keeps booking fees</small></div><span class="amt">$16,176</span></div>
+</div>
+<div class="field"><label>Message</label>
+<div class="textarea">Vol. 3 has moved to Saturday 14 March. Your tickets work on the new date. If you can't make it, you can have your money back.</div></div>
+<div class="field"><label>Open until</label><div class="input">Mon, 23 Nov, 11:59 pm</div></div>
+<div class="foot"><span class="btn ghost">Send a test to me</span><span class="btn primary">Email 202 buyers</span></div>
+</div>
+</div>
+<div class="notes"><ul>
+<li>The confirm says how many people and how much could go out at most.</li>
+<li>The event overview gets a line: "Refunds offered: 202 · taken 31 · $2,666 refunded".</li>
+</ul></div>
+</section>
+
+<!-- ================= EMAIL ================= -->
+<section id="email">
+<h2>The email</h2>
+<p class="lede">Same plain black layout as the ticket and refund emails. The admin's message sits in the middle, with who sent it.</p>
+<div class="where">Inbox</div>
+<div class="email">
+<div class="brand">ATMOS</div>
+<h4>You can get a refund</h4>
+<div class="muted">For order A3F9-2K, Vol. 3, Sat 7 Mar.</div>
+<div class="msg">Hi Sam, Vol. 3 has moved to Saturday 14 March. If you can't make the new date, you can have your money back.<small>Will, Atmos</small></div>
+<div class="box"><b>$86.00</b> back to the card you paid with. Your 2 tickets stop working once you take it.<br>If you want to keep them, do nothing.</div>
+<a class="cta">Get my refund</a>
+<div class="fine">Open until Mon, 23 Nov. Questions? Reply to this email.</div>
+</div>
+</section>
+
+<!-- ================= CUSTOMER A ================= -->
+<section id="cust-a">
+<h2><span>Buyer A</span>A refund page of its own</h2>
+<p class="lede">The button opens <code>/refund/&lt;link&gt;</code>. Three steps on one page: see the offer, enter the code, done. Their ticket page is untouched until they take it.</p>
+<div class="phones" style="margin-top:16px">
+<div><div class="phone"><div class="poster"></div><div class="in">
+<div class="logo">ATMOS</div>
+<span class="pill lime t-label" style="align-self:flex-start">Refund offered</span>
+<div class="t-display" style="font-size:30px">Vol. 3</div>
+<div class="panel" style="display:flex;flex-direction:column;gap:14px">
+<div class="quote">Hi Sam, Vol. 3 has moved to Saturday 14 March. If you can't make the new date, you can have your money back.<small>Will, Atmos</small></div>
+<dl class="lines"><dt>2 × General admission</dt><dd>$80.00</dd><dt>Booking fee</dt><dd>$6.00</dd><dt class="tot t-label" style="font-size:11px">Back to your card</dt><dd class="tot t-display" style="font-size:20px">$86.00</dd></dl>
+<p>Taking it cancels both tickets. To make sure it's you, we'll email a code to <b style="color:#fff">s•••@gmail.com</b>.</p>
+<div class="sbtn lime t-label">Email me a code</div>
+<p style="font-size:12px;color:rgba(255,255,255,.5);text-align:center">Open until Mon, 23 Nov. Keeping your tickets? Close this page.</p>
+</div>
+</div></div><p class="cap">1. The offer</p></div>
+
+<div><div class="phone"><div class="poster"></div><div class="in">
+<div class="logo">ATMOS</div>
+<div class="t-display" style="font-size:30px">Check your email</div>
+<div class="panel" style="display:flex;flex-direction:column;gap:14px">
+<p>We sent a 6-digit code to s•••@gmail.com. It works for 10 minutes.</p>
+<span class="flabel t-label">Code</span>
+<div class="code"><span>4</span><span>8</span><span>2</span><span>0</span><span class="empty">0</span><span class="empty">0</span></div>
+<div class="sbtn lime t-label">Refund $86.00</div>
+<p style="font-size:13px;text-align:center"><u>Send a new code</u></p>
+</div>
+</div></div><p class="cap">2. Code, then one tap to refund</p></div>
+
+<div><div class="phone"><div class="poster"></div><div class="in">
+<div class="logo">ATMOS</div>
+<span class="pill lime t-label" style="align-self:flex-start">✓ Refunded</span>
+<div class="t-display" style="font-size:30px">$86.00 is on its way</div>
+<div class="panel" style="display:flex;flex-direction:column;gap:12px">
+<p>It lands back on your card in 5 to 10 business days. Your tickets for Vol. 3 no longer work, and we've emailed you a receipt.</p>
+<div class="sbtn line t-label">See what's on</div>
+</div>
+</div></div><p class="cap">3. Done</p></div>
+</div>
+<div class="notes"><ul>
+<li>A taken, withdrawn or closed offer opens to a plain "This offer has ended" with the support email.</li>
+<li>Wrong codes are limited (5 tries, then a new code), using the rate limiter checkout already has.</li>
+</ul></div>
+</section>
+
+<!-- ================= CUSTOMER B ================= -->
+<section id="cust-b">
+<h2><span>Buyer B</span>On their ticket page</h2>
+<p class="lede">The button opens the tickets page they already know. The offer sits above the passes, where the details form goes today. Same code step, in place. Afterwards the passes show as refunded.</p>
+<div class="phones" style="margin-top:16px">
+<div><div class="phone"><div class="poster"></div><div class="in">
+<span class="pill ghost t-label" style="align-self:flex-start">Refund offered</span>
+<div class="panel" style="display:flex;flex-direction:column;gap:12px">
+<div class="t-display" style="font-size:20px">You can get $86.00 back</div>
+<div class="quote">Hi Sam, Vol. 3 has moved to Saturday 14 March. If you can't make the new date, you can have your money back.<small>Will, Atmos · open until 23 Nov</small></div>
+<div class="sbtn lime t-label">Refund my tickets</div>
+</div>
+<div class="pass" style="opacity:1"><div class="t-label" style="font-size:10px;opacity:.6">Vol. 3 · Sat 7 Mar</div><div class="t-display" style="font-size:18px;margin-top:6px">Sam Taylor</div><div class="qr"></div></div>
+</div></div><p class="cap">1. The offer above their passes</p></div>
+
+<div><div class="phone"><div class="poster"></div><div class="in">
+<div class="panel" style="display:flex;flex-direction:column;gap:12px">
+<div class="t-display" style="font-size:20px">Confirm it's you</div>
+<p>We sent a code to s•••@gmail.com.</p>
+<div class="code"><span>4</span><span>8</span><span>2</span><span>0</span><span>1</span><span>7</span></div>
+<p>This cancels both tickets and refunds $86.00 to your card.</p>
+<div class="sbtn lime t-label">Refund $86.00</div>
+<p style="font-size:13px;text-align:center"><u>Keep my tickets</u></p>
+</div>
+<div class="pass" style="opacity:.5"><div class="t-label" style="font-size:10px;opacity:.6">Vol. 3 · Sat 7 Mar</div><div class="t-display" style="font-size:18px;margin-top:6px">Sam Taylor</div><div class="qr"></div></div>
+</div></div><p class="cap">2. Code in place</p></div>
+
+<div><div class="phone"><div class="poster"></div><div class="in">
+<span class="pill lime t-label" style="align-self:flex-start">✓ Refunded $86.00</span>
+<p style="font-size:14px;color:rgba(255,255,255,.7)">Back on your card in 5 to 10 business days.</p>
+<div class="pass void"><div class="t-label" style="font-size:10px;opacity:.6">Vol. 3 · Sat 7 Mar</div><div class="t-display" style="font-size:18px;margin-top:6px">Sam Taylor</div><div class="qr"></div></div>
+</div></div><p class="cap">3. Passes marked refunded</p></div>
+</div>
+<div class="notes"><ul>
+<li>Anyone the buyer forwarded their tickets to sees the offer too, but the code only goes to the order's email.</li>
+<li>Less new surface: no new page, and the ticket page already loads the order.</li>
+</ul></div>
+</section>
+
+<section id="decide">
+<h2>Decisions for you</h2>
+<ol class="decide">
+<li><div><b>Admin A, B, or both?</b><span class="rec">I'd build B with A inside it: the same dialog, from one order or the whole event. A date change is when this gets used most.</span></div></li>
+<li><div><b>Buyer A or B?</b><span class="rec">I lean B: one place for everything about their order, and it already shows the receipt. A is clearer if you expect people to share ticket links around.</span></div></li>
+<li><div><b>The fee.</b><span class="rec">The mocks offer "everything" or "tickets only" per offer. If "fee refund" meant something else, like a refund with a fee taken off, tell me and the amount picker changes.</span></div></li>
+<li><div><b>All or nothing per order?</b><span class="rec">The mocks refund the whole order. Letting a buyer refund 1 of their 3 tickets is possible, but adds a step.</span></div></li>
+<li><div><b>How long an offer stays open.</b><span class="rec">Default 14 days, editable, and never past the event's start.</span></div></li>
+</ol>
+</section>
+
+</main></body></html>

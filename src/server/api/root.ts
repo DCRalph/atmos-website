@@ -43,6 +43,7 @@ import { discountCodesRouter } from "~/server/api/routers/discount-codes";
 import { eventCodesRouter } from "~/server/api/routers/event-codes";
 import { campaignsRouter } from "~/server/api/routers/campaigns";
 import { ticketAdminRouter } from "~/server/api/routers/ticket-admin";
+import { refundOffersRouter } from "~/server/api/routers/refund-offers";
 import { dashboardRouter } from "~/server/api/routers/dashboard";
 import { ticketAnalyticsRouter } from "~/server/api/routers/ticket-analytics";
 import { analyticsRouter } from "~/server/api/routers/analytics";
@@ -109,6 +110,8 @@ export const appRouter = createTRPCRouter({
   ticketCheckout: ticketCheckoutRouter,
   tickets: ticketsRouter,
   ticketAdmin: ticketAdminRouter,
+  /** Refunds an admin offers and the buyer takes from a link. */
+  refundOffers: refundOffersRouter,
   ticketAnalytics: ticketAnalyticsRouter,
   /** Every event at once: the admin Analytics page. */
   analytics: analyticsRouter,
