@@ -2,6 +2,8 @@ import "server-only";
 
 import { formatNZD } from "~/lib/ticketing/money";
 import { formatEventDateLong, formatEventTime } from "~/lib/ticketing/dates";
+import { SITE_URL } from "~/lib/seo-constants";
+import { SITE_ACCENT } from "~/lib/site-constants";
 
 /**
  * Ticket email HTML.
@@ -90,7 +92,7 @@ function layout(title: string, body: string, footer: string): string {
 <tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
 <tr><td style="padding:8px 0 24px;">
-  <span style="font-size:18px;font-weight:800;letter-spacing:0.22em;color:${ACCENT};">ATMOS</span>
+  <img src="${SITE_URL}/email/atmos-logo.png" width="120" height="27" alt="ATMOS" style="display:block;width:120px;height:auto;border:0;">
 </td></tr>
 ${body}
 <tr><td style="padding:24px 0 8px;color:${MUTED};font-size:12px;line-height:1.6;">
@@ -508,6 +510,20 @@ export function renderLifetimeEmail(input: LifetimeEmailInput): {
   };
 }
 
+/**
+ * A rounded panel in the shape the ticket pages use: square top-left corner,
+ * the rest rounded. Outlook on Windows ignores the rounding and draws it
+ * square, which still reads fine.
+ */
+function panel(content: string): string {
+  return `<div style="background:#0b0b0b;border:1px solid #242424;border-radius:16px;border-top-left-radius:0;padding:16px 18px;">${content}</div>`;
+}
+
+/** The site's lime pill button. */
+function pillButton(href: string, label: string): string {
+  return `<a href="${escapeHtml(href)}" style="display:inline-block;padding:14px 26px;background:${SITE_ACCENT};color:#000000;text-decoration:none;font-size:15px;font-weight:700;border-radius:999px;">${escapeHtml(label)}</a>`;
+}
+
 export function renderRefundEmail({
   eventName,
   orderNumber,
@@ -527,18 +543,16 @@ export function renderRefundEmail({
 <tr><td style="padding:0 0 18px;">
   <div style="font-size:30px;line-height:1.2;font-weight:800;letter-spacing:-0.02em;color:${TEXT};margin-bottom:14px;">Refund processed</div>
   <div style="font-size:15px;color:${MUTED};line-height:1.7;">
-    We've refunded ${formatNZD(amountCents)} for order ${escapeHtml(orderNumber)} — ${escapeHtml(eventName)}.<br>
+    We've refunded ${formatNZD(amountCents)} for order ${escapeHtml(orderNumber)}, ${escapeHtml(eventName)}.<br>
     ${ticketNumbers.length > 0 ? `Cancelled: ${list}.<br>` : ""}
-    The refund lands back on the card you paid with, usually within 5–10 business days.
+    The refund lands back on the card you paid with, usually within 5 to 10 business days.
   </div>
 </td></tr>${
     // A payment refunded before anything was issued has no tickets to warn about.
     ticketNumbers.length > 0
       ? `
 <tr><td style="padding:0 0 14px;">
-  <div style="background:${CARD};border:2px solid ${BORDER};padding:18px 20px;font-size:14px;color:${MUTED};">
-    Those tickets no longer work at the door. Any wallet passes will stop scanning too.
-  </div>
+  ${panel(`<div style="font-size:14px;line-height:1.7;color:${MUTED};">Those tickets no longer work at the door. Any wallet passes will stop scanning too.</div>`)}
 </td></tr>`
       : ""
   }`;
@@ -550,9 +564,9 @@ export function renderRefundEmail({
   const text = [
     "Refund processed",
     "",
-    `We've refunded ${formatNZD(amountCents)} for order ${orderNumber} — ${eventName}.`,
+    `We've refunded ${formatNZD(amountCents)} for order ${orderNumber}, ${eventName}.`,
     ticketNumbers.length > 0 ? `Cancelled: ${ticketNumbers.join(", ")}.` : "",
-    "The refund lands back on the card you paid with, usually within 5-10 business days.",
+    "The refund lands back on the card you paid with, usually within 5 to 10 business days.",
     ticketNumbers.length > 0 ? "Those tickets no longer work at the door." : "",
   ]
     .filter(Boolean)
@@ -606,18 +620,16 @@ export function renderRefundOfferEmail({
   <div style="font-size:30px;line-height:1.2;font-weight:800;letter-spacing:-0.02em;color:${TEXT};margin-bottom:10px;">You can get a refund</div>
   <div style="font-size:15px;color:${MUTED};line-height:1.7;">For order ${escapeHtml(orderNumber)}, ${escapeHtml(eventName)}, ${escapeHtml(formatEventDateLong(eventStartsAt, timezone))}.</div>
 </td></tr>
-<tr><td style="padding:0 0 18px;">
-  <div style="border-left:3px solid ${STRONG_BORDER};padding:4px 0 4px 14px;font-size:15px;line-height:1.65;color:${TEXT};white-space:pre-line;">${escapeHtml(message)}</div>
-  <div style="padding:8px 0 0 17px;font-size:12px;color:${MUTED};">${escapeHtml(signed)}</div>
+<tr><td style="padding:0 0 12px;">
+  ${panel(`<div style="font-size:15px;line-height:1.65;color:${TEXT};white-space:pre-line;">${escapeHtml(message)}</div>
+  <div style="padding-top:8px;font-size:12px;color:${MUTED};">${escapeHtml(signed)}</div>`)}
 </td></tr>
-<tr><td style="padding:0 0 18px;">
-  <div style="background:${CARD};border:2px solid ${BORDER};padding:16px 18px;font-size:14px;color:${MUTED};line-height:1.7;">
-    <span style="color:${TEXT};font-weight:600;">${formatNZD(amountCents)}</span> back to the card you paid with. ${tickets} working once you take it.<br>
-    If you want to keep ${ticketCount === 1 ? "it" : "them"}, do nothing.
-  </div>
+<tr><td style="padding:0 0 20px;">
+  ${panel(`<div style="font-size:28px;line-height:1.2;font-weight:800;letter-spacing:-0.02em;color:${TEXT};">${formatNZD(amountCents)}</div>
+  <div style="padding-top:6px;font-size:14px;color:${MUTED};line-height:1.7;">back to the card you paid with. ${tickets} working once you take it. If you want to keep ${ticketCount === 1 ? "it" : "them"}, do nothing.</div>`)}
 </td></tr>
 <tr><td style="padding:0 0 8px;">
-  <a href="${escapeHtml(url)}" style="display:inline-block;padding:14px 22px;background:${ACCENT};color:#000000;text-decoration:none;font-size:15px;font-weight:700;">Get my refund</a>
+  ${pillButton(url, "Get my refund")}
 </td></tr>`;
 
   const footer = [
@@ -662,8 +674,8 @@ export function renderRefundCodeEmail({
   const body = `
 <tr><td style="padding:0 0 18px;">
   <div style="font-size:15px;color:${MUTED};line-height:1.7;margin-bottom:12px;">Your code to take the refund for ${escapeHtml(eventName)}:</div>
-  <div style="font-size:36px;font-weight:800;letter-spacing:0.2em;color:${TEXT};font-family:Menlo,Consolas,monospace;">${escapeHtml(code)}</div>
-  <div style="font-size:14px;color:${MUTED};line-height:1.7;margin-top:12px;">It works for 10 minutes. If you didn't ask for it, ignore this email: nothing is refunded without it.</div>
+  ${panel(`<div style="font-size:34px;line-height:1.2;font-weight:800;letter-spacing:0.18em;color:${TEXT};font-family:Menlo,Consolas,monospace;">${escapeHtml(code)}</div>`)}
+  <div style="font-size:14px;color:${MUTED};line-height:1.7;margin-top:14px;">It works for 10 minutes. If you didn't ask for it, ignore this email: nothing is refunded without it.</div>
 </td></tr>`;
   const text = [
     `Your code to take the refund for ${eventName}: ${code}`,
