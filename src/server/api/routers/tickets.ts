@@ -260,7 +260,8 @@ export const ticketsRouter = createTRPCRouter({
         }),
       ]);
 
-      await syncMarketingConsent(order.id);
+      // Only a box ticked in this save is new consent.
+      await syncMarketingConsent(order.id, { rejoin: !order.marketingOptIn });
 
       // A free order has never been emailed — there was nowhere to send it.
       // A card order has, unless the buyer has just corrected the address.

@@ -95,8 +95,13 @@ export async function anonymiseAndDeleteUser(userId: string): Promise<void> {
     // Keyed on the address rather than the account, so it has to be found by
     // the address. Deleted outright: an unsubscribe flag on a row whose only
     // content is an email address keeps the email address.
+    // The old newsletter table goes too until it is dropped, or the copy
+    // into subscribers that runs after the deploy would bring them back.
     ...(email
       ? [
+          db.subscriber.deleteMany({
+            where: { email: { equals: email, mode: "insensitive" } },
+          }),
           db.newsletterSubscription.deleteMany({
             where: { email: { equals: email, mode: "insensitive" } },
           }),

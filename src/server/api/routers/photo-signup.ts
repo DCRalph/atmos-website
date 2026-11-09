@@ -14,6 +14,7 @@ import {
 import { linkHosts } from "~/lib/short-links/domains";
 import { sendPhotosEmail } from "~/server/photo-signup";
 import { logActivity } from "~/server/utils/activity-log";
+import { NEWSLETTER, subscribe } from "~/server/mailouts/subscribers";
 
 /**
  * Gig photo signup: people leave an email on `/gigs/[id]/photo-signup` and
@@ -69,18 +70,18 @@ export const photoSignupRouter = createTRPCRouter({
           })
         : null;
       const source = subLink?.name ?? null;
-      await ctx.db.$transaction([
-        ctx.db.gigPhotoSignup.upsert({
+      await ctx.db.$transaction(async (tx) => {
+        await tx.gigPhotoSignup.upsert({
           where: { gigId_email: { gigId: gig.id, email: input.email } },
           create: { gigId: gig.id, email: input.email, source },
           update: {},
-        }),
-        ctx.db.newsletterSubscription.upsert({
-          where: { email: input.email },
-          create: { email: input.email },
-          update: { removed: false },
-        }),
-      ]);
+        });
+        await subscribe(tx, {
+          email: input.email,
+          list: NEWSLETTER,
+          source: `photo-signup:${gig.id}`,
+        });
+      });
 
       return { ok: true };
     }),

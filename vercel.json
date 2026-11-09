@@ -5,7 +5,10 @@
     {
       "path": "/api/cron/ticketing-sweep",
       "schedule": "*/5 * * * *"
- 
+    },
+    {
+      "path": "/api/cron/mailouts",
+      "schedule": "* * * * *"
     }
   ],
   "headers": [

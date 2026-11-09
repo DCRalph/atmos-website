@@ -1036,6 +1036,9 @@ model ContactSubmission {
   @@map("contact_submission")
 }
 
+/// Replaced by `Subscriber` and `ListMembership`, which every signup now
+/// writes to. Kept until the copy into them has been rerun after the deploy
+/// that switched over; dropped after that.
 model NewsletterSubscription {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -1045,6 +1048,184 @@ model NewsletterSubscription {
   removed Boolean @default(false)
 
   @@map("newsletter_subscription")
+}
+
+/// A list people can be on, like "Newsletter". Mailouts go to one or more.
+model MailingList {
+  id          String  @id @default(cuid())
+  /// Stable handle code signs people up with: `subscribe({ list: "newsletter" })`.
+  slug        String  @unique
+  /// What people see on their preferences page.
+  name        String
+  description String?
+  /// Shown on the preferences page to everyone. A private list (crew,
+  /// artists) is only shown to people already on it.
+  public      Boolean @default(true)
+
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  members ListMembership[]
+
+  @@map("mailing_list")
+}
+
+enum SuppressionReason {
+  /// The address does not exist. Resend said the bounce was permanent.
+  BOUNCED
+  /// They marked a mailout as spam.
+  COMPLAINED
+  /// Resend refused to send, because the address is on its own suppression list.
+  RESEND
+}
+
+/// One email address that marketing can go to, with the lists it is on.
+model Subscriber {
+  id    String  @id @default(cuid())
+  /// Lowercased and trimmed.
+  email String  @unique
+  name  String?
+
+  /// Set, this address gets no marketing at all, whatever its lists say.
+  /// Ticket and account email are unaffected.
+  suppressedAt     DateTime?
+  suppressedReason SuppressionReason?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships ListMembership[]
+  received    MailoutRecipient[]
+
+  @@map("subscriber")
+}
+
+enum UnsubscribeVia {
+  /// The Unsubscribe button a mail app draws from the `List-Unsubscribe` header.
+  ONE_CLICK
+  /// The preferences page linked from the footer.
+  PAGE
+  /// Marked as spam, which takes them off everything.
+  COMPLAINT
+  ADMIN
+}
+
+/// Someone on a list. A row with `unsubscribedAt` set is someone who left,
+/// kept so an import or an admin can never quietly put them back.
+model ListMembership {
+  subscriberId String
+  subscriber   Subscriber  @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+  listId       String
+  list         MailingList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  /// How they joined, which is the consent on record: "newsletter-form",
+  /// "checkout:<eventId>", "photo-signup:<gigId>", "import", "admin".
+  source       String
+  subscribedAt DateTime @default(now())
+
+  unsubscribedAt            DateTime?
+  unsubscribedVia           UnsubscribeVia?
+  /// The mailout whose link they used, so a mailout can count who it lost.
+  unsubscribedFromMailoutId String?
+
+  @@id([subscriberId, listId])
+  @@index([listId, unsubscribedAt])
+  @@index([unsubscribedFromMailoutId])
+  @@map("list_membership")
+}
+
+enum MailoutStatus {
+  DRAFT
+  /// Waiting for `scheduledFor`. Recipients are worked out when it fires.
+  SCHEDULED
+  /// Recipients are queued and going out in batches.
+  SENDING
+  SENT
+  CANCELLED
+}
+
+/// One marketing email, written once and sent to everyone on its lists.
+model Mailout {
+  id          String  @id @default(cuid())
+  /// Its `utm_campaign`, so ticket orders from its links are counted as its.
+  slug        String  @unique
+  subject     String  @default("")
+  /// The line inboxes show after the subject.
+  previewText String?
+  heading     String?
+  /// Lexical state, from the same editor as gig descriptions.
+  body        Json?
+  /// An image above the text, usually a poster.
+  imageFileId String?
+  buttonLabel String?
+  buttonUrl   String?
+
+  /// The lists it goes to. People on two of them get it once.
+  listIds String[]
+
+  status       MailoutStatus @default(DRAFT)
+  scheduledFor DateTime?
+
+  /// Frozen when it starts sending, with placeholders where each person's
+  /// unsubscribe link goes. Editing after that is not possible.
+  html String? @db.Text
+  text String? @db.Text
+
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  cancelledAt DateTime?
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  recipients MailoutRecipient[]
+
+  @@index([status, scheduledFor])
+  @@map("mailout")
+}
+
+enum MailoutRecipientStatus {
+  QUEUED
+  /// Resend accepted it. Delivery, bounces and clicks come later, by webhook.
+  SENT
+  /// Three batches failed, or Resend refused this one address.
+  FAILED
+  /// Not sent: they unsubscribed or were suppressed after it was queued, or
+  /// the mailout was cancelled.
+  SKIPPED
+}
+
+/// One person a mailout went (or is going) to.
+model MailoutRecipient {
+  id           String     @id @default(cuid())
+  mailoutId    String
+  mailout      Mailout    @relation(fields: [mailoutId], references: [id], onDelete: Cascade)
+  subscriberId String
+  subscriber   Subscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+  /// The address it went to, as it was then.
+  email        String
+
+  status   MailoutRecipientStatus @default(QUEUED)
+  attempts Int                    @default(0)
+  /// The idempotency key of the batch that failed with this row in it, so
+  /// the retry sends the same batch under the same key.
+  batchKey String?
+  error    String?
+
+  /// Resend's id, which its webhook events carry.
+  resendId     String?   @unique
+  sentAt       DateTime?
+  deliveredAt  DateTime?
+  bouncedAt    DateTime?
+  complainedAt DateTime?
+  openedAt     DateTime?
+  clickedAt    DateTime?
+
+  @@unique([mailoutId, subscriberId])
+  @@index([mailoutId, status])
+  @@map("mailout_recipient")
 }
 
 enum FileUploadStatus {
@@ -1389,6 +1570,12 @@ enum ActivityType {
   API_KEY_CREATED
   API_KEY_UPDATED
   API_KEY_DELETED
+  MAILOUT_SENT
+  MAILOUT_CANCELLED
+  MAILING_LIST_CREATED
+  MAILING_LIST_UPDATED
+  SUBSCRIBERS_IMPORTED
+  SUBSCRIBER_DELETED
 }
 
 model ActivityLog {

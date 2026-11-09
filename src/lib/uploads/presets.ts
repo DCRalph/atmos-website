@@ -296,6 +296,27 @@ export const uploadPresets = {
     keyPrefix: () => "venues",
   }),
 
+  /** The image at the top of a mailout. JPEG, since Outlook cannot draw WebP. */
+  mailoutImage: definePreset({
+    label: "Mailout image",
+    description: "The image above the text of a marketing email.",
+    access: "admin",
+    accept: IMAGE_TYPES,
+    maxFileSize: mb(20),
+    maxFiles: 1,
+    maxTotalSize: mb(20),
+    for: "mailout_image",
+    image: {
+      maxDimension: 1200,
+      format: "jpeg",
+      quality: 85,
+      maxOutputSize: mb(1),
+    },
+    context: z.object({}),
+    forId: () => "mailouts",
+    keyPrefix: () => "mailouts",
+  }),
+
   /** An artist's profile photo. */
   artistAvatar: definePreset({
     label: "Artist avatar",

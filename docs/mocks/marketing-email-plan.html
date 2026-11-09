@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>Atmos admin · marketing email plan</title><style>
+:root{color-scheme:dark;--page:#000;--bg:#0a0a0a;--card:#171717;--accent:#262626;--border:rgba(255,255,255,.1);--ink:#fafafa;--muted:#a1a1a1;--rev:#8b5cf6;--green:#4ade80;--amber:#fbbf24;--red:#f87171}
+*{box-sizing:border-box}html{background:var(--page);color:var(--ink)}body{margin:0;font:14px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+h1,h2,h3,h4,p{margin:0}a{color:inherit}
+code{font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--accent);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+pre{margin:0;font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;overflow-x:auto;color:#d4d4d4}
+pre .c{color:#737373}pre .k{color:#c4b5fd}
+.muted{color:var(--muted)}
+.doc{max-width:1080px;margin:auto;padding:40px 16px 96px}
+.head h1{font-size:30px;line-height:1.2;letter-spacing:-.025em;font-weight:700}.head p{margin-top:10px;color:var(--muted);max-width:80ch}
+.jump{display:flex;gap:6px 22px;flex-wrap:wrap;margin-top:22px;padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);font-weight:600}.jump a{text-decoration:none}.jump small{color:var(--muted);font-weight:400}
+section{margin-top:56px}section h2{font-size:22px;letter-spacing:-.02em}section h2 span{color:var(--muted);font-weight:500;margin-right:8px}
+.lede{color:var(--muted);font-size:13.5px;max-width:84ch;margin-top:6px}
+h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:28px 0 8px;font-weight:600}
+ul.plain{margin:10px 0 0;padding-left:18px;max-width:90ch}ul.plain li{margin:5px 0}ul.plain b{font-weight:600}
+ol.steps{margin:12px 0 0;padding-left:22px;max-width:92ch}ol.steps li{margin:8px 0;padding-left:4px}ol.steps b{font-weight:600}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{font-weight:400;color:var(--muted);font-size:12px;text-align:left;padding:0 14px 6px 0;white-space:nowrap}
+td{text-align:left;padding:8px 14px 8px 0;border-top:1px solid var(--border);vertical-align:top}
+td:first-child{font-weight:600;width:24%;min-width:150px}td:last-child{padding-right:0;width:56px;white-space:nowrap}
+td .why{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.p1{color:var(--green)}.p2{color:var(--rev)}.p3{color:var(--amber)}.later{color:var(--muted)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-top:14px}
+@media (max-width:760px){.two{grid-template-columns:minmax(0,1fr)}td:first-child{width:auto;min-width:120px}}
+.fig{border:1px solid var(--border);border-radius:8px;padding:14px 16px;min-width:0;background:var(--bg)}
+.fig h4{font-size:14px;font-weight:600;margin-bottom:6px}.fig p{font-size:13px;color:var(--muted)}.fig p+p{margin-top:6px}
+.fig.pick{border-color:rgba(139,92,246,.55)}
+.tag{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--rev);margin-bottom:4px;display:block}
+.qs{counter-reset:q;list-style:none;margin:12px 0 0;padding:0;max-width:92ch}
+.qs li{counter-increment:q;padding:12px 0;border-top:1px solid var(--border);display:grid;grid-template-columns:28px minmax(0,1fr);gap:4px}
+.qs li::before{content:counter(q);color:var(--muted);font-variant-numeric:tabular-nums}
+.qs b{font-weight:600}.qs .rec{display:block;color:var(--muted);font-size:13px;margin-top:3px}
+.footer-sketch{margin-top:12px;border:1px solid var(--border);border-radius:8px;padding:20px;background:#0a0a0a;font-size:12.5px;color:#8a8a8a;text-align:center;line-height:1.7}
+.footer-sketch u{color:#d4d4d4;text-underline-offset:3px}
+</style></head><body><main class="doc">
+
+<header class="head">
+<h1>Marketing email</h1>
+<p>Send emails to one or more lists through Resend, with working unsubscribe, bounce handling, and results per send. Our database stays the list. Resend only delivers. Phase 1 is safe to ship before anything sends, because it is the part that lets people leave.</p>
+<nav class="jump">
+<a href="#today">Today</a>
+<a href="#approach">Approach</a>
+<a href="#features">Features</a>
+<a href="#model">Data</a>
+<a href="#send">Sending</a>
+<a href="#unsub">Unsubscribe</a>
+<a href="#rules">Rules we must meet</a>
+<a href="#phases">Phases</a>
+<a href="#decide">Decisions <small>for you</small></a>
+</nav>
+</header>
+
+<section id="today">
+<h2>What exists today</h2>
+<ul class="plain">
+<li><b>One flat list.</b> <code>newsletter_subscription</code> is an email plus a <code>removed</code> flag. No name, no source, no list.</li>
+<li><b>Three ways in.</b> The newsletter form (home and gig pages), the gig photo signup (joins the newsletter, the page says so), and the checkout box (<code>marketingOptIn</code>, express consent per UEMA).</li>
+<li><b>Nothing sends to it yet</b>, and there is no unsubscribe link anywhere. Only admins can flip <code>removed</code>.</li>
+<li><b>Resend plumbing is there.</b> <code>sendEmailBatch</code> sends 100 per call with an idempotency key, and the inbound-email route already verifies Resend webhooks with <code>resend.webhooks.verify</code>. Batch sends accept <code>headers</code> and <code>tags</code>, which is all we need.</li>
+<li><b>Two traps.</b> "Campaign" is taken (tagged links and spend), so these are <b>mailouts</b>. And <code>vercel.json</code> caches <code>/email/*</code> as immutable for a year, so the unsubscribe page must not live there.</li>
+</ul>
+</section>
+
+<section id="approach">
+<h2>Approach</h2>
+<p class="lede">Resend now has Broadcasts, Segments and Topics, which would give us a hosted editor and unsubscribe page. The catch is two copies of every list.</p>
+<div class="two">
+<div class="fig pick"><span class="tag">Recommended</span><h4>Our DB is the list, Resend is the pipe</h4>
+<p>Lists, people, consent and unsubscribes live in Postgres next to the signups that create them. We render the email, send through the batch API, and read delivery events back by webhook.</p>
+<p>Signup paths, account deletion and imports touch one table. Ticket results join on the same database. We write the queue and the unsubscribe page, roughly a few hundred lines.</p></div>
+<div class="fig"><h4>Resend Broadcasts</h4>
+<p>Sync every subscriber into Resend Segments, write in Resend's editor, send from their dashboard. Unsubscribe page and stats come free.</p>
+<p>Every signup, removal and deletion has to be mirrored there, and unsubscribes made on their page have to be mirrored back by webhook. Two sources of truth for consent is the thing most likely to email someone who left.</p></div>
+</div>
+</section>
+
+<section id="features">
+<h2>Features</h2>
+<p class="lede">Phase in the right column: <span class="p1">1</span> foundation, <span class="p2">2</span> sending, <span class="p3">3</span> results and import, <span class="later">later</span> when asked for.</p>
+
+<h3>Lists</h3>
+<div class="scroll"><table>
+<thead><tr><th>Feature</th><th>What it does</th><th>Phase</th></tr></thead>
+<tbody>
+<tr><td>Multiple lists</td><td>Create, rename and archive lists. Each has a name and a one-line description people see on their preferences page.<span class="why">Seeded with "Newsletter", holding everyone currently subscribed.</span></td><td class="p1">1</td></tr>
+<tr><td>Public or private</td><td>Public lists appear on the preferences page and in signup forms. Private lists (crew, artists, VIPs) are staff-managed and only shown to members.</td><td class="p1">1</td></tr>
+<tr><td>Counts</td><td>Subscribed, unsubscribed and suppressed per list, and growth over the last 30 days.</td><td class="p1">1</td></tr>
+<tr><td>Send to several lists</td><td>A mailout picks one or more lists. People on two of them get one email.</td><td class="p2">2</td></tr>
+<tr><td>Exclude a list</td><td>"Newsletter, minus people already holding a ticket to this event".</td><td class="later">later</td></tr>
+<tr><td>Segments from data</td><td>Opted-in buyers of a past event, people who came to a venue. Built from ticket data, still limited to people who consented.</td><td class="later">later</td></tr>
+</tbody></table></div>
+
+<h3>People</h3>
+<div class="scroll"><table>
+<thead><tr><th>Feature</th><th>What it does</th><th>Phase</th></tr></thead>
+<tbody>
+<tr><td>Subscribers table</td><td>Replaces today's Newsletter page. Search by email, filter by list and status, export CSV.</td><td class="p1">1</td></tr>
+<tr><td>Subscriber detail</td><td>Each list they are on, how they joined (form, checkout for which event, photo signup for which gig, import, admin), when, and how they left if they did.</td><td class="p1">1</td></tr>
+<tr><td>Manual add and remove</td><td>Add one address to a list, take one off, delete someone entirely.</td><td class="p1">1</td></tr>
+<tr><td>Mailout history</td><td>On the detail view: every mailout they were sent and what happened to it (delivered, bounced, clicked).</td><td class="p3">3</td></tr>
+<tr><td>CSV import</td><td>Paste or upload addresses into a list. Requires ticking "these people agreed to hear from us". Never resubscribes anyone who unsubscribed or is suppressed; those come back as skipped, with a count.</td><td class="p3">3</td></tr>
+</tbody></table></div>
+
+<h3>Signup and consent</h3>
+<div class="scroll"><table>
+<thead><tr><th>Feature</th><th>What it does</th><th>Phase</th></tr></thead>
+<tbody>
+<tr><td>One subscribe function</td><td><code>subscribe({ email, list, source })</code> used by the newsletter form, photo signup and checkout. Records the source and time, which is our consent evidence.</td><td class="p1">1</td></tr>
+<tr><td>List-specific forms</td><td><code>NewsletterForm</code> takes a <code>list</code> prop, so a page can sign people up to something other than the newsletter.</td><td class="p1">1</td></tr>
+<tr><td>Signup does not undo an unsubscribe silently</td><td>Signing up again resubscribes (they asked), but an import or a checkout box never touches a list someone left.</td><td class="p1">1</td></tr>
+<tr><td>Account deletion</td><td>Deleting an account deletes the subscriber and their history, as the newsletter row is deleted today.</td><td class="p1">1</td></tr>
+<tr><td>Welcome email</td><td>One automatic email when someone joins a list.</td><td class="later">later</td></tr>
+<tr><td>Preferences from the account page</td><td>Signed-in people manage lists from their account, without a link.</td><td class="later">later</td></tr>
+</tbody></table></div>
+
+<h3>Writing a mailout</h3>
+<div class="scroll"><table>
+<thead><tr><th>Feature</th><th>What it does</th><th>Phase</th></tr></thead>
+<tbody>
+<tr><td>Subject and preview text</td><td>Preview text is the grey line inboxes show after the subject.</td><td class="p2">2</td></tr>
+<tr><td>Body editor</td><td>The existing Lexical editor: headings, bold, italic, lists, links, plus image (existing uploads), button and divider. Saved as Lexical JSON.</td><td class="p2">2</td></tr>
+<tr><td>One Atmos layout</td><td>A fixed, table-based template (logo, body, footer) like the ticket emails. No template builder.</td><td class="p2">2</td></tr>
+<tr><td>Plain text version</td><td>Generated from the same content. Every send has both.</td><td class="p2">2</td></tr>
+<tr><td>Preview</td><td>Rendered email at phone and desktop width, beside the editor.</td><td class="p2">2</td></tr>
+<tr><td>Test send</td><td>Send to yourself or another staff address. Never touches recipients or stats.</td><td class="p2">2</td></tr>
+<tr><td>Drafts and duplicate</td><td>Save as you go. Start a new mailout from an old one.</td><td class="p2">2</td></tr>
+<tr><td>Gig card block</td><td>Pick a gig, get its poster, date, venue and ticket button. The main reason Atmos will send email.</td><td class="later">later</td></tr>
+<tr><td>Name merge field</td><td>"Hi Sam". Most subscribers only have an email, so not yet.</td><td class="later">later</td></tr>
+</tbody></table></div>
+
+<h3>Sending</h3>
+<div class="scroll"><table>
+<thead><tr><th>Feature</th><th>What it does</th><th>Phase</th></tr></thead>
+<tbody>
+<tr><td>Recipient count before send</td><td>"Send to 1,284 people on Newsletter and Wellington" with the lists named, in a confirm dialog.</td><td class="p2">2</td></tr>
+<tr><td>Send now or schedule</td><td>Pick a time. A cron picks it up within a minute.</td><td class="p2">2</td></tr>
+<tr><td>Queue and drain</td><td>Recipients snapshotted at send, sent in batches of 100, safe to retry. Detail under <a href="#send">Sending</a>.</td><td class="p2">2</td></tr>
+<tr><td>Live progress</td><td>Sent, failed and remaining while it runs.</td><td class="p2">2</td></tr>
+<tr><td>Cancel</td><td>Stops a scheduled or sending mailout. Anyone not yet sent to is skipped.</td><td class="p2">2</td></tr>
+<tr><td>Retry failed</td><td>Re-queue only the recipients whose batch failed.</td><td class="p2">2</td></tr>
+<tr><td>Own sender</td><td>New <code>news</code> key in <code>EMAIL_SENDERS</code>, ideally on a subdomain so a bad send cannot hurt ticket email delivery.</td><td class="p2">2</td></tr>
+</tbody></table></div>
+
+<h3>Unsubscribe and preferences</h3>
+<div class="scroll"><table>
+<thead><tr><th>Feature</th><th>What it does</th><th>Phase</th></tr></thead>
+<tbody>
+<tr><td>Footer on every mailout</td><td>Which list this came from, Unsubscribe, Email preferences, who we are and how to reach us.</td><td class="p2">2</td></tr>
+<tr><td>One-click unsubscribe</td><td><code>List-Unsubscribe</code> and <code>List-Unsubscribe-Post</code> headers, so Gmail and Apple Mail show their own Unsubscribe button. Takes them off the lists that mailout went to.</td><td class="p2">2</td></tr>
+<tr><td>Preferences page</td><td>Public page reached from the footer link. Toggle each list, or unsubscribe from everything. Resubscribe works too.</td><td class="p1">1</td></tr>
+<tr><td>Instant</td><td>Unsubscribes take effect immediately, including for a mailout already sending to them.</td><td class="p1">1</td></tr>
+<tr><td>Links never expire</td><td>Tokens are signed, not stored, and keep working for old emails.</td><td class="p1">1</td></tr>
+</tbody></table></div>
+
+<h3>Bounces and complaints</h3>
+<div class="scroll"><table>
+<thead><tr><th>Feature</th><th>What it does</th><th>Phase</th></tr></thead>
+<tbody>
+<tr><td>Resend events webhook</td><td>New route for <code>email.delivered</code>, <code>bounced</code>, <code>complained</code>, <code>suppressed</code>, <code>failed</code>, and optionally <code>opened</code> and <code>clicked</code>. Matched by a <code>recipient_id</code> tag, so ticket email events are ignored.</td><td class="p2">2</td></tr>
+<tr><td>Suppression</td><td>A hard bounce, a spam complaint, or Resend's own suppression marks the subscriber suppressed. Suppressed people are never sent marketing again, whatever their lists say. Ticket emails are unaffected.</td><td class="p2">2</td></tr>
+<tr><td>Unsuppress</td><td>An admin can clear a bounce (they fixed their mailbox). Never a complaint.</td><td class="p3">3</td></tr>
+</tbody></table></div>
+
+<h3>Results</h3>
+<div class="scroll"><table>
+<thead><tr><th>Feature</th><th>What it does</th><th>Phase</th></tr></thead>
+<tbody>
+<tr><td>Per mailout</td><td>Sent, delivered, bounced, complaints, unsubscribes caused by it, and clicks.</td><td class="p3">3</td></tr>
+<tr><td>Ticket sales from a mailout</td><td>Links to our own sites get <code>utm_source=email&amp;utm_medium=newsletter&amp;utm_campaign=&lt;mailout&gt;</code>, so the orders and revenue it drove come from the attribution we already have.</td><td class="p3">3</td></tr>
+<tr><td>Opens</td><td>Only if open tracking is on. Apple Mail opens every email it downloads, so opens are a rough number at best.</td><td class="p3">3</td></tr>
+<tr><td>Show in Campaigns</td><td>Optionally create a Campaign for the mailout so it appears in an event's Campaigns tab next to paid posts.</td><td class="later">later</td></tr>
+</tbody></table></div>
+
+<h3>Admin and safety</h3>
+<div class="scroll"><table>
+<thead><tr><th>Feature</th><th>What it does</th><th>Phase</th></tr></thead>
+<tbody>
+<tr><td>Admins only</td><td>All of it behind <code>adminProcedure</code>.</td><td class="p1">1</td></tr>
+<tr><td>Activity log</td><td>Send, cancel, import, delete subscriber, change a list.</td><td class="p1">1</td></tr>
+<tr><td>Quiet without a key</td><td>No <code>RESEND_API_KEY</code> locally means recipients fail with that reason, never a stuck queue or a real send.</td><td class="p2">2</td></tr>
+<tr><td>Sent mailouts are frozen</td><td>The rendered HTML is stored at send. Editing after send is not possible; duplicate instead.</td><td class="p2">2</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="model">
+<h2>Data</h2>
+<p class="lede">Five models replace <code>NewsletterSubscription</code>. The migration copies every row into Newsletter, and <code>removed</code> rows come across as unsubscribed on their <code>updatedAt</code>.</p>
+<pre><span class="k">model</span> MailingList {
+  id          String    @id @default(cuid())
+  slug        String    @unique  <span class="c">// "newsletter"</span>
+  name        String             <span class="c">// shown on the preferences page</span>
+  description String?
+  public      Boolean   @default(true)
+  archivedAt  DateTime?
+  members     ListMembership[]
+}
+
+<span class="k">model</span> Subscriber {
+  id              String    @id @default(cuid())
+  email           String    @unique  <span class="c">// lowercased, trimmed</span>
+  name            String?
+  <span class="c">/// Hard bounce, complaint or Resend suppression. Never sent marketing while set.</span>
+  suppressedAt    DateTime?
+  suppressedWhy   SuppressionReason?   <span class="c">// BOUNCED | COMPLAINED | RESEND</span>
+  createdAt       DateTime  @default(now())
+  memberships     ListMembership[]
+  received        MailoutRecipient[]
+}
+
+<span class="k">model</span> ListMembership {
+  subscriberId    String
+  listId          String
+  <span class="c">/// "newsletter-form", "checkout:&lt;eventId&gt;", "photo-signup:&lt;gigId&gt;", "import", "admin:&lt;userId&gt;"</span>
+  source          String
+  subscribedAt    DateTime  @default(now())
+  <span class="c">/// Null while subscribed.</span>
+  unsubscribedAt  DateTime?
+  unsubscribedVia UnsubscribeVia?      <span class="c">// ONE_CLICK | PAGE | COMPLAINT | ADMIN</span>
+  <span class="c">/// The mailout whose link they used, for "unsubscribes caused".</span>
+  unsubscribedFromMailoutId String?
+  @@id([subscriberId, listId])
+}
+
+<span class="k">model</span> Mailout {
+  id           String        @id @default(cuid())
+  slug         String        @unique  <span class="c">// utm_campaign</span>
+  subject      String
+  previewText  String?
+  body         Json                    <span class="c">// Lexical state</span>
+  html         String?       @db.Text  <span class="c">// frozen at send, without per-person links</span>
+  text         String?       @db.Text
+  status       MailoutStatus           <span class="c">// DRAFT | SCHEDULED | SENDING | SENT | CANCELLED</span>
+  scheduledFor DateTime?
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  lists        MailingList[]           <span class="c">// who it went to</span>
+  recipients   MailoutRecipient[]
+  createdById  String?
+}
+
+<span class="k">model</span> MailoutRecipient {
+  id           String     @id @default(cuid())
+  mailoutId    String
+  subscriberId String
+  email        String                  <span class="c">// as it was when sent</span>
+  status       RecipientStatus         <span class="c">// QUEUED | SENT | FAILED | SKIPPED</span>
+  attempts     Int        @default(0)
+  error        String?
+  resendId     String?    @unique
+  sentAt       DateTime?
+  deliveredAt  DateTime?
+  bouncedAt    DateTime?
+  complainedAt DateTime?
+  clickedAt    DateTime?
+  openedAt     DateTime?
+  @@unique([mailoutId, subscriberId])   <span class="c">// one email per person per mailout</span>
+  @@index([mailoutId, status])
+}</pre>
+<ul class="plain">
+<li>Migration SQL goes in <code>prisma/manual</code> and is applied to prod by hand before the PR, as usual. The old table is dropped in a follow-up once nothing reads it.</li>
+<li>Scheduled times are compared with <code>now()</code> in SQL, not in JS, so node-pg's local-time reading of timestamps cannot fire a mailout 13 hours early.</li>
+</ul>
+</section>
+
+<section id="send">
+<h2>Sending</h2>
+<ol class="steps">
+<li><b>Commit.</b> Pressing Send (or the scheduled time arriving) renders the body once into the Atmos layout, stores the HTML and text, and snapshots recipients in one <code>INSERT … SELECT DISTINCT</code>: subscribed members of the chosen lists, not suppressed. Status becomes <code>SENDING</code>.</li>
+<li><b>Drain.</b> <code>drainMailouts()</code> runs straight away through <code>after()</code>, and from a new <code>/api/cron/mailouts</code> every minute. It claims 100 queued rows with <code>FOR UPDATE SKIP LOCKED</code>, so the cron and the first run never send the same row twice.</li>
+<li><b>Recheck.</b> Rows whose person unsubscribed or got suppressed since the snapshot are marked <code>SKIPPED</code>.</li>
+<li><b>Send.</b> One <code>sendEmailBatch</code> call per 100, each email with its own unsubscribe link and headers, tags <code>mailout_id</code> and <code>recipient_id</code>, and an idempotency key built from the mailout and first recipient id. A crash and retry inside 24 hours is a no-op at Resend.</li>
+<li><b>Pace.</b> Calls are spaced to Resend's rate limit (2 per second by default, so about 12,000 emails a minute). The run stops before the function's time limit and the next cron tick carries on.</li>
+<li><b>Fail.</b> A failed batch bumps <code>attempts</code> and goes back in the queue. After 3 it is <code>FAILED</code> with Resend's error, and "Retry failed" re-queues them.</li>
+<li><b>Finish.</b> When nothing is queued, status becomes <code>SENT</code>. Cancel flips status to <code>CANCELLED</code>, and the remaining rows to <code>SKIPPED</code>.</li>
+</ol>
+</section>
+
+<section id="unsub">
+<h2>Unsubscribe</h2>
+<ul class="plain">
+<li><b>Token.</b> HMAC of subscriber id and mailout id with a server secret, the same idea as ticket access tokens. Nothing stored, never expires, cannot be guessed or edited to another person.</li>
+<li><b>Footer link</b> goes to <code>/unsubscribe/&lt;token&gt;</code>. Loading the page changes nothing (link scanners in work inboxes open every link). It shows their public lists with toggles, an "Unsubscribe from everything" button, and resubscribe if they change their mind.</li>
+<li><b>One-click header</b> posts to <code>/api/unsubscribe/&lt;token&gt;</code>, per RFC 8058. That removes them from the lists the mailout went to, with no page.</li>
+<li><b>Complaint</b> (marked as spam) unsubscribes them from everything and suppresses them.</li>
+</ul>
+<div class="footer-sketch">
+You're getting this because you joined Atmos Newsletter.<br>
+<u>Unsubscribe</u> &nbsp;·&nbsp; <u>Email preferences</u><br>
+Atmos Media · Wellington, New Zealand · hello@atmosmedia.co.nz
+</div>
+<p class="lede" style="margin-top:8px">Footer content only. The preferences page and admin screens get mocks before they are built.</p>
+</section>
+
+<section id="rules">
+<h2>Rules we must meet</h2>
+<ul class="plain">
+<li><b>NZ Unsolicited Electronic Messages Act 2007.</b> Consent before sending (we record source and time per list), accurate sender details with a way to contact us, and a working unsubscribe honoured within 5 working days that keeps working for at least 30 days after the send. Ours is instant and permanent.</li>
+<li><b>Gmail and Yahoo bulk sender rules.</b> SPF, DKIM and DMARC on the sending domain, one-click unsubscribe headers, and spam complaints kept under 0.3%. Suppressing complainers immediately is what keeps that rate down.</li>
+<li><b>Buying a ticket is not consent.</b> Only the checkout box adds a buyer to a list, as now.</li>
+</ul>
+</section>
+
+<section id="phases">
+<h2>Phases</h2>
+<p class="lede">Each one is a PR that works on its own.</p>
+<div class="scroll"><table>
+<thead><tr><th>Phase</th><th>Ships</th><th></th></tr></thead>
+<tbody>
+<tr><td class="p1">1 · Foundation</td><td>Models and migration. <code>subscribe()</code> in the three signup paths and account deletion. Lists page. Subscribers page replacing Newsletter. Preferences page and one-click route. Nothing sends yet, but every future email has somewhere to unsubscribe to.</td><td></td></tr>
+<tr><td class="p2">2 · Sending</td><td>News sender and domain. Composer with preview and test send. Email renderer. Queue, drain, cron, schedule, cancel, retry. Events webhook with suppression.</td><td></td></tr>
+<tr><td class="p3">3 · Results and import</td><td>Per-mailout stats, UTM tagging and ticket revenue, subscriber mailout history, CSV import, unsuppress.</td><td></td></tr>
+<tr><td class="later">Later</td><td>Gig card block, excluded lists, segments from ticket data, welcome email, account page preferences, Campaigns link.</td><td></td></tr>
+</tbody></table></div>
+</section>
+
+<section id="decide">
+<h2>Decisions for you</h2>
+<ol class="qs">
+<li><div><b>Which lists to start with?</b><span class="rec">Newsletter is seeded from the current table. Anything else (by city, by genre, crew, artists) is a two-second create in the admin, but it changes what the signup forms offer.</span></div></li>
+<li><div><b>A sending subdomain, like <code>news.atmosmedia.co.nz</code>?</b><span class="rec">Recommended. Needs DNS records added in Resend. It keeps marketing complaints from dragging down ticket email delivery.</span></div></li>
+<li><div><b>Open and click tracking in Resend?</b><span class="rec">Recommend clicks only, or neither. UTM tags already measure the clicks that matter (ticket sales), opens are unreliable since Apple Mail, and Resend's click tracking rewrites every link through their domain.</span></div></li>
+<li><div><b>Double opt-in (confirm by email before joining)?</b><span class="rec">Recommend no. UEMA does not need it, BotID already guards the forms, and it loses a share of real signups. Easy to add later.</span></div></li>
+<li><div><b>What goes in the footer as our sender details?</b><span class="rec">Business name, a contact email, and ideally a postal address or city.</span></div></li>
+<li><div><b>Does the Resend plan cover the volume?</b><span class="rec">Mailouts go through the sending API, so they count against the same monthly email quota as tickets. Worth checking before the first big send.</span></div></li>
+<li><div><b>Admins only, or event organisers too?</b><span class="rec">Recommend admins only to start. Sending to the whole list is the one action here that cannot be undone.</span></div></li>
+</ol>
+</section>
+
+</main></body></html>

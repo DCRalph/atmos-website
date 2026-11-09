@@ -58,6 +58,7 @@ import { stopUnpaidPayment } from "~/server/ticketing/payments";
 import { scheduleSalesAlerts } from "~/server/ticketing/sales-alerts";
 import { soldOutBy } from "~/lib/ticketing/tiers";
 import { ticketCount } from "~/lib/ticketing/capacity";
+import { NEWSLETTER, subscribe } from "~/server/mailouts/subscribers";
 
 /**
  * The order lifecycle.
@@ -1037,21 +1038,29 @@ export function ticketAccessToken(ticket: {
  * Buying a ticket is not consent to marketing — the Unsolicited Electronic
  * Messages Act needs that to be express — so this is driven entirely by the
  * `marketingOptIn` flag captured at checkout.
+ *
+ * `rejoin` is whether the tick is fresh. Off, someone who has unsubscribed
+ * since stays off: the details form shows the order's old tick, and saving a
+ * name there is not asking for email again.
  */
-export async function syncMarketingConsent(orderId: string): Promise<void> {
+export async function syncMarketingConsent(
+  orderId: string,
+  { rejoin = true }: { rejoin?: boolean } = {},
+): Promise<void> {
   const order = await db.ticketOrder.findUnique({
     where: { id: orderId },
-    select: { marketingOptIn: true, buyerEmail: true },
+    select: { marketingOptIn: true, buyerEmail: true, eventId: true },
   });
   if (!order?.marketingOptIn || !order.buyerEmail) return;
 
-  await db.newsletterSubscription
-    .upsert({
-      where: { email: order.buyerEmail },
-      update: { removed: false },
-      create: { email: order.buyerEmail },
-    })
-    .catch(() => undefined);
+  await subscribe(db, {
+    email: order.buyerEmail,
+    list: NEWSLETTER,
+    source: `checkout:${order.eventId}`,
+    rejoin,
+  }).catch((cause: unknown) =>
+    console.error(`[ticketing] marketing consent for ${orderId}`, cause),
+  );
 }
 
 /** Rebuild the buyer's ticket link — for re-sending email, and admin tools. */
