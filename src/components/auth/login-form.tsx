@@ -347,7 +347,7 @@ export function LoginForm({ next }: { next: string | null }) {
 
 /**
  * WMGX's official button, used as supplied: their brand rules forbid
- * restyling or stretching it. Black on light, white on dark.
+ * restyling or stretching it. The glow style works on any background.
  */
 function ContinueWithWmgx({
   onClick,
@@ -366,15 +366,9 @@ function ContinueWithWmgx({
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- static SVG */}
       <img
-        src="/wmgx/continue-with-wmgx-black.svg"
+        src="/wmgx/continue-with-wmgx-glow.svg"
         alt=""
-        className="h-11 w-auto dark:hidden"
-      />
-      {/* eslint-disable-next-line @next/next/no-img-element -- static SVG */}
-      <img
-        src="/wmgx/continue-with-wmgx-white.svg"
-        alt=""
-        className="hidden h-11 w-auto dark:block"
+        className="h-11 w-auto"
       />
     </button>
   );
