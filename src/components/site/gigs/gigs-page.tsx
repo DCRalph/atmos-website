@@ -58,10 +58,9 @@ function UpcomingRow({
   return (
     <li>
       <AdminStrip gig={gig} className="text-left" />
-      <GigLink
-        gig={gig}
-        className="group grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 border-b border-white/10 py-4 transition-colors hover:bg-white/[0.03] max-sm:grid-cols-[64px_minmax(0,1fr)] md:grid-cols-[72px_84px_minmax(0,1fr)_auto] md:gap-6 md:px-3"
-      >
+      {/* The gig link is stretched over the whole row, so the faces can be
+          their own buttons above it rather than buttons inside a link. */}
+      <div className="group relative grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 border-b border-white/10 py-4 transition-colors hover:bg-white/[0.03] max-sm:grid-cols-[64px_minmax(0,1fr)] md:grid-cols-[72px_84px_minmax(0,1fr)_auto] md:gap-6 md:px-3">
         <GigPoster
           gig={gig}
           className="aspect-[4/5] w-16 md:w-[72px]"
@@ -86,7 +85,9 @@ function UpcomingRow({
         <div className="min-w-0">
           {onNow ? <OnNowChip className="mb-2" /> : null}
           <p className="t-display line-clamp-2 text-base leading-[1.05] normal-case md:text-2xl">
-            {gigTitle(gig)}
+            <GigLink gig={gig} className="after:absolute after:inset-0">
+              {gigTitle(gig)}
+            </GigLink>
           </p>
           <p className="mt-1.5 truncate text-[13px] text-white/60">
             <span className="md:hidden">
@@ -95,11 +96,11 @@ function UpcomingRow({
             {gig.subtitle}
             {tba ? "" : ` · ${fmtTime(gig.gigStartTime)}`}
           </p>
-          <LineupFaces lineUp={gig.lineUp} className="mt-3" />
+          <LineupFaces gigId={gig.id} lineUp={gig.lineUp} className="mt-3" />
           <CtaPill cta={cta} className="mt-3 sm:hidden" />
         </div>
         <CtaPill cta={cta} className="max-sm:hidden" />
-      </GigLink>
+      </div>
     </li>
   );
 }
@@ -109,10 +110,8 @@ function PastRow({ gig }: { gig: ListGig }) {
   const photos = gig.media.filter((m) => m.type === "photo").length;
   return (
     <li>
-      <GigLink
-        gig={gig}
-        className="group grid grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-4 border-b border-white/10 py-3 transition-colors hover:bg-white/[0.03] md:grid-cols-[56px_120px_minmax(0,1fr)_auto] md:px-3"
-      >
+      {/* Stretched gig link, as in `UpcomingRow`. */}
+      <div className="group relative grid grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-4 border-b border-white/10 py-3 transition-colors hover:bg-white/[0.03] md:grid-cols-[56px_120px_minmax(0,1fr)_auto] md:px-3">
         <GigPoster
           gig={gig}
           className="aspect-[4/5] w-12 md:w-14"
@@ -123,7 +122,9 @@ function PastRow({ gig }: { gig: ListGig }) {
         </p>
         <div className="min-w-0">
           <p className="t-display line-clamp-2 text-sm leading-[1.1] normal-case md:text-lg">
-            {gig.title}
+            <GigLink gig={gig} className="after:absolute after:inset-0">
+              {gig.title}
+            </GigLink>
           </p>
           <p className="mt-1 truncate text-[13px] text-white/55">
             <span className="md:hidden">
@@ -131,7 +132,7 @@ function PastRow({ gig }: { gig: ListGig }) {
             </span>
             {gig.subtitle}
           </p>
-          <LineupFaces lineUp={gig.lineUp} className="mt-2.5" />
+          <LineupFaces gigId={gig.id} lineUp={gig.lineUp} className="mt-2.5" />
         </div>
         {photos ? (
           <span className="t-label flex items-center gap-1.5 text-[10px] text-white/65 group-hover:text-white">
@@ -140,7 +141,7 @@ function PastRow({ gig }: { gig: ListGig }) {
         ) : (
           <ArrowRight className="size-4 text-white/40 group-hover:text-white" />
         )}
-      </GigLink>
+      </div>
     </li>
   );
 }
