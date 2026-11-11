@@ -25,6 +25,7 @@ const SITE_PAGES: Record<string, string> = {
   "/events": "Events list",
   "/about": "About",
   "/crew": "Crew",
+  "/artists": "Artists",
   "/content": "Content",
   "/equipment": "Equipment",
   "/merch": "Merch",

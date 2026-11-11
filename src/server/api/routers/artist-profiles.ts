@@ -217,6 +217,51 @@ export const artistProfilesRouter = createTRPCRouter({
     }),
 
   /**
+   * The /artists page: everyone credited on an announced gig, most gigs first.
+   * Only what a gig page's line-up already shows, plus the count and when they
+   * last played (null while their only gigs are still to come).
+   */
+  publicList: publicProcedure.query(async ({ ctx }) => {
+    const now = new Date();
+    const profiles = await ctx.db.artistProfile.findMany({
+      where: { setAppearances: { some: APPEARANCE_WHERE } },
+      select: {
+        id: true,
+        handle: true,
+        displayName: true,
+        avatarFileId: true,
+        isPublished: true,
+        setAppearances: {
+          where: APPEARANCE_WHERE,
+          select: {
+            item: {
+              select: { gigId: true, gig: { select: { gigStartTime: true } } },
+            },
+          },
+        },
+      },
+    });
+
+    return profiles
+      .map(({ setAppearances, ...profile }) => {
+        const starts = new Map(
+          setAppearances.map((a) => [a.item.gigId, a.item.gig.gigStartTime]),
+        );
+        const past = [...starts.values()].filter((start) => start <= now);
+        return {
+          ...profile,
+          gigs: starts.size,
+          lastPlayed: past.length
+            ? new Date(Math.max(...past.map((d) => d.getTime())))
+            : null,
+        };
+      })
+      .sort(
+        (a, b) => b.gigs - a.gigs || a.displayName.localeCompare(b.displayName),
+      );
+  }),
+
+  /**
    * Everything the line-up popover on a gig page draws: who the artist is,
    * every gig they have done for us, and the two links out.
    *

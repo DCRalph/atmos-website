@@ -1,6 +1,7 @@
 /** Public site navigation, shared by the header and mobile menu. */
 export const siteNav = [
   { label: "Gigs", href: "/gigs" },
+  { label: "Artists", href: "/artists" },
   { label: "Content", href: "/content" },
   { label: "Merch", href: "/merch" },
   { label: "Socials", href: "/socials" },
