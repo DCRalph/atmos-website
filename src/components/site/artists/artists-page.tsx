@@ -85,7 +85,7 @@ const grid =
   "grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6";
 
 /**
- * Everyone who has played an announced Atmos gig, most gigs first. A card opens
+ * Everyone who has played an announced Atmos or affiliated gig, most gigs first. A card opens
  * the gig page's artist dialog; a published profile also gets a button to it.
  */
 export function ArtistsPage() {
@@ -112,7 +112,7 @@ export function ArtistsPage() {
     <div className="px-5 pt-14 pb-20 md:px-10">
       <h1 className="t-heading text-[clamp(2.75rem,8vw,6.5rem)]">Artists</h1>
       <p className="mt-4 max-w-[52ch] text-[16px] text-white/70">
-        Everyone who has played an Atmos night.
+        Everyone who has played an Atmos gig or Atmos affiliated gig.
       </p>
 
       <div
