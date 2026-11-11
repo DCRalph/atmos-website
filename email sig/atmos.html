@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atmos Signature Generator</title>
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background-color: #111111;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .page {
+      max-width: 920px;
+      margin: 0 auto;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .control {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      color: #ffffff;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .control select {
+      border: 1px solid #333333;
+      border-radius: 8px;
+      padding: 10px 12px;
+      background-color: #1b1b1b;
+      color: #ffffff;
+      font-size: 14px;
+      text-transform: none;
+      letter-spacing: normal;
+      outline: none;
+    }
+
+    .control select:focus {
+      border-color: #666666;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .actions button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 16px;
+      background-color: #ffffff;
+      color: #111111;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .actions span {
+      color: #b3b3b3;
+      font-size: 13px;
+    }
+
+    .preview {
+      display: inline-block;
+      padding: 18px;
+      background-color: #171717;
+      border: 1px solid #262626;
+      border-radius: 16px;
+    }
+
+    .data-note {
+      margin: 0 0 16px 0;
+      color: #b3b3b3;
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <div class="controls">
+      <label class="control" for="person-select">
+        Team Member
+        <select id="person-select"></select>
+      </label>
+    </div>
+
+    <p class="data-note">Edit the `people` object in the script to add or update staff details.</p>
+
+    <div class="actions">
+      <button id="copy-button" type="button">Copy for Gmail</button>
+      <span id="copy-status">Choose a person, then paste the copied signature into Gmail settings.</span>
+    </div>
+
+    <div class="preview">
+      <div id="signature-root">
+        <table id="signature-table" cellpadding="0" cellspacing="0" border="0" style="
+    background-color: #0d0d0d;
+    font-family: Arial, Helvetica, sans-serif;
+    width: 540px;
+    overflow: hidden;
+  ">
+          <tr>
+            <!-- TOP LEFT: IMAGE -->
+            <td width="252" style="
+        vertical-align: top;
+        padding: 15px 15px 10px 15px;
+      ">
+              <a href="https://atmosmedia.co.nz" target="_blank" style="text-decoration: none">
+                <img src="https://atmosmedia.co.nz/email/sig3.gif" alt="ATMOS" width="222" border="0" style="
+            display: block;
+            width: 222px;
+            height: auto;
+            border: 0;
+            outline: none;
+            border-radius: 10px;
+          " />
+              </a>
+            </td>
+
+            <!-- TOP RIGHT: PERSON INFO -->
+            <td width="252" valign="bottom" style="
+        padding: 15px 25px 10px 10px;
+      ">
+              <!-- Name -->
+              <span id="sig-name" style="
+          font-size: 26px;
+          font-weight: bold;
+          color: #ffffff;
+          display: block;
+          line-height: 1.2;
+        ">Finn Gordon</span>
+              <!-- Position -->
+              <span id="sig-title" style="
+          font-size: 13px;
+          color: #aaaaaa;
+          letter-spacing: 2px;
+          display: block;
+          margin-top: 4px;
+        ">Director</span>
+
+              <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td style="padding: 16px 0 14px 0">
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tr>
+                        <td style="
+                    height: 1px;
+                    line-height: 1px;
+                    font-size: 1px;
+                    background-color: #3a3a3a;
+                  ">
+                          &nbsp;
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Phone -->
+              <span style="display: block; margin-top: 0">
+                <a id="sig-phone" href="tel:+64274726850" style="
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 13px;
+          ">+64 27 472 6850</a>
+              </span>
+              <!-- Email -->
+              <span style="display: block; margin-top: 6px">
+                <a id="sig-email" href="mailto:finn@atmosmedia.co.nz" style="
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 13px;
+          ">finn@atmosmedia.co.nz</a>
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <!-- BOTTOM LEFT: LINKS -->
+            <td width="252" style="
+        padding: 0 15px 8px 15px;
+      ">
+              <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td align="center">
+                    <table cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="font-size: 11px; padding-right: 16px">
+                          <a href="https://atmosmedia.co.nz" target="_blank"
+                            style="color: #ffffff; text-decoration: none"><img
+                              src="https://atmosmedia.co.nz/socials/white-globe.png" alt="Website" width="12"
+                              height="12" style="vertical-align: middle; margin-right: 4px;" /> atmosmedia.co.nz</a>
+                        </td>
+                        <td style="font-size: 11px">
+                          <a href="https://instagram.com/atmos.nz" target="_blank" style="
+                      color: #ffffff;
+                      text-decoration: none;
+                    ">
+                            <img src="https://atmosmedia.co.nz/socials/instagram-white.png" alt="Instagram" width="12"
+                              height="12" style="
+                        vertical-align: middle;
+                        margin-right: 4px;
+                      " /> atmos.nz</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+
+            <!-- BOTTOM RIGHT: EMPTY -->
+            <td width="252" style="
+        padding: 0 25px 8px 10px;
+      ">
+              &nbsp;
+            </td>
+          </tr>
+          <tr>
+            <td colspan="2" style="
+        font-size: 8px;
+        line-height: 1.4;
+        color: #8a8a8a;
+        padding: 0 10px 6px 10px;
+        text-align: center;
+      ">
+              My workday may look different to yours. Please do not feel obligated to respond out of your normal
+              working hours.
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const people = [
+      {
+        label: 'Finn Gordon',
+        name: 'Finn Gordon',
+        title: 'Director',
+        phone: '+64 27 472 6850',
+        email: 'finn@atmosmedia.co.nz'
+      },
+      {
+        label: 'Connor',
+        name: 'Connor Hislop',
+        title: 'Atmos Crew',
+        phone: '+64 21 084 26168',
+        email: 'connor@atmosmedia.co.nz'
+      },
+      {
+        label: 'William',
+        name: 'William Giles',
+        title: 'The asset',
+        phone: '+64 27 201 7673',
+        email: 'william@atmosmedia.co.nz'
+      },
+      {
+        label: 'Kanen',
+        name: 'Kanen Scheib',
+        title: 'Atmos Crew',
+        phone: '+64 71 210 8535',
+        email: 'kanen@atmosmedia.co.nz'
+      },
+      {
+        label: 'Cos',
+        name: 'Cos Watts',
+        title: 'Atmos Crew',
+        phone: '+64 22 180 4497',
+        email: 'cos@atmosmedia.co.nz'
+      },
+      {
+        label: 'Lnenox',
+        name: 'Lnenox Broderick',
+        title: 'Atmos Crew',
+        phone: '+64 21 025 32396',
+        email: 'lennox@atmosmedia.co.nz'
+      },
+      {
+        label: 'Ben',
+        name: 'Ben Bonetti',
+        title: 'Atmos Crew',
+        phone: '+64 21 087 48918',
+        email: 'ben@atmosmedia.co.nz'
+      },
+      {
+        label: 'Paige',
+        name: 'Paige ass',
+        title: 'The Ass',
+        phone: '+64 69 67 6967',
+        email: 'paige@atmosmedia.co.nz'
+      },
+      {
+        label: 'Willonfx',
+        name: 'Will Love',
+        title: 'Videographer',
+        phone: '+64 22 300 6960',
+        email: 'will.l@atmosmedia.co.nz'
+      }
+    ]
+
+    const personSelect = document.getElementById('person-select');
+
+    const signature = {
+      name: document.getElementById('sig-name'),
+      title: document.getElementById('sig-title'),
+      phone: document.getElementById('sig-phone'),
+      email: document.getElementById('sig-email'),
+      table: document.getElementById('signature-table')
+    };
+
+    const copyButton = document.getElementById('copy-button');
+    const copyStatus = document.getElementById('copy-status');
+
+    function sanitizePhoneForTel(phone) {
+      return phone.replace(/[^+\d]/g, '');
+    }
+
+    function getSelectedPerson() {
+      return people[personSelect.value];
+    }
+
+    function updateSignature() {
+      const person = getSelectedPerson();
+
+      signature.name.textContent = person.name || ' ';
+      signature.title.textContent = person.title || ' ';
+      signature.phone.textContent = person.phone || ' ';
+      signature.phone.href = `tel:${sanitizePhoneForTel(person.phone || '')}`;
+      signature.email.textContent = person.email || ' ';
+      signature.email.href = `mailto:${(person.email || '').trim()}`;
+    }
+
+    function populatePersonSelect() {
+      Object.entries(people).forEach(([key, person]) => {
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = person.label;
+        personSelect.appendChild(option);
+      });
+    }
+
+    async function copySignature() {
+      const person = getSelectedPerson();
+      const html = signature.table.outerHTML;
+      const text = [
+        person.name,
+        person.title,
+        person.phone,
+        person.email
+      ].filter(Boolean).join('\n');
+
+      try {
+        if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              'text/html': new Blob([html], { type: 'text/html' }),
+              'text/plain': new Blob([text], { type: 'text/plain' })
+            })
+          ]);
+        } else {
+          const range = document.createRange();
+          range.selectNode(signature.table);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+          document.execCommand('copy');
+          selection.removeAllRanges();
+        }
+
+        copyStatus.textContent = 'Copied. Paste it into Gmail signature settings.';
+      } catch (error) {
+        copyStatus.textContent = 'Copy failed. Try selecting the preview and copying it manually.';
+      }
+    }
+
+    populatePersonSelect();
+    personSelect.addEventListener('change', updateSignature);
+    copyButton.addEventListener('click', copySignature);
+    personSelect.value = Object.keys(people)[0];
+    updateSignature();
+  </script>
+
+</body>
+
+</html>
