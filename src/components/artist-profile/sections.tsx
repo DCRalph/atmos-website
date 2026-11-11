@@ -86,10 +86,12 @@ export function ProfileSections({
 }: SectionProps & { className?: string }) {
   const editor = useProfileEditor();
   const banner = props.profile.banner ?? props.profile.portrait;
+  // Capped at the grid's height, or a short page scrolls on past the footer
+  // into nothing but glow.
   const ambient = (
     <div
       aria-hidden
-      className="cp-ambient pointer-events-none absolute inset-x-0 top-0 -z-10 h-[1400px] overflow-hidden"
+      className="cp-ambient pointer-events-none absolute inset-x-0 top-0 -z-10 h-[1400px] max-h-full overflow-hidden"
       style={
         banner ? ({ "--cp-banner": `url("${banner}")` } as CSSProperties) : {}
       }
