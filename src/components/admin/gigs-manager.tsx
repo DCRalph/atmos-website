@@ -81,6 +81,14 @@ export function GigsManager({
       ),
     },
     {
+      id: "artists",
+      header: "Artists",
+      type: "number",
+      align: "right",
+      sortable: true,
+      accessor: (gig) => gig.lineUp.length,
+    },
+    {
       id: "media",
       header: "Media",
       type: "number",

@@ -21,7 +21,7 @@ import {
   GigStatus,
   type GigMedia,
 } from "~Prisma/client";
-import { toPublicLineUp } from "~/lib/run-sheet/line-up";
+import { toPublicLineUp, type LineUpSource } from "~/lib/run-sheet/line-up";
 import { AFFILIATED_LEAD_MS } from "~/lib/gig-visibility";
 import {
   donationAmountsSchema,
@@ -240,6 +240,23 @@ const LINE_UP_SELECT = {
     },
   },
 } satisfies Prisma.GigScheduleItemSelect;
+
+/**
+ * Swaps a gig's run sheet rows for its public line-up. The line-up is one of
+ * the things a TBA gig withholds, from everyone but an admin.
+ */
+const withLineUp = <
+  T extends { isTba: boolean; scheduleItems: LineUpSource[] },
+>(
+  gig: T,
+  isAdmin: boolean,
+) => {
+  const { scheduleItems, ...rest } = gig;
+  return {
+    ...rest,
+    lineUp: isAdmin || !gig.isTba ? toPublicLineUp(scheduleItems) : [],
+  };
+};
 
 /** What a gig shows of its venue. */
 const VENUE_SELECT = {
@@ -1112,10 +1129,14 @@ export const gigsRouter = createTRPCRouter({
               gigTag: true,
             },
           },
+          scheduleItems: { select: LINE_UP_SELECT },
         },
       });
 
-      const enriched = await enrichGigsWithFileUploads(ctx.db, gigs);
+      const enriched = await enrichGigsWithFileUploads(
+        ctx.db,
+        gigs.map((gig) => withLineUp(gig, true)),
+      );
       return enrichGigsWithPosterFileUploads(ctx.db, enriched);
     }),
 
@@ -1146,10 +1167,14 @@ export const gigsRouter = createTRPCRouter({
             gigTag: true,
           },
         },
+        scheduleItems: { select: LINE_UP_SELECT },
       },
     });
 
-    const enriched = await enrichGigsWithFileUploads(ctx.db, gigs);
+    const enriched = await enrichGigsWithFileUploads(
+      ctx.db,
+      gigs.map((gig) => withLineUp(gig, isAdmin)),
+    );
     const withPosters = announcedFirst(
       await withWidePosterUrls(
         ctx.db,
@@ -1213,11 +1238,15 @@ export const gigsRouter = createTRPCRouter({
               gigTag: true,
             },
           },
+          scheduleItems: { select: LINE_UP_SELECT },
         },
         take: input?.limit,
       });
 
-      const enriched = await enrichGigsWithFileUploads(ctx.db, gigs);
+      const enriched = await enrichGigsWithFileUploads(
+        ctx.db,
+        gigs.map((gig) => withLineUp(gig, isAdmin)),
+      );
       const withPosters = await enrichGigsWithPosterFileUploads(
         ctx.db,
         enriched,
@@ -1314,13 +1343,10 @@ export const gigsRouter = createTRPCRouter({
         gig.posterFileUploadId ?? null,
       );
 
-      const { scheduleItems, ...rest } = gig;
       const result = {
-        ...rest,
+        ...withLineUp(gig, isAdmin),
         media: enrichedMedia,
         posterFileUpload,
-        // The line-up is one of the things a TBA gig withholds.
-        lineUp: isAdmin || !gig.isTba ? toPublicLineUp(scheduleItems) : [],
       };
 
       return isAdmin ? result : forPublic(result);
