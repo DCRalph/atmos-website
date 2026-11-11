@@ -7,6 +7,7 @@ import {
 } from "~/server/api/trpc";
 import { logUserActivity } from "~/server/utils/activity-log";
 import { uniqueHandleFrom } from "~/server/utils/artist-handles";
+import { defaultArtistThemeId } from "~/server/artist-default-theme";
 import { socialUrlFromInput } from "~/server/utils/artist-socials";
 import { mediaFileIdFromUrl } from "~/lib/media-url";
 import {
@@ -226,6 +227,7 @@ export const crewRouter = createTRPCRouter({
             createdByAdminId: ctx.session.user.id,
             claimStatus: ClaimStatus.UNCLAIMED,
             avatarFileId: photo?.id ?? null,
+            themeId: await defaultArtistThemeId(tx),
             socials: { create: socials },
           },
         });

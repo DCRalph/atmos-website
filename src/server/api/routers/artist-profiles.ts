@@ -24,6 +24,7 @@ import {
 } from "~/server/utils/artist-socials";
 import { grantUserPermission } from "~/server/utils/permissions";
 import { isOwnTheme } from "~/server/artist-public-profile";
+import { defaultArtistThemeId } from "~/server/artist-default-theme";
 import { GRID } from "~/lib/artist-grid";
 import { readLayout } from "~/lib/artist-sections";
 import { zArtistTheme } from "~/lib/artist-theme";
@@ -325,6 +326,7 @@ export const artistProfilesRouter = createTRPCRouter({
             ctx.user?.name ??
             ctx.session.user.id.slice(0, 8),
           claimStatus: ClaimStatus.ACTIVE,
+          themeId: await defaultArtistThemeId(ctx.db),
         },
       });
       await logUserActivity(
@@ -1011,6 +1013,7 @@ export const artistProfilesRouter = createTRPCRouter({
           bio: input.bio ?? null,
           avatarFileId: input.avatarFileId ?? null,
           isPublished: false,
+          themeId: await defaultArtistThemeId(ctx.db),
         },
       });
       if (input.userId) {
