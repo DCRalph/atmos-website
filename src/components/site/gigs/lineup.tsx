@@ -28,7 +28,7 @@ type SummaryGig = Summary["gigs"][number];
 const STRIP_LIMIT = 5;
 
 /** Round face, or the first letter when there's no photo. Sized by the caller. */
-function Avatar({
+export function Avatar({
   profile,
   className,
 }: {
@@ -86,6 +86,35 @@ function Poster({ gig, className }: { gig: SummaryGig; className?: string }) {
 }
 
 const monthYear = (d: Date) => `${fmtShortMonth(d)} ${fmtYear(d)}`;
+
+/**
+ * A gig's bill as a row of overlapping faces, for list rows that link to the
+ * gig. Large screens only: on smaller ones the row has no room for it.
+ */
+export function LineupFaces({
+  lineUp,
+  className,
+}: {
+  lineUp: readonly Pick<Entry, "id" | "artistProfile">[];
+  className?: string;
+}) {
+  if (!lineUp.length) return null;
+  return (
+    <ul
+      aria-label={lineUp.map((e) => e.artistProfile.displayName).join(", ")}
+      className={cn("hidden flex-wrap -space-x-2 lg:flex", className)}
+    >
+      {lineUp.map(({ id, artistProfile: p }) => (
+        <li key={id} title={p.displayName}>
+          <Avatar
+            profile={p}
+            className="size-8 text-[11px] ring-2 ring-black"
+          />
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 /**
  * The line-up on a gig page. Each artist opens a dialog with the other gigs

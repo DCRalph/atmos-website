@@ -31,6 +31,7 @@ import {
   type UpcomingGig,
   type PublicTicketEvent,
 } from "./gig-parts";
+import { LineupFaces } from "./lineup";
 import { GigCountdown, OnNowChip, nightOf, useIsOnNow } from "../on-now";
 
 const TABS = [
@@ -94,6 +95,7 @@ function UpcomingRow({
             {gig.subtitle}
             {tba ? "" : ` · ${fmtTime(gig.gigStartTime)}`}
           </p>
+          <LineupFaces lineUp={gig.lineUp} className="mt-3" />
           <CtaPill cta={cta} className="mt-3 sm:hidden" />
         </div>
         <CtaPill cta={cta} className="max-sm:hidden" />
@@ -129,6 +131,7 @@ function PastRow({ gig }: { gig: ListGig }) {
             </span>
             {gig.subtitle}
           </p>
+          <LineupFaces lineUp={gig.lineUp} className="mt-2.5" />
         </div>
         {photos ? (
           <span className="t-label flex items-center gap-1.5 text-[10px] text-white/65 group-hover:text-white">
