@@ -6,7 +6,8 @@ import { api, HydrateClient } from "~/trpc/server";
 
 export const metadata = pageMetadata({
   title: "Artists",
-  description: "Every artist who has played an Atmos night.",
+  description:
+    "Every artist who has played an Atmos gig or Atmos affiliated gig.",
   path: "/artists",
   keywords: ["dj lineup", "atmos artists", "electronic artists"],
 });

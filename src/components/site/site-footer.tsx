@@ -8,7 +8,7 @@ import {
   FaYoutube,
 } from "react-icons/fa6";
 import { SOCIALS } from "~/lib/site-constants";
-import { AtmosLogo } from "./ui";
+import { AtmosLogo, buttonVariants } from "./ui";
 
 const footerSocials = [
   { ...SOCIALS.instagram, Icon: FaInstagram },
@@ -34,7 +34,7 @@ export function SiteFooter() {
       </div>
       <div className="flex flex-col items-center px-5 pt-9 pb-7 text-center md:px-10 md:pt-12 md:pb-9">
         <AtmosLogo className="w-48 md:w-56" />
-        <div className="mt-6 flex justify-center gap-1">
+        <div className="mt-6 mb-5 flex justify-center gap-1">
           {footerSocials.map(({ label, href, Icon }) => (
             <a
               key={label}
@@ -48,9 +48,16 @@ export function SiteFooter() {
             </a>
           ))}
         </div>
+        <Link
+          href="/artists"
+          className={buttonVariants({ size: "sm", variant: "outline" })}
+        >
+          Talent we&apos;ve worked with
+        </Link>
         <nav aria-label="Footer" className="mt-5">
           <ul className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[12px] text-white/65">
             {[
+              { label: "Events", href: "/events" },
               { label: "Terms", href: "/legal/terms" },
               { label: "Privacy", href: "/legal/privacy" },
             ].map((l) => (

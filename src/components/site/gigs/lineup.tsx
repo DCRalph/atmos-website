@@ -98,30 +98,70 @@ const monthYear = (d: Date) => `${fmtShortMonth(d)} ${fmtYear(d)}`;
 
 /**
  * A gig's bill as a row of overlapping faces, for list rows that link to the
- * gig. Large screens only: on smaller ones the row has no room for it.
+ * gig. Hovering spreads them out; a face opens the same dialog as the gig
+ * page's line-up. Sits above the row's stretched link (`relative z-10`), so a
+ * click on a face never follows it. Large screens only: on smaller ones the
+ * row has no room for it.
  */
 export function LineupFaces({
+  gigId,
   lineUp,
   className,
 }: {
-  lineUp: readonly Pick<Entry, "id" | "artistProfile">[];
+  gigId: string;
+  lineUp: readonly Entry[];
   className?: string;
 }) {
+  const [index, setIndex] = useState<number | null>(null);
+  const [open, setOpen] = useState(false);
+  const selected = index === null ? undefined : lineUp[index];
+  const summary = api.artistProfiles.publicSummary.useQuery(
+    { handle: selected?.artistProfile.handle ?? "" },
+    { enabled: selected !== undefined, staleTime: 5 * 60_000 },
+  );
+
   if (!lineUp.length) return null;
   return (
-    <ul
-      aria-label={lineUp.map((e) => e.artistProfile.displayName).join(", ")}
-      className={cn("hidden flex-wrap -space-x-2 lg:flex", className)}
-    >
-      {lineUp.map(({ id, artistProfile: p }) => (
-        <li key={id} title={p.displayName}>
-          <Avatar
-            profile={p}
-            className="size-8 text-[11px] ring-2 ring-black"
-          />
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul
+        aria-label="Line-up"
+        className={cn(
+          "relative z-10 hidden w-fit flex-wrap -space-x-2 transition-[gap] hover:space-x-1 lg:flex",
+          className,
+        )}
+      >
+        {lineUp.map(({ id, artistProfile: p }, i) => (
+          <li key={id} className="transition-[margin] duration-150">
+            <button
+              type="button"
+              title={p.displayName}
+              aria-label={p.displayName}
+              onClick={() => {
+                setIndex(i);
+                setOpen(true);
+              }}
+              className="block rounded-full transition-transform duration-150 hover:-translate-y-0.5"
+            >
+              <Avatar
+                profile={p}
+                className="size-8 text-[11px] ring-2 ring-black transition-shadow hover:ring-white/70"
+              />
+            </button>
+          </li>
+        ))}
+      </ul>
+      {index !== null && selected ? (
+        <ArtistDialog
+          gigId={gigId}
+          lineUp={lineUp}
+          index={index}
+          onSelect={setIndex}
+          summary={summary.data}
+          open={open}
+          onOpenChange={setOpen}
+        />
+      ) : null}
+    </>
   );
 }
 
