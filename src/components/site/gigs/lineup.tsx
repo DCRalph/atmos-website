@@ -20,7 +20,16 @@ import {
   type DetailGig,
 } from "./gig-parts";
 
-type Entry = DetailGig["lineUp"][number];
+/** One name in the dialog's switcher: a line-up entry, or an artist on their own. */
+type Entry = {
+  id: string;
+  role: string | null;
+  artistProfile: {
+    handle: string;
+    displayName: string;
+    avatarFileId: string | null;
+  };
+};
 type Summary = NonNullable<RouterOutputs["artistProfiles"]["publicSummary"]>;
 type SummaryGig = Summary["gigs"][number];
 
@@ -178,8 +187,8 @@ export function Lineup({ gig }: { gig: DetailGig }) {
       </ul>
       {index !== null && gig.lineUp[index] ? (
         <ArtistDialog
-          gig={gig}
-          entry={gig.lineUp[index]}
+          gigId={gig.id}
+          lineUp={gig.lineUp}
           index={index}
           onSelect={setIndex}
           summary={summaries[index]?.data}
@@ -191,26 +200,32 @@ export function Lineup({ gig }: { gig: DetailGig }) {
   );
 }
 
-function ArtistDialog({
-  gig,
-  entry,
+/**
+ * An artist's other gigs with Atmos, and their profile and Instagram when those
+ * exist. `lineUp` is who the switcher offers (one entry hides it), `gigId` the
+ * gig being looked at, which the dialog leaves out of their gigs.
+ */
+export function ArtistDialog({
+  gigId,
+  lineUp,
   index,
   onSelect,
   summary,
   open,
   onOpenChange,
 }: {
-  gig: DetailGig;
-  entry: Entry;
+  gigId?: string;
+  lineUp: readonly Entry[];
   index: number;
   onSelect: (index: number) => void;
   summary: Summary | null | undefined;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const entry = lineUp[index]!;
   const p = entry.artistProfile;
   // This gig is the one they're looking at; the dialog is about the others.
-  const others = summary?.gigs.filter((g) => g.id !== gig.id) ?? [];
+  const others = summary?.gigs.filter((g) => g.id !== gigId) ?? [];
   const upcoming = others
     .filter((g) => !isPast(g))
     .sort((a, b) => a.gigStartTime.getTime() - b.gigStartTime.getTime());
@@ -226,7 +241,7 @@ function ArtistDialog({
       ? (entry.role ?? "Loading")
       : others.length === 0
         ? "First time with Atmos"
-        : `${others.length} other ${others.length === 1 ? "gig" : "gigs"} with Atmos`;
+        : `${others.length}${gigId ? " other" : ""} ${others.length === 1 ? "gig" : "gigs"} with Atmos`;
 
   return (
     <SiteDialog
@@ -238,12 +253,12 @@ function ArtistDialog({
       className="max-w-[560px] overflow-y-auto"
     >
       <div className="space-y-6 p-5">
-        {gig.lineUp.length > 1 ? (
+        {lineUp.length > 1 ? (
           <div
             className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 py-1"
             aria-label="Line-up"
           >
-            {gig.lineUp.map((e, i) => (
+            {lineUp.map((e, i) => (
               <button
                 key={e.id}
                 type="button"
