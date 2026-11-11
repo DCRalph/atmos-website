@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
 import * as Dialog from "@radix-ui/react-dialog";
 import useEmblaCarousel from "embla-carousel-react";
@@ -12,6 +12,9 @@ import { IconButton } from "./ui";
 /**
  * Glass modal. `center` is a notched panel, `right` a full-height sheet (cart,
  * filters), `bottom` a phone-style sheet. Portals inside `.site`.
+ *
+ * Opened without a `trigger` (controlled by `open`), Radix has nothing to hand
+ * focus back to on close, so it goes to whatever had focus when it opened.
  */
 export function SiteDialog({
   open,
@@ -36,12 +39,22 @@ export function SiteDialog({
   titleAsWritten?: boolean;
 }) {
   const { portalContainer } = useSite();
+  const returnFocus = useRef<HTMLElement | null>(null);
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       {trigger ? <Dialog.Trigger asChild>{trigger}</Dialog.Trigger> : null}
       <Dialog.Portal container={portalContainer}>
         <Dialog.Overlay className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm" />
         <Dialog.Content
+          onOpenAutoFocus={() => {
+            const el = document.activeElement;
+            returnFocus.current = el instanceof HTMLElement ? el : null;
+          }}
+          onCloseAutoFocus={(event) => {
+            if (trigger || !returnFocus.current) return;
+            event.preventDefault();
+            returnFocus.current.focus();
+          }}
           className={cn(
             "glass-dark glass-float fixed z-[71] flex flex-col duration-200 outline-none",
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
