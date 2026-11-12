@@ -28,7 +28,7 @@ export default function AdminContentPage() {
       >
         <TabsList>
           <TabsTrigger value="content">Content</TabsTrigger>
-          <TabsTrigger value="reorder">Reorder</TabsTrigger>
+          <TabsTrigger value="reorder">Home grid</TabsTrigger>
         </TabsList>
         <TabsContent value="content">
           <ContentManager />

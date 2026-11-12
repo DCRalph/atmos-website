@@ -36,6 +36,7 @@ import { useSite } from "../site-provider";
 import { VideoPlayer } from "~/components/media/video-player";
 import {
   MediaViewer,
+  usePreloadViewerPhotos,
   type ViewerSelection,
 } from "~/components/media/media-viewer";
 import { Button, Media, Skeleton, buttonVariants } from "../ui";
@@ -327,6 +328,9 @@ function Gallery({ gig }: { gig: DetailGig }) {
       alt: `${gig.title}, video ${i + 1}`,
     }));
 
+  const media = [...photos, ...videos];
+  usePreloadViewerPhotos(media);
+
   if (!photos.length && !videos.length) {
     return (
       <p className="border border-white/10 px-6 py-10 text-center text-[15px] text-white/60">
@@ -388,7 +392,7 @@ function Gallery({ gig }: { gig: DetailGig }) {
         ))}
       </div>
       <MediaViewer
-        media={[...photos, ...videos]}
+        media={media}
         selection={selection}
         onSelectionChange={setSelection}
         container={portalContainer}

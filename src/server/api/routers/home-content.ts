@@ -1,9 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
-  HOME_ITEM_COUNT,
-  contentVideoId,
-  selectHomeContent,
+  HOME_GRID_CELLS,
+  layoutHomeContent,
+  placementSlots,
+  tileCells,
+  tileSpan,
 } from "~/lib/home-content";
 import {
   adminProcedure,
@@ -16,7 +18,7 @@ import {
 } from "~/server/api/content-artwork";
 
 export const homeContentRouter = createTRPCRouter({
-  /** One playable YouTube video, then three items in the admin's chosen order. */
+  /** Home's 3 x 2 grid: the admin's saved tiles, with empty cells filled by the newest content. */
   getHomeLatest: publicProcedure.query(async ({ ctx }) => {
     const [items, placements] = await Promise.all([
       ctx.db.contentItem.findMany({
@@ -25,62 +27,68 @@ export const homeContentRouter = createTRPCRouter({
       }),
       ctx.db.homeContentPlacement.findMany({ orderBy: { sortOrder: "asc" } }),
     ]);
-    const selected = selectHomeContent(items, placements);
-    return {
-      video: selected.video ? withContentArtwork(selected.video) : null,
-      items: selected.items.map(withContentArtwork),
-    };
+    return layoutHomeContent(
+      items.map(withContentArtwork),
+      placementSlots(placements),
+    );
   }),
 
-  /** Save the video and the three items together so Home never gets half a change. */
-  setAllPlacements: adminProcedure
+  /** Replace the whole grid at once so Home never shows half a change. Unlisted cells fill automatically. */
+  setLayout: adminProcedure
     .input(
       z.object({
-        videoContentItemId: z.string().min(1),
-        itemContentItemIds: z.array(z.string().min(1)).length(HOME_ITEM_COUNT),
+        tiles: z
+          .array(
+            z.object({
+              slot: z
+                .number()
+                .int()
+                .min(0)
+                .max(HOME_GRID_CELLS - 1),
+              contentItemId: z.string().min(1),
+            }),
+          )
+          .max(HOME_GRID_CELLS),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const ids = [input.videoContentItemId, ...input.itemContentItemIds];
+      const ids = input.tiles.map((t) => t.contentItemId);
       if (new Set(ids).size !== ids.length) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Choose four different content items.",
+          message: "Each content item can only appear once.",
         });
       }
       await ctx.db.$transaction(async (tx) => {
         const items = await tx.contentItem.findMany({
           where: { id: { in: ids } },
         });
-        if (items.length !== ids.length) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "One or more of those content items no longer exists.",
-          });
-        }
-        const video = items.find(
-          (item) => item.id === input.videoContentItemId,
-        );
-        if (!video || !contentVideoId(video)) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Choose a playable YouTube video for the top slot.",
-          });
+        const byId = new Map(items.map((item) => [item.id, item]));
+        const taken = new Set<number>();
+        for (const tile of input.tiles) {
+          const item = byId.get(tile.contentItemId);
+          if (!item) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "One or more of those content items no longer exists.",
+            });
+          }
+          const cells = tileCells(tile.slot, tileSpan(item));
+          if (!cells || cells.some((c) => taken.has(c))) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `"${item.title}" doesn't fit there. Videos need two squares side by side.`,
+            });
+          }
+          for (const c of cells) taken.add(c);
         }
         await tx.homeContentPlacement.deleteMany({});
         await tx.homeContentPlacement.createMany({
-          data: [
-            {
-              section: "VIDEO",
-              contentItemId: input.videoContentItemId,
-              sortOrder: 0,
-            },
-            ...input.itemContentItemIds.map((contentItemId, sortOrder) => ({
-              section: "ITEMS" as const,
-              contentItemId,
-              sortOrder,
-            })),
-          ],
+          data: input.tiles.map((tile) => ({
+            section: "ITEMS" as const,
+            contentItemId: tile.contentItemId,
+            sortOrder: tile.slot,
+          })),
         });
       });
       return { ok: true as const };

@@ -43,6 +43,7 @@ enum ArtistBlockType {
   CUSTOM_EMBED
 }
 
+/// Only the old layout wrote VIDEO; the 3 x 2 grid saves every tile as ITEMS.
 enum HomeContentSection {
   VIDEO @map("FEATURED")
   ITEMS @map("PAST")
@@ -387,6 +388,8 @@ model ContentItem {
   @@map("content_item")
 }
 
+/// A tile on Home's content grid. `sortOrder` is the tile's first cell (0 to 5,
+/// row by row); see `placementSlots` in `~/lib/home-content.ts`.
 model HomeContentPlacement {
   id        String             @id @default(cuid())
   section   HomeContentSection
