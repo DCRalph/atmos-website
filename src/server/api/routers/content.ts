@@ -102,7 +102,8 @@ export const contentRouter = createTRPCRouter({
 
       const items = await ctx.db.contentItem.findMany({
         where,
-        orderBy: { date: "desc" },
+        // Same order as Home's grid fill, so the admin preview matches it.
+        orderBy: [{ date: "desc" }, { id: "asc" }],
         include: CONTENT_ARTWORK_INCLUDE,
       });
       return items.map(withContentArtwork);

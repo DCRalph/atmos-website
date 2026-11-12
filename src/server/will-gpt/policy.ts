@@ -56,7 +56,7 @@ const OVERRIDES: Partial<Record<string, Risk>> = {
   // Not named like an edit, but no more final than one.
   "gigs.setPosterFromUpload": "write",
   "homeGigs.setPlacements": "write",
-  "homeContent.setAllPlacements": "write",
+  "homeContent.setLayout": "write",
   "artistProfiles.saveLayout": "write",
   "artistProfiles.setSocials": "write",
   "artistProfiles.setAvatar": "write", // the old image is soft deleted, not gone
