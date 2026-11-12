@@ -396,7 +396,7 @@ function CampaignForm({
   }
 
   return (
-    <div className="grid gap-4 rounded-lg border p-5 md:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 rounded-lg border p-5 md:grid-cols-3">
       <div className="space-y-1.5">
         <Label htmlFor="campaign-name">Name</Label>
         <Input

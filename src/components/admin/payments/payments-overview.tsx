@@ -149,7 +149,7 @@ function Breakdown({ data }: { data: Overview }) {
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section className="rounded-lg border p-4">
           <h2 className="text-muted-foreground mb-2 text-sm font-medium">
             By method
