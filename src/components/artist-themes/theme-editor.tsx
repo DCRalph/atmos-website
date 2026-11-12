@@ -197,7 +197,7 @@ export function ThemeEditor({
   const previewSrc = ownHandle ? `/artist/${ownHandle}` : "/artist-preview";
 
   return (
-    <div className="grid items-start gap-4 xl:grid-cols-[420px_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[420px_minmax(0,1fr)]">
       <div className="space-y-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2">

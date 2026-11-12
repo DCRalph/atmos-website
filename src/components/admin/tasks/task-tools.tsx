@@ -52,6 +52,7 @@ export function PasteChat() {
       <input
         aria-label="Chat screenshots"
         type="file"
+        className="w-full text-sm"
         multiple
         accept={upload.accept}
         disabled={upload.isUploading || images.length >= 5}

@@ -242,7 +242,7 @@ export function PassDesignField({
   const side = tab === "links" ? "guide" : tab === "back" ? "back" : "front";
 
   return (
-    <div className="grid gap-6 md:grid-cols-[1fr_280px]">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_280px]">
       <div className="space-y-6">
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
