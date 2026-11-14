@@ -1,12 +1,17 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  atmosParty,
+  CONTRACT_VERSION,
+  contractDefaults,
+  defaultBondCents,
   editedOnly,
   HIRE_COLUMN_FIELDS,
   hireColumns,
   hireFields,
   hireFieldsSchema,
   maskAccountNumber,
+  NO_DEFAULTS,
   PERFORMER_COLUMN_FIELDS,
   performerColumns,
   performerFields,
@@ -17,6 +22,17 @@ import {
   type RentalForContract,
   type SetArtistForContract,
 } from "~/lib/contracts";
+
+const defaults = contractDefaults(
+  {
+    legalEntity: "Example Limited",
+    nzbn: "9429000000000",
+    contactPhone: "021 000 0000",
+    defaultBond: "20%",
+    versionLabel: "",
+  },
+  "Will",
+);
 
 // 11:30 pm NZDT on Saturday 14 November 2026.
 const setStart = new Date("2026-11-14T10:30:00Z");
@@ -52,7 +68,7 @@ const setArtist: SetArtistForContract = {
 
 describe("performerFields", () => {
   test("fills the contract from the booking and the artist's private details", () => {
-    const { setTime, arriveBy, ...rest } = performerFields(setArtist, "Will");
+    const { setTime, arriveBy, ...rest } = performerFields(setArtist, defaults);
 
     expect(rest).toEqual({
       legalName: "Aroha Smith",
@@ -71,8 +87,11 @@ describe("performerFields", () => {
       guestListPlaces: "2",
       fee: "$400.00",
       gstIncluded: "No",
-      atmosContact: "Will",
+      atmosContact: "Will, 021 000 0000",
       notes: "",
+      atmosParty:
+        "Example Limited (NZBN 9429000000000), trading as Atmos Media",
+      version: CONTRACT_VERSION,
     });
     // Bun and browsers disagree on the space in "11:30 pm", so compare loosely.
     expect(setTime.replace(/\s/g, "")).toBe("11:30pm");
@@ -83,7 +102,7 @@ describe("performerFields", () => {
     const late = new Date("2026-11-14T11:30:00Z"); // 12:30 am Sunday
     const fields = performerFields(
       { ...setArtist, item: { ...setArtist.item, startsAt: late } },
-      "",
+      NO_DEFAULTS,
     );
 
     expect(fields.date).toBe("Sunday 15 November 2026");
@@ -107,7 +126,7 @@ describe("performerFields", () => {
           gig: { ...setArtist.item.gig, venue: null },
         },
       },
-      "",
+      NO_DEFAULTS,
     );
 
     expect(fields).toEqual({
@@ -150,7 +169,7 @@ const rental: RentalForContract = {
 
 describe("hireFields", () => {
   test("lists a package's gear with its serials and replacement value", () => {
-    expect(hireFields(rental, "Will")).toEqual({
+    expect(hireFields(rental, defaults)).toEqual({
       name: "Sam Taylor",
       organisation: "",
       email: "sam@example.com",
@@ -164,7 +183,10 @@ describe("hireFields", () => {
       hireFee: "$540.00",
       dailyRate: "$180.00",
       bond: "$500.00",
-      atmosContact: "Will",
+      atmosContact: "Will, 021 000 0000",
+      atmosParty:
+        "Example Limited (NZBN 9429000000000), trading as Atmos Media",
+      version: CONTRACT_VERSION,
       items: [
         {
           name: "Speaker",
@@ -175,6 +197,16 @@ describe("hireFields", () => {
         },
       ],
     });
+  });
+
+  test("starts an unbonded hire on the default bond", () => {
+    // 20% of two $1,200 speakers.
+    expect(hireFields({ ...rental, bondCents: null }, defaults).bond).toBe(
+      "$480.00",
+    );
+    expect(defaultBondCents("500", [])).toBe(50000);
+    expect(defaultBondCents("20%", [])).toBe(null);
+    expect(defaultBondCents("", [])).toBe(null);
   });
 
   test("lists hand-picked items when there are any", () => {
@@ -193,7 +225,7 @@ describe("hireFields", () => {
           },
         ],
       },
-      "",
+      NO_DEFAULTS,
     );
 
     expect(fields.items.map((item) => item.name)).toEqual(["CDJ-3000"]);
@@ -201,8 +233,17 @@ describe("hireFields", () => {
   });
 });
 
+test("names Atmos by its brand until a legal entity is set", () => {
+  expect(atmosParty({ legalEntity: "", nzbn: "9429000000000" })).toBe(
+    "Atmos Media",
+  );
+  expect(atmosParty({ legalEntity: "Example Limited", nzbn: "" })).toBe(
+    "Example Limited, trading as Atmos Media",
+  );
+});
+
 describe("resolveFields", () => {
-  const live = performerFields(setArtist, "Will");
+  const live = performerFields(setArtist, defaults);
   const saved = { ...live, setTime: "10:00 pm", fee: "$350.00", phone: "" };
 
   test("shows the database until something is saved", () => {
@@ -249,7 +290,7 @@ describe("resolveFields", () => {
 
 describe("writing a saved contract back", () => {
   test("only sends back the fields that were edited", () => {
-    const before = performerFields(setArtist, "Will");
+    const before = performerFields(setArtist, defaults);
     const after = { ...before, fee: "$450", phone: "" };
     const columns = performerColumns(after);
 
@@ -288,7 +329,7 @@ describe("writing a saved contract back", () => {
   });
 
   test("saves the hire agreement's own fields to the rental", () => {
-    const before = hireFields(rental, "Will");
+    const before = hireFields(rental, defaults);
     const after = { ...before, bond: "300", organisation: "Loft Events" };
 
     expect(

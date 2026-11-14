@@ -1,6 +1,10 @@
 import Image from "next/image";
 
-import { CONTRACT_FORM_ID, CONTRACT_VERSION } from "~/lib/contracts";
+import {
+  CONTRACT_FORM_ID,
+  CONTRACT_VERSION,
+  type ContractDefaults,
+} from "~/lib/contracts";
 import { cn } from "~/lib/utils";
 
 /**
@@ -14,9 +18,14 @@ import { cn } from "~/lib/utils";
  * One contract: the masthead, then whatever the agreement puts under it.
  * `locked` freezes every field (a sent or signed contract). `revision` is
  * the form's key: when it changes, the fields restart from what was passed.
+ *
+ * `atmosParty` and `version` are printed, not typed, so they are also hidden
+ * inputs: a saved contract keeps the ones it was issued under.
  */
 export function ContractSheet({
   title,
+  atmosParty,
+  version,
   locked = false,
   revision,
   children,
@@ -25,7 +34,7 @@ export function ContractSheet({
   locked?: boolean;
   revision?: string;
   children: React.ReactNode;
-}) {
+} & Pick<ContractDefaults, "atmosParty" | "version">) {
   return (
     <article className="contract">
       {/* The printed footer's left box. The rest of the footer is in contract.css. */}
@@ -43,12 +52,14 @@ export function ContractSheet({
             priority
             unoptimized
           />
-          <span className="t-label">{CONTRACT_VERSION}</span>
+          <span className="t-label">{version || CONTRACT_VERSION}</span>
         </div>
         <h1>{title}</h1>
       </header>
       <form id={CONTRACT_FORM_ID} key={revision}>
         <fieldset className="body" disabled={locked}>
+          <input type="hidden" name="atmosParty" value={atmosParty} />
+          <input type="hidden" name="version" value={version} />
           {children}
         </fieldset>
       </form>
@@ -112,6 +123,28 @@ export function Field({
         <input type="text" name={name} defaultValue={value} />
       )}
     </label>
+  );
+}
+
+/**
+ * The sentence that names the parties. `atmosParty` is the company as the
+ * settings give it; `counterparty` is "performer" or "hirer".
+ */
+export function Parties({
+  atmosParty,
+  counterparty,
+  children,
+}: {
+  atmosParty: string;
+  counterparty: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <p className="intro">
+      This agreement is between {atmosParty || "Atmos Media"}{" "}
+      (&quot;Atmos&quot;, &quot;we&quot;, &quot;us&quot;) and the {counterparty}{" "}
+      named above (&quot;you&quot;). {children}
+    </p>
   );
 }
 

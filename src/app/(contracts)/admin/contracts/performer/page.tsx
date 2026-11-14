@@ -5,7 +5,7 @@ import { ContractBar } from "~/components/admin/contracts/contract-bar";
 import { PerformerAgreement } from "~/components/admin/contracts/performer-agreement";
 import { performerFieldsSchema } from "~/lib/contracts";
 import { requireAdmin } from "~/server/auth-session";
-import { getPerformerContract } from "~/server/contracts";
+import { getContractDefaults, getPerformerContract } from "~/server/contracts";
 
 type Param = string | string[] | undefined;
 type Props = {
@@ -37,6 +37,12 @@ async function loadContract({ searchParams }: Props) {
   );
 }
 
+/** A blank contract: nothing filled in but who Atmos is and the version of the terms. */
+async function blankFields() {
+  const { atmosParty, version } = await getContractDefaults("");
+  return { ...performerFieldsSchema.parse({}), atmosParty, version };
+}
+
 /** The page title is the file name a browser offers when saving the PDF. */
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const view = await loadContract(props);
@@ -61,7 +67,7 @@ export default async function PerformerContractPage(props: Props) {
         }
       />
       <PerformerAgreement
-        fields={view?.fields ?? performerFieldsSchema.parse({})}
+        fields={view?.fields ?? (await blankFields())}
         locked={view?.status === "SENT" || view?.status === "SIGNED"}
         revision={view?.revision}
       />

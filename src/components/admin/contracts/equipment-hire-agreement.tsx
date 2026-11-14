@@ -3,6 +3,7 @@ import {
   ContractSheet,
   Field,
   FieldGroup,
+  Parties,
   Signatures,
   Terms,
 } from "~/components/admin/contracts/contract-sheet";
@@ -44,7 +45,9 @@ export function EquipmentHireAgreement({
   locked?: boolean;
   revision?: string;
 }) {
-  const field = (key: Exclude<keyof HireFields, "items">) => ({
+  const field = (
+    key: Exclude<keyof HireFields, "items" | "atmosParty" | "version">,
+  ) => ({
     name: key,
     label: HIRE_LABELS[key],
     value: fields[key],
@@ -60,6 +63,8 @@ export function EquipmentHireAgreement({
   return (
     <ContractSheet
       title="Equipment hire agreement"
+      atmosParty={fields.atmosParty}
+      version={fields.version}
       locked={locked}
       revision={revision}
     >
@@ -119,14 +124,11 @@ export function EquipmentHireAgreement({
         </div>
       </section>
 
-      <p className="intro">
-        This agreement is between Atmos Media (&quot;Atmos&quot;,
-        &quot;we&quot;, &quot;us&quot;) and the hirer named above
-        (&quot;you&quot;). It is made up of the hirer details, hire details and
-        equipment list above and the terms below. &quot;The equipment&quot;
-        means everything in the equipment list, including cables, cases and
-        accessories.
-      </p>
+      <Parties atmosParty={fields.atmosParty} counterparty="hirer">
+        It is made up of the hirer details, hire details and equipment list
+        above and the terms below. &quot;The equipment&quot; means everything in
+        the equipment list, including cables, cases and accessories.
+      </Parties>
 
       <Terms>
         <Clause title="The hire">

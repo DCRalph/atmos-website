@@ -3,6 +3,7 @@ import {
   ContractSheet,
   Field,
   FieldGroup,
+  Parties,
   Signatures,
   Terms,
 } from "~/components/admin/contracts/contract-sheet";
@@ -23,7 +24,9 @@ export function PerformerAgreement({
   locked?: boolean;
   revision?: string;
 }) {
-  const field = (key: keyof PerformerFields) => ({
+  const field = (
+    key: Exclude<keyof PerformerFields, "atmosParty" | "version">,
+  ) => ({
     name: key,
     label: PERFORMER_LABELS[key],
     value: fields[key],
@@ -32,6 +35,8 @@ export function PerformerAgreement({
   return (
     <ContractSheet
       title="Performer agreement"
+      atmosParty={fields.atmosParty}
+      version={fields.version}
       locked={locked}
       revision={revision}
     >
@@ -60,12 +65,10 @@ export function PerformerAgreement({
         <Field {...field("notes")} span={4} as="textarea" />
       </FieldGroup>
 
-      <p className="intro">
-        This agreement is between Atmos Media (&quot;Atmos&quot;,
-        &quot;we&quot;, &quot;us&quot;) and the performer named above
-        (&quot;you&quot;). It is made up of the performer and booking details
-        above and the terms below.
-      </p>
+      <Parties atmosParty={fields.atmosParty} counterparty="performer">
+        It is made up of the performer and booking details above and the terms
+        below.
+      </Parties>
 
       <Terms>
         <Clause title="The booking">
