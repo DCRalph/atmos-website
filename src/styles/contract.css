@@ -1,0 +1,387 @@
+/* The contracts generated under /admin/contracts: one white A4 sheet, scoped
+ * to `.contract`. The site's type and palette (Orbitron heading, stretched
+ * Anybody labels, Archivo body, true black and the lime accent) on white so
+ * it can be printed and signed.
+ *
+ * On screen the sheet is fluid and its fields are editable. In print it is
+ * A4: the first page starts at the paper edge so the masthead bleeds, and the
+ * footer is drawn in the page margin (Chrome 131 and later; other browsers
+ * print without it). The page rules are on a named page that only a document
+ * holding a contract takes, so they never touch another page printed after
+ * this stylesheet has loaded.
+ */
+
+/* Named on the root, not on `.contract`: a change of page name forces a page
+   break, and the root layout's own elements after the sheet would each get a
+   blank page of their own. */
+html:has(.contract) {
+  page: contract;
+}
+
+.contract {
+  --accent: var(--site-accent);
+  --ink: #000;
+  --muted: rgb(0 0 0 / 0.58);
+  --line: rgb(0 0 0 / 0.16);
+  --gutter: clamp(16px, 5vw, 16mm);
+
+  background: #fff;
+  color: var(--ink);
+  font:
+    400 9.2pt/1.5 var(--font-site-body),
+    system-ui,
+    sans-serif;
+  margin: 0 auto;
+  max-width: 210mm;
+  padding-bottom: 15mm;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.contract .t-label,
+.contract .field > span,
+.contract .clause h2,
+.contract th,
+.contract .group > h2 {
+  font-family: var(--font-site-display), system-ui, sans-serif;
+  font-stretch: 135%;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+/* Masthead: the one black panel. */
+
+.contract .masthead {
+  background: #000;
+  color: #fff;
+  padding: 13mm var(--gutter) 12mm;
+}
+
+.contract .masthead .top {
+  align-items: center;
+  display: flex;
+  gap: 4mm;
+  justify-content: space-between;
+}
+
+.contract .masthead img {
+  height: 7mm;
+  width: auto;
+}
+
+.contract .masthead .t-label {
+  color: rgb(255 255 255 / 0.55);
+  font-size: 6.5pt;
+  text-align: right;
+}
+
+.contract .masthead h1 {
+  font-family: var(--font-site-heading), system-ui, sans-serif;
+  font-size: clamp(17pt, 6.4vw, 27pt);
+  font-weight: 900;
+  line-height: 0.92;
+  margin-top: 15mm;
+  text-transform: uppercase;
+}
+
+.contract .body {
+  padding: 0 var(--gutter);
+}
+
+/* Fields: filled in from the database where it can be, typed into otherwise. */
+
+.contract .group {
+  break-inside: avoid;
+  margin-top: 8mm;
+}
+
+.contract .group > h2 {
+  font-size: 8pt;
+  margin-bottom: 1mm;
+}
+
+.contract .fields {
+  column-gap: 5mm;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.contract .field {
+  border-bottom: 1px solid var(--ink);
+  display: block;
+  min-height: 11.5mm;
+  padding-top: 3mm;
+}
+
+.contract .field.tall {
+  min-height: 19mm;
+}
+
+.contract .field:focus-within {
+  box-shadow: 0 1px 0 var(--ink);
+}
+
+.contract .field > span {
+  color: var(--muted);
+  display: block;
+  font-size: 6pt;
+  white-space: nowrap;
+}
+
+.contract input,
+.contract textarea {
+  background: none;
+  border: 0;
+  color: inherit;
+  display: block;
+  font:
+    600 9.5pt/1.25 var(--font-site-body),
+    system-ui,
+    sans-serif;
+  min-width: 0;
+  outline: 0;
+  padding: 1.2mm 0 0.8mm;
+  resize: none;
+  width: 100%;
+}
+
+.contract .span2 {
+  grid-column: span 2;
+}
+
+.contract .span4 {
+  grid-column: span 4;
+}
+
+.contract table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.contract th {
+  border-bottom: 1px solid var(--ink);
+  color: var(--muted);
+  font-size: 6pt;
+  padding: 3mm 2mm 2mm 0;
+  text-align: left;
+}
+
+.contract th + th {
+  padding-left: 2mm;
+}
+
+.contract td {
+  border-bottom: 1px solid var(--line);
+  height: 8.5mm;
+  padding: 0;
+}
+
+.contract td + td {
+  border-left: 1px solid var(--line);
+}
+
+.contract td input {
+  font-size: 9pt;
+  padding: 0 2mm;
+}
+
+.contract td:first-child input {
+  padding-left: 0;
+}
+
+.contract .intro {
+  margin-top: 8mm;
+  max-width: 150mm;
+}
+
+/* Terms: numbered sections with the heading in the left gutter. Section and
+   clause numbers come from counters, so clauses can be added or moved freely. */
+
+.contract .terms {
+  counter-reset: section;
+  margin-top: 6mm;
+}
+
+.contract .clause {
+  border-top: 1px solid var(--line);
+  column-gap: 6mm;
+  counter-increment: section;
+  counter-reset: item;
+  display: grid;
+  grid-template-columns: 38mm minmax(0, 1fr);
+  padding: 4.5mm 0 2.5mm;
+}
+
+.contract .clause h2 {
+  break-after: avoid;
+  font-size: 8pt;
+  line-height: 1.25;
+}
+
+.contract .clause h2::before {
+  background: #000;
+  color: var(--accent);
+  content: counter(section, decimal-leading-zero);
+  display: block;
+  font-size: 7pt;
+  line-height: 1;
+  margin-bottom: 2.5mm;
+  padding: 1.1mm 1.6mm 0.9mm;
+  width: fit-content;
+}
+
+.contract .clause > ol > li {
+  break-inside: avoid;
+  counter-increment: item;
+  margin-bottom: 2mm;
+  padding-left: 9.5mm;
+  position: relative;
+}
+
+.contract .clause > ol > li::before {
+  color: var(--muted);
+  content: counter(section) "." counter(item);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  left: 0;
+  position: absolute;
+}
+
+.contract .clause strong {
+  font-weight: 700;
+}
+
+.contract .clause li ol {
+  counter-reset: sub;
+  margin-top: 1.2mm;
+}
+
+.contract .clause li ol > li {
+  counter-increment: sub;
+  margin-bottom: 0.8mm;
+  padding-left: 6.5mm;
+  position: relative;
+}
+
+.contract .clause li ol > li::before {
+  color: var(--muted);
+  content: "(" counter(sub, lower-alpha) ")";
+  left: 0;
+  position: absolute;
+}
+
+/* Signatures, kept together on one page. */
+
+.contract .sign {
+  border-top: 2px solid var(--ink);
+  break-inside: avoid;
+  margin-top: 6mm;
+  padding-top: 5mm;
+}
+
+.contract .sign .cols {
+  column-gap: 10mm;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 3mm;
+}
+
+.contract .sign h3 {
+  font-weight: 700;
+}
+
+.contract .sign .cols .fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Phones: two fields a row, headings above their clauses, a table that scrolls. */
+
+@media screen and (max-width: 640px) {
+  .contract .fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .contract .span4 {
+    grid-column: span 2;
+  }
+
+  .contract .clause,
+  .contract .sign .cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .contract .clause h2 {
+    margin-bottom: 3mm;
+  }
+
+  .contract .table-scroll {
+    overflow-x: auto;
+  }
+
+  .contract table {
+    min-width: 560px;
+  }
+}
+
+@media print {
+  html:has(.contract),
+  body:has(.contract) {
+    background: #fff !important;
+  }
+
+  .contract {
+    --gutter: 16mm;
+    max-width: none;
+    padding-bottom: 0;
+  }
+
+  .contract .masthead h1 {
+    font-size: 27pt;
+  }
+}
+
+/* The footer's left box, which names the document, is set by `ContractSheet`.
+   The empty top boxes are what stop Chrome printing its own date and URL. */
+@page contract {
+  margin: 15mm 0 17mm;
+  size: A4;
+
+  @top-left {
+    content: "";
+  }
+
+  @top-right {
+    content: "";
+  }
+
+  @bottom-center {
+    color: #777;
+    content: "Initials ____________";
+    font:
+      6.5pt "Helvetica Neue",
+      Helvetica,
+      Arial,
+      sans-serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  @bottom-right {
+    color: #777;
+    content: "Page " counter(page) " of " counter(pages);
+    font:
+      6.5pt "Helvetica Neue",
+      Helvetica,
+      Arial,
+      sans-serif;
+    letter-spacing: 0.08em;
+    padding-right: 16mm;
+    text-transform: uppercase;
+  }
+}
+
+@page contract:first {
+  margin-top: 0;
+}
