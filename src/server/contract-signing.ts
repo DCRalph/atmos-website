@@ -164,7 +164,14 @@ export async function sendContract(
   if (!contract.signToken) {
     const stamped = new Date();
     const { count } = await db.contract.updateMany({
-      where: { id: contract.id, status: contract.status, updatedAt: revision },
+      // `signToken: null` lets exactly one caller claim the link, even if two
+      // read the same revision in the same millisecond.
+      where: {
+        id: contract.id,
+        status: contract.status,
+        updatedAt: revision,
+        signToken: null,
+      },
       data: { signToken: token, updatedAt: stamped },
     });
     if (count === 0) throw conflict();
