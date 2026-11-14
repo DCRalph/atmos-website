@@ -31,10 +31,10 @@ const ITEM_COLUMNS = [
 
 /**
  * The equipment hire agreement. `fields` is the contract as it should read:
- * from the database, from its saved copy, or all blank. Photo ID is the one
- * field with no name: it is written on the paper and never stored. Clause
- * 5.2 points at section 4 by number: keep them in step if sections are
- * added or moved.
+ * from the database, from its saved copy, or all blank. Photo ID is an ink
+ * line: it is written on the paper at collection and never typed or stored.
+ * Clause 5.2 points at section 4 by number: keep them in step if sections
+ * are added or moved.
  */
 export function EquipmentHireAgreement({
   fields,
@@ -74,7 +74,7 @@ export function EquipmentHireAgreement({
         <Field {...field("email")} span={2} />
         <Field {...field("phone")} span={2} />
         <Field {...field("address")} span={2} />
-        <Field label="Photo ID type and number" span={2} />
+        <Field label="Photo ID type and number" span={2} as="line" />
       </FieldGroup>
 
       <FieldGroup title="Hire details">
@@ -370,17 +370,17 @@ export function EquipmentHireAgreement({
           <div>
             <h3>At collection</h3>
             <div className="fields">
-              <Field label="Date and time" />
-              <Field label="Hirer initials" />
-              <Field label="Checked by (Atmos)" span={2} />
+              <Field label="Date and time" as="line" />
+              <Field label="Hirer initials" as="line" />
+              <Field label="Checked by (Atmos)" span={2} as="line" />
             </div>
           </div>
           <div>
             <h3>At return</h3>
             <div className="fields">
-              <Field label="Date and time" />
-              <Field label="Hirer initials" />
-              <Field label="Checked by (Atmos)" span={2} />
+              <Field label="Date and time" as="line" />
+              <Field label="Hirer initials" as="line" />
+              <Field label="Checked by (Atmos)" span={2} as="line" />
             </div>
           </div>
         </div>
@@ -388,7 +388,8 @@ export function EquipmentHireAgreement({
           <Field
             label="Notes on missing or damaged items"
             span={4}
-            as="textarea"
+            as="line"
+            tall
           />
         </div>
       </section>

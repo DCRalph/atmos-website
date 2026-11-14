@@ -513,14 +513,21 @@ export async function saveHireContract(input: SaveInput<HireFields>) {
 
   const stored = await db.$transaction(async (tx) => {
     if (fields && rental && before) {
-      const columns = editedOnly(
+      const { userName, contactInfo, ...columns } = editedOnly(
         hireColumns(fields),
         HIRE_COLUMN_FIELDS,
         before,
         fields,
       );
-      if (Object.keys(columns).length > 0) {
-        await tx.rental.update({ where: { id: rental.id }, data: columns });
+      const data = {
+        ...columns,
+        // Required on a rental: a blanked name or email is kept on the
+        // contract only.
+        ...(userName && { userName }),
+        ...(contactInfo && { contactInfo }),
+      };
+      if (Object.keys(data).length > 0) {
+        await tx.rental.update({ where: { id: rental.id }, data });
       }
     }
 

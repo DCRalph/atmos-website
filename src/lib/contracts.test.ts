@@ -330,11 +330,20 @@ describe("writing a saved contract back", () => {
 
   test("saves the hire agreement's own fields to the rental", () => {
     const before = hireFields(rental, defaults);
-    const after = { ...before, bond: "300", organisation: "Loft Events" };
+    const after = {
+      ...before,
+      name: "Samantha Taylor",
+      bond: "300",
+      organisation: "Loft Events",
+    };
 
     expect(
       editedOnly(hireColumns(after), HIRE_COLUMN_FIELDS, before, after),
-    ).toEqual({ bondCents: 30000, organisation: "Loft Events" });
+    ).toEqual({
+      userName: "Samantha Taylor",
+      bondCents: 30000,
+      organisation: "Loft Events",
+    });
   });
 
   test("saves money and answers the way the database prints them back", () => {

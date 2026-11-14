@@ -84,10 +84,12 @@ export function FieldGroup({
 }
 
 /**
- * One labelled line. `name` is the field's key in the saved contract; a
- * field without one is printed but never stored. `value` is what is already
- * known, and stays editable. `as="textarea"` gives two lines, and `as="line"`
- * leaves a bare line for ink (a signature).
+ * One labelled line. `name` is the field's key in the saved contract, and
+ * every typed field has one. `value` is what is already known, and stays
+ * editable. `as="textarea"` gives two lines. `as="line"` is
+ * a bare line for ink: whatever is written at signing or handover belongs on
+ * the paper, and a typed value would be lost with the next save. `tall`
+ * leaves room for a signature.
  */
 export function Field({
   label,
@@ -95,18 +97,16 @@ export function Field({
   value,
   span,
   as = "input",
+  tall = as === "textarea",
 }: {
   label: string;
   name?: string;
   value?: string;
   span?: 2 | 4;
   as?: "input" | "textarea" | "line";
+  tall?: boolean;
 }) {
-  const className = cn(
-    "field",
-    span && `span${span}`,
-    as !== "input" && "tall",
-  );
+  const className = cn("field", span && `span${span}`, tall && "tall");
   if (as === "line") {
     return (
       <div className={className}>
@@ -180,17 +180,17 @@ export function Signatures({ party }: { party: string }) {
         <div>
           <h3>{party}</h3>
           <div className="fields">
-            <Field label="Signature" span={2} as="line" />
-            <Field label="Name" />
-            <Field label="Date" />
+            <Field label="Signature" span={2} as="line" tall />
+            <Field label="Name" as="line" />
+            <Field label="Date" as="line" />
           </div>
         </div>
         <div>
           <h3>Atmos Media</h3>
           <div className="fields">
-            <Field label="Signature" span={2} as="line" />
-            <Field label="Name and role" />
-            <Field label="Date" />
+            <Field label="Signature" span={2} as="line" tall />
+            <Field label="Name and role" as="line" />
+            <Field label="Date" as="line" />
           </div>
         </div>
       </div>

@@ -612,9 +612,15 @@ export const PERFORMER_COLUMN_FIELDS = {
   >;
 };
 
-/** A hire agreement as the `Rental` columns it is saved to. */
+/**
+ * A hire agreement as the `Rental` columns it is saved to. The hirer's name
+ * and email are required on a rental, so those two are null when blank and
+ * the caller leaves the column alone.
+ */
 export function hireColumns(fields: HireFields) {
   return {
+    userName: blankToNull(fields.name),
+    contactInfo: blankToNull(fields.email),
     phone: blankToNull(fields.phone),
     organisation: blankToNull(fields.organisation),
     address: blankToNull(fields.address),
@@ -626,6 +632,8 @@ export function hireColumns(fields: HireFields) {
 }
 
 export const HIRE_COLUMN_FIELDS = {
+  userName: "name",
+  contactInfo: "email",
   phone: "phone",
   organisation: "organisation",
   address: "address",
