@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ContractStatus } from "~Prisma/browser";
 
 import { formatCueTime, RUN_SHEET_TIMEZONE } from "~/lib/run-sheet/schedule";
+import { dayKey } from "~/lib/tasks/time";
 import { formatNZD, parsePriceToCents } from "~/lib/ticketing/money";
 
 /**
@@ -124,6 +125,24 @@ export type ContractView<F> = {
   stale: string[];
   /** Changes when the form should restart from `fields`: after a save, or a refresh from the database. */
   revision: string;
+  /** Null until the contract is first saved. */
+  signing: ContractSigning | null;
+};
+
+/**
+ * Where a contract has got to with its other party. Sending it for signature
+ * is Atmos's side of the signature, so who sent it and when print in the
+ * Atmos block. `signedName` is the name the other party typed on the website;
+ * a contract an admin marked signed by hand has a date and no name.
+ */
+export type ContractSigning = {
+  /** The page it is read and signed on. Null until it has been sent once. */
+  url: string | null;
+  sentAt: Date | null;
+  sentTo: string | null;
+  sentByName: string | null;
+  signedAt: Date | null;
+  signedName: string | null;
 };
 
 /** One printed field. Defaults to blank, so an older saved contract still reads after a field is added. */
@@ -246,6 +265,71 @@ export type PrivateDetailsForContract = {
   bankAccountNumber: string | null;
 };
 
+/**
+ * The fields the other party fills in for themselves on the signing page:
+ * who they are and where they are paid. Everything else on a contract they
+ * are sent is fixed. See `signerFieldsSchema`.
+ */
+export const SIGNER_FIELDS = {
+  PERFORMER: [
+    "legalName",
+    "phone",
+    "address",
+    "gstNumber",
+    "bankAccountName",
+    "bankAccountNumber",
+  ],
+  HIRE: ["organisation", "phone", "address"],
+} as const satisfies {
+  PERFORMER: readonly (keyof PerformerFields)[];
+  HIRE: readonly (keyof HireFields)[];
+};
+
+/** What the signing page submits beside the signature: the signer's own fields, as typed. */
+export const signerFieldsSchema = {
+  PERFORMER: performerFieldsSchema.pick({
+    legalName: true,
+    phone: true,
+    address: true,
+    gstNumber: true,
+    bankAccountName: true,
+    bankAccountNumber: true,
+  }),
+  HIRE: hireFieldsSchema.pick({
+    organisation: true,
+    phone: true,
+    address: true,
+  }),
+};
+
+/** The name someone types to sign. */
+export const signatureNameSchema = z.string().trim().min(2).max(200);
+
+/**
+ * Whole days from `now` to `date` on the New Zealand calendar: 0 is today,
+ * negative is past. How the Contracts page says how close a gig is.
+ */
+export function daysUntil(date: Date, now: Date): number {
+  const day = (at: Date) => Date.parse(`${dayKey(at)}T00:00:00Z`);
+  return Math.round((day(date) - day(now)) / 86_400_000);
+}
+
+/** "today", "tomorrow", "in 6 days", "yesterday", "3 days ago". */
+export function relativeDay(days: number): string {
+  if (days === 0) return "today";
+  if (days === 1) return "tomorrow";
+  if (days === -1) return "yesterday";
+  return days > 0 ? `in ${days} days` : `${-days} days ago`;
+}
+
+/** Clause 4.1 of the performer agreement: paid within this many days of the set. */
+export const PAYMENT_DUE_DAYS = 14;
+
+/** The date a performer is owed their fee by, given when they play. */
+export function paymentDueAt(playedAt: Date): Date {
+  return new Date(playedAt.getTime() + PAYMENT_DUE_DAYS * 86_400_000);
+}
+
 /** One artist in one set, as `~/server/contracts` selects it. */
 export type SetArtistForContract = {
   feeCents: number | null;
@@ -323,7 +407,7 @@ function contractDate(length: "long" | "short") {
 }
 
 export const formatContractDate = contractDate("long");
-const formatShortDate = contractDate("short");
+export const formatShortContractDate = contractDate("short");
 
 export function performerFields(
   setArtist: SetArtistForContract,
@@ -419,9 +503,9 @@ export function hireFields(
     email: rental.contactInfo,
     phone: rental.phone ?? "",
     address: rental.address ?? "",
-    collectionDate: formatShortDate(rental.startDate),
+    collectionDate: formatShortContractDate(rental.startDate),
     collectionTime: rental.collectionTime ?? "",
-    returnDate: formatShortDate(rental.endDate),
+    returnDate: formatShortContractDate(rental.endDate),
     returnTime: rental.returnTime ?? "",
     useLocation: rental.useLocation ?? "",
     hireFee: price(rental.estimatedTotalPrice),

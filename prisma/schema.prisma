@@ -1525,12 +1525,34 @@ model Contract {
   termsVersion String
   status       ContractStatus @default(DRAFT)
 
+  /// The credential in the link emailed for signing: 32 random bytes. Whoever
+  /// holds it can read the contract and, while it is `SENT`, sign it. Kept
+  /// once made, so a reminder and the first email open the same page.
+  signToken String? @unique
+  /// When it was last emailed for signature, to which address, and by which
+  /// admin. Sending is Atmos's side of the signature.
+  sentAt     DateTime?
+  sentTo     String?
+  sentByName String?
+  /// The other party's signature. Signed on the website, all four are set:
+  /// the name they typed, when, and where the request came from. Marked
+  /// signed by an admin (signed on paper), only `signedAt` is.
+  signedAt        DateTime?
+  signedName      String?
+  signedIp        String?
+  signedUserAgent String?
+
+  /// The task that reminds someone to pay the performer. Made when the
+  /// contract is first issued. Performer agreements with a fee only.
+  paymentTaskId String? @unique
+
   createdById String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  setArtist GigSetArtist? @relation(fields: [setArtistId], references: [id], onDelete: SetNull)
-  rental    Rental?       @relation(fields: [rentalId], references: [id], onDelete: SetNull)
+  setArtist   GigSetArtist? @relation(fields: [setArtistId], references: [id], onDelete: SetNull)
+  rental      Rental?       @relation(fields: [rentalId], references: [id], onDelete: SetNull)
+  paymentTask Task?         @relation(fields: [paymentTaskId], references: [id], onDelete: SetNull)
 
   @@index([status, updatedAt])
   @@map("contract")
@@ -1644,6 +1666,10 @@ enum ActivityType {
   /// An admin offered the buyer a refund they can take themselves.
   REFUND_OFFERED
   REFUND_OFFER_WITHDRAWN
+  /// A contract was emailed to its other party for signature.
+  CONTRACT_SENT
+  /// The other party signed a contract on the website.
+  CONTRACT_SIGNED
   TICKET_ISSUED
   TICKET_VOIDED
   /// Deleted outright, row and all. The log is the only record left of it.
@@ -3258,6 +3284,8 @@ model Task {
   events          TaskEvent[]
   nudges          TaskNudge[]
   rounds          TaskRound[]
+  /// The performer agreement this task is the payment reminder for, if any.
+  contract        Contract?
 
   @@index([assigneeId, status, dueAt])
   @@index([gigId, dueAt])

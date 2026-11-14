@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   atmosParty,
+  daysUntil,
   CONTRACT_VERSION,
   contractDefaults,
   defaultBondCents,
@@ -11,6 +12,8 @@ import {
   hireFields,
   hireFieldsSchema,
   maskAccountNumber,
+  paymentDueAt,
+  relativeDay,
   NO_DEFAULTS,
   PERFORMER_COLUMN_FIELDS,
   performerColumns,
@@ -397,4 +400,24 @@ describe("writing a saved contract back", () => {
 test("masks a bank account number down to its last four digits", () => {
   expect(maskAccountNumber("12-3456-0123456-00")).toBe("••-••••-•••••56-00");
   expect(maskAccountNumber("123")).toBe("123");
+});
+
+test("counts days to a gig on the New Zealand calendar", () => {
+  // 11 pm Saturday in NZ is still Saturday morning in UTC.
+  const saturdayNight = new Date("2026-11-14T10:00:00Z");
+  const sundayMorning = new Date("2026-11-14T20:00:00Z");
+
+  expect(daysUntil(sundayMorning, saturdayNight)).toBe(1);
+  expect(daysUntil(saturdayNight, sundayMorning)).toBe(-1);
+  expect([0, 1, 6, -1, -3].map(relativeDay)).toEqual([
+    "today",
+    "tomorrow",
+    "in 6 days",
+    "yesterday",
+    "3 days ago",
+  ]);
+});
+
+test("a performer is owed their fee 14 days after they play", () => {
+  expect(paymentDueAt(setStart).toISOString()).toBe("2026-11-28T10:30:00.000Z");
 });

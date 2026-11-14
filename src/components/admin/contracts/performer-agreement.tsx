@@ -7,7 +7,11 @@ import {
   Signatures,
   Terms,
 } from "~/components/admin/contracts/contract-sheet";
-import { PERFORMER_LABELS, type PerformerFields } from "~/lib/contracts";
+import {
+  PERFORMER_LABELS,
+  type ContractSigning,
+  type PerformerFields,
+} from "~/lib/contracts";
 
 /**
  * The performer agreement. `fields` is the contract as it should read: from
@@ -19,15 +23,26 @@ export function PerformerAgreement({
   fields,
   locked,
   revision,
+  signing,
+  signerFields,
 }: {
   fields: PerformerFields;
   locked?: boolean;
   revision?: string;
+  /** Who has sent and signed it, for the signature block. */
+  signing?: ContractSigning | null;
+  /**
+   * Set on the signing page: the only fields its reader may fill in. Every
+   * other field is read-only.
+   */
+  signerFields?: readonly string[];
 }) {
   const field = (
     key: Exclude<keyof PerformerFields, "atmosParty" | "version">,
   ) => ({
     name: key,
+    readOnly: signerFields && !signerFields.includes(key),
+    fill: signerFields?.includes(key),
     label: PERFORMER_LABELS[key],
     value: fields[key],
   });
@@ -327,7 +342,7 @@ export function PerformerAgreement({
         </Clause>
       </Terms>
 
-      <Signatures party="Performer" />
+      <Signatures party="Performer" signing={signing} />
     </ContractSheet>
   );
 }

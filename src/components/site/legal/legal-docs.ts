@@ -150,6 +150,9 @@ export const privacyDoc: LegalDoc = {
           p: "We use that to prepare the agreement between us, pay performers, contact you about the booking or hire, recover equipment or costs if something goes wrong, and keep the tax records the law requires. We keep a copy of each agreement as it was issued.",
         },
         {
+          p: "We may email you a link to read and sign your agreement on our website. The link opens your agreement without a password, so treat that email as private. When you sign there we record the name you typed, the date and time, and the IP address and browser the signature came from, as the record of your signature.",
+        },
+        {
           p: "Only Atmos administrators can see these details. They are never shown on a public artist page, and bank account numbers are stored encrypted. We keep agreements and payment records for seven years, which is what New Zealand tax law requires of business records. You can ask us to correct your details at any time.",
         },
       ],

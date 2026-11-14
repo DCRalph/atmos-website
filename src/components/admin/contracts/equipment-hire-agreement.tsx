@@ -10,6 +10,7 @@ import {
 import {
   HIRE_LABELS,
   hireItemSchema,
+  type ContractSigning,
   type HireFields,
   type HireItem,
 } from "~/lib/contracts";
@@ -40,15 +41,26 @@ export function EquipmentHireAgreement({
   fields,
   locked,
   revision,
+  signing,
+  signerFields,
 }: {
   fields: HireFields;
   locked?: boolean;
   revision?: string;
+  /** Who has sent and signed it, for the signature block. */
+  signing?: ContractSigning | null;
+  /**
+   * Set on the signing page: the only fields its reader may fill in. Every
+   * other field is read-only.
+   */
+  signerFields?: readonly string[];
 }) {
   const field = (
     key: Exclude<keyof HireFields, "items" | "atmosParty" | "version">,
   ) => ({
     name: key,
+    readOnly: signerFields && !signerFields.includes(key),
+    fill: signerFields?.includes(key),
     label: HIRE_LABELS[key],
     value: fields[key],
   });
@@ -114,6 +126,7 @@ export function EquipmentHireAgreement({
                         name={`items.${index}.${column.key}`}
                         aria-label={column.label}
                         defaultValue={row[column.key]}
+                        readOnly={Boolean(signerFields)}
                       />
                     </td>
                   ))}
@@ -362,7 +375,7 @@ export function EquipmentHireAgreement({
         </Clause>
       </Terms>
 
-      <Signatures party="Hirer" />
+      <Signatures party="Hirer" signing={signing} />
 
       <section className="sign">
         <p>Condition check, completed with the hirer present where possible.</p>

@@ -27,6 +27,7 @@ import {
   NO_DEFAULTS,
   type ContractDefaults,
   type ContractSettings,
+  type ContractSigning,
   type ContractTarget,
   type ContractView,
   type HireFields,
@@ -98,7 +99,9 @@ export function openBankAccountNumber(
  */
 const SNAPSHOT_CONTEXT = "contract-snapshot";
 
-const sealPerformerSnapshot = (fields: PerformerFields): PerformerFields => ({
+export const sealPerformerSnapshot = (
+  fields: PerformerFields,
+): PerformerFields => ({
   ...fields,
   bankAccountNumber:
     fields.bankAccountNumber &&
@@ -130,9 +133,16 @@ function openPerformerSnapshot(stored: unknown): PerformerFields {
 const contractSelect = {
   id: true,
   status: true,
+  title: true,
   fields: true,
   baseline: true,
   updatedAt: true,
+  signToken: true,
+  sentAt: true,
+  sentTo: true,
+  sentByName: true,
+  signedAt: true,
+  signedName: true,
   setArtistId: true,
   rentalId: true,
 } satisfies Prisma.ContractSelect;
@@ -207,6 +217,27 @@ const rentalSelect = {
   rentalItems: lineItems,
 } satisfies Prisma.RentalSelect;
 
+/** Where a contract has got to with its other party, for a `ContractView`. Null until it is saved. */
+function signingOf(
+  contract: {
+    signToken: string | null;
+    sentAt: Date | null;
+    sentTo: string | null;
+    sentByName: string | null;
+    signedAt: Date | null;
+    signedName: string | null;
+  } | null,
+): ContractSigning | null {
+  if (!contract) return null;
+  const { signToken, ...signing } = contract;
+  return { ...signing, url: signToken && contractSigningUrl(signToken) };
+}
+
+/** The page a contract's other party reads and signs it on. The token is the credential. */
+export function contractSigningUrl(token: string): string {
+  return `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/contracts/${token}`;
+}
+
 /** Changes whenever the page should start over from what the server sent. */
 const revisionOf = (contract: { updatedAt: Date } | null, refresh: boolean) =>
   `${contract?.updatedAt.toISOString() ?? "unsaved"}${refresh ? ":refreshed" : ""}`;
@@ -216,7 +247,7 @@ const revisionOf = (contract: { updatedAt: Date } | null, refresh: boolean) =>
  * (`live`, with its row) and the contract as it was last saved. Null when the
  * target names neither a set that exists nor a saved performer agreement.
  */
-async function readPerformer(
+export async function readPerformer(
   target: ContractTarget,
   defaults: ContractDefaults,
 ) {
@@ -270,7 +301,10 @@ async function readPerformer(
 }
 
 /** The same two halves for an equipment hire agreement. */
-async function readHire(target: ContractTarget, defaults: ContractDefaults) {
+export async function readHire(
+  target: ContractTarget,
+  defaults: ContractDefaults,
+) {
   const byId = target.contractId
     ? await db.contract.findFirst({
         where: { id: target.contractId, kind: "HIRE" },
@@ -335,6 +369,7 @@ export const getPerformerContract = cache(
       },
       stale: stale.map((key) => PERFORMER_LABELS[key]),
       revision: revisionOf(contract, refresh),
+      signing: signingOf(contract),
     };
   },
 );
@@ -372,6 +407,7 @@ export const getHireContract = cache(
       },
       stale: stale.map((key) => HIRE_LABELS[key]),
       revision: revisionOf(contract, refresh),
+      signing: signingOf(contract),
     };
   },
 );
@@ -408,14 +444,26 @@ function storeContract(
   } | null,
   { status, userId }: { status: ContractStatus; userId: string },
 ) {
+  // A signature belongs to a signed contract. Marked signed by an admin (it
+  // was signed on paper), it gets a date and no name; taken out of signed,
+  // or edited, it loses the signature it had.
+  const signature =
+    status !== "SIGNED"
+      ? {
+          signedAt: null,
+          signedName: null,
+          signedIp: null,
+          signedUserAgent: null,
+        }
+      : existing?.status !== "SIGNED"
+        ? { signedAt: new Date() }
+        : {};
+
   if (existing) {
     return tx.contract.update({
       where: { id: existing.id },
-      data: {
-        status,
-        ...snapshot,
-      },
-      select: { id: true, title: true },
+      data: { status, ...snapshot, ...signature },
+      select: { id: true, title: true, status: true },
     });
   }
   if (!snapshot) throw needsFields();
@@ -424,10 +472,11 @@ function storeContract(
       kind,
       ...source,
       ...snapshot,
+      ...signature,
       status,
       createdById: userId,
     },
-    select: { id: true, title: true },
+    select: { id: true, title: true, status: true },
   });
 }
 
@@ -436,12 +485,90 @@ function storeContract(
  * save has written its edits. It is the line `resolveFields` measures later
  * change from, which is how a draft knows it has fallen behind.
  */
-function setBaseline(contractId: string, baseline: Prisma.InputJsonValue) {
+export function setBaseline(
+  contractId: string,
+  baseline: Prisma.InputJsonValue,
+) {
   return db.contract.update({
     where: { id: contractId },
     data: { baseline },
     select: { id: true },
   });
+}
+
+/**
+ * Write a performer agreement's edited fields back where they came from: the
+ * booking's terms and the artist's private details. `editorId` is the admin
+ * who edited them, or null when the artist filled them in while signing.
+ */
+export async function writeBackPerformer(
+  tx: Prisma.TransactionClient,
+  setArtist: { id: string; artistProfile: { id: string } },
+  before: PerformerFields,
+  fields: PerformerFields,
+  editorId: string | null,
+) {
+  const columns = performerColumns(fields);
+  const booking = editedOnly(
+    columns.booking,
+    PERFORMER_COLUMN_FIELDS.booking,
+    before,
+    fields,
+  );
+  if (Object.keys(booking).length > 0) {
+    await tx.gigSetArtist.update({
+      where: { id: setArtist.id },
+      data: booking,
+    });
+  }
+
+  const artistProfileId = setArtist.artistProfile.id;
+  const { bankAccountNumber, ...details } = editedOnly(
+    columns.privateDetails,
+    PERFORMER_COLUMN_FIELDS.privateDetails,
+    before,
+    fields,
+  );
+  const data = {
+    ...details,
+    ...(bankAccountNumber !== undefined && {
+      bankAccountNumber: bankAccountNumber
+        ? sealBankAccountNumber(artistProfileId, bankAccountNumber)
+        : null,
+    }),
+  };
+  if (Object.keys(data).length > 0) {
+    await tx.artistPrivateDetails.upsert({
+      where: { artistProfileId },
+      create: { artistProfileId, ...data, updatedById: editorId },
+      update: { ...data, updatedById: editorId },
+    });
+  }
+}
+
+/** Write a hire agreement's edited fields back to its rental. */
+export async function writeBackHire(
+  tx: Prisma.TransactionClient,
+  rentalId: string,
+  before: HireFields,
+  fields: HireFields,
+) {
+  const { userName, contactInfo, ...columns } = editedOnly(
+    hireColumns(fields),
+    HIRE_COLUMN_FIELDS,
+    before,
+    fields,
+  );
+  const data = {
+    ...columns,
+    // Required on a rental: a blanked name or email is kept on the contract
+    // only.
+    ...(userName && { userName }),
+    ...(contactInfo && { contactInfo }),
+  };
+  if (Object.keys(data).length > 0) {
+    await tx.rental.update({ where: { id: rentalId }, data });
+  }
 }
 
 /**
@@ -465,42 +592,7 @@ export async function savePerformerContract(input: SaveInput<PerformerFields>) {
 
   const stored = await db.$transaction(async (tx) => {
     if (fields && setArtist && before) {
-      const columns = performerColumns(fields);
-      const booking = editedOnly(
-        columns.booking,
-        PERFORMER_COLUMN_FIELDS.booking,
-        before,
-        fields,
-      );
-      if (Object.keys(booking).length > 0) {
-        await tx.gigSetArtist.update({
-          where: { id: setArtist.id },
-          data: booking,
-        });
-      }
-
-      const artistProfileId = setArtist.artistProfile.id;
-      const { bankAccountNumber, ...details } = editedOnly(
-        columns.privateDetails,
-        PERFORMER_COLUMN_FIELDS.privateDetails,
-        before,
-        fields,
-      );
-      const data = {
-        ...details,
-        ...(bankAccountNumber !== undefined && {
-          bankAccountNumber: bankAccountNumber
-            ? sealBankAccountNumber(artistProfileId, bankAccountNumber)
-            : null,
-        }),
-      };
-      if (Object.keys(data).length > 0) {
-        await tx.artistPrivateDetails.upsert({
-          where: { artistProfileId },
-          create: { artistProfileId, ...data, updatedById: input.userId },
-          update: { ...data, updatedById: input.userId },
-        });
-      }
+      await writeBackPerformer(tx, setArtist, before, fields, input.userId);
     }
 
     return storeContract(
@@ -551,22 +643,7 @@ export async function saveHireContract(input: SaveInput<HireFields>) {
 
   const stored = await db.$transaction(async (tx) => {
     if (fields && rental && before) {
-      const { userName, contactInfo, ...columns } = editedOnly(
-        hireColumns(fields),
-        HIRE_COLUMN_FIELDS,
-        before,
-        fields,
-      );
-      const data = {
-        ...columns,
-        // Required on a rental: a blanked name or email is kept on the
-        // contract only.
-        ...(userName && { userName }),
-        ...(contactInfo && { contactInfo }),
-      };
-      if (Object.keys(data).length > 0) {
-        await tx.rental.update({ where: { id: rental.id }, data });
-      }
+      await writeBackHire(tx, rental.id, before, fields);
     }
 
     return storeContract(
@@ -600,16 +677,28 @@ export async function saveHireContract(input: SaveInput<HireFields>) {
   return stored;
 }
 
+/** What the Contracts page shows about one saved contract: how far it has got, and whether it is paid. */
+const progressSelect = {
+  id: true,
+  status: true,
+  sentAt: true,
+  sentTo: true,
+  signedAt: true,
+  signedName: true,
+  paymentTask: { select: { id: true, status: true, dueAt: true } },
+} satisfies Prisma.ContractSelect;
+
 /**
  * Everything on the Contracts page: the sets on recent and upcoming gigs and
- * the hire requests that have not been turned down, each with its contract's
- * status, and every contract that has been sent or signed, however old.
+ * the hire requests that have not been turned down, each with how far its
+ * contract has got, and every saved contract there is, newest first, with
+ * the date of what it is for.
  */
 export async function listContractSources() {
   const since = new Date(Date.now() - LOOKBACK_DAYS * 86_400_000);
-  const status = { select: { status: true } } as const;
+  const progress = { select: progressSelect } as const;
 
-  const [gigs, rentals, issued] = await Promise.all([
+  const [gigs, rentals, contracts] = await Promise.all([
     db.gig.findMany({
       where: {
         gigStartTime: { gte: since },
@@ -630,7 +719,7 @@ export async function listContractSources() {
               orderBy: { sortOrder: "asc" },
               select: {
                 id: true,
-                contract: status,
+                contract: progress,
                 artistProfile: { select: { displayName: true } },
               },
             },
@@ -647,19 +736,23 @@ export async function listContractSources() {
         startDate: true,
         endDate: true,
         status: true,
-        contract: status,
+        contract: progress,
         gearPackage: { select: { name: true } },
       },
     }),
     db.contract.findMany({
-      where: { status: { not: "DRAFT" } },
       orderBy: { updatedAt: "desc" },
       select: {
-        id: true,
+        ...progressSelect,
         kind: true,
         title: true,
-        status: true,
         updatedAt: true,
+        setArtist: {
+          select: {
+            item: { select: { gig: { select: { gigStartTime: true } } } },
+          },
+        },
+        rental: { select: { startDate: true } },
       },
     }),
   ]);
@@ -670,6 +763,10 @@ export async function listContractSources() {
       scheduleItems: sortSchedule(gig.scheduleItems),
     })),
     rentals,
-    issued,
+    contracts: contracts.map(({ setArtist, rental, ...contract }) => ({
+      ...contract,
+      /** The gig or the collection day. Null once that row is gone. */
+      forDate: setArtist?.item.gig.gigStartTime ?? rental?.startDate ?? null,
+    })),
   };
 }

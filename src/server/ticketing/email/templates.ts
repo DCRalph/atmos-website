@@ -662,6 +662,110 @@ export function renderRefundOfferEmail({
   };
 }
 
+/**
+ * A contract sent for signature: what it is for, and the button that opens
+ * it. The same email is the reminder, with a different opening line.
+ */
+export function renderContractInviteEmail({
+  agreement,
+  subjectLine,
+  summary,
+  url,
+  sentBy,
+  reminder,
+}: {
+  /** "performer agreement" or "equipment hire agreement". */
+  agreement: string;
+  /** What it covers: the event, or the hire dates. */
+  subjectLine: string;
+  /** One line under the heading: the date and set time, or the hirer. */
+  summary: string;
+  url: string;
+  sentBy: string;
+  reminder: boolean;
+}): { subject: string; html: string; text: string } {
+  const heading = reminder
+    ? `A reminder to sign your ${agreement}`
+    : `Your ${agreement}`;
+  const ask =
+    "Read it through, fill in your details, and sign it online. It takes a couple of minutes.";
+  const subject = `${reminder ? "Reminder: your" : "Your"} ${agreement} for ${subjectLine}`;
+  const about = [subjectLine, summary].filter(Boolean).join(". ");
+
+  const body = `
+<tr><td style="padding:0 0 18px;">
+  <div style="font-size:30px;line-height:1.2;font-weight:800;letter-spacing:-0.02em;color:${TEXT};margin-bottom:10px;">${escapeHtml(heading)}</div>
+  <div style="font-size:15px;color:${MUTED};line-height:1.7;">${escapeHtml(about)}.</div>
+</td></tr>
+<tr><td style="padding:0 0 20px;">
+  ${panel(`<div style="font-size:15px;line-height:1.65;color:${TEXT};">${escapeHtml(ask)}</div>`)}
+</td></tr>
+<tr><td style="padding:0 0 8px;">
+  ${pillButton(url, "Read and sign")}
+</td></tr>`;
+
+  const footer = `Sent by ${escapeHtml(sentBy)} at Atmos. Questions? Reply to this email.`;
+
+  const text = [
+    heading,
+    "",
+    `${about}.`,
+    "",
+    ask,
+    "",
+    `Read and sign: ${url}`,
+    "",
+    `Sent by ${sentBy} at Atmos. Questions? Reply to this email.`,
+  ].join("\n");
+
+  return { subject, html: layout(subject, body, footer), text };
+}
+
+/** The other party's copy once they have signed: a link back to the signed contract. */
+export function renderContractSignedEmail({
+  agreement,
+  subjectLine,
+  signedName,
+  signedOn,
+  url,
+}: {
+  agreement: string;
+  subjectLine: string;
+  signedName: string;
+  signedOn: string;
+  url: string;
+}): { subject: string; html: string; text: string } {
+  const subject = `Signed: your ${agreement} for ${subjectLine}`;
+  const keep =
+    "Keep this email. The link opens your signed agreement, which you can print or save as a PDF.";
+
+  const body = `
+<tr><td style="padding:0 0 18px;">
+  <div style="font-size:30px;line-height:1.2;font-weight:800;letter-spacing:-0.02em;color:${TEXT};margin-bottom:10px;">Signed</div>
+  <div style="font-size:15px;color:${MUTED};line-height:1.7;">Your ${escapeHtml(agreement)} for ${escapeHtml(subjectLine)}, signed by ${escapeHtml(signedName)} on ${escapeHtml(signedOn)}.</div>
+</td></tr>
+<tr><td style="padding:0 0 20px;">
+  ${panel(`<div style="font-size:15px;line-height:1.65;color:${TEXT};">${escapeHtml(keep)}</div>`)}
+</td></tr>
+<tr><td style="padding:0 0 8px;">
+  ${pillButton(url, "View your copy")}
+</td></tr>`;
+
+  const footer = "Questions? Reply to this email.";
+
+  const text = [
+    "Signed",
+    "",
+    `Your ${agreement} for ${subjectLine}, signed by ${signedName} on ${signedOn}.`,
+    "",
+    keep,
+    "",
+    `View your copy: ${url}`,
+  ].join("\n");
+
+  return { subject, html: layout(subject, body, footer), text };
+}
+
 /** The code that proves a refund is going to the order's own inbox. */
 export function renderRefundCodeEmail({
   code,

@@ -159,6 +159,37 @@ html:has(.contract) {
   width: 100%;
 }
 
+/* A value printed on an ink line: an electronic signature. */
+.contract .field .ink {
+  font:
+    600 9.5pt/1.25 var(--font-site-body),
+    system-ui,
+    sans-serif;
+  padding: 1.2mm 0 0.8mm;
+}
+
+.contract .field.tall .ink {
+  font-size: 14pt;
+  font-style: italic;
+  font-weight: 500;
+  padding-top: 5mm;
+}
+
+.contract .sign .esign {
+  color: var(--muted);
+  font-size: 7pt;
+  margin-top: 1.5mm;
+}
+
+/* A field its reader is asked to fill in, on the signing page. Screen only:
+   it prints like any other field. */
+@media screen {
+  .contract .field.fill {
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+    padding-inline: 1.5mm;
+  }
+}
+
 .contract .span2 {
   grid-column: span 2;
 }
