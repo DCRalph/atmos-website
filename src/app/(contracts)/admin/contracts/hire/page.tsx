@@ -63,6 +63,7 @@ export default async function HireContractPage(props: Props) {
             target: view.target,
             status: view.status,
             stale: view.stale,
+            signing: view.signing,
           }
         }
       />
@@ -70,6 +71,7 @@ export default async function HireContractPage(props: Props) {
         fields={view?.fields ?? (await blankFields())}
         locked={view?.status === "SENT" || view?.status === "SIGNED"}
         revision={view?.revision}
+        signing={view?.signing}
       />
     </>
   );

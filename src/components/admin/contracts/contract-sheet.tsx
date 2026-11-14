@@ -3,7 +3,9 @@ import Image from "next/image";
 import {
   CONTRACT_FORM_ID,
   CONTRACT_VERSION,
+  formatShortContractDate,
   type ContractDefaults,
+  type ContractSigning,
 } from "~/lib/contracts";
 import { cn } from "~/lib/utils";
 
@@ -86,10 +88,15 @@ export function FieldGroup({
 /**
  * One labelled line. `name` is the field's key in the saved contract, and
  * every typed field has one. `value` is what is already known, and stays
- * editable. `as="textarea"` gives two lines. `as="line"` is
- * a bare line for ink: whatever is written at signing or handover belongs on
- * the paper, and a typed value would be lost with the next save. `tall`
- * leaves room for a signature.
+ * editable unless the field is `readOnly`. `as="textarea"` gives two lines.
+ *
+ * `as="line"` is a bare line for ink: whatever is written at signing or
+ * handover belongs on the paper, and a typed value would be lost with the
+ * next save. A line can still print a `value` it was given, which is how an
+ * electronic signature shows. `tall` leaves room for a signature.
+ *
+ * `fill` marks a field the reader is being asked to complete (the signing
+ * page), so it stands out on screen.
  */
 export function Field({
   label,
@@ -98,6 +105,8 @@ export function Field({
   span,
   as = "input",
   tall = as === "textarea",
+  readOnly,
+  fill,
 }: {
   label: string;
   name?: string;
@@ -105,12 +114,20 @@ export function Field({
   span?: 2 | 4;
   as?: "input" | "textarea" | "line";
   tall?: boolean;
+  readOnly?: boolean;
+  fill?: boolean;
 }) {
-  const className = cn("field", span && `span${span}`, tall && "tall");
+  const className = cn(
+    "field",
+    span && `span${span}`,
+    tall && "tall",
+    fill && "fill",
+  );
   if (as === "line") {
     return (
       <div className={className}>
         <span>{label}</span>
+        {value ? <p className="ink">{value}</p> : null}
       </div>
     );
   }
@@ -118,9 +135,19 @@ export function Field({
     <label className={className}>
       <span>{label}</span>
       {as === "textarea" ? (
-        <textarea rows={2} name={name} defaultValue={value} />
+        <textarea
+          rows={2}
+          name={name}
+          defaultValue={value}
+          readOnly={readOnly}
+        />
       ) : (
-        <input type="text" name={name} defaultValue={value} />
+        <input
+          type="text"
+          name={name}
+          defaultValue={value}
+          readOnly={readOnly}
+        />
       )}
     </label>
   );
@@ -168,8 +195,31 @@ export function Clause({
   );
 }
 
-/** The signature block: the other party on the left, Atmos on the right. */
-export function Signatures({ party }: { party: string }) {
+/**
+ * The signature block: the other party on the left, Atmos on the right.
+ *
+ * Blank lines for ink until the contract is sent. Sending it is Atmos's
+ * signature, so the admin who sent it and the date print on the right. The
+ * other party's side prints the name they typed when they signed on the
+ * website, or just the date when an admin marked a paper copy signed.
+ */
+export function Signatures({
+  party,
+  signing,
+}: {
+  party: string;
+  signing?: ContractSigning | null;
+}) {
+  const signedOn = signing?.signedAt
+    ? formatShortContractDate(signing.signedAt)
+    : undefined;
+  const sentOn = signing?.sentAt
+    ? formatShortContractDate(signing.sentAt)
+    : undefined;
+  const sentBy = signing?.sentAt
+    ? (signing.sentByName ?? undefined)
+    : undefined;
+
   return (
     <section className="sign">
       <p>
@@ -180,18 +230,34 @@ export function Signatures({ party }: { party: string }) {
         <div>
           <h3>{party}</h3>
           <div className="fields">
-            <Field label="Signature" span={2} as="line" tall />
-            <Field label="Name" as="line" />
-            <Field label="Date" as="line" />
+            <Field
+              label="Signature"
+              value={signing?.signedName ?? undefined}
+              span={2}
+              as="line"
+              tall
+            />
+            <Field
+              label="Name"
+              value={signing?.signedName ?? undefined}
+              as="line"
+            />
+            <Field label="Date" value={signedOn} as="line" />
           </div>
+          {signing?.signedName ? (
+            <p className="esign">Signed electronically at atmosmedia.co.nz</p>
+          ) : null}
         </div>
         <div>
           <h3>Atmos Media</h3>
           <div className="fields">
-            <Field label="Signature" span={2} as="line" tall />
-            <Field label="Name and role" as="line" />
-            <Field label="Date" as="line" />
+            <Field label="Signature" value={sentBy} span={2} as="line" tall />
+            <Field label="Name and role" value={sentBy} as="line" />
+            <Field label="Date" value={sentOn} as="line" />
           </div>
+          {sentBy ? (
+            <p className="esign">Issued electronically by Atmos Media</p>
+          ) : null}
         </div>
       </div>
     </section>

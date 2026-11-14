@@ -16,6 +16,8 @@ export const EMAIL_SENDERS = {
   gigs: "Atmos <noreply@atmosmedia.co.nz>",
   /** Mailouts: marketing sent to a mailing list. */
   news: "Atmos <news@atmosmedia.co.nz>",
+  /** Contracts sent for signature, and the signed copy. */
+  contracts: "Atmos <noreply@atmosmedia.co.nz>",
   /** Internal alerts to staff: contact form and rental requests. */
   notifications: "Atmos <noreply@atmosmedia.co.nz>",
 } as const;

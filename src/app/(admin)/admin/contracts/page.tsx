@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AdminSection } from "~/components/admin/admin-section";
+import { ContractRowActions } from "~/components/admin/contracts/contract-row-actions";
 import { Badge } from "~/components/ui/badge";
 import { buttonVariants } from "~/components/ui/button";
 import {
@@ -11,10 +12,11 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
+import { daysUntil, relativeDay } from "~/lib/contracts";
 import { formatCueTime, RUN_SHEET_TIMEZONE } from "~/lib/run-sheet/schedule";
+import { cn } from "~/lib/utils";
 import { requireAdmin } from "~/server/auth-session";
 import { listContractSources } from "~/server/contracts";
-import type { ContractStatus } from "~Prisma/client";
 
 const day = new Intl.DateTimeFormat("en-NZ", {
   timeZone: RUN_SHEET_TIMEZONE,
@@ -23,40 +25,100 @@ const day = new Intl.DateTimeFormat("en-NZ", {
   month: "short",
 });
 
-const contractLink = "text-muted-foreground hover:text-foreground text-xs";
+/** A gig this close with a contract still unsigned is worth chasing. */
+const CHASE_WITHIN_DAYS = 7;
 
-const STATUS_LABELS = {
-  DRAFT: "Draft",
-  SENT: "Sent",
-  SIGNED: "Signed",
-} as const satisfies Record<ContractStatus, string>;
+type Sources = Awaited<ReturnType<typeof listContractSources>>;
+type Progress = Sources["contracts"][number];
 
-/** Where a row's contract has got to. Nothing until it is first saved. */
-function ContractStatusBadge({ status }: { status?: ContractStatus }) {
-  if (!status)
-    return <span className="text-muted-foreground">Not started</span>;
+/**
+ * How far a contract has got, in one cell: nothing yet, a draft, sent and
+ * waiting, or signed, with the date that matters. `urgent` turns an unsigned
+ * one amber, for a gig that is nearly here.
+ */
+function ContractProgress({
+  contract,
+  urgent = false,
+}: {
+  contract: Pick<
+    Progress,
+    "status" | "sentAt" | "sentTo" | "signedAt" | "signedName"
+  > | null;
+  urgent?: boolean;
+}) {
+  const waiting = cn(urgent ? "text-amber-500" : "text-muted-foreground");
+  if (!contract) return <span className={waiting}>Not started</span>;
+  if (contract.status === "SIGNED") {
+    return (
+      <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+        <Badge>Signed</Badge>
+        <span className="text-muted-foreground text-xs">
+          {contract.signedAt ? day.format(contract.signedAt) : null}
+          {contract.signedName ? "" : " · on paper"}
+        </span>
+      </span>
+    );
+  }
+  if (contract.status === "SENT") {
+    return (
+      <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+        <Badge variant="outline">Sent</Badge>
+        <span className={cn(waiting, "text-xs")}>
+          {contract.sentAt ? `${day.format(contract.sentAt)} · ` : null}
+          not signed yet
+        </span>
+      </span>
+    );
+  }
   return (
-    <Badge variant={status === "SIGNED" ? "default" : "outline"}>
-      {STATUS_LABELS[status]}
-    </Badge>
+    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+      <Badge variant="outline">Draft</Badge>
+      <span className={cn(waiting, "text-xs")}>not sent</span>
+    </span>
+  );
+}
+
+/** Whether the performer has been paid, from the contract's payment task. */
+function Payment({ task }: { task: Progress["paymentTask"] | undefined }) {
+  if (!task) return null;
+  const label =
+    task.status === "DONE"
+      ? "Paid"
+      : task.status === "CANCELLED"
+        ? "Cancelled"
+        : `Due ${day.format(task.dueAt)}`;
+  return (
+    <Link
+      href={`/admin/tasks?task=${task.id}`}
+      className={cn(
+        "text-xs underline-offset-4 hover:underline",
+        task.status === "DONE" ? "text-foreground" : "text-muted-foreground",
+      )}
+    >
+      {label}
+    </Link>
   );
 }
 
 /**
- * Where contracts are generated: one row for every artist in a set on a
- * recent or upcoming gig, and one for every hire request. Each opens the
- * contract filled in from that row, ready to finish, save and print. Below
- * them, every contract that has been sent or signed, however old, including
- * ones whose gig or rental has since been deleted.
+ * Every contract, and whether it is signed before it needs to be.
+ *
+ * Performers are grouped by gig, soonest first, with how many of the line-up
+ * have signed and how close the gig is. A gig within a week that still has
+ * someone unsigned is marked. Each row opens its contract, sends it or sends
+ * a reminder, and shows whether the performer has been paid. Hire requests
+ * get the same. Below them is every saved contract there is, including ones
+ * whose gig or rental has since been deleted.
  */
 export default async function AdminContractsPage() {
   await requireAdmin();
-  const { gigs, rentals, issued } = await listContractSources();
+  const { gigs, rentals, contracts } = await listContractSources();
+  const now = new Date();
 
   return (
     <AdminSection
       title="Contracts"
-      description="Performer and equipment hire agreements, filled in from the line-up and the rental requests, and saved once they are issued."
+      description="Performer and equipment hire agreements: who has been sent one, who has signed, and who has been paid."
       actions={
         <>
           <Link
@@ -87,46 +149,84 @@ export default async function AdminContractsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Gig</TableHead>
-                  <TableHead>Date</TableHead>
                   <TableHead>Set</TableHead>
                   <TableHead>Artist</TableHead>
                   <TableHead>Contract</TableHead>
+                  <TableHead>Payment</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {gigs.flatMap((gig) =>
-                  gig.scheduleItems.flatMap((item) =>
-                    item.artists.map((artist) => (
+                {gigs.flatMap((gig) => {
+                  const artists = gig.scheduleItems.flatMap((item) =>
+                    item.artists.map((artist) => ({ ...artist, item })),
+                  );
+                  const signed = artists.filter(
+                    (artist) => artist.contract?.status === "SIGNED",
+                  ).length;
+                  const days = daysUntil(gig.gigStartTime, now);
+                  const urgent =
+                    days >= 0 &&
+                    days <= CHASE_WITHIN_DAYS &&
+                    signed < artists.length;
+
+                  return [
+                    <TableRow key={gig.id} className="hover:bg-transparent">
+                      <TableCell colSpan={5} className="pt-5">
+                        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                          <span>
+                            <span className="font-medium">{gig.title}</span>
+                            <span className="text-muted-foreground">
+                              {" "}
+                              · {day.format(gig.gigStartTime)} ·{" "}
+                              {relativeDay(days)}
+                            </span>
+                          </span>
+                          <span
+                            className={cn(
+                              "text-sm tabular-nums",
+                              urgent
+                                ? "text-amber-500"
+                                : "text-muted-foreground",
+                            )}
+                          >
+                            {signed} of {artists.length} signed
+                          </span>
+                        </div>
+                      </TableCell>
+                    </TableRow>,
+                    ...artists.map((artist) => (
                       <TableRow key={artist.id}>
-                        <TableCell>{gig.title}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {day.format(gig.gigStartTime)}
-                        </TableCell>
                         <TableCell className="text-muted-foreground tabular-nums">
-                          {item.startsAt ? formatCueTime(item.startsAt) : ""}
+                          {artist.item.startsAt
+                            ? formatCueTime(artist.item.startsAt)
+                            : ""}
                         </TableCell>
                         <TableCell>
                           {artist.artistProfile.displayName}
                         </TableCell>
                         <TableCell>
-                          <ContractStatusBadge
-                            status={artist.contract?.status}
+                          <ContractProgress
+                            contract={artist.contract}
+                            urgent={urgent}
                           />
                         </TableCell>
-                        <TableCell className="text-right">
-                          <Link
+                        <TableCell>
+                          <Payment task={artist.contract?.paymentTask} />
+                        </TableCell>
+                        <TableCell>
+                          <ContractRowActions
+                            kind="PERFORMER"
+                            sourceId={artist.id}
+                            contractId={artist.contract?.id ?? null}
+                            status={artist.contract?.status ?? null}
                             href={`/admin/contracts/performer?set=${artist.id}`}
-                            className={contractLink}
-                          >
-                            Contract →
-                          </Link>
+                          />
                         </TableCell>
                       </TableRow>
                     )),
-                  ),
-                )}
+                  ];
+                })}
               </TableBody>
             </Table>
           )}
@@ -153,85 +253,122 @@ export default async function AdminContractsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rentals.map((rental) => (
-                  <TableRow key={rental.id}>
-                    <TableCell>{rental.userName}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {rental.gearPackage?.name ?? "Individual items"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {day.format(rental.startDate)} –{" "}
-                      {day.format(rental.endDate)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {rental.status === "APPROVED" ? "Approved" : "Pending"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <ContractStatusBadge status={rental.contract?.status} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Link
-                        href={`/admin/contracts/hire?rental=${rental.id}`}
-                        className={contractLink}
-                      >
-                        Contract →
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {rentals.map((rental) => {
+                  const days = daysUntil(rental.startDate, now);
+                  return (
+                    <TableRow key={rental.id}>
+                      <TableCell>{rental.userName}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {rental.gearPackage?.name ?? "Individual items"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {day.format(rental.startDate)} –{" "}
+                        {day.format(rental.endDate)} · {relativeDay(days)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {rental.status === "APPROVED"
+                            ? "Approved"
+                            : "Pending"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <ContractProgress
+                          contract={rental.contract}
+                          urgent={
+                            days >= 0 &&
+                            days <= CHASE_WITHIN_DAYS &&
+                            rental.contract?.status !== "SIGNED"
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <ContractRowActions
+                          kind="HIRE"
+                          sourceId={rental.id}
+                          contractId={rental.contract?.id ?? null}
+                          status={rental.contract?.status ?? null}
+                          href={`/admin/contracts/hire?rental=${rental.id}`}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
         </section>
 
-        {issued.length > 0 ? (
-          <section className="rounded-lg border p-4">
-            <h2 className="text-muted-foreground mb-2 text-sm font-medium">
-              Sent and signed
-            </h2>
+        <section className="rounded-lg border p-4">
+          <h2 className="text-muted-foreground mb-2 text-sm font-medium">
+            All contracts
+          </h2>
+          {contracts.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              Nothing saved yet. Open a performer or a hire above to start one.
+            </p>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Contract</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>Updated</TableHead>
+                  <TableHead>For</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Payment</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {issued.map((contract) => (
-                  <TableRow key={contract.id}>
-                    <TableCell>{contract.title}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {contract.kind === "PERFORMER"
-                        ? "Performer"
-                        : "Equipment hire"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {day.format(contract.updatedAt)}
-                    </TableCell>
-                    <TableCell>
-                      <ContractStatusBadge status={contract.status} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Link
-                        href={`/admin/contracts/${
-                          contract.kind === "PERFORMER" ? "performer" : "hire"
-                        }?contract=${contract.id}`}
-                        className={contractLink}
-                      >
-                        Open →
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {contracts.map((contract) => {
+                  const days = contract.forDate
+                    ? daysUntil(contract.forDate, now)
+                    : null;
+                  return (
+                    <TableRow key={contract.id}>
+                      <TableCell>{contract.title}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {contract.kind === "PERFORMER"
+                          ? "Performer"
+                          : "Equipment hire"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {contract.forDate && days !== null
+                          ? `${day.format(contract.forDate)} · ${relativeDay(days)}`
+                          : "Removed"}
+                      </TableCell>
+                      <TableCell>
+                        <ContractProgress
+                          contract={contract}
+                          urgent={
+                            days !== null &&
+                            days >= 0 &&
+                            days <= CHASE_WITHIN_DAYS &&
+                            contract.status !== "SIGNED"
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Payment task={contract.paymentTask} />
+                      </TableCell>
+                      <TableCell>
+                        <ContractRowActions
+                          kind={contract.kind}
+                          sourceId={null}
+                          contractId={contract.id}
+                          status={contract.status}
+                          href={`/admin/contracts/${
+                            contract.kind === "PERFORMER" ? "performer" : "hire"
+                          }?contract=${contract.id}`}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
-          </section>
-        ) : null}
+          )}
+        </section>
       </div>
     </AdminSection>
   );
