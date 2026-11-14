@@ -150,12 +150,14 @@ export async function sendContract(
 
   const { contract } = saved;
   const token = contract.signToken ?? randomBytes(32).toString("base64url");
-  if (!contract.signToken) {
-    await db.contract.update({
-      where: { id: contract.id },
-      data: { signToken: token },
-    });
-  }
+  // The contract as it stands just before the email goes.
+  const { updatedAt: revision } = contract.signToken
+    ? contract
+    : await db.contract.update({
+        where: { id: contract.id },
+        data: { signToken: token },
+        select: { updatedAt: true },
+      });
 
   const reminder = contract.status === "SENT";
   const result = await sendEmail({
@@ -173,19 +175,30 @@ export async function sendContract(
   if (!result.ok) {
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
-      message: `The email could not be sent, so the contract is still a draft. ${result.error ?? ""}`,
+      message: `${reminder ? "The reminder could not be sent." : "The email could not be sent, so the contract is still a draft."} ${result.error ?? ""}`,
     });
   }
 
-  await db.contract.update({
-    where: { id: contract.id },
-    data: {
-      status: "SENT",
-      sentAt: new Date(),
-      sentTo: to.data,
-      sentByName: sender.name,
-    },
-  });
+  // The email took a moment, and the contract may have moved in it. A
+  // reminder never changes the status, so a signature that arrived meanwhile
+  // stands. A first send only takes if nothing changed while it was going.
+  const sent = { sentAt: new Date(), sentTo: to.data, sentByName: sender.name };
+  const { count } = reminder
+    ? await db.contract.updateMany({
+        where: { id: contract.id, status: "SENT" },
+        data: sent,
+      })
+    : await db.contract.updateMany({
+        where: { id: contract.id, status: "DRAFT", updatedAt: revision },
+        data: { ...sent, status: "SENT" },
+      });
+  if (count === 0 && !reminder) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message:
+        "The contract changed while it was being sent, so it is still a draft. Check it and send it again.",
+    });
+  }
   await ensurePaymentTask(contract.id, sender.id);
 
   await logActivity({
