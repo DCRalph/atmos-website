@@ -149,15 +149,27 @@ export async function sendContract(
   }
 
   const { contract } = saved;
+  const conflict = () =>
+    new TRPCError({
+      code: "CONFLICT",
+      message:
+        "The contract changed while it was being sent, so it is still a draft. Check it and send it again.",
+    });
+
+  // `revision` is the contract exactly as it was read above. Everything
+  // written from here on is conditional on it, so the email can only ever
+  // describe the contract that ends up sent.
   const token = contract.signToken ?? randomBytes(32).toString("base64url");
-  // The contract as it stands just before the email goes.
-  const { updatedAt: revision } = contract.signToken
-    ? contract
-    : await db.contract.update({
-        where: { id: contract.id },
-        data: { signToken: token },
-        select: { updatedAt: true },
-      });
+  let revision = contract.updatedAt;
+  if (!contract.signToken) {
+    const stamped = new Date();
+    const { count } = await db.contract.updateMany({
+      where: { id: contract.id, status: contract.status, updatedAt: revision },
+      data: { signToken: token, updatedAt: stamped },
+    });
+    if (count === 0) throw conflict();
+    revision = stamped;
+  }
 
   const reminder = contract.status === "SENT";
   const result = await sendEmail({
@@ -192,13 +204,7 @@ export async function sendContract(
         where: { id: contract.id, status: "DRAFT", updatedAt: revision },
         data: { ...sent, status: "SENT" },
       });
-  if (count === 0 && !reminder) {
-    throw new TRPCError({
-      code: "CONFLICT",
-      message:
-        "The contract changed while it was being sent, so it is still a draft. Check it and send it again.",
-    });
-  }
+  if (count === 0 && !reminder) throw conflict();
   await ensurePaymentTask(contract.id, sender.id);
 
   await logActivity({
