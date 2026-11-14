@@ -616,10 +616,40 @@ model ArtistProfile {
   setAppearances GigSetArtist[]
   crewMembers   CrewMember[]
   claimRequests ArtistClaimRequest[]
+  /// Paperwork details. Kept off this table on purpose: see `ArtistPrivateDetails`.
+  privateDetails ArtistPrivateDetails?
 
   @@index([claimStatus])
   @@index([themeId])
   @@map("artist_profile")
+}
+
+/// What Atmos needs to contract and pay an artist: who they legally are and
+/// where the money goes.
+///
+/// A table of its own so that it is private by construction. `ArtistProfile`
+/// is read all over the public site, and one query that took the whole row
+/// would put a bank account on a public page. Nothing reads this unless it
+/// asks for it by name, and only admin procedures do. Never select it from a
+/// public procedure.
+model ArtistPrivateDetails {
+  artistProfileId String  @id
+  legalName       String?
+  contactEmail    String?
+  phone           String?
+  address         String?
+  gstNumber       String?
+  bankAccountName String?
+  /// Sealed, never plain text: see `~/server/sealed-field.ts`.
+  bankAccountNumber String?
+
+  updatedAt   DateTime @updatedAt
+  /// The admin who last changed it.
+  updatedById String?
+
+  artistProfile ArtistProfile @relation(fields: [artistProfileId], references: [id], onDelete: Cascade)
+
+  @@map("artist_private_details")
 }
 
 model ArtistProfileTheme {
@@ -768,8 +798,17 @@ model GigSetArtist {
   artistProfileId String
   sortOrder        Int    @default(0)
 
+  /// What was agreed for this booking. Internal: the public line-up selects
+  /// named columns and must never select these.
+  feeCents        Int?
+  feeIncludesGst  Boolean?
+  guestListPlaces Int?
+  /// "Anything else agreed" on the performer agreement.
+  contractNotes   String? @db.Text
+
   item           GigScheduleItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
   artistProfile ArtistProfile  @relation(fields: [artistProfileId], references: [id], onDelete: Cascade)
+  contract       Contract?
 
   @@unique([itemId, artistProfileId])
   @@index([artistProfileId])
@@ -1340,6 +1379,13 @@ model GearItem {
   note                 String?
   quantity             Int                       @default(1)
   price                Float                     @default(0)
+  /// What one unit costs to replace, printed on the hire agreement, which
+  /// charges it when gear is lost. Integer cents, unlike `price`. Internal,
+  /// like the serials below: public reads leave both out (`gearItemPublic`
+  /// in the rentals router).
+  replacementValueCents Int?
+  /// Serial or asset numbers of the units on hand, for the hire agreement.
+  serialNumbers        String[]                  @default([])
   image                String?
   createdAt            DateTime                  @default(now())
   updatedAt            DateTime                  @updatedAt
@@ -1400,7 +1446,20 @@ model Rental {
   appliedDiscountMode   DiscountRuleMode?
   appliedDiscountType   DiscountType?
   appliedDiscountValue  Float?
+  /// The rest of what the hire agreement asks for, saved from the contract
+  /// page. Internal: public reads leave these out (`rentalContractColumns`
+  /// in the rentals router).
+  phone                 String?
+  organisation          String?
+  address               String?
+  /// Where the gear will be used.
+  useLocation           String?
+  /// Free text as it prints, e.g. "4:00 pm". The dates above carry no time.
+  collectionTime        String?
+  returnTime            String?
+  bondCents             Int?
   rentalItems           RentalItem[]
+  contract              Contract?
   appliedDiscountRule   DiscountRule?     @relation(fields: [appliedDiscountRuleId], references: [id], onDelete: SetNull)
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
@@ -1421,6 +1480,56 @@ model RentalItem {
   @@unique([rentalId, gearItemId])
   @@index([gearItemId])
   @@map("rental_item")
+}
+
+enum ContractKind {
+  PERFORMER
+  HIRE
+}
+
+enum ContractStatus {
+  /// Still being filled in. The contract page can edit it.
+  DRAFT
+  /// Given to the other party. Frozen from here on.
+  SENT
+  SIGNED
+}
+
+/// A contract as it was issued: every field exactly as it printed.
+///
+/// One per artist in a set, or per rental. The snapshot in `fields` is the
+/// record of what was agreed, so it does not follow later edits to the gig or
+/// the rental, and it outlives them: when its source row is deleted the link
+/// goes null and the contract stays, reachable by its own id.
+///
+/// There is no stored copy of the signed paper. The media bucket is public,
+/// so a signed contract could not sit there unencrypted; `SIGNED` is set by
+/// hand.
+model Contract {
+  id   String       @id @default(cuid())
+  kind ContractKind
+
+  setArtistId String? @unique
+  rentalId    String? @unique
+
+  /// Who and what it is for, so the list can name it after its source is gone.
+  title String
+  /// `PerformerFields` or `HireFields` from `~/lib/contracts`. A performer's
+  /// bank account number is sealed inside it: see `~/server/contracts`.
+  fields Json
+  /// `CONTRACT_VERSION` at the time it was saved.
+  termsVersion String
+  status       ContractStatus @default(DRAFT)
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  setArtist GigSetArtist? @relation(fields: [setArtistId], references: [id], onDelete: SetNull)
+  rental    Rental?       @relation(fields: [rentalId], references: [id], onDelete: SetNull)
+
+  @@index([status, updatedAt])
+  @@map("contract")
 }
 
 model DiscountRule {

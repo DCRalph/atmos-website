@@ -52,7 +52,7 @@ import { Checkbox } from "~/components/ui/checkbox";
 import { useConfirm } from "~/components/confirm-provider";
 import { useTabParam } from "~/hooks/use-tab-param";
 import { formatDate } from "~/lib/date-utils";
-import { formatNZD } from "~/lib/ticketing/money";
+import { formatNZD, parsePriceToCents } from "~/lib/ticketing/money";
 
 /** Rental prices are whole dollars in the database, not cents. */
 const price = (dollars: number) => formatNZD(Math.round(dollars * 100));
@@ -82,6 +82,10 @@ type InventoryItemForm = {
   note: string;
   quantity: number;
   price: number;
+  /** Dollars as typed. Blank when there is none. */
+  replacementValue: string;
+  /** One per line. */
+  serialNumbers: string;
 };
 
 type PackageForm = {
@@ -110,7 +114,70 @@ function createEmptyInventoryItem(): InventoryItemForm {
     note: "",
     quantity: 1,
     price: 0,
+    replacementValue: "",
+    serialNumbers: "",
   };
+}
+
+/** The two hire agreement fields, from the way they are typed to the way they are stored. */
+function contractFieldsInput(form: InventoryItemForm) {
+  return {
+    replacementValueCents: parsePriceToCents(form.replacementValue),
+    serialNumbers: form.serialNumbers
+      .split(/[\n,]/)
+      .map((serial) => serial.trim())
+      .filter(Boolean),
+  };
+}
+
+/**
+ * What the hire agreement prints for an item: what one costs to replace, and
+ * the serial or asset numbers of the units on hand. Shared by the add and
+ * edit dialogs.
+ */
+function ContractFields({
+  idPrefix,
+  form,
+  onChange,
+}: {
+  idPrefix: string;
+  form: InventoryItemForm;
+  onChange: (
+    fields: Pick<InventoryItemForm, "replacementValue" | "serialNumbers">,
+  ) => void;
+}) {
+  const { replacementValue, serialNumbers } = form;
+  return (
+    <>
+      <div className="space-y-2">
+        <Label htmlFor={`${idPrefix}replacement-value`}>
+          Replacement Value Each ($)
+        </Label>
+        <Input
+          id={`${idPrefix}replacement-value`}
+          inputMode="decimal"
+          value={replacementValue}
+          onChange={(e) =>
+            onChange({ replacementValue: e.target.value, serialNumbers })
+          }
+          placeholder="Printed on the hire agreement"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor={`${idPrefix}serial-numbers`}>
+          Serial or Asset Numbers
+        </Label>
+        <Textarea
+          id={`${idPrefix}serial-numbers`}
+          value={serialNumbers}
+          onChange={(e) =>
+            onChange({ replacementValue, serialNumbers: e.target.value })
+          }
+          placeholder="One per line"
+        />
+      </div>
+    </>
+  );
 }
 
 function createEmptyPackage(): PackageForm {
@@ -630,6 +697,11 @@ export function GearRentalManager() {
                 note: item.note ?? "",
                 quantity: item.quantity,
                 price: item.price,
+                replacementValue:
+                  item.replacementValueCents === null
+                    ? ""
+                    : (item.replacementValueCents / 100).toFixed(2),
+                serialNumbers: item.serialNumbers.join("\n"),
               })
             }
           >
@@ -1010,6 +1082,13 @@ export function GearRentalManager() {
                       }
                     />
                   </div>
+                  <ContractFields
+                    idPrefix=""
+                    form={newInventoryItem}
+                    onChange={(fields) =>
+                      setNewInventoryItem({ ...newInventoryItem, ...fields })
+                    }
+                  />
                 </div>
                 <DialogFooter>
                   <Button
@@ -1027,6 +1106,7 @@ export function GearRentalManager() {
                         note: newInventoryItem.note || undefined,
                         quantity: newInventoryItem.quantity,
                         price: newInventoryItem.price,
+                        ...contractFieldsInput(newInventoryItem),
                       })
                     }
                     disabled={
@@ -1138,6 +1218,16 @@ export function GearRentalManager() {
                         }
                       />
                     </div>
+                    <ContractFields
+                      idPrefix="edit-"
+                      form={editingInventoryItem}
+                      onChange={(fields) =>
+                        setEditingInventoryItem({
+                          ...editingInventoryItem,
+                          ...fields,
+                        })
+                      }
+                    />
                   </div>
                 )}
                 <DialogFooter>
@@ -1159,6 +1249,7 @@ export function GearRentalManager() {
                         note: editingInventoryItem.note || undefined,
                         quantity: editingInventoryItem.quantity,
                         price: editingInventoryItem.price,
+                        ...contractFieldsInput(editingInventoryItem),
                       })
                     }
                     disabled={updateInventoryItem.isPending}

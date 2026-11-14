@@ -1,84 +1,520 @@
 import "server-only";
 
+import { TRPCError } from "@trpc/server";
 import { cache } from "react";
 
-import { hireDetails, performerDetails } from "~/lib/contracts";
+import { env } from "~/env";
+import {
+  CONTRACT_VERSION,
+  editedOnly,
+  HIRE_COLUMN_FIELDS,
+  HIRE_LABELS,
+  hireColumns,
+  hireFields,
+  hireFieldsSchema,
+  hireTitle,
+  PERFORMER_COLUMN_FIELDS,
+  PERFORMER_LABELS,
+  performerColumns,
+  performerFields,
+  performerFieldsSchema,
+  performerTitle,
+  resolveFields,
+  tidyHireFields,
+  tidyPerformerFields,
+  type ContractTarget,
+  type ContractView,
+  type HireFields,
+  type PerformerFields,
+} from "~/lib/contracts";
 import { sortSchedule } from "~/lib/run-sheet/schedule";
 import { db } from "~/server/db";
+import { openField, sealField } from "~/server/sealed-field";
+import { logActivity } from "~/server/utils/activity-log";
+import {
+  ActivityType,
+  type ContractKind,
+  type ContractStatus,
+  type Prisma,
+} from "~Prisma/client";
 
 /**
- * Reads for the contract pages under /admin/contracts. None of these check
- * who is asking: every page that calls them calls `requireAdmin` first.
+ * The contract pages under /admin/contracts: what they show and what Save
+ * does. None of this checks who is asking. The pages call `requireAdmin`
+ * first, and the save functions are only reached through an admin procedure.
  */
 
 /** How far back the Contracts page still lists a gig or a hire, for paperwork done late. */
 const LOOKBACK_DAYS = 14;
 
+/** The artist's bank account number is sealed against their profile id. */
+export function sealBankAccountNumber(artistProfileId: string, value: string) {
+  return sealField(value, artistProfileId, env.BETTER_AUTH_SECRET);
+}
+
+/** Null when there is none, or when it will not open (the secret it was sealed under has gone). */
+export function openBankAccountNumber(
+  artistProfileId: string,
+  sealed: string | null,
+): string | null {
+  if (!sealed) return null;
+  try {
+    return openField(sealed, artistProfileId, env.BETTER_AUTH_SECRET);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A saved performer agreement holds the bank account number too, so it is
+ * sealed inside the snapshot just as it is on the artist's own row. Every
+ * snapshot shares one context: a contract has no id until it is first saved.
+ */
+const SNAPSHOT_CONTEXT = "contract-snapshot";
+
+const sealSnapshotValue = (value: string) =>
+  value && sealField(value, SNAPSHOT_CONTEXT, env.BETTER_AUTH_SECRET);
+
+/** A saved performer agreement's fields, with the bank account number opened (blank if it will not open). */
+function openPerformerSnapshot(stored: unknown): PerformerFields {
+  const fields = performerFieldsSchema.parse(stored);
+  if (!fields.bankAccountNumber) return fields;
+  try {
+    return {
+      ...fields,
+      bankAccountNumber: openField(
+        fields.bankAccountNumber,
+        SNAPSHOT_CONTEXT,
+        env.BETTER_AUTH_SECRET,
+      ),
+    };
+  } catch {
+    return { ...fields, bankAccountNumber: "" };
+  }
+}
+
+const contractSelect = {
+  id: true,
+  status: true,
+  fields: true,
+  updatedAt: true,
+  setArtistId: true,
+  rentalId: true,
+} satisfies Prisma.ContractSelect;
+
+const setArtistSelect = {
+  id: true,
+  feeCents: true,
+  feeIncludesGst: true,
+  guestListPlaces: true,
+  contractNotes: true,
+  contract: { select: contractSelect },
+  artistProfile: {
+    select: {
+      id: true,
+      displayName: true,
+      user: { select: { name: true, email: true } },
+      privateDetails: {
+        select: {
+          legalName: true,
+          contactEmail: true,
+          phone: true,
+          address: true,
+          gstNumber: true,
+          bankAccountName: true,
+          bankAccountNumber: true,
+        },
+      },
+    },
+  },
+  item: {
+    select: {
+      startsAt: true,
+      endsAt: true,
+      gig: {
+        select: {
+          title: true,
+          gigStartTime: true,
+          venue: { select: { name: true, address: true } },
+        },
+      },
+    },
+  },
+} satisfies Prisma.GigSetArtistSelect;
+
 const lineItems = {
-  select: { quantity: true, gearItem: { select: { name: true } } },
+  select: {
+    quantity: true,
+    gearItem: {
+      select: { name: true, replacementValueCents: true, serialNumbers: true },
+    },
+  },
   orderBy: { createdAt: "asc" },
 } as const;
 
+const rentalSelect = {
+  id: true,
+  userName: true,
+  contactInfo: true,
+  startDate: true,
+  endDate: true,
+  discountedDailyPrice: true,
+  estimatedTotalPrice: true,
+  phone: true,
+  organisation: true,
+  address: true,
+  useLocation: true,
+  collectionTime: true,
+  returnTime: true,
+  bondCents: true,
+  contract: { select: contractSelect },
+  gearPackage: { select: { items: lineItems } },
+  rentalItems: lineItems,
+} satisfies Prisma.RentalSelect;
+
+/** Changes whenever the page should start over from what the server sent. */
+const revisionOf = (contract: { updatedAt: Date } | null, refresh: boolean) =>
+  `${contract?.updatedAt.toISOString() ?? "unsaved"}${refresh ? ":refreshed" : ""}`;
+
 /**
- * The performer agreement for one artist in one set (a `GigSetArtist` id), or
- * null if there is no such slot. Cached so a page and its metadata share a read.
+ * A performer agreement's two halves: the booking as the database has it now
+ * (`live`, with its row) and the contract as it was last saved. Null when the
+ * target names neither a set that exists nor a saved performer agreement.
+ */
+async function readPerformer(target: ContractTarget, atmosContact: string) {
+  const byId = target.contractId
+    ? await db.contract.findFirst({
+        where: { id: target.contractId, kind: "PERFORMER" },
+        select: contractSelect,
+      })
+    : null;
+  const setArtistId = target.sourceId ?? byId?.setArtistId;
+  const setArtist = setArtistId
+    ? await db.gigSetArtist.findUnique({
+        where: { id: setArtistId },
+        select: setArtistSelect,
+      })
+    : null;
+  const contract = byId ?? setArtist?.contract ?? null;
+  if (!setArtist && !contract) return null;
+
+  const details = setArtist?.artistProfile.privateDetails;
+  const live = setArtist
+    ? performerFields(
+        {
+          ...setArtist,
+          artistProfile: {
+            ...setArtist.artistProfile,
+            privateDetails: details
+              ? {
+                  ...details,
+                  bankAccountNumber: openBankAccountNumber(
+                    setArtist.artistProfile.id,
+                    details.bankAccountNumber,
+                  ),
+                }
+              : null,
+          },
+        },
+        atmosContact,
+      )
+    : null;
+
+  return {
+    setArtist,
+    contract,
+    live,
+    saved: contract ? openPerformerSnapshot(contract.fields) : null,
+  };
+}
+
+/** The same two halves for an equipment hire agreement. */
+async function readHire(target: ContractTarget, atmosContact: string) {
+  const byId = target.contractId
+    ? await db.contract.findFirst({
+        where: { id: target.contractId, kind: "HIRE" },
+        select: contractSelect,
+      })
+    : null;
+  const rentalId = target.sourceId ?? byId?.rentalId;
+  const rental = rentalId
+    ? await db.rental.findUnique({
+        where: { id: rentalId },
+        select: rentalSelect,
+      })
+    : null;
+  const contract = byId ?? rental?.contract ?? null;
+  if (!rental && !contract) return null;
+
+  return {
+    rental,
+    contract,
+    live: rental ? hireFields(rental, atmosContact) : null,
+    saved: contract ? hireFieldsSchema.parse(contract.fields) : null,
+  };
+}
+
+/**
+ * The performer agreement a page should show, or null if there is nothing to
+ * show. `refresh` swaps a saved draft's stale fields for the database's
+ * current ones. Cached so a page and its metadata share the reads.
  */
 export const getPerformerContract = cache(
-  async (setArtistId: string, atmosContact: string) => {
-    const setArtist = await db.gigSetArtist.findUnique({
-      where: { id: setArtistId },
-      select: {
-        artistProfile: {
-          select: {
-            displayName: true,
-            user: { select: { name: true, email: true } },
-          },
-        },
-        item: {
-          select: {
-            startsAt: true,
-            endsAt: true,
-            gig: {
-              select: {
-                title: true,
-                gigStartTime: true,
-                venue: { select: { name: true, address: true } },
-              },
-            },
-          },
-        },
-      },
+  async (
+    sourceId: string | null,
+    contractId: string | null,
+    refresh: boolean,
+    atmosContact: string,
+  ): Promise<ContractView<PerformerFields> | null> => {
+    const read = await readPerformer({ sourceId, contractId }, atmosContact);
+    if (!read) return null;
+    const { setArtist, contract, live, saved } = read;
+
+    const { fields, stale } = resolveFields({
+      live,
+      saved,
+      locked: contract ? contract.status !== "DRAFT" : false,
+      refresh,
     });
-    return setArtist ? performerDetails(setArtist, atmosContact) : null;
+    if (!fields) return null;
+    return {
+      fields,
+      title: performerTitle(fields),
+      status: contract?.status ?? null,
+      target: {
+        sourceId: setArtist?.id ?? null,
+        contractId: contract?.id ?? null,
+      },
+      stale: stale.map((key) => PERFORMER_LABELS[key]),
+      revision: revisionOf(contract, refresh),
+    };
   },
 );
 
-/** The equipment hire agreement for one rental request, or null if it is gone. */
-export const getHireContract = cache(async (rentalId: string) => {
-  const rental = await db.rental.findUnique({
-    where: { id: rentalId },
-    select: {
-      userName: true,
-      contactInfo: true,
-      startDate: true,
-      endDate: true,
-      discountedDailyPrice: true,
-      estimatedTotalPrice: true,
-      gearPackage: { select: { items: lineItems } },
-      rentalItems: lineItems,
-    },
+/** The equipment hire agreement a page should show. See `getPerformerContract`. */
+export const getHireContract = cache(
+  async (
+    sourceId: string | null,
+    contractId: string | null,
+    refresh: boolean,
+    atmosContact: string,
+  ): Promise<ContractView<HireFields> | null> => {
+    const read = await readHire({ sourceId, contractId }, atmosContact);
+    if (!read) return null;
+    const { rental, contract, live, saved } = read;
+
+    const { fields, stale } = resolveFields({
+      live,
+      saved,
+      locked: contract ? contract.status !== "DRAFT" : false,
+      refresh,
+    });
+    if (!fields) return null;
+    return {
+      fields,
+      title: hireTitle(fields),
+      status: contract?.status ?? null,
+      target: {
+        sourceId: rental?.id ?? null,
+        contractId: contract?.id ?? null,
+      },
+      stale: stale.map((key) => HIRE_LABELS[key]),
+      revision: revisionOf(contract, refresh),
+    };
+  },
+);
+
+type SaveInput<F> = ContractTarget & {
+  status: ContractStatus;
+  /** Null when only the status is changing, which is all a sent contract allows. */
+  fields: F | null;
+  userId: string;
+};
+
+const notFound = () =>
+  new TRPCError({ code: "NOT_FOUND", message: "That contract is gone." });
+
+const needsFields = () =>
+  new TRPCError({
+    code: "BAD_REQUEST",
+    message: "A draft is saved with its fields.",
   });
-  return rental ? hireDetails(rental) : null;
-});
 
 /**
- * Everything a contract can be generated for right now: the sets on recent and
- * upcoming gigs, and the hire requests that have not been turned down.
+ * The contract row itself: created on first save, and from then on either
+ * its snapshot and status (a draft) or its status alone (sent or signed).
+ */
+function storeContract(
+  tx: Prisma.TransactionClient,
+  existing: { id: string; status: ContractStatus } | null,
+  kind: ContractKind,
+  source: { setArtistId: string } | { rentalId: string } | null,
+  snapshot: { title: string; fields: Prisma.InputJsonValue } | null,
+  { status, userId }: { status: ContractStatus; userId: string },
+) {
+  if (existing) {
+    return tx.contract.update({
+      where: { id: existing.id },
+      data: {
+        status,
+        ...(snapshot && { ...snapshot, termsVersion: CONTRACT_VERSION }),
+      },
+      select: { id: true, title: true },
+    });
+  }
+  if (!snapshot) throw needsFields();
+  return tx.contract.create({
+    data: {
+      kind,
+      ...source,
+      ...snapshot,
+      termsVersion: CONTRACT_VERSION,
+      status,
+      createdById: userId,
+    },
+    select: { id: true, title: true },
+  });
+}
+
+/**
+ * Save a performer agreement: the snapshot, and the edited fields back to
+ * the artist's private details and the booking they came from.
+ */
+export async function savePerformerContract(input: SaveInput<PerformerFields>) {
+  const read = await readPerformer(input, "");
+  if (!read) throw notFound();
+  const { setArtist, contract, live, saved } = read;
+
+  // A sent or signed contract is frozen: whatever was submitted, only its
+  // status moves.
+  const fields =
+    contract && contract.status !== "DRAFT"
+      ? null
+      : input.fields && tidyPerformerFields(input.fields);
+  if (!fields && !contract) throw needsFields();
+  // What the page was rendered from, so only real edits are written back.
+  const before = saved ?? live;
+
+  const stored = await db.$transaction(async (tx) => {
+    if (fields && setArtist && before) {
+      const columns = performerColumns(fields);
+      const booking = editedOnly(
+        columns.booking,
+        PERFORMER_COLUMN_FIELDS.booking,
+        before,
+        fields,
+      );
+      if (Object.keys(booking).length > 0) {
+        await tx.gigSetArtist.update({
+          where: { id: setArtist.id },
+          data: booking,
+        });
+      }
+
+      const artistProfileId = setArtist.artistProfile.id;
+      const { bankAccountNumber, ...details } = editedOnly(
+        columns.privateDetails,
+        PERFORMER_COLUMN_FIELDS.privateDetails,
+        before,
+        fields,
+      );
+      const data = {
+        ...details,
+        ...(bankAccountNumber !== undefined && {
+          bankAccountNumber: bankAccountNumber
+            ? sealBankAccountNumber(artistProfileId, bankAccountNumber)
+            : null,
+        }),
+      };
+      if (Object.keys(data).length > 0) {
+        await tx.artistPrivateDetails.upsert({
+          where: { artistProfileId },
+          create: { artistProfileId, ...data, updatedById: input.userId },
+          update: { ...data, updatedById: input.userId },
+        });
+      }
+    }
+
+    return storeContract(
+      tx,
+      contract,
+      "PERFORMER",
+      setArtist ? { setArtistId: setArtist.id } : null,
+      fields && {
+        title: performerTitle(fields),
+        fields: {
+          ...fields,
+          bankAccountNumber: sealSnapshotValue(fields.bankAccountNumber),
+        },
+      },
+      input,
+    );
+  });
+
+  await logActivity({
+    type: ActivityType.ARTIST_PROFILE_UPDATED,
+    action: `Performer agreement saved as ${input.status.toLowerCase()}: ${stored.title}`,
+    details: { contractId: stored.id },
+    userId: input.userId,
+  });
+  return stored;
+}
+
+/** Save an equipment hire agreement: the snapshot, and the edited fields back to the rental. */
+export async function saveHireContract(input: SaveInput<HireFields>) {
+  const read = await readHire(input, "");
+  if (!read) throw notFound();
+  const { rental, contract, live, saved } = read;
+
+  const fields =
+    contract && contract.status !== "DRAFT"
+      ? null
+      : input.fields && tidyHireFields(input.fields);
+  if (!fields && !contract) throw needsFields();
+  const before = saved ?? live;
+
+  const stored = await db.$transaction(async (tx) => {
+    if (fields && rental && before) {
+      const columns = editedOnly(
+        hireColumns(fields),
+        HIRE_COLUMN_FIELDS,
+        before,
+        fields,
+      );
+      if (Object.keys(columns).length > 0) {
+        await tx.rental.update({ where: { id: rental.id }, data: columns });
+      }
+    }
+
+    return storeContract(
+      tx,
+      contract,
+      "HIRE",
+      rental ? { rentalId: rental.id } : null,
+      fields && { title: hireTitle(fields), fields },
+      input,
+    );
+  });
+
+  await logActivity({
+    type: ActivityType.RENTAL_UPDATED,
+    action: `Hire agreement saved as ${input.status.toLowerCase()}: ${stored.title}`,
+    details: { contractId: stored.id },
+    userId: input.userId,
+  });
+  return stored;
+}
+
+/**
+ * Everything on the Contracts page: the sets on recent and upcoming gigs and
+ * the hire requests that have not been turned down, each with its contract's
+ * status, and every contract that has been sent or signed, however old.
  */
 export async function listContractSources() {
   const since = new Date(Date.now() - LOOKBACK_DAYS * 86_400_000);
+  const status = { select: { status: true } } as const;
 
-  const [gigs, rentals] = await Promise.all([
+  const [gigs, rentals, issued] = await Promise.all([
     db.gig.findMany({
       where: {
         gigStartTime: { gte: since },
@@ -99,6 +535,7 @@ export async function listContractSources() {
               orderBy: { sortOrder: "asc" },
               select: {
                 id: true,
+                contract: status,
                 artistProfile: { select: { displayName: true } },
               },
             },
@@ -115,7 +552,19 @@ export async function listContractSources() {
         startDate: true,
         endDate: true,
         status: true,
+        contract: status,
         gearPackage: { select: { name: true } },
+      },
+    }),
+    db.contract.findMany({
+      where: { status: { not: "DRAFT" } },
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        kind: true,
+        title: true,
+        status: true,
+        updatedAt: true,
       },
     }),
   ]);
@@ -126,5 +575,6 @@ export async function listContractSources() {
       scheduleItems: sortSchedule(gig.scheduleItems),
     })),
     rentals,
+    issued,
   };
 }

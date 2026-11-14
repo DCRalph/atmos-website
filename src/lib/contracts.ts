@@ -1,47 +1,172 @@
+import { z } from "zod";
+import type { ContractStatus } from "~Prisma/browser";
+
 import { formatCueTime, RUN_SHEET_TIMEZONE } from "~/lib/run-sheet/schedule";
-import { formatNZD } from "~/lib/ticketing/money";
+import { formatNZD, parsePriceToCents } from "~/lib/ticketing/money";
 
 /**
- * What the contract pages under /admin/contracts fill in from the database.
+ * The fields of the two contracts under /admin/contracts, as pure functions.
  *
- * Every value is a string as it should read on the page. Anything the
- * database does not hold (a fee, a bank account, a bond) stays blank for
- * whoever generates the contract to type in before printing.
+ * A contract is a flat set of strings, each exactly as it prints. The same
+ * shape is what the page renders, what its form submits, and what a saved
+ * `Contract` row keeps in `fields`. Three things happen to it here:
+ *
+ *   * **Filling.** `performerFields` and `hireFields` build it from the
+ *     database. Whatever the database does not hold stays blank to be typed.
+ *   * **Resolving.** Once a contract is saved, the saved copy is what shows.
+ *     `resolveFields` decides that, and reports where a saved draft has
+ *     fallen behind the database.
+ *   * **Writing back.** A saved contract also updates the rows its fields
+ *     came from, but only for the fields that were edited: see `editedOnly`.
  */
 
 /** Shown in each contract's masthead. Bump it when the terms change. */
 export const CONTRACT_VERSION = "Draft v0.1 · November 2026";
 
-export type PerformerDetails = {
-  legalName: string;
-  stageName: string;
-  email: string;
-  event: string;
-  venue: string;
-  date: string;
-  setTime: string;
-  setLength: string;
-  /** Thirty minutes before the set, the latest the terms let them arrive. */
-  arriveBy: string;
-  atmosContact: string;
+/** The id of the form every contract page renders, which the bar above it reads to save. */
+export const CONTRACT_FORM_ID = "contract-form";
+
+/**
+ * Which contract a page or a save is about: the row it is generated from (a
+ * `GigSetArtist` or `Rental` id), a saved contract's own id, or both. The id
+ * alone is how a contract is reached once its source row has been deleted.
+ */
+export type ContractTarget = {
+  sourceId: string | null;
+  contractId: string | null;
 };
 
-export type HireDetails = {
-  name: string;
-  email: string;
-  collection: string;
-  return: string;
-  hireFee: string;
-  dailyRate: string;
-  items: { name: string; quantity: string }[];
+/** What a contract page renders. */
+export type ContractView<F> = {
+  fields: F;
+  title: string;
+  /** Null until the contract is first saved. */
+  status: ContractStatus | null;
+  target: ContractTarget;
+  /** Labels of the fields where a saved draft has fallen behind the database. */
+  stale: string[];
+  /** Changes when the form should restart from `fields`: after a save, or a refresh from the database. */
+  revision: string;
+};
+
+/** One printed field. Defaults to blank, so an older saved contract still reads after a field is added. */
+const text = z.string().trim().max(2000).default("");
+
+export const performerFieldsSchema = z.object({
+  legalName: text,
+  stageName: text,
+  email: text,
+  phone: text,
+  address: text,
+  gstNumber: text,
+  bankAccountName: text,
+  bankAccountNumber: text,
+  event: text,
+  date: text,
+  venue: text,
+  setTime: text,
+  setLength: text,
+  /** Thirty minutes before the set, the latest the terms let them arrive. */
+  arriveBy: text,
+  guestListPlaces: text,
+  fee: text,
+  gstIncluded: text,
+  atmosContact: text,
+  notes: text,
+});
+export type PerformerFields = z.infer<typeof performerFieldsSchema>;
+
+export const hireItemSchema = z.object({
+  name: text,
+  quantity: text,
+  serial: text,
+  replacementValue: text,
+  condition: text,
+});
+export type HireItem = z.infer<typeof hireItemSchema>;
+
+export const hireFieldsSchema = z.object({
+  name: text,
+  organisation: text,
+  email: text,
+  phone: text,
+  address: text,
+  collectionDate: text,
+  collectionTime: text,
+  returnDate: text,
+  returnTime: text,
+  useLocation: text,
+  hireFee: text,
+  dailyRate: text,
+  bond: text,
+  atmosContact: text,
+  items: z.array(hireItemSchema).max(100).default([]),
+});
+export type HireFields = z.infer<typeof hireFieldsSchema>;
+
+/** The printed label of every field, shared by the page and the "changed since saved" notice. */
+export const PERFORMER_LABELS = {
+  legalName: "Legal name",
+  stageName: "Stage name",
+  email: "Email",
+  phone: "Phone",
+  address: "Address",
+  gstNumber: "GST no. (if any)",
+  bankAccountName: "Bank account name",
+  bankAccountNumber: "Bank account number",
+  event: "Event",
+  date: "Date",
+  venue: "Venue",
+  setTime: "Set time",
+  setLength: "Set length",
+  arriveBy: "Arrive by",
+  guestListPlaces: "Guest list places",
+  fee: "Fee (NZD)",
+  gstIncluded: "GST included (Y / N)",
+  atmosContact: "Atmos contact (name and phone)",
+  notes: "Anything else agreed (equipment, travel, extras)",
+} as const satisfies Record<keyof PerformerFields, string>;
+
+export const HIRE_LABELS = {
+  name: "Full name",
+  organisation: "Organisation (if any)",
+  email: "Email",
+  phone: "Phone",
+  address: "Address",
+  collectionDate: "Collection date",
+  collectionTime: "Collection time",
+  returnDate: "Return date",
+  returnTime: "Return time",
+  useLocation: "Where the equipment will be used",
+  hireFee: "Hire fee (NZD)",
+  dailyRate: "Daily rate if late (NZD)",
+  bond: "Bond (NZD)",
+  atmosContact: "Atmos contact",
+  items: "Equipment list",
+} as const satisfies Record<keyof HireFields, string>;
+
+/** An artist's paperwork details, with the bank number already opened. */
+export type PrivateDetailsForContract = {
+  legalName: string | null;
+  contactEmail: string | null;
+  phone: string | null;
+  address: string | null;
+  gstNumber: string | null;
+  bankAccountName: string | null;
+  bankAccountNumber: string | null;
 };
 
 /** One artist in one set, as `~/server/contracts` selects it. */
 export type SetArtistForContract = {
+  feeCents: number | null;
+  feeIncludesGst: boolean | null;
+  guestListPlaces: number | null;
+  contractNotes: string | null;
   artistProfile: {
     displayName: string;
     /** The account that claimed the profile, if anyone has. */
     user: { name: string; email: string } | null;
+    privateDetails: PrivateDetailsForContract | null;
   };
   item: {
     startsAt: Date | null;
@@ -54,7 +179,14 @@ export type SetArtistForContract = {
   };
 };
 
-type LineItem = { quantity: number; gearItem: { name: string } };
+type LineItem = {
+  quantity: number;
+  gearItem: {
+    name: string;
+    replacementValueCents: number | null;
+    serialNumbers: string[];
+  };
+};
 
 /** One rental request, as `~/server/contracts` selects it. */
 export type RentalForContract = {
@@ -65,6 +197,13 @@ export type RentalForContract = {
   /** Dollars, like every price on a rental. */
   discountedDailyPrice: number;
   estimatedTotalPrice: number;
+  phone: string | null;
+  organisation: string | null;
+  address: string | null;
+  useLocation: string | null;
+  collectionTime: string | null;
+  returnTime: string | null;
+  bondCents: number | null;
   gearPackage: { items: LineItem[] } | null;
   rentalItems: LineItem[];
 };
@@ -72,39 +211,52 @@ export type RentalForContract = {
 /** How long before their set a performer must be at the venue (clause 2.1). */
 const ARRIVAL_LEAD_MINUTES = 30;
 
-const dayFormatter = new Intl.DateTimeFormat("en-NZ", {
-  timeZone: RUN_SHEET_TIMEZONE,
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
-
 /**
- * "Saturday 14 November 2026". Assembled from parts because the joined form
- * differs between runtimes (commas, ordering).
+ * A date built from parts, because the joined form differs between runtimes
+ * (commas, ordering). Long is "Saturday 14 November 2026", short is
+ * "Sat 14 Nov 2026".
  */
-export function formatContractDate(date: Date): string {
-  const parts = dayFormatter.formatToParts(date);
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((entry) => entry.type === type)?.value ?? "";
-  return `${part("weekday")} ${part("day")} ${part("month")} ${part("year")}`;
+function contractDate(length: "long" | "short") {
+  const formatter = new Intl.DateTimeFormat("en-NZ", {
+    timeZone: RUN_SHEET_TIMEZONE,
+    weekday: length,
+    day: "numeric",
+    month: length,
+    year: "numeric",
+  });
+  return (date: Date): string => {
+    const parts = formatter.formatToParts(date);
+    const part = (type: Intl.DateTimeFormatPartTypes) =>
+      parts.find((entry) => entry.type === type)?.value ?? "";
+    return `${part("weekday")} ${part("day")} ${part("month")} ${part("year")}`;
+  };
 }
 
-export function performerDetails(
-  { artistProfile, item }: SetArtistForContract,
+export const formatContractDate = contractDate("long");
+const formatShortDate = contractDate("short");
+
+export function performerFields(
+  setArtist: SetArtistForContract,
   atmosContact: string,
-): PerformerDetails {
+): PerformerFields {
+  const { artistProfile, item } = setArtist;
   const { gig, startsAt, endsAt } = item;
+  const details = artistProfile.privateDetails;
   const minutes =
     startsAt && endsAt
       ? Math.round((endsAt.getTime() - startsAt.getTime()) / 60_000)
       : 0;
 
   return {
-    legalName: artistProfile.user?.name ?? "",
+    // Until someone enters a legal name, the account's name is the best guess.
+    legalName: details?.legalName ?? artistProfile.user?.name ?? "",
     stageName: artistProfile.displayName,
-    email: artistProfile.user?.email ?? "",
+    email: details?.contactEmail ?? artistProfile.user?.email ?? "",
+    phone: details?.phone ?? "",
+    address: details?.address ?? "",
+    gstNumber: details?.gstNumber ?? "",
+    bankAccountName: details?.bankAccountName ?? "",
+    bankAccountNumber: details?.bankAccountNumber ?? "",
     event: gig.title,
     venue: gig.venue
       ? [gig.venue.name, gig.venue.address].filter(Boolean).join(", ")
@@ -118,11 +270,26 @@ export function performerDetails(
           new Date(startsAt.getTime() - ARRIVAL_LEAD_MINUTES * 60_000),
         )
       : "",
+    guestListPlaces:
+      setArtist.guestListPlaces === null
+        ? ""
+        : String(setArtist.guestListPlaces),
+    fee: setArtist.feeCents === null ? "" : formatNZD(setArtist.feeCents),
+    gstIncluded:
+      setArtist.feeIncludesGst === null
+        ? ""
+        : setArtist.feeIncludesGst
+          ? "Yes"
+          : "No",
     atmosContact,
+    notes: setArtist.contractNotes ?? "",
   };
 }
 
-export function hireDetails(rental: RentalForContract): HireDetails {
+export function hireFields(
+  rental: RentalForContract,
+  atmosContact: string,
+): HireFields {
   const price = (dollars: number) => formatNZD(Math.round(dollars * 100));
   // A rental is either hand-picked items or a package, never both: the same
   // rule as `getRentalLineItems` in the rentals router.
@@ -133,14 +300,253 @@ export function hireDetails(rental: RentalForContract): HireDetails {
 
   return {
     name: rental.userName,
+    organisation: rental.organisation ?? "",
     email: rental.contactInfo,
-    collection: formatContractDate(rental.startDate),
-    return: formatContractDate(rental.endDate),
+    phone: rental.phone ?? "",
+    address: rental.address ?? "",
+    collectionDate: formatShortDate(rental.startDate),
+    collectionTime: rental.collectionTime ?? "",
+    returnDate: formatShortDate(rental.endDate),
+    returnTime: rental.returnTime ?? "",
+    useLocation: rental.useLocation ?? "",
     hireFee: price(rental.estimatedTotalPrice),
     dailyRate: price(rental.discountedDailyPrice),
-    items: lines.map((line) => ({
-      name: line.gearItem.name,
-      quantity: String(line.quantity),
+    bond: rental.bondCents === null ? "" : formatNZD(rental.bondCents),
+    atmosContact,
+    items: lines.map(({ quantity, gearItem }) => ({
+      name: gearItem.name,
+      quantity: String(quantity),
+      serial: gearItem.serialNumbers.join(", "),
+      replacementValue:
+        gearItem.replacementValueCents === null
+          ? ""
+          : formatNZD(gearItem.replacementValueCents) +
+            (quantity > 1 ? " each" : ""),
+      condition: "",
     })),
   };
+}
+
+/** The contract's name in lists, which has to make sense after its gig or rental is gone. */
+export function performerTitle(fields: PerformerFields): string {
+  return [fields.stageName, fields.event].filter(Boolean).join(" · ");
+}
+
+export function hireTitle(fields: HireFields): string {
+  return [fields.name, fields.collectionDate].filter(Boolean).join(" · ");
+}
+
+/** Whoever generated the contract is the default contact, so a different admin opening it later is not a change. */
+const NOT_FOLLOWED = new Set(["atmosContact"]);
+
+/**
+ * What a contract page should show, given what the database says now (`live`,
+ * null when the gig or rental is gone) and what was last saved (`saved`).
+ *
+ * The saved copy always wins: what was saved is what reopens, and a sent or
+ * signed contract never moves. A saved draft can fall behind the database
+ * though (a set time moves), so `stale` names the fields where it has, and
+ * `refresh` swaps those for the current values, unsaved until Save.
+ *
+ * Only single fields are followed. The equipment list is typed over at
+ * handover (serials, condition, extra rows), so once saved it is left alone.
+ */
+export function resolveFields<F extends Record<string, unknown>>({
+  live,
+  saved,
+  locked,
+  refresh,
+}: {
+  live: F | null;
+  saved: F | null;
+  /** Sent or signed. */
+  locked: boolean;
+  refresh: boolean;
+}): { fields: F | null; stale: (keyof F & string)[] } {
+  if (!saved) return { fields: live, stale: [] };
+  if (!live || locked) return { fields: saved, stale: [] };
+
+  const stale = Object.keys(live).filter((key): key is keyof F & string => {
+    const current = live[key];
+    return (
+      typeof current === "string" &&
+      current !== "" &&
+      current !== saved[key] &&
+      !NOT_FOLLOWED.has(key)
+    );
+  });
+  if (!refresh) return { fields: saved, stale };
+
+  const current = Object.fromEntries(stale.map((key) => [key, live[key]]));
+  return { fields: { ...saved, ...current }, stale: [] };
+}
+
+/**
+ * The columns of `values` whose contract field was edited, where `columns`
+ * maps each column to the field it is printed from.
+ *
+ * Saving a contract writes its fields back to the rows they came from. A
+ * draft shows what it saved, not what the database says now, so writing back
+ * everything would overwrite newer details with the draft's old ones. Only
+ * what was changed on the page since it was rendered (`before`) goes back.
+ */
+export function editedOnly<
+  V extends Record<string, unknown>,
+  F extends Record<string, unknown>,
+>(
+  values: V,
+  columns: Record<keyof V, keyof F>,
+  before: F,
+  after: F,
+): Partial<V> {
+  const edited = Object.entries(values).filter(([column]) => {
+    const field = columns[column as keyof V];
+    return before[field] !== after[field];
+  });
+  return Object.fromEntries(edited) as Partial<V>;
+}
+
+const blankToNull = (value: string) => value.trim() || null;
+
+/** "Y", "yes", "N", "no", in any case. Anything else is not an answer. */
+function parseYesNo(value: string): boolean | null {
+  const answer = value.trim().toLowerCase();
+  if (answer === "y" || answer === "yes") return true;
+  if (answer === "n" || answer === "no") return false;
+  return null;
+}
+
+function parseCount(value: string): number | null {
+  return /^\d{1,6}$/.test(value.trim()) ? Number(value.trim()) : null;
+}
+
+/**
+ * A performer agreement as the columns it is saved to: `ArtistPrivateDetails`
+ * (the bank number still in the clear, to be sealed by the caller) and the
+ * booking terms on `GigSetArtist`. A value that does not parse becomes null
+ * rather than a guess; the contract itself keeps the text as typed.
+ */
+export function performerColumns(fields: PerformerFields) {
+  return {
+    privateDetails: {
+      legalName: blankToNull(fields.legalName),
+      contactEmail: blankToNull(fields.email),
+      phone: blankToNull(fields.phone),
+      address: blankToNull(fields.address),
+      gstNumber: blankToNull(fields.gstNumber),
+      bankAccountName: blankToNull(fields.bankAccountName),
+      bankAccountNumber: blankToNull(fields.bankAccountNumber),
+    },
+    booking: {
+      feeCents: parsePriceToCents(fields.fee),
+      feeIncludesGst: parseYesNo(fields.gstIncluded),
+      guestListPlaces: parseCount(fields.guestListPlaces),
+      contractNotes: blankToNull(fields.notes),
+    },
+  };
+}
+
+/**
+ * A performer agreement as it should be saved: money and yes/no answers in
+ * the form the database would print them back in, wherever they parse. Typed
+ * as "400", the fee is kept as "$400.00", so the saved copy and the booking
+ * agree and the page does not report a change that is only formatting.
+ */
+export function tidyPerformerFields(fields: PerformerFields): PerformerFields {
+  const { feeCents, feeIncludesGst, guestListPlaces } =
+    performerColumns(fields).booking;
+  return {
+    ...fields,
+    fee: feeCents === null ? fields.fee : formatNZD(feeCents),
+    gstIncluded:
+      feeIncludesGst === null
+        ? fields.gstIncluded
+        : feeIncludesGst
+          ? "Yes"
+          : "No",
+    guestListPlaces:
+      guestListPlaces === null
+        ? fields.guestListPlaces
+        : String(guestListPlaces),
+  };
+}
+
+/** Which performer field each of those columns is printed from, for `editedOnly`. */
+export const PERFORMER_COLUMN_FIELDS = {
+  privateDetails: {
+    legalName: "legalName",
+    contactEmail: "email",
+    phone: "phone",
+    address: "address",
+    gstNumber: "gstNumber",
+    bankAccountName: "bankAccountName",
+    bankAccountNumber: "bankAccountNumber",
+  },
+  booking: {
+    feeCents: "fee",
+    feeIncludesGst: "gstIncluded",
+    guestListPlaces: "guestListPlaces",
+    contractNotes: "notes",
+  },
+} as const satisfies {
+  [Table in keyof ReturnType<typeof performerColumns>]: Record<
+    keyof ReturnType<typeof performerColumns>[Table],
+    keyof PerformerFields
+  >;
+};
+
+/** A hire agreement as the `Rental` columns it is saved to. */
+export function hireColumns(fields: HireFields) {
+  return {
+    phone: blankToNull(fields.phone),
+    organisation: blankToNull(fields.organisation),
+    address: blankToNull(fields.address),
+    useLocation: blankToNull(fields.useLocation),
+    collectionTime: blankToNull(fields.collectionTime),
+    returnTime: blankToNull(fields.returnTime),
+    bondCents: parsePriceToCents(fields.bond),
+  };
+}
+
+export const HIRE_COLUMN_FIELDS = {
+  phone: "phone",
+  organisation: "organisation",
+  address: "address",
+  useLocation: "useLocation",
+  collectionTime: "collectionTime",
+  returnTime: "returnTime",
+  bondCents: "bond",
+} as const satisfies Record<
+  keyof ReturnType<typeof hireColumns>,
+  keyof HireFields
+>;
+
+/**
+ * A hire agreement as it should be saved: the bond as the database would
+ * print it back (see `tidyPerformerFields`), and without the rows of the
+ * equipment list that nothing was typed in.
+ */
+export function tidyHireFields(fields: HireFields): HireFields {
+  const { bondCents } = hireColumns(fields);
+  return {
+    ...fields,
+    bond: bondCents === null ? fields.bond : formatNZD(bondCents),
+    items: fields.items.filter((item) =>
+      Object.values(item).some((value) => value !== ""),
+    ),
+  };
+}
+
+/**
+ * A bank account number with all but its last four digits hidden, keeping
+ * its punctuation: "••-••••-•••••56-00". For showing that a number is on
+ * file without showing the number.
+ */
+export function maskAccountNumber(value: string): string {
+  let shown = 4;
+  return [...value]
+    .reverse()
+    .map((char) => (/\d/.test(char) && shown-- <= 0 ? "•" : char))
+    .reverse()
+    .join("");
 }

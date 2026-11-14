@@ -2,7 +2,6 @@ import "~/styles/contract.css";
 
 import type { Metadata } from "next";
 
-import { ContractBar } from "~/components/admin/contracts/contract-bar";
 import { siteFontVariables } from "~/lib/site-fonts";
 import { cn } from "~/lib/utils";
 
@@ -12,7 +11,8 @@ export const metadata: Metadata = {
 
 /**
  * A contract on its own, outside the admin shell, so that printing the page
- * prints the contract and nothing else. Admins only: each page checks.
+ * prints the contract and nothing else. Each page renders its own
+ * `ContractBar` above the sheet. Admins only: each page checks.
  */
 export default function ContractsLayout({
   children,
@@ -26,7 +26,6 @@ export default function ContractsLayout({
         siteFontVariables,
       )}
     >
-      <ContractBar />
       {children}
     </div>
   );

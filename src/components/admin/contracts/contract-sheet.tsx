@@ -1,21 +1,29 @@
 import Image from "next/image";
 
-import { CONTRACT_VERSION } from "~/lib/contracts";
+import { CONTRACT_FORM_ID, CONTRACT_VERSION } from "~/lib/contracts";
 import { cn } from "~/lib/utils";
 
 /**
  * The parts every contract is built from. Styled by `~/styles/contract.css`,
  * which the contracts layout loads. All of it renders on the server: the
- * fields are uncontrolled inputs, so what is typed into them is simply what
- * prints.
+ * fields are uncontrolled inputs in one form, so what is typed into them is
+ * what prints, and what `ContractBar` reads to save.
  */
 
-/** One contract: the masthead, then whatever the agreement puts under it. */
+/**
+ * One contract: the masthead, then whatever the agreement puts under it.
+ * `locked` freezes every field (a sent or signed contract). `revision` is
+ * the form's key: when it changes, the fields restart from what was passed.
+ */
 export function ContractSheet({
   title,
+  locked = false,
+  revision,
   children,
 }: {
   title: string;
+  locked?: boolean;
+  revision?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -39,7 +47,11 @@ export function ContractSheet({
         </div>
         <h1>{title}</h1>
       </header>
-      <div className="body">{children}</div>
+      <form id={CONTRACT_FORM_ID} key={revision}>
+        <fieldset className="body" disabled={locked}>
+          {children}
+        </fieldset>
+      </form>
     </article>
   );
 }
@@ -61,17 +73,20 @@ export function FieldGroup({
 }
 
 /**
- * One labelled line. `value` is what the database already knows; it stays
- * editable. `as="textarea"` gives two lines, and `as="line"` leaves a bare
- * line for ink (a signature).
+ * One labelled line. `name` is the field's key in the saved contract; a
+ * field without one is printed but never stored. `value` is what is already
+ * known, and stays editable. `as="textarea"` gives two lines, and `as="line"`
+ * leaves a bare line for ink (a signature).
  */
 export function Field({
   label,
+  name,
   value,
   span,
   as = "input",
 }: {
   label: string;
+  name?: string;
   value?: string;
   span?: 2 | 4;
   as?: "input" | "textarea" | "line";
@@ -92,9 +107,9 @@ export function Field({
     <label className={className}>
       <span>{label}</span>
       {as === "textarea" ? (
-        <textarea rows={2} defaultValue={value} />
+        <textarea rows={2} name={name} defaultValue={value} />
       ) : (
-        <input type="text" defaultValue={value} />
+        <input type="text" name={name} defaultValue={value} />
       )}
     </label>
   );

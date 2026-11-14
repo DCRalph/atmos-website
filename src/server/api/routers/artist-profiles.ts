@@ -25,6 +25,11 @@ import {
 import { grantUserPermission } from "~/server/utils/permissions";
 import { isOwnTheme } from "~/server/artist-public-profile";
 import { defaultArtistThemeId } from "~/server/artist-default-theme";
+import {
+  openBankAccountNumber,
+  sealBankAccountNumber,
+} from "~/server/contracts";
+import { maskAccountNumber } from "~/lib/contracts";
 import { GRID } from "~/lib/artist-grid";
 import { readLayout } from "~/lib/artist-sections";
 import { zArtistTheme } from "~/lib/artist-theme";
@@ -34,6 +39,9 @@ import {
   FileUploadStatus,
   type PrismaClient,
 } from "~Prisma/client";
+
+/** One line of an artist's private details, as typed. */
+const privateField = z.string().trim().max(500);
 
 const handleSchema = z
   .string()
@@ -567,6 +575,74 @@ export const artistProfilesRouter = createTRPCRouter({
         { profileId: input.profileId },
       );
       return updated;
+    }),
+
+  /**
+   * The paperwork details on the admin artist sheet. The bank account number
+   * comes back masked: the whole number is only ever printed on a contract.
+   */
+  privateDetails: adminProcedure
+    .input(z.object({ profileId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const details = await ctx.db.artistPrivateDetails.findUnique({
+        where: { artistProfileId: input.profileId },
+      });
+      const number = openBankAccountNumber(
+        input.profileId,
+        details?.bankAccountNumber ?? null,
+      );
+      return {
+        legalName: details?.legalName ?? "",
+        contactEmail: details?.contactEmail ?? "",
+        phone: details?.phone ?? "",
+        address: details?.address ?? "",
+        gstNumber: details?.gstNumber ?? "",
+        bankAccountName: details?.bankAccountName ?? "",
+        bankAccountMasked: number ? maskAccountNumber(number) : "",
+        updatedAt: details?.updatedAt ?? null,
+      };
+    }),
+
+  updatePrivateDetails: adminProcedure
+    .input(
+      z.object({
+        profileId: z.string(),
+        legalName: privateField,
+        contactEmail: privateField,
+        phone: privateField,
+        address: privateField,
+        gstNumber: privateField,
+        bankAccountName: privateField,
+        /** Empty keeps the number on file: the form never has it to send back. */
+        bankAccountNumber: privateField,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { profileId, bankAccountNumber, ...text } = input;
+      const data = {
+        ...Object.fromEntries(
+          Object.entries(text).map(([key, value]) => [key, value || null]),
+        ),
+        ...(bankAccountNumber && {
+          bankAccountNumber: sealBankAccountNumber(
+            profileId,
+            bankAccountNumber,
+          ),
+        }),
+        updatedById: ctx.user.id,
+      };
+      await ctx.db.artistPrivateDetails.upsert({
+        where: { artistProfileId: profileId },
+        create: { artistProfileId: profileId, ...data },
+        update: data,
+      });
+      await logUserActivity(
+        ActivityType.ARTIST_PROFILE_UPDATED,
+        "Updated an artist's private details",
+        ctx.user.id,
+        undefined,
+        { profileId },
+      );
     }),
 
   /**

@@ -14,6 +14,7 @@ import {
 import { formatCueTime, RUN_SHEET_TIMEZONE } from "~/lib/run-sheet/schedule";
 import { requireAdmin } from "~/server/auth-session";
 import { listContractSources } from "~/server/contracts";
+import type { ContractStatus } from "~Prisma/client";
 
 const day = new Intl.DateTimeFormat("en-NZ", {
   timeZone: RUN_SHEET_TIMEZONE,
@@ -24,19 +25,38 @@ const day = new Intl.DateTimeFormat("en-NZ", {
 
 const contractLink = "text-muted-foreground hover:text-foreground text-xs";
 
+const STATUS_LABELS = {
+  DRAFT: "Draft",
+  SENT: "Sent",
+  SIGNED: "Signed",
+} as const satisfies Record<ContractStatus, string>;
+
+/** Where a row's contract has got to. Nothing until it is first saved. */
+function ContractStatusBadge({ status }: { status?: ContractStatus }) {
+  if (!status)
+    return <span className="text-muted-foreground">Not started</span>;
+  return (
+    <Badge variant={status === "SIGNED" ? "default" : "outline"}>
+      {STATUS_LABELS[status]}
+    </Badge>
+  );
+}
+
 /**
  * Where contracts are generated: one row for every artist in a set on a
  * recent or upcoming gig, and one for every hire request. Each opens the
- * contract filled in from that row, ready to finish and print.
+ * contract filled in from that row, ready to finish, save and print. Below
+ * them, every contract that has been sent or signed, however old, including
+ * ones whose gig or rental has since been deleted.
  */
 export default async function AdminContractsPage() {
   await requireAdmin();
-  const { gigs, rentals } = await listContractSources();
+  const { gigs, rentals, issued } = await listContractSources();
 
   return (
     <AdminSection
       title="Contracts"
-      description="Performer and equipment hire agreements, filled in from the line-up and the rental requests."
+      description="Performer and equipment hire agreements, filled in from the line-up and the rental requests, and saved once they are issued."
       actions={
         <>
           <Link
@@ -71,6 +91,7 @@ export default async function AdminContractsPage() {
                   <TableHead>Date</TableHead>
                   <TableHead>Set</TableHead>
                   <TableHead>Artist</TableHead>
+                  <TableHead>Contract</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -88,6 +109,11 @@ export default async function AdminContractsPage() {
                         </TableCell>
                         <TableCell>
                           {artist.artistProfile.displayName}
+                        </TableCell>
+                        <TableCell>
+                          <ContractStatusBadge
+                            status={artist.contract?.status}
+                          />
                         </TableCell>
                         <TableCell className="text-right">
                           <Link
@@ -121,7 +147,8 @@ export default async function AdminContractsPage() {
                   <TableHead>Hirer</TableHead>
                   <TableHead>Gear</TableHead>
                   <TableHead>Dates</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Request</TableHead>
+                  <TableHead>Contract</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -141,6 +168,9 @@ export default async function AdminContractsPage() {
                         {rental.status === "APPROVED" ? "Approved" : "Pending"}
                       </Badge>
                     </TableCell>
+                    <TableCell>
+                      <ContractStatusBadge status={rental.contract?.status} />
+                    </TableCell>
                     <TableCell className="text-right">
                       <Link
                         href={`/admin/contracts/hire?rental=${rental.id}`}
@@ -155,6 +185,53 @@ export default async function AdminContractsPage() {
             </Table>
           )}
         </section>
+
+        {issued.length > 0 ? (
+          <section className="rounded-lg border p-4">
+            <h2 className="text-muted-foreground mb-2 text-sm font-medium">
+              Sent and signed
+            </h2>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Contract</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Updated</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {issued.map((contract) => (
+                  <TableRow key={contract.id}>
+                    <TableCell>{contract.title}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {contract.kind === "PERFORMER"
+                        ? "Performer"
+                        : "Equipment hire"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {day.format(contract.updatedAt)}
+                    </TableCell>
+                    <TableCell>
+                      <ContractStatusBadge status={contract.status} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Link
+                        href={`/admin/contracts/${
+                          contract.kind === "PERFORMER" ? "performer" : "hire"
+                        }?contract=${contract.id}`}
+                        className={contractLink}
+                      >
+                        Open →
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </section>
+        ) : null}
       </div>
     </AdminSection>
   );

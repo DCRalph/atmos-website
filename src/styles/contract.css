@@ -87,7 +87,19 @@ html:has(.contract) {
 }
 
 .contract .body {
+  border: 0;
+  margin: 0;
+  min-width: 0;
   padding: 0 var(--gutter);
+}
+
+/* A sent or signed contract is a disabled fieldset. It still has to read and
+   print as the contract, not as greyed-out form controls. */
+.contract .body:disabled input,
+.contract .body:disabled textarea {
+  color: inherit;
+  opacity: 1;
+  -webkit-text-fill-color: currentColor;
 }
 
 /* Fields: filled in from the database where it can be, typed into otherwise. */
@@ -176,18 +188,23 @@ html:has(.contract) {
   border-bottom: 1px solid var(--line);
   height: 8.5mm;
   padding: 0;
+  vertical-align: top;
 }
 
 .contract td + td {
   border-left: 1px solid var(--line);
 }
 
-.contract td input {
+/* Cells grow with what is typed in them (`field-sizing`, Chrome 123 and
+   later). Elsewhere they stay one line and scroll. */
+.contract td textarea {
+  field-sizing: content;
   font-size: 9pt;
-  padding: 0 2mm;
+  overflow: hidden;
+  padding: 2mm;
 }
 
-.contract td:first-child input {
+.contract td:first-child textarea {
   padding-left: 0;
 }
 

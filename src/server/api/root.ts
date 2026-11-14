@@ -6,6 +6,7 @@ import { gigTagsRouter } from "~/server/api/routers/gig-tags";
 import { venuesRouter } from "~/server/api/routers/venues";
 import { gigImportRouter } from "~/server/api/routers/gig-import";
 import { contactRouter } from "~/server/api/routers/contact";
+import { contractsRouter } from "~/server/api/routers/contracts";
 import { userRouter } from "~/server/api/routers/user";
 import { invitesRouter } from "~/server/api/routers/invites";
 import { usersRouter } from "~/server/api/routers/users";
@@ -78,6 +79,7 @@ export const appRouter = createTRPCRouter({
   homeGigs: homeGigsRouter,
   homeContent: homeContentRouter,
   contact: contactRouter,
+  contracts: contractsRouter,
   newsletter: newsletterRouter,
   /** Marketing email to mailing lists. */
   mailouts: mailoutsRouter,
