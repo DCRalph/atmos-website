@@ -94,11 +94,20 @@ export function openBankAccountNumber(
  * A saved performer agreement holds the bank account number too, so it is
  * sealed inside the snapshot just as it is on the artist's own row. Every
  * snapshot shares one context: a contract has no id until it is first saved.
+ * The same goes for its baseline.
  */
 const SNAPSHOT_CONTEXT = "contract-snapshot";
 
-const sealSnapshotValue = (value: string) =>
-  value && sealField(value, SNAPSHOT_CONTEXT, env.BETTER_AUTH_SECRET);
+const sealPerformerSnapshot = (fields: PerformerFields): PerformerFields => ({
+  ...fields,
+  bankAccountNumber:
+    fields.bankAccountNumber &&
+    sealField(
+      fields.bankAccountNumber,
+      SNAPSHOT_CONTEXT,
+      env.BETTER_AUTH_SECRET,
+    ),
+});
 
 /** A saved performer agreement's fields, with the bank account number opened (blank if it will not open). */
 function openPerformerSnapshot(stored: unknown): PerformerFields {
@@ -122,6 +131,7 @@ const contractSelect = {
   id: true,
   status: true,
   fields: true,
+  baseline: true,
   updatedAt: true,
   setArtistId: true,
   rentalId: true,
@@ -253,6 +263,9 @@ async function readPerformer(
     contract,
     live,
     saved: contract ? openPerformerSnapshot(contract.fields) : null,
+    baseline: contract?.baseline
+      ? openPerformerSnapshot(contract.baseline)
+      : null,
   };
 }
 
@@ -279,6 +292,9 @@ async function readHire(target: ContractTarget, defaults: ContractDefaults) {
     contract,
     live: rental ? hireFields(rental, defaults) : null,
     saved: contract ? hireFieldsSchema.parse(contract.fields) : null,
+    baseline: contract?.baseline
+      ? hireFieldsSchema.parse(contract.baseline)
+      : null,
   };
 }
 
@@ -299,11 +315,12 @@ export const getPerformerContract = cache(
       await getContractDefaults(adminName),
     );
     if (!read) return null;
-    const { setArtist, contract, live, saved } = read;
+    const { setArtist, contract, live, saved, baseline } = read;
 
     const { fields, stale } = resolveFields({
       live,
       saved,
+      baseline,
       locked: contract ? contract.status !== "DRAFT" : false,
       refresh,
     });
@@ -335,11 +352,12 @@ export const getHireContract = cache(
       await getContractDefaults(adminName),
     );
     if (!read) return null;
-    const { rental, contract, live, saved } = read;
+    const { rental, contract, live, saved, baseline } = read;
 
     const { fields, stale } = resolveFields({
       live,
       saved,
+      baseline,
       locked: contract ? contract.status !== "DRAFT" : false,
       refresh,
     });
@@ -414,6 +432,19 @@ function storeContract(
 }
 
 /**
+ * Record what the database says a contract's fields are, read back after a
+ * save has written its edits. It is the line `resolveFields` measures later
+ * change from, which is how a draft knows it has fallen behind.
+ */
+function setBaseline(contractId: string, baseline: Prisma.InputJsonValue) {
+  return db.contract.update({
+    where: { id: contractId },
+    data: { baseline },
+    select: { id: true },
+  });
+}
+
+/**
  * Save a performer agreement: the snapshot, and the edited fields back to
  * the artist's private details and the booking they came from.
  */
@@ -480,14 +511,21 @@ export async function savePerformerContract(input: SaveInput<PerformerFields>) {
       fields && {
         title: performerTitle(fields),
         termsVersion: fields.version || CONTRACT_VERSION,
-        fields: {
-          ...fields,
-          bankAccountNumber: sealSnapshotValue(fields.bankAccountNumber),
-        },
+        fields: sealPerformerSnapshot(fields),
       },
       input,
     );
   });
+
+  if (fields) {
+    const current = await readPerformer(
+      { sourceId: setArtist?.id ?? null, contractId: stored.id },
+      await getContractDefaults(""),
+    );
+    if (current?.live) {
+      await setBaseline(stored.id, sealPerformerSnapshot(current.live));
+    }
+  }
 
   await logActivity({
     type: ActivityType.ARTIST_PROFILE_UPDATED,
@@ -544,6 +582,14 @@ export async function saveHireContract(input: SaveInput<HireFields>) {
       input,
     );
   });
+
+  if (fields) {
+    const current = await readHire(
+      { sourceId: rental?.id ?? null, contractId: stored.id },
+      await getContractDefaults(""),
+    );
+    if (current?.live) await setBaseline(stored.id, current.live);
+  }
 
   await logActivity({
     type: ActivityType.RENTAL_UPDATED,

@@ -52,6 +52,7 @@ CREATE TABLE "contract" (
     "rentalId" TEXT,
     "title" TEXT NOT NULL,
     "fields" JSONB NOT NULL,
+    "baseline" JSONB,
     "termsVersion" TEXT NOT NULL,
     "status" "ContractStatus" NOT NULL DEFAULT 'DRAFT',
     "createdById" TEXT,

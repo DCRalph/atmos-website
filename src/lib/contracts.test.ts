@@ -243,47 +243,68 @@ test("names Atmos by its brand until a legal entity is set", () => {
 });
 
 describe("resolveFields", () => {
-  const live = performerFields(setArtist, defaults);
-  const saved = { ...live, setTime: "10:00 pm", fee: "$350.00", phone: "" };
+  // What the database said when the draft was saved, and the draft itself,
+  // which deliberately says something else about the fee.
+  const baseline = performerFields(setArtist, defaults);
+  const saved = { ...baseline, fee: "TBC" };
+  // Since then the set has moved and the phone number has been removed.
+  const live = { ...baseline, setTime: "11:45 pm", phone: "" };
 
   test("shows the database until something is saved", () => {
     expect(
-      resolveFields({ live, saved: null, locked: false, refresh: false }),
+      resolveFields({
+        live,
+        saved: null,
+        baseline: null,
+        locked: false,
+        refresh: false,
+      }),
     ).toEqual({ fields: live, stale: [] });
   });
 
-  test("shows a saved draft as saved, and names what has moved on since", () => {
+  test("shows a saved draft as saved, and names what the database changed since", () => {
     const resolved = resolveFields({
       live,
       saved,
+      baseline,
       locked: false,
       refresh: false,
     });
 
     expect(resolved.fields).toEqual(saved);
-    expect(resolved.stale).toEqual(["phone", "setTime", "fee"]);
+    // The cleared phone counts. The fee does not: only the draft changed it.
+    expect(resolved.stale).toEqual(["phone", "setTime"]);
   });
 
   test("takes the current values for those fields on refresh", () => {
     const resolved = resolveFields({
       live,
       saved,
+      baseline,
       locked: false,
       refresh: true,
     });
 
-    expect(resolved).toEqual({ fields: live, stale: [] });
+    expect(resolved).toEqual({
+      fields: { ...saved, setTime: "11:45 pm", phone: "" },
+      stale: [],
+    });
   });
 
   test("never moves a sent contract, or one opened by another admin", () => {
-    expect(resolveFields({ live, saved, locked: true, refresh: true })).toEqual(
-      { fields: saved, stale: [] },
-    );
-
-    const reopened = { ...live, atmosContact: "Someone else" };
     expect(
-      resolveFields({ live, saved: reopened, locked: false, refresh: false })
-        .stale,
+      resolveFields({ live, saved, baseline, locked: true, refresh: true }),
+    ).toEqual({ fields: saved, stale: [] });
+
+    const reopened = { ...baseline, atmosContact: "Someone else" };
+    expect(
+      resolveFields({
+        live: reopened,
+        saved: baseline,
+        baseline,
+        locked: false,
+        refresh: false,
+      }).stale,
     ).toEqual([]);
   });
 });

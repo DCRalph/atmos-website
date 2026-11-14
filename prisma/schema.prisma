@@ -1517,7 +1517,11 @@ model Contract {
   /// `PerformerFields` or `HireFields` from `~/lib/contracts`. A performer's
   /// bank account number is sealed inside it: see `~/server/contracts`.
   fields Json
-  /// `CONTRACT_VERSION` at the time it was saved.
+  /// What the database said these fields were when the contract was last
+  /// saved, in the same shape. A draft has fallen behind wherever the
+  /// database no longer says this. Null once the source row is gone.
+  baseline Json?
+  /// The version label it was saved under.
   termsVersion String
   status       ContractStatus @default(DRAFT)
 

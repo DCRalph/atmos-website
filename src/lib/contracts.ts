@@ -14,8 +14,8 @@ import { formatNZD, parsePriceToCents } from "~/lib/ticketing/money";
  *   * **Filling.** `performerFields` and `hireFields` build it from the
  *     database. Whatever the database does not hold stays blank to be typed.
  *   * **Resolving.** Once a contract is saved, the saved copy is what shows.
- *     `resolveFields` decides that, and reports where a saved draft has
- *     fallen behind the database.
+ *     `resolveFields` decides that, and reports where the database has
+ *     changed since a draft was saved.
  *   * **Writing back.** A saved contract also updates the rows its fields
  *     came from, but only for the fields that were edited: see `editedOnly`.
  */
@@ -120,7 +120,7 @@ export type ContractView<F> = {
   /** Null until the contract is first saved. */
   status: ContractStatus | null;
   target: ContractTarget;
-  /** Labels of the fields where a saved draft has fallen behind the database. */
+  /** Labels of the fields where the database has changed since a draft was saved. */
   stale: string[];
   /** Changes when the form should restart from `fields`: after a save, or a refresh from the database. */
   revision: string;
@@ -458,12 +458,18 @@ const NOT_FOLLOWED = new Set(["atmosContact"]);
 
 /**
  * What a contract page should show, given what the database says now (`live`,
- * null when the gig or rental is gone) and what was last saved (`saved`).
+ * null when the gig or rental is gone), what was last saved (`saved`), and
+ * what the database said at that save (`baseline`).
  *
  * The saved copy always wins: what was saved is what reopens, and a sent or
  * signed contract never moves. A saved draft can fall behind the database
- * though (a set time moves), so `stale` names the fields where it has, and
- * `refresh` swaps those for the current values, unsaved until Save.
+ * though (a set time moves, a phone number is removed), so `stale` names the
+ * fields where the database has changed since the save, and `refresh` swaps
+ * those for the current values, unsaved until Save.
+ *
+ * Comparing against the baseline rather than the saved text is what lets a
+ * contract differ from the database on purpose: a fee of "TBC", or a hire
+ * fee typed over the quote, is not a change until the database itself moves.
  *
  * Only single fields are followed. The equipment list is typed over at
  * handover (serials, condition, extra rows), so once saved it is left alone.
@@ -471,23 +477,25 @@ const NOT_FOLLOWED = new Set(["atmosContact"]);
 export function resolveFields<F extends Record<string, unknown>>({
   live,
   saved,
+  baseline,
   locked,
   refresh,
 }: {
   live: F | null;
   saved: F | null;
+  baseline: F | null;
   /** Sent or signed. */
   locked: boolean;
   refresh: boolean;
 }): { fields: F | null; stale: (keyof F & string)[] } {
   if (!saved) return { fields: live, stale: [] };
-  if (!live || locked) return { fields: saved, stale: [] };
+  if (!live || !baseline || locked) return { fields: saved, stale: [] };
 
   const stale = Object.keys(live).filter((key): key is keyof F & string => {
     const current = live[key];
     return (
       typeof current === "string" &&
-      current !== "" &&
+      current !== baseline[key] &&
       current !== saved[key] &&
       !NOT_FOLLOWED.has(key)
     );
