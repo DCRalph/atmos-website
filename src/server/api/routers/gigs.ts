@@ -968,17 +968,18 @@ async function saveGig(db: GigsContext["db"], userId: string, input: GigEdit) {
               })
             ).id;
 
-      // Billing order changes as often as the line-up does, and the rows
-      // carry nothing else, so they are replaced rather than reconciled.
+      // Reconciled rather than replaced: a row carries the booking's fee and
+      // its contract, and deleting it would take both. Billing order changes
+      // as often as the line-up does, so every row that stays is re-sorted.
       const artists = uniqueStrings(row.artistProfileIds);
-      await tx.gigSetArtist.deleteMany({ where: { itemId } });
-      if (artists.length > 0) {
-        await tx.gigSetArtist.createMany({
-          data: artists.map((artistProfileId, billing) => ({
-            itemId,
-            artistProfileId,
-            sortOrder: billing,
-          })),
+      await tx.gigSetArtist.deleteMany({
+        where: { itemId, artistProfileId: { notIn: artists } },
+      });
+      for (const [billing, artistProfileId] of artists.entries()) {
+        await tx.gigSetArtist.upsert({
+          where: { itemId_artistProfileId: { itemId, artistProfileId } },
+          create: { itemId, artistProfileId, sortOrder: billing },
+          update: { sortOrder: billing },
         });
       }
 

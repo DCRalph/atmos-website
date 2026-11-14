@@ -31,6 +31,7 @@ import {
   LinkUserDialog,
   type LinkUserTarget,
 } from "~/components/admin/link-user-dialog";
+import { ArtistPrivateDetails } from "~/components/admin/artist-private-details";
 import { useConfirm } from "~/components/confirm-provider";
 import { findProfileSocial } from "~/lib/crew-display";
 import { getPlatform } from "~/lib/social-pills";
@@ -66,8 +67,9 @@ function useRefreshProfile() {
 
 /**
  * The quick editor for what every list shows about an artist: name, handle,
- * photo, Instagram, SoundCloud, linked user and crew role. Blocks, theme and
- * bio stay in the full editor.
+ * photo, Instagram, SoundCloud, linked user and crew role, plus the private
+ * details that fill their contracts. Blocks, theme and bio stay in the full
+ * editor.
  *
  * Opened from the artist profiles list and from crew rows. `onNavigate` adds
  * previous/next (buttons and arrow keys) for stepping through a list.
@@ -369,6 +371,10 @@ function CoreDetails({
         </div>
 
         <CrewSection profile={profile} />
+
+        <Separator />
+
+        <ArtistPrivateDetails profileId={profile.id} />
 
         <Separator />
 

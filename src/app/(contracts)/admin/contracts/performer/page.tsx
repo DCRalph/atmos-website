@@ -1,30 +1,76 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { ContractBar } from "~/components/admin/contracts/contract-bar";
 import { PerformerAgreement } from "~/components/admin/contracts/performer-agreement";
+import { performerFieldsSchema } from "~/lib/contracts";
 import { requireAdmin } from "~/server/auth-session";
-import { getPerformerContract } from "~/server/contracts";
+import { getContractDefaults, getPerformerContract } from "~/server/contracts";
 
-type Props = { searchParams: Promise<{ set?: string | string[] }> };
+type Param = string | string[] | undefined;
+type Props = {
+  searchParams: Promise<{ set?: Param; contract?: Param; refresh?: Param }>;
+};
 
-/** The booking named by `?set=` (a `GigSetArtist` id), or undefined for a blank contract. */
-async function loadDetails({ searchParams }: Props) {
+const one = (param: Param) => (typeof param === "string" ? param : null);
+
+/**
+ * The contract the address names: `?set=` (a `GigSetArtist` id) while that
+ * row exists, `?contract=` (a saved contract's id) for one whose row has
+ * gone, and neither for a blank contract, which is null here. `?refresh=1`
+ * loads a saved draft with the database's current values.
+ */
+async function loadContract({ searchParams }: Props) {
   const admin = await requireAdmin();
-  const { set } = await searchParams;
-  if (typeof set !== "string") return undefined;
-  // Whoever generates the contract is the performer's Atmos contact by default.
-  return (await getPerformerContract(set, admin.name)) ?? notFound();
+  const { set, contract, refresh } = await searchParams;
+  const sourceId = one(set);
+  const contractId = one(contract);
+  if (!sourceId && !contractId) return null;
+  return (
+    // Whoever generates the contract is its Atmos contact by default.
+    (await getPerformerContract(
+      sourceId,
+      contractId,
+      refresh === "1",
+      admin.name,
+    )) ?? notFound()
+  );
+}
+
+/** A blank contract: nothing filled in but who Atmos is and the version of the terms. */
+async function blankFields() {
+  const { atmosParty, version } = await getContractDefaults("");
+  return { ...performerFieldsSchema.parse({}), atmosParty, version };
 }
 
 /** The page title is the file name a browser offers when saving the PDF. */
 export async function generateMetadata(props: Props): Promise<Metadata> {
-  const details = await loadDetails(props);
-  const title = details
-    ? `Performer agreement - ${details.stageName} - ${details.event}`
+  const view = await loadContract(props);
+  const title = view
+    ? `Performer agreement - ${view.title}`
     : "Performer agreement";
   return { title: { absolute: title } };
 }
 
 export default async function PerformerContractPage(props: Props) {
-  return <PerformerAgreement details={await loadDetails(props)} />;
+  const view = await loadContract(props);
+  return (
+    <>
+      <ContractBar
+        kind="PERFORMER"
+        saved={
+          view && {
+            target: view.target,
+            status: view.status,
+            stale: view.stale,
+          }
+        }
+      />
+      <PerformerAgreement
+        fields={view?.fields ?? (await blankFields())}
+        locked={view?.status === "SENT" || view?.status === "SIGNED"}
+        revision={view?.revision}
+      />
+    </>
+  );
 }

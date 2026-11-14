@@ -32,7 +32,7 @@ export type LegalDoc = {
  * Shown as "Last updated" on every document. Bump it whenever the text of
  * any of them changes.
  */
-const LEGAL_UPDATED = "13 October 2026";
+const LEGAL_UPDATED = "14 November 2026";
 
 const contactBlock: LegalBlock = {
   contact: { value: "Contact page", href: "/contact" },
@@ -132,6 +132,25 @@ export const privacyDoc: LegalDoc = {
         },
         {
           p: "We use that to send your receipt, handle any problem with the payment, and keep the financial records the law requires. Donating does not sign you up to anything.",
+        },
+      ],
+    },
+    {
+      id: "performing-and-hiring",
+      n: "2c",
+      title: "Performing and hiring equipment",
+      blocks: [
+        {
+          p: "When we book you to perform at one of our events we hold your legal name, email address, phone number, postal address, GST number if you have one, and the bank account we pay you into, along with the terms of the booking: the event, your set, your fee and anything else we agreed.",
+        },
+        {
+          p: "When you hire equipment from us we hold your name, email address, phone number, address, your organisation if you are hiring for one, where the equipment will be used, and the fees and bond for the hire. We ask to see photo ID when you collect equipment. Its number is written on the hire agreement and is not stored in our systems.",
+        },
+        {
+          p: "We use that to prepare the agreement between us, pay performers, contact you about the booking or hire, recover equipment or costs if something goes wrong, and keep the tax records the law requires. We keep a copy of each agreement as it was issued.",
+        },
+        {
+          p: "Only Atmos administrators can see these details. They are never shown on a public artist page, and bank account numbers are stored encrypted. We keep agreements and payment records for seven years, which is what New Zealand tax law requires of business records. You can ask us to correct your details at any time.",
         },
       ],
     },

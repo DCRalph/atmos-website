@@ -3,97 +3,120 @@ import {
   ContractSheet,
   Field,
   FieldGroup,
+  Parties,
   Signatures,
   Terms,
 } from "~/components/admin/contracts/contract-sheet";
-import type { HireDetails } from "~/lib/contracts";
+import {
+  HIRE_LABELS,
+  hireItemSchema,
+  type HireFields,
+  type HireItem,
+} from "~/lib/contracts";
 
-/** The equipment list never has fewer rows than this, so there is room to add to it. */
+/** The equipment list never has fewer rows than this, and always two spare, so there is room to add to it. */
 const MIN_EQUIPMENT_ROWS = 8;
 
+const ITEM_COLUMNS = [
+  { key: "name", label: "Item", width: "38%" },
+  { key: "quantity", label: "Qty", width: "8%" },
+  { key: "serial", label: "Serial or asset no.", width: "20%" },
+  { key: "replacementValue", label: "Replacement value", width: "16%" },
+  { key: "condition", label: "Condition at collection", width: undefined },
+] as const satisfies readonly {
+  key: keyof HireItem;
+  label: string;
+  width?: string;
+}[];
+
 /**
- * The equipment hire agreement. `details` is whatever the database knows
- * about the rental; pass nothing for a blank one. Clause 5.2 points at
- * section 4 by number: keep them in step if sections are added or moved.
+ * The equipment hire agreement. `fields` is the contract as it should read:
+ * from the database, from its saved copy, or all blank. Photo ID is an ink
+ * line: it is written on the paper at collection and never typed or stored.
+ * Clause 5.2 points at section 4 by number: keep them in step if sections
+ * are added or moved.
  */
 export function EquipmentHireAgreement({
-  details = {},
+  fields,
+  locked,
+  revision,
 }: {
-  details?: Partial<HireDetails>;
+  fields: HireFields;
+  locked?: boolean;
+  revision?: string;
 }) {
-  const items = details.items ?? [];
+  const field = (
+    key: Exclude<keyof HireFields, "items" | "atmosParty" | "version">,
+  ) => ({
+    name: key,
+    label: HIRE_LABELS[key],
+    value: fields[key],
+  });
   const rows = [
-    ...items,
+    ...fields.items,
     ...Array.from(
-      { length: Math.max(2, MIN_EQUIPMENT_ROWS - items.length) },
-      () => ({ name: "", quantity: "" }),
+      { length: Math.max(2, MIN_EQUIPMENT_ROWS - fields.items.length) },
+      () => hireItemSchema.parse({}),
     ),
   ];
 
   return (
-    <ContractSheet title="Equipment hire agreement">
+    <ContractSheet
+      title="Equipment hire agreement"
+      atmosParty={fields.atmosParty}
+      version={fields.version}
+      locked={locked}
+      revision={revision}
+    >
       <FieldGroup title="Hirer">
-        <Field label="Full name" value={details.name} span={2} />
-        <Field label="Organisation (if any)" span={2} />
-        <Field label="Email" value={details.email} span={2} />
-        <Field label="Phone" span={2} />
-        <Field label="Address" span={2} />
-        <Field label="Photo ID type and number" span={2} />
+        <Field {...field("name")} span={2} />
+        <Field {...field("organisation")} span={2} />
+        <Field {...field("email")} span={2} />
+        <Field {...field("phone")} span={2} />
+        <Field {...field("address")} span={2} />
+        <Field label="Photo ID type and number" span={2} as="line" />
       </FieldGroup>
 
       <FieldGroup title="Hire details">
-        <Field
-          label="Collection date and time"
-          value={details.collection}
-          span={2}
-        />
-        <Field label="Return date and time" value={details.return} span={2} />
-        <Field label="Where the equipment will be used" span={4} />
-        <Field label="Hire fee (NZD)" value={details.hireFee} />
-        <Field label="Daily rate if late (NZD)" value={details.dailyRate} />
-        <Field label="Bond (NZD)" />
-        <Field label="Atmos contact" />
+        <Field {...field("collectionDate")} />
+        <Field {...field("collectionTime")} />
+        <Field {...field("returnDate")} />
+        <Field {...field("returnTime")} />
+        <Field {...field("useLocation")} span={4} />
+        <Field {...field("hireFee")} />
+        <Field {...field("dailyRate")} />
+        <Field {...field("bond")} />
+        <Field {...field("atmosContact")} />
       </FieldGroup>
 
       <section className="group">
-        <h2>Equipment list</h2>
+        <h2>{HIRE_LABELS.items}</h2>
         <div className="table-scroll">
           <table>
             <thead>
               <tr>
-                <th style={{ width: "40%" }}>Item</th>
-                <th style={{ width: "8%" }}>Qty</th>
-                <th style={{ width: "18%" }}>Serial or asset no.</th>
-                <th style={{ width: "16%" }}>Replacement value</th>
-                <th>Condition at collection</th>
+                {ITEM_COLUMNS.map((column) => (
+                  <th key={column.key} style={{ width: column.width }}>
+                    {column.label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {rows.map((row, index) => (
                 <tr key={index}>
-                  <td>
-                    <input
-                      type="text"
-                      aria-label="Item"
-                      defaultValue={row.name}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="text"
-                      aria-label="Quantity"
-                      defaultValue={row.quantity}
-                    />
-                  </td>
-                  <td>
-                    <input type="text" aria-label="Serial or asset number" />
-                  </td>
-                  <td>
-                    <input type="text" aria-label="Replacement value" />
-                  </td>
-                  <td>
-                    <input type="text" aria-label="Condition at collection" />
-                  </td>
+                  {ITEM_COLUMNS.map((column) => (
+                    <td key={column.key}>
+                      {/* A textarea so a long list of serials wraps and
+                          the row grows with it, where the browser can. */}
+                      <textarea
+                        rows={1}
+                        name={`items.${index}.${column.key}`}
+                        aria-label={column.label}
+                        defaultValue={row[column.key]}
+                      />
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
@@ -101,14 +124,11 @@ export function EquipmentHireAgreement({
         </div>
       </section>
 
-      <p className="intro">
-        This agreement is between Atmos Media (&quot;Atmos&quot;,
-        &quot;we&quot;, &quot;us&quot;) and the hirer named above
-        (&quot;you&quot;). It is made up of the hirer details, hire details and
-        equipment list above and the terms below. &quot;The equipment&quot;
-        means everything in the equipment list, including cables, cases and
-        accessories.
-      </p>
+      <Parties atmosParty={fields.atmosParty} counterparty="hirer">
+        It is made up of the hirer details, hire details and equipment list
+        above and the terms below. &quot;The equipment&quot; means everything in
+        the equipment list, including cables, cases and accessories.
+      </Parties>
 
       <Terms>
         <Clause title="The hire">
@@ -350,17 +370,17 @@ export function EquipmentHireAgreement({
           <div>
             <h3>At collection</h3>
             <div className="fields">
-              <Field label="Date and time" />
-              <Field label="Hirer initials" />
-              <Field label="Checked by (Atmos)" span={2} />
+              <Field label="Date and time" as="line" />
+              <Field label="Hirer initials" as="line" />
+              <Field label="Checked by (Atmos)" span={2} as="line" />
             </div>
           </div>
           <div>
             <h3>At return</h3>
             <div className="fields">
-              <Field label="Date and time" />
-              <Field label="Hirer initials" />
-              <Field label="Checked by (Atmos)" span={2} />
+              <Field label="Date and time" as="line" />
+              <Field label="Hirer initials" as="line" />
+              <Field label="Checked by (Atmos)" span={2} as="line" />
             </div>
           </div>
         </div>
@@ -368,7 +388,8 @@ export function EquipmentHireAgreement({
           <Field
             label="Notes on missing or damaged items"
             span={4}
-            as="textarea"
+            as="line"
+            tall
           />
         </div>
       </section>

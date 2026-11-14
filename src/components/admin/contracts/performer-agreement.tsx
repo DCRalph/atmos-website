@@ -3,61 +3,72 @@ import {
   ContractSheet,
   Field,
   FieldGroup,
+  Parties,
   Signatures,
   Terms,
 } from "~/components/admin/contracts/contract-sheet";
-import type { PerformerDetails } from "~/lib/contracts";
+import { PERFORMER_LABELS, type PerformerFields } from "~/lib/contracts";
 
 /**
- * The performer agreement. `details` is whatever the database knows about
- * the booking; pass nothing for a blank one. "Arrive by" is worked out from
- * the 30 minutes in clause 2.1: change one and change `ARRIVAL_LEAD_MINUTES`
- * in `~/lib/contracts` with it.
+ * The performer agreement. `fields` is the contract as it should read: from
+ * the database, from its saved copy, or all blank. "Arrive by" is worked out
+ * from the 30 minutes in clause 2.1: change one and change
+ * `ARRIVAL_LEAD_MINUTES` in `~/lib/contracts` with it.
  */
 export function PerformerAgreement({
-  details = {},
+  fields,
+  locked,
+  revision,
 }: {
-  details?: Partial<PerformerDetails>;
+  fields: PerformerFields;
+  locked?: boolean;
+  revision?: string;
 }) {
+  const field = (
+    key: Exclude<keyof PerformerFields, "atmosParty" | "version">,
+  ) => ({
+    name: key,
+    label: PERFORMER_LABELS[key],
+    value: fields[key],
+  });
+
   return (
-    <ContractSheet title="Performer agreement">
+    <ContractSheet
+      title="Performer agreement"
+      atmosParty={fields.atmosParty}
+      version={fields.version}
+      locked={locked}
+      revision={revision}
+    >
       <FieldGroup title="Performer">
-        <Field label="Legal name" value={details.legalName} span={2} />
-        <Field label="Stage name" value={details.stageName} span={2} />
-        <Field label="Email" value={details.email} span={2} />
-        <Field label="Phone" />
-        <Field label="GST no. (if any)" />
-        <Field label="Bank account for payment (name and number)" span={4} />
+        <Field {...field("legalName")} span={2} />
+        <Field {...field("stageName")} span={2} />
+        <Field {...field("email")} span={2} />
+        <Field {...field("phone")} />
+        <Field {...field("gstNumber")} />
+        <Field {...field("address")} span={4} />
+        <Field {...field("bankAccountName")} span={2} />
+        <Field {...field("bankAccountNumber")} span={2} />
       </FieldGroup>
 
       <FieldGroup title="Booking details">
-        <Field label="Event" value={details.event} span={2} />
-        <Field label="Date" value={details.date} span={2} />
-        <Field label="Venue" value={details.venue} span={4} />
-        <Field label="Set time" value={details.setTime} />
-        <Field label="Set length" value={details.setLength} />
-        <Field label="Arrive by" value={details.arriveBy} />
-        <Field label="Guest list places" />
-        <Field label="Fee (NZD)" />
-        <Field label="GST included (Y / N)" />
-        <Field
-          label="Atmos contact (name and phone)"
-          value={details.atmosContact}
-          span={2}
-        />
-        <Field
-          label="Anything else agreed (equipment, travel, extras)"
-          span={4}
-          as="textarea"
-        />
+        <Field {...field("event")} span={2} />
+        <Field {...field("date")} span={2} />
+        <Field {...field("venue")} span={4} />
+        <Field {...field("setTime")} />
+        <Field {...field("setLength")} />
+        <Field {...field("arriveBy")} />
+        <Field {...field("guestListPlaces")} />
+        <Field {...field("fee")} />
+        <Field {...field("gstIncluded")} />
+        <Field {...field("atmosContact")} span={2} />
+        <Field {...field("notes")} span={4} as="textarea" />
       </FieldGroup>
 
-      <p className="intro">
-        This agreement is between Atmos Media (&quot;Atmos&quot;,
-        &quot;we&quot;, &quot;us&quot;) and the performer named above
-        (&quot;you&quot;). It is made up of the performer and booking details
-        above and the terms below.
-      </p>
+      <Parties atmosParty={fields.atmosParty} counterparty="performer">
+        It is made up of the performer and booking details above and the terms
+        below.
+      </Parties>
 
       <Terms>
         <Clause title="The booking">

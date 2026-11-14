@@ -29,6 +29,9 @@ const inventoryItemInputSchema = z.object({
   note: z.string().trim().optional(),
   quantity: z.number().int().min(0),
   price: z.number().min(0),
+  /** For the hire agreement. Admin only: see `gearItemPublic`. */
+  replacementValueCents: z.number().int().min(0).nullable().optional(),
+  serialNumbers: z.array(z.string().trim().min(1).max(100)).max(500).optional(),
   image: z.string().trim().optional(),
 });
 
@@ -280,9 +283,31 @@ const createRentalRequestInputSchema = quoteRentalSelectionInputSchema
     }
   });
 
+/**
+ * The columns that exist for the hire agreement: what an item costs to
+ * replace and its serial numbers, and the hirer's own details on a rental.
+ * Everything below reaches the public equipment page (the catalogue, the
+ * quote, the booking calendar), so every gear item and rental read here
+ * leaves them out. Only the admin inventory procedures and the contract
+ * pages read them.
+ */
+const gearItemPublic = {
+  omit: { replacementValueCents: true, serialNumbers: true },
+} as const;
+
+const rentalContractColumns = {
+  phone: true,
+  organisation: true,
+  address: true,
+  useLocation: true,
+  collectionTime: true,
+  returnTime: true,
+  bondCents: true,
+} as const;
+
 const packageItemInclude = {
   include: {
-    gearItem: true,
+    gearItem: gearItemPublic,
   },
   orderBy: {
     createdAt: "asc",
@@ -295,7 +320,7 @@ const gearPackageInclude = {
 
 const rentalItemInclude = {
   include: {
-    gearItem: true,
+    gearItem: gearItemPublic,
   },
   orderBy: {
     createdAt: "asc",
@@ -305,7 +330,7 @@ const rentalItemInclude = {
 const discountRuleInclude = {
   requirements: {
     include: {
-      gearItem: true,
+      gearItem: gearItemPublic,
     },
     orderBy: {
       createdAt: "asc",
@@ -887,6 +912,7 @@ async function buildItemSelectionLinesOrThrow(
         in: normalizedItems.map((item) => item.gearItemId),
       },
     },
+    ...gearItemPublic,
   });
 
   const inventoryById = new Map(inventoryItems.map((item) => [item.id, item]));
@@ -917,6 +943,7 @@ async function getSelectionQuote(
     getOverlappingApprovedRentals(ctx, input.startDate, input.endDate, options),
     ctx.db.gearItem.findMany({
       orderBy: { name: "asc" },
+      ...gearItemPublic,
     }),
   ]);
 
@@ -1221,6 +1248,7 @@ export const rentalsRouter = createTRPCRouter({
   getPublicInventoryItems: publicProcedure.query(async ({ ctx }) => {
     return ctx.db.gearItem.findMany({
       orderBy: { name: "asc" },
+      ...gearItemPublic,
     });
   }),
 
@@ -1235,7 +1263,11 @@ export const rentalsRouter = createTRPCRouter({
       where: { status: RentalStatus.APPROVED },
       include: rentalInclude,
       // The calendar only needs dates and gear, not who booked it.
-      omit: { contactInfo: true, decisionToken: true },
+      omit: {
+        contactInfo: true,
+        decisionToken: true,
+        ...rentalContractColumns,
+      },
       orderBy: { startDate: "asc" },
     });
   }),
@@ -1279,7 +1311,7 @@ export const rentalsRouter = createTRPCRouter({
         },
         include: rentalInclude,
         // The token belongs to staff; handing it back would let the requester approve themselves.
-        omit: { decisionToken: true },
+        omit: { decisionToken: true, ...rentalContractColumns },
       });
 
       const metadata = await getRequestMetadata();

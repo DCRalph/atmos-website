@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Atmos · Contract data options</title>
+<style>
+:root{color-scheme:dark;--ink:#fafafa;--dim:#a1a1a1;--line:#303030;--surface:#0a0a0a;--field:#202020;--brand:#c6ff33}
+*{box-sizing:border-box}
+html{background:#000;color:var(--ink)}
+body{margin:0;font:14px/1.5 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.document{max-width:1000px;margin:auto;padding:32px 24px 56px}
+h1,h2,h3,h4,p,ul,ol,dl,dd{margin:0}
+h1{font-size:26px;line-height:1.2;letter-spacing:-.025em}
+h2{font-size:20px;line-height:1.3;letter-spacing:-.02em}
+h3{font-size:16px;font-weight:600;margin-top:26px}
+h4{font-size:14px;font-weight:600;margin-top:18px}
+p{max-width:74ch}
+.intro{margin-top:10px;color:var(--dim)}
+a{color:inherit;text-underline-offset:4px}
+a:hover{color:var(--brand)}
+a:focus-visible{outline:2px solid var(--brand);outline-offset:3px}
+::selection{background:var(--brand);color:#000}
+.jump{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:20px;padding:14px 0;border-block:1px solid var(--line)}
+.part{margin-top:44px;scroll-margin-top:16px}
+.part>p,.option>p{color:var(--dim);margin-top:8px}
+.option{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+.option h3{margin-top:0}
+.rec{font-size:13px;color:var(--brand);font-weight:500;white-space:nowrap}
+.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 28px;margin-top:10px}
+.pair ul{padding-left:18px;color:var(--dim)}
+.pair li{margin:5px 0}
+.pair b,.notes b,td b{color:var(--ink);font-weight:500}
+.pair h4{margin-top:6px;font-size:13px;font-weight:500}
+pre{margin:12px 0 0;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow-x:auto;font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#d4d4d4}
+pre .c{color:#7d7d7d}
+pre .k{color:var(--brand)}
+code{font:12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--ink)}
+.table-wrap{overflow-x:auto;margin-top:12px}
+table{border-collapse:collapse;width:100%;min-width:560px}
+th,td{text-align:left;vertical-align:top;padding:8px 14px 8px 0;border-bottom:1px solid var(--line)}
+th{font-size:12px;font-weight:400;color:var(--dim)}
+td{color:var(--dim)}
+td:first-child{color:var(--ink);white-space:nowrap}
+.new{color:var(--brand)}
+.notes{padding-left:20px;margin-top:12px;color:var(--dim)}
+.notes li{margin:7px 0;max-width:74ch}
+.screen{margin-top:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px}
+.screen h4{margin-top:0}
+.screen .hint{color:var(--dim);font-size:12px;margin-top:3px}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+.fields .wide{grid-column:1/-1}
+.fields span{display:block;font-size:13px;margin-bottom:6px}
+.box{border:1px solid #404040;border-radius:6px;background:var(--field);min-height:36px;padding:8px 10px;overflow-wrap:anywhere}
+.box.empty{color:var(--dim)}
+.steps{counter-reset:step;list-style:none;padding:0;margin-top:14px}
+.steps li{counter-increment:step;position:relative;padding:14px 0 14px 44px;border-top:1px solid var(--line);color:var(--dim)}
+.steps li::before{content:counter(step);position:absolute;left:0;top:13px;width:26px;height:26px;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center;color:var(--ink);font-size:13px;font-variant-numeric:tabular-nums}
+.steps b{color:var(--ink);font-weight:600;display:block}
+@media(max-width:620px){
+  .document{padding:24px 16px 40px}
+  .pair,.fields{grid-template-columns:minmax(0,1fr)}
+  .fields .wide{grid-column:auto}
+  .screen{padding:14px}
+  .part{margin-top:36px}
+}
+</style>
+</head>
+<body>
+<main class="document">
+
+<h1>Contract data: artist details and hire fields</h1>
+<p class="intro">The contract generator fills about half of each contract from the database. The rest is typed every time and is gone when the tab closes. This is where that data could live, with a recommendation for each decision.</p>
+
+<nav class="jump" aria-label="Sections">
+<a href="#today">Today</a>
+<a href="#artist">1 · Artist details</a>
+<a href="#booking">2 · Booking terms</a>
+<a href="#hire">3 · Hire fields</a>
+<a href="#saved">4 · Saved contracts</a>
+<a href="#rollout">Rollout</a>
+<a href="#open">Open questions</a>
+</nav>
+
+<section class="part" id="today" aria-labelledby="h-today">
+<h2 id="h-today">Where each field comes from</h2>
+<p>Lime marks a field that would start filling itself under the recommendations below.</p>
+
+<h3>Performer agreement</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Field</th><th>Today</th><th>Proposed source</th></tr></thead>
+<tbody>
+<tr><td>Legal name</td><td>Account name, claimed profiles only</td><td class="new">Artist private details</td></tr>
+<tr><td>Stage name</td><td>Artist profile</td><td>No change</td></tr>
+<tr><td>Email</td><td>Account email, claimed profiles only</td><td class="new">Artist private details, account email as fallback</td></tr>
+<tr><td>Phone</td><td>Typed</td><td class="new">Artist private details</td></tr>
+<tr><td>Address</td><td>Not on the contract</td><td class="new">Artist private details, added to the contract</td></tr>
+<tr><td>GST number</td><td>Typed</td><td class="new">Artist private details</td></tr>
+<tr><td>Bank account</td><td>Typed</td><td class="new">Artist private details</td></tr>
+<tr><td>Event, date, venue</td><td>Gig</td><td>No change</td></tr>
+<tr><td>Set time, length, arrive by</td><td>Run sheet</td><td>No change</td></tr>
+<tr><td>Fee, GST included</td><td>Typed</td><td class="new">The booking (artist in a set)</td></tr>
+<tr><td>Guest list places</td><td>Typed</td><td class="new">The booking</td></tr>
+<tr><td>Anything else agreed</td><td>Typed</td><td class="new">The booking</td></tr>
+<tr><td>Atmos contact</td><td>Whoever generates it</td><td>No change</td></tr>
+</tbody></table></div>
+
+<h3>Equipment hire agreement</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Field</th><th>Today</th><th>Proposed source</th></tr></thead>
+<tbody>
+<tr><td>Full name, email</td><td>Rental request</td><td>No change</td></tr>
+<tr><td>Phone</td><td>Typed</td><td class="new">Rental, asked in the booking wizard</td></tr>
+<tr><td>Organisation, address</td><td>Typed</td><td class="new">Rental, saved from the contract page</td></tr>
+<tr><td>Photo ID</td><td>Typed</td><td>Stays typed, never stored</td></tr>
+<tr><td>Collection and return</td><td>Rental dates, no times</td><td class="new">Rental dates plus saved times</td></tr>
+<tr><td>Where it will be used</td><td>Typed</td><td class="new">Rental, asked in the booking wizard</td></tr>
+<tr><td>Hire fee, daily rate</td><td>Rental quote</td><td>No change</td></tr>
+<tr><td>Bond</td><td>Typed</td><td class="new">Rental, defaulted from a setting</td></tr>
+<tr><td>Atmos contact</td><td>Typed</td><td class="new">Whoever generates it</td></tr>
+<tr><td>Items, quantities</td><td>Rental items or package</td><td>No change</td></tr>
+<tr><td>Serial or asset no.</td><td>Typed</td><td class="new">Gear catalogue</td></tr>
+<tr><td>Replacement value</td><td>Typed</td><td class="new">Gear catalogue</td></tr>
+<tr><td>Condition at collection</td><td>Handwritten at handover</td><td>Stays handwritten</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="part" id="artist" aria-labelledby="h-artist">
+<h2 id="h-artist">1 · Where artist details live</h2>
+<p>Legal name, contact email, phone, address, GST number and bank account. None of it may ever reach a public page, and it has to work for artists who have not claimed their profile.</p>
+
+<div class="option">
+<h3>A · Columns on the artist profile</h3>
+<p>Add the fields straight onto <code>ArtistProfile</code>.</p>
+<div class="pair">
+<div><h4>For</h4><ul><li>One table, one admin form.</li><li>Smallest migration.</li></ul></div>
+<div><h4>Against</h4><ul><li><b>Leak risk.</b> The profile is read in 35 places on the server, four of them take the whole row, and several are public.</li><li>Every future query has to remember to leave the private columns out.</li></ul></div>
+</div>
+</div>
+
+<div class="option">
+<h3>B · A separate private details table <span class="rec">Recommended</span></h3>
+<p>One row per artist, joined only by the admin contract reader and the artist's own dashboard.</p>
+<pre><span class="c">/// Never selected by a public procedure.</span>
+<span class="k">model</span> ArtistPrivateDetails {
+  artistProfileId   String   @id
+  legalName         String?
+  contactEmail      String?
+  phone             String?
+  address           String?
+  gstNumber         String?
+  bankAccountName   String?
+  <span class="c">/// Encrypted at rest, the way stored reports already are.</span>
+  bankAccountNumber String?
+  updatedAt         DateTime @updatedAt
+  updatedById       String?
+
+  artistProfile ArtistProfile @relation(fields: [artistProfileId], references: [id], onDelete: Cascade)
+}</pre>
+<div class="pair">
+<div><h4>For</h4><ul><li><b>Private by default.</b> Nothing sees it unless it asks for it by name.</li><li>Works for unclaimed profiles.</li><li>Additive: no existing query or page changes.</li></ul></div>
+<div><h4>Against</h4><ul><li>One more join in the contract reader.</li><li>A second form section to build.</li></ul></div>
+</div>
+</div>
+
+<div class="option">
+<h3>C · On the user account</h3>
+<p>Store the details against the login that claimed the profile.</p>
+<div class="pair">
+<div><h4>For</h4><ul><li>The artist owns and edits their own data.</li></ul></div>
+<div><h4>Against</h4><ul><li><b>Unclaimed profiles have no account,</b> so most of a line-up would still be typed by hand.</li><li>Mixes artist paperwork into the auth table.</li></ul></div>
+</div>
+</div>
+
+<h3>Who types it in</h3>
+<p style="color:var(--dim);margin-top:8px">These stack. Each one writes to the same table.</p>
+<ol class="steps">
+<li><b>Admin, on the artist sheet <span class="rec">Start here</span></b>A Private details block under the existing profile fields. Admins only.</li>
+<li><b>The artist, in their dashboard</b>Claimed artists keep their own details current. The bank number shows masked after saving.</li>
+<li><b>A one-time link</b>Email an unclaimed artist a form, the way rental decisions and photo signups already use a token link. Build only if chasing details becomes a chore.</li>
+</ol>
+
+<div class="screen" aria-label="Mock of the admin artist sheet">
+<h4>Private details</h4>
+<p class="hint">Admins only. Used to fill contracts. Never shown on the artist's page.</p>
+<div class="fields">
+<div><span>Legal name</span><div class="box">Aroha Smith</div></div>
+<div><span>Contact email</span><div class="box">aroha@example.com</div></div>
+<div><span>Phone</span><div class="box">021 555 0142</div></div>
+<div><span>GST number</span><div class="box empty">Not registered</div></div>
+<div class="wide"><span>Address</span><div class="box">12 Example Street, Te Aro, Wellington 6011</div></div>
+<div><span>Bank account name</span><div class="box">A Smith</div></div>
+<div><span>Bank account number</span><div class="box">•• •••• •••••42 •••</div></div>
+</div>
+</div>
+</section>
+
+<section class="part" id="booking" aria-labelledby="h-booking">
+<h2 id="h-booking">2 · Where booking terms live</h2>
+<p>Fee, whether it includes GST, guest list places and extras belong to one artist in one set, not to the artist.</p>
+
+<div class="option">
+<h3>A · Columns on the booking <span class="rec">Recommended</span></h3>
+<p>The line-up already has a row for each artist in each set. A back to back gets a fee per artist for free.</p>
+<pre><span class="k">model</span> GigSetArtist {
+  <span class="c">// existing columns</span>
+  feeCents        Int?
+  feeIncludesGst  Boolean?
+  guestListPlaces Int?
+  contractNotes   String?
+}</pre>
+<div class="pair">
+<div><h4>For</h4><ul><li>Edited once, on the Contracts page or the run sheet row.</li><li><b>Fees become data:</b> a gig's artist costs can be totalled and fed to event profit later.</li><li>Integer cents, matching ticketing.</li></ul></div>
+<div><h4>Against</h4><ul><li>Fees sit on a table the public line-up reads, so the public line-up query must keep selecting named columns. It already does.</li></ul></div>
+</div>
+</div>
+
+<div class="option">
+<h3>B · A usual fee on the artist, overridden per booking</h3>
+<p>Adds <code>usualFeeCents</code> to private details so a new booking starts with a number. Worth adding to A only once the same artists are booked often.</p>
+</div>
+
+<div class="option">
+<h3>C · Keep typing it</h3>
+<p>No schema change. The fee is retyped each time the contract is opened and nothing records what was agreed.</p>
+</div>
+</section>
+
+<section class="part" id="hire" aria-labelledby="h-hire">
+<h2 id="h-hire">3 · Filling the rest of the hire contract</h2>
+<p>The blank hire fields come from three different places, so they need three small changes, not one.</p>
+
+<h3>Gear catalogue: replacement value and serials</h3>
+<pre><span class="k">model</span> GearItem {
+  <span class="c">// existing columns</span>
+  replacementValueCents Int?
+  serialNumbers         String[]
+}</pre>
+<ul class="notes">
+<li><b>Replacement value</b> is entered once per item and printed on every contract. Clause 5.1 charges it when gear is lost, so it should not depend on someone remembering the number.</li>
+<li><b>Serials as a list on the item</b> <span class="rec">Recommended</span> matches how gear is counted today, as a quantity on hand. The contract prints the list and the ones going out are circled at handover.</li>
+<li><b>A row per physical unit</b> is the alternative: it records which unit went out and its condition history. A bigger build that changes how availability is counted. Worth it only if damage disputes come up.</li>
+</ul>
+
+<h3>The rental: who, where and the bond</h3>
+
+<div class="option">
+<h3>A · Real columns, saved from the contract page <span class="rec">Recommended</span></h3>
+<p>The contract page gets a Save button that writes what was typed back to the rental, so the next open is already filled.</p>
+<pre><span class="k">model</span> Rental {
+  <span class="c">// existing columns</span>
+  phone          String?
+  organisation   String?
+  address        String?
+  useLocation    String?
+  collectionTime String?  <span class="c">// "4:00 pm"</span>
+  returnTime     String?
+  bondCents      Int?
+}</pre>
+<div class="pair">
+<div><h4>For</h4><ul><li>Typed, searchable, reportable: bonds held can be listed.</li><li>Phone and location can be asked in the booking wizard, two extra fields.</li></ul></div>
+<div><h4>Against</h4><ul><li>A new contract field means a new column.</li></ul></div>
+</div>
+</div>
+
+<div class="option">
+<h3>B · One JSON column of overrides</h3>
+<p><code>Rental.contractFields Json</code> holds whatever was typed into any field.</p>
+<div class="pair">
+<div><h4>For</h4><ul><li>No schema change when the contract gains a field.</li><li>Any field can be overridden, including ones that came from the database.</li></ul></div>
+<div><h4>Against</h4><ul><li>Untyped and not queryable.</li><li>Nothing else in the admin can use the phone number or the bond.</li></ul></div>
+</div>
+</div>
+
+<div class="option">
+<h3>C · Admin-defined extra fields</h3>
+<p>A settings page where extra labelled fields are added to every hire contract, for example vehicle registration.</p>
+<div class="pair">
+<div><h4>For</h4><ul><li>New fields without a deploy.</li></ul></div>
+<div><h4>Against</h4><ul><li>The most to build, and the contract layout has to cope with any number of fields.</li><li>Only pays off if the fields change often.</li></ul></div>
+</div>
+</div>
+
+<h3>Defaults in settings</h3>
+<p style="color:var(--dim);margin-top:8px">The settings store already exists. A handful of keys cover what is the same on every contract.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Setting</th><th>Used for</th></tr></thead>
+<tbody>
+<tr><td>Legal entity and NZBN</td><td>The parties line on both contracts, which says only "Atmos Media" today</td></tr>
+<tr><td>Default bond</td><td>A flat amount or a percentage of the replacement value, editable per rental</td></tr>
+<tr><td>Contract contact phone</td><td>Printed beside the Atmos contact's name</td></tr>
+<tr><td>Version label</td><td>The "Draft v0.1" in the masthead, without a deploy</td></tr>
+</tbody></table></div>
+<ul class="notes">
+<li><b>Not in settings:</b> the numbers inside the terms (30 minutes, 14 days, 50%, 48 hours). They stay in code so a change to what people sign is reviewed.</li>
+</ul>
+</section>
+
+<section class="part" id="saved" aria-labelledby="h-saved">
+<h2 id="h-saved">4 · Saved contracts</h2>
+<p>Optional, and a step beyond the question. Sections 1 to 3 make the contract fill itself. This records what was actually issued.</p>
+<pre><span class="k">model</span> Contract {
+  id           String         @id @default(cuid())
+  kind         ContractKind   <span class="c">// PERFORMER | HIRE</span>
+  setArtistId  String?
+  rentalId     String?
+  <span class="c">/// Every field exactly as it was printed.</span>
+  fields       Json
+  termsVersion String
+  status       ContractStatus <span class="c">// DRAFT | SENT | SIGNED</span>
+  signedFileId String?        <span class="c">// the signed copy, uploaded</span>
+  createdById  String
+  createdAt    DateTime       @default(now())
+}</pre>
+<div class="pair">
+<div><h4>For</h4><ul><li><b>A record of what was agreed,</b> even after a set time or fee changes.</li><li>The Contracts page can show who has signed and who has not.</li><li>The base for sending a link to sign online later.</li></ul></div>
+<div><h4>Against</h4><ul><li>The largest piece here.</li><li>Not needed while contracts are printed, signed and filed by hand.</li></ul></div>
+</div>
+</section>
+
+<section class="part" id="rollout" aria-labelledby="h-rollout">
+<h2 id="h-rollout">Suggested rollout</h2>
+<ol class="steps">
+<li><b>Artist private details and the gear catalogue</b>The private details table with its admin form, plus replacement value and serials on gear items. Both additive, and nothing public changes. Contracts start filling legal name, phone, GST, bank and the two gear columns.</li>
+<li><b>Booking terms and rental fields</b>Fee, GST and guest list on the booking. Phone, organisation, address, location, times and bond on the rental, with Save on the contract page. Legal entity and default bond in settings.</li>
+<li><b>Self-serve and saved contracts</b>Artists edit their own details in the dashboard. Contracts are saved with a status. Only if the first two prove worth it.</li>
+</ol>
+</section>
+
+<section class="part" id="open" aria-labelledby="h-open">
+<h2 id="h-open">Open questions</h2>
+<ul class="notes">
+<li><b>Encrypt bank account numbers?</b> Recommended. An encryption helper already exists for stored reports, and it keeps numbers out of database backups in plain text.</li>
+<li><b>Store photo ID numbers?</b> Recommended not to. Type it on the contract at handover and keep it on paper, or store only "ID sighted".</li>
+<li><b>Privacy policy.</b> It needs a paragraph on performer and hirer details before any of this is collected, with the same seven year retention as order records.</li>
+<li><b>Legal entity.</b> The contracts still name only "Atmos Media". The company name and NZBN are needed for the settings in step 2.</li>
+<li><b>Withholding tax.</b> If performer fees are schedular payments, private details also needs an IRD number and tax rate. Confirm with the accountant before step 1 so the table is built once.</li>
+</ul>
+</section>
+
+</main>
+</body>
+</html>
