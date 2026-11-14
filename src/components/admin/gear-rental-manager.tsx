@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -18,6 +19,7 @@ import {
   BadgePercent,
   Boxes,
   Check,
+  FileText,
   Inbox,
   Loader2,
   Package,
@@ -498,6 +500,20 @@ export function GearRentalManager() {
               </Button>
             </>
           )}
+          <Button
+            asChild
+            size="icon"
+            variant="ghost"
+            className="text-muted-foreground"
+            title="Hire agreement"
+          >
+            <Link
+              href={`/admin/contracts/hire?rental=${rental.id}`}
+              aria-label={`Hire agreement for ${rental.userName}`}
+            >
+              <FileText className="h-4 w-4" aria-hidden />
+            </Link>
+          </Button>
           <Button
             size="icon"
             variant="ghost"
