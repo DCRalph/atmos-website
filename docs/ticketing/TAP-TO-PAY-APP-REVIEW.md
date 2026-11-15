@@ -199,7 +199,7 @@ at a door can act on, replacing today's one-size-fits-all string:
 
 | Condition | Message |
 | --- | --- |
-| `Platform.Version < 17.6` | "Update this iPhone to the latest iOS to take card payments." — **this is 1.4**, checked before any SDK call so it lands even when the SDK refuses to start |
+| `Platform.Version < MIN_TAP_TO_PAY_IOS`, or Apple's `osVersionNotSupported` | "Update this iPhone to the latest iOS to take card payments." — **this is 1.4**, checked before any SDK call so it lands even when the SDK refuses to start |
 | `TAP_TO_PAY_UNSUPPORTED_DEVICE`, `TAP_TO_PAY_UNSUPPORTED_PROCESSOR` | "This iPhone can't take Tap to Pay. It needs an iPhone XS or later." |
 | `TAP_TO_PAY_DEVICE_TAMPERED`, `TAP_TO_PAY_INSECURE_ENVIRONMENT` | "This iPhone isn't secure enough to take payments." |
 | `TAP_TO_PAY_READER_MERCHANT_BLOCKED` | "Card payments are blocked on this account. Contact Atmos." |
@@ -209,11 +209,11 @@ at a door can act on, replacing today's one-size-fits-all string:
 `MIN_TAP_TO_PAY_IOS` gets its own exported constant with a comment pointing at
 Apple's Business Register, which is where the real floor moves.
 
-### Brand the Apple sheet (1.8)
+### The Apple sheet (1.8)
 
-Call `setTapToPayUxConfiguration({ darkMode: "dark", colors: … })` once after
-initialize, so Apple's payment sheet matches the app's forced-dark theme instead
-of flashing white at a dark door.
+Left as Apple presents it. The SDK's `setTapToPayUxConfiguration` is
+Android-only and returns `UNSUPPORTED_OPERATION` on iOS, so there is nothing to
+theme.
 
 ### Server
 
@@ -473,9 +473,9 @@ project. Phases 3–7 are largely UI on top and can be parallelised once 1 lands
    submission is the route to it. Everything here is testable today on a
    development build.
 2. Marketing Guide and Toolkit assets for Phase 6.
-3. Confirmation from Stripe of the current **minimum iOS version** for NZ Tap to
-   Pay, to pin `MIN_TAP_TO_PAY_IOS`. 17.6 is the checklist's own boundary and a
-   safe starting value; Apple's Business Register is the authority and it moves.
+3. The current **minimum iOS version**, to keep `MIN_TAP_TO_PAY_IOS` honest.
+   Apple supports each release for a year after it ships, so the floor moves
+   every few weeks; Apple's Business Register is the authority.
 
 **One thing to decide before recording.** The checklist's New User Flow expects
 Terms and Conditions to be accepted on camera. Re-accepting means unlinking the

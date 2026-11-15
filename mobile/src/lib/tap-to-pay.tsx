@@ -10,15 +10,15 @@ import {
 } from "react";
 import { AppState, Platform } from "react-native";
 import {
-  DarkMode,
+  StripeErrorMetadataKeys,
   StripeTerminalProvider,
   useStripeTerminal,
   type Reader,
+  type StripeError,
 } from "@stripe/stripe-terminal-react-native";
 
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { colors } from "@/lib/theme";
 
 /**
  * Tap to Pay on iPhone — the whole lifecycle, in one place.
@@ -51,10 +51,14 @@ import { colors } from "@/lib/theme";
  * unreadable to a merchant. Checked here, before any SDK call, so the answer is
  * "update iOS" rather than "something went wrong".
  *
- * Apple's Business Register is the authority and it moves as versions age out:
+ * A floor, not the whole rule. Apple supports each iOS release for one year
+ * after it ships, so a point release above this can still be refused; that case
+ * lands on the unsupported message, which also says to update iOS. Raise this
+ * as the floor moves. Apple's Business Register is the authority:
  * <https://register-docs.apple.com/tap-to-pay-on-iphone/docs/sdk-and-api-guide>
+ * (Adyen mirrors the dates at docs.adyen.com/point-of-sale/mobile-ios/requirements.)
  */
-export const MIN_TAP_TO_PAY_IOS = 17.6;
+export const MIN_TAP_TO_PAY_IOS = 18.7;
 
 export type UnsupportedReason =
   /** Not an iPhone. Tap to Pay on iPhone is iOS-only by definition. */
@@ -142,12 +146,25 @@ function iosVersion(): number | null {
  * retryable rather than guessed at. Which terms have and have not been accepted
  * is decided by attempting a connect, not by reading an error string.
  */
-function describeError(error: { code?: string; message?: string } | undefined): {
+function describeError(error: StripeError | undefined): {
   reason: UnsupportedReason | null;
   message: string;
 } {
   const message =
     error?.message ?? "Tap to Pay on iPhone isn't available right now.";
+
+  // Apple's own reader error, which the SDK passes through from beta.34. The
+  // one checklist 1.4 names: an iOS release past its year of support, which
+  // `MIN_TAP_TO_PAY_IOS` alone cannot catch.
+  const appleError =
+    error?.metadata?.[StripeErrorMetadataKeys.IOS_TAP_TO_PAY_READER_ERROR_NAME];
+  if (typeof appleError === "string" && appleError.includes("osVersionNotSupported")) {
+    return {
+      reason: "os",
+      message:
+        "This iPhone's iOS is too old for Tap to Pay on iPhone. Update it in Settings › General › Software Update.",
+    };
+  }
 
   switch (error?.code) {
     case "TAP_TO_PAY_UNSUPPORTED_DEVICE":
@@ -236,11 +253,11 @@ function Lifecycle({ children }: { children: ReactNode }) {
   /** Guards against connecting twice to the same discovered reader. */
   const connectAttempt = useRef<string | null>(null);
 
-  const onProgress = useCallback((progress: string) => {
-    const parsed = Number(progress);
+  /** The SDK reports 0 to 1. */
+  const onProgress = useCallback((progress: number) => {
     setState({
       status: "configuring",
-      progress: Number.isFinite(parsed) ? parsed : null,
+      progress: Number.isFinite(progress) ? progress : null,
     });
   }, []);
 
@@ -268,7 +285,6 @@ function Lifecycle({ children }: { children: ReactNode }) {
     connectReader,
     connectedReader,
     supportsReadersOfType,
-    setTapToPayUxConfiguration,
   } = useStripeTerminal({
     onDidReportReaderSoftwareUpdateProgress: onProgress,
     onDidStartInstallingUpdate: onStartInstalling,
@@ -283,14 +299,12 @@ function Lifecycle({ children }: { children: ReactNode }) {
     discoverReaders,
     connectReader,
     supportsReadersOfType,
-    setTapToPayUxConfiguration,
   });
   sdk.current = {
     initialize,
     discoverReaders,
     connectReader,
     supportsReadersOfType,
-    setTapToPayUxConfiguration,
   };
 
   const eligible = config.isSuccess;
@@ -354,16 +368,6 @@ function Lifecycle({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Apple's payment sheet is a system surface. Ours is forced dark, and a
-        // white sheet at a dark door is jarring enough to read as a bug. HIG,
-        // checklist 1.8.
-        void sdk.current
-          .setTapToPayUxConfiguration({
-            darkMode: DarkMode.DARK,
-            colors: { primary: colors.accent, success: colors.in, error: colors.deny },
-          })
-          .catch(() => undefined);
-
         const { readerSupportResult, error: supportError } =
           await sdk.current.supportsReadersOfType({
             deviceType: "tapToPay",
@@ -379,7 +383,7 @@ function Lifecycle({ children }: { children: ReactNode }) {
             reason: described.reason ?? "device",
             message: described.reason
               ? described.message
-              : "This iPhone can't take payments with Tap to Pay on iPhone. It needs an iPhone XS or later, and this build has to be signed with Apple's Tap to Pay on iPhone entitlement.",
+              : "This iPhone can't take payments with Tap to Pay on iPhone. It needs an iPhone XS or later on an up-to-date iOS (Settings › General › Software Update), and this build has to be signed with Apple's Tap to Pay on iPhone entitlement.",
           });
           return;
         }
@@ -590,6 +594,8 @@ export function TapToPayProvider({ children }: { children: ReactNode }) {
   return (
     <StripeTerminalProvider
       logLevel="error"
+      // Error messages are read by door staff, so keep them in English.
+      localeConfig={{ type: "hardcoded", locale: "en-NZ" }}
       tokenProvider={async () => {
         // Minted server-side against the secret key, which is what stops a
         // decompiled app acting as a reader on this account.
