@@ -17,7 +17,7 @@ Anything marked ⚠️ still needs a human before submission.
 | Version | 1.0.0 is live on the App Store without Tap to Pay. Give the version the recordings were made on (`version` in `mobile/package.json`). |
 | Existing or New app | Existing |
 | Distribution type | **Public** (App Store) |
-| Number of Devices | ⚠️ count of Atmos door handsets — typically 2–4 |
+| Number of Devices | 5 (the most door phones Atmos runs on one night) |
 
 ---
 
@@ -26,8 +26,13 @@ Anything marked ⚠️ still needs a human before submission.
 Give Apple this before the row-by-row answers. It is what makes section 2
 answerable, and it is true.
 
-> Atmos Media is a single merchant. We run our own live-music events in
-> Wellington, New Zealand, on one Stripe account belonging to one legal entity.
+> Atmos is a single merchant. It runs its own live-music events in Wellington,
+> New Zealand, and is owned and run by Finn Gordon-Stone. Every payment goes to
+> one Stripe account, held in his name.
+>
+> The app is built and published by WMGX Limited, the developer, on Atmos's
+> behalf. WMGX is the App Store seller but takes no payments itself and is not
+> a merchant.
 >
 > The Atmos app is a consumer ticketing app on the public App Store: the public
 > buy tickets and hold them in the app. Tap to Pay on iPhone is an internal
@@ -44,6 +49,10 @@ answerable, and it is true.
 > all. Every entry point lives behind **More › Staff**, which renders only for
 > an account the server recognises as door staff or an organiser, and the
 > `(door)` routes are gated the same way so a deep link cannot reach them either.
+
+⚠️ The seller line is only true once Apple finishes moving team `QB4T85D6S2`
+from William Giles to WMGX Limited. Check the App Store listing first; until
+then, say the app is published by William Giles, WMGX's director.
 
 **App Review therefore needs door-staff credentials.** A reviewer signed in as
 an ordinary customer cannot reach a single Tap to Pay screen, because for them

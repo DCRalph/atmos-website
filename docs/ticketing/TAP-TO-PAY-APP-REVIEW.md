@@ -16,7 +16,9 @@ Apple's checklist assumes a payment service provider whose app onboards many
 third-party merchants. Atmos is the opposite, and the whole of section 2 turns
 on saying so plainly:
 
-- **Atmos is a single merchant.** One Stripe account, one legal entity, in NZ.
+- **Atmos is a single merchant.** Owned and run by Finn Gordon-Stone, with one
+  Stripe account in his name, in NZ. WMGX Limited (William's company) builds
+  and publishes the app and is the App Store seller, but is not a merchant.
   Nobody else can become a merchant through this app — there is no code path
   that would let them, and there never will be.
 - **The app is a consumer ticketing app** on the public App Store. Punters buy
