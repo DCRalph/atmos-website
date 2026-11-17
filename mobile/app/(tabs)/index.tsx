@@ -77,11 +77,8 @@ export default function HomeScreen() {
   const [next, ...rest] = upcoming.data ?? [];
   const heroHeight = Math.round(height * 0.78);
 
-  // On a phone the video/list split buys nothing; one run of rows.
-  const latestItems = [
-    ...(latest.data?.video ? [latest.data.video] : []),
-    ...(latest.data?.items ?? []),
-  ];
+  // The site's grid in slot order, as one run of rows; a phone has no room for squares.
+  const latestItems = latest.data?.map((tile) => tile.item) ?? [];
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -320,7 +317,7 @@ function SectionHeader({
 }
 
 type ContentItem =
-  RouterOutputs["homeContent"]["getHomeLatest"]["items"][number];
+  RouterOutputs["homeContent"]["getHomeLatest"][number]["item"];
 
 /**
  * A mix, video or post, as the site's latest-content rows. These live on

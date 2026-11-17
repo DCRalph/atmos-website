@@ -17,7 +17,7 @@ Anything marked ⚠️ still needs a human before submission.
 | Version | 1.0.0 is live on the App Store without Tap to Pay. Give the version the recordings were made on (`version` in `mobile/package.json`). |
 | Existing or New app | Existing |
 | Distribution type | **Public** (App Store) |
-| Number of Devices | ⚠️ count of Atmos door handsets — typically 2–4 |
+| Number of Devices | 5 (the most door phones Atmos runs on one night) |
 
 ---
 
@@ -26,8 +26,13 @@ Anything marked ⚠️ still needs a human before submission.
 Give Apple this before the row-by-row answers. It is what makes section 2
 answerable, and it is true.
 
-> Atmos Media is a single merchant. We run our own live-music events in
-> Wellington, New Zealand, on one Stripe account belonging to one legal entity.
+> Atmos is a single merchant. It runs its own live-music events in Wellington,
+> New Zealand, and is owned and run by Finn Gordon-Stone. Every payment goes to
+> one Stripe account, held in his name.
+>
+> The app is built and published by WMGX Limited, the developer, on Atmos's
+> behalf. WMGX is the App Store seller but takes no payments itself and is not
+> a merchant.
 >
 > The Atmos app is a consumer ticketing app on the public App Store: the public
 > buy tickets and hold them in the app. Tap to Pay on iPhone is an internal
@@ -45,6 +50,10 @@ answerable, and it is true.
 > an account the server recognises as door staff or an organiser, and the
 > `(door)` routes are gated the same way so a deep link cannot reach them either.
 
+⚠️ The seller line is only true once Apple finishes moving team `QB4T85D6S2`
+from William Giles to WMGX Limited. Check the App Store listing first; until
+then, say the app is published by William Giles, WMGX's director.
+
 **App Review therefore needs door-staff credentials.** A reviewer signed in as
 an ordinary customer cannot reach a single Tap to Pay screen, because for them
 none exist. `review-door@atmosmedia.co.nz` is rostered on the demo night by
@@ -59,11 +68,11 @@ none exist. `review-door@atmosmedia.co.nz` is rostered on the demo night by
 | 1.1 | ✅ | Supported and enforced at runtime. `supportsReadersOfType` is called before discovery, and an unsupported handset gets its own message naming iPhone XS as the requirement rather than a generic failure. `mobile/src/lib/tap-to-pay.tsx`. |
 | 1.2 | **N/A** | Tap to Pay is not the app's primary payment method. The primary method is Stripe checkout on the web for ticket sales; at the door, cash and eftpos are also offered. The deployment target is therefore left at the Expo SDK default so the ticketing app still runs on older iPhones. |
 | 1.3 | **N/A** | Same condition as 1.2. `UIRequiredDeviceCapabilities` deliberately does **not** require A12 — that would lock a punter with an older iPhone out of their own ticket over a staff-only feature. The floor is enforced at runtime instead. `supportsTablet` is false. Reasoning is recorded in `mobile/app.config.ts`. |
-| 1.4 | ✅ | The iOS version is checked **before** any SDK call, against `MIN_TAP_TO_PAY_IOS` (17.6). Below it the app says: "This iPhone is on iOS *x*. Tap to Pay needs iOS 17.6 or later — update it in Settings › General › Software Update." Checked first precisely so an old OS never surfaces as a generic reader failure. |
+| 1.4 | ✅ | Two checks. Before any SDK call, against `MIN_TAP_TO_PAY_IOS` (18.7): below it the app says "This iPhone is on iOS *x*. Tap to Pay on iPhone needs iOS 18.7 or later — update it in Settings › General › Software Update." Above it, Apple's own `PaymentCardReaderError.osVersionNotSupported` (passed through by the Stripe SDK as `tapToPayReaderErrorName`) gets the same "update iOS" message, which covers releases past their year of support. |
 | 1.5 | ✅ | The Terminal provider is mounted at the app root, not around door mode. On launch and on every `AppState` transition to active, the app initializes, checks support, discovers and connects. `mobile/src/components/providers.tsx` → `mobile/src/lib/tap-to-pay.tsx`. |
 | 1.6 | ✅ | Never stored. Acceptance is re-derived on every launch by attempting a connect with `tosAcceptancePermitted: false` — Apple is the source of truth and is asked again each time. No boolean is persisted anywhere, on device or server. |
 | 1.7 | ✅ | Face ID / Touch ID unlock, opt-in from More › Staff, with device-passcode fallback. `mobile/src/lib/biometrics.tsx`. |
-| 1.8 | ✅ | Custom UI follows the HIG. Apple's payment sheet is themed to match via `setTapToPayUxConfiguration`. |
+| 1.8 | ✅ | Custom UI follows the HIG. Apple's payment sheet is left as Apple presents it. |
 | 1.9 | ✅ | "Tap to Pay on iPhone" is written in full everywhere it appears — payment option, checkout button, settings row, education, splash, email. ⚠️ Marketing copy for the splash/push/email is placeholder pending the approved assets (see 6.x). |
 
 ## 2. Onboarding Merchants
@@ -154,7 +163,7 @@ gets — a placeholder push cannot be re-sent over without editing
 
 | Question | Answer |
 | --- | --- |
-| Supported schemes | Visa, Mastercard, American Express. (⚠️ confirm against the Atmos Stripe account's enabled card networks.) |
+| Supported schemes | Visa, Mastercard, American Express and Discover contactless cards, plus NFC wallets (Apple Pay, Google Pay). That is Stripe's Tap to Pay on iPhone list; the Atmos account's `card_payments` capability is active and live taps have been approved (checked 2026-11-15). |
 | Is Refund supported | **Not in the app.** Refunds are issued from the Stripe dashboard and the Atmos admin web console, not from the handset. Door staff have no refund capability. |
 | Receipt methods | Email, and a token-scoped web receipt shared through the iOS share sheet (AirDrop, Messages, Mail). Both available for approved and declined transactions. |
 | PIN fallback — alternative payment methods | Cash, and an external eftpos terminal. Both are first-class options on the same checkout screen and are recorded against the same order. |
@@ -237,8 +246,8 @@ team by email.
    1.9 and 6.x against them, so placeholder copy will bounce the request.
 2. **Fill the blanks**: the card networks enabled on the Atmos Stripe account
    ("Supported schemes"), and how many door handsets ("Number of Devices").
-   While in Stripe, confirm `MIN_TAP_TO_PAY_IOS` (17.6) is still inside the
-   supported window; Apple's Business Register moves it as versions age out.
+   Check `MIN_TAP_TO_PAY_IOS` against Apple's Business Register, which drops
+   each iOS release a year after it ships; raise it if the floor has passed it.
 3. **Install a Tap to Pay build** on a door handset with `bun run install:ios`
    in `mobile/`. It signs for development, which is the profile that carries
    the entitlement, and builds Release, so it talks to a real reader rather
@@ -266,11 +275,10 @@ team by email.
 
 1. Run the profile check in `TAP-TO-PAY.md`. The store profile should now read
    `tapToPay=1`.
-2. In `mobile/scripts/build-ipa.sh`, delete `export TAP_TO_PAY=0` and its
-   comment, and turn the "Tap to Pay entitlement present" guard into a check
-   that it is there. Bump `version` in `mobile/package.json` past the last
-   TestFlight build.
-3. `bun run build:ipa`, upload, and submit for App Review. Rewrite the Tap to
+2. Bump `version` in `mobile/package.json` past the last TestFlight build.
+3. `TAP_TO_PAY=1 bun run build:ipa` (it fails if the signed app lacks the
+   entitlement), upload, and submit for App Review. Then make `1` the default
+   in `mobile/scripts/build-ipa.sh` so later builds keep it. Rewrite the Tap to
    Pay paragraph of the review notes in `mobile/appstore/LISTING.md` §7: it
    currently says this build ships without it.
 4. Once that version is live, send the launch campaign from **Admin ›

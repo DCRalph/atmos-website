@@ -15,7 +15,7 @@
     "@better-auth/expo": "^1.6.26",
     "@expo/metro-runtime": "~57.0.16",
     "@stripe/stripe-react-native": "0.64.0",
-    "@stripe/stripe-terminal-react-native": "^0.0.1-beta.32",
+    "@stripe/stripe-terminal-react-native": "0.0.1-beta.34",
     "@tanstack/react-query": "^5.101.4",
     "@trpc/client": "^11.18.0",
     "@trpc/react-query": "^11.18.0",

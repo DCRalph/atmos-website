@@ -14,6 +14,9 @@
 #   APP_VERSION    CFBundleShortVersionString. Default is package.json.
 #   SKIP_ICONS=1   Leave assets/ alone (they need sharp, and a network-less
 #                  machine may not have it).
+#   TAP_TO_PAY=1   Sign in the Tap to Pay on iPhone entitlement. Only once
+#                  Apple has extended it to distribution; until then the
+#                  export fails naming the capability.
 #
 # --- Why the middle of this is not a single xcodebuild call ---------------
 #
@@ -108,10 +111,11 @@ export APS_ENVIRONMENT=production
 
 # Apple granted Tap to Pay for development only. An App Store profile is issued
 # without the capability, so claiming the entitlement fails the export with
-# "doesn't include the Tap to Pay on iPhone capability". Ship without it; the
-# sell sheet reports Tap to Pay as unavailable and staff take cash. Drop this
-# line once Apple extends the grant to distribution.
-export TAP_TO_PAY=0
+# "doesn't include the Tap to Pay on iPhone capability". Ship without it by
+# default; the sell sheet reports Tap to Pay as unavailable and staff take cash.
+# Once Apple extends the grant to distribution, build with TAP_TO_PAY=1, then
+# make that the default here.
+export TAP_TO_PAY="${TAP_TO_PAY:-0}"
 
 echo "==> Atmos $VERSION ($BUILD) — $GIT_COMMIT"
 
@@ -265,9 +269,11 @@ case "$ENTS" in
   *aps-environment*production*) printf '    ok   %-26s %s\n' "aps-environment" "production" ;;
   *) fail "aps-environment is not production — push would silently never arrive" ;;
 esac
-case "$ENTS" in
-  *proximity-reader*) fail "Tap to Pay entitlement present — the App Store profile does not carry it" ;;
-  *) printf '    ok   %-26s %s\n' "tap-to-pay entitlement" "absent (correct for store)" ;;
+case "$TAP_TO_PAY:$ENTS" in
+  1:*proximity-reader*) printf '    ok   %-26s %s\n' "tap-to-pay entitlement" "present" ;;
+  1:*) fail "TAP_TO_PAY=1 but the Tap to Pay entitlement is missing from the signed app" ;;
+  *proximity-reader*) fail "Tap to Pay entitlement present without TAP_TO_PAY=1" ;;
+  *) printf '    ok   %-26s %s\n' "tap-to-pay entitlement" "absent (TAP_TO_PAY=0)" ;;
 esac
 
 # Sign in with Apple. App Store Guideline 4.8 requires it wherever a
