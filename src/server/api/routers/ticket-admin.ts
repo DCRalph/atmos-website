@@ -65,6 +65,8 @@ import {
   assertIssuableLevels,
 } from "~/server/ticketing/access-level-store";
 import { ticketUrl, ticketsUrl } from "~/server/ticketing/urls";
+import { eventActivity } from "~/server/ticketing/event-activity";
+import { ACTIVITY_KINDS } from "~/lib/ticketing/event-activity";
 import { schedulePassUpdate } from "~/server/wallet/apple-push";
 
 /**
@@ -403,6 +405,21 @@ export const ticketAdminRouter = createTRPCRouter({
       });
       return chargeReceiptUrl(order?.stripeChargeId ?? null);
     }),
+
+  /**
+   * The event's activity feed, newest first: sales, refunds, the door and
+   * admin changes. Admins only: it names who did what.
+   */
+  activity: adminProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        kind: z.enum(ACTIVITY_KINDS).optional(),
+        limit: z.number().int().min(1).max(100).default(50),
+        cursor: z.string().optional(),
+      }),
+    )
+    .query(({ input }) => eventActivity(input)),
 
   /** Individual tickets for an event — search, inspect, then void or refund. */
   /** Organisers read this too, on their read-only Tickets tab. */
