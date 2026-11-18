@@ -475,6 +475,7 @@ export const ticketAdminRouter = createTRPCRouter({
           pricePaidCents: true,
           isComp: true,
           nameLockedAt: true,
+          appleWalletAddedAt: true,
           voidedAt: true,
           voidReason: true,
           createdAt: true,

@@ -120,6 +120,15 @@ export async function POST(
       },
     });
 
+    // The first device to register a ticket's pass is when it was added to
+    // Wallet. A lifetime serial matches no ticket, so this skips it.
+    if (!existing) {
+      await db.ticket.updateMany({
+        where: { id: serialNumber, appleWalletAddedAt: null },
+        data: { appleWalletAddedAt: new Date() },
+      });
+    }
+
     // Apple distinguishes a new registration (201) from a repeat (200).
     return new Response(null, { status: existing ? 200 : 201 });
   }
