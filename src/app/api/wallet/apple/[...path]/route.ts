@@ -120,6 +120,15 @@ export async function POST(
       },
     });
 
+    // The first registration of a ticket's pass is when it was added to
+    // Wallet. Only an unset stamp is written, so this runs on every call and a
+    // retry fills one a failed write missed. A lifetime serial matches no
+    // ticket, so this skips it.
+    await db.ticket.updateMany({
+      where: { id: serialNumber, appleWalletAddedAt: null },
+      data: { appleWalletAddedAt: new Date() },
+    });
+
     // Apple distinguishes a new registration (201) from a repeat (200).
     return new Response(null, { status: existing ? 200 : 201 });
   }

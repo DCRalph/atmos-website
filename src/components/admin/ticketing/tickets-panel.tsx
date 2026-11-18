@@ -226,6 +226,7 @@ export function TicketsPanel({
           {row.admittedAt && <Badge variant="secondary">inside</Badge>}
           {row.departedAt && <Badge variant="secondary">left</Badge>}
           {row.deniedAt && <Badge variant="destructive">refused</Badge>}
+          {row.appleWalletAddedAt && <Badge variant="secondary">wallet</Badge>}
         </div>
       ),
     },
@@ -596,6 +597,14 @@ function TicketDetail({
         <Row
           label="Payment"
           value={ticket.order.paymentMethod.toLowerCase().replace("_", " ")}
+        />
+        <Row
+          label="Apple Wallet"
+          value={
+            ticket.appleWalletAddedAt
+              ? `Added ${formatEventDateTime(ticket.appleWalletAddedAt, DEFAULT_EVENT_TIMEZONE)}`
+              : "Not added"
+          }
         />
       </dl>
 

@@ -2412,6 +2412,11 @@ model Ticket {
   applePassSerial String? @unique
   googleObjectId  String? @unique
 
+  /// When a device first registered this ticket's pass with our Apple Wallet
+  /// web service, which iOS does the moment it is added to Wallet. Kept when
+  /// the pass is later removed: it answers "did they ever add it".
+  appleWalletAddedAt DateTime?
+
   voidedAt   DateTime?
   voidReason String?
 
