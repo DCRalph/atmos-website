@@ -108,7 +108,7 @@ export function EventActivityPanel({
         activeCount={kind ? 1 : 0}
         onClear={() => setKind(null)}
         summary={
-          activity.isPending
+          activity.isPending || (activity.isError && items.length === 0)
             ? null
             : `${items.length}${activity.hasNextPage ? "+" : ""} ${items.length === 1 ? "entry" : "entries"}`
         }
@@ -122,7 +122,9 @@ export function EventActivityPanel({
         />
       </ListFilters>
 
-      {activity.isPending ? (
+      {activity.isError && items.length === 0 ? (
+        <ErrorLine onRetry={() => void activity.refetch()} />
+      ) : activity.isPending ? (
         <p className="text-muted-foreground text-sm">Loading…</p>
       ) : items.length === 0 ? (
         <p className="text-muted-foreground text-sm">Nothing yet.</p>
@@ -166,11 +168,31 @@ export function EventActivityPanel({
         ))
       )}
 
+      {activity.isFetchNextPageError ? (
+        <ErrorLine onRetry={() => void activity.fetchNextPage()} />
+      ) : null}
+
+      {/* Stops after a failed page, or it would retry on every render. */}
       <InfiniteScrollTrigger
-        hasMore={activity.hasNextPage}
+        hasMore={activity.hasNextPage && !activity.isFetchNextPageError}
         loading={activity.isFetchingNextPage}
         onLoadMore={() => void activity.fetchNextPage()}
       />
     </div>
+  );
+}
+
+function ErrorLine({ onRetry }: { onRetry: () => void }) {
+  return (
+    <p className="text-destructive text-sm">
+      Couldn&apos;t load the activity.{" "}
+      <button
+        type="button"
+        onClick={onRetry}
+        className="text-foreground underline underline-offset-4"
+      >
+        Try again
+      </button>
+    </p>
   );
 }

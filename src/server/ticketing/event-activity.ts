@@ -21,7 +21,8 @@ import {
  * - the activity log, for refunds and anything an admin changed
  *
  * The log names its event in different ways depending on who wrote it: an
- * `eventId`, an `orderId`, a `ticketId`, an `offerId` or a list of `orderIds`.
+ * `eventId`, an `orderId`, a `ticketId`, an `offerId`, a `campaignId` or a
+ * list of `orderIds`.
  * All of them are resolved here, so a refund logged by the Stripe webhook with
  * only an order id still lands on its event.
  */
@@ -29,6 +30,7 @@ import {
 /** Already a row in another source, or only a duplicate of one. */
 const SHOWN_ELSEWHERE = [
   ActivityType.TICKET_ORDER_PAID,
+  ActivityType.BOX_OFFICE_SALE,
   ActivityType.TICKET_SCAN_OVERRIDE,
   ActivityType.TICKET_ENTRY_DENIED,
 ];
@@ -233,7 +235,8 @@ function logsOf(
     ? Prisma.sql`AND (l."createdAt", l.id) < (${cursor.at}, ${cursor.id})`
     : Prisma.empty;
 
-  // `details` is text that `logActivity` always writes with JSON.stringify.
+  // `details` is text written with JSON.stringify, which can still produce
+  // something jsonb refuses (a \u0000). That row is skipped, not fatal.
   return db.$queryRaw<
     {
       id: string;
@@ -246,7 +249,10 @@ function logsOf(
     WITH orders AS (SELECT id FROM ticket_order WHERE "eventId" = ${eventId})
     SELECT l.id, l.type::text AS type, l.action, l."userId", l."createdAt"
     FROM activity_log l
-    CROSS JOIN LATERAL (SELECT l.details::jsonb AS d) j
+    CROSS JOIN LATERAL (
+      SELECT CASE WHEN pg_input_is_valid(l.details, 'jsonb')
+        THEN l.details::jsonb END AS d
+    ) j
     WHERE l.details IS NOT NULL
       AND l.type::text NOT IN (${Prisma.join(SHOWN_ELSEWHERE)})
       ${ofKind}
@@ -255,6 +261,7 @@ function logsOf(
         j.d ->> 'eventId' = ${eventId}
         OR j.d ->> 'orderId' IN (SELECT id FROM orders)
         OR j.d ->> 'ticketId' IN (SELECT id FROM ticket WHERE "eventId" = ${eventId})
+        OR j.d ->> 'campaignId' IN (SELECT id FROM campaign WHERE "eventId" = ${eventId})
         OR j.d ->> 'offerId' IN (
           SELECT r.id FROM refund_offer r WHERE r."orderId" IN (SELECT id FROM orders)
         )
