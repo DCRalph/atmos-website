@@ -8,6 +8,7 @@ import {
   ClipboardList,
   FileText,
   Gift,
+  History,
   LayoutDashboard,
   Layers,
   Link2,
@@ -31,6 +32,7 @@ import { EventCodesPanel } from "~/components/admin/ticketing/event-codes-panel"
 import { CampaignsPanel } from "~/components/admin/ticketing/campaigns-panel";
 import { SalesAlertsPanel } from "~/components/admin/ticketing/sales-alerts-panel";
 import { EventSummary } from "~/components/admin/ticketing/event-summary";
+import { EventActivityPanel } from "~/components/admin/ticketing/event-activity-panel";
 import {
   SectionNav,
   type SectionNavGroup,
@@ -50,8 +52,9 @@ import { EventMenu } from "./event-menu";
 
 /**
  * The event page: one draft, one Save, a section rail grouped by what you're
- * doing. Overview comes first, then Summary, the after-the-night recap. Set up is the draft (details, tiers, costs,
- * door staff, wallet pass). Sell and Give away are live lists, because
+ * doing. Overview comes first, then Summary, the after-the-night recap, and
+ * Activity, everything that happened on the event in one feed. Set up is the
+ * draft (details, tiers, costs, door staff, wallet pass). Sell and Give away are live lists, because
  * refunding or issuing a ticket is a real-world action with an email or a
  * Stripe call behind it, not a draft. Config holds per-event settings that
  * save on their own, like who gets sales alerts.
@@ -63,6 +66,7 @@ import { EventMenu } from "./event-menu";
 const PAGES = [
   "overview",
   "summary",
+  "activity",
   "details",
   "tiers",
   "costs",
@@ -120,6 +124,7 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
             items: [
               { value: "overview", label: "Overview", icon: LayoutDashboard },
               { value: "summary", label: "Summary", icon: ClipboardList },
+              { value: "activity", label: "Activity", icon: History },
             ],
           },
         ]
@@ -276,6 +281,9 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
           ) : null}
           {page === "summary" && event ? (
             <EventSummary eventId={event.id} />
+          ) : null}
+          {page === "activity" && event ? (
+            <EventActivityPanel eventId={event.id} timeZone={event.timezone} />
           ) : null}
           {page === "details" ? (
             <DetailsSection
