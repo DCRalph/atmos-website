@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import * as Popover from "@radix-ui/react-popover";
-import { Check, Info, Minus, Plus, Ticket } from "lucide-react";
+import { Info, Minus, Plus, Ticket } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "~/components/site/ui";
@@ -502,17 +502,6 @@ export function BuyPanel({
                 </a>
                 {event.isR18 ? ", and that you're 18 or over" : ""}.
               </p>
-              <ul className="space-y-2 border-t border-white/10 pt-4 text-[13px] text-white/70">
-                {REASSURANCE.map((line) => (
-                  <li key={line} className="flex gap-2.5">
-                    <Check
-                      className="text-site-accent-text mt-0.5 size-3.5 shrink-0"
-                      aria-hidden
-                    />
-                    {line}
-                  </li>
-                ))}
-              </ul>
             </>
           )}
 
@@ -539,13 +528,6 @@ export function BuyPanel({
     </PanelShell>
   );
 }
-
-/** What a buyer wants to know before paying, in the ticket terms' own words. */
-const REASSURANCE = [
-  "Sold by Atmos Media. Card details go straight to Stripe.",
-  "Your tickets show on the next screen and by email.",
-  "Full refund if we cancel.",
-];
 
 /**
  * The seats are held, not sold. Showing the clock is fairer than silently
