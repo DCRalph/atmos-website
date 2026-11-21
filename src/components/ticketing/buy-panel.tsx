@@ -361,7 +361,7 @@ export function BuyPanel({
                   </p>
                 )}
                 {tier.lowStock && tier.available && (
-                  <p className="text-site-warn mt-1.5 text-[12px] font-medium">
+                  <p className="text-site-danger-text mt-1.5 text-[12px] font-medium">
                     Only {tier.remainingIfLow} left
                   </p>
                 )}
