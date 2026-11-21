@@ -64,6 +64,12 @@ import type { SerializedEditorState } from "lexical";
 import { venueColumns } from "~/server/api/routers/venues";
 
 /**
+ * A tier shows "Only N left" on the buy panel at this many purchases or fewer.
+ * Kept low so it reads as last call, not a running count.
+ */
+const LOW_STOCK_AT = 2;
+
+/**
  * Admin CRUD for ticketed events, their tiers, and door staff assignments,
  * plus the public reads the buy panel needs.
  */
@@ -1332,8 +1338,9 @@ function toPublicEvent(
         unavailableReason: reason,
         salesStartAt: tier.salesStartAt,
         salesEndAt: tier.salesEndAt,
-        lowStock: remaining > 0 && remaining <= 10,
-        remainingIfLow: remaining > 0 && remaining <= 10 ? remaining : null,
+        lowStock: remaining > 0 && remaining <= LOW_STOCK_AT,
+        remainingIfLow:
+          remaining > 0 && remaining <= LOW_STOCK_AT ? remaining : null,
         /**
          * The tier this one opens after. `left` is how many of it are left,
          * published only when one order could take them all, which is what
