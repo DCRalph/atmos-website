@@ -13,7 +13,10 @@ import {
 import {
   adminProcedure,
   createTRPCRouter,
+  assertCanViewEvent,
   eventOrganiserProcedure,
+  eventViewerProcedure,
+  eventViewProcedure,
   superadminProcedure,
 } from "~/server/api/trpc";
 import {
@@ -172,7 +175,7 @@ export const ticketAdminRouter = createTRPCRouter({
       });
     }),
 
-  orders: eventOrganiserProcedure
+  orders: eventViewerProcedure
     .input(
       z.object({
         eventId: z.string().optional(),
@@ -213,6 +216,11 @@ export const ticketAdminRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      // Across every event is the organiser's list; a viewer names theirs.
+      if (ctx.viewableEventIds) {
+        if (!input.eventId) throw new TRPCError({ code: "FORBIDDEN" });
+        assertCanViewEvent(ctx, input.eventId);
+      }
       const search = input.search;
       const unnamedTicket = {
         attendeeName: null,
@@ -292,7 +300,7 @@ export const ticketAdminRouter = createTRPCRouter({
       };
     }),
 
-  order: eventOrganiserProcedure
+  order: eventViewerProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const order = await ctx.db.ticketOrder.findUnique({
@@ -346,7 +354,10 @@ export const ticketAdminRouter = createTRPCRouter({
         },
       });
 
-      if (!order) {
+      if (
+        !order ||
+        (ctx.viewableEventIds && !ctx.viewableEventIds.includes(order.eventId))
+      ) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
       }
 
@@ -423,10 +434,9 @@ export const ticketAdminRouter = createTRPCRouter({
 
   /** Individual tickets for an event — search, inspect, then void or refund. */
   /** Organisers read this too, on their read-only Tickets tab. */
-  tickets: eventOrganiserProcedure
+  tickets: eventViewProcedure
     .input(
       z.object({
-        eventId: z.string(),
         search: z.string().trim().max(80).optional(),
         status: z
           .enum([TicketStatus.VALID, TicketStatus.VOID, TicketStatus.REFUNDED])

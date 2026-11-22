@@ -8,7 +8,7 @@ import {
   TicketScanResult,
   TicketStatus,
 } from "~Prisma/client";
-import { createTRPCRouter, eventOrganiserProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, eventViewProcedure } from "~/server/api/trpc";
 import { admittedCount, departedCount } from "~/server/ticketing/scan";
 import { compAccounting } from "~/server/ticketing/comps";
 import {
@@ -123,7 +123,7 @@ async function eventClock(
 
 export const ticketAnalyticsRouter = createTRPCRouter({
   /** Headline numbers for the event dashboard. */
-  overview: eventOrganiserProcedure
+  overview: eventViewProcedure
     .input(z.object({ eventId: z.string() }))
     .query(async ({ ctx, input }) => {
       const event = await ctx.db.ticketEvent.findUnique({
@@ -460,7 +460,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
    * `paidAt` is a UTC timestamp, and truncating to the hour in UTC lands on
    * the same hours as in the event's zone, so no conversion is needed here.
    */
-  salesOverTime: eventOrganiserProcedure
+  salesOverTime: eventViewProcedure
     .input(rangeInput)
     .query(async ({ ctx, input }) => {
       const event = await eventClock(ctx.db, input.eventId);
@@ -580,17 +580,15 @@ export const ticketAnalyticsRouter = createTRPCRouter({
    * which link brought them. Page views by hour of the week ride along, for
    * the same grid.
    */
-  buyers: eventOrganiserProcedure
-    .input(rangeInput)
-    .query(async ({ ctx, input }) => {
-      const event = await eventClock(ctx.db, input.eventId);
-      const window = salesWindow(event.startsAt, input.range);
-      const bought = Prisma.sql`o."eventId" = ${input.eventId} AND ${BOUGHT_ORDER} ${paidWithin(window)}`;
+  buyers: eventViewProcedure.input(rangeInput).query(async ({ ctx, input }) => {
+    const event = await eventClock(ctx.db, input.eventId);
+    const window = salesWindow(event.startsAt, input.range);
+    const bought = Prisma.sql`o."eventId" = ${input.eventId} AND ${BOUGHT_ORDER} ${paidWithin(window)}`;
 
-      const [weekHours, views, sizes, sources, devices] = await Promise.all([
-        // 1 is Monday. The stored time is UTC, marked as such, then moved
-        // into the event's zone: a 9pm sale belongs to that evening.
-        ctx.db.$queryRaw<{ day: number; hour: number; orders: number }[]>`
+    const [weekHours, views, sizes, sources, devices] = await Promise.all([
+      // 1 is Monday. The stored time is UTC, marked as such, then moved
+      // into the event's zone: a 9pm sale belongs to that evening.
+      ctx.db.$queryRaw<{ day: number; hour: number; orders: number }[]>`
           SELECT
             extract(isodow FROM local)::int AS day,
             extract(hour FROM local)::int AS hour,
@@ -602,8 +600,8 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           ) sales
           GROUP BY 1, 2
         `,
-        // Views of the page on the same grid, in the same window.
-        ctx.db.$queryRaw<{ day: number; hour: number; views: number }[]>`
+      // Views of the page on the same grid, in the same window.
+      ctx.db.$queryRaw<{ day: number; hour: number; views: number }[]>`
           SELECT
             extract(isodow FROM local)::int AS day,
             extract(hour FROM local)::int AS hour,
@@ -616,8 +614,8 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           ) seen
           GROUP BY 1, 2
         `,
-        // Four and up share a bar: nobody needs eleven bars for one group booking.
-        ctx.db.$queryRaw<{ size: number; orders: number }[]>`
+      // Four and up share a bar: nobody needs eleven bars for one group booking.
+      ctx.db.$queryRaw<{ size: number; orders: number }[]>`
           SELECT LEAST(tickets, 4)::int AS size, COUNT(*)::int AS orders
           FROM (
             SELECT COUNT(t.id) AS tickets
@@ -629,20 +627,20 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           GROUP BY 1
           ORDER BY 1 ASC
         `,
-        // Checkouts against sales for each set of tags, online only: a door
-        // sale has no link to have come from. Counted in visits, and scoped
-        // by when the checkout started so the two share a window.
-        ctx.db.$queryRaw<
-          {
-            source: string | null;
-            medium: string | null;
-            campaign: string | null;
-            content: string | null;
-            checkouts: number;
-            paid: number;
-            revenueCents: number;
-          }[]
-        >`
+      // Checkouts against sales for each set of tags, online only: a door
+      // sale has no link to have come from. Counted in visits, and scoped
+      // by when the checkout started so the two share a window.
+      ctx.db.$queryRaw<
+        {
+          source: string | null;
+          medium: string | null;
+          campaign: string | null;
+          content: string | null;
+          checkouts: number;
+          paid: number;
+          revenueCents: number;
+        }[]
+      >`
           SELECT
             o."utmSource" AS source,
             o."utmMedium" AS medium,
@@ -656,40 +654,40 @@ export const ticketAnalyticsRouter = createTRPCRouter({
             ${window ? Prisma.sql`AND o."createdAt" >= ${window.since} AND o."createdAt" <= ${window.until}` : Prisma.empty}
           GROUP BY 1, 2, 3, 4
         `,
-        // What each order was bought on, against how it was paid. Orders
-        // from before devices were recorded have none and are left out.
-        ctx.db.$queryRaw<
-          {
-            device: string | null;
-            os: string | null;
-            paidWith: string | null;
-            paymentMethod: PaymentMethodKind;
-            orders: number;
-          }[]
-        >`
+      // What each order was bought on, against how it was paid. Orders
+      // from before devices were recorded have none and are left out.
+      ctx.db.$queryRaw<
+        {
+          device: string | null;
+          os: string | null;
+          paidWith: string | null;
+          paymentMethod: PaymentMethodKind;
+          orders: number;
+        }[]
+      >`
           SELECT o.device, o.os, o."paidWith", o."paymentMethod", COUNT(*)::int AS orders
           FROM "ticket_order" o
           WHERE ${bought} AND o.device IS NOT NULL
           GROUP BY 1, 2, 3, 4
         `,
-      ]);
+    ]);
 
-      return {
-        weekHours,
-        viewHours: views,
-        sizes,
-        devices,
-        sources: sources
-          .map((row) => ({ ...row, source: row.source ?? "direct" }))
-          .sort((a, b) => b.checkouts - a.checkouts),
-      };
-    }),
+    return {
+      weekHours,
+      viewHours: views,
+      sizes,
+      devices,
+      sources: sources
+        .map((row) => ({ ...row, source: row.source ?? "direct" }))
+        .sort((a, b) => b.checkouts - a.checkouts),
+    };
+  }),
 
   /**
    * The live door view. Polled every few seconds during an event, so it stays
    * to a handful of cheap aggregate queries.
    */
-  live: eventOrganiserProcedure
+  live: eventViewProcedure
     .input(z.object({ eventId: z.string() }))
     .query(async ({ ctx, input }) => {
       const [sold, admitted, departed, arrivals, byStaff, recent, failures] =
@@ -840,7 +838,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
    * overview doesn't carry. Polled every ten seconds, so it stays to a
    * handful of aggregate queries.
    */
-  salesLive: eventOrganiserProcedure
+  salesLive: eventViewProcedure
     .input(z.object({ eventId: z.string() }))
     .query(async ({ ctx, input }) => {
       const event = await eventClock(ctx.db, input.eventId);
@@ -1061,7 +1059,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
    * five minutes at the door, and the final headcount to expect from past
    * events' no-show rate. Polled every ten seconds beside `live`.
    */
-  doorsLive: eventOrganiserProcedure
+  doorsLive: eventViewProcedure
     .input(z.object({ eventId: z.string() }))
     .query(async ({ ctx, input }) => {
       const eventId = input.eventId;
@@ -1282,7 +1280,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
    * "Came" here is anyone ever let in whose admission wasn't undone, which
    * unlike `admittedCount` still counts the people who have since gone home.
    */
-  summary: eventOrganiserProcedure
+  summary: eventViewProcedure
     .input(z.object({ eventId: z.string() }))
     .query(async ({ ctx, input }) => {
       const eventId = input.eventId;
@@ -1694,20 +1692,20 @@ export const ticketAnalyticsRouter = createTRPCRouter({
     }),
 
   /** The checkout journey for one event, with how long each step took. */
-  journey: eventOrganiserProcedure
+  journey: eventViewProcedure
     .input(z.object({ eventId: z.string() }))
     .query(({ ctx, input }) =>
       checkoutJourney(ctx.db, Prisma.sql`e.id = ${input.eventId}`),
     ),
 
   /** Declined payments for one event. See `analytics.declines`. */
-  declines: eventOrganiserProcedure
+  declines: eventViewProcedure
     .input(z.object({ eventId: z.string() }))
     .query(({ ctx, input }) =>
       declineReport(ctx.db, Prisma.sql`e.id = ${input.eventId}`),
     ),
 
-  discountPerformance: eventOrganiserProcedure
+  discountPerformance: eventViewProcedure
     .input(z.object({ eventId: z.string() }))
     .query(async ({ ctx, input }) => {
       // Both kinds of code, global and the event's own, in one table.
@@ -1754,7 +1752,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
    * CSV exports. Returned as a string for the client to download, so the
    * browser never has to hold a second copy of the dataset in memory as JSON.
    */
-  exportCsv: eventOrganiserProcedure
+  exportCsv: eventViewProcedure
     .input(
       z.object({
         eventId: z.string(),

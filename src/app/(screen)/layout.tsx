@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { auth } from "~/server/auth";
 import { redirectToLogin } from "~/server/auth-session";
 import { db } from "~/server/db";
-import { userHasPermission } from "~/server/utils/permissions";
+import { canViewEvents } from "~/server/utils/permissions";
 
 export const metadata: Metadata = {
   title: { absolute: "Atmos Live" },
@@ -13,8 +13,8 @@ export const metadata: Metadata = {
 
 /**
  * Pages meant to be left up on a screen: no sidebar, header or rail, just
- * the page on black. Signed-in admins and organisers only; each procedure
- * the page calls checks the rest.
+ * the page on black. Signed-in admins, organisers and people granted an
+ * event's sales only; each procedure the page calls checks the rest.
  */
 export default async function ScreenLayout({
   children,
@@ -28,11 +28,7 @@ export default async function ScreenLayout({
     where: { id: session.user.id },
     include: { permissions: true },
   });
-  const allowed =
-    user &&
-    (userHasPermission(user, "ADMIN") ||
-      userHasPermission(user, "EVENT_ORGANISER"));
-  if (!allowed) return redirectToLogin();
+  if (!user || !(await canViewEvents(user))) return redirectToLogin();
 
   return <div className="dark text-foreground bg-black">{children}</div>;
 }

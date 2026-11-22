@@ -9,7 +9,7 @@ import { UserDropdown } from "~/components/user-dropdown";
 import { auth } from "~/server/auth";
 import { redirectToLogin } from "~/server/auth-session";
 import { db } from "~/server/db";
-import { userHasPermission } from "~/server/utils/permissions";
+import { canViewEvents, userHasPermission } from "~/server/utils/permissions";
 
 export const metadata: Metadata = {
   title: { absolute: "Atmos Events" },
@@ -28,10 +28,10 @@ export default async function OrganiserLayout({
     where: { id: session.user.id },
     include: { permissions: true },
   });
-  const canViewEvents = user
-    ? userHasPermission(user, "EVENT_ORGANISER")
-    : false;
-  if (!canViewEvents) redirect("/");
+  // Organisers see every event; anyone else needs at least one granted to
+  // them, and the procedures behind each page hold them to those.
+  if (!user || !(await canViewEvents(user))) redirect("/");
+  const isOrganiser = userHasPermission(user, "EVENT_ORGANISER");
 
   return (
     <div className="bg-background text-foreground min-h-dvh">
@@ -45,14 +45,17 @@ export default async function OrganiserLayout({
           </Link>
           <div className="flex items-center gap-3">
             {/* Organisers have door access at every event, so this always
-                works for them. Door sales and comps live here too. */}
-            <Link
-              href="/door"
-              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
-            >
-              <ScanLine className="size-4" aria-hidden />
-              Scanner
-            </Link>
+                works for them. Door sales and comps live here too. Somebody
+                granted one event's sales has no door access from that. */}
+            {isOrganiser && (
+              <Link
+                href="/door"
+                className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
+              >
+                <ScanLine className="size-4" aria-hidden />
+                Scanner
+              </Link>
+            )}
             <UserDropdown />
           </div>
         </div>

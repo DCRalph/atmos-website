@@ -22,7 +22,9 @@ import {
 import {
   adminProcedure,
   createTRPCRouter,
+  assertCanViewEvent,
   eventOrganiserProcedure,
+  eventViewerProcedure,
   publicProcedure,
   superadminProcedure,
 } from "~/server/api/trpc";
@@ -304,7 +306,7 @@ async function describeOverAllocation(
 export const ticketEventsRouter = createTRPCRouter({
   // ---------------------------------------------------------------- admin
 
-  list: eventOrganiserProcedure
+  list: eventViewerProcedure
     .input(
       z
         .object({
@@ -314,9 +316,12 @@ export const ticketEventsRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const events = await ctx.db.ticketEvent.findMany({
-        where: input.includeArchived
-          ? {}
-          : { status: { not: TicketEventStatus.ARCHIVED } },
+        where: {
+          ...(ctx.viewableEventIds ? { id: { in: ctx.viewableEventIds } } : {}),
+          ...(input.includeArchived
+            ? {}
+            : { status: { not: TicketEventStatus.ARCHIVED } }),
+        },
         orderBy: { startsAt: "desc" },
         include: {
           gig: { select: { id: true, title: true } },
@@ -349,9 +354,10 @@ export const ticketEventsRouter = createTRPCRouter({
       });
     }),
 
-  byId: eventOrganiserProcedure
+  byId: eventViewerProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
+      assertCanViewEvent(ctx, input.id);
       const event = await ctx.db.ticketEvent.findUnique({
         where: { id: input.id },
         include: {
@@ -436,7 +442,8 @@ export const ticketEventsRouter = createTRPCRouter({
         shareUrl: shareUrl(event),
         effectiveBookingFee: resolveBookingFee(event, settings),
         siteDefaults: settings,
-        staff: event.staff.map((assignment) => ({
+        // The door roster is the team's business, not a viewer's.
+        staff: (ctx.viewableEventIds ? [] : event.staff).map((assignment) => ({
           ...assignment,
           user: userById.get(assignment.userId) ?? null,
         })),
@@ -450,6 +457,41 @@ export const ticketEventsRouter = createTRPCRouter({
         budget,
         counts,
       };
+    }),
+
+  /**
+   * Who outside the team can see this event's sales: each gets the read-only
+   * organiser pages for this event and no other. Saved on their own, not with
+   * the draft, since granting access is not something to leave half done.
+   */
+  viewers: adminProcedure
+    .input(z.object({ eventId: z.string() }))
+    .query(({ ctx, input }) =>
+      ctx.db.ticketEventViewer.findMany({
+        where: { eventId: input.eventId },
+        orderBy: { createdAt: "asc" },
+        select: {
+          userId: true,
+          createdAt: true,
+          user: { select: { name: true, email: true } },
+        },
+      }),
+    ),
+
+  addViewer: adminProcedure
+    .input(z.object({ eventId: z.string(), userId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.ticketEventViewer.upsert({
+        where: { eventId_userId: input },
+        update: {},
+        create: { ...input, createdBy: ctx.session.user.id },
+      });
+    }),
+
+  removeViewer: adminProcedure
+    .input(z.object({ eventId: z.string(), userId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.ticketEventViewer.deleteMany({ where: input });
     }),
 
   /**
