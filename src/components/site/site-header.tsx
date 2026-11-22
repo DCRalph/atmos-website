@@ -88,7 +88,7 @@ function AccountMenu({ className }: { className: string }) {
     {
       label: "Event analytics",
       href: "/organiser/events",
-      show: user.effectivePermissions.includes("EVENT_ORGANISER"),
+      show: user.canViewEvents,
     },
     {
       label: "Door scanner",

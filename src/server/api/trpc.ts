@@ -8,7 +8,7 @@
  */
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
-import { ZodError } from "zod";
+import { z, ZodError } from "zod";
 
 import { db } from "~/server/db";
 import { auth } from "~/server/auth";
@@ -189,6 +189,77 @@ function permissionProcedure(permission: UserPermission) {
 export const artistProcedure = permissionProcedure("ARTIST");
 
 export const eventOrganiserProcedure = permissionProcedure("EVENT_ORGANISER");
+
+/**
+ * Event viewer procedure
+ *
+ * The read-only organiser pages. Admins and event organisers see every event;
+ * anybody else sees only the events they hold a `TicketEventViewer` row for,
+ * and is refused outright with none. `ctx.viewableEventIds` is null for every
+ * event, otherwise the granted ids: handlers that take no single event (a
+ * list) filter by it, and the rest go through `eventViewProcedure` or
+ * `assertCanViewEvent`.
+ */
+export const eventViewerProcedure = protectedProcedure.use(
+  async ({ ctx, next }) => {
+    const user = await ctx.db.user.findUnique({
+      where: { id: ctx.session.user.id },
+      include: { permissions: true },
+    });
+    if (!user) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+    const seesEveryEvent = userHasPermission(user, "EVENT_ORGANISER");
+    const viewableEventIds = seesEveryEvent
+      ? null
+      : (
+          await ctx.db.ticketEventViewer.findMany({
+            where: { userId: user.id },
+            select: { eventId: true },
+          })
+        ).map((row) => row.eventId);
+
+    if (viewableEventIds?.length === 0) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "event organiser permission required",
+      });
+    }
+
+    return next({
+      ctx: {
+        ...ctx,
+        user,
+        isAdmin: userHasPermission(user, "ADMIN"),
+        viewableEventIds,
+      },
+    });
+  },
+);
+
+/**
+ * Refuse an event outside the caller's grants. Not found rather than
+ * forbidden, so a viewer can't tell which other event ids exist.
+ */
+export function assertCanViewEvent(
+  ctx: { viewableEventIds: string[] | null },
+  eventId: string,
+): void {
+  if (ctx.viewableEventIds && !ctx.viewableEventIds.includes(eventId)) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+  }
+}
+
+/**
+ * `eventViewerProcedure` for the common case: the input names one event as
+ * `eventId`, checked before the handler runs. Further `.input()` calls add to
+ * it.
+ */
+export const eventViewProcedure = eventViewerProcedure
+  .input(z.object({ eventId: z.string() }))
+  .use(({ ctx, input, next }) => {
+    assertCanViewEvent(ctx, input.eventId);
+    return next();
+  });
 
 /**
  * Door staff procedure

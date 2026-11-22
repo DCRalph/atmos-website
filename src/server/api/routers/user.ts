@@ -7,7 +7,7 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
-import { userHasPermission } from "~/server/utils/permissions";
+import { canViewEvents, userHasPermission } from "~/server/utils/permissions";
 import { auth } from "~/server/auth";
 import { enforceRateLimit } from "~/server/ticketing/rate-limit";
 import type { UserPermission } from "~Prisma/client";
@@ -59,7 +59,12 @@ export const userRouter = createTRPCRouter({
       userHasPermission(user, permission),
     );
 
-    return { ...user, effectivePermissions };
+    return {
+      ...user,
+      effectivePermissions,
+      /** Organisers, and anyone granted a single event's sales. */
+      canViewEvents: await canViewEvents(user),
+    };
   }),
 
   /**

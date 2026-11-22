@@ -84,6 +84,7 @@ model User {
   ownedArtistThemes   ArtistProfileTheme[]      @relation("OwnedArtistThemes")
   deviceTokens         DeviceToken[]
   ticketSalesAlerts    TicketEventSalesAlert[]
+  ticketEventViews     TicketEventViewer[]
   notifyMessages       NotifyMessage[]
   gigNotifyRecipients  GigNotifyRecipient[]
   gigScheduleRecipients GigScheduleRecipient[]
@@ -2117,6 +2118,7 @@ model TicketEvent {
   tickets       Ticket[]
   scans         TicketScan[]
   staff         TicketEventStaff[]
+  viewers       TicketEventViewer[]
   salesAlerts   TicketEventSalesAlert[]
   eventCodes    EventCode[]
   linkBatches   TicketLinkBatch[]
@@ -2600,6 +2602,25 @@ model TicketEventStaff {
   @@unique([eventId, userId])
   @@index([userId])
   @@map("ticket_event_staff")
+}
+
+/// Read-only access to one event's sales for somebody outside the team, like
+/// a co-promoter: the organiser pages for this event and nothing else. Not
+/// door access, which is `TicketEventStaff`.
+model TicketEventViewer {
+  id      String @id @default(cuid())
+  eventId String
+  userId  String
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  event TicketEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([userId])
+  @@map("ticket_event_viewer")
 }
 
 /// A code that works on any event: a discount and nothing more. Codes that

@@ -136,24 +136,25 @@ export function UserDropdown({ detailed = false }) {
               </Link>
             </DropdownMenuItem>
 
+            {user.canViewEvents && (
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/organiser/events"
+                  className="flex items-center gap-3 py-2"
+                >
+                  <LayoutDashboard className="text-muted-foreground size-4" />
+                  <span>Event analytics</span>
+                </Link>
+              </DropdownMenuItem>
+            )}
+
             {user.effectivePermissions.includes("EVENT_ORGANISER") && (
-              <>
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/organiser/events"
-                    className="flex items-center gap-3 py-2"
-                  >
-                    <LayoutDashboard className="text-muted-foreground size-4" />
-                    <span>Event analytics</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/door" className="flex items-center gap-3 py-2">
-                    <ScanLine className="text-muted-foreground size-4" />
-                    <span>Door scanner</span>
-                  </Link>
-                </DropdownMenuItem>
-              </>
+              <DropdownMenuItem asChild>
+                <Link href="/door" className="flex items-center gap-3 py-2">
+                  <ScanLine className="text-muted-foreground size-4" />
+                  <span>Door scanner</span>
+                </Link>
+              </DropdownMenuItem>
             )}
 
             {user.effectivePermissions.includes("ADMIN") && (

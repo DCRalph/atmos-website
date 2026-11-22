@@ -6,6 +6,7 @@ import {
   BadgePercent,
   BellRing,
   ClipboardList,
+  Eye,
   FileText,
   Gift,
   History,
@@ -31,6 +32,7 @@ import { TicketLinksPanel } from "~/components/admin/ticketing/ticket-links-pane
 import { EventCodesPanel } from "~/components/admin/ticketing/event-codes-panel";
 import { CampaignsPanel } from "~/components/admin/ticketing/campaigns-panel";
 import { SalesAlertsPanel } from "~/components/admin/ticketing/sales-alerts-panel";
+import { EventViewersPanel } from "~/components/admin/ticketing/event-viewers-panel";
 import { EventSummary } from "~/components/admin/ticketing/event-summary";
 import { EventActivityPanel } from "~/components/admin/ticketing/event-activity-panel";
 import {
@@ -57,7 +59,8 @@ import { EventMenu } from "./event-menu";
  * draft (details, tiers, costs, door staff, wallet pass). Sell and Give away are live lists, because
  * refunding or issuing a ticket is a real-world action with an email or a
  * Stripe call behind it, not a draft. Config holds per-event settings that
- * save on their own, like who gets sales alerts.
+ * save on their own, like who gets sales alerts and who outside the team can
+ * see the sales.
  *
  * A new event uses the same page with only the Set up group; creating it
  * lands on its Overview.
@@ -79,6 +82,7 @@ const PAGES = [
   "comps",
   "links",
   "alerts",
+  "access",
 ] as const;
 type Page = (typeof PAGES)[number];
 
@@ -212,7 +216,10 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
           },
           {
             label: "Config",
-            items: [{ value: "alerts", label: "Sales alerts", icon: BellRing }],
+            items: [
+              { value: "alerts", label: "Sales alerts", icon: BellRing },
+              { value: "access", label: "Sales access", icon: Eye },
+            ],
           },
         ]
       : []),
@@ -320,6 +327,9 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
           ) : null}
           {page === "alerts" && event ? (
             <SalesAlertsPanel eventId={event.id} />
+          ) : null}
+          {page === "access" && event ? (
+            <EventViewersPanel eventId={event.id} />
           ) : null}
         </div>
       </SaveBar>

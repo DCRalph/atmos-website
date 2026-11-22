@@ -21,6 +21,22 @@ export function userHasPermission(
   return permission !== "SUPERADMIN" && assigned.includes("ADMIN");
 }
 
+/**
+ * Whether the read-only organiser pages have anything for this user: every
+ * event for an organiser, otherwise the events they hold a
+ * `TicketEventViewer` row for.
+ */
+export async function canViewEvents(
+  user: UserWithPermissions & { id: string },
+): Promise<boolean> {
+  if (userHasPermission(user, "EVENT_ORGANISER")) return true;
+  const granted = await db.ticketEventViewer.findFirst({
+    where: { userId: user.id },
+    select: { id: true },
+  });
+  return granted !== null;
+}
+
 /** ADMIN and SUPERADMIN: the permissions only a superadmin may grant, revoke, or manage the holders of. */
 export const ADMIN_TIER = [
   "ADMIN",

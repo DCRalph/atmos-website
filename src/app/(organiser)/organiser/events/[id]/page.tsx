@@ -20,6 +20,11 @@ export default function OrganiserEventPage() {
   const { id } = useParams<{ id: string }>();
   const event = api.ticketEvents.byId.useQuery({ id }, { enabled: !!id });
   const tab = useTabParam(["overview", "orders", "tickets"]);
+  // The door is for organisers and rostered staff, not someone granted this
+  // event's sales.
+  const me = api.user.me.useQuery();
+  const isOrganiser =
+    me.data?.effectivePermissions.includes("EVENT_ORGANISER") ?? false;
 
   if (event.isPending) {
     return <Skeleton className="m-6 h-96 w-auto" />;
@@ -42,11 +47,13 @@ export default function OrganiserEventPage() {
               <ExternalLink className="size-4" /> Public page
             </Link>
           </Button>
-          <Button variant="outline" asChild>
-            <Link href={`/door/${id}`} target="_blank">
-              <ScanLine className="size-4" /> Scanner
-            </Link>
-          </Button>
+          {isOrganiser && (
+            <Button variant="outline" asChild>
+              <Link href={`/door/${id}`} target="_blank">
+                <ScanLine className="size-4" /> Scanner
+              </Link>
+            </Button>
+          )}
           <Button asChild>
             <Link href={`/organiser/events/${id}/live`}>Live screen</Link>
           </Button>

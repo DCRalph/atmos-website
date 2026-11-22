@@ -107,19 +107,20 @@ export function UserIndicator({ variant = "light" }: UserIndicatorProps) {
               </Button>
             </Link>
 
+            {user.canViewEvents && (
+              <Link href="/organiser/events">
+                <Button variant="ghost" className="w-full justify-between">
+                  <span>Event analytics</span>
+                </Button>
+              </Link>
+            )}
+
             {user.effectivePermissions.includes("EVENT_ORGANISER") && (
-              <>
-                <Link href="/organiser/events">
-                  <Button variant="ghost" className="w-full justify-between">
-                    <span>Event analytics</span>
-                  </Button>
-                </Link>
-                <Link href="/door">
-                  <Button variant="ghost" className="w-full justify-between">
-                    <span>Door scanner</span>
-                  </Button>
-                </Link>
-              </>
+              <Link href="/door">
+                <Button variant="ghost" className="w-full justify-between">
+                  <span>Door scanner</span>
+                </Button>
+              </Link>
             )}
 
             {user.effectivePermissions.includes("ADMIN") && (
