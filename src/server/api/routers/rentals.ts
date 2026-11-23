@@ -20,6 +20,7 @@ import {
   hireInvoiceUrl,
   issueHireInvoice,
   voidHireInvoice,
+  voidInvoicesForDeletedRentals,
 } from "~/server/hire-invoices";
 import { stripeInvoiceUrl } from "~/server/stripe";
 import { getRequestMetadata, logActivity } from "~/server/utils/activity-log";
@@ -1246,6 +1247,7 @@ async function sendRentalDecisionEmail(
 
 /** A failure from Stripe or email, as a message the admin can read. */
 function asTrpcError(cause: unknown): never {
+  if (cause instanceof TRPCError) throw cause;
   throw new TRPCError({
     code: "INTERNAL_SERVER_ERROR",
     message: cause instanceof Error ? cause.message : "Something went wrong.",
@@ -1716,9 +1718,18 @@ export const rentalsRouter = createTRPCRouter({
       return gearPackage;
     }),
 
+  /** Deleting a package deletes its rentals, so their invoices are settled first. */
   adminDeletePackage: adminProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
+      const rentals = await ctx.db.rental.findMany({
+        where: { packageId: input.id },
+        select: { id: true },
+      });
+      await voidInvoicesForDeletedRentals(
+        rentals.map((rental) => rental.id),
+        ctx.user.id,
+      ).catch(asTrpcError);
       const gearPackage = await ctx.db.gearPackage.delete({
         where: { id: input.id },
       });
@@ -1876,9 +1887,13 @@ export const rentalsRouter = createTRPCRouter({
       }),
     ),
 
+  /** Voids the rental's unpaid invoice first; refuses while it has a paid one. */
   adminDeleteRental: adminProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
+      await voidInvoicesForDeletedRentals([input.id], ctx.user.id).catch(
+        asTrpcError,
+      );
       const rental = await ctx.db.rental.delete({
         where: { id: input.id },
       });
