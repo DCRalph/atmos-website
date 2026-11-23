@@ -1,28 +1,49 @@
 import { describe, expect, test } from "bun:test";
 
-import { hireInvoiceDueAt, hirePaymentState } from "~/lib/hire-invoices";
+import {
+  hireInvoiceDueAt,
+  hirePaymentState,
+  redactInvoiceToken,
+} from "~/lib/hire-invoices";
 
 // Collection on Sat 5 Dec 2026, stored as NZ midnight (NZDT, UTC+13).
 const collection = new Date("2026-12-04T11:00:00.000Z");
 
 describe("hireInvoiceDueAt", () => {
-  test("is seven days after collection", () => {
+  test("is noon NZ, seven calendar days after collection", () => {
     const signed = new Date("2026-12-01T02:00:00.000Z");
+    // Noon NZDT on Sat 12 Dec.
     expect(hireInvoiceDueAt(collection, signed).toISOString()).toBe(
-      "2026-12-11T11:00:00.000Z",
+      "2026-12-11T23:00:00.000Z",
     );
   });
 
-  test("moves to a day from now when signed after it has passed", () => {
-    const signedLate = new Date("2026-12-20T02:00:00.000Z");
+  test("keeps the calendar day across the end of daylight saving", () => {
+    // Collection at NZ midnight on Fri 2 Apr 2027; daylight saving ends on the 4th.
+    const april = new Date("2027-04-01T11:00:00.000Z");
+    // Noon NZST on Fri 9 Apr.
+    expect(
+      hireInvoiceDueAt(
+        april,
+        new Date("2027-03-30T00:00:00.000Z"),
+      ).toISOString(),
+    ).toBe("2027-04-09T00:00:00.000Z");
+  });
+
+  test("moves to tomorrow when signed after it has passed", () => {
+    const signedLate = new Date("2026-12-20T02:00:00.000Z"); // 3pm Sun 20 Dec NZ
+    // Noon NZDT on Mon 21 Dec, the same all day.
     expect(hireInvoiceDueAt(collection, signedLate).toISOString()).toBe(
-      "2026-12-21T02:00:00.000Z",
+      "2026-12-20T23:00:00.000Z",
     );
+    expect(
+      hireInvoiceDueAt(collection, new Date("2026-12-20T10:00:00.000Z")),
+    ).toEqual(hireInvoiceDueAt(collection, signedLate));
   });
 });
 
 describe("hirePaymentState", () => {
-  const dueAt = new Date("2026-12-11T11:00:00.000Z"); // Sat 12 Dec in NZ
+  const dueAt = new Date("2026-12-11T23:00:00.000Z"); // noon Sat 12 Dec in NZ
 
   test("follows the agreement until there is an invoice", () => {
     expect(hirePaymentState(null, null, collection)).toBe(null);
@@ -64,4 +85,13 @@ describe("hirePaymentState", () => {
       hirePaymentState("SIGNED", { status: "VOID", dueAt }, collection)?.label,
     ).toBe("Void");
   });
+});
+
+test("redactInvoiceToken hides pay tokens in URLs and element chains", () => {
+  expect(
+    redactInvoiceToken("https://atmosmedia.co.nz/invoices/abc_DEF-123?x=1"),
+  ).toBe("https://atmosmedia.co.nz/invoices/redacted?x=1");
+  expect(redactInvoiceToken('a:attr__href="/invoices/abc-123"')).toBe(
+    'a:attr__href="/invoices/redacted"',
+  );
 });

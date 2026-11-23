@@ -98,17 +98,29 @@ async function hirerCustomer(hirer: {
   return created.id;
 }
 
+/** What `issueHireInvoice` did. */
+export type IssueOutcome =
+  /** A new invoice went out. */
+  | "issued"
+  /** The open invoice already bills this fee. */
+  | "unchanged"
+  /** It is paid, possibly just now while being replaced. */
+  | "paid"
+  /** The agreement has no hire fee, so there is nothing to bill. */
+  | "no-fee"
+  /** Not a signed hire agreement with its rental still there. */
+  | "not-ready";
+
 /**
  * Issue the invoice for a signed hire agreement. Safe to call again: it does
  * nothing while the agreement's invoice is open for the same amount, or paid.
  * When the hire fee has changed since (the agreement went back to draft and
- * was signed again), the open Stripe invoice is voided and replaced, keeping
- * the same pay link.
- *
- * Does nothing for a performer agreement, an unsigned one, one whose rental is
- * gone, or one with no hire fee.
+ * was signed again), the open Stripe invoice is voided first and then
+ * replaced, keeping the same pay link, so the hirer can never pay both.
  */
-export async function issueHireInvoice(contractId: string): Promise<void> {
+export async function issueHireInvoice(
+  contractId: string,
+): Promise<IssueOutcome> {
   const contract = await db.contract.findUnique({
     where: { id: contractId },
     select: {
@@ -119,28 +131,34 @@ export async function issueHireInvoice(contractId: string): Promise<void> {
       fields: true,
       signedAt: true,
       sentTo: true,
-      rental: { select: { startDate: true, endDate: true } },
+      rental: { select: { startDate: true } },
       hireInvoice: true,
     },
   });
-  if (contract?.kind !== "HIRE" || contract.status !== "SIGNED") return;
-  if (!contract.rental) return;
+  if (contract?.kind !== "HIRE" || contract.status !== "SIGNED") {
+    return "not-ready";
+  }
+  if (!contract.rental) return "not-ready";
 
   const fields = hireFieldsSchema.parse(contract.fields);
   const totalCents = parsePriceToCents(fields.hireFee);
-  if (!totalCents) return;
 
   const existing = contract.hireInvoice;
-  if (existing?.status === "PAID" || existing?.status === "REFUNDED") return;
-  if (existing?.status === "OPEN" && existing.totalCents === totalCents) return;
+  if (existing?.status === "PAID" || existing?.status === "REFUNDED") {
+    return "paid";
+  }
+  if (existing?.status === "OPEN") {
+    if (existing.totalCents === totalCents) return "unchanged";
+    if ((await retireOpenInvoice(existing.stripeInvoiceId)) === "paid") {
+      return "paid";
+    }
+  }
+  if (!totalCents) return "no-fee";
 
   const stripe = getStripe();
   const settings = await getTicketingSettings();
   const email = z.email().safeParse(fields.email || contract.sentTo);
-  const description = hireInvoiceDescription(
-    contract.rental.startDate,
-    contract.rental.endDate,
-  );
+  const description = hireInvoiceDescription(fields);
   const dueAt = hireInvoiceDueAt(contract.rental.startDate, new Date());
   const gear = fields.items
     .filter((item) => item.name)
@@ -191,14 +209,6 @@ export async function issueHireInvoice(contractId: string): Promise<void> {
     auto_advance: false,
   });
 
-  if (existing?.status === "OPEN") {
-    await stripe.invoices
-      .voidInvoice(existing.stripeInvoiceId)
-      .catch((cause: unknown) =>
-        console.error("[hire-invoice] could not void the old invoice", cause),
-      );
-  }
-
   const issued = {
     stripeInvoiceId: invoice.id,
     number: invoice.number ?? invoice.id,
@@ -231,6 +241,26 @@ export async function issueHireInvoice(contractId: string): Promise<void> {
   });
 
   await emailHireInvoice(row.id);
+  return "issued";
+}
+
+/**
+ * Void an open invoice in Stripe before it is replaced. If Stripe refuses
+ * because the hirer paid it in the meantime, that payment is recorded and
+ * nothing replaces it.
+ */
+async function retireOpenInvoice(
+  stripeInvoiceId: string,
+): Promise<"voided" | "paid"> {
+  try {
+    await getStripe().invoices.voidInvoice(stripeInvoiceId);
+  } catch (cause) {
+    const live = await refreshHireInvoice(stripeInvoiceId);
+    if (live.status === "paid") return "paid";
+    if (live.status !== "void" && live.status !== "uncollectible") throw cause;
+  }
+  await recordHireInvoiceVoided(stripeInvoiceId);
+  return "voided";
 }
 
 /**
@@ -420,8 +450,9 @@ export async function recordHireInvoiceRefund(
     select: { id: true, totalCents: true },
   });
   if (!invoice) return false;
-  await db.hireInvoice.update({
-    where: { id: invoice.id },
+  // Refund events can arrive out of order; the amount only ever grows.
+  await db.hireInvoice.updateMany({
+    where: { id: invoice.id, refundedCents: { lt: refundedCents } },
     data: {
       refundedCents,
       status: refundedCents >= invoice.totalCents ? "REFUNDED" : "PAID",

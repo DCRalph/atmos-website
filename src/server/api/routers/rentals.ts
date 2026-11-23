@@ -1533,7 +1533,14 @@ export const rentalsRouter = createTRPCRouter({
           message: "The hire agreement has to be signed first.",
         });
       }
-      await issueHireInvoice(contract.id).catch(asTrpcError);
+      const outcome = await issueHireInvoice(contract.id).catch(asTrpcError);
+      if (outcome === "no-fee") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "The signed agreement has no hire fee to invoice.",
+        });
+      }
+      return outcome;
     }),
 
   /** Email an unpaid invoice to its hirer again. */

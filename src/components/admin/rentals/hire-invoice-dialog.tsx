@@ -86,8 +86,14 @@ function InvoiceDetails({ rental }: { rental: Rental }) {
 
   const issue = api.rentals.adminIssueHireInvoice.useMutation({
     onError,
-    onSuccess: async () => {
-      toast.success("Invoice issued and emailed");
+    onSuccess: async (outcome) => {
+      toast.success(
+        outcome === "paid"
+          ? "It was paid in the meantime"
+          : outcome === "issued"
+            ? "Invoice issued and emailed"
+            : "Already invoiced",
+      );
       await refresh();
     },
   });
