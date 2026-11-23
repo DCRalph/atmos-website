@@ -99,6 +99,8 @@ async function deliverNudge(
       audience,
       categoryId: "TASK_ACTIONS",
       data: { taskId: task.id },
+      // Escalations go high from priority 5; a gentle nudge stays normal.
+      pushPriority: step.allAdmins ? undefined : step.priority,
     },
   );
   const { devices, delivered } = result.delivery;

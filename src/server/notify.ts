@@ -57,6 +57,8 @@ export async function publish(
     recipients?: Prisma.InputJsonValue;
     /** Extra payload the app acts on, such as a task id. Not logged. */
     data?: Record<string, string>;
+    /** Expo delivery priority, when it should differ from `input.priority`'s. */
+    pushPriority?: "normal" | "high";
   },
 ): Promise<PublishedMessage> {
   const audience: Audience = origin.audience ?? {
@@ -77,7 +79,12 @@ export async function publish(
     // 3 is ntfy's "default", so it gets Expo's default too: high on iOS,
     // normal on Android. Sending "normal" would let iOS hold it back.
     priority:
-      input.priority >= 4 ? "high" : input.priority <= 2 ? "normal" : undefined,
+      origin.pushPriority ??
+      (input.priority >= 4
+        ? "high"
+        : input.priority <= 2
+          ? "normal"
+          : undefined),
     categoryId: origin.categoryId,
   });
 
