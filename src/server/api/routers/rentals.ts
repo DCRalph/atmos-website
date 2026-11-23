@@ -14,7 +14,9 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import { env } from "~/env";
-import { escapeHtml, sendEmail } from "~/server/email/send";
+import { renderRentalDecisionEmail } from "~/emails/rentals";
+import { renderRentalRequestEmail } from "~/emails/staff";
+import { sendEmail } from "~/server/email/send";
 import {
   emailHireInvoice,
   hireInvoiceUrl,
@@ -1208,10 +1210,6 @@ async function sendRentalDecisionEmail(
   const approved = rental.status === RentalStatus.APPROVED;
   const dates = `${format(rental.startDate, "PPP")} to ${format(rental.endDate, "PPP")}`;
   const gear = getRentalDisplayName(rental);
-  const message = approved
-    ? "Your gear rental request has been approved. We'll be in touch to sort out pickup and payment."
-    : "Unfortunately we can't fulfil your gear rental request for these dates.";
-
   try {
     const staff = await ctx.db.keyValueStore.findUnique({
       where: { key: "gearRentalNotification" },
@@ -1221,21 +1219,13 @@ async function sendRentalDecisionEmail(
       from: "rentals",
       to: to.data,
       replyTo: staff?.value,
-      subject: `Your Atmos gear rental request was ${approved ? "approved" : "declined"}`,
-      text:
-        `Hi ${rental.userName},\n\n${message}\n\n` +
-        `Gear: ${gear}\nDates: ${dates}\n` +
-        `Estimated total: $${rental.estimatedTotalPrice}\n\n` +
-        `Reply to this email with any questions.`,
-      html: `
-              <h1>Rental request ${approved ? "approved" : "declined"}</h1>
-              <p>Hi ${escapeHtml(rental.userName)},</p>
-              <p>${message}</p>
-              <p><strong>Gear:</strong> ${escapeHtml(gear)}</p>
-              <p><strong>Dates:</strong> ${dates}</p>
-              <p><strong>Estimated total:</strong> $${rental.estimatedTotalPrice}</p>
-              <p>Reply to this email with any questions.</p>
-            `,
+      ...renderRentalDecisionEmail({
+        name: rental.userName,
+        approved,
+        gear,
+        dates,
+        estimatedTotal: rental.estimatedTotalPrice,
+      }),
     });
     if (!result.ok) {
       console.error("Failed to send rental decision email:", result.error);
@@ -1376,38 +1366,18 @@ export const rentalsRouter = createTRPCRouter({
         const result = await sendEmail({
           from: "notifications",
           to: notificationEmailSetting.value,
-          subject: `New Gear Rental Request: ${input.userName}`,
-          text:
-            `A new gear rental request has been submitted.\n\n` +
-            `User: ${input.userName}\n` +
-            `Contact: ${input.contactInfo}\n` +
-            `${selectionTitle}\n` +
-            `Items: ${selectionBreakdown}\n` +
-            `Estimated Total: $${quote.estimatedTotalPrice}\n` +
-            `Discount: ${discountSummary}\n` +
-            `Start Date: ${format(input.startDate, "PPP")}\n` +
-            `End Date: ${format(input.endDate, "PPP")}\n\n` +
-            `Approve: ${decisionUrl}?action=approve\n` +
-            `Deny: ${decisionUrl}?action=deny\n\n` +
-            `Or review this request in the admin dashboard.`,
-          html: `
-              <h1>New Gear Rental Request</h1>
-              <p><strong>User:</strong> ${escapeHtml(input.userName)}</p>
-              <p><strong>Contact:</strong> ${escapeHtml(input.contactInfo)}</p>
-              <p><strong>${selectionTitle}</strong></p>
-              <p><strong>Items:</strong> ${selectionBreakdown}</p>
-              <p><strong>Estimated Total:</strong> $${quote.estimatedTotalPrice}</p>
-              <p><strong>Discount:</strong> ${discountSummary}</p>
-              <p><strong>Start Date:</strong> ${format(input.startDate, "PPP")}</p>
-              <p><strong>End Date:</strong> ${format(input.endDate, "PPP")}</p>
-              <br/>
-              <p>
-                <a href="${decisionUrl}?action=approve" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 24px;border-radius:8px;margin-right:8px;">Approve</a>
-                <a href="${decisionUrl}?action=deny" style="display:inline-block;background:#dc2626;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 24px;border-radius:8px;">Deny</a>
-              </p>
-              <p>Each link asks you to confirm, and works once.</p>
-              <p><a href="${env.NEXT_PUBLIC_APP_URL}/admin/rentals">Review Request in Admin Dashboard</a></p>
-            `,
+          ...renderRentalRequestEmail({
+            name: input.userName,
+            contact: input.contactInfo,
+            selectionTitle,
+            items: selectionBreakdown,
+            estimatedTotal: quote.estimatedTotalPrice,
+            discount: discountSummary,
+            startDate: format(input.startDate, "PPP"),
+            endDate: format(input.endDate, "PPP"),
+            decisionUrl,
+            adminUrl: env.NEXT_PUBLIC_APP_URL + "/admin/rentals",
+          }),
         });
         if (!result.ok) {
           console.error(

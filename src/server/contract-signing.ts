@@ -38,7 +38,7 @@ import { createTask } from "~/server/tasks/mutations";
 import {
   renderContractInviteEmail,
   renderContractSignedEmail,
-} from "~/server/ticketing/email/templates";
+} from "~/emails/contracts";
 import { logActivity } from "~/server/utils/activity-log";
 import { ActivityType, type ContractKind, type Prisma } from "~Prisma/client";
 

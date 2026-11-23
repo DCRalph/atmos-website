@@ -9,7 +9,7 @@ import {
 } from "~Prisma/client";
 import { env } from "~/env";
 import { buildMediaUrl } from "~/lib/media-url";
-import { personalise, renderMailout } from "~/lib/mailouts/render";
+import { personalise, renderMailout } from "~/emails/mailout";
 import { SITE_URL } from "~/lib/seo-constants";
 import { CONTACT } from "~/lib/site-constants";
 import { db } from "~/server/db";
