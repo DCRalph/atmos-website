@@ -249,8 +249,8 @@ export async function issueHireInvoice(
  * Clear the way for deleting rentals: void each one's unpaid invoice in
  * Stripe, so the emailed pay link stops taking money for a hire that no
  * longer exists. A paid invoice is a record of money received, so deleting
- * its rental is refused until it has been refunded. Checks every rental
- * before voiding any, so a refusal changes nothing.
+ * its rental is refused until it has been refunded. Checks every invoice
+ * with Stripe before voiding any, so a refusal changes nothing.
  */
 export async function voidInvoicesForDeletedRentals(
   rentalIds: string[],
@@ -271,6 +271,15 @@ export async function voidInvoicesForDeletedRentals(
       message: `Invoice ${number} for this hire has been paid. Refund it in Stripe before deleting.`,
     });
 
+  // Stripe first: an invoice paid moments ago may not have reached us yet.
+  for (const contract of contracts) {
+    if (contract.hireInvoice?.status === "OPEN") {
+      const live = await refreshHireInvoice(
+        contract.hireInvoice.stripeInvoiceId,
+      );
+      if (live.status === "paid") contract.hireInvoice.status = "PAID";
+    }
+  }
   const invoices = contracts.flatMap((contract) =>
     contract.hireInvoice
       ? [{ ...contract.hireInvoice, title: contract.title }]
@@ -286,7 +295,7 @@ export async function voidInvoicesForDeletedRentals(
     }
     await logActivity({
       type: ActivityType.OTHER,
-      action: `Invoice ${invoice.number} voided: its rental was deleted (${invoice.title})`,
+      action: `Invoice ${invoice.number} voided to delete its rental (${invoice.title})`,
       details: { hireInvoiceId: invoice.id },
       userId,
     });
