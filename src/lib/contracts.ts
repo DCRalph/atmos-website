@@ -25,7 +25,7 @@ import { formatNZD, parsePriceToCents } from "~/lib/ticketing/money";
  * The label in each contract's masthead, until one is set on the admin
  * settings page. Bump it when the terms change.
  */
-export const CONTRACT_VERSION = "Draft v0.1 · November 2026";
+export const CONTRACT_VERSION = "Draft v0.2 · November 2026";
 
 /**
  * Site-wide contract settings, kept in the key-value store so they change

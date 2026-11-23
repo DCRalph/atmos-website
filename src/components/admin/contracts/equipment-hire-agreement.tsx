@@ -165,8 +165,9 @@ export function EquipmentHireAgreement({
 
         <Clause title="Fees and bond">
           <li>
-            The hire fee is payable in full before collection unless we agree
-            otherwise in writing.
+            The hire fee is payable in full within 7 days of collection unless
+            we agree otherwise in writing. When you sign, we email you a tax
+            invoice that you can pay online.
           </li>
           <li>
             If we ask for a bond, we hold it as security. We will refund it

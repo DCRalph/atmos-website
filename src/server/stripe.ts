@@ -109,3 +109,9 @@ export function stripePaymentUrl(paymentIntentId: string): string {
   const mode = isStripeTestMode() ? "test/" : "";
   return `https://dashboard.stripe.com/${mode}payments/${paymentIntentId}`;
 }
+
+/** An invoice in the Stripe dashboard, in test or live mode to match the key. */
+export function stripeInvoiceUrl(invoiceId: string): string {
+  const mode = isStripeTestMode() ? "test/" : "";
+  return `https://dashboard.stripe.com/${mode}invoices/${invoiceId}`;
+}

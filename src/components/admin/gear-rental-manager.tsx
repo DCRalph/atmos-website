@@ -40,6 +40,7 @@ import {
 } from "~/components/ui/dialog";
 import { Label } from "~/components/ui/label";
 import { PackageItemBadge } from "~/components/rentals/package-item-badge";
+import { HirePaymentCell } from "~/components/admin/rentals/hire-invoice-dialog";
 import { Textarea } from "~/components/ui/textarea";
 import {
   Select,
@@ -535,6 +536,11 @@ export function GearRentalManager() {
       ),
     },
     {
+      id: "payment",
+      header: "Payment",
+      cell: (rental) => <HirePaymentCell rental={rental} />,
+    },
+    {
       id: "actions",
       header: "",
       align: "right",
@@ -953,8 +959,8 @@ export function GearRentalManager() {
           <CardHeader>
             <CardTitle>Rental requests</CardTitle>
             <CardDescription>
-              Review package booking requests and approve them only when the
-              underlying inventory is still available.
+              Approve requests only when the inventory is still available, then
+              track each hire through its agreement to payment.
             </CardDescription>
           </CardHeader>
           <CardContent>

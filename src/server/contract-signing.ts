@@ -32,6 +32,7 @@ import {
   writeBackPerformer,
 } from "~/server/contracts";
 import { db } from "~/server/db";
+import { issueHireInvoice } from "~/server/hire-invoices";
 import { sendEmail } from "~/server/email/send";
 import { createTask } from "~/server/tasks/mutations";
 import {
@@ -468,5 +469,13 @@ export async function signContract({
     if (!result.ok) {
       console.error("Failed to send the signed contract email:", result.error);
     }
+  }
+
+  // A signed hire agreement is invoiced straight away. The signature stands
+  // if this fails: admin shows it as not invoiced, with a button to retry.
+  if (saved.kind === "HIRE") {
+    await issueHireInvoice(contract.id).catch((cause: unknown) =>
+      console.error("[hire-invoice] could not issue on signing", cause),
+    );
   }
 }

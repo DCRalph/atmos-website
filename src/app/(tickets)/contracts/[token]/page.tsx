@@ -11,7 +11,10 @@ import {
   SignPanel,
 } from "~/components/admin/contracts/sign-panel";
 import { formatContractDate, SIGNER_FIELDS } from "~/lib/contracts";
+import { outlinePillClass } from "~/components/tickets/ticket-shell";
+import { cn } from "~/lib/utils";
 import { getSigningView } from "~/server/contract-signing";
+import { db } from "~/server/db";
 
 type Props = { params: Promise<{ token: string }> };
 
@@ -40,6 +43,14 @@ export default async function ContractSigningPage({ params }: Props) {
   const { token } = await params;
   const view = (await loadView(token)) ?? notFound();
   const { status, signing } = view;
+  // A signed hire agreement's invoice, to pay from here as well as the email.
+  const invoice =
+    status === "SIGNED" && view.kind === "HIRE"
+      ? await db.hireInvoice.findFirst({
+          where: { contract: { signToken: token }, status: "OPEN" },
+          select: { payToken: true },
+        })
+      : null;
 
   const heading =
     status === "SIGNED"
@@ -70,7 +81,18 @@ export default async function ContractSigningPage({ params }: Props) {
           {lead}
         </p>
         {status === "SIGNED" ? (
-          <div className="mt-6">
+          <div className="mt-6 flex flex-wrap gap-3">
+            {invoice ? (
+              <a
+                href={`/invoices/${invoice.payToken}`}
+                className={cn(
+                  outlinePillClass,
+                  "bg-site-accent text-site-accent-ink hover:bg-site-accent border-transparent hover:border-transparent",
+                )}
+              >
+                Pay invoice
+              </a>
+            ) : null}
             <PrintButton />
           </div>
         ) : null}
