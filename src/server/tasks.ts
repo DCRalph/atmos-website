@@ -259,7 +259,7 @@ async function batchCreations(tasks: readonly TaskRow[], now: Date) {
         tags: ["tasks"],
         click: rows.length === 1 ? `/tasks/${first.id}` : "/tasks",
       },
-      { source: "tasks", audience },
+      { source: "tasks", audience, pushPriority: "default" },
     );
     await db.taskNudge.updateMany({
       where: { taskId: { in: rows.map((row) => row.id) }, step: "created" },
@@ -330,7 +330,11 @@ async function mondayBrief(tasks: readonly TaskRow[], now: Date) {
         tags: ["tasks"],
         click: "/tasks",
       },
-      { source: "tasks", audience: { kind: "users", userIds: [person.id] } },
+      {
+        source: "tasks",
+        audience: { kind: "users", userIds: [person.id] },
+        pushPriority: "default",
+      },
     );
   }
 }

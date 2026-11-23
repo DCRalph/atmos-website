@@ -70,6 +70,7 @@ export async function notifyTasks(
             audience: { kind: "users", userIds: ids },
             categoryId: "TASK_ACTIONS",
             data: { taskId: notice.taskId },
+            pushPriority: "default",
           },
         );
     }

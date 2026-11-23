@@ -115,7 +115,11 @@ export async function sendTapToPayLaunchCampaign({
         // Lands on the Tap to Pay hub, which is where enabling it happens (3.6).
         click: "/(door)/tap-to-pay",
       },
-      { source: "tap-to-pay", audience: { kind: "users", userIds: needPush } },
+      {
+        source: "tap-to-pay",
+        audience: { kind: "users", userIds: needPush },
+        pushPriority: "default",
+      },
     );
     pushed = result.delivery.delivered;
 
