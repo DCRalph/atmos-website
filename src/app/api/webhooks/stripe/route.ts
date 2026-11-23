@@ -94,7 +94,6 @@ export async function POST(request: NextRequest): Promise<Response> {
         await recordHireInvoicePaid(event.data.object);
         break;
       case "invoice.voided":
-      case "invoice.marked_uncollectible":
         await recordHireInvoiceVoided(event.data.object.id);
         break;
       case "charge.dispute.created":

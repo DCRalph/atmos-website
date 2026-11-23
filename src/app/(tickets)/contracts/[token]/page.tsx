@@ -86,6 +86,8 @@ export default async function ContractSigningPage({ params }: Props) {
               <a
                 href={`/invoices/${invoice.payToken}`}
                 className={cn(
+                  // Keeps the pay link out of PostHog session recordings.
+                  "ph-no-capture",
                   outlinePillClass,
                   "bg-site-accent text-site-accent-ink hover:bg-site-accent border-transparent hover:border-transparent",
                 )}

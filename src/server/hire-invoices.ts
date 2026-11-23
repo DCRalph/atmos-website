@@ -257,7 +257,8 @@ async function retireOpenInvoice(
   } catch (cause) {
     const live = await refreshHireInvoice(stripeInvoiceId);
     if (live.status === "paid") return "paid";
-    if (live.status !== "void" && live.status !== "uncollectible") throw cause;
+    // Uncollectible can still be paid, so only a true void is replaced.
+    if (live.status !== "void") throw cause;
   }
   await recordHireInvoiceVoided(stripeInvoiceId);
   return "voided";
@@ -349,6 +350,8 @@ export async function recordHireInvoicePaid(
       ? intent.latest_charge
       : null;
   const paidAt = stripeInvoice.status_transitions.paid_at;
+  // A refund can land before this does, and its event would have found no row.
+  const refundedCents = charge?.amount_refunded ?? 0;
 
   const { count } = await db.hireInvoice.updateMany({
     where: { id: invoice.id, status: "OPEN" },
@@ -357,6 +360,8 @@ export async function recordHireInvoicePaid(
       paidAt: paidAt ? new Date(paidAt * 1000) : new Date(),
       paidWith: paidWithFromCharge(charge),
       stripePaymentIntentId: intent?.id ?? null,
+      refundedCents,
+      ...(refundedCents >= invoice.totalCents ? { status: "REFUNDED" } : {}),
     },
   });
   if (count === 0) return;
@@ -429,7 +434,7 @@ export async function recordHireInvoicePaidByIntent(
   await recordHireInvoicePaid(await stripe.invoices.retrieve(invoiceId));
 }
 
-/** Mark an invoice void because Stripe says it is: voided or written off there. */
+/** Mark an invoice void because Stripe says it is. */
 export async function recordHireInvoiceVoided(stripeInvoiceId: string) {
   await db.hireInvoice.updateMany({
     where: { stripeInvoiceId, status: "OPEN" },
@@ -489,8 +494,6 @@ export async function refreshHireInvoice(stripeInvoiceId: string) {
     expand: ["confirmation_secret"],
   });
   if (invoice.status === "paid") await recordHireInvoicePaid(invoice);
-  if (invoice.status === "void" || invoice.status === "uncollectible") {
-    await recordHireInvoiceVoided(invoice.id);
-  }
+  if (invoice.status === "void") await recordHireInvoiceVoided(invoice.id);
   return invoice;
 }

@@ -85,7 +85,10 @@ function InvoiceDetails({ rental }: { rental: Rental }) {
   const onError = (error: { message: string }) => toast.error(error.message);
 
   const issue = api.rentals.adminIssueHireInvoice.useMutation({
-    onError,
+    onError: async (error) => {
+      onError(error);
+      await refresh();
+    },
     onSuccess: async (outcome) => {
       toast.success(
         outcome === "paid"

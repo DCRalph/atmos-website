@@ -1534,6 +1534,13 @@ export const rentalsRouter = createTRPCRouter({
         });
       }
       const outcome = await issueHireInvoice(contract.id).catch(asTrpcError);
+      if (outcome === "not-ready") {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "The hire agreement is no longer signed. Reload and check it.",
+        });
+      }
       if (outcome === "no-fee") {
         throw new TRPCError({
           code: "BAD_REQUEST",

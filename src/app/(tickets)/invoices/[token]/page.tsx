@@ -11,7 +11,6 @@ import { shortDueDate } from "~/lib/hire-invoices";
 import { unlistedPageMetadata } from "~/lib/seo-constants";
 import { formatNZD } from "~/lib/ticketing/money";
 import { paidWithLabel } from "~/lib/ticketing/payment-methods";
-import { contractSigningUrl } from "~/server/contracts";
 import { db } from "~/server/db";
 import { refreshHireInvoice } from "~/server/hire-invoices";
 import { getTicketingSettings } from "~/server/ticketing/settings";
@@ -37,7 +36,7 @@ const loadInvoice = (payToken: string) =>
   db.hireInvoice.findUnique({
     where: { payToken },
     include: {
-      contract: { select: { fields: true, signToken: true } },
+      contract: { select: { fields: true } },
     },
   });
 
@@ -168,14 +167,6 @@ export default async function HireInvoicePage({
         {invoice.pdfUrl ? (
           <a className={outlinePillClass} href={invoice.pdfUrl}>
             Invoice PDF
-          </a>
-        ) : null}
-        {invoice.contract.signToken ? (
-          <a
-            className={outlinePillClass}
-            href={contractSigningUrl(invoice.contract.signToken)}
-          >
-            Hire agreement
           </a>
         ) : null}
       </div>

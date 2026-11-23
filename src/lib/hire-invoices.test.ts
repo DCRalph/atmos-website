@@ -30,6 +30,13 @@ describe("hireInvoiceDueAt", () => {
     ).toBe("2027-04-09T00:00:00.000Z");
   });
 
+  test("stands when signed on the due day before noon", () => {
+    const morning = new Date("2026-12-11T20:00:00.000Z"); // 9am Sat 12 Dec NZ
+    expect(hireInvoiceDueAt(collection, morning).toISOString()).toBe(
+      "2026-12-11T23:00:00.000Z",
+    );
+  });
+
   test("moves to tomorrow when signed after it has passed", () => {
     const signedLate = new Date("2026-12-20T02:00:00.000Z"); // 3pm Sun 20 Dec NZ
     // Noon NZDT on Mon 21 Dec, the same all day.

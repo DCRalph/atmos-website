@@ -19,15 +19,14 @@ function nzDayAfter(date: Date, days: number): string {
 
 /**
  * When a hire's fee is due: noon in New Zealand, `HIRE_FEE_DUE_DAYS`
- * calendar days after collection, or tomorrow when that has already gone by
- * (an agreement signed late; Stripe refuses a due date in the past). Noon
- * keeps it on the same day whatever daylight saving does, and gives the same
- * answer all day, so a retried issue asks Stripe for the same invoice.
+ * calendar days after collection, or noon tomorrow when that has already
+ * gone by (an agreement signed late; Stripe refuses a due date in the past).
+ * Noon keeps it on the same day whatever daylight saving does.
  */
 export function hireInvoiceDueAt(collection: Date, now: Date): Date {
   const due = nzDate(nzDayAfter(collection, HIRE_FEE_DUE_DAYS), 12);
   const earliest = nzDate(nzDayAfter(now, 1), 12);
-  return due < earliest ? earliest : due;
+  return due > now ? due : earliest;
 }
 
 /** What the invoice says it is for, in the signed agreement's own words. */
