@@ -53,6 +53,7 @@ const OVERRIDES: Partial<Record<string, Risk>> = {
   "artistProfiles.linkUserToProfile": "destructive",
   "ticketAdmin.updateBuyer": "destructive", // moves the tickets to another email
   "ticketEvents.addViewer": "destructive", // shows an outsider the event's sales
+  "ticketEvents.createShareLink": "destructive", // a link anyone holding it can open
 
   // Not named like an edit, but no more final than one.
   "gigs.setPosterFromUpload": "write",

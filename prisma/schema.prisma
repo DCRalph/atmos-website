@@ -2119,6 +2119,7 @@ model TicketEvent {
   scans         TicketScan[]
   staff         TicketEventStaff[]
   viewers       TicketEventViewer[]
+  shareLinks    TicketEventShareLink[]
   salesAlerts   TicketEventSalesAlert[]
   eventCodes    EventCode[]
   linkBatches   TicketLinkBatch[]
@@ -2621,6 +2622,26 @@ model TicketEventViewer {
   @@unique([eventId, userId])
   @@index([userId])
   @@map("ticket_event_viewer")
+}
+
+/// A link an admin hands to somebody who won't sign in: whoever opens
+/// `/share/[token]` sees this event's read-only organiser pages, the same as
+/// a `TicketEventViewer`. Deleting the row is how a link is revoked.
+model TicketEventShareLink {
+  id      String @id @default(cuid())
+  eventId String
+  /// The secret in the URL. Kept readable so an admin can copy the link again.
+  token   String @unique
+  /// Who it was made for, so the admin knows which one to revoke.
+  label   String
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  event TicketEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("ticket_event_share_link")
 }
 
 /// A code that works on any event: a discount and nothing more. Codes that

@@ -32,7 +32,10 @@ import { TicketLinksPanel } from "~/components/admin/ticketing/ticket-links-pane
 import { EventCodesPanel } from "~/components/admin/ticketing/event-codes-panel";
 import { CampaignsPanel } from "~/components/admin/ticketing/campaigns-panel";
 import { SalesAlertsPanel } from "~/components/admin/ticketing/sales-alerts-panel";
-import { EventViewersPanel } from "~/components/admin/ticketing/event-viewers-panel";
+import {
+  EventShareLinksPanel,
+  EventViewersPanel,
+} from "~/components/admin/ticketing/event-viewers-panel";
 import { EventSummary } from "~/components/admin/ticketing/event-summary";
 import { EventActivityPanel } from "~/components/admin/ticketing/event-activity-panel";
 import {
@@ -329,7 +332,10 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
             <SalesAlertsPanel eventId={event.id} />
           ) : null}
           {page === "access" && event ? (
-            <EventViewersPanel eventId={event.id} />
+            <div className="space-y-6">
+              <EventViewersPanel eventId={event.id} />
+              <EventShareLinksPanel eventId={event.id} />
+            </div>
           ) : null}
         </div>
       </SaveBar>
