@@ -1,6 +1,7 @@
 import "server-only";
 import { readTasks, taskPeople } from "./data";
-import { sendPush, sendSilentPush } from "~/server/push";
+import { publish } from "~/server/notify";
+import { sendSilentPush } from "~/server/push";
 import { taskDayActivity } from "~/lib/tasks/live-activity";
 import { taskPushBody } from "~/lib/tasks/push-copy";
 export type TaskNotice = {
@@ -55,13 +56,23 @@ export async function notifyTasks(
             ),
           ];
       if (ids.length)
-        await sendPush({
-          audience: { kind: "users", userIds: ids },
-          title: notice.title,
-          body: taskPushBody(notice.body),
-          data: { url: `/tasks/${notice.taskId}`, taskId: notice.taskId },
-          categoryId: "TASK_ACTIONS",
-        });
+        await publish(
+          {
+            topic: "tasks",
+            title: notice.title,
+            message: taskPushBody(notice.body),
+            priority: 3,
+            tags: ["tasks"],
+            click: `/tasks/${notice.taskId}`,
+          },
+          {
+            source: "tasks",
+            audience: { kind: "users", userIds: ids },
+            categoryId: "TASK_ACTIONS",
+            data: { taskId: notice.taskId },
+            pushPriority: "default",
+          },
+        );
     }
     const ids = [
       ...new Set(

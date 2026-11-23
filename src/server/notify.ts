@@ -10,8 +10,10 @@ import type { PublishInput } from "~/lib/notify/ntfy-request";
  * Publishing a notification to a topic.
  *
  * The one place a notification is turned into pushes, shared by the ntfy
- * endpoint, the developer API, the admin compose page and the app's compose
- * screen — so all of them enforce the same limits and leave the same audit row.
+ * endpoint, the developer API, the compose screens and every notification the
+ * site sends on its own (run sheet cues, tasks, sales alerts, gig chat, the Tap
+ * to Pay launch) — so all of them leave the same audit row and the history
+ * shows everything that reached a lock screen. Only silent wake-ups skip it.
  *
  * ntfy semantics are kept where they are cheap and dropped where they are not:
  * publishing to a topic nobody is subscribed to succeeds with `devices: 0`
@@ -53,6 +55,13 @@ export async function publish(
     apiKeyId?: string;
     /** For a direct send, what it was addressed to, kept for the history. */
     recipients?: Prisma.InputJsonValue;
+    /** Extra payload the app acts on, such as a task id. Not logged. */
+    data?: Record<string, string>;
+    /**
+     * Expo delivery priority, when it should differ from `input.priority`'s.
+     * "default" leaves it to Expo: high on iOS, normal on Android.
+     */
+    pushPriority?: "normal" | "high" | "default";
   },
 ): Promise<PublishedMessage> {
   const audience: Audience = origin.audience ?? {
@@ -67,10 +76,13 @@ export async function publish(
     // the topic names itself rather than leaving the app name to do it.
     title: input.title ?? fallbackTitle(input.topic),
     body: input.message,
-    data: notificationData(input),
+    data: { ...origin.data, ...notificationData(input) },
     // 1 and 2 are ntfy's "do not interrupt me" tiers.
     sound: input.priority <= 2 ? null : "default",
-    priority: input.priority >= 4 ? "high" : "normal",
+    priority:
+      origin.pushPriority === "default"
+        ? undefined
+        : (origin.pushPriority ?? (input.priority >= 4 ? "high" : "normal")),
     categoryId: origin.categoryId,
   });
 

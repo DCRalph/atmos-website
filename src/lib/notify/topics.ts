@@ -112,7 +112,15 @@ export const PUBLISH_SOURCES = {
   },
   tasks: {
     label: "Tasks",
-    description: "A task reminder, to the task's people",
+    description: "A task notice or reminder, to the task's people",
+  },
+  chat: {
+    label: "Gig chat",
+    description: "A message in a gig's room, to the room's other members",
+  },
+  "tap-to-pay": {
+    label: "Tap to Pay launch",
+    description: "The Tap to Pay on iPhone launch notice, to door staff",
   },
   ticketing: {
     label: "Ticketing",

@@ -10,7 +10,7 @@ import {
 } from "./tasks/data";
 import { notifyTasks } from "./tasks/notifications";
 import { setTaskStatus } from "./tasks/mutations";
-import { sendPush, countAudience, type Audience } from "./push";
+import type { Audience } from "./push";
 import { publish } from "./notify";
 import { nudgeSteps, wakingAt, type NudgeStep } from "~/lib/tasks/nudges";
 import { wasFlagged } from "~/lib/tasks/standings";
@@ -84,33 +84,26 @@ async function deliverNudge(
   const audience: Audience = { kind: "users", userIds };
   const fullCopy = reminderCopy(task, step.step, nagVoice, roundsEnabled);
   const copy = { ...fullCopy, body: taskPushBody(fullCopy.body) };
-  let devices = 0,
-    delivered = 0;
-  if (step.allAdmins) {
-    const result = await publish(
-      {
-        topic: "tasks",
-        title: copy.title,
-        message: copy.body,
-        priority: 5,
-        tags: ["tasks"],
-        click: `/tasks/${task.id}`,
-      },
-      { source: "tasks", audience, categoryId: "TASK_ACTIONS" },
-    );
-    devices = result.delivery.devices;
-    delivered = result.delivery.delivered;
-  } else {
-    devices = await countAudience(audience);
-    const result = await sendPush({
+  const result = await publish(
+    {
+      topic: "tasks",
+      title: copy.title,
+      message: copy.body,
+      // An escalation is max; otherwise high or normal, as the step says.
+      priority: step.allAdmins ? 5 : step.priority === "high" ? 4 : 3,
+      tags: ["tasks"],
+      click: `/tasks/${task.id}`,
+    },
+    {
+      source: "tasks",
       audience,
-      ...copy,
-      data: { url: `/tasks/${task.id}`, taskId: task.id },
-      priority: step.priority,
       categoryId: "TASK_ACTIONS",
-    });
-    delivered = result.sent;
-  }
+      data: { taskId: task.id },
+      // Escalations go high from priority 5; a gentle nudge stays normal.
+      pushPriority: step.allAdmins ? undefined : step.priority,
+    },
+  );
+  const { devices, delivered } = result.delivery;
   await db.taskNudge.update({
     where: { id: nudgeId },
     data: { devices, delivered },
@@ -257,16 +250,20 @@ async function batchCreations(tasks: readonly TaskRow[], now: Date) {
   for (const [userId, rows] of groups) {
     const first = rows[0]!;
     const audience: Audience = { kind: "users", userIds: [userId] };
-    const devices = await countAudience(audience);
-    const { sent } = await sendPush({
-      audience,
-      title: `${rows.length} new task${rows.length === 1 ? "" : "s"}`,
-      body: `${rows.length === 1 ? first.title : `${rows.length} tasks`}${rows.every((row) => row.createdById === first.createdById) && first.createdBy ? ` from ${first.createdBy.name}` : ""}. First due ${formatTaskDate(first.dueAt)}.`,
-      data: { url: rows.length === 1 ? `/tasks/${first.id}` : "/tasks" },
-    });
+    const { delivery } = await publish(
+      {
+        topic: "tasks",
+        title: `${rows.length} new task${rows.length === 1 ? "" : "s"}`,
+        message: `${rows.length === 1 ? first.title : `${rows.length} tasks`}${rows.every((row) => row.createdById === first.createdById) && first.createdBy ? ` from ${first.createdBy.name}` : ""}. First due ${formatTaskDate(first.dueAt)}.`,
+        priority: 3,
+        tags: ["tasks"],
+        click: rows.length === 1 ? `/tasks/${first.id}` : "/tasks",
+      },
+      { source: "tasks", audience, pushPriority: "default" },
+    );
     await db.taskNudge.updateMany({
       where: { taskId: { in: rows.map((row) => row.id) }, step: "created" },
-      data: { devices, delivered: sent },
+      data: delivery,
     });
   }
   return groups.size;
@@ -324,12 +321,21 @@ async function mondayBrief(tasks: readonly TaskRow[], now: Date) {
     } catch {
       /* A deterministic brief still works without AI. */
     }
-    await sendPush({
-      audience: { kind: "users", userIds: [person.id] },
-      title: "Your Atmos week",
-      body,
-      data: { url: "/tasks" },
-    });
+    await publish(
+      {
+        topic: "tasks",
+        title: "Your Atmos week",
+        message: body,
+        priority: 3,
+        tags: ["tasks"],
+        click: "/tasks",
+      },
+      {
+        source: "tasks",
+        audience: { kind: "users", userIds: [person.id] },
+        pushPriority: "default",
+      },
+    );
   }
 }
 async function contingencyAlerts(tasks: readonly TaskRow[], now: Date) {

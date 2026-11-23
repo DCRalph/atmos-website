@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import type { createTRPCContext } from "./api/trpc";
 import type { publish } from "./notify";
-import type { sendPush } from "./push";
 import { addDays, dayKey, nzParts } from "~/lib/tasks/time";
 
 // Opt in with a disposable, schema-initialised database. Never fall back to .env.
@@ -36,19 +35,14 @@ if (testUrl) {
     R2_SECRET_ACCESS_KEY: "",
   });
   process.env.SKIP_ENV_VALIDATION = "1";
-  const pushes: Parameters<typeof sendPush>[0][] = [];
   mock.module("~/server/push", () => ({
-    sendPush: async (input: Parameters<typeof sendPush>[0]) => {
-      pushes.push(input);
-      return { sent: 0, removed: 0 };
-    },
     sendSilentPush: async () => ({ sent: 0, removed: 0 }),
-    countAudience: async () => 0,
   }));
-  const published: Parameters<typeof publish>[0][] = [];
+  type Published = Parameters<typeof publish>;
+  const published: (Published[0] & Published[1])[] = [];
   mock.module("~/server/notify", () => ({
-    publish: async (input: Parameters<typeof publish>[0]) => {
-      published.push(input);
+    publish: async (...[input, origin]: Published) => {
+      published.push({ ...input, ...origin });
       return { delivery: { devices: 0, delivered: 0 } };
     },
   }));
@@ -285,7 +279,7 @@ if (testUrl) {
     const ids = [loose.id, tight.id, waiting.id];
 
     // Three reassigned to Cat: Cat and Ana hear once each, not three times.
-    pushes.length = 0;
+    published.length = 0;
     assert.deepEqual(
       await ana.bulk({
         ids,
@@ -294,9 +288,9 @@ if (testUrl) {
       { changed: 3, failed: [] },
     );
     const heard = (id: string) =>
-      pushes.filter(
+      published.filter(
         (push) =>
-          push.audience.kind === "users" && push.audience.userIds.includes(id),
+          push.audience?.kind === "users" && push.audience.userIds.includes(id),
       );
     assert.equal(heard("task-test-c").length, 1);
     assert.equal(heard("task-test-c")[0]!.title, "3 tasks updated");
