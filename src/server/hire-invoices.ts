@@ -1,6 +1,7 @@
 import "server-only";
 
 import { randomBytes } from "node:crypto";
+import { TRPCError } from "@trpc/server";
 import type Stripe from "stripe";
 import { z } from "zod";
 
@@ -242,6 +243,63 @@ export async function issueHireInvoice(
 
   await emailHireInvoice(row.id);
   return "issued";
+}
+
+/**
+ * Clear the way for deleting rentals: void each one's unpaid invoice in
+ * Stripe, so the emailed pay link stops taking money for a hire that no
+ * longer exists. A paid invoice is a record of money received, so deleting
+ * its rental is refused until it has been refunded. Checks every invoice
+ * with Stripe before voiding any, so a refusal changes nothing.
+ */
+export async function voidInvoicesForDeletedRentals(
+  rentalIds: string[],
+  userId: string,
+): Promise<void> {
+  const contracts = await db.contract.findMany({
+    where: { rentalId: { in: rentalIds }, hireInvoice: { isNot: null } },
+    select: {
+      title: true,
+      hireInvoice: {
+        select: { id: true, number: true, status: true, stripeInvoiceId: true },
+      },
+    },
+  });
+  const paidRefusal = (number: string) =>
+    new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `Invoice ${number} for this hire has been paid. Refund it in Stripe before deleting.`,
+    });
+
+  // Stripe first: an invoice paid moments ago may not have reached us yet.
+  for (const contract of contracts) {
+    if (contract.hireInvoice?.status === "OPEN") {
+      const live = await refreshHireInvoice(
+        contract.hireInvoice.stripeInvoiceId,
+      );
+      if (live.status === "paid") contract.hireInvoice.status = "PAID";
+    }
+  }
+  const invoices = contracts.flatMap((contract) =>
+    contract.hireInvoice
+      ? [{ ...contract.hireInvoice, title: contract.title }]
+      : [],
+  );
+  const paid = invoices.find((invoice) => invoice.status === "PAID");
+  if (paid) throw paidRefusal(paid.number);
+
+  for (const invoice of invoices) {
+    if (invoice.status !== "OPEN") continue;
+    if ((await retireOpenInvoice(invoice.stripeInvoiceId)) === "paid") {
+      throw paidRefusal(invoice.number);
+    }
+    await logActivity({
+      type: ActivityType.OTHER,
+      action: `Invoice ${invoice.number} voided to delete its rental (${invoice.title})`,
+      details: { hireInvoiceId: invoice.id },
+      userId,
+    });
+  }
 }
 
 /**

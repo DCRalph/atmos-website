@@ -598,7 +598,7 @@ export function GearRentalManager() {
               const ok = await confirm({
                 title: "Delete rental record",
                 description:
-                  "Delete this rental record? This action cannot be undone.",
+                  "Delete this rental record? This action cannot be undone. An unpaid invoice for it is voided, so its pay link stops working. A paid one has to be refunded in Stripe first.",
                 confirmLabel: "Delete",
                 variant: "destructive",
               });
@@ -802,7 +802,7 @@ export function GearRentalManager() {
             onClick={async () => {
               const ok = await confirm({
                 title: "Delete package",
-                description: `Delete ${gearPackage.name}? This will also remove any rentals for it.`,
+                description: `Delete ${gearPackage.name}? This will also remove any rentals for it and void their unpaid invoices.`,
                 confirmLabel: "Delete",
                 variant: "destructive",
               });
