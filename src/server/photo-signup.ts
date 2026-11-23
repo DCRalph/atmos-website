@@ -7,12 +7,11 @@ import { FileUploadStatus, GigStatus, type Prisma } from "~Prisma/client";
 import { gigPath } from "~/lib/gig-url";
 import { getMediaDisplayUrl } from "~/lib/media-url";
 import { SITE_URL } from "~/lib/seo-constants";
-import { formatEventDateLong } from "~/lib/ticketing/dates";
-import { escapeHtml, sendEmailBatch } from "~/server/email/send";
+import { renderPhotosEmail } from "~/emails/photos";
+import { sendEmailBatch } from "~/server/email/send";
 import { resolveGigId } from "~/server/gig-lookup";
 import { db } from "~/server/db";
 import { gigOgImage } from "~/server/og-image";
-import { SITE_ACCENT } from "~/lib/site-constants";
 
 /**
  * Gig photo signup, outside the router: what the public page draws, and the
@@ -91,73 +90,6 @@ export const photoSignupGig = cache(async (idOrSlug: string) => {
   };
 });
 
-/** The "photos are up" email. One template for every recipient. */
-function renderPhotosEmail(gig: {
-  title: string;
-  venue: string;
-  startsAt: Date;
-  photos: { fileUploadId: string | null; url: string | null }[];
-  galleryUrl: string;
-}) {
-  const title = escapeHtml(gig.title);
-  const when = `${formatEventDateLong(gig.startsAt)}, ${gig.venue}`;
-  const thumbs = gig.photos
-    .slice(0, 4)
-    .map(
-      (photo) =>
-        `<td width="50%" style="padding:2px;"><a href="${escapeHtml(gig.galleryUrl)}"><img src="${escapeHtml(emailImage(photo))}" width="296" alt="" style="display:block;width:100%;height:auto;border:0;"></a></td>`,
-    );
-  const rows = [thumbs.slice(0, 2), thumbs.slice(2, 4)]
-    .filter((row) => row.length)
-    .map((row) => `<tr>${row.join("")}</tr>`)
-    .join("");
-
-  const html = `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="dark light">
-<title>The photos from ${title} are up</title>
-</head>
-<body style="margin:0;padding:0;background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#000;padding:24px 12px;">
-<tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
-<tr><td style="padding:8px 0 24px;">
-  <img src="${SITE_URL}/email/atmos-logo.png" width="160" height="36" alt="ATMOS" style="display:block;width:160px;height:auto;border:0;">
-</td></tr>
-<tr><td style="padding:0 0 18px;">
-  <div style="font-size:30px;line-height:1.2;font-weight:800;letter-spacing:-0.02em;margin-bottom:10px;">The photos are up</div>
-  <div style="font-size:15px;color:#999;line-height:1.7;">${title}<br>${escapeHtml(when)}</div>
-</td></tr>
-${rows ? `<tr><td style="padding:0 0 18px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table></td></tr>` : ""}
-<tr><td style="padding:0 0 18px;">
-  <a href="${escapeHtml(gig.galleryUrl)}" style="display:inline-block;padding:14px 22px;background:${SITE_ACCENT};color:#000;text-decoration:none;font-size:15px;font-weight:700;border-radius:999px;">See the photos</a>
-</td></tr>
-<tr><td style="padding:24px 0 8px;color:#999;font-size:12px;line-height:1.6;">
-You asked to hear when the photos from ${title} were up.
-</td></tr>
-</table>
-</td></tr>
-</table>
-</body>
-</html>`;
-
-  const text = [
-    "The photos are up",
-    "",
-    gig.title,
-    when,
-    "",
-    `See them: ${gig.galleryUrl}`,
-    "",
-    `You asked to hear when the photos from ${gig.title} were up.`,
-  ].join("\n");
-
-  return { subject: `The photos from ${gig.title} are up`, html, text };
-}
-
 /**
  * Email everybody signed up to this gig who has not had the email yet, and
  * mark them as sent. Safe to run again: only the unsent get anything, which is
@@ -189,7 +121,7 @@ export async function sendPhotosEmail(gigId: string) {
     title: gig.title,
     venue: gig.subtitle,
     startsAt: gig.gigStartTime,
-    photos: gig.media,
+    thumbnails: gig.media.map(emailImage),
     galleryUrl: `${SITE_URL}${gigPath(gig)}#photos`,
   });
 

@@ -3,7 +3,7 @@ import "server-only";
 import { db } from "~/server/db";
 import { publish } from "~/server/notify";
 import { sendEmail } from "~/server/email/send";
-import { renderTapToPayLaunchEmail } from "~/server/ticketing/email/templates";
+import { renderTapToPayLaunchEmail } from "~/emails/tickets";
 import { getTicketingSettings } from "~/server/ticketing/settings";
 import { env } from "~/env";
 

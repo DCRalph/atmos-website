@@ -32,7 +32,7 @@ import { sendRefundEmail } from "~/server/ticketing/email/send";
 import {
   renderRefundCodeEmail,
   renderRefundOfferEmail,
-} from "~/server/ticketing/email/templates";
+} from "~/emails/tickets";
 import { refundOrderThroughStripe } from "~/server/ticketing/refunds";
 import { getTicketingSettings } from "~/server/ticketing/settings";
 import { logActivity } from "~/server/utils/activity-log";

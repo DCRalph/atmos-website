@@ -11,13 +11,14 @@ import { hireInvoiceDescription, hireInvoiceDueAt } from "~/lib/hire-invoices";
 import { paidWithLabel } from "~/lib/ticketing/payment-methods";
 import { parsePriceToCents } from "~/lib/ticketing/money";
 import { db } from "~/server/db";
-import { escapeHtml, sendEmail } from "~/server/email/send";
+import { sendEmail } from "~/server/email/send";
 import { getStripe, paidWithFromCharge } from "~/server/stripe";
 import { getTicketingSettings } from "~/server/ticketing/settings";
 import {
   renderHireInvoiceEmail,
   renderHireInvoicePaidEmail,
-} from "~/server/ticketing/email/templates";
+} from "~/emails/rentals";
+import { renderRentalPaidStaffEmail } from "~/emails/staff";
 import { logActivity } from "~/server/utils/activity-log";
 import { ActivityType } from "~Prisma/client";
 
@@ -452,15 +453,17 @@ export async function recordHireInvoicePaid(
     );
   }
   if (staff) {
-    const total = `$${(invoice.totalCents / 100).toFixed(2)}`;
-    const line = `${fields.name} paid ${total} for invoice ${invoice.number} (${invoice.description}).`;
     sends.push(
       sendEmail({
         from: "notifications",
         to: staff,
-        subject: `Rental paid: ${fields.name}, ${total}`,
-        text: `${line}\n\n${env.NEXT_PUBLIC_APP_URL}/admin/rentals`,
-        html: `<p>${escapeHtml(line)}</p><p><a href="${env.NEXT_PUBLIC_APP_URL}/admin/rentals">Rentals in admin</a></p>`,
+        ...renderRentalPaidStaffEmail({
+          name: fields.name,
+          totalCents: invoice.totalCents,
+          number: invoice.number,
+          description: invoice.description,
+          adminUrl: `${env.NEXT_PUBLIC_APP_URL}/admin/rentals`,
+        }),
       }),
     );
   }
