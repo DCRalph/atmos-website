@@ -16,6 +16,7 @@ import {
   signContract,
 } from "~/server/contract-signing";
 import { saveHireContract, savePerformerContract } from "~/server/contracts";
+import { issueHireInvoice } from "~/server/hire-invoices";
 import { enforceRateLimit } from "~/server/ticketing/rate-limit";
 import { getRequestMetadata } from "~/server/utils/activity-log";
 import { ContractStatus } from "~Prisma/client";
@@ -51,7 +52,8 @@ export const contractsRouter = createTRPCRouter({
    * all a sent or signed contract allows. See `~/server/contracts`.
    *
    * A performer agreement set to sent or signed by hand (it went out on
-   * paper) gets its payment task here, as one sent by email does.
+   * paper) gets its payment task here, as one sent by email does, and a hire
+   * agreement marked signed gets its invoice.
    */
   save: adminProcedure
     .input(contractInput({ status: z.enum(ContractStatus) }))
@@ -62,6 +64,13 @@ export const contractsRouter = createTRPCRouter({
           : await saveHireContract({ ...input, userId: ctx.user.id });
       if (stored.status !== "DRAFT") {
         await ensurePaymentTask(stored.id, ctx.user.id);
+      }
+      if (input.kind === "HIRE" && stored.status === "SIGNED") {
+        // The save stands if this fails: the rentals table shows the hire
+        // as not invoiced, with a button to try again.
+        await issueHireInvoice(stored.id).catch((cause: unknown) =>
+          console.error("[hire-invoice] could not issue on save", cause),
+        );
       }
       return stored;
     }),

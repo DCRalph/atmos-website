@@ -1,6 +1,7 @@
 import posthog from "posthog-js";
 import { env } from "~/env";
 import { redactPaymentUrl } from "~/lib/donation-analytics";
+import { redactInvoiceToken } from "~/lib/hire-invoices";
 import {
   redactShareToken,
   shareTokenFromPath,
@@ -12,7 +13,9 @@ export function initPostHog() {
   // A share link's address is its credential, and PostHog sends the landing
   // URL with more than events (the flags call carries it too), so it stays
   // off there. `before_send` still redacts, for a session that began elsewhere.
-  if (shareTokenFromPath(window.location.pathname)) return;
+  // The same goes for a hire invoice's pay link.
+  const path = window.location.pathname;
+  if (shareTokenFromPath(path) || path.startsWith("/invoices/")) return;
   posthog.init(env.NEXT_PUBLIC_POSTHOG_KEY, {
     api_host: "/ph",
     ui_host: "https://us.posthog.com",
@@ -23,7 +26,9 @@ export function initPostHog() {
         if (!bag) continue;
         for (const [key, value] of Object.entries(bag)) {
           if (typeof value === "string") {
-            bag[key] = redactShareToken(redactPaymentUrl(value));
+            bag[key] = redactInvoiceToken(
+              redactShareToken(redactPaymentUrl(value)),
+            );
           }
         }
       }

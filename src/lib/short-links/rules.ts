@@ -35,6 +35,7 @@ export const RESERVED_SLUGS = new Set([
   "events",
   "gigs",
   "go",
+  "invoices",
   "l",
   "legal",
   "lifetime",

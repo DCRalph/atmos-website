@@ -995,3 +995,111 @@ export function renderTapToPayLaunchEmail({
     text,
   };
 }
+
+/** One "label: value" row inside a panel. */
+function panelRow(label: string, value: string): string {
+  return `<tr><td style="padding:6px 0;color:${MUTED};font-size:14px;">${escapeHtml(label)}</td><td style="padding:6px 0;color:${TEXT};font-size:14px;text-align:right;">${escapeHtml(value)}</td></tr>`;
+}
+
+type HireInvoiceEmailInput = {
+  name: string;
+  number: string;
+  /** "Equipment hire, Sat 5 Dec 2026 to Mon 8 Dec 2026". */
+  description: string;
+  totalCents: number;
+  gstCents: number;
+  /** "Sat 12 Dec 2026". */
+  dueOn: string;
+  url: string;
+  legalName: string;
+  gstNumber: string | null;
+};
+
+/**
+ * The tax invoice for a signed hire agreement: the amount, when it is due,
+ * and the button that opens the page to pay it. Sent when the agreement is
+ * signed, and again from admin.
+ */
+export function renderHireInvoiceEmail(input: HireInvoiceEmailInput): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const total = formatNZD(input.totalCents);
+  const subject = `Invoice ${input.number} from Atmos: ${total} due ${input.dueOn}`;
+  const from = input.gstNumber
+    ? [input.legalName, `GST ${input.gstNumber}`]
+    : [input.legalName];
+
+  const body = `
+<tr><td style="padding:0 0 18px;">
+  <div style="font-size:30px;line-height:1.2;font-weight:800;letter-spacing:-0.02em;color:${TEXT};margin-bottom:10px;">${escapeHtml(total)} due ${escapeHtml(input.dueOn)}</div>
+  <div style="font-size:15px;color:${MUTED};line-height:1.7;">Hi ${escapeHtml(input.name)}, thanks for signing. Here is your tax invoice for ${escapeHtml(input.description.charAt(0).toLowerCase() + input.description.slice(1))}.</div>
+</td></tr>
+<tr><td style="padding:0 0 20px;">
+  ${panel(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    ${panelRow("Invoice", input.number)}
+    ${panelRow("Total incl. GST", total)}
+    ${panelRow("Includes GST", formatNZD(input.gstCents))}
+    ${panelRow("Due", input.dueOn)}
+  </table>`)}
+</td></tr>
+<tr><td style="padding:0 0 8px;">
+  ${pillButton(input.url, `Pay ${total}`)}
+</td></tr>`;
+
+  const footer = `${from.map(escapeHtml).join(" &middot; ")}. Pay by card, Apple Pay, Google Pay and more. Questions? Reply to this email.`;
+
+  const text = [
+    `${total} due ${input.dueOn}`,
+    "",
+    `Hi ${input.name}, thanks for signing. Here is your tax invoice for ${input.description}.`,
+    "",
+    `Invoice: ${input.number}`,
+    `Total incl. GST: ${total}`,
+    `Includes GST: ${formatNZD(input.gstCents)}`,
+    `Due: ${input.dueOn}`,
+    "",
+    `Pay online: ${input.url}`,
+    "",
+    `${from.join(" · ")}. Questions? Reply to this email.`,
+  ].join("\n");
+
+  return { subject, html: layout(subject, body, footer), text };
+}
+
+/** The hirer's receipt once their invoice is paid: a link back to the paid page. */
+export function renderHireInvoicePaidEmail(input: {
+  name: string;
+  number: string;
+  totalCents: number;
+  paidWith: string | null;
+  url: string;
+}): { subject: string; html: string; text: string } {
+  const total = formatNZD(input.totalCents);
+  const subject = `Paid: invoice ${input.number} from Atmos`;
+  const how = input.paidWith ? ` with ${input.paidWith}` : "";
+
+  const body = `
+<tr><td style="padding:0 0 18px;">
+  <div style="font-size:30px;line-height:1.2;font-weight:800;letter-spacing:-0.02em;color:${TEXT};margin-bottom:10px;">Paid</div>
+  <div style="font-size:15px;color:${MUTED};line-height:1.7;">Thanks ${escapeHtml(input.name)}. We received ${escapeHtml(total)}${escapeHtml(how)} for invoice ${escapeHtml(input.number)}.</div>
+</td></tr>
+<tr><td style="padding:0 0 8px;">
+  ${pillButton(input.url, "View receipt")}
+</td></tr>`;
+
+  const text = [
+    "Paid",
+    "",
+    `Thanks ${input.name}. We received ${total}${how} for invoice ${input.number}.`,
+    "",
+    `View receipt: ${input.url}`,
+  ].join("\n");
+
+  return {
+    subject,
+    html: layout(subject, body, "Questions? Reply to this email."),
+    text,
+  };
+}

@@ -11,6 +11,12 @@ import {
 import { env } from "~/env";
 import { db } from "~/server/db";
 import { isDonationIntent, recordDonation } from "~/server/donations";
+import {
+  recordHireInvoicePaid,
+  recordHireInvoicePaidByIntent,
+  recordHireInvoiceRefund,
+  recordHireInvoiceVoided,
+} from "~/server/hire-invoices";
 import { captureDonationCompleted } from "~/server/donation-analytics";
 import { buyerFromCharge, getStripe } from "~/server/stripe";
 import { sendTicketEmail } from "~/server/ticketing/email/send";
@@ -31,6 +37,10 @@ import { logActivity } from "~/server/utils/activity-log";
  *
  * Donations ride the same events: a donation intent is recorded rather than
  * issued, and its refunds are tracked. See `~/server/donations.ts`.
+ *
+ * Equipment hire invoices are marked paid from their payment intent (no
+ * order metadata) or `invoice.paid`, voided by `invoice.voided`, and refunded
+ * by `charge.refunded`. See `~/server/hire-invoices.ts`.
  *
  * The browser also calls `ticketCheckout.confirm` the instant Stripe reports
  * success, which is what makes tickets appear immediately. Both paths run the
@@ -80,6 +90,12 @@ export async function POST(request: NextRequest): Promise<Response> {
       case "charge.refunded":
         await handleChargeRefunded(event.data.object);
         break;
+      case "invoice.paid":
+        await recordHireInvoicePaid(event.data.object);
+        break;
+      case "invoice.voided":
+        await recordHireInvoiceVoided(event.data.object.id);
+        break;
       case "charge.dispute.created":
         await handleDisputeOpened(event.data.object);
         break;
@@ -106,7 +122,11 @@ async function handlePaymentSucceeded(
   }
 
   const orderId = intent.metadata?.orderId;
-  if (!orderId) return;
+  if (!orderId) {
+    // A hire invoice's payment carries no metadata of ours.
+    await recordHireInvoicePaidByIntent(intent);
+    return;
+  }
 
   const charge =
     typeof intent.latest_charge === "string"
@@ -169,6 +189,10 @@ async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
     data: { refundedCents: charge.amount_refunded, refundedAt: new Date() },
   });
   if (donation.count > 0) return;
+
+  if (await recordHireInvoiceRefund(paymentIntentId, charge.amount_refunded)) {
+    return;
+  }
 
   const order = await db.ticketOrder.findUnique({
     where: { stripePaymentIntentId: paymentIntentId },

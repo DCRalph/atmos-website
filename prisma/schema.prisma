@@ -1554,9 +1554,57 @@ model Contract {
   setArtist   GigSetArtist? @relation(fields: [setArtistId], references: [id], onDelete: SetNull)
   rental      Rental?       @relation(fields: [rentalId], references: [id], onDelete: SetNull)
   paymentTask Task?         @relation(fields: [paymentTaskId], references: [id], onDelete: SetNull)
+  hireInvoice HireInvoice?
 
   @@index([status, updatedAt])
   @@map("contract")
+}
+
+enum HireInvoiceStatus {
+  /// Finalised in Stripe and waiting to be paid.
+  OPEN
+  PAID
+  /// Paid, then refunded in full. A partial refund stays `PAID`.
+  REFUNDED
+  /// Voided in admin or Stripe. Nothing is owed on it.
+  VOID
+}
+
+/// The tax invoice for a signed equipment hire agreement: a Stripe Invoice,
+/// paid on `/invoices/<payToken>`. One per contract. Issuing it again (the
+/// hire fee changed and the agreement was signed again) voids the old Stripe
+/// invoice and points this row at the new one, so the emailed link still works.
+/// See `~/server/hire-invoices`.
+model HireInvoice {
+  id                    String            @id @default(cuid())
+  contractId            String            @unique
+  contract              Contract          @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  /// The credential in the pay link: 32 random bytes. Kept across reissues.
+  payToken              String            @unique
+  stripeInvoiceId       String            @unique
+  /// Stripe's invoice number, e.g. "A1B2C3D4-0001".
+  number                String
+  /// Stripe's PDF of the tax invoice.
+  pdfUrl                String?
+  /// What it is for, as printed: "Equipment hire, Sat 5 Dec 2026 to Mon 8 Dec 2026".
+  description           String
+  /// GST inclusive.
+  totalCents            Int
+  gstCents              Int
+  dueAt                 DateTime
+  status                HireInvoiceStatus @default(OPEN)
+  emailedAt             DateTime?
+  emailedTo             String?
+  paidAt                DateTime?
+  /// `paidWithFromCharge`: "card", "apple_pay", "afterpay_clearpay"...
+  paidWith              String?
+  stripePaymentIntentId String?           @unique
+  refundedCents         Int               @default(0)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@index([status, dueAt])
+  @@map("hire_invoice")
 }
 
 model DiscountRule {

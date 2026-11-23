@@ -15,6 +15,13 @@ import {
 } from "~/server/api/trpc";
 import { env } from "~/env";
 import { escapeHtml, sendEmail } from "~/server/email/send";
+import {
+  emailHireInvoice,
+  hireInvoiceUrl,
+  issueHireInvoice,
+  voidHireInvoice,
+} from "~/server/hire-invoices";
+import { stripeInvoiceUrl } from "~/server/stripe";
 import { getRequestMetadata, logActivity } from "~/server/utils/activity-log";
 
 const packageItemInputSchema = z.object({
@@ -1237,6 +1244,15 @@ async function sendRentalDecisionEmail(
   }
 }
 
+/** A failure from Stripe or email, as a message the admin can read. */
+function asTrpcError(cause: unknown): never {
+  throw new TRPCError({
+    code: "INTERNAL_SERVER_ERROR",
+    message: cause instanceof Error ? cause.message : "Something went wrong.",
+    cause,
+  });
+}
+
 export const rentalsRouter = createTRPCRouter({
   getPublicPackages: publicProcedure.query(async ({ ctx }) => {
     return ctx.db.gearPackage.findMany({
@@ -1448,12 +1464,103 @@ export const rentalsRouter = createTRPCRouter({
     });
   }),
 
+  /**
+   * Every rental for the admin table, with its hire agreement's status and
+   * invoice for the Payment column. Admin only: the invoice's pay link is a
+   * credential.
+   */
   adminGetRentals: adminProcedure.query(async ({ ctx }) => {
-    return ctx.db.rental.findMany({
-      include: rentalInclude,
+    const rentals = await ctx.db.rental.findMany({
+      include: {
+        ...rentalInclude,
+        contract: {
+          select: {
+            status: true,
+            hireInvoice: {
+              select: {
+                id: true,
+                number: true,
+                description: true,
+                status: true,
+                totalCents: true,
+                gstCents: true,
+                refundedCents: true,
+                dueAt: true,
+                emailedAt: true,
+                emailedTo: true,
+                paidAt: true,
+                paidWith: true,
+                payToken: true,
+                stripeInvoiceId: true,
+                createdAt: true,
+              },
+            },
+          },
+        },
+      },
       orderBy: { createdAt: "desc" },
     });
+    return rentals.map(({ contract, ...rental }) => {
+      const invoice = contract?.hireInvoice;
+      return {
+        ...rental,
+        contractStatus: contract?.status ?? null,
+        invoice: invoice
+          ? {
+              ...invoice,
+              payUrl: hireInvoiceUrl(invoice.payToken),
+              stripeUrl: stripeInvoiceUrl(invoice.stripeInvoiceId),
+            }
+          : null,
+      };
+    });
   }),
+
+  /**
+   * Issue the invoice for a rental's signed agreement: one that failed when
+   * it was signed, was signed before invoicing existed, or was voided.
+   */
+  adminIssueHireInvoice: adminProcedure
+    .input(z.object({ rentalId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const contract = await ctx.db.contract.findUnique({
+        where: { rentalId: input.rentalId },
+        select: { id: true, status: true },
+      });
+      if (contract?.status !== "SIGNED") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "The hire agreement has to be signed first.",
+        });
+      }
+      const outcome = await issueHireInvoice(contract.id).catch(asTrpcError);
+      if (outcome === "not-ready") {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "The hire agreement is no longer signed. Reload and check it.",
+        });
+      }
+      if (outcome === "no-fee") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "The signed agreement has no hire fee to invoice.",
+        });
+      }
+      return outcome;
+    }),
+
+  /** Email an unpaid invoice to its hirer again. */
+  adminResendHireInvoice: adminProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(({ input }) => emailHireInvoice(input.id).catch(asTrpcError)),
+
+  /** Void an unpaid invoice, in Stripe and here. Nothing is owed on it after. */
+  adminVoidHireInvoice: adminProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(({ ctx, input }) =>
+      voidHireInvoice(input.id, ctx.user.id).catch(asTrpcError),
+    ),
 
   adminCreateInventoryItem: adminProcedure
     .input(inventoryItemInputSchema)
