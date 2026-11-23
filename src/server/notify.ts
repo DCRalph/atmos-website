@@ -74,7 +74,10 @@ export async function publish(
     data: { ...origin.data, ...notificationData(input) },
     // 1 and 2 are ntfy's "do not interrupt me" tiers.
     sound: input.priority <= 2 ? null : "default",
-    priority: input.priority >= 4 ? "high" : "normal",
+    // 3 is ntfy's "default", so it gets Expo's default too: high on iOS,
+    // normal on Android. Sending "normal" would let iOS hold it back.
+    priority:
+      input.priority >= 4 ? "high" : input.priority <= 2 ? "normal" : undefined,
     categoryId: origin.categoryId,
   });
 
