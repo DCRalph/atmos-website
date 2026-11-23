@@ -12,9 +12,13 @@ export const metadata = unlistedPageMetadata("Sign in");
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string | string[] }>;
+  searchParams: Promise<{
+    next?: string | string[];
+    error?: string | string[];
+  }>;
 }) {
-  const next = safeNextPath((await searchParams).next);
+  const params = await searchParams;
+  const next = safeNextPath(params.next);
   const headersList = await headers();
   const session = await auth.api.getSession({ headers: headersList });
 
@@ -33,7 +37,7 @@ export default async function LoginPage({
   return (
     <main className="bg-background relative flex min-h-dvh items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <LoginForm next={next} />
+        <LoginForm next={next} linkError={params.error !== undefined} />
       </div>
     </main>
   );

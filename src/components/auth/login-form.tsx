@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "~/lib/auth-client";
+import { MAGIC_LINK_EXPIRES_IN_MINUTES } from "~/lib/magic-link";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -15,15 +16,31 @@ import {
 } from "~/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
-/** Sign in / sign up card. `next` is a vetted same-site path to land on afterwards. */
-export function LoginForm({ next }: { next: string | null }) {
+/**
+ * Sign in / sign up card. `next` is a vetted same-site path to land on
+ * afterwards. `linkError` is set when a sign-in link bounced back here unused.
+ */
+export function LoginForm({
+  next,
+  linkError,
+}: {
+  next: string | null;
+  linkError: boolean;
+}) {
   const router = useRouter();
   const destination = next ?? "/";
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    linkError
+      ? "That sign-in link has expired or was already used. Send yourself a new one."
+      : null,
+  );
+  // The address a sign-in link went to, once it has been sent.
+  const [linkSentTo, setLinkSentTo] = useState<string | null>(null);
+  const [isSendingLink, setIsSendingLink] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   // Which provider we're redirecting to, so both buttons lock while one runs.
   const [oauthPending, setOauthPending] = useState<"google" | "wmgx" | null>(
@@ -90,6 +107,42 @@ export function LoginForm({ next }: { next: string | null }) {
     }
   };
 
+  /**
+   * Email a sign-in link instead of checking a password. Lives in the login
+   * form, so the email field's own validation runs before anything is sent.
+   */
+  const handleMagicLink = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    const emailInput = e.currentTarget.form?.elements.namedItem("email");
+    if (
+      emailInput instanceof HTMLInputElement &&
+      !emailInput.reportValidity()
+    ) {
+      return;
+    }
+    setError(null);
+    setIsSendingLink(true);
+
+    try {
+      const { error } = await authClient.signIn.magicLink({
+        email,
+        callbackURL: destination,
+        errorCallbackURL: next
+          ? `/login?next=${encodeURIComponent(next)}`
+          : "/login",
+      });
+      if (error) {
+        setError(error.message ?? "Could not send the sign-in link");
+        return;
+      }
+      setLinkSentTo(email);
+    } catch (err) {
+      console.error(err);
+      setError("Could not send the sign-in link");
+    } finally {
+      setIsSendingLink(false);
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     setError(null);
     setOauthPending("google");
@@ -122,6 +175,36 @@ export function LoginForm({ next }: { next: string | null }) {
       setOauthPending(null);
     }
   };
+
+  const busy = isLoading || isSendingLink || oauthPending !== null;
+
+  if (linkSentTo) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl">Check your email</CardTitle>
+          <CardDescription>
+            We sent a sign-in link to{" "}
+            <span className="text-foreground font-medium break-all">
+              {linkSentTo}
+            </span>
+            . It works once and expires in {MAGIC_LINK_EXPIRES_IN_MINUTES}{" "}
+            minutes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => setLinkSentTo(null)}
+          >
+            Use a different email
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -159,6 +242,7 @@ export function LoginForm({ next }: { next: string | null }) {
                 <Label htmlFor="login-email">Email</Label>
                 <Input
                   id="login-email"
+                  name="email"
                   type="email"
                   placeholder="your@email.com"
                   value={email}
@@ -184,12 +268,17 @@ export function LoginForm({ next }: { next: string | null }) {
                   {error}
                 </div>
               )}
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isLoading || oauthPending !== null}
-              >
+              <Button type="submit" className="w-full" disabled={busy}>
                 {isLoading ? "Signing in..." : "Sign In"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleMagicLink}
+                disabled={busy}
+              >
+                {isSendingLink ? "Sending link..." : "Email me a sign-in link"}
               </Button>
 
               <div className="relative">
@@ -208,7 +297,7 @@ export function LoginForm({ next }: { next: string | null }) {
                 variant="outline"
                 className="w-full"
                 onClick={handleGoogleSignIn}
-                disabled={isLoading || oauthPending !== null}
+                disabled={busy}
               >
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                   <path
@@ -233,10 +322,7 @@ export function LoginForm({ next }: { next: string | null }) {
                   : "Continue with Google"}
               </Button>
 
-              <ContinueWithWmgx
-                onClick={handleWmgxSignIn}
-                disabled={isLoading || oauthPending !== null}
-              />
+              <ContinueWithWmgx onClick={handleWmgxSignIn} disabled={busy} />
             </form>
           </TabsContent>
 
@@ -284,11 +370,7 @@ export function LoginForm({ next }: { next: string | null }) {
                   {error}
                 </div>
               )}
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isLoading || oauthPending !== null}
-              >
+              <Button type="submit" className="w-full" disabled={busy}>
                 {isLoading ? "Creating account..." : "Sign Up"}
               </Button>
 
@@ -308,7 +390,7 @@ export function LoginForm({ next }: { next: string | null }) {
                 variant="outline"
                 className="w-full"
                 onClick={handleGoogleSignIn}
-                disabled={isLoading || oauthPending !== null}
+                disabled={busy}
               >
                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                   <path
@@ -333,10 +415,7 @@ export function LoginForm({ next }: { next: string | null }) {
                   : "Continue with Google"}
               </Button>
 
-              <ContinueWithWmgx
-                onClick={handleWmgxSignIn}
-                disabled={isLoading || oauthPending !== null}
-              />
+              <ContinueWithWmgx onClick={handleWmgxSignIn} disabled={busy} />
             </form>
           </TabsContent>
         </Tabs>
