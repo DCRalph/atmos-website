@@ -2,7 +2,6 @@ import "~/styles/globals.css";
 import "react-lite-youtube-embed/dist/LiteYouTubeEmbed.css";
 
 import { type Metadata } from "next";
-import { Analytics } from "@vercel/analytics/next";
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { ThemeOverrideProvider } from "~/components/theme-overide-provider";
@@ -27,6 +26,7 @@ import {
 } from "~/lib/seo-constants";
 import { StripTicketHash } from "~/components/ticketing/strip-ticket-hash";
 import { PostHogInit } from "~/components/posthog-init";
+import { VercelAnalytics } from "~/components/vercel-analytics";
 import { SITE_ACCENT } from "~/lib/site-constants";
 
 /**
@@ -115,10 +115,7 @@ export default function RootLayout({
                       }}
                     />
 
-                    <Analytics
-                      endpoint="/fuckoffaddblockers"
-                      scriptSrc="/fuckoffaddblocker/script.js"
-                    />
+                    <VercelAnalytics />
                     <PostHogInit />
                   </ConfirmProvider>
                 </MobileMenuProvider>

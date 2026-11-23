@@ -7,6 +7,10 @@ import { type inferRouterInputs, type inferRouterOutputs } from "@trpc/server";
 import { useState } from "react";
 import SuperJSON from "superjson";
 
+import {
+  SHARE_TOKEN_HEADER,
+  shareTokenFromPath,
+} from "~/lib/ticketing/share-link";
 import type { AppRouter } from "~/server/api/root";
 import { createQueryClient } from "./query-client";
 
@@ -55,6 +59,10 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
           headers: () => {
             const headers = new Headers();
             headers.set("x-trpc-source", "nextjs-react");
+            // A share link has no session: its token rides on every call
+            // the page makes, and the server scopes them to its one event.
+            const shareToken = shareTokenFromPath(window.location.pathname);
+            if (shareToken) headers.set(SHARE_TOKEN_HEADER, shareToken);
             return headers;
           },
         }),

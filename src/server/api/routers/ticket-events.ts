@@ -495,6 +495,44 @@ export const ticketEventsRouter = createTRPCRouter({
     }),
 
   /**
+   * The event's share links: each opens the read-only organiser pages for
+   * this event to whoever holds it, no account needed.
+   */
+  shareLinks: adminProcedure
+    .input(z.object({ eventId: z.string() }))
+    .query(({ ctx, input }) =>
+      ctx.db.ticketEventShareLink.findMany({
+        where: { eventId: input.eventId },
+        orderBy: { createdAt: "asc" },
+        select: { id: true, label: true, token: true, createdAt: true },
+      }),
+    ),
+
+  createShareLink: adminProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        label: z.string().trim().min(1).max(80),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.ticketEventShareLink.create({
+        data: {
+          ...input,
+          token: randomBytes(24).toString("base64url"),
+          createdBy: ctx.session.user.id,
+        },
+      });
+    }),
+
+  /** Revokes the link: it stops working at once. */
+  deleteShareLink: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.ticketEventShareLink.deleteMany({ where: { id: input.id } });
+    }),
+
+  /**
    * What each tier has sold and is holding right now, plus comps issued. Small
    * enough for the tier editor to poll while somebody is judging the cap, and
    * separate from `byId` so polling it never disturbs the draft.

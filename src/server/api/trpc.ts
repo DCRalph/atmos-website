@@ -10,6 +10,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { z, ZodError } from "zod";
 
+import { SHARE_TOKEN_HEADER } from "~/lib/ticketing/share-link";
 import { db } from "~/server/db";
 import { auth } from "~/server/auth";
 import { userHasPermission } from "~/server/utils/permissions";
@@ -195,21 +196,37 @@ export const eventOrganiserProcedure = permissionProcedure("EVENT_ORGANISER");
  *
  * The read-only organiser pages. Admins and event organisers see every event;
  * anybody else sees only the events they hold a `TicketEventViewer` row for,
- * and is refused outright with none. `ctx.viewableEventIds` is null for every
- * event, otherwise the granted ids: handlers that take no single event (a
- * list) filter by it, and the rest go through `eventViewProcedure` or
- * `assertCanViewEvent`.
+ * and is refused outright with none. A call from a share link needs no
+ * session: its token stands for the one event the link was made for, and wins
+ * over whoever happens to be signed in, so an admin opening a link sees what
+ * its recipient sees.
+ *
+ * `ctx.viewableEventIds` is null for every event, otherwise the granted ids:
+ * handlers that take no single event (a list) filter by it, and the rest go
+ * through `eventViewProcedure` or `assertCanViewEvent`.
  */
-export const eventViewerProcedure = protectedProcedure.use(
+export const eventViewerProcedure = publicProcedure.use(
   async ({ ctx, next }) => {
+    const shareToken = ctx.headers.get(SHARE_TOKEN_HEADER);
+    if (shareToken) {
+      const link = await ctx.db.ticketEventShareLink.findUnique({
+        where: { token: shareToken },
+        select: { eventId: true },
+      });
+      if (!link) throw new TRPCError({ code: "UNAUTHORIZED" });
+      return next({
+        ctx: { ...ctx, isAdmin: false, viewableEventIds: [link.eventId] },
+      });
+    }
+
+    if (!ctx.session?.user) throw new TRPCError({ code: "UNAUTHORIZED" });
     const user = await ctx.db.user.findUnique({
       where: { id: ctx.session.user.id },
       include: { permissions: true },
     });
     if (!user) throw new TRPCError({ code: "UNAUTHORIZED" });
 
-    const seesEveryEvent = userHasPermission(user, "EVENT_ORGANISER");
-    const viewableEventIds = seesEveryEvent
+    const viewableEventIds = userHasPermission(user, "EVENT_ORGANISER")
       ? null
       : (
           await ctx.db.ticketEventViewer.findMany({
@@ -228,7 +245,6 @@ export const eventViewerProcedure = protectedProcedure.use(
     return next({
       ctx: {
         ...ctx,
-        user,
         isAdmin: userHasPermission(user, "ADMIN"),
         viewableEventIds,
       },
