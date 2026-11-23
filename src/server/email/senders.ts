@@ -6,7 +6,7 @@
  * one-line edit here. Every domain used must be verified in Resend.
  */
 export const EMAIL_SENDERS = {
-  /** Confirm email, reset password, delete account. */
+  /** Sign-in links, confirm email, reset password, delete account. */
   account: "Atmos <noreply@atmosmedia.co.nz>",
   /** Orders, tickets, hand-outs, refunds, wallet passes, ticketing announcements. */
   tickets: "Atmos Tickets <tickets@atmosmedia.co.nz>",

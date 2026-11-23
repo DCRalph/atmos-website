@@ -3,6 +3,7 @@ import { type BetterAuthClientPlugin } from "better-auth/client";
 import {
   genericOAuthClient,
   lastLoginMethodClient,
+  magicLinkClient,
 } from "better-auth/client/plugins";
 import type { impersonation } from "~/server/impersonation";
 
@@ -10,6 +11,7 @@ export const authClient = createAuthClient({
   plugins: [
     lastLoginMethodClient(),
     genericOAuthClient(),
+    magicLinkClient(),
     {
       id: "impersonation",
       $InferServerPlugin: {} as ReturnType<typeof impersonation>,

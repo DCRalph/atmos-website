@@ -5,14 +5,16 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { db } from "~/server/db";
 // import { createAuthMiddleware } from "better-auth/api";
 // import { z } from "zod";
-import { genericOAuth, lastLoginMethod } from "better-auth/plugins";
+import { genericOAuth, lastLoginMethod, magicLink } from "better-auth/plugins";
 import { expo } from "@better-auth/expo";
 import { apiKey } from "@better-auth/api-key";
 import {
   sendAccountDeletionEmail,
+  sendMagicLinkEmail,
   sendPasswordResetEmail,
   sendVerificationEmail,
 } from "~/server/auth-emails";
+import { MAGIC_LINK_EXPIRES_IN_MINUTES } from "~/lib/magic-link";
 import { anonymiseAndDeleteUser } from "~/server/account-deletion";
 import { impersonation } from "~/server/impersonation";
 import {
@@ -190,6 +192,24 @@ export const auth = betterAuth({
     lastLoginMethod(),
     expo(),
     impersonation(),
+    /**
+     * Sign in with a link by email, no password.
+     *
+     * An address with no account gets one, already verified: following the
+     * link proves the mailbox. Tokens are stored hashed so a database read
+     * cannot be turned into sign-ins.
+     */
+    magicLink({
+      expiresIn: MAGIC_LINK_EXPIRES_IN_MINUTES * 60,
+      storeToken: "hashed",
+      sendMagicLink: async ({ email, url }) => {
+        const user = await db.user.findUnique({
+          where: { email: email.toLowerCase() },
+          select: { name: true },
+        });
+        await sendMagicLinkEmail({ to: email, name: user?.name ?? null, url });
+      },
+    }),
     /**
      * API keys for the developer API. See `docs/DEVELOPER-API.md` and
      * `~/server/api-keys`.
