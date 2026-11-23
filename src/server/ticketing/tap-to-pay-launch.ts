@@ -1,7 +1,7 @@
 import "server-only";
 
 import { db } from "~/server/db";
-import { sendPush } from "~/server/push";
+import { publish } from "~/server/notify";
 import { sendEmail } from "~/server/email/send";
 import { renderTapToPayLaunchEmail } from "~/server/ticketing/email/templates";
 import { getTicketingSettings } from "~/server/ticketing/settings";
@@ -105,14 +105,19 @@ export async function sendTapToPayLaunchCampaign({
 
   let pushed = 0;
   if (needPush.length > 0) {
-    const result = await sendPush({
-      audience: { kind: "users", userIds: needPush },
-      title: PUSH_TITLE,
-      body: PUSH_BODY,
-      // Lands on the Tap to Pay hub, which is where enabling it happens (3.6).
-      data: { url: "/(door)/tap-to-pay" },
-    });
-    pushed = result.sent;
+    const result = await publish(
+      {
+        topic: "tap-to-pay",
+        title: PUSH_TITLE,
+        message: PUSH_BODY,
+        priority: 3,
+        tags: [],
+        // Lands on the Tap to Pay hub, which is where enabling it happens (3.6).
+        click: "/(door)/tap-to-pay",
+      },
+      { source: "tap-to-pay", audience: { kind: "users", userIds: needPush } },
+    );
+    pushed = result.delivery.delivered;
 
     await Promise.all(
       needPush.map((userId) =>

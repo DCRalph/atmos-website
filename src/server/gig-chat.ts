@@ -1,7 +1,7 @@
 import "server-only";
 
 import { db } from "~/server/db";
-import { sendPush } from "~/server/push";
+import { publish } from "~/server/notify";
 import { ACTIVE_SECONDS } from "~/lib/gig-chat/room";
 
 /**
@@ -14,10 +14,9 @@ import { ACTIVE_SECONDS } from "~/lib/gig-chat/room";
  * two that drift. Granting somebody ADMIN puts them in every room with no
  * backfill; revoking it takes them out of every room with no cleanup.
  *
- * Notifications go through `sendPush` directly rather than through `publish`.
- * A chat message is not a topic broadcast — its audience is a named handful of
- * people, and a busy night's two hundred messages would bury the notification
- * history the admin reads to answer "what did we send".
+ * Notifications go through `publish` to the room's members, logged under the
+ * `chat` topic like every other send. The history's source filter is what
+ * keeps a busy night's chat from burying everything else.
  */
 
 /** Every member of a gig's room, admins included. Deduplicated. */
@@ -105,15 +104,19 @@ export async function notifyRoom({
   const userIds = others.filter((id) => !skip.has(id));
   if (userIds.length === 0) return;
 
-  await sendPush({
-    audience: { kind: "users", userIds },
-    // The gig names itself, because "Atmos" on a lock screen at 9pm does not
-    // say which of two rooms just moved.
-    title: gigTitle,
-    body: `${authorName}: ${body}`,
-    data: { url: `/(admin)/chat/${gigId}` },
-    priority: "high",
-  });
+  await publish(
+    {
+      topic: "chat",
+      // The gig names itself, because "Atmos" on a lock screen at 9pm does not
+      // say which of two rooms just moved.
+      title: gigTitle,
+      message: `${authorName}: ${body}`,
+      priority: 4,
+      tags: [],
+      click: `/(admin)/chat/${gigId}`,
+    },
+    { source: "chat", audience: { kind: "users", userIds } },
+  );
 }
 
 /**
