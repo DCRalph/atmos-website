@@ -535,8 +535,11 @@ export const ticketAnalyticsRouter = createTRPCRouter({
 
       // What the average past event had sold by each point on this axis,
       // and the campaigns that went live inside the range.
+      // Other events' numbers, so only for those who can see every event.
       const [pace, campaigns] = await Promise.all([
-        pastEventsPace(ctx.db, input.eventId),
+        ctx.viewableEventIds
+          ? { events: 0, points: [] }
+          : pastEventsPace(ctx.db, input.eventId),
         ctx.db.campaign.findMany({
           where: {
             eventId: input.eventId,
@@ -1264,10 +1267,10 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           })),
         },
         /** Share of a past event's tickets that came through, pooled. */
-        expected: {
-          rate: expected?.rate ?? null,
-          events: expected?.events ?? 0,
-        },
+        // Other events' numbers, so only for those who can see every event.
+        expected: ctx.viewableEventIds
+          ? { rate: null, events: 0 }
+          : { rate: expected?.rate ?? null, events: expected?.events ?? 0 },
       };
     }),
 

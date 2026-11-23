@@ -11,6 +11,7 @@ export default function OrganiserEventPage() {
       eventId={id}
       basePath={`/organiser/events/${id}`}
       backLink={{ href: "/organiser/events", label: "Events" }}
+      showScanner
     />
   );
 }

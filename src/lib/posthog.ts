@@ -1,10 +1,18 @@
 import posthog from "posthog-js";
 import { env } from "~/env";
 import { redactPaymentUrl } from "~/lib/donation-analytics";
+import {
+  redactShareToken,
+  shareTokenFromPath,
+} from "~/lib/ticketing/share-link";
 
 /** Call from effects, after hydration. Safe whichever client effect runs first. */
 export function initPostHog() {
   if (posthog.__loaded) return;
+  // A share link's address is its credential, and PostHog sends the landing
+  // URL with more than events (the flags call carries it too), so it stays
+  // off there. `before_send` still redacts, for a session that began elsewhere.
+  if (shareTokenFromPath(window.location.pathname)) return;
   posthog.init(env.NEXT_PUBLIC_POSTHOG_KEY, {
     api_host: "/ph",
     ui_host: "https://us.posthog.com",
@@ -14,7 +22,9 @@ export function initPostHog() {
       for (const bag of [event.properties, event.$set, event.$set_once]) {
         if (!bag) continue;
         for (const [key, value] of Object.entries(bag)) {
-          if (typeof value === "string") bag[key] = redactPaymentUrl(value);
+          if (typeof value === "string") {
+            bag[key] = redactShareToken(redactPaymentUrl(value));
+          }
         }
       }
       return event;

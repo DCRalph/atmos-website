@@ -24,10 +24,13 @@ export function ReadOnlyEvent({
   eventId: id,
   basePath,
   backLink,
+  showScanner = false,
 }: {
   eventId: string;
   basePath: string;
   backLink?: { href: string; label: string };
+  /** Offer the scanner to an organiser. Never on a share link. */
+  showScanner?: boolean;
 }) {
   const event = api.ticketEvents.byId.useQuery({ id });
   const tab = useTabParam(["overview", "orders", "tickets"]);
@@ -58,7 +61,7 @@ export function ReadOnlyEvent({
               <ExternalLink className="size-4" /> Public page
             </Link>
           </Button>
-          {isOrganiser && (
+          {showScanner && isOrganiser && (
             <Button variant="outline" asChild>
               <Link href={`/door/${id}`} target="_blank">
                 <ScanLine className="size-4" /> Scanner
