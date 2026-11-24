@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Vitamin Cos – Electronic Press Kit</title>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;600&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --red: #d9001b;
+      --deep: #6e000e;
+      --ink: #0d0204;
+      --silver: #d3d6db;
+      --white: #fff;
+      box-sizing: border-box;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px)
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: inherit
+    }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: 64px;
+      background: var(--red)
+    }
+
+    body {
+      margin: 0;
+      background: var(--red);
+      color: var(--white);
+      font-family: Archivo, system-ui, sans-serif;
+      overflow-x: hidden
+    }
+
+    h1,
+    h2,
+    h3,
+    .blk,
+    nav a,
+    .btn,
+    .pill,
+    .ph {
+      font-family: 'Archivo Black', Impact, sans-serif;
+      text-transform: uppercase;
+      font-weight: 400
+    }
+
+    h1,
+    h2,
+    h3 {
+      line-height: .88;
+      margin: 0;
+      letter-spacing: -.01em
+    }
+
+    a {
+      color: inherit
+    }
+
+    nav {
+      position: sticky;
+      top: env(safe-area-inset-top, 0px);
+      z-index: 30;
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      padding: 12px;
+      background: rgba(13, 2, 4, .85);
+      backdrop-filter: blur(8px);
+      overflow-x: auto
+    }
+
+    nav a {
+      text-decoration: none;
+      font-size: 13px;
+      letter-spacing: .06em;
+      white-space: nowrap
+    }
+
+    nav a:hover {
+      color: var(--silver)
+    }
+
+    section {
+      position: relative;
+      padding: 76px 22px;
+      max-width: 1100px;
+      margin: 0 auto
+    }
+
+    .chrome {
+      position: absolute;
+      pointer-events: none;
+      z-index: 1;
+      opacity: .84;
+      scale: 1.6;
+      background-position: center;
+      background-size: contain;
+      background-repeat: no-repeat;
+      transform: rotate(14deg);
+      animation: sway 11s ease-in-out infinite, float 8s ease-in-out infinite;
+      transition: translate .3s ease-out;
+      filter: drop-shadow(0 18px 22px rgba(80, 0, 8, .5))
+    }
+
+    .chrome.b2 {
+      transform: scaleX(-1) rotate(38deg);
+      animation-duration: 13s, 9s
+    }
+
+    .chrome.b3 {
+      transform: rotate(-62deg);
+      animation-duration: 12s, 7s
+    }
+
+    .chrome.b4 {
+      transform: scaleX(-1) rotate(-115deg);
+      animation-duration: 10s, 8s
+    }
+
+    .s0 {
+      background-image: url(https://r2.atmosmedia.co.nz/epk/vitamin-cos/9d7a63aac3de65f4.webp)
+    }
+
+    .s1 {
+      background-image: url(https://r2.atmosmedia.co.nz/epk/vitamin-cos/4cfdb136af8e9ea4.webp)
+    }
+
+    .s2 {
+      background-image: url(https://r2.atmosmedia.co.nz/epk/vitamin-cos/c0506512242d4545.webp)
+    }
+
+    .s3 {
+      background-image: url(https://r2.atmosmedia.co.nz/epk/vitamin-cos/276cf7cf5697e137.webp)
+    }
+
+    .s4 {
+      background-image: url(https://r2.atmosmedia.co.nz/epk/vitamin-cos/48837af1fa1e9634.webp)
+    }
+
+    .s5 {
+      background-image: url(https://r2.atmosmedia.co.nz/epk/vitamin-cos/1eeff9068580c361.webp)
+    }
+
+    .chrome {
+      transition: none
+    }
+
+    @media(max-width:700px) {
+      .chrome {
+        scale: 1.05
+      }
+    }
+
+    @keyframes sway {
+      50% {
+        rotate: 16deg
+      }
+    }
+
+    @keyframes float {
+      50% {
+        margin-top: -22px
+      }
+    }
+
+    .hero {
+      min-height: 100vh;
+      min-height: 100svh;
+      max-width: none;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      overflow: hidden
+    }
+
+    #hv {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+      z-index: 0
+    }
+
+    .hero.vid #hv {
+      display: block
+    }
+
+    .hero .tint {
+      position: absolute;
+      inset: 0;
+      background: rgba(217, 0, 27, .38);
+      display: none;
+      z-index: 0
+    }
+
+    .hero.vid .tint {
+      display: block
+    }
+
+    .hero h1 {
+      position: relative;
+      z-index: 3;
+      font-size: clamp(70px, 19vw, 240px);
+      text-shadow: 0 7px 0 var(--deep)
+    }
+
+    .hero h1 span {
+      display: block;
+      color: transparent;
+      -webkit-text-stroke: 3px #fff;
+      text-shadow: none
+    }
+
+    .tag {
+      position: relative;
+      z-index: 3;
+      margin-top: 24px;
+      font-family: 'Archivo Black', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: .16em;
+      font-size: 13px
+    }
+
+    .hero .ctas {
+      position: relative;
+      z-index: 3;
+      margin-top: 22px
+    }
+
+    .btn {
+      display: inline-block;
+      position: relative;
+      z-index: 3;
+      margin: 6px;
+      padding: 14px 26px;
+      border-radius: 99px;
+      background: linear-gradient(#fff, var(--silver));
+      color: var(--deep);
+      font-size: 14px;
+      letter-spacing: .06em;
+      text-decoration: none;
+      border: 0;
+      cursor: pointer;
+      box-shadow: 0 5px 0 var(--deep);
+      transition: transform .15s, box-shadow .15s
+    }
+
+    .btn:hover {
+      transform: translateY(3px);
+      box-shadow: 0 2px 0 var(--deep)
+    }
+
+    .btn.alt {
+      background: transparent;
+      color: #fff;
+      border: 2px solid #fff;
+      box-shadow: none
+    }
+
+    .herotools {
+      position: absolute;
+      z-index: 4;
+      right: 14px;
+      bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+      display: flex;
+      gap: 8px
+    }
+
+    .herotools .btn {
+      padding: 9px 16px;
+      font-size: 11px;
+      margin: 0;
+      box-shadow: none
+    }
+
+    #snd {
+      display: inline-block
+    }
+
+    .ticker {
+      background: var(--ink);
+      overflow: hidden;
+      white-space: nowrap;
+      padding: 13px 0;
+      margin: 0;
+      position: relative;
+      z-index: 5
+    }
+
+    .ticker div {
+      display: inline-block;
+      font-family: 'Archivo Black', sans-serif;
+      text-transform: uppercase;
+      font-size: 24px;
+      animation: tick 30s linear infinite
+    }
+
+    .ticker b {
+      margin: 0 16px;
+      color: var(--red)
+    }
+
+    @keyframes tick {
+      to {
+        transform: translateX(-50%)
+      }
+    }
+
+    h2 {
+      font-size: clamp(44px, 9vw, 98px);
+      margin-bottom: 30px;
+      position: relative;
+      z-index: 3
+    }
+
+    h2 em {
+      font-style: normal;
+      color: transparent;
+      -webkit-text-stroke: 2px #fff
+    }
+
+    .about {
+      display: grid;
+      gap: 34px;
+      grid-template-columns: 1fr;
+      position: relative;
+      z-index: 3
+    }
+
+    @media(min-width:800px) {
+      .about {
+        grid-template-columns: 1.1fr .9fr;
+        align-items: center
+      }
+    }
+
+    .about p {
+      font-size: 18px;
+      line-height: 1.6;
+      margin: 0 0 14px
+    }
+
+    .slot {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      aspect-ratio: 4/5;
+      border: 3px dashed var(--silver);
+      border-radius: 22px;
+      background: rgba(13, 2, 4, .25);
+      cursor: pointer;
+      overflow: hidden;
+      z-index: 3;
+      transition: background .2s, transform .2s
+    }
+
+    .slot:hover,
+    .slot.over {
+      background: rgba(13, 2, 4, .45)
+    }
+
+    .slot.wide {
+      aspect-ratio: 16/9
+    }
+
+    .slot input {
+      display: none
+    }
+
+    .ph {
+      font-size: 16px;
+      padding: 16px;
+      line-height: 1.2
+    }
+
+    .ph small {
+      display: block;
+      font-family: Archivo, sans-serif;
+      text-transform: none;
+      font-size: 12px;
+      margin-top: 8px;
+      opacity: .85
+    }
+
+    .slot img,
+    .slot video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover
+    }
+
+    .slot.filled {
+      border-style: solid;
+      cursor: default
+    }
+
+    .slot.filled:has(img) {
+      cursor: pointer
+    }
+
+    .slot.locked {
+      pointer-events: none;
+      cursor: default
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      position: relative;
+      z-index: 3
+    }
+
+    .card {
+      background: var(--ink);
+      border-radius: 22px;
+      padding: 24px;
+      transition: transform .25s, background .25s, color .25s
+    }
+
+    .card:hover {
+      transform: translateY(-6px);
+      background: #fff;
+      color: var(--deep)
+    }
+
+    .card h3 {
+      font-size: 28px;
+      margin-bottom: 14px;
+      color: var(--silver)
+    }
+
+    .card:hover h3 {
+      color: var(--red)
+    }
+
+    .card ul {
+      list-style: none;
+      margin: 0;
+      padding: 0
+    }
+
+    .card li {
+      padding: 9px 0;
+      border-top: 1px solid rgba(255, 255, 255, .2);
+      font-weight: 600
+    }
+
+    .card:hover li {
+      border-color: rgba(110, 0, 14, .25)
+    }
+
+    @media(min-width:800px) {
+      #highlights .grid {
+        grid-template-columns: repeat(2, 1fr)
+      }
+    }
+
+    #highlights .card h3 {
+      overflow-wrap: anywhere
+    }
+
+    .few {
+      position: relative;
+      z-index: 3;
+      margin: 16px 0 0;
+      font-size: 14px;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      font-weight: 600
+    }
+
+    .pill {
+      display: inline-block;
+      margin: 4px 6px 4px 0;
+      padding: 9px 16px;
+      border-radius: 99px;
+      background: #fff;
+      color: var(--deep);
+      font-size: 13px
+    }
+
+    .feature {
+      background: linear-gradient(120deg, #fff, var(--silver));
+      color: var(--deep);
+      border-radius: 26px;
+      padding: 26px;
+      margin-top: 22px;
+      position: relative;
+      z-index: 3
+    }
+
+    .feature h3 {
+      font-size: clamp(30px, 6vw, 56px)
+    }
+
+    .watch {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: 1fr;
+      position: relative;
+      z-index: 3
+    }
+
+    @media(min-width:800px) {
+      .watch {
+        grid-template-columns: 2fr 1fr
+      }
+    }
+
+    .yt {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background: var(--ink);
+      border-radius: 22px;
+      padding: 24px;
+      text-decoration: none;
+      min-height: 200px
+    }
+
+    .yt h3 {
+      font-size: 32px
+    }
+
+    .yt .thumb {
+      position: relative;
+      aspect-ratio: 16/9;
+      border-radius: 14px;
+      background: var(--red) center/cover no-repeat;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #fff;
+      overflow: hidden
+    }
+
+    .yt .thumb i {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: #fff;
+      position: relative;
+      transition: transform .2s
+    }
+
+    .yt .thumb i::after {
+      content: "";
+      position: absolute;
+      left: 25px;
+      top: 18px;
+      border-left: 22px solid var(--red);
+      border-top: 14px solid transparent;
+      border-bottom: 14px solid transparent
+    }
+
+    .yt:hover .thumb i {
+      transform: scale(1.12)
+    }
+
+    .yt span {
+      color: var(--silver);
+      font-size: 14px
+    }
+
+    .gal {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(2, 1fr);
+      position: relative;
+      z-index: 3
+    }
+
+    @media(min-width:800px) {
+      .gal {
+        grid-template-columns: repeat(4, 1fr)
+      }
+    }
+
+    .gal .slot:nth-child(even) {
+      transform: translateY(18px)
+    }
+
+    .gigs {
+      position: relative;
+      z-index: 3;
+      display: grid;
+      gap: 12px
+    }
+
+    .gig {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 18px;
+      align-items: center;
+      background: var(--ink);
+      border-radius: 20px;
+      padding: 16px 20px
+    }
+
+    .gig .d {
+      font-family: 'Archivo Black', sans-serif;
+      text-align: center;
+      line-height: 1;
+      text-transform: uppercase
+    }
+
+    .gig .d b {
+      display: block;
+      font-size: 34px;
+      font-weight: 400
+    }
+
+    .gig .d span {
+      font-size: 12px;
+      color: var(--silver);
+      letter-spacing: .08em
+    }
+
+    .gig h3 {
+      font-size: 22px;
+      line-height: 1
+    }
+
+    .gig p {
+      margin: 6px 0 0;
+      color: var(--silver);
+      font-size: 14px
+    }
+
+    .gig .btn {
+      padding: 9px 14px;
+      font-size: 11px;
+      margin: 0;
+      box-shadow: none
+    }
+
+    .empty {
+      background: var(--ink);
+      border-radius: 22px;
+      padding: 28px;
+      position: relative;
+      z-index: 3
+    }
+
+    .empty h3 {
+      font-size: 30px;
+      margin-bottom: 10px
+    }
+
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      position: relative;
+      z-index: 3
+    }
+
+    .book {
+      background: var(--ink);
+      max-width: none;
+      text-align: center;
+      overflow: hidden
+    }
+
+    .book h2 {
+      font-size: clamp(56px, 13vw, 160px)
+    }
+
+    .book a.mail {
+      display: block;
+      font-family: 'Archivo Black', sans-serif;
+      font-size: clamp(16px, 4vw, 34px);
+      text-transform: uppercase;
+      text-decoration: none;
+      margin: 8px 0;
+      position: relative;
+      z-index: 3;
+      word-break: break-all
+    }
+
+    .book a.mail:hover {
+      color: var(--red)
+    }
+
+    .book p {
+      position: relative;
+      z-index: 3;
+      color: var(--silver)
+    }
+
+    footer {
+      background: var(--ink);
+      text-align: center;
+      padding: 20px 20px 28px;
+      color: var(--silver);
+      font-size: 13px
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity .7s, transform .7s
+    }
+
+    .reveal.in {
+      opacity: 1;
+      transform: none
+    }
+
+    @media(prefers-reduced-motion:reduce) {
+
+      .chrome,
+      .ticker div {
+        animation: none
+      }
+
+      .reveal {
+        opacity: 1;
+        transform: none
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <nav><a href="#about">About</a><a href="#highlights">Highlights</a><a href="#watch">Watch</a><a
+      href="#gigs">Gigs</a><a href="#gallery">Gallery</a><a href="#listen">Listen</a><a href="#book">Chat</a></nav>
+
+  <section class="hero vid" id="top">
+    <video id="hv" autoplay muted loop playsinline preload="auto"
+      src="https://r2.atmosmedia.co.nz/epk/vitamin-cos/3b902d502e016219.mp4"></video>
+    <div class="tint"></div>
+    <h1>Vitamin<span>Cos</span></h1>
+    <div class="tag">DJ · Promoter · Aotearoa/New Zealand</div>
+    <div class="ctas"><a class="btn" href="#watch">Watch live</a><a class="btn alt" href="#book">Book now</a></div>
+    <div class="herotools">
+      <label class="btn alt" style="cursor:pointer;display:none">+ Hero video<input id="hin" type="file"
+          accept="video/*" style="display:none"></label>
+      <button class="btn alt" id="snd" type="button">Sound on</button>
+    </div>
+  </section>
+
+  <div class="ticker">
+    <div id="tk"></div>
+  </div>
+
+  <section id="about">
+    <div class="chrome s5 b3" style="width:130px;height:140px;left:-60px;bottom:10px"></div>
+    <div class="chrome b2 s4" data-d="26" style="width:130px;height:150px;right:3%;top:30px"></div>
+    <h2 class="reveal">Your daily <em>dose</em></h2>
+    <div class="about">
+      <div class="reveal">
+        <p><b>Vitamin Cos is a DJ and promoter currently based in Aotearoa/New Zealand, and her mixing is every bit as
+            vibrant as her personality.</b></p>
+        <p>Inspired by underground club scenes around the world, she builds all-inclusive, interactive dance floors,
+          moving through global club, baile funk, hardgroove and house.</p>
+        <p>Opening 2026 with her second tour alongside Charlotte Plank, and debuting at Field Day and The Espy in
+          Australia, Vitamin Cos is showing no sign of slowing down.</p>
+        <p>She has played across Asia, Australia and New Zealand, plus Spring Break Fiji. Her support slots include
+          Sim0ne, Darude, Luude, Hermitude and Skream, and she has played Rhythm and Vines, Le Currents and the Laneway
+          afterparty, to name a few.</p>
+        <p>Come get your daily dose and see her play.</p>
+      </div>
+      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img
+          alt="Vitamin Cos, black and white portrait"
+          src="https://r2.atmosmedia.co.nz/epk/vitamin-cos/f65aefe779992321.jpg"
+          style="object-position:62% 50%"></label>
+    </div>
+  </section>
+
+  <section id="highlights">
+    <div class="chrome s2 b2" style="width:150px;height:160px;right:-40px;top:50px"></div>
+    <h2 class="reveal">Career <em>highlights</em></h2>
+    <div class="grid">
+      <div class="card reveal">
+        <h3>Festivals</h3>
+        <ul>
+          <li>Rhythm and Vines</li>
+          <li>Le Currents</li>
+          <li>Island Time</li>
+          <li>Spring Break Fiji</li>
+        </ul>
+      </div>
+      <div class="card reveal">
+        <h3>Afterparties</h3>
+        <ul>
+          <li>Laneway</li>
+          <li>Gardens Festival</li>
+        </ul>
+      </div>
+      <div class="card reveal">
+        <h3>Radio</h3>
+        <ul>
+          <li>Seoul Community Radio</li>
+          <li>Room 303</li>
+          <li>George FM</li>
+          <li>Birdland FM</li>
+        </ul>
+      </div>
+      <div class="card reveal">
+        <h3>On tour</h3>
+        <ul>
+          <li>AU/NZ touring DJ with Charlotte Plank</li>
+          <li>Field Day debut</li>
+          <li>The Espy debut</li>
+          <li>Asia · Australia · NZ</li>
+        </ul>
+      </div>
+    </div>
+    <div class="feature reveal">
+      <h3>B2B with Skream</h3>
+      <div>Gardens Festival afterparty</div>
+    </div>
+    <div style="margin-top:24px" class="reveal">
+      <div class="blk" style="font-size:20px;margin-bottom:10px;position:relative;z-index:3">Supports for</div>
+      <span class="pill">Skream</span><span class="pill">Hermitude</span><span class="pill">Luude</span><span
+        class="pill">Sim0ne</span><span class="pill">Rossi</span><span class="pill">Darude</span><span class="pill">+
+        more</span>
+    </div>
+  </section>
+
+  <section id="watch">
+    <div class="chrome s1 b3" style="width:150px;height:130px;left:-50px;top:10px"></div>
+    <h2 class="reveal">Watch <em>live</em></h2>
+    <div class="watch">
+      <label class="slot wide reveal filled" data-kind="video" style="background:#000"><input type="file"
+          accept="video/*"><video controls playsinline preload="metadata" style="object-fit:contain"
+          src="https://r2.atmosmedia.co.nz/epk/vitamin-cos/1dc5ebec112eaecf.mp4"></video></label>
+      <a class="yt reveal" href="https://www.youtube.com/watch?v=Jnb1ZLmslwo&t=2067s" target="_blank" rel="noopener">
+        <div><span>YouTube</span>
+          <h3>Live at Shed 6</h3>
+        </div><span>Full set →</span>
+      </a>
+    </div>
+  </section>
+
+  <section id="gigs">
+    <div class="chrome b3 s5" data-d="30" style="width:120px;height:110px;right:5%;top:20px"></div>
+    <h2 class="reveal">Upcoming <em>gigs</em></h2>
+    <div class="gigs" id="gl"></div>
+  </section>
+
+  <section id="gallery">
+    <div class="chrome s3 b2" style="width:160px;height:130px;right:1%;top:-20px"></div>
+    <div class="chrome s0 b4" style="width:140px;height:170px;left:-60px;bottom:30px"></div>
+    <h2 class="reveal">The <em>gallery</em></h2>
+    <div class="gal">
+      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img
+          alt="With Charlotte Plank at a festival"
+          src="https://r2.atmosmedia.co.nz/epk/vitamin-cos/30c502a8c41a5804.jpg"
+          style="object-position:50% 50%"></label>
+      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img
+          alt="Vitamin Cos in a cherry print top" src="https://r2.atmosmedia.co.nz/epk/vitamin-cos/a402ab7f2e3419be.jpg"
+          style="object-position:50% 28%"></label>
+      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img
+          alt="B2B with Skream" src="https://r2.atmosmedia.co.nz/epk/vitamin-cos/519d9a14fc133a2f.jpg"
+          style="object-position:38% 50%"></label>
+      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img
+          alt="Vitamin Cos DJing at East Street Hall"
+          src="https://r2.atmosmedia.co.nz/epk/vitamin-cos/a818cb7e3c8c1573.jpg"
+          style="object-position:50% 50%"></label>
+      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img
+          alt="Vitamin Cos DJing with the crowd dancing around the decks"
+          src="https://r2.atmosmedia.co.nz/epk/vitamin-cos/ff82ef8b72365f46.jpg"
+          style="object-position:50% 45%"></label>
+      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img
+          alt="Vitamin Cos with a friend in Australia tees"
+          src="https://r2.atmosmedia.co.nz/epk/vitamin-cos/5d0f9a953a8fe9fc.jpg"
+          style="object-position:50% 50%"></label>
+      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img
+          alt="Vitamin Cos in a yellow top and black cap"
+          src="https://r2.atmosmedia.co.nz/epk/vitamin-cos/d145a57563048388.jpg"
+          style="object-position:50% 50%"></label>
+      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img
+          alt="Vitamin Cos portrait" src="https://r2.atmosmedia.co.nz/epk/vitamin-cos/a68c472229be4fae.jpg"
+          style="object-position:50% 30%"></label>
+    </div>
+  </section>
+
+  <section id="listen">
+    <div class="chrome s4" style="width:170px;height:120px;right:-40px;bottom:-10px"></div>
+    <h2 class="reveal">Listen &amp; <em>follow</em></h2>
+    <div class="links reveal">
+      <a class="btn" href="https://soundcloud.com/vitamincos" target="_blank" rel="noopener">SoundCloud</a>
+      <a class="btn" href="https://www.instagram.com/vitamincos/" target="_blank" rel="noopener">Instagram</a>
+      <a class="btn" href="https://ra.co/dj/vitamincos" target="_blank" rel="noopener">Resident Advisor</a>
+      <a class="btn" href="https://www.youtube.com/watch?v=Jnb1ZLmslwo&t=2067s" target="_blank"
+        rel="noopener">YouTube</a>
+    </div>
+  </section>
+
+  <section class="book" id="book">
+    <div class="chrome b4 s1" data-d="30" style="width:200px;height:190px;left:-60px;top:20px"></div>
+    <div class="chrome b2 s2" data-d="-25" style="width:230px;height:260px;right:-70px;bottom:10px"></div>
+    <h2 class="reveal">Let’s <em>chat</em></h2>
+    <p>Bookings</p><a class="mail" href="mailto:adam@undergroundmgmt.co.nz">adam@undergroundmgmt.co.nz</a>
+    <p>General queries</p><a class="mail" href="mailto:vitamincosdj@gmail.com">vitamincosdj@gmail.com</a>
+    <p>or DM <a href="https://www.instagram.com/vitamincos/" target="_blank" rel="noopener"
+        style="color:#fff">@vitamincos</a> on Instagram</p>
+  </section>
+  <footer><button class="btn alt" id="sv" type="button" style="display:none;margin:0 0 16px">Save page as HTML
+      file</button>
+    <div style="font-family:'Archivo Black',sans-serif;font-size:32px;color:#fff;margin-bottom:10px">&lt;3</div>©
+    Vitamin Cos · Electronic press kit
+  </footer>
+
+  <script>
+    (function () {
+      /* UPCOMING GIGS: add entries here, e.g. {date:'2026-12-31',time:'21:00',title:'Event name',venue:'Venue',city:'City',link:'https://...'} */
+      var GIGS = [{ date: '2026-11-28', title: 'Darby', venue: 'Afters', city: 'Wellington', time: '10pm–3am', link: 'https://atmosmedia.co.nz/gigs/darby#tickets', cta: 'Tickets' }, { date: '2026-12-28', end: '2026-12-31', title: 'Rhythm and Vines 2026', venue: 'Waiohika Estate', city: 'Gisborne', link: 'https://www.rhythmandvines.co.nz' }, { date: '2027-01-05', title: 'With Charlotte Plank', venue: 'The Lansdowne Hotel', city: 'Sydney', link: 'https://scenestr.com.au/music/charlotte-plank-australia-2027-tour-20261112' }, { date: '2027-01-08', title: 'With Charlotte Plank', venue: 'Howler', city: 'Melbourne', link: 'https://scenestr.com.au/music/charlotte-plank-australia-2027-tour-20261112' }, { date: '2027-01-28', title: 'Fish56Octagon', venue: 'MeowNui', city: 'Wellington' }];
+
+      var words = ['Vitamin Cos', 'Global club', 'Baile funk', 'Hardgroove', 'House', 'Rhythm and Vines', 'Laneway', 'Le Currents', 'Gardens Festival', 'Island Time', 'Spring Break Fiji', 'Your daily dose'];
+      var h = ''; for (var r = 0; r < 2; r++) { words.forEach(function (w) { h += w + '<b>✺</b>' }) }
+      document.getElementById('tk').innerHTML = h;
+
+      var gl = document.getElementById('gl'), M = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+      var now = new Date().toISOString().slice(0, 10);
+      var up = GIGS.filter(function (g) { return (g.end || g.date) >= now }).sort(function (a, b) { return a.date < b.date ? -1 : 1 });
+      if (!up.length) {
+        gl.innerHTML = '<div class="empty reveal in"><h3>New dates dropping soon</h3><p style="color:#d3d6db;margin:0 0 14px">Follow along for announcements, or get in touch to book.</p><a class="btn" href="https://www.instagram.com/vitamincos/" target="_blank" rel="noopener" style="margin-left:0">Follow on Instagram</a><a class="btn alt" href="#book">Book</a></div>';
+      } else {
+        up.forEach(function (g) {
+          var d = g.date.split('-'), c = g.date.replace(/-/g, ''), e = (g.end || g.date).split('-'), ce = new Date(Date.UTC(+e[0], +e[1] - 1, +e[2] + 1)).toISOString().slice(0, 10).replace(/-/g, ''), el = document.createElement('div'); el.className = 'gig reveal';
+          var cal = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent('Vitamin Cos – ' + g.title) + '&dates=' + c + '/' + ce + '&location=' + encodeURIComponent((g.venue || '') + ' ' + (g.city || ''));
+          el.innerHTML = '<div class="d"><b>' + d[2] + (g.end ? '–' + e[2] : '') + '</b><span>' + M[+d[1] - 1] + '</span></div><div><h3></h3><p></p></div><div></div>';
+          el.querySelector('h3').textContent = g.title;
+          el.querySelector('p').textContent = [g.venue, g.city, g.time].filter(Boolean).join(' · ');
+          var box = el.lastChild;
+          var a = document.createElement('a'); a.className = 'btn alt'; a.target = '_blank'; a.rel = 'noopener'; a.href = cal; a.textContent = '+ Calendar'; box.appendChild(a);
+          if (g.link) { var t = document.createElement('a'); t.className = 'btn'; t.target = '_blank'; t.rel = 'noopener'; t.href = g.link; t.textContent = g.cta || 'Event info'; t.style.marginLeft = '6px'; box.appendChild(t) }
+          gl.appendChild(el);
+        });
+      }
+
+      var bs = [].slice.call(document.querySelectorAll('.chrome')).map(function (el, i) { return { el: el, x: 0, y: 0, f: (0.05 + (i % 4) * 0.025) * (i % 2 ? -1 : 1) } }), mx = -9999, my = -9999, rm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      window.addEventListener('pointermove', function (e) { mx = e.clientX; my = e.clientY });
+      function tick() {
+        var vh = innerHeight;
+        bs.forEach(function (b) {
+          var r = b.el.getBoundingClientRect();
+          if (r.bottom < -300 || r.top > vh + 300) return;
+          var cx = r.left + r.width / 2 - b.x, cy = r.top + r.height / 2 - b.y, tx = 0, ty = (cy - vh / 2) * b.f;
+          var dx = cx - mx, dy = cy + ty - my, d = Math.hypot(dx, dy), R = 240;
+          if (d < R && d > 1) { var p = (R - d) / R; tx += dx / d * p * 90; ty += dy / d * p * 90 }
+          b.x += (tx - b.x) * .08; b.y += (ty - b.y) * .08;
+          b.el.style.translate = b.x.toFixed(1) + 'px ' + b.y.toFixed(1) + 'px';
+        });
+        requestAnimationFrame(tick)
+      }
+      if (!rm) requestAnimationFrame(tick);
+      var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target) } }) }, { threshold: .12 });
+      [].forEach.call(document.querySelectorAll('.reveal'), function (el) { io.observe(el) });
+
+      var hero = document.getElementById('top'), hv = document.getElementById('hv'), snd = document.getElementById('snd');
+      var toast = document.createElement('div'); toast.style.cssText = 'position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;max-width:90vw;background:#0d0204;color:#fff;padding:12px 18px;border-radius:14px;font:600 14px Archivo,sans-serif;display:none;text-align:center'; document.body.appendChild(toast);
+      var tt; function msg(t) { toast.textContent = t; toast.style.display = 'block'; clearTimeout(tt); tt = setTimeout(function () { toast.style.display = 'none' }, 7000) }
+      function heroPlay() { hv.muted = true; hv.loop = true; hv.playsInline = true; var p = hv.play(); if (p && p.catch) p.catch(function () { var go = function () { hv.play(); window.removeEventListener('pointerdown', go) }; window.addEventListener('pointerdown', go) }) }
+      function heroOn() { hero.classList.add('vid'); snd.style.display = 'inline-block' }
+      function heroOff() { hero.classList.remove('vid'); snd.style.display = 'none' }
+      var tried = false;
+      hv.addEventListener('error', function () {
+        if (!hv._f) return;
+        if (!tried && hv._f.size < 60 * 1024 * 1024) { tried = true; var r = new FileReader(); r.onload = function () { hv.src = r.result; heroPlay() }; r.readAsDataURL(hv._f); return }
+        heroOff(); msg('This video can\u2019t play in the browser. Export it as an MP4 (H.264) and try again. iPhone .mov files often need converting.');
+      });
+      hv.addEventListener('loadeddata', function () { heroOn(); toast.style.display = 'none' });
+      document.getElementById('hin').addEventListener('change', function (e) {
+        var f = e.target.files[0]; if (!f) return;
+        if (!(/^video\//.test(f.type) || /\.(mp4|mov|m4v|webm|ogv|mkv)$/i.test(f.name))) { msg('That file doesn\u2019t look like a video.'); return }
+        tried = false; hv._f = f; msg('Loading video\u2026'); hv.src = URL.createObjectURL(f); heroPlay();
+      });
+      hv.addEventListener('ended', function () { hv.currentTime = 0; hv.play() });
+      hv.addEventListener('pause', function () { if (!hv.ended && document.visibilityState === 'visible' && hero.classList.contains('vid')) hv.play().catch(function () { }) });
+      document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && hero.classList.contains('vid')) hv.play().catch(function () { }) });
+      snd.addEventListener('click', function () { hv.muted = !hv.muted; snd.textContent = hv.muted ? 'Sound on' : 'Sound off' });
+
+      function fill(slot, file) {
+        if (!file) return;
+        var isVid = file.type.indexOf('video') === 0, isImg = file.type.indexOf('image') === 0;
+        if (!isVid && !isImg) return;
+        var el = document.createElement(isVid ? 'video' : 'img'); el.src = URL.createObjectURL(file);
+        if (isVid) { el.controls = true; el.playsInline = true; el.preload = 'metadata' }
+        slot.innerHTML = ''; slot.appendChild(el); el._f = file; slot.classList.add('filled');
+      }
+      [].forEach.call(document.querySelectorAll('.slot'), function (s) {
+        s.querySelector('input').addEventListener('change', function (e) { fill(s, e.target.files[0]) });
+        s.addEventListener('dragover', function (e) { e.preventDefault(); s.classList.add('over') });
+        s.addEventListener('dragleave', function () { s.classList.remove('over') });
+        s.addEventListener('drop', function (e) { e.preventDefault(); s.classList.remove('over'); fill(s, e.dataTransfer.files[0]) });
+        s.addEventListener('click', function (e) { if (s.classList.contains('filled') && e.target.tagName === 'VIDEO') e.preventDefault() });
+      });
+
+      var sv = document.getElementById('sv');
+      if (window.claude && claude.use) {
+        claude.use('downloads').then(function (d) {
+          if (!d) return; sv.style.display = 'inline-block';
+          var CH = 3 * 1024 * 1024;
+          var rs = function (b) { return new Promise(function (ok, no) { var r = new FileReader(); r.onload = function () { ok(r.result) }; r.onerror = no; r.readAsDataURL(b) }) };
+          var b64 = async function (f) {
+            var out = ['data:' + (f.type || 'application/octet-stream') + ';base64,'];
+            for (var o = 0; o < f.size; o += CH) { var u = await rs(f.slice(o, o + CH)); out.push(u.slice(u.indexOf(',') + 1)) }
+            return out;
+          };
+          sv.addEventListener('click', async function () {
+            var old = 'Save page as HTML file'; sv.textContent = 'Preparing… (large videos take a moment)'; sv.disabled = true;
+            try {
+              var q = '.slot img,.slot video,#hv', live = [].slice.call(document.querySelectorAll(q)), cl = document.documentElement.cloneNode(true), cs = [].slice.call(cl.querySelectorAll(q)), media = {};
+              for (var i = 0; i < live.length; i++) { if (live[i]._f && cs[i] && live[i].getAttribute('src')) { var t = '@@MEDIA' + i + '@@'; cs[i].setAttribute('src', t); media[t] = await b64(live[i]._f) } }
+              var b = cl.querySelector('#sv'); if (b) b.remove();
+              var html = '<!DOCTYPE html>\n' + cl.outerHTML, parts = [], rest = html, re = /@@MEDIA\d+@@/;
+              while (true) { var m = re.exec(rest); if (!m) { parts.push(rest); break } parts.push(rest.slice(0, m.index));[].push.apply(parts, media[m[0]]); rest = rest.slice(m.index + m[0].length) }
+              await d.save({ filename: 'vitamin-cos-epk.html', data: new Blob(parts, { type: 'text/html' }) });
+              sv.textContent = old;
+            } catch (e) {
+              sv.textContent = (e && e.code === 'declined') ? old : ('Could not save (' + ((e && (e.code || e.message)) || 'error') + ')');
+              setTimeout(function () { sv.textContent = old }, 6000);
+            }
+            sv.disabled = false;
+          });
+        }).catch(function () { })
+      }
+    })();
+  </script>
+</body>
+
+</html>
