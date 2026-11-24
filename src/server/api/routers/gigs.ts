@@ -1219,13 +1219,10 @@ export const gigsRouter = createTRPCRouter({
           isTba: false,
           isAffiliated: kind === "AFFILIATED",
         },
-        // `gigStartTime` breaks the tie, because a gig with no end time sorts
-        // as a null and Postgres puts those first on a descending order.
-        orderBy: [
-          { pastSortOrder: "asc" },
-          { gigEndTime: "desc" },
-          { gigStartTime: "desc" },
-        ],
+        // Newest first by the date the page shows. Not `gigEndTime`: it is
+        // optional, and Postgres puts nulls first on a descending order, so
+        // gigs with no end time jumped to the top.
+        orderBy: [{ pastSortOrder: "asc" }, { gigStartTime: "desc" }],
         include: {
           media: {
             orderBy: [
