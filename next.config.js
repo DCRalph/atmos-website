@@ -104,8 +104,8 @@ const config = {
         source: "/@:handle",
         destination: "/artist/:handle",
       },
-      // Standalone press kit page. Its media lives in R2 under
-      // `epk/vitamin-cos/`.
+      // Standalone press kit page. Its media is in the admin media library,
+      // tagged "Vitamin Cos EPK".
       {
         source: "/vitamin-cos-epk",
         destination: "/vitamin-cos-epk.html",
