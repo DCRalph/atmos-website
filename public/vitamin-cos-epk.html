@@ -521,64 +521,22 @@
 
     @media(min-width:800px) {
       .watch {
-        grid-template-columns: 2fr 1fr
+        grid-template-columns: 1fr 1fr
       }
     }
 
     .yt {
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      background: var(--ink);
-      border-radius: 22px;
-      padding: 24px;
-      text-decoration: none;
-      min-height: 200px
-    }
-
-    .yt h3 {
-      font-size: 32px
-    }
-
-    .yt .thumb {
-      position: relative;
       aspect-ratio: 16/9;
-      border-radius: 14px;
-      background: var(--red) center/cover no-repeat;
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 2px solid #fff;
-      overflow: hidden
+      border-radius: 22px;
+      overflow: hidden;
+      background: #000
     }
 
-    .yt .thumb i {
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      background: #fff;
-      position: relative;
-      transition: transform .2s
-    }
-
-    .yt .thumb i::after {
-      content: "";
-      position: absolute;
-      left: 25px;
-      top: 18px;
-      border-left: 22px solid var(--red);
-      border-top: 14px solid transparent;
-      border-bottom: 14px solid transparent
-    }
-
-    .yt:hover .thumb i {
-      transform: scale(1.12)
-    }
-
-    .yt span {
-      color: var(--silver);
-      font-size: 14px
+    .yt iframe {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0
     }
 
     .gal {
@@ -844,12 +802,12 @@
     <div class="watch">
       <label class="slot wide reveal filled" data-kind="video" style="background:#000"><input type="file"
           accept="video/*"><video controls playsinline preload="metadata" style="object-fit:contain"
-          src="https://r2.atmosmedia.co.nz/uploads/general/5f3e59a1-95b1-4c87-9e01-695293c6b8ef.mp4"></video></label>
-      <a class="yt reveal" href="https://www.youtube.com/watch?v=Jnb1ZLmslwo&t=2067s" target="_blank" rel="noopener">
-        <div><span>YouTube</span>
-          <h3>Live at Shed 6</h3>
-        </div><span>Full set →</span>
-      </a>
+          poster="https://r2.atmosmedia.co.nz/uploads/general/c1b0ebeb-4534-48c3-9ada-e63de6c64d29.webp"
+          src="https://r2.atmosmedia.co.nz/uploads/general/0ccd0248-a3eb-467a-9c45-90b72a33c181.mp4"></video></label>
+      <div class="yt reveal"><iframe
+          src="https://www.youtube-nocookie.com/embed/Jnb1ZLmslwo?start=2067&rel=0&iv_load_policy=3&cc_load_policy=0&playsinline=1&color=white"
+          title="Vitamin Cos live at Shed 6" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"
+          allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
     </div>
   </section>
 
