@@ -5,6 +5,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Vitamin Cos – Electronic Press Kit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;600&display=swap"
     rel="stylesheet">
   <style>
@@ -92,7 +94,13 @@
       position: relative;
       padding: 76px 22px;
       max-width: 1100px;
-      margin: 0 auto
+      margin: 0 auto;
+      overflow-x: clip
+    }
+
+    section h2 {
+      position: relative;
+      z-index: 2
     }
 
     .chrome {
@@ -608,7 +616,25 @@
       padding: 9px 14px;
       font-size: 11px;
       margin: 0;
-      box-shadow: none
+      box-shadow: none;
+      white-space: nowrap
+    }
+
+    .gig>div:last-child {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px
+    }
+
+    @media(max-width:600px) {
+      .gig {
+        grid-template-columns: auto 1fr;
+        gap: 12px 16px
+      }
+
+      .gig>div:last-child {
+        grid-column: 2
+      }
     }
 
     .empty {
@@ -705,7 +731,11 @@
 
   <section class="hero vid" id="top">
     <video id="hv" autoplay muted loop playsinline preload="auto"
-      src="https://r2.atmosmedia.co.nz/uploads/general/fa3c6a8f-ffa2-4d7a-af1e-6709f409fee1.mp4"></video>
+      poster="https://r2.atmosmedia.co.nz/uploads/general/7ff704ca-a67c-4664-af80-8d860381bfcb.webp">
+      <source media="(max-width: 800px)"
+        src="https://r2.atmosmedia.co.nz/uploads/general/8a5df287-9ecc-4765-979f-8ee28e86c5f0.mp4" type="video/mp4">
+      <source src="https://r2.atmosmedia.co.nz/uploads/general/fa3c6a8f-ffa2-4d7a-af1e-6709f409fee1.mp4" type="video/mp4">
+    </video>
     <div class="tint"></div>
     <h1>Vitamin<span>Cos</span></h1>
     <div class="tag">DJ · Promoter · Aotearoa/New Zealand</div>
@@ -738,7 +768,7 @@
           afterparty, to name a few.</p>
         <p>Come get your daily dose and see her play.</p>
       </div>
-      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img
+      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img loading="lazy" decoding="async"
           alt="Vitamin Cos, black and white portrait"
           src="https://r2.atmosmedia.co.nz/uploads/general/3198a704-a08c-4778-bb58-cc000257e851.webp"
           style="object-position:62% 50%"></label>
@@ -822,33 +852,33 @@
     <div class="chrome s0 b4" style="width:140px;height:170px;left:-60px;bottom:30px"></div>
     <h2 class="reveal">The <em>gallery</em></h2>
     <div class="gal">
-      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img
+      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img loading="lazy" decoding="async"
           alt="With Charlotte Plank at a festival"
           src="https://r2.atmosmedia.co.nz/uploads/general/a4401734-4237-437d-b261-3105515557a0.webp"
           style="object-position:50% 50%"></label>
-      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img
+      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img loading="lazy" decoding="async"
           alt="Vitamin Cos in a cherry print top" src="https://r2.atmosmedia.co.nz/uploads/general/40e8bd74-1b89-4f26-ab00-e962217a07b4.webp"
           style="object-position:50% 28%"></label>
-      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img
+      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img loading="lazy" decoding="async"
           alt="B2B with Skream" src="https://r2.atmosmedia.co.nz/uploads/general/70140194-8555-4bef-8243-6cc43e9acfe6.webp"
           style="object-position:38% 50%"></label>
-      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img
+      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img loading="lazy" decoding="async"
           alt="Vitamin Cos DJing at East Street Hall"
           src="https://r2.atmosmedia.co.nz/uploads/general/1ac1d75b-f9ee-4b2e-8b4d-e4cc1e3bfa17.webp"
           style="object-position:50% 50%"></label>
-      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img
+      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img loading="lazy" decoding="async"
           alt="Vitamin Cos DJing with the crowd dancing around the decks"
           src="https://r2.atmosmedia.co.nz/uploads/general/5d67cf61-1b2e-44b8-bb38-7285079324dd.webp"
           style="object-position:50% 45%"></label>
-      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img
+      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img loading="lazy" decoding="async"
           alt="Vitamin Cos with a friend in Australia tees"
           src="https://r2.atmosmedia.co.nz/uploads/general/557db0e2-8911-447d-99f2-4f4ab0c28bb7.webp"
           style="object-position:50% 50%"></label>
-      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img
+      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img loading="lazy" decoding="async"
           alt="Vitamin Cos in a yellow top and black cap"
           src="https://r2.atmosmedia.co.nz/uploads/general/a1fe8667-e915-4443-b364-35731c442465.webp"
           style="object-position:50% 50%"></label>
-      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img
+      <label class="slot reveal filled locked" data-kind="image"><input type="file" accept="image/*"><img loading="lazy" decoding="async"
           alt="Vitamin Cos portrait" src="https://r2.atmosmedia.co.nz/uploads/general/e28d12b8-4002-49c1-83b5-46b8b71c01f2.webp"
           style="object-position:50% 30%"></label>
     </div>
@@ -904,7 +934,7 @@
           el.querySelector('p').textContent = [g.venue, g.city, g.time].filter(Boolean).join(' · ');
           var box = el.lastChild;
           var a = document.createElement('a'); a.className = 'btn alt'; a.target = '_blank'; a.rel = 'noopener'; a.href = cal; a.textContent = '+ Calendar'; box.appendChild(a);
-          if (g.link) { var t = document.createElement('a'); t.className = 'btn'; t.target = '_blank'; t.rel = 'noopener'; t.href = g.link; t.textContent = g.cta || 'Event info'; t.style.marginLeft = '6px'; box.appendChild(t) }
+          if (g.link) { var t = document.createElement('a'); t.className = 'btn'; t.target = '_blank'; t.rel = 'noopener'; t.href = g.link; t.textContent = g.cta || 'Event info'; box.appendChild(t) }
           gl.appendChild(el);
         });
       }
@@ -931,7 +961,16 @@
       var hero = document.getElementById('top'), hv = document.getElementById('hv'), snd = document.getElementById('snd');
       var toast = document.createElement('div'); toast.style.cssText = 'position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;max-width:90vw;background:#0d0204;color:#fff;padding:12px 18px;border-radius:14px;font:600 14px Archivo,sans-serif;display:none;text-align:center'; document.body.appendChild(toast);
       var tt; function msg(t) { toast.textContent = t; toast.style.display = 'block'; clearTimeout(tt); tt = setTimeout(function () { toast.style.display = 'none' }, 7000) }
-      function heroPlay() { hv.muted = true; hv.loop = true; hv.playsInline = true; var p = hv.play(); if (p && p.catch) p.catch(function () { var go = function () { hv.play(); window.removeEventListener('pointerdown', go) }; window.addEventListener('pointerdown', go) }) }
+      // Phones in Low Power Mode or data saver refuse autoplay, so fall back to the first tap, click or key.
+      // touchend, not pointerdown: a touch pointerdown does not count as a user gesture.
+      var GESTURES = ['touchend', 'click', 'keydown'];
+      function heroPlay() {
+        hv.muted = true; hv.loop = true; hv.playsInline = true; var p = hv.play();
+        if (p && p.catch) p.catch(function () {
+          var go = function () { hv.play().then(function () { GESTURES.forEach(function (e) { window.removeEventListener(e, go, true) }) }, function () { }) };
+          GESTURES.forEach(function (e) { window.addEventListener(e, go, true) });
+        });
+      }
       function heroOn() { hero.classList.add('vid'); snd.style.display = 'inline-block' }
       function heroOff() { hero.classList.remove('vid'); snd.style.display = 'none' }
       var tried = false;
@@ -950,6 +989,7 @@
       hv.addEventListener('pause', function () { if (!hv.ended && document.visibilityState === 'visible' && hero.classList.contains('vid')) hv.play().catch(function () { }) });
       document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && hero.classList.contains('vid')) hv.play().catch(function () { }) });
       snd.addEventListener('click', function () { hv.muted = !hv.muted; snd.textContent = hv.muted ? 'Sound on' : 'Sound off' });
+      heroPlay();
 
       function fill(slot, file) {
         if (!file) return;
