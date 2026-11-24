@@ -104,6 +104,12 @@ const config = {
         source: "/@:handle",
         destination: "/artist/:handle",
       },
+      // Standalone press kit page. Its media lives in R2 under
+      // `epk/vitamin-cos/`.
+      {
+        source: "/vitamin-cos-epk",
+        destination: "/vitamin-cos-epk.html",
+      },
       {
         source: "/fuckoffaddblockers/:match*",
         destination: "https://atmosmedia.co.nz/_vercel/insights/:match*",
