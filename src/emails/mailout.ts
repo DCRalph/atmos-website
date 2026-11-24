@@ -7,13 +7,20 @@
  * `UNSUBSCRIBE_URL` where it goes and `personalise` fills it in per recipient.
  */
 
+import {
+  COLORS,
+  emailShell,
+  escapeHtml,
+  pillButton,
+  row,
+  heading as headingHtml,
+} from "./layout";
+
+export { escapeHtml };
+
 export const UNSUBSCRIBE_URL = "%%unsubscribe_url%%";
 
-const BG = "#000000";
-const TEXT = "#ffffff";
-const BODY = "#d4d4d4";
-const MUTED = "#8a8a8a";
-const ACCENT = "#c6ff33";
+const { text: TEXT, body: BODY, muted: MUTED, accent: ACCENT } = COLORS;
 
 export type MailoutContent = {
   subject: string;
@@ -37,14 +44,6 @@ export type RenderOptions = {
   /** Who we are and how to reach us, for the footer. */
   contactEmail: string;
 };
-
-export function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
 
 /**
  * Only web, mail and phone links survive. Anything else (`javascript:`, a
@@ -283,38 +282,24 @@ export function renderMailout(
     ? `<tr><td style="padding:0 0 24px;">${linkUrl ? `<a href="${escapeHtml(linkUrl)}">` : ""}<img src="${escapeHtml(imageUrl)}" width="600" alt="" style="display:block;width:100%;max-width:600px;height:auto;border:0;">${linkUrl ? "</a>" : ""}</td></tr>`
     : "";
 
-  const html = `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="dark light">
-<title>${escapeHtml(content.subject)}</title>
-</head>
-<body style="margin:0;padding:0;background:${BG};color:${TEXT};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
-${preview ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preview)}${"&#847;&zwnj;&nbsp;".repeat(60)}</div>` : ""}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BG};padding:24px 12px;">
-<tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
-<tr><td style="padding:8px 0 24px;">
-  <img src="${escapeHtml(options.siteUrl)}/email/atmos-logo.png" width="160" height="36" alt="ATMOS" style="display:block;width:160px;height:auto;border:0;">
-</td></tr>
-${image}
-${heading ? `<tr><td style="padding:0 0 16px;font-size:30px;line-height:1.2;font-weight:800;letter-spacing:-0.02em;color:${TEXT};">${escapeHtml(heading)}</td></tr>` : ""}
-<tr><td style="font-size:16px;line-height:1.6;color:${BODY};">
+  const html = emailShell({
+    title: content.subject,
+    preview,
+    siteUrl: options.siteUrl,
+    body: [
+      image,
+      heading ? row(headingHtml(heading), 16) : "",
+      `<tr><td style="font-size:16px;line-height:1.6;color:${BODY};">
 ${blocks.map((block) => blockHtml(block, options)).join("\n")}
-</td></tr>
-${buttonUrl ? `<tr><td style="padding:8px 0 16px;"><a href="${escapeHtml(buttonUrl)}" style="display:inline-block;padding:14px 22px;background:${ACCENT};color:#000;text-decoration:none;font-size:15px;font-weight:700;border-radius:999px;">${escapeHtml(content.buttonLabel?.trim() ?? "")}</a></td></tr>` : ""}
-<tr><td style="padding:32px 0 8px;color:${MUTED};font-size:12px;line-height:1.7;border-top:1px solid #222;">
-${escapeHtml(footerLine(options))}<br>
+</td></tr>`,
+      buttonUrl
+        ? row(pillButton(buttonUrl, content.buttonLabel?.trim() ?? ""), 16)
+        : "",
+    ].join("\n"),
+    footer: `${escapeHtml(footerLine(options))}<br>
 <a href="${UNSUBSCRIBE_URL}" style="color:${MUTED};text-decoration:underline;">Unsubscribe or choose what you get</a><br>
-Atmos Media, New Zealand &middot; <a href="mailto:${escapeHtml(options.contactEmail)}" style="color:${MUTED};">${escapeHtml(options.contactEmail)}</a>
-</td></tr>
-</table>
-</td></tr>
-</table>
-</body>
-</html>`;
+<a href="mailto:${escapeHtml(options.contactEmail)}" style="color:${MUTED};">${escapeHtml(options.contactEmail)}</a>`,
+  });
 
   const text = [
     heading,

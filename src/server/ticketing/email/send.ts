@@ -38,7 +38,7 @@ import {
   renderRefundEmail,
   renderTicketEmail,
   type EmailTicket,
-} from "./templates";
+} from "~/emails/tickets";
 
 const APPLE_WALLET_BADGE_CID = "apple-wallet-badge";
 const APPLE_WALLET_BADGE_FILENAME = "US-UK_Add_to_Apple_Wallet_RGB_101421.png";

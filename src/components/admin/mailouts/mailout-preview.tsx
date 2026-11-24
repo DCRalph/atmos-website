@@ -8,7 +8,7 @@ import {
   personalise,
   renderMailout,
   type MailoutContent,
-} from "~/lib/mailouts/render";
+} from "~/emails/mailout";
 import { SITE_URL } from "~/lib/seo-constants";
 import { CONTACT } from "~/lib/site-constants";
 import { Button } from "~/components/ui/button";

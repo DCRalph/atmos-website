@@ -7,7 +7,7 @@ import {
   tagLink,
   UNSUBSCRIBE_URL,
   type RenderOptions,
-} from "./render";
+} from "~/emails/mailout";
 import {
   signUnsubscribeToken,
   verifyUnsubscribeToken,

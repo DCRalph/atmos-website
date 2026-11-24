@@ -5,15 +5,6 @@ import { type Attachment, Resend } from "resend";
 import { env } from "~/env";
 import { EMAIL_SENDERS, type EmailSender } from "./senders";
 
-/** Escape user-supplied text before it goes into an HTML email body. */
-export function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 /**
  * Inline attachment. `cid` matches a `cid:` reference in the HTML — used for
  * ticket QR codes, which must not depend on remote images being unblocked.
