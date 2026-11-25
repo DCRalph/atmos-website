@@ -220,7 +220,7 @@ function Steps({ event }: { event: AdminEvent }) {
             description={`${rows.length} change${rows.length === 1 ? "" : "s"} saved.`}
             next={[
               { key: "door-staff", eventId: event.id },
-              { key: "ticket-prices", eventId: event.id },
+              { key: "ticket-types", eventId: event.id },
             ]}
             links={[
               { href: eventEditorHref(event.id), label: "Open the event" },
