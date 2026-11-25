@@ -155,14 +155,14 @@ function AlreadySelling({ gig, eventId }: { gig: EditorGig; eventId: string }) {
         <CardHeader>
           <CardTitle>This gig already sells tickets</CardTitle>
           <CardDescription>
-            It has a ticketed event. Change its prices or open it to see
+            It has a ticketed event. Change its ticket types or open it to see
             everything else.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <Button asChild>
-            <Link href={wizardHref("ticket-prices", { eventId })}>
-              Change ticket prices
+            <Link href={wizardHref("ticket-types", { eventId })}>
+              Set up ticket types
             </Link>
           </Button>
           <Button variant="outline" asChild>

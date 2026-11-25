@@ -1,6 +1,12 @@
 "use client";
 
 import { AfterNightWizard } from "./after-night-wizard";
+import { ArtistWizard } from "./artist-wizard";
+import { ChangeTicketWizard } from "./change-ticket-wizard";
+import { CompGroupWizard } from "./comp-group-wizard";
+import { GoToDoorWizard } from "./go-to-door-wizard";
+import { MakeCodeWizard } from "./make-code-wizard";
+import { ShortLinkWizard } from "./short-link-wizard";
 import { AnnounceWizard } from "./announce-wizard";
 import type { WizardKey } from "./catalog";
 import { DoorStaffWizard } from "./door-staff-wizard";
@@ -11,7 +17,7 @@ import { LineupWizard } from "./lineup-wizard";
 import { NewGigWizard } from "./new-gig-wizard";
 import { PosterWizard } from "./poster-wizard";
 import { SellTicketsWizard } from "./sell-tickets-wizard";
-import { TicketPricesWizard } from "./ticket-prices-wizard";
+import { TicketTypesWizard } from "./ticket-types-wizard";
 
 /** Each wizard's component, by its key in the catalog. A new key fails here until it has one. */
 const COMPONENTS: Record<WizardKey, () => React.ReactNode> = {
@@ -22,10 +28,16 @@ const COMPONENTS: Record<WizardKey, () => React.ReactNode> = {
   announce: AnnounceWizard,
   "after-night": AfterNightWizard,
   "sell-tickets": SellTicketsWizard,
-  "ticket-prices": TicketPricesWizard,
+  "ticket-types": TicketTypesWizard,
   "event-basics": EventBasicsWizard,
   "guest-list": GuestListWizard,
   "door-staff": DoorStaffWizard,
+  "make-code": MakeCodeWizard,
+  "comp-group": CompGroupWizard,
+  "go-to-door": GoToDoorWizard,
+  "change-ticket": ChangeTicketWizard,
+  artist: ArtistWizard,
+  "short-link": ShortLinkWizard,
 };
 
 export function Wizard({ wizard }: { wizard: WizardKey }) {

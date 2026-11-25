@@ -19,13 +19,19 @@ const GIG_WIZARDS: WizardKey[] = [
   "announce",
   "sell-tickets",
   "after-night",
+  "short-link",
 ];
 
 const EVENT_WIZARDS: WizardKey[] = [
-  "ticket-prices",
+  "ticket-types",
   "event-basics",
   "guest-list",
+  "comp-group",
+  "make-code",
   "door-staff",
+  "go-to-door",
+  "change-ticket",
+  "short-link",
 ];
 
 /**

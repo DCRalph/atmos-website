@@ -1,6 +1,12 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  ArrowLeftRight,
   Camera,
+  DoorOpen,
+  KeyRound,
+  Link2,
+  MicVocal,
+  UsersRound,
   CalendarPlus,
   EyeOff,
   Image as ImageIcon,
@@ -64,9 +70,9 @@ export const WIZARDS = {
     icon: TicketPlus,
     needs: "gig",
   },
-  "ticket-prices": {
-    title: "Change ticket prices",
-    description: "Reprice, add or close a ticket type",
+  "ticket-types": {
+    title: "Set up ticket types",
+    description: "Prices, how many, when they sell, who can buy",
     icon: Tag,
     needs: "event",
   },
@@ -87,6 +93,42 @@ export const WIZARDS = {
     description: "Who can scan people in",
     icon: ScanLine,
     needs: "event",
+  },
+  "make-code": {
+    title: "Make a code",
+    description: "Money off, or opens a hidden ticket type",
+    icon: KeyRound,
+    needs: "event",
+  },
+  "comp-group": {
+    title: "Comp a group",
+    description: "Free tickets for several people at once",
+    icon: UsersRound,
+    needs: "event",
+  },
+  "go-to-door": {
+    title: "Close online sales",
+    description: "Stop selling online and sell the rest at the door",
+    icon: DoorOpen,
+    needs: "event",
+  },
+  "change-ticket": {
+    title: "Change a buyer's ticket",
+    description: "Fix their details, names on tickets, or access",
+    icon: ArrowLeftRight,
+    needs: "none",
+  },
+  artist: {
+    title: "Add or claim an artist",
+    description: "A new profile, or hand one to its artist",
+    icon: MicVocal,
+    needs: "none",
+  },
+  "short-link": {
+    title: "Make a short link",
+    description: "A short link for a gig, an event, or anywhere",
+    icon: Link2,
+    needs: "none",
   },
 } as const satisfies Record<
   string,
@@ -117,11 +159,19 @@ export const WIZARD_GROUPS: { title: string; keys: WizardKey[] }[] = [
     title: "Tickets",
     keys: [
       "sell-tickets",
-      "ticket-prices",
+      "ticket-types",
       "event-basics",
       "guest-list",
+      "comp-group",
+      "make-code",
       "door-staff",
+      "go-to-door",
+      "change-ticket",
     ],
+  },
+  {
+    title: "Other",
+    keys: ["artist", "short-link"],
   },
 ];
 
