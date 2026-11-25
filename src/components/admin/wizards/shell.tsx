@@ -27,9 +27,15 @@ import { WIZARDS, wizardHref, type WizardKey } from "./catalog";
  * Which step a wizard is on, and how far it has been. Steps are walked in
  * order; the rail can jump back to any step already reached.
  */
-export function useSteps<Key extends string>(steps: readonly RailStep<Key>[]) {
-  const [index, setIndex] = useState(0);
-  const [reached, setReached] = useState(0);
+export function useSteps<Key extends string>(
+  steps: readonly RailStep<Key>[],
+  /** Where to open, when the URL already answered the steps before it. */
+  start?: Key,
+) {
+  const [index, setIndex] = useState(() =>
+    Math.max(0, start ? steps.findIndex((step) => step.key === start) : 0),
+  );
+  const [reached, setReached] = useState(index);
 
   const goToIndex = useCallback((next: number) => {
     setIndex(next);

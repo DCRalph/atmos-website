@@ -20,6 +20,7 @@ export const wizardsRouter = createTRPCRouter({
       select: {
         id: true,
         title: true,
+        slug: true,
         status: true,
         isTba: true,
         gigStartTime: true,
@@ -44,6 +45,7 @@ export const wizardsRouter = createTRPCRouter({
     return gigs.map((gig) => ({
       id: gig.id,
       title: gig.title,
+      slug: gig.slug,
       isDraft: gig.status === "DRAFT",
       isTba: gig.isTba,
       startsAt: gig.gigStartTime,
@@ -72,6 +74,7 @@ export const wizardsRouter = createTRPCRouter({
       select: {
         id: true,
         name: true,
+        slug: true,
         status: true,
         startsAt: true,
         endsAt: true,
@@ -84,6 +87,7 @@ export const wizardsRouter = createTRPCRouter({
     return events.map((event) => ({
       id: event.id,
       title: event.name,
+      slug: event.slug,
       isDraft: event.status === TicketEventStatus.DRAFT,
       startsAt: event.startsAt,
       venue: event.venueName,

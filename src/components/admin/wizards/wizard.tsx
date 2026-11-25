@@ -1,6 +1,12 @@
 "use client";
 
 import { AfterNightWizard } from "./after-night-wizard";
+import { ArtistWizard } from "./artist-wizard";
+import { ChangeTicketWizard } from "./change-ticket-wizard";
+import { CompGroupWizard } from "./comp-group-wizard";
+import { GoToDoorWizard } from "./go-to-door-wizard";
+import { MakeCodeWizard } from "./make-code-wizard";
+import { ShortLinkWizard } from "./short-link-wizard";
 import { AnnounceWizard } from "./announce-wizard";
 import type { WizardKey } from "./catalog";
 import { DoorStaffWizard } from "./door-staff-wizard";
@@ -26,6 +32,12 @@ const COMPONENTS: Record<WizardKey, () => React.ReactNode> = {
   "event-basics": EventBasicsWizard,
   "guest-list": GuestListWizard,
   "door-staff": DoorStaffWizard,
+  "make-code": MakeCodeWizard,
+  "comp-group": CompGroupWizard,
+  "go-to-door": GoToDoorWizard,
+  "change-ticket": ChangeTicketWizard,
+  artist: ArtistWizard,
+  "short-link": ShortLinkWizard,
 };
 
 export function Wizard({ wizard }: { wizard: WizardKey }) {
