@@ -22,7 +22,7 @@ const GIG_WIZARDS: WizardKey[] = [
 ];
 
 const EVENT_WIZARDS: WizardKey[] = [
-  "ticket-prices",
+  "ticket-types",
   "event-basics",
   "guest-list",
   "door-staff",

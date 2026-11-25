@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDown, ArrowUp, X } from "lucide-react";
+import { X } from "lucide-react";
 import { toast } from "sonner";
 
 import { api, type RouterInputs } from "~/trpc/react";
@@ -29,6 +29,7 @@ import { GigGate } from "./gates";
 import { gigEditorHref, gigLabel, type EditorGig } from "./gig-common";
 import { changedRows, DiffList, Loading, type DiffRow } from "./parts";
 import { DonePanel, useSteps, WizardFooter, WizardShell } from "./shell";
+import { SortableList } from "./sortable";
 
 const STEPS = [
   { key: "who", label: "Who's playing" },
@@ -169,13 +170,6 @@ function Steps({ gig }: { gig: EditorGig }) {
     setSets((all) =>
       all.map((set) => (set.key === key ? { ...set, ...changes } : set)),
     );
-  const move = (index: number, by: -1 | 1) =>
-    setSets((all) => {
-      const next = [...all];
-      const [moved] = next.splice(index, 1);
-      if (moved) next.splice(index + by, 0, moved);
-      return next;
-    });
 
   const before = setsOf(gig);
   const beforeIndex = new Map(before.map((set, index) => [set.key, index]));
@@ -270,8 +264,8 @@ function Steps({ gig }: { gig: EditorGig }) {
                 <div>
                   <CardTitle>Running order</CardTitle>
                   <CardDescription>
-                    First on at the top. The role is free text, like Headliner
-                    or Support.
+                    First on at the top. Drag to reorder. The role is free text,
+                    like Headliner or Support.
                   </CardDescription>
                 </div>
                 {sets.some((set) => !set.role.trim()) ? (
@@ -299,34 +293,19 @@ function Steps({ gig }: { gig: EditorGig }) {
                   Nobody to order yet.
                 </p>
               ) : (
-                <ul className="divide-border divide-y rounded-lg border">
-                  {sets.map((set, index) => (
-                    <li
-                      key={set.key}
-                      className="flex flex-wrap items-center gap-2 px-3 py-2"
-                    >
-                      <div className="flex shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8"
-                          aria-label={`Move ${billName(set)} earlier`}
-                          disabled={index === 0}
-                          onClick={() => move(index, -1)}
-                        >
-                          <ArrowUp className="size-4" aria-hidden />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8"
-                          aria-label={`Move ${billName(set)} later`}
-                          disabled={index === sets.length - 1}
-                          onClick={() => move(index, 1)}
-                        >
-                          <ArrowDown className="size-4" aria-hidden />
-                        </Button>
-                      </div>
+                <SortableList
+                  items={sets}
+                  keyOf={(set) => set.key}
+                  labelOf={billName}
+                  onReorder={setSets}
+                  className="divide-border divide-y rounded-lg border"
+                  rowClassName={() => "px-3 py-2"}
+                >
+                  {(set, index) => (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-muted-foreground w-5 font-mono text-xs">
+                        {index + 1}
+                      </span>
                       <span className="min-w-0 flex-1 truncate text-sm font-medium">
                         {billName(set)}
                       </span>
@@ -337,12 +316,12 @@ function Steps({ gig }: { gig: EditorGig }) {
                         }
                         placeholder={suggestedRole(index, sets.length)}
                         aria-label={`Role for ${billName(set)}`}
-                        className="w-full sm:w-40"
+                        className="h-8 w-full sm:w-40"
                         maxLength={80}
                       />
-                    </li>
-                  ))}
-                </ul>
+                    </div>
+                  )}
+                </SortableList>
               )}
             </CardContent>
           </Card>
@@ -491,7 +470,7 @@ export function WhoIsPlaying({
                 ? "Nobody yet."
                 : `${sets.length} on the bill.`}{" "}
               Search for an artist, or create a profile if they are new. Add a
-              second name to a slot for a back to back.
+              second name to a slot for a back to back. Drag to reorder.
             </CardDescription>
           </div>
           <ArtistPicker
@@ -517,12 +496,16 @@ export function WhoIsPlaying({
             Nobody on the bill yet. Press Add artist.
           </p>
         ) : (
-          <ul className="divide-border divide-y rounded-lg border">
-            {sets.map((set, index) => (
-              <li
-                key={set.key}
-                className="flex flex-wrap items-center gap-3 px-3 py-2.5"
-              >
+          <SortableList
+            items={sets}
+            keyOf={(set) => set.key}
+            labelOf={billName}
+            onReorder={onChange}
+            className="divide-border divide-y rounded-lg border"
+            rowClassName={() => "px-3 py-2.5"}
+          >
+            {(set, index) => (
+              <div className="flex flex-wrap items-center gap-3">
                 <span className="text-muted-foreground w-5 font-mono text-xs">
                   {index + 1}
                 </span>
@@ -588,9 +571,9 @@ export function WhoIsPlaying({
                 >
                   <X className="size-4" aria-hidden />
                 </Button>
-              </li>
-            ))}
-          </ul>
+              </div>
+            )}
+          </SortableList>
         )}
       </CardContent>
     </Card>

@@ -64,9 +64,9 @@ export const WIZARDS = {
     icon: TicketPlus,
     needs: "gig",
   },
-  "ticket-prices": {
-    title: "Change ticket prices",
-    description: "Reprice, add or close a ticket type",
+  "ticket-types": {
+    title: "Set up ticket types",
+    description: "Prices, how many, when they sell, who can buy",
     icon: Tag,
     needs: "event",
   },
@@ -117,7 +117,7 @@ export const WIZARD_GROUPS: { title: string; keys: WizardKey[] }[] = [
     title: "Tickets",
     keys: [
       "sell-tickets",
-      "ticket-prices",
+      "ticket-types",
       "event-basics",
       "guest-list",
       "door-staff",

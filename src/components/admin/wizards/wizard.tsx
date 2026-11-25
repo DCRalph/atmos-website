@@ -11,7 +11,7 @@ import { LineupWizard } from "./lineup-wizard";
 import { NewGigWizard } from "./new-gig-wizard";
 import { PosterWizard } from "./poster-wizard";
 import { SellTicketsWizard } from "./sell-tickets-wizard";
-import { TicketPricesWizard } from "./ticket-prices-wizard";
+import { TicketTypesWizard } from "./ticket-types-wizard";
 
 /** Each wizard's component, by its key in the catalog. A new key fails here until it has one. */
 const COMPONENTS: Record<WizardKey, () => React.ReactNode> = {
@@ -22,7 +22,7 @@ const COMPONENTS: Record<WizardKey, () => React.ReactNode> = {
   announce: AnnounceWizard,
   "after-night": AfterNightWizard,
   "sell-tickets": SellTicketsWizard,
-  "ticket-prices": TicketPricesWizard,
+  "ticket-types": TicketTypesWizard,
   "event-basics": EventBasicsWizard,
   "guest-list": GuestListWizard,
   "door-staff": DoorStaffWizard,

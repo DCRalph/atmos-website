@@ -132,7 +132,9 @@ export const newTier = (fields: Partial<TierDraft> = {}): TierDraft => ({
   ...fields,
 });
 
-const tierFromEvent = (tier: AdminEvent["tiers"][number]): TierDraft => ({
+export const tierFromEvent = (
+  tier: AdminEvent["tiers"][number],
+): TierDraft => ({
   key: tier.id,
   id: tier.id,
   name: tier.name,
