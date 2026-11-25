@@ -1399,8 +1399,9 @@ export const gigsRouter = createTRPCRouter({
             },
           },
           notifyRecipients: { select: { userId: true } },
-          // Only for seeding the doors row. The two are independent afterwards.
-          ticketEvents: { select: { id: true, doorsAt: true } },
+          // For seeding the doors row, and for the wizards to see whether the gig
+          // already sells tickets. The two are independent afterwards.
+          ticketEvents: { select: { id: true, doorsAt: true, status: true } },
         },
       });
 

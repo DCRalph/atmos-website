@@ -32,6 +32,7 @@ import {
   Users,
   UsersRound,
   WalletCards,
+  WandSparkles,
 } from "lucide-react";
 
 export type AdminNavigationItem = {
@@ -64,6 +65,21 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
     title: "General",
     items: [
       adminHomeItem,
+      {
+        title: "Quick actions",
+        description:
+          "Step-by-step help for one job: a line-up, a poster, tickets for a gig",
+        url: "/admin/do",
+        icon: WandSparkles,
+        keywords: [
+          "wizard",
+          "help",
+          "line-up",
+          "poster",
+          "tickets",
+          "guest list",
+        ],
+      },
       {
         title: "Tasks",
         description: "Team calendar, deadlines and accountability",

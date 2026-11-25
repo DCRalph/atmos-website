@@ -4,6 +4,7 @@ import { useRef } from "react";
 import Link from "next/link";
 import { Check, CircleAlert, TriangleAlert } from "lucide-react";
 import { cn } from "~/lib/utils";
+import { wizardHref } from "~/components/admin/wizards/catalog";
 import { COMING_UP_DAYS } from "~/lib/dashboard";
 import { addDays, dayKey, nzDate, startOfWeek } from "~/lib/tasks/time";
 import { formatEventDate, formatEventTime } from "~/lib/ticketing/dates";
@@ -265,7 +266,19 @@ function ItemBody({ item, now }: { item: Item; now: Date }) {
                     aria-hidden
                   />
                 )}
-                {check.label}
+                {check.fix ? (
+                  <Link
+                    href={wizardHref(check.fix, {
+                      gigId: item.gigId,
+                      eventId: item.eventId,
+                    })}
+                    className="underline decoration-dotted underline-offset-2 hover:decoration-solid"
+                  >
+                    {check.label}
+                  </Link>
+                ) : (
+                  check.label
+                )}
               </li>
             ))}
             {fine.map((check) => (

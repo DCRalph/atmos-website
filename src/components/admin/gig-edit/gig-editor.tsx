@@ -51,6 +51,7 @@ import { GigStatus } from "~Prisma/browser";
 import { GigChatPanel } from "./gig-chat-panel";
 import { PhotoSignupPanel } from "./photo-signup-panel";
 import { GigTasks } from "~/components/admin/tasks/gig-tasks";
+import { QuickActionsMenu } from "~/components/admin/wizards/quick-actions-menu";
 import { RunSheetField } from "./run-sheet-field";
 import { PosterField } from "./poster-field";
 import { TagsField } from "./tags-field";
@@ -785,6 +786,7 @@ export function GigEditor({ gigId: initialGigId }: { gigId: string | null }) {
               Take off site
             </Button>
           ) : null}
+          {gigId ? <QuickActionsMenu gigId={gigId} /> : null}
           {gigId ? (
             <Button variant="outline" asChild>
               <a
