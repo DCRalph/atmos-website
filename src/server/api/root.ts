@@ -51,6 +51,7 @@ import { analyticsRouter } from "~/server/api/routers/analytics";
 import { pageViewsRouter } from "~/server/api/routers/page-views";
 import { lifetimeTicketsRouter } from "~/server/api/routers/lifetime-tickets";
 import { pickersRouter } from "~/server/api/routers/pickers";
+import { wizardsRouter } from "~/server/api/routers/wizards";
 import { shortLinksRouter } from "~/server/api/routers/short-links";
 import { photoSignupRouter } from "~/server/api/routers/photo-signup";
 import { donationsRouter } from "~/server/api/routers/donations";
@@ -137,6 +138,8 @@ export const appRouter = createTRPCRouter({
 
   /** Combobox data sources — see `~/server/api/pickers/core`. */
   pickers: pickersRouter,
+  /** The "which gig?" lists behind the /admin/do wizards. */
+  wizards: wizardsRouter,
 
   /** Reading web pages and Instagram profiles, for Will GPT. */
   web: webRouter,

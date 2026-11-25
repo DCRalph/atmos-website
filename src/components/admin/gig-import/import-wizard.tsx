@@ -24,7 +24,8 @@ import { gigPath } from "~/lib/gig-url";
 import { SourcePanel } from "./source-panel";
 import { StepLineUp } from "./step-line-up";
 import { StepPublish, type ChecklistEntry } from "./step-publish";
-import { StepRail, type ImportStep, IMPORT_STEPS } from "./step-rail";
+import { StepRail } from "~/components/admin/step-rail";
+import { type ImportStep, IMPORT_STEPS } from "./step-rail";
 import { StepReview } from "./step-review";
 import { StepSource } from "./step-source";
 import { useImportDraft, type ImportDraft } from "./use-import-draft";
@@ -227,7 +228,12 @@ export function ImportWizard() {
         </div>
       }
     >
-      <StepRail current={step} furthest={furthest} onSelect={goTo} />
+      <StepRail
+        steps={IMPORT_STEPS}
+        current={step}
+        furthest={furthest}
+        onSelect={goTo}
+      />
 
       {!importId ? (
         <StepSource

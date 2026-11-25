@@ -54,6 +54,7 @@ import { StaffSection } from "./staff-section";
 import { WalletSection } from "./wallet-section";
 import { OverviewSection } from "./overview-section";
 import { EventMenu } from "./event-menu";
+import { QuickActionsMenu } from "~/components/admin/wizards/quick-actions-menu";
 
 /**
  * The event page: one draft, one Save, a section rail grouped by what you're
@@ -248,6 +249,7 @@ export function EventWorkspace({ event }: { event?: AdminEvent }) {
                 <Link href={`/admin/events/${event.id}/live`}>Live screen</Link>
               </Button>
             ) : null}
+            <QuickActionsMenu eventId={event.id} />
             <EventMenu event={event} />
           </div>
         ) : undefined

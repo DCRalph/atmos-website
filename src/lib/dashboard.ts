@@ -1,4 +1,5 @@
 import type { TaskStatus } from "~/lib/tasks/status";
+import type { WizardKey } from "~/components/admin/wizards/catalog";
 
 /**
  * The rules behind the admin dashboard, kept pure so they can be tested
@@ -93,6 +94,8 @@ export type NightCheck = {
   label: string;
   /** `ok` is done, `warn` is worth fixing, `bad` stops the night going ahead. */
   state: "ok" | "warn" | "bad";
+  /** The wizard that fixes it, for a problem one wizard can. See `/admin/do`. */
+  fix?: WizardKey;
 };
 
 /**
@@ -111,20 +114,30 @@ export function nightChecks({ gig, event }: NightFacts): NightCheck[] {
   checks.push(
     hasPoster
       ? { label: "Poster", state: "ok" }
-      : { label: "No poster", state: "warn" },
+      : gig
+        ? { label: "No poster", state: "warn", fix: "poster" }
+        : { label: "No poster", state: "warn" },
   );
   const hasVenue = !!gig?.hasVenue || !!event?.hasVenue;
   checks.push(
     hasVenue
       ? { label: "Venue", state: "ok" }
-      : { label: "No venue", state: "warn" },
+      : {
+          label: "No venue",
+          state: "warn",
+          fix: gig ? "gig-basics" : "event-basics",
+        },
   );
 
   if (gig && ours) {
     if (gig.scheduleRows === 0) {
-      checks.push({ label: "No run sheet", state: "warn" });
+      checks.push({ label: "No run sheet", state: "warn", fix: "lineup" });
     } else if (gig.timedRows === 0) {
-      checks.push({ label: "Run sheet has no times", state: "warn" });
+      checks.push({
+        label: "Run sheet has no times",
+        state: "warn",
+        fix: "lineup",
+      });
     } else {
       checks.push({ label: "Run sheet", state: "ok" });
     }
@@ -135,7 +148,7 @@ export function nightChecks({ gig, event }: NightFacts): NightCheck[] {
       });
     }
     if (!event && !gig.hasTicketLink) {
-      checks.push({ label: "No tickets", state: "warn" });
+      checks.push({ label: "No tickets", state: "warn", fix: "sell-tickets" });
     }
   }
 
@@ -143,7 +156,7 @@ export function nightChecks({ gig, event }: NightFacts): NightCheck[] {
     checks.push(
       event.doorStaff > 0
         ? { label: "Door staff", state: "ok" }
-        : { label: "No door staff", state: "warn" },
+        : { label: "No door staff", state: "warn", fix: "door-staff" },
     );
   }
 

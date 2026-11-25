@@ -75,9 +75,9 @@ describe("nightChecks", () => {
   test("problems come first, and a poster on either the gig or the event counts", () => {
     expect(nightChecks({ gig, event })).toEqual([
       { label: "Event is a draft", state: "bad" },
-      { label: "Run sheet has no times", state: "warn" },
+      { label: "Run sheet has no times", state: "warn", fix: "lineup" },
       { label: "2 on cues without the app", state: "warn" },
-      { label: "No door staff", state: "warn" },
+      { label: "No door staff", state: "warn", fix: "door-staff" },
       { label: "Poster", state: "ok" },
       { label: "Venue", state: "ok" },
     ]);
@@ -99,7 +99,7 @@ describe("nightChecks", () => {
         event: null,
       }),
     ).toEqual([
-      { label: "No tickets", state: "warn" },
+      { label: "No tickets", state: "warn", fix: "sell-tickets" },
       { label: "Poster", state: "ok" },
       { label: "Venue", state: "ok" },
       { label: "Run sheet", state: "ok" },

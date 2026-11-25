@@ -15,6 +15,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "~/components/ui/breadcrumb";
+import { isWizardKey, WIZARDS } from "~/components/admin/wizards/catalog";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -54,6 +55,7 @@ const STATIC_PATH_LABELS: Record<string, string> = {
   "/admin/wallet-debugger": "Wallet Debugger",
   "/admin/will-gpt": "Will GPT",
   "/admin/reports": "Reports",
+  "/admin/do": "Quick actions",
   "/dashboard": "Dashboard",
 };
 
@@ -182,6 +184,7 @@ function buildCrumbs(
         // Fallback labels for known patterns
         let label = titleizeSegment(seg);
         if (seg === "new") label = "New";
+        if (section === "do" && isWizardKey(seg)) label = WIZARDS[seg].title;
 
         crumbs.push({ href: acc, label });
       }
