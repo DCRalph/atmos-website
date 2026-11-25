@@ -210,7 +210,8 @@ export default function TiersScreen() {
                         Unlocked, you have the last {tier.waitingFor.name}
                       </Caption>
                     ) : tier.lowStock ? (
-                      <Caption style={{ color: colors.warn }}>
+                      // Red, as on the site: it only shows at two or fewer.
+                      <Caption style={{ color: colors.danger }}>
                         Only {tier.remainingIfLow} left
                       </Caption>
                     ) : null}

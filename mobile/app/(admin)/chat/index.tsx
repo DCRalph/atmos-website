@@ -6,6 +6,7 @@ import { ArrowLeft, BellOff } from "lucide-react-native";
 import { isToday, isPast } from "date-fns";
 
 import { api } from "@/lib/api";
+import { StaffGate } from "@/components/staff-gate";
 import { formatGigDate, formatGigTime } from "@/lib/dates";
 import { colors, space, stroke } from "@/lib/theme";
 import { Body, Caption, Eyebrow, Loading, Notice, Title } from "@/components/ui";
@@ -28,7 +29,19 @@ const POLL_MS = 20000;
 
 type Room = RouterOutputs["gigChat"]["rooms"][number];
 
-export default function ChatRoomsScreen() {
+/**
+ * Organisers only. The `(admin)` group also opens to per-event sales viewers,
+ * who get the analytics screens and none of the team's rooms or broadcasts.
+ */
+export default function OrganiserChatRoomsScreen() {
+  return (
+    <StaffGate role="organiser">
+      <ChatRoomsScreen />
+    </StaffGate>
+  );
+}
+
+function ChatRoomsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [focused, setFocused] = useState(true);

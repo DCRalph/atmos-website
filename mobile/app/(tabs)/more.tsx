@@ -40,7 +40,13 @@ export default function MoreScreen() {
   // Nothing internal renders until the server has confirmed this account is
   // staff — see `useStaff`. `ready` matters as much as the answer: drawing the
   // section optimistically would flash "Internal" at a punter on every launch.
-  const { isOrganiser, isStaff, isAdmin, ready: staffReady } = useStaff();
+  const {
+    isOrganiser,
+    isStaff,
+    canViewSales,
+    isAdmin,
+    ready: staffReady,
+  } = useStaff();
 
   // One number, so the way into the rooms can say whether it is worth opening.
   // Gated on `isStaff` rather than fired for everybody: a punter's More tab
@@ -158,7 +164,9 @@ export default function MoreScreen() {
         `(admin)` and `(staff)` keep their own `BiometricGate` so a deep link or
         a notification tap lands on the same challenge.
       */}
-          {staffReady && isStaff ? (
+          {/* A per-event sales viewer is not staff, but gets this section for the
+            one row they can use: Event analytics. */}
+          {staffReady && (isStaff || canViewSales) ? (
             <View>
               <Eyebrow style={styles.sectionLabel}>Staff</Eyebrow>
               {gate.guarded ? (
@@ -185,16 +193,20 @@ export default function MoreScreen() {
                   {/* For all staff, not just tonight's roster: the picker inside
                     says "you're not on the door" better than a missing row
                     does, and the server refuses scans regardless. */}
-                  <Row
-                    label="Door mode"
-                    onPress={() => router.push("/(door)")}
-                  />
+                  {isStaff && (
+                    <Row
+                      label="Door mode"
+                      onPress={() => router.push("/(door)")}
+                    />
+                  )}
                   {/* Above event analytics on purpose: on a gig night this is the
                   row anybody opening this section actually wants. */}
-                  <Row
-                    label="Run sheet"
-                    onPress={() => router.push("/run-sheet")}
-                  />
+                  {isStaff && (
+                    <Row
+                      label="Run sheet"
+                      onPress={() => router.push("/run-sheet")}
+                    />
+                  )}
                   {isAdmin && (
                     <Row
                       label="Tasks"
@@ -202,7 +214,7 @@ export default function MoreScreen() {
                       onPress={() => router.push("/tasks")}
                     />
                   )}
-                  {isOrganiser && (
+                  {canViewSales && (
                     <Row
                       label="Event analytics"
                       onPress={() => router.push("/(admin)")}
@@ -221,10 +233,12 @@ export default function MoreScreen() {
                       onPress={() => router.push("/(admin)/notify")}
                     />
                   )}
-                  <Row
-                    label="Tap to Pay guides"
-                    onPress={() => router.push("/(door)/tap-to-pay")}
-                  />
+                  {isStaff && (
+                    <Row
+                      label="Tap to Pay guides"
+                      onPress={() => router.push("/(door)/tap-to-pay")}
+                    />
+                  )}
                   {/* A four minute fake night, for checking the widget renders at
                     all without waiting for a real one. Hidden where iOS cannot
                     show a Live Activity — a test that can only fail is not a
