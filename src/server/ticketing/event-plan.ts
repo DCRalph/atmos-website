@@ -30,6 +30,8 @@ export const tierPlanSchema = z.object({
   id: z.string().optional(),
   name: z.string().trim().min(1, "Give every tier a name"),
   description: z.string().trim().nullable().optional(),
+  /** Description shown in red on the buy panel. */
+  highlightDescription: z.boolean().default(false),
   priceCents: z.number().int().min(0),
   allocation: z.number().int().min(0),
   /** Tickets per purchase. Above 1 makes it a group tier. */
@@ -174,6 +176,7 @@ export async function applyTierPlan(
     const data = {
       name: fields.name,
       description: fields.description ?? null,
+      highlightDescription: fields.highlightDescription,
       priceCents: fields.priceCents,
       allocation: fields.allocation,
       groupSize: fields.groupSize,

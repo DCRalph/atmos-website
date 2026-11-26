@@ -2236,6 +2236,8 @@ model TicketTier {
 
   name        String
   description String?
+  /// Shows the description in red on the buy panel, for a warning like "R18 only".
+  highlightDescription Boolean @default(false)
   /// The price of one purchase, which for a group tier is the whole group.
   priceCents  Int     @default(0)
   /// Counted in tickets, as are `soldCount` and `heldCount`, so the event cap
