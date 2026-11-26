@@ -512,6 +512,16 @@ function Steps({ event }: { event: AdminEvent }) {
                           placeholder="Shown under the name"
                         />
                       </Field>
+                      <div className="mt-2">
+                        <Toggle
+                          label="Show it in red"
+                          hint="For a warning buyers shouldn't miss."
+                          checked={tier.highlightDescription}
+                          onChange={(highlightDescription) =>
+                            patch(tier.key, { highlightDescription })
+                          }
+                        />
+                      </div>
                     </div>
                     <Field
                       id={`level-${tier.key}`}
@@ -656,6 +666,7 @@ const SETTINGS: { label: string; of: (tier: TierDraft) => string }[] = [
   { label: "most per order", of: (t) => t.maxPerOrder.trim() },
   { label: "most per person", of: (t) => t.maxPerEmail.trim() || "No limit" },
   { label: "description", of: (t) => t.description.trim() || "Not set" },
+  { label: "description in red", of: (t) => yesNo(t.highlightDescription) },
   { label: "only with a code", of: (t) => yesNo(t.isHidden) },
   { label: "approve each", of: (t) => yesNo(t.requiresApproval) },
 ];

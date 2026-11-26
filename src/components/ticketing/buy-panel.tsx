@@ -356,7 +356,14 @@ export function BuyPanel({
                   </p>
                 )}
                 {tier.description && (
-                  <p className="mt-1 text-[13px] text-white/55">
+                  <p
+                    className={cn(
+                      "mt-1 text-[13px]",
+                      tier.highlightDescription
+                        ? "text-site-danger-text"
+                        : "text-white/55",
+                    )}
+                  >
                     {tier.description}
                   </p>
                 )}

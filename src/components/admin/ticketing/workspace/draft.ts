@@ -28,6 +28,7 @@ export type TierDraft = {
   id?: string;
   name: string;
   description: string;
+  highlightDescription: boolean;
   price: string;
   allocation: string;
   groupSize: string;
@@ -113,6 +114,7 @@ export const newTier = (fields: Partial<TierDraft> = {}): TierDraft => ({
   key: crypto.randomUUID(),
   name: "",
   description: "",
+  highlightDescription: false,
   price: "0.00",
   allocation: "100",
   groupSize: "1",
@@ -139,6 +141,7 @@ export const tierFromEvent = (
   id: tier.id,
   name: tier.name,
   description: tier.description ?? "",
+  highlightDescription: tier.highlightDescription,
   price: (tier.priceCents / 100).toFixed(2),
   allocation: tier.allocation.toString(),
   groupSize: tier.groupSize.toString(),
@@ -483,6 +486,7 @@ export function toPayload(draft: EventDraft, startsAt: Date): SavePayload {
       id: tier.id,
       name: tier.name.trim(),
       description: tier.description.trim() || null,
+      highlightDescription: tier.highlightDescription,
       priceCents: parsePriceToCents(tier.price) ?? 0,
       allocation: Number(tier.allocation),
       groupSize: Number(tier.groupSize),

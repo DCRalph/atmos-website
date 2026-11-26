@@ -969,14 +969,22 @@ function TierDetails({
 }) {
   return (
     <div className="grid gap-5 border-t p-4 md:grid-cols-2">
-      <Field id={`tier-description-${tier.key}`} label="Description">
-        <Input
-          id={`tier-description-${tier.key}`}
-          value={tier.description}
-          onChange={(e) => onPatch({ description: e.target.value })}
-          placeholder="Shown under the tier name"
+      <div className="space-y-2">
+        <Field id={`tier-description-${tier.key}`} label="Description">
+          <Input
+            id={`tier-description-${tier.key}`}
+            value={tier.description}
+            onChange={(e) => onPatch({ description: e.target.value })}
+            placeholder="Shown under the tier name"
+          />
+        </Field>
+        <DetailToggle
+          label="Show in red"
+          hint="For a warning buyers shouldn't miss."
+          checked={tier.highlightDescription}
+          onChange={(highlightDescription) => onPatch({ highlightDescription })}
         />
-      </Field>
+      </div>
 
       <Field
         id={`tier-level-${tier.key}`}

@@ -130,6 +130,7 @@ async function storedTiers(tx: Prisma.TransactionClient, eventId: string) {
       id: true,
       name: true,
       description: true,
+      highlightDescription: true,
       priceCents: true,
       allocation: true,
       groupSize: true,
@@ -1060,6 +1061,7 @@ export const ticketEventsRouter = createTRPCRouter({
             create: source.tiers.map((tier) => ({
               name: tier.name,
               description: tier.description,
+              highlightDescription: tier.highlightDescription,
               priceCents: tier.priceCents,
               allocation: tier.allocation,
               groupSize: tier.groupSize,
@@ -1364,9 +1366,9 @@ type EventWithTiers = Prisma.TicketEventGetPayload<{
  * Public projection of an event.
  *
  * Deliberately does not leak `soldCount` — a promoter's sales numbers are not
- * public information. Remaining stock is exposed only as a coarse "low stock"
- * flag plus a count when it drops under ten, which is enough to create urgency
- * without publishing the books.
+ * public information. Remaining stock shows only as a count at `LOW_STOCK_AT`
+ * or fewer, and through `maxPerOrder`, which is capped at what's left once
+ * that drops below the tier's own limit.
  */
 function toPublicEvent(
   event: EventWithTiers,
@@ -1408,9 +1410,11 @@ function toPublicEvent(
         id: tier.id,
         name: tier.name,
         description: tier.description,
+        highlightDescription: tier.highlightDescription,
         priceCents: tier.priceCents,
         groupSize: tier.groupSize,
-        maxPerOrder: tier.maxPerOrder,
+        // Never more than are left, so the stepper stops at "Only 2 left".
+        maxPerOrder: Math.min(tier.maxPerOrder, remaining),
         isFree: tier.priceCents === 0,
         requiresApproval: tier.requiresApproval,
         accessLevel: tier.accessLevel,
