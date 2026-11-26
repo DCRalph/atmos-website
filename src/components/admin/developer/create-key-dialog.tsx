@@ -7,15 +7,15 @@ import { toast } from "sonner";
 import { env } from "~/env";
 import { api, type RouterOutputs } from "~/trpc/react";
 import {
-  ALL_SCOPES,
   KEY_EXPIRY_DAYS,
   KEY_NAME_MAX_LENGTH,
+  SCOPE_PRESETS,
   type ApiScope,
   type KeyExpiryDays,
 } from "~/lib/developer/scopes";
 import { CopyButton } from "~/components/admin/short-links/copy-button";
+import { ScopeChecklist } from "./scope-checklist";
 import { Button } from "~/components/ui/button";
-import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import {
@@ -67,11 +67,7 @@ export function CreateKeyDialog({
         }}
       >
         {created ? (
-          <RevealKey
-            created={created}
-            scopes={scopes}
-            onDone={() => onOpenChange(false)}
-          />
+          <RevealKey created={created} onDone={() => onOpenChange(false)} />
         ) : (
           <KeyForm
             scopes={scopes}
@@ -147,41 +143,24 @@ function KeyForm({
         </div>
 
         <fieldset className="space-y-2">
-          <legend className="mb-2 text-sm font-medium">Scopes</legend>
-          <div className="divide-border divide-y overflow-hidden rounded-md border">
-            {ALL_SCOPES.map((entry) => {
-              const id = `scope-${entry.scope}`;
-              return (
-                <label
-                  key={entry.scope}
-                  htmlFor={id}
-                  className="hover:bg-muted/50 flex cursor-pointer items-start gap-3 px-3 py-2.5"
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+            <legend className="text-sm font-medium">Scopes</legend>
+            <div className="flex flex-wrap gap-1">
+              {SCOPE_PRESETS.map((preset) => (
+                <Button
+                  key={preset.label}
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => onScopesChange([...preset.scopes])}
                 >
-                  <Checkbox
-                    id={id}
-                    className="mt-0.5"
-                    checked={scopes.includes(entry.scope)}
-                    onCheckedChange={(checked) =>
-                      toggle(entry.scope, checked === true)
-                    }
-                  />
-                  <span className="min-w-0 text-sm">
-                    <span className="flex items-baseline justify-between gap-3">
-                      <span className="font-medium">{entry.label}</span>
-                      <span className="text-muted-foreground font-mono text-xs">
-                        {entry.scope}
-                      </span>
-                    </span>
-                    <span
-                      className={`block text-xs ${entry.dangerous ? "text-amber-500" : "text-muted-foreground"}`}
-                    >
-                      {entry.description}
-                    </span>
-                  </span>
-                </label>
-              );
-            })}
+                  {preset.label}
+                </Button>
+              ))}
+            </div>
           </div>
+          <ScopeChecklist selected={scopes} onToggle={toggle} />
         </fieldset>
 
         <div className="space-y-2">
@@ -225,14 +204,12 @@ function KeyForm({
 
 function RevealKey({
   created,
-  scopes,
   onDone,
 }: {
   created: CreatedKey;
-  scopes: ApiScope[];
   onDone: () => void;
 }) {
-  const example = exampleRequest(created.key, scopes);
+  const example = exampleRequest(created.key);
 
   return (
     <>
@@ -252,17 +229,15 @@ function RevealKey({
           <CopyButton value={created.key} />
         </div>
 
-        {example && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <Label>Try it</Label>
-              <CopyButton value={example} size="sm" />
-            </div>
-            <pre className="bg-muted/40 overflow-x-auto rounded-md border p-3 font-mono text-xs leading-relaxed">
-              {example}
-            </pre>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <Label>Try it</Label>
+            <CopyButton value={example} size="sm" />
           </div>
-        )}
+          <pre className="bg-muted/40 overflow-x-auto rounded-md border p-3 font-mono text-xs leading-relaxed">
+            {example}
+          </pre>
+        </div>
 
         <p className="flex items-start gap-2 text-xs text-amber-500">
           <TriangleAlert className="mt-px size-3.5 shrink-0" aria-hidden />
@@ -279,30 +254,9 @@ function RevealKey({
 }
 
 /**
- * A request this key can actually make, so the first thing somebody pastes
- * works: a send to `team` if it can, otherwise discovery, otherwise a direct
- * send to fill in. Never an announcement: a test paste should not reach every
- * punter's phone, so an announce-only key gets no example.
+ * A request any key can make, so the first thing somebody pastes works and
+ * shows what the key holds. `/me` needs no scope.
  */
-function exampleRequest(key: string, scopes: ApiScope[]): string | null {
-  const base = `${env.NEXT_PUBLIC_APP_URL}/api/v1/notifications`;
-
-  if (scopes.includes("notifications:topic")) {
-    return [
-      `curl ${base}/send \\`,
-      `  -H "Authorization: Bearer ${key}" \\`,
-      `  -H "Content-Type: application/json" \\`,
-      `  -d '{"to":{"topic":"team"},"title":"Hello","message":"Sent with a new API key"}'`,
-    ].join("\n");
-  }
-  if (scopes.includes("notifications:recipients")) {
-    return `curl ${base}/recipients \\\n  -H "Authorization: Bearer ${key}"`;
-  }
-  if (!scopes.includes("notifications:direct")) return null;
-  return [
-    `curl ${base}/send \\`,
-    `  -H "Authorization: Bearer ${key}" \\`,
-    `  -H "Content-Type: application/json" \\`,
-    `  -d '{"to":{"users":["<user id>"]},"message":"Hello"}'`,
-  ].join("\n");
+function exampleRequest(key: string): string {
+  return `curl ${env.NEXT_PUBLIC_APP_URL}/api/v1/me \\\n  -H "Authorization: Bearer ${key}"`;
 }

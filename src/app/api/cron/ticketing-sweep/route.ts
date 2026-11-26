@@ -23,6 +23,7 @@ import {
 } from "~/server/ticketing/inventory";
 import { pruneRateLimitKeys } from "~/server/ticketing/rate-limit";
 import { purgeExpiredPatrons } from "~/server/ticketing/id-check";
+import { pruneUpdates } from "~/server/developer-api/updates";
 
 /**
  * The ticketing janitor. Runs every few minutes (see `vercel.json`).
@@ -39,7 +40,8 @@ import { purgeExpiredPatrons } from "~/server/ticketing/id-check";
  *     documents at the door, deleted once their window is up. This is the job
  *     that makes the ID system defensible, so it runs here rather than being
  *     something somebody remembers to do.
- *  4. **Prune rate-limit rows**, which are write-once and never read again.
+ *  4. **Prune rate-limit rows**, which are write-once and never read again,
+ *     and developer API updates past their 30 days.
  */
 
 export const runtime = "nodejs";
@@ -58,8 +60,15 @@ export async function GET(request: NextRequest): Promise<Response> {
   const expired = await releaseAllExpiredHolds();
   const purgedPatrons = await purgeExpiredPatrons();
   const pruned = await pruneRateLimitKeys();
+  const prunedUpdates = await pruneUpdates();
 
-  return Response.json({ rescued, expired, purgedPatrons, pruned });
+  return Response.json({
+    rescued,
+    expired,
+    purgedPatrons,
+    pruned,
+    prunedUpdates,
+  });
 }
 
 /**

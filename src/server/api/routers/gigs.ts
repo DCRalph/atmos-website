@@ -1629,9 +1629,17 @@ export const gigsRouter = createTRPCRouter({
   delete: adminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.gig.delete({
+      const deleted = await ctx.db.gig.delete({
         where: { id: input.id },
       });
+      await logUserActivity(
+        ActivityType.GIG_DELETED,
+        `Deleted gig "${deleted.title}"`,
+        ctx.session.user.id,
+        undefined,
+        { gigId: deleted.id },
+      );
+      return deleted;
     }),
 
   // Media management endpoints

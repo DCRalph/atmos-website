@@ -30,6 +30,9 @@ export type ApiCaller = {
   keyId: string | null;
   name: string;
   permissions: ApiKeyPermissions;
+  /** Requests left in this minute's window, when the key is rate limited. */
+  remaining: number | null;
+  expiresAt: Date | null;
 };
 
 export type ApiAuthFailure = {
@@ -51,6 +54,8 @@ const LEGACY_CALLER: ApiCaller = {
     "notifications:topic",
     "notifications:announce",
   ]),
+  remaining: null,
+  expiresAt: null,
 };
 
 export async function authenticate(
@@ -103,6 +108,11 @@ export async function authenticate(
       keyId: result.key.id,
       name: result.key.name ?? "Unnamed key",
       permissions: result.key.permissions ?? {},
+      remaining:
+        result.key.rateLimitEnabled && result.key.rateLimitMax !== null
+          ? Math.max(0, result.key.rateLimitMax - result.key.requestCount)
+          : null,
+      expiresAt: result.key.expiresAt,
     },
   };
 }

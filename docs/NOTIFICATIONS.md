@@ -10,19 +10,19 @@ here — can notify the team with no shim on either side.
 
 ## The pieces
 
-| Where                                            | What                                                                                            |
-| ------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| `src/lib/notify/topics.ts`                       | The topic vocabulary, and which topics a device is subscribed to by default.                    |
-| `src/lib/notify/ntfy-request.ts`                 | Turns an ntfy request into a publish. Pure, and where the tests are.                            |
-| `src/app/api/notify/[[...topic]]/route.ts`       | The HTTP endpoint: auth and I/O, nothing else.                                                  |
-| `src/app/api/v1/notifications/`                  | The JSON developer API: discovery and direct sends. See [DEVELOPER-API.md](./DEVELOPER-API.md). |
-| `src/server/api-keys.ts`                         | API key auth for both endpoints.                                                                |
-| `src/server/notify.ts`                           | `publish()` — the one path a notification takes, whatever published it.                         |
-| `src/server/push.ts`                             | Expo fan-out, dead-token pruning. Predates this and is shared with gig announcements.           |
-| `src/server/api/routers/notify.ts`               | tRPC for the compose screens and device management.                                             |
-| `src/components/admin/notifications-manager.tsx` | The web admin compose page, at `/admin/notifications`.                                          |
-| `mobile/app/(admin)/notify.tsx`                  | The app's compose screen, reached from More.                                                    |
-| `mobile/src/lib/push.ts`                         | Registration and tap routing on the handset.                                                    |
+| Where                                                 | What                                                                                            |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `src/lib/notify/topics.ts`                            | The topic vocabulary, and which topics a device is subscribed to by default.                    |
+| `src/lib/notify/ntfy-request.ts`                      | Turns an ntfy request into a publish. Pure, and where the tests are.                            |
+| `src/app/api/notify/[[...topic]]/route.ts`            | The HTTP endpoint: auth and I/O, nothing else.                                                  |
+| `src/server/developer-api/endpoints/notifications.ts` | The JSON developer API: discovery and direct sends. See [DEVELOPER-API.md](./DEVELOPER-API.md). |
+| `src/server/api-keys.ts`                              | API key auth for both endpoints.                                                                |
+| `src/server/notify.ts`                                | `publish()` — the one path a notification takes, whatever published it.                         |
+| `src/server/push.ts`                                  | Expo fan-out, dead-token pruning. Predates this and is shared with gig announcements.           |
+| `src/server/api/routers/notify.ts`                    | tRPC for the compose screens and device management.                                             |
+| `src/components/admin/notifications-manager.tsx`      | The web admin compose page, at `/admin/notifications`.                                          |
+| `mobile/app/(admin)/notify.tsx`                       | The app's compose screen, reached from More.                                                    |
+| `mobile/src/lib/push.ts`                              | Registration and tap routing on the handset.                                                    |
 
 Run sheet cues are published through the same `publish()`, with the audience
 overridden to the people an admin picked for that gig. See

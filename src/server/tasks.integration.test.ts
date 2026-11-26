@@ -139,6 +139,7 @@ if (testUrl) {
     tasksRouter.createCaller({
       db,
       session: session(id, name),
+      apiCaller: null,
       headers: new Headers(),
     });
   test("superadmins finish, reopen and edit tasks past the rules; admins cannot", async () => {
@@ -482,6 +483,7 @@ if (testUrl) {
       const anon = tasksRouter.createCaller({
         db,
         session: null,
+        apiCaller: null,
         headers: new Headers(),
       });
       await assert.rejects(anon.list(), /UNAUTHORIZED/);

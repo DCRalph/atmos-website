@@ -5,7 +5,7 @@ export default function AdminDeveloperPage() {
   return (
     <AdminSection
       title="Developer"
-      description="API keys for other systems, and the reference for the notifications API."
+      description="API keys for other systems, the API reference, and a playground to try it in."
     >
       <DeveloperManager />
     </AdminSection>
