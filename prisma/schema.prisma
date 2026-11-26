@@ -249,6 +249,7 @@ model ApiKey {
   lastRefillAt   DateTime?
 
   notifyMessages NotifyMessage[]
+  activities     ActivityLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1781,9 +1782,13 @@ model ActivityLog {
   targetUserId String? // User who was affected (if applicable)
   ipAddress    String?
   userAgent    String?
+  /// The API key behind it, when it came in through the developer API. The
+  /// user is then the Developer API system user. See `~/server/developer-api`.
+  apiKeyId     String?
   createdAt    DateTime     @default(now())
 
   // Relations
+  apiKey     ApiKey? @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
   user       User? @relation("UserActivities", fields: [userId], references: [id], onDelete: SetNull)
   targetUser User? @relation("TargetUserActivities", fields: [targetUserId], references: [id], onDelete: SetNull)
 
@@ -1791,7 +1796,31 @@ model ActivityLog {
   @@index([targetUserId])
   @@index([type])
   @@index([createdAt])
+  @@index([apiKeyId])
   @@map("activity_log")
+}
+
+/// The developer API's update feed: one row per thing an integration might
+/// want to hear about, in the order they happened. Thin on purpose: a row
+/// names what changed, and the integration fetches it for the detail, so the
+/// feed never holds personal data and never goes stale. Written by
+/// `~/server/developer-api/updates`, read by `GET /api/v1/updates`, and kept
+/// for 30 days.
+model ApiUpdate {
+  /// Also the feed's cursor: rows are read in id order.
+  id        Int      @id @default(autoincrement())
+  /// `gig.updated`, `order.paid` and so on. See `API_UPDATE_TYPES`.
+  type      String
+  gigId     String?
+  eventId   String?
+  orderId   String?
+  /// Small facts about it, such as a status or a count. Never personal data.
+  data      Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([eventId, type])
+  @@map("api_update")
 }
 
 /// A Will GPT conversation. Kept on the server so it is the record of what

@@ -4,7 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { ActivityType } from "~Prisma/client";
 import { createTRPCRouter, superadminProcedure } from "~/server/api/trpc";
 import { auth } from "~/server/auth";
-import { listRecipients } from "~/server/recipients";
+import { openApiSpec } from "~/server/developer-api/openapi";
 import { logActivity } from "~/server/utils/activity-log";
 import {
   isApiScope,
@@ -41,10 +41,27 @@ function readScopes(raw: string | null): ApiScope[] {
 
 const keyId = z.object({ id: z.string().min(1) });
 
+const scopeList = z
+  .array(
+    z.custom<ApiScope>(
+      (value) => typeof value === "string" && isApiScope(value),
+      "unknown scope",
+    ),
+  )
+  .min(1);
+
+/** Playground keys are named this, so expired ones can be cleared away. */
+const PLAYGROUND_KEY_NAME = "Playground (temporary)";
+const PLAYGROUND_KEY_SECONDS = 60 * 60;
+
 export const developerRouter = createTRPCRouter({
-  /** Every key, newest first, with who made it and how much it has sent. */
+  /**
+   * Every key, newest first, with who made it and how much it has sent.
+   * Playground keys are left out: they last an hour and belong to one tab.
+   */
   keys: superadminProcedure.query(async ({ ctx }) => {
     const keys = await ctx.db.apiKey.findMany({
+      where: { name: { not: PLAYGROUND_KEY_NAME } },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -84,14 +101,7 @@ export const developerRouter = createTRPCRouter({
     .input(
       z.object({
         name: z.string().trim().min(1).max(KEY_NAME_MAX_LENGTH),
-        scopes: z
-          .array(
-            z.custom<ApiScope>(
-              (value) => typeof value === "string" && isApiScope(value),
-              "unknown scope",
-            ),
-          )
-          .min(1),
+        scopes: scopeList,
         expiresInDays: z
           .union(KEY_EXPIRY_DAYS.map((days) => z.literal(days)))
           .nullable(),
@@ -168,6 +178,71 @@ export const developerRouter = createTRPCRouter({
       return key;
     }),
 
-  /** What `GET /api/v1/notifications/recipients` would return, for the reference. */
-  recipients: superadminProcedure.query(() => listRecipients()),
+  /** The API's OpenAPI spec, which the reference and playground render. */
+  spec: superadminProcedure.query(() => openApiSpec()),
+
+  /**
+   * A key for the playground: the scopes asked for, gone in an hour. It is a
+   * real key, so the playground sees exactly what an integration would. Only
+   * the page that made it holds it, in memory. Expired playground keys are
+   * deleted whenever a new one is made.
+   */
+  createPlaygroundKey: superadminProcedure
+    .input(z.object({ scopes: scopeList }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.apiKey.deleteMany({
+        where: { name: PLAYGROUND_KEY_NAME, expiresAt: { lt: new Date() } },
+      });
+
+      const scopes = [...new Set(input.scopes)];
+      const created = await auth.api.createApiKey({
+        body: {
+          name: PLAYGROUND_KEY_NAME,
+          userId: ctx.user.id,
+          permissions: scopesToPermissions(scopes),
+          expiresIn: PLAYGROUND_KEY_SECONDS,
+        },
+      });
+
+      await logActivity({
+        type: ActivityType.API_KEY_CREATED,
+        action: "Created a playground API key",
+        userId: ctx.user.id,
+        details: { keyId: created.id, scopes, playground: true },
+      });
+
+      return {
+        key: created.key,
+        scopes,
+        expiresAt: new Date(Date.now() + PLAYGROUND_KEY_SECONDS * 1000),
+      };
+    }),
+
+  /** Recent gigs and events by name, for the playground's id fields. */
+  playgroundIds: superadminProcedure.query(async ({ ctx }) => {
+    const [gigs, events] = await Promise.all([
+      ctx.db.gig.findMany({
+        orderBy: { gigStartTime: "desc" },
+        take: 40,
+        select: { id: true, title: true, gigStartTime: true },
+      }),
+      ctx.db.ticketEvent.findMany({
+        orderBy: { startsAt: "desc" },
+        take: 40,
+        select: { id: true, name: true, startsAt: true },
+      }),
+    ]);
+    return {
+      gigs: gigs.map((gig) => ({
+        id: gig.id,
+        label: gig.title,
+        at: gig.gigStartTime,
+      })),
+      events: events.map((event) => ({
+        id: event.id,
+        label: event.name,
+        at: event.startsAt,
+      })),
+    };
+  }),
 });

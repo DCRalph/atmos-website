@@ -7,6 +7,7 @@ import { env } from "~/env";
 import { db } from "~/server/db";
 import { publish } from "~/server/notify";
 import { formatNZD } from "~/lib/ticketing/money";
+import { recordOrderPaidUpdates } from "~/server/developer-api/updates";
 
 /**
  * Push alerts to staff when an order is paid and when a tier sells out.
@@ -45,16 +46,28 @@ export async function salesAlertEligible(
 }
 
 /**
- * Alert opted-in staff about a freshly paid order, after the response is sent.
+ * Alert opted-in staff about a freshly paid order, after the response is sent,
+ * and put it in the developer API's update feed.
  *
  * Called once per order, by the issuance that claimed it. Never throws and
  * never delays the buyer: the order is paid whether or not this goes out.
  */
 export function scheduleSalesAlerts(orderId: string, soldOutTierIds: string[]) {
   const task = () =>
-    sendSalesAlerts(orderId, soldOutTierIds).catch((cause: unknown) => {
-      console.error("[sales-alerts] failed", { orderId, cause });
-    });
+    Promise.all([
+      sendSalesAlerts(orderId, soldOutTierIds).catch((cause: unknown) => {
+        console.error("[sales-alerts] failed", { orderId, cause });
+      }),
+      // The developer API's feed hears about the same moments.
+      recordOrderPaidUpdates(orderId, soldOutTierIds).catch(
+        (cause: unknown) => {
+          console.error("[developer-api] order updates failed", {
+            orderId,
+            cause,
+          });
+        },
+      ),
+    ]);
   try {
     after(task);
   } catch {

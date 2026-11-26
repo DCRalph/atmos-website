@@ -15,6 +15,8 @@ import { db } from "~/server/db";
 import { auth } from "~/server/auth";
 import { userHasPermission } from "~/server/utils/permissions";
 import type { UserPermission } from "~Prisma/client";
+import type { ApiCaller } from "~/server/api-keys";
+import { DEVELOPER_API_USER_ID } from "~/lib/developer/system-user";
 
 /**
  * 1. CONTEXT
@@ -36,6 +38,11 @@ export const createTRPCContext = async (opts: {
   return {
     db,
     session,
+    /**
+     * Set only by the developer API, which calls procedures as the Developer
+     * API system user on behalf of this key. See `~/server/developer-api`.
+     */
+    apiCaller: null as ApiCaller | null,
     ...opts,
   };
 };
@@ -155,16 +162,48 @@ export const protectedProcedure = t.procedure
   });
 
 /**
+ * The signed-in user with their permissions, as every permission check reads
+ * them.
+ *
+ * The Developer API system user holds no permission rows, so it can never
+ * sign in as anything or show up in a staff list. During a developer API call
+ * it is handed ADMIN, never SUPERADMIN: what it can then reach is limited to
+ * the endpoints in `~/server/developer-api`, each behind its own scope.
+ */
+async function loadUser(ctx: {
+  db: typeof db;
+  apiCaller: ApiCaller | null;
+  session: { user: { id: string } };
+}) {
+  const user = await ctx.db.user.findUnique({
+    where: { id: ctx.session.user.id },
+    include: { permissions: true },
+  });
+  if (!user || !ctx.apiCaller || user.id !== DEVELOPER_API_USER_ID) {
+    return user;
+  }
+  return {
+    ...user,
+    permissions: [
+      {
+        id: "developer-api",
+        userId: user.id,
+        permission: "ADMIN" as const,
+        createdAt: user.createdAt,
+        createdBy: null,
+      },
+    ],
+  };
+}
+
+/**
  * Artist procedure
  *
  * Only accessible to users with the ARTIST permission or full ADMIN access.
  */
 function permissionProcedure(permission: UserPermission) {
   return protectedProcedure.meta({ permission }).use(async ({ ctx, next }) => {
-    const user = await ctx.db.user.findUnique({
-      where: { id: ctx.session.user.id },
-      include: { permissions: true },
-    });
+    const user = await loadUser(ctx);
 
     const hasPermission = user ? userHasPermission(user, permission) : false;
     if (!user || !hasPermission) {
@@ -220,10 +259,7 @@ export const eventViewerProcedure = publicProcedure.use(
     }
 
     if (!ctx.session?.user) throw new TRPCError({ code: "UNAUTHORIZED" });
-    const user = await ctx.db.user.findUnique({
-      where: { id: ctx.session.user.id },
-      include: { permissions: true },
-    });
+    const user = await loadUser({ ...ctx, session: ctx.session });
     if (!user) throw new TRPCError({ code: "UNAUTHORIZED" });
 
     const viewableEventIds = userHasPermission(user, "EVENT_ORGANISER")
@@ -285,10 +321,7 @@ export const eventViewProcedure = eventViewerProcedure
  * assignment.
  */
 export const doorProcedure = protectedProcedure.use(async ({ ctx, next }) => {
-  const user = await ctx.db.user.findUnique({
-    where: { id: ctx.session.user.id },
-    include: { permissions: true },
-  });
+  const user = await loadUser(ctx);
 
   if (!user) throw new TRPCError({ code: "UNAUTHORIZED" });
 

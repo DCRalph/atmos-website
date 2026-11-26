@@ -228,7 +228,9 @@ export const auth = betterAuth({
         timeWindow: 60_000,
         maxRequests: KEY_REQUESTS_PER_MINUTE,
       },
-      keyExpiration: { defaultExpiresIn: null },
+      // The plugin's floor is a day. The playground's temporary keys last an
+      // hour, and they are made server side, never by a caller choosing.
+      keyExpiration: { defaultExpiresIn: null, minExpiresIn: 0 },
       schema: { apikey: { modelName: "apiKey" } },
     }),
     genericOAuth({

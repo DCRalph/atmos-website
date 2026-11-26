@@ -30,6 +30,7 @@ import {
 } from "~/server/api/trpc";
 import { patchOf, patchRows } from "~/server/api/patch-input";
 import { logActivity } from "~/server/utils/activity-log";
+import { recordUpdate } from "~/server/developer-api/updates";
 import { eventPosterId } from "~/lib/ticketing/poster";
 import {
   applyCostPlan,
@@ -847,6 +848,7 @@ export const ticketEventsRouter = createTRPCRouter({
         userId: ctx.session.user.id,
         details: { eventId: event.id },
       });
+      await recordUpdate({ type: "event.updated", eventId: event.id });
 
       // Anything printed on a wallet pass changed, so push the new version to
       // the phones already holding one. Failures are logged, never fatal — a

@@ -2,6 +2,9 @@ import { db } from "~/server/db";
 import { type ActivityType } from "~Prisma/client";
 import { headers } from "next/headers";
 
+import { currentApiRequest } from "~/server/developer-api/request-context";
+import { recordActivityUpdate } from "~/server/developer-api/updates";
+
 type ActivityLogData = {
   type: ActivityType;
   action: string;
@@ -13,7 +16,11 @@ type ActivityLogData = {
 };
 
 /**
- * Log an activity to the database
+ * Log an activity to the database.
+ *
+ * During a developer API request the row also names the API key, and every
+ * row is offered to the API's update feed, which keeps the ones it has a type
+ * for. See `~/server/developer-api/updates`.
  */
 export async function logActivity(data: ActivityLogData): Promise<void> {
   try {
@@ -26,12 +33,14 @@ export async function logActivity(data: ActivityLogData): Promise<void> {
         targetUserId: data.targetUserId,
         ipAddress: data.ipAddress,
         userAgent: data.userAgent,
+        apiKeyId: currentApiRequest()?.keyId ?? undefined,
       },
     });
   } catch (error) {
     // Log error but don't throw - activity logging should not break the main flow
     console.error("Failed to log activity:", error);
   }
+  await recordActivityUpdate(data.type, data.details);
 }
 
 /**
