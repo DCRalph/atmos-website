@@ -9,7 +9,10 @@ import {
   type ReactNode,
 } from "react";
 
+import { Maximize2, X } from "lucide-react";
+
 import { cn } from "~/lib/utils";
+import { useCardExpand } from "./expand";
 
 /**
  * The live screen's building blocks. Everything here animates on change and
@@ -244,31 +247,190 @@ export function Cell({
   );
 }
 
-/** A bordered block: label on top, whatever it holds filling the rest. */
+/**
+ * A bordered block: label on top, whatever it holds filling the rest. Given
+ * a `detail`, it gets an expand button and grows to nearly fill the screen
+ * to show it, scrolling inside, with the screen dimmed behind. Esc, the
+ * close button or a click on the dim shrinks it back.
+ */
 export function Card({
   title,
   meta,
   index = 0,
   className,
+  detail,
   children,
 }: {
   title: string;
   meta?: ReactNode;
   index?: number;
   className?: string;
+  /** What the card shows expanded. Without it, the card doesn't expand. */
+  detail?: ReactNode;
+  children: ReactNode;
+}) {
+  const card = useCardExpand();
+  const {
+    slotRef,
+    boxRef,
+    faceRef,
+    detailRef,
+    backdropRef,
+    openerRef,
+    closerRef,
+  } = card.refs;
+
+  return (
+    <div
+      ref={slotRef}
+      className={cn("min-h-0 min-w-0", className)}
+      style={card.slotStyle}
+    >
+      {card.expanded ? (
+        <div
+          ref={backdropRef}
+          className="fixed inset-0 z-40 bg-black/70"
+          onClick={card.close}
+          aria-hidden
+        />
+      ) : null}
+      <section
+        ref={boxRef}
+        role={card.expanded ? "dialog" : undefined}
+        aria-modal={card.expanded || undefined}
+        aria-label={card.expanded ? title : undefined}
+        className="live-rise bg-background/60 relative h-full min-h-0 min-w-0 overflow-hidden rounded-xl border"
+        style={{ animationDelay: `${index * 60}ms`, ...card.boxStyle }}
+      >
+        <div
+          ref={faceRef}
+          className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] gap-2 p-3 lg:p-[1.1vw]"
+          style={card.faceStyle}
+          inert={card.expanded}
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            <Label meta={meta} className="flex-1">
+              {title}
+            </Label>
+            {detail ? (
+              <button
+                ref={openerRef}
+                type="button"
+                onClick={card.open}
+                className="text-muted-foreground/60 hover:text-foreground focus-visible:text-foreground -my-1 -mr-1 shrink-0 rounded-md p-1 transition-colors"
+                aria-label={`Expand ${title}`}
+              >
+                <Maximize2 className="size-3.5 lg:size-[0.9vw]" aria-hidden />
+              </button>
+            ) : null}
+          </div>
+          {children}
+        </div>
+        {card.expanded ? (
+          <div
+            ref={detailRef}
+            className="absolute inset-0 flex min-h-0 flex-col"
+          >
+            <div className="flex items-center gap-3 border-b px-4 py-3 lg:px-[1.4vw] lg:py-[1vw]">
+              <Label meta={meta} className="flex-1 lg:text-[0.85vw]">
+                {title}
+              </Label>
+              <button
+                ref={closerRef}
+                type="button"
+                onClick={card.close}
+                className="text-muted-foreground hover:text-foreground hover:bg-muted -my-1 -mr-1 shrink-0 rounded-md border p-1.5 transition-colors lg:p-[0.45vw]"
+                aria-label="Close"
+              >
+                <X className="size-4 lg:size-[1vw]" aria-hidden />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 lg:p-[1.4vw]">
+              {detail}
+            </div>
+          </div>
+        ) : null}
+      </section>
+    </div>
+  );
+}
+
+/** A titled block inside an expanded card. */
+export function DetailSection({
+  title,
+  meta,
+  className,
+  children,
+}: {
+  title: string;
+  meta?: ReactNode;
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <section
-      className={cn(
-        "live-rise bg-background/60 grid min-h-0 min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] gap-2 rounded-xl border p-3 lg:p-[1.1vw]",
-        className,
-      )}
-      style={{ animationDelay: `${index * 60}ms` }}
-    >
+    <section className={cn("flex min-w-0 flex-col gap-2", className)}>
       <Label meta={meta}>{title}</Label>
       {children}
     </section>
+  );
+}
+
+export type TableColumn = { label: string; right?: boolean };
+
+/**
+ * Rows in columns, hairlines between, for an expanded card. Scrolls sideways
+ * on its own when a phone is too narrow for it.
+ */
+export function Table({
+  columns,
+  rows,
+  empty = "Nothing yet.",
+}: {
+  columns: TableColumn[];
+  rows: { key: string; cells: ReactNode[]; tone?: Tone }[];
+  empty?: string;
+}) {
+  if (rows.length === 0) {
+    return <p className="text-muted-foreground text-sm">{empty}</p>;
+  }
+  const align = (i: number) => (columns[i]?.right ? "text-right" : "text-left");
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm tabular-nums lg:text-[0.95vw]">
+        <thead>
+          <tr className="text-muted-foreground text-xs lg:text-[0.8vw]">
+            {columns.map((column, i) => (
+              <th
+                key={column.label || i}
+                className={cn(
+                  "pr-4 pb-1.5 font-medium whitespace-nowrap last:pr-0",
+                  align(i),
+                )}
+              >
+                {column.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.key} className={cn("border-t", toneText(row.tone))}>
+              {row.cells.map((cell, i) => (
+                <td
+                  key={i}
+                  className={cn(
+                    "py-1.5 pr-4 whitespace-nowrap last:pr-0 lg:py-[0.45vw]",
+                    align(i),
+                  )}
+                >
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -277,6 +439,7 @@ export function Ranks({
   rows,
   tone = "revenue",
   empty = "Nothing yet.",
+  className,
 }: {
   rows: {
     key: string;
@@ -287,12 +450,18 @@ export function Ranks({
   }[];
   tone?: Tone;
   empty?: string;
+  className?: string;
 }) {
   if (rows.length === 0) {
     return <p className="text-muted-foreground text-sm">{empty}</p>;
   }
   return (
-    <div className="flex min-h-0 flex-col gap-2 overflow-hidden lg:gap-[0.6vw] lg:[mask-image:linear-gradient(to_bottom,#000_85%,transparent)]">
+    <div
+      className={cn(
+        "flex min-h-0 flex-col gap-2 overflow-hidden lg:gap-[0.6vw] lg:[mask-image:linear-gradient(to_bottom,#000_85%,transparent)]",
+        className,
+      )}
+    >
       {rows.map((row, i) => (
         <div
           key={row.key}

@@ -937,7 +937,8 @@ export const ticketAnalyticsRouter = createTRPCRouter({
             paidAt: { not: null },
           },
           orderBy: { paidAt: "desc" },
-          take: 8,
+          // The card shows the first few; the expanded card shows them all.
+          take: 40,
           select: {
             id: true,
             paidAt: true,
@@ -963,7 +964,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           WHERE o."eventId" = ${eventId} AND ${BOUGHT_ORDER} AND ${today}
           GROUP BY 1, 2
           ORDER BY 3 DESC
-          LIMIT 4
+          LIMIT 8
         `,
         ctx.db.$queryRaw<{ seconds: number | null }[]>`
           SELECT (percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM (o."paidAt" - o."createdAt"))))::float AS seconds

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import { api, type RouterOutputs } from "~/trpc/react";
 import { formatEventTime } from "~/lib/ticketing/dates";
@@ -15,12 +15,15 @@ import {
   Card,
   Cell,
   Count,
+  DetailSection,
   Feed,
   Flow,
   KeyValues,
   Loading,
   Ranks,
   shortAgo,
+  Table,
+  Track,
   useNow,
   type Tone,
 } from "./parts";
@@ -123,6 +126,107 @@ export function DoorsView({
     null,
   );
 
+  const arrivalBars = (
+    <Bars
+      values={slots.map((slot) => slot.count)}
+      markLast
+      className="min-h-[160px] lg:min-h-0"
+    />
+  );
+  const doorNowBody = (
+    <div className="flex min-h-0 flex-col gap-3 lg:gap-[0.8vw]">
+      <Flow
+        steps={[
+          {
+            key: "scanned",
+            label: "scanned",
+            value: x.now.scanned,
+            tone: "arrivals",
+          },
+          {
+            key: "in",
+            label: "let in",
+            value: x.now.letIn,
+            tone: "arrivals",
+          },
+          {
+            key: "away",
+            label: "turned away",
+            value: x.now.turnedAway,
+            tone: "warn",
+          },
+          {
+            key: "left",
+            label: "left",
+            value: x.now.departed,
+            tone: "plain",
+          },
+        ]}
+      />
+      <KeyValues
+        rows={[
+          ...x.now.byDevice.map((row, i) => ({
+            key: `device-${i}`,
+            label: `${row.name}${row.deviceLabel ? ` · ${row.deviceLabel}` : ""}`,
+            value: `${row.count} ${row.count === 1 ? "scan" : "scans"} · 1 every ${Math.round(300 / row.count)}s`,
+          })),
+          {
+            key: "doorSales",
+            label: "Door sales, last 5 min",
+            value: String(x.doorSales.recent),
+          },
+        ]}
+      />
+      <p className="text-muted-foreground mt-auto border-t pt-2 text-xs lg:pt-[0.5vw] lg:text-[0.85vw]">
+        {minutesLeft !== null && d.notArrived > 0
+          ? `At this rate the ${d.notArrived} still to come take about ${minutesLeft} min. `
+          : ""}
+        {peak && peak.count > 0
+          ? `Busiest five minutes so far: ${formatEventTime(new Date(peak.at), timezone)}, ${peak.count} in.`
+          : "Nobody through the door yet."}
+      </p>
+    </div>
+  );
+  const nightRows = [
+    {
+      key: "first",
+      label: "First through the door",
+      value: x.night.firstAt ? formatEventTime(x.night.firstAt, timezone) : "–",
+    },
+    {
+      key: "half",
+      label: "Half the room in by",
+      value: x.night.halfAt
+        ? formatEventTime(x.night.halfAt, timezone)
+        : "not yet",
+    },
+    {
+      key: "avg",
+      label: "Average arrival after doors",
+      value:
+        x.night.avgArrivalSeconds === null ||
+        x.night.avgArrivalSeconds < 0 ||
+        !doorsAt
+          ? "–"
+          : `${Math.round(x.night.avgArrivalSeconds / 60)} min`,
+    },
+    {
+      key: "reentries",
+      label: "Re-entries",
+      value: String(x.night.reentries),
+    },
+    {
+      key: "id",
+      label: "ID checks",
+      value: `${x.night.idChecks} · ${x.night.idRefused} refused`,
+    },
+    {
+      key: "overrides",
+      label: "Overrides",
+      value: String(x.night.overrides),
+    },
+  ];
+
   return (
     <div className="grid min-h-0 flex-1 gap-3 lg:grid-rows-[auto_minmax(0,1.25fr)_minmax(0,1fr)] lg:gap-[1vw]">
       <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-y py-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-[1vw] lg:py-[0.8vw]">
@@ -193,6 +297,15 @@ export function DoorsView({
         <Card
           index={1}
           title="Arrivals"
+          detail={
+            slots.length > 0 ? (
+              <ArrivalsDetail
+                bars={arrivalBars}
+                slots={slots}
+                timezone={timezone}
+              />
+            ) : null
+          }
           meta={
             first !== null
               ? `every 5 minutes since ${formatEventTime(new Date(first), timezone)} · white is the current five`
@@ -200,73 +313,59 @@ export function DoorsView({
           }
         >
           {slots.length > 0 ? (
-            <Bars
-              values={slots.map((slot) => slot.count)}
-              markLast
-              className="min-h-[160px] lg:min-h-0"
-            />
+            arrivalBars
           ) : (
             <p className="text-muted-foreground text-sm">No arrivals yet.</p>
           )}
         </Card>
-        <Card index={2} title="At the door now" meta="last 5 minutes">
-          <div className="flex min-h-0 flex-col gap-3 lg:gap-[0.8vw]">
-            <Flow
-              steps={[
-                {
-                  key: "scanned",
-                  label: "scanned",
-                  value: x.now.scanned,
-                  tone: "arrivals",
-                },
-                {
-                  key: "in",
-                  label: "let in",
-                  value: x.now.letIn,
-                  tone: "arrivals",
-                },
-                {
-                  key: "away",
-                  label: "turned away",
-                  value: x.now.turnedAway,
-                  tone: "warn",
-                },
-                {
-                  key: "left",
-                  label: "left",
-                  value: x.now.departed,
-                  tone: "plain",
-                },
-              ]}
-            />
-            <KeyValues
-              rows={[
-                ...x.now.byDevice.map((row, i) => ({
-                  key: `device-${i}`,
-                  label: `${row.name}${row.deviceLabel ? ` · ${row.deviceLabel}` : ""}`,
-                  value: `${row.count} ${row.count === 1 ? "scan" : "scans"} · 1 every ${Math.round(300 / row.count)}s`,
-                })),
-                {
-                  key: "doorSales",
-                  label: "Door sales, last 5 min",
-                  value: String(x.doorSales.recent),
-                },
-              ]}
-            />
-            <p className="text-muted-foreground mt-auto border-t pt-2 text-xs lg:pt-[0.5vw] lg:text-[0.85vw]">
-              {minutesLeft !== null && d.notArrived > 0
-                ? `At this rate the ${d.notArrived} still to come take about ${minutesLeft} min. `
-                : ""}
-              {peak && peak.count > 0
-                ? `Busiest five minutes so far: ${formatEventTime(new Date(peak.at), timezone)}, ${peak.count} in.`
-                : "Nobody through the door yet."}
-            </p>
-          </div>
+        <Card
+          index={2}
+          title="At the door now"
+          meta="last 5 minutes"
+          detail={
+            <div className="flex flex-col gap-6 lg:gap-[1.6vw]">
+              {doorNowBody}
+              <ProblemsDetail problems={d.problems} />
+            </div>
+          }
+        >
+          {doorNowBody}
         </Card>
       </div>
 
       <div className="grid min-h-0 gap-3 lg:grid-cols-3 lg:gap-[1vw]">
-        <Card index={3} title="Inside by ticket" meta={String(d.admitted)}>
+        <Card
+          index={3}
+          title="Inside by ticket"
+          meta={String(d.admitted)}
+          detail={
+            <Table
+              columns={[
+                { label: "Ticket" },
+                { label: "Inside", right: true },
+                { label: "Issued", right: true },
+                { label: "" },
+                { label: "Still to come", right: true },
+              ]}
+              empty="No tickets issued yet."
+              rows={x.byTier.map((row) => ({
+                key: row.label,
+                cells: [
+                  row.label,
+                  row.inside,
+                  row.issued,
+                  <Track
+                    key="track"
+                    tone="arrivals"
+                    share={row.issued > 0 ? row.inside / row.issued : 0}
+                    className="w-24 lg:w-[8vw]"
+                  />,
+                  Math.max(0, row.issued - row.inside),
+                ],
+              }))}
+            />
+          }
+        >
           <Ranks
             tone="arrivals"
             empty="No tickets issued yet."
@@ -278,7 +377,41 @@ export function DoorsView({
             }))}
           />
         </Card>
-        <Card index={4} title="Recent scans" meta="live">
+        <Card
+          index={4}
+          title="Recent scans"
+          meta="live"
+          detail={
+            <DetailSection
+              title="Newest first"
+              meta={`the latest ${d.recent.length}`}
+            >
+              <Table
+                columns={[
+                  { label: "When" },
+                  { label: "Who" },
+                  { label: "Ticket" },
+                  { label: "Result" },
+                  { label: "Scanned by" },
+                ]}
+                empty="No scans yet tonight."
+                rows={d.recent.map((scan) => ({
+                  key: scan.id,
+                  tone: FEED_TONE[scanResultTone(scan.result)],
+                  cells: [
+                    `${formatEventTime(new Date(scan.createdAt), timezone)} · ${shortAgo(new Date(scan.createdAt), now)}`,
+                    scan.ticket?.attendeeName ?? "–",
+                    [scan.ticket?.ticketNumber, scan.ticket?.tier?.name]
+                      .filter(Boolean)
+                      .join(" · ") || "unknown",
+                    `${scanResultShort(scan.result)}${scan.wasOverride ? " · override" : ""}`,
+                    scan.deviceLabel ?? scan.scannedByName ?? "–",
+                  ],
+                }))}
+              />
+            </DetailSection>
+          }
+        >
           <Feed
             empty="No scans yet tonight."
             rows={d.recent.slice(0, 12).map((scan) => {
@@ -303,52 +436,77 @@ export function DoorsView({
             })}
           />
         </Card>
-        <Card index={5} title="The night so far">
-          <KeyValues
-            rows={[
-              {
-                key: "first",
-                label: "First through the door",
-                value: x.night.firstAt
-                  ? formatEventTime(x.night.firstAt, timezone)
-                  : "–",
-              },
-              {
-                key: "half",
-                label: "Half the room in by",
-                value: x.night.halfAt
-                  ? formatEventTime(x.night.halfAt, timezone)
-                  : "not yet",
-              },
-              {
-                key: "avg",
-                label: "Average arrival after doors",
-                value:
-                  x.night.avgArrivalSeconds === null ||
-                  x.night.avgArrivalSeconds < 0 ||
-                  !doorsAt
-                    ? "–"
-                    : `${Math.round(x.night.avgArrivalSeconds / 60)} min`,
-              },
-              {
-                key: "reentries",
-                label: "Re-entries",
-                value: String(x.night.reentries),
-              },
-              {
-                key: "id",
-                label: "ID checks",
-                value: `${x.night.idChecks} · ${x.night.idRefused} refused`,
-              },
-              {
-                key: "overrides",
-                label: "Overrides",
-                value: String(x.night.overrides),
-              },
-            ]}
-          />
+        <Card
+          index={5}
+          title="The night so far"
+          detail={
+            <div className="flex flex-col gap-6 lg:gap-[1.6vw]">
+              <KeyValues rows={nightRows} className="lg:[mask-image:none]" />
+              <ProblemsDetail problems={d.problems} />
+            </div>
+          }
+        >
+          <KeyValues rows={nightRows} />
         </Card>
       </div>
     </div>
+  );
+}
+
+/** The bars at full height, then every five minutes with someone in it. */
+function ArrivalsDetail({
+  bars,
+  slots,
+  timezone,
+}: {
+  bars: ReactNode;
+  slots: { at: number; count: number }[];
+  timezone: string;
+}) {
+  return (
+    <div className="flex flex-col gap-6 lg:gap-[1.6vw]">
+      <div className="h-[40vh] min-h-[200px]">{bars}</div>
+      <DetailSection title="Every five minutes" meta="newest first">
+        <Table
+          columns={[
+            { label: "From" },
+            { label: "In", right: true },
+            { label: "A minute", right: true },
+          ]}
+          rows={slots
+            .filter((slot) => slot.count > 0)
+            .reverse()
+            .map((slot) => ({
+              key: String(slot.at),
+              cells: [
+                formatEventTime(new Date(slot.at), timezone),
+                slot.count,
+                (slot.count / 5).toFixed(1),
+              ],
+            }))}
+        />
+      </DetailSection>
+    </div>
+  );
+}
+
+/** Tonight's turned-away scans, by why. */
+function ProblemsDetail({
+  problems,
+}: {
+  problems: DoorsViewProps["live"]["problems"];
+}) {
+  return (
+    <DetailSection title="Problem scans" meta="tonight">
+      <Table
+        columns={[{ label: "Why" }, { label: "Scans", right: true }]}
+        empty="None tonight."
+        rows={problems.map((row) => ({
+          key: row.result,
+          tone: "warn" as const,
+          cells: [scanResultShort(row.result), row.count],
+        }))}
+      />
+    </DetailSection>
   );
 }
