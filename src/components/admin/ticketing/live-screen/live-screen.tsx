@@ -12,7 +12,9 @@ import {
   formatEventTime,
   formatTimeAgo,
 } from "~/lib/ticketing/dates";
+import { LiveProvider, type LiveAccess } from "./context";
 import { DoorsMode } from "./doors-mode";
+import { RowDialogProvider } from "./row-dialog";
 import { SalesMode } from "./sales-mode";
 import { useNow } from "./parts";
 
@@ -33,6 +35,9 @@ const MODES: { value: LiveMode; label: string }[] = [
 ];
 
 const STALE_MS = 60_000;
+
+/** Until the answer's in, and for anyone it isn't yes for: look, don't touch. */
+const NO_ACCESS: LiveAccess = { admin: false, door: "none" };
 
 export type LiveEvent = {
   name: string;
@@ -60,6 +65,10 @@ export function LiveScreen({
   );
 
   const event = api.ticketEvents.byId.useQuery({ id: eventId });
+  const access = api.ticketAnalytics.liveAccess.useQuery(
+    { eventId },
+    { staleTime: 5 * 60_000 },
+  );
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const now = useNow(1000);
   const requestedMode = params.get("mode");
@@ -105,31 +114,35 @@ export function LiveScreen({
   const timezone = event.data?.timezone ?? "Pacific/Auckland";
 
   return (
-    <LiveShell
-      event={event.data ?? null}
-      mode={mode}
-      onMode={setMode}
-      now={now}
-      updatedAt={updatedAt}
-      backHref={backHref}
-      fullscreen={fullscreen}
-      onFullscreen={toggleFullscreen}
+    <LiveProvider
+      value={{ eventId, timezone, access: access.data ?? NO_ACCESS }}
     >
-      {mode === "sales" ? (
-        <SalesMode
-          eventId={eventId}
-          timezone={timezone}
-          onUpdated={setUpdatedAt}
-        />
-      ) : (
-        <DoorsMode
-          eventId={eventId}
-          timezone={timezone}
-          doorsAt={event.data?.doorsAt ?? event.data?.startsAt ?? null}
-          onUpdated={setUpdatedAt}
-        />
-      )}
-    </LiveShell>
+      <LiveShell
+        event={event.data ?? null}
+        mode={mode}
+        onMode={setMode}
+        now={now}
+        updatedAt={updatedAt}
+        backHref={backHref}
+        fullscreen={fullscreen}
+        onFullscreen={toggleFullscreen}
+      >
+        {mode === "sales" ? (
+          <SalesMode
+            eventId={eventId}
+            timezone={timezone}
+            onUpdated={setUpdatedAt}
+          />
+        ) : (
+          <DoorsMode
+            eventId={eventId}
+            timezone={timezone}
+            doorsAt={event.data?.doorsAt ?? event.data?.startsAt ?? null}
+            onUpdated={setUpdatedAt}
+          />
+        )}
+      </LiveShell>
+    </LiveProvider>
   );
 }
 
@@ -237,7 +250,7 @@ export function LiveShell({
         </div>
       </header>
 
-      {children}
+      <RowDialogProvider>{children}</RowDialogProvider>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import {
+  EventStaffRole,
   PaymentMethodKind,
   Prisma,
   TicketOrderStatus,
@@ -9,7 +10,14 @@ import {
   TicketStatus,
 } from "~Prisma/client";
 import { createTRPCRouter, eventViewProcedure } from "~/server/api/trpc";
-import { admittedCount, departedCount } from "~/server/ticketing/scan";
+import {
+  ADMITTING_RESULTS,
+  admissionStates,
+  admittedCount,
+  departedCount,
+  ticketState,
+} from "~/server/ticketing/scan";
+import { SHARE_TOKEN_HEADER } from "~/lib/ticketing/share-link";
 import { compAccounting } from "~/server/ticketing/comps";
 import {
   BOUGHT_ORDER,
@@ -1260,6 +1268,7 @@ export const ticketAnalyticsRouter = createTRPCRouter({
           turnedAway: now?.turnedAway ?? 0,
           departed: now?.departed ?? 0,
           byDevice: nowByDevice.map((row) => ({
+            userId: row.scannedByUserId,
             name: row.scannedByUserId
               ? (nameById.get(row.scannedByUserId) ?? "Unknown")
               : "Unknown",
@@ -1272,6 +1281,361 @@ export const ticketAnalyticsRouter = createTRPCRouter({
         expected: ctx.viewableEventIds
           ? { rate: null, events: 0 }
           : { rate: expected?.rate ?? null, events: expected?.events ?? 0 },
+      };
+    }),
+
+  /**
+   * What the caller may do from the live screen, so its dialogs only offer
+   * what will work. Reading the screen never depends on this, and every
+   * mutation still checks for itself.
+   */
+  liveAccess: eventViewProcedure.query(async ({ ctx, input }) => {
+    // A share link shows what its recipient sees, whoever opened it.
+    const userId = ctx.headers.get(SHARE_TOKEN_HEADER)
+      ? null
+      : (ctx.session?.user.id ?? null);
+    if (!userId) return { admin: false, door: "none" as const };
+    // Admins and event organisers manage every door.
+    if (ctx.isAdmin || ctx.viewableEventIds === null) {
+      return { admin: ctx.isAdmin, door: "manager" as const };
+    }
+    const staff = await ctx.db.ticketEventStaff.findUnique({
+      where: { eventId_userId: { eventId: input.eventId, userId } },
+      select: { role: true },
+    });
+    return {
+      admin: false,
+      door: !staff
+        ? ("none" as const)
+        : staff.role === EventStaffRole.MANAGER
+          ? ("manager" as const)
+          : ("staff" as const),
+    };
+  }),
+
+  /**
+   * One scan off the live screen, opened up: the scan itself, where its
+   * ticket stands now, everything else that ticket has done, and who else is
+   * on its order. A scan of a code that matched nothing has no ticket.
+   */
+  scanDetail: eventViewProcedure
+    .input(z.object({ scanId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const scanSelect = {
+        id: true,
+        result: true,
+        createdAt: true,
+        deviceLabel: true,
+        wasOverride: true,
+        denyReason: true,
+        denyNote: true,
+        scannedByUserId: true,
+      } as const;
+      const scan = await ctx.db.ticketScan.findUnique({
+        where: { id: input.scanId },
+        select: {
+          ...scanSelect,
+          eventId: true,
+          ticket: {
+            select: {
+              id: true,
+              ticketNumber: true,
+              attendeeName: true,
+              status: true,
+              isComp: true,
+              pricePaidCents: true,
+              hostTicketId: true,
+              lifetimeTicketId: true,
+              tier: { select: { name: true } },
+              level: { select: { label: true } },
+              order: {
+                select: {
+                  id: true,
+                  orderNumber: true,
+                  buyerName: true,
+                  paymentMethod: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      if (scan?.eventId !== input.eventId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Scan not found" });
+      }
+
+      const ticket = scan.ticket;
+      const [timeline, siblings, state] = ticket
+        ? await Promise.all([
+            ctx.db.ticketScan.findMany({
+              where: { ticketId: ticket.id },
+              orderBy: { createdAt: "desc" },
+              take: 50,
+              select: scanSelect,
+            }),
+            // The same membership the door shows: a handout's companions are
+            // the other handouts, never the ticket the comp was minted against.
+            ctx.db.ticket.findMany({
+              where: {
+                orderId: ticket.order.id,
+                eventId: input.eventId,
+                ...(ticket.hostTicketId ? { hostTicketId: { not: null } } : {}),
+              },
+              orderBy: { ticketNumber: "asc" },
+              take: 50,
+              select: {
+                id: true,
+                ticketNumber: true,
+                attendeeName: true,
+                status: true,
+              },
+            }),
+            ticketState(ticket.id),
+          ])
+        : [[], [], null];
+
+      const [states, staff] = await Promise.all([
+        admissionStates(siblings.map((row) => row.id)),
+        ctx.db.user.findMany({
+          where: {
+            id: {
+              in: [scan, ...timeline].flatMap((row) =>
+                row.scannedByUserId ? [row.scannedByUserId] : [],
+              ),
+            },
+          },
+          select: { id: true, name: true },
+        }),
+      ]);
+      const nameById = new Map(staff.map((user) => [user.id, user.name]));
+      const shaped = (row: (typeof timeline)[number]) => ({
+        id: row.id,
+        result: row.result,
+        at: row.createdAt,
+        device: row.deviceLabel,
+        by: row.scannedByUserId
+          ? (nameById.get(row.scannedByUserId) ?? null)
+          : null,
+        reason: row.denyReason,
+        note: row.denyNote,
+        wasOverride: row.wasOverride,
+      });
+
+      // A staffer may undo an admission they made themselves.
+      const viewerId = ctx.headers.get(SHARE_TOKEN_HEADER)
+        ? null
+        : (ctx.session?.user.id ?? null);
+      const lastAdmission = timeline.find((row) =>
+        (ADMITTING_RESULTS as readonly TicketScanResult[]).includes(row.result),
+      );
+
+      return {
+        scan: shaped(scan),
+        ticket:
+          ticket && state
+            ? {
+                id: ticket.id,
+                ticketNumber: ticket.ticketNumber,
+                attendeeName: ticket.attendeeName,
+                typeName: ticketTypeName(ticket),
+                status: ticket.status,
+                isComp: ticket.isComp,
+                pricePaidCents: ticket.pricePaidCents,
+                orderId: ticket.order.id,
+                orderNumber: ticket.order.orderNumber,
+                buyerName: ticket.order.buyerName,
+                paymentMethod: ticket.order.paymentMethod,
+                /** Set while they're inside. */
+                admittedAt: state.admittedAt,
+                /** Set once they've been marked out and haven't come back. */
+                departedAt: state.departedAt,
+                /** Set while a refusal stands against them. */
+                deniedAt: state.denial?.at ?? null,
+                admittedByMe:
+                  viewerId !== null &&
+                  lastAdmission?.scannedByUserId === viewerId,
+              }
+            : null,
+        /** Everything this ticket has done, newest first. */
+        timeline: timeline.map(shaped),
+        orderTickets: siblings.map((row) => {
+          const standing = states.get(row.id);
+          return {
+            id: row.id,
+            ticketNumber: row.ticketNumber,
+            attendeeName: row.attendeeName,
+            status: row.status,
+            inside: Boolean(standing?.admittedAt),
+            left: Boolean(standing?.departedAt),
+            refused: Boolean(standing?.deniedAt),
+          };
+        }),
+      };
+    }),
+
+  /**
+   * One scanner's night: a person on a device, as the door card lists them.
+   * Their totals, their admissions by the five minutes, and their latest scans.
+   */
+  scannerDetail: eventViewProcedure
+    .input(
+      z.object({
+        userId: z.string().nullable(),
+        deviceLabel: z.string().nullable(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const theirs = Prisma.sql`
+        s."eventId" = ${input.eventId}
+        AND s."scannedByUserId" IS NOT DISTINCT FROM ${input.userId}::text
+        AND s."deviceLabel" IS NOT DISTINCT FROM ${input.deviceLabel}::text
+      `;
+      const [[totals], buckets, recent] = await Promise.all([
+        ctx.db.$queryRaw<
+          {
+            letIn: number;
+            turnedAway: number;
+            departed: number;
+            firstAt: Date | null;
+          }[]
+        >`
+          SELECT
+            COUNT(*) FILTER (WHERE s.result IN ('ADMITTED', 'OVERRIDE_ADMITTED', 'REENTRY'))::int AS "letIn",
+            COUNT(*) FILTER (WHERE s.result IN ('DUPLICATE', 'DENIED', 'PREVIOUSLY_DENIED', 'INVALID_SIGNATURE', 'NOT_FOUND', 'WRONG_EVENT', 'VOIDED', 'REFUNDED_TICKET', 'ORDER_UNPAID'))::int AS "turnedAway",
+            COUNT(*) FILTER (WHERE s.result = 'DEPARTED')::int AS departed,
+            MIN(s."createdAt") AS "firstAt"
+          FROM "ticket_scan" s
+          WHERE ${theirs}
+        `,
+        ctx.db.$queryRaw<{ bucket: Date; count: number }[]>`
+          SELECT
+            to_timestamp(floor(extract(epoch FROM s."createdAt") / 300) * 300) AS bucket,
+            COUNT(*)::int AS count
+          FROM "ticket_scan" s
+          WHERE ${theirs}
+            AND s.result IN ('ADMITTED', 'OVERRIDE_ADMITTED', 'REENTRY')
+            AND s."createdAt" > NOW() - INTERVAL '6 hours'
+          GROUP BY 1
+          ORDER BY 1 ASC
+        `,
+        ctx.db.ticketScan.findMany({
+          where: {
+            eventId: input.eventId,
+            scannedByUserId: input.userId,
+            deviceLabel: input.deviceLabel,
+          },
+          orderBy: { createdAt: "desc" },
+          take: 12,
+          select: {
+            id: true,
+            result: true,
+            createdAt: true,
+            ticket: { select: { ticketNumber: true, attendeeName: true } },
+          },
+        }),
+      ]);
+
+      return {
+        letIn: totals?.letIn ?? 0,
+        turnedAway: totals?.turnedAway ?? 0,
+        departed: totals?.departed ?? 0,
+        firstAt: totals?.firstAt ?? null,
+        /** Admissions in each five minutes that had any, oldest first. */
+        buckets,
+        recent,
+      };
+    }),
+
+  /**
+   * One tier, opened up from the live screen: where it stands, what it has
+   * sold on each of the last seven days, and how its buyers bought.
+   */
+  tierDetail: eventViewProcedure
+    .input(z.object({ tierId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const event = await ctx.db.ticketEvent.findUnique({
+        where: { id: input.eventId },
+        select: {
+          timezone: true,
+          salesCloseAt: true,
+          tiers: {
+            select: {
+              id: true,
+              name: true,
+              priceCents: true,
+              sortOrder: true,
+              salesChannel: true,
+              isActive: true,
+              allocation: true,
+              soldCount: true,
+              heldCount: true,
+              groupSize: true,
+            },
+          },
+        },
+      });
+      // The move to the door is worked out across all the tiers at once.
+      const tier = event
+        ? moveUnsoldToDoor(event.tiers, event.salesCloseAt, new Date()).find(
+            (row) => row.id === input.tierId,
+          )
+        : undefined;
+      if (!event || !tier) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Tier not found" });
+      }
+
+      const bought = Prisma.sql`
+        FROM "ticket_order_item" i
+        JOIN "ticket_order" o ON o.id = i."orderId"
+        WHERE i."tierId" = ${tier.id} AND o."eventId" = ${input.eventId} AND ${BOUGHT_ORDER}
+      `;
+      const [days, [totals], [source]] = await Promise.all([
+        // `paidAt` holds UTC without a zone; the day is the event's own.
+        ctx.db.$queryRaw<{ day: string; tickets: number }[]>`
+          SELECT
+            to_char((o."paidAt" AT TIME ZONE 'UTC') AT TIME ZONE ${event.timezone}, 'YYYY-MM-DD') AS day,
+            SUM(i.quantity * i."groupSize")::int AS tickets
+          ${bought} AND o."paidAt" > NOW() - INTERVAL '8 days'
+          GROUP BY 1
+        `,
+        ctx.db.$queryRaw<
+          { orders: number; tickets: number; withCode: number }[]
+        >`
+          SELECT
+            COUNT(DISTINCT o.id)::int AS orders,
+            COALESCE(SUM(i.quantity * i."groupSize"), 0)::int AS tickets,
+            COUNT(DISTINCT o.id) FILTER (WHERE o."discountCodeId" IS NOT NULL OR o."eventCodeId" IS NOT NULL)::int AS "withCode"
+          ${bought}
+        `,
+        ctx.db.$queryRaw<
+          { source: string | null; medium: string | null; orders: number }[]
+        >`
+          SELECT o."utmSource" AS source, o."utmMedium" AS medium, COUNT(DISTINCT o.id)::int AS orders
+          ${bought}
+          GROUP BY 1, 2
+          ORDER BY 3 DESC
+          LIMIT 1
+        `,
+      ]);
+
+      return {
+        id: tier.id,
+        name: tier.name,
+        priceCents: tier.priceCents,
+        isActive: tier.isActive,
+        allocation: tier.allocation,
+        moved: tier.moved,
+        sold: tier.soldCount,
+        held: tier.heldCount,
+        remaining: remainingInTier(tier),
+        revenueCents: soldFaceValueCents(tier),
+        timezone: event.timezone,
+        /** Tickets bought on each event-local day (`YYYY-MM-DD`) that had any. */
+        days,
+        orders: totals?.orders ?? 0,
+        ticketsBought: totals?.tickets ?? 0,
+        ordersWithCode: totals?.withCode ?? 0,
+        topSource: source ?? null,
       };
     }),
 

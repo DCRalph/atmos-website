@@ -10,6 +10,8 @@ import {
   scanResultTone,
   type ScanResultTone,
 } from "~/lib/ticketing/scan-results";
+import { useLive } from "./context";
+import { ScanDialog, ScannerDialog } from "./doors-dialogs";
 import {
   Bars,
   Card,
@@ -95,6 +97,12 @@ export function DoorsView({
   doorsAt,
   now,
 }: DoorsViewProps) {
+  const screen = useLive();
+  /** What clicking a scan opens, on a real screen. */
+  const scanDialog = (scan: { id: string }) =>
+    screen
+      ? { label: "Scan", content: <ScanDialog {...screen} scanId={scan.id} /> }
+      : undefined;
   const problems = d.problems.reduce((sum, row) => sum + row.count, 0);
   const scansTonight = d.admitted + d.departed + x.night.reentries + problems;
   const expectedFinal =
@@ -169,6 +177,19 @@ export function DoorsView({
             key: `device-${i}`,
             label: `${row.name}${row.deviceLabel ? ` · ${row.deviceLabel}` : ""}`,
             value: `${row.count} ${row.count === 1 ? "scan" : "scans"} · 1 every ${Math.round(300 / row.count)}s`,
+            dialog: screen
+              ? {
+                  label: `${row.name}'s scans`,
+                  content: (
+                    <ScannerDialog
+                      {...screen}
+                      userId={row.userId}
+                      deviceLabel={row.deviceLabel}
+                      name={row.name}
+                    />
+                  ),
+                }
+              : undefined,
           })),
           {
             key: "doorSales",
@@ -397,6 +418,7 @@ export function DoorsView({
                 empty="No scans yet tonight."
                 rows={d.recent.map((scan) => ({
                   key: scan.id,
+                  dialog: scanDialog(scan),
                   tone: FEED_TONE[scanResultTone(scan.result)],
                   cells: [
                     `${formatEventTime(new Date(scan.createdAt), timezone)} · ${shortAgo(new Date(scan.createdAt), now)}`,
@@ -418,6 +440,7 @@ export function DoorsView({
               const tone = scanResultTone(scan.result);
               return {
                 key: scan.id,
+                dialog: scanDialog(scan),
                 main:
                   scan.ticket?.attendeeName ??
                   scan.ticket?.ticketNumber ??

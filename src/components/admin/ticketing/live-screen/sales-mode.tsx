@@ -4,12 +4,7 @@ import { useEffect, type ReactNode } from "react";
 
 import { api, type RouterOutputs } from "~/trpc/react";
 import { TimeSeriesChart } from "~/components/admin/ticketing/charts";
-import {
-  CAMPAIGN_SOURCE_LABELS,
-  CAMPAIGN_TYPE_LABELS,
-  campaignSourceOf,
-  campaignTypeOf,
-} from "~/lib/ticketing/campaigns";
+import { sourceLabel } from "~/lib/ticketing/campaigns";
 import {
   eventDayKey,
   formatCountdown,
@@ -29,6 +24,13 @@ import {
   paidWithLabel,
   paymentMethodShort,
 } from "~/lib/ticketing/payment-methods";
+import { useLive, type LiveDialogProps } from "./context";
+import {
+  ApprovalsDialog,
+  HoldsDialog,
+  LiveOrderDialog,
+  TierDialog,
+} from "./sales-dialogs";
 import {
   Card,
   Cell,
@@ -117,6 +119,9 @@ export function SalesView({
 }: SalesViewProps) {
   const { money, counts, costs, tiers, event } = overview;
   const l = live;
+  const screen = useLive();
+  // The hold and approval queues are the admin's to work.
+  const admin = screen?.access.admin ? screen : null;
 
   // Where the average past event stood at this moment, from the pace line.
   const paceTickets = sales?.pace?.points.at(-1)?.tickets;
@@ -236,11 +241,23 @@ export function SalesView({
                 ? ` · next hold expires in ${formatCountdown(l.rightNow.nextExpiry.getTime() - now.getTime())}`
                 : ""
             }`,
+            dialog: admin
+              ? {
+                  label: "Tickets on hold",
+                  content: <HoldsDialog {...admin} />,
+                }
+              : undefined,
           },
           {
             key: "approvals",
             label: "Waiting for approval",
             value: `${l.rightNow.approvals} guest list ${l.rightNow.approvals === 1 ? "request" : "requests"}`,
+            dialog: admin
+              ? {
+                  label: "Waiting for approval",
+                  content: <ApprovalsDialog {...admin} />,
+                }
+              : undefined,
           },
           {
             key: "abandoned",
@@ -404,6 +421,7 @@ export function SalesView({
             rows={[
               ...tiers.map((tier) => ({
                 key: tier.id,
+                dialog: tierDialog(screen, tier),
                 name: `${tier.name} · ${formatNZDCompact(tier.priceCents)}`,
                 detail: `${tier.sold} / ${tier.allocation}${tier.moved > 0 ? ` + ${tier.moved} unsold online` : ""}${tier.moved < 0 ? ` · ${-tier.moved} to the door` : tier.remaining === 0 ? " · sold out" : ""} · ${formatNZDWhole(tier.revenueCents)}`,
                 share:
@@ -448,6 +466,7 @@ export function SalesView({
             empty="No orders yet."
             rows={l.latest.slice(0, 8).map((order) => ({
               key: order.id,
+              dialog: orderDialog(screen, order),
               main: order.items
                 .map((item) => `${item.tickets} × ${item.name}`)
                 .join(", "),
@@ -477,27 +496,6 @@ export function SalesView({
       </div>
     </div>
   );
-}
-
-/** "Poster / QR" -> "poster / QR": a label read mid-sentence. */
-const lowerFirst = (label: string) =>
-  label.charAt(0).toLowerCase() + label.slice(1);
-
-/** "Instagram story", "Email newsletter", "ig social", "direct": tags in words. */
-function sourceLabel(source: string | null, medium: string | null) {
-  if (!source && !medium) return "direct";
-  const where = source
-    ? campaignSourceOf(source) === "other"
-      ? source
-      : CAMPAIGN_SOURCE_LABELS[campaignSourceOf(source)]
-    : null;
-  const type = campaignTypeOf(medium);
-  const kind = medium
-    ? type === "other"
-      ? medium
-      : lowerFirst(CAMPAIGN_TYPE_LABELS[type])
-    : null;
-  return [where, kind].filter(Boolean).join(" ");
 }
 
 /**
@@ -564,6 +562,27 @@ function Curve({
 }
 
 type Overview = SalesViewProps["overview"];
+
+/** What clicking a tier opens, on a real screen. */
+const tierDialog = (
+  screen: LiveDialogProps | null,
+  tier: { id: string; name: string },
+) =>
+  screen
+    ? {
+        label: tier.name,
+        content: <TierDialog {...screen} tierId={tier.id} />,
+      }
+    : undefined;
+
+/** What clicking an order opens, on a real screen. */
+const orderDialog = (screen: LiveDialogProps | null, order: { id: string }) =>
+  screen
+    ? {
+        label: "Order",
+        content: <LiveOrderDialog {...screen} orderId={order.id} />,
+      }
+    : undefined;
 type KeyValueRow = Parameters<typeof KeyValues>[0]["rows"][number];
 
 /** Two columns side by side on a big screen, stacked on a phone. */
@@ -701,6 +720,7 @@ function TiersDetail({
   tiers: Overview["tiers"];
   counts: Overview["counts"];
 }) {
+  const screen = useLive();
   return (
     <Table
       columns={[
@@ -717,6 +737,7 @@ function TiersDetail({
           const onSale = tier.allocation + Math.max(0, tier.moved);
           return {
             key: tier.id,
+            dialog: tierDialog(screen, tier),
             cells: [
               tier.name,
               formatNZD(tier.priceCents),
@@ -772,6 +793,7 @@ function OrdersDetail({
   timezone: string;
   now: Date;
 }) {
+  const screen = useLive();
   return (
     <DetailSection
       title="Newest first"
@@ -788,6 +810,7 @@ function OrdersDetail({
         empty="No orders yet."
         rows={orders.map((order) => ({
           key: order.id,
+          dialog: orderDialog(screen, order),
           cells: [
             `${formatEventTime(order.paidAt, timezone)} · ${shortAgo(order.paidAt, now)}`,
             order.items

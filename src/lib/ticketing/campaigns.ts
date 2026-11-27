@@ -113,6 +113,30 @@ export function campaignSourceOf(
   return (source ? SOURCE_ALIASES[source] : undefined) ?? "other";
 }
 
+/** "Poster / QR" -> "poster / QR": a label read mid-sentence. */
+const lowerFirst = (label: string) =>
+  label.charAt(0).toLowerCase() + label.slice(1);
+
+/**
+ * Where a buyer came from, in words: "Instagram story", "Email newsletter",
+ * "ig social" for tags that aren't ours, "direct" for none.
+ */
+export function sourceLabel(source: string | null, medium: string | null) {
+  if (!source && !medium) return "direct";
+  const where = source
+    ? campaignSourceOf(source) === "other"
+      ? source
+      : CAMPAIGN_SOURCE_LABELS[campaignSourceOf(source)]
+    : null;
+  const type = campaignTypeOf(medium);
+  const kind = medium
+    ? type === "other"
+      ? medium
+      : lowerFirst(CAMPAIGN_TYPE_LABELS[type])
+    : null;
+  return [where, kind].filter(Boolean).join(" ");
+}
+
 /**
  * One way to write a tag, so "Instagram" and "instagram " never split one
  * campaign into two rows: lowercase, dashes for spaces, nothing a URL mangles.

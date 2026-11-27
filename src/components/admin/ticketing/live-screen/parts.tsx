@@ -9,10 +9,16 @@ import {
   type ReactNode,
 } from "react";
 
-import { Maximize2, X } from "lucide-react";
+import { ChevronRight, Maximize2, X } from "lucide-react";
 
 import { cn } from "~/lib/utils";
 import { useCardExpand } from "./expand";
+import {
+  ROW_OPENS,
+  rowOpens,
+  useOpenRowDialog,
+  type RowDialogSpec,
+} from "./row-dialog";
 
 /**
  * The live screen's building blocks. Everything here animates on change and
@@ -375,6 +381,19 @@ export function DetailSection({
   );
 }
 
+/** The mark on the right of a row that opens a dialog. */
+function Opens({ className }: { className?: string }) {
+  return (
+    <ChevronRight
+      className={cn(
+        "text-muted-foreground/50 group-hover:text-foreground size-3.5 shrink-0 transition-colors lg:size-[0.9vw]",
+        className,
+      )}
+      aria-hidden
+    />
+  );
+}
+
 export type TableColumn = { label: string; right?: boolean };
 
 /**
@@ -387,12 +406,20 @@ export function Table({
   empty = "Nothing yet.",
 }: {
   columns: TableColumn[];
-  rows: { key: string; cells: ReactNode[]; tone?: Tone }[];
+  rows: {
+    key: string;
+    cells: ReactNode[];
+    tone?: Tone;
+    /** Opened by clicking the row. */
+    dialog?: RowDialogSpec;
+  }[];
   empty?: string;
 }) {
+  const open = useOpenRowDialog();
   if (rows.length === 0) {
     return <p className="text-muted-foreground text-sm">{empty}</p>;
   }
+  const opens = open !== null && rows.some((row) => row.dialog);
   const align = (i: number) => (columns[i]?.right ? "text-right" : "text-left");
   return (
     <div className="overflow-x-auto">
@@ -410,11 +437,20 @@ export function Table({
                 {column.label}
               </th>
             ))}
+            {opens ? <th className="w-0" /> : null}
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.key} className={cn("border-t", toneText(row.tone))}>
+            <tr
+              key={row.key}
+              className={cn(
+                "border-t",
+                toneText(row.tone),
+                open && row.dialog && cn("group", ROW_OPENS),
+              )}
+              {...rowOpens(open, row.dialog)}
+            >
               {row.cells.map((cell, i) => (
                 <td
                   key={i}
@@ -426,6 +462,9 @@ export function Table({
                   {cell}
                 </td>
               ))}
+              {opens ? (
+                <td className="w-0 pl-2">{row.dialog ? <Opens /> : null}</td>
+              ) : null}
             </tr>
           ))}
         </tbody>
@@ -447,11 +486,14 @@ export function Ranks({
     detail: string;
     share: number;
     tone?: Tone;
+    /** Opened by clicking the row. */
+    dialog?: RowDialogSpec;
   }[];
   tone?: Tone;
   empty?: string;
   className?: string;
 }) {
+  const open = useOpenRowDialog();
   if (rows.length === 0) {
     return <p className="text-muted-foreground text-sm">{empty}</p>;
   }
@@ -465,12 +507,17 @@ export function Ranks({
       {rows.map((row, i) => (
         <div
           key={row.key}
-          className="live-rise grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 text-sm lg:text-[0.95vw]"
+          className={cn(
+            "live-rise grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 text-sm lg:text-[0.95vw]",
+            open && row.dialog && cn("group -mx-2 rounded-md px-2", ROW_OPENS),
+          )}
           style={{ animationDelay: `${i * 50}ms` }}
+          {...rowOpens(open, row.dialog)}
         >
           <span className="truncate">{row.name}</span>
-          <span className="text-muted-foreground tabular-nums">
+          <span className="text-muted-foreground flex items-center gap-1.5 tabular-nums">
             {row.detail}
+            {open && row.dialog ? <Opens /> : null}
           </span>
           <Track
             share={row.share}
@@ -488,9 +535,17 @@ export function KeyValues({
   rows,
   className,
 }: {
-  rows: { key: string; label: string; value: ReactNode; tone?: Tone }[];
+  rows: {
+    key: string;
+    label: string;
+    value: ReactNode;
+    tone?: Tone;
+    /** Opened by clicking the row. */
+    dialog?: RowDialogSpec;
+  }[];
   className?: string;
 }) {
+  const open = useOpenRowDialog();
   return (
     <dl
       className={cn(
@@ -501,11 +556,21 @@ export function KeyValues({
       {rows.map((row) => (
         <div
           key={row.key}
-          className="flex justify-between gap-3 border-t py-1 first:border-t-0 first:pt-0 lg:py-[0.35vw]"
+          className={cn(
+            "flex justify-between gap-3 border-t py-1 first:border-t-0 first:pt-0 lg:py-[0.35vw]",
+            open && row.dialog && cn("group", ROW_OPENS),
+          )}
+          {...rowOpens(open, row.dialog)}
         >
           <dt className="text-muted-foreground truncate">{row.label}</dt>
-          <dd className={cn("shrink-0 tabular-nums", toneText(row.tone))}>
+          <dd
+            className={cn(
+              "flex shrink-0 items-center gap-1.5 tabular-nums",
+              toneText(row.tone),
+            )}
+          >
             {row.value}
+            {open && row.dialog ? <Opens /> : null}
           </dd>
         </div>
       ))}
@@ -519,6 +584,8 @@ export type FeedRow = {
   sub?: ReactNode;
   right: ReactNode;
   tone?: Tone;
+  /** Opened by clicking the row. */
+  dialog?: RowDialogSpec;
 };
 
 /**
@@ -563,12 +630,15 @@ function FeedItem({
   late: boolean;
 }) {
   const [entry] = useState(() => (late ? "live-flash" : "live-rise"));
+  const open = useOpenRowDialog();
   return (
     <li
       className={cn(
         "-mx-2 flex items-baseline justify-between gap-3 rounded-md px-2 py-1 text-sm lg:py-[0.3vw] lg:text-[0.95vw]",
         entry,
+        open && row.dialog && cn("group", ROW_OPENS),
       )}
+      {...rowOpens(open, row.dialog)}
       style={
         entry === "live-rise"
           ? { animationDelay: `${index * 40}ms` }
@@ -583,8 +653,9 @@ function FeedItem({
           <span className="text-muted-foreground"> · {row.sub}</span>
         ) : null}
       </span>
-      <span className="text-muted-foreground shrink-0 tabular-nums">
+      <span className="text-muted-foreground flex shrink-0 items-center gap-1.5 tabular-nums">
         {row.right}
+        {open && row.dialog ? <Opens className="self-center" /> : null}
       </span>
     </li>
   );
