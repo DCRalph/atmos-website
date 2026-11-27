@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft } from "lucide-react-native";
 
 import { api } from "@/lib/api";
+import { StaffGate } from "@/components/staff-gate";
 import { colors, space, stroke, type } from "@/lib/theme";
 import { Body, Button, Caption, Eyebrow, Notice, Title } from "@/components/ui";
 
@@ -43,7 +44,19 @@ const PRIORITIES = [
   { value: 4, label: "High" },
 ] as const;
 
-export default function NotifyScreen() {
+/**
+ * Organisers only. The `(admin)` group also opens to per-event sales viewers,
+ * who get the analytics screens and none of the team's rooms or broadcasts.
+ */
+export default function OrganiserNotifyScreen() {
+  return (
+    <StaffGate role="organiser">
+      <NotifyScreen />
+    </StaffGate>
+  );
+}
+
+function NotifyScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 

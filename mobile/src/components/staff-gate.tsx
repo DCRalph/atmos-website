@@ -23,15 +23,22 @@ export function StaffGate({
   role,
   children,
 }: {
-  /** `staff` covers door and organiser; `organiser` is the narrower one. */
-  role: "staff" | "organiser" | "admin";
+  /**
+   * `staff` covers door and organiser; `organiser` is the narrower one.
+   * `sales` is event analytics, which organisers and per-event sales viewers share.
+   */
+  role: "staff" | "organiser" | "sales" | "admin";
   children: ReactNode;
 }) {
   const router = useRouter();
-  const { isStaff, isOrganiser, isAdmin, ready } = useStaff();
+  const { isStaff, isOrganiser, canViewSales, isAdmin, ready } = useStaff();
 
-  const allowed =
-    role === "admin" ? isAdmin : role === "organiser" ? isOrganiser : isStaff;
+  const allowed = {
+    staff: isStaff,
+    organiser: isOrganiser,
+    sales: canViewSales,
+    admin: isAdmin,
+  }[role];
 
   return (
     <>

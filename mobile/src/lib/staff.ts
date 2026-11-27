@@ -18,7 +18,14 @@ import { useAuth } from "@/lib/auth";
 export function useStaff(): {
   /** Rostered on a door tonight, or an admin or organiser, who get every event. */
   isDoorStaff: boolean;
+  /** Holds EVENT_ORGANISER: every event, gig rooms and team notifications. */
   isOrganiser: boolean;
+  /**
+   * Can read event analytics: organisers, plus people outside the team granted
+   * one event's sales on the web admin. Those see analytics for that event and
+   * nothing else in the app, so this is not part of `isStaff`.
+   */
+  canViewSales: boolean;
   isAdmin: boolean;
   isStaff: boolean;
   /** False until the access checks finish, so nothing staff-shaped flashes first. */
@@ -33,10 +40,13 @@ export function useStaff(): {
     retry: false,
     staleTime: 5 * 60 * 1000,
   });
-  const organiserEvents = api.ticketEvents.list.useQuery(
-    { includeArchived: false },
-    { enabled: !!user, retry: false, staleTime: 5 * 60 * 1000 },
-  );
+  // `ticketEvents.list` no longer says "organiser": it also answers somebody
+  // granted a single event's sales. The permission itself does.
+  const me = api.user.me.useQuery(undefined, {
+    enabled: !!user,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const adminAccess = api.tasks.access.useQuery(undefined, {
     enabled: !!user,
@@ -45,19 +55,22 @@ export function useStaff(): {
   });
   const isAdmin = !!user && adminAccess.isSuccess;
   const isDoorStaff = !!user && (myEvents.data?.length ?? 0) > 0;
-  const isOrganiser = !!user && organiserEvents.isSuccess;
+  const isOrganiser =
+    !!user && !!me.data?.effectivePermissions.includes("EVENT_ORGANISER");
+  const canViewSales = !!user && !!me.data?.canViewEvents;
 
   // A disabled query stays `pending` forever, so signed out has to be its own
   // answer rather than something to wait on.
   const ready =
     !user ||
     (!myEvents.isPending &&
-      !organiserEvents.isPending &&
+      !me.isPending &&
       !adminAccess.isPending);
 
   return {
     isDoorStaff,
     isOrganiser,
+    canViewSales,
     isAdmin,
     isStaff: isDoorStaff || isOrganiser,
     ready,

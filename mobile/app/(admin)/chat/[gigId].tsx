@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft, Bell, BellOff, SendHorizontal } from "lucide-react-native";
 
 import { api } from "@/lib/api";
+import { StaffGate } from "@/components/staff-gate";
 import { format, isToday } from "date-fns";
 
 import { formatGigDate } from "@/lib/dates";
@@ -52,7 +53,19 @@ import {
 /** Fast enough to feel live, slow enough to be free. */
 const POLL_MS = 5000;
 
-export default function ChatRoomScreen() {
+/**
+ * Organisers only. The `(admin)` group also opens to per-event sales viewers,
+ * who get the analytics screens and none of the team's rooms or broadcasts.
+ */
+export default function OrganiserChatRoomScreen() {
+  return (
+    <StaffGate role="organiser">
+      <ChatRoomScreen />
+    </StaffGate>
+  );
+}
+
+function ChatRoomScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { gigId } = useLocalSearchParams<{ gigId: string }>();

@@ -13,15 +13,17 @@ import { colors } from "@/lib/theme";
  * is the dashboard you check on the way to the venue and hold in your hand
  * while the room fills, so it answers questions and edits nothing.
  *
- * Access is enforced server-side on every call by `eventOrganiserProcedure`.
- * `StaffGate` makes sure a non-organiser never sees the screens either, however
- * they got here. The biometric lock is the third layer: takings and a guest
+ * Access is enforced server-side on every call. The analytics screens answer
+ * organisers and anyone granted one event's sales (`eventViewProcedure`, which
+ * also scopes the event list); gig rooms and Notify team are organiser only and
+ * gate themselves again. `StaffGate` makes sure nobody else sees the screens,
+ * however they got here. The biometric lock is the third layer: takings and a guest
  * list should not be readable off a handset somebody picked up, even by
  * somebody the server would happily answer.
  */
 export default function AdminLayout() {
   return (
-    <StaffGate role="organiser">
+    <StaffGate role="sales">
       <BiometricGate>
         <Stack
           screenOptions={{
