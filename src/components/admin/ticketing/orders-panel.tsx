@@ -381,7 +381,11 @@ export function OrderDialog({
   );
 }
 
-function OrderDetail({
+/**
+ * One order in full, with what can be done about it. The body of
+ * `OrderDialog`, and of the live screen's own order dialog.
+ */
+export function OrderDetail({
   orderId,
   readOnly,
   onDeleted,

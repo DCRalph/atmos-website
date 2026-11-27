@@ -26,26 +26,36 @@ import { flushSync } from "react-dom";
 
 type Phase = "closed" | "open" | "closing";
 
-const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
+export const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
 const GROW_MS = 450;
 
 /** The card's box on screen, in viewport pixels. */
 type Box = { top: number; left: number; width: number; height: number };
 
-const boxOf = (el: Element): Box => {
+export const boxOf = (el: Element): Box => {
   const r = el.getBoundingClientRect();
   return { top: r.top, left: r.left, width: r.width, height: r.height };
 };
 
-const px = (box: Box): Keyframe => ({
+export const px = (box: Box): Keyframe => ({
   top: `${box.top}px`,
   left: `${box.left}px`,
   width: `${box.width}px`,
   height: `${box.height}px`,
 });
 
-const stillPlease = () =>
+export const stillPlease = () =>
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/**
+ * Whether a key press belongs to `layer` rather than to a dialog on top of
+ * it: a confirm, a picker, or (for an expanded card) a row dialog.
+ */
+export function isTopLayer(e: KeyboardEvent, layer: Element | null) {
+  if (!(e.target instanceof Element)) return true;
+  const dialog = e.target.closest("[role=dialog], [role=alertdialog]");
+  return dialog === null || dialog === layer;
+}
 
 /** The open panel's gap to the screen edge: roomy on a TV, tight on a phone. */
 const openGeometry = (): CSSProperties => {
@@ -161,7 +171,7 @@ export function useCardExpand() {
   useEffect(() => {
     if (phase === "closed") return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape" && isTopLayer(e, boxRef.current)) close();
     };
     const root = document.documentElement;
     const overflow = root.style.overflow;
