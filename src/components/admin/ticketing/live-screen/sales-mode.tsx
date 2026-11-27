@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import { api, type RouterOutputs } from "~/trpc/react";
 import { TimeSeriesChart } from "~/components/admin/ticketing/charts";
@@ -11,9 +11,12 @@ import {
   campaignTypeOf,
 } from "~/lib/ticketing/campaigns";
 import {
+  eventDayKey,
   formatCountdown,
   formatDuration,
+  formatEventDate,
   formatEventDateTime,
+  formatEventTime,
   formatTimeAgo,
 } from "~/lib/ticketing/dates";
 import { DAY_MS } from "~/lib/ticketing/lead-time";
@@ -30,12 +33,15 @@ import {
   Card,
   Cell,
   Count,
+  DetailSection,
   Feed,
   Flow,
   KeyValues,
   Loading,
   Ranks,
   shortAgo,
+  Table,
+  Track,
   useNow,
   useSize,
 } from "./parts";
@@ -141,6 +147,130 @@ export function SalesView({
     { uses: 0, givenCents: 0 },
   );
 
+  const sellingRows = [
+    {
+      key: "started",
+      label: "Checkouts started",
+      value: `${started} · ${counts.checkoutConversion ?? 0}% paid`,
+    },
+    {
+      key: "phone",
+      label: "Bought on a phone",
+      value: l.shares.phone === null ? "–" : `${l.shares.phone}%`,
+    },
+    {
+      key: "paidWith",
+      label: "Paid with",
+      value:
+        paidWithTotal > 0
+          ? overview.byPaidWith
+              .slice(0, 3)
+              .map(
+                (row) =>
+                  `${paidWithLabel(row.paidWith)} ${Math.round((row.orders / paidWithTotal) * 100)}%`,
+              )
+              .join(" · ")
+          : "–",
+    },
+    {
+      key: "codes",
+      label: "Discount codes used",
+      value:
+        codes.uses > 0
+          ? `${codes.uses} · ${formatNZDWhole(codes.givenCents)} given`
+          : "none",
+    },
+    {
+      key: "optIn",
+      label: "Marketing opt-in",
+      value: l.shares.optIn === null ? "–" : `${l.shares.optIn}% of orders`,
+    },
+    {
+      key: "returning",
+      label: "Returning buyers",
+      value:
+        l.shares.returning === null
+          ? "–"
+          : `${l.shares.returning}% bought before`,
+    },
+    {
+      key: "spend",
+      label: "Campaign spend",
+      value:
+        costs.campaignsCents > 0
+          ? `${formatNZDWhole(costs.campaignsCents)} · ${(money.netCents / costs.campaignsCents).toFixed(1)}× back`
+          : "none recorded",
+    },
+  ];
+
+  const rightNowBody = (
+    <div className="flex min-h-0 flex-col gap-3 lg:gap-[0.8vw]">
+      <Flow
+        steps={[
+          {
+            key: "viewing",
+            label: "on the page",
+            value: l.rightNow.viewing,
+          },
+          {
+            key: "basket",
+            label: "in a basket",
+            value: l.rightNow.basket,
+          },
+          { key: "holding", label: "holding", value: l.rightNow.holding },
+          {
+            key: "paid",
+            label: "paid",
+            value: l.rightNow.paid,
+            tone: "arrivals",
+          },
+        ]}
+      />
+      <KeyValues
+        rows={[
+          {
+            key: "held",
+            label: "Tickets on hold",
+            value: `${l.rightNow.ticketsHeld}${
+              l.rightNow.nextExpiry
+                ? ` · next hold expires in ${formatCountdown(l.rightNow.nextExpiry.getTime() - now.getTime())}`
+                : ""
+            }`,
+          },
+          {
+            key: "approvals",
+            label: "Waiting for approval",
+            value: `${l.rightNow.approvals} guest list ${l.rightNow.approvals === 1 ? "request" : "requests"}`,
+          },
+          {
+            key: "abandoned",
+            label: "Gave up in the last hour",
+            value: `${l.rightNow.abandonedLastHour} ${l.rightNow.abandonedLastHour === 1 ? "checkout" : "checkouts"}`,
+          },
+          {
+            key: "typical",
+            label: "Typical checkout today",
+            value:
+              l.rightNow.typicalCheckoutSeconds === null
+                ? "–"
+                : formatDuration(l.rightNow.typicalCheckoutSeconds),
+          },
+        ]}
+      />
+      <p className="text-muted-foreground mt-auto border-t pt-2 text-xs lg:pt-[0.5vw] lg:text-[0.85vw]">
+        Today&apos;s buyers:{" "}
+        {l.sourcesToday.length === 0
+          ? "none yet"
+          : l.sourcesToday
+              .slice(0, 4)
+              .map(
+                (row) => `${row.orders} ${sourceLabel(row.source, row.medium)}`,
+              )
+              .join(" · ")}
+      </p>
+    </div>
+  );
+
   return (
     <div className="grid min-h-0 flex-1 gap-3 lg:grid-rows-[auto_minmax(0,1.25fr)_minmax(0,1fr)] lg:gap-[1vw]">
       <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-y py-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-[1vw] lg:py-[0.8vw]">
@@ -238,82 +368,37 @@ export function SalesView({
           index={1}
           title="Sales, last 7 days"
           meta="running total · dashed is your average event · ticks are campaign launches"
+          detail={
+            sales ? (
+              <CurveDetail
+                data={sales}
+                timezone={timezone}
+                breakEven={breakEven}
+              />
+            ) : null
+          }
         >
           {sales ? (
             <Curve data={sales} timezone={timezone} breakEven={breakEven} />
           ) : null}
         </Card>
-        <Card index={2} title="Right now" meta="last 10 minutes">
-          <div className="flex min-h-0 flex-col gap-3 lg:gap-[0.8vw]">
-            <Flow
-              steps={[
-                {
-                  key: "viewing",
-                  label: "on the page",
-                  value: l.rightNow.viewing,
-                },
-                {
-                  key: "basket",
-                  label: "in a basket",
-                  value: l.rightNow.basket,
-                },
-                { key: "holding", label: "holding", value: l.rightNow.holding },
-                {
-                  key: "paid",
-                  label: "paid",
-                  value: l.rightNow.paid,
-                  tone: "arrivals",
-                },
-              ]}
-            />
-            <KeyValues
-              rows={[
-                {
-                  key: "held",
-                  label: "Tickets on hold",
-                  value: `${l.rightNow.ticketsHeld}${
-                    l.rightNow.nextExpiry
-                      ? ` · next hold expires in ${formatCountdown(l.rightNow.nextExpiry.getTime() - now.getTime())}`
-                      : ""
-                  }`,
-                },
-                {
-                  key: "approvals",
-                  label: "Waiting for approval",
-                  value: `${l.rightNow.approvals} guest list ${l.rightNow.approvals === 1 ? "request" : "requests"}`,
-                },
-                {
-                  key: "abandoned",
-                  label: "Gave up in the last hour",
-                  value: `${l.rightNow.abandonedLastHour} ${l.rightNow.abandonedLastHour === 1 ? "checkout" : "checkouts"}`,
-                },
-                {
-                  key: "typical",
-                  label: "Typical checkout today",
-                  value:
-                    l.rightNow.typicalCheckoutSeconds === null
-                      ? "–"
-                      : formatDuration(l.rightNow.typicalCheckoutSeconds),
-                },
-              ]}
-            />
-            <p className="text-muted-foreground mt-auto border-t pt-2 text-xs lg:pt-[0.5vw] lg:text-[0.85vw]">
-              Today&apos;s buyers:{" "}
-              {l.sourcesToday.length === 0
-                ? "none yet"
-                : l.sourcesToday
-                    .map(
-                      (row) =>
-                        `${row.orders} ${sourceLabel(row.source, row.medium)}`,
-                    )
-                    .join(" · ")}
-            </p>
-          </div>
+        <Card
+          index={2}
+          title="Right now"
+          meta="last 10 minutes"
+          detail={<RightNowDetail body={rightNowBody} live={l} />}
+        >
+          {rightNowBody}
         </Card>
       </div>
 
       <div className="grid min-h-0 gap-3 lg:grid-cols-3 lg:gap-[1vw]">
-        <Card index={3} title="Tiers" meta="sold / on sale">
+        <Card
+          index={3}
+          title="Tiers"
+          meta="sold / on sale"
+          detail={<TiersDetail tiers={tiers} counts={counts} />}
+        >
           <Ranks
             empty="No tiers yet."
             rows={[
@@ -346,10 +431,22 @@ export function SalesView({
             ]}
           />
         </Card>
-        <Card index={4} title="Latest orders" meta={`${counts.orders} so far`}>
+        <Card
+          index={4}
+          title="Latest orders"
+          meta={`${counts.orders} so far`}
+          detail={
+            <OrdersDetail
+              orders={l.latest}
+              total={counts.orders}
+              timezone={timezone}
+              now={now}
+            />
+          }
+        >
           <Feed
             empty="No orders yet."
-            rows={l.latest.map((order) => ({
+            rows={l.latest.slice(0, 8).map((order) => ({
               key: order.id,
               main: order.items
                 .map((item) => `${item.tickets} × ${item.name}`)
@@ -363,67 +460,19 @@ export function SalesView({
             }))}
           />
         </Card>
-        <Card index={5} title="How it's selling" meta="whole campaign">
-          <KeyValues
-            rows={[
-              {
-                key: "started",
-                label: "Checkouts started",
-                value: `${started} · ${counts.checkoutConversion ?? 0}% paid`,
-              },
-              {
-                key: "phone",
-                label: "Bought on a phone",
-                value: l.shares.phone === null ? "–" : `${l.shares.phone}%`,
-              },
-              {
-                key: "paidWith",
-                label: "Paid with",
-                value:
-                  paidWithTotal > 0
-                    ? overview.byPaidWith
-                        .slice(0, 3)
-                        .map(
-                          (row) =>
-                            `${paidWithLabel(row.paidWith)} ${Math.round((row.orders / paidWithTotal) * 100)}%`,
-                        )
-                        .join(" · ")
-                    : "–",
-              },
-              {
-                key: "codes",
-                label: "Discount codes used",
-                value:
-                  codes.uses > 0
-                    ? `${codes.uses} · ${formatNZDWhole(codes.givenCents)} given`
-                    : "none",
-              },
-              {
-                key: "optIn",
-                label: "Marketing opt-in",
-                value:
-                  l.shares.optIn === null
-                    ? "–"
-                    : `${l.shares.optIn}% of orders`,
-              },
-              {
-                key: "returning",
-                label: "Returning buyers",
-                value:
-                  l.shares.returning === null
-                    ? "–"
-                    : `${l.shares.returning}% bought before`,
-              },
-              {
-                key: "spend",
-                label: "Campaign spend",
-                value:
-                  costs.campaignsCents > 0
-                    ? `${formatNZDWhole(costs.campaignsCents)} · ${(money.netCents / costs.campaignsCents).toFixed(1)}× back`
-                    : "none recorded",
-              },
-            ]}
-          />
+        <Card
+          index={5}
+          title="How it's selling"
+          meta="whole campaign"
+          detail={
+            <SellingDetail
+              rows={sellingRows}
+              byPaidWith={overview.byPaidWith}
+              discounts={discounts}
+            />
+          }
+        >
+          <KeyValues rows={sellingRows} />
         </Card>
       </div>
     </div>
@@ -510,6 +559,300 @@ function Curve({
           }))}
         />
       ) : null}
+    </div>
+  );
+}
+
+type Overview = SalesViewProps["overview"];
+type KeyValueRow = Parameters<typeof KeyValues>[0]["rows"][number];
+
+/** Two columns side by side on a big screen, stacked on a phone. */
+function Pair({ children }: { children: ReactNode }) {
+  return (
+    <div className="grid gap-6 lg:grid-cols-2 lg:gap-x-[2vw] lg:gap-y-[1.6vw]">
+      {children}
+    </div>
+  );
+}
+
+/** The curve at full height, then the week day by day and the launches. */
+function CurveDetail({
+  data,
+  timezone,
+  breakEven,
+}: {
+  data: Sales;
+  timezone: string;
+  breakEven: number | null;
+}) {
+  const days = new Map<
+    string,
+    { at: Date; tickets: number; revenueCents: number }
+  >();
+  for (const row of data.rows) {
+    const key = eventDayKey(row.at, timezone);
+    const day = days.get(key) ?? { at: row.at, tickets: 0, revenueCents: 0 };
+    day.tickets += row.tickets;
+    day.revenueCents += row.revenueCents;
+    days.set(key, day);
+  }
+  return (
+    <div className="flex flex-col gap-6 lg:gap-[1.6vw]">
+      <div className="h-[45vh] min-h-[240px]">
+        <Curve data={data} timezone={timezone} breakEven={breakEven} />
+      </div>
+      <Pair>
+        <DetailSection title="By day" meta="newest first">
+          <Table
+            columns={[
+              { label: "Day" },
+              { label: "Tickets", right: true },
+              { label: "Revenue", right: true },
+            ]}
+            empty="No sales in the last 7 days."
+            rows={[...days.entries()].reverse().map(([key, day]) => ({
+              key,
+              cells: [
+                formatEventDate(day.at, timezone),
+                day.tickets,
+                formatNZDWhole(day.revenueCents),
+              ],
+            }))}
+          />
+        </DetailSection>
+        <DetailSection title="Campaign launches" meta="the ticks on the curve">
+          <Table
+            columns={[{ label: "When" }, { label: "Campaign" }]}
+            empty="No campaigns launched in the last 7 days."
+            rows={data.launches.map((launch, i) => ({
+              key: `${launch.at.getTime()}-${i}`,
+              cells: [formatEventDateTime(launch.at, timezone), launch.name],
+            }))}
+          />
+        </DetailSection>
+      </Pair>
+    </div>
+  );
+}
+
+/** The checkout now, then today's figures and where today's buyers came from. */
+function RightNowDetail({
+  body,
+  live,
+}: {
+  body: ReactNode;
+  live: SalesViewProps["live"];
+}) {
+  const top = Math.max(1, ...live.sourcesToday.map((row) => row.orders));
+  return (
+    <div className="flex flex-col gap-6 lg:gap-[1.6vw]">
+      {body}
+      <Pair>
+        <DetailSection title="Today">
+          <KeyValues
+            rows={[
+              {
+                key: "tickets",
+                label: "Tickets",
+                value: String(live.today.tickets),
+              },
+              {
+                key: "revenue",
+                label: "Revenue",
+                value: formatNZDWhole(live.today.revenueCents),
+              },
+              {
+                key: "hour",
+                label: "In the last hour",
+                value: String(live.today.lastHour),
+              },
+              {
+                key: "last",
+                label: "Last sale",
+                value: live.today.lastSaleAt
+                  ? formatTimeAgo(live.today.lastSaleAt)
+                  : "none yet",
+              },
+            ]}
+          />
+        </DetailSection>
+        <DetailSection title="Today's buyers" meta="orders">
+          <Ranks
+            className="lg:[mask-image:none]"
+            empty="No orders today yet."
+            rows={live.sourcesToday.map((row) => ({
+              key: `${row.source}-${row.medium}`,
+              name: sourceLabel(row.source, row.medium),
+              detail: String(row.orders),
+              share: row.orders / top,
+            }))}
+          />
+        </DetailSection>
+      </Pair>
+    </div>
+  );
+}
+
+/** Every tier in full: price, sold, what's left and what it's made. */
+function TiersDetail({
+  tiers,
+  counts,
+}: {
+  tiers: Overview["tiers"];
+  counts: Overview["counts"];
+}) {
+  return (
+    <Table
+      columns={[
+        { label: "Tier" },
+        { label: "Price", right: true },
+        { label: "Sold", right: true },
+        { label: "" },
+        { label: "Left", right: true },
+        { label: "Revenue", right: true },
+      ]}
+      empty="No tiers yet."
+      rows={[
+        ...tiers.map((tier) => {
+          const onSale = tier.allocation + Math.max(0, tier.moved);
+          return {
+            key: tier.id,
+            cells: [
+              tier.name,
+              formatNZD(tier.priceCents),
+              `${tier.sold} / ${onSale}`,
+              <Track
+                key="track"
+                share={tier.sold / Math.max(1, onSale)}
+                className="w-24 lg:w-[8vw]"
+              />,
+              tier.remaining === 0
+                ? "sold out"
+                : tier.moved < 0
+                  ? `${tier.remaining} · ${-tier.moved} to the door`
+                  : String(tier.remaining),
+              formatNZDWhole(tier.revenueCents),
+            ],
+          };
+        }),
+        ...(counts.comped > 0 || counts.compAllowance
+          ? [
+              {
+                key: "comps",
+                tone: "arrivals" as const,
+                cells: [
+                  "Comps",
+                  "–",
+                  counts.compAllowance !== null
+                    ? `${counts.comped} / ${counts.compAllowance}`
+                    : String(counts.comped),
+                  null,
+                  counts.compAllowance !== null
+                    ? String(Math.max(0, counts.compAllowance - counts.comped))
+                    : "–",
+                  "–",
+                ],
+              },
+            ]
+          : []),
+      ]}
+    />
+  );
+}
+
+/** The latest orders, as many as the screen fetched, in full. */
+function OrdersDetail({
+  orders,
+  total,
+  timezone,
+  now,
+}: {
+  orders: SalesViewProps["live"]["latest"];
+  total: number;
+  timezone: string;
+  now: Date;
+}) {
+  return (
+    <DetailSection
+      title="Newest first"
+      meta={`the latest ${orders.length} of ${total}`}
+    >
+      <Table
+        columns={[
+          { label: "Paid" },
+          { label: "Tickets" },
+          { label: "Paid with" },
+          { label: "Came from" },
+          { label: "Total", right: true },
+        ]}
+        empty="No orders yet."
+        rows={orders.map((order) => ({
+          key: order.id,
+          cells: [
+            `${formatEventTime(order.paidAt, timezone)} · ${shortAgo(order.paidAt, now)}`,
+            order.items
+              .map((item) => `${item.tickets} × ${item.name}`)
+              .join(", "),
+            order.paidWith
+              ? paidWithLabel(order.paidWith)
+              : paymentMethodShort(order.paymentMethod),
+            sourceLabel(order.source, order.medium),
+            formatNZD(order.totalCents),
+          ],
+        }))}
+      />
+    </DetailSection>
+  );
+}
+
+/** The campaign-wide shares, then how people paid and the codes they used. */
+function SellingDetail({
+  rows,
+  byPaidWith,
+  discounts,
+}: {
+  rows: KeyValueRow[];
+  byPaidWith: Overview["byPaidWith"];
+  discounts: SalesViewProps["discounts"];
+}) {
+  const paid = byPaidWith.reduce((sum, row) => sum + row.orders, 0);
+  return (
+    <div className="flex flex-col gap-6 lg:gap-[1.6vw]">
+      <KeyValues rows={rows} className="lg:[mask-image:none]" />
+      <Pair>
+        <DetailSection title="Paid with" meta="card orders">
+          <Ranks
+            className="lg:[mask-image:none]"
+            empty="No card orders yet."
+            rows={byPaidWith.map((row) => ({
+              key: row.paidWith,
+              name: paidWithLabel(row.paidWith),
+              detail: `${row.orders} · ${Math.round((row.orders / Math.max(1, paid)) * 100)}%`,
+              share: row.orders / Math.max(1, paid),
+            }))}
+          />
+        </DetailSection>
+        <DetailSection title="Discount codes" meta="most used first">
+          <Table
+            columns={[
+              { label: "Code" },
+              { label: "Uses", right: true },
+              { label: "Given", right: true },
+              { label: "Orders worth", right: true },
+            ]}
+            empty="No codes used yet."
+            rows={discounts.map((row) => ({
+              key: row.code,
+              cells: [
+                row.code,
+                row.uses,
+                formatNZDWhole(row.givenCents),
+                formatNZDWhole(row.revenueCents),
+              ],
+            }))}
+          />
+        </DetailSection>
+      </Pair>
     </div>
   );
 }

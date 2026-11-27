@@ -88,7 +88,8 @@ export function LiveScreen({
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (
         e.target instanceof HTMLElement &&
-        e.target.closest("input, textarea")
+        // An expanded card has the keyboard while it's open.
+        e.target.closest("input, textarea, [role=dialog]")
       ) {
         return;
       }
